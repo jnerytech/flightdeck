@@ -6,7 +6,7 @@ import {
   type SessionImage,
   type SettableMode,
 } from "@flightdeck/protocol";
-import { ArrowDown, AtSign, BookText, Square, X } from "lucide-react";
+import { ArrowDown, AtSign, BookText, CornerDownLeft, Square, X } from "lucide-react";
 import { memo, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
@@ -263,6 +263,13 @@ export function SessionView(props: {
   const closed = session.status === "ended" || session.status === "error";
 
   const box = useRef<HTMLTextAreaElement>(null);
+  /** Where the cursor goes once Ctrl+Enter has put a line break in the text. */
+  const caret = useRef<number | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the new text is when the cursor moves
+  useLayoutEffect(() => {
+    if (caret.current !== null) box.current?.setSelectionRange(caret.current, caret.current);
+    caret.current = null;
+  }, [text]);
   /** The session is being ended: Encerrar is busy until the daemon says so. */
   const [ending, setEnding] = useState(false);
 
@@ -553,6 +560,8 @@ export function SessionView(props: {
           ref={box}
           aria-label={t("session.message")}
           placeholder={t("session.placeholder")}
+          title={t("session.shortcuts")}
+          aria-keyshortcuts="Enter"
           value={text}
           className="max-h-40 min-h-9 flex-1 resize-none"
           rows={1}
@@ -572,7 +581,15 @@ export function SessionView(props: {
           }}
           onKeyDown={(e) => {
             if (e.key === "Escape" && working) void actions.interrupt();
-            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+            if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+            if (e.ctrlKey || e.metaKey) {
+              // Ctrl+Enter breaks the line where the cursor is (a textarea only does it for Shift).
+              e.preventDefault();
+              const field = e.currentTarget;
+              const at = field.selectionStart;
+              caret.current = at + 1;
+              setText(`${text.slice(0, at)}\n${text.slice(field.selectionEnd)}`);
+            } else if (!e.shiftKey) {
               e.preventDefault();
               void submit();
             }
@@ -583,7 +600,7 @@ export function SessionView(props: {
             <output aria-live="polite" aria-label={t("session.working")} className="sr-only">
               {t("session.working")}
             </output>
-            <ActionButton variant="outline" onClick={submit}>
+            <ActionButton variant="outline" aria-keyshortcuts="Enter" onClick={submit}>
               {t("session.queueAdd")}
             </ActionButton>
             <ActionButton
@@ -596,7 +613,16 @@ export function SessionView(props: {
             </ActionButton>
           </>
         ) : (
-          <ActionButton onClick={submit}>{t("session.send")}</ActionButton>
+          (text.trim() !== "" || attached.length > 0) && (
+            <ActionButton
+              size="icon"
+              aria-label={t("session.send")}
+              aria-keyshortcuts="Enter"
+              onClick={submit}
+            >
+              <CornerDownLeft aria-hidden="true" />
+            </ActionButton>
+          )
         )}
       </Composer>
       {picking &&

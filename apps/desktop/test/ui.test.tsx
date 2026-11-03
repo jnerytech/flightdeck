@@ -324,7 +324,7 @@ describe("desktop: tela de sessão", () => {
       />,
     );
     fireEvent.keyDown(screen.getByLabelText("Mensagem"), { key: "Enter" });
-    fireEvent.click(screen.getByRole("button", { name: "Enviar" }));
+    expect(screen.queryByRole("button", { name: "Enviar" })).toBeNull();
     expect(sent).toEqual([]);
   });
 });

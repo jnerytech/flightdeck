@@ -430,9 +430,11 @@ histórico.
   até cinco por mensagem e 5 MB cada; o host precisa suportar). Elas aparecem como miniaturas que
   dá para remover antes de enviar, e a conversa indica quantas imagens a mensagem levou. Um
   arquivo que não cabe diz o motivo em vez de ser anexado.
-- Enquanto um turno roda, **Enfileirar** (ou Ctrl+Enter) põe a mensagem numa lista **Na fila**
+- Enquanto um turno roda, **Enfileirar** (ou Enter) põe a mensagem numa lista **Na fila**
   acima da caixa, em vez de enviá-la. **Editar** devolve a mensagem para a caixa e **Remover** a
   descarta; quando o turno termina, as mensagens da fila saem em ordem, uma por turno.
+- **Enter** envia a mensagem; **Ctrl+Enter** (ou Shift+Enter) quebra a linha. O ícone de envio
+  (↵) aparece quando a caixa tem texto. Digitar `/` oferece os snippets e os comandos da sessão.
 
 ### Hooks do Claude Code
 

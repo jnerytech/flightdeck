@@ -445,9 +445,11 @@ A session appears only once. The order of preference is managed, then terminal, 
   per message and 5 MB each; the host must support it). They show as thumbnails you can remove
   before sending, and the conversation notes how many images a message carried. A file that does
   not fit says why instead of being attached.
-- While a turn runs, **Queue** (or Ctrl+Enter) puts the message in a **Queued** list above the box
+- While a turn runs, **Queue** (or Enter) puts the message in a **Queued** list above the box
   instead of sending it. **Edit** takes it back into the box and **Remove** drops it; when the turn
   ends the queued messages go out in order, one per turn.
+- **Enter** sends the message; **Ctrl+Enter** (or Shift+Enter) adds a new line. The send icon (↵)
+  shows when the box has text. Typing `/` offers the snippets and the commands of the session.
 
 ### Claude Code hooks
 
