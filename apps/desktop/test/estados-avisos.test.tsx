@@ -318,6 +318,8 @@ describe("estados-avisos", () => {
     await settle(() => screen.queryByRole("listitem", { name: "Viva" }) !== null);
     expect(screen.queryByRole("listitem", { name: "Viva" })).not.toBeNull();
     expect(sessionId).not.toBe("");
+    // Its reconnecting hosts must not outlive the test and keep working under the next one.
+    store.dispose();
   });
 
   test("um botão em ação fica desabilitado, com spinner, e não aceita duplo clique", async () => {
@@ -423,10 +425,13 @@ describe("estados-avisos", () => {
     await settle(() => d.manager.get(sessionId).status === "idle");
     await act(async () => store.router.push({ name: "session", host: hostId, id: sessionId }));
     await settle(() => screen.queryByRole("button", { name: "Encerrar" }) !== null);
+    // The session's history is replayed after the page opens; a click before it ends is lost to a remount.
+    await settle(() => (document.body.textContent ?? "").includes("turno concluído"));
 
     await act(async () => {
       fireEvent.click(screen.queryByRole("button", { name: "Encerrar" }) as HTMLElement);
     });
+    await settle(() => screen.queryByRole("alertdialog") !== null);
     let dialog = screen.queryByRole("alertdialog") as HTMLElement;
     expect(dialog?.textContent ?? "").toContain("Encerrar esta sessão?");
     expect(dialog).not.toBeNull();
@@ -438,6 +443,7 @@ describe("estados-avisos", () => {
     await act(async () => {
       fireEvent.click(screen.queryByRole("button", { name: "Encerrar" }) as HTMLElement);
     });
+    await settle(() => screen.queryByRole("alertdialog") !== null);
     dialog = screen.queryByRole("alertdialog") as HTMLElement;
     await act(async () => {
       fireEvent.click(inDialog("Encerrar sessão") as HTMLElement);
@@ -454,6 +460,7 @@ describe("estados-avisos", () => {
     await act(async () => {
       fireEvent.click(screen.queryByRole("menuitem", { name: "Remover host" }) as HTMLElement);
     });
+    await settle(() => screen.queryByRole("alertdialog") !== null);
     dialog = screen.queryByRole("alertdialog") as HTMLElement;
     expect(dialog?.textContent ?? "").toContain("alfa");
     await act(async () => {
