@@ -41,7 +41,7 @@ export function FileEditor(props: {
   const read = useCallback(async () => {
     const result = await store.hostRequest(hostId, "file.read", { target, path });
     if (!result.ok) {
-      setPhase({ name: "refused", message: refusalText(result.code, result.message, t) });
+      setPhase({ name: "refused", message: refusalText(result.code, result.message, t, result) });
       return null;
     }
     return result.data;
@@ -107,7 +107,7 @@ export function FileEditor(props: {
     } else if (result.code === "file_conflict") {
       setPhase((current) => (current.name === "ready" ? { ...current, conflict: true } : current));
     } else {
-      setPhase({ name: "refused", message: refusalText(result.code, result.message, t) });
+      setPhase({ name: "refused", message: refusalText(result.code, result.message, t, result) });
     }
   };
 
