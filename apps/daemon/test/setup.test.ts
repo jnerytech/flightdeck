@@ -556,25 +556,25 @@ describe("reconcileStableBinary", () => {
 describe("stable binary", () => {
   const platform = "linux";
 
-  test("running from source leaves everything alone", () => {
+  test("running from source leaves everything alone", async () => {
     const home = tempDir("fd-stable-");
     const stable = stableBinPath(home, platform);
-    expect(installStableBinary(["/usr/bin/bun", "run", "main.ts"], stable, platform)).toBe(
+    expect(await installStableBinary(["/usr/bin/bun", "run", "main.ts"], stable, platform)).toBe(
       "source",
     );
     expect(existsSync(stable)).toBe(false);
   });
 
-  test("a binary that is already at the stable place stays", () => {
+  test("a binary that is already at the stable place stays", async () => {
     const home = tempDir("fd-stable-");
     const stable = stableBinPath(home, platform);
     mkdirSync(join(home, ".flightdeck", "bin"), { recursive: true });
     writeFileSync(stable, "daemon");
-    expect(installStableBinary([stable], stable, platform)).toBe("already");
+    expect(await installStableBinary([stable], stable, platform)).toBe("already");
     expect(readFileSync(stable, "utf8")).toBe("daemon");
   });
 
-  test("a stable binary that exists is kept: replacing it is what update does", () => {
+  test("a stable binary that exists is kept: replacing it is what update does", async () => {
     const home = tempDir("fd-stable-");
     const stable = stableBinPath(home, platform);
     mkdirSync(join(home, ".flightdeck", "bin"), { recursive: true });
@@ -582,16 +582,18 @@ describe("stable binary", () => {
     const other = join(home, "download", "flightdeckd");
     mkdirSync(join(home, "download"));
     writeFileSync(other, "downloaded");
-    expect(installStableBinary([other], stable, platform)).toBe("kept");
+    expect(await installStableBinary([other], stable, platform)).toBe("kept");
     expect(readFileSync(stable, "utf8")).toBe("installed");
   });
 
-  test("the running binary is copied to ~/.flightdeck/bin, executable", () => {
+  test("the running binary is copied to ~/.flightdeck/bin, executable", async () => {
     const home = tempDir("fd-stable-");
     const stable = stableBinPath(home, platform);
     const other = join(home, "flightdeckd");
     writeFileSync(other, "downloaded");
-    expect(installStableBinary([other], stable, platform)).toBe("copied");
+    const copying = installStableBinary([other], stable, platform);
+    expect(copying).toBeInstanceOf(Promise);
+    expect(await copying).toBe("copied");
     expect(readFileSync(stable, "utf8")).toBe("downloaded");
     // Windows has no executable bit: the file runs because of its .exe name.
     if (process.platform !== "win32") expect(statSync(stable).mode & 0o111).not.toBe(0);
