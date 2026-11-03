@@ -28,6 +28,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   `bun run slot -- --status` shows the holder (with a warning past `--max-age`, 90 min by
   default), `--nice` lowers the command's priority, `--cancel` stops your own waiters and run
   (matched by `FLIGHTDECK_SLOT_LABEL`, never another session's), so nobody needs `pkill -f`.
+  `--priority` (for the maintainer's full gate) also lowers the other `bun test` processes of the
+  user while it runs.
 - Tests for what you changed: `bun run test:related [--base <ref>]`. It takes the files changed
   since the merge-base with `main` (or `<ref>`), picks the changed test files plus every test
   that imports a changed file (transitively), prints each with the reason, and runs them in one
