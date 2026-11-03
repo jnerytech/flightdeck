@@ -108,4 +108,26 @@ describe("abas-muitas: with many tabs the strip stays readable", () => {
     });
     expect(store.tabs.activeId).toBe(store.tabs.tabs[5]?.id as string);
   });
+
+  test("with room to spare a working session shows its badge named, and it pulses", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    render(<App store={store} />);
+    await act(async () => {
+      store.tabs.open({ name: "session", host: "h", id: "s0" });
+      (store as unknown as { update(patch: Partial<AppState>): void }).update({
+        hosts: [
+          {
+            id: "h",
+            name: "pc",
+            status: "offline",
+            sessions: [{ id: "s0", cwd: "/p", status: "running", pendingPermissions: [] }],
+          },
+        ] as never,
+      });
+    });
+    const badge = document.querySelector("[data-badge='running']") as HTMLElement;
+    expect(badge.textContent).not.toBe("");
+    expect(badge.className).toContain("animate-pulse");
+    expect(badge.className).toContain("bg-muted");
+  });
 });

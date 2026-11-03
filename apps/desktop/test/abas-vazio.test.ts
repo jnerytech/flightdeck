@@ -67,4 +67,17 @@ describe("abas-vazio: the window may have no tab", () => {
     expect(back.tabs.tabs).toHaveLength(0);
     expect(back.router.current).toEqual({ name: "start" });
   });
+
+  test("two stored areas with one of them empty restore as the one that holds tabs", () => {
+    const back = Workspace.restore({
+      v: 1,
+      split: "vertical",
+      areas: [
+        { tabs: [], active: 0 },
+        { tabs: [{ route: hub }], active: 0 },
+      ],
+    });
+    expect(back.areas).toHaveLength(1);
+    expect(back.tabs.tabs.map((tab) => tab.router.current.name)).toEqual(["hub"]);
+  });
 });
