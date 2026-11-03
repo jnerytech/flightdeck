@@ -2881,3 +2881,16 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
   every print, up to 15 s.
 - Not done in part 1: the weight scale (vendored buttons), splitting hover motion into per-component
   enter animations. Both go to part 2.
+
+## Phase 34 — Claude account card
+
+Proof of concept, run on a Linux host (aarch64) on 2026-11-03 with claude 2.1.317 and Agent SDK 0.3.312. The signed-out,
+API-key, gateway and Bedrock cases ran on a throwaway `HOME` and `CLAUDE_CONFIG_DIR`; the real account was never logged out.
+Not run: a WSL host and a Windows host (no such host on this machine), so question 1 stays open for those two.
+
+1. `accountInfo()` works on a prompt-less query (`query({ prompt: <never yields> })`, then `accountInfo()`), claude 2.1.317, SDK 0.3.312, Linux: 0.8–2 s, no prompt, no model call. WSL and Windows are unchecked; the reader keeps `claude auth status --json` as the fallback.
+2. Signed out (throwaway config dir), claude 2.1.317: `claude auth status --json` prints `loggedIn:false, authMethod:"none"` and **exits 1** in about 2 s (`--text`: "Not logged in. Run claude auth login to authenticate."). The SDK's `accountInfo()` returns `{tokenSource:"none", apiProvider:"firstParty"}` (no email) and the usage report returns `rate_limits_available:false`, `rate_limits:null`. Nothing hangs or throws, so signed out = `loggedIn:false` or no email with `tokenSource:"none"`.
+3. Other providers (throwaway config dir), claude 2.1.317: a fake `ANTHROPIC_API_KEY` gives `authMethod:"api_key"`, `apiKeySource:"ANTHROPIC_API_KEY"`; `ANTHROPIC_AUTH_TOKEN` with a base URL gives `authMethod:"oauth_token"`, `tokenSource:"ANTHROPIC_AUTH_TOKEN"`; Bedrock gives `authMethod:"third_party"`, `apiProvider:"bedrock"`. In all three the usage report is `rate_limits_available:false`. **On Bedrock the SDK's `accountInfo()` and usage calls hung past 20 s**, while `auth status` answered in 0.5 s. So `auth status` runs first, and the SDK is asked only when it says `claude.ai`.
+4. Quota cost, claude 2.1.317: ten usage reports in a row on the real account left both windows unchanged (5 h 56 %, 7 d 53 %), and each call made no model request. Whether the June 2026 Agent SDK credit is touched stays unverified (the report carries no credit field here); the card shows the windows as the report gives them.
+5. Call rate, claude 2.1.317: ten reports in a row (about 40 ms each after the first) were never refused or rate limited, and the values did not move, which suggests the server side caches them. The ceiling is unknown; the provisional floors stay (5 min while watched, 30 s for a manual refresh).
+6. `claude auth status --json` shape, claude 2.1.317: the keys are `loggedIn, authMethod, apiProvider, analyticsDisabled, projectsDirectory, configDirectory`, plus `email, orgId, orgName, subscriptionType` when signed in with claude.ai, and `apiKeySource` for an API key. No schema is published, so it is the first, cheap check ("is anyone signed in, and with what") and the SDK's `accountInfo()` only supplies what it lacks; a missing key is `null`, never an error.
