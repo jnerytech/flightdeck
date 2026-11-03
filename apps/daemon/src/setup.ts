@@ -15,6 +15,8 @@ export interface SetupDeps {
   platform: NodeJS.Platform;
   isDirectory(path: string): boolean;
   tailscaleIp(): Promise<string | null>;
+  /** The WSL distro this host runs in (`{ distro: null }` when unknown); null outside WSL. */
+  wsl?: { distro: string | null } | null;
   /** Puts the running binary at its stable place; false when running from source. */
   installBinary(): Promise<boolean>;
   /** Puts the binary's folder on the user's PATH (or prints how); runs only after `installBinary`. */
