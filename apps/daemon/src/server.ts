@@ -838,6 +838,14 @@ export function startServer(opts: ServerOptions): RunningServer {
     const ok = <T extends CommandType>(_type: T, data?: CommandResults[T]) =>
       send(ws, { type: "ack", id: command.id, ok: true, ...(data !== undefined ? { data } : {}) });
 
+    // The messaging service lists every endpoint with its project key, read synchronously.
+    if (command.type.startsWith("messages.") || command.type.startsWith("teams.")) {
+      await warmKeys([
+        ...manager.list().map((s) => s.cwd),
+        ...(opts.central?.external.list() ?? []).flatMap((s) => (s.cwd ? [s.cwd] : [])),
+      ]);
+    }
+
     switch (command.type) {
       case "hello":
         return onHello(ws, command);

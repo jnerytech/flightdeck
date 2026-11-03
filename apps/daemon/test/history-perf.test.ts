@@ -185,6 +185,7 @@ describe("history-perf: the lists never block the event loop on git", () => {
     const data = await client.data<{ sessions: unknown[] }>("messages.directory", {});
     expect(data?.sessions.length).toBe(FOLDERS * 2);
     expect(calls.blocking).toBe(0);
-    expect(calls.async).toBe(FOLDERS * 2);
+    // The external sessions' keys were cached when their hook events arrived.
+    expect(calls.async).toBe(FOLDERS);
   });
 });
