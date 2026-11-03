@@ -2896,8 +2896,9 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
   and its session already counts as a session that needs you, so counting both would show the same
   request twice.
 - **The project page links, it does not summarise.** Board, Sessions, Workflows, Costs and
-  Settings open the existing screens. Sessions opens the hub unfiltered (the hub has no per-project
-  filter yet) and Settings opens the host's project settings, where the project is edited. The page
+  Settings open the existing screens. Sessions opens the hub filtered to the project (a `project` param on
+  the `hub` route and a chip that clears it; the choice lives in the list, so opening a session
+  keeps it, and a different project from the route replaces it) and Settings opens the host's project settings, where the project is edited. The page
   is a grid of destinations so the tiles of issue #8 add a section beside it later.
 - **Offline hosts are left out of the overview**, like the other cross-host lists: their projects
   are not known until they reconnect.

@@ -380,6 +380,7 @@ export function Screen(props: ScreenProps) {
           store={store}
           state={state}
           density={props.density}
+          project={route.name === "hub" ? route.project : undefined}
           onOpen={(row) => go(rowRoute(row))}
           isOpen={(row) =>
             (opened.id !== undefined && row.sessionId === opened.id) ||

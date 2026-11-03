@@ -499,6 +499,8 @@ export const en: Dictionary = {
     back: "Back to the list",
     filterLabel: "Filter sessions",
     showMore: "Show {n} more",
+    projectFilter: "Project: {name}",
+    clearProjectFilter: "Clear the project filter",
     filterPlaceholder: "Filter",
     filters: "Filters",
     host: "Host",

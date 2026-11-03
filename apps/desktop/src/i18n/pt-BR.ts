@@ -495,6 +495,8 @@ export const ptBR = {
     resize: "Redimensionar a lista",
     back: "Voltar à lista",
     filterLabel: "Filtrar sessões",
+    projectFilter: "Projeto: {name}",
+    clearProjectFilter: "Limpar o filtro de projeto",
     showMore: "Mostrar mais {n}",
     filterPlaceholder: "Filtrar",
     filters: "Filtros",

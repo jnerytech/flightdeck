@@ -558,7 +558,7 @@ um traço quando o host não informa custos. Digite na busca para filtrar por no
 pasta, e use **Ordenar por** para ordenar por última atividade, nome, custo da semana ou o que
 precisa de atenção primeiro.
 
-Clique em um cartão para abrir a página do projeto. Ela leva ao **Board**, às **Sessões**, aos
+Clique em um cartão para abrir a página do projeto. Ela leva ao **Board**, às **Sessões** (a lista, filtrada pelo projeto: um chip "Projeto: nome" com × limpa o filtro), aos
 **Workflows**, aos **Custos** (quando o host informa custos) e às **Configurações** (as
 configurações de projetos do host, onde se editam pasta, branch base, setup e personas) do projeto.
 

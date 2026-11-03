@@ -54,7 +54,10 @@ export function ProjectPage(props: {
       label: "sidebar.sessions",
       hint: "projectPage.sessionsHint",
       icon: NAV_ICONS.sessions,
-      route: { name: "hub" },
+      route: {
+        name: "hub",
+        project: { hostId, projectKey: store.projectKeyOf(hostId, project), name: project.name },
+      },
     },
     {
       key: "workflows",
