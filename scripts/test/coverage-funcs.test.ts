@@ -1,275 +1,166 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
+  COVERAGE_VAR,
+  createInstrumenter,
+  type FunctionCoverage,
   formatReport,
-  HOOK,
-  hitRecorder,
-  instrument,
-  loadBabel,
   onLoadFor,
   PRELOAD,
-  parseHits,
   planCoverageFuncs,
-  siteKey,
   uncalled,
 } from "../lib/coverage-funcs.ts";
 
-const babel = loadBabel();
+const instrument = createInstrumenter();
 const transpiler = new Bun.Transpiler({ loader: "ts" });
+const store = globalThis as Record<string, unknown>;
 
-/** Instruments `source`, runs its `main()` and returns the keys of the markers that fired. */
-function run(source: string): { hits: string[]; result: unknown; keys: string[] } {
-  const { code, sites } = instrument(source, "x.ts", babel);
-  const hits: string[] = [];
-  (globalThis as Record<string, unknown>)[HOOK] = (key: string) => hits.push(key);
-  const result = new Function(`${transpiler.transformSync(code)}\nreturn main();`)();
-  return { hits, result, keys: sites.map(siteKey) };
+/** Instruments `source`, runs its `main()` and returns the uncalled functions it left. */
+function run(source: string, file = "x.ts") {
+  const code = transpiler.transformSync(instrument(source, file));
+  const result = new Function(`${code}\nreturn main();`)();
+  const coverage = (store[COVERAGE_VAR] as Record<string, FunctionCoverage>)[
+    file
+  ] as FunctionCoverage;
+  return { result, missed: uncalled(coverage) };
 }
 
 afterEach(() => {
-  delete (globalThis as Record<string, unknown>)[HOOK];
+  delete store[COVERAGE_VAR];
 });
 
-describe("siteKey", () => {
-  test("joins file, line and column", () => {
-    expect(siteKey({ file: "a/b.ts", line: 3, column: 7 })).toBe("a/b.ts:3:7");
-  });
-});
-
-describe("loadBabel", () => {
-  test("gives Playwright's parser and traverser", () => {
-    expect(typeof babel.babelParse).toBe("function");
-    expect(typeof babel.traverse).toBe("function");
-  });
-});
-
-describe("instrument", () => {
-  test("marks a function declaration at the start of its block body", () => {
-    const { code, sites } = instrument("function f() { return 1; }", "x.ts", babel);
-    expect(sites).toEqual([{ file: "x.ts", line: 1, column: 0 }]);
-    expect(code).toBe(`function f() {globalThis.${HOOK}?.("x.ts:1:0"); return 1; }`);
-  });
-
-  test("a marker fires when the function runs, and leaves the result alone", () => {
-    const { hits, result, keys } = run(
-      "function helper(a: number): number { return a + 1; }\nfunction main() { return helper(1); }",
-    );
-    expect(result).toBe(2);
-    expect(keys).toEqual(["x.ts:1:0", "x.ts:2:0"]);
-    expect(hits).toEqual(["x.ts:2:0", "x.ts:1:0"]);
-  });
-
-  test("a function that never runs leaves no hit", () => {
-    const { hits } = run("function dead() { return 1; }\nfunction main() { return 0; }");
-    expect(hits).toEqual(["x.ts:2:0"]);
-  });
-
-  test("an arrow with an expression body keeps its value", () => {
-    const { result, hits } = run(
-      "function main() { const f = (a: number) => a * 2; return f(4); }",
-    );
-    expect(result).toBe(8);
-    expect(hits).toEqual(["x.ts:1:0", "x.ts:1:28"]);
-  });
-
-  test("an arrow that returns an object literal in parentheses stays valid", () => {
-    const { result } = run("function main() { const f = (a: number) => ({ a }); return f(5); }");
-    expect(result).toEqual({ a: 5 });
-  });
-
-  test("nested expression arrows that end together stay valid", () => {
-    const { result } = run(
-      "function main() { const f = (a: number) => (b: number) => (c: number) => a + b + c; return f(1)(2)(3); }",
-    );
-    expect(result).toBe(6);
-  });
-
-  test("an arrow whose expression body is a sequence or a cast stays valid", () => {
-    const { result } = run(
-      "function main() { const f = (a: number) => (a, a + 1); const g = (x: unknown) => x as number; return f(1) + g(2); }",
-    );
-    expect(result).toBe(4);
-  });
-
-  test("marks methods, constructors, accessors and object methods", () => {
-    const { keys, hits, result } = run(
+describe("createInstrumenter", () => {
+  test("keeps the behaviour of TypeScript code and counts its functions", () => {
+    const { result, missed } = run(
       [
         "class A {",
         "  v = 1;",
-        "  constructor(public w: number) { }",
-        "  get g() { return this.v; }",
-        "  static s() { return 3; }",
-        "  async *gen() { yield 1; }",
-        "  #p() { return 4; }",
-        "  callP() { return this.#p(); }",
+        "  constructor(public w: number) {}",
+        "  get g(): number { return this.v; }",
+        "  dead(): number { return 0; }",
         "}",
+        "function helper<T>(a: T): T { return a; }",
+        "function never() { return 1; }",
+        "const arrow = (n: number) => ({ n });",
         "function main() {",
-        "  const o = { m() { return 5; } };",
         "  const a = new A(2);",
-        "  return a.g + A.s() + o.m() + a.callP();",
+        "  return [a.g, helper(2), arrow(3).n, a.w];",
         "}",
       ].join("\n"),
     );
-    expect(result).toBe(1 + 3 + 5 + 4);
-    expect(keys).toEqual([
-      "x.ts:3:2",
-      "x.ts:4:2",
-      "x.ts:5:2",
-      "x.ts:6:2",
-      "x.ts:7:2",
-      "x.ts:8:2",
-      "x.ts:10:0",
-      "x.ts:11:14",
-    ]);
-    expect(hits).not.toContain("x.ts:6:2");
+    expect(result).toEqual([1, 2, 3, 2]);
+    expect(missed.map((m) => m.line)).toEqual([5, 8]);
   });
 
-  test("a marker goes after a directive prologue, so the directive still counts", () => {
-    const { code } = instrument('function f() { "use strict"; return 1; }', "x.ts", babel);
-    expect(code).toBe(`function f() { "use strict";globalThis.${HOOK}?.("x.ts:1:0"); return 1; }`);
-  });
-
-  test("overloads and abstract members have no body and no site", () => {
-    const { sites } = instrument(
-      "function f(a: string): string;\nfunction f(a: number): number;\nfunction f(a: any) { return a; }\nabstract class B { abstract m(): void; }",
-      "x.ts",
-      babel,
-    );
-    expect(sites.map(siteKey)).toEqual(["x.ts:3:0"]);
-  });
-
-  test("parses tsx when the file is a tsx file", () => {
-    const { sites } = instrument("const C = () => <div />;", "c.tsx", babel);
-    expect(sites.map(siteKey)).toEqual(["c.tsx:1:10"]);
-  });
-
-  test("source without functions comes back unchanged", () => {
-    expect(instrument("export const a = 1;", "x.ts", babel)).toEqual({
-      code: "export const a = 1;",
-      sites: [],
-    });
-  });
-});
-
-describe("hitRecorder", () => {
-  test("appends each key once", () => {
-    const lines: string[] = [];
-    const hit = hitRecorder((line) => lines.push(line));
-    hit("a:1:0");
-    hit("b:2:0");
-    hit("a:1:0");
-    expect(lines).toEqual(["a:1:0", "b:2:0"]);
-  });
-
-  test("a failing append does not break the code under test", () => {
-    const hit = hitRecorder(() => {
-      throw new Error("disk full");
-    });
-    expect(() => hit("a:1:0")).not.toThrow();
-  });
-});
-
-describe("parseHits", () => {
-  test("reads one key per line, ignoring blanks", () => {
-    expect(parseHits("a:1:0\n\nb:2:3\r\na:1:0\n")).toEqual(new Set(["a:1:0", "b:2:3"]));
+  test("a generic arrow works in .ts and a component in .tsx", () => {
+    expect(run("const id = <T>(a: T): T => a;\nfunction main() { return id(4); }").result).toBe(4);
+    const tsx = instrument("const C = () => <div />;\nfunction main() { return 1; }", "c.tsx");
+    expect(tsx).toContain(COVERAGE_VAR);
   });
 });
 
 describe("uncalled", () => {
-  test("keeps the sites whose key is not in the hits", () => {
-    const sites = [
-      { file: "a.ts", line: 1, column: 0 },
-      { file: "a.ts", line: 5, column: 2 },
-    ];
-    expect(uncalled(sites, new Set(["a.ts:1:0"]))).toEqual([{ file: "a.ts", line: 5, column: 2 }]);
+  test("lists the functions with zero calls by line, with their names", () => {
+    const coverage = {
+      fnMap: {
+        "0": { name: "late", line: 9 },
+        "1": { name: "(anonymous_1)", line: 3 },
+        "2": { name: "called", line: 5 },
+      },
+      f: { "0": 0, "1": 0, "2": 4 },
+    };
+    expect(uncalled(coverage)).toEqual([
+      { line: 3, name: "(anonymous_1)" },
+      { line: 9, name: "late" },
+    ]);
   });
 });
 
 describe("formatReport", () => {
-  const source = "export function a() {}\n\nexport const b = (x: number) => x * 2;\n";
-  const sites = [
-    { file: "m.ts", line: 1, column: 7 },
-    { file: "m.ts", line: 3, column: 17 },
-  ];
+  const source = "function a() {}\n\nexport const b = (x: number) => x * 2;\nfunction named() {}\n";
+  const fnMap = {
+    "0": { name: "a", line: 1 },
+    "1": { name: "(anonymous_1)", line: 3 },
+    "2": { name: "named", line: 4 },
+  };
 
-  test("lists each uncalled function as file:line with its source line", () => {
-    const report = formatReport([{ file: "m.ts", source, sites }], new Set(["m.ts:1:7"]));
+  test("lists each uncalled function as file:line with its name, or its source line when anonymous", () => {
+    const report = formatReport([{ file: "m.ts", source }], {
+      "m.ts": { fnMap, f: { "0": 2, "1": 0, "2": 0 } },
+    });
     expect(report).toBe(
       [
-        "m.ts: 1 of 2 functions never called",
+        "m.ts: 2 of 3 functions never called",
         "  m.ts:3  export const b = (x: number) => x * 2;",
+        "  m.ts:4  named",
       ].join("\n"),
     );
   });
 
-  test("says so when every function was called, in the singular too", () => {
-    expect(formatReport([{ file: "m.ts", source, sites }], new Set(sites.map(siteKey)))).toBe(
-      "m.ts: all 2 functions called",
-    );
+  test("says so when every function was called, and the singular", () => {
     expect(
-      formatReport(
-        [
-          {
-            file: "n.ts",
-            source: "export const n = () => 1;",
-            sites: [{ file: "n.ts", line: 1, column: 17 }],
-          },
-        ],
-        new Set(),
-      ),
-    ).toBe("n.ts: 1 of 1 function never called\n  n.ts:1  export const n = () => 1;");
+      formatReport([{ file: "m.ts", source }], {
+        "m.ts": { fnMap, f: { "0": 1, "1": 1, "2": 1 } },
+      }),
+    ).toBe("m.ts: all 3 functions called");
+    expect(
+      formatReport([{ file: "n.ts", source: "function n() {}" }], {
+        "n.ts": { fnMap: { "0": { name: "n", line: 1 } }, f: { "0": 0 } },
+      }),
+    ).toBe("n.ts: 1 of 1 function never called\n  n.ts:1  n");
   });
 
-  test("says when a file has no functions", () => {
-    expect(
-      formatReport([{ file: "k.ts", source: "export const k = 1;", sites: [] }], new Set()),
-    ).toBe("k.ts: no functions");
+  test("a file with no functions, and a file no test loaded", () => {
+    const coverage = { "k.ts": { fnMap: {}, f: {} } };
+    expect(formatReport([{ file: "k.ts", source: "" }], coverage)).toBe("k.ts: no functions");
+    expect(formatReport([{ file: "z.ts", source: "" }], coverage)).toBe(
+      "z.ts: no test loaded this file",
+    );
   });
 
   test("cuts a long source line", () => {
     const long = `export const f = () => "${"x".repeat(200)}";`;
-    const report = formatReport(
-      [{ file: "l.ts", source: long, sites: [{ file: "l.ts", line: 1, column: 17 }] }],
-      new Set(),
-    );
+    const report = formatReport([{ file: "l.ts", source: long }], {
+      "l.ts": { fnMap: { "0": { name: "(anonymous_0)", line: 1 } }, f: { "0": 0 } },
+    });
     expect(report.split("\n")[1]).toBe(`  l.ts:1  ${long.slice(0, 99)}…`);
   });
 
   test("joins several files", () => {
     const report = formatReport(
       [
-        { file: "m.ts", source, sites },
-        { file: "k.ts", source: "", sites: [] },
+        { file: "m.ts", source },
+        { file: "k.ts", source: "" },
       ],
-      new Set(sites.map(siteKey)),
+      { "m.ts": { fnMap, f: { "0": 1, "1": 1, "2": 1 } }, "k.ts": { fnMap: {}, f: {} } },
     );
-    expect(report).toBe("m.ts: all 2 functions called\nk.ts: no functions");
+    expect(report).toBe("m.ts: all 3 functions called\nk.ts: no functions");
   });
 });
 
 describe("onLoadFor", () => {
   const files = ["apps/daemon/src/a.ts", "apps/desktop/src/c.tsx"];
   const read = (path: string) => (path.endsWith("a.ts") ? "function f() {}" : "const C = () => 1;");
+  const fake = (code: string, file: string) => `/*${file}*/${code}`;
 
   test("the filter takes the listed files, from any root and with either separator", () => {
-    const { filter } = onLoadFor(files, babel, read);
+    const { filter } = onLoadFor(files, fake, read);
     expect(filter.test("/repo/apps/daemon/src/a.ts")).toBe(true);
     expect(filter.test("C:\\repo\\apps\\desktop\\src\\c.tsx")).toBe(true);
     expect(filter.test("/repo/apps/daemon/src/b.ts")).toBe(false);
     expect(filter.test("/repo/apps/daemon/src/xa.ts")).toBe(false);
   });
 
-  test("loads the instrumented text with the loader of the file", () => {
-    const { load } = onLoadFor(files, babel, read);
-    const ts = load("/repo/apps/daemon/src/a.ts");
-    expect(ts?.loader).toBe("ts");
-    expect(ts?.contents).toContain(`${HOOK}?.("apps/daemon/src/a.ts:1:0")`);
-    const tsx = load("C:\\repo\\apps\\desktop\\src\\c.tsx");
-    expect(tsx?.loader).toBe("tsx");
-    expect(tsx?.contents).toContain(`${HOOK}?.("apps/desktop/src/c.tsx:1:10")`);
+  test("loads the instrumented text, keyed by the listed path, with the loader of the file", () => {
+    const { load } = onLoadFor(files, fake, read);
+    expect(load("/repo/apps/daemon/src/a.ts")).toEqual({
+      contents: "/*apps/daemon/src/a.ts*/function f() {}",
+      loader: "ts",
+    });
+    expect(load("C:\\repo\\apps\\desktop\\src\\c.tsx")?.loader).toBe("tsx");
   });
 
   test("a file that is not listed is left to Bun", () => {
-    expect(onLoadFor(files, babel, read).load("/repo/other.ts")).toBeUndefined();
+    expect(onLoadFor(files, fake, read).load("/repo/other.ts")).toBeUndefined();
   });
 });
 
@@ -282,7 +173,7 @@ describe("planCoverageFuncs", () => {
   const git = (args: string[]) =>
     args[0] === "ls-files" ? `${Object.keys(tracked).join("\n")}\n` : null;
   const readFile = (path: string) => tracked[path as keyof typeof tracked] as string;
-  const deps = { platform: "linux" as const, git, readFile, log: "/tmp/hits.log" };
+  const deps = { platform: "linux" as const, git, readFile, out: "/tmp/cov.json" };
 
   test("without files it prints the usage and fails", () => {
     const plan = planCoverageFuncs({ ...deps, files: [] });
@@ -305,7 +196,7 @@ describe("planCoverageFuncs", () => {
     expect(plan.command).toBeNull();
   });
 
-  test("runs the related tests with the preload, handing the files and the log over by env", () => {
+  test("runs the related tests with the preload, handing the files and the output path over by env", () => {
     const plan = planCoverageFuncs({ ...deps, files: ["./apps/daemon/src/a.ts"] });
     expect(plan.code).toBe(0);
     expect(plan.output).toBe(
@@ -322,7 +213,7 @@ describe("planCoverageFuncs", () => {
     ]);
     expect(plan.env).toEqual({
       COVERAGE_FUNCS_FILES: JSON.stringify(["apps/daemon/src/a.ts"]),
-      COVERAGE_FUNCS_LOG: "/tmp/hits.log",
+      COVERAGE_FUNCS_OUT: "/tmp/cov.json",
     });
   });
 
