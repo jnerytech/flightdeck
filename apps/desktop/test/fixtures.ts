@@ -16,6 +16,8 @@ import type { Budgets } from "../../daemon/src/costs/budgets.ts";
 import { Costs } from "../../daemon/src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../../daemon/src/costs/pricing.ts";
 import { spawnExec } from "../../daemon/src/exec.ts";
+import type { GhRunner } from "../../daemon/src/github/gh.ts";
+import { GithubService } from "../../daemon/src/github/service.ts";
 import { HistoryIndexer } from "../../daemon/src/history/indexer.ts";
 import { Issues } from "../../daemon/src/issues/issues.ts";
 import { Maintenance } from "../../daemon/src/maintenance/maintenance.ts";
@@ -136,6 +138,8 @@ export function daemon(
     personas?: boolean;
     /** The host's self-check (`doctor.run`) and project finder (`projects.scan`, `projects.clone`), over a fake git. */
     firstRun?: boolean;
+    /** Sign-in with GitHub and start from a repo (phase 37), through the `gh` on the PATH and a fake clone. */
+    github?: boolean | { gh?: GhRunner };
     /** The host's switch for sessions without permission prompts (bypass-ui): on from the start. */
     bypass?: boolean;
   } = {},
@@ -338,6 +342,40 @@ export function daemon(
         files: new ReviewFiles({ changes, dataDir: join(root, "data"), allowedRoots: roots }),
       }
     : undefined;
+  /** Phase 37: the GitHub service; a clone is a repository with one commit and the https origin. */
+  const githubService = options.github
+    ? new GithubService({
+        ...(typeof options.github === "object" && options.github.gh
+          ? { gh: options.github.gh }
+          : {}),
+        roots,
+        board,
+        issues: new Issues({ board }),
+        git: async (args) => {
+          const [, , url, dest] = args as [string, string, string, string];
+          mkdirSync(dest, { recursive: true });
+          for (const step of [
+            ["init", "-q", "-b", "main"],
+            ["config", "user.email", "t@flightdeck.invalid"],
+            ["config", "user.name", "Test"],
+            ["config", "commit.gpgsign", "false"],
+          ]) {
+            await Bun.spawn(["git", "-C", dest, ...step]).exited;
+          }
+          writeFileSync(join(dest, "README.md"), "# cloned\n");
+          for (const step of [
+            ["add", "."],
+            ["commit", "-q", "-m", "first"],
+            ["remote", "add", "origin", url],
+          ]) {
+            await Bun.spawn(["git", "-C", dest, ...step]).exited;
+          }
+          return { code: 0, stderr: "" };
+        },
+        startSession: async ({ cwd, prompt, name }) => manager.create({ cwd, prompt, name }),
+      })
+    : undefined;
+  if (githubService) cleanups.push(() => githubService.loginCancel());
   /** What the fake git was asked, and the versions `doctor.run` was asked with. */
   const gitCalls: string[][] = [];
   const doctorAsked: Array<string | undefined> = [];
@@ -377,6 +415,7 @@ export function daemon(
       // The folder picker is on, like in the real daemon.
       fsDirs: true,
       ...firstRunOptions,
+      ...(githubService ? { github: githubService } : {}),
       rootsPlatform: testRootsPlatform(),
       sessionSettings: true,
       bypass: {
