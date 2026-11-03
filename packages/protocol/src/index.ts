@@ -1359,6 +1359,47 @@ export const QuotaState = z.object({
 });
 export type QuotaState = z.infer<typeof QuotaState>;
 
+// Phase 34: the Claude account the host's own `claude` is signed in to (never a token).
+export const AccountStatus = z.enum([
+  "signed_in",
+  "signed_out",
+  "api_key",
+  "third_party",
+  "unknown",
+]);
+export type AccountStatus = z.infer<typeof AccountStatus>;
+
+export const AccountState = z.object({
+  status: AccountStatus,
+  /** The account's email, shown as text in the card only; `null` when none is known. */
+  name: z.string().nullable(),
+  organization: z.string().nullable(),
+  /** `pro`, `max`, `team`, `enterprise`, `free` or any other plan name the CLI reports. */
+  plan: z.string().nullable(),
+  /** `firstParty`, `bedrock`, ... as the CLI names it. */
+  provider: z.string().nullable(),
+  /** The plan windows now valid on the host, with the age of each reading. */
+  windows: z.array(QuotaWindow),
+  /** When the account was last read (ISO); `null` before the first read. */
+  readAt: z.string().nullable(),
+  /** The last read failed, so everything above is the previous reading. */
+  stale: z.boolean(),
+  /** Why the last read failed (`account_unavailable`), or `null`. */
+  error: z.string().nullable(),
+  /** `status` when only the CLI's status was read, `sdk` when the usage report was too. */
+  source: z.enum(["status", "sdk"]),
+  /** What the person runs on the host to sign in; the app shows it and never runs it for them. */
+  loginCommand: z.literal("claude auth login"),
+});
+export type AccountState = z.infer<typeof AccountState>;
+
+/** Sent after `account.watch` with the host's account after each read and each change of its windows. */
+export const AccountUpdated = z.object({
+  type: z.literal("account.updated"),
+  ...AccountState.shape,
+});
+export type AccountUpdated = z.infer<typeof AccountUpdated>;
+
 /** Usage of the host's managed sessions in one day (host time zone) and project. */
 export const UsageRow = z.object({
   /** `YYYY-MM-DD`. */
@@ -3059,6 +3100,10 @@ export const Command = z.discriminatedUnion("type", [
   // Phase 7 (track B).
   cmd("quota.get", z.object({}).strict()),
   cmd("quota.watch", z.object({}).strict()),
+  cmd("account.get", z.object({}).strict()),
+  cmd("account.watch", z.object({}).strict()),
+  cmd("account.unwatch", z.object({}).strict()),
+  cmd("account.refresh", z.object({}).strict()),
   cmd("usage.summary", z.object({ days: z.number().int().min(1).max(90).optional() })),
   /** `permissions.allow` of the project's `.claude/settings.local.json`. */
   cmd("rules.list", z.object({ projectId: z.string() })),
@@ -3908,6 +3953,10 @@ export interface CommandResults {
   "gate.respond": WorkflowRun;
   "quota.get": QuotaState;
   "quota.watch": undefined;
+  "account.get": AccountState;
+  "account.watch": undefined;
+  "account.unwatch": undefined;
+  "account.refresh": AccountState;
   "usage.summary": UsageSummary;
   "rules.list": { rules: string[] };
   "rules.remove": { rules: string[] };
@@ -4355,6 +4404,7 @@ export const ServerMessage = z.union([
   RunUpdated,
   RunEnvUpdated,
   QuotaUpdated,
+  AccountUpdated,
   AskpassRequest,
   BudgetUpdated,
   ChangesUpdated,

@@ -277,6 +277,8 @@ const REASONS = [
   "run_exclusive",
   "run_ports_exhausted",
   "plugin_too_big",
+  "account_refresh_too_soon",
+  "account_unavailable",
 ];
 
 const cleanups: Array<() => unknown> = [];

@@ -1,4 +1,5 @@
 import type {
+  AccountState,
   AskpassRequest,
   BgList,
   BgSession,
@@ -203,6 +204,8 @@ export interface AppState {
   meta: Record<string, SessionMeta>;
   /** Plan quota of each host, by host id; kept by `quota.updated`. */
   quota: Record<string, QuotaState>;
+  /** The Claude account each host is signed in to, by host id (phase 34); only hosts being looked at. */
+  account: Record<string, AccountState>;
   /** Budgets of each host, by host id; kept by `budget.updated` (phase 8). */
   budgets: Record<string, Budget[]>;
   /** The ssh password or passphrase prompts waiting for an answer, oldest first (phase 15). */
@@ -311,6 +314,7 @@ export type HostCommandType = Extract<
   | `gate.${string}`
   | `maintenance.${string}`
   | `quota.${string}`
+  | `account.${string}`
   | `usage.${string}`
   | `rules.${string}`
   | `costs.${string}`
@@ -721,6 +725,7 @@ export class AppStore {
       cards: {},
       runs: {},
       quota: {},
+      account: {},
       budgets: {},
       ssh: {},
       snippets: {},
@@ -874,6 +879,7 @@ export class AppStore {
       cards: {},
       runs: {},
       quota: {},
+      account: {},
     });
     const closeToTray = this.platform.storage.getItem(CLOSE_TO_TRAY_KEY) !== "false";
     await this.platform.setCloseToTray(closeToTray);
@@ -1967,6 +1973,8 @@ export class AppStore {
       onRunUpdated: (run) => this.onRun(config.id, run),
       onRunEnvUpdated: (state) => this.onRunEnv(config.id, state),
       onQuotaUpdated: (state) => this.onQuota(config.id, state),
+      onAccountUpdated: (state) =>
+        this.update({ account: { ...this.state.account, [config.id]: state } }),
       onBudgetUpdated: (update) => this.onBudget(config.id, update),
       onTerminal: (frame) => {
         for (const listener of this.terminalListeners.get(`${config.id}|${frame.terminalId}`) ??
@@ -2254,6 +2262,25 @@ export class AppStore {
         { name: "host", host: hostId },
       );
     }
+  }
+
+  /** Starts the host's account stream while its card is on screen; returns the function that ends it. */
+  watchAccount(hostId: string): () => void {
+    const conn = this.connections.get(hostId);
+    conn?.watchAccount(true);
+    // What the host already knows comes at once; its first read follows through the stream.
+    void conn?.request("account.get", {}).then(
+      (state) => this.update({ account: { ...this.state.account, [hostId]: state } }),
+      () => {},
+    );
+    return () => conn?.watchAccount(false);
+  }
+
+  /** Asks the host to read its account again now; `false` when it refused (the banner says why). */
+  async refreshAccount(hostId: string): Promise<boolean> {
+    const state = await this.hostCommand(hostId, "account.refresh", {});
+    if (state) this.update({ account: { ...this.state.account, [hostId]: state } });
+    return state !== null;
   }
 
   /** Creates a budget or changes the one with `input.id`; the list follows the answer. */

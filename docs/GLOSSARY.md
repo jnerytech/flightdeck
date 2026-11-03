@@ -20,6 +20,8 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | daemon | daemon | O `flightdeckd`, o serviço de cada host |
 | histórico | history | As conversas já gravadas pelo Claude Code, que o app só lê |
 | cota | quota | O limite do plano, em janelas de 5 horas e de 7 dias |
+| conta | account | A conta do Claude em que o `claude` do host está conectado; o app só mostra, nunca pede login |
+| janela do plano | plan window | Um dos limites da conta (5 horas, 7 dias): a porcentagem usada e quando reinicia |
 | snippet | snippet | Um comando ou prompt salvo, com variáveis `{{nome}}`; global (do app), do host ou do projeto |
 | persona | persona | Um papel de engenharia que o Claude assume numa sessão; do pacote, do host, do projeto ou global (do app) |
 | memória | memory | A memória automática do Claude Code de um projeto (`MEMORY.md` e um arquivo por tópico); só é editada por uma ação explícita, com hash e confirmação |

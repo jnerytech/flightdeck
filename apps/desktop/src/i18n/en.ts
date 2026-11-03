@@ -729,6 +729,42 @@ export const en: Dictionary = {
     quotaTitle: "Plan quota",
     quotaBody: "{host}: {window} at {percent}%",
   },
+  account: {
+    region: "Claude account of {host}",
+    title: "Claude account",
+    loading: "Reading the account…",
+    offline: "{host} is offline: the account shows again when it is back.",
+    plans: { free: "Free", pro: "Pro", max: "Max", team: "Team", enterprise: "Enterprise" },
+    windows: {
+      five_hour: "5 hours",
+      seven_day: "7 days",
+      seven_day_opus: "7 days · Opus",
+      seven_day_sonnet: "7 days · Sonnet",
+    },
+    meter: "{window} of {host}",
+    meterText: "{percent}%, {reset}",
+    meterTextNoReset: "{percent}%",
+    resetsIn: "resets in {d}",
+    lastRead: "Last read {ago}",
+    noWindows: "The host reported no plan windows.",
+    stale: "Could not refresh: this is the last reading.",
+    refresh: "Refresh",
+    refreshing: "Reading…",
+    refreshLabel: "Refresh the account of {host}",
+    signedOut: {
+      title: "This host is not signed in to Claude.",
+      steps:
+        "Open this host's terminal, run this command and follow the steps there, then come back:",
+    },
+    copy: "Copy command",
+    copied: "Command copied",
+    terminal: "Open terminal",
+    apiKey: "This host uses an API key. Plan limits do not apply.",
+    provider: "This host uses {provider}. Plan limits do not apply.",
+    unknownSignIn: "This host's sign-in is not one the app knows.",
+    unavailable: "The account could not be read.",
+    retry: "Try again",
+  },
   quota: {
     windows: { five_hour: "5 hours", seven_day: "7 days" },
     shortWindows: { five_hour: "5 h", seven_day: "7 days" },
@@ -849,6 +885,7 @@ export const en: Dictionary = {
       "Allowing a prod tag needs a window of days and hours, and does not apply outside it: use ask.",
   },
   daemonFeature: {
+    account: "the Claude account",
     history: "the history",
     central: "the central session list",
     vault: "the vault",
@@ -899,6 +936,9 @@ export const en: Dictionary = {
     bg: "background sessions",
   },
   daemonRefusal: {
+    account_refresh_too_soon: "The account was read a moment ago: try again in {waitSeconds} s.",
+    account_unavailable:
+      "This host's Claude account could not be read. Check that `claude` is installed there, then try again.",
     ssh_hostkey_exists:
       "A server key is already saved for this destination: forget it before replacing it.",
     ssh_hostkey_mismatch: "Confirm the fingerprint that was just shown: check it again.",

@@ -1,4 +1,5 @@
 import {
+  type AccountState,
   type AskpassRequest,
   type BudgetUpdated,
   type Card,
@@ -115,6 +116,8 @@ export interface HostConnectionOptions {
   onRunEnvUpdated?(state: RunState): void;
   /** The host's plan quota changed (after `watchQuota`). */
   onQuotaUpdated?(state: QuotaState): void;
+  /** The host's Claude account changed (after `watchAccount`, phase 34). */
+  onAccountUpdated?(state: AccountState): void;
   /** A budget changed, crossed a threshold or entered a new period (after `watchBudgets`). */
   onBudgetUpdated?(update: BudgetUpdated): void;
   /** The diff of a watched target changed on disk (after `watchChanges`, phase 11). */
@@ -170,6 +173,7 @@ export class HostConnection {
   private watchingRuns = false;
   private watchingRunEnv = false;
   private watchingQuota = false;
+  private watchingAccount = false;
   private watchingBudgets = false;
   private watchingVault = false;
 
@@ -201,6 +205,8 @@ export class HostConnection {
           if (this.watchingRuns) this.send("run.watch", {}).catch(ignore);
           if (this.watchingRunEnv) this.send("runenv.watch", {}).catch(ignore);
           if (this.watchingQuota) this.send("quota.watch", {}).catch(ignore);
+          // Daemons before phase 34 have no account: the error is ignored.
+          if (this.watchingAccount) this.send("account.watch", {}).catch(ignore);
           // Daemons before phase 8 have no budgets: the error is ignored.
           if (this.watchingBudgets) this.send("budget.watch", {}).catch(ignore);
           // Daemons before phase 17 have no vault requests: the error is ignored.
@@ -240,6 +246,10 @@ export class HostConnection {
       if (message.type === "runenv.updated") return this.opts.onRunEnvUpdated?.(message.state);
       if (message.type === "quota.updated") {
         return this.opts.onQuotaUpdated?.({ windows: message.windows, pauseAt: message.pauseAt });
+      }
+      if (message.type === "account.updated") {
+        const { type: _type, ...state } = message;
+        return this.opts.onAccountUpdated?.(state);
       }
       if (message.type === "budget.updated") return this.opts.onBudgetUpdated?.(message);
       if (message.type === "changes.updated") return this.opts.onChangesUpdated?.(message);
@@ -338,6 +348,14 @@ export class HostConnection {
   /** Streams `quota.updated` from the next (re)connect on; call it before `connect`. */
   watchQuota(): void {
     this.watchingQuota = true;
+  }
+
+  /** Streams `account.updated` while the account card is on screen, again after each reconnect. */
+  watchAccount(on: boolean): void {
+    if (this.watchingAccount === on) return;
+    this.watchingAccount = on;
+    if (this.status === "online")
+      this.send(on ? "account.watch" : "account.unwatch", {}).catch(ignore);
   }
 
   /** Streams `run.updated` from the next (re)connect on; call it before `connect`. */

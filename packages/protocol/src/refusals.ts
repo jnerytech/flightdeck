@@ -9,6 +9,8 @@ export const DAEMON_REASONS = [
   "card_other_project",
   "card_id_needed",
   "card_manage_args",
+  "account_refresh_too_soon",
+  "account_unavailable",
   "cwd_missing",
   "cwd_outside_roots",
   "request_invalid",
