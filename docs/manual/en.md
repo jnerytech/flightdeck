@@ -501,9 +501,19 @@ A session appears only once. The order of preference is managed, then terminal, 
   per message and 5 MB each; the host must support it). They show as thumbnails you can remove
   before sending, and the conversation notes how many images a message carried. A file that does
   not fit says why instead of being attached.
-- While a turn runs, **Queue** (or Ctrl+Enter) puts the message in a **Queued** list above the box
+- While a turn runs, **Queue** (or Enter) puts the message in a **Queued** list above the box
   instead of sending it. **Edit** takes it back into the box and **Remove** drops it; when the turn
   ends the queued messages go out in order, one per turn.
+- **Enter** sends the message; **Ctrl+Enter** (or Shift+Enter) adds a new line. The send icon (↵)
+  shows when the box has text. Typing `/` offers the snippets and the commands of the session.
+- Under each assistant message a row shows on hover or keyboard focus: **Copy message**, **Fork from
+  here** (on the latest message: it carries the whole conversation so far), **Pin session** and how
+  long ago the message was written.
+- The box floats at the bottom as a rounded card. **+** attaches images (when the host supports it).
+  Under the card a status line shows the model and the permission mode, each a picker when the
+  session lets you change it, and a spinner while a turn runs. While a turn runs a line above the
+  box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
+  long; the spinner stops moving if your system asks for reduced motion.
 
 ### Claude Code hooks
 

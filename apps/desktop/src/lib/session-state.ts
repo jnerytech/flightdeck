@@ -15,7 +15,7 @@ export type ChatItem =
   /** Part of the history is missing: a hole in the seqs the host could not fill. */
   | { kind: "gap"; seq: number }
   | { kind: "user"; seq: number; text: string; images?: number }
-  | { kind: "assistant"; seq: number; blocks: AssistantBlock[] }
+  | { kind: "assistant"; seq: number; blocks: AssistantBlock[]; at?: string }
   | {
       kind: "permission";
       seq: number;
@@ -146,7 +146,10 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
         ...(event.images ? { images: event.images } : {}),
       });
     case "message.assistant":
-      return { ...push({ kind: "assistant", seq, blocks: event.blocks }), streaming: "" };
+      return {
+        ...push({ kind: "assistant", seq, blocks: event.blocks, at: envelope.ts }),
+        streaming: "",
+      };
     case "tool.result":
       return {
         ...next,
