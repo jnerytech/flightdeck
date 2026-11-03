@@ -1,13 +1,5 @@
 import type { Database } from "bun:sqlite";
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type {
   Persona,
@@ -37,7 +29,7 @@ export interface PersonasOptions {
   /** The personas that come ready, in a language (phase 20's pack). */
   pack?: (language: Language) => PersonaDef[];
   /** The project agent editor (phase 12), which writes `.claude/agents`; the integration plugs it in. */
-  publisher?: { publish(request: AgentPublishRequest): { path: string } };
+  publisher?: { publish(request: AgentPublishRequest): Promise<{ path: string }> };
 }
 
 /** A persona as a project agent file. */
@@ -103,10 +95,14 @@ export class Personas {
     this.now = opts.now ?? Date.now;
   }
 
-  list(filter: { scope?: "host" | "project" | "all"; projectPath?: string; language?: Language }): {
+  async list(filter: {
+    scope?: "host" | "project" | "all";
+    projectPath?: string;
+    language?: Language;
+  }): Promise<{
     personas: Persona[];
     project: PersonaProjectInfo | null;
-  } {
+  }> {
     const scope = filter.scope ?? "all";
     const project = filter.projectPath ? this.project(filter.projectPath) : null;
     if (scope === "project" && !project)
@@ -115,7 +111,7 @@ export class Personas {
     if (scope !== "project") personas.push(...this.hostViews(filter.language));
     let info: PersonaProjectInfo | null = null;
     if (scope !== "host" && project) {
-      const loaded = this.loadProject(project);
+      const loaded = await this.loadProject(project);
       info = loaded?.info ?? null;
       personas.push(...(loaded?.views ?? []));
     }
@@ -123,17 +119,17 @@ export class Personas {
   }
 
   /** The project's persona with that id, else the host's. */
-  get(id: string, ctx: PersonaContext): Persona {
-    const found = this.find(id, ctx);
+  async get(id: string, ctx: PersonaContext): Promise<Persona> {
+    const found = await this.find(id, ctx);
     if (!found) throw notFound();
     return found;
   }
 
-  save(request: {
+  async save(request: {
     scope: "host" | "project";
     projectPath?: string;
     persona: PersonaInput;
-  }): Persona {
+  }): Promise<Persona> {
     const persona = normalizePersona(request.persona, this.opts.scanner);
     if (request.scope === "host") {
       const at = new Date(this.now()).toISOString();
@@ -147,11 +143,11 @@ export class Personas {
     }
     const project = this.requireProject(request.projectPath);
     const source = serializePersona(persona);
-    mkdirSync(this.dir(project), { recursive: true });
-    writeFileSync(this.file(project, persona.id), source);
+    await mkdir(this.dir(project), { recursive: true });
+    await writeFile(this.file(project, persona.id), source);
     // It came from the app, from the person: no need to ask them to trust what they just wrote.
     this.trustHash(project, persona.id, personaHash(source));
-    return this.get(persona.id, { projectPath: project });
+    return await this.get(persona.id, { projectPath: project });
   }
 
   /**
@@ -159,11 +155,11 @@ export class Personas {
    * and the project's trusted ones, the project's winning. A versioned one without trust is left
    * out, and does not stand in for another of the same id.
    */
-  subagents(ctx: PersonaContext): PersonaSubagents {
+  async subagents(ctx: PersonaContext): Promise<PersonaSubagents> {
     const project = this.optionalProject(ctx.projectPath);
     const mode = project ? this.subagentsMode(project) : "all";
     if (mode === "none") return { agents: {}, untrusted: [] };
-    const loaded = project ? this.loadProject(project) : null;
+    const loaded = project ? await this.loadProject(project) : null;
     const views = [
       ...(mode === "all" ? this.hostViews(ctx.language) : []),
       ...(loaded?.views.filter((view) => view.trusted) ?? []),
@@ -175,12 +171,12 @@ export class Personas {
   }
 
   /** Writes the persona as the project's agent `persona-<id>`, through the agent editor. */
-  publishAgent(request: {
+  async publishAgent(request: {
     id: string;
     projectPath: string;
     language?: Language;
     confirm: boolean;
-  }): { path: string } {
+  }): Promise<{ path: string }> {
     if (!request.confirm) {
       throw new FlightdeckError(
         "invalid_state",
@@ -197,7 +193,7 @@ export class Personas {
       );
     }
     const projectPath = this.project(request.projectPath);
-    const { persona } = this.resolve(
+    const { persona } = await this.resolve(
       { id: request.id },
       { projectPath, language: request.language },
     );
@@ -217,7 +213,7 @@ export class Personas {
     return this.hostViews(ctx.language).find((view) => view.id === id) as Persona;
   }
 
-  remove(scope: "host" | "project", id: string, projectPath?: string): void {
+  async remove(scope: "host" | "project", id: string, projectPath?: string): Promise<void> {
     if (scope === "host") {
       const done = this.opts.db.query("DELETE FROM personas WHERE id = ?").run(id);
       if (done.changes === 0) throw notFound();
@@ -225,17 +221,19 @@ export class Personas {
     }
     const project = this.requireProject(projectPath);
     const file = this.file(project, id);
-    if (!existsSync(file)) throw notFound();
-    rmSync(file);
+    await rm(file).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") throw notFound();
+      throw error;
+    });
     this.opts.db
       .query("DELETE FROM persona_trust WHERE project_path = ? AND id = ?")
       .run(this.trustFolder(project), id);
   }
 
   /** Trusts the versioned persona as it is now, by the hash the app was shown. */
-  trust(projectPath: string, id: string, hash: string): Persona {
+  async trust(projectPath: string, id: string, hash: string): Promise<Persona> {
     const project = this.project(projectPath);
-    const current = this.loadProject(project)?.views.find((view) => view.id === id);
+    const current = (await this.loadProject(project))?.views.find((view) => view.id === id);
     if (!current) throw notFound();
     if (current.hash !== hash) {
       throw new FlightdeckError(
@@ -249,7 +247,7 @@ export class Personas {
   }
 
   /** The persona to use: an id (the project's, else the host's) or a definition from the app. */
-  resolve(ref: PersonaRef, ctx: PersonaContext): ResolvedPersona {
+  async resolve(ref: PersonaRef, ctx: PersonaContext): Promise<ResolvedPersona> {
     if ((ref.id === undefined) === (ref.definition === undefined)) {
       throw badRequest(
         "give the persona by id or by definition, one of the two",
@@ -263,7 +261,7 @@ export class Personas {
         hash: null,
       };
     }
-    const view = this.get(ref.id as string, {
+    const view = await this.get(ref.id as string, {
       projectPath: ctx.projectPath,
       language: ref.language ?? ctx.language,
     });
@@ -323,10 +321,10 @@ export class Personas {
     return join(this.dir(project), `${id}.md`);
   }
 
-  private find(id: string, ctx: PersonaContext): Persona | null {
+  private async find(id: string, ctx: PersonaContext): Promise<Persona | null> {
     if (ctx.projectPath) {
       const project = this.project(ctx.projectPath);
-      const inProject = this.loadProject(project)?.views.find((view) => view.id === id);
+      const inProject = (await this.loadProject(project))?.views.find((view) => view.id === id);
       if (inProject) return inProject;
     }
     return this.hostViews(ctx.language).find((view) => view.id === id) ?? null;
@@ -382,20 +380,22 @@ export class Personas {
   }
 
   /** The project's personas: what is valid, what is not and why, and which are trusted. */
-  private loadProject(project: string): LoadedProject | null {
+  private async loadProject(project: string): Promise<LoadedProject | null> {
     const dir = this.dir(project);
-    if (!existsSync(dir)) return null;
+    const names = await readdir(dir).then(
+      (entries) => entries,
+      () => null,
+    );
+    if (names === null) return null;
     const views: Persona[] = [];
     const errors: string[] = [];
-    for (const name of readdirSync(dir)
-      .filter((entry) => entry.endsWith(".md"))
-      .sort()) {
+    for (const name of names.filter((entry) => entry.endsWith(".md")).sort()) {
       const id = name.slice(0, -3);
       const path = join(dir, name);
       try {
-        if (statSync(path).size > MAX_FILE_BYTES)
+        if ((await stat(path)).size > MAX_FILE_BYTES)
           throw badRequest("file too big", "persona_file_big");
-        const source = readFileSync(path, "utf8");
+        const source = await readFile(path, "utf8");
         const persona = normalizePersona(parsePersona(source, id), this.opts.scanner);
         const hash = personaHash(source);
         const trusted =

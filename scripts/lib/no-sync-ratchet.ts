@@ -119,8 +119,6 @@ export const SYNC_BASELINE: Record<string, number> = {
   "apps/daemon/src/roots.ts": 2,
   "apps/daemon/src/service-os.ts": 6,
   "apps/daemon/src/setup.ts": 5,
-  "apps/daemon/src/snippets/history.ts": 6,
-  "apps/daemon/src/snippets/store.ts": 4,
   "apps/daemon/src/ssh/askpass.ts": 5,
   "apps/daemon/src/ssh/connect.ts": 3,
   "apps/daemon/src/ssh/import.ts": 1,

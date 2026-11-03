@@ -1,5 +1,6 @@
+import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
+import { stat } from "node:fs/promises";
 import type { Database } from "bun:sqlite";
-import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import {
   type Arena,
@@ -83,6 +84,8 @@ export const DEFAULT_PROMPT_TEMPLATE =
 export interface BoardOptions {
   db: Database;
   manager: SessionManager;
+  /** Reads the personas for a session about to open; none when absent. */
+  preparePersonas?: Prepare;
   allowedRoots: readonly string[];
   /** 2 when absent. */
   maxParallelRuns?: number;
@@ -134,7 +137,8 @@ function toProject(row: ProjectRow): Project {
     prProvider: row.pr_provider,
     setupScript: row.setup_script,
     promptTemplate: row.prompt_template,
-    worktreeInclude: existsSync(join(row.path, WORKTREE_INCLUDE)),
+    // The file answer needs IO: `forWire` fills it in where a project leaves for the app.
+    worktreeInclude: false,
     autoApprove: AutoApproveSettings.parse(JSON.parse(row.auto_approve ?? "{}")),
     issues: row.issues ? IssuesConfig.parse(JSON.parse(row.issues)) : null,
     personaByColumn: row.persona_by_column ? JSON.parse(row.persona_by_column) : {},
@@ -286,6 +290,7 @@ export class Board {
     this.workflows = new WorkflowEngine({
       db: opts.db,
       manager: opts.manager,
+      ...(opts.preparePersonas ? { preparePersonas: opts.preparePersonas } : {}),
       host: {
         place: (cardId, event) => this.place(cardId, event),
         release: (cardId) => this.release(cardId),
@@ -337,12 +342,18 @@ export class Board {
   }
 
   /**
-   * Phase 29: the project with its key, for the wire. The key is asked without blocking (`resolve`
+   * Phase 29: the project as it leaves for the app: its key and whether it has a `.worktreeinclude`. The key is asked without blocking (`resolve`
    * answers from a cache and asks git once per folder); a host without it sends none.
    */
-  async withKey(project: Project): Promise<Project> {
-    const projectKey = await this.opts.projectKeys?.resolve?.(project.path);
-    return projectKey ? { ...project, projectKey } : project;
+  async forWire(project: Project): Promise<Project> {
+    const [projectKey, worktreeInclude] = await Promise.all([
+      this.opts.projectKeys?.resolve?.(project.path),
+      stat(join(project.path, WORKTREE_INCLUDE)).then(
+        () => true,
+        () => false,
+      ),
+    ]);
+    return { ...project, worktreeInclude, ...(projectKey ? { projectKey } : {}) };
   }
 
   getProject(id: string): Project {
@@ -406,7 +417,7 @@ export class Board {
     // The key of the project is looked up now, without waiting for git, so the budget check and
     // the vault find it cached when a card starts.
     await this.opts.projectKeys?.resolve?.(path);
-    return this.getProject(project.id);
+    return await this.forWire(this.getProject(project.id));
   }
 
   updateProject(id: string, patch: ProjectPatch): Project {
@@ -1286,6 +1297,8 @@ export class Board {
         "SELECT persona, fix_prompt FROM card_runs WHERE id = ?",
       )
       .get(runId);
+    const personaRef = run?.persona ? (JSON.parse(run.persona) as PersonaRef) : undefined;
+    const prepared = await (this.opts.preparePersonas ?? withoutPersonas)(personaRef, worktree);
     const { sessionId } = this.opts.manager.create(
       {
         cwd: worktree,
@@ -1293,9 +1306,9 @@ export class Board {
         name: card.title,
         ...(variant?.model ? { model: variant.model } : {}),
         ...(variant?.effort ? { effort: variant.effort } : {}),
-        ...(run?.persona ? { persona: JSON.parse(run.persona) as PersonaRef } : {}),
+        ...(personaRef ? { persona: personaRef } : {}),
       },
-      { unattended: run?.fix_prompt != null },
+      { unattended: run?.fix_prompt != null, prepared },
     );
     this.db.query("UPDATE card_runs SET session_id = ? WHERE id = ?").run(sessionId, runId);
     this.changed(id);

@@ -1,3 +1,4 @@
+import { preparePersonas } from "../src/personas/prepare.ts";
 import { join } from "node:path";
 import { Board, type BoardOptions } from "../src/board/board.ts";
 import { git as runGit } from "../src/board/command.ts";
@@ -72,7 +73,6 @@ export async function fixture(options: FixtureOptions = {}) {
     defaultPermissionMode: "default",
     allowApiKey: false,
     baseEnv: {},
-    personas,
   });
   const time = manualTime();
   const quota = new Quota({ pauseAt: 0.9, now: time.now, timers: time.timers });
@@ -101,6 +101,7 @@ export async function fixture(options: FixtureOptions = {}) {
   const board = new Board({
     db: store.db,
     manager,
+    preparePersonas: (ref, cwd) => preparePersonas(personas, ref, cwd),
     allowedRoots: [root],
     prProvider: () => provider,
     prPollIntervalMs: 1_000_000,

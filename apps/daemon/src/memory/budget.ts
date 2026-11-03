@@ -129,7 +129,7 @@ export async function contextBudget(input: BudgetInput): Promise<ContextBudget> 
     await file("local", join(dir, "CLAUDE.local.md"), "start");
   }
   const AT_START = new Set(["CLAUDE.md", "CLAUDE.local.md", ".claude/CLAUDE.md"]);
-  for (const rel of claudeMds(root)) {
+  for (const rel of await claudeMds(root)) {
     const path = join(root, rel);
     add(
       rel === "CLAUDE.local.md" ? "local" : "project",

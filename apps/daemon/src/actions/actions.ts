@@ -323,7 +323,7 @@ export class Actions {
   /** The actions a project sees (its own, then the host's) or, with no project, the host's. */
   async list(projectId?: string): Promise<ActionList> {
     const { found, errors, issues } = await this.visible(projectId);
-    return { actions: found.map((f) => this.info(f)), errors, issues };
+    return { actions: await Promise.all(found.map((f) => this.info(f))), errors, issues };
   }
 
   async save(input: {
@@ -353,8 +353,8 @@ export class Actions {
       )
       .run(scope, action.name, JSON.stringify(action), now());
     // What the app creates is trusted as it is saved; a later change to what it executes is not.
-    this.pin({ action, source: "app", scope, base });
-    return this.info({ action, source: "app", scope, base });
+    await this.pin({ action, source: "app", scope, base });
+    return await this.info({ action, source: "app", scope, base });
   }
 
   async remove(projectId: string | undefined, name: string): Promise<ActionList> {
@@ -374,7 +374,7 @@ export class Actions {
   /** Trusts the action as it is now; `hash` is the declaration the user reviewed. */
   async trust(projectId: string | undefined, name: string, hash: string): Promise<ActionInfo> {
     const found = await this.find(projectId, name);
-    if (fingerprint(found.action, found.base).declaration !== hash) {
+    if ((await fingerprint(found.action, found.base)).declaration !== hash) {
       throw invalid(
         `action ${name} changed; review it again before trusting it`,
         "action_changed_review",
@@ -383,8 +383,8 @@ export class Actions {
         },
       );
     }
-    this.pin(found);
-    return this.info(found);
+    await this.pin(found);
+    return await this.info(found);
   }
 
   async run(input: {
@@ -395,7 +395,7 @@ export class Actions {
     session?: string;
   }): Promise<ActionResult> {
     const found = await this.find(input.projectId, input.name);
-    this.assertTrusted(found);
+    await this.assertTrusted(found);
     const params = resolveParams(found.action, input.params ?? {});
     const { values, files } = secretsOf(found.action);
     // A destino that logs in with a key from the vault: the key is asked for like the secrets.
@@ -422,7 +422,7 @@ export class Actions {
       },
     });
     // The approval can take a while: what the action executes is checked again before it starts.
-    this.assertTrusted(found);
+    await this.assertTrusted(found);
     return this.execute(found, params, secrets, input.requestedBy, ids, keyId);
   }
 
@@ -452,7 +452,7 @@ export class Actions {
     for (const id of ids)
       if (!SECRET_ID.test(id))
         throw bad(`invalid secret name: ${id}`, "action_secret_name_invalid", { secret: id });
-    const line = remote ? null : shellLine(input.command, process.platform);
+    const line = remote ? null : await shellLine(input.command, process.platform);
     const keyId = remote ? (this.opts.sshKey?.(remote) ?? null) : null;
     try {
       const action: ActionDef = {
@@ -486,7 +486,7 @@ export class Actions {
       const found: Found = { action, source: "app", scope: "", base: this.baseOf() };
       return await this.execute(found, {}, secrets, requester, asked, keyId);
     } finally {
-      line?.cleanup();
+      await line?.cleanup();
     }
   }
 
@@ -593,8 +593,8 @@ export class Actions {
     return row ? { declaration: row.declaration, files: JSON.parse(row.files) } : undefined;
   }
 
-  private pin(found: Found): void {
-    const print = fingerprint(found.action, found.base);
+  private async pin(found: Found): Promise<void> {
+    const print = await fingerprint(found.action, found.base);
     this.opts.db
       .query(
         `INSERT INTO action_trust (scope, name, declaration, files, trusted_at) VALUES (?, ?, ?, ?, ?)
@@ -605,7 +605,7 @@ export class Actions {
   }
 
   /** Refuses an action not trusted, or whose declaration or executed files changed since. */
-  private assertTrusted(found: Found): void {
+  private async assertTrusted(found: Found): Promise<void> {
     const name = found.action.name;
     const trusted = this.trustRow(found);
     if (!trusted)
@@ -616,7 +616,7 @@ export class Actions {
           action: name,
         },
       );
-    const changed = changes(trusted, fingerprint(found.action, found.base));
+    const changed = changes(trusted, await fingerprint(found.action, found.base));
     if (changed.length > 0) {
       throw invalid(
         `action ${name} changed since it was trusted (${changed.join(", ")}): trust it again after reviewing`,
@@ -626,9 +626,9 @@ export class Actions {
     }
   }
 
-  private info(found: Found): ActionInfo {
+  private async info(found: Found): Promise<ActionInfo> {
     const { action } = found;
-    const print = fingerprint(action, found.base);
+    const print = await fingerprint(action, found.base);
     const trusted = this.trustRow(found);
     const changed = trusted ? changes(trusted, print) : [];
     return {

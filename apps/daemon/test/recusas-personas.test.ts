@@ -103,11 +103,11 @@ describe("recusas-personas: the store and the open sessions say why", () => {
     );
   });
 
-  test("a project persona file over the size limit is listed as an error", () => {
+  test("a project persona file over the size limit is listed as an error", async () => {
     const { personas, project } = setup();
     mkdirSync(join(project, ".flightdeck", "personas"), { recursive: true });
     writeFileSync(join(project, ".flightdeck", "personas", "big.md"), "x".repeat(65 * 1024));
-    const { project: info } = personas.list({ scope: "project", projectPath: project });
+    const { project: info } = await personas.list({ scope: "project", projectPath: project });
     expect(info?.errors).toEqual(["big.md: file too big"]);
   });
 

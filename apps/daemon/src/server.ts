@@ -86,6 +86,7 @@ import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
+import { preparePersonas } from "./personas/prepare.ts";
 import type { HistoryImporter } from "./snippets/history.ts";
 import type { Snippets } from "./snippets/store.ts";
 import type { SnippetUse } from "./snippets/use.ts";
@@ -857,7 +858,12 @@ export function startServer(opts: ServerOptions): RunningServer {
           const cwd = resolveAllowedCwd(command.payload.cwd, opts.allowedRoots);
           await opts.warmProjectKey(cwd);
         }
-        return ok(command.type, manager.create(command.payload));
+        const prepared = await preparePersonas(
+          opts.personas,
+          command.payload.persona,
+          command.payload.cwd,
+        );
+        return ok(command.type, manager.create(command.payload, { prepared }));
       }
       case "session.send":
         return ok(command.type, manager.send(command.payload.sessionId, command.payload.text));
@@ -949,27 +955,29 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await opts.snapshots.files(claudeSessionId, n));
       }
       case "mcp.list":
-        return ok(command.type, { servers: mcp().list(projectPath(command.payload.projectId)) });
+        return ok(command.type, {
+          servers: await mcp().list(projectPath(command.payload.projectId)),
+        });
       case "mcp.test": {
         const { projectId, name, confirm } = command.payload;
         return ok(command.type, await mcp().test(projectPath(projectId), name, confirm === true));
       }
       case "mcp.save": {
         const path = projectPath(command.payload.projectId);
-        mcp().save(path, command.payload.server, command.payload.confirm === true);
-        return ok(command.type, { servers: mcp().list(path) });
+        await mcp().save(path, command.payload.server, command.payload.confirm === true);
+        return ok(command.type, { servers: await mcp().list(path) });
       }
       case "mcp.remove": {
         const path = projectPath(command.payload.projectId);
-        mcp().remove(path, command.payload.name, command.payload.confirm === true);
-        return ok(command.type, { servers: mcp().list(path) });
+        await mcp().remove(path, command.payload.name, command.payload.confirm === true);
+        return ok(command.type, { servers: await mcp().list(path) });
       }
       case "mcp.toggle": {
         const { projectId, name, enabled, confirm, sessionId } = command.payload;
         const path = projectPath(projectId);
-        mcp().toggle(path, name, enabled, confirm === true);
+        await mcp().toggle(path, name, enabled, confirm === true);
         if (sessionId) await manager.toggleMcpServer(sessionId, name, enabled);
-        return ok(command.type, { servers: mcp().list(path) });
+        return ok(command.type, { servers: await mcp().list(path) });
       }
       case "mcp.status":
         return ok(command.type, { servers: await manager.mcpStatus(command.payload.sessionId) });
@@ -1202,15 +1210,15 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "agentcfg.list": {
         const { projectId, kind } = command.payload;
-        return ok(command.type, { items: agentcfg().list(projectPath(projectId), kind) });
+        return ok(command.type, { items: await agentcfg().list(projectPath(projectId), kind) });
       }
       case "agentcfg.read": {
         const { projectId, kind, path, origin } = command.payload;
-        return ok(command.type, agentcfg().read(projectPath(projectId), kind, path, origin));
+        return ok(command.type, await agentcfg().read(projectPath(projectId), kind, path, origin));
       }
       case "agentcfg.write": {
         const { projectId, confirm, ...input } = command.payload;
-        const written = agentcfg().write(projectPath(projectId), {
+        const written = await agentcfg().write(projectPath(projectId), {
           ...input,
           confirm: confirm === true,
         });
@@ -1412,11 +1420,13 @@ export function startServer(opts: ServerOptions): RunningServer {
             "session_maybe_active",
           );
         }
+        const { agents } = await preparePersonas(opts.personas, undefined, session.cwd);
         return ok(
           command.type,
           manager.createResumed({
             cwd: session.cwd,
             claudeSessionId,
+            agents,
             name: name ?? session.title,
             ...(permissionMode ? { permissionMode } : {}),
           }),
@@ -1435,15 +1445,15 @@ export function startServer(opts: ServerOptions): RunningServer {
           projects: await Promise.all(
             board()
               .listProjects()
-              .map((p) => board().withKey(p)),
+              .map((p) => board().forWire(p)),
           ),
           maxParallelRuns: board().maxParallelRuns,
         });
       case "project.add":
-        return ok(command.type, await board().withKey(await board().addProject(command.payload)));
+        return ok(command.type, await board().forWire(await board().addProject(command.payload)));
       case "project.update": {
         const { projectId, ...patch } = command.payload;
-        return ok(command.type, await board().withKey(board().updateProject(projectId, patch)));
+        return ok(command.type, await board().forWire(board().updateProject(projectId, patch)));
       }
       case "board.get":
         return ok(command.type, board().getBoard(command.payload.projectId));
@@ -1694,42 +1704,45 @@ export function startServer(opts: ServerOptions): RunningServer {
         ssh().remove(command.payload.id, command.payload.confirm);
         return ok(command.type);
       case "snippets.list":
-        return ok(command.type, snippets().list(command.payload));
+        return ok(command.type, await snippets().list(command.payload));
       case "snippets.save":
-        return ok(command.type, snippets().save(command.payload));
+        return ok(command.type, await snippets().save(command.payload));
       case "snippets.get": {
         const { id, name, projectPath } = command.payload;
         return ok(
           command.type,
-          id ? snippets().get(id) : snippets().find(name as string, projectPath),
+          id ? await snippets().get(id) : await snippets().find(name as string, projectPath),
         );
       }
       case "snippets.remove":
-        snippets().remove(command.payload.id);
+        await snippets().remove(command.payload.id);
         return ok(command.type);
       case "snippets.trust":
         return ok(
           command.type,
-          snippets().trust(command.payload.projectPath, command.payload.hash),
+          await snippets().trust(command.payload.projectPath, command.payload.hash),
         );
       case "snippets.favorite":
-        return ok(command.type, snippets().favorite(command.payload.id, command.payload.favorite));
+        return ok(
+          command.type,
+          await snippets().favorite(command.payload.id, command.payload.favorite),
+        );
       case "snippets.parse":
         return ok(command.type, snippets().parse(command.payload.text));
       case "snippets.importHistory": {
         const { limit, reveal, select } = command.payload;
         const importer = snippetHistory();
-        const done = select ? importer.import(select) : { created: [], skipped: [] };
-        const preview = importer.preview({
+        const done = select ? await importer.import(select) : { created: [], skipped: [] };
+        const preview = await importer.preview({
           ...(limit ? { limit } : {}),
           ...(reveal ? { reveal } : {}),
         });
         return ok(command.type, { ...preview, ...done });
       }
       case "personas.list":
-        return ok(command.type, personas().list(command.payload));
+        return ok(command.type, await personas().list(command.payload));
       case "personas.save":
-        return ok(command.type, personas().save(command.payload));
+        return ok(command.type, await personas().save(command.payload));
       case "session.applyPersona": {
         const { sessionId, claudeSessionId, persona } = command.payload;
         return ok(
@@ -1741,19 +1754,22 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await personaSessions().clear(command.payload));
       case "personas.subagents": {
         const { projectPath, language } = command.payload;
-        return ok(command.type, personas().subagents({ projectPath, language }));
+        return ok(command.type, await personas().subagents({ projectPath, language }));
       }
       case "personas.publishAgent":
-        return ok(command.type, personas().publishAgent(command.payload));
+        return ok(command.type, await personas().publishAgent(command.payload));
       case "personas.resolve": {
         const { ref, projectPath } = command.payload;
         const store = personas();
         try {
-          return ok(command.type, store.resolve(ref, { projectPath, language: ref.language }));
+          return ok(
+            command.type,
+            await store.resolve(ref, { projectPath, language: ref.language }),
+          );
         } catch (error) {
           // A folder the daemon does not allow has no personas of its own: the host's and the pack's apply.
           if (projectPath && error instanceof FlightdeckError && error.code === "forbidden_cwd") {
-            return ok(command.type, store.resolve(ref, { language: ref.language }));
+            return ok(command.type, await store.resolve(ref, { language: ref.language }));
           }
           throw error;
         }
@@ -1764,12 +1780,20 @@ export function startServer(opts: ServerOptions): RunningServer {
           personas().reset(command.payload.id, { language: command.payload.language }),
         );
       case "personas.remove":
-        personas().remove(command.payload.scope, command.payload.id, command.payload.projectPath);
+        await personas().remove(
+          command.payload.scope,
+          command.payload.id,
+          command.payload.projectPath,
+        );
         return ok(command.type);
       case "personas.trust":
         return ok(
           command.type,
-          personas().trust(command.payload.projectPath, command.payload.id, command.payload.hash),
+          await personas().trust(
+            command.payload.projectPath,
+            command.payload.id,
+            command.payload.hash,
+          ),
         );
       case "snippets.render":
         return ok(command.type, await snippetUse().render(command.payload));

@@ -23,8 +23,8 @@ import { PermissionBroker } from "../permissions/permission-broker.ts";
 import { parseSuggestions } from "../permissions/permission-updates.ts";
 import { type Risk, RiskClassifier } from "../permissions/risk.ts";
 import { clampPermissionMode, toolAllowed } from "../personas/model.ts";
+import type { PreparedPersonas } from "../personas/prepare.ts";
 import { type PersonaSnapshot, snapshotOf } from "../personas/snapshot.ts";
-import type { PersonaContext, PersonaRef, ResolvedPersona } from "../personas/store.ts";
 import type {
   AgentRun,
   AgentRuntime,
@@ -54,12 +54,6 @@ export interface SessionManagerOptions {
   risk?: RiskClassifier;
   /** Phase 13: the projects' automatic approval. */
   autoApprove?: Pick<AutoApprover, "decide">;
-  /** The personas a session can be opened in (phase 20). */
-  personas?: {
-    resolve(ref: PersonaRef, ctx: PersonaContext): ResolvedPersona;
-    /** The personas that hold in a folder, as agents the session can call. */
-    subagents(ctx: PersonaContext): PersonaSubagents;
-  };
 }
 
 export interface TurnEdge {
@@ -198,12 +192,20 @@ export class SessionManager {
    */
   create(
     payload: CommandPayload<"session.create">,
-    extra: { unattended?: boolean } = {},
+    extra: { unattended?: boolean; prepared?: PreparedPersonas } = {},
   ): { sessionId: string } {
     const cwd = resolveAllowedCwd(payload.cwd, this.opts.allowedRoots);
     const id = ulid();
-    // Resolved before anything is created: a missing, untrusted or invalid persona leaves no session.
-    const resolved = payload.persona ? this.resolvePersona(payload.persona, cwd) : null;
+    // Resolved by the caller before anything is created, so a missing, untrusted or invalid
+    // persona leaves no session. The manager reads no persona file itself.
+    const resolved = extra.prepared?.persona ?? null;
+    if (payload.persona && !resolved) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "personas unavailable on this host",
+        "personas_off",
+      );
+    }
     const asked = payload.permissionMode ?? this.opts.defaultPermissionMode;
     // A persona only suggests: it counts when it is less permissive than what was asked for.
     const permissionMode = clampPermissionMode(resolved?.persona.permissionMode ?? null, asked);
@@ -218,6 +220,7 @@ export class SessionManager {
       permissionMode,
       model: payload.model ?? persona?.model ?? null,
       persona,
+      ...(extra.prepared ? { agents: extra.prepared.agents } : {}),
     });
     this.emit(id, {
       type: "session.created",
@@ -243,6 +246,8 @@ export class SessionManager {
     claudeSessionId: string;
     name: string | null;
     permissionMode?: PermissionMode;
+    /** The subagents the session opens with, read by the caller. */
+    agents?: PreparedPersonas["agents"];
   }): { sessionId: string } {
     const cwd = resolveAllowedCwd(opts.cwd, this.opts.allowedRoots);
     const id = ulid();
@@ -254,6 +259,7 @@ export class SessionManager {
       status: "starting",
       permissionMode,
       model: null,
+      ...(opts.agents ? { agents: opts.agents } : {}),
     });
     this.store.updateSession(id, { claudeSessionId: opts.claudeSessionId });
     this.emit(id, { type: "session.created", cwd, name: opts.name, permissionMode });
@@ -436,22 +442,12 @@ export class SessionManager {
     this.emitSummary(sessionId);
   }
 
-  private resolvePersona(ref: PersonaRef, cwd: string): ResolvedPersona {
-    if (!this.opts.personas) {
-      throw new FlightdeckError(
-        "invalid_state",
-        "personas unavailable on this host",
-        "personas_off",
-      );
-    }
-    return this.opts.personas.resolve(ref, { projectPath: cwd, language: ref.language });
-  }
-
   private startRun(sessionId: string, resume?: string): LiveSession {
     const session = this.get(sessionId);
     // The persona the session opened with, as it was then: the prompt it appends is in no transcript.
     const persona = this.store.sessionPersona(sessionId);
-    const agents = this.opts.personas?.subagents({ projectPath: session.cwd }).agents;
+    // What the session opened with: a later run reads no persona file.
+    const agents = this.store.sessionAgents(sessionId);
     const run = this.opts.runtime.start({
       cwd: session.cwd,
       permissionMode: session.permissionMode,

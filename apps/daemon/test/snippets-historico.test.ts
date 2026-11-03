@@ -87,9 +87,9 @@ const commands = (candidates: Array<{ command: string | null }>) =>
   candidates.map((c) => c.command);
 
 describe("snippets-historico: ler os históricos", () => {
-  test("bash: as linhas de data do HISTTIMEFORMAT não contam, e os comandos triviais ficam de fora", () => {
+  test("bash: as linhas de data do HISTTIMEFORMAT não contam, e os comandos triviais ficam de fora", async () => {
     const { importer } = setup({ bash: BASH });
-    const { candidates } = importer.preview({});
+    const { candidates } = await importer.preview({});
     expect(
       candidates.filter((c) => c.selectable).map((c) => [c.command, c.count, c.shells]),
     ).toEqual([
@@ -101,9 +101,9 @@ describe("snippets-historico: ler os históricos", () => {
     expect(commands(candidates)).not.toContain("cd ..");
   });
 
-  test("zsh: o formato estendido e o simples, e o comando em várias linhas (com barra no fim) não é candidato", () => {
+  test("zsh: o formato estendido e o simples, e o comando em várias linhas (com barra no fim) não é candidato", async () => {
     const { importer } = setup({ zsh: ZSH });
-    const { candidates } = importer.preview({});
+    const { candidates } = await importer.preview({});
     expect(candidates.filter((c) => c.selectable).map((c) => [c.command, c.shells])).toEqual([
       ["bun test", ["zsh"]],
       ["docker compose up -d", ["zsh"]],
@@ -112,9 +112,9 @@ describe("snippets-historico: ler os históricos", () => {
     expect(JSON.stringify(candidates)).not.toContain("kubectl");
   });
 
-  test("PSReadLine: o BOM sai, as linhas CRLF valem, e a continuação com crase não é candidata", () => {
+  test("PSReadLine: o BOM sai, as linhas CRLF valem, e a continuação com crase não é candidata", async () => {
     const { importer } = setup({ psreadline: POWERSHELL });
-    const { candidates } = importer.preview({});
+    const { candidates } = await importer.preview({});
     expect(candidates.filter((c) => c.selectable).map((c) => [c.command, c.shells])).toEqual([
       ["Get-ChildItem -Recurse", ["powershell"]],
       ["git status", ["powershell"]],
@@ -122,9 +122,9 @@ describe("snippets-historico: ler os históricos", () => {
     expect(JSON.stringify(candidates)).not.toContain("docker ps");
   });
 
-  test("os três juntos: a contagem soma, as origens se listam e a ordem é por frequência e depois por texto", () => {
+  test("os três juntos: a contagem soma, as origens se listam e a ordem é por frequência e depois por texto", async () => {
     const { importer } = setup();
-    const { candidates, sources } = importer.preview({});
+    const { candidates, sources } = await importer.preview({});
     expect(
       candidates.filter((c) => c.selectable).map((c) => [c.command, c.count, c.shells]),
     ).toEqual([
@@ -139,12 +139,12 @@ describe("snippets-historico: ler os históricos", () => {
       { shell: "powershell", found: true },
     ]);
     // Only the most used ones, as many as asked for.
-    const top = importer.preview({ limit: 2 }).candidates;
+    const top = (await importer.preview({ limit: 2 })).candidates;
     expect(top).toHaveLength(2);
     expect(commands(top)).toEqual(["git status", "bun test"]);
   });
 
-  test("um histórico que não existe é só uma origem sem arquivo", () => {
+  test("um histórico que não existe é só uma origem sem arquivo", async () => {
     const { importer, dir } = setup({ bash: BASH });
     const missing = new HistoryImporter({
       sources: { bash: join(dir, "bash"), zsh: join(dir, "nao-existe") },
@@ -155,14 +155,14 @@ describe("snippets-historico: ler os históricos", () => {
         scanner: new SecretScanner(),
       }),
     });
-    expect(missing.preview({}).sources).toEqual([
+    expect((await missing.preview({})).sources).toEqual([
       { shell: "bash", found: true },
       { shell: "zsh", found: false },
     ]);
-    expect(importer.preview({}).sources).toEqual([{ shell: "bash", found: true }]);
+    expect((await importer.preview({})).sources).toEqual([{ shell: "bash", found: true }]);
   });
 
-  test("só leitura: os arquivos e a pasta ficam como estavam, antes e depois de importar", () => {
+  test("só leitura: os arquivos e a pasta ficam como estavam, antes e depois de importar", async () => {
     const { importer, sources, dir } = setup();
     const snapshot = () => ({
       files: Object.values(sources).map((path) => [
@@ -172,16 +172,16 @@ describe("snippets-historico: ler os históricos", () => {
       tree: readdirSync(dir).sort(),
     });
     const before = snapshot();
-    const { candidates } = importer.preview({});
-    importer.import([candidates[0]?.id ?? ""]);
+    const { candidates } = await importer.preview({});
+    await importer.import([candidates[0]?.id ?? ""]);
     expect(snapshot()).toEqual(before);
   });
 
-  test("um histórico enorme é lido só pelo final, sem a linha cortada no começo", () => {
+  test("um histórico enorme é lido só pelo final, sem a linha cortada no começo", async () => {
     const filler = `${"x".repeat(99)}\n`;
     const text = `early command only once\n${filler.repeat(53_000)}late command twice\nlate command twice\n`;
     const { importer } = setup({ bash: text });
-    const { candidates } = importer.preview({});
+    const { candidates } = await importer.preview({});
     expect(commands(candidates)).toContain("late command twice");
     expect(commands(candidates)).not.toContain("early command only once");
     // The line the cut fell in the middle of is not taken for a command.
@@ -197,9 +197,9 @@ describe("snippets-historico: ler os históricos", () => {
 });
 
 describe("snippets-historico: varredura de segredos", () => {
-  test("a linha com segredo fica oculta e não selecionável, com o tipo e sem o valor", () => {
+  test("a linha com segredo fica oculta e não selecionável, com o tipo e sem o valor", async () => {
     const { importer } = setup();
-    const { candidates } = importer.preview({});
+    const { candidates } = await importer.preview({});
     const flagged = candidates.filter((c) => c.hidden);
     expect(flagged.map((c) => c.flagged.join(" + ")).sort()).toEqual(
       ["chave da AWS", "chave sk-", "senha na linha", "token Bearer", "token do GitHub"].sort(),
@@ -217,28 +217,28 @@ describe("snippets-historico: varredura de segredos", () => {
     ).toBe(true);
   });
 
-  test("revelar mostra o texto, mas a linha continua sem poder ser importada", () => {
+  test("revelar mostra o texto, mas a linha continua sem poder ser importada", async () => {
     const { importer, snippets } = setup();
-    const revealed = importer
-      .preview({ reveal: true })
-      .candidates.filter((c) => c.flagged.length > 0);
+    const revealed = (await importer.preview({ reveal: true })).candidates.filter(
+      (c) => c.flagged.length > 0,
+    );
     expect(revealed).toHaveLength(5);
     expect(revealed.every((c) => c.command !== null && !c.selectable && c.hidden === false)).toBe(
       true,
     );
-    const result = importer.import(revealed.map((c) => c.id));
+    const result = await importer.import(revealed.map((c) => c.id));
     expect(result.created).toEqual([]);
     expect(result.skipped.map((s) => s.reason)).toEqual(Array(5).fill("marcada como segredo"));
-    expect(snippets.list({}).snippets).toEqual([]);
+    expect((await snippets.list({})).snippets).toEqual([]);
   });
 
-  test("um valor do cofre na linha também marca, pelo ponto de extensão do scanner", () => {
+  test("um valor do cofre na linha também marca, pelo ponto de extensão do scanner", async () => {
     const vaulted = new SecretScanner(() => ["correct-horse-battery"]);
     const { importer } = setup(
       { bash: "ssh deploy@host correct-horse-battery\ngit status\n" },
       vaulted,
     );
-    const { candidates } = importer.preview({});
+    const { candidates } = await importer.preview({});
     expect(candidates.map((c) => [c.command, c.flagged])).toEqual([
       ["git status", []],
       [null, ["valor do cofre"]],
@@ -247,11 +247,11 @@ describe("snippets-historico: varredura de segredos", () => {
 });
 
 describe("snippets-historico: importar", () => {
-  test("os escolhidos viram snippets de comando do host, com nome próprio e a tag histórico", () => {
+  test("os escolhidos viram snippets de comando do host, com nome próprio e a tag histórico", async () => {
     const { importer, snippets, project } = setup();
-    const { candidates } = importer.preview({});
+    const { candidates } = await importer.preview({});
     const pick = (command: string) => candidates.find((c) => c.command === command)?.id ?? "";
-    const result = importer.import([
+    const result = await importer.import([
       pick("git status"),
       pick("docker compose up -d"),
       pick("Get-ChildItem -Recurse"),
@@ -270,16 +270,16 @@ describe("snippets-historico: importar", () => {
       ],
     ]);
     // Never to a project's versioned file.
-    expect(snippets.list({ projectPath: project }).file).toBeNull();
-    expect(snippets.list({ scope: "project", projectPath: project }).snippets).toEqual([]);
+    expect((await snippets.list({ projectPath: project })).file).toBeNull();
+    expect((await snippets.list({ scope: "project", projectPath: project })).snippets).toEqual([]);
   });
 
-  test("o que não se pode importar volta com o motivo: desconhecido, repetido, ou nome já usado leva um número", () => {
+  test("o que não se pode importar volta com o motivo: desconhecido, repetido, ou nome já usado leva um número", async () => {
     const { importer } = setup();
-    const { candidates } = importer.preview({});
+    const { candidates } = await importer.preview({});
     const id = candidates.find((c) => c.command === "git status")?.id ?? "";
-    expect(importer.import([id]).created).toHaveLength(1);
-    const again = importer.import([id, "0000000000000000"]);
+    expect((await importer.import([id])).created).toHaveLength(1);
+    const again = await importer.import([id, "0000000000000000"]);
     expect(again.created).toEqual([]);
     expect(again.skipped).toEqual([
       { id, reason: "já existe um snippet com este comando" },
@@ -293,8 +293,8 @@ describe("snippets-historico: importar", () => {
       type: "command",
       run: "git log",
     });
-    const picked = other.importer.preview({}).candidates[0]?.id ?? "";
-    expect(other.importer.import([picked]).created[0]?.name).toBe("git-log-oneline-2");
+    const picked = (await other.importer.preview({})).candidates[0]?.id ?? "";
+    expect((await other.importer.import([picked])).created[0]?.name).toBe("git-log-oneline-2");
   });
 });
 
@@ -348,7 +348,7 @@ describe("snippets-historico: pelo protocolo", () => {
 });
 
 describe("snippets-historico: nomes", () => {
-  test("o nome vem das primeiras palavras do comando, só com o que um nome aceita, e o comando longo é cortado", () => {
+  test("o nome vem das primeiras palavras do comando, só com o que um nome aceita, e o comando longo é cortado", async () => {
     const { importer } = setup({
       bash: [
         "kubectl get pods -n prod --watch",
@@ -362,15 +362,15 @@ describe("snippets-historico: nomes", () => {
         "",
       ].join("\n"),
     });
-    const ids = importer.preview({}).candidates.map((c) => c.id);
-    const names = importer.import(ids).created.map((s) => s.name);
+    const ids = (await importer.preview({})).candidates.map((c) => c.id);
+    const names = (await importer.import(ids)).created.map((s) => s.name);
     expect(names.sort()).toEqual(
       ["kubectl-get-pods", "git-commit-m", "usr-local-bin-tool-flag", "a".repeat(64)].sort(),
     );
   });
 
-  test("sem nenhuma origem configurada, não há candidatos", () => {
-    expect(setup({}).importer.preview({})).toEqual({ candidates: [], sources: [] });
+  test("sem nenhuma origem configurada, não há candidatos", async () => {
+    expect(await setup({}).importer.preview({})).toEqual({ candidates: [], sources: [] });
   });
 });
 

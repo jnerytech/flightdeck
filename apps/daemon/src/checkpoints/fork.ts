@@ -4,6 +4,7 @@
  * comes from this phase). It opens as a resumed managed session, or as the command that opens it
  * in the terminal. The files can be rewound to the turn first.
  */
+import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import { FlightdeckError } from "../errors.ts";
 import type { AgentRuntime } from "../runtime/types.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
@@ -33,6 +34,8 @@ export class Forker {
       runtime: AgentRuntime;
       manager: Pick<SessionManager, "createResumed">;
       rewinder?: Rewinder;
+      /** Reads the personas for the forked session; none when absent. */
+      preparePersonas?: Prepare;
     },
   ) {}
 
@@ -53,10 +56,12 @@ export class Forker {
     if (request.open === "terminal") {
       return { claudeSessionId, command: `flightdeckd claude --resume ${claudeSessionId}` };
     }
+    const { agents } = await (this.opts.preparePersonas ?? withoutPersonas)(undefined, request.cwd);
     const { sessionId } = this.opts.manager.createResumed({
       cwd: request.cwd,
       claudeSessionId,
       name: null,
+      agents,
     });
     return { claudeSessionId, sessionId };
   }

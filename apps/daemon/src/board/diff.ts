@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { git } from "./command.ts";
 import type { CardDiff, DiffFile, DiffHunk } from "./types.ts";
@@ -57,8 +57,8 @@ function readHeader(file: DiffFile, line: string): void {
 }
 
 /** A file git does not track yet, shown as entirely added. */
-function untrackedFile(worktree: string, path: string): DiffFile {
-  const content = readFileSync(join(worktree, path));
+async function untrackedFile(worktree: string, path: string): Promise<DiffFile> {
+  const content = await readFile(join(worktree, path));
   const binary = content.includes(0);
   const lines = binary ? [] : content.toString("utf8").replace(/\n$/, "").split("\n");
   const hunks = binary
@@ -94,10 +94,10 @@ export async function workingDiff(root: string): Promise<DiffFile[]> {
     "git ls-files",
   );
   const untracked = others.stdout.split("\0").filter(Boolean);
-  return [
-    ...parseUnifiedDiff(pending.stdout, true),
-    ...untracked.map((path) => untrackedFile(root, path)),
-  ];
+  const files = parseUnifiedDiff(pending.stdout, true);
+  // One at a time: a tree of untracked files must not open them all at once.
+  for (const path of untracked) files.push(await untrackedFile(root, path));
+  return files;
 }
 
 /**
