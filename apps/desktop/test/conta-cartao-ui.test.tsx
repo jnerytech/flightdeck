@@ -235,6 +235,12 @@ describe("conta-cartao-ui: the other states", () => {
     expect(inCard().queryByRole("button", { name: "Try again" })).not.toBeNull();
   });
 
+  test("a sign-in the app does not know is said as such, not shown as loading", () => {
+    show({ state: state({ status: "unknown", name: null, plan: null, windows: [], error: null }) });
+    expect(inCard().queryByText("This host's sign-in is not one the app knows.")).not.toBeNull();
+    expect(inCard().queryByText("Reading the account…")).toBeNull();
+  });
+
   test("before the first answer it says it is reading", () => {
     show({ state: undefined });
     expect(inCard().queryByText("Reading the account…")).not.toBeNull();
