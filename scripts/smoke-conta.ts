@@ -6,7 +6,7 @@
  * is not signed in answers with the command to run; the fake `claude` is asked nothing but
  * `auth status`, and no token, credentials file or claude.ai address is ever touched.
  */
-import { AccountUpdated } from "@flightdeck/protocol";
+import { AccountState, AccountUpdated } from "@flightdeck/protocol";
 import { Account } from "../apps/daemon/src/account/account.ts";
 import { accountReaders } from "../apps/daemon/src/account/readers.ts";
 import { spawnExec } from "../apps/daemon/src/exec.ts";
@@ -146,7 +146,24 @@ async function run() {
   } finally {
     signedIn.stop();
   }
-  throw new Error("the signed-out step is not written yet");
+
+  step = "signed out: the command to run, and no windows";
+  const signedOut = await host(SIGNED_OUT, 1);
+  try {
+    const ack = await signedOut.client.request("account.get", {});
+    if (ack.ok !== true) throw new Error("account.get was refused");
+    const state = AccountState.parse(ack.data);
+    if (state.status !== "signed_out" || state.loginCommand !== "claude auth login") {
+      throw new Error(`unexpected account: ${JSON.stringify(state)}`);
+    }
+    if (state.windows.length > 0 || state.name !== null) {
+      throw new Error("a host that is not signed in must show no account and no windows");
+    }
+    if (signedOut.sdkCalls.length > 0) throw new Error("the SDK was asked on a signed-out host");
+    log(`signed out: run \`${state.loginCommand}\``);
+  } finally {
+    signedOut.stop();
+  }
 }
 
 const work = realTempDir("flightdeck-smoke-conta-");
