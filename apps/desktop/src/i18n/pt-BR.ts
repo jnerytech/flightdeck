@@ -1433,6 +1433,12 @@ export const ptBR = {
     end: "Encerrar processo",
     searchLabel: "Buscar no terminal",
     searchHint: "Enter: próxima · Shift+Enter: anterior · Esc: fechar",
+    matches: "{index} de {count}",
+    noMatches: "Nenhum resultado",
+    findPrevious: "Resultado anterior",
+    findNext: "Próximo resultado",
+    findClose: "Fechar busca",
+    selectAll: "Selecionar tudo",
   },
   terminal: {
     open: "Abrir no terminal",

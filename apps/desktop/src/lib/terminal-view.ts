@@ -63,8 +63,10 @@ export interface FindDecorations {
 }
 
 export const FIND_DECORATIONS: FindDecorations = {
-  matchOverviewRuler: "#000000",
-  activeMatchColorOverviewRuler: "#000000",
+  matchBackground: "#8a6d1c",
+  matchOverviewRuler: "#8a6d1c",
+  activeMatchBackground: "#c2571a",
+  activeMatchColorOverviewRuler: "#c2571a",
 };
 
 export const TERMINAL_FONT_KEY = "flightdeck.terminal-font";

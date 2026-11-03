@@ -1,4 +1,9 @@
-import { type FindDecorations, type TerminalColors, terminalKeyAction } from "./terminal-view.ts";
+import {
+  FIND_DECORATIONS,
+  type FindDecorations,
+  type TerminalColors,
+  terminalKeyAction,
+} from "./terminal-view.ts";
 
 /** The slice of xterm's Terminal the app uses; a fake stands in for it in the tests. */
 export interface XtermTerminal {
@@ -108,6 +113,7 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
       () => {},
     );
   };
+  const results = search.onDidChangeResults((found) => options.onFindResults?.(found));
   const input = terminal.onData(options.onInput);
   const size = terminal.onResize(({ cols, rows }) => options.onResize(cols, rows));
   terminal.attachCustomKeyEventHandler((event) => {
@@ -144,15 +150,18 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
       terminal.options.fontSize = fontSize;
       fit.fit();
     },
-    find: (text, direction) =>
-      direction === "next" ? search.findNext(text) : search.findPrevious(text),
+    find: (text, direction, incremental = false) => {
+      const found = { incremental, decorations: FIND_DECORATIONS };
+      return direction === "next" ? search.findNext(text, found) : search.findPrevious(text, found);
+    },
     clearFind: () => search.clearDecorations(),
     focus: () => terminal.focus(),
     copy,
     paste,
-    selectAll: () => {},
-    hasSelection: () => false,
+    selectAll: () => terminal.selectAll(),
+    hasSelection: () => terminal.hasSelection(),
     dispose: () => {
+      results.dispose();
       input.dispose();
       size.dispose();
       terminal.dispose();

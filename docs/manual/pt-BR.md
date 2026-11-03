@@ -2072,11 +2072,14 @@ numa aba, sem SSH.
 - **Abrir:** **Novo terminal** na página do host, ou **Novo terminal em <host>** na paleta, abre o
   shell padrão do host (`pwsh` ou `powershell` no Windows; `$SHELL`, `bash` ou `sh` no Linux) na
   primeira pasta permitida. O painel também lista os terminais vivos, cada um com **Abrir**.
-- **Na aba:** copiar e colar com `Ctrl+Shift+C` / `Ctrl+Shift+V` ou com o menu **Copiar** /
-  **Colar** do botão direito (`Ctrl+C` vai para o processo),
-  buscar com `Ctrl+Shift+F` (Enter para a próxima, Shift+Enter para a anterior, Esc fecha). Links
-  abrem no navegador. A fonte é a monoespaçada do sistema; o tamanho fica nas Configurações
-  (**Tamanho da fonte do terminal**, de 10 a 24).
+- **Na aba:** copiar e colar com `Ctrl+Shift+C` / `Ctrl+Shift+V` ou com o menu do botão direito
+  (**Copiar**, que precisa de uma seleção, **Colar** e **Selecionar tudo**; `Ctrl+C` vai para o
+  processo). Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
+  atual em outra cor e sua posição ("2 de 5") ao lado da caixa; Enter ou **Próximo resultado**
+  vai para o próximo, Shift+Enter ou **Resultado anterior** para o anterior, Esc ou **Fechar
+  busca** fecha. Links na saída abrem no navegador (só `http` e `https`). A fonte é a
+  monoespaçada do sistema; o tamanho fica nas Configurações (**Tamanho da fonte do terminal**, de
+  10 a 24).
 - **Desanexar e reabrir:** o terminal sobrevive ao app: guarda os últimos 2 MB de saída, e anexar
   de novo os mostra. Fechar a aba de um terminal pergunta: **Desanexar** (o padrão; o processo
   continua no host) ou **Encerrar processo**. Um terminal desanexado ou encerrado tem **Reabrir**.
