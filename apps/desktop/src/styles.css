@@ -313,3 +313,9 @@
   border-radius: 0.375rem;
   object-fit: cover;
 }
+@utility composer-queued {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+}

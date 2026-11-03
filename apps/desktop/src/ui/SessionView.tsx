@@ -287,6 +287,25 @@ export function SessionView(props: {
     if (taken.length > 0) setAttached((before) => [...before, ...taken]);
   };
 
+  /** Messages written during a turn: they wait here and go out, in order, as the turns end. */
+  const [queued, setQueued] = useState<Array<{ text: string; images: SessionImage[] }>>([]);
+  /** A queued message went out and its turn has not shown up yet: the next one waits for it. */
+  const awaiting = useRef<number | null>(null);
+  const nextQueued = queued[0];
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the head of the queue is what it reads
+  useEffect(() => {
+    // The turn showed up (the session worked, or its user message reached the conversation).
+    if (awaiting.current !== null && (working || cards > awaiting.current)) awaiting.current = null;
+    if (working || closed || !nextQueued || awaiting.current !== null) return;
+    awaiting.current = cards;
+    void actions
+      .send(nextQueued.text, nextQueued.images.length > 0 ? nextQueued.images : undefined)
+      .then(() => setQueued((rest) => rest.slice(1)))
+      .catch(() => {
+        awaiting.current = null;
+      });
+  }, [working, closed, nextQueued, cards]);
+
   const submit = () => {
     const value = text.trim();
     if (!value && attached.length === 0) {
@@ -297,6 +316,10 @@ export function SessionView(props: {
     setText("");
     setAttached([]);
     setRefusal(null);
+    if (working) {
+      setQueued((before) => [...before, { text: value, images: attached }]);
+      return undefined;
+    }
     return actions.send(value, attached.length > 0 ? attached : undefined);
   };
 
@@ -405,6 +428,42 @@ export function SessionView(props: {
         )}
       </div>
       <PromptMenu prompts={offered} text={text} label={t("session.snippets")} onFill={setText} />
+      {queued.length > 0 && (
+        <ul aria-label={t("session.queue")} className="composer-images">
+          {queued.map((item, at) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: the queue is only ever edited by position
+            <li key={at} className="composer-queued">
+              <span className="min-w-0 flex-1 truncate text-sm">{item.text}</span>
+              {item.images.length > 0 && (
+                <span className="text-muted-foreground text-xs">
+                  {t("session.imagesSent", { count: String(item.images.length) })}
+                </span>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label={t("session.queueEdit", { text: item.text })}
+                onClick={() => {
+                  setQueued((before) => before.filter((_, i) => i !== at));
+                  setText(item.text);
+                  setAttached(item.images);
+                  box.current?.focus();
+                }}
+              >
+                {t("session.edit")}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label={t("session.queueRemove", { text: item.text })}
+                onClick={() => setQueued((before) => before.filter((_, i) => i !== at))}
+              >
+                {t("session.remove")}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
       {(attached.length > 0 || refusal) && (
         <div className="composer-images">
           {attached.map((image, at) => (
@@ -524,6 +583,9 @@ export function SessionView(props: {
             <output aria-live="polite" aria-label={t("session.working")} className="sr-only">
               {t("session.working")}
             </output>
+            <ActionButton variant="outline" onClick={submit}>
+              {t("session.queueAdd")}
+            </ActionButton>
             <ActionButton
               variant="destructive"
               aria-label={t("session.stopTurn")}
