@@ -335,6 +335,8 @@ const validCommands: Record<CommandType, unknown> = {
   "fs.dirs": { path: "/work", hidden: false },
   "fs.files": { path: "/work", hidden: false },
   "doctor.run": { appVersion: "0.32.0" },
+  "projects.scan": { depth: 2 },
+  "projects.clone": { url: "https://example.com/a/b.git", root: "/work" },
   "session.setMode": { sessionId: "s", permissionMode: "plan" },
   "session.setModel": { sessionId: "s", model: null },
   "session.files": { claudeSessionId: "s" },
