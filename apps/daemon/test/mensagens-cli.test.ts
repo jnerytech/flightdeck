@@ -36,7 +36,7 @@ function boot() {
     allowedRoots: [],
   });
   cleanups.push(() => {
-    server.stop();
+    void server.stop();
     idle.stop();
     base.messaging.stop();
   });

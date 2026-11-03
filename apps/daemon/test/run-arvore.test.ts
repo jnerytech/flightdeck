@@ -91,7 +91,7 @@ describe("run-arvore: whoever kills a tree and then uses its files or ports wait
     const host = {
       ...fake.host,
       kill: async (terminalId: string) => {
-        fake.host.kill(terminalId);
+        void fake.host.kill(terminalId);
         await Bun.sleep(80);
         killedAt.push(performance.now());
       },
@@ -123,7 +123,7 @@ describe("run-arvore: whoever kills a tree and then uses its files or ports wait
     const host = {
       ...fake.host,
       kill: async (terminalId: string) => {
-        fake.host.kill(terminalId);
+        void fake.host.kill(terminalId);
         await gate;
       },
     };
