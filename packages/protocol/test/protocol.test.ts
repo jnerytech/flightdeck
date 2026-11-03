@@ -350,6 +350,7 @@ const validCommands: Record<CommandType, unknown> = {
   "terminal.close": { terminalId: "t", kill: false },
   "terminal.list": {},
   "terminal.settings": { enabled: true, confirm: true },
+  "ui.set": { mode: "simple", locked: true, confirm: true },
   "ssh.list": {},
   "ssh.save": {
     name: "vps",

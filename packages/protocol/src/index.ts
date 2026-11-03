@@ -814,6 +814,13 @@ export const TerminalAttachResult = z.object({
 });
 export type TerminalAttachResult = z.infer<typeof TerminalAttachResult>;
 
+/** How the host presents itself to people: its default mode, and whether the switch is offered (phase 33). */
+export const UiSettings = z.object({
+  mode: z.enum(["full", "simple"]),
+  locked: z.boolean(),
+});
+export type UiSettings = z.infer<typeof UiSettings>;
+
 /** Whether the host's terminals are on, how many at most and which shell they open. */
 export const TerminalSettings = z.object({
   enabled: z.boolean(),
@@ -3118,6 +3125,16 @@ export const Command = z.discriminatedUnion("type", [
   cmd("terminal.list", z.object({}).strict()),
   /** Turns the host's terminals on (asks for `confirm`) or off (ends the live ones). */
   cmd("terminal.settings", z.object({ enabled: z.boolean(), confirm: z.boolean().optional() })),
+  cmd(
+    "ui.set",
+    z
+      .object({
+        mode: z.enum(["full", "simple"]).optional(),
+        locked: z.boolean().optional(),
+        confirm: z.boolean().optional(),
+      })
+      .strict(),
+  ),
   cmd("ssh.list", z.object({}).strict()),
   /** Creates (no `id`) or edits a destino; turning ForwardAgent on asks for `confirm`. */
   cmd(
@@ -3524,6 +3541,8 @@ export const HostInfoResult = z.object({
   wslDistro: z.string().nullable().optional(),
   /** Phase 14: the host's terminals: on or off, how many at most, which shell. */
   terminal: TerminalSettings.optional(),
+  /** Phase 33: the host's default mode and lock; absent before the phase. */
+  ui: UiSettings.optional(),
 });
 export type HostInfoResult = z.infer<typeof HostInfoResult>;
 
@@ -3851,6 +3870,7 @@ export interface CommandResults {
   "terminal.close": undefined;
   "terminal.list": { terminals: TerminalInfo[] };
   "terminal.settings": TerminalSettings;
+  "ui.set": UiSettings;
   "ssh.list": { targets: SshTarget[] };
   "ssh.save": SshTarget;
   "ssh.remove": undefined;
