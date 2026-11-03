@@ -86,6 +86,7 @@ import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import { type HubFilter, hubRows, loadHubFilter, saveHubFilter } from "./hub.ts";
+import type { InboxEntry } from "./inbox.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
 import { summaryNotifications } from "./notify.ts";
@@ -172,6 +173,8 @@ export interface AppState {
   selected: Selection | null;
   error: string | null;
   settings: Settings;
+  /** The notifications the app sent, newest first, kept for the notification center. */
+  inbox: InboxEntry[];
   /** Last global history search, `null` before the first one. */
   search: SearchState | null;
   searchOpen: boolean;
@@ -727,6 +730,7 @@ export class AppStore {
       clientSelection: loadSelection(platform.storage, this.clients.list()),
       clientBudgets: [],
       notices: [],
+      inbox: [],
       hostsLoaded: false,
       appUpdate: { offer: null, upToDate: false, error: null },
       // Defaults: close to tray on, start with Windows off.
@@ -962,6 +966,12 @@ export class AppStore {
     } else
       void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
   }
+
+  inboxMarkRead(_id: string): void {}
+
+  inboxMarkAllRead(): void {}
+
+  inboxClear(): void {}
 
   /** Opens a web page (an issue, a PR) in the user's browser; anything but http(s) is refused. */
   openLink(url: string): void {
