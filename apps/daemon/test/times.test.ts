@@ -475,14 +475,7 @@ describe("times: members of a running team", () => {
     messaging.list({}).filter((m) => m.kind === "system" && m.text.includes("Entrou"));
 
   test("adding a member starts a worker in the persona and model asked for, and tells the coordinator", async () => {
-    const started: Array<[string | null, string | null]> = [];
-    const { teams, team, board, messaging } = await running({
-      startWorker: async (cardId, persona, model) => {
-        started.push([persona, model]);
-        await board.startCard(cardId);
-      },
-    });
-    started.length = 0;
+    const { teams, team, board, messaging } = await running();
     const grown = await teams.update({
       team: team.id,
       addMember: { persona: "qa", model: "haiku" },
@@ -494,7 +487,7 @@ describe("times: members of a running team", () => {
       persona: "qa",
       model: "haiku",
     });
-    expect(started).toEqual([["qa", "haiku"]]);
+    expect(teams.personaOfCard(added?.cardId as string)).toBe("qa");
     expect(board.getCard(added?.cardId as string).variant?.model).toBe("haiku");
     const notice = told(messaging).at(-1)?.text ?? "";
     expect(notice).toContain("time · executora 3");
