@@ -13,6 +13,8 @@ export interface FakeRule {
   /** Only answers the n-th call of the fake (1-based), to fail once and then pass. */
   call?: number;
   stdout?: string;
+  /** What the fake writes to stderr (a login's one-time code, an error message). */
+  stderr?: string;
   code?: number;
 }
 
