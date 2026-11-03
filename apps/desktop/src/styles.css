@@ -84,6 +84,10 @@
 }
 
 :root {
+  /* The weight scale: strong for titles and primary actions, label for filters and pills, text for the rest. */
+  --weight-strong: 600;
+  --weight-label: 500;
+  --weight-text: 400;
   /* The motion tokens as plain variables (the theme's are inlined into utilities, not emitted). */
   --motion-fast: 120ms;
   --motion-base: 180ms;
@@ -630,4 +634,15 @@
     outline-offset: 4px;
     border-radius: 0.5rem;
   }
+}
+
+/* Primary actions are strong; the controls around them (filters, pills, ghosts) are label weight. */
+[data-slot="button"][data-variant="default"],
+[data-slot="button"][data-variant="destructive"] {
+  font-weight: var(--weight-strong);
+}
+[data-slot="button"][data-variant="outline"],
+[data-slot="button"][data-variant="secondary"],
+[data-slot="button"][data-variant="ghost"] {
+  font-weight: var(--weight-label);
 }

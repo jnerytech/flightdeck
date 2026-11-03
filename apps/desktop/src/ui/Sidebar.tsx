@@ -36,7 +36,7 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { rowRoute } from "./Screens.tsx";
 
 const ITEM =
-  "flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "flex h-8 w-full items-center gap-2 rounded-md px-2 text-left font-normal text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /** The icon of one of the screens the bar lists, the same one its tab wears. */
 function NavIcon({ name, ...props }: LucideProps & { name: NavKey }) {
@@ -67,7 +67,7 @@ function NavButton(props: {
         ITEM,
         props.collapsed && "justify-center px-0",
         (props.active || props.strong) && "text-sidebar-foreground",
-        props.active && "bg-sidebar-accent",
+        props.active && "bg-sidebar-accent font-medium",
       )}
       aria-label={props.name ?? (props.collapsed ? props.label : undefined)}
       title={props.collapsed ? props.label : undefined}
