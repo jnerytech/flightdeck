@@ -3,10 +3,11 @@
  * rough count of tokens (a quarter of the bytes), and what the memory leaves out: only the start of
  * `MEMORY.md` is loaded. Read only: it never executes anything it reads.
  */
-import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
+import { readdir, readFile, realpath } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { claudeMds, frontmatter } from "../agentcfg/files.ts";
 import { displayPath } from "./display-path.ts";
+import { exists } from "./exists.ts";
 
 export type BudgetKind = "managed" | "user" | "project" | "local" | "rules" | "skills" | "memory";
 
@@ -58,18 +59,22 @@ export interface BudgetInput {
 }
 
 /** The `.md` files under `dir`, links not followed, as paths relative to it. */
-function markdownUnder(dir: string, rel = "", depth = 0): string[] {
-  if (!existsSync(dir) || depth > 6) return [];
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    if (entry.isFile() && entry.name.endsWith(".md")) return [`${rel}${entry.name}`];
-    return entry.isDirectory()
-      ? markdownUnder(join(dir, entry.name), `${rel}${entry.name}/`, depth + 1)
-      : [];
-  });
+async function markdownUnder(dir: string, rel = "", depth = 0): Promise<string[]> {
+  if (depth > 6 || !(await exists(dir))) return [];
+  const entries = await readdir(dir, { withFileTypes: true });
+  const found = await Promise.all(
+    entries.map(async (entry) => {
+      if (entry.isFile() && entry.name.endsWith(".md")) return [`${rel}${entry.name}`];
+      return entry.isDirectory()
+        ? await markdownUnder(join(dir, entry.name), `${rel}${entry.name}/`, depth + 1)
+        : [];
+    }),
+  );
+  return found.flat();
 }
 
 /** The context at the start of a session in `project`, as far as the files tell. */
-export function contextBudget(input: BudgetInput): ContextBudget {
+export async function contextBudget(input: BudgetInput): Promise<ContextBudget> {
   const sources: BudgetSource[] = [];
   const add = (
     kind: BudgetKind,
@@ -86,40 +91,42 @@ export function contextBudget(input: BudgetInput): ContextBudget {
       load,
       ...(note ? { note } : {}),
     });
-  const file = (kind: BudgetKind, path: string, load: BudgetSource["load"]) => {
-    if (existsSync(path)) add(kind, path, load, readFileSync(path).length);
+  const file = async (kind: BudgetKind, path: string, load: BudgetSource["load"]) => {
+    if (await exists(path)) add(kind, path, load, (await readFile(path)).length);
   };
   /** Rules with `paths` load only when Claude works on those files. */
-  const rules = (dir: string) => {
-    for (const rel of markdownUnder(dir).sort((a, b) => (a < b ? -1 : Number(a > b)))) {
+  const rules = async (dir: string) => {
+    for (const rel of (await markdownUnder(dir)).sort((a, b) => (a < b ? -1 : Number(a > b)))) {
       const path = join(dir, rel);
-      const scoped = frontmatter(readFileSync(path, "utf8"))?.paths !== undefined;
-      add("rules", path, scoped ? "on-demand" : "start", readFileSync(path).length);
+      const bytes = await readFile(path);
+      const scoped = frontmatter(bytes.toString("utf8"))?.paths !== undefined;
+      add("rules", path, scoped ? "on-demand" : "start", bytes.length);
     }
   };
   /** A skill's name and description are in the context; the body comes when it is used. */
-  const skills = (dir: string) => {
-    if (!existsSync(dir)) return;
-    for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
+  const skills = async (dir: string) => {
+    if (!(await exists(dir))) return;
+    const entries = (await readdir(dir, { withFileTypes: true })).sort((a, b) =>
       a.name.localeCompare(b.name),
-    )) {
+    );
+    for (const entry of entries) {
       const path = join(dir, entry.name, "SKILL.md");
-      if (!entry.isDirectory() || !existsSync(path)) continue;
-      const data = frontmatter(readFileSync(path, "utf8"));
+      if (!entry.isDirectory() || !(await exists(path))) continue;
+      const data = frontmatter(await readFile(path, "utf8"));
       if (typeof data?.name !== "string") continue;
       add("skills", path, "start", Buffer.byteLength(`${data.name}: ${data.description ?? ""}`));
     }
   };
 
-  const root = realpathSync.native(resolve(input.project));
-  file("managed", input.managedClaudeMd, "start");
-  file("user", join(input.claudeDir, "CLAUDE.md"), "start");
-  rules(join(input.claudeDir, "rules"));
-  skills(join(input.claudeDir, "skills"));
+  const root = await realpath(resolve(input.project));
+  await file("managed", input.managedClaudeMd, "start");
+  await file("user", join(input.claudeDir, "CLAUDE.md"), "start");
+  await rules(join(input.claudeDir, "rules"));
+  await skills(join(input.claudeDir, "skills"));
   // The folders above the project load their CLAUDE.md files too.
   for (let dir = dirname(root); dirname(dir) !== dir; dir = dirname(dir)) {
-    file("project", join(dir, "CLAUDE.md"), "start");
-    file("local", join(dir, "CLAUDE.local.md"), "start");
+    await file("project", join(dir, "CLAUDE.md"), "start");
+    await file("local", join(dir, "CLAUDE.local.md"), "start");
   }
   const AT_START = new Set(["CLAUDE.md", "CLAUDE.local.md", ".claude/CLAUDE.md"]);
   for (const rel of claudeMds(root)) {
@@ -128,13 +135,13 @@ export function contextBudget(input: BudgetInput): ContextBudget {
       rel === "CLAUDE.local.md" ? "local" : "project",
       path,
       AT_START.has(rel) ? "start" : "on-demand",
-      readFileSync(path).length,
+      (await readFile(path)).length,
     );
   }
-  rules(join(root, ".claude", "rules"));
-  skills(join(root, ".claude", "skills"));
+  await rules(join(root, ".claude", "rules"));
+  await skills(join(root, ".claude", "skills"));
 
-  const memory = memoryIndex(input.memoryDir, add);
+  const memory = await memoryIndex(input.memoryDir, add);
   return {
     sources,
     startTokens: sources.filter((s) => s.load === "start").reduce((n, s) => n + s.tokens, 0),
@@ -143,7 +150,7 @@ export function contextBudget(input: BudgetInput): ContextBudget {
 }
 
 /** The index is cut at 200 lines or 25 KB, whichever comes first, at the end of a line. */
-function memoryIndex(
+async function memoryIndex(
   dir: string,
   add: (
     kind: BudgetKind,
@@ -152,7 +159,7 @@ function memoryIndex(
     bytes: number,
     note?: string,
   ) => void,
-): MemoryIndexBudget {
+): Promise<MemoryIndexBudget> {
   const empty: MemoryIndexBudget = {
     limitLines: MEMORY_LIMIT_LINES,
     limitBytes: MEMORY_LIMIT_BYTES,
@@ -165,8 +172,8 @@ function memoryIndex(
     leftOutFiles: [],
   };
   const indexPath = join(dir, "MEMORY.md");
-  if (!existsSync(indexPath)) return empty;
-  const text = readFileSync(indexPath, "utf8");
+  if (!(await exists(indexPath))) return empty;
+  const text = await readFile(indexPath, "utf8");
   const lines = text === "" ? [] : text.replace(/\n$/, "").split("\n");
   let loadedBytes = 0;
   let loadedLines = 0;
@@ -181,13 +188,13 @@ function memoryIndex(
   }
   const loaded = lines.slice(0, loadedLines).join("\n");
   const leftOutLines = lines.slice(loadedLines).filter((line) => line.trim() !== "");
-  const topics = readdirSync(dir, { withFileTypes: true })
+  const topics = (await readdir(dir, { withFileTypes: true }))
     .filter((e) => e.isFile() && e.name.endsWith(".md") && e.name !== "MEMORY.md")
     .map((e) => e.name)
     .sort((a, b) => (a < b ? -1 : Number(a > b)));
   add("memory", indexPath, "start", loadedBytes, cutBy ? `cortado por ${cutBy}` : undefined);
   for (const name of topics)
-    add("memory", join(dir, name), "on-demand", readFileSync(join(dir, name)).length);
+    add("memory", join(dir, name), "on-demand", (await readFile(join(dir, name))).length);
   return {
     ...empty,
     indexLines: lines.length,

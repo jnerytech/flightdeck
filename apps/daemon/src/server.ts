@@ -124,6 +124,8 @@ export interface ServerOptions {
   manager: SessionManager;
   /** Looks up the project of a folder before a session is created in it (without blocking). */
   warmProjectKey?: (cwd: string) => Promise<unknown>;
+  /** The project key of a folder, asked without blocking: `history.list` filters by it. */
+  projectKeyOf?: (cwd: string) => Promise<string>;
   hostName: string;
   bind: string;
   port: number;
@@ -514,6 +516,14 @@ export function startServer(opts: ServerOptions): RunningServer {
     return opts.history;
   }
 
+  /** The indexed folders whose project is `key`; with no way to ask, only a folder key matches. */
+  async function foldersOf(index: HistoryIndexer, key: string): Promise<string[]> {
+    const keyOf = opts.projectKeyOf ?? (async (cwd: string) => `host:${opts.hostName}:${cwd}`);
+    const cwds = index.distinctCwds();
+    const keys = await Promise.all(cwds.map((cwd) => keyOf(cwd)));
+    return cwds.filter((_, i) => keys[i] === key);
+  }
+
   function central() {
     if (!opts.central) throw featureOff("central");
     return opts.central;
@@ -537,6 +547,17 @@ export function startServer(opts: ServerOptions): RunningServer {
         : {}),
       ...(summary ? { summary } : {}),
     };
+  }
+
+  /**
+   * Asks git for the project key of each folder without blocking, so the sync `listed` below reads
+   * the cache: a cold folder would otherwise cost one blocking git spawn on the event loop, which
+   * on Windows is slow enough to time the list out.
+   */
+  async function warmKeys(cwds: string[]): Promise<void> {
+    if (!opts.central || !opts.warmProjectKey) return;
+    const warm = opts.warmProjectKey;
+    await Promise.all([...new Set(cwds)].map((cwd) => warm(cwd)));
   }
 
   function vault(): Vault {
@@ -771,12 +792,6 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
 
   /** A project's folder, with the root of its repository looked up first without waiting for git. */
-  async function memoryProject(projectId: string): Promise<string> {
-    const path = projectPath(projectId);
-    await memory().warm(path);
-    return path;
-  }
-
   function sessionFiles(): SessionFiles {
     if (!opts.sessionFiles) throw featureOff("sessionFiles");
     return opts.sessionFiles;
@@ -827,13 +842,24 @@ export function startServer(opts: ServerOptions): RunningServer {
     const ok = <T extends CommandType>(_type: T, data?: CommandResults[T]) =>
       send(ws, { type: "ack", id: command.id, ok: true, ...(data !== undefined ? { data } : {}) });
 
+    // The messaging service lists every endpoint with its project key, read synchronously.
+    if (command.type.startsWith("messages.") || command.type.startsWith("teams.")) {
+      await warmKeys([
+        ...manager.list().map((s) => s.cwd),
+        ...(opts.central?.external.list() ?? []).flatMap((s) => (s.cwd ? [s.cwd] : [])),
+      ]);
+    }
+
     switch (command.type) {
       case "hello":
         return onHello(ws, command);
-      case "session.list":
+      case "session.list": {
+        const sessions = manager.list();
+        await warmKeys(sessions.map((s) => s.cwd));
         return ok(command.type, {
-          sessions: manager.list().map((s) => listed(s, s.claudeSessionId, managedLive(s))),
+          sessions: sessions.map((s) => listed(s, s.claudeSessionId, managedLive(s))),
         });
+      }
       case "session.create": {
         // Looked up in git before the session exists, so what names and lists it finds the
         // project already known; the wait is this request's own, the others are served meanwhile.
@@ -1246,28 +1272,28 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "plugins.marketplaceUpdate":
         return ok(command.type, await pluginsApi().marketplaceUpdate(command.payload.name));
       case "memory.list":
-        return ok(command.type, memory().list(await memoryProject(command.payload.projectId)));
+        return ok(command.type, await memory().list(projectPath(command.payload.projectId)));
       case "memory.read": {
         const { projectId, name } = command.payload;
-        return ok(command.type, memory().read(await memoryProject(projectId), name));
+        return ok(command.type, await memory().read(projectPath(projectId), name));
       }
       case "memory.write": {
         const { projectId, confirm, ...input } = command.payload;
         return ok(
           command.type,
-          memory().write(await memoryProject(projectId), { ...input, confirm: confirm === true }),
+          await memory().write(projectPath(projectId), { ...input, confirm: confirm === true }),
         );
       }
       case "memory.delete": {
         const { projectId, confirm, ...input } = command.payload;
-        memory().remove(await memoryProject(projectId), { ...input, confirm: confirm === true });
+        await memory().remove(projectPath(projectId), { ...input, confirm: confirm === true });
         return ok(command.type, { name: input.name });
       }
       case "memory.budget":
-        return ok(command.type, memory().budget(await memoryProject(command.payload.projectId)));
+        return ok(command.type, await memory().budget(projectPath(command.payload.projectId)));
       case "memory.suggest":
         return ok(command.type, {
-          suggestions: memory().suggest(await memoryProject(command.payload.projectId)),
+          suggestions: await memory().suggest(projectPath(command.payload.projectId)),
         });
       case "session.fork": {
         if (!opts.forker) throw featureOff("forker");
@@ -1355,7 +1381,12 @@ export function startServer(opts: ServerOptions): RunningServer {
           ...(opts.terminal ?? {}),
         });
       case "history.list": {
-        const page = history().list(command.payload);
+        const { projectKey, ...filter } = command.payload;
+        const index = history();
+        const page = index.list(
+          projectKey ? { ...filter, cwds: await foldersOf(index, projectKey) } : filter,
+        );
+        await warmKeys(page.sessions.map((s) => s.cwd));
         const sessions = page.sessions.map((s) =>
           listed(s, s.claudeSessionId, { state: "ended", since: s.lastTs }),
         );
@@ -1486,10 +1517,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, board().workflows.getRun(runId));
       }
       case "rules.list":
-        return ok(command.type, { rules: board().listRules(command.payload.projectId) });
+        return ok(command.type, { rules: await board().listRules(command.payload.projectId) });
       case "rules.remove": {
         const { projectId, rule, confirm } = command.payload;
-        return ok(command.type, { rules: board().removeRule(projectId, rule, confirm === true) });
+        return ok(command.type, {
+          rules: await board().removeRule(projectId, rule, confirm === true),
+        });
       }
       case "costs.status":
         return ok(command.type, costs().status());

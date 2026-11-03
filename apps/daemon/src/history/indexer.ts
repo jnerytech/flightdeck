@@ -49,6 +49,8 @@ export interface HistoryChange {
 
 export interface HistoryListFilter {
   cwd?: string;
+  /** Exactly these folders (not their children): the folders of one project. */
+  cwds?: string[];
   from?: string;
   to?: string;
   origin?: "flightdeck" | "external";
@@ -224,6 +226,14 @@ export class HistoryIndexer {
     }
   }
 
+  /** The folders of the indexed sessions, each once. */
+  distinctCwds(): string[] {
+    const rows = this.db
+      .query("SELECT DISTINCT cwd FROM history_sessions WHERE cwd != ''")
+      .all() as Array<{ cwd: string }>;
+    return rows.map((r) => r.cwd);
+  }
+
   /** Indexed sessions with at least one message, most recent first. */
   list(filter: HistoryListFilter): {
     sessions: HistorySession[];
@@ -237,6 +247,13 @@ export class HistoryIndexer {
     if (filter.cwd) {
       where.push(CWD_CONDITION);
       params.cwd = trimSlashes(filter.cwd);
+    }
+    if (filter.cwds) {
+      const names = filter.cwds.map((cwd, i) => {
+        params[`cwds${i}`] = cwd;
+        return `$cwds${i}`;
+      });
+      where.push(names.length > 0 ? `s.cwd IN (${names.join(", ")})` : "0");
     }
     // Sessions that overlap the period.
     if (filter.from) {

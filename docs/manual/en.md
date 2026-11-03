@@ -1823,6 +1823,14 @@ estimated cost, tokens and turns.
 - **Cost:** it is the difference of the total the SDK reports for each session, never the sum
   turn by turn.
 - **Project:** the same as on the Sessions screen (the `origin` remote, or the repository path).
+- **Grouped by project:** each project is one block with its total (the most expensive first) and
+  its days below, newest first. Dates and costs never wrap.
+- **Hidden:** temp folders (`temp`, `tmp`, `/var/folders`) and agent worktrees
+  (`.claude/worktrees`) are not listed.
+- **Open the sessions:** click a day to open History filtered by that project's folder and that
+  day. A project known by its remote (shared by several folders and worktrees) opens History
+  filtered by the project itself, so every one of its folders is listed; a "Project: name" chip
+  above the list shows it, and **Clear project** takes it off.
 - **Not in the usage:** terminal sessions, because the hooks carry no cost.
 
 ### Costs

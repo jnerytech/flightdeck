@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PermissionUpdate } from "@flightdeck/protocol";
 import { ruleString } from "../src/board/project-rules.ts";
-import { excludeLocalSettings } from "../src/board/worktree.ts";
+import { excludeLocalSettingsAsync } from "../src/board/worktree.ts";
 import { startServer } from "../src/server.ts";
 import { cardWhen, git, newBoard } from "./board-helpers.ts";
 import { must, poll, tempDir } from "./helpers.ts";
@@ -52,8 +52,10 @@ async function setup() {
     const requestId = ctx.store.pendingPermissions(sessionId)[0]?.id ?? "";
     return { card, ready, sessionId, requestId };
   };
-  const allow = (requestId: string, updates: PermissionUpdate[]) =>
+  const allow = async (requestId: string, updates: PermissionUpdate[]) => {
     ctx.manager.respondPermission({ requestId, decision: "allow", updatedPermissions: updates });
+    await ctx.board.rulesWritten();
+  };
   return { ...ctx, project, asking, allow };
 }
 
@@ -62,13 +64,13 @@ describe("regras-projeto", () => {
     const { repo, asking, allow } = await setup();
     writeSettings(repo, { permissions: { allow: ["Read"], deny: ["Bash(rm:*)"] }, outra: 1 });
     const first = await asking("Primeiro");
-    allow(first.requestId, [rule("npm test:*")]);
+    await allow(first.requestId, [rule("npm test:*")]);
     expect(readJson(join(repo, SETTINGS))).toEqual({
       permissions: { allow: ["Read", "Bash(npm test:*)"], deny: ["Bash(rm:*)"] },
       outra: 1,
     });
     const second = await asking("Segundo");
-    allow(second.requestId, [
+    await allow(second.requestId, [
       rule("npm test:*"),
       {
         type: "addRules",
@@ -84,11 +86,11 @@ describe("regras-projeto", () => {
   test("sem arquivo na raiz, a regra o cria; sessão que não é de card não escreve nada", async () => {
     const { repo, manager, store, asking, allow } = await setup();
     const { requestId } = await asking("Novo");
-    allow(requestId, [rule("ls:*")]);
+    await allow(requestId, [rule("ls:*")]);
     expect(readJson(join(repo, SETTINGS))).toEqual({ permissions: { allow: ["Bash(ls:*)"] } });
     const { sessionId } = manager.create({ cwd: repo, prompt: "[bash] fora" });
     await poll(() => store.pendingPermissions(sessionId).length > 0, 3000);
-    allow(store.pendingPermissions(sessionId)[0]?.id ?? "", [rule("pwd:*")]);
+    await allow(store.pendingPermissions(sessionId)[0]?.id ?? "", [rule("pwd:*")]);
     expect(readJson(join(repo, SETTINGS)).permissions.allow).toEqual(["Bash(ls:*)"]);
   });
 
@@ -105,6 +107,7 @@ describe("regras-projeto", () => {
       decision: "allow",
       updatedPermissions: [rule("make:*")],
     });
+    await ctx.board.rulesWritten();
     expect(
       existsSync(join(ctx.repo, SETTINGS)) ? readJson(join(ctx.repo, SETTINGS)) : null,
     ).toEqual({
@@ -155,7 +158,7 @@ describe("regras-projeto", () => {
     expect(excluded()).toBe(true);
     strip();
     const requestId = store.pendingPermissions(again?.sessionId ?? "")[0]?.id ?? "";
-    allow(requestId, [rule("ls:*")]);
+    await allow(requestId, [rule("ls:*")]);
     expect(excluded()).toBe(true);
     writeSettings(must(again?.worktreePath, "worktreePath"), {
       permissions: { allow: ["Bash(ls:*)"] },
@@ -180,7 +183,7 @@ describe("regras-projeto", () => {
     const { repo, board, asking, allow } = await setup();
     writeSettings(repo, "{ quebrado");
     const { card, requestId } = await asking("Quebrado");
-    allow(requestId, [rule("ls:*")]);
+    await allow(requestId, [rule("ls:*")]);
     expect(readFileSync(join(repo, SETTINGS), "utf8")).toBe("{ quebrado");
     const notice = (await cardWhen(board, card.id, (c) => c.notice !== null))?.notice ?? "";
     expect(notice).toStartWith("regra não gravada no .claude/settings.local.json:");
@@ -188,7 +191,7 @@ describe("regras-projeto", () => {
 
   test("rules.list e rules.remove (com confirmação), guardando o resto do arquivo", async () => {
     const { repo, board, project, manager, root } = await setup();
-    expect(board.listRules(project.id)).toEqual([]);
+    expect(await board.listRules(project.id)).toEqual([]);
     writeSettings(repo, {
       permissions: { allow: ["Read", "Bash(npm test:*)"], ask: ["x"] },
       env: { A: "1" },
@@ -234,16 +237,12 @@ describe("regras-projeto", () => {
     expect(missing).toMatchObject({ ok: false, error: { code: "not_found" } });
   });
 
-  test("fora de um repositório git, garantir o exclude falha com a mensagem do git", () => {
+  test("fora de um repositório git, garantir o exclude falha com a mensagem do git", async () => {
     const outside = tempDir();
-    const failed = (() => {
-      try {
-        excludeLocalSettings(outside);
-        return null;
-      } catch (error) {
-        return (error as { code?: string; message?: string }).code ?? "outro";
-      }
-    })();
+    const failed = await excludeLocalSettingsAsync(outside).then(
+      () => null,
+      (error) => (error as { code?: string }).code ?? "outro",
+    );
     expect(failed).toBe("invalid_state");
   });
 

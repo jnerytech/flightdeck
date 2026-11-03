@@ -2554,6 +2554,8 @@ export const en: Dictionary = {
   historyUi: {
     title: "History of {host}",
     folder: "Folder",
+    project: "Project: {name}",
+    clearProject: "Clear project",
     from: "From",
     to: "To",
     origin: "Origin",
@@ -2675,7 +2677,6 @@ export const en: Dictionary = {
   usageUi: {
     title: "Usage in the last 7 days",
     day: "Day",
-    project: "Project",
     cost: "Cost",
     tokens: "Tokens",
     turns: "Turns",

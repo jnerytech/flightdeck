@@ -90,7 +90,7 @@ export class Central {
 
   /** Group of the session in the app's list; see project-key.ts. */
   projectKey(cwd: string): string {
-    return this.keys.keyFor(cwd);
+    return this.keys.known(cwd);
   }
 
   receptorUrl(): string | null {
