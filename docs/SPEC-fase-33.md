@@ -84,9 +84,8 @@ Costs, the palette's technical commands, split view and the tab strip (one task 
 
 - A **template** is: a title, a one-line description, an icon, one to three **fields** (a folder, a file, a short text, a
   choice), a prompt with placeholders for the fields, a **permission preset** and an optional **plan-first** flag.
-- **Built-in templates** ship with the daemon, six to start: summarise a folder; draft a report from these files; find
-  and list the action items in these notes; rename and sort these files; check these documents for mistakes; answer a
-  question using these files. Each is written for people, not for prompts, and is translated (en, pt-BR).
+- **Built-in templates** ship with the daemon, four to start: summarise a folder, draft a report from these files, review a
+  document, compare files. Each is written for people, not for prompts, and is translated (en, pt-BR).
 - **Host templates**: Markdown files with frontmatter in the host's templates folder, loaded like personas, so an
   administrator can add "monthly sales report" without code. A broken file is reported on the host's doctor, not
   silently skipped.
@@ -152,7 +151,7 @@ Areas in TDD order. Pure logic and the daemon first, the dictionary next, screen
 | `simple-mode-resolve` | the effective mode is the person's choice, else the host default, else `full`; per host; a locked host ignores the person's `simple`→`full` choice and offers no switch; unknown values fall back to `full` |
 | `simple-mode-host` | the daemon returns `ui.mode` and `ui.locked` in the host info (default `full`, unlocked); the set action validates, persists in the config and refuses without the host-settings trust; the setting survives a restart |
 | `simple-vocabulary` | the `simple` dictionary exists in both languages with the same keys; every rename of the table resolves; `textos` finds none of the hidden terms in the simple screens, and finds one when a test string plants it |
-| `templates-schema` | the template schema validates fields (folder, file, text, choice, max three), rejects a preset above `edit this folder`, rejects a prompt with an unknown placeholder, and the six built-ins parse in both languages |
+| `templates-schema` | the template schema validates fields (folder, file, text, choice, max three), rejects a preset above `edit this folder`, rejects a prompt with an unknown placeholder, and the four built-ins parse in both languages |
 | `templates-host-files` | a Markdown template in the host folder is listed with the built-ins; a broken file is reported by the doctor and does not hide the others; a template cannot override a built-in id |
 | `templates-start` | starting a template fills the placeholders, picks the mode from the preset (never `bypassPermissions` or `auto`), sets the output folder and refuses a folder outside the allowed ones with the "add folder" request; plan-first starts in `plan` |
 | `question-wording` | the sentence and consequence for write, replace, delete, move, run and unknown requests, in both languages, never containing a tool name or a raw command; the reversible flag is false for replace and delete |
@@ -174,14 +173,14 @@ both manuals with a simple-mode chapter (en, pt-BR), and `docs/GLOSSARY.md` with
 phase: with the mode on simple, a scan of every simple screen finds none of the hidden terms, and nothing in simple mode
 widens what the host's allowed folders, budgets and vault rules already permit.
 
-## Open questions for the maintainer
+## Decisions (maintainer, 2026-11-03)
 
-1. **Per-user store.** The theme lives in the app's store; should the mode live there too (per device), or on the host
-   (follows the person across devices)? The spec assumes the app store, per host.
-2. **Who may set the host default and the lock.** Same trust as other host settings (a paired app with the host token),
-   or only from the host's own machine? Spec assumes the former, since a business admin works from the app.
-3. **Built-in templates.** The six are a guess. Which two or three matter most to the first team?
-4. **pt-BR first?** The first users are likely Portuguese speakers. The spec writes both languages for every string, as
-   always; the order of writing could be pt-BR first.
-5. **Cowork research.** The research is secondary (see the handoff file). Worth one session reading Anthropic's own help
-   pages before the `question-wording` area, since that is where tone matters most.
+1. **Per-user store:** the person's choice lives in the app store (per host); the host default and the lock live on the
+   host.
+2. **Who sets the default and the lock:** only someone in full mode, in that host's Settings. Simple mode and a locked
+   host never offer it.
+3. **Built-in templates, first cut:** summarise a folder, draft a report, review a document, compare files. More come
+   later; the host-file route covers the rest.
+4. **Languages:** both together, always (a rule, not an order of work).
+5. **Research:** before the `question-wording` area, read Anthropic's own help pages (Cowork, agent mode wording and
+   defaults) and fix the research file's secondary claims.
