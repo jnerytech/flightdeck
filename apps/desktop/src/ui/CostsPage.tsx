@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { useFormatNumber, useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
+import { cn } from "@/lib/utils";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import { costByClient, loadCostsSummary } from "../lib/client-costs.ts";
@@ -403,7 +404,12 @@ export const CostsPage = memo(function CostsPage(props: {
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border bg-card p-4">
                   <dt className="text-muted-foreground text-xs">{label}</dt>
-                  <dd className="font-semibold text-xl tabular-nums">
+                  <dd
+                    className={cn(
+                      "font-semibold tabular-nums",
+                      label === t("costsUi.topModel") ? "text-base" : "text-xl",
+                    )}
+                  >
                     <output aria-label={label}>{value}</output>
                   </dd>
                 </div>
