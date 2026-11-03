@@ -960,7 +960,17 @@ deixa uma sessão do Claude criar cards e disparar workflows. Ferramentas:
 
 - `list_projects` e `list_workflows`;
 - `create_card` e `start_card` (com `workflow` e `inputs`);
-- `get_card` e `get_run`.
+- `get_card` e `get_run`;
+- `move_card` (para `backlog`, `in_progress`, `waiting`, `review` ou `done`, pelas mesmas regras de
+  arrastar um card no app), `update_card` (título, descrição), `comment_card` (acrescenta uma
+  nota datada à descrição) e `finish_card` (`done` conclui o card, `discard` o descarta com a
+  worktree e a branch).
+
+Uma sessão gerencia só os cards do **próprio projeto**, e o próprio card quando não cita nenhum
+(a sessão roda na worktree de um card); o card de outro projeto é recusado com o motivo. O quadro
+no app atualiza ao vivo. `finish_card` com `discard` não tem volta, então sempre pede a sua
+aprovação na sessão: a aprovação automática nunca o aprova, e não se oferece "permitir sempre"
+para ele.
 
 Não há ferramenta para aprovar permissões nem para responder gates: isso fica só com você, no
 app. Para registrar no Claude Code:

@@ -979,7 +979,17 @@ config's token. That lets a Claude session create cards and trigger workflows. T
 
 - `list_projects` and `list_workflows`;
 - `create_card` and `start_card` (with `workflow` and `inputs`);
-- `get_card` and `get_run`.
+- `get_card` and `get_run`;
+- `move_card` (to `backlog`, `in_progress`, `waiting`, `review` or `done`, by the same rules as
+  dragging a card in the app), `update_card` (title, description), `comment_card` (appends a
+  dated note to the description) and `finish_card` (`done` completes the card, `discard` throws
+  it away with its worktree and branch).
+
+A session manages only the cards of **its own project**, and its own card when it names none (the
+session runs in a card's worktree); another project's card is refused with the reason. The board
+in the app updates live. `finish_card` with `discard` is irreversible, so it always asks for your
+approval in the session: the automatic approval never takes it, and no "always allow" is offered
+for it.
 
 There is no tool to approve permissions or to answer gates: that stays with you, in the app. To
 register it in Claude Code:
