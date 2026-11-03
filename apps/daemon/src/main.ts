@@ -971,6 +971,7 @@ export async function startDaemon(
     persistRoots: (roots) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
     fsDirs: true,
+    findProjects: true,
     // The daemon answers for itself: the live roots (`roots.add` pushes into this array), the
     // folders checked without blocking, and the app's version to compare with its own.
     doctor: (appVersion) =>
