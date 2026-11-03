@@ -48,6 +48,8 @@ export interface SessionState {
   lastSeq: number;
   status?: SessionStatus;
   statusReason?: string;
+  /** When the running turn began (ms), kept through a permission wait; none when idle. */
+  busySince?: number;
   cwd?: string;
   model?: string;
   /** The permission mode the session opened with, from `session.created`. */

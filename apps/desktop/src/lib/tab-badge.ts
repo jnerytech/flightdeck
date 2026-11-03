@@ -17,6 +17,11 @@ export function tabBadge(route: Route, state: AppState): TabBadge {
   return state.unread[sessionKey(route.host, route.id)] ? "unread" : null;
 }
 
+/** Whether the badge pulses: a session that is working moves, so a glance at the tabs shows it. */
+export function badgePulses(_badge: TabBadge): boolean {
+  return false;
+}
+
 /** The kind of screen a tab shows, for its icon. */
 export type TabKind = NavKey | "session" | "card" | "terminal" | "reader" | "agent" | "screen";
 
