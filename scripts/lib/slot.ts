@@ -17,6 +17,8 @@ export interface SlotFs {
   create(path: string, data: string): boolean;
   read(path: string): string | null;
   remove(path: string): void;
+  /** Every existing file whose path starts with the prefix. */
+  list(prefix: string): string[];
 }
 
 export interface SlotChild {
@@ -34,6 +36,8 @@ export interface SlotEnv {
   sleep(ms: number): Promise<void>;
   log(line: string): void;
   spawn(command: string[], nice: boolean): SlotChild;
+  /** Asks a process to stop (SIGTERM). */
+  terminate(pid: number): void;
   /** Calls the handler with the exit code of SIGINT or SIGTERM; returns the way to stop listening. */
   onSignal(handler: (code: number) => void): () => void;
 }
@@ -41,6 +45,7 @@ export interface SlotEnv {
 export type SlotArgs =
   | { kind: "status"; maxAgeMs: number }
   | { kind: "run"; nice: boolean; maxAgeMs: number; command: string[] }
+  | { kind: "cancel" }
   | { kind: "usage" };
 
 export type Attempt = { acquired: boolean; holder: SlotHolder | null };
@@ -160,6 +165,11 @@ export function status(env: SlotEnv, maxAgeMs = DEFAULT_MAX_AGE_MS): string {
   return `${held}; WARNING: older than ${Math.floor(maxAgeMs / 60_000)}m, check if it is stuck`;
 }
 
+/** Stops this label's own waiters and run; stub. */
+export function cancel(_env: SlotEnv): number {
+  return 1;
+}
+
 /** Runs the command under the slot and returns its exit code (a signal's code when one stopped it). */
 export async function run(env: SlotEnv, argv: string[]): Promise<number> {
   const args = parseArgs(argv);
@@ -167,6 +177,7 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
     env.log(USAGE);
     return 2;
   }
+  if (args.kind === "cancel") return cancel(env);
   if (args.kind === "status") {
     env.log(status(env, args.maxAgeMs));
     return 0;
