@@ -70,7 +70,7 @@ describe("github-issues: the open issues of one repo", () => {
   test("a repo that is not owner/name is refused before gh runs", async () => {
     const gh = fakeGh([SIGNED_IN]);
     const github = new Github({ gh: runGh });
-    for (const repo of ["", "app", "-R/x", "a/b/c", "a/ b", "../x", "a/b;c", "--web/x"]) {
+    for (const repo of ["a/..", "", "app", "-R/x", "a/b/c", "a/ b", "../x", "a/b;c", "--web/x"]) {
       await expect(github.issues(repo)).rejects.toMatchObject({ reason: "repo_invalid" });
     }
     expect(gh.calls()).toEqual([]);

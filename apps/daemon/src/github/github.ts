@@ -4,6 +4,7 @@
  */
 import type { Issue } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
+import { GH_FIELDS, type GhIssue, GithubIssues } from "../issues/providers.ts";
 import type { GhResult, GhRunner } from "./gh.ts";
 import { GITHUB_HOST, type GithubStatus, githubStatus } from "./status.ts";
 
@@ -20,6 +21,9 @@ const detailOf = (result: GhResult) =>
     ?.slice(0, 300) ?? "";
 
 const LIST_LIMIT = 50;
+const ISSUE_LIMIT = 50;
+/** `owner/name`: letters, digits, dots, underscores and dashes. */
+const REPO = /^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9._-]+$/;
 const SEARCH_LIMIT = 30;
 
 export interface GithubRepo {
@@ -116,7 +120,36 @@ export class Github {
     }));
   }
 
-  async issues(_repo: string): Promise<Issue[]> {
-    return [];
+  /** The open issues of `repo` (`owner/name`), asked of GitHub whatever folder the daemon is in. */
+  async issues(repo: string): Promise<Issue[]> {
+    if (!REPO.test(repo) || /\/\.+$/.test(repo)) {
+      throw refuse("repo_invalid", `${repo} is not an owner/name repository`, { repo });
+    }
+    await this.withRepoScope();
+    const result = await this.opts.gh([
+      "issue",
+      "list",
+      "-R",
+      repo,
+      "--state",
+      "open",
+      "--json",
+      GH_FIELDS,
+      "--limit",
+      String(ISSUE_LIMIT),
+    ]);
+    if (!result || result.code !== 0) {
+      const detail = result ? detailOf(result) : "";
+      if (/could not resolve to a repository|not found/i.test(detail)) {
+        throw refuse("repo_not_found", `${repo} was not found on GitHub`, { repo });
+      }
+      throw refuse("issues_failed", `gh could not list the issues: ${detail}`, { detail });
+    }
+    const me = await this.opts.gh(["api", "user", "--jq", ".login"]);
+    const login = me && me.code === 0 ? me.stdout.trim().toLowerCase() || null : null;
+    const provider = new GithubIssues(repo);
+    return (JSON.parse(result.stdout || "[]") as GhIssue[]).map((issue) =>
+      provider.toIssue(issue, login),
+    );
   }
 }
