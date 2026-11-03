@@ -2504,6 +2504,8 @@ export const ptBR = {
   historyUi: {
     title: "Histórico de {host}",
     folder: "Pasta",
+    project: "Projeto: {name}",
+    clearProject: "Limpar projeto",
     from: "De",
     to: "Até",
     origin: "Origem",

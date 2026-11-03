@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
+import type { UsageHistoryTarget } from "../lib/usage-rows.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { DaemonUpdate } from "./DaemonUpdate.tsx";
@@ -34,7 +35,7 @@ export function HostPage(props: {
   onRename(name: string): void;
   onReconnect(): void;
   onOpenAutoApprovals(): void;
-  onOpenHistory(filter: { cwd?: string; day: string }): void;
+  onOpenHistory(filter: UsageHistoryTarget): void;
   onRemove(): void;
 }) {
   const t = useT();

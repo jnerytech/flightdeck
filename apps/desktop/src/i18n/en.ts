@@ -2498,6 +2498,8 @@ export const en: Dictionary = {
   historyUi: {
     title: "History of {host}",
     folder: "Folder",
+    project: "Project: {name}",
+    clearProject: "Clear project",
     from: "From",
     to: "To",
     origin: "Origin",

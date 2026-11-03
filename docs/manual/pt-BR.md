@@ -1773,8 +1773,9 @@ tokens e turnos.
 - **Ocultos:** pastas temporárias (`temp`, `tmp`, `/var/folders`) e worktrees de agentes
   (`.claude/worktrees`) não aparecem.
 - **Abrir as sessões:** clique num dia para abrir o Histórico filtrado pela pasta desse projeto e
-  por esse dia. Um projeto conhecido pelo remoto (compartilhado por várias pastas) não tem uma
-  pasta só, então o Histórico abre filtrado apenas pelo dia.
+  por esse dia. Um projeto conhecido pelo remoto (compartilhado por várias pastas e worktrees)
+  abre o Histórico filtrado pelo próprio projeto, então todas as pastas dele aparecem; uma ficha
+  "Projeto: nome" acima da lista mostra isso, e **Limpar projeto** a tira.
 - **Fora do uso:** as sessões do terminal, porque os hooks não trazem custo.
 
 ### Custos

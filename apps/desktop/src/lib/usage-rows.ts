@@ -27,6 +27,13 @@ const lastPart = (path: string) =>
     .split(/[\\/]/)
     .pop() as string;
 
+/** What a usage row asks History to show: its folder, or its project key, and the day. */
+export interface UsageHistoryTarget {
+  cwd?: string;
+  projectKey?: string;
+  day: string;
+}
+
 /** The short name of a project key: the folder's name, or the last part of a remote. */
 export function projectLabel(key: string): string {
   return lastPart(folderOf(key) ?? key);

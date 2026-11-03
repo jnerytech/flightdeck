@@ -332,8 +332,8 @@ export function Screen(props: ScreenProps) {
             store={store}
             hostId={hostId}
             initial={
-              route.name === "history" && (route.cwd || route.day)
-                ? { cwd: route.cwd, day: route.day }
+              route.name === "history" && (route.cwd || route.projectKey || route.day)
+                ? { cwd: route.cwd, projectKey: route.projectKey, day: route.day }
                 : undefined
             }
             hostName={state.hosts.find((h) => h.id === hostId)?.name ?? hostId}

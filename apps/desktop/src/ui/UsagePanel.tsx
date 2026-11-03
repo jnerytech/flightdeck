@@ -5,7 +5,7 @@ import { UsageGroupRows } from "@/components/usage/usage-group";
 import { useFormatNumber, useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { periodRange, usd } from "../lib/costs.ts";
-import { groupByProject } from "../lib/usage-rows.ts";
+import { groupByProject, type UsageHistoryTarget } from "../lib/usage-rows.ts";
 
 interface Row {
   day: string;
@@ -27,7 +27,7 @@ export function UsagePanel(props: {
   online: boolean;
   costs: boolean;
   /** A row was clicked: the history of its folder (when it has one) on that day. */
-  onOpenHistory?(filter: { cwd?: string; day: string }): void;
+  onOpenHistory?(filter: UsageHistoryTarget): void;
 }) {
   const t = useT();
   const number = useFormatNumber();

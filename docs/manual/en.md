@@ -1793,8 +1793,9 @@ estimated cost, tokens and turns.
 - **Hidden:** temp folders (`temp`, `tmp`, `/var/folders`) and agent worktrees
   (`.claude/worktrees`) are not listed.
 - **Open the sessions:** click a day to open History filtered by that project's folder and that
-  day. A project known by its remote (shared by several folders) has no single folder, so History
-  opens filtered by the day only.
+  day. A project known by its remote (shared by several folders and worktrees) opens History
+  filtered by the project itself, so every one of its folders is listed; a "Project: name" chip
+  above the list shows it, and **Clear project** takes it off.
 - **Not in the usage:** terminal sessions, because the hooks carry no cost.
 
 ### Costs

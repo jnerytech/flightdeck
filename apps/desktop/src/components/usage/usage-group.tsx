@@ -1,4 +1,4 @@
-import type { UsageGroup } from "../../lib/usage-rows.ts";
+import type { UsageGroup, UsageHistoryTarget } from "../../lib/usage-rows.ts";
 
 interface Row {
   day: string;
@@ -15,7 +15,7 @@ export function UsageGroupRows(props: {
   columns: number;
   total: string;
   format: { cost(usd: number): string; number(n: number): string };
-  onOpenHistory?(filter: { cwd?: string; day: string }): void;
+  onOpenHistory?(filter: UsageHistoryTarget): void;
 }) {
   const { group, format } = props;
   return (
@@ -39,7 +39,7 @@ export function UsageGroupRows(props: {
               className="underline-offset-2 hover:underline"
               onClick={() =>
                 props.onOpenHistory?.({
-                  ...(group.cwd ? { cwd: group.cwd } : {}),
+                  ...(group.cwd ? { cwd: group.cwd } : { projectKey: group.projectKey }),
                   day: row.day,
                 })
               }
