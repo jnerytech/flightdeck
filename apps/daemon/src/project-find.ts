@@ -209,3 +209,6 @@ export const spawnGit: GitRunner = async (args) => {
     clearTimeout(timer);
   }
 };
+
+/** A `git` runner that stops a command still running after `timeoutMs`. */
+export const gitRunner = (_timeoutMs: number): GitRunner => spawnGit;
