@@ -1,5 +1,5 @@
-import { lstat, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
-import { basename, join, relative } from "node:path";
+import { lstat, mkdir, open, readdir, readFile, realpath, writeFile } from "node:fs/promises";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import type { TaskFile, TaskPreviewResult, TaskResultsResult } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
@@ -16,6 +16,9 @@ interface Kept {
 const MAX_WALKED = 5000;
 const MAX_DEPTH = 8;
 const DEFAULT_CAP = 200;
+const PREVIEW_BYTES = 65_536;
+/** What opens in a preview first: text, Markdown and CSV. */
+const PREVIEWABLE = /\.(txt|md|markdown|csv)$/i;
 
 /**
  * Walks `folder` without following links or entering hidden folders, and without git: what a
@@ -70,20 +73,57 @@ export class TaskTracker {
   }
 
   /** The start of a text file inside the task's folders (text, Markdown or CSV), for a preview. */
-  async preview(_sessionId: string, _path: string): Promise<TaskPreviewResult> {
-    return { text: "", truncated: false };
+  async preview(sessionId: string, path: string): Promise<TaskPreviewResult> {
+    const kept = await this.load(sessionId);
+    const refused = () =>
+      new FlightdeckError(
+        "forbidden_cwd",
+        "this file cannot be previewed",
+        "task_preview_refused",
+        {
+          path,
+        },
+      );
+    const target = resolve(path);
+    if (!PREVIEWABLE.test(target) || !kept.folders.some((folder) => isInside(folder, target))) {
+      throw refused();
+    }
+    // A link, or a link anywhere on the way, leads out of the folders: not read.
+    const info = await lstat(target).catch(() => null);
+    const real = await realpath(target).catch(() => null);
+    if (
+      !info?.isFile() ||
+      real === null ||
+      real !== (await realpath(dirname(target))).concat(sep, basename(target))
+    ) {
+      throw refused();
+    }
+    const handle = await open(target, "r");
+    try {
+      const buffer = Buffer.alloc(PREVIEW_BYTES);
+      const { bytesRead } = await handle.read(buffer, 0, PREVIEW_BYTES, 0);
+      return {
+        text: buffer.subarray(0, bytesRead).toString("utf8"),
+        truncated: info.size > PREVIEW_BYTES,
+      };
+    } finally {
+      await handle.close();
+    }
   }
 
-  /** The files the task made or changed since, newest first, only inside its own folders. */
-  async results(sessionId: string): Promise<TaskResultsResult> {
-    let kept: Kept;
+  private async load(sessionId: string): Promise<Kept> {
     try {
-      kept = JSON.parse(await readFile(this.file(sessionId), "utf8")) as Kept;
+      return JSON.parse(await readFile(this.file(sessionId), "utf8")) as Kept;
     } catch {
       throw new FlightdeckError("not_found", `no task for ${sessionId}`, "task_unknown", {
         sessionId,
       });
     }
+  }
+
+  /** The files the task made or changed since, newest first, only inside its own folders. */
+  async results(sessionId: string): Promise<TaskResultsResult> {
+    const kept = await this.load(sessionId);
     const now: Snapshot = {};
     for (const folder of kept.folders) await walk(folder, now);
     const files: TaskFile[] = [];
