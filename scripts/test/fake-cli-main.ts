@@ -28,4 +28,5 @@ if (!rule) {
   process.exit(1);
 }
 if (rule.stdout) process.stdout.write(rule.stdout);
+if (rule.stderr) process.stderr.write(rule.stderr);
 process.exit(rule.code ?? 0);
