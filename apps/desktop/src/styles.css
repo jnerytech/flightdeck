@@ -404,3 +404,91 @@
   max-width: 48rem;
   line-height: 1.65;
 }
+
+/* Sessions of a project side by side (issue #8). */
+@utility tile-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  &[data-columns="3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  @media (max-width: 640px) {
+    grid-template-columns: minmax(0, 1fr);
+    &[data-columns="3"] {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
+@utility session-tile {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-card);
+  padding: 0.75rem;
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+@utility session-tile-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+@utility session-tile-lines {
+  display: flex;
+  min-height: 4.5rem;
+  flex-direction: column;
+  gap: 0.125rem;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+@utility session-tile-request {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--color-status-needs-you);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  font-size: 0.8125rem;
+}
+@utility tile-count {
+  display: flex;
+  gap: 0.25rem;
+  border: 0;
+  padding: 0;
+}
+@utility tile-count-option {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  &:has(input:checked) {
+    background: var(--color-accent);
+    border-color: var(--color-ring);
+  }
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+  & input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+}

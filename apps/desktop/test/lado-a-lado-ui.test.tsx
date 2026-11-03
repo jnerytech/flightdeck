@@ -70,7 +70,8 @@ async function setup(names: string[]) {
   return { store, hostId, ids, opened, d };
 }
 
-const tiles = () => screen.getAllByRole("region");
+const tiles = () =>
+  Array.from(document.querySelectorAll<HTMLElement>("[data-slot='session-tile']"));
 
 describe("lado-a-lado-ui: the tiles of a project", () => {
   test("a section names them, and each session of the project is a tile with its status and last lines", async () => {
@@ -88,7 +89,7 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
 
   test("the count is 2, 3, 4 or 6 tiles, 4 to start, and it is kept", async () => {
     const { store } = await setup(["a", "b", "c", "d", "e"]);
-    const group = screen.getByRole("radiogroup", { name: "Tiles on screen" });
+    const group = screen.getByRole("group", { name: "Tiles on screen" });
     expect(
       within(group)
         .getAllByRole("radio")
