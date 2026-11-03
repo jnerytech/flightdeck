@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { closeSync, openSync, readdirSync, readSync, statSync } from "node:fs";
+import { open, readdir, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { normalizeCwd } from "../history/indexer.ts";
 import { localDay } from "../quota/usage.ts";
@@ -63,13 +63,23 @@ interface Usage {
   tokens: UsageTokens;
 }
 
-const sizeOf = (path: string) => {
+const sizeOf = (path: string) =>
+  stat(path).then(
+    (info) => info.size,
+    () => null,
+  );
+
+/** `length` bytes of the file from `offset`, read without holding the event loop. */
+async function readSlice(path: string, offset: number, length: number): Promise<Buffer> {
+  const chunk = Buffer.alloc(length);
+  const handle = await open(path, "r");
   try {
-    return statSync(path).size;
-  } catch {
-    return null;
+    await handle.read(chunk, 0, length, offset);
+  } finally {
+    await handle.close();
   }
-};
+  return chunk;
+}
 
 /** Whose session this is: the managed kind and, for cards and workflows, the project folder. */
 interface Owner {
@@ -164,13 +174,7 @@ function readLine(line: string): ReadLine {
 }
 
 /** A folder's entries; none when it does not exist (a session folder without `subagents/`). */
-const entries = (dir: string) => {
-  try {
-    return readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return [];
-  }
-};
+const entries = (dir: string) => readdir(dir, { withFileTypes: true }).catch(() => []);
 
 /** A managed session's kind; the project folder of its card when it ran one. */
 const OWNER = `SELECT
@@ -272,7 +276,7 @@ export class UsageIndexer {
   async pass(): Promise<number> {
     this.reclassify();
     const owners = new Map<string, Owner>();
-    const files = this.files();
+    const files = await this.files();
     const first = this.load.state === "running";
     if (first) this.load = { state: "running", filesDone: 0, filesTotal: files.length };
     let added = 0;
@@ -285,7 +289,7 @@ export class UsageIndexer {
       }
       for (;;) {
         if (this.opts.warmKeys) await this.warm(file, owner);
-        const slice = this.indexFile(file, owner, this.opts.sliceBytes ?? SLICE_BYTES);
+        const slice = await this.indexFile(file, owner, this.opts.sliceBytes ?? SLICE_BYTES);
         added += slice.added;
         // The file counts as done when its last slice is in, before the pause that follows it.
         if (first && !slice.more) this.load.filesDone++;
@@ -339,19 +343,19 @@ export class UsageIndexer {
     return { origin: row.app ? "app" : "terminal", projectPath: null };
   }
 
-  private files(): TranscriptFile[] {
+  private async files(): Promise<TranscriptFile[]> {
     const files: TranscriptFile[] = [];
     for (const root of this.opts.roots) {
-      for (const dir of entries(root)) {
+      for (const dir of await entries(root)) {
         if (!dir.isDirectory()) continue;
         const project = join(root, dir.name);
-        for (const item of entries(project)) {
+        for (const item of await entries(project)) {
           if (item.isFile() && item.name.endsWith(".jsonl")) {
             const path = join(project, item.name);
             files.push({ path, claudeSessionId: basename(item.name, ".jsonl"), subagent: false });
           } else if (item.isDirectory()) {
             const subagents = join(project, item.name, "subagents");
-            for (const sub of entries(subagents)) {
+            for (const sub of await entries(subagents)) {
               if (!sub.isFile() || !sub.name.endsWith(".jsonl")) continue;
               const path = join(subagents, sub.name);
               files.push({ path, claudeSessionId: item.name, subagent: true });
@@ -394,7 +398,7 @@ export class UsageIndexer {
    * Reads the slice once more for it; it is the same bytes, and the page cache has them.
    */
   private async warm(file: TranscriptFile, owner: Owner): Promise<void> {
-    const size = sizeOf(file.path);
+    const size = await sizeOf(file.path);
     if (size === null || !this.opts.warmKeys) return;
     const row = this.db
       .query<{ offset: number; cwd: string | null }, [string]>(
@@ -403,13 +407,11 @@ export class UsageIndexer {
       .get(file.path);
     const offset = size < (row?.offset ?? 0) ? 0 : (row?.offset ?? 0);
     if (size === offset) return;
-    const chunk = Buffer.alloc(Math.min(size - offset, this.opts.sliceBytes ?? SLICE_BYTES));
-    const fd = openSync(file.path, "r");
-    try {
-      readSync(fd, chunk, 0, chunk.length, offset);
-    } finally {
-      closeSync(fd);
-    }
+    const chunk = await readSlice(
+      file.path,
+      offset,
+      Math.min(size - offset, this.opts.sliceBytes ?? SLICE_BYTES),
+    );
     const folders = new Set<string>([row?.cwd ?? "", owner.projectPath ?? ""]);
     for (const [, escaped] of chunk.toString("utf8").matchAll(/"cwd":"((?:[^"\\]|\\.)*)"/g)) {
       folders.add(JSON.parse(`"${escaped}"`) as string);
@@ -423,14 +425,14 @@ export class UsageIndexer {
    * of it up to a line's end (a line bigger than that is read whole); `more` says there is text
    * after what was read.
    */
-  private indexFile(
+  private async indexFile(
     file: TranscriptFile,
     owner: Owner,
     maxBytes: number,
-  ): { added: number; more: boolean } {
+  ): Promise<{ added: number; more: boolean }> {
     const done = { added: 0, more: false };
     // Gone since the listing (a session deleted meanwhile): nothing to read.
-    const size = sizeOf(file.path);
+    const size = await sizeOf(file.path);
     if (size === null) return done;
     const row = this.db
       .query<{ offset: number; cwd: string | null }, [string]>(
@@ -440,15 +442,10 @@ export class UsageIndexer {
     const reset = size < (row?.offset ?? 0);
     const offset = reset ? 0 : (row?.offset ?? 0);
     if (!reset && size === offset) return done;
-    let chunk = Buffer.alloc(Math.min(size - offset, maxBytes));
+    let chunk: Buffer = Buffer.alloc(Math.min(size - offset, maxBytes));
     let end = 0;
     for (;;) {
-      const fd = openSync(file.path, "r");
-      try {
-        readSync(fd, chunk, 0, chunk.length, offset);
-      } finally {
-        closeSync(fd);
-      }
+      chunk = await readSlice(file.path, offset, chunk.length);
       // Only complete lines: a last line without its newline is left for the next pass.
       end = chunk.lastIndexOf(0x0a) + 1;
       if (end > 0 || chunk.length >= size - offset) break;
