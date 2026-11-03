@@ -34,10 +34,10 @@ async function fleet() {
   const b = makeDaemon(cleanups);
   const serverA = a.listen();
   const serverB = b.listen();
-  const first = a.manager.create({ cwd: a.project, prompt: "[tool]", name: "s-a" });
+  const first = await a.manager.create({ cwd: a.project, prompt: "[tool]", name: "s-a" });
   await waitFor(() => a.manager.get(first.sessionId).status === "awaiting_permission");
   await Bun.sleep(5);
-  const second = b.manager.create({ cwd: b.project, prompt: "[tool]", name: "s-b" });
+  const second = await b.manager.create({ cwd: b.project, prompt: "[tool]", name: "s-b" });
   await waitFor(() => b.manager.get(second.sessionId).status === "awaiting_permission");
   const mem = memoryPlatform(false);
   const store = new AppStore(mem.platform, { baseDelayMs: 10 });
@@ -89,7 +89,7 @@ describe("fila-pendencias", () => {
   test("notificações ao vivo trazem o nome do host; o estado inicial não notifica", async () => {
     const { a, store, hostA, notifications, first } = await fleet();
     expect(notifications).toEqual([]);
-    const fresh = a.manager.create({ cwd: a.project, prompt: "[tool]", name: "nova" });
+    const fresh = await a.manager.create({ cwd: a.project, prompt: "[tool]", name: "nova" });
     await waitFor(() => notifications.length === 1, "notificação do pedido novo");
     expect(notifications[0]).toEqual({
       title: "pc · nova: esperando você",
@@ -165,7 +165,7 @@ describe("fila-pendencias", () => {
 
   test("só a sessão aberta tem o stream completo: trocar de sessão cancela a anterior", async () => {
     const { store, a, hostA, first } = await fleet();
-    const other = a.manager.create({ cwd: a.project, prompt: "outra", name: "s-a2" });
+    const other = await a.manager.create({ cwd: a.project, prompt: "outra", name: "s-a2" });
     await waitFor(() => a.manager.get(other.sessionId).status === "idle", "outra ociosa");
     const keyFirst = sessionKey(hostA, first.sessionId);
     store.select(hostA, first.sessionId);

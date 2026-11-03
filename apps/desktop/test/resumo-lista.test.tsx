@@ -100,7 +100,11 @@ describe("resumo-lista", () => {
     const appB = join(d.root, "app-b");
     mkdirSync(appA);
     mkdirSync(appB);
-    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Gerenciada" });
+    const { sessionId } = await d.manager.create({
+      cwd: d.project,
+      prompt: "oi",
+      name: "Gerenciada",
+    });
     await poll(() => d.manager.get(sessionId).status === "idle");
     const managed = d.manager.get(sessionId);
     const ts = new Date().toISOString();
@@ -108,8 +112,8 @@ describe("resumo-lista", () => {
       userLine({ uuid: "m1", text: "corrija o build\ncom calma", cwd: d.project, ts }),
     ]);
 
-    d.central.hooksInstall(true);
-    const hooksToken = loadConfig(d.configFile).hooks.token ?? "";
+    await d.central.hooksInstall(true);
+    const hooksToken = (await loadConfig(d.configFile)).hooks.token ?? "";
     const receptor = d.central.receptorUrl() ?? "";
     const hook = (session: string, event: string, body: Record<string, unknown>) =>
       fetch(`${receptor}/hooks/${event}`, {
@@ -137,7 +141,7 @@ describe("resumo-lista", () => {
       }),
     ]);
     utimesSync(old, new Date(Date.now() - 3_600_000), new Date(Date.now() - 3_600_000));
-    d.history.scan();
+    await d.history.scan();
 
     const idleSince = Date.parse(managed.updatedAt);
     const store = new AppStore(memoryPlatform().platform, {
@@ -151,12 +155,14 @@ describe("resumo-lista", () => {
     await settle(() => store.getState().hosts.every((h) => h.status === "online"));
     // Held by the receptor (only while an app watches) until answered: the session waits for Write.
     await settle(() => Object.keys(store.getState().externals).length === 2);
-    void hook("ext-2", "PermissionRequest", { tool_name: "Write", tool_input: {} }).catch(() => {});
     const open = screen.queryByRole("button", { name: "Abrir Sessões" });
     expect(open).not.toBeNull();
     await act(async () => {
       fireEvent.click(open as HTMLElement);
     });
+    // Asked once the app has the list in front of it: that is when it watches the receptor.
+    await settle(() => screen.queryByRole("listitem", { name: "app-b" }) !== null);
+    void hook("ext-2", "PermissionRequest", { tool_name: "Write", tool_input: {} }).catch(() => {});
     await settle(() => row("app-b").includes("esperando"));
 
     // The lists carry it as data.
@@ -182,7 +188,7 @@ describe("resumo-lista", () => {
 
   test("a linha da sessão gerenciada acompanha o estado ao vivo, sem esperar a lista", async () => {
     const d = makeDaemon(cleanups);
-    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name: "Viva" });
+    const { sessionId } = await d.manager.create({ cwd: d.project, prompt: "oi", name: "Viva" });
     await poll(() => d.manager.get(sessionId).status === "idle");
     const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);

@@ -2,15 +2,15 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { testHome } from "../../../scripts/test/temp-dir.ts";
-import { loadConfig } from "../src/config.ts";
+import { loadConfig, updateConfigFile } from "../src/config.ts";
 import { parseArgs, runCli, startDaemon } from "../src/main.ts";
 import { ClaudeSdkRuntime } from "../src/runtime/claude-sdk-runtime.ts";
 import { tempDir } from "./helpers.ts";
 
 describe("config", () => {
-  test("primeira execução cria o arquivo com padrões e token aleatório", () => {
+  test("primeira execução cria o arquivo com padrões e token aleatório", async () => {
     const file = join(tempDir(), "sub", "config.json");
-    const config = loadConfig(file);
+    const config = await loadConfig(file);
     expect(existsSync(file)).toBe(true);
     expect(config.bind).toBe("127.0.0.1");
     expect(config.port).toBe(7420);
@@ -21,17 +21,30 @@ describe("config", () => {
     expect(JSON.parse(readFileSync(file, "utf8")).token).toBe(config.token);
     if (process.platform !== "win32") expect(statSync(file).mode & 0o777).toBe(0o600);
     // Second load reuses the same token.
-    expect(loadConfig(file).token).toBe(config.token);
+    expect((await loadConfig(file)).token).toBe(config.token);
   });
 
-  test("valida o arquivo existente e expande ~", () => {
+  test("valida o arquivo existente e expande ~", async () => {
     const file = join(tempDir(), "config.json");
     writeFileSync(file, JSON.stringify({ token: "x".repeat(32), dataDir: "~/fd", port: 9000 }));
-    const config = loadConfig(file);
+    const config = await loadConfig(file);
     expect(config.port).toBe(9000);
     expect(config.dataDir).toBe(join(testHome(), "fd"));
     writeFileSync(file, JSON.stringify({ token: "x".repeat(32), port: "nope" }));
-    expect(() => loadConfig(file)).toThrow();
+    await expect(loadConfig(file)).rejects.toThrow();
+  });
+
+  test("loading and rewriting the config file return promises, so nothing blocks on the disk", async () => {
+    const file = join(tempDir(), "async", "config.json");
+    const loading = loadConfig(file);
+    expect(loading).toBeInstanceOf(Promise);
+    const config = await loading;
+    const updating = updateConfigFile(file, (raw) => ({ ...raw, port: 9123 }));
+    expect(updating).toBeInstanceOf(Promise);
+    await updating;
+    const again = await loadConfig(file);
+    expect(again.port).toBe(9123);
+    expect(again.token).toBe(config.token);
   });
 });
 

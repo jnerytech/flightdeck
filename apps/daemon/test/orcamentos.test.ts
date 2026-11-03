@@ -207,7 +207,7 @@ describe("orcamentos", () => {
 
   test("card novo do projeto bloqueado fica na fila com motivo budget; outro projeto e sessão manual seguem", async () => {
     const { budgets, spend } = setup();
-    const ctx = newBoard({ budgets, projectKeys: { keyFor: (path) => `k:${basename(path)}` } });
+    const ctx = newBoard({ budgets, projectKeys: { known: (path) => `k:${basename(path)}` } });
     cleanups.push(() => ctx.board.stop());
     const outro = join(ctx.root, "outro");
     mkdirSync(outro);
@@ -236,7 +236,7 @@ describe("orcamentos", () => {
     expect(
       (await cardWhen(ctx.board, free.id, (c) => c.sessionId !== null))?.queueReason,
     ).toBeNull();
-    const manual = ctx.manager.create({ cwd: ctx.repo, prompt: "oi" });
+    const manual = await ctx.manager.create({ cwd: ctx.repo, prompt: "oi" });
     expect(await poll(() => ctx.manager.get(manual.sessionId).status === "idle")).toBe(true);
     expect(ctx.board.getCard(held.id)).toMatchObject({ queued: true, queueReason: "budget" });
     budgets.set(raised(budget, 10));

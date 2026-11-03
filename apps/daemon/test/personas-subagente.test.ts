@@ -10,6 +10,7 @@ import { INLINE_AGENTS_MAX, interactiveAgents, RECEPTOR_FILE } from "../src/cent
 import { runCli } from "../src/main.ts";
 import { personaHash } from "../src/personas/model.ts";
 import { PACK_IDS, packPersonas } from "../src/personas/pack.ts";
+import { preparePersonas } from "../src/personas/prepare.ts";
 import { Personas } from "../src/personas/store.ts";
 import { ClaudeSdkRuntime, type QueryFn } from "../src/runtime/claude-sdk-runtime.ts";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
@@ -19,7 +20,7 @@ import { SecretScanner } from "../src/snippets/model.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { cardWhen, git, gitRepo } from "./board-helpers.ts";
 import { installFakeClaude } from "./fake-claude.ts";
-import { newManager, tempDir, workspace } from "./helpers.ts";
+import { newManager, sessionStarter, tempDir, workspace } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 setDefaultTimeout(40_000);
@@ -42,9 +43,9 @@ const SECURITY: PersonaInput = {
   body: "Procure injeção.",
 };
 
-function codeOf(fn: () => unknown): string {
+async function codeOf(fn: () => unknown): Promise<string> {
   try {
-    fn();
+    await fn();
     return "ok";
   } catch (error) {
     return (error as { code?: string }).code ?? "sem código";
@@ -72,10 +73,10 @@ function setup(publisher?: ConstructorParameters<typeof Personas>[0]["publisher"
 }
 
 describe("personas-subagente: o que vira agente", () => {
-  test("toda persona que vale no projeto vira o agente persona-<id>, com descrição, corpo, ferramentas e modelo", () => {
+  test("toda persona que vale no projeto vira o agente persona-<id>, com descrição, corpo, ferramentas e modelo", async () => {
     const { personas, project } = setup();
-    personas.save({ scope: "host", persona: SECURITY });
-    const { agents, untrusted } = personas.subagents({ projectPath: project });
+    await personas.save({ scope: "host", persona: SECURITY });
+    const { agents, untrusted } = await personas.subagents({ projectPath: project });
     // The nine of the pack, plus the host's own.
     expect(Object.keys(agents).sort()).toEqual(
       [...PACK_IDS, "seg"].map((id) => `persona-${id}`).sort(),
@@ -97,40 +98,40 @@ describe("personas-subagente: o que vira agente", () => {
     expect(agents["persona-qa"]?.prompt).toMatch(/engenheiro de QA sênior/);
   });
 
-  test("a do projeto vale mais que a do host e a do pacote; sem confiança, fica de fora e é avisada", () => {
+  test("a do projeto vale mais que a do host e a do pacote; sem confiança, fica de fora e é avisada", async () => {
     const { personas, project, writeProject } = setup();
     const hash = writeProject("revisor", "Revisor do projeto", "Corpo do projeto.");
     writeProject("novo", "Novo", "Outro.");
-    personas.trust(project, "revisor", hash);
-    const { agents, untrusted } = personas.subagents({ projectPath: project });
+    await personas.trust(project, "revisor", hash);
+    const { agents, untrusted } = await personas.subagents({ projectPath: project });
     expect(agents["persona-revisor"]?.prompt).toBe("Corpo do projeto.");
     expect(agents).not.toHaveProperty("persona-novo");
     expect(untrusted).toEqual(["novo"]);
     // An untrusted project file does not even stand in for the pack's persona of the same id.
     writeProject("qa", "QA do projeto", "Corpo suspeito.");
-    const again = personas.subagents({ projectPath: project });
+    const again = await personas.subagents({ projectPath: project });
     expect(again.agents["persona-qa"]?.prompt).toMatch(/QA/);
     expect(again.agents["persona-qa"]?.prompt).not.toContain("suspeito");
     expect(again.untrusted.sort()).toEqual(["novo", "qa"]);
   });
 
-  test("no idioma pedido, e fora das pastas permitidas só o host e o pacote", () => {
+  test("no idioma pedido, e fora das pastas permitidas só o host e o pacote", async () => {
     const { personas, root } = setup();
-    expect(personas.subagents({ language: "en" }).agents["persona-qa"]?.prompt).toMatch(
+    expect((await personas.subagents({ language: "en" })).agents["persona-qa"]?.prompt).toMatch(
       /You act as a senior QA/,
     );
     expect(
-      Object.keys(personas.subagents({ projectPath: join(root, "..", "fora") }).agents),
+      Object.keys((await personas.subagents({ projectPath: join(root, "..", "fora") })).agents),
     ).toHaveLength(10);
   });
 });
 
 describe("personas-subagente: sessão gerenciada", () => {
-  test("a sessão ganha os agentes persona-<id> em toda execução, e sem o cadastro de personas não ganha nenhum", () => {
+  test("a sessão ganha os agentes persona-<id> em toda execução, e sem o cadastro de personas não ganha nenhum", async () => {
     const { personas, root, project, store } = setup();
-    const { manager, runtime } = newManager({ store, allowedRoots: [root], personas });
+    const { manager, runtime, start } = newManager({ store, allowedRoots: [root], personas });
     cleanups.push(() => manager.shutdown());
-    manager.create({ cwd: project, prompt: "oi" });
+    await start({ cwd: project, prompt: "oi" });
     const names = Object.keys(runtime.starts[0]?.agents ?? {});
     expect(names).toContain("persona-revisor");
     expect(names).toHaveLength(10);
@@ -140,11 +141,11 @@ describe("personas-subagente: sessão gerenciada", () => {
     });
     const bare = newManager();
     cleanups.push(() => bare.manager.shutdown());
-    bare.manager.create({ cwd: bare.project, prompt: "oi" });
+    await bare.start({ cwd: bare.project, prompt: "oi" });
     expect(bare.runtime.starts[0]?.agents).toBeUndefined();
   });
 
-  test("o runtime do SDK passa agents para o SDK, e sem eles nada muda", () => {
+  test("o runtime do SDK passa agents para o SDK, e sem eles nada muda", async () => {
     const seen: Options[] = [];
     const query: QueryFn = ({ options }) => {
       seen.push(options);
@@ -272,7 +273,7 @@ describe("personas-subagente: o terminal, flightdeckd claude --agents", () => {
   test("agents too long for a Windows command line are dropped, and the user is told", async () => {
     const { root, project, personas } = setup();
     for (const id of ["grande", "enorme"]) {
-      personas.save({ scope: "host", persona: { ...SECURITY, id, body: "x".repeat(7_000) } });
+      await personas.save({ scope: "host", persona: { ...SECURITY, id, body: "x".repeat(7_000) } });
     }
     const host = await terminalHost(personas, root);
     const fake = installFakeClaude([{ do: "exit", code: 0 }]);
@@ -338,7 +339,7 @@ describe("personas-subagente: o terminal, flightdeckd claude --agents", () => {
 });
 
 describe("personas-subagente: publicar como agente do projeto", () => {
-  test("pede confirmação antes de qualquer coisa, e grava pelo editor de agentes (ponto de extensão) o persona-<id>", () => {
+  test("pede confirmação antes de qualquer coisa, e grava pelo editor de agentes (ponto de extensão) o persona-<id>", async () => {
     const published: Array<{
       projectPath: string;
       name: string;
@@ -348,18 +349,22 @@ describe("personas-subagente: publicar como agente do projeto", () => {
       model?: string;
     }> = [];
     const { personas, project } = setup({
-      publish: (request) => {
+      publish: async (request) => {
         published.push(request);
         return { path: join(request.projectPath, ".claude", "agents", `${request.name}.md`) };
       },
     });
     expect(
-      codeOf(() =>
+      await codeOf(() =>
         personas.publishAgent({ id: "seguranca", projectPath: project, confirm: false }),
       ),
     ).toBe("invalid_state");
     expect(published).toEqual([]);
-    const done = personas.publishAgent({ id: "seguranca", projectPath: project, confirm: true });
+    const done = await personas.publishAgent({
+      id: "seguranca",
+      projectPath: project,
+      confirm: true,
+    });
     expect(done.path.endsWith("persona-seguranca.md")).toBe(true);
     expect(published).toEqual([
       {
@@ -372,12 +377,12 @@ describe("personas-subagente: publicar como agente do projeto", () => {
       },
     ]);
     expect(
-      codeOf(() =>
+      await codeOf(() =>
         personas.publishAgent({ id: "nao-existe", projectPath: project, confirm: true }),
       ),
     ).toBe("not_found");
     expect(
-      codeOf(() =>
+      await codeOf(() =>
         personas.publishAgent({
           id: "qa",
           projectPath: join(project, "..", "..", "fora"),
@@ -387,21 +392,23 @@ describe("personas-subagente: publicar como agente do projeto", () => {
     ).toBe("forbidden_cwd");
   });
 
-  test("uma persona versionada sem confiança não se publica", () => {
-    const { personas, project, writeProject } = setup({ publish: () => ({ path: "x" }) });
+  test("uma persona versionada sem confiança não se publica", async () => {
+    const { personas, project, writeProject } = setup({ publish: async () => ({ path: "x" }) });
     writeProject("nova", "Nova", "Corpo.");
     expect(
-      codeOf(() => personas.publishAgent({ id: "nova", projectPath: project, confirm: true })),
+      await codeOf(() =>
+        personas.publishAgent({ id: "nova", projectPath: project, confirm: true }),
+      ),
     ).toBe("persona_untrusted");
   });
 
-  test("sem o editor de agentes (Fase 12) configurado, o pedido confirmado diz que falta", () => {
+  test("sem o editor de agentes (Fase 12) configurado, o pedido confirmado diz que falta", async () => {
     const { personas, project } = setup();
     expect(
-      codeOf(() => personas.publishAgent({ id: "qa", projectPath: project, confirm: true })),
+      await codeOf(() => personas.publishAgent({ id: "qa", projectPath: project, confirm: true })),
     ).toBe("invalid_state");
     expect(
-      codeOf(() => personas.publishAgent({ id: "qa", projectPath: project, confirm: false })),
+      await codeOf(() => personas.publishAgent({ id: "qa", projectPath: project, confirm: false })),
     ).toBe("invalid_state");
   });
 });
@@ -410,7 +417,7 @@ describe("personas-subagente: pelo protocolo", () => {
   test("personas.subagents e personas.publishAgent", async () => {
     const published: string[] = [];
     const { personas, root, project, writeProject } = setup({
-      publish: (request) => {
+      publish: async (request) => {
         published.push(request.name);
         return { path: "p" };
       },
@@ -494,23 +501,38 @@ function boardSetup() {
     defaultPermissionMode: "default",
     allowApiKey: false,
     baseEnv: {},
-    personas,
   });
-  const board = new Board({ db: store.db, manager, allowedRoots: [root] });
+  const board = new Board({
+    db: store.db,
+    manager,
+    allowedRoots: [root],
+    preparePersonas: (ref, cwd) => preparePersonas(personas, ref, cwd),
+  });
   cleanups.push(() => board.stop());
   cleanups.push(() => manager.shutdown());
   const project = (async () => board.addProject({ path: repo, promptTemplate: "" }))();
   const dir = join(repo, ".flightdeck", "personas");
-  const addPersona = (id: string) => {
+  const addPersona = async (id: string) => {
     mkdirSync(dir, { recursive: true });
     const source = `---\nid: ${id}\nname: ${id}\ndescription: Do projeto\n---\nCorpo de ${id}.\n`;
     writeFileSync(join(dir, `${id}.md`), source);
     // Versioned, as a team would have it: a card's worktree is made from the base branch.
     git(repo, "add", ".flightdeck");
     git(repo, "commit", "-q", "-m", `persona ${id}`);
-    personas.trust(repo, id, personaHash(source));
+    await personas.trust(repo, id, personaHash(source));
   };
-  return { root, repo, store, personas, runtime, manager, board, project, addPersona };
+  return {
+    root,
+    repo,
+    store,
+    personas,
+    runtime,
+    manager,
+    start: sessionStarter(manager, personas),
+    board,
+    project,
+    addPersona,
+  };
 }
 
 describe("personas-subagente: o interruptor do projeto", () => {
@@ -518,23 +540,24 @@ describe("personas-subagente: o interruptor do projeto", () => {
     const { board, personas, repo, project, addPersona } = boardSetup();
     const { id } = await project;
     expect(board.getProject(id).personaSubagents).toBe("all");
-    addPersona("do-projeto");
-    const names = () => Object.keys(personas.subagents({ projectPath: repo }).agents).sort();
-    expect(names()).toHaveLength(11);
-    expect(names()).toContain("persona-do-projeto");
+    await addPersona("do-projeto");
+    const names = async () =>
+      Object.keys((await personas.subagents({ projectPath: repo })).agents).sort();
+    expect(await names()).toHaveLength(11);
+    expect(await names()).toContain("persona-do-projeto");
     board.updateProject(id, { personaSubagents: "project" });
     expect(board.getProject(id).personaSubagents).toBe("project");
-    expect(names()).toEqual(["persona-do-projeto"]);
+    expect(await names()).toEqual(["persona-do-projeto"]);
     // The versioned ones without trust are still reported, so the person knows why.
     writeFileSync(
       join(repo, ".flightdeck", "personas", "sem-confianca.md"),
       "---\nid: sem-confianca\nname: X\ndescription: d\n---\nCorpo.\n",
     );
-    expect(personas.subagents({ projectPath: repo }).untrusted).toEqual(["sem-confianca"]);
+    expect((await personas.subagents({ projectPath: repo })).untrusted).toEqual(["sem-confianca"]);
     board.updateProject(id, { personaSubagents: "none" });
-    expect(personas.subagents({ projectPath: repo })).toEqual({ agents: {}, untrusted: [] });
+    expect(await personas.subagents({ projectPath: repo })).toEqual({ agents: {}, untrusted: [] });
     board.updateProject(id, { personaSubagents: "all" });
-    expect(names()).toHaveLength(11);
+    expect(await names()).toHaveLength(11);
   });
 
   test("só all, project e none; a pasta que não é de projeto nenhum fica no padrão", async () => {
@@ -548,17 +571,17 @@ describe("personas-subagente: o interruptor do projeto", () => {
     }
     expect(failure).toBe("bad_request");
     expect(board.getProject(id).personaSubagents).toBe("all");
-    expect(Object.keys(personas.subagents({ projectPath: root }).agents)).toHaveLength(10);
+    expect(Object.keys((await personas.subagents({ projectPath: root })).agents)).toHaveLength(10);
   });
 
   test("a sessão gerenciada do projeto, e a do card na worktree dele, seguem o interruptor", async () => {
-    const { board, manager, runtime, repo, project, addPersona } = boardSetup();
+    const { board, start, manager, runtime, repo, project, addPersona } = boardSetup();
     const { id } = await project;
-    addPersona("do-projeto");
-    manager.create({ cwd: repo, prompt: "oi" });
+    await addPersona("do-projeto");
+    await start({ cwd: repo, prompt: "oi" });
     expect(Object.keys(runtime.starts[0]?.agents ?? {})).toHaveLength(11);
     board.updateProject(id, { personaSubagents: "none" });
-    manager.create({ cwd: repo, prompt: "oi" });
+    await start({ cwd: repo, prompt: "oi" });
     expect(runtime.starts[1]?.agents).toBeUndefined();
     // A card runs in a worktree of its own, which still belongs to the project.
     const card = board.createCard(id, { title: "Tarefa", description: "faça" });
@@ -568,10 +591,10 @@ describe("personas-subagente: o interruptor do projeto", () => {
     expect(runtime.starts.at(-1)?.agents).toBeUndefined();
     board.updateProject(id, { personaSubagents: "project" });
     const worktree = running?.worktreePath ?? repo;
-    manager.create({ cwd: worktree, prompt: "oi" });
+    await start({ cwd: worktree, prompt: "oi" });
     expect(Object.keys(runtime.starts.at(-1)?.agents ?? {})).toEqual(["persona-do-projeto"]);
     // The trust given to the project holds for its worktrees: the file there is the same one.
-    const { sessionId } = manager.create({
+    const { sessionId } = await start({
       cwd: worktree,
       prompt: "oi",
       persona: { id: "do-projeto" },
@@ -582,7 +605,7 @@ describe("personas-subagente: o interruptor do projeto", () => {
   test("o --agents do wrapper também: sem arquivo com none, só as do projeto com project", async () => {
     const { board, personas, root, repo, project, addPersona } = boardSetup();
     const { id } = await project;
-    addPersona("do-projeto");
+    await addPersona("do-projeto");
     const host = await terminalHost(personas, root);
     const fake = installFakeClaude([{ do: "exit", code: 0 }]);
     cleanups.push(fake.restore);
@@ -616,7 +639,7 @@ describe("personas-subagente: o interruptor do projeto", () => {
 describe("personas-subagente: the --agents of an interactive claude", () => {
   const JSON_ARG = '{"persona-a":{"description":"d","prompt":"a & b (c)"}}';
 
-  test("a native claude, or any claude off Windows, gets the JSON as it is", () => {
+  test("a native claude, or any claude off Windows, gets the JSON as it is", async () => {
     for (const [claude, platform] of [
       ["C:\\bin\\claude.exe", "win32"],
       ["C:\\bin\\claude", "win32"],
@@ -630,7 +653,7 @@ describe("personas-subagente: the --agents of an interactive claude", () => {
     }
   });
 
-  test("a Windows .cmd or .bat shim gets no --agents, in any case of the extension, and a notice says why", () => {
+  test("a Windows .cmd or .bat shim gets no --agents, in any case of the extension, and a notice says why", async () => {
     for (const claude of ["C:\\npm\\claude.cmd", "C:\\npm\\CLAUDE.BAT", "claude.Cmd"]) {
       const launch = interactiveAgents({ json: JSON_ARG, claude, platform: "win32" });
       expect(launch.args).toEqual([]);
@@ -638,7 +661,7 @@ describe("personas-subagente: the --agents of an interactive claude", () => {
     }
   });
 
-  test("a JSON past the limit gets no --agents and a notice with its size", () => {
+  test("a JSON past the limit gets no --agents and a notice with its size", async () => {
     const json = `{"x":"${"y".repeat(INLINE_AGENTS_MAX)}"}`;
     const launch = interactiveAgents({ json, claude: "/usr/bin/claude", platform: "linux" });
     expect(launch.args).toEqual([]);

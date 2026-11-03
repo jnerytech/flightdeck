@@ -30,15 +30,15 @@ describe("system folders on Windows", () => {
     "C:\\Users\\dev",
     "C:\\Users\\dev\\.ssh",
     "C:\\Users\\dev\\.claude\\projects",
-  ])("%s is refused", (path) => {
-    expect(isSystemFolder(path, win)).toBe(true);
+  ])("%s is refused", async (path) => {
+    expect(await isSystemFolder(path, win)).toBe(true);
   });
 
-  test("the compare ignores case and the kind of slash", () => {
-    expect(isSystemFolder("c:/windows/system32", win)).toBe(true);
-    expect(isSystemFolder("C:/PROGRAM FILES/x", win)).toBe(true);
-    expect(isSystemFolder("c:\\users\\DEV\\appdata\\local", win)).toBe(true);
-    expect(isSystemFolder("C:\\Users\\dev\\.SSH", win)).toBe(true);
+  test("the compare ignores case and the kind of slash", async () => {
+    expect(await isSystemFolder("c:/windows/system32", win)).toBe(true);
+    expect(await isSystemFolder("C:/PROGRAM FILES/x", win)).toBe(true);
+    expect(await isSystemFolder("c:\\users\\DEV\\appdata\\local", win)).toBe(true);
+    expect(await isSystemFolder("C:\\Users\\dev\\.SSH", win)).toBe(true);
   });
 
   test.each([
@@ -48,12 +48,12 @@ describe("system folders on Windows", () => {
     "C:\\Users\\dev\\repos\\flightdeck",
     "C:\\Windows-backup",
     "C:\\Program Files Extra",
-  ])("%s is a normal folder", (path) => {
-    expect(isSystemFolder(path, win)).toBe(false);
+  ])("%s is a normal folder", async (path) => {
+    expect(await isSystemFolder(path, win)).toBe(false);
   });
 
-  test("a drive other than the system's keeps no system folders", () => {
-    expect(isSystemFolder("D:\\Windows", win)).toBe(false);
+  test("a drive other than the system's keeps no system folders", async () => {
+    expect(await isSystemFolder("D:\\Windows", win)).toBe(false);
   });
 });
 
@@ -66,19 +66,19 @@ describe("system folders elsewhere", () => {
     "/home/dev",
     "/home/dev/.ssh",
     "/home/dev/.claude",
-  ])("%s is refused", (path) => {
-    expect(isSystemFolder(path, linux)).toBe(true);
+  ])("%s is refused", async (path) => {
+    expect(await isSystemFolder(path, linux)).toBe(true);
   });
 
   test.each(["/home/dev/vault", "/srv/proj", "/home/dev/repos/x", "/etcetera"])(
     "%s is a normal folder",
-    (path) => {
-      expect(isSystemFolder(path, linux)).toBe(false);
+    async (path) => {
+      expect(await isSystemFolder(path, linux)).toBe(false);
     },
   );
 
-  test("the case of a path matters on Linux", () => {
-    expect(isSystemFolder("/ETC", linux)).toBe(false);
+  test("the case of a path matters on Linux", async () => {
+    expect(await isSystemFolder("/ETC", linux)).toBe(false);
   });
 });
 
@@ -90,13 +90,13 @@ describe("the platform a test gives", () => {
     env: { LOCALAPPDATA: "C:\\Users\\runneradmin\\AppData\\Local" },
   };
 
-  test("a Windows runner's temp folder is inside AppData, which the real rule refuses", () => {
-    expect(isSystemFolder(runnerTemp, runner)).toBe(true);
+  test("a Windows runner's temp folder is inside AppData, which the real rule refuses", async () => {
+    expect(await isSystemFolder(runnerTemp, runner)).toBe(true);
   });
 
-  test("with the neutral platform of the tests the same folder is allowed, but Windows itself is not", () => {
+  test("with the neutral platform of the tests the same folder is allowed, but Windows itself is not", async () => {
     const neutral: PlatformInfo = { platform: "win32", env: {}, home: "Z:\\no-home" };
-    expect(isSystemFolder(runnerTemp, neutral)).toBe(false);
-    expect(isSystemFolder("C:\\Windows", neutral)).toBe(true);
+    expect(await isSystemFolder(runnerTemp, neutral)).toBe(false);
+    expect(await isSystemFolder("C:\\Windows", neutral)).toBe(true);
   });
 });

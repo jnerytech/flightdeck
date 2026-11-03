@@ -61,7 +61,7 @@ async function setup(options: { requestTimeoutMs?: number; watching?: boolean } 
     allowedRoots: [],
   });
   cleanups.push(() => {
-    server.stop();
+    void server.stop();
     actions.stop();
     vault.stop();
   });

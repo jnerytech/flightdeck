@@ -89,7 +89,7 @@ describe("terminal-ui: the store follows a host's terminal", () => {
     await waitFor(() => live.seen.includes("data:x")).catch(() => null);
     expect(live.seen).toContain("data:x");
     expect(stopped.seen).toEqual([]);
-    server.stop();
+    void server.stop();
     await waitFor(() => live.seen.includes("offline")).catch(() => null);
     expect(live.seen).toContain("offline");
   });

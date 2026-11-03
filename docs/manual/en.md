@@ -290,6 +290,28 @@ hooks, Tailscale and the daemon's version against the app's. Every item is **ok*
 **failed**; each one that is not **ok** comes with a plain step to fix it, in the app's language.
 The daemon keeps answering while it checks (nothing blocks). The same checks run in a terminal
 with `flightdeckd doctor`.
+### Sessions without permission prompts
+
+By default no session of a host can run in **Bypass permissions** (every tool runs without asking).
+To allow it, open the host's page and use **Sessions without permission prompts → Allow sessions
+without prompts**; the app asks you to confirm and names the host. The choice is saved in the
+host's config (`allowBypassPermissions`) and applies at once. With it on:
+
+- **New session** offers "Bypass permissions: no prompts" in the permission mode list. Picking it
+  asks again every time you press Create session, naming the host and the folder.
+- The mode list in the message box of an open session offers every mode, including Bypass
+  permissions and modes looser than the one the session started with. Switching to Bypass asks
+  each time, naming the host and the session.
+- Sessions started after the switch is on can be switched to Bypass; one that was already running
+  keeps what it started with (the Claude Agent SDK needs to be told at start).
+
+With it off (the default) the daemon refuses to start a session in Bypass, and an open session
+can never be made more permissive than the mode it started with. A persona's permission mode
+still counts when it is stricter. Turning the switch off asks nothing.
+
+A session in Bypass permissions asks for nothing: Claude Code skips the permission prompt for every
+tool, including the ones that otherwise always ask (such as discarding a card through the
+flightdeck MCP server). That is the choice you make when you pick that mode.
 
 ## Service
 
@@ -991,7 +1013,17 @@ config's token. That lets a Claude session create cards and trigger workflows. T
 
 - `list_projects` and `list_workflows`;
 - `create_card` and `start_card` (with `workflow` and `inputs`);
-- `get_card` and `get_run`.
+- `get_card` and `get_run`;
+- `move_card` (to `backlog`, `in_progress`, `waiting`, `review` or `done`, by the same rules as
+  dragging a card in the app), `update_card` (title, description), `comment_card` (appends a
+  dated note to the description) and `finish_card` (`done` completes the card, `discard` throws
+  it away with its worktree and branch).
+
+A session manages only the cards of **its own project**, and its own card when it names none (the
+session runs in a card's worktree); another project's card is refused with the reason. The board
+in the app updates live. `finish_card` with `discard` is irreversible, so it always asks for your
+approval in the session: the automatic approval never takes it, and no "always allow" is offered
+for it.
 
 There is no tool to approve permissions or to answer gates: that stays with you, in the app. To
 register it in Claude Code:
@@ -1823,6 +1855,14 @@ estimated cost, tokens and turns.
 - **Cost:** it is the difference of the total the SDK reports for each session, never the sum
   turn by turn.
 - **Project:** the same as on the Sessions screen (the `origin` remote, or the repository path).
+- **Grouped by project:** each project is one block with its total (the most expensive first) and
+  its days below, newest first. Dates and costs never wrap.
+- **Hidden:** temp folders (`temp`, `tmp`, `/var/folders`) and agent worktrees
+  (`.claude/worktrees`) are not listed.
+- **Open the sessions:** click a day to open History filtered by that project's folder and that
+  day. A project known by its remote (shared by several folders and worktrees) opens History
+  filtered by the project itself, so every one of its folders is listed; a "Project: name" chip
+  above the list shows it, and **Clear project** takes it off.
 - **Not in the usage:** terminal sessions, because the hooks carry no cost.
 
 ### Costs
@@ -2260,7 +2300,7 @@ blue, needs you in amber, idle in gray, ended faded, error in red).
   in the palette, without restarting. Dates and times are always shown in local time. The
   vocabulary is in [`docs/GLOSSARY.md`](../GLOSSARY.md).
 - **Permission modes** are shown with a name and a one-line explanation, never with the technical
-  value; "No questions" warns in red.
+  value; "Bypass permissions" warns in red and is offered only on a host that allows it.
 
 ### Demo mode, screenshots and end-to-end tests
 

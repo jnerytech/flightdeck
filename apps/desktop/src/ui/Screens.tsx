@@ -38,6 +38,7 @@ import { RecapPanel } from "./RecapPanel.tsx";
 import { SessionsHub } from "./SessionsHub.tsx";
 import { SessionTabs } from "./SessionTabs.tsx";
 import { SessionView } from "./SessionView.tsx";
+import { StartScreen } from "./StartScreen.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 import { TerminalPage } from "./TerminalPage.tsx";
 import { TranscriptReader } from "./TranscriptReader.tsx";
@@ -163,6 +164,9 @@ function ManagedSession(props: {
         session={session}
         actions={store}
         settings={hasFeature(host?.hostInfo?.features, "session.settings", false)}
+        {...(host?.hostInfo?.allowBypassPermissions === true
+          ? { bypass: { host: host.name } }
+          : {})}
         pickPath={(done) =>
           host && (
             <FolderPicker
@@ -333,6 +337,11 @@ export function Screen(props: ScreenProps) {
             key={hostId}
             store={store}
             hostId={hostId}
+            initial={
+              route.name === "history" && (route.cwd || route.projectKey || route.day)
+                ? { cwd: route.cwd, projectKey: route.projectKey, day: route.day }
+                : undefined
+            }
             hostName={state.hosts.find((h) => h.id === hostId)?.name ?? hostId}
             density={props.density}
             openId={opened}
@@ -485,6 +494,7 @@ function routeScreen(props: ScreenProps): ReactNode {
     return <ScreenLoading label={label} />;
   }
 
+  if (route.name === "start") return <StartScreen store={store} hosts={state.hosts} go={go} />;
   if (route.name === "settings") {
     return (
       <Settings
@@ -622,6 +632,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           onRename={(name) => store.renameHost(host.id, name)}
           onReconnect={() => void store.reconnectHost(host.id)}
           onOpenAutoApprovals={() => go({ name: "auto-approvals", host: host.id })}
+          onOpenHistory={(f) => go({ name: "history", host: host.id, ...f })}
           onRemove={() => {
             go({ name: "hub" });
             void store.removeHost(host.id);

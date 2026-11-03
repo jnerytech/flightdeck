@@ -441,6 +441,8 @@ export const ptBR = {
   approval: {
     label: "Pedido de {tool}",
     title: "Permissão para",
+    askTitle: "Claude pergunta",
+    planTitle: "Claude propõe um plano",
     approve: "Aprovar",
     question: { send: "Enviar respostas", other: "Outra" },
     plan: { approve: "Aprovar plano", keep: "Continuar planejando" },
@@ -487,6 +489,18 @@ export const ptBR = {
     breadcrumb: "Você está em",
     collapse: "Recolher barra lateral",
     expand: "Mostrar barra lateral",
+  },
+  start: {
+    title: "Nada aberto",
+    subtitle: "Escolha uma tela na barra lateral ou comece por aqui.",
+    recent: "Sessões recentes",
+    shortcuts: "Atalhos",
+    shortcut: {
+      search: "Buscar",
+      newTab: "Nova aba",
+      reopen: "Reabrir a aba fechada",
+      split: "Dividir a janela",
+    },
   },
   sidebar: {
     sessions: "Sessões",
@@ -826,6 +840,7 @@ export const ptBR = {
     usage: "o uso",
     quota: "a cota",
     costs: "os custos",
+    bypass: "sessões sem pedidos de permissão",
     budgets: "os orçamentos",
     quotaHistory: "o histórico da cota",
     changes: "a revisão de mudanças",
@@ -1128,6 +1143,14 @@ export const ptBR = {
     mcp_query_not_live: "A sessão não está rodando, então não dá para consultar os servidores MCP.",
     external_no_channel:
       "Esta sessão não tem canal: só sessões abertas com flightdeckd claude recebem mensagens.",
+    bypass_not_allowed:
+      "Este host não permite sessões sem pedidos de permissão. Ative antes nas configurações do host.",
+    bypass_confirm: "Ativar sessões sem pedidos de permissão precisa da sua confirmação.",
+    card_scope_unknown:
+      "Esta sessão não roda em um projeto deste host, então não pode gerenciar cards.",
+    card_id_needed: "Esta sessão não está em um card: diga qual card.",
+    card_other_project: "Esse card é de outro projeto que não o desta sessão.",
+    card_manage_args: "Falta algo que essa ação no card precisa.",
     transcript_not_indexed: "O transcript {id} não está indexado neste host.",
     session_maybe_active:
       "A sessão pode estar em uso em outro lugar: retome mesmo assim só se tiver certeza de que não está.",
@@ -1163,6 +1186,9 @@ export const ptBR = {
     close: "Fechar",
   },
   session: {
+    bypassMessage:
+      'Em {host}, "{session}" vai executar tudo sem perguntar antes, a partir de agora, até você voltar o modo. Pode editar e apagar arquivos e rodar comandos.',
+    bypassConfirm: "Mudar para ignorar permissões",
     modeLabel: "Modo de permissão",
     modelLabel: "Modelo",
     modelDefault: "Modelo padrão",
@@ -1201,6 +1227,7 @@ export const ptBR = {
       "Esta sessão pode estar em uso em outro lugar: o arquivo mudou nos últimos 2 minutos. Dois processos escrevendo na mesma conversa a corrompem.",
     continueAnyway: "Continuar mesmo assim",
     loadPrevious: "Carregar anteriores",
+    tool: "Ferramenta {name}",
     transcript: "Transcript",
   },
   toolCall: {
@@ -1213,6 +1240,10 @@ export const ptBR = {
     project: "Sempre neste projeto",
   },
   newSession: {
+    bypassTitle: "Começar sem pedidos de permissão?",
+    bypassMessage:
+      "Em {host}, o Claude vai executar tudo em {folder} sem perguntar antes: pode editar e apagar arquivos e rodar comandos. Nada o para depois que começa.",
+    bypassConfirm: "Começar sem pedidos",
     title: "Nova sessão em {host}",
     folder: "Pasta",
     subfolder: "Subpasta",
@@ -1221,7 +1252,6 @@ export const ptBR = {
     mode: "Modo de permissão",
     prompt: "Primeiro prompt",
     create: "Criar sessão",
-    needPrompt: "Escreva o primeiro prompt para criar a sessão",
     needFolder: "Este host não tem pasta permitida: acrescente uma nas configurações dele",
   },
   modes: {
@@ -1247,11 +1277,11 @@ export const ptBR = {
       description: "nega o que as regras não liberam",
     },
     bypassPermissions: {
-      name: "Sem perguntas",
-      description: "executa tudo, sem pedir aprovação",
+      name: "Ignorar permissões",
+      description: "sem pedidos de permissão",
     },
     bypassWarning:
-      "Sem perguntas: o Claude executa tudo sem pedir aprovação. Use só numa pasta que possa ser descartada.",
+      "Ignorar permissões: o Claude executa tudo sem pedir aprovação. Use só numa pasta que possa ser descartada.",
   },
   diff: {
     changedFiles: "Arquivos alterados",
@@ -1466,6 +1496,9 @@ export const ptBR = {
     preview: "prévia",
     newTab: "Nova aba",
     badge: { "needs-you": "Precisa de você", running: "Rodando", unread: "Não lida" },
+    all: "Todas as abas",
+    scrollLeft: "Rolar as abas para a esquerda",
+    scrollRight: "Rolar as abas para a direita",
     list: "Abas",
     close: "Fechar aba {title}",
     pin: "Fixar aba {title}",
@@ -2560,6 +2593,8 @@ export const ptBR = {
   historyUi: {
     title: "Histórico de {host}",
     folder: "Pasta",
+    project: "Projeto: {name}",
+    clearProject: "Limpar projeto",
     from: "De",
     to: "Até",
     origin: "Origem",
@@ -2584,6 +2619,7 @@ export const ptBR = {
     choose: "Escolher esta pasta",
     openFirst: "Abra uma pasta primeiro",
     hidden: "Mostrar pastas ocultas",
+    noRoots: "Este host ainda não permite nenhuma pasta",
     empty: "Nenhuma subpasta aqui.",
     truncated: "Só as primeiras {n} pastas aparecem: digite o caminho para ir além.",
     loading: "Carregando as pastas…",
@@ -2635,10 +2671,23 @@ export const ptBR = {
     rootsList: "Pastas permitidas deste host",
     rootsInput: "Pasta a permitir",
     rootsNeeded: "Digite a pasta a permitir.",
+    bypassTitle: "Sessões sem pedidos de permissão",
+    bypassHint:
+      "Quando ligado, uma sessão deste host pode começar em, ou ser mudada para, Ignorar permissões: o Claude passa a executar tudo sem perguntar. A cada vez, o app pede a sua confirmação. Sessões que já rodam mantêm o que tinham ao começar.",
+    bypassOff: "Desligado neste host.",
+    bypassOn: "Ligado: as sessões podem rodar sem pedidos de permissão.",
+    bypassAllow: "Permitir sessões sem pedidos",
+    bypassAllowMessage:
+      "Permitir que as sessões em {host} rodem sem pedidos de permissão? O Claude poderá editar e apagar arquivos e rodar comandos em qualquer pasta permitida sem perguntar. Só faça isso numa máquina e em pastas em que você aceite esse risco.",
+    bypassTurnOff: "Desligar",
     rootsHint: "Sessões e projetos só podem usar estas pastas e as que estão dentro delas.",
     host: "Host",
     nameLabel: "Nome do host",
     saveName: "Salvar nome",
+    rename: "Renomear",
+    renameTitle: "Renomear host",
+    renameEmpty: "Digite um nome para o host.",
+    renameDuplicate: "Já existe um host com esse nome.",
     reconnect: "Reconectar",
     remove: "Remover host",
   },
@@ -2681,7 +2730,6 @@ export const ptBR = {
   usageUi: {
     title: "Uso dos últimos 7 dias",
     day: "Dia",
-    project: "Projeto",
     cost: "Custo",
     tokens: "Tokens",
     turns: "Turnos",

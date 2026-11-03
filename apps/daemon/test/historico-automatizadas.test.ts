@@ -94,7 +94,7 @@ describe("historico-automatizadas: the folder of a session", () => {
       session(root, 1, here, "cli");
       session(root, 2, `${here}/gone`, "cli");
     });
-    expect(index.get(ID(1)).cwdExists).toBe(true);
-    expect(index.get(ID(2)).cwdExists).toBe(false);
+    expect((await index.get(ID(1))).cwdExists).toBe(true);
+    expect((await index.get(ID(2))).cwdExists).toBe(false);
   });
 });

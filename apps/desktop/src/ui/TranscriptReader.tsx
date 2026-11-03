@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { Note } from "@/components/layout/note";
 import { Message, SessionHeader, SessionPane, Timeline } from "@/components/session/parts";
+import { ToolRow } from "@/components/session/tool-row";
 import { Button } from "@/components/ui/button";
 import { useStoreState } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import type { AppStore } from "../lib/app-store.ts";
 import { basename, isInside } from "../lib/paths.ts";
+import { messageParts } from "../lib/tool-line.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Markdown } from "./Markdown.tsx";
 
@@ -250,7 +252,22 @@ export function TranscriptReader(props: {
               {...(focused ? { "aria-current": "true" as const } : {})}
               className={cn(focused && "ring-2 ring-ring")}
             >
-              {m.role === "assistant" ? <Markdown text={m.text} /> : m.text}
+              {m.role === "assistant"
+                ? messageParts(m.text).map((part, index) =>
+                    part.kind === "tool" ? (
+                      <ToolRow
+                        // biome-ignore lint/suspicious/noArrayIndexKey: the parts of a stored message do not move
+                        key={index}
+                        name={part.name}
+                        input={part.input}
+                        label={t("reader.tool", { name: part.name })}
+                      />
+                    ) : (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: same
+                      <Markdown key={index} text={part.text} />
+                    ),
+                  )
+                : m.text}
             </Message>
           );
         })}

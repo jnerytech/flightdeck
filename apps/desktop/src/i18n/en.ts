@@ -445,6 +445,8 @@ export const en: Dictionary = {
   approval: {
     label: "Request for {tool}",
     title: "Permission for",
+    askTitle: "Claude asks",
+    planTitle: "Claude proposes a plan",
     approve: "Approve",
     question: { send: "Send answers", other: "Other" },
     plan: { approve: "Approve plan", keep: "Keep planning" },
@@ -491,6 +493,18 @@ export const en: Dictionary = {
     breadcrumb: "You are in",
     collapse: "Collapse sidebar",
     expand: "Show sidebar",
+  },
+  start: {
+    title: "Nothing open",
+    subtitle: "Pick a screen in the sidebar, or begin here.",
+    recent: "Recent sessions",
+    shortcuts: "Shortcuts",
+    shortcut: {
+      search: "Search",
+      newTab: "New tab",
+      reopen: "Reopen the closed tab",
+      split: "Split the window",
+    },
   },
   sidebar: {
     sessions: "Sessions",
@@ -830,6 +844,7 @@ export const en: Dictionary = {
     usage: "usage",
     quota: "the quota",
     costs: "costs",
+    bypass: "sessions without permission prompts",
     budgets: "budgets",
     quotaHistory: "the quota history",
     changes: "change review",
@@ -1129,6 +1144,14 @@ export const en: Dictionary = {
     mcp_query_not_live: "The session is not running, so its MCP servers cannot be queried.",
     external_no_channel:
       "This session has no channel: only sessions opened with flightdeckd claude receive messages.",
+    bypass_not_allowed:
+      "This host does not allow sessions without permission prompts. Turn it on in the host's settings first.",
+    bypass_confirm: "Turning on sessions without permission prompts needs your confirmation.",
+    card_scope_unknown:
+      "This session does not run in a project of this host, so it cannot manage cards.",
+    card_id_needed: "This session is not in a card: name which card.",
+    card_other_project: "That card belongs to another project than this session's.",
+    card_manage_args: "That card action is missing something it needs.",
     transcript_not_indexed: "The transcript {id} is not indexed on this host.",
     session_maybe_active:
       "The session may be in use elsewhere: resume it anyway only if you are sure it is not.",
@@ -1164,6 +1187,9 @@ export const en: Dictionary = {
     close: "Close",
   },
   session: {
+    bypassMessage:
+      'On {host}, "{session}" will run everything without asking you first, from now on, until you change the mode back. It can edit and delete files and run commands.',
+    bypassConfirm: "Switch to bypass",
     modeLabel: "Permission mode",
     modelLabel: "Model",
     modelDefault: "Default model",
@@ -1201,6 +1227,7 @@ export const en: Dictionary = {
       "This session may be in use somewhere else: the file changed in the last 2 minutes. Two processes writing the same conversation corrupt it.",
     continueAnyway: "Continue anyway",
     loadPrevious: "Load earlier",
+    tool: "Tool {name}",
     transcript: "Transcript",
   },
   toolCall: {
@@ -1213,6 +1240,10 @@ export const en: Dictionary = {
     project: "Always in this project",
   },
   newSession: {
+    bypassTitle: "Start without permission prompts?",
+    bypassMessage:
+      "On {host}, Claude will run everything in {folder} without asking you first: it can edit and delete files and run commands. Nothing stops it once it starts.",
+    bypassConfirm: "Start without prompts",
     title: "New session on {host}",
     folder: "Folder",
     subfolder: "Subfolder",
@@ -1221,7 +1252,6 @@ export const en: Dictionary = {
     mode: "Permission mode",
     prompt: "First prompt",
     create: "Create session",
-    needPrompt: "Write the first prompt to create the session",
     needFolder: "This host has no allowed folder: add one in its settings",
   },
   modes: {
@@ -1247,11 +1277,11 @@ export const en: Dictionary = {
       description: "denies what the rules do not allow",
     },
     bypassPermissions: {
-      name: "No questions",
-      description: "runs everything, without asking for approval",
+      name: "Bypass permissions",
+      description: "no prompts",
     },
     bypassWarning:
-      "No questions: Claude runs everything without asking for approval. Use it only in a folder you can throw away.",
+      "Bypass permissions: Claude runs everything without asking for approval. Use it only in a folder you can throw away.",
   },
   diff: {
     changedFiles: "Changed files",
@@ -1466,6 +1496,9 @@ export const en: Dictionary = {
     preview: "preview",
     newTab: "New tab",
     badge: { "needs-you": "Needs you", running: "Running", unread: "Unread" },
+    all: "All tabs",
+    scrollLeft: "Scroll the tabs left",
+    scrollRight: "Scroll the tabs right",
     list: "Tabs",
     close: "Close tab {title}",
     pin: "Pin tab {title}",
@@ -2554,6 +2587,8 @@ export const en: Dictionary = {
   historyUi: {
     title: "History of {host}",
     folder: "Folder",
+    project: "Project: {name}",
+    clearProject: "Clear project",
     from: "From",
     to: "To",
     origin: "Origin",
@@ -2578,6 +2613,7 @@ export const en: Dictionary = {
     choose: "Choose this folder",
     openFirst: "Open a folder first",
     hidden: "Show hidden folders",
+    noRoots: "This host allows no folders yet",
     empty: "No subfolders here.",
     truncated: "Only the first {n} folders are shown: type the path to go further.",
     loading: "Loading folders…",
@@ -2629,10 +2665,23 @@ export const en: Dictionary = {
     rootsList: "Allowed folders of this host",
     rootsInput: "Folder to allow",
     rootsNeeded: "Type the folder to allow.",
+    bypassTitle: "Sessions without permission prompts",
+    bypassHint:
+      "When on, a session of this host can start in, or be switched to, Bypass permissions: Claude then runs everything without asking you. Each time, the app asks you to confirm. Sessions already running keep what they started with.",
+    bypassOff: "Off on this host.",
+    bypassOn: "On: sessions can run without permission prompts.",
+    bypassAllow: "Allow sessions without prompts",
+    bypassAllowMessage:
+      "Allow sessions on {host} to run without permission prompts? Claude could then edit and delete files and run commands in any allowed folder without asking. Only do this on a machine and in folders you accept that risk for.",
+    bypassTurnOff: "Turn off",
     rootsHint: "Sessions and projects can only use these folders and the ones inside them.",
     host: "Host",
     nameLabel: "Host name",
     saveName: "Save name",
+    rename: "Rename",
+    renameTitle: "Rename host",
+    renameEmpty: "Type a name for the host.",
+    renameDuplicate: "Another host already has this name.",
     reconnect: "Reconnect",
     remove: "Remove host",
   },
@@ -2675,7 +2724,6 @@ export const en: Dictionary = {
   usageUi: {
     title: "Usage in the last 7 days",
     day: "Day",
-    project: "Project",
     cost: "Cost",
     tokens: "Tokens",
     turns: "Turns",

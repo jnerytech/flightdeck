@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { EventStore } from "../src/store/event-store.ts";
+import { tempDir } from "./helpers.ts";
 
 function newStore() {
   const store = new EventStore(":memory:");
@@ -15,6 +18,13 @@ function newStore() {
 }
 
 describe("store", () => {
+  test("open makes the folder of the database file, then opens it", async () => {
+    const path = join(tempDir("fd-store-"), "a", "b", "flightdeck.db");
+    const store = await EventStore.open(path);
+    expect(existsSync(path)).toBe(true);
+    store.close();
+  });
+
   test("seq cresce por sessão e last_seq acompanha", () => {
     const store = newStore();
     const a = store.appendEvent("s1", { type: "message.user", text: "a" });

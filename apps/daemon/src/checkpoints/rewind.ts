@@ -4,7 +4,7 @@
  * of the snapshot are restored and files created after it removed, only inside the repository and
  * never ignored ones. A `safety` snapshot of the current state is taken first, so it can be undone.
  */
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { FlightdeckError } from "../errors.ts";
 import type { RewindFilesResult } from "../runtime/types.ts";
@@ -148,12 +148,12 @@ export class Rewinder {
     for (const file of preview.files) {
       const path = join(target.repo, file.path);
       if (file.change === "created") {
-        rmSync(path, { force: true });
+        await rm(path, { force: true });
         continue;
       }
       const blob = await git(target.repo, ["cat-file", "blob", `${target.tree}:${file.path}`]);
-      mkdirSync(dirname(path), { recursive: true });
-      writeFileSync(path, blob.stdout);
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(path, blob.stdout);
     }
     return preview;
   }

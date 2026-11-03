@@ -365,7 +365,7 @@ describe("ssh-connect", () => {
     expect(s.delivered[1]?.cleaned).toBe(1);
     // Stopping the connector cleans what is still around.
     await s.open(target.id, { privateKey: PRIVATE });
-    s.connector.stop();
+    await s.connector.stop();
     expect(s.delivered[2]?.cleaned).toBe(1);
   });
 
@@ -639,7 +639,7 @@ ${"x".repeat(500)}`,
         deliver: async () => ({
           identityFile: null,
           env: {},
-          cleanup: () => s.delivered.push({ key: "boom", cleaned: 1 }),
+          cleanup: () => void s.delivered.push({ key: "boom", cleaned: 1 }),
         }),
       },
     });
@@ -732,12 +732,12 @@ describe("ssh-connect: peças", () => {
       run: async () => ({ code: 0, stderr: "" }),
       delivery: {
         kind: "agent",
-        deliver: async () => ({ identityFile: null, env: {}, cleanup: () => cleaned++ }),
+        deliver: async () => ({ identityFile: null, env: {}, cleanup: () => void cleaned++ }),
       },
     });
     await real.connect({ targetId: target.id, cols: 80, rows: 24, privateKey: PRIVATE });
     expect(cleaned).toBe(0);
-    real.stop();
+    await real.stop();
     expect(cleaned).toBe(1);
   });
 
@@ -813,28 +813,34 @@ describe("ssh-connect: peças", () => {
     expect(chooseDelivery({ platform: "darwin", ...common }).kind).toBe("agent");
   });
 
-  test("a config pode apontar o ssh a usar, e um caminho vazio é recusado", () => {
+  test("a config pode apontar o ssh a usar, e um caminho vazio é recusado", async () => {
     const write = (ssh: unknown) => {
       const file = join(tempDir(), "config.json");
       writeFileSync(file, JSON.stringify({ token: "t".repeat(32), ssh }));
       return file;
     };
-    expect(loadConfig(write({ path: "/opt/openssh/ssh" })).ssh.path).toBe("/opt/openssh/ssh");
-    expect(loadConfig(write({})).ssh.path).toBeUndefined();
-    expect(() => loadConfig(write({ path: "" }))).toThrow();
+    expect((await loadConfig(write({ path: "/opt/openssh/ssh" }))).ssh.path).toBe(
+      "/opt/openssh/ssh",
+    );
+    expect((await loadConfig(write({}))).ssh.path).toBeUndefined();
+    await expect(loadConfig(write({ path: "" }))).rejects.toThrow();
   });
 
-  test("o ssh de verdade: o System32 no Windows quando existe, senão o do PATH, senão só ssh", () => {
+  test("o ssh de verdade: o System32 no Windows quando existe, senão o do PATH, senão só ssh", async () => {
     const system32 = `${process.env.SystemRoot ?? "C:\\Windows"}\\System32\\OpenSSH\\ssh.exe`;
     const both = { exists: (path: string) => path === system32, which: () => "/x/ssh" };
-    expect(resolveSshPath({ platform: "win32", ...both })).toBe(system32);
+    expect(await resolveSshPath({ platform: "win32", ...both })).toBe(system32);
     expect(
-      resolveSshPath({ platform: "win32", exists: () => false, which: () => "C:\\Git\\ssh.exe" }),
+      await resolveSshPath({
+        platform: "win32",
+        exists: () => false,
+        which: () => "C:\\Git\\ssh.exe",
+      }),
     ).toBe("C:\\Git\\ssh.exe");
-    expect(resolveSshPath({ platform: "linux", ...both })).toBe("/x/ssh");
-    expect(resolveSshPath({ platform: "linux", exists: () => false, which: () => null })).toBe(
-      "ssh",
-    );
+    expect(await resolveSshPath({ platform: "linux", ...both })).toBe("/x/ssh");
+    expect(
+      await resolveSshPath({ platform: "linux", exists: () => false, which: () => null }),
+    ).toBe("ssh");
   });
 
   test("rodar o ssh sem terminal: o ambiente se soma ao do processo, a saída é descartada e o stderr é lido", async () => {
@@ -874,10 +880,12 @@ describe("ssh-connect: entrega da chave do cofre", () => {
     expect(readFileSync(file, "utf8")).toBe(`${PRIVATE}\n`);
     expect(commands).toEqual([["icacls", file, "/inheritance:r", "/grant:r", "dev:(R,W,D)"]]);
     expect(delivered.env).toEqual({});
-    delivered.cleanup();
+    const cleaning = delivered.cleanup();
+    expect(cleaning).toBeInstanceOf(Promise);
+    await cleaning;
     expect(readdirSync(dir).filter((name) => name.includes("abc123"))).toEqual([]);
     // Cleaning again, or after the file is gone, is fine.
-    delivered.cleanup();
+    await delivered.cleanup();
   });
 
   test("arquivo (fora do Windows): modo 0600 e nenhum icacls; se restringir falha, o arquivo some e o erro sobe", async () => {
@@ -898,7 +906,7 @@ describe("ssh-connect: entrega da chave do cofre", () => {
     if (process.platform !== "win32") {
       expect(statSync(delivered.identityFile ?? "").mode & 0o777).toBe(0o600);
     }
-    delivered.cleanup();
+    await delivered.cleanup();
     const failing = createFileDelivery({
       dir,
       platform: "win32",
@@ -945,8 +953,8 @@ describe("ssh-connect: entrega da chave do cofre", () => {
       { what: "start", detail: sock },
       { what: "run", detail: { cmd: ["ssh-add", "-"], env: sock, stdin: `${PRIVATE}\n` } },
     ]);
-    delivered.cleanup();
-    delivered.cleanup();
+    await delivered.cleanup();
+    await delivered.cleanup();
     expect(calls.filter((c) => c.what === "stop")).toHaveLength(1);
   });
 

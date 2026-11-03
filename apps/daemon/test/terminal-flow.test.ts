@@ -22,7 +22,7 @@ afterEach(async () => {
 });
 
 /** A manager over fake PTYs and a manual clock. */
-function setup() {
+async function setup() {
   const { root, project } = workspace();
   const ptys = fakePtys();
   const time = manualTime();
@@ -37,7 +37,7 @@ function setup() {
     log: () => {},
   });
   cleanups.push(() => manager.stop());
-  const { terminalId } = manager.open({ cwd: project, cols: 80, rows: 24 });
+  const { terminalId } = await manager.open({ cwd: project, cols: 80, rows: 24 });
   const pty = ptys.spawned[0];
   if (!pty) throw new Error("no pty");
   return { manager, pty, time, terminalId };
@@ -95,14 +95,14 @@ function client(manager: TerminalManager, terminalId: string, time: ReturnType<t
 }
 
 describe("terminal-flow: output waits for the client to have drawn it", () => {
-  test("a client that opts in is told the host holds output back, and one that does not is not", () => {
-    const { manager, terminalId, time } = setup();
+  test("a client that opts in is told the host holds output back, and one that does not is not", async () => {
+    const { manager, terminalId, time } = await setup();
     expect(client(manager, terminalId, time).flow).toBe(true);
     expect(manager.attach(terminalId, fakeSink()).flow).toBe(false);
   });
 
-  test("nothing past the high watermark plus one chunk is sent until the client has drawn enough to be under the low one", () => {
-    const { manager, pty, terminalId, time } = setup();
+  test("nothing past the high watermark plus one chunk is sent until the client has drawn enough to be under the low one", async () => {
+    const { manager, pty, terminalId, time } = await setup();
     const a = client(manager, terminalId, time);
     const piece = (n: number) => `${String(n).padStart(2, "0")}`.repeat(CHUNK / 2);
     // 40 chunks of 16 KB, 640 KB: more than the high watermark, less than what is kept per client.
@@ -124,8 +124,8 @@ describe("terminal-flow: output waits for the client to have drawn it", () => {
     expect(a.resyncs).toBe(0);
   });
 
-  test("50 MB to a client slower than the PTY: unacknowledged bytes stay under the high watermark plus a chunk, and it is resynced instead of left behind", () => {
-    const { manager, pty, terminalId, time } = setup();
+  test("50 MB to a client slower than the PTY: unacknowledged bytes stay under the high watermark plus a chunk, and it is resynced instead of left behind", async () => {
+    const { manager, pty, terminalId, time } = await setup();
     const a = client(manager, terminalId, time);
     const burst = new Uint8Array(64 * KB).fill(120);
     // 64 KB every 16 ms (4 MB/s) against a client that draws 48 KB in the same time.
@@ -142,8 +142,8 @@ describe("terminal-flow: output waits for the client to have drawn it", () => {
     expect(a.tail.endsWith("END")).toBe(true);
   });
 
-  test("50 MB to a client that keeps up flows whole, with no resync and under the watermark", () => {
-    const { manager, pty, terminalId, time } = setup();
+  test("50 MB to a client that keeps up flows whole, with no resync and under the watermark", async () => {
+    const { manager, pty, terminalId, time } = await setup();
     const a = client(manager, terminalId, time);
     const burst = new Uint8Array(64 * KB).fill(120);
     let produced = 0;
@@ -158,8 +158,8 @@ describe("terminal-flow: output waits for the client to have drawn it", () => {
     expect(a.peak).toBeLessThanOrEqual(FLOW_HIGH_BYTES + CHUNK);
   });
 
-  test("a client that never acknowledges gets what fits under the watermark, then one resync, then nothing that grows", () => {
-    const { manager, pty, terminalId, time } = setup();
+  test("a client that never acknowledges gets what fits under the watermark, then one resync, then nothing that grows", async () => {
+    const { manager, pty, terminalId, time } = await setup();
     const a = client(manager, terminalId, time);
     a.sink.frames.length = 0;
     const burst = new Uint8Array(100 * KB).fill(120);
@@ -184,8 +184,8 @@ describe("terminal-flow: output waits for the client to have drawn it", () => {
     expect(a.sink.frames).toHaveLength(before);
   });
 
-  test("a client that did not opt in keeps the old behaviour: it is sent everything without acknowledging", () => {
-    const { manager, pty, terminalId, time } = setup();
+  test("a client that did not opt in keeps the old behaviour: it is sent everything without acknowledging", async () => {
+    const { manager, pty, terminalId, time } = await setup();
     const sink = fakeSink();
     manager.attach(terminalId, sink);
     const burst = new Uint8Array(100 * KB).fill(120);
@@ -201,8 +201,8 @@ describe("terminal-flow: output waits for the client to have drawn it", () => {
     expect(bytes).toBe(8 * 100 * KB);
   });
 
-  test("an ack that is late, repeated or for something gone is harmless", () => {
-    const { manager, pty, terminalId, time } = setup();
+  test("an ack that is late, repeated or for something gone is harmless", async () => {
+    const { manager, pty, terminalId, time } = await setup();
     const a = client(manager, terminalId, time);
     const other: TerminalSink = fakeSink();
     expect(() => manager.ack(terminalId, other, 10)).not.toThrow();

@@ -46,6 +46,8 @@ export interface StartOptions {
   cwd: string;
   resume?: string;
   permissionMode: PermissionMode;
+  /** The host lets this session switch to `bypassPermissions` later (the SDK needs it at start). */
+  allowBypass?: boolean;
   model?: string;
   /** Phase 13: how hard the model works (arena variants). */
   effort?: EffortLevel;

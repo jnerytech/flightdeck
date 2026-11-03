@@ -1,7 +1,7 @@
 // Loaded before every test file (bunfig `preload`): no test may run the real `claude`, `gh` or
 // `az`, nor a real shell command from a workflow `check`, nor read the real `~/.claude`, nor reach
 // the Tauri shell (the terminal opened by "Abrir no terminal").
-import { afterAll } from "bun:test";
+import { afterAll, setDefaultTimeout } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -13,6 +13,11 @@ import { assertHomeGuard, installHomeGuard } from "./home-guard.ts";
 import { assertNoNetwork, installNetworkGuard } from "./network-guard.ts";
 import { assertPathUntouched, assertRepoUntouched, installRepoGuard } from "./repo-guard.ts";
 import { assertNoTauriCalls, installTauriGuard } from "./tauri-guard.ts";
+import { defaultTestTimeoutMs } from "./timeout.ts";
+
+// Area runs (`bun --config=bunfig.area.toml test <file>`) have no --timeout flag, and a preload
+// default reaches the first file only: enough for one file. The full suite passes the flag.
+setDefaultTimeout(defaultTestTimeoutMs(process.platform));
 
 // CLI sentinels first, so the claude one ends up first on PATH (tests rely on that).
 const clis = installCliGuard();

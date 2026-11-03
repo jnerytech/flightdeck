@@ -25,8 +25,8 @@ describe("parser", () => {
         ts: "2026-09-01T10:00:05.000Z",
         role: "assistant",
         kind: "message",
-        // Thinking is dropped; each tool call becomes one `[ferramenta Nome]` line.
-        text: "Vou olhar o arquivo de configuração.\n[ferramenta Read]",
+        // Thinking is dropped; each tool call becomes one `[tool Name] input` line.
+        text: "Vou olhar o arquivo de configuração.\n[tool Read] /home/dev/projeto-a/config.json",
         cwd,
       },
       {

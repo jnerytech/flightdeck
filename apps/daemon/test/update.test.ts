@@ -27,6 +27,7 @@ import {
   requestShutdown,
   runUpdate,
   stableBinPath,
+  swapBinary,
   type UpdateDeps,
   waitHealthy,
 } from "../src/update.ts";
@@ -400,10 +401,10 @@ describe("update", () => {
     expect(asked).toBe(1);
 
     const dataDir = tempDir();
-    expect(readLockPid(dataDir)).toBeNull();
-    const lock = acquireLock(dataDir);
+    expect(await readLockPid(dataDir)).toBeNull();
+    const lock = await acquireLock(dataDir);
     cleanups.push(() => lock?.release());
-    expect(readLockPid(dataDir)).toBe(process.pid);
+    expect(await readLockPid(dataDir)).toBe(process.pid);
 
     // Paths compared after links are resolved (a package manager may install bun behind one).
     const own = await processPath(process.pid);
@@ -464,7 +465,7 @@ describe("update", () => {
       permissionTimeoutS: 600,
       platform: "win32" as const,
     };
-    installHooks(withHooks.settingsPath, target);
+    await installHooks(withHooks.settingsPath, target);
     expect(await update(withHooks.deps, fakeBinary("0.8.0"))).toBe(0);
     const settings = JSON.parse(readFileSync(withHooks.settingsPath, "utf8"));
     expect(settings.hooks.SessionStart).toEqual(
@@ -579,5 +580,20 @@ describe("update", () => {
     const stable = stableBinPath(home, process.platform);
     previous(stable);
     expect(() => assertBinaryUntouched(guard)).toThrow("binário real do flightdeckd mexido");
+  });
+
+  test("swapBinary puts the new binary in place through a promise and keeps the previous one as .old", async () => {
+    const dir = tempDir();
+    const stable = join(dir, "bin", "flightdeckd");
+    const fresh = join(dir, "fresh");
+    writeFileSync(fresh, "new");
+    const first = swapBinary(fresh, stable);
+    expect(first).toBeInstanceOf(Promise);
+    expect(await first).toBe(false);
+    expect(readFileSync(stable, "utf8")).toBe("new");
+    writeFileSync(fresh, "newer");
+    expect(await swapBinary(fresh, stable)).toBe(true);
+    expect(readFileSync(stable, "utf8")).toBe("newer");
+    expect(readFileSync(`${stable}.old`, "utf8")).toBe("new");
   });
 });

@@ -1,4 +1,4 @@
-import { closeSync, mkdirSync, openSync } from "node:fs";
+import { mkdir, open } from "node:fs/promises";
 import { connect } from "node:net";
 import { join } from "node:path";
 import type { Subprocess } from "bun";
@@ -67,9 +67,9 @@ export class WslSupervisor {
     this.slots = items.map((item) => ({ item, child: null, timer: null, attempt: 0 }));
   }
 
-  start(): void {
-    mkdirSync(this.opts.logDir, { recursive: true });
-    for (const slot of this.slots) this.spawn(slot);
+  async start(): Promise<void> {
+    await mkdir(this.opts.logDir, { recursive: true });
+    await Promise.all(this.slots.map((slot) => this.spawn(slot)));
   }
 
   pids(): number[] {
@@ -89,17 +89,17 @@ export class WslSupervisor {
     await Promise.all(exits);
   }
 
-  private spawn(slot: Slot): void {
+  private async spawn(slot: Slot): Promise<void> {
     slot.timer = null;
-    const log = openSync(join(this.opts.logDir, `wsl-${slot.item.distro}.log`), "a");
+    const log = await open(join(this.opts.logDir, `wsl-${slot.item.distro}.log`), "a");
     const child = Bun.spawn((this.opts.command ?? wslCommand)(slot.item), {
       stdin: "ignore",
-      stdout: log,
-      stderr: log,
+      stdout: log.fd,
+      stderr: log.fd,
     });
     slot.child = child;
     void child.exited.then(async (code) => {
-      closeSync(log);
+      await log.close();
       slot.child = null;
       if (this.stopping) return;
       const portAlive = this.opts.portAlive ?? tcpAlive;
@@ -118,6 +118,6 @@ export class WslSupervisor {
 
   private schedule(slot: Slot, delayMs: number): void {
     if (this.stopping) return;
-    slot.timer = setTimeout(() => this.spawn(slot), delayMs);
+    slot.timer = setTimeout(() => void this.spawn(slot), delayMs);
   }
 }

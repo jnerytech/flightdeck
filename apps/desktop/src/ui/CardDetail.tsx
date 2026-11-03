@@ -14,6 +14,7 @@ import { PrWatchPanel } from "@/components/watch/pr-watch-panel";
 import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
+import { cn } from "@/lib/utils";
 import type { Key } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { projectCards } from "../lib/board.ts";
@@ -208,8 +209,14 @@ export const CardDetail = memo(function CardDetail(props: {
     if (step.sessionId) store.select(hostId, step.sessionId);
   };
 
+  /** The conversation is on show: the page fills the pane and the conversation takes what is left. */
+  const chatShown =
+    tab === "conversation" &&
+    openedStep?.type !== "check" &&
+    Boolean((openedStep && stepSession) || (session && sessionId));
   return (
     <Page
+      fill={chatShown}
       title={card.title}
       subtitle={
         cardCost !== null ? (
@@ -253,7 +260,7 @@ export const CardDetail = memo(function CardDetail(props: {
         </>
       }
     >
-      <div className="flex max-w-4xl flex-col gap-5">
+      <div className={cn("flex flex-col gap-5", chatShown ? "pane-fill" : "max-w-4xl")}>
         {card.notice && (
           <InlineNotice>
             {reasonText(t, card.notice, card.noticeReason, card.noticeParams)}
@@ -555,7 +562,7 @@ export const CardDetail = memo(function CardDetail(props: {
           <div
             role="log"
             aria-label={t("cardUi.stepConversation", { step: openedStep.stepId })}
-            className="h-[32rem] overflow-hidden rounded-lg border"
+            className="card-chat"
           >
             <SessionView
               title={`${card.title} · ${openedStep.stepId}`}
@@ -568,11 +575,7 @@ export const CardDetail = memo(function CardDetail(props: {
             />
           </div>
         ) : session && sessionId ? (
-          <div
-            role="log"
-            aria-label={t("cardUi.cardConversation")}
-            className="h-[32rem] overflow-hidden rounded-lg border"
-          >
+          <div role="log" aria-label={t("cardUi.cardConversation")} className="card-chat">
             <SessionView
               title={card.title}
               session={session}

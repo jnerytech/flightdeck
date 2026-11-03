@@ -31,9 +31,9 @@ const SPEC_IDS = [
   "coordenador",
 ];
 
-function codeOf(fn: () => unknown): string {
+async function codeOf(fn: () => unknown): Promise<string> {
   try {
-    fn();
+    await fn();
     return "ok";
   } catch (error) {
     return (error as { code?: string }).code ?? "sem código";
@@ -138,10 +138,10 @@ describe("personas-pacote: as dez", () => {
     );
   });
 
-  test("a coordenadora editada volta ao original com o restaurar", () => {
+  test("a coordenadora editada volta ao original com o restaurar", async () => {
     const { personas } = setup();
-    personas.save({ scope: "host", persona: edit("coordenador", "Coordene do meu jeito.") });
-    expect(personas.get("coordenador", {}).modified).toBe(true);
+    await personas.save({ scope: "host", persona: edit("coordenador", "Coordene do meu jeito.") });
+    expect((await personas.get("coordenador", {})).modified).toBe(true);
     expect(personas.reset("coordenador", {})).toMatchObject({
       id: "coordenador",
       scope: "pack",
@@ -178,9 +178,9 @@ const edit = (id: string, body: string) => ({
 });
 
 describe("personas-pacote: no daemon", () => {
-  test("aparecem na lista do host, no idioma pedido (pt-BR quando não se pede), confiáveis e sem edição", () => {
+  test("aparecem na lista do host, no idioma pedido (pt-BR quando não se pede), confiáveis e sem edição", async () => {
     const { personas } = setup();
-    const listed = personas.list({ scope: "host" }).personas;
+    const listed = (await personas.list({ scope: "host" })).personas;
     expect(listed.map((p) => p.id)).toEqual(SPEC_IDS);
     expect(listed[0]).toMatchObject({
       scope: "pack",
@@ -189,33 +189,35 @@ describe("personas-pacote: no daemon", () => {
       hash: null,
       name: "Arquiteto",
     });
-    expect(personas.list({ scope: "host", language: "en" }).personas.map((p) => p.name)).toContain(
-      "Security reviewer",
-    );
-    expect(personas.get("seguranca", {}).name).toBe("Revisor de segurança");
-    expect(personas.get("seguranca", { language: "en" }).name).toBe("Security reviewer");
-    expect(personas.resolve({ id: "qa" }, { language: "en" }).persona.body).toMatch(
+    expect(
+      (await personas.list({ scope: "host", language: "en" })).personas.map((p) => p.name),
+    ).toContain("Security reviewer");
+    expect((await personas.get("seguranca", {})).name).toBe("Revisor de segurança");
+    expect((await personas.get("seguranca", { language: "en" })).name).toBe("Security reviewer");
+    expect((await personas.resolve({ id: "qa" }, { language: "en" })).persona.body).toMatch(
       /You act as a senior QA engineer/,
     );
-    expect(personas.resolve({ id: "qa" }, {})).toMatchObject({ source: "pack", hash: null });
+    expect(await personas.resolve({ id: "qa" }, {})).toMatchObject({ source: "pack", hash: null });
   });
 
-  test("editar guarda a versão do host no lugar da do pacote, nos dois idiomas; restaurar volta ao original", () => {
+  test("editar guarda a versão do host no lugar da do pacote, nos dois idiomas; restaurar volta ao original", async () => {
     const { personas } = setup();
-    const saved = personas.save({
+    const saved = await personas.save({
       scope: "host",
       persona: edit("revisor", "Revise só o que mudou."),
     });
     expect(saved).toMatchObject({ id: "revisor", scope: "host", modified: true });
-    const revisor = (language?: "pt-BR" | "en") =>
-      personas
-        .list({ scope: "host", ...(language ? { language } : {}) })
-        .personas.filter((p) => p.id === "revisor");
+    const revisor = async (language?: "pt-BR" | "en") =>
+      (await personas.list({ scope: "host", ...(language ? { language } : {}) })).personas.filter(
+        (p) => p.id === "revisor",
+      );
     // One entry per id: the edited one stands in for the pack's, whatever the language.
-    expect(revisor().map((p) => p.body)).toEqual(["Revise só o que mudou."]);
-    expect(revisor("en").map((p) => p.body)).toEqual(["Revise só o que mudou."]);
-    expect(personas.list({ scope: "host" }).personas).toHaveLength(10);
-    expect(personas.resolve({ id: "revisor" }, {}).persona.body).toBe("Revise só o que mudou.");
+    expect((await revisor()).map((p) => p.body)).toEqual(["Revise só o que mudou."]);
+    expect((await revisor("en")).map((p) => p.body)).toEqual(["Revise só o que mudou."]);
+    expect((await personas.list({ scope: "host" })).personas).toHaveLength(10);
+    expect((await personas.resolve({ id: "revisor" }, {})).persona.body).toBe(
+      "Revise só o que mudou.",
+    );
     const restored = personas.reset("revisor", {});
     expect(restored).toMatchObject({
       id: "revisor",
@@ -223,36 +225,40 @@ describe("personas-pacote: no daemon", () => {
       modified: false,
       name: "Revisor de código",
     });
-    expect(personas.get("revisor", { language: "en" }).name).toBe("Code reviewer");
+    expect((await personas.get("revisor", { language: "en" })).name).toBe("Code reviewer");
     // Resetting what is not edited is fine; what is not in the pack has nothing to go back to.
     expect(personas.reset("revisor", {}).scope).toBe("pack");
-    personas.save({ scope: "host", persona: edit("minha", "Uma minha.") });
-    expect(codeOf(() => personas.reset("minha", {}))).toBe("bad_request");
-    expect(personas.get("minha", {}).scope).toBe("host");
+    await personas.save({ scope: "host", persona: edit("minha", "Uma minha.") });
+    expect(await codeOf(() => personas.reset("minha", {}))).toBe("bad_request");
+    expect((await personas.get("minha", {})).scope).toBe("host");
   });
 
-  test("uma do pacote não se remove; a editada se remove restaurando, e uma que só o host tem se remove de vez", () => {
+  test("uma do pacote não se remove; a editada se remove restaurando, e uma que só o host tem se remove de vez", async () => {
     const { personas } = setup();
-    expect(codeOf(() => personas.remove("host", "qa"))).toBe("not_found");
-    personas.save({ scope: "host", persona: edit("qa", "Meu QA.") });
-    personas.remove("host", "qa");
-    expect(personas.get("qa", {}).scope).toBe("pack");
-    personas.save({ scope: "host", persona: edit("minha", "Uma minha.") });
-    personas.remove("host", "minha");
-    expect(personas.list({ scope: "host" }).personas).toHaveLength(10);
+    expect(await codeOf(() => personas.remove("host", "qa"))).toBe("not_found");
+    await personas.save({ scope: "host", persona: edit("qa", "Meu QA.") });
+    await personas.remove("host", "qa");
+    expect((await personas.get("qa", {})).scope).toBe("pack");
+    await personas.save({ scope: "host", persona: edit("minha", "Uma minha.") });
+    await personas.remove("host", "minha");
+    expect((await personas.list({ scope: "host" })).personas).toHaveLength(10);
   });
 
-  test("a edição vale as regras de sempre, e a do projeto vale mais que a editada e que a do pacote", () => {
+  test("a edição vale as regras de sempre, e a do projeto vale mais que a editada e que a do pacote", async () => {
     const { personas, project } = setup();
     const secret = `ghp_${"0123456789abcdef".repeat(2)}0123`;
     expect(
-      codeOf(() => personas.save({ scope: "host", persona: edit("qa", `Use ${secret}`) })),
+      await codeOf(() => personas.save({ scope: "host", persona: edit("qa", `Use ${secret}`) })),
     ).toBe("persona_secret");
-    expect(personas.get("qa", {}).scope).toBe("pack");
-    personas.save({ scope: "host", persona: edit("qa", "Do host.") });
-    personas.save({ scope: "project", projectPath: project, persona: edit("qa", "Do projeto.") });
-    expect(personas.get("qa", { projectPath: project }).body).toBe("Do projeto.");
-    expect(personas.get("qa", {}).body).toBe("Do host.");
+    expect((await personas.get("qa", {})).scope).toBe("pack");
+    await personas.save({ scope: "host", persona: edit("qa", "Do host.") });
+    await personas.save({
+      scope: "project",
+      projectPath: project,
+      persona: edit("qa", "Do projeto."),
+    });
+    expect((await personas.get("qa", { projectPath: project })).body).toBe("Do projeto.");
+    expect((await personas.get("qa", {})).body).toBe("Do host.");
     // A project persona that is not trusted is never used in place of the pack's, it is refused.
     const dir = join(project, ".flightdeck", "personas");
     mkdirSync(dir, { recursive: true });
@@ -260,7 +266,7 @@ describe("personas-pacote: no daemon", () => {
       join(dir, "sre.md"),
       "---\nid: sre\nname: Do projeto\ndescription: d\n---\nCorpo.\n",
     );
-    expect(codeOf(() => personas.resolve({ id: "sre" }, { projectPath: project }))).toBe(
+    expect(await codeOf(() => personas.resolve({ id: "sre" }, { projectPath: project }))).toBe(
       "persona_untrusted",
     );
   });

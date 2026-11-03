@@ -31,7 +31,7 @@ async function setup() {
   const d = makeDaemon(cleanups);
   const names = ["Alpha", "Beta"];
   for (const name of names) {
-    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi", name });
+    const { sessionId } = await d.manager.create({ cwd: d.project, prompt: "oi", name });
     await poll(() => d.manager.get(sessionId).status === "idle");
   }
   // One finished transcript of the terminal, for the history.
@@ -43,7 +43,7 @@ async function setup() {
       ts: "2026-09-01T10:00:00.000Z",
     }),
   ]);
-  d.history.scan();
+  await d.history.scan();
   const mem = memoryPlatform();
   const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   render(<App store={store} />);

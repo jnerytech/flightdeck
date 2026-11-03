@@ -279,6 +279,28 @@ hooks, Tailscale e a versão do daemon contra a do app. Cada item fica **ok**, *
 **falhou**; cada um que não está **ok** vem com um passo simples para consertar, no idioma do app.
 O daemon segue respondendo enquanto confere (nada trava). As mesmas conferências rodam no
 terminal com `flightdeckd doctor`.
+### Sessões sem pedidos de permissão
+
+Por padrão nenhuma sessão de um host roda em **Ignorar permissões** (toda ferramenta roda sem
+perguntar). Para permitir, abra a página do host e use **Sessões sem pedidos de permissão →
+Permitir sessões sem pedidos**; o app pede confirmação e cita o host. A escolha fica na config do
+host (`allowBypassPermissions`) e vale na hora. Com ela ligada:
+
+- **Sessão nova** oferece "Ignorar permissões: sem pedidos de permissão" na lista de modos. Ao
+  escolher, o app pergunta de novo a cada Criar sessão, citando o host e a pasta.
+- A lista de modos na caixa de mensagem de uma sessão aberta oferece todos os modos, inclusive
+  Ignorar permissões e modos mais soltos que o de início. Mudar para Ignorar permissões pergunta
+  a cada vez, citando o host e a sessão.
+- Sessões iniciadas depois de ligar podem ser mudadas para Ignorar permissões; uma que já rodava
+  mantém o que tinha ao começar (o Claude Agent SDK precisa saber disso no início).
+
+Com ela desligada (o padrão) o daemon recusa iniciar uma sessão em Ignorar permissões, e uma
+sessão aberta nunca fica mais permissiva que o modo em que começou. O modo de permissão de uma
+persona continua valendo quando é mais estrito. Desligar não pergunta nada.
+
+Uma sessão em Ignorar permissões não pede nada: o Claude Code pula o pedido de permissão de toda
+ferramenta, inclusive as que de outro modo sempre perguntam (como descartar um card pelo servidor
+MCP do flightdeck). Essa é a escolha que você faz ao escolher esse modo.
 
 ## Serviço
 
@@ -972,7 +994,17 @@ deixa uma sessão do Claude criar cards e disparar workflows. Ferramentas:
 
 - `list_projects` e `list_workflows`;
 - `create_card` e `start_card` (com `workflow` e `inputs`);
-- `get_card` e `get_run`.
+- `get_card` e `get_run`;
+- `move_card` (para `backlog`, `in_progress`, `waiting`, `review` ou `done`, pelas mesmas regras de
+  arrastar um card no app), `update_card` (título, descrição), `comment_card` (acrescenta uma
+  nota datada à descrição) e `finish_card` (`done` conclui o card, `discard` o descarta com a
+  worktree e a branch).
+
+Uma sessão gerencia só os cards do **próprio projeto**, e o próprio card quando não cita nenhum
+(a sessão roda na worktree de um card); o card de outro projeto é recusado com o motivo. O quadro
+no app atualiza ao vivo. `finish_card` com `discard` não tem volta, então sempre pede a sua
+aprovação na sessão: a aprovação automática nunca o aprova, e não se oferece "permitir sempre"
+para ele.
 
 Não há ferramenta para aprovar permissões nem para responder gates: isso fica só com você, no
 app. Para registrar no Claude Code:
@@ -1803,6 +1835,14 @@ tokens e turnos.
 - **Custo:** é a diferença do total que o SDK informa para cada sessão, nunca a soma turno a
   turno.
 - **Projeto:** o mesmo da tela Sessões (o remoto `origin`, ou o caminho do repositório).
+- **Agrupado por projeto:** cada projeto é um bloco com o total (o mais caro primeiro) e seus
+  dias abaixo, do mais novo ao mais antigo. Datas e custos nunca quebram de linha.
+- **Ocultos:** pastas temporárias (`temp`, `tmp`, `/var/folders`) e worktrees de agentes
+  (`.claude/worktrees`) não aparecem.
+- **Abrir as sessões:** clique num dia para abrir o Histórico filtrado pela pasta desse projeto e
+  por esse dia. Um projeto conhecido pelo remoto (compartilhado por várias pastas e worktrees)
+  abre o Histórico filtrado pelo próprio projeto, então todas as pastas dele aparecem; uma ficha
+  "Projeto: nome" acima da lista mostra isso, e **Limpar projeto** a tira.
 - **Fora do uso:** as sessões do terminal, porque os hooks não trazem custo.
 
 ### Custos
@@ -2233,7 +2273,7 @@ vermelho).
   Configurações ou na paleta, sem reiniciar. Datas e horas saem sempre em hora local. O
   vocabulário está em [`docs/GLOSSARY.md`](../GLOSSARY.md).
 - **Modos de permissão** aparecem com nome e uma linha de explicação, nunca com o valor técnico;
-  o "Sem perguntas" avisa em vermelho.
+  o "Ignorar permissões" avisa em vermelho e só aparece em um host que o permite.
 
 ### Modo demonstração, prints e testes de ponta a ponta
 

@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { existsSync } from "node:fs";
+import { stat } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import {
   type Arena,
@@ -22,6 +22,7 @@ import { FlightdeckError } from "../errors.ts";
 import { closingLine, parseIssueRef, providerOfRef } from "../issues/providers.ts";
 import { isInside, resolveAllowedCwd } from "../paths.ts";
 import { isProjectRule } from "../permissions/permission-updates.ts";
+import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { Quota } from "../quota/quota.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import type { SecretScanner } from "../snippets/model.ts";
@@ -56,7 +57,6 @@ import type {
 } from "./types.ts";
 import {
   addWorktree,
-  excludeLocalSettings,
   excludeLocalSettingsAsync,
   freshBase,
   must,
@@ -84,12 +84,14 @@ export const DEFAULT_PROMPT_TEMPLATE =
 export interface BoardOptions {
   db: Database;
   manager: SessionManager;
+  /** Reads the personas for a session about to open; none when absent. */
+  preparePersonas?: Prepare;
   allowedRoots: readonly string[];
   /** 2 when absent. */
   maxParallelRuns?: number;
   prPollIntervalMs?: number;
   /** Persists host-wide settings changed through `board.settings`. */
-  onSettingsChange?: (settings: { maxParallelRuns: number }) => void;
+  onSettingsChange?: (settings: { maxParallelRuns: number }) => void | Promise<void>;
   /** Runs workflow `check` commands; the real shell runner when absent. */
   checks?: CheckRunner;
   /** Milliseconds now, for the workflow budget's minutes; `Date.now` when absent. */
@@ -105,7 +107,7 @@ export interface BoardOptions {
   /** Phase 13: the PR host of a kind of project; the real CLIs when absent (tests inject). */
   prProvider?: (kind: PrProviderKind) => PrProvider | null;
   /** Phase 5's project keys, which budgets are set on; the project folder when absent. */
-  projectKeys?: { keyFor(path: string): string; resolve?(path: string): Promise<string> };
+  projectKeys?: { known(path: string): string; resolve?(path: string): Promise<string> };
   /** Bytes `.worktreeinclude` copies into a new worktree, at most; 50 MB when absent. */
   worktreeIncludeLimit?: number;
   /** Settles when no background git work (phase 12's snapshots) runs in a worktree to remove. */
@@ -135,7 +137,8 @@ function toProject(row: ProjectRow): Project {
     prProvider: row.pr_provider,
     setupScript: row.setup_script,
     promptTemplate: row.prompt_template,
-    worktreeInclude: existsSync(join(row.path, WORKTREE_INCLUDE)),
+    // The file answer needs IO: `forWire` fills it in where a project leaves for the app.
+    worktreeInclude: false,
     autoApprove: AutoApproveSettings.parse(JSON.parse(row.auto_approve ?? "{}")),
     issues: row.issues ? IssuesConfig.parse(JSON.parse(row.issues)) : null,
     personaByColumn: row.persona_by_column ? JSON.parse(row.persona_by_column) : {},
@@ -254,6 +257,8 @@ export class Board {
   private readonly db: Database;
   /** Card id → stops following the session of its active run. */
   private readonly waits: Array<() => Promise<unknown>> = [];
+  /** The rule files being written, one after the other: two writes never read the same file. */
+  private ruleWrites: Promise<void> = Promise.resolve();
   private readonly ends: Array<(cardId: string) => Promise<unknown>> = [];
   private readonly follows = new Map<string, () => void>();
   /** Cards holding one of the `maxParallelRuns` slots (preparing or with a turn going). */
@@ -285,6 +290,7 @@ export class Board {
     this.workflows = new WorkflowEngine({
       db: opts.db,
       manager: opts.manager,
+      ...(opts.preparePersonas ? { preparePersonas: opts.preparePersonas } : {}),
       host: {
         place: (cardId, event) => this.place(cardId, event),
         release: (cardId) => this.release(cardId),
@@ -301,9 +307,9 @@ export class Board {
       clock: opts.clock ?? Date.now,
     });
     this.limit = opts.maxParallelRuns ?? 2;
-    opts.manager.onPermissionUpdates((sessionId, updates) =>
-      this.applyProjectRules(sessionId, updates),
-    );
+    opts.manager.onPermissionUpdates((sessionId, updates) => {
+      this.ruleWrites = this.ruleWrites.then(() => this.applyProjectRules(sessionId, updates));
+    });
     this.unwatchQuota = opts.quota?.watch(() => this.onLimits()) ?? (() => {});
     this.unwatchBudgets = opts.budgets?.watch(() => this.onLimits()) ?? (() => {});
     this.armPoll();
@@ -336,12 +342,18 @@ export class Board {
   }
 
   /**
-   * Phase 29: the project with its key, for the wire. The key is asked without blocking (`resolve`
+   * Phase 29: the project as it leaves for the app: its key and whether it has a `.worktreeinclude`. The key is asked without blocking (`resolve`
    * answers from a cache and asks git once per folder); a host without it sends none.
    */
-  async withKey(project: Project): Promise<Project> {
-    const projectKey = await this.opts.projectKeys?.resolve?.(project.path);
-    return projectKey ? { ...project, projectKey } : project;
+  async forWire(project: Project): Promise<Project> {
+    const [projectKey, worktreeInclude] = await Promise.all([
+      this.opts.projectKeys?.resolve?.(project.path),
+      stat(join(project.path, WORKTREE_INCLUDE)).then(
+        () => true,
+        () => false,
+      ),
+    ]);
+    return { ...project, worktreeInclude, ...(projectKey ? { projectKey } : {}) };
   }
 
   getProject(id: string): Project {
@@ -355,7 +367,7 @@ export class Board {
 
   /** Registers a git repository that lives inside `allowedRoots`. */
   async addProject(input: NewProject): Promise<Project> {
-    const path = resolveAllowedCwd(input.path, this.opts.allowedRoots);
+    const path = await resolveAllowedCwd(input.path, this.opts.allowedRoots);
     const top = await git(path, "rev-parse", "--show-toplevel");
     if (top.code !== 0) {
       throw new FlightdeckError(
@@ -405,7 +417,7 @@ export class Board {
     // The key of the project is looked up now, without waiting for git, so the budget check and
     // the vault find it cached when a card starts.
     await this.opts.projectKeys?.resolve?.(path);
-    return this.getProject(project.id);
+    return await this.forWire(this.getProject(project.id));
   }
 
   updateProject(id: string, patch: ProjectPatch): Project {
@@ -1168,7 +1180,7 @@ export class Board {
   private budgetBlocked(projectId: string): boolean {
     if (!this.opts.budgets) return false;
     const { path } = this.getProject(projectId);
-    return this.opts.budgets.blocked(this.opts.projectKeys?.keyFor(path) ?? path);
+    return this.opts.budgets.blocked(this.opts.projectKeys?.known(path) ?? path);
   }
 
   /** A workflow turn about to start over the quota waits for it; `null` when it may go. */
@@ -1285,16 +1297,18 @@ export class Board {
         "SELECT persona, fix_prompt FROM card_runs WHERE id = ?",
       )
       .get(runId);
-    const { sessionId } = this.opts.manager.create(
+    const personaRef = run?.persona ? (JSON.parse(run.persona) as PersonaRef) : undefined;
+    const prepared = await (this.opts.preparePersonas ?? withoutPersonas)(personaRef, worktree);
+    const { sessionId } = await this.opts.manager.create(
       {
         cwd: worktree,
         prompt: run?.fix_prompt ?? prompt,
         name: card.title,
         ...(variant?.model ? { model: variant.model } : {}),
         ...(variant?.effort ? { effort: variant.effort } : {}),
-        ...(run?.persona ? { persona: JSON.parse(run.persona) as PersonaRef } : {}),
+        ...(personaRef ? { persona: personaRef } : {}),
       },
-      { unattended: run?.fix_prompt != null },
+      { unattended: run?.fix_prompt != null, prepared },
     );
     this.db.query("UPDATE card_runs SET session_id = ? WHERE id = ?").run(sessionId, runId);
     this.changed(id);
@@ -1373,13 +1387,18 @@ export class Board {
     return this.changed(id);
   }
 
+  /** Resolves when every rule accepted so far is in its file. */
+  rulesWritten(): Promise<void> {
+    return this.ruleWrites;
+  }
+
   /** The project's rules: `permissions.allow` of its root `.claude/settings.local.json`. */
-  listRules(projectId: string): string[] {
+  listRules(projectId: string): Promise<string[]> {
     return readRules(this.getProject(projectId).path);
   }
 
   /** Removes one rule of the project, keeping the rest of the file; only with `confirm`. */
-  removeRule(projectId: string, rule: string, confirm: boolean): string[] {
+  async removeRule(projectId: string, rule: string, confirm: boolean): Promise<string[]> {
     if (!confirm) {
       throw new FlightdeckError(
         "invalid_state",
@@ -1394,7 +1413,7 @@ export class Board {
    * Project rules accepted in a card's session (its run or a workflow step) also go to the
    * repository root's settings.local.json, which every new worktree of the project copies.
    */
-  private applyProjectRules(sessionId: string, updates: PermissionUpdate[]): void {
+  private async applyProjectRules(sessionId: string, updates: PermissionUpdate[]): Promise<void> {
     const rules = updates.filter(isProjectRule).flatMap((update) => update.rules.map(ruleString));
     const card = this.db
       .query<{ card_id: string }, [string, string]>(
@@ -1406,8 +1425,8 @@ export class Board {
     if (rules.length === 0 || !card) return;
     try {
       const repo = this.getProject(this.getCard(card.card_id).projectId).path;
-      excludeLocalSettings(repo);
-      addRules(repo, rules);
+      await excludeLocalSettingsAsync(repo);
+      await addRules(repo, rules);
     } catch (error) {
       const notice = `regra não gravada no ${LOCAL_SETTINGS}: ${(error as Error).message}`;
       this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, card.card_id);
@@ -1785,10 +1804,10 @@ export class Board {
   }
 
   /** A higher limit starts queued cards right away; a lower one lets running ones finish. */
-  setMaxParallelRuns(value: number): void {
+  async setMaxParallelRuns(value: number): Promise<void> {
     this.limit = value;
-    this.opts.onSettingsChange?.({ maxParallelRuns: value });
     this.pump();
+    await this.opts.onSettingsChange?.({ maxParallelRuns: value });
   }
 
   stop(): void {

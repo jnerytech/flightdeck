@@ -1,4 +1,5 @@
-import { type Dirent, readdirSync, realpathSync, statSync } from "node:fs";
+import type { Dirent } from "node:fs";
+import { readdir, realpath, stat } from "node:fs/promises";
 import { basename, dirname, join, sep } from "node:path";
 import { isInside, resolveAllowedCwd } from "./paths.ts";
 
@@ -27,18 +28,24 @@ export interface ListDirsOptions {
 const DEFAULT_CAP = 500;
 
 /** The real path of a folder, or null when it is missing, not a folder or a broken link. */
-function realDir(path: string): string | null {
+async function realDir(path: string): Promise<string | null> {
   try {
-    const real = realpathSync.native(path);
-    return statSync(real).isDirectory() ? real : null;
+    const real = await realpath(path);
+    return (await stat(real)).isDirectory() ? real : null;
   } catch {
     return null;
   }
 }
 
 /** Where a link points when it points at a folder; anything that is not a link has no target. */
-const linkTarget = (entry: Dirent, child: string): string | null =>
-  entry.isSymbolicLink() ? realDir(child) : null;
+const linkTarget = async (entry: Dirent, child: string): Promise<string | null> =>
+  entry.isSymbolicLink() ? await realDir(child) : null;
+
+/** The real paths of the allowed roots that exist, each once. */
+async function realRoots(allowedRoots: readonly string[]): Promise<string[]> {
+  const found = await Promise.all(allowedRoots.map(realDir));
+  return [...new Set(found.filter((root): root is string => root !== null))];
+}
 
 const byName = (a: DirEntry, b: DirEntry) => {
   const [x, y] = [a.name.toLowerCase(), b.name.toLowerCase()];
@@ -51,24 +58,22 @@ const byName = (a: DirEntry, b: DirEntry) => {
  * the path is resolved with realpath first, and a link is only listed when what it points to is
  * inside a root too. Files and, unless asked, hidden folders stay out.
  */
-export function listDirs(
+export async function listDirs(
   path: string | undefined,
   allowedRoots: readonly string[],
   options: ListDirsOptions = {},
-): DirListing {
-  const roots = [
-    ...new Set(allowedRoots.map(realDir).filter((root): root is string => root !== null)),
-  ];
+): Promise<DirListing> {
+  const roots = await realRoots(allowedRoots);
   if (path === undefined) {
     const dirs = roots.map((root) => ({ name: basename(root) || root, path: root }));
     return { path: null, parent: null, dirs, truncated: false };
   }
-  const real = resolveAllowedCwd(path, allowedRoots);
+  const real = await resolveAllowedCwd(path, allowedRoots);
   const dirs: DirEntry[] = [];
-  for (const entry of readdirSync(real, { withFileTypes: true })) {
+  for (const entry of await readdir(real, { withFileTypes: true })) {
     if (!options.hidden && entry.name.startsWith(".")) continue;
     const child = join(real, entry.name);
-    const target = entry.isDirectory() ? child : linkTarget(entry, child);
+    const target = entry.isDirectory() ? child : await linkTarget(entry, child);
     if (target !== null && roots.some((root) => isInside(root, target))) {
       dirs.push({ name: entry.name, path: target });
     }
@@ -94,26 +99,24 @@ const SKIPPED = new Set([".git", "node_modules"]);
  * same refusals), sorted like the folders. A link is listed only when it points at a file inside a
  * root; hidden files only when asked; the inside of `.git` and `node_modules` never.
  */
-export function listFiles(
+export async function listFiles(
   path: string,
   allowedRoots: readonly string[],
   options: ListDirsOptions = {},
-): FileListing {
-  const roots = [
-    ...new Set(allowedRoots.map(realDir).filter((root): root is string => root !== null)),
-  ];
-  const real = resolveAllowedCwd(path, allowedRoots);
+): Promise<FileListing> {
+  const roots = await realRoots(allowedRoots);
+  const real = await resolveAllowedCwd(path, allowedRoots);
   if (real.split(sep).some((part) => SKIPPED.has(part))) {
     return { path: real, files: [], truncated: false };
   }
   const files: DirEntry[] = [];
-  for (const entry of readdirSync(real, { withFileTypes: true })) {
+  for (const entry of await readdir(real, { withFileTypes: true })) {
     if (!options.hidden && entry.name.startsWith(".")) continue;
     const child = join(real, entry.name);
     let target: string | null = null;
     try {
-      const resolved = entry.isSymbolicLink() ? realpathSync.native(child) : child;
-      target = statSync(resolved).isFile() ? resolved : null;
+      const resolved = entry.isSymbolicLink() ? await realpath(child) : child;
+      target = (await stat(resolved)).isFile() ? resolved : null;
     } catch {
       target = null;
     }

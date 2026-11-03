@@ -166,7 +166,7 @@ describe("bandeja-aprovacao", () => {
     await settle(() => store.getState().hosts[0]?.status === "online" && tray.hasHandler());
     expect(tray.hasHandler()).toBe(true);
 
-    const first = d.manager.create({ cwd: d.project, prompt: "[bash]", name: "Gerenciada" });
+    const first = await d.manager.create({ cwd: d.project, prompt: "[bash]", name: "Gerenciada" });
     await poll(() => d.manager.pendingPermissions(first.sessionId).length === 1);
     const r1 = d.manager.pendingPermissions(first.sessionId)[0]?.requestId ?? "";
     // The request is in the app's state and the debounce is armed: only then does the clock fire.
@@ -202,7 +202,7 @@ describe("bandeja-aprovacao", () => {
     expect(status(d, r1)).toBe("allowed");
     expect(tray.shown()).toBe(1);
 
-    const second = d.manager.create({ cwd: d.project, prompt: "[bash]", name: "Outra" });
+    const second = await d.manager.create({ cwd: d.project, prompt: "[bash]", name: "Outra" });
     await poll(() => d.manager.pendingPermissions(second.sessionId).length === 1);
     const r2 = d.manager.pendingPermissions(second.sessionId)[0]?.requestId ?? "";
     // The tray ignores a request the app does not know yet: wait until it is in the state.
@@ -245,7 +245,11 @@ describe("bandeja-aprovacao", () => {
       await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
-    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "[bash]", name: "Pedinte" });
+    const { sessionId } = await d.manager.create({
+      cwd: d.project,
+      prompt: "[bash]",
+      name: "Pedinte",
+    });
     await poll(() => d.manager.pendingPermissions(sessionId).length === 1);
     await settle(() => tray.mem.shown.length > 0);
     expect(tray.mem.notifications.at(-1)?.title).toBe("alfa · Pedinte: esperando você");

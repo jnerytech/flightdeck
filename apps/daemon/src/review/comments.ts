@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { existsSync, readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import type { Board } from "../board/board.ts";
 import { git } from "../board/command.ts";
 import { type Central, messageExternal } from "../central/central.ts";
@@ -137,7 +137,7 @@ export class ReviewComments {
   /** The file's lines on one side of the diff; `null` when it is not there. */
   private async content(resolved: ResolvedTarget, path: string, side: "new" | "old") {
     const full = fileInRoot(resolved.root, path);
-    if (side === "new") return existsSync(full) ? linesOf(readFileSync(full, "utf8")) : null;
+    if (side === "new") return readFile(full, "utf8").then(linesOf, () => null);
     const rev = `${resolved.base ?? "HEAD"}:${path.replaceAll("\\", "/")}`;
     const shown = await git(resolved.root, "show", rev);
     return shown.code === 0 ? linesOf(shown.stdout) : null;

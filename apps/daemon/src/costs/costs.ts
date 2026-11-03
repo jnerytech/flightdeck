@@ -17,7 +17,7 @@ export interface CostsOptions {
   db: Database;
   pricing: Pricing;
   /** The table as it is now (the config file read again); `reprice` uses it when present. */
-  loadPricing?: () => Pricing;
+  loadPricing?: () => Pricing | Promise<Pricing>;
   /** Progress of the usage indexer's first pass; divergences wait for it to end. */
   initialLoad?: () => InitialLoad;
 }
@@ -114,8 +114,8 @@ export class Costs {
   }
 
   /** Recomputes every entry with the current table, in one transaction; returns how many. */
-  reprice(): { entries: number } {
-    this.pricing = this.opts.loadPricing?.() ?? this.pricing;
+  async reprice(): Promise<{ entries: number }> {
+    this.pricing = (await this.opts.loadPricing?.()) ?? this.pricing;
     const rows = this.db
       .query<TokenRow, []>(
         `SELECT message_id, model, speed, input, output, cache_read, cache_write_5m, cache_write_1h

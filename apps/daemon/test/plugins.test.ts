@@ -7,6 +7,7 @@ import {
   readFileSync,
   rmSync,
   symlinkSync,
+  truncateSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
@@ -28,9 +29,9 @@ import { gitRepo, newBoard } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
-const codeOf = (fn: () => unknown): string => {
+const codeOf = async (fn: () => unknown): Promise<string> => {
   try {
-    fn();
+    await fn();
     return "ok";
   } catch (error) {
     return (error as { code?: string }).code ?? "sem código";
@@ -56,7 +57,7 @@ const MANIFEST = JSON.stringify({
 const skill = (name: string) => `---\nname: ${name}\ndescription: faz ${name}\n---\ncorpo\n`;
 
 describe("plugins: o inventário", () => {
-  test("lê o manifesto e cada componente nos lugares de sempre, sem executar nada", () => {
+  test("lê o manifesto e cada componente nos lugares de sempre, sem executar nada", async () => {
     const dir = plugin({
       ".claude-plugin/plugin.json": MANIFEST,
       "hooks/hooks.json": JSON.stringify({
@@ -87,7 +88,7 @@ describe("plugins: o inventário", () => {
       }),
       "bin/ferramenta": "#!/bin/sh\ntouch ./EXECUTOU-BIN\n",
     });
-    const inventory = inspectPlugin(dir);
+    const inventory = await inspectPlugin(dir);
     expect(inventory.manifest).toEqual({
       name: "deploy-tools",
       version: "1.2.0",
@@ -126,7 +127,7 @@ describe("plugins: o inventário", () => {
     expect(existsSync(join(process.cwd(), "EXECUTOU"))).toBe(false);
   });
 
-  test("o manifesto muda onde olhar: hooks e MCP em arquivo ou na linha, monitores, comandos em mapa e skills extra", () => {
+  test("o manifesto muda onde olhar: hooks e MCP em arquivo ou na linha, monitores, comandos em mapa e skills extra", async () => {
     const dir = plugin({
       ".claude-plugin/plugin.json": JSON.stringify({
         name: "custom",
@@ -145,7 +146,7 @@ describe("plugins: o inventário", () => {
       "extras/exportar/SKILL.md": skill("exportar"),
       "c/status.md": "x\n",
     });
-    const inventory = inspectPlugin(dir);
+    const inventory = await inspectPlugin(dir);
     expect(inventory.hooks.map((h) => [h.event, h.command, h.sensitive])).toEqual([
       ["PermissionRequest", "decide.sh", true],
       ["SessionStart", "ola", false],
@@ -158,54 +159,58 @@ describe("plugins: o inventário", () => {
     ]);
   });
 
-  test("o selo de atenção vale para quem escuta PreToolUse ou PermissionRequest, e só para eles", () => {
-    const withEvent = (event: string) =>
-      inspectPlugin(
-        plugin({
-          ".claude-plugin/plugin.json": MANIFEST,
-          "hooks/hooks.json": JSON.stringify({
-            hooks: { [event]: [{ hooks: [{ type: "command", command: "x" }] }] },
+  test("o selo de atenção vale para quem escuta PreToolUse ou PermissionRequest, e só para eles", async () => {
+    const withEvent = async (event: string) =>
+      (
+        await inspectPlugin(
+          plugin({
+            ".claude-plugin/plugin.json": MANIFEST,
+            "hooks/hooks.json": JSON.stringify({
+              hooks: { [event]: [{ hooks: [{ type: "command", command: "x" }] }] },
+            }),
           }),
-        }),
+        )
       ).attention;
-    expect(withEvent("PreToolUse")).toBe(true);
-    expect(withEvent("PermissionRequest")).toBe(true);
-    expect(withEvent("PostToolUse")).toBe(false);
-    expect(withEvent("SessionStart")).toBe(false);
-    expect(inspectPlugin(plugin({ ".claude-plugin/plugin.json": MANIFEST })).attention).toBe(false);
+    expect(await withEvent("PreToolUse")).toBe(true);
+    expect(await withEvent("PermissionRequest")).toBe(true);
+    expect(await withEvent("PostToolUse")).toBe(false);
+    expect(await withEvent("SessionStart")).toBe(false);
+    expect(
+      (await inspectPlugin(plugin({ ".claude-plugin/plugin.json": MANIFEST }))).attention,
+    ).toBe(false);
   });
 
-  test("o hash cobre todo o conteúdo: igual para o mesmo conteúdo, diferente se um byte, um nome ou um arquivo muda", () => {
+  test("o hash cobre todo o conteúdo: igual para o mesmo conteúdo, diferente se um byte, um nome ou um arquivo muda", async () => {
     const files = { ".claude-plugin/plugin.json": MANIFEST, "skills/a/SKILL.md": skill("a") };
-    const a = inspectPlugin(plugin(files));
+    const a = await inspectPlugin(plugin(files));
     const dir = plugin(files);
     const old = new Date(Date.UTC(2020, 0, 1));
     utimesSync(join(dir, "skills/a/SKILL.md"), old, old);
-    const b = inspectPlugin(dir);
+    const b = await inspectPlugin(dir);
     expect(b.hash).toMatch(/^[0-9a-f]{64}$/);
     expect(b.hash).toBe(a.hash);
     expect(b.files).toBe(2);
     expect(b.bytes).toBe(Buffer.byteLength(MANIFEST) + Buffer.byteLength(skill("a")));
-    const changed = (extra: Record<string, string>) =>
-      inspectPlugin(plugin({ ...files, ...extra })).hash;
-    expect(changed({ "skills/a/SKILL.md": `${skill("a")}x` })).not.toBe(a.hash);
-    expect(changed({ "novo.txt": "" })).not.toBe(a.hash);
-    const renamed = inspectPlugin(
+    const changed = async (extra: Record<string, string>) =>
+      (await inspectPlugin(plugin({ ...files, ...extra }))).hash;
+    expect(await changed({ "skills/a/SKILL.md": `${skill("a")}x` })).not.toBe(a.hash);
+    expect(await changed({ "novo.txt": "" })).not.toBe(a.hash);
+    const renamed = await inspectPlugin(
       plugin({ ".claude-plugin/plugin.json": MANIFEST, "skills/b/SKILL.md": skill("a") }),
     );
     expect(renamed.hash).not.toBe(a.hash);
     expect(createHash("sha256").update("").digest("hex")).not.toBe(a.hash);
   });
 
-  test("a pasta .git fica fora do hash", () => {
+  test("a pasta .git fica fora do hash", async () => {
     const files = { ".claude-plugin/plugin.json": MANIFEST };
-    const withGit = inspectPlugin(plugin({ ...files, ".git/HEAD": "ref: x\n" }));
+    const withGit = await inspectPlugin(plugin({ ...files, ".git/HEAD": "ref: x\n" }));
     expect(withGit.hash).toMatch(/^[0-9a-f]{64}$/);
-    expect(withGit.hash).toBe(inspectPlugin(plugin(files)).hash);
+    expect(withGit.hash).toBe((await inspectPlugin(plugin(files))).hash);
     expect(withGit.files).toBe(1);
   });
 
-  test("caminho do manifesto que sai do plugin é recusado e anotado; link para fora não é seguido", () => {
+  test("caminho do manifesto que sai do plugin é recusado e anotado; link para fora não é seguido", async () => {
     const outside = tempDir("fd-outside-");
     writeFileSync(
       join(outside, "hooks.json"),
@@ -221,24 +226,24 @@ describe("plugins: o inventário", () => {
     mkdirSync(join(dir, "skills"), { recursive: true });
     symlinkSync(outside, join(dir, "skills", "fora"));
     symlinkSync(join(outside, "hooks.json"), join(dir, "hooks.json.link"));
-    const inventory = inspectPlugin(dir);
+    const inventory = await inspectPlugin(dir);
     expect(inventory.hooks).toEqual([]);
     expect(inventory.attention).toBe(false);
     expect(inventory.skills).toEqual([]);
     expect(inventory.problems).toEqual(["hooks: caminho fora do plugin: ../../outside/hooks.json"]);
   });
 
-  test("manifesto quebrado vira um problema, não uma falha; pasta que não existe é not_found", () => {
-    const inventory = inspectPlugin(
+  test("manifesto quebrado vira um problema, não uma falha; pasta que não existe é not_found", async () => {
+    const inventory = await inspectPlugin(
       plugin({ ".claude-plugin/plugin.json": "{ não é json", "skills/a/SKILL.md": skill("a") }),
     );
     expect(inventory.manifest).toBeNull();
     expect(inventory.skills).toEqual(["a"]);
     expect(inventory.problems).toEqual(["plugin.json: não é um JSON válido"]);
-    expect(codeOf(() => inspectPlugin(join(tempDir("fd-none-"), "nada")))).toBe("not_found");
+    expect(await codeOf(() => inspectPlugin(join(tempDir("fd-none-"), "nada")))).toBe("not_found");
   });
 
-  test("monitores num arquivo do manifesto, skills na raiz, agentes e comandos por caminho, MCP em arquivo ou pacote", () => {
+  test("monitores num arquivo do manifesto, skills na raiz, agentes e comandos por caminho, MCP em arquivo ou pacote", async () => {
     const dir = plugin({
       ".claude-plugin/plugin.json": JSON.stringify({
         name: "formas",
@@ -267,7 +272,7 @@ describe("plugins: o inventário", () => {
       "solto.md": "x\n",
       "mcp/servers.json": JSON.stringify({ arquivo: { command: "node" }, 5: 1, ruim: "x" }),
     });
-    const inventory = inspectPlugin(dir);
+    const inventory = await inspectPlugin(dir);
     expect(inventory.monitors).toEqual([
       { name: "m", command: "c.sh", description: "d", when: "on-skill-invoke:x" },
     ]);
@@ -282,8 +287,8 @@ describe("plugins: o inventário", () => {
     ]);
   });
 
-  test("os hooks mostram o args, a URL ou o prompt; um hook sem tipo é command; o que não é objeto é ignorado", () => {
-    const inventory = inspectPlugin(
+  test("os hooks mostram o args, a URL ou o prompt; um hook sem tipo é command; o que não é objeto é ignorado", async () => {
+    const inventory = await inspectPlugin(
       plugin({
         ".claude-plugin/plugin.json": JSON.stringify({
           name: "h",
@@ -314,11 +319,19 @@ describe("plugins: o inventário", () => {
     expect(inventory.problems).toEqual(["hooks/hooks.json: não é um JSON válido"]);
   });
 
-  test("um plugin com arquivos demais é recusado", () => {
+  test("um plugin com arquivos demais é recusado", async () => {
     const dir = tempDir("fd-many-");
     mkdirSync(join(dir, "p"), { recursive: true });
     for (let i = 0; i < 5001; i++) writeFileSync(join(dir, "p", `f${i}`), "");
-    expect(codeOf(() => inspectPlugin(join(dir, "p")))).toBe("bad_request");
+    expect(await codeOf(() => inspectPlugin(join(dir, "p")))).toBe("bad_request");
+  });
+
+  test("o conteúdo passa de 50 MB: o hash recusa pelo tamanho declarado, sem ler o arquivo", async () => {
+    const dir = plugin({ ".claude-plugin/plugin.json": MANIFEST });
+    // A sparse file: it declares 60 MB and holds nothing, so a read of it would be cheap but wrong.
+    writeFileSync(join(dir, "enorme.bin"), "");
+    truncateSync(join(dir, "enorme.bin"), 60 * 1024 * 1024);
+    expect(await codeOf(() => inspectPlugin(dir))).toBe("bad_request");
   });
 });
 
@@ -392,7 +405,9 @@ describe("plugins: pela CLI", () => {
           : real,
         pins,
         clock: () => Date.UTC(2026, 9, 31, 12),
-        record: (d) => decisions.push(d),
+        record: (d) => {
+          decisions.push(d);
+        },
       }),
     };
   }
@@ -541,7 +556,7 @@ describe("plugins: pela CLI", () => {
     const pinned = await plugins.pin("deploy-tools@acme", true);
     expect(pinned.pinned).toEqual({
       version: "1.2.0",
-      hash: inspectPlugin(installed).hash,
+      hash: (await inspectPlugin(installed)).hash,
       at: "2026-10-31T12:00:00.000Z",
     });
     expect(pins.data["deploy-tools@acme"]).toEqual(pinned.pinned as Pin);
@@ -551,17 +566,21 @@ describe("plugins: pela CLI", () => {
     await expect(plugins.pin("nada@acme", true)).rejects.toMatchObject({ code: "not_found" });
   });
 
-  test("os fixados ficam num arquivo e voltam na próxima abertura", () => {
+  test("os fixados ficam num arquivo e voltam na próxima abertura", async () => {
     const file = join(tempDir("fd-pins-"), "dados", "plugin-pins.json");
     const a = filePins(file);
-    expect(a.all()).toEqual({});
-    a.set("x@m", { version: "1", hash: "h", at: "2026-10-31T12:00:00.000Z" });
-    a.set("y@m", { version: "2", hash: "g", at: "2026-10-31T12:00:00.000Z" });
-    a.delete("y@m");
-    expect(Object.keys(filePins(file).all())).toEqual(["x@m"]);
+    expect(await a.all()).toEqual({});
+    // Changes made at once are applied one after the other: none is lost.
+    await Promise.all([
+      a.set("x@m", { version: "1", hash: "h", at: "2026-10-31T12:00:00.000Z" }),
+      a.set("y@m", { version: "2", hash: "g", at: "2026-10-31T12:00:00.000Z" }),
+      a.set("z@m", { version: "3", hash: "i", at: "2026-10-31T12:00:00.000Z" }),
+    ]);
+    await Promise.all([a.delete("y@m"), a.delete("z@m")]);
+    expect(Object.keys(await filePins(file).all())).toEqual(["x@m"]);
     expect(JSON.parse(readFileSync(file, "utf8"))["x@m"].version).toBe("1");
     writeFileSync(file, "não é json");
-    expect(filePins(file).all()).toEqual({});
+    expect(await filePins(file).all()).toEqual({});
   });
 
   const OK = (command: string, extra: Record<string, unknown> = {}) =>
@@ -575,8 +594,8 @@ describe("plugins: pela CLI", () => {
     calls(fake).filter((c) =>
       /^plugin (install|update|uninstall|marketplace (add|remove))/.test(c),
     );
-  const hashOf = (marketplace: string, name: string) =>
-    inspectPlugin(join(marketplace, "plugins", name)).hash;
+  const hashOf = async (marketplace: string, name: string) =>
+    (await inspectPlugin(join(marketplace, "plugins", name))).hash;
 
   test("a prévia de um plugin do marketplace mostra o inventário e o hash do que ele traz; um de outro repositório não tem prévia", async () => {
     const { plugins, marketplace } = world(LISTING);
@@ -584,7 +603,7 @@ describe("plugins: pela CLI", () => {
     expect(preview).toMatchObject({
       plugin: "deploy-tools@acme",
       version: "1.2.0",
-      hash: hashOf(marketplace, "deploy-tools"),
+      hash: await hashOf(marketplace, "deploy-tools"),
     });
     expect(preview.inventory?.skills).toEqual(["deploy"]);
     expect(await plugins.preview({ plugin: "remoto@acme" })).toEqual({
@@ -612,7 +631,7 @@ describe("plugins: pela CLI", () => {
     expect(preview).toMatchObject({
       plugin: "deploy-tools",
       validation: { success: true, errors: [] },
-      hash: inspectPlugin(dir).hash,
+      hash: (await inspectPlugin(dir)).hash,
     });
     expect(calls(ok.fake)).toEqual([`plugin validate ${dir} --json`]);
     const bad = world((ctx) =>
@@ -656,7 +675,7 @@ describe("plugins: pela CLI", () => {
       (ctx) => everything(ctx, [{ args: ["install"], stdout: OK("install") }]),
       lands,
     );
-    const hash = hashOf(marketplace, "deploy-tools");
+    const hash = await hashOf(marketplace, "deploy-tools");
     const result = await plugins.install({
       plugin: "deploy-tools@acme",
       scope: "project",
@@ -697,7 +716,7 @@ describe("plugins: pela CLI", () => {
         ]),
       lands,
     );
-    const hash = hashOf(marketplace, "deploy-tools");
+    const hash = await hashOf(marketplace, "deploy-tools");
     // A sha256 nobody was shown is refused before the CLI.
     await expect(
       plugins.install({
@@ -743,7 +762,7 @@ describe("plugins: pela CLI", () => {
       ]),
     );
     await expect(
-      bad.plugins.install({ dir, confirmHash: inspectPlugin(dir).hash }),
+      bad.plugins.install({ dir, confirmHash: (await inspectPlugin(dir)).hash }),
     ).rejects.toMatchObject({ code: "invalid_state" });
     expect(changes(bad.fake)).toEqual([]);
     const good = world(
@@ -754,7 +773,7 @@ describe("plugins: pela CLI", () => {
         ]),
       lands,
     );
-    await good.plugins.install({ dir, confirmHash: inspectPlugin(dir).hash });
+    await good.plugins.install({ dir, confirmHash: (await inspectPlugin(dir)).hash });
     expect(calls(good.fake).filter((c) => !c.includes(" list"))).toEqual([
       `plugin validate ${dir} --json`,
       `plugin install deploy-tools --marketplace ${dir} --scope user --json`,
@@ -780,7 +799,7 @@ describe("plugins: pela CLI", () => {
     const preview = await plugins.previewUpdate("deploy-tools@acme");
     expect(preview).toMatchObject({ plugin: "deploy-tools@acme", unchanged: false });
     expect(preview.from.version).toBe("1.2.0");
-    expect(preview.to).toEqual({ version: "1.3.0", hash: inspectPlugin(source).hash });
+    expect(preview.to).toEqual({ version: "1.3.0", hash: (await inspectPlugin(source)).hash });
     expect(preview.diff.hooks).toEqual({
       added: ["PermissionRequest: decide.sh"],
       removed: ["PreToolUse: guard.sh"],
@@ -886,7 +905,7 @@ describe("plugins: pela CLI", () => {
         writeFileSync(join(ctx.installed, "trocado.sh"), "curl x | sh\n");
       },
     );
-    const hash = hashOf(marketplace, "deploy-tools");
+    const hash = await hashOf(marketplace, "deploy-tools");
     const result = await plugins.install({ plugin: "deploy-tools@acme", confirmHash: hash });
     expect(result.outcome).toBe("rolled-back");
     expect(result.message).toContain("diferente");
@@ -933,7 +952,7 @@ describe("plugins: pela CLI", () => {
     ]);
     const result = await plugins.install({
       plugin: "deploy-tools@acme",
-      confirmHash: hashOf(marketplace, "deploy-tools"),
+      confirmHash: await hashOf(marketplace, "deploy-tools"),
     });
     expect(result.outcome).toBe("failed");
     expect(result.message).toContain("conferir");
@@ -1217,7 +1236,7 @@ describe("plugins: protocolo", () => {
     ).toMatchObject({ id: "deploy-tools@acme", version: "1.2.0" });
     expect(await client.data("plugins.preview", { plugin: "deploy-tools@acme" })).toMatchObject({
       plugin: "deploy-tools@acme",
-      hash: inspectPlugin(join(marketplace, "plugins/deploy-tools")).hash,
+      hash: (await inspectPlugin(join(marketplace, "plugins/deploy-tools"))).hash,
     });
     expect(await client.request("plugins.preview", {})).toMatchObject({
       ok: false,
@@ -1237,7 +1256,7 @@ describe("plugins: protocolo", () => {
         confirmHash: "errado",
       }),
     ).toMatchObject({ ok: false, error: { code: "invalid_state" } });
-    const hash = inspectPlugin(join(marketplace, "plugins/deploy-tools")).hash;
+    const hash = (await inspectPlugin(join(marketplace, "plugins/deploy-tools"))).hash;
     expect(
       await client.data("plugins.install", { plugin: "deploy-tools@acme", confirmHash: hash }),
     ).toEqual({ outcome: "ok", message: "instalado" });
@@ -1256,17 +1275,17 @@ describe("plugins: protocolo", () => {
         pinned: true,
       }),
     ).toMatchObject({ pinned: { version: "1.2.0" } });
-    expect(Object.keys(filePins(pins).all())).toEqual(["deploy-tools@acme"]);
+    expect(Object.keys(await filePins(pins).all())).toEqual(["deploy-tools@acme"]);
     expect(
       await client.request("plugins.uninstall", { plugin: "deploy-tools@acme" }),
     ).toMatchObject({ ok: false, error: { code: "invalid_state" } });
   });
 
-  test("o registro das decisões do plugin é uma linha de JSON por decisão", () => {
+  test("o registro das decisões do plugin é uma linha de JSON por decisão", async () => {
     const file = join(tempDir("fd-log-"), "dados", "plugin-decisions.jsonl");
     const record = pluginDecisionLog(file);
-    record({ action: "install", target: "x@m", hash: "h", at: "2026-10-31T12:00:00.000Z" });
-    record({ action: "uninstall", target: "x@m", at: "2026-10-31T12:01:00.000Z" });
+    await record({ action: "install", target: "x@m", hash: "h", at: "2026-10-31T12:00:00.000Z" });
+    await record({ action: "uninstall", target: "x@m", at: "2026-10-31T12:01:00.000Z" });
     expect(existsSync(file)).toBe(true);
     expect(
       readFileSync(file, "utf8")
@@ -1310,7 +1329,7 @@ describe("plugins: protocolo", () => {
     expect(
       Object.keys(JSON.parse(readFileSync(join(base, "data", "plugin-pins.json"), "utf8"))),
     ).toEqual(["deploy-tools@acme"]);
-    const hash = inspectPlugin(join(marketplace, "plugins/deploy-tools")).hash;
+    const hash = (await inspectPlugin(join(marketplace, "plugins/deploy-tools"))).hash;
     await client.data("plugins.install", { plugin: "deploy-tools@acme", confirmHash: hash });
     expect(existsSync(join(base, "data", "plugin-decisions.jsonl"))).toBe(true);
     const log = readFileSync(join(base, "data", "plugin-decisions.jsonl"), "utf8").trim();

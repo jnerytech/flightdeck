@@ -1,5 +1,8 @@
-import { gunzipSync } from "node:zlib";
+import { promisify } from "node:util";
+import { gunzip } from "node:zlib";
 import { tokenMatches } from "../token.ts";
+
+const inflate = promisify(gunzip);
 
 /** One Claude Code event (an OTLP log record) in the shape the daemon keeps. */
 export interface OtlpEvent {
@@ -15,7 +18,9 @@ export interface OtlpReceiverOptions {
   /** 0 picks a free port (tests and smokes). */
   port: number;
   /** The receiver's own token, read on every request; none installed means every request is refused. */
-  token: () => string | null | undefined;
+  token: () => string | null | undefined | Promise<string | null | undefined>;
+  /** The gzip decompressor; the async zlib one when absent. */
+  inflate?: (body: Uint8Array, options: { maxOutputLength: number }) => Promise<Uint8Array>;
   /** Largest body, before and after gunzip, in bytes. */
   maxBytes?: number;
   onEvents: (events: OtlpEvent[]) => void;
@@ -303,7 +308,7 @@ export function startOtlpReceiver(opts: OtlpReceiverOptions): OtlpReceiver {
     hostname: "127.0.0.1",
     port: opts.port,
     async fetch(req) {
-      const token = opts.token();
+      const token = await opts.token();
       if (!token || !tokenMatches(`Bearer ${token}`, req.headers.get("authorization") ?? "")) {
         return new Response("unauthorized", { status: 401 });
       }
@@ -318,7 +323,7 @@ export function startOtlpReceiver(opts: OtlpReceiverOptions): OtlpReceiver {
       try {
         body = await readBody(req, max);
         if (req.headers.get("content-encoding") === "gzip") {
-          body = gunzipSync(body, { maxOutputLength: max });
+          body = await (opts.inflate ?? inflate)(body, { maxOutputLength: max });
         }
       } catch (error) {
         if (error instanceof TooBig || error instanceof RangeError) {

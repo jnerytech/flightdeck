@@ -55,7 +55,7 @@ function codeOf(fn: () => unknown): Promise<string> | string {
   }
 }
 
-function setup(options: { personas?: boolean } = {}) {
+async function setup(options: { personas?: boolean } = {}) {
   const { root, project } = workspace();
   const store = new EventStore(":memory:");
   const personas = new Personas({
@@ -64,7 +64,7 @@ function setup(options: { personas?: boolean } = {}) {
     scanner,
     pack: packPersonas,
   });
-  personas.save({ scope: "host", persona: REVIEWER });
+  await personas.save({ scope: "host", persona: REVIEWER });
   const made = newManager({
     store,
     allowedRoots: [root],
@@ -75,9 +75,9 @@ function setup(options: { personas?: boolean } = {}) {
 }
 
 describe("personas-sessao-nova: gerenciada", () => {
-  test("a persona vira instruções acrescentadas, modelo, esforço e ferramentas pelo runtime, e o modo nunca passa do pedido", () => {
-    const { manager, runtime, project } = setup();
-    const { sessionId } = manager.create({
+  test("a persona vira instruções acrescentadas, modelo, esforço e ferramentas pelo runtime, e o modo nunca passa do pedido", async () => {
+    const { start, manager, runtime, project } = await setup();
+    const { sessionId } = await start({
       cwd: project,
       prompt: "revise",
       persona: { id: "revisor-host" },
@@ -101,9 +101,9 @@ describe("personas-sessao-nova: gerenciada", () => {
     });
   });
 
-  test("o pedido manda: modelo e modo explícitos valem, e uma persona mais permissiva não afrouxa o modo", () => {
-    const { manager, runtime, project, personas } = setup();
-    personas.save({
+  test("o pedido manda: modelo e modo explícitos valem, e uma persona mais permissiva não afrouxa o modo", async () => {
+    const { start, manager, runtime, project, personas } = await setup();
+    await personas.save({
       scope: "host",
       persona: {
         ...REVIEWER,
@@ -112,7 +112,7 @@ describe("personas-sessao-nova: gerenciada", () => {
         model: "claude-opus-5-5",
       },
     });
-    manager.create({
+    await start({
       cwd: project,
       prompt: "oi",
       persona: { id: "solta" },
@@ -123,7 +123,7 @@ describe("personas-sessao-nova: gerenciada", () => {
       model: "claude-sonnet-5-5",
       permissionMode: "default",
     });
-    manager.create({
+    await start({
       cwd: project,
       prompt: "oi",
       persona: { id: "solta" },
@@ -133,8 +133,8 @@ describe("personas-sessao-nova: gerenciada", () => {
   });
 
   test("uma persona do app vai inteira, e as regras valem do mesmo jeito", async () => {
-    const { manager, runtime, project } = setup();
-    manager.create({
+    const { start, manager, runtime, project } = await setup();
+    await start({
       cwd: project,
       prompt: "oi",
       persona: {
@@ -145,7 +145,7 @@ describe("personas-sessao-nova: gerenciada", () => {
     const secret = `ghp_${"0123456789abcdef".repeat(2)}0123`;
     expect(
       await codeOf(() =>
-        manager.create({
+        start({
           cwd: project,
           prompt: "oi",
           persona: { definition: { id: "ruim", name: "Ruim", description: "d", body: secret } },
@@ -155,20 +155,20 @@ describe("personas-sessao-nova: gerenciada", () => {
     expect(manager.list()).toHaveLength(1);
   });
 
-  test("uma persona do pacote vale no idioma pedido", () => {
-    const { manager, runtime, project } = setup();
-    manager.create({ cwd: project, prompt: "oi", persona: { id: "qa", language: "en" } });
-    manager.create({ cwd: project, prompt: "oi", persona: { id: "qa" } });
+  test("uma persona do pacote vale no idioma pedido", async () => {
+    const { start, manager, runtime, project } = await setup();
+    await start({ cwd: project, prompt: "oi", persona: { id: "qa", language: "en" } });
+    await start({ cwd: project, prompt: "oi", persona: { id: "qa" } });
     expect(runtime.starts[0]?.persona?.append).toMatch(/You act as a senior QA engineer/);
     expect(runtime.starts[1]?.persona?.append).toMatch(/engenheiro de QA sênior/);
     expect(runtime.starts[0]?.model).toBe("claude-sonnet-5-5");
   });
 
   test("falhas não deixam sessão: persona que não existe, versionada sem confiança, ou sem o cadastro de personas", async () => {
-    const { manager, project } = setup();
-    expect(
-      await codeOf(() => manager.create({ cwd: project, prompt: "oi", persona: { id: "nada" } })),
-    ).toBe("not_found");
+    const { start, manager, project } = await setup();
+    expect(await codeOf(() => start({ cwd: project, prompt: "oi", persona: { id: "nada" } }))).toBe(
+      "not_found",
+    );
     const dir = join(project, ".flightdeck", "personas");
     mkdirSync(dir, { recursive: true });
     writeFileSync(
@@ -176,23 +176,19 @@ describe("personas-sessao-nova: gerenciada", () => {
       "---\nid: do-projeto\nname: P\ndescription: d\n---\nCorpo.\n",
     );
     expect(
-      await codeOf(() =>
-        manager.create({ cwd: project, prompt: "oi", persona: { id: "do-projeto" } }),
-      ),
+      await codeOf(() => start({ cwd: project, prompt: "oi", persona: { id: "do-projeto" } })),
     ).toBe("persona_untrusted");
     expect(manager.list()).toEqual([]);
-    const bare = setup({ personas: false });
+    const bare = await setup({ personas: false });
     expect(
-      await codeOf(() =>
-        bare.manager.create({ cwd: bare.project, prompt: "oi", persona: { id: "qa" } }),
-      ),
+      await codeOf(() => bare.start({ cwd: bare.project, prompt: "oi", persona: { id: "qa" } })),
     ).toBe("invalid_state");
     expect(bare.manager.list()).toEqual([]);
   });
 
   test("tools só restringe: uma ferramenta fora da lista é negada, uma da lista segue para a aprovação", async () => {
-    const { manager, runtime, project } = setup();
-    const { sessionId } = manager.create({
+    const { start, manager, runtime, project } = await setup();
+    const { sessionId } = await start({
       cwd: project,
       prompt: "oi",
       persona: { id: "revisor-host" },
@@ -209,14 +205,14 @@ describe("personas-sessao-nova: gerenciada", () => {
     const pending = await poll(() => manager.pendingPermissions(sessionId).length > 0);
     expect(pending).toBe(true);
     // And a session with no persona is not restricted at all.
-    const plain = manager.create({ cwd: project, prompt: "oi" });
+    const plain = await start({ cwd: project, prompt: "oi" });
     void runtime.starts[1]?.canUseTool("Write", {}, ctx);
     expect(await poll(() => manager.pendingPermissions(plain.sessionId).length > 0)).toBe(true);
   });
 
   test("a persona acompanha a sessão: resumir, reabrir depois de reiniciar o daemon e o histórico mostram a mesma, mesmo se ela mudar depois", async () => {
-    const { manager, runtime, project, personas, store, root } = setup();
-    const { sessionId } = manager.create({
+    const { start, manager, runtime, project, personas, store, root } = await setup();
+    const { sessionId } = await start({
       cwd: project,
       prompt: "oi",
       persona: { id: "revisor-host" },
@@ -227,7 +223,10 @@ describe("personas-sessao-nova: gerenciada", () => {
     });
     await poll(() => events.statuses().includes("idle"));
     // The host edits the persona and then the session is closed and resumed.
-    personas.save({ scope: "host", persona: { ...REVIEWER, body: "Outro corpo.", effort: "low" } });
+    await personas.save({
+      scope: "host",
+      persona: { ...REVIEWER, body: "Outro corpo.", effort: "low" },
+    });
     await manager.close(sessionId);
     await manager.resume(sessionId);
     expect(runtime.starts).toHaveLength(2);
@@ -248,7 +247,6 @@ describe("personas-sessao-nova: gerenciada", () => {
       defaultPermissionMode: "default",
       allowApiKey: false,
       baseEnv: {},
-      personas,
     });
     cleanups.push(() => second.shutdown());
     store.updateSession(sessionId, { status: "idle" });
@@ -398,7 +396,7 @@ describe("personas-sessao-nova: o terminal, flightdeckd claude --persona", () =>
       allowedRoots: [root],
       scanner,
     });
-    personas.save({ scope: "host", persona: REVIEWER });
+    await personas.save({ scope: "host", persona: REVIEWER });
     const host = await terminalHost(personas, root);
     const fake = installFakeClaude([
       { do: "exit", code: 0 },
@@ -421,7 +419,7 @@ describe("personas-sessao-nova: o terminal, flightdeckd claude --persona", () =>
       allowedRoots: [root],
       scanner,
     });
-    personas.save({ scope: "host", persona: REVIEWER });
+    await personas.save({ scope: "host", persona: REVIEWER });
     const host = await terminalHost(personas, root);
     const fake = installFakeClaude([{ do: "exit", code: 0 }]);
     cleanups.push(fake.restore);
@@ -544,7 +542,7 @@ describe("personas-sessao-nova: o terminal, flightdeckd claude --persona", () =>
 
 describe("personas-sessao-nova: pelo protocolo", () => {
   test("session.create com persona e personas.resolve", async () => {
-    const { root, project, personas, manager } = setup();
+    const { root, project, personas, start, manager } = await setup();
     const server = startServer({
       manager,
       personas,
@@ -593,7 +591,7 @@ describe("personas-sessao-nova: pelo protocolo", () => {
   });
 
   test("sem as personas configuradas, session.create com persona e personas.resolve dizem o erro", async () => {
-    const { root, project, manager } = setup({ personas: false });
+    const { root, project, start, manager } = await setup({ personas: false });
     const server = startServer({
       manager,
       hostName: "h",

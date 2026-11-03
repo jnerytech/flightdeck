@@ -74,7 +74,7 @@ describe("check-timeout: a command that runs out of time is killed with everythi
 
   test("on Windows the tree goes with taskkill, elsewhere the whole process group is killed", () => {
     const spawned: string[][] = [];
-    killTree(
+    void killTree(
       42,
       "win32",
       () => {},
@@ -82,7 +82,7 @@ describe("check-timeout: a command that runs out of time is killed with everythi
     );
     expect(spawned).toEqual([["taskkill", "/PID", "42", "/T", "/F"]]);
     const killed: Array<[number, string]> = [];
-    killTree(
+    void killTree(
       42,
       "linux",
       (pid, signal) => killed.push([pid, signal]),
@@ -104,13 +104,13 @@ describe("check-timeout: a command that runs out of time is killed with everythi
       Number.POSITIVE_INFINITY,
       4.5,
     ]) {
-      killTree(
+      void killTree(
         pid,
         "linux",
         (target) => killed.push(target),
         () => {},
       );
-      killTree(
+      void killTree(
         pid,
         "win32",
         () => {},

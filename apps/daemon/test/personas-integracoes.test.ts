@@ -8,6 +8,7 @@ import { Costs } from "../src/costs/costs.ts";
 import { DEFAULT_PRICING } from "../src/costs/pricing.ts";
 import { runCli } from "../src/main.ts";
 import { packPersonas } from "../src/personas/pack.ts";
+import { preparePersonas } from "../src/personas/prepare.ts";
 import { Personas } from "../src/personas/store.ts";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import { startServer } from "../src/server.ts";
@@ -50,9 +51,13 @@ function setup() {
     defaultPermissionMode: "default",
     allowApiKey: false,
     baseEnv: {},
-    personas,
   });
-  const board = new Board({ db: store.db, manager, allowedRoots: [root] });
+  const board = new Board({
+    db: store.db,
+    manager,
+    allowedRoots: [root],
+    preparePersonas: (ref, cwd) => preparePersonas(personas, ref, cwd),
+  });
   cleanups.push(() => board.stop());
   cleanups.push(() => manager.shutdown());
   return { root, repo, store, personas, runtime, manager, board };
@@ -319,10 +324,10 @@ describe("personas-integracoes: na central", () => {
         personas: new Personas({ db: s.db, allowedRoots: [w.root], scanner, pack: packPersonas }),
       };
     })();
-    const { manager } = newManager({ store, allowedRoots: [root], personas });
+    const { manager, start } = newManager({ store, allowedRoots: [root], personas });
     cleanups.push(() => manager.shutdown());
-    manager.create({ cwd: project, prompt: "oi", persona: { id: "dba" } });
-    manager.create({ cwd: project, prompt: "oi" });
+    await start({ cwd: project, prompt: "oi", persona: { id: "dba" } });
+    await start({ cwd: project, prompt: "oi" });
     const server = startServer({
       manager,
       hostName: "h",
@@ -344,7 +349,7 @@ describe("personas-integracoes: na central", () => {
 });
 
 describe("personas-integracoes: custo por persona", () => {
-  test("costs.summary quebra o gasto por persona: a da abertura, a aplicada depois, a da sessão de terminal e a sem persona", () => {
+  test("costs.summary quebra o gasto por persona: a da abertura, a aplicada depois, a da sessão de terminal e a sem persona", async () => {
     const { root, project } = workspace();
     const store = new EventStore(":memory:");
     const personas = new Personas({
@@ -353,10 +358,10 @@ describe("personas-integracoes: custo por persona", () => {
       scanner,
       pack: packPersonas,
     });
-    const { manager } = newManager({ store, allowedRoots: [root], personas });
+    const { manager, start } = newManager({ store, allowedRoots: [root], personas });
     cleanups.push(() => manager.shutdown());
-    const link = (persona: { id: string } | undefined, claude: string) => {
-      const { sessionId } = manager.create({
+    const link = async (persona: { id: string } | undefined, claude: string) => {
+      const { sessionId } = await start({
         cwd: project,
         prompt: "oi",
         ...(persona ? { persona } : {}),
@@ -364,10 +369,10 @@ describe("personas-integracoes: custo por persona", () => {
       store.updateSession(sessionId, { claudeSessionId: claude });
       return sessionId;
     };
-    link({ id: "qa" }, "c-qa");
-    link({ id: "qa" }, "c-qa-2");
-    link(undefined, "c-plain");
-    const applied = link(undefined, "c-applied");
+    await link({ id: "qa" }, "c-qa");
+    await link({ id: "qa" }, "c-qa-2");
+    await link(undefined, "c-plain");
+    const applied = await link(undefined, "c-applied");
     manager.markPersona(applied, { id: "docs", name: "Tech writer", icon: "book" });
     const external = new ExternalSessions({ db: store.db, staleAfterS: 900 });
     external.apply("SessionStart", {

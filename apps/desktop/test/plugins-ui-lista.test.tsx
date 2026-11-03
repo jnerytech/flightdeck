@@ -95,7 +95,9 @@ describe("plugins-ui: a tela", () => {
     expect(text).toContain("PreToolUse (Bash): guard.sh");
     expect(text).toContain("Atenção: este hook pode decidir por você");
     expect(text).toContain("Skills: deploy");
-    expect(text).toContain(`Hash do conteúdo: ${inspectPlugin(installed).hash.slice(0, 12)}`);
+    expect(text).toContain(
+      `Hash do conteúdo: ${(await inspectPlugin(installed)).hash.slice(0, 12)}`,
+    );
   });
 
   test("Disponíveis e Marketplaces listam o que o host oferece e de onde", async () => {

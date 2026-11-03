@@ -2,20 +2,23 @@ import type { HooksStatusResult } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
+import { BypassSwitch } from "@/components/hosts/bypass-switch";
 import { HostDoctor } from "@/components/hosts/host-doctor";
 import { Field } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
+import type { HostNameError } from "../lib/host-name.ts";
+import type { UsageHistoryTarget } from "../lib/usage-rows.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { DaemonUpdate } from "./DaemonUpdate.tsx";
 import { HostTerminal } from "./HostTerminal.tsx";
 import { MaintenanceSection } from "./MaintenanceSection.tsx";
+import { RenameHostDialog } from "./RenameHostDialog.tsx";
 import { TelemetrySection } from "./TelemetrySection.tsx";
 import { UsagePanel } from "./UsagePanel.tsx";
 
@@ -32,14 +35,15 @@ const HOOK_LABELS = {
 export function HostPage(props: {
   store: AppStore;
   host: HostView;
-  onRename(name: string): void;
+  onRename(name: string): HostNameError | null;
   onReconnect(): void;
   onOpenAutoApprovals(): void;
+  onOpenHistory(filter: UsageHistoryTarget): void;
   onRemove(): void;
 }) {
   const t = useT();
   const { host } = props;
-  const [name, setName] = useState(host.name);
+  const [renaming, setRenaming] = useState(false);
   const info = host.hostInfo;
   const { store } = props;
   const [hooks, setHooks] = useState<HooksStatusResult | null>(null);
@@ -62,7 +66,15 @@ export function HostPage(props: {
     if (result) setHooks(result);
   };
   return (
-    <Page title={host.name} subtitle={host.url}>
+    <Page
+      title={host.name}
+      subtitle={host.url}
+      actions={
+        <Button variant="outline" onClick={() => setRenaming(true)}>
+          {t("hostPage.rename")}
+        </Button>
+      }
+    >
       <div className="flex max-w-3xl flex-col gap-5">
         {host.status === "incompatible" && (
           <InlineNotice>
@@ -85,6 +97,7 @@ export function HostPage(props: {
             hostId={host.id}
             online={host.status === "online"}
             costs={hasFeature(info?.features, "costs", false)}
+            onOpenHistory={props.onOpenHistory}
           />
         )}
         <Panel title={t("hostPage.info")}>
@@ -115,6 +128,7 @@ export function HostPage(props: {
         {host.status === "online" && hasFeature(info?.features, "doctor.run", false) && (
           <HostDoctor store={store} host={host} />
         )}
+        <BypassSwitch store={store} host={host} />
         <DaemonUpdate store={store} host={host} />
         {info?.apiKeySanitized === false && (
           <InlineNotice>{t("hostPage.apiKeyForwarded")}</InlineNotice>
@@ -163,19 +177,14 @@ export function HostPage(props: {
             onCancel={() => setConfirming(null)}
           />
         )}
+        {renaming && (
+          <RenameHostDialog
+            name={host.name}
+            onRename={props.onRename}
+            onClose={() => setRenaming(false)}
+          />
+        )}
         <Panel title={t("hostPage.host")}>
-          <Field label={t("hostPage.nameLabel")}>
-            {(control) => (
-              <Input {...control} value={name} onChange={(e) => setName(e.target.value)} />
-            )}
-          </Field>
-          <Button
-            variant="outline"
-            className="self-start"
-            onClick={() => name.trim() && props.onRename(name.trim())}
-          >
-            {t("hostPage.saveName")}
-          </Button>
           <div className="flex gap-2">
             <Button variant="outline" onClick={props.onReconnect}>
               {t("hostPage.reconnect")}

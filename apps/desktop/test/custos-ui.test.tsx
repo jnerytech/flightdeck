@@ -244,7 +244,7 @@ describe("custos-ui", () => {
 
   test("top sessões abrem a sessão; modelo sem preço e tabela desatualizada aparecem", async () => {
     const { d, store } = await online();
-    const managed = d.manager.create({ cwd: d.project, prompt: "oi" });
+    const managed = await d.manager.create({ cwd: d.project, prompt: "oi" });
     await settle(() => d.manager.get(managed.sessionId).claudeSessionId !== null);
     const claudeId = d.manager.get(managed.sessionId).claudeSessionId as string;
     spend(d, { day: "2026-10-15", key: "kA", cost: 9, session: claudeId });
@@ -266,7 +266,7 @@ describe("custos-ui", () => {
     writeTranscript(d.historyRoot, "-p", "s-hist", [
       userLine({ uuid: "u1", text: "Lido do histórico", cwd: d.project }),
     ]);
-    d.history.scan();
+    await d.history.scan();
     spend(d, { day: "2026-10-15", key: "kA", cost: 5, session: "s-hist" });
     spend(d, { day: "2026-10-15", key: "kA", model: "claude-mystery-9", cost: null });
     await click("Custos");
@@ -328,9 +328,11 @@ describe("custos-ui", () => {
         (r) => r.textContent,
       ),
     ).toEqual([
-      "2026-10-15kAUS$ 1.501.000.015",
-      "2026-10-15kBUS$ 0.5015",
-      "2026-10-14kAUS$ 2.0015",
+      "kAUS$ 3.50",
+      "2026-10-15US$ 1.501.000.015",
+      "2026-10-14US$ 2.0015",
+      "kBUS$ 0.50",
+      "2026-10-15US$ 0.5015",
     ]);
   });
 

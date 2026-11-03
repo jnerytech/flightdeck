@@ -1,5 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 /** Events installed as http hooks; SessionStart is a command hook (its http form never fires). */
@@ -94,13 +93,14 @@ export const isFlightdeckHook = (hook: HookEntry) =>
   /^http:\/\/127\.0\.0\.1:\d+\/hooks\//.test(hook.url ?? "") ||
   (hook.command ?? "").includes(" hook session-start ");
 
-function readSettings(file: string): Settings | null {
-  return existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as Settings) : null;
+async function readSettings(file: string): Promise<Settings | null> {
+  const text = await readFile(file, "utf8").catch(() => null);
+  return text === null ? null : (JSON.parse(text) as Settings);
 }
 
-function writeSettings(file: string, settings: Settings): void {
-  mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, `${JSON.stringify(settings, null, 2)}\n`);
+async function writeSettings(file: string, settings: Settings): Promise<void> {
+  await mkdir(dirname(file), { recursive: true });
+  await writeFile(file, `${JSON.stringify(settings, null, 2)}\n`);
 }
 
 /** Drops Flightdeck's hooks; groups, events and `hooks` emptied by that go too. */
@@ -124,34 +124,30 @@ function withoutFlightdeck(settings: Settings): { settings: Settings; changed: b
  * Merges Flightdeck's hooks into `settings.json`, keeping every other key and hook, after a
  * `.flightdeck-backup` copy. Installing again replaces the old entries instead of adding more.
  */
-export function installHooks(file: string, target: HookTarget): void {
-  const current = readSettings(file);
-  if (current) writeFileSync(`${file}.flightdeck-backup`, readFileSync(file));
+export async function installHooks(file: string, target: HookTarget): Promise<void> {
+  const current = await readSettings(file);
+  if (current) await writeFile(`${file}.flightdeck-backup`, await readFile(file));
   const { settings } = withoutFlightdeck(current ?? {});
   const hooks = { ...settings.hooks };
   for (const [event, groups] of Object.entries(hookEntries(target))) {
     hooks[event] = [...(hooks[event] ?? []), ...groups];
   }
-  writeSettings(file, { ...settings, hooks });
+  await writeSettings(file, { ...settings, hooks });
 }
 
 /** Removes only Flightdeck's entries; false when there were none. */
-export function uninstallHooks(file: string): boolean {
-  const current = readSettings(file);
+export async function uninstallHooks(file: string): Promise<boolean> {
+  const current = await readSettings(file);
   if (!current) return false;
   const { settings, changed } = withoutFlightdeck(current);
-  if (changed) writeSettings(file, settings);
+  if (changed) await writeSettings(file, settings);
   return changed;
 }
 
 /** Installed as `install` would write it now, absent, or different (outdated). */
-export function hooksStatus(file: string, target: HookTarget): HooksStatus {
-  return statusOf(readSettings(file), target);
-}
-
-function statusOf(settings: Settings | null, target: HookTarget): HooksStatus {
+export async function hooksStatus(file: string, target: HookTarget): Promise<HooksStatus> {
   const found: Record<string, HookEntry[]> = {};
-  for (const [event, groups] of Object.entries(settings?.hooks ?? {})) {
+  for (const [event, groups] of Object.entries((await readSettings(file))?.hooks ?? {})) {
     const ours = groups.flatMap((group) => group.hooks.filter(isFlightdeckHook));
     if (ours.length > 0) found[event] = ours;
   }
@@ -165,15 +161,6 @@ function statusOf(settings: Settings | null, target: HookTarget): HooksStatus {
   return JSON.stringify(sortKeys(found)) === JSON.stringify(sortKeys(expected))
     ? "installed"
     : "outdated";
-}
-
-/** The same answer as `hooksStatus`, reading the file without blocking (the running daemon uses it). */
-export async function hooksStatusAsync(file: string, target: HookTarget): Promise<HooksStatus> {
-  const text = await readFile(file, "utf8").catch((error: NodeJS.ErrnoException) => {
-    if (error.code === "ENOENT") return null;
-    throw error;
-  });
-  return statusOf(text === null ? null : (JSON.parse(text) as Settings), target);
 }
 
 const sortKeys = (value: Record<string, unknown>) =>

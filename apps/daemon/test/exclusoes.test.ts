@@ -24,7 +24,7 @@ const sessionIds = (db: EventStore["db"]) =>
   ).map((r) => r.id);
 
 describe("exclusoes", () => {
-  test("sessão com cwd numa pasta excluída (ou dentro dela) não entra no índice", () => {
+  test("sessão com cwd numa pasta excluída (ou dentro dela) não entra no índice", async () => {
     const root = projectsRoot();
     const { db } = new EventStore(":memory:");
     const excluded = writeTranscript(root, "-x", "s-excluida", [
@@ -45,54 +45,55 @@ describe("exclusoes", () => {
       roots: [root],
       excludeCwds: ["/home/dev/secreto/"],
     });
-    expect(
-      indexer
-        .scan()
-        .map((r) => r.claudeSessionId)
-        .sort(),
-    ).toEqual(["s-nome-enganoso", "s-vizinha"]);
+    expect((await indexer.scan()).map((r) => r.claudeSessionId).sort()).toEqual([
+      "s-nome-enganoso",
+      "s-vizinha",
+    ]);
     expect(sessionIds(db)).toEqual(["s-nome-enganoso", "s-vizinha"]);
     expect(storedMessages(db, "s-excluida")).toEqual([]);
     expect(storedMessages(db, "s-dentro")).toEqual([]);
     // Read once and skipped, not read again on every pass.
     expect(fileRow(db, excluded)?.offset).toBe(statSync(excluded).size);
     appendRaw(excluded, `${userLine({ uuid: "u2", text: "mais", cwd: "/home/dev/secreto" })}\n`);
-    expect(indexer.scan()).toEqual([]);
+    expect(await indexer.scan()).toEqual([]);
     expect(storedMessages(db, "s-excluida")).toEqual([]);
   });
 
-  test("cwd que só aparece numa leitura posterior também exclui o que já tinha entrado", () => {
+  test("cwd que só aparece numa leitura posterior também exclui o que já tinha entrado", async () => {
     const root = projectsRoot();
     const { db } = new EventStore(":memory:");
     const path = writeTranscript(root, "-p", "s-tardia", [summaryLine("só o resumo", "x")]);
     const indexer = new HistoryIndexer({ db, roots: [root], excludeCwds: ["/srv/privado"] });
-    indexer.scan();
+    await indexer.scan();
     expect(sessionIds(db)).toEqual(["s-tardia"]);
     appendRaw(path, `${userLine({ uuid: "u1", text: "agora sim", cwd: "/srv/privado/app" })}\n`);
-    indexer.scan();
+    await indexer.scan();
     expect(sessionIds(db)).toEqual([]);
     expect(storedMessages(db, "s-tardia")).toEqual([]);
   });
 
-  test.if(process.platform === "win32")("no Windows a comparação ignora caixa e barras", () => {
-    const root = projectsRoot();
-    const { db } = new EventStore(":memory:");
-    writeTranscript(root, "-p", "s-win", [
-      userLine({ uuid: "u1", text: "x", cwd: "C:\\Users\\Dev\\Privado\\app" }),
-    ]);
-    const indexer = new HistoryIndexer({
-      db,
-      roots: [root],
-      excludeCwds: ["c:/users/dev/privado"],
-    });
-    expect(indexer.scan()).toEqual([]);
-  });
+  test.if(process.platform === "win32")(
+    "no Windows a comparação ignora caixa e barras",
+    async () => {
+      const root = projectsRoot();
+      const { db } = new EventStore(":memory:");
+      writeTranscript(root, "-p", "s-win", [
+        userLine({ uuid: "u1", text: "x", cwd: "C:\\Users\\Dev\\Privado\\app" }),
+      ]);
+      const indexer = new HistoryIndexer({
+        db,
+        roots: [root],
+        excludeCwds: ["c:/users/dev/privado"],
+      });
+      expect(await indexer.scan()).toEqual([]);
+    },
+  );
 
-  test("config: history.roots padrão em ~/.claude/projects e ~ expandido nas exclusões", () => {
+  test("config: history.roots padrão em ~/.claude/projects e ~ expandido nas exclusões", async () => {
     const dir = tempDir();
     const file = join(dir, "config.json");
     writeFileSync(file, JSON.stringify({ history: { excludeCwds: ["~/privado", "/abs"] } }));
-    const config = loadConfig(file);
+    const config = await loadConfig(file);
     expect(config.history).toEqual({
       roots: [join(testHome(), ".claude", "projects")],
       excludeCwds: [join(testHome(), "privado"), "/abs"],

@@ -339,6 +339,7 @@ export function App({ store }: { store: AppStore }) {
                 go({ name: "new-session", host: hostId });
               }}
               onRemoveHost={(id) => void store.removeHost(id)}
+              onRenameHost={(id, name) => store.renameHost(id, name)}
               onOpenSearch={() => store.openSearch()}
               onNewTab={() => store.tabs.openNextInNewTab()}
               onToggleTheme={() => store.theme.toggle()}

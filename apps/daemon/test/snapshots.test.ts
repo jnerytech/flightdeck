@@ -185,7 +185,7 @@ describe("snapshots", () => {
       onTurnEdge: (edge) =>
         edges.push({ kind: edge.kind, prompt: edge.prompt, claudeSessionId: edge.claudeSessionId }),
     });
-    const { sessionId } = manager.create({ cwd: project, prompt: "primeiro" });
+    const { sessionId } = await manager.create({ cwd: project, prompt: "primeiro" });
     await poll(() => manager.get(sessionId).status === "idle", 3000);
     manager.send(sessionId, "segundo");
     await poll(() => edges.length === 4, 3000);
@@ -213,7 +213,7 @@ describe("snapshots", () => {
         },
       },
     });
-    maintenance.start();
+    await maintenance.start();
     maintenance.stop();
     expect(policies).toEqual([{ perSession: 50, days: 30 }]);
   });

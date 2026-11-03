@@ -66,7 +66,7 @@ describe("hooks-ui", () => {
     const url = central.receptorUrl() ?? "";
     expect(url).toMatch(/^http:\/\/127\.0\.0\.1:[1-9]\d*$/);
     expect(settings.hooks.Stop[0].hooks[0].url).toBe(`${url}/hooks/Stop`);
-    const token = loadConfig(configFile).hooks.token ?? "";
+    const token = (await loadConfig(configFile)).hooks.token ?? "";
     expect(settings.hooks.Stop[0].hooks[0].headers).toEqual({ Authorization: `Bearer ${token}` });
   });
 
@@ -111,6 +111,7 @@ describe("hooks-ui", () => {
       selfCommand: ["flightdeckd"],
       settingsPath: () => d.settingsFile,
     });
+    await central.ready();
     expect(central.receptorUrl()).not.toBeNull();
     const published = join(dataDir, RECEPTOR_FILE);
     expect(existsSync(published) ? JSON.parse(readFileSync(published, "utf8")).url : null).toBe(
@@ -118,7 +119,7 @@ describe("hooks-ui", () => {
     );
     expect((await fetch(`${central.receptorUrl()}/health`)).status).toBe(200);
     // Its receptor feeds the external sessions and skips the daemon's own sessions.
-    const { sessionId } = d.manager.create({ cwd: d.project, prompt: "oi" });
+    const { sessionId } = await d.manager.create({ cwd: d.project, prompt: "oi" });
     const managed = await poll(() => d.manager.get(sessionId).claudeSessionId);
     for (const id of ["externa", managed ?? ""]) {
       await fetch(`${central.receptorUrl()}/hooks/UserPromptSubmit`, {

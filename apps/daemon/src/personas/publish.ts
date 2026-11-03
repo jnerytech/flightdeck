@@ -18,13 +18,13 @@ function agentFile(request: AgentPublishRequest): string {
  */
 export function agentPublisher(agents: Pick<AgentConfig, "list" | "write">) {
   return {
-    publish(request: AgentPublishRequest): { path: string } {
+    async publish(request: AgentPublishRequest): Promise<{ path: string }> {
       const path = `.claude/agents/${request.name}.md`;
       // Publishing again replaces the agent: the editor asks for the hash it would overwrite.
-      const current = agents
-        .list(request.projectPath, "agent")
-        .find((item) => item.origin === "project" && item.path === path);
-      agents.write(request.projectPath, {
+      const current = (await agents.list(request.projectPath, "agent")).find(
+        (item) => item.origin === "project" && item.path === path,
+      );
+      await agents.write(request.projectPath, {
         kind: "agent",
         path,
         origin: "project",

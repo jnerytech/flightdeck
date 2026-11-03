@@ -3,7 +3,7 @@
  * checks its sha256 and the project's minisign signature, and hands it to `flightdeckd update`
  * (phase 7) started outside the service's process tree, so it survives the daemon stopping.
  */
-import { chmodSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { DaemonManifest } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
@@ -59,11 +59,11 @@ export class DaemonUpdater {
       );
     }
     const dir = join(this.opts.dataDir, "updates");
-    mkdirSync(dir, { recursive: true });
+    await mkdir(dir, { recursive: true });
     const file = join(dir, `flightdeckd-${manifest.version}${platform === "win32" ? ".exe" : ""}`);
     await this.download(asset, file);
     if (!(await serviceCommand(this.opts.ctx))) {
-      rmSync(file, { force: true });
+      await rm(file, { force: true });
       throw new FlightdeckError(
         "update_needs_service",
         "o daemon não roda como serviço: atualize no host com flightdeckd update --from <binário novo>",
@@ -83,8 +83,8 @@ export class DaemonUpdater {
         throw new Error("o sha256 do arquivo baixado não confere com o manifesto");
       }
       verifyMinisign(bytes, asset.signature, this.opts.publicKey ?? updatePublicKey());
-      writeFileSync(file, bytes);
-      chmodSync(file, 0o755);
+      await writeFile(file, bytes);
+      await chmod(file, 0o755);
     } catch (error) {
       throw new FlightdeckError("update_verification_failed", (error as Error).message);
     }

@@ -8,6 +8,7 @@ import { Automations } from "../../daemon/src/automations/automations.ts";
 import type { BgService } from "../../daemon/src/bg/service.ts";
 import { Board } from "../../daemon/src/board/board.ts";
 import { Central } from "../../daemon/src/central/central.ts";
+import { ProjectKeys } from "../../daemon/src/central/project-key.ts";
 import { Forker } from "../../daemon/src/checkpoints/fork.ts";
 import { Rewinder } from "../../daemon/src/checkpoints/rewind.ts";
 import { Snapshots } from "../../daemon/src/checkpoints/snapshots.ts";
@@ -23,6 +24,7 @@ import { AutoApprover } from "../../daemon/src/permissions/auto-approve.ts";
 import type { RiskClassifier } from "../../daemon/src/permissions/risk.ts";
 import { OpenSessionPersonas } from "../../daemon/src/personas/open-session.ts";
 import { packPersonas } from "../../daemon/src/personas/pack.ts";
+import { preparePersonas } from "../../daemon/src/personas/prepare.ts";
 import { agentPublisher } from "../../daemon/src/personas/publish.ts";
 import { Personas } from "../../daemon/src/personas/store.ts";
 import { claudeCli, filePins, Plugins } from "../../daemon/src/plugins/plugins.ts";
@@ -72,7 +74,7 @@ export async function waitFor<T>(
 
 /**
  * In-process daemon with the FakeRuntime and a board; `listen` can be called again on the same port. Its
- * history index reads `historyRoot` (a fake `~/.claude/projects`); call `history.scan()` after
+ * history index reads `historyRoot` (a fake `~/.claude/projects`); call `await history.scan()` after
  * writing transcripts there.
  */
 export function daemon(
@@ -134,6 +136,8 @@ export function daemon(
     personas?: boolean;
     /** The host's self-check (`doctor.run`) and project finder (`projects.scan`, `projects.clone`), over a fake git. */
     firstRun?: boolean;
+    /** The host's switch for sessions without permission prompts (bypass-ui): on from the start. */
+    bypass?: boolean;
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
@@ -176,7 +180,9 @@ export function daemon(
         publisher: agentPublisher(new AgentConfig({ claudeDir: join(root, "claude-home") })),
       })
     : undefined;
+  let bypass = options.bypass === true;
   const manager = new SessionManager({
+    allowBypass: () => bypass,
     ...(personaStore ? { personas: personaStore } : {}),
     ...(snapshots
       ? {
@@ -218,7 +224,14 @@ export function daemon(
   const plugins = options.plugins
     ? new Plugins({ cli: claudeCli(), pins: filePins(join(root, "plugin-pins.json")) })
     : undefined;
-  const board = new Board({ db: store.db, manager, allowedRoots: roots, quota });
+  const board = new Board({
+    db: store.db,
+    manager,
+    allowedRoots: roots,
+    quota,
+    // Like main.ts: the personas are read at the edge, before a session exists.
+    preparePersonas: (ref, cwd) => preparePersonas(personaStore, ref, cwd),
+  });
   cleanups.push(() => board.stop());
   const runHost = options.runenv ? fakeRunHost() : undefined;
   const runConfigs = new RunConfigs({ db: store.db });
@@ -237,8 +250,11 @@ export function daemon(
   const settingsFile = join(root, "claude-home", "settings.json");
   const configFile = join(root, "config.json");
   writeFileSync(configFile, JSON.stringify({ token: TOKEN }));
+  // Shared with the server like the real daemon does: listings look the keys up before they read them.
+  const keys = new ProjectKeys("h1");
   const central = new Central({
     ...(snapshots ? { snapshots } : {}),
+    keys,
     db: store.db,
     manager,
     hooks: { port: 0, permissionTimeoutS: 600, staleAfterS: 900 },
@@ -363,12 +379,19 @@ export function daemon(
       ...firstRunOptions,
       rootsPlatform: testRootsPlatform(),
       sessionSettings: true,
+      bypass: {
+        allowed: () => bypass,
+        set: (allow) => {
+          bypass = allow;
+        },
+      },
       manager,
       history,
       board,
       quota,
       usage,
       central,
+      warmProjectKey: (cwd) => keys.resolve(cwd),
       ...(maintenance ? { maintenance } : {}),
       ...(options.terminal ? { terminal: options.terminal } : {}),
       ...(costs ? { costs } : {}),
@@ -449,6 +472,11 @@ export function daemon(
     ptys,
     runHost,
     actions,
+    /** Opens a session the way `session.create` does: the persona is read first, then handed over. */
+    start: async (payload: Parameters<SessionManager["create"]>[0]) =>
+      manager.create(payload, {
+        prepared: await preparePersonas(personaStore, payload.persona, payload.cwd),
+      }),
     gitCalls,
     doctorAsked,
   };

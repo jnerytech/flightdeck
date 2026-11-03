@@ -34,7 +34,7 @@ async function setup(offsetMs: number, cwd?: string) {
     roots: [root],
     now: () => Date.now() + offsetMs,
   });
-  history.scan();
+  await history.scan();
   const server = startServer({
     manager: ctx.manager,
     history,

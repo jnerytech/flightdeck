@@ -98,7 +98,7 @@ describe("cota-fila", () => {
   test("sessão manual não é bloqueada pela cota", async () => {
     const hot = hotQuota(0.9);
     const { manager, root } = await boardWith(hot.quota);
-    const { sessionId } = manager.create({ cwd: root, prompt: "manual" });
+    const { sessionId } = await manager.create({ cwd: root, prompt: "manual" });
     expect(await poll(() => manager.get(sessionId).status === "idle", 3000)).toBe(true);
   });
 
