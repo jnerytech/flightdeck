@@ -52,7 +52,8 @@ async function setup() {
 
 const scrolled: string[] = [];
 HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) {
-  scrolled.push(this.dataset.uuid ?? "");
+  // The tab strip also scrolls its active tab into view; only transcript rows count here.
+  if (this.dataset.uuid) scrolled.push(this.dataset.uuid);
 };
 
 async function openHit() {
