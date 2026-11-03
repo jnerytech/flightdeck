@@ -2922,3 +2922,6 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
   rule for it, so the project's saved rules cannot approve it. (Every MCP tool already counts as
   network access, which the automatic approval never takes.) What a user types into their own
   Claude Code `settings.json` is theirs to decide and outside what the daemon can enforce.
+- In a session in `bypassPermissions` the SDK skips `canUseTool`, so `finish_card` with `discard`
+  runs there without a prompt. That is the explicit choice of the person who turned bypass on for
+  the host and picked that mode for the session; the manual says so next to the bypass switch.
