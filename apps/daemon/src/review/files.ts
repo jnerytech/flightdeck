@@ -1,15 +1,14 @@
 import { createHash } from "node:crypto";
 import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+  copyFile,
+  mkdir,
+  readdir,
+  readFile,
+  realpath,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { git } from "../board/command.ts";
 import { must } from "../board/worktree.ts";
@@ -43,6 +42,15 @@ const UNDO_MS = 30_000;
 /** Copies of reverted files stay this long in the trash. */
 const TRASH_MS = 7 * 86_400_000;
 
+/** The file's bytes, or `null` when it is not there. */
+const bytesOrNull = (path: string) => readFile(path).catch(() => null);
+
+const exists = (path: string) =>
+  stat(path).then(
+    () => true,
+    () => false,
+  );
+
 const sha256 = (bytes: Buffer | string) => createHash("sha256").update(bytes).digest("hex");
 
 interface Undo {
@@ -63,12 +71,25 @@ export class ReviewFiles {
   async read(target: string, path: string): Promise<FileContent> {
     const { root } = await this.opts.changes.resolve(target);
     const full = fileInRoot(root, path);
-    if (!existsSync(full)) throw new FlightdeckError("not_found", `${path} não existe`);
-    const bytes = readFileSync(full);
-    if (bytes.length > MAX_BYTES) {
-      throw new FlightdeckError("bad_request", `${path} passa de 1 MB: edite fora do Flightdeck`);
+    const bytes = await bytesOrNull(full);
+    if (!bytes) {
+      throw new FlightdeckError("not_found", `${path} does not exist`, "review_file_missing", {
+        path,
+      });
     }
-    if (bytes.includes(0)) throw new FlightdeckError("bad_request", `${path} não é texto`);
+    if (bytes.length > MAX_BYTES) {
+      throw new FlightdeckError(
+        "bad_request",
+        `${path} is over 1 MB: edit it outside Flightdeck`,
+        "review_file_big",
+        { path },
+      );
+    }
+    if (bytes.includes(0)) {
+      throw new FlightdeckError("bad_request", `${path} is not text`, "review_file_binary", {
+        path,
+      });
+    }
     return { path, text: bytes.toString("utf8"), hash: sha256(bytes), size: bytes.length };
   }
 
@@ -81,12 +102,19 @@ export class ReviewFiles {
   ): Promise<Omit<FileContent, "text">> {
     const full = await this.writable(target, path);
     const bytes = Buffer.from(text, "utf8");
-    if (bytes.length > MAX_BYTES) throw new FlightdeckError("bad_request", "texto passa de 1 MB");
-    const current = existsSync(full) ? sha256(readFileSync(full)) : null;
-    if (current !== expectedHash) {
-      throw new FlightdeckError("file_conflict", `${path} mudou desde que foi aberto`);
+    if (bytes.length > MAX_BYTES) {
+      throw new FlightdeckError("bad_request", "the text is over 1 MB", "review_text_big");
     }
-    writeFileSync(full, bytes);
+    const before = await bytesOrNull(full);
+    if ((before ? sha256(before) : null) !== expectedHash) {
+      throw new FlightdeckError(
+        "file_conflict",
+        `${path} changed since it was opened`,
+        "review_file_changed",
+        { path },
+      );
+    }
+    await writeFile(full, bytes);
     return { path, hash: sha256(bytes), size: bytes.length };
   }
 
@@ -99,15 +127,21 @@ export class ReviewFiles {
     path: string,
     confirm: boolean,
   ): Promise<{ path: string; undoUntil: string }> {
-    if (!confirm) throw new FlightdeckError("invalid_state", "confirme o revert com confirm: true");
+    if (!confirm) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "confirm the revert with confirm: true",
+        "review_revert_confirm",
+      );
+    }
     const { root, base } = await this.opts.changes.resolve(target);
     const full = await this.writable(target, path);
-    this.pruneTrash();
+    await this.pruneTrash();
     let copy: string | null = null;
-    if (existsSync(full)) {
+    if (await exists(full)) {
       copy = join(this.trash, ulid(this.now()), path);
-      mkdirSync(dirname(copy), { recursive: true });
-      copyFileSync(full, copy);
+      await mkdir(dirname(copy), { recursive: true });
+      await copyFile(full, copy);
     }
     const source = base ?? "HEAD";
     const gitPath = path.replaceAll("\\", "/");
@@ -118,7 +152,7 @@ export class ReviewFiles {
         "git restore",
       );
     } else {
-      rmSync(full, { force: true });
+      await rm(full, { force: true });
       must(await git(root, "rm", "-q", "--cached", "--ignore-unmatch", "--", gitPath), "git rm");
     }
     const at = this.now();
@@ -128,19 +162,29 @@ export class ReviewFiles {
 
   /** Puts back what the revert replaced, within 30 s of it. */
   async undoRevert(target: string, path: string, confirm: boolean): Promise<{ path: string }> {
-    if (!confirm)
-      throw new FlightdeckError("invalid_state", "confirme o desfazer com confirm: true");
+    if (!confirm) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "confirm the undo with confirm: true",
+        "review_undo_confirm",
+      );
+    }
     const key = `${target}\0${path}`;
     const undo = this.undos.get(key);
     if (!undo || this.now() - undo.at > UNDO_MS) {
-      throw new FlightdeckError("invalid_state", `nada para desfazer em ${path}`);
+      throw new FlightdeckError(
+        "invalid_state",
+        `nothing to undo in ${path}`,
+        "review_undo_nothing",
+        { path },
+      );
     }
     const full = await this.writable(target, path);
     if (undo.copy) {
-      mkdirSync(dirname(full), { recursive: true });
-      copyFileSync(undo.copy, full);
+      await mkdir(dirname(full), { recursive: true });
+      await copyFile(undo.copy, full);
     } else {
-      rmSync(full, { force: true });
+      await rm(full, { force: true });
     }
     // The revert staged the source's version (or the removal): the index goes back to HEAD.
     const { root } = await this.opts.changes.resolve(target);
@@ -154,12 +198,13 @@ export class ReviewFiles {
   }
 
   /** Copies older than 7 days leave the trash. */
-  private pruneTrash(): void {
-    if (!existsSync(this.trash)) return;
-    for (const name of readdirSync(this.trash)) {
+  private async pruneTrash(): Promise<void> {
+    const names = await readdir(this.trash).catch(() => []);
+    for (const name of names) {
       const dir = join(this.trash, name);
-      if (this.now() - statSync(dir).mtimeMs > TRASH_MS)
-        rmSync(dir, { recursive: true, force: true });
+      const info = await stat(dir).catch(() => null);
+      if (info && this.now() - info.mtimeMs > TRASH_MS)
+        await rm(dir, { recursive: true, force: true });
     }
   }
 
@@ -171,8 +216,14 @@ export class ReviewFiles {
     const { root } = await this.opts.changes.resolve(target);
     const realRoot = resolveAllowedCwd(root, this.opts.allowedRoots);
     const full = fileInRoot(root, path);
-    if (existsSync(full) && !isInside(realRoot, realpathSync(full))) {
-      throw new FlightdeckError("forbidden_cwd", `${path} aponta para fora do repositório`);
+    const real = await realpath(full).catch(() => null);
+    if (real && !isInside(realRoot, real)) {
+      throw new FlightdeckError(
+        "forbidden_cwd",
+        `${path} points outside the repository`,
+        "review_path_link",
+        { path },
+      );
     }
     return full;
   }

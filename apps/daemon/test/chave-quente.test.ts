@@ -151,15 +151,11 @@ describe("chave-quente: the project key is looked up before the places that read
     writeFileSync(configFile, "{}");
     const { manager, store } = newManager();
     const calls: string[][] = [];
-    const keys = new ProjectKeys(
-      "h",
-      () => ({ code: 1, stdout: "" }),
-      async (args) => {
-        calls.push(args);
-        if (args.includes("--git-common-dir")) return { code: 0, stdout: "/w/one/.git\n" };
-        return { code: 0, stdout: "git@github.com:Acme/Repo.git\n" };
-      },
-    );
+    const keys = new ProjectKeys("h", async (args) => {
+      calls.push(args);
+      if (args.includes("--git-common-dir")) return { code: 0, stdout: "/w/one/.git\n" };
+      return { code: 0, stdout: "git@github.com:Acme/Repo.git\n" };
+    });
     const central = new Central({
       db: store.db,
       keys,

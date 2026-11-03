@@ -5,14 +5,8 @@
  * sees this before any install or update, and the hash ties the confirmation to what was shown.
  */
 import { createHash } from "node:crypto";
-import {
-  existsSync,
-  lstatSync,
-  readdirSync,
-  readFileSync,
-  readlinkSync,
-  realpathSync,
-} from "node:fs";
+import { createReadStream } from "node:fs";
+import { lstat, readdir, readFile, readlink, realpath, stat } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { frontmatter } from "../agentcfg/files.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -70,21 +64,26 @@ type Json = Record<string, unknown>;
 const isObject = (value: unknown): value is Json =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 const text = (value: unknown) => (typeof value === "string" ? value : undefined);
+const exists = (path: string) =>
+  stat(path).then(
+    () => true,
+    () => false,
+  );
 const asList = <T>(value: T | T[] | undefined): T[] => {
   if (value === undefined) return [];
   return Array.isArray(value) ? value : [value];
 };
 
 /** Every regular file under `root` (links are not followed, `.git` is skipped), sorted by path. */
-function filesUnder(root: string): { files: string[]; links: string[] } {
+async function filesUnder(root: string): Promise<{ files: string[]; links: string[] }> {
   const files: string[] = [];
   const links: string[] = [];
-  const walk = (dir: string, rel: string) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+  const walk = async (dir: string, rel: string) => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
       const path = rel === "" ? entry.name : `${rel}/${entry.name}`;
       if (entry.isSymbolicLink()) links.push(path);
       else if (entry.isDirectory()) {
-        if (entry.name !== ".git") walk(join(dir, entry.name), path);
+        if (entry.name !== ".git") await walk(join(dir, entry.name), path);
       } else if (entry.isFile()) files.push(path);
       if (files.length > MAX_FILES) {
         throw new FlightdeckError(
@@ -94,7 +93,7 @@ function filesUnder(root: string): { files: string[]; links: string[] } {
       }
     }
   };
-  walk(root, "");
+  await walk(root, "");
   return {
     files: [...files].sort((a, b) => (a < b ? -1 : Number(a > b))),
     links: [...links].sort((a, b) => (a < b ? -1 : Number(a > b))),
@@ -108,19 +107,19 @@ interface Reading {
 }
 
 /** A path the manifest names, refused when it leaves the plugin; the real path or null. */
-function inside(reading: Reading, key: string, rel: string): string | null {
+async function inside(reading: Reading, key: string, rel: string): Promise<string | null> {
   const target = resolve(reading.root, rel);
-  const real = existsSync(target) ? realpathSync.native(target) : target;
+  const real = await realpath(target).catch(() => target);
   if (!isInside(reading.root, real)) {
     reading.problems.push(`${key}: caminho fora do plugin: ${rel}`);
     return null;
   }
-  return existsSync(real) ? real : null;
+  return (await exists(real)) ? real : null;
 }
 
-function readJson(reading: Reading, path: string, label: string): unknown {
+async function readJson(reading: Reading, path: string, label: string): Promise<unknown> {
   try {
-    return JSON.parse(readFileSync(path, "utf8"));
+    return JSON.parse(await readFile(path, "utf8"));
   } catch {
     reading.problems.push(`${label}: não é um JSON válido`);
     return undefined;
@@ -128,20 +127,32 @@ function readJson(reading: Reading, path: string, label: string): unknown {
 }
 
 /** The hash: every file's path, size and bytes in path order; a link counts by its name and target. */
-function contentHash(
+async function contentHash(
   root: string,
   listing: { files: string[]; links: string[] },
-): { hash: string; bytes: number } {
+): Promise<{ hash: string; bytes: number }> {
   const hash = createHash("sha256");
   let bytes = 0;
+  const tooBig = () =>
+    new FlightdeckError("bad_request", "plugin is over the size limit", "plugin_too_big");
   for (const path of listing.files) {
-    const content = readFileSync(join(root, path));
-    bytes += content.length;
-    if (bytes > MAX_BYTES) throw new FlightdeckError("bad_request", "plugin grande demais");
-    hash.update(`F\0${path}\0${content.length}\0`).update(content).update("\0");
+    const file = join(root, path);
+    const size = (await stat(file)).size;
+    // The declared size is checked before a byte is read; the stream is capped as well, so a
+    // file that grows while it is read cannot go past the limit.
+    if (bytes + size > MAX_BYTES) throw tooBig();
+    hash.update(`F\0${path}\0${size}\0`);
+    let read = 0;
+    for await (const chunk of createReadStream(file) as AsyncIterable<Buffer>) {
+      read += chunk.length;
+      if (bytes + read > MAX_BYTES) throw tooBig();
+      hash.update(chunk);
+    }
+    hash.update("\0");
+    bytes += read;
   }
   for (const link of listing.links) {
-    hash.update(`L\0${link}\0${readlinkSync(join(root, link))}\0`);
+    hash.update(`L\0${link}\0${await readlink(join(root, link))}\0`);
   }
   return { hash: hash.digest("hex"), bytes };
 }
@@ -188,20 +199,20 @@ function hooksOfEvents(events: unknown): PluginHook[] {
 }
 
 /** Hooks: hooks/hooks.json first, then what the manifest adds (a file, an inline map, or a list). */
-function hooksOf(reading: Reading, manifestJson: Json | null): PluginHook[] {
-  const fromFile = (path: string, label: string) => {
-    const file = readJson(reading, path, label);
+async function hooksOf(reading: Reading, manifestJson: Json | null): Promise<PluginHook[]> {
+  const fromFile = async (path: string, label: string) => {
+    const file = await readJson(reading, path, label);
     return hooksOfEvents(isObject(file) ? file.hooks : undefined);
   };
   const own = join(reading.root, "hooks", "hooks.json");
-  const hooks = existsSync(own) ? fromFile(own, "hooks/hooks.json") : [];
+  const hooks = (await exists(own)) ? await fromFile(own, "hooks/hooks.json") : [];
   for (const item of asList(manifestJson?.hooks as unknown)) {
     if (typeof item !== "string") {
       hooks.push(...hooksOfEvents(item));
       continue;
     }
-    const path = inside(reading, "hooks", item);
-    if (path) hooks.push(...fromFile(path, item));
+    const path = await inside(reading, "hooks", item);
+    if (path) hooks.push(...(await fromFile(path, item)));
   }
   return hooks;
 }
@@ -224,63 +235,69 @@ function monitorsOfList(list: unknown): PluginMonitor[] {
 }
 
 /** Monitors: the manifest's list or file, else monitors/monitors.json. */
-function monitorsOf(reading: Reading, manifestJson: Json | null): PluginMonitor[] {
+async function monitorsOf(reading: Reading, manifestJson: Json | null): Promise<PluginMonitor[]> {
   const experimental = isObject(manifestJson?.experimental) ? manifestJson?.experimental : null;
   const declared = experimental?.monitors ?? manifestJson?.monitors;
   if (declared === undefined) {
     const file = join(reading.root, "monitors", "monitors.json");
-    return existsSync(file)
-      ? monitorsOfList(readJson(reading, file, "monitors/monitors.json"))
+    return (await exists(file))
+      ? monitorsOfList(await readJson(reading, file, "monitors/monitors.json"))
       : [];
   }
   if (typeof declared !== "string") return monitorsOfList(declared);
-  const path = inside(reading, "monitors", declared);
-  return path ? monitorsOfList(readJson(reading, path, declared)) : [];
+  const path = await inside(reading, "monitors", declared);
+  return path ? monitorsOfList(await readJson(reading, path, declared)) : [];
 }
 
 /** A skill's file when it is a regular file; a link is never followed. */
-const skillFile = (file: string): boolean => existsSync(file) && !lstatSync(file).isSymbolicLink();
+const skillFile = async (file: string): Promise<boolean> =>
+  (await lstat(file).catch(() => null))?.isSymbolicLink() === false;
 
-function skillsUnder(base: string): string[] {
-  if (!existsSync(base)) return [];
+async function skillsUnder(base: string): Promise<string[]> {
+  const entries = await readdir(base, { withFileTypes: true }).catch(() => null);
+  if (!entries) return [];
   const own = join(base, "SKILL.md");
-  const names = skillFile(own) ? [skillName(own, basename(base))] : [];
-  for (const entry of readdirSync(base, { withFileTypes: true })) {
+  const names = (await skillFile(own)) ? [await skillName(own, basename(base))] : [];
+  for (const entry of entries) {
     const file = join(base, entry.name, "SKILL.md");
-    if (entry.isDirectory() && skillFile(file)) names.push(skillName(file, entry.name));
+    if (entry.isDirectory() && (await skillFile(file)))
+      names.push(await skillName(file, entry.name));
   }
   return names;
 }
 
 /** Skills: skills/ and the folders the manifest adds. */
-function skillsOf(reading: Reading, manifestJson: Json | null): string[] {
-  const skills = new Set(skillsUnder(join(reading.root, "skills")));
+async function skillsOf(reading: Reading, manifestJson: Json | null): Promise<string[]> {
+  const skills = new Set(await skillsUnder(join(reading.root, "skills")));
   for (const item of asList(manifestJson?.skills as unknown)) {
     if (typeof item !== "string") continue;
-    const path = inside(reading, "skills", item);
-    if (path) for (const name of skillsUnder(path)) skills.add(name);
+    const path = await inside(reading, "skills", item);
+    if (path) for (const name of await skillsUnder(path)) skills.add(name);
   }
   return [...skills];
 }
 
-const markdownIn = (base: string): string[] =>
-  existsSync(base)
-    ? readdirSync(base, { withFileTypes: true })
-        .filter((e) => e.isFile() && e.name.endsWith(".md"))
-        .map((e) => join(base, e.name))
-    : [];
+const markdownIn = async (base: string): Promise<string[]> =>
+  (await readdir(base, { withFileTypes: true }).catch(() => []))
+    .filter((e) => e.isFile() && e.name.endsWith(".md"))
+    .map((e) => join(base, e.name));
 
 /** Agents and commands: the folder, or what the manifest names in its place. */
-function namedOf(reading: Reading, manifestJson: Json | null, key: "agents" | "commands") {
+async function namedOf(
+  reading: Reading,
+  manifestJson: Json | null,
+  key: "agents" | "commands",
+): Promise<string[]> {
   const declaredPaths = manifestJson?.[key];
-  if (declaredPaths === undefined) return markdownIn(join(reading.root, key));
+  if (declaredPaths === undefined) return await markdownIn(join(reading.root, key));
   if (isObject(declaredPaths)) return key === "commands" ? Object.keys(declaredPaths) : [];
-  return asList(declaredPaths as unknown).flatMap((item) => {
-    if (typeof item !== "string") return [];
-    const path = inside(reading, key, item);
-    if (!path) return [];
-    return path.endsWith(".md") ? [path] : markdownIn(path);
-  });
+  const found: string[] = [];
+  for (const item of asList(declaredPaths as unknown)) {
+    if (typeof item !== "string") continue;
+    const path = await inside(reading, key, item);
+    if (path) found.push(...(path.endsWith(".md") ? [path] : await markdownIn(path)));
+  }
+  return found;
 }
 
 function serversOfMap(map: unknown): Array<[string, PluginMcpServer]> {
@@ -304,45 +321,49 @@ function serversOfMap(map: unknown): Array<[string, PluginMcpServer]> {
 }
 
 /** MCP servers: .mcp.json first, then the manifest's; a later name replaces an earlier one. */
-function serversOf(reading: Reading, manifestJson: Json | null): PluginMcpServer[] {
+async function serversOf(reading: Reading, manifestJson: Json | null): Promise<PluginMcpServer[]> {
   const servers = new Map<string, PluginMcpServer>();
   const add = (map: unknown) => {
     for (const [name, server] of serversOfMap(map)) servers.set(name, server);
   };
   const own = join(reading.root, ".mcp.json");
-  if (existsSync(own)) add(readJson(reading, own, ".mcp.json"));
+  if (await exists(own)) add(await readJson(reading, own, ".mcp.json"));
   for (const item of asList(manifestJson?.mcpServers as unknown)) {
     if (typeof item !== "string") add(item);
     else if (/\.(mcpb|dxt)$|^https?:/.test(item)) {
       servers.set(basename(item), { name: basename(item), transport: "bundle", target: item });
     } else {
-      const path = inside(reading, "mcpServers", item);
-      if (path) add(readJson(reading, path, item));
+      const path = await inside(reading, "mcpServers", item);
+      if (path) add(await readJson(reading, path, item));
     }
   }
   return [...servers.values()];
 }
 
-export function inspectPlugin(dir: string): PluginInventory {
-  if (!existsSync(dir)) throw new FlightdeckError("not_found", `${dir} não existe`);
-  const reading: Reading = { root: realpathSync.native(resolve(dir)), problems: [] };
+export async function inspectPlugin(dir: string): Promise<PluginInventory> {
+  if (!(await exists(dir))) throw new FlightdeckError("not_found", `${dir} não existe`);
+  const reading: Reading = { root: await realpath(resolve(dir)), problems: [] };
   const { root } = reading;
 
-  const listing = filesUnder(root);
-  const { hash, bytes } = contentHash(root, listing);
+  const listing = await filesUnder(root);
+  const { hash, bytes } = await contentHash(root, listing);
 
   const manifestPath = join(root, ".claude-plugin", "plugin.json");
-  const raw = existsSync(manifestPath) ? readJson(reading, manifestPath, "plugin.json") : undefined;
+  const raw = (await exists(manifestPath))
+    ? await readJson(reading, manifestPath, "plugin.json")
+    : undefined;
   const manifestJson = isObject(raw) ? raw : null;
 
-  const hooks = hooksOf(reading, manifestJson);
-  const monitors = monitorsOf(reading, manifestJson);
-  const skills = skillsOf(reading, manifestJson);
-  const agents = namedOf(reading, manifestJson, "agents").map((file) => agentName(file));
-  const commands = namedOf(reading, manifestJson, "commands").map((file) =>
+  const hooks = await hooksOf(reading, manifestJson);
+  const monitors = await monitorsOf(reading, manifestJson);
+  const skills = await skillsOf(reading, manifestJson);
+  const agents = await Promise.all(
+    (await namedOf(reading, manifestJson, "agents")).map((file) => agentName(file)),
+  );
+  const commands = (await namedOf(reading, manifestJson, "commands")).map((file) =>
     file.endsWith(".md") ? basename(file, ".md") : file,
   );
-  const mcpServers = serversOf(reading, manifestJson);
+  const mcpServers = await serversOf(reading, manifestJson);
 
   const byText = (a: string, b: string) => (a < b ? -1 : Number(a > b));
   return {
@@ -361,12 +382,12 @@ export function inspectPlugin(dir: string): PluginInventory {
   };
 }
 
-const skillName = (file: string, fallback: string) => {
-  const name = frontmatter(readFileSync(file, "utf8"))?.name;
+const skillName = async (file: string, fallback: string) => {
+  const name = frontmatter(await readFile(file, "utf8"))?.name;
   return typeof name === "string" && name.trim() !== "" ? name : fallback;
 };
 
-const agentName = (file: string) => {
-  const name = frontmatter(readFileSync(file, "utf8"))?.name;
+const agentName = async (file: string) => {
+  const name = frontmatter(await readFile(file, "utf8"))?.name;
   return typeof name === "string" && name.trim() !== "" ? name : basename(file, ".md");
 };

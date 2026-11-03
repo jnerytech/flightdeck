@@ -42,9 +42,9 @@ const SECURITY: PersonaInput = {
   body: "Procure injeção.",
 };
 
-function codeOf(fn: () => unknown): string {
+async function codeOf(fn: () => unknown): Promise<string> {
   try {
-    fn();
+    await fn();
     return "ok";
   } catch (error) {
     return (error as { code?: string }).code ?? "sem código";
@@ -72,7 +72,7 @@ function setup(publisher?: ConstructorParameters<typeof Personas>[0]["publisher"
 }
 
 describe("personas-subagente: o que vira agente", () => {
-  test("toda persona que vale no projeto vira o agente persona-<id>, com descrição, corpo, ferramentas e modelo", () => {
+  test("toda persona que vale no projeto vira o agente persona-<id>, com descrição, corpo, ferramentas e modelo", async () => {
     const { personas, project } = setup();
     personas.save({ scope: "host", persona: SECURITY });
     const { agents, untrusted } = personas.subagents({ projectPath: project });
@@ -97,7 +97,7 @@ describe("personas-subagente: o que vira agente", () => {
     expect(agents["persona-qa"]?.prompt).toMatch(/engenheiro de QA sênior/);
   });
 
-  test("a do projeto vale mais que a do host e a do pacote; sem confiança, fica de fora e é avisada", () => {
+  test("a do projeto vale mais que a do host e a do pacote; sem confiança, fica de fora e é avisada", async () => {
     const { personas, project, writeProject } = setup();
     const hash = writeProject("revisor", "Revisor do projeto", "Corpo do projeto.");
     writeProject("novo", "Novo", "Outro.");
@@ -114,7 +114,7 @@ describe("personas-subagente: o que vira agente", () => {
     expect(again.untrusted.sort()).toEqual(["novo", "qa"]);
   });
 
-  test("no idioma pedido, e fora das pastas permitidas só o host e o pacote", () => {
+  test("no idioma pedido, e fora das pastas permitidas só o host e o pacote", async () => {
     const { personas, root } = setup();
     expect(personas.subagents({ language: "en" }).agents["persona-qa"]?.prompt).toMatch(
       /You act as a senior QA/,
@@ -126,7 +126,7 @@ describe("personas-subagente: o que vira agente", () => {
 });
 
 describe("personas-subagente: sessão gerenciada", () => {
-  test("a sessão ganha os agentes persona-<id> em toda execução, e sem o cadastro de personas não ganha nenhum", () => {
+  test("a sessão ganha os agentes persona-<id> em toda execução, e sem o cadastro de personas não ganha nenhum", async () => {
     const { personas, root, project, store } = setup();
     const { manager, runtime } = newManager({ store, allowedRoots: [root], personas });
     cleanups.push(() => manager.shutdown());
@@ -144,7 +144,7 @@ describe("personas-subagente: sessão gerenciada", () => {
     expect(bare.runtime.starts[0]?.agents).toBeUndefined();
   });
 
-  test("o runtime do SDK passa agents para o SDK, e sem eles nada muda", () => {
+  test("o runtime do SDK passa agents para o SDK, e sem eles nada muda", async () => {
     const seen: Options[] = [];
     const query: QueryFn = ({ options }) => {
       seen.push(options);
@@ -338,7 +338,7 @@ describe("personas-subagente: o terminal, flightdeckd claude --agents", () => {
 });
 
 describe("personas-subagente: publicar como agente do projeto", () => {
-  test("pede confirmação antes de qualquer coisa, e grava pelo editor de agentes (ponto de extensão) o persona-<id>", () => {
+  test("pede confirmação antes de qualquer coisa, e grava pelo editor de agentes (ponto de extensão) o persona-<id>", async () => {
     const published: Array<{
       projectPath: string;
       name: string;
@@ -348,18 +348,22 @@ describe("personas-subagente: publicar como agente do projeto", () => {
       model?: string;
     }> = [];
     const { personas, project } = setup({
-      publish: (request) => {
+      publish: async (request) => {
         published.push(request);
         return { path: join(request.projectPath, ".claude", "agents", `${request.name}.md`) };
       },
     });
     expect(
-      codeOf(() =>
+      await codeOf(() =>
         personas.publishAgent({ id: "seguranca", projectPath: project, confirm: false }),
       ),
     ).toBe("invalid_state");
     expect(published).toEqual([]);
-    const done = personas.publishAgent({ id: "seguranca", projectPath: project, confirm: true });
+    const done = await personas.publishAgent({
+      id: "seguranca",
+      projectPath: project,
+      confirm: true,
+    });
     expect(done.path.endsWith("persona-seguranca.md")).toBe(true);
     expect(published).toEqual([
       {
@@ -372,12 +376,12 @@ describe("personas-subagente: publicar como agente do projeto", () => {
       },
     ]);
     expect(
-      codeOf(() =>
+      await codeOf(() =>
         personas.publishAgent({ id: "nao-existe", projectPath: project, confirm: true }),
       ),
     ).toBe("not_found");
     expect(
-      codeOf(() =>
+      await codeOf(() =>
         personas.publishAgent({
           id: "qa",
           projectPath: join(project, "..", "..", "fora"),
@@ -387,21 +391,23 @@ describe("personas-subagente: publicar como agente do projeto", () => {
     ).toBe("forbidden_cwd");
   });
 
-  test("uma persona versionada sem confiança não se publica", () => {
-    const { personas, project, writeProject } = setup({ publish: () => ({ path: "x" }) });
+  test("uma persona versionada sem confiança não se publica", async () => {
+    const { personas, project, writeProject } = setup({ publish: async () => ({ path: "x" }) });
     writeProject("nova", "Nova", "Corpo.");
     expect(
-      codeOf(() => personas.publishAgent({ id: "nova", projectPath: project, confirm: true })),
+      await codeOf(() =>
+        personas.publishAgent({ id: "nova", projectPath: project, confirm: true }),
+      ),
     ).toBe("persona_untrusted");
   });
 
-  test("sem o editor de agentes (Fase 12) configurado, o pedido confirmado diz que falta", () => {
+  test("sem o editor de agentes (Fase 12) configurado, o pedido confirmado diz que falta", async () => {
     const { personas, project } = setup();
     expect(
-      codeOf(() => personas.publishAgent({ id: "qa", projectPath: project, confirm: true })),
+      await codeOf(() => personas.publishAgent({ id: "qa", projectPath: project, confirm: true })),
     ).toBe("invalid_state");
     expect(
-      codeOf(() => personas.publishAgent({ id: "qa", projectPath: project, confirm: false })),
+      await codeOf(() => personas.publishAgent({ id: "qa", projectPath: project, confirm: false })),
     ).toBe("invalid_state");
   });
 });
@@ -410,7 +416,7 @@ describe("personas-subagente: pelo protocolo", () => {
   test("personas.subagents e personas.publishAgent", async () => {
     const published: string[] = [];
     const { personas, root, project, writeProject } = setup({
-      publish: (request) => {
+      publish: async (request) => {
         published.push(request.name);
         return { path: "p" };
       },
@@ -616,7 +622,7 @@ describe("personas-subagente: o interruptor do projeto", () => {
 describe("personas-subagente: the --agents of an interactive claude", () => {
   const JSON_ARG = '{"persona-a":{"description":"d","prompt":"a & b (c)"}}';
 
-  test("a native claude, or any claude off Windows, gets the JSON as it is", () => {
+  test("a native claude, or any claude off Windows, gets the JSON as it is", async () => {
     for (const [claude, platform] of [
       ["C:\\bin\\claude.exe", "win32"],
       ["C:\\bin\\claude", "win32"],
@@ -630,7 +636,7 @@ describe("personas-subagente: the --agents of an interactive claude", () => {
     }
   });
 
-  test("a Windows .cmd or .bat shim gets no --agents, in any case of the extension, and a notice says why", () => {
+  test("a Windows .cmd or .bat shim gets no --agents, in any case of the extension, and a notice says why", async () => {
     for (const claude of ["C:\\npm\\claude.cmd", "C:\\npm\\CLAUDE.BAT", "claude.Cmd"]) {
       const launch = interactiveAgents({ json: JSON_ARG, claude, platform: "win32" });
       expect(launch.args).toEqual([]);
@@ -638,7 +644,7 @@ describe("personas-subagente: the --agents of an interactive claude", () => {
     }
   });
 
-  test("a JSON past the limit gets no --agents and a notice with its size", () => {
+  test("a JSON past the limit gets no --agents and a notice with its size", async () => {
     const json = `{"x":"${"y".repeat(INLINE_AGENTS_MAX)}"}`;
     const launch = interactiveAgents({ json, claude: "/usr/bin/claude", platform: "linux" });
     expect(launch.args).toEqual([]);

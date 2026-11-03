@@ -8,7 +8,12 @@ import { FlightdeckError } from "../errors.ts";
 export function fileInRoot(root: string, path: string): string {
   const segments = path.split(/[\\/]/);
   if (isAbsolute(path) || segments.includes("..") || segments[0] === ".git" || path === "") {
-    throw new FlightdeckError("bad_request", `caminho fora do repositório: ${path}`);
+    throw new FlightdeckError(
+      "bad_request",
+      `path outside the repository: ${path}`,
+      "review_path_outside",
+      { path },
+    );
   }
   return join(root, path);
 }

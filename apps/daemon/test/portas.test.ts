@@ -83,7 +83,7 @@ describe("portas: o bloco de cada card", () => {
 
   test("sem bloco inteiro até a última porta (65535), o card recebe um erro claro", async () => {
     const { ports: p } = ports({ base: 65530 });
-    await expect(p.reserve("card-a", ["web"])).rejects.toThrow("sem bloco de 10 portas livres");
+    await expect(p.reserve("card-a", ["web"])).rejects.toThrow("no free block of 10 ports");
     expect(p.blockOf("card-a")).toBeNull();
   });
 

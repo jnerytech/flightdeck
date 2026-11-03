@@ -18,20 +18,13 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-/** Project keys whose git runners only count: a blocking call stalls the daemon's event loop. */
+/** Project keys whose git runner only counts: one lookup per folder, however many callers ask. */
 function countingKeys() {
-  const calls = { blocking: 0, async: 0 };
-  const keys = new ProjectKeys(
-    "h",
-    () => {
-      calls.blocking++;
-      return { code: 128, stdout: "", stderr: "" };
-    },
-    async () => {
-      calls.async++;
-      return { code: 128, stdout: "", stderr: "" };
-    },
-  );
+  const calls = { async: 0 };
+  const keys = new ProjectKeys("h", async () => {
+    calls.async++;
+    return { code: 128, stdout: "", stderr: "" };
+  });
   return { keys, calls };
 }
 
@@ -94,7 +87,6 @@ describe("history-perf: the lists never block the event loop on git", () => {
     );
     expect(page?.sessions.length).toBe(FOLDERS);
     expect(page?.sessions.every((s) => s.projectKey?.startsWith("host:h:"))).toBe(true);
-    expect(calls.blocking).toBe(0);
     expect(calls.async).toBe(FOLDERS);
   });
 
@@ -120,7 +112,6 @@ describe("history-perf: the lists never block the event loop on git", () => {
     const client = await app(server.url);
     const data = await client.data<{ sessions: unknown[] }>("session.list", {});
     expect(data?.sessions.length).toBe(FOLDERS);
-    expect(calls.blocking).toBe(0);
     expect(calls.async).toBe(FOLDERS);
   });
 
@@ -131,7 +122,6 @@ describe("history-perf: the lists never block the event loop on git", () => {
     for (let i = 0; i < FOLDERS; i++) {
       hub.external.apply("SessionStart", { session_id: `x${i}`, cwd: join(root, `f${i}`) });
     }
-    calls.blocking = 0;
     const server = startServer({
       manager,
       hostName: "h",
@@ -146,7 +136,6 @@ describe("history-perf: the lists never block the event loop on git", () => {
     const client = await app(server.url);
     const data = await client.data<{ sessions: unknown[] }>("external.list", {});
     expect(data?.sessions.length).toBe(FOLDERS);
-    expect(calls.blocking).toBe(0);
   });
 
   test("a messages command resolves the keys of the cold sessions it lists without a blocking git call", async () => {
@@ -159,12 +148,11 @@ describe("history-perf: the lists never block the event loop on git", () => {
       manager.create({ cwd, prompt: "hi" });
       hub.external.apply("SessionStart", { session_id: `x${i}`, cwd: join(root, `ext-${i}`) });
     }
-    calls.blocking = 0;
     const endpoints = new LocalEndpoints({
       manager,
       external: hub.external,
       nameOf: () => null,
-      projectKey: (cwd) => keys.keyFor(cwd),
+      projectKey: (cwd) => keys.known(cwd),
       cardOf: () => null,
       sendToLaunch: () => false,
     });
@@ -184,8 +172,7 @@ describe("history-perf: the lists never block the event loop on git", () => {
     const client = await app(server.url);
     const data = await client.data<{ sessions: unknown[] }>("messages.directory", {});
     expect(data?.sessions.length).toBe(FOLDERS * 2);
-    expect(calls.blocking).toBe(0);
-    // The external sessions' keys were cached when their hook events arrived.
-    expect(calls.async).toBe(FOLDERS);
+    // The external sessions' keys were looked up, off the loop, when their hook events arrived.
+    expect(calls.async).toBe(FOLDERS * 2);
   });
 });

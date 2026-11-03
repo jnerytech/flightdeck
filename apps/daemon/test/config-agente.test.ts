@@ -79,10 +79,10 @@ const write = (content: string, expectedHash: string | null, path = ".claude/age
 });
 
 describe("config-agente", () => {
-  test("lista os CLAUDE.md do projeto (raiz, .claude, local e subpastas, sem dependências) e o do usuário só leitura", () => {
+  test("lista os CLAUDE.md do projeto (raiz, .claude, local e subpastas, sem dependências) e o do usuário só leitura", async () => {
     const { config, project } = setup();
     expect(
-      config.list(project, "claudemd").map((i) => [i.path, i.origin, i.readOnly, i.hash]),
+      (await config.list(project, "claudemd")).map((i) => [i.path, i.origin, i.readOnly, i.hash]),
     ).toEqual([
       [".claude/CLAUDE.md", "project", false, sha("# dentro do .claude\n")],
       ["CLAUDE.local.md", "project", false, sha("# local\n")],
@@ -92,18 +92,22 @@ describe("config-agente", () => {
     ]);
   });
 
-  test("lista agentes e skills com nome e descrição do frontmatter; os do usuário só leitura", () => {
+  test("lista agentes e skills com nome e descrição do frontmatter; os do usuário só leitura", async () => {
     const { config, project } = setup();
     expect(
-      config
-        .list(project, "agent")
-        .map((i) => [i.path, i.origin, i.readOnly, i.name, i.description]),
+      (await config.list(project, "agent")).map((i) => [
+        i.path,
+        i.origin,
+        i.readOnly,
+        i.name,
+        i.description,
+      ]),
     ).toEqual([
       [".claude/agents/quebrado.md", "project", false, undefined, undefined],
       [".claude/agents/revisor.md", "project", false, "revisor", "revisa o diff"],
       ["agents/global.md", "user", true, "global", "do usuário"],
     ]);
-    expect(config.list(project, "skill").map((i) => [i.path, i.origin, i.name])).toEqual([
+    expect((await config.list(project, "skill")).map((i) => [i.path, i.origin, i.name])).toEqual([
       [".claude/skills/deploy/SKILL.md", "project", "deploy"],
       ["skills/util/SKILL.md", "user", "util"],
     ]);
@@ -111,12 +115,12 @@ describe("config-agente", () => {
 
   test("lê com o hash do conteúdo; o do usuário também, só leitura; arquivo que não existe é not_found", async () => {
     const { config, project } = setup();
-    expect(config.read(project, "agent", ".claude/agents/revisor.md")).toMatchObject({
+    expect(await config.read(project, "agent", ".claude/agents/revisor.md")).toMatchObject({
       content: AGENT,
       hash: sha(AGENT),
       readOnly: false,
     });
-    expect(config.read(project, "claudemd", "CLAUDE.md", "user")).toMatchObject({
+    expect(await config.read(project, "claudemd", "CLAUDE.md", "user")).toMatchObject({
       content: "# do usuário\n",
       origin: "user",
       readOnly: true,
@@ -135,7 +139,9 @@ describe("config-agente", () => {
         config.write(project, { ...write(edited, sha(AGENT), path), confirm: false }),
       ),
     ).toBe("invalid_state");
-    expect(config.write(project, write(edited, sha(AGENT), path))).toEqual({ hash: sha(edited) });
+    expect(await config.write(project, write(edited, sha(AGENT), path))).toEqual({
+      hash: sha(edited),
+    });
     expect(readFileSync(join(project, path), "utf8")).toBe(edited);
     expect(await code(() => config.write(project, write(AGENT, sha(AGENT), path)))).toBe(
       "invalid_state",
@@ -147,7 +153,7 @@ describe("config-agente", () => {
     const { config, project } = setup();
     const skill = "---\nname: nova\ndescription: criada pelo app\n---\n";
     const path = ".claude/skills/nova/SKILL.md";
-    expect(config.write(project, { ...write(skill, null, path), kind: "skill" })).toEqual({
+    expect(await config.write(project, { ...write(skill, null, path), kind: "skill" })).toEqual({
       hash: sha(skill),
     });
     expect(readFileSync(join(project, path), "utf8")).toBe(skill);
@@ -187,7 +193,7 @@ describe("config-agente", () => {
     expect(await refused("---\nname: x\ndescription: d\ntools: [Read, Grep]\n---\n")).toBe("ok");
     expect(await refused("---\r\nname: y\r\ndescription: d\r\n---\r\n", "skill")).toBe("ok");
     expect(
-      config.write(project, {
+      await config.write(project, {
         ...write("qualquer coisa\n", null, "docs/CLAUDE.md"),
         kind: "claudemd",
       }),

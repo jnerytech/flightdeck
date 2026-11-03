@@ -797,12 +797,6 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
 
   /** A project's folder, with the root of its repository looked up first without waiting for git. */
-  async function memoryProject(projectId: string): Promise<string> {
-    const path = projectPath(projectId);
-    await memory().warm(path);
-    return path;
-  }
-
   function sessionFiles(): SessionFiles {
     if (!opts.sessionFiles) throw featureOff("sessionFiles");
     return opts.sessionFiles;
@@ -973,27 +967,29 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await opts.snapshots.files(claudeSessionId, n));
       }
       case "mcp.list":
-        return ok(command.type, { servers: mcp().list(projectPath(command.payload.projectId)) });
+        return ok(command.type, {
+          servers: await mcp().list(projectPath(command.payload.projectId)),
+        });
       case "mcp.test": {
         const { projectId, name, confirm } = command.payload;
         return ok(command.type, await mcp().test(projectPath(projectId), name, confirm === true));
       }
       case "mcp.save": {
         const path = projectPath(command.payload.projectId);
-        mcp().save(path, command.payload.server, command.payload.confirm === true);
-        return ok(command.type, { servers: mcp().list(path) });
+        await mcp().save(path, command.payload.server, command.payload.confirm === true);
+        return ok(command.type, { servers: await mcp().list(path) });
       }
       case "mcp.remove": {
         const path = projectPath(command.payload.projectId);
-        mcp().remove(path, command.payload.name, command.payload.confirm === true);
-        return ok(command.type, { servers: mcp().list(path) });
+        await mcp().remove(path, command.payload.name, command.payload.confirm === true);
+        return ok(command.type, { servers: await mcp().list(path) });
       }
       case "mcp.toggle": {
         const { projectId, name, enabled, confirm, sessionId } = command.payload;
         const path = projectPath(projectId);
-        mcp().toggle(path, name, enabled, confirm === true);
+        await mcp().toggle(path, name, enabled, confirm === true);
         if (sessionId) await manager.toggleMcpServer(sessionId, name, enabled);
-        return ok(command.type, { servers: mcp().list(path) });
+        return ok(command.type, { servers: await mcp().list(path) });
       }
       case "mcp.status":
         return ok(command.type, { servers: await manager.mcpStatus(command.payload.sessionId) });
@@ -1226,15 +1222,15 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "agentcfg.list": {
         const { projectId, kind } = command.payload;
-        return ok(command.type, { items: agentcfg().list(projectPath(projectId), kind) });
+        return ok(command.type, { items: await agentcfg().list(projectPath(projectId), kind) });
       }
       case "agentcfg.read": {
         const { projectId, kind, path, origin } = command.payload;
-        return ok(command.type, agentcfg().read(projectPath(projectId), kind, path, origin));
+        return ok(command.type, await agentcfg().read(projectPath(projectId), kind, path, origin));
       }
       case "agentcfg.write": {
         const { projectId, confirm, ...input } = command.payload;
-        const written = agentcfg().write(projectPath(projectId), {
+        const written = await agentcfg().write(projectPath(projectId), {
           ...input,
           confirm: confirm === true,
         });
@@ -1286,28 +1282,28 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "plugins.marketplaceUpdate":
         return ok(command.type, await pluginsApi().marketplaceUpdate(command.payload.name));
       case "memory.list":
-        return ok(command.type, memory().list(await memoryProject(command.payload.projectId)));
+        return ok(command.type, await memory().list(projectPath(command.payload.projectId)));
       case "memory.read": {
         const { projectId, name } = command.payload;
-        return ok(command.type, memory().read(await memoryProject(projectId), name));
+        return ok(command.type, await memory().read(projectPath(projectId), name));
       }
       case "memory.write": {
         const { projectId, confirm, ...input } = command.payload;
         return ok(
           command.type,
-          memory().write(await memoryProject(projectId), { ...input, confirm: confirm === true }),
+          await memory().write(projectPath(projectId), { ...input, confirm: confirm === true }),
         );
       }
       case "memory.delete": {
         const { projectId, confirm, ...input } = command.payload;
-        memory().remove(await memoryProject(projectId), { ...input, confirm: confirm === true });
+        await memory().remove(projectPath(projectId), { ...input, confirm: confirm === true });
         return ok(command.type, { name: input.name });
       }
       case "memory.budget":
-        return ok(command.type, memory().budget(await memoryProject(command.payload.projectId)));
+        return ok(command.type, await memory().budget(projectPath(command.payload.projectId)));
       case "memory.suggest":
         return ok(command.type, {
-          suggestions: memory().suggest(await memoryProject(command.payload.projectId)),
+          suggestions: await memory().suggest(projectPath(command.payload.projectId)),
         });
       case "session.fork": {
         if (!opts.forker) throw featureOff("forker");
@@ -1546,10 +1542,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, board().workflows.getRun(runId));
       }
       case "rules.list":
-        return ok(command.type, { rules: board().listRules(command.payload.projectId) });
+        return ok(command.type, { rules: await board().listRules(command.payload.projectId) });
       case "rules.remove": {
         const { projectId, rule, confirm } = command.payload;
-        return ok(command.type, { rules: board().removeRule(projectId, rule, confirm === true) });
+        return ok(command.type, {
+          rules: await board().removeRule(projectId, rule, confirm === true),
+        });
       }
       case "costs.status":
         return ok(command.type, costs().status());
@@ -1795,7 +1793,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, personas().subagents({ projectPath, language }));
       }
       case "personas.publishAgent":
-        return ok(command.type, personas().publishAgent(command.payload));
+        return ok(command.type, await personas().publishAgent(command.payload));
       case "personas.resolve": {
         const { ref, projectPath } = command.payload;
         const store = personas();
