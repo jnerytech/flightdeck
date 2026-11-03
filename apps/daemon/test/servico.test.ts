@@ -538,15 +538,17 @@ describe("servico", () => {
     const ctx = osServiceContext(false);
     const dir = tempDir();
     const unit = join(dir, "a", "b", "flightdeckd.service");
-    ctx.writeFile(unit, "[Unit]\n");
+    const writing = ctx.writeFile(unit, "[Unit]\n");
+    expect(writing).toBeInstanceOf(Promise);
+    await writing;
     expect(existsSync(unit) && readFileSync(unit, "utf8")).toBe("[Unit]\n");
     const xml = join(dir, "task.xml");
-    ctx.writeFile(xml, "<Task/>");
+    await ctx.writeFile(xml, "<Task/>");
     const bytes = existsSync(xml) ? readFileSync(xml) : Buffer.alloc(0);
     expect([...bytes.subarray(0, 4)]).toEqual([0xff, 0xfe, 0x3c, 0x00]);
     expect(bytes.toString("utf16le").slice(1)).toBe("<Task/>");
-    ctx.removeFile(unit);
-    ctx.removeFile(unit);
+    await ctx.removeFile(unit);
+    await ctx.removeFile(unit);
     expect(existsSync(unit)).toBe(false);
     expect(await ctx.exec([process.execPath, "-e", "console.log('oi'); process.exit(4)"])).toEqual({
       code: 4,

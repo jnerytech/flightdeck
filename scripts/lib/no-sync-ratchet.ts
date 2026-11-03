@@ -72,7 +72,6 @@ export const SYNC_BASELINE: Record<string, number> = {
   "apps/daemon/src/review/files.ts": 18,
   "apps/daemon/src/roots.ts": 1,
   "apps/daemon/src/runtime/claude-sdk-runtime.ts": 1,
-  "apps/daemon/src/service-os.ts": 5,
   "apps/daemon/src/setup.ts": 5,
   "apps/daemon/src/snippets/history.ts": 6,
   "apps/daemon/src/snippets/store.ts": 4,
