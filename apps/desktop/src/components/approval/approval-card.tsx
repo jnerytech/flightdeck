@@ -158,7 +158,13 @@ export function ApprovalCard(props: {
   nowMs: number;
   /** The host announces `rules` (phase 7): "permitir nesta sessão" and "sempre neste projeto". */
   alwaysAllow?: boolean;
-  resolution?: { decision: PermissionResolution; message?: string; auto?: AutoApproval };
+  resolution?: {
+    decision: PermissionResolution;
+    message?: string;
+    auto?: AutoApproval;
+    /** AskUserQuestion: the chosen answer of each question (the resolved event carries it). */
+    answers?: Record<string, string>;
+  };
   /** Test seam: the hold time of a high-risk approval (2 s when absent). */
   holdMs?: number;
   /** A promise keeps the card busy until the answer is in; anything else answers at once. */
@@ -213,7 +219,7 @@ export function ApprovalCard(props: {
   };
 
   if (questions && resolution) {
-    const given = answers ?? savedAnswers(request.input);
+    const given = resolution.answers ?? answers ?? savedAnswers(request.input);
     const outcome = t(`approval.resolved.${resolution.decision}` as Key);
     return (
       <details

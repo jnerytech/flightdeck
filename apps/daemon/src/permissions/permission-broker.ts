@@ -23,6 +23,18 @@ export interface BrokerHooks {
   autoDecide?(request: AutoApproveRequest): Promise<AutoDecision | null>;
 }
 
+/** The `answers` of an answered AskUserQuestion, when every one is a string. */
+function chosenAnswers(
+  input: Record<string, unknown> | undefined,
+): Record<string, string> | undefined {
+  const answers = input?.answers;
+  if (!answers || typeof answers !== "object") return undefined;
+  const entries = Object.entries(answers);
+  return entries.every(([, value]) => typeof value === "string")
+    ? (answers as Record<string, string>)
+    : undefined;
+}
+
 interface Pending {
   sessionId: string;
   toolName: string;
@@ -112,11 +124,18 @@ export class PermissionBroker {
       // Refused updates leave the request open, before anything is applied.
       const updates = payload.updatedPermissions ?? [];
       checkUpdates(updates, pending);
-      this.finish(payload.requestId, "allow", payload.message, {
-        behavior: "allow",
-        ...(payload.updatedInput ? { updatedInput: payload.updatedInput } : {}),
-        ...(updates.length > 0 ? { updatedPermissions: updates } : {}),
-      });
+      this.finish(
+        payload.requestId,
+        "allow",
+        payload.message,
+        {
+          behavior: "allow",
+          ...(payload.updatedInput ? { updatedInput: payload.updatedInput } : {}),
+          ...(updates.length > 0 ? { updatedPermissions: updates } : {}),
+        },
+        undefined,
+        pending.toolName === "AskUserQuestion" ? chosenAnswers(payload.updatedInput) : undefined,
+      );
     } else {
       const message = payload.message ?? "Negado pelo usuário";
       this.finish(payload.requestId, "deny", message, { behavior: "deny", message });
@@ -155,6 +174,7 @@ export class PermissionBroker {
     message?: string,
     result: PermissionDecision = { behavior: "deny", message: "cancelado" },
     auto?: AutoApproval,
+    answers?: Record<string, string>,
   ): void {
     const pending = this.open.get(id);
     if (!pending) return;
@@ -168,6 +188,7 @@ export class PermissionBroker {
       decision,
       ...(message !== undefined ? { message } : {}),
       ...(auto ? { auto } : {}),
+      ...(answers ? { answers } : {}),
     });
     this.hooks.onPendingChange(pending.sessionId, this.pendingCount(pending.sessionId));
     pending.resolve(result);

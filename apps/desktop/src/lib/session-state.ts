@@ -177,6 +177,7 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
                   decision: event.decision,
                   ...(event.message ? { message: event.message } : {}),
                   ...(event.auto ? { auto: event.auto } : {}),
+                  ...(event.answers ? { answers: event.answers } : {}),
                 },
               }
             : item,
