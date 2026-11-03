@@ -54,7 +54,8 @@ async function setup(options: { costs: boolean; routeFirst?: boolean }) {
 describe("custos-ui: a tela nunca fica em branco", () => {
   test("enquanto os totais chegam, mostra o carregamento", async () => {
     await setup({ costs: true });
-    expect(screen.queryByRole("status", { name: "Carregando custos" })).not.toBeNull();
+    // The Costs screen is a lazy chunk: on a loaded runner it is not on screen right after the click.
+    expect(await screen.findByRole("status", { name: "Carregando custos" })).toBeTruthy();
   });
 
   test("sem uso no período, mostra o estado vazio com a ação de ver 30 dias", async () => {
