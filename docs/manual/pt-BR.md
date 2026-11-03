@@ -1801,6 +1801,14 @@ tokens e turnos.
 - **Custo:** é a diferença do total que o SDK informa para cada sessão, nunca a soma turno a
   turno.
 - **Projeto:** o mesmo da tela Sessões (o remoto `origin`, ou o caminho do repositório).
+- **Agrupado por projeto:** cada projeto é um bloco com o total (o mais caro primeiro) e seus
+  dias abaixo, do mais novo ao mais antigo. Datas e custos nunca quebram de linha.
+- **Ocultos:** pastas temporárias (`temp`, `tmp`, `/var/folders`) e worktrees de agentes
+  (`.claude/worktrees`) não aparecem.
+- **Abrir as sessões:** clique num dia para abrir o Histórico filtrado pela pasta desse projeto e
+  por esse dia. Um projeto conhecido pelo remoto (compartilhado por várias pastas e worktrees)
+  abre o Histórico filtrado pelo próprio projeto, então todas as pastas dele aparecem; uma ficha
+  "Projeto: nome" acima da lista mostra isso, e **Limpar projeto** a tira.
 - **Fora do uso:** as sessões do terminal, porque os hooks não trazem custo.
 
 ### Custos

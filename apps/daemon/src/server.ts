@@ -123,6 +123,8 @@ export interface ServerOptions {
   manager: SessionManager;
   /** Looks up the project of a folder before a session is created in it (without blocking). */
   warmProjectKey?: (cwd: string) => Promise<unknown>;
+  /** The project key of a folder, asked without blocking: `history.list` filters by it. */
+  projectKeyOf?: (cwd: string) => Promise<string>;
   hostName: string;
   bind: string;
   port: number;
@@ -507,6 +509,14 @@ export function startServer(opts: ServerOptions): RunningServer {
     return opts.history;
   }
 
+  /** The indexed folders whose project is `key`; with no way to ask, only a folder key matches. */
+  async function foldersOf(index: HistoryIndexer, key: string): Promise<string[]> {
+    const keyOf = opts.projectKeyOf ?? (async (cwd: string) => `host:${opts.hostName}:${cwd}`);
+    const cwds = index.distinctCwds();
+    const keys = await Promise.all(cwds.map((cwd) => keyOf(cwd)));
+    return cwds.filter((_, i) => keys[i] === key);
+  }
+
   function central() {
     if (!opts.central) throw featureOff("central");
     return opts.central;
@@ -530,6 +540,17 @@ export function startServer(opts: ServerOptions): RunningServer {
         : {}),
       ...(summary ? { summary } : {}),
     };
+  }
+
+  /**
+   * Asks git for the project key of each folder without blocking, so the sync `listed` below reads
+   * the cache: a cold folder would otherwise cost one blocking git spawn on the event loop, which
+   * on Windows is slow enough to time the list out.
+   */
+  async function warmKeys(cwds: string[]): Promise<void> {
+    if (!opts.central || !opts.warmProjectKey) return;
+    const warm = opts.warmProjectKey;
+    await Promise.all([...new Set(cwds)].map((cwd) => warm(cwd)));
   }
 
   function vault(): Vault {
@@ -820,13 +841,24 @@ export function startServer(opts: ServerOptions): RunningServer {
     const ok = <T extends CommandType>(_type: T, data?: CommandResults[T]) =>
       send(ws, { type: "ack", id: command.id, ok: true, ...(data !== undefined ? { data } : {}) });
 
+    // The messaging service lists every endpoint with its project key, read synchronously.
+    if (command.type.startsWith("messages.") || command.type.startsWith("teams.")) {
+      await warmKeys([
+        ...manager.list().map((s) => s.cwd),
+        ...(opts.central?.external.list() ?? []).flatMap((s) => (s.cwd ? [s.cwd] : [])),
+      ]);
+    }
+
     switch (command.type) {
       case "hello":
         return onHello(ws, command);
-      case "session.list":
+      case "session.list": {
+        const sessions = manager.list();
+        await warmKeys(sessions.map((s) => s.cwd));
         return ok(command.type, {
-          sessions: manager.list().map((s) => listed(s, s.claudeSessionId, managedLive(s))),
+          sessions: sessions.map((s) => listed(s, s.claudeSessionId, managedLive(s))),
         });
+      }
       case "session.create": {
         // Looked up in git before the session exists, so what names and lists it finds the
         // project already known; the wait is this request's own, the others are served meanwhile.
@@ -1349,7 +1381,12 @@ export function startServer(opts: ServerOptions): RunningServer {
           ...(opts.terminal ?? {}),
         });
       case "history.list": {
-        const page = history().list(command.payload);
+        const { projectKey, ...filter } = command.payload;
+        const index = history();
+        const page = index.list(
+          projectKey ? { ...filter, cwds: await foldersOf(index, projectKey) } : filter,
+        );
+        await warmKeys(page.sessions.map((s) => s.cwd));
         const sessions = page.sessions.map((s) =>
           listed(s, s.claudeSessionId, { state: "ended", since: s.lastTs }),
         );

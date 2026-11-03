@@ -11,6 +11,7 @@ import { useHostLatency } from "@/lib/use-store";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
 import type { HostNameError } from "../lib/host-name.ts";
+import type { UsageHistoryTarget } from "../lib/usage-rows.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { DaemonUpdate } from "./DaemonUpdate.tsx";
@@ -36,6 +37,7 @@ export function HostPage(props: {
   onRename(name: string): HostNameError | null;
   onReconnect(): void;
   onOpenAutoApprovals(): void;
+  onOpenHistory(filter: UsageHistoryTarget): void;
   onRemove(): void;
 }) {
   const t = useT();
@@ -94,6 +96,7 @@ export function HostPage(props: {
             hostId={host.id}
             online={host.status === "online"}
             costs={hasFeature(info?.features, "costs", false)}
+            onOpenHistory={props.onOpenHistory}
           />
         )}
         <Panel title={t("hostPage.info")}>

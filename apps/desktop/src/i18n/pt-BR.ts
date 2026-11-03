@@ -2537,6 +2537,8 @@ export const ptBR = {
   historyUi: {
     title: "Histórico de {host}",
     folder: "Pasta",
+    project: "Projeto: {name}",
+    clearProject: "Limpar projeto",
     from: "De",
     to: "Até",
     origin: "Origem",
@@ -2672,7 +2674,6 @@ export const ptBR = {
   usageUi: {
     title: "Uso dos últimos 7 dias",
     day: "Dia",
-    project: "Projeto",
     cost: "Custo",
     tokens: "Tokens",
     turns: "Turnos",

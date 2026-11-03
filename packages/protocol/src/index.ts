@@ -423,6 +423,8 @@ const Cursor = z.string().min(1);
 
 export const HistoryListPayload = z.object({
   cwd: z.string().min(1).optional(),
+  /** Every folder and worktree of one project, as `projectKey` names it on the Costs screen. */
+  projectKey: z.string().min(1).optional(),
   from: z.string().min(1).optional(),
   to: z.string().min(1).optional(),
   origin: HistoryOrigin.optional(),
