@@ -350,6 +350,18 @@ const REASONS = [
   "issue_not_this_project",
   "issue_other_repo",
   "issue_has_card",
+  "messaging_session_missing",
+  "messaging_plain_session",
+  "messaging_channel_down",
+  "messaging_idle_other_host",
+  "messaging_asker_unknown",
+  "messaging_target_not_found",
+  "messaging_host_unknown",
+  "messaging_peer_not_found",
+  "messaging_self",
+  "messaging_no_route",
+  "messaging_read_other_host",
+  "messaging_policy_invalid",
 ];
 
 const cleanups: Array<() => unknown> = [];
