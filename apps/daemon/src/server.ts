@@ -10,6 +10,7 @@ import {
   CommandHeader,
   type CommandResults,
   type CommandType,
+  type DoctorResult,
   type EventEnvelope,
   type ExternalPermissionFrame,
   type ExternalSession,
@@ -75,6 +76,7 @@ import type { AutoApprover } from "./permissions/auto-approve.ts";
 import type { OpenSessionPersonas } from "./personas/open-session.ts";
 import type { Personas } from "./personas/store.ts";
 import type { Plugins } from "./plugins/plugins.ts";
+import { cloneRepo, type GitRunner, scanRepos, spawnGit } from "./project-find.ts";
 import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
@@ -138,6 +140,12 @@ export interface ServerOptions {
   rootsPlatform?: PlatformInfo;
   /** Announce `fs.dirs` in `host.info`: the app offers its folder picker only to such a host. */
   fsDirs?: boolean;
+  /** Runs the host's self-check for `doctor.run`; absent, the command is refused and not announced. */
+  doctor?: (appVersion?: string) => Promise<DoctorResult>;
+  /** Announce `projects.scan` and `projects.clone` in `host.info`: "find my projects" needs them. */
+  findProjects?: boolean;
+  /** How `projects.clone` runs git; the real one when absent (tests give theirs). */
+  git?: GitRunner;
   /** Announce `session.settings` (set mode, set model, slash commands) in `host.info`. */
   sessionSettings?: boolean;
   /** CIDR ranges allowed to connect; defaults to loopback only. */
@@ -405,6 +413,8 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.sessionSettings ? ["session.settings"] : []),
     // A message may carry images (`session.send` with `images`).
     "session.images",
+    ...(opts.doctor ? ["doctor.run"] : []),
+    ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
     ...(opts.central ? ["central"] : []),
     ...(opts.board ? ["workflows"] : []),
     // Phase 24: the run.yaml of a card and its processes.
@@ -1613,6 +1623,20 @@ export function startServer(opts: ServerOptions): RunningServer {
           listDirs(path, opts.allowedRoots, hidden === undefined ? {} : { hidden }),
         );
       }
+      case "projects.scan": {
+        if (!opts.findProjects) throw featureOff("projects.scan");
+        const { depth } = command.payload;
+        return ok(command.type, await scanRepos(opts.allowedRoots, depth ? { depth } : {}));
+      }
+      case "projects.clone":
+        if (!opts.findProjects) throw featureOff("projects.clone");
+        return ok(
+          command.type,
+          await cloneRepo(command.payload, opts.allowedRoots, opts.git ?? spawnGit),
+        );
+      case "doctor.run":
+        if (!opts.doctor) throw featureOff("doctor.run");
+        return ok(command.type, await opts.doctor(command.payload.appVersion));
       case "fs.files": {
         const { path, hidden } = command.payload;
         return ok(

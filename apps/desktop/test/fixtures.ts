@@ -132,6 +132,8 @@ export function daemon(
     webhook?: WebhookSender;
     /** The personas (phase 20): the pack, the host's in this daemon's database, and open sessions. */
     personas?: boolean;
+    /** The host's self-check (`doctor.run`) and project finder (`projects.scan`, `projects.clone`), over a fake git. */
+    firstRun?: boolean;
     /** The host's switch for sessions without permission prompts (bypass-ui): on from the start. */
     bypass?: boolean;
   } = {},
@@ -324,6 +326,37 @@ export function daemon(
         files: new ReviewFiles({ changes, dataDir: join(root, "data"), allowedRoots: roots }),
       }
     : undefined;
+  /** What the fake git was asked, and the versions `doctor.run` was asked with. */
+  const gitCalls: string[][] = [];
+  const doctorAsked: Array<string | undefined> = [];
+  const firstRunOptions = options.firstRun
+    ? {
+        findProjects: true,
+        git: async (args: string[]) => {
+          gitCalls.push(args);
+          const dest = args[args.length - 1] as string;
+          mkdirSync(dest, { recursive: true });
+          await Bun.spawn(["git", "init", "-q", dest]).exited;
+          return { code: 0, stderr: "" };
+        },
+        doctor: async (appVersion?: string) => {
+          doctorAsked.push(appVersion);
+          return {
+            ok: true,
+            checks: [
+              { id: "folders" as const, status: "ok" as const, detail: roots.join(", ") },
+              {
+                id: "claude" as const,
+                status: "warn" as const,
+                detail: "claude is not on the PATH: sessions cannot start",
+                fix: "install Claude Code, then run: flightdeckd service install",
+              },
+              { id: "version" as const, status: "ok" as const, detail: "0.32.0" },
+            ],
+          };
+        },
+      }
+    : {};
   /** `features` replaces what `host.info` announces (a host without some phase 7 feature). */
   const listen = (port = 0, pingIntervalMs?: number, features?: string[]): RunningServer => {
     const server = startServer({
@@ -331,6 +364,7 @@ export function daemon(
       ...(features ? { features } : {}),
       // The folder picker is on, like in the real daemon.
       fsDirs: true,
+      ...firstRunOptions,
       rootsPlatform: testRootsPlatform(),
       sessionSettings: true,
       bypass: {
@@ -425,6 +459,8 @@ export function daemon(
     ptys,
     runHost,
     actions,
+    gitCalls,
+    doctorAsked,
   };
 }
 

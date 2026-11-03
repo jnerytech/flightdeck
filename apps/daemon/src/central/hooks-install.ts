@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 /** Events installed as http hooks; SessionStart is a command hook (its http form never fires). */
@@ -145,8 +146,12 @@ export function uninstallHooks(file: string): boolean {
 
 /** Installed as `install` would write it now, absent, or different (outdated). */
 export function hooksStatus(file: string, target: HookTarget): HooksStatus {
+  return statusOf(readSettings(file), target);
+}
+
+function statusOf(settings: Settings | null, target: HookTarget): HooksStatus {
   const found: Record<string, HookEntry[]> = {};
-  for (const [event, groups] of Object.entries(readSettings(file)?.hooks ?? {})) {
+  for (const [event, groups] of Object.entries(settings?.hooks ?? {})) {
     const ours = groups.flatMap((group) => group.hooks.filter(isFlightdeckHook));
     if (ours.length > 0) found[event] = ours;
   }
@@ -160,6 +165,15 @@ export function hooksStatus(file: string, target: HookTarget): HooksStatus {
   return JSON.stringify(sortKeys(found)) === JSON.stringify(sortKeys(expected))
     ? "installed"
     : "outdated";
+}
+
+/** The same answer as `hooksStatus`, reading the file without blocking (the running daemon uses it). */
+export async function hooksStatusAsync(file: string, target: HookTarget): Promise<HooksStatus> {
+  const text = await readFile(file, "utf8").catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  });
+  return statusOf(text === null ? null : (JSON.parse(text) as Settings), target);
 }
 
 const sortKeys = (value: Record<string, unknown>) =>

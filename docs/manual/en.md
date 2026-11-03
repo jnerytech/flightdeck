@@ -35,6 +35,7 @@ are written in Portuguese.
 - [Projects](#projects)
 - [Board](#board)
   - [Registering a project](#registering-a-project)
+  - [Finding projects](#finding-projects)
   - [Card lifecycle](#card-lifecycle)
   - [PR providers](#pr-providers)
   - [Parallel run limit](#parallel-run-limit)
@@ -276,6 +277,22 @@ session: a folder inside `allowedRoots`, a name, a permission mode and a first p
 requests show up as inline cards with **Approve** and **Deny**. The app reconnects by itself
 (from 1 s to 30 s) and resumes each session from the last event it saw.
 
+#### The first host
+
+With no host yet, the app shows four steps instead of the usual screens: install and start the
+daemon (`flightdeckd setup`), copy the pairing link it prints, paste it and press **Test and
+add**, and then the app opens the host's own page. There you press **Check** in **Check this
+host** and add the project folders in **Allowed folders**. **Find my projects** (in **Projects**)
+then fills the Board without typing a path.
+
+#### Checking a host
+
+**Check this host** (on the host's page, online hosts with a daemon that announces `doctor.run`)
+asks the daemon to check itself: configuration, allowed folders, service, daemon, Claude Code,
+hooks, Tailscale and the daemon's version against the app's. Every item is **ok**, **warning** or
+**failed**; each one that is not **ok** comes with a plain step to fix it, in the app's language.
+The daemon keeps answering while it checks (nothing blocks). The same checks run in a terminal
+with `flightdeckd doctor`.
 ### Sessions without permission prompts
 
 By default no session of a host can run in **Bypass permissions** (every tool runs without asking).
@@ -671,6 +688,23 @@ records:
 When a card starts, the daemon runs `git worktree add <repo>/.flightdeck/worktrees/<slug> -b
 fd/<slug> <base>` and appends `.flightdeck/worktrees/` to the repository's `.git/info/exclude`
 (`.gitignore` is not touched). The session's prompt is the card's description plus the template.
+
+### Finding projects
+
+**Find my projects** (on the **Projects** screen, for hosts that announce `projects.scan` and
+`projects.clone`) has two parts:
+
+- **Scan allowed folders** looks for git repositories under the allowed folders, two levels deep
+  by default, up to 200 repositories. It skips hidden folders, `node_modules`, links and the inside
+  of a repository it already found, and never opens more than 2000 folders. Repositories that are
+  already projects are left out. Tick the ones you want and press **Add selected**.
+- **Clone from an address** runs `git clone` into a folder inside the allowed folders and
+  registers the result as a project. Only `https://`, `ssh://` and `user@host:path` addresses are
+  accepted; an address that starts with a dash, has spaces, points to a local path or uses
+  `file://` or a transport helper is refused, and so is a folder name that is not a plain name or
+  a folder that already exists. git runs with password prompts off and stops after five minutes,
+  so a private repository needs an SSH key or a credential helper already set up on the host.
+  Every refusal says why.
 
 ### Card lifecycle
 

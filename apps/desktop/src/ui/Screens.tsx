@@ -242,8 +242,10 @@ function AddHost(props: {
       url: draftUrl(draft),
       token: draft.token,
     });
-    if (result.ok) props.go({ name: "hub" });
-    else setError(result.error);
+    // The first host opens its own page: that is where it is checked and its folders are chosen.
+    if (result.ok) {
+      props.go(props.empty ? { name: "host", host: result.hostId } : { name: "hub" });
+    } else setError(result.error);
   };
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 overflow-y-auto p-6">

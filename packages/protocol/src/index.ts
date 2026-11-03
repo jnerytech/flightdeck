@@ -1118,6 +1118,43 @@ export interface FsFilesResult {
   truncated: boolean;
 }
 
+/** What `projects.scan` answers: the repositories found, never outside the roots. */
+export interface ProjectsScanResult {
+  repos: Array<{ name: string; path: string; root: string }>;
+  /** The scan stopped at its cap of repositories or of folders visited. */
+  truncated: boolean;
+}
+
+/** What `projects.clone` answers: the new repository's folder. */
+export interface ProjectsCloneResult {
+  path: string;
+}
+
+export const DOCTOR_CHECK_IDS = [
+  "config",
+  "folders",
+  "service",
+  "daemon",
+  "claude",
+  "hooks",
+  "tailscale",
+  "version",
+] as const;
+
+/** One thing `doctor.run` checked; `fix` is what to run, absent when the check passed. */
+export interface DoctorCheckResult {
+  id: (typeof DOCTOR_CHECK_IDS)[number];
+  status: "ok" | "warn" | "fail";
+  detail: string;
+  fix?: string;
+}
+
+/** What `doctor.run` answers. */
+export interface DoctorResult {
+  ok: boolean;
+  checks: DoctorCheckResult[];
+}
+
 /** What `fs.dirs` answers: a folder of the host and its subfolders (never outside the roots). */
 export interface FsDirsResult {
   /** The folder listed (a real path); null for the list of the allowed roots. */
@@ -3418,6 +3455,21 @@ export const Command = z.discriminatedUnion("type", [
   /** The files of a folder inside the allowed roots (not the subfolders: `fs.dirs` has those). */
   cmd("fs.files", z.object({ path: z.string().min(1), hidden: z.boolean().optional() }).strict()),
   cmd("session.files", z.object({ claudeSessionId: z.string() })),
+  /** Git repositories inside the allowed roots (bounded depth and count), for "find my projects". */
+  cmd("projects.scan", z.object({ depth: z.number().int().min(1).max(3).optional() }).strict()),
+  /** Clones a repository into a folder inside the allowed roots; a refusal carries its reason. */
+  cmd(
+    "projects.clone",
+    z
+      .object({
+        url: z.string().min(1).max(2048),
+        root: z.string().min(1),
+        name: z.string().min(1).max(100).optional(),
+      })
+      .strict(),
+  ),
+  /** The host checks itself (version, claude, hooks, ports, folders): each failure carries its fix. */
+  cmd("doctor.run", z.object({ appVersion: z.string().max(32).optional() }).strict()),
   cmd("pr.comments.send", z.object({ cardId: z.string(), ids: z.array(z.string()).min(1) })),
   /** Rebase on the base; a conflict aborts it and leaves the worktree as it was. */
   cmd("card.updateFromBase", CardIdPayload),
@@ -3938,6 +3990,9 @@ export interface CommandResults {
   };
   "files.sessions": { sessions: FileSession[] };
   "fs.dirs": FsDirsResult;
+  "doctor.run": DoctorResult;
+  "projects.scan": ProjectsScanResult;
+  "projects.clone": ProjectsCloneResult;
   "fs.files": FsFilesResult;
   "session.files": { files: SessionFile[] };
   "pr.comments.send": { sent: number };

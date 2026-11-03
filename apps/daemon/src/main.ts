@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, statSync, unwatchFile, watchFile } from "node:fs";
+import { stat } from "node:fs/promises";
 import { homedir, tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { formatPairingLink, PROTOCOL_VERSION } from "@flightdeck/protocol";
@@ -19,6 +20,7 @@ import {
   type HooksStatus,
   type HookTarget,
   hooksStatus,
+  hooksStatusAsync,
   installHooks,
   uninstallHooks,
 } from "./central/hooks-install.ts";
@@ -537,6 +539,8 @@ export async function startDaemon(
     pty?: PtyFactory;
     /** How the project key asks git; the process itself when absent (tests hold it). */
     projectGit?: AsyncGitRunner;
+    /** Whether the OS service is installed, for `doctor.run`; the real service manager when absent. */
+    serviceInstalled?: () => Promise<boolean>;
     /** Whether a port is free, for the cards' blocks; the real loopback probe when absent. */
     portProbe?: (port: number) => Promise<boolean>;
   } = {},
@@ -985,6 +989,26 @@ export async function startDaemon(
     persistRoots: (roots) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
     fsDirs: true,
+    findProjects: true,
+    // The daemon answers for itself: the live roots (`roots.add` pushes into this array), the
+    // folders checked without blocking, and the app's version to compare with its own.
+    doctor: (appVersion) =>
+      runDoctor({
+        config: () => ({ bind: config.bind, port: config.port, allowedRoots: config.allowedRoots }),
+        isDirectory: async (path) => (await stat(path).catch(() => null))?.isDirectory() === true,
+        serviceInstalled:
+          options.serviceInstalled ??
+          (async () => (await serviceCommand(osServiceContext(false))) !== null),
+        healthy: async () => true,
+        tailscaleIp: () => tailscaleIp(spawnExec),
+        hooks: () =>
+          hooksStatusAsync(
+            claudeSettingsPath(),
+            hookTarget(config, daemonCommand(process.execPath, Bun.main)),
+          ),
+        claudePath: () => claude?.path ?? whichOnPath("claude"),
+        version: { daemon: DAEMON_VERSION, ...(appVersion ? { app: appVersion } : {}) },
+      }),
     sessionSettings: true,
     messaging,
     names,

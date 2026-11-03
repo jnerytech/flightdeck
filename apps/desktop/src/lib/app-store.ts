@@ -347,6 +347,9 @@ export type HostCommandType = Extract<
   | "files.sessions"
   | "fs.dirs"
   | "fs.files"
+  | "doctor.run"
+  | "projects.scan"
+  | "projects.clone"
   | "session.files"
   | `snapshots.${string}`
   | `rewind.${string}`
