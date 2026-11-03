@@ -76,6 +76,14 @@ describe("abas-muitas: with many tabs the strip stays readable", () => {
       fireEvent.click(right as HTMLElement);
     });
     expect(scroller.scrollLeft).toBeGreaterThan(0);
+    // Once scrolled right, the left arrow shows and takes the strip back.
+    const away = scroller.scrollLeft;
+    const left = screen.queryByRole("button", { name: "Rolar as abas para a esquerda" });
+    expect(left).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(left as HTMLElement);
+    });
+    expect(scroller.scrollLeft).toBeLessThan(away);
   });
 
   test("the active tab scrolls into view", async () => {
