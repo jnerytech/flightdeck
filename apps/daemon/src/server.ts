@@ -107,6 +107,7 @@ import type { TelemetryOptIn } from "./telemetry/optin.ts";
 import type { TelemetryStore } from "./telemetry/store.ts";
 import type { LoadedTemplates } from "./templates/files.ts";
 import { startTemplate } from "./templates/start.ts";
+import type { TaskTracker } from "./templates/tasks.ts";
 import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.ts";
 import { tokenMatches } from "./token.ts";
 import type { TraceService } from "./trace/service.ts";
@@ -269,6 +270,8 @@ export interface ServerOptions {
   terminals?: TerminalManager;
   /** The templates behind `template.list` (phase 33): the built-ins and the host's own files. */
   templates?: () => Promise<LoadedTemplates>;
+  /** What tasks started from templates produced, behind `task.results` (phase 33). */
+  tasks?: TaskTracker;
   /** The host's default mode and lock (phase 33); changed by `ui.set`, which `onUiSettings` keeps. */
   ui?: UiSettings;
   onUiSettings?: (ui: UiSettings) => void | Promise<void>;

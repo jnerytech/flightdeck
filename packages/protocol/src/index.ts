@@ -904,6 +904,21 @@ export const TemplateListResult = z.object({
 });
 export type TemplateListResult = z.infer<typeof TemplateListResult>;
 
+/** A file a task made or changed. */
+export const TaskFile = z.object({
+  /** Absolute, inside the task's working folder. */
+  path: z.string(),
+  name: z.string(),
+  sizeBytes: z.number().int().nonnegative(),
+  modifiedAt: z.string(),
+  change: z.enum(["new", "changed"]),
+});
+export type TaskFile = z.infer<typeof TaskFile>;
+
+/** What a task produced: its files, newest first, and whether the list was cut short. */
+export const TaskResultsResult = z.object({ files: z.array(TaskFile), truncated: z.boolean() });
+export type TaskResultsResult = z.infer<typeof TaskResultsResult>;
+
 /** A task started from a template: its session, where it works and where its results go. */
 export const TemplateStartResult = z.object({
   sessionId: z.string(),
@@ -3335,6 +3350,7 @@ export const Command = z.discriminatedUnion("type", [
   /** Turns the host's terminals on (asks for `confirm`) or off (ends the live ones). */
   cmd("terminal.settings", z.object({ enabled: z.boolean(), confirm: z.boolean().optional() })),
   cmd("template.list", z.object({}).strict()),
+  cmd("task.results", z.object({ sessionId: z.string().min(1) }).strict()),
   cmd(
     "template.start",
     z
@@ -4123,6 +4139,7 @@ export interface CommandResults {
   "terminal.settings": TerminalSettings;
   "ui.set": UiSettings;
   "template.list": TemplateListResult;
+  "task.results": TaskResultsResult;
   "template.start": TemplateStartResult;
   "ssh.list": { targets: SshTarget[] };
   "ssh.save": SshTarget;

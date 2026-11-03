@@ -8,6 +8,7 @@ import type {
 } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { isInside, resolveAllowedCwd } from "../paths.ts";
+import type { TaskTracker } from "./tasks.ts";
 
 /** How far each preset lets Claude go: never past editing the chosen folder, never without questions. */
 const MODES: Record<TemplatePreset, PermissionMode> = {
@@ -32,6 +33,8 @@ const refuse = (
 ) => new FlightdeckError(code, message, reason, params);
 
 export interface StartDeps {
+  /** Looks at the folders before the task starts and keeps the look for `task.results`. */
+  tasks?: TaskTracker;
   allowedRoots: readonly string[];
   create(payload: {
     cwd: string;

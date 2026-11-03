@@ -365,6 +365,7 @@ const validCommands: Record<CommandType, unknown> = {
   "terminal.settings": { enabled: true, confirm: true },
   "ui.set": { mode: "simple", locked: true, confirm: true },
   "template.list": {},
+  "task.results": { sessionId: "s1" },
   "template.start": { templateId: "summarise-folder", language: "en", values: { folder: "/work" } },
   "ssh.list": {},
   "ssh.save": {
