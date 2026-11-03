@@ -1,5 +1,5 @@
 /**
- * Phase 36: the sign-in. `gh auth login --web` is GitHub's device flow: `gh` prints a one-time code
+ * Phase 37: the sign-in. `gh auth login --web` is GitHub's device flow: `gh` prints a one-time code
  * and a page, the person types the code there, and `gh` keeps the token (in the OS keyring where one
  * exists). Flightdeck relays the code and the page; it never sees the token.
  */

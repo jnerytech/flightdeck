@@ -2882,7 +2882,7 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
 - Not done in part 1: the weight scale (vendored buttons), splitting hover motion into per-component
   enter animations. Both go to part 2.
 
-## Phase 36: GitHub sign-in and start from a GitHub project
+## Phase 37: GitHub sign-in and start from a GitHub project
 
 - **The sign-in is the host's `gh`, not an OAuth client of ours.** Issue #16 asks for the device flow, the token in the OS
   keyring and the narrowest scopes. `gh auth login --web` is that device flow (a one-time code, no client secret, no OAuth

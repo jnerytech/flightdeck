@@ -974,7 +974,7 @@ export async function startDaemon(
       updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
     fsDirs: true,
     findProjects: true,
-    // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 36).
+    // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
     github: new GithubService({
       roots: config.allowedRoots,
       board,

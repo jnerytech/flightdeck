@@ -1095,7 +1095,7 @@ export interface ProjectsCloneResult {
   path: string;
 }
 
-/** Phase 36: whether the host's `gh` is signed in to GitHub. Never a token. */
+/** Phase 37: whether the host's `gh` is signed in to GitHub. Never a token. */
 export interface GithubStatusResult {
   installed: boolean;
   loggedIn: boolean;
@@ -3423,7 +3423,7 @@ export const Command = z.discriminatedUnion("type", [
   cmd("session.files", z.object({ claudeSessionId: z.string() })),
   /** Git repositories inside the allowed roots (bounded depth and count), for "find my projects". */
   cmd("projects.scan", z.object({ depth: z.number().int().min(1).max(3).optional() }).strict()),
-  /** Phase 36: the host's gh login (device flow), the person's repos and issues, and start from them. */
+  /** Phase 37: the host's gh login (device flow), the person's repos and issues, and start from them. */
   cmd("github.status", z.object({}).strict()),
   cmd("github.login.start", z.object({}).strict()),
   cmd("github.login.cancel", z.object({}).strict()),

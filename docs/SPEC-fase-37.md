@@ -1,4 +1,4 @@
-# Flightdeck — Phase 36 spec (GitHub sign-in and start from a GitHub project)
+# Flightdeck — Phase 37 spec (GitHub sign-in and start from a GitHub project)
 
 ## Goal
 

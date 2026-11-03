@@ -1,5 +1,5 @@
 /**
- * Phase 36: what the app asks of GitHub through the host's `gh`: sign out, a person's repos or a
+ * Phase 37: what the app asks of GitHub through the host's `gh`: sign out, a person's repos or a
  * search, a repo's issues. The token stays with `gh`; nothing here reads, keeps or returns it.
  */
 import type { Issue } from "@flightdeck/protocol";

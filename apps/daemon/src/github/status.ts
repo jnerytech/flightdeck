@@ -1,4 +1,4 @@
-/** Phase 36: whether the host's `gh` is signed in to GitHub, and as whom. Never a token. */
+/** Phase 37: whether the host's `gh` is signed in to GitHub, and as whom. Never a token. */
 import type { GhRunner } from "./gh.ts";
 
 export interface GithubStatus {

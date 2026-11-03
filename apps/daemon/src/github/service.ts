@@ -1,5 +1,5 @@
 /**
- * Phase 36: the `github.*` commands behind one object. The daemon announces the `github` feature
+ * Phase 37: the `github.*` commands behind one object. The daemon announces the `github` feature
  * when it has one. The token stays with `gh`: nothing here reads, keeps or logs it.
  */
 import type { Issue } from "@flightdeck/protocol";

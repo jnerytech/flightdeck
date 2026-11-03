@@ -1,5 +1,5 @@
 /**
- * Phase 36: the host's `gh`, looked up on the PATH of the moment (the tests put a fake there). The
+ * Phase 37: the host's `gh`, looked up on the PATH of the moment (the tests put a fake there). The
  * daemon never holds a GitHub token: `gh` keeps it, and everything here reads `gh`'s own answers.
  */
 import { tmpdir } from "node:os";

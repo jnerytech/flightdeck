@@ -138,7 +138,7 @@ export interface ServerOptions {
   fsDirs?: boolean;
   /** Runs the host's self-check for `doctor.run`; absent, the command is refused and not announced. */
   doctor?: (appVersion?: string) => Promise<DoctorResult>;
-  /** Sign-in with GitHub and start from a GitHub project (phase 36): the `github.*` commands. */
+  /** Sign-in with GitHub and start from a GitHub project (phase 37): the `github.*` commands. */
   github?: GithubService;
   /** Announce `projects.scan` and `projects.clone` in `host.info`: "find my projects" needs them. */
   findProjects?: boolean;

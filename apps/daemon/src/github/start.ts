@@ -1,5 +1,5 @@
 /**
- * Phase 36: start from a GitHub project. Clones the repo into an allowed root (or reuses the clone
+ * Phase 37: start from a GitHub project. Clones the repo into an allowed root (or reuses the clone
  * it finds there), registers it as a board project, then opens a card or a session, with the issue
  * quoted when one was picked.
  */
