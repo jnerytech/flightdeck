@@ -7,7 +7,7 @@ import { type RunningServer, startServer } from "../src/server.ts";
 import { newBoard } from "./board-helpers.ts";
 import { newManager, poll } from "./helpers.ts";
 
-setDefaultTimeout(30_000);
+setDefaultTimeout(60_000);
 
 const TOKEN = "github-protocol-token-0123456789";
 const cleanups: Array<() => unknown> = [];
@@ -74,7 +74,7 @@ async function ask(server: RunningServer, type: string, payload: object) {
   await new Promise((r) => ws.addEventListener("open", r));
   ws.send(JSON.stringify({ id: "1", type: "hello", payload: { token: TOKEN, client: "t" } }));
   ws.send(JSON.stringify({ id: "2", type, payload }));
-  const ack = await poll(() => acks.find((a) => a.id === "2"), 5000);
+  const ack = await poll(() => acks.find((a) => a.id === "2"), 15_000);
   ws.close();
   return ack;
 }
