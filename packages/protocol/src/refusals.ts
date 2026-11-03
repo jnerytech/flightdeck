@@ -258,6 +258,7 @@ export const DAEMON_REASONS = [
   "run_config_untrusted",
   "run_exclusive",
   "run_ports_exhausted",
+  "plugin_too_big",
 ] as const;
 export type DaemonReason = (typeof DAEMON_REASONS)[number];
 

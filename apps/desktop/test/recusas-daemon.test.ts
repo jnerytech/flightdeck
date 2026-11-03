@@ -266,6 +266,7 @@ const REASONS = [
   "run_config_untrusted",
   "run_exclusive",
   "run_ports_exhausted",
+  "plugin_too_big",
 ];
 
 const cleanups: Array<() => unknown> = [];

@@ -953,6 +953,7 @@ export const ptBR = {
     run_config_invalid: "O run.yaml tem erros de validação: {errors}",
     run_config_untrusted: "O run.yaml ainda não é confiável: confie nele no card.",
     run_exclusive: "Outro card está rodando neste projeto, que roda um card por vez: pare-o antes.",
+    plugin_too_big: "O plugin passa de 50 MB: o Flightdeck não o lê.",
     run_ports_exhausted: "Não há bloco de {size} portas livres: pare um card em execução.",
     ssh_target_not_found: "Esse destino ssh não foi encontrado.",
     ssh_name_invalid: "O nome tem de 1 a 100 caracteres.",

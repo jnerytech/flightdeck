@@ -955,6 +955,7 @@ export const en: Dictionary = {
     run_config_untrusted: "The run.yaml is not trusted yet: trust it on the card.",
     run_exclusive:
       "Another card is running in this project, which runs one card at a time: stop it first.",
+    plugin_too_big: "The plugin is over 50 MB: Flightdeck does not read it.",
     run_ports_exhausted: "No free block of {size} ports is left: stop a running card.",
     ssh_target_not_found: "That ssh destination was not found.",
     ssh_name_invalid: "The name takes 1 to 100 characters.",

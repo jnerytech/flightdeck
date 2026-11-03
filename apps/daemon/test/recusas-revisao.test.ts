@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, symlinkSync, truncateSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { FlightdeckError } from "../src/errors.ts";
 import { ProjectMemory } from "../src/memory/memory.ts";
 import { Changes } from "../src/review/changes.ts";
+import { inspectPlugin } from "../src/plugins/inventory.ts";
 import { ReviewComments } from "../src/review/comments.ts";
 import { ReviewFiles } from "../src/review/files.ts";
 import { fileInRoot } from "../src/review/paths.ts";
@@ -415,6 +416,18 @@ describe("recusas-revisao: the run environment says why it will not run", () => 
       code: "invalid_state",
       reason: "run_ports_exhausted",
       params: { size: 10 },
+    });
+  });
+});
+
+describe("recusas-revisao: a plugin over the size limit says why it is refused", () => {
+  test("the declared size is checked before a byte is read", async () => {
+    const dir = tempDir("fd-plugin-");
+    writeFileSync(join(dir, "big.bin"), "");
+    truncateSync(join(dir, "big.bin"), 50 * 1024 * 1024 + 1);
+    expect(await refused(() => inspectPlugin(dir))).toMatchObject({
+      code: "bad_request",
+      reason: "plugin_too_big",
     });
   });
 });
