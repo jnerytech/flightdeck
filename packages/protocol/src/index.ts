@@ -3376,7 +3376,7 @@ export const Command = z.discriminatedUnion("type", [
   cmd("fs.files", z.object({ path: z.string().min(1), hidden: z.boolean().optional() }).strict()),
   cmd("session.files", z.object({ claudeSessionId: z.string() })),
   /** The host checks itself (version, claude, hooks, ports, folders): each failure carries its fix. */
-  cmd("doctor.run", z.object({}).strict()),
+  cmd("doctor.run", z.object({ appVersion: z.string().max(32).optional() }).strict()),
   cmd("pr.comments.send", z.object({ cardId: z.string(), ids: z.array(z.string()).min(1) })),
   /** Rebase on the base; a conflict aborts it and leaves the worktree as it was. */
   cmd("card.updateFromBase", CardIdPayload),

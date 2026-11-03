@@ -34,11 +34,28 @@ export interface DoctorCheck {
 }
 
 const check = (
+  id: DoctorCheckId,
   name: string,
   status: DoctorCheck["status"],
   detail: string,
   fix?: string,
-): DoctorCheck => ({ id: "config", name, status, detail, ...(fix ? { fix } : {}) });
+): DoctorCheck => ({ id, name, status, detail, ...(fix ? { fix } : {}) });
+
+const minor = (version: string) => version.split(".").slice(0, 2).join(".");
+
+/** The daemon and the app are meant to run the same major.minor: the protocol moves with it. */
+function versionCheck(version: { daemon: string; app?: string }): DoctorCheck {
+  const { daemon, app } = version;
+  if (app === undefined || minor(app) === minor(daemon))
+    return check("version", "version", "ok", daemon);
+  return check(
+    "version",
+    "version",
+    "warn",
+    `the daemon is ${daemon} and the app is ${app}: some features may be missing`,
+    "run: flightdeckd update",
+  );
+}
 
 const SETUP = "run: flightdeckd setup";
 
@@ -49,25 +66,35 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
     config = deps.config();
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
-    return { ok: false, checks: [check("config", "fail", detail, SETUP)] };
+    return { ok: false, checks: [check("config", "config", "fail", detail, SETUP)] };
   }
-  const checks = [check("config", "ok", "readable")];
+  const checks = [check("config", "config", "ok", "readable")];
 
-  const gone = config.allowedRoots.filter((root) => !deps.isDirectory(root) === true);
+  const found = await Promise.all(config.allowedRoots.map((root) => deps.isDirectory(root)));
+  const gone = config.allowedRoots.filter((_, index) => !found[index]);
   if (config.allowedRoots.length === 0) {
-    checks.push(check("project folders", "fail", "no folder allowed: no session can start", SETUP));
+    checks.push(
+      check("folders", "project folders", "fail", "no folder allowed: no session can start", SETUP),
+    );
   } else if (gone.length) {
     checks.push(
-      check("project folders", "fail", `not a folder anymore: ${gone.join(", ")}`, SETUP),
+      check(
+        "folders",
+        "project folders",
+        "fail",
+        `not a folder anymore: ${gone.join(", ")}`,
+        SETUP,
+      ),
     );
   } else {
-    checks.push(check("project folders", "ok", config.allowedRoots.join(", ")));
+    checks.push(check("folders", "project folders", "ok", config.allowedRoots.join(", ")));
   }
 
   checks.push(
     (await deps.serviceInstalled())
-      ? check("service", "ok", "installed")
+      ? check("service", "service", "ok", "installed")
       : check(
+          "service",
           "service",
           "fail",
           "no service installed: the daemon will not start by itself",
@@ -78,8 +105,9 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
   const address = `${config.bind}:${config.port}`;
   checks.push(
     (await deps.healthy())
-      ? check("daemon", "ok", `answering on ${address}`)
+      ? check("daemon", "daemon", "ok", `answering on ${address}`)
       : check(
+          "daemon",
           "daemon",
           "fail",
           `nothing answers on ${address}`,
@@ -90,8 +118,9 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
   const claude = deps.claudePath();
   checks.push(
     claude
-      ? check("claude", "ok", claude)
+      ? check("claude", "claude", "ok", claude)
       : check(
+          "claude",
           "claude",
           "warn",
           "claude is not on the PATH: sessions cannot start",
@@ -102,8 +131,9 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
   const hooks = deps.hooks();
   checks.push(
     hooks === "installed"
-      ? check("hooks", "ok", "installed")
+      ? check("hooks", "hooks", "ok", "installed")
       : check(
+          "hooks",
           "hooks",
           "warn",
           `${hooks}: live session status is limited`,
@@ -116,12 +146,15 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
     tailscale && loopbackOnly(config.bind)
       ? check(
           "tailscale",
+          "tailscale",
           "warn",
           `Tailscale is up (${tailscale}) but the daemon listens only on ${config.bind}: other devices cannot connect`,
           SETUP,
         )
-      : check("tailscale", "ok", tailscale ?? "not in use"),
+      : check("tailscale", "tailscale", "ok", tailscale ?? "not in use"),
   );
+
+  if (deps.version) checks.push(versionCheck(deps.version));
 
   return { ok: checks.every((c) => c.status !== "fail"), checks };
 }

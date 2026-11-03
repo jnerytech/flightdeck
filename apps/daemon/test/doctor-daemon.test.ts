@@ -30,6 +30,7 @@ describe("doctor-host: the running daemon", () => {
       { command: "start", config: file, runtime: "fake" },
       {},
       { log: () => {}, error: () => {} },
+      { serviceInstalled: async () => true },
     );
     stops.push(() => daemon.stop());
     const ws = new WebSocket(daemon.url);

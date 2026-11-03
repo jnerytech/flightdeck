@@ -1559,7 +1559,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "doctor.run":
         if (!opts.doctor) throw featureOff("doctor.run");
-        return ok(command.type, { ok: false, checks: [] });
+        return ok(command.type, await opts.doctor(command.payload.appVersion));
       case "fs.files": {
         const { path, hidden } = command.payload;
         return ok(
