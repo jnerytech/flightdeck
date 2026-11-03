@@ -78,6 +78,13 @@ em vez de depender de cuidado.
   never bare: two heavy runs at once overload the machine and make the timing-sensitive tests
   flaky. Area tests, typecheck and lint do not need the slot.
 
+- **BDD for the journeys a person reads.** The journeys a non-programmer reads (approval, new
+  session, board, the simple mode of phase 33) are Gherkin scenarios in `pt-BR` and `en`
+  (`scripts/e2e/bdd/features/`, run by `playwright-bdd`, pinned exactly), written to create their
+  own state. Layout, terminal and keyboard journeys stay plain TypeScript
+  (`scripts/e2e/journeys.ts`), and unit tests stay plain `bun test` with behavior titles. The
+  pilot's measurements are in `docs/DECISIONS.md` ("BDD pilot").
+
 ## Armadilhas conhecidas
 
 - `bun test` esconde as linhas `(pass)` quando `CLAUDECODE` está definida: para mostrar a lista,
