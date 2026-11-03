@@ -59,6 +59,8 @@ const type = async (value: string) => {
   await act(async () => {
     fireEvent.change(field() as HTMLInputElement, { target: { value } });
   });
+  // Outside act the input's state is flushed a tick later: let it land before anything submits.
+  await act(() => Bun.sleep(50));
 };
 const save = async () => click(await button("Salvar nome"));
 
