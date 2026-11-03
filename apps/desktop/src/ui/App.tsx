@@ -23,6 +23,7 @@ import { preloadMarkdown } from "./Markdown.tsx";
 import { NotificationBell } from "./NotificationBell.tsx";
 import { ShortcutsSheet } from "./ShortcutsSheet.tsx";
 import { Sidebar } from "./Sidebar.tsx";
+import { SimpleApp } from "./simple/SimpleApp.tsx";
 import { TerminalCloseDialog } from "./TerminalPage.tsx";
 import { UpdateBanner } from "./UpdateBanner.tsx";
 
@@ -321,6 +322,20 @@ export function App({ store }: { store: AppStore }) {
     else if (target.kind === "decide-oldest") store.decideOldest(target.decision);
     else go(paletteRoute(target));
   };
+
+  // A host set to simple (or chosen so) shows simple mode in place of the full frame.
+  const focusHost =
+    state.hosts.find((h) => h.id === state.selected?.hostId) ??
+    state.hosts.find((h) => h.status === "online");
+  if (focusHost && store.uiMode(focusHost.id).mode === "simple") {
+    return (
+      <TContext.Provider value={t}>
+        <TooltipProvider>
+          <SimpleApp store={store} state={state} hostId={focusHost.id} />
+        </TooltipProvider>
+      </TContext.Provider>
+    );
+  }
 
   return (
     <TContext.Provider value={t}>

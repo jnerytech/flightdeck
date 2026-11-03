@@ -50,6 +50,8 @@ import { EventStore } from "../../daemon/src/store/event-store.ts";
 import { SummaryService } from "../../daemon/src/summary/service.ts";
 import { TelemetryOptIn } from "../../daemon/src/telemetry/optin.ts";
 import { TelemetryStore } from "../../daemon/src/telemetry/store.ts";
+import { BUILTIN_TEMPLATES } from "../../daemon/src/templates/builtin.ts";
+import { TaskTracker } from "../../daemon/src/templates/tasks.ts";
 import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
 import { Vault } from "../../daemon/src/vault/vault.ts";
 import type { WebhookSender } from "../../daemon/src/webhook/sender.ts";
@@ -101,6 +103,8 @@ export function daemon(
     budgets?: (db: EventStore["db"]) => Budgets;
     /** The quota's samples (phase 8), built over this daemon's database. */
     quotaHistory?: (db: EventStore["db"]) => QuotaHistory;
+    /** The built-in templates and what tasks made (phase 33), in this daemon's root. */
+    simple?: boolean;
     /** The host's default mode and lock (phase 33), kept in this daemon's memory. */
     ui?: { mode: "full" | "simple"; locked: boolean };
     /** The review of changes (phase 11: `changes.*`, `review.*`, `file.*`, `files.sessions`); on unless `false`. */
@@ -146,6 +150,7 @@ export function daemon(
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
+  let taskDirs = 0;
   // One list for every service, as in the daemon: `roots.add` grows it for all of them.
   const roots = [root];
   const project = join(root, "p");
@@ -383,6 +388,12 @@ export function daemon(
       fsDirs: true,
       ...firstRunOptions,
       ...(options.ui ? { ui: { ...options.ui }, onUiSettings: async () => {} } : {}),
+      ...(options.simple
+        ? {
+            templates: async () => ({ templates: BUILTIN_TEMPLATES, problems: [] }),
+            tasks: new TaskTracker({ dir: join(root, `tasks-${++taskDirs}`) }),
+          }
+        : {}),
       rootsPlatform: testRootsPlatform(),
       sessionSettings: true,
       bypass: {
