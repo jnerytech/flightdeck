@@ -1096,7 +1096,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, { sessions: messaging().sessions(command.payload.as) });
       case "messages.read": {
         const { as, session, last } = command.payload;
-        return ok(command.type, messaging().read(as, session, last));
+        return ok(command.type, await messaging().read(as, session, last));
       }
       case "messages.relay":
         return ok(command.type, messaging().relay(command.payload.message));
@@ -1324,11 +1324,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         return;
       }
       case "hooks.status":
-        return ok(command.type, central().hooksStatus());
+        return ok(command.type, await central().hooksStatus());
       case "hooks.install":
-        return ok(command.type, central().hooksInstall(command.payload.confirm === true));
+        return ok(command.type, await central().hooksInstall(command.payload.confirm === true));
       case "hooks.uninstall":
-        return ok(command.type, central().hooksUninstall(command.payload.confirm === true));
+        return ok(command.type, await central().hooksUninstall(command.payload.confirm === true));
       case "external.list": {
         const { external, meta } = central();
         const sessions = external
@@ -1546,13 +1546,13 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await webhook().send(command.payload, ws.data.origin));
       case "session.summary": {
         const { claudeSessionId, question, state } = command.payload;
-        return ok(command.type, summary().get(claudeSessionId, { question, state }));
+        return ok(command.type, await summary().get(claudeSessionId, { question, state }));
       }
       case "trace.get":
-        return ok(command.type, trace().get(command.payload.claudeSessionId));
+        return ok(command.type, await trace().get(command.payload.claudeSessionId));
       case "trace.export": {
         const { claudeSessionId, includeContent } = command.payload;
-        return ok(command.type, trace().export(claudeSessionId, includeContent === true));
+        return ok(command.type, await trace().export(claudeSessionId, includeContent === true));
       }
       case "telemetry.status":
         return ok(command.type, optIn().status());

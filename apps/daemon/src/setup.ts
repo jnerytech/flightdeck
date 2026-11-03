@@ -21,7 +21,7 @@ export interface SetupDeps {
   addToPath(): Promise<void>;
   /** Installs the service, starts it now and waits for `/health`; throws when it never answers. */
   installService(): Promise<void>;
-  installHooks(): void;
+  installHooks(): void | Promise<void>;
   /** Prints the pairing link. */
   pair(): Promise<void>;
 }
@@ -167,7 +167,7 @@ export async function runSetup(deps: SetupDeps, options: SetupOptions = {}): Pro
     options.yes ||
     (await deps.confirm("Install the Claude Code hooks (live status of your sessions)?", true))
   ) {
-    deps.installHooks();
+    await deps.installHooks();
   }
   try {
     await deps.installService();

@@ -1483,17 +1483,17 @@ export function hookTarget(
  * `flightdeckd hooks install|uninstall|status`: the only write of Flightdeck in ~/.claude, always
  * by an explicit command. Install generates `hooks.token` once and keeps it afterwards.
  */
-function runHooks(args: CliArgs, deps: CliDeps): void {
+async function runHooks(args: CliArgs, deps: CliDeps): Promise<void> {
   const file = configPath(args);
   let config = loadConfig(file);
   const settings = claudeSettingsPath();
   const self = deps.selfCommand ?? daemonCommand(process.execPath, Bun.main);
   if (args.action === "status") {
-    deps.log.log(`hooks: ${HOOKS_LABELS[hooksStatus(settings, hookTarget(config, self))]}`);
+    deps.log.log(`hooks: ${HOOKS_LABELS[await hooksStatus(settings, hookTarget(config, self))]}`);
     return;
   }
   if (args.action === "uninstall") {
-    const removed = uninstallHooks(settings);
+    const removed = await uninstallHooks(settings);
     deps.log.log(
       removed ? `hooks removidos de ${settings}` : "nenhum hook do Flightdeck instalado",
     );
@@ -1509,7 +1509,7 @@ function runHooks(args: CliArgs, deps: CliDeps): void {
     updateConfigFile(file, (raw) => ({ ...raw, hooks: { ...(raw.hooks as object), token } }));
     config = loadConfig(file);
   }
-  installHooks(settings, hookTarget(config, self));
+  await installHooks(settings, hookTarget(config, self));
   deps.log.log(
     `hooks instalados em ${settings} (cópia anterior em settings.json.flightdeck-backup)`,
   );
@@ -1822,7 +1822,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       return null;
     }
     if (args.command === "hooks") {
-      runHooks(args, deps);
+      await runHooks(args, deps);
       deps.exit(0);
       return null;
     }

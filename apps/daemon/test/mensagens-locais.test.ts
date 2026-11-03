@@ -76,7 +76,7 @@ function setup(delayMs = 20) {
 }
 
 describe("mensagens-entrega: pelas sessões de verdade", () => {
-  test("read de um terminal lê o transcript: as últimas mensagens de texto, o resumo da linha e nada de sessão sem arquivo", () => {
+  test("read de um terminal lê o transcript: as últimas mensagens de texto, o resumo da linha e nada de sessão sem arquivo", async () => {
     const { external, endpoints, project } = setup();
     const file = join(tempDir(), "T1.jsonl");
     const line = (role: string, text: string) =>
@@ -96,14 +96,15 @@ describe("mensagens-entrega: pelas sessões de verdade", () => {
       transcript_path: file,
       launch_id: "launch-1",
     });
-    const read = endpoints.read("T1", 2);
+    expect(endpoints.read("T1", 2)).toBeInstanceOf(Promise);
+    const read = await endpoints.read("T1", 2);
     expect(read?.messages.map((m) => [m.role, m.text])).toEqual([
       ["assistant", "resposta"],
       ["user", "segunda"],
     ]);
     expect(read?.summary).toMatchObject({ state: "idle" });
     external.apply("SessionStart", { session_id: "T2", cwd: project });
-    expect(endpoints.read("T2", 2)).toEqual({ summary: expect.anything(), messages: [] });
+    expect(await endpoints.read("T2", 2)).toEqual({ summary: expect.anything(), messages: [] });
   });
 
   test("a sessão gerenciada ociosa recebe a mensagem como uma mensagem do usuário, e a ocupada enfileira até o fim do turno", async () => {
@@ -220,14 +221,14 @@ describe("mensagens-entrega: pelas sessões de verdade", () => {
     await waitFor(() => manager.get(a).status === "idle");
     await waitFor(() => manager.get(a).status === "idle", { timeoutMs: 12_000 });
     await waitFor(() => manager.get(a).status === "idle");
-    const read = endpoints.read(a, 3);
+    const read = await endpoints.read(a, 3);
     expect(read?.messages.length).toBeLessThanOrEqual(3);
     expect(read?.messages.some((m) => m.role === "user")).toBe(true);
     for (const message of read?.messages ?? []) {
       expect(new TextEncoder().encode(message.text).length).toBeLessThanOrEqual(8 * 1024 + 8);
     }
-    expect(endpoints.read(a, 50)?.messages.length).toBeLessThanOrEqual(20);
-    expect(endpoints.read("fantasma", 3)).toBeNull();
+    expect((await endpoints.read(a, 50))?.messages.length).toBeLessThanOrEqual(20);
+    expect(await endpoints.read("fantasma", 3)).toBeNull();
   });
 });
 
@@ -256,14 +257,14 @@ describe("mensagens-entrega: o adaptador", () => {
     });
   });
 
-  test("o transcript que não dá para ler vale mensagens vazias", () => {
+  test("o transcript que não dá para ler vale mensagens vazias", async () => {
     const { external, endpoints, project } = setup();
     external.apply("SessionStart", {
       session_id: "T1",
       cwd: project,
       transcript_path: join(tempDir(), "nao-existe.jsonl"),
     });
-    expect(endpoints.read("T1", 5)?.messages).toEqual([]);
+    expect((await endpoints.read("T1", 5))?.messages).toEqual([]);
   });
 
   test("a mudança de estado vira ouvinte uma vez por transição: o fim do turno gerenciado, o Stop do terminal e o soltar do ouvinte", async () => {

@@ -1,5 +1,7 @@
 import { loopbackOnly } from "./pairing.ts";
 
+type HooksState = "installed" | "absent" | "outdated";
+
 export interface DoctorDeps {
   /** The config; throws with the cause when it cannot be read. */
   config(): { bind: string; port: number; allowedRoots: string[] };
@@ -7,7 +9,7 @@ export interface DoctorDeps {
   serviceInstalled(): Promise<boolean>;
   healthy(): Promise<boolean>;
   tailscaleIp(): Promise<string | null>;
-  hooks(): "installed" | "absent" | "outdated" | Promise<"installed" | "absent" | "outdated">;
+  hooks(): HooksState | Promise<HooksState>;
   claudePath(): string | null;
   /** The running daemon's version and, when the app told it, the app's: only a running daemon has them. */
   version?: { daemon: string; app?: string };

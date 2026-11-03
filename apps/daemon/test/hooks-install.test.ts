@@ -43,7 +43,7 @@ function settingsFile(content?: unknown): string {
 const read = (file: string) => JSON.parse(readFileSync(file, "utf8"));
 
 describe("hooks-install", () => {
-  test("entradas: SessionStart por comando com o caminho absoluto em barras normais, os outros http com token", () => {
+  test("entradas: SessionStart por comando com o caminho absoluto em barras normais, os outros http com token", async () => {
     const entries = hookEntries(TARGET);
     expect(Object.keys(entries).sort()).toEqual(["SessionStart", ...HTTP_HOOK_EVENTS].sort());
     expect(entries.SessionStart).toEqual([
@@ -83,7 +83,7 @@ describe("hooks-install", () => {
     );
   });
 
-  test("entrada antiga, com barras invertidas, fica desatualizada; install a troca e uninstall a reconhece", () => {
+  test("entrada antiga, com barras invertidas, fica desatualizada; install a troca e uninstall a reconhece", async () => {
     // A complete install from before, differing only in how the SessionStart path is written.
     const current = hookEntries({ ...TARGET, command: ["C:\\fd\\flightdeckd.exe"] });
     const old = {
@@ -108,19 +108,19 @@ describe("hooks-install", () => {
     };
     const target = { ...TARGET, command: ["C:\\fd\\flightdeckd.exe"] };
     const file = settingsFile(old);
-    expect(hooksStatus(file, target)).toBe("outdated");
-    installHooks(file, target);
-    expect(hooksStatus(file, target)).toBe("installed");
+    expect(await hooksStatus(file, target)).toBe("outdated");
+    await installHooks(file, target);
+    expect(await hooksStatus(file, target)).toBe("installed");
     expect(read(file).hooks.SessionStart).toEqual(hookEntries(target).SessionStart);
     writeFileSync(file, JSON.stringify(old));
-    expect(uninstallHooks(file)).toBe(true);
+    expect(await uninstallHooks(file)).toBe(true);
     expect(read(file)).toEqual(ORIGINAL);
   });
 
-  test("mescla no settings.json existente sem perder chaves nem hooks de terceiros, com backup", () => {
+  test("mescla no settings.json existente sem perder chaves nem hooks de terceiros, com backup", async () => {
     const file = settingsFile(ORIGINAL);
     const before = readFileSync(file, "utf8");
-    installHooks(file, TARGET);
+    await installHooks(file, TARGET);
     expect(existsSync(`${file}.flightdeck-backup`)).toBe(true);
     const after = read(file);
     expect(after.model).toBe("opus");
@@ -131,49 +131,60 @@ describe("hooks-install", () => {
     expect(readFileSync(`${file}.flightdeck-backup`, "utf8")).toBe(before);
   });
 
-  test("reinstalar não duplica", () => {
+  test("reinstalar não duplica", async () => {
     const file = settingsFile(ORIGINAL);
-    installHooks(file, TARGET);
+    await installHooks(file, TARGET);
     const once = read(file);
-    installHooks(file, TARGET);
+    await installHooks(file, TARGET);
     expect(read(file)).toEqual(once);
-    installHooks(file, { ...TARGET, url: "http://127.0.0.1:9999" });
+    await installHooks(file, { ...TARGET, url: "http://127.0.0.1:9999" });
     expect(read(file).hooks.Stop).toHaveLength(2);
     expect(read(file).hooks.Stop[1].hooks[0].url).toBe("http://127.0.0.1:9999/hooks/Stop");
   });
 
-  test("uninstall remove só as entradas do Flightdeck e devolve o settings.json original", () => {
+  test("uninstall remove só as entradas do Flightdeck e devolve o settings.json original", async () => {
     const file = settingsFile(ORIGINAL);
-    installHooks(file, TARGET);
-    expect(uninstallHooks(file)).toBe(true);
+    await installHooks(file, TARGET);
+    expect(await uninstallHooks(file)).toBe(true);
     expect(read(file)).toEqual(ORIGINAL);
-    expect(uninstallHooks(file)).toBe(false);
+    expect(await uninstallHooks(file)).toBe(false);
   });
 
-  test("sem settings.json: install cria, sem backup; uninstall deixa um objeto vazio", () => {
+  test("sem settings.json: install cria, sem backup; uninstall deixa um objeto vazio", async () => {
     const file = settingsFile();
-    installHooks(file, TARGET);
+    await installHooks(file, TARGET);
     expect(existsSync(file)).toBe(true);
     expect(existsSync(`${file}.flightdeck-backup`)).toBe(false);
     expect(Object.keys(read(file).hooks)).toHaveLength(9);
-    uninstallHooks(file);
+    await uninstallHooks(file);
     expect(read(file)).toEqual({});
     rmSync(file);
-    expect(uninstallHooks(file)).toBe(false);
+    expect(await uninstallHooks(file)).toBe(false);
   });
 
-  test("status: ausente, instalado e desatualizado", () => {
+  test("install, uninstall and status come back as promises: the settings file is read without blocking", async () => {
     const file = settingsFile(ORIGINAL);
-    expect(hooksStatus(file, TARGET)).toBe("absent");
-    installHooks(file, TARGET);
-    expect(hooksStatus(file, TARGET)).toBe("installed");
-    expect(hooksStatus(file, { ...TARGET, permissionTimeoutS: 60 })).toBe("outdated");
-    expect(hooksStatus(file, { ...TARGET, command: ["/outro/flightdeckd"] })).toBe("outdated");
+    const installed = installHooks(file, TARGET);
+    expect(installed).toBeInstanceOf(Promise);
+    await installed;
+    expect(hooksStatus(file, TARGET)).toBeInstanceOf(Promise);
+    expect(uninstallHooks(file)).toBeInstanceOf(Promise);
+  });
+
+  test("status: ausente, instalado e desatualizado", async () => {
+    const file = settingsFile(ORIGINAL);
+    expect(await hooksStatus(file, TARGET)).toBe("absent");
+    await installHooks(file, TARGET);
+    expect(await hooksStatus(file, TARGET)).toBe("installed");
+    expect(await hooksStatus(file, { ...TARGET, permissionTimeoutS: 60 })).toBe("outdated");
+    expect(await hooksStatus(file, { ...TARGET, command: ["/outro/flightdeckd"] })).toBe(
+      "outdated",
+    );
     const partial = read(file);
     delete partial.hooks.SessionEnd;
     writeFileSync(file, JSON.stringify(partial));
-    expect(hooksStatus(file, TARGET)).toBe("outdated");
-    expect(hooksStatus(join(tempDir(), "nao-existe.json"), TARGET)).toBe("absent");
+    expect(await hooksStatus(file, TARGET)).toBe("outdated");
+    expect(await hooksStatus(join(tempDir(), "nao-existe.json"), TARGET)).toBe("absent");
   });
 });
 
@@ -238,7 +249,7 @@ describe("hooks-install: CLI", () => {
     expect(out.join("\n")).toContain("hooks: ausentes");
   });
 
-  test("ação de hooks desconhecida é recusada", () => {
+  test("ação de hooks desconhecida é recusada", async () => {
     let message = "aceitou";
     try {
       parseArgs(["hooks", "limpar"]);

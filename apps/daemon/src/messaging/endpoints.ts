@@ -3,7 +3,7 @@
  * the session manager, the cards and the terminal sessions of the central hub; tests hand in a
  * fake. A session is addressed by its id: the managed id, or the Claude session id of a terminal.
  */
-import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import type {
   ExternalStatus,
   MessagingSession,
@@ -56,7 +56,10 @@ export interface Endpoints {
   /** A session changed state (a held message goes when a terminal leaves `waiting`). */
   onState(listener: (id: string, state: MessagingSession["state"]) => void): () => void;
   /** The summary and the last messages of the transcript, or null for a session that is not known. */
-  read(id: string, last: number): { summary: SessionLine | null; messages: ReadMessage[] } | null;
+  read(
+    id: string,
+    last: number,
+  ): Promise<{ summary: SessionLine | null; messages: ReadMessage[] } | null>;
 }
 
 /** What the real adapter reads of this host. */
@@ -73,7 +76,7 @@ export interface LocalEndpointsOptions {
   autoApprove?: Pick<AutoApprover, "suspend" | "suspended">;
   personaOf?: (sessionId: string) => string | null;
   /** The text of a transcript file; null when it cannot be read. */
-  readFile?: (path: string) => string | null;
+  readFile?: (path: string) => string | null | Promise<string | null>;
 }
 
 export const MANAGED_STATE: Record<SessionStatus, MessagingSession["state"]> = {
@@ -100,13 +103,8 @@ const notControllableReason = (state: string): string =>
 /** `read_session` shows at most this many messages, each cut to 8 KB. */
 const MAX_READ = 20;
 
-const defaultRead = (path: string): string | null => {
-  try {
-    return readFileSync(path, "utf8");
-  } catch {
-    return null;
-  }
-};
+const defaultRead = (path: string): Promise<string | null> =>
+  readFile(path, "utf8").catch(() => null);
 
 export class LocalEndpoints implements Endpoints {
   private readonly last = new Map<string, MessagingSession["state"]>();
@@ -238,10 +236,12 @@ export class LocalEndpoints implements Endpoints {
   }
 
   /** The conversation of a terminal session, from its transcript, and its last event. */
-  private terminalMessages(id: string): { messages: ReadMessage[]; since: string | null } {
+  private async terminalMessages(
+    id: string,
+  ): Promise<{ messages: ReadMessage[]; since: string | null }> {
     const terminal = this.opts.external.get(id);
     const text = terminal?.transcriptPath
-      ? (this.opts.readFile ?? defaultRead)(terminal.transcriptPath)
+      ? await (this.opts.readFile ?? defaultRead)(terminal.transcriptPath)
       : null;
     const messages: ReadMessage[] = [];
     for (const record of text ? parseLines(text).records : []) {
@@ -252,13 +252,16 @@ export class LocalEndpoints implements Endpoints {
     return { messages, since: terminal?.lastEventAt ?? null };
   }
 
-  read(id: string, last: number): { summary: SessionLine | null; messages: ReadMessage[] } | null {
+  async read(
+    id: string,
+    last: number,
+  ): Promise<{ summary: SessionLine | null; messages: ReadMessage[] } | null> {
     const count = Math.max(1, Math.min(last, MAX_READ));
     const info = this.list().find((e) => e.id === id);
     if (!info) return null;
     const read = this.managed().some((s) => s.id === id)
       ? this.managedMessages(id)
-      : this.terminalMessages(id);
+      : await this.terminalMessages(id);
     const messages = read.messages
       .slice(-count)
       .map((m) => ({ role: m.role, text: truncateUtf8(m.text, MAX_TEXT_BYTES) }));
