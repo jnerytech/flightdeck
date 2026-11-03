@@ -309,11 +309,26 @@ export class ClaudeSdkRuntime implements AgentRuntime {
 
     return {
       events,
-      send(text, uuid) {
+      send(text, uuid, images) {
         prompt.push({
           type: "user",
           parent_tool_use_id: null,
-          message: { role: "user", content: text },
+          message: {
+            role: "user",
+            content: images?.length
+              ? [
+                  ...images.map((image) => ({
+                    type: "image" as const,
+                    source: {
+                      type: "base64" as const,
+                      media_type: image.mediaType,
+                      data: image.data,
+                    },
+                  })),
+                  ...(text ? [{ type: "text" as const, text }] : []),
+                ]
+              : text,
+          },
           ...(uuid ? { uuid: uuid as SDKUserMessage["uuid"] } : {}),
         });
       },

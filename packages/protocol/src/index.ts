@@ -303,7 +303,12 @@ export const SessionEvent = z.discriminatedUnion("type", [
     /** The slash commands the session has (`/compact`, a skill, ...), without the slash. */
     slashCommands: z.array(z.string()).optional(),
   }),
-  z.object({ type: z.literal("message.user"), text: z.string() }),
+  /** `images`: how many came with the message (the bytes stay out of the log). */
+  z.object({
+    type: z.literal("message.user"),
+    text: z.string(),
+    images: z.number().int().positive().optional(),
+  }),
   /** A persona was applied to the session (it is conversation instruction, not system prompt). */
   z.object({ type: z.literal("persona.applied"), persona: SessionPersona }),
   /** The role was left: back to normal behavior. */
@@ -394,16 +399,31 @@ export const SessionCreatePayload = z.object({
   persona: PersonaRef.optional(),
 });
 
-/** What a message may carry as images (stub: the real limits come with the feature). */
-export const SESSION_IMAGE_TYPES: readonly string[] = [];
-export const SESSION_IMAGE_MAX_COUNT = 0;
-export const SESSION_IMAGE_MAX_BYTES = 0;
-export interface SessionImage {
-  mediaType: string;
-  data: string;
-}
+/** What a message may carry as images: the types the API reads, five of them, 5 MB each. */
+export const SESSION_IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"] as const;
+export const SESSION_IMAGE_MAX_COUNT = 5;
+export const SESSION_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 
-export const SessionSendPayload = z.object({ sessionId: z.string(), text: z.string().min(1) });
+/** One image of a message: its type and its bytes in base64. */
+export const SessionImage = z.object({
+  mediaType: z.enum(SESSION_IMAGE_TYPES),
+  /** Base64 of at most `SESSION_IMAGE_MAX_BYTES` bytes. */
+  data: z
+    .string()
+    .min(1)
+    .max(Math.ceil((SESSION_IMAGE_MAX_BYTES * 4) / 3) + 4),
+});
+export type SessionImage = z.infer<typeof SessionImage>;
+
+export const SessionSendPayload = z
+  .object({
+    sessionId: z.string(),
+    text: z.string(),
+    images: z.array(SessionImage).max(SESSION_IMAGE_MAX_COUNT).optional(),
+  })
+  .refine((p) => p.text.length > 0 || (p.images?.length ?? 0) > 0, {
+    message: "a message needs text or an image",
+  });
 export const SessionIdPayload = z.object({ sessionId: z.string() });
 export const SessionSubscribePayload = z.object({
   sessionId: z.string(),
