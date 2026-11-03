@@ -185,12 +185,16 @@ describe("conta-cartao-acoes: signed out", () => {
 });
 
 describe("conta-cartao-acoes: a host that goes away", () => {
-  test("shows offline instead of the old reading", async () => {
-    const { store, host } = await mount();
+  test("shows offline instead of the old reading, and the stream ends", async () => {
+    const { store, host, view, watchers } = await mount();
     await settle(() => screen.queryByText("demo@example.com") !== null);
-    await act(async () => {
-      await store.removeHost(host.id);
-    });
+    view.rerender(
+      <TContext.Provider value={translator("en")}>
+        <HostAccount store={store} host={{ ...host, status: "offline" }} />
+      </TContext.Provider>,
+    );
     await settle(() => screen.queryByText("demo@example.com") === null);
+    expect(screen.queryByText(/alfa is offline/)).not.toBeNull();
+    await settle(() => watchers() === 0);
   });
 });
