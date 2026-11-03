@@ -375,7 +375,12 @@ describe("navegacao", () => {
     store.router.push({ name: "reader", target: { hostId: "h-fixo", claudeSessionId: "hist-2" } });
     render(<App store={store} />);
     // While the saved hosts load and connect, the screen says so (its name may not be known yet).
-    const status = screen.queryByRole("status")?.getAttribute("aria-label") ?? "";
+    // The tab strip's own position announcement is a status too: pick the loading one.
+    const status =
+      screen
+        .queryAllByRole("status")
+        .map((el) => el.getAttribute("aria-label") ?? "")
+        .find((label) => /^(Carregando…|Conectando a alfa…)$/.test(label)) ?? "";
     expect(status).toMatch(/^(Carregando…|Conectando a alfa…)$/);
     await settle(() => (screen.queryByRole("main")?.textContent ?? "").includes("Leitura cedo"));
     expect(screen.queryByRole("main")?.textContent ?? "").toContain("Leitura cedo");
