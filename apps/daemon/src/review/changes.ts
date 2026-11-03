@@ -36,6 +36,8 @@ export interface ResolvedTarget {
   base: string | null;
   cardId: string | null;
   claudeSessionId: string | null;
+  /** The card's branch: its position is read from it, never from a `HEAD` that a rebase detaches. */
+  branch?: string;
 }
 
 export interface ChangesResult {
@@ -91,7 +93,14 @@ export class Changes {
       const card = this.opts.board.getCard(id);
       if (!card.worktreePath) throw new FlightdeckError("invalid_state", "card ainda sem worktree");
       const base = this.opts.board.getProject(card.projectId).baseBranch;
-      return { target, root: card.worktreePath, base, cardId: id, claudeSessionId: null };
+      return {
+        target,
+        root: card.worktreePath,
+        base,
+        cardId: id,
+        claudeSessionId: null,
+        ...(card.branch ? { branch: card.branch } : {}),
+      };
     }
     const row = this.opts.db.query(SESSION_CWD).get({ id }) as { cwd: string } | null;
     if (!row) throw new FlightdeckError("not_found", `sessão ${id} não existe`);
@@ -112,11 +121,11 @@ export class Changes {
   }
 
   async get(target: string): Promise<ChangesResult> {
-    const { root, base } = await this.resolve(target);
+    const { root, base, branch } = await this.resolve(target);
     if (base === null)
       return { target, root, base, files: await workingDiff(root), position: null };
     const { files } = await cardDiff(root, base);
-    return { target, root, base, files, position: await aheadBehind(root, base) };
+    return { target, root, base, files, position: await aheadBehind(root, base, branch) };
   }
 
   /**
