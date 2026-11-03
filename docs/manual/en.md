@@ -599,6 +599,17 @@ Click a card to open the project's page. It links the project's **Board**, **Ses
 **Workflows**, **Costs** (when the host reports costs) and **Settings** (the host's project
 settings, where the folder, base branch, setup and personas are edited).
 
+### Sessions side by side
+
+When the project has sessions that Flightdeck started, the page shows them as **tiles**: 2, 3, 4 or
+6 at a time (pick the number in **Tiles on screen**; it is kept). The sessions that need you come
+first, then the running ones, then the idle ones. Each tile has the session's name (a button that
+opens it), its status, its **last lines**, the **request** it is waiting on (with **Allow** and
+**Deny**) and a small message box: **Enter** sends, **Ctrl+Enter** adds a new line, and the send
+icon shows when there is text. From the keyboard, Tab reaches each tile, and **Alt+arrow keys**
+move between them (left and right by one, up and down by a row). The tiles follow their sessions
+live; the list is the project's, so a session of another project never shows here.
+
 ## Board
 
 Each project (a git repository on the host) has a board with five columns: Backlog, In progress,

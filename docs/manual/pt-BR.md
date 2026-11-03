@@ -584,6 +584,17 @@ Clique em um cartão para abrir a página do projeto. Ela leva ao **Board**, às
 **Workflows**, aos **Custos** (quando o host informa custos) e às **Configurações** (as
 configurações de projetos do host, onde se editam pasta, branch base, setup e personas) do projeto.
 
+### Sessões lado a lado
+
+Quando o projeto tem sessões iniciadas pelo Flightdeck, a página as mostra como **blocos**: 2, 3, 4
+ou 6 por vez (escolha o número em **Blocos na tela**; ele fica guardado). As sessões que precisam de
+você vêm primeiro, depois as rodando, depois as ociosas. Cada bloco tem o nome da sessão (um botão
+que a abre), o status, as **últimas linhas**, o **pedido** que ela espera (com **Permitir** e
+**Negar**) e uma caixa de mensagem pequena: **Enter** envia, **Ctrl+Enter** quebra a linha, e o
+ícone de envio aparece quando há texto. Pelo teclado, Tab chega a cada bloco e **Alt+setas** movem
+entre eles (esquerda e direita de um em um, cima e baixo uma linha). Os blocos acompanham as
+sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto nunca aparece aqui.
+
 ## Board
 
 Cada projeto (um repositório git do host) tem um board com cinco colunas: Backlog, Em andamento,
