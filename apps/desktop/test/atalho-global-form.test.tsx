@@ -33,11 +33,11 @@ async function openSettings(supported = true) {
     fireEvent.click(screen.getByRole("button", { name: "Configurações" }));
   });
   // Settings is a lazy screen: its chunk may still be loading when the click returns.
-  await settle(() => screen.queryByLabelText("Atalho global") !== null);
+  await settle(() => screen.queryByRole("textbox", { name: "Atalho global" }) !== null);
   return { ...mem, registered };
 }
 
-const field = () => screen.getByLabelText("Atalho global") as HTMLInputElement;
+const field = () => screen.getByRole("textbox", { name: "Atalho global" }) as HTMLInputElement;
 const type = (value: string) =>
   act(async () => {
     fireEvent.change(field(), { target: { value } });

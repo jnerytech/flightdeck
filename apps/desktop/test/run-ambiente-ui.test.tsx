@@ -112,7 +112,7 @@ describe("run-ui: o estado do Run na loja", () => {
     const { store, hostId, cardId, key } = await setup();
     await store.runStart(hostId, cardId);
     expect(store.getState().runEnvs[key]).toBeUndefined();
-    expect(store.getState().error ?? "").toContain("não confiado");
+    expect(store.getState().error ?? "").toContain("is not trusted");
   });
 });
 

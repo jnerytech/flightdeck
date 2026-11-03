@@ -78,15 +78,10 @@ describe("estados-avisos", () => {
     expect(alertTexts().join(" | ")).toContain("está fora das pastas permitidas do host.");
     expect(alertTexts().join(" | ")).toContain("flightdeckd setup");
     expect(alertTexts().join(" | ")).toContain("O card nao-existe não existe.");
-    const notFound = alerts().find((a) => (a.textContent ?? "").includes("Não encontrado"));
-    // The daemon's own message is behind "Detalhes".
-    expect(notFound?.textContent ?? "").not.toContain("sessão x");
-    const details = notFound ? within(notFound).queryByRole("button", { name: "Detalhes" }) : null;
-    expect(details).not.toBeNull();
-    await act(async () => {
-      fireEvent.click(details as HTMLElement);
-    });
-    expect(notFound?.textContent ?? "").toContain("sessão x");
+    // The daemon now names the reason, so the toast says it in the app's language, with no "Detalhes".
+    const notFound = alerts().find((a) => (a.textContent ?? "").includes("A sessão x não existe"));
+    expect(notFound).not.toBeUndefined();
+    expect(within(notFound as HTMLElement).queryByRole("button", { name: "Detalhes" })).toBeNull();
     const close = notFound ? within(notFound).queryByRole("button", { name: "Fechar" }) : null;
     expect(close).not.toBeNull();
     await act(async () => {

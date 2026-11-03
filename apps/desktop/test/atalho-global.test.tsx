@@ -54,7 +54,7 @@ async function openSettings() {
 }
 
 async function saveShortcut(value: string) {
-  const input = screen.queryByLabelText("Atalho global") as HTMLInputElement | null;
+  const input = screen.queryByRole("textbox", { name: "Atalho global" }) as HTMLInputElement | null;
   expect(input).not.toBeNull();
   await act(async () => {
     fireEvent.change(input as HTMLInputElement, { target: { value } });
@@ -107,9 +107,9 @@ describe("atalho-global", () => {
     const { calls, items } = setup();
     await settle(() => calls.length > 0);
     await openSettings();
-    expect((screen.queryByLabelText("Atalho global") as HTMLInputElement | null)?.value).toBe(
-      "Ctrl+Alt+F",
-    );
+    expect(
+      (screen.queryByRole("textbox", { name: "Atalho global" }) as HTMLInputElement | null)?.value,
+    ).toBe("Ctrl+Alt+F");
     await saveShortcut("Ctrl+K");
     expect(
       screen.queryByText("Ctrl+K abre a busca dentro do app; escolha outro atalho"),
@@ -134,9 +134,9 @@ describe("atalho-global", () => {
 
   test("falha de registro avisa e abre a configuração para escolher outro", async () => {
     const { calls, items } = setup({ taken: ["Ctrl+Alt+F", "Ctrl+Alt+G"] });
-    await settle(() => screen.queryByLabelText("Atalho global") !== null);
+    await settle(() => screen.queryByRole("textbox", { name: "Atalho global" }) !== null);
     // Settings opened by itself, with the warning.
-    expect(screen.queryByLabelText("Atalho global")).not.toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Atalho global" })).not.toBeNull();
     const warning =
       "O atalho Ctrl+Alt+F não pôde ser registrado: outro programa já deve usá-lo. Escolha outro.";
     expect(screen.queryByText(warning)).not.toBeNull();
@@ -161,9 +161,10 @@ describe("atalho-global", () => {
     const store = new AppStore(mem.platform);
     render(<App store={store} />);
     await openSettings();
-    expect((screen.queryByLabelText("Atalho global") as HTMLInputElement | null)?.disabled).toBe(
-      true,
-    );
+    expect(
+      (screen.queryByRole("textbox", { name: "Atalho global" }) as HTMLInputElement | null)
+        ?.disabled,
+    ).toBe(true);
     expect(screen.queryByText("atalho global indisponível nesta plataforma")).not.toBeNull();
   });
 });

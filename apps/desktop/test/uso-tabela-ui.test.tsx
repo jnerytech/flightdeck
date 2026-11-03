@@ -85,6 +85,8 @@ describe("uso-tabela-ui: the history list opened from a usage row", () => {
     const asked: unknown[] = [];
     const store = {
       i18n: new I18n({ settings: { get: () => null, set: () => {} } } as never),
+      hubView: () => "list",
+      getState: () => ({ hosts: [] }),
       historyList: (_host: string, filter: unknown) => {
         asked.push(filter);
         return Promise.resolve({ sessions: [], nextCursor: null });
@@ -128,6 +130,8 @@ describe("uso-tabela-ui: the history list opened from a usage row", () => {
     const asked: unknown[] = [];
     const store = {
       i18n: new I18n({ settings: { get: () => null, set: () => {} } } as never),
+      hubView: () => "list",
+      getState: () => ({ hosts: [] }),
       historyList: (_host: string, filter: unknown) => {
         asked.push(filter);
         return Promise.resolve({ sessions: [], nextCursor: null });
