@@ -487,7 +487,7 @@ function routeScreen(props: ScreenProps): ReactNode {
     return <ScreenLoading label={label} />;
   }
 
-  if (route.name === "start") return <StartScreen store={store} state={state} go={go} />;
+  if (route.name === "start") return <StartScreen store={store} hosts={state.hosts} go={go} />;
   if (route.name === "settings") {
     return (
       <Settings

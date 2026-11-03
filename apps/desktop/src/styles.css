@@ -342,22 +342,22 @@
 }
 
 /* Three dots that rise in turn while Claude works. */
-.dots-working {
+@utility dots-working {
   display: inline-flex;
   gap: 0.2rem;
-}
-.dots-working i {
-  width: 0.35rem;
-  height: 0.35rem;
-  border-radius: 9999px;
-  background: currentColor;
-  animation: dots-working 1.2s ease-in-out infinite;
-}
-.dots-working i:nth-child(2) {
-  animation-delay: 0.15s;
-}
-.dots-working i:nth-child(3) {
-  animation-delay: 0.3s;
+  & i {
+    width: 0.35rem;
+    height: 0.35rem;
+    border-radius: 9999px;
+    background: currentColor;
+    animation: dots-working 1.2s ease-in-out infinite;
+  }
+  & i:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  & i:nth-child(3) {
+    animation-delay: 0.3s;
+  }
 }
 @keyframes dots-working {
   0%,
@@ -368,6 +368,23 @@
   40% {
     opacity: 1;
   }
+}
+
+/*
+ * A dialog sits centered by its own margins over a dimmed page. The vendored component keeps
+ * the CLI's classes (a transform is the part a webview can drop), so these rules sit outside it.
+ */
+[data-slot="dialog-overlay"] {
+  background-color: oklch(0 0 0 / 60%);
+  backdrop-filter: blur(1px);
+}
+[data-slot="dialog-content"] {
+  inset: 0;
+  margin: auto;
+  translate: none;
+  height: fit-content;
+  max-height: calc(100% - 2rem);
+  overflow-y: auto;
 }
 
 /* Reduced motion: nothing animates for those who ask. */

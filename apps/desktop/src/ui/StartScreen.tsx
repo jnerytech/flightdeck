@@ -17,13 +17,13 @@ const SHORTCUTS = [
 /** What an area with no tab shows: where to begin, the latest sessions and the main shortcuts. */
 export function StartScreen(props: {
   store: AppStore;
-  state: AppState;
+  hosts: AppState["hosts"];
   go: (route: Route) => void;
 }) {
   const t = useT();
-  const { state, go } = props;
-  const firstHost = state.hosts.find((host) => host.status === "online");
-  const recent = state.hosts
+  const { hosts, go } = props;
+  const firstHost = hosts.find((host) => host.status === "online");
+  const recent = hosts
     .flatMap((host) => host.sessions.map((session) => ({ host: host.id, session })))
     .sort((a, b) => b.session.updatedAt.localeCompare(a.session.updatedAt))
     .slice(0, RECENT);
