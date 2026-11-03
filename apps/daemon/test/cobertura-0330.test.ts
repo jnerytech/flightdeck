@@ -48,7 +48,11 @@ describe("cobertura-0330: account readers", () => {
         claudePath: null,
         query: ({ prompt }) => {
           pulled = prompt[Symbol.asyncIterator]().next();
-          return { close: () => void (closed += 1) } as never;
+          return {
+            close: () => {
+              closed += 1;
+            },
+          } as never;
         },
       },
       async () => "ok",
