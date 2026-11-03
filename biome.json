@@ -65,6 +65,10 @@
       }
     },
     {
+      "includes": ["apps/**", "scripts/**"],
+      "linter": { "rules": { "nursery": { "noFloatingPromises": "error" } } }
+    },
+    {
       "includes": ["apps/desktop/src/components/ui/**"],
       "linter": { "enabled": false },
       "assist": { "enabled": false }

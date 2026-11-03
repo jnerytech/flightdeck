@@ -48,7 +48,7 @@ function setup(options: { actions?: boolean } = {}) {
     allowedRoots: [],
   });
   cleanups.push(() => {
-    server.stop();
+    void server.stop();
     actions.stop();
     vault.stop();
   });
