@@ -1402,6 +1402,8 @@ export const ptBR = {
   tabs: {
     openInNew: "Abrir em nova aba",
     moveToOther: "Mover a aba {title} para a outra área",
+    position: "Posição das abas",
+    moved: "Aba {title} movida para a posição {n} de {total}",
     moveLeft: "Mover a aba {title} para a esquerda",
     moveRight: "Mover a aba {title} para a direita",
     split: "Dividir a tela",

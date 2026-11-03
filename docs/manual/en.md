@@ -2051,7 +2051,7 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
 - **The bar:** each tab shows its type's icon and title, and a badge when a session in it needs
   you, is running, or answered while no tab showed it (**Unread**). **Pin** keeps the tab at the
   left with its icon only. The pin, move and close buttons after the tabs act on the active one;
-  the middle button closes any tab. Drag a tab onto another to reorder it.
+  the middle button closes any tab. Drag a tab onto another to reorder it. While dragging, a bar marks where the tab will land. The order is kept between sessions.
 - **Shortcuts:**
 
   | Shortcut | Action |
@@ -2061,7 +2061,8 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
   | `Ctrl+Shift+T` | reopen the last closed tab (the last 20 are kept) |
   | `Ctrl+Tab` / `Ctrl+Shift+Tab` | next and previous tab |
   | `Ctrl+1`…`Ctrl+9` | go to that tab (`Ctrl+9` is the last one) |
-  | `Ctrl+Shift+PageUp` / `PageDown` | move the tab left or right |
+  | `Ctrl+Shift+PageUp` / `PageDown` | move the active tab left or right |
+  | `Ctrl+Shift+←` / `→` (on a focused tab) | move that tab left or right; a screen reader is told its new place |
   | `Ctrl+\` | split the window or join the areas |
 
   In the demo's web entry, Chromium keeps `Ctrl+T`, `Ctrl+W` and `Ctrl+Shift+T` for itself: use
