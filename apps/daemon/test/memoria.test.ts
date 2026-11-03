@@ -5,6 +5,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  rmSync,
   symlinkSync,
   utimesSync,
   writeFileSync,
@@ -19,9 +20,9 @@ import { tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
-const codeOf = (fn: () => unknown): string => {
+const codeOf = async (fn: () => unknown): Promise<string> => {
   try {
-    fn();
+    await fn();
     return "ok";
   } catch (error) {
     return (error as { code?: string }).code ?? "sem código";
@@ -47,30 +48,30 @@ function setup() {
 }
 
 describe("memoria: onde fica", () => {
-  test("a pasta é projects/<caminho com - no lugar do que não é letra ou número>/memory, e não existir não é erro", () => {
+  test("a pasta é projects/<caminho com - no lugar do que não é letra ou número>/memory, e não existir não é erro", async () => {
     const { memory, repo, dir } = setup();
-    expect(memory.dir(repo)).toBe(dir);
-    expect(memory.list(repo)).toEqual({ dir, exists: false, files: [] });
+    expect(await memory.dir(repo)).toBe(dir);
+    expect(await memory.list(repo)).toEqual({ dir, exists: false, files: [] });
   });
 
-  test("as worktrees e as subpastas do mesmo repositório dividem a mesma pasta", () => {
+  test("as worktrees e as subpastas do mesmo repositório dividem a mesma pasta", async () => {
     const { memory, repo, dir } = setup();
     const worktree = join(tempDir("fd-wt-"), "feature");
     git(repo, "worktree", "add", "-q", "-b", "feature", worktree);
     mkdirSync(join(repo, "sub"));
-    expect(memory.dir(worktree)).toBe(dir);
-    expect(memory.dir(join(repo, "sub"))).toBe(dir);
+    expect(await memory.dir(worktree)).toBe(dir);
+    expect(await memory.dir(join(repo, "sub"))).toBe(dir);
   });
 
-  test("fora de um repositório git vale a própria pasta do projeto", () => {
+  test("fora de um repositório git vale a própria pasta do projeto", async () => {
     const { memory, claudeDir } = setup();
     const plain = tempDir("fd-plain-");
-    expect(memory.dir(plain)).toBe(join(claudeDir, "projects", slugOf(plain), "memory"));
+    expect(await memory.dir(plain)).toBe(join(claudeDir, "projects", slugOf(plain), "memory"));
   });
 });
 
 describe("memoria: ler", () => {
-  test("lista os arquivos em ordem, com hash, bytes, linhas, tipo, descrição e se o índice os cita", () => {
+  test("lista os arquivos em ordem, com hash, bytes, linhas, tipo, descrição e se o índice os cita", async () => {
     const { memory, repo, dir, put } = setup();
     put("MEMORY.md", "- [Papel](user_role.md) — quem é o usuário\n");
     put(
@@ -78,7 +79,7 @@ describe("memoria: ler", () => {
       "---\nname: papel\ndescription: quem é o usuário\ntype: user\n---\nÉ engenheiro.\n",
     );
     put("solta.md", "sem frontmatter\nduas linhas\n");
-    const listing = memory.list(repo);
+    const listing = await memory.list(repo);
     expect(listing.exists).toBe(true);
     expect(listing.dir).toBe(dir);
     expect(listing.files.map((f) => [f.name, f.inIndex])).toEqual([
@@ -99,16 +100,16 @@ describe("memoria: ler", () => {
     });
   });
 
-  test("read devolve o conteúdo com o hash; um nome que não existe é not_found", () => {
+  test("read devolve o conteúdo com o hash; um nome que não existe é not_found", async () => {
     const { memory, repo, put } = setup();
     put("MEMORY.md", "- um\n");
-    const opened = memory.read(repo, "MEMORY.md");
+    const opened = await memory.read(repo, "MEMORY.md");
     expect(opened.content).toBe("- um\n");
     expect(opened.hash).toBe(sha("- um\n"));
-    expect(codeOf(() => memory.read(repo, "nada.md"))).toBe("not_found");
+    expect(await codeOf(async () => await memory.read(repo, "nada.md"))).toBe("not_found");
   });
 
-  test("só nomes simples de arquivo .md valem: nada de subpasta, .. ou outra extensão", () => {
+  test("só nomes simples de arquivo .md valem: nada de subpasta, .. ou outra extensão", async () => {
     const { memory, repo, put } = setup();
     put("MEMORY.md", "x\n");
     for (const name of [
@@ -120,7 +121,10 @@ describe("memoria: ler", () => {
       ".md",
       "/etc/passwd.md",
     ]) {
-      expect([name, codeOf(() => memory.read(repo, name))]).toEqual([name, "bad_request"]);
+      expect([name, await codeOf(async () => await memory.read(repo, name))]).toEqual([
+        name,
+        "bad_request",
+      ]);
     }
   });
 });
@@ -134,32 +138,38 @@ describe("memoria: editar", () => {
     ...over,
   });
 
-  test("grava com confirmação, cria a pasta se faltar e devolve o hash do que gravou", () => {
+  test("grava com confirmação, cria a pasta se faltar e devolve o hash do que gravou", async () => {
     const { memory, repo, dir } = setup();
     expect(existsSync(dir)).toBe(false);
-    const written = memory.write(repo, input());
+    const written = await memory.write(repo, input());
     expect(written.hash).toBe(sha(input().content));
     expect(readFileSync(join(dir, "feedback_testes.md"), "utf8")).toBe(input().content);
   });
 
-  test("sem confirm não grava; criar um que já existe e editar um que mudou são recusados", () => {
+  test("sem confirm não grava; criar um que já existe e editar um que mudou são recusados", async () => {
     const { memory, repo, dir, put } = setup();
-    expect(codeOf(() => memory.write(repo, input({ confirm: false })))).toBe("invalid_state");
+    expect(await codeOf(async () => await memory.write(repo, input({ confirm: false })))).toBe(
+      "invalid_state",
+    );
     expect(existsSync(dir)).toBe(false);
     put("a.md", "um\n");
-    expect(codeOf(() => memory.write(repo, input({ name: "a.md" })))).toBe("invalid_state");
+    expect(await codeOf(async () => await memory.write(repo, input({ name: "a.md" })))).toBe(
+      "invalid_state",
+    );
     expect(
-      codeOf(() => memory.write(repo, input({ name: "a.md", expectedHash: sha("outro\n") }))),
+      await codeOf(
+        async () => await memory.write(repo, input({ name: "a.md", expectedHash: sha("outro\n") })),
+      ),
     ).toBe("invalid_state");
     expect(readFileSync(join(dir, "a.md"), "utf8")).toBe("um\n");
-    memory.write(repo, input({ name: "a.md", content: "dois\n", expectedHash: sha("um\n") }));
+    await memory.write(repo, input({ name: "a.md", content: "dois\n", expectedHash: sha("um\n") }));
     expect(readFileSync(join(dir, "a.md"), "utf8")).toBe("dois\n");
   });
 
-  test("escreve só dentro da pasta de memória: nome com .. ou barra é recusado e nada sai de lá", () => {
+  test("escreve só dentro da pasta de memória: nome com .. ou barra é recusado e nada sai de lá", async () => {
     const { memory, repo, claudeDir } = setup();
     for (const name of ["../../evil.md", "../evil.md", "sub/evil.md", "..\\evil.md"]) {
-      expect([name, codeOf(() => memory.write(repo, input({ name })))]).toEqual([
+      expect([name, await codeOf(async () => await memory.write(repo, input({ name })))]).toEqual([
         name,
         "bad_request",
       ]);
@@ -170,30 +180,36 @@ describe("memoria: editar", () => {
     expect(stray).toEqual([]);
   });
 
-  test("uma pasta de memória que é um link para fora não deixa gravar", () => {
+  test("uma pasta de memória que é um link para fora não deixa gravar", async () => {
     const { memory, repo, dir } = setup();
     const outside = tempDir("fd-outside-");
     mkdirSync(join(dir, ".."), { recursive: true });
     symlinkSync(outside, dir);
-    expect(codeOf(() => memory.write(repo, input()))).toBe("bad_request");
+    expect(await codeOf(async () => await memory.write(repo, input()))).toBe("bad_request");
     expect(readdirSync(outside)).toEqual([]);
   });
 
-  test("apagar pede confirm e o hash; registra a decisão sem o conteúdo", () => {
+  test("apagar pede confirm e o hash; registra a decisão sem o conteúdo", async () => {
     const { memory, repo, dir, put, decisions } = setup();
     put("velha.md", "velha\n");
     expect(
-      codeOf(() =>
-        memory.remove(repo, { name: "velha.md", expectedHash: sha("velha\n"), confirm: false }),
+      await codeOf(
+        async () =>
+          await memory.remove(repo, {
+            name: "velha.md",
+            expectedHash: sha("velha\n"),
+            confirm: false,
+          }),
       ),
     ).toBe("invalid_state");
     expect(
-      codeOf(() =>
-        memory.remove(repo, { name: "velha.md", expectedHash: sha("x"), confirm: true }),
+      await codeOf(
+        async () =>
+          await memory.remove(repo, { name: "velha.md", expectedHash: sha("x"), confirm: true }),
       ),
     ).toBe("invalid_state");
     expect(existsSync(join(dir, "velha.md"))).toBe(true);
-    memory.remove(repo, { name: "velha.md", expectedHash: sha("velha\n"), confirm: true });
+    await memory.remove(repo, { name: "velha.md", expectedHash: sha("velha\n"), confirm: true });
     expect(existsSync(join(dir, "velha.md"))).toBe(false);
     expect(decisions).toEqual([
       {
@@ -205,16 +221,21 @@ describe("memoria: editar", () => {
       },
     ]);
     expect(
-      codeOf(() =>
-        memory.remove(repo, { name: "velha.md", expectedHash: sha("velha\n"), confirm: true }),
+      await codeOf(
+        async () =>
+          await memory.remove(repo, {
+            name: "velha.md",
+            expectedHash: sha("velha\n"),
+            confirm: true,
+          }),
       ),
     ).toBe("not_found");
   });
 
-  test("cada gravação registra a decisão: ação, nome, hash antes e depois, hora, e nunca o texto", () => {
+  test("cada gravação registra a decisão: ação, nome, hash antes e depois, hora, e nunca o texto", async () => {
     const { memory, repo, decisions } = setup();
-    memory.write(repo, input());
-    memory.write(repo, input({ content: "novo\n", expectedHash: sha(input().content) }));
+    await memory.write(repo, input());
+    await memory.write(repo, input({ content: "novo\n", expectedHash: sha(input().content) }));
     expect(decisions.map((d) => [d.action, d.name, d.before, d.after])).toEqual([
       ["write", "feedback_testes.md", null, sha(input().content)],
       ["write", "feedback_testes.md", sha(input().content), sha("novo\n")],
@@ -599,19 +620,34 @@ describe("memoria: protocolo", () => {
 });
 
 describe("memoria: o registro das decisões", () => {
-  test("cada decisão vira uma linha de JSON no arquivo, na ordem, só com o que o registro tem", () => {
+  test("cada decisão vira uma linha de JSON no arquivo, na ordem, só com o que o registro tem", async () => {
     const file = join(tempDir("fd-log-"), "dados", "memory-decisions.jsonl");
     const record = decisionLog(file);
+    const decision: MemoryDecision = {
+      action: "write",
+      name: "x.md",
+      before: null,
+      after: "h",
+      at: "2026-11-03T00:00:00.000Z",
+    };
+    expect(record(decision)).toBeInstanceOf(Promise);
+    await record(decision);
+    expect(readFileSync(file, "utf8")).toBe(`${JSON.stringify(decision)}\n`);
+    rmSync(file);
     const claudeDir = tempDir("fd-claude-");
     const { repo } = gitRepo();
     const memory = new ProjectMemory({ claudeDir, clock: () => Date.UTC(2026, 9, 31, 12), record });
-    memory.write(repo, {
+    await memory.write(repo, {
       name: "a.md",
       content: "segredo-de-teste\n",
       expectedHash: null,
       confirm: true,
     });
-    memory.remove(repo, { name: "a.md", expectedHash: sha("segredo-de-teste\n"), confirm: true });
+    await memory.remove(repo, {
+      name: "a.md",
+      expectedHash: sha("segredo-de-teste\n"),
+      confirm: true,
+    });
     const lines = readFileSync(file, "utf8").trim().split("\n");
     expect(lines.map((l) => JSON.parse(l))).toEqual([
       {
@@ -695,21 +731,22 @@ describe("memoria: ramos do orçamento e dos nomes", () => {
     expect(paths).toEqual(["./.claude/rules/a/b.md"]);
   });
 
-  test("um arquivo de memória que é um link não é lido nem gravado", () => {
+  test("um arquivo de memória que é um link não é lido nem gravado", async () => {
     const { memory, repo, dir, put } = setup();
     put("MEMORY.md", "x\n");
     const outside = join(tempDir("fd-outside-"), "alvo.md");
     writeFileSync(outside, "fora\n");
     symlinkSync(outside, join(dir, "link.md"));
-    expect(codeOf(() => memory.read(repo, "link.md"))).toBe("bad_request");
+    expect(await codeOf(async () => await memory.read(repo, "link.md"))).toBe("bad_request");
     expect(
-      codeOf(() =>
-        memory.write(repo, {
-          name: "link.md",
-          content: "x",
-          expectedHash: sha("fora\n"),
-          confirm: true,
-        }),
+      await codeOf(
+        async () =>
+          await memory.write(repo, {
+            name: "link.md",
+            content: "x",
+            expectedHash: sha("fora\n"),
+            confirm: true,
+          }),
       ),
     ).toBe("bad_request");
     expect(readFileSync(outside, "utf8")).toBe("fora\n");

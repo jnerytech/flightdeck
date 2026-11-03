@@ -144,6 +144,15 @@ describe("sync-git: a slow git does not stop the protocol", () => {
     expect(blocked).toBeLessThan(100);
   });
 
+  test("the memory folder of a project nobody looked up waits for git without holding the event loop", async () => {
+    const { repo } = gitRepo();
+    const memory = new ProjectMemory({ claudeDir: tempDir("fd-claude-") });
+    const sleeping = sleepingGit(300);
+    const blocked = await longestBlockWhile(sleeping, async () => memory.dir(repo));
+    expect(sleeping.calls().some((args) => args.includes("--git-common-dir"))).toBe(true);
+    expect(blocked).toBeLessThan(100);
+  });
+
   test("looking up where a repository keeps its exclude file does not hold the event loop, and the call that follows asks git nothing", async () => {
     const { repo } = gitRepo();
     const sleeping = sleepingGit(300);
