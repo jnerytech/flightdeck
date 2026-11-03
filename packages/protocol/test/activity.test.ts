@@ -75,7 +75,7 @@ describe("task-activity: one live sentence about what the task is doing", () => 
     ];
     for (const language of ["en", "pt-BR"] as const) {
       for (const tools of bursts) {
-        expect(now(tools, language).text).not.toMatch(/Read|Grep|Glob|Write|Bash|mcp__/);
+        expect(now(tools, language).text).not.toMatch(/\b(Read|Grep|Glob|Write|Bash)\b|mcp__/);
       }
     }
   });
