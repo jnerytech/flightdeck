@@ -45,9 +45,7 @@ async function open(
   await act(async () => {
     fireEvent.click(screen.queryByRole("button", { name: "Snippets" }) as HTMLElement);
   });
-  await act(() => Bun.sleep(100));
-  const button = screen.queryByRole("button", { name: "Importar de arquivo" });
-  expect(button).not.toBeNull();
+  const button = await screen.findByRole("button", { name: "Importar de arquivo" });
   await act(async () => {
     fireEvent.click(button as HTMLElement);
   });
