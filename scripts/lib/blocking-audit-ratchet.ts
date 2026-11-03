@@ -31,3 +31,11 @@ export function syncTauriCommands(rust: string): string[] {
     .filter((match) => match[1] === undefined)
     .map((match) => match[2] as string);
 }
+
+/** Async commands that wait on the user (a dialog), so a worker thread is the right place for them. */
+export const ASYNC_INLINE_ALLOWED: string[] = [];
+
+/** The async commands whose body never calls `spawn_blocking`: they still block a runtime worker. */
+export function asyncCommandsInline(_rust: string): string[] {
+  return ["?"];
+}

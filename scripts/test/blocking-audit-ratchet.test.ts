@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import {
+  ASYNC_INLINE_ALLOWED,
+  asyncCommandsInline,
   MAIN_KEY_FOR_ALLOWED,
   SPAWN_SYNC_ALLOWED,
   SYNC_COMMANDS_ALLOWED,
@@ -28,7 +30,7 @@ describe("blocking-audit: the app's hot paths do not block", () => {
       "fn plain(a: String) -> Result<(), String> {",
       "#[tauri::command]",
       "async fn later() {}",
-      "#[tauri::command(rename_all = \"snake_case\")]",
+      '#[tauri::command(rename_all = "snake_case")]',
       "fn multi(",
       "    a: u8,",
       ") {}",
@@ -54,5 +56,28 @@ describe("blocking-audit: the app's hot paths do not block", () => {
   test("main.ts reads a project key synchronously only behind a warm", () => {
     const main = readFileSync(join(daemonSrc, "main.ts"), "utf8");
     expect([...main.matchAll(/\bkeys\.keyFor\(/g)].length).toBe(MAIN_KEY_FOR_ALLOWED);
+  });
+
+  test("finds the async commands that do their blocking work inline", () => {
+    const rust = [
+      "#[tauri::command]",
+      "async fn inline(a: String) -> Result<(), String> {",
+      "    entry(&a).get_password()",
+      "}",
+      "",
+      "#[tauri::command]",
+      "async fn offloaded(a: String) -> Result<(), String> {",
+      "    tauri::async_runtime::spawn_blocking(move || work(a)).await.map_err(|e| e.to_string())?",
+      "}",
+      "",
+      "#[tauri::command]",
+      "fn plain() {}",
+    ].join("\n");
+    expect(asyncCommandsInline(rust)).toEqual(["inline"]);
+  });
+
+  test("an async Tauri command moves its blocking work to `spawn_blocking`", () => {
+    const rust = readFileSync(join(root, "apps/desktop/src-tauri/src/lib.rs"), "utf8");
+    expect(asyncCommandsInline(rust).sort()).toEqual([...ASYNC_INLINE_ALLOWED].sort());
   });
 });
