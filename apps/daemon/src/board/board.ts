@@ -340,6 +340,10 @@ export class Board {
    * Phase 29: the project with its key, for the wire. The key is asked without blocking (`resolve`
    * answers from a cache and asks git once per folder); a host without it sends none.
    */
+  async forWire(project: Project): Promise<Project> {
+    return project;
+  }
+
   async withKey(project: Project): Promise<Project> {
     const projectKey = await this.opts.projectKeys?.resolve?.(project.path);
     return projectKey ? { ...project, projectKey } : project;
