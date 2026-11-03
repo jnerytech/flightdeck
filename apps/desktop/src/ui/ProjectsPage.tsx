@@ -8,6 +8,7 @@ import { Panel } from "@/components/layout/panel";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
 import { AddProject } from "@/components/projects/add-project";
+import { FindProjects } from "@/components/projects/find-projects";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -201,6 +202,11 @@ export function ProjectsPage(props: {
               <Button onClick={() => pathField.current?.focus()}>{t("states.addProject")}</Button>
             }
           />
+        )}
+        {host && hasFeature(host.hostInfo?.features, "projects.scan", false) && (
+          <div>
+            <FindProjects store={store} hostId={hostId} onAdded={() => void reload()} />
+          </div>
         )}
         <ul aria-label={t("projectsUi.list")} className="flex flex-col gap-2">
           {(list?.projects ?? []).map((project) => (
