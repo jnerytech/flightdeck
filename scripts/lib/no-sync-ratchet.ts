@@ -77,8 +77,6 @@ export const SYNC_BASELINE: Record<string, number> = {
   "apps/daemon/src/personas/store.ts": 8,
   "apps/daemon/src/plugins/inventory.ts": 19,
   "apps/daemon/src/plugins/plugins.ts": 7,
-  "apps/daemon/src/review/changes.ts": 1,
-  "apps/daemon/src/review/comments.ts": 2,
   "apps/daemon/src/review/files.ts": 18,
   "apps/daemon/src/roots.ts": 1,
   "apps/daemon/src/runtime/claude-sdk-runtime.ts": 1,
