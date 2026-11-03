@@ -23,11 +23,11 @@ import {
 export interface StopDeps {
   ctx: ServiceContext;
   /** True while a daemon holds the lock of `config.dataDir`. */
-  daemonRunning(config: Config): boolean;
+  daemonRunning(config: Config): boolean | Promise<boolean>;
   /** Sends `daemon.shutdown`; true when the daemon took it. */
   shutdown?(config: Config): Promise<boolean>;
   /** The pid written in the lock of a `dataDir`. */
-  lockPid?(dataDir: string): number | null;
+  lockPid?(dataDir: string): number | null | Promise<number | null>;
   /** The executable a process runs, or null when it cannot be told. */
   processPath?(pid: number): Promise<string | null>;
   kill?(pid: number): void;
@@ -129,7 +129,7 @@ function resolved(path: string): string {
 
 async function waitStopped(deps: StopDeps, config: Config): Promise<boolean> {
   const deadline = Date.now() + (deps.stopTimeoutMs ?? 10_000);
-  while (deps.daemonRunning(config)) {
+  while (await deps.daemonRunning(config)) {
     if (Date.now() >= deadline) return false;
     await Bun.sleep(100);
   }
@@ -149,7 +149,7 @@ export async function stopServiceDaemon(
   if (await deps.shutdown?.(config)) deps.log.log("o daemon aceitou o pedido de desligamento");
   await stopService(deps.ctx);
   if (await waitStopped(deps, config)) return true;
-  const pid = deps.lockPid?.(config.dataDir) ?? null;
+  const pid = (await deps.lockPid?.(config.dataDir)) ?? null;
   const path = pid !== null && deps.processPath ? await deps.processPath(pid) : null;
   // A package manager may put the executable behind a link: compare where both lead.
   const same = path !== null && samePath(resolved(path), resolved(serviceExe), deps.ctx.platform);
@@ -245,7 +245,7 @@ export async function runUpdate(
     installed?.config && deps.configFromService
       ? deps.configFromService(installed.config)
       : deps.config;
-  if (installed === null && deps.daemonRunning(config)) {
+  if (installed === null && (await deps.daemonRunning(config))) {
     log.error("há um daemon rodando fora do serviço: pare o daemon e rode de novo");
     return 1;
   }

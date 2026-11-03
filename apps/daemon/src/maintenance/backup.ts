@@ -93,8 +93,11 @@ function checkBackup(file: string): void {
  * `flightdeckd restore <file>`: only with the daemon stopped (its lock free). The current
  * database is kept as `flightdeck.db.before-restore`; missing migrations run on the next boot.
  */
-export function restoreBackup(opts: { file: string; dataDir: string }): { beforeRestore: string } {
-  const lock = acquireLock(opts.dataDir);
+export async function restoreBackup(opts: {
+  file: string;
+  dataDir: string;
+}): Promise<{ beforeRestore: string }> {
+  const lock = await acquireLock(opts.dataDir);
   if (!lock) {
     throw new Error("o daemon está rodando com este dataDir: pare o daemon e rode de novo");
   }
@@ -113,6 +116,6 @@ export function restoreBackup(opts: { file: string; dataDir: string }): { before
     for (const suffix of ["-wal", "-shm"]) rmSync(`${current}${suffix}`, { force: true });
     return { beforeRestore };
   } finally {
-    lock.release();
+    await lock.release();
   }
 }

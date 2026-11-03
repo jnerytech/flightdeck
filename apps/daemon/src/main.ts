@@ -548,7 +548,7 @@ export async function startDaemon(
   const config = loadConfig(configFile);
   const runtimeKind = args.runtime ?? config.runtime;
   // Before SQLite and the port: a second daemon must not touch either.
-  const lock = acquireLock(config.dataDir);
+  const lock = await acquireLock(config.dataDir);
   if (!lock) throw new AlreadyRunningError(config.dataDir);
   const store = new EventStore(join(config.dataDir, "flightdeck.db"));
   const claudePath = config.claude?.executablePath ?? config.claudePath;
@@ -1168,7 +1168,7 @@ export async function startDaemon(
         budgets.stop();
         quota.stop();
         store.close();
-        lock.release();
+        await lock.release();
       })();
       return stopped;
     },
@@ -1435,9 +1435,9 @@ async function runService(args: CliArgs, deps: CliDeps): Promise<void> {
  * `flightdeckd history reindex`: drops the transcript index and builds it again. Takes the
  * daemon's lock, so it refuses (exit 3) while a daemon uses the same `dataDir`.
  */
-function runReindex(args: CliArgs, deps: CliDeps): void {
+async function runReindex(args: CliArgs, deps: CliDeps): Promise<void> {
   const config = loadConfig(configPath(args));
-  const lock = acquireLock(config.dataDir);
+  const lock = await acquireLock(config.dataDir);
   if (!lock) {
     throw new AlreadyRunningError(config.dataDir, "pare o daemon antes de reconstruir o índice");
   }
@@ -1452,7 +1452,7 @@ function runReindex(args: CliArgs, deps: CliDeps): void {
     deps.log.log(`histórico reconstruído: ${sessions} sessões, ${messages} mensagens`);
   } finally {
     store.close();
-    lock.release();
+    await lock.release();
   }
 }
 
@@ -1576,9 +1576,9 @@ function serviceStopDeps(ctx: ServiceContext, log: Logger): StopDeps {
   return {
     ctx,
     log,
-    daemonRunning: (config) => {
-      const lock = acquireLock(config.dataDir);
-      lock?.release();
+    daemonRunning: async (config) => {
+      const lock = await acquireLock(config.dataDir);
+      await lock?.release();
       return lock === null;
     },
     shutdown: (config) => requestShutdown(daemonUrl(config), config.token, 3_000),
@@ -1609,10 +1609,10 @@ async function runUpdateCommand(args: CliArgs, deps: CliDeps): Promise<number> {
 }
 
 /** `flightdeckd restore <file>`: only with the daemon stopped. */
-function runRestore(args: CliArgs, deps: CliDeps): void {
+async function runRestore(args: CliArgs, deps: CliDeps): Promise<void> {
   if (!args.file) throw new Error("restore precisa do arquivo: flightdeckd restore <arquivo>");
   const config = loadConfig(configPath(args));
-  const { beforeRestore } = restoreBackup({ file: args.file, dataDir: config.dataDir });
+  const { beforeRestore } = await restoreBackup({ file: args.file, dataDir: config.dataDir });
   deps.log.log(`banco restaurado de ${args.file}; o anterior ficou em ${beforeRestore}`);
 }
 
@@ -1682,7 +1682,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       return null;
     }
     if (args.command === "restore") {
-      runRestore(args, deps);
+      await runRestore(args, deps);
       deps.exit(0);
       return null;
     }
@@ -1832,7 +1832,7 @@ export async function runCli(argv: readonly string[], deps: CliDeps): Promise<Da
       return null;
     }
     if (args.command === "history") {
-      runReindex(args, deps);
+      await runReindex(args, deps);
       deps.exit(0);
       return null;
     }
