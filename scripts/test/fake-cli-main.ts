@@ -28,4 +28,6 @@ if (!rule) {
   process.exit(1);
 }
 if (rule.stdout) process.stdout.write(rule.stdout);
+if (rule.stderr) process.stderr.write(rule.stderr);
+if (rule.delayMs) await Bun.sleep(rule.delayMs);
 process.exit(rule.code ?? 0);

@@ -143,7 +143,7 @@ function checkUrl(url: string): void {
 }
 
 /** The root, as a real path, when it is a folder inside the allowed roots. */
-async function allowedRoot(root: string, roots: readonly string[]): Promise<string> {
+export async function allowedRoot(root: string, roots: readonly string[]): Promise<string> {
   const real = await realFolder(root);
   const allowed = await Promise.all(roots.map(realFolder));
   if (real && allowed.some((r) => r !== null && isInside(r, real))) return real;

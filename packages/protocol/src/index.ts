@@ -1130,6 +1130,40 @@ export interface ProjectsCloneResult {
   path: string;
 }
 
+/** Phase 37: whether the host's `gh` is signed in to GitHub. Never a token. */
+export interface GithubStatusResult {
+  installed: boolean;
+  loggedIn: boolean;
+  login: string | null;
+  scopes: string[];
+  /** Where `gh` keeps the login. */
+  source: "keyring" | "file" | "env" | null;
+}
+
+/** The device flow's one-time code and the page where it is typed. */
+export interface GithubLoginResult {
+  code: string;
+  url: string;
+}
+
+export interface GithubRepoItem {
+  /** `owner/name`. */
+  name: string;
+  description: string;
+  private: boolean;
+  url: string;
+  updatedAt: string;
+}
+
+export interface GithubStartResult {
+  projectId: string;
+  path: string;
+  cardId?: string;
+  sessionId?: string;
+  /** The folder was already a clone of the repo. */
+  reused: boolean;
+}
+
 export const DOCTOR_CHECK_IDS = [
   "config",
   "folders",
@@ -3503,6 +3537,24 @@ export const Command = z.discriminatedUnion("type", [
   cmd("session.files", z.object({ claudeSessionId: z.string() })),
   /** Git repositories inside the allowed roots (bounded depth and count), for "find my projects". */
   cmd("projects.scan", z.object({ depth: z.number().int().min(1).max(3).optional() }).strict()),
+  /** Phase 37: the host's gh login (device flow), the person's repos and issues, and start from them. */
+  cmd("github.status", z.object({}).strict()),
+  cmd("github.login.start", z.object({}).strict()),
+  cmd("github.login.cancel", z.object({}).strict()),
+  cmd("github.logout", z.object({}).strict()),
+  cmd("github.repos", z.object({ query: z.string().max(100).optional() }).strict()),
+  cmd("github.issues", z.object({ repo: z.string().min(1).max(200) }).strict()),
+  cmd(
+    "github.start",
+    z
+      .object({
+        repo: z.string().min(1).max(200),
+        issue: z.string().min(1).max(20).optional(),
+        root: z.string().min(1),
+        mode: z.enum(["card", "session"]),
+      })
+      .strict(),
+  ),
   /** Clones a repository into a folder inside the allowed roots; a refusal carries its reason. */
   cmd(
     "projects.clone",
@@ -4044,6 +4096,13 @@ export interface CommandResults {
   "doctor.run": DoctorResult;
   "projects.scan": ProjectsScanResult;
   "projects.clone": ProjectsCloneResult;
+  "github.status": GithubStatusResult;
+  "github.login.start": GithubLoginResult;
+  "github.login.cancel": undefined;
+  "github.logout": undefined;
+  "github.repos": { repos: GithubRepoItem[] };
+  "github.issues": { issues: Issue[] };
+  "github.start": GithubStartResult;
   "fs.files": FsFilesResult;
   "session.files": { files: SessionFile[] };
   "pr.comments.send": { sent: number };

@@ -43,6 +43,7 @@
     "smoke:conta": "bun run scripts/smoke-conta.ts",
     "smoke:otel": "bun run scripts/smoke-otel.ts",
     "smoke:webhook": "bun run scripts/smoke-webhook.ts",
+    "smoke:github": "bun run scripts/smoke-github.ts",
     "smoke:perf": "bun run scripts/smoke-perf.ts",
     "tdd:audit": "bun run scripts/tdd-audit.ts",
     "test:related": "bun run scripts/test-related.ts",

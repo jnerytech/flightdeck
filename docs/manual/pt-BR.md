@@ -725,6 +725,34 @@ fd/<slug> <base>` e acrescenta `.flightdeck/worktrees/` ao `.git/info/exclude` d
   repositório privado precisa de chave SSH ou de um credential helper já configurado no host.
   Toda recusa diz o motivo.
 
+
+### Começar pelo GitHub
+
+Para hosts que anunciam `github` há dois lugares:
+
+- **Hosts, painel do GitHub.** **Entrar com o GitHub** pede ao `gh` do host que inicie o fluxo de
+  dispositivo do GitHub. O painel mostra um código de uso único: aperte **Abrir o GitHub**,
+  digite o código naquela página e confirme. O painel percebe sozinho e mostra **Conectado como
+  <conta>**, onde o login fica guardado (o chaveiro do sistema, o arquivo do próprio `gh`, ou uma
+  variável de ambiente do daemon) e as permissões (`repo`, `read:project`). O Flightdeck nunca vê o
+  seu token: quem guarda é o `gh`. **Sair** pede ao `gh` que o esqueça; um login que vem de
+  `GH_TOKEN` ou `GITHUB_TOKEN` é do ambiente do daemon e não dá para sair por aqui. Se o `gh` não
+  estiver instalado no host, o painel avisa; instale e aperte **Verificar de novo**.
+- **Projetos, Começar pelo GitHub.** Lista os seus repositórios (ou busque), escolha um e, se
+  quiser, uma das issues abertas dele. Escolha a pasta permitida onde clonar e se abre **Um card do
+  quadro** ou **Uma sessão**. O host clona o repositório nessa pasta (ou usa o clone que já estiver
+  lá), registra como projeto e então:
+  - **o card** leva o título, o corpo e o link da issue (uma vez por issue); a issue escrita por
+    alguém de fora das pessoas do repositório vem marcada como conteúdo de terceiros e fica sem
+    aprovação automática;
+  - **a sessão** abre no clone com a issue citada no primeiro prompt, sob a mesma marca quando
+    vem de fora.
+  Sem issue, só o repositório é clonado e registrado. Uma pasta com esse nome que seja outro
+  repositório é recusada, e toda recusa diz o motivo.
+
+Para testar: na página do host aperte **Entrar com o GitHub**, confirme no GitHub; em **Projetos** aperte
+**Começar pelo GitHub**, escolha um repositório e aperte **Começar**.
+
 ### Ciclo do card
 
 - **Em revisão:** o card entra quando um turno termina bem. Um turno com erro, interrompido por

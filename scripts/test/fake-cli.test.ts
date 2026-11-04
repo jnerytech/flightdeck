@@ -20,3 +20,55 @@ test("restoring one fake keeps the other on PATH", () => {
   second.restore();
   expect(env.PATH).toBe("/usr/bin");
 });
+
+test("a rule can write to stderr, as gh does for a login's one-time code", async () => {
+  const env: Record<string, string | undefined> = { ...process.env };
+  const fake = installFakeCli(
+    "gh",
+    [
+      {
+        args: ["auth", "login"],
+        stdout: "out\n",
+        stderr: "! First copy your one-time code: ABCD-1234\n",
+      },
+    ],
+    env,
+  );
+  try {
+    const proc = Bun.spawn(["gh", "auth", "login"], {
+      env: env as Record<string, string>,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const [out, err] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+    expect(out).toBe("out\n");
+    expect(err).toBe("! First copy your one-time code: ABCD-1234\n");
+  } finally {
+    fake.restore();
+  }
+});
+
+test("a rule can hold the process after it wrote, until it is killed or the delay passes", async () => {
+  const env: Record<string, string | undefined> = { ...process.env };
+  const fake = installFakeCli(
+    "gh",
+    [{ args: ["auth", "login"], stderr: "code\n", delayMs: 400 }],
+    env,
+  );
+  try {
+    const started = Date.now();
+    const proc = Bun.spawn(["gh", "auth", "login"], {
+      env: env as Record<string, string>,
+      stdout: "ignore",
+      stderr: "ignore",
+    });
+    await proc.exited;
+    expect(Date.now() - started).toBeGreaterThanOrEqual(350);
+  } finally {
+    fake.restore();
+  }
+});
