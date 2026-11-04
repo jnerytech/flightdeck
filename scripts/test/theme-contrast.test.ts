@@ -114,3 +114,26 @@ describe("theme-contrast: warm neutrals (issue #119)", () => {
     }
   });
 });
+
+describe("theme-contrast: the light theme's text (issue #119)", () => {
+  const vars = new Map(tokensOf(css, ":root"));
+  const rgb = (name: string) => {
+    const color = colorOf(vars.get(name), vars);
+    if (!color) throw new Error(`${name} is not an opaque oklch color: ${vars.get(name)}`);
+    return color;
+  };
+
+  test("text keeps AA on every light surface, and muted text has headroom for the 80% it is drawn at", () => {
+    for (const surface of ["--background", "--surface-1", "--surface-2", "--popover"]) {
+      expect([surface, contrast(rgb("--foreground"), rgb(surface)) >= 4.5]).toEqual([
+        surface,
+        true,
+      ]);
+      // `text-muted-foreground/80` blends it toward the surface: 6:1 here keeps 4.5:1 there.
+      expect([surface, contrast(rgb("--muted-foreground"), rgb(surface)) >= 6]).toEqual([
+        surface,
+        true,
+      ]);
+    }
+  });
+});
