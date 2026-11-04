@@ -69,7 +69,7 @@ async function costsPage(lang: "en" | "pt-BR", options: Parameters<typeof makeDa
   await act(async () => {
     store.router.push({ name: "costs" });
   });
-  return { d, store, hostId };
+  return { d, store, hostId, mem };
 }
 
 const dataRows = () =>
@@ -143,6 +143,57 @@ for (const [lang, t] of [
       expect(
         blocking(result.violations as AxeViolation[]).map((v) => describeViolation("roi-table", v)),
       ).toEqual([]);
+    });
+  });
+}
+
+for (const [lang, t] of [
+  ["en", en],
+  ["pt-BR", ptBR],
+] as const) {
+  describe(`roi-csv (${lang}): exporting the table`, () => {
+    const exportButton = () => screen.getByRole("button", { name: t.roiUi.table.exportCsv });
+
+    test("Export CSV saves one line per project with every figure and how it was made, dots for decimals", async () => {
+      const { mem } = await costsPage(lang);
+      await settle(() => screen.queryByRole("table", { name: t.roiUi.tableTitle }) !== null);
+      await act(async () => {
+        fireEvent.click(exportButton());
+      });
+      await settle(() => mem.saved.length === 1);
+      const file = mem.saved[0];
+      expect(file?.name).toBe("roi-2026-10-08_2026-10-14.csv");
+      const lines = (file?.text ?? "").split("\r\n");
+      const columns = [
+        "project",
+        "cost",
+        "cards",
+        "prs",
+        "costPerCard",
+        "costPerPr",
+        "hours",
+        "value",
+        "roi",
+      ] as const;
+      expect(lines[0]).toBe(
+        [...columns.map((c) => t.roiUi.table[c]), t.roiUi.table.derivation].join(","),
+      );
+      const shop = lines.find((l) => l.startsWith("shop,"));
+      expect(shop).toContain("shop,12.00,3,3,4.00,4.00,0,,,");
+      expect(shop).toContain("12.00");
+      expect(lines.find((l) => l.startsWith("blog,"))).toContain("blog,3.00,0,0,,,0,,,");
+      expect(lines.at(-1)).toBe("");
+    });
+
+    test("a cancelled save dialog saves nothing and says nothing", async () => {
+      const { mem } = await costsPage(lang);
+      await settle(() => screen.queryByRole("table", { name: t.roiUi.tableTitle }) !== null);
+      mem.save.cancel = true;
+      await act(async () => {
+        fireEvent.click(exportButton());
+      });
+      await act(async () => {});
+      expect(mem.saved).toEqual([]);
     });
   });
 }
