@@ -458,6 +458,8 @@ export interface Settings {
 export interface AppStoreOptions {
   baseDelayMs?: number;
   maxDelayMs?: number;
+  /** Least time between two wake-ups (focus, network back) that retry the offline hosts. */
+  wakeDebounceMs?: number;
   /** How long the global search waits for each host. */
   searchTimeoutMs?: number;
   /** Milliseconds now: the age of quota readings. */
@@ -2107,6 +2109,9 @@ export class AppStore {
       clientName: "flightdeck-desktop",
       hostId: config.id,
       ...(this.options.baseDelayMs !== undefined ? { baseDelayMs: this.options.baseDelayMs } : {}),
+      ...(this.options.wakeDebounceMs !== undefined
+        ? { wakeDebounceMs: this.options.wakeDebounceMs }
+        : {}),
       ...(this.options.maxDelayMs !== undefined ? { maxDelayMs: this.options.maxDelayMs } : {}),
       lastSeqFor: (sessionId) =>
         this.state.sessions[sessionKey(config.id, sessionId)]?.lastSeq ?? 0,

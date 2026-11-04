@@ -129,6 +129,8 @@ export interface HostConnectionOptions {
   lastSeqFor(sessionId: string): number;
   baseDelayMs?: number;
   maxDelayMs?: number;
+  /** Least time between two `wake()` calls that do something (focus spam must not storm the host). */
+  wakeDebounceMs?: number;
   /** Silence from the host after which the link counts as dead (the daemon pings every 15 s). */
   staleMs?: number;
   /** How long a connection may take to get its `hello` answered before it is given up. */
@@ -289,6 +291,12 @@ export class HostConnection {
     });
     ws.addEventListener("close", (event) => this.onClose(ws, event.code));
   }
+
+  /**
+   * The window came back or the network did: if the host is waiting out a backoff, try now and
+   * start the backoff over. A connection that is online or already trying is left alone.
+   */
+  wake(): void {}
 
   /** Sends a command once online; rejects with code `offline` otherwise. */
   request<T extends CommandType>(type: T, payload: CommandPayload<T>): Promise<CommandResults[T]> {

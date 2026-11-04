@@ -154,6 +154,59 @@ describe("desktop: conexão com o host", () => {
     await waitFor(() => conn.retry?.kind === "timeout", "timeout state");
   });
 
+  test("wake tries at once instead of waiting out the backoff", async () => {
+    const { listen } = daemon();
+    const first = listen();
+    const { conn } = connect(first.url, TOKEN, {
+      baseDelayMs: 60_000,
+      maxDelayMs: 60_000,
+      wakeDebounceMs: 0,
+    });
+    await waitFor(() => conn.status === "online", "online");
+    await first.stop();
+    await waitFor(() => conn.status === "offline", "offline");
+    listen(first.port);
+    await Bun.sleep(100);
+    expect(conn.status).toBe("offline");
+    conn.wake();
+    await waitFor(() => conn.status === "online", "online after wake");
+  });
+
+  test("wake starts the backoff over", async () => {
+    const { conn } = connect("ws://127.0.0.1:1/v1/ws", TOKEN, {
+      baseDelayMs: 100,
+      maxDelayMs: 5000,
+      wakeDebounceMs: 0,
+    });
+    const gap = () => (conn.retry?.nextRetryAt ?? 0) - (conn.retry?.lastTryAt ?? 0);
+    await waitFor(() => gap() >= 200, "second failure");
+    const seen = conn.retry?.lastTryAt ?? 0;
+    conn.wake();
+    await waitFor(() => (conn.retry?.lastTryAt ?? 0) > seen && gap() === 100, "backoff restarted");
+  });
+
+  test("wake calls close together make one reconnect, and an online host is left alone", async () => {
+    const { conn, statuses } = connect("ws://127.0.0.1:1/v1/ws", TOKEN, {
+      baseDelayMs: 60_000,
+      maxDelayMs: 60_000,
+      wakeDebounceMs: 10_000,
+    });
+    await waitFor(() => conn.status === "offline", "offline");
+    const before = statuses.filter((s) => s === "connecting").length;
+    conn.wake();
+    conn.wake();
+    conn.wake();
+    await waitFor(() => statuses.filter((s) => s === "connecting").length > before, "one retry");
+    await Bun.sleep(100);
+    expect(statuses.filter((s) => s === "connecting").length).toBe(before + 1);
+    const { listen } = daemon();
+    const live = connect(listen().url, TOKEN, { wakeDebounceMs: 0 });
+    await waitFor(() => live.conn.status === "online", "online");
+    live.conn.wake();
+    await Bun.sleep(100);
+    expect(live.statuses).toEqual(["connecting", "online"]);
+  });
+
   /** A host that acks `hello` and then says nothing but what `speak` sends: a half-open link. */
   function quietHost(
     speak?: (send: (frame: unknown) => void) => void,

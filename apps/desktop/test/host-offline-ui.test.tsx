@@ -29,7 +29,7 @@ const DEAD = "ws://127.0.0.1:1/v1/ws";
 
 /** A host that nothing answers for, its page open. The automatic retry is far away, so the page holds still. */
 async function offlineHost() {
-  const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+  const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000, wakeDebounceMs: 0 });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
   await act(() => store.addHost({ name: "pc", url: DEAD, token: TOKEN }));
@@ -93,6 +93,27 @@ describe("host-offline-ui", () => {
     });
     await waitFor(() => expect(text()).toContain("Continua desconectado."));
     expect(store.getState().hosts[0]?.retry?.lastTryAt ?? 0).toBeGreaterThan(first);
+  });
+
+  test("the window regaining focus or the network coming back tries the offline host at once", async () => {
+    const store = await offlineHost();
+    for (const fire of [
+      () => window.dispatchEvent(new Event("online")),
+      () => window.dispatchEvent(new Event("focus")),
+      () => document.dispatchEvent(new Event("visibilitychange")),
+    ]) {
+      // Past the debounce, as a person coming back minutes later would be.
+      await act(async () => {
+        await Bun.sleep(30);
+      });
+      const seen = store.getState().hosts[0]?.retry?.lastTryAt ?? 0;
+      await act(async () => {
+        fire();
+      });
+      await waitFor(() =>
+        expect(store.getState().hosts[0]?.retry?.lastTryAt ?? 0).toBeGreaterThan(seen),
+      );
+    }
   });
 
   test("an online host has no banner, and its uptime keeps counting", async () => {
