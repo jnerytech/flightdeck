@@ -8,6 +8,7 @@ import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { AddProject } from "@/components/projects/add-project";
+import { WorktreeChip } from "@/components/projects/worktree-chip";
 import { RoiCard } from "@/components/roi/roi-card";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ import type { Key } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { boardTitle, COLUMNS, filterCards, positionBefore, projectCards } from "../lib/board.ts";
 import { issueNumber } from "../lib/issues.ts";
+import { cardInFilter } from "../lib/project-tree.ts";
 import { statusTone } from "../lib/status.ts";
 import { hasFeature } from "../lib/version.ts";
 import { BoardColumnEmpty } from "./BoardColumnEmpty.tsx";
@@ -159,7 +161,7 @@ function CardTile(props: {
   );
 }
 
-const BOARDVIEW_KEYS = ["runs", "hosts", "cards"] as const;
+const BOARDVIEW_KEYS = ["runs", "hosts", "cards", "worktreeFilter"] as const;
 
 /** A project's board: five columns, drag and drop between and within them, text filter. */
 /** A card that has a worktree, a branch or a session has work to clean up: it is discarded, not deleted. */
@@ -224,9 +226,14 @@ export const BoardView = memo(function BoardView(props: {
   }, [store, hostId, projectId]);
 
   const all = projectCards(state, hostId, projectId);
-  const shown = filterCards(all, filter).filter(
-    (card) => !onlyBlocked || card.waitingOn.length > 0,
-  );
+  // The branch picked in the sidebar tree keeps the cards of that checkout (of this project only).
+  const picked =
+    state.worktreeFilter?.hostId === hostId && state.worktreeFilter.projectId === projectId
+      ? state.worktreeFilter
+      : null;
+  const shown = filterCards(all, filter)
+    .filter((card) => !onlyBlocked || card.waitingOn.length > 0)
+    .filter((card) => !picked || cardInFilter(card, picked));
   const titlesOf = (ids: string[]) =>
     ids.map((id) => all.find((card) => card.id === id)?.title ?? id).join(", ");
 
@@ -311,43 +318,48 @@ export const BoardView = memo(function BoardView(props: {
     <Page
       title={boardTitle(t, project?.name)}
       toolbar={
-        <Toolbar label={t("hub.filters")}>
-          <Input
-            aria-label={t("kanban.filter")}
-            placeholder={t("hub.filterPlaceholder")}
-            className="h-8 w-40 text-xs"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          />
-          {withDeps && (
-            <Button
-              size="sm"
+        <>
+          <Toolbar label={t("hub.filters")}>
+            <Input
+              aria-label={t("kanban.filter")}
+              placeholder={t("hub.filterPlaceholder")}
+              className="h-8 w-40 text-xs"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            />
+            {withDeps && (
+              <Button
+                size="sm"
+                variant="outline"
+                aria-pressed={onlyBlocked}
+                onClick={() => setOnlyBlocked(!onlyBlocked)}
+              >
+                <Lock aria-hidden="true" />
+                {t("deps.filter")}
+              </Button>
+            )}
+            {withSync && <BoardSyncControl store={store} hostId={hostId} projectId={projectId} />}
+            {withIssues && (
+              <Button size="sm" variant="outline" onClick={() => setIssuesOpen(true)}>
+                <ListTodo aria-hidden="true" />
+                {t("issuesUi.button")}
+              </Button>
+            )}
+            <AddProject
+              store={store}
+              hostId={hostId}
               variant="outline"
-              aria-pressed={onlyBlocked}
-              onClick={() => setOnlyBlocked(!onlyBlocked)}
-            >
-              <Lock aria-hidden="true" />
-              {t("deps.filter")}
+              onAdded={(added) => props.onOpenProject?.(added.id)}
+            />
+            <Button size="sm" onClick={() => setCreating(true)}>
+              <Plus aria-hidden="true" />
+              {t("kanban.newCard")}
             </Button>
+          </Toolbar>
+          {picked && (
+            <WorktreeChip filter={picked} t={t} onClear={() => store.setWorktreeFilter(null)} />
           )}
-          {withSync && <BoardSyncControl store={store} hostId={hostId} projectId={projectId} />}
-          {withIssues && (
-            <Button size="sm" variant="outline" onClick={() => setIssuesOpen(true)}>
-              <ListTodo aria-hidden="true" />
-              {t("issuesUi.button")}
-            </Button>
-          )}
-          <AddProject
-            store={store}
-            hostId={hostId}
-            variant="outline"
-            onAdded={(added) => props.onOpenProject?.(added.id)}
-          />
-          <Button size="sm" onClick={() => setCreating(true)}>
-            <Plus aria-hidden="true" />
-            {t("kanban.newCard")}
-          </Button>
-        </Toolbar>
+        </>
       }
     >
       <div className="flex flex-col gap-4">

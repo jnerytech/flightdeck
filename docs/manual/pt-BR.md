@@ -677,6 +677,11 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   **Beta** ou **Novo**, e o **Manual** no pé abre este manual no navegador (o ícone diz que sai do
   app). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados, e o trilho
   estreito de ícones não tem títulos.
+- Em **Projetos**, cada projeto de um host online lista seus **branches**: o checkout principal
+  (selo **principal**, o branch base) e uma linha por card que tem worktree, cada uma com o pontinho
+  de estado, o branch e a base logo abaixo. Escolher um reduz o board e a lista de Sessões àquele
+  checkout (um chip com o branch limpa); escolher de novo também limpa. A árvore vem do que o app já
+  tem, sem mudar o host.
 - Com uma área, a barra de abas fica na barra do topo, na linha do caminho; com a tela dividida,
   cada área tem a sua. A barra mantém três ferramentas: o menu de **Ações** da aba ativa (mover
   para a esquerda ou a direita, mover para a outra área, fixar), **Nova aba** e **Dividir**.

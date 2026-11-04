@@ -10,6 +10,7 @@ import { ViewToggle } from "@/components/hub/view-toggle";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
+import { WorktreeChip } from "@/components/projects/worktree-chip";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ import {
   sharedMeta,
 } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
+import { rowInFilter } from "../lib/project-tree.ts";
 import { hasFeature } from "../lib/version.ts";
 
 /** How often the hub asks the hosts about their background sessions. */
@@ -129,7 +131,20 @@ export function SessionsHub(props: {
         .filter(hubRows(state), state.clientSelection, (row) => row.projectKey)
         .filter(
           (row) => !only || (row.hostId === only.hostId && row.projectKey === only.projectKey),
-        ),
+        )
+        .filter((row) => {
+          // The branch picked in the sidebar tree keeps the sessions of that checkout.
+          const picked = state.worktreeFilter;
+          if (!picked) return true;
+          const project = state.projects[picked.hostId]?.find((p) => p.id === picked.projectId);
+          if (!project) return true;
+          const worktrees = Object.entries(state.cards)
+            .filter(
+              ([key, card]) => key.startsWith(`${picked.hostId}/`) && card.projectId === project.id,
+            )
+            .flatMap(([, card]) => (card.worktreePath ? [card.worktreePath] : []));
+          return rowInFilter(row, picked, project, worktrees);
+        }),
     [
       store,
       only,
@@ -140,6 +155,8 @@ export function SessionsHub(props: {
       state.names,
       state.background,
       state.projects,
+      state.cards,
+      state.worktreeFilter,
       state.clientList,
       state.clientOverrides,
       state.clientSelection,
@@ -395,6 +412,13 @@ export function SessionsHub(props: {
               <X aria-hidden="true" />
             </Button>
           </div>
+        )}
+        {state.worktreeFilter && (
+          <WorktreeChip
+            filter={state.worktreeFilter}
+            t={t}
+            onClear={() => store.setWorktreeFilter(null)}
+          />
         )}
         {renaming && (
           <div className="flex items-center gap-2">

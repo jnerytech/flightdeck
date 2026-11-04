@@ -691,6 +691,11 @@ live; the list is the project's, so a session of another project never shows her
   recent features carry a **Beta** or **New** badge, and **Manual** at the foot opens this manual in
   the browser (its icon says it leaves the app). A group with nothing to offer is not drawn, the
   folded groups are remembered, and the narrow icon rail has no headings.
+- Under **Projects**, each project of an online host lists its **branches**: the main checkout
+  (badge **primary**, the base branch) and one line per card that has a worktree, each with a state
+  dot, the branch and the base below it. Picking one narrows the board and the Sessions list to
+  that checkout (a chip with the branch clears it); picking it again clears it too. The tree comes
+  from what the app already has, with no host change.
 - With one area, the tab strip sits in the top bar on the breadcrumb's row; with a split, each
   area has its own strip. The strip keeps three tools: the active tab's **Actions** menu (move left
   or right, move to the other area, pin), **New tab** and **Split**.
