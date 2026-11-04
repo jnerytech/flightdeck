@@ -82,7 +82,7 @@ describe("menu-barra: the / menu of a message box", () => {
     await key("Home");
     await key("Enter");
     await act(async () => {});
-    expect(box().value).toBe("/compact ");
+    expect(box().value).toBe("filled:slash:compact");
   });
 
   test("Escape closes the menu and the box goes back to a plain text box", async () => {
