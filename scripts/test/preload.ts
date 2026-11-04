@@ -21,7 +21,9 @@ import { defaultTestTimeoutMs } from "./timeout.ts";
 setDefaultTimeout(defaultTestTimeoutMs(process.platform));
 
 // A run started from a git command or hook inherits GIT_DIR and friends; a test's `git init --bare`
-// would then re-initialise the real repository. Before every guard, so they see a clean env.
+// would then re-initialise the real repository. A session that has Claude Code's telemetry on sets
+// CLAUDE_CODE_ENABLE_TELEMETRY and OTEL_*, which would leak into what tests launch. Before every
+// guard, so they see a clean env.
 installGitEnvGuard();
 
 // CLI sentinels first, so the claude one ends up first on PATH (tests rely on that).
