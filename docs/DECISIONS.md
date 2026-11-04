@@ -3120,9 +3120,11 @@ Proof of concept, run 2026-11-03 on the phase host (git 2.43.0, gh 2.88.1):
   says), in thousands from 1,000, plain below.
 - **People table loads before it shows.** It says "Reading the hosts…" until the hosts answered; a person whose hosts did
   not answer shows zeros, and the "as of <time>" mark for an offline host is **not** built yet.
-- **BDD features are not executed.** The 14 scenarios live in `scripts/e2e/bdd/roi/` (en and pt), outside the glob of
-  `bddgen`, because the steps over the demo app do not exist. `roi-bdd` parses them and checks that every scenario of
-  the spec is there, in both languages, step for step. The same behavior is asserted by the `roi-*-ui` tests.
+- **BDD features.** The 14 scenarios of the spec live in `scripts/e2e/bdd/roi/` (en and pt), outside the glob of
+  `bddgen`; `roi-bdd` parses them and checks that every scenario is there, step for step. Two key ones also run as
+  journeys, with wording fitted to the demo's data: the headline (`roi-headline`: delivered more than the period before)
+  and the people table (`roi-people`), in `bdd/features/` with steps in `steps.ts`. The rest are asserted by the
+  `roi-*-ui` tests.
 - **`smoke:roi`** finishes two cards on a `--runtime fake` daemon and checks counts, the project default of hours, a
   card's own estimate and the refusal of a malformed range. It does not merge a PR or close an issue.
 - **Optional signals (`roi-sinais`).** Two switches per project, both off, stored in `projects.roi_commits` and
