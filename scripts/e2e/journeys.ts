@@ -461,6 +461,48 @@ async function lastRowProblem(page: Page): Promise<string | null> {
   });
 }
 
+/**
+ * The Choose folder dialog (issue #99): the dialog does not scroll sideways, and every button of
+ * its footer, with the reason a disabled one gives, is inside the dialog's box.
+ */
+async function folderDialogProblems(c: Context): Promise<string[]> {
+  await open(c, { name: "new-session", host: ALFA });
+  await c.page.getByRole("button", { name: c.t("folderPicker.browse"), exact: true }).click();
+  const dialog = c.page.getByRole("dialog", { name: c.t("folderPicker.title") });
+  await dialog.waitFor({ timeout: WAIT });
+  await dialog.getByRole("list", { name: c.t("folderPicker.list") }).waitFor({ timeout: WAIT });
+  const system = c.t("folderPicker.system");
+  return dialog.evaluate((box, systemLabel) => {
+    // The demo runs in a browser, which has no system dialog and short folder names: add what the
+    // desktop app shows (the button with its real label, a folder with a very long name).
+    const cancel = box.querySelector<HTMLElement>(
+      "[data-slot='dialog-footer'] button[data-variant='outline']",
+    );
+    const extra = cancel?.cloneNode(true) as HTMLElement | undefined;
+    if (cancel && extra) {
+      extra.textContent = systemLabel;
+      cancel.before(extra);
+    }
+    const row = box.querySelector<HTMLElement>("ul li");
+    const long = row?.cloneNode(true) as HTMLElement | undefined;
+    const label = long?.querySelector("button")?.lastElementChild ?? long?.querySelector("button");
+    if (row && long && label) {
+      label.textContent = "pasta-com-um-nome-muito-comprido-".repeat(8);
+      row.before(long);
+    }
+    const found: string[] = [];
+    if (box.scrollWidth > box.clientWidth + 1) found.push("a janela de pasta rola para o lado");
+    const edge = box.getBoundingClientRect();
+    for (const button of box.querySelectorAll<HTMLElement>("[data-slot='dialog-footer'] button")) {
+      const at = button.getBoundingClientRect();
+      if (at.left < edge.left - 1 || at.right > edge.right + 1) {
+        found.push(`o botão "${button.textContent?.trim()}" sai da janela de pasta`);
+      }
+    }
+    return found;
+  }, system);
+}
+
 export async function layout(c: Context, problems: string[]) {
   const screens: Array<[string, Route]> = [
     ["hub", { name: "hub" }],
@@ -484,6 +526,9 @@ export async function layout(c: Context, problems: string[]) {
       const where = `${c.lang} ${viewport.width}x${viewport.height} ${name}`;
       for (const issue of await overflow(c.page)) problems.push(`${where}: ${issue}`);
     }
+    for (const issue of await folderDialogProblems(c)) {
+      problems.push(`${c.lang} ${viewport.width}x${viewport.height} pasta: ${issue}`);
+    }
     await open(c, { name: "hub" });
     const hidden = await lastRowProblem(c.page);
     if (hidden) {
@@ -491,5 +536,10 @@ export async function layout(c: Context, problems: string[]) {
         `${c.lang} ${viewport.width}x${viewport.height}: o fim da lista não aparece depois de rolar (${hidden})`,
       );
     }
+  }
+  // The smallest window the app allows (tauri.conf.json), where the longest labels are tightest.
+  await c.page.setViewportSize({ width: 720, height: 480 });
+  for (const issue of await folderDialogProblems(c)) {
+    problems.push(`${c.lang} 720x480 pasta: ${issue}`);
   }
 }
