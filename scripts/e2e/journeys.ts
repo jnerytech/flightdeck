@@ -461,6 +461,24 @@ async function lastRowProblem(page: Page): Promise<string | null> {
   });
 }
 
+/**
+ * The session's summary is a card of the header: its box ends where the conversation begins, folded
+ * and open (issue #97). Returns what is wrong, or null.
+ */
+async function recapOverlap(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const recap = document.querySelector<HTMLElement>("[data-slot='recap']");
+    const timeline = document.querySelector<HTMLElement>("[data-slot='timeline']");
+    if (!recap) return "sem cartão do resumo";
+    if (!timeline) return "sem a conversa";
+    const [a, b] = [recap.getBoundingClientRect(), timeline.getBoundingClientRect()];
+    if (a.height <= 0) return "o resumo não tem altura";
+    return a.bottom <= b.top + 1
+      ? null
+      : `o resumo (${Math.round(a.top)}..${Math.round(a.bottom)}) passa por cima da conversa (começa em ${Math.round(b.top)})`;
+  });
+}
+
 export async function layout(c: Context, problems: string[]) {
   const screens: Array<[string, Route]> = [
     ["hub", { name: "hub" }],
@@ -483,6 +501,17 @@ export async function layout(c: Context, problems: string[]) {
       await open(c, route);
       const where = `${c.lang} ${viewport.width}x${viewport.height} ${name}`;
       for (const issue of await overflow(c.page)) problems.push(`${where}: ${issue}`);
+      if (name === "sessao") {
+        // Folded (the default), then open: the summary never overlaps the conversation.
+        const folded = await recapOverlap(c.page);
+        if (folded) problems.push(`${where}: ${folded} (fechado)`);
+        const toggle = c.page.locator("[data-slot='recap'] button[aria-expanded]").first();
+        if ((await toggle.count()) > 0) {
+          await toggle.click();
+          const opened = await recapOverlap(c.page);
+          if (opened) problems.push(`${where}: ${opened} (aberto)`);
+        }
+      }
     }
     await open(c, { name: "hub" });
     const hidden = await lastRowProblem(c.page);
