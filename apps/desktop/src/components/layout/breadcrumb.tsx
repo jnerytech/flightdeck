@@ -4,7 +4,13 @@ import type { Crumb } from "@/lib/breadcrumb";
 import type { Route } from "@/lib/router";
 
 /** The header's path: the steps above are buttons that go back, the last one says where you are. */
-export function Breadcrumb(props: { crumbs: Crumb[]; label: string; onGo(route: Route): void }) {
+export function Breadcrumb(props: {
+  crumbs: Crumb[];
+  label: string;
+  /** The name of the menu that holds the steps in between, when there are many. */
+  moreLabel?: string;
+  onGo(route: Route): void;
+}) {
   return (
     <nav aria-label={props.label} className="min-w-0">
       <ol className="flex min-w-0 items-center gap-1 text-sm">

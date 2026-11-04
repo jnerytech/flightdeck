@@ -460,6 +460,29 @@ async function pageScrollsSideways(page: Page): Promise<string | null> {
   });
 }
 
+/** The crumbs end before the bell, and what does not fit is cut with an ellipsis (issue #133). */
+async function crumbsProblem(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const slot = document.querySelector<HTMLElement>(".header-crumbs");
+    const nav = slot?.querySelector<HTMLElement>("nav");
+    const bell = slot?.lastElementChild as HTMLElement | null;
+    if (!slot || !nav || !bell || bell === nav) return "no breadcrumb";
+    const limit = bell.getBoundingClientRect().left + 1;
+    for (const el of nav.querySelectorAll<HTMLElement>("li > *")) {
+      const box = el.getBoundingClientRect();
+      if (box.right > limit)
+        return `a crumb (${el.textContent}) ends at ${Math.round(box.right)}, past the bell at ${Math.round(limit)}`;
+      if (el.scrollWidth > el.clientWidth + 1) {
+        const style = getComputedStyle(el);
+        if (style.textOverflow !== "ellipsis" || style.overflow !== "hidden") {
+          return `a crumb (${el.textContent}) is cut without an ellipsis`;
+        }
+      }
+    }
+    return null;
+  });
+}
+
 /** The tabs share the strip like a browser's: one width, and not under the minimum. */
 async function tabWidthsProblem(page: Page, minimum: number): Promise<string | null> {
   const widths = await page.evaluate(() =>
@@ -557,6 +580,7 @@ export async function layout(c: Context, problems: string[]) {
   // Issue #103: with 12 tabs and a long worktree path, no screen scrolls the page sideways.
   const crowded: Array<[string, Route]> = [
     ["sessao-longa", { name: "session", host: ALFA, id: c.ids.longSession }],
+    ["titulo-longo", { name: "session", host: ALFA, id: c.ids.longTitleSession }],
     ...screens,
   ];
   for (const viewport of OVERFLOW_VIEWPORTS) {
@@ -569,6 +593,9 @@ export async function layout(c: Context, problems: string[]) {
           path: `${process.env.E2E_PRINT_DIR}/janela-lotada-${c.lang}.png`,
         });
       }
+      const crumbs = await crumbsProblem(c.page);
+      if (crumbs)
+        problems.push(`${c.lang} ${viewport.width}x${viewport.height} ${name}: ${crumbs}`);
       const sideways = await pageScrollsSideways(c.page);
       if (sideways) {
         problems.push(

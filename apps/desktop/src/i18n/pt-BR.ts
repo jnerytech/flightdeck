@@ -736,6 +736,7 @@ export const ptBR = {
   shell: {
     sidebar: "Barra lateral",
     breadcrumb: "Você está em",
+    breadcrumbMore: "Mostrar os passos do meio",
     collapse: "Recolher barra lateral",
     expand: "Mostrar barra lateral",
   },

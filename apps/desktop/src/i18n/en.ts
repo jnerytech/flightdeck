@@ -740,6 +740,7 @@ export const en: Dictionary = {
   shell: {
     sidebar: "Sidebar",
     breadcrumb: "You are in",
+    breadcrumbMore: "Show the steps in between",
     collapse: "Collapse sidebar",
     expand: "Show sidebar",
   },
