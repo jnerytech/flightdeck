@@ -61,6 +61,20 @@ describe("templates-host-files: a template as a Markdown file", () => {
   });
 });
 
+describe("templates-host-files: files that cannot be read", () => {
+  test("Given a frontmatter that is not a map, When read, Then it is refused as a frontmatter problem", () => {
+    expect(() => parseTemplateFile("---\njust a line\n---\nPrompt", "x")).toThrow(
+      /the frontmatter must be a map/,
+    );
+  });
+
+  test("Given a folder path the system cannot even look up, When listed, Then the error is raised, not hidden as an empty folder", async () => {
+    await expect(
+      loadTemplates({ dir: join(tempDir(), "bad\0name"), builtins: BUILTIN_TEMPLATES }),
+    ).rejects.toThrow();
+  });
+});
+
 describe("templates-host-files: listing the host's folder with the built-ins", () => {
   test("Given a host template, When listed, Then the built-ins come first and the host's after them", async () => {
     const dir = hostFolder({ "monthly-sales.md": serializeTemplate(monthly()) });

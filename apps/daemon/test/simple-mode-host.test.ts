@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { HostInfoResult, UiSettings } from "@flightdeck/protocol";
+import type { HostInfoResult, TemplateListResult, UiSettings } from "@flightdeck/protocol";
+import { Config } from "../src/config.ts";
 import { startDaemon } from "../src/main.ts";
 import { tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
@@ -57,6 +58,19 @@ describe("simple-mode-host: the host's default mode and lock", () => {
     expect(client).not.toBeNull();
     const info = await client?.data<HostInfoResult>("host.info", {});
     expect(info?.ui).toEqual({ mode: "full", locked: false });
+  });
+
+  test("Given a running daemon, When template.list is asked, Then it lists the built-ins from its own data folder", async () => {
+    const { client } = await run(config());
+    const list = await client.data<TemplateListResult>("template.list", {});
+    expect(list?.templates.map((t) => t.id)).toContain("summarise-folder");
+    expect(list?.problems).toEqual([]);
+  });
+
+  test("Given a ui setting that is not even an object, When the config is read, Then the host is full and unlocked", () => {
+    for (const ui of ["simple", 7, null, ["simple"]]) {
+      expect(Config.parse({ token: TOKEN, ui }).ui).toEqual({ mode: "full", locked: false });
+    }
   });
 
   test("Given a host in full mode, When ui.set simple with confirm, Then the host says simple, the config keeps it and a restart still has it", async () => {
