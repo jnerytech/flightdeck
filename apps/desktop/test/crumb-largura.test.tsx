@@ -79,7 +79,7 @@ describe("crumb-largura: a long path is cut with an ellipsis, the earlier steps 
     );
     expect(screen.queryByRole("button", { name: "Projects" })).toBeNull();
     const more = screen.getByRole("button", { name: "Show the steps in between" });
-    expect(more.textContent).toBe("…");
+    expect(more.querySelector("svg")).not.toBeNull();
     fireEvent.pointerDown(more, { button: 0, ctrlKey: false, pointerType: "mouse" });
     const items = screen.getAllByRole("menuitem").map((item) => item.textContent);
     expect(items).toEqual(["Projects", "Board"]);
