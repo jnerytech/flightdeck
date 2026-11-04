@@ -7,11 +7,13 @@ import { memoryPlatform } from "./fixtures.ts";
 import { waiter } from "./wait.ts";
 
 registerDom();
-const { act, cleanup, render, within } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { RoiTable } = await import("../src/components/roi/roi-table.tsx");
 const { RoiCard } = await import("../src/components/roi/roi-card.tsx");
+const { RoiSettingsPanel } = await import("../src/components/roi/roi-settings-panel.tsx");
+const { RoiSettings } = await import("../src/lib/roi-settings.ts");
 
 afterEach(cleanup);
 const settle = waiter(5000);
@@ -68,6 +70,46 @@ describe("roi-reativo-isolado: the figures follow the rate the person types, who
       store.roi.setDefaultRate(60);
     });
     await settle(() => screen.queryByText(ptBR.roiUi.noRate) === null, 2000);
+    store.dispose();
+  });
+
+  test("a card whose hosts answer nothing says no host answered", async () => {
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    store.roiSummaries = async () => [];
+    const project = {
+      id: "p1",
+      path: "/work/shop",
+      projectKey: "k-shop",
+      defaultHours: null,
+      roiSignals: { commits: false, issues: false },
+    } as unknown as Project;
+    render(<RoiCard store={store} hostId="h1" project={project} />);
+    await settle(() => screen.queryByText(ptBR.roiUi.noHost) !== null);
+    store.dispose();
+  });
+
+  test("a save the storage refuses is told as a number problem, not thrown at the screen", async () => {
+    const mem = memoryPlatform();
+    const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
+    render(<RoiSettingsPanel store={store} />);
+    const failing = {
+      ...mem.platform.storage,
+      setItem: () => {
+        throw new Error("quota exceeded");
+      },
+    };
+    Object.assign(store, { roi: new RoiSettings({ storage: failing }) });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText(ptBR.roiUi.settingsPanel.defaultRate), {
+        target: { value: "40" },
+      });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: ptBR.roiUi.settingsPanel.saveRate }));
+    });
+    await settle(
+      () => screen.queryByRole("alert")?.textContent === ptBR.roiUi.settingsPanel.error.number,
+    );
     store.dispose();
   });
 });

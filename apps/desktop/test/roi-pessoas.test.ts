@@ -106,4 +106,45 @@ describe("roi-pessoas: people, their hosts and their monthly limits", () => {
     expect(b.settings.importJson(text)).toEqual({ people: 0 });
     expect(b.settings.data().people.map((p) => p.name)).toEqual(["Bia"]);
   });
+
+  test("an import of a person already there, same id and name, updates it and adds nobody", () => {
+    const a = setup();
+    a.settings.addPerson({ name: "Ana", hostIds: ["h1"] });
+    const edited = JSON.parse(a.settings.exportJson());
+    edited.people[0].tokenLimit = 9_000;
+    expect(a.settings.importJson(JSON.stringify(edited))).toEqual({ people: 0 });
+    expect(a.settings.data().people).toMatchObject([{ name: "Ana", tokenLimit: 9_000 }]);
+  });
+
+  test("a person whose id is taken by another gets an id of its own, from the crypto source by default", () => {
+    const store = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => void store.set(key, value),
+    };
+    let n = 0;
+    const ours = new RoiSettings({ storage }, { newId: () => `p${++n}` });
+    ours.addPerson({ name: "Other", hostIds: ["h9"] });
+    const text = JSON.stringify({
+      ...ours.data(),
+      people: [{ id: "p1", name: "Ana", hostIds: ["h1"], tokenLimit: null, costLimit: null }],
+    });
+    // The same storage read by a settings object with no id source of its own.
+    const plain = new RoiSettings({ storage });
+    expect(plain.importJson(text)).toEqual({ people: 1 });
+    const ids = plain.data().people.map((p) => p.id);
+    expect(new Set(ids).size).toBe(2);
+    expect(ids.every((id) => id.length > 0)).toBe(true);
+  });
+
+  test("a new person from an import keeps the id it came with", () => {
+    const a = setup();
+    a.settings.addPerson({ name: "Other", hostIds: ["h9"] });
+    const text = JSON.stringify({
+      ...a.settings.data(),
+      people: [{ id: "far-away", name: "Ana", hostIds: ["h1"], tokenLimit: null, costLimit: null }],
+    });
+    expect(a.settings.importJson(text)).toEqual({ people: 1 });
+    expect(a.settings.data().people.map((p) => p.id)).toContain("far-away");
+  });
 });
