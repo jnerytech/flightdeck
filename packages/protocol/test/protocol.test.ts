@@ -494,6 +494,22 @@ const validEvents: SessionEvent[] = [
   { type: "session.status", status: "running" },
   { type: "session.status", status: "error", reason: "daemon reiniciado" },
   { type: "session.init", claudeSessionId: "c", model: "m", tools: ["Read"] },
+  {
+    type: "session.init",
+    claudeSessionId: "c",
+    model: "m",
+    tools: ["Read"],
+    slashCommands: ["compact", "plug:skill"],
+    commands: [
+      {
+        name: "compact",
+        description: "Compact the conversation",
+        argumentHint: "",
+        kind: "builtin",
+      },
+      { name: "plug:skill", description: "A plugin skill", kind: "skill" },
+    ],
+  },
   { type: "message.user", text: "oi" },
   {
     type: "message.assistant",
@@ -654,5 +670,24 @@ describe("images in a message", () => {
       text: "x",
       images: 2,
     });
+  });
+});
+
+describe("session.init commands (the / menu)", () => {
+  const init = {
+    type: "session.init",
+    claudeSessionId: "c",
+    model: "m",
+    tools: [],
+    slashCommands: ["compact"],
+  };
+  test("an init with described commands keeps them, and one without stays valid", () => {
+    const commands = [{ name: "compact", description: "Compact", kind: "builtin" }];
+    expect(SessionEvent.parse({ ...init, commands })).toEqual({ ...init, commands });
+    expect(SessionEvent.parse(init)).toEqual(init);
+  });
+  test("a command needs a known kind", () => {
+    const commands = [{ name: "x", description: "", kind: "other" }];
+    expect(SessionEvent.safeParse({ ...init, commands }).success).toBe(false);
   });
 });

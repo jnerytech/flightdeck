@@ -69,6 +69,10 @@ describe("sessao-ajustes: mode, model and slash commands of a live session", () 
       .map((e) => e.event)
       .find((e): e is Extract<SessionEvent, { type: "session.init" }> => e.type === "session.init");
     expect(init?.slashCommands).toEqual(["compact", "review"]);
+    expect(init?.commands?.map((c) => [c.name, c.kind, c.description !== ""])).toEqual([
+      ["compact", "builtin", true],
+      ["review", "builtin", true],
+    ]);
     const seen: Array<string | undefined> = [];
     const queryFn: QueryFn = () => ({
       async *[Symbol.asyncIterator]() {

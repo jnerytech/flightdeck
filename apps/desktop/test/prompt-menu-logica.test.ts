@@ -16,6 +16,12 @@ describe("prompt-menu: what the / menu offers", () => {
     expect(groupOf(slash("mcp__github__create_pr"))).toBe("mcp");
   });
 
+  test("a group the daemon sent wins over the shape of the name", () => {
+    expect(groupOf({ ...slash("deploy"), group: "skills" })).toBe("skills");
+    expect(groupOf({ ...slash("plug:thing"), group: "commands" })).toBe("commands");
+    expect(groupOf({ ...snippet("revisar"), group: "snippets" })).toBe("snippets");
+  });
+
   test("the groups are listed commands, snippets, skills, MCP prompts", () => {
     expect(MENU_GROUPS).toEqual(["commands", "snippets", "skills", "mcp"]);
   });

@@ -5,6 +5,8 @@ export interface MenuItem {
   name: string;
   /** One line about the item, shown for the selected one; the commands of a session carry none. */
   description?: string;
+  /** The group the daemon put it in; without it the shape of the name decides. */
+  group?: MenuGroup;
 }
 
 export type MenuGroup = "commands" | "snippets" | "skills" | "mcp";

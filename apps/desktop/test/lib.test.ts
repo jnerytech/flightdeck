@@ -74,6 +74,23 @@ describe("desktop: estado da sessão", () => {
     expect(s.lastSeq).toBe(2);
   });
 
+  test("session.init keeps the described commands next to the names", () => {
+    const commands = [{ name: "deploy", description: "Deploy the app", kind: "skill" as const }];
+    const s = applyEnvelope(
+      emptySession(),
+      env(1, {
+        type: "session.init",
+        claudeSessionId: "c",
+        model: "opus",
+        tools: [],
+        slashCommands: ["deploy"],
+        commands,
+      }),
+    );
+    expect(s.slashCommands).toEqual(["deploy"]);
+    expect(s.commands).toEqual(commands);
+  });
+
   test("pedido de permissão vira card, é resolvido e o resultado da ferramenta é indexado", () => {
     let s = emptySession();
     s = applyEnvelope(
