@@ -317,6 +317,7 @@ export function SessionView(props: SessionViewProps) {
   }, [cards, streaming]);
   // Images, code blocks and panels settle after the first paint and push the end down: while the
   // reader is at the end, the view follows it.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: new messages add elements to observe
   useLayoutEffect(() => {
     const box = timeline.current;
     if (!box || typeof ResizeObserver === "undefined") return;

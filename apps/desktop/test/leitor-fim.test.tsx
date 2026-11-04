@@ -14,14 +14,20 @@ const { App } = await import("../src/ui/App.tsx");
 /** A ResizeObserver the test drives: `grow()` is a layout change (an image, a code block). */
 const observers: Array<() => void> = [];
 class FakeResizeObserver {
-  constructor(private readonly callback: () => void) {
-    observers.push(() => this.callback());
+  constructor(private readonly callback: (entries: unknown[]) => void) {
+    // The app's other observers read the entry's size: give them one.
+    observers.push(() =>
+      this.callback([{ contentRect: { width: 1000, height: 800 }, target: document.body }]),
+    );
   }
   observe() {}
   unobserve() {}
   disconnect() {}
 }
-const grow = () => act(async () => void observers.forEach((fire) => fire()));
+const grow = () =>
+  act(async () => {
+    for (const fire of observers) fire();
+  });
 
 const cleanups: Array<() => unknown> = [];
 let original: unknown;

@@ -316,7 +316,7 @@ export class HistoryIndexer {
     claudeSessionId: string,
     cursor?: string,
     limit = 100,
-    _tail = false,
+    tail = false,
   ): Promise<{
     session: HistorySession;
     cwdExists: boolean;
@@ -334,7 +334,18 @@ export class HistoryIndexer {
         { id: claudeSessionId },
       );
     }
-    const offset = offsetOf(cursor);
+    // A tail page is the last `limit` readable messages: a transcript opens on its latest.
+    const total =
+      tail && cursor === undefined
+        ? (
+            this.db
+              .query<{ n: number }, [string]>(
+                `SELECT COUNT(*) AS n FROM history_messages WHERE claude_session_id = ? AND kind IN (${READABLE})`,
+              )
+              .get(claudeSessionId) as { n: number }
+          ).n
+        : null;
+    const offset = total === null ? offsetOf(cursor) : Math.max(0, total - limit);
     const rows = this.db
       .query(
         `SELECT uuid, ts, role, kind, text FROM history_messages
@@ -345,6 +356,7 @@ export class HistoryIndexer {
     return {
       session,
       cwdExists: await isDirectory(session.cwd),
+      cursor: String(offset),
       messages: rows.slice(0, limit),
       nextCursor: rows.length > limit ? String(offset + limit) : null,
       prevCursor: offset > 0 ? String(Math.max(0, offset - limit)) : null,

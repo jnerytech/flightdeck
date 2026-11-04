@@ -16,7 +16,10 @@ class FakeResizeObserver {
   unobserve() {}
   disconnect() {}
 }
-const grow = () => act(async () => void observers.forEach((fire) => fire()));
+const grow = () =>
+  act(async () => {
+    for (const fire of observers) fire();
+  });
 
 let original: unknown;
 beforeEach(() => {
