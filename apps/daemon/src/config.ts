@@ -130,6 +130,15 @@ export const Config = z.object({
   quota: z
     .object({ pauseAt: z.number().min(0).max(1).nullable().default(0.9) })
     .default(() => ({ pauseAt: 0.9 })),
+  /** How the host presents itself (phase 33): the default mode and whether the app offers the switch. */
+  ui: z
+    .object({
+      // A value the daemon does not know is full and unlocked: the host still starts.
+      mode: z.enum(["full", "simple"]).catch("full").default("full"),
+      locked: z.boolean().catch(false).default(false),
+    })
+    .catch(() => ({ mode: "full" as const, locked: false }))
+    .default(() => ({ mode: "full" as const, locked: false })),
   /** Terminals embedded in the host (phase 14). */
   terminal: z
     .object({

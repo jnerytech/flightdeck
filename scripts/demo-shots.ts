@@ -26,6 +26,8 @@ interface Shot {
    * prints have none, so they look as they did before clients existed.
    */
   clients?: { selected?: string };
+  /** Simple mode on the demo's first host (phase 33): the print starts at its Home. */
+  simple?: boolean;
   /** Phase 36: an hourly rate and one person kept in the page's storage before it loads. */
   roi?: boolean;
   /** After the screen loads: open the palette, scroll a long list to its end… */
@@ -314,6 +316,9 @@ function shots(ids: DemoIds): Shot[] {
           .getByRole("button", { name: /\((turno|turn) 2\)$/ })
           .first()
           .click();
+        // The pointer stays where the click was, over the new screen's button: its hover color
+        // is not the one the print (and the contrast check) should see.
+        await page.mouse.move(1000, 700);
         await page.waitForTimeout(800);
       },
     },
@@ -460,6 +465,37 @@ function shots(ids: DemoIds): Shot[] {
         await page.waitForTimeout(1500);
       },
     },
+    { name: "simples-inicio", route: { name: "hub" }, simple: true },
+    {
+      name: "simples-tarefa-espera",
+      route: { name: "hub" },
+      simple: true,
+      prepare: async (page) => {
+        await page
+          .getByRole("button", { name: /Testes do backend/ })
+          .first()
+          .click();
+        // The pointer stays where the click was, over the new screen's button: its hover color
+        // is not the one the print (and the contrast check) should see.
+        await page.mouse.move(1000, 700);
+        await page.waitForTimeout(800);
+      },
+    },
+    {
+      name: "simples-tarefa-pronta",
+      route: { name: "hub" },
+      simple: true,
+      prepare: async (page) => {
+        await page
+          .getByRole("button", { name: /Revisão do PR 128/ })
+          .first()
+          .click();
+        // The pointer stays where the click was, over the new screen's button: its hover color
+        // is not the one the print (and the contrast check) should see.
+        await page.mouse.move(1000, 700);
+        await page.waitForTimeout(800);
+      },
+    },
     {
       name: "paleta",
       route: { name: "hub" },
@@ -595,8 +631,19 @@ export async function takeShots(
             (seed) => {
               try {
                 const keys = ["flightdeck.clients", "flightdeck.clientFilter"];
-                for (const key of [...keys, "flightdeck.clientBudgetAlerts", "flightdeck.roi"]) {
+                for (const key of [
+                  ...keys,
+                  "flightdeck.clientBudgetAlerts",
+                  "flightdeck.roi",
+                  "flightdeck.uiMode",
+                ]) {
                   localStorage.removeItem(key);
+                }
+                if (seed.simple) {
+                  localStorage.setItem(
+                    "flightdeck.uiMode",
+                    JSON.stringify({ "demo-alfa": "simple" }),
+                  );
                 }
                 if (seed.clients) {
                   localStorage.setItem(keys[0] as string, seed.clients.clients);
@@ -614,6 +661,7 @@ export async function takeShots(
                 ? { clients: DEMO_CLIENTS, selected: shot.clients.selected ?? "" }
                 : null,
               roi: shot.roi ? DEMO_ROI : null,
+              simple: shot.simple === true,
             },
           );
           const query = new URLSearchParams({ theme, lang, route: JSON.stringify(shot.route) });

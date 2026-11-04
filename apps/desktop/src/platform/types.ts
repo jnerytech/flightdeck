@@ -115,6 +115,10 @@ export interface Platform {
   notify(notification: Notification): Promise<void>;
   isFocused(): boolean;
   openExternal(url: string): Promise<void>;
+  /** Opens a file of THIS machine with the system's default app (phase 33); absent in a browser. */
+  openPath?(path: string): Promise<void>;
+  /** Shows a file of THIS machine in the system's file manager (phase 33); absent in a browser. */
+  revealPath?(path: string): Promise<void>;
   /** Delivers `flightdeck://` links, including the one the app was opened with. */
   onDeepLink(handler: (url: string) => void): () => void;
   setTrayStatus(status: TrayStatus): Promise<void>;

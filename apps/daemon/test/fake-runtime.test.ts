@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import type { CanUseToolFn, RuntimeEvent, StartOptions } from "../src/runtime/types.ts";
 import { git, gitRepo } from "./board-helpers.ts";
@@ -182,6 +182,36 @@ describe("FakeRuntime: [commit]", () => {
       (error: Error) => error.message,
     );
     expect(result.startsWith("git ")).toBe(true);
+  });
+});
+
+describe("FakeRuntime: [result:<path>]", () => {
+  test("writes the named file under the cwd, like a task that made a result", async () => {
+    const cwd = tempDir();
+    const run = new FakeRuntime({ delayMs: 0 }).start(opts(allowAll, { cwd }));
+    const it = run.events[Symbol.asyncIterator]();
+    run.send("make a note [result:Flightdeck results/note.md]");
+    const events = await collectUntil(it, isResult);
+    expect(events.at(-1)).toMatchObject({ type: "turn.result", isError: false });
+    const file = join(cwd, "Flightdeck results", "note.md");
+    expect(existsSync(file) ? readFileSync(file, "utf8") : "").toBe(
+      "# note.md\n\nMade by the fake runtime.\n",
+    );
+    await run.close();
+  });
+
+  test("a path that leaves the cwd is refused and the turn fails", async () => {
+    const cwd = tempDir();
+    const outside = join(cwd, "..", `outside-${Date.now()}.md`);
+    const run = new FakeRuntime({ delayMs: 0 }).start(opts(allowAll, { cwd }));
+    const it = run.events[Symbol.asyncIterator]();
+    run.send(`[result:../${basename(outside)}]`);
+    const result = await collectUntil(it, isResult).then(
+      () => "turn ended",
+      (error: Error) => error.message,
+    );
+    expect(result).toBe("result path outside the folder: ../" + basename(outside));
+    expect(existsSync(outside)).toBe(false);
   });
 });
 

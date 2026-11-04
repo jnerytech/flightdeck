@@ -120,9 +120,17 @@ import {
 } from "./session-state.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
+import {
+  effectiveMode,
+  loadChoices,
+  type ModeAnswer,
+  saveChoice,
+  type UiMode,
+} from "./simple-mode.ts";
 import { savePayload } from "./ssh.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
 import {
+  isLocalUrl,
   type TerminalEnv,
   type TerminalLaunch,
   type TerminalTarget,
@@ -209,6 +217,8 @@ export interface AppState {
   externalRequests: Record<string, ExternalPermissionFrame>;
   /** Name, pinned and archived, by `sessionKey(hostId, claudeSessionId)`. */
   meta: Record<string, SessionMeta>;
+  /** Phase 33: the mode the person chose for each host (a host without one follows its default). */
+  uiChoices: Record<string, UiMode>;
   /** Plan quota of each host, by host id; kept by `quota.updated`. */
   quota: Record<string, QuotaState>;
   /** The Claude account each host is signed in to, by host id (phase 34); only hosts being looked at. */
@@ -370,6 +380,12 @@ export type HostCommandType = Extract<
   | `snapshots.${string}`
   | `rewind.${string}`
   | "session.fork"
+  | "ui.set"
+  | "template.list"
+  | "template.start"
+  | "task.results"
+  | "task.preview"
+  | "session.close"
   | `mcp.${string}`
   | `agentcfg.${string}`
   | `issues.${string}`
@@ -763,6 +779,7 @@ export class AppStore {
       externals: {},
       externalRequests: {},
       meta: {},
+      uiChoices: loadChoices(platform.storage),
       hub: {},
       terminalEnv: null,
       projects: {},
@@ -1169,6 +1186,64 @@ export class AppStore {
 
   setSidebarFolded(folded: readonly SidebarGroup[]): void {
     saveFolded(this.platform.storage, folded);
+  }
+
+  /** Whether a file of the host can be opened here: the app can, and the host runs on this machine. */
+  canOpenPaths(hostId: string): boolean {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    return this.platform.openPath !== undefined && host !== undefined && isLocalUrl(host.url);
+  }
+
+  /** Opens a file the host made with the system's default app; false when it cannot. */
+  async openPath(hostId: string, path: string): Promise<boolean> {
+    return this.onLocalPath(hostId, path, (p) => this.platform.openPath?.(p));
+  }
+
+  /** Shows a file the host made in the system's file manager; false when it cannot. */
+  async revealPath(hostId: string, path: string): Promise<boolean> {
+    return this.onLocalPath(hostId, path, (p) => this.platform.revealPath?.(p));
+  }
+
+  private async onLocalPath(
+    hostId: string,
+    path: string,
+    act: (path: string) => Promise<void> | undefined,
+  ): Promise<boolean> {
+    // Only a host of this machine has files that are here, and only a full path says which.
+    if (
+      !this.canOpenPaths(hostId) ||
+      !/^([A-Za-z]:[\\/]|\/(?![\\/]))/.test(path) ||
+      path.includes("..")
+    ) {
+      return false;
+    }
+    try {
+      await act(path);
+      return true;
+    } catch (error) {
+      this.fail(error);
+      return false;
+    }
+  }
+
+  /** The mode a host opens in: the person's choice, else the host's default, else full (phase 33). */
+  uiMode(hostId: string): ModeAnswer {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    return effectiveMode(this.state.uiChoices[hostId], host?.hostInfo?.ui);
+  }
+
+  /** The person's choice for a host; `null` forgets it, so the host's default speaks again. */
+  setUiChoice(hostId: string, mode: UiMode | null): void {
+    saveChoice(this.platform.storage, hostId, mode);
+    this.update({ uiChoices: loadChoices(this.platform.storage) });
+  }
+
+  /** Changes the host's default mode and lock (full mode's Settings of that host). */
+  async setHostUi(hostId: string, patch: { mode?: UiMode; locked?: boolean }): Promise<boolean> {
+    const ui = await this.hostCommand(hostId, "ui.set", { ...patch, confirm: true });
+    if (!ui) return false;
+    this.updateHost(hostId, (h) => (h.hostInfo ? { ...h, hostInfo: { ...h.hostInfo, ui } } : h));
+    return true;
   }
 
   /** How many tiles the project page shows; kept across starts. */

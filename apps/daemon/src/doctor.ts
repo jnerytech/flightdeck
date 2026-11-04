@@ -13,6 +13,8 @@ export interface DoctorDeps {
   tailscaleIp(): Promise<string | null>;
   hooks(): HooksState | Promise<HooksState>;
   claudePath(): string | null;
+  /** Template files the host could not load (phase 33); absent when it has no templates. */
+  templateProblems?(): Promise<Array<{ file: string; reason: string }>>;
   /** The running daemon's version and, when the app told it, the app's: only a running daemon has them. */
   version?: { daemon: string; app?: string };
 }
@@ -26,7 +28,8 @@ export type DoctorCheckId =
   | "claude"
   | "hooks"
   | "tailscale"
-  | "version";
+  | "version"
+  | "templates";
 
 export interface DoctorCheck {
   id: DoctorCheckId;
@@ -131,6 +134,19 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
           "install Claude Code, then run: flightdeckd service install",
         ),
   );
+
+  const brokenTemplates = (await deps.templateProblems?.()) ?? [];
+  if (brokenTemplates.length > 0) {
+    checks.push(
+      check(
+        "templates",
+        "templates",
+        "warn",
+        `could not load: ${brokenTemplates.map((p) => `${p.file} (${p.reason})`).join("; ")}`,
+        "fix or remove those files in the templates folder",
+      ),
+    );
+  }
 
   const hooks = await deps.hooks();
   checks.push(

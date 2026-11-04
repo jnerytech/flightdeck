@@ -1,6 +1,7 @@
 import type { Platform } from "../platform/types.ts";
 import { en } from "./en.ts";
 import { ptBR } from "./pt-BR.ts";
+import { SIMPLE_RENAMES } from "./simple.ts";
 
 export type Lang = "pt-BR" | "en";
 export const LANGS: readonly Lang[] = ["pt-BR", "en"];
@@ -53,10 +54,11 @@ function entry(dictionary: Dictionary, key: Key): string | Plural {
  * `t(key, vars)`: the text of `key` in `lang` with `{name}` replaced from `vars` (a missing one
  * stays visible). A plural picks its form from `vars.n` through Intl.PluralRules.
  */
-export function translator(lang: Lang): T {
+export function translator(lang: Lang, mode: "full" | "simple" = "full"): T {
   const rules = new Intl.PluralRules(lang);
+  const renames = mode === "simple" ? SIMPLE_RENAMES[lang] : {};
   const translate = (key: Key, vars: Vars = {}) => {
-    const found = entry(DICTIONARIES[lang], key);
+    const found = renames[key] ?? entry(DICTIONARIES[lang], key);
     let text: string;
     if (typeof found === "string") text = found;
     else text = rules.select(Number(vars.n ?? 0)) === "one" ? found.one : found.other;

@@ -16,6 +16,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { type Ack, parseServerMessage } from "@flightdeck/protocol";
 import { loadConfig } from "../apps/daemon/src/config.ts";
 import { startDaemon } from "../apps/daemon/src/main.ts";
+import { serializeTemplate } from "../apps/daemon/src/templates/files.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
 import { type UsageLoad, waitUsageLoaded } from "./lib/demo-ready.ts";
@@ -99,6 +100,8 @@ export interface DemoIds {
   telemetrySession: string;
   /** A finished terminal session whose transcript has tools and subagents: the Rastro tab (phase 25). */
   traceSession: string;
+  /** A folder of the first host that simple mode's tasks may work in (phase 33). */
+  notesFolder: string;
 }
 
 /** A workflow with a plan, a gate that asks to review it and the implementation. */
@@ -360,6 +363,45 @@ async function host(work: string, name: string): Promise<HostRun> {
   mkdirSync(projects, { recursive: true });
   mkdirSync(history, { recursive: true });
   writeHistory(history, join(projects, "flightdeck-web"));
+  mkdirSync(join(projects, "notes"), { recursive: true });
+  // A host's own task for simple mode's Home (phase 33): a Markdown file in the templates folder.
+  mkdirSync(join(base, "data", "templates"), { recursive: true });
+  writeFileSync(
+    join(base, "data", "templates", "demo-notes.md"),
+    serializeTemplate({
+      id: "demo-notes",
+      title: { en: "Tidy my notes", "pt-BR": "Arrumar minhas notas" },
+      description: {
+        en: "Fixes spelling and headings in a folder of notes.",
+        "pt-BR": "Corrige a ortografia e os títulos de uma pasta de notas.",
+      },
+      icon: "notebook",
+      fields: [{ id: "folder", kind: "folder", label: { en: "Folder", "pt-BR": "Pasta" } }],
+      prompt: { en: "Tidy the notes in {folder}.", "pt-BR": "Arrume as notas em {folder}." },
+      preset: "edit_folder",
+      planFirst: false,
+    }),
+  );
+  // One that asks before it writes and leaves a summary behind: the question and the result.
+  writeFileSync(
+    join(base, "data", "templates", "demo-summary.md"),
+    serializeTemplate({
+      id: "demo-summary",
+      title: { en: "Write a summary", "pt-BR": "Escrever um resumo" },
+      description: {
+        en: "Reads a folder of notes and writes a short summary.",
+        "pt-BR": "Lê uma pasta de notas e escreve um resumo curto.",
+      },
+      icon: "file-text",
+      fields: [{ id: "folder", kind: "folder", label: { en: "Folder", "pt-BR": "Pasta" } }],
+      prompt: {
+        en: "[tool] [result:Flightdeck results/summary.md] Summarize the notes in {folder}.",
+        "pt-BR": "[tool] [result:Flightdeck results/summary.md] Resuma as notas em {folder}.",
+      },
+      preset: "ask_before_changes",
+      planFirst: false,
+    }),
+  );
   const token = crypto.randomUUID().replaceAll("-", "");
   const config = join(base, "config.json");
   writeFileSync(
@@ -939,6 +981,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       rewindSession: rewind.sessionId,
       telemetrySession,
       traceSession: TRACE_SESSION,
+      notesFolder: join(alfa.projects, "notes"),
     },
     stop: async () => {
       // Newest first: each restore puts back the PATH it saw, so the oldest must go last.

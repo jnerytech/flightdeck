@@ -1085,6 +1085,7 @@ dependencies = [
 name = "flightdeck-desktop"
 version = "0.1.0"
 dependencies = [
+ "dunce",
  "keyring",
  "serde",
  "serde_json",

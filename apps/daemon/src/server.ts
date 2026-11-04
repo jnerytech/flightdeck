@@ -36,6 +36,7 @@ import {
   type TerminalData,
   type TerminalExited,
   type TerminalResync,
+  type UiSettings,
   type VaultAlertFrame,
   type VaultRequestFrame,
   type VaultUsed,
@@ -107,6 +108,9 @@ import type { SummaryService } from "./summary/service.ts";
 import type { Teams } from "./teams/teams.ts";
 import type { TelemetryOptIn } from "./telemetry/optin.ts";
 import type { TelemetryStore } from "./telemetry/store.ts";
+import type { LoadedTemplates } from "./templates/files.ts";
+import { startTemplate } from "./templates/start.ts";
+import type { TaskTracker } from "./templates/tasks.ts";
 import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.ts";
 import { tokenMatches } from "./token.ts";
 import type { TraceService } from "./trace/service.ts";
@@ -273,6 +277,13 @@ export interface ServerOptions {
   sessionFiles?: SessionFiles;
   /** The host's terminals behind `terminal.*` (phase 14). */
   terminals?: TerminalManager;
+  /** The templates behind `template.list` (phase 33): the built-ins and the host's own files. */
+  templates?: () => Promise<LoadedTemplates>;
+  /** What tasks started from templates produced, behind `task.results` (phase 33). */
+  tasks?: TaskTracker;
+  /** The host's default mode and lock (phase 33); changed by `ui.set`, which `onUiSettings` keeps. */
+  ui?: UiSettings;
+  onUiSettings?: (ui: UiSettings) => void | Promise<void>;
   /** Called after `terminal.settings` changes whether terminals are on (the config keeps it). */
   onTerminalSettings?: (enabled: boolean) => void | Promise<void>;
   /** The `claude` executable reported by `host.info`; absent with the fake runtime. */
@@ -1436,8 +1447,12 @@ export function startServer(opts: ServerOptions): RunningServer {
           features: [
             ...(opts.features ?? features),
             ...(opts.terminals?.enabled ? ["terminal"] : []),
+            ...(opts.ui ? ["ui.mode"] : []),
+            ...(opts.templates ? ["templates"] : []),
+            ...(opts.tasks ? ["tasks"] : []),
           ],
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
+          ...(opts.ui ? { ui: { ...opts.ui } } : {}),
           ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
           ...updateStatus(),
           ...(opts.terminal ?? {}),
@@ -1790,6 +1805,67 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type);
       case "terminal.list":
         return ok(command.type, { terminals: terminals().list() });
+      case "template.list": {
+        if (!opts.templates) throw featureOff("templates");
+        return ok(command.type, await opts.templates());
+      }
+      case "template.start": {
+        if (!opts.templates) throw featureOff("templates");
+        const { templateId, language, values, name } = command.payload;
+        const template = (await opts.templates()).templates.find((t) => t.id === templateId);
+        if (!template) {
+          throw new FlightdeckError(
+            "not_found",
+            `there is no template ${templateId}`,
+            "template_unknown",
+            { id: templateId },
+          );
+        }
+        return ok(
+          command.type,
+          await startTemplate(
+            template,
+            language,
+            values,
+            {
+              allowedRoots: opts.allowedRoots,
+              create: (payload) => manager.create(payload),
+              ...(opts.tasks ? { tasks: opts.tasks } : {}),
+            },
+            name,
+          ),
+        );
+      }
+      case "task.preview": {
+        if (!opts.tasks) throw featureOff("tasks");
+        return ok(
+          command.type,
+          await opts.tasks.preview(command.payload.sessionId, command.payload.path),
+        );
+      }
+      case "task.results": {
+        if (!opts.tasks) throw featureOff("tasks");
+        return ok(command.type, await opts.tasks.results(command.payload.sessionId));
+      }
+      case "ui.set": {
+        if (!opts.ui) throw featureOff("ui.mode");
+        const { mode, locked, confirm } = command.payload;
+        if (confirm !== true) {
+          throw new FlightdeckError(
+            "invalid_state",
+            "changing how this host presents itself needs confirm: true",
+            "ui_confirm",
+          );
+        }
+        const next: UiSettings = {
+          mode: mode ?? opts.ui.mode,
+          locked: locked ?? opts.ui.locked,
+        };
+        await opts.onUiSettings?.(next);
+        opts.ui.mode = next.mode;
+        opts.ui.locked = next.locked;
+        return ok(command.type, { ...next });
+      }
       case "terminal.settings": {
         const { enabled, confirm } = command.payload;
         const manager = terminals();

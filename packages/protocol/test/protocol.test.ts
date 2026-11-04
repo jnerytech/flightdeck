@@ -379,6 +379,11 @@ const validCommands: Record<CommandType, unknown> = {
   "terminal.close": { terminalId: "t", kill: false },
   "terminal.list": {},
   "terminal.settings": { enabled: true, confirm: true },
+  "ui.set": { mode: "simple", locked: true, confirm: true },
+  "template.list": {},
+  "task.results": { sessionId: "s1" },
+  "task.preview": { sessionId: "s1", path: "/w/a.md" },
+  "template.start": { templateId: "summarise-folder", language: "en", values: { folder: "/work" } },
   "ssh.list": {},
   "ssh.save": {
     name: "vps",

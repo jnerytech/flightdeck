@@ -2,6 +2,7 @@ import type {
   AutoApproval,
   CommandPayload,
   PermissionUpdate,
+  PlainInfo,
   SessionEvent,
   ToolInput,
 } from "@flightdeck/protocol";
@@ -21,6 +22,8 @@ export interface BrokerHooks {
   classify(sessionId: string, toolName: string, input: ToolInput): Risk;
   /** Phase 13: the automatic approval's decision; null without it. */
   autoDecide?(request: AutoApproveRequest): Promise<AutoDecision | null>;
+  /** Phase 33: the request in plain words; the host looks at its files to word it. */
+  plain?(sessionId: string, toolName: string, input: ToolInput, risk: Risk): Promise<PlainInfo>;
 }
 
 /** The `answers` of an answered AskUserQuestion, when every one is a string. */
@@ -86,24 +89,42 @@ export class PermissionBroker {
         detach: () => signal.removeEventListener("abort", onAbort),
       });
       const risk = this.hooks.classify(sessionId, toolName, input);
-      this.hooks.emit(sessionId, {
-        type: "permission.requested",
-        requestId: id,
-        toolName,
-        input,
-        ...(suggestions.length > 0 ? { suggestions } : {}),
-        risk: risk.level,
-        riskReason: risk.reason,
-      });
-      this.hooks.onPendingChange(sessionId, this.pendingCount(sessionId));
-      // Asked like any other request: an automatic "allow" answers it, unless you did first.
-      void this.hooks
-        .autoDecide?.({ sessionKey: sessionId, requestId: id, toolName, input, cwd: "", risk })
-        .then((auto) => {
-          if (auto?.decision !== "allow") return;
-          const { by, reason, model } = auto;
-          this.finish(id, "allow", undefined, { behavior: "allow" }, { by, reason, model });
+      const announce = (plain?: PlainInfo) => {
+        // Answered meanwhile (the turn was interrupted): nothing to announce.
+        if (!this.open.has(id)) return;
+        this.hooks.emit(sessionId, {
+          type: "permission.requested",
+          requestId: id,
+          toolName,
+          input,
+          ...(suggestions.length > 0 ? { suggestions } : {}),
+          risk: risk.level,
+          riskReason: risk.reason,
+          ...(plain ? { plain } : {}),
         });
+        this.hooks.onPendingChange(sessionId, this.pendingCount(sessionId));
+      };
+      // Asked like any other request: an automatic "allow" answers it, unless you did first.
+      const decide = () =>
+        void this.hooks
+          .autoDecide?.({ sessionKey: sessionId, requestId: id, toolName, input, cwd: "", risk })
+          .then((auto) => {
+            if (auto?.decision !== "allow") return;
+            const { by, reason, model } = auto;
+            this.finish(id, "allow", undefined, { behavior: "allow" }, { by, reason, model });
+          });
+      // With the plain wording the request is announced once the host has looked at its files,
+      // and only then can it be answered automatically (the answer follows the question).
+      if (this.hooks.plain) {
+        const looked = (plain?: PlainInfo) => {
+          announce(plain);
+          decide();
+        };
+        void this.hooks.plain(sessionId, toolName, input, risk).then(looked, () => looked());
+      } else {
+        announce();
+        decide();
+      }
     });
   }
 
