@@ -74,7 +74,7 @@ export function Breadcrumb(props: {
                 {crumb.route ? (
                   <button
                     type="button"
-                    className="block max-w-full truncate rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="block min-h-6 max-w-full truncate rounded-sm text-muted-foreground leading-6 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     title={crumb.label}
                     onClick={() => crumb.route && props.onGo(crumb.route)}
                   >
