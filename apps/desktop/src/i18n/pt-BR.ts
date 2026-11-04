@@ -1515,6 +1515,9 @@ export const ptBR = {
     nothing_ahead: "Não há nada à frente de {base}.",
     complete_confirm: "Confirme a conclusão do card.",
     discard_confirm: "Confirme o descarte do card.",
+    delete_confirm: "Confirme a exclusão do card.",
+    card_started:
+      "O card já começou e não pode ser excluído: descarte-o para limpar o trabalho dele.",
     base_not_local: "A base {base} não é uma branch local.",
     rebase_conflict: "Atualizar com {base} dá conflito em: {files}.",
     merge_conflict: "Juntar com {base} dá conflito em: {files}.",
