@@ -261,7 +261,7 @@ export function Sidebar(props: {
   /** The hosts of the Machines group: a dot each in the rail, a list with a menu each otherwise. */
   const hereHost = props.route?.name === "host" ? props.route.host : null;
   const hostsList = collapsed ? (
-    <div className="flex flex-col items-center gap-1 pt-3">
+    <div className="rail-hosts">
       {state.hosts.map((host) => (
         <button
           key={host.id}
@@ -280,9 +280,9 @@ export function Sidebar(props: {
       ))}
     </div>
   ) : (
-    <ul className="flex flex-col gap-0.5">
+    <ul className="host-list">
       {state.hosts.map((host) => (
-        <li key={host.id} className="group flex items-center gap-1">
+        <li key={host.id} className="group host-row">
           <button
             type="button"
             className={cn(
