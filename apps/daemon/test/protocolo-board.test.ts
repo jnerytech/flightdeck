@@ -214,6 +214,28 @@ describe("protocolo-board", () => {
     expect(await nextUpdate(client, id, seen, (c) => c.discarded)).not.toBeNull();
   });
 
+  test("card.delete removes a card that never started and tells the watchers; without confirm it refuses", async () => {
+    const { server, repo } = serve();
+    const client = await connect(server.url);
+    await client.request("board.watch", {});
+    const project = await client.data<{ id: string }>("project.add", { path: repo });
+    const card = await client.data<WireCard>("card.create", {
+      projectId: project?.id,
+      title: "Idea",
+      description: "d",
+    });
+    const id = card?.id as string;
+    const noConfirm = await client.request("card.delete", { cardId: id });
+    expect(noConfirm).toMatchObject({
+      ok: false,
+      error: { code: "invalid_state", reason: "delete_confirm" },
+    });
+    const seen = updates(client, id).length;
+    const deleted = await client.data<WireCard>("card.delete", { cardId: id, confirm: true });
+    expect(deleted?.discarded).toBe(true);
+    expect(await nextUpdate(client, id, seen, (c) => c.discarded)).not.toBeNull();
+  });
+
   test("card.message em card sem sessão é recusado; depois de fechar a conexão o watch para", async () => {
     const { server, repo, board } = serve();
     const client = await connect(server.url);

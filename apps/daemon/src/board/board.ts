@@ -1739,6 +1739,15 @@ export class Board {
     return discarded;
   }
 
+  /**
+   * Deletes a card that never started (no worktree, no branch, no session, no run). Returns its
+   * last state, marked `discarded` like a discarded card, so the app drops it the same way.
+   * A card that started has work to clean up and goes through `discardCard`.
+   */
+  deleteCard(id: string, _confirm: boolean): Card {
+    return this.getCard(id);
+  }
+
   /** Calls `listener` after every round of the PR polling. */
   onPrRound(listener: () => void): () => void {
     this.prRoundListeners.add(listener);

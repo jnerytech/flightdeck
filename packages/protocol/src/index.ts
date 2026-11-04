@@ -2863,6 +2863,8 @@ export const Command = z.discriminatedUnion("type", [
   ),
   cmd("card.complete", CardConfirmPayload),
   cmd("card.discard", CardConfirmPayload),
+  /** Removes a card that never started; a started one is refused (use `card.discard`). */
+  cmd("card.delete", CardConfirmPayload),
   cmd("card.dismissUnblocked", CardIdPayload),
   cmd("external.list", z.object({}).strict()),
   cmd("external.watch", z.object({}).strict()),
@@ -4235,6 +4237,7 @@ export interface CommandResults {
   "card.manage": Card;
   "card.complete": Card;
   "card.discard": Card;
+  "card.delete": Card;
   "card.dismissUnblocked": Card;
   "external.list": { sessions: ExternalSession[] };
   "external.watch": undefined;
