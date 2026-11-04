@@ -103,6 +103,8 @@ export class UsageLedger {
           inputTokens: row.input_tokens,
           outputTokens: row.output_tokens,
           turns: row.turns,
+          failedTurns: 0,
+          durationMs: 0,
         }),
       );
     return { days, rows };
