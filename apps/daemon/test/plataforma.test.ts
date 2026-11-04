@@ -96,6 +96,9 @@ describe("plataforma", () => {
       expect(killed).toEqual([4242]);
       expect(stopped).toBe(true);
     },
+    // The only slow step is the real PowerShell above (it starts the shell and a COM object, and
+    // blocks): seconds on a loaded Windows runner, more than the 15 s default once in a while.
+    60_000,
   );
 
   test("no Windows, o executável do processo vem do Get-Process do PowerShell", async () => {
