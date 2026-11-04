@@ -4,6 +4,7 @@ import { exportVault, fromFdvault, previewImport, toFdvault } from "../src/lib/v
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
+import { uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -86,7 +87,7 @@ const click = async (name: string) => {
   await act(async () => {
     fireEvent.click(button as HTMLElement);
   });
-  await act(() => Bun.sleep(30));
+  await uiIdle();
 };
 
 const fill = async (label: string, value: string) => {

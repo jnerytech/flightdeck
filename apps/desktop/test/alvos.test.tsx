@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { memoriaHost } from "./memoria-ui-setup.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -107,7 +107,7 @@ describe("alvos: raw buttons keep a 24 px target", () => {
     render(<App store={store} />);
     const wait = async (check: () => boolean) => {
       const deadline = Date.now() + 5000;
-      while (!check() && Date.now() < deadline) await act(() => Bun.sleep(15));
+      while (!check() && Date.now() < deadline) await uiIdle();
     };
     await wait(() => store.getState().hosts[0]?.hostInfo?.features?.includes("memory") === true);
     await act(async () => {

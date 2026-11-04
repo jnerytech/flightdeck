@@ -3,7 +3,7 @@ import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { personasHost } from "./personas-ui-setup.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -25,7 +25,7 @@ const fill = async (label: string, value: string) => {
   await act(async () => {
     fireEvent.change(field as HTMLElement, { target: { value } });
   });
-  await act(() => Bun.sleep(30));
+  await uiIdle();
 };
 const press = async (name: string) => {
   const button = screen.queryByRole("button", { name });

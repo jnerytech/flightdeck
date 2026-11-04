@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, spyOn, test } from "bun
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sshDaemon, sshTarget } from "./ssh-daemon.ts";
-import { waiter } from "./wait.ts";
+import { uiIdle, waiter } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -48,7 +48,7 @@ const ask = async (d: Awaited<ReturnType<typeof open>>["d"], frame: unknown) => 
   await act(async () => {
     d.push(frame);
   });
-  await act(() => Bun.sleep(30));
+  await uiIdle();
 };
 
 const dialog = () => screen.queryByRole("alertdialog") ?? screen.queryByRole("dialog");
@@ -59,7 +59,7 @@ const click = async (name: string) => {
   await act(async () => {
     fireEvent.click(button as HTMLElement);
   });
-  await act(() => Bun.sleep(30));
+  await uiIdle();
 };
 
 describe("conexoes-ui: ssh asks for a password", () => {

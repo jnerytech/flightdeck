@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { ActionInfo } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
+import { uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -25,7 +26,7 @@ const submit = async (form: HTMLFormElement | null) => {
   await act(async () => {
     fireEvent.submit(form as HTMLFormElement);
   });
-  await act(() => Bun.sleep(30));
+  await uiIdle();
 };
 const type = (name: string) =>
   (screen.queryByRole("button", { name }) as HTMLButtonElement | null)?.type;

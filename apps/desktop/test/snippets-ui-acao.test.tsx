@@ -3,7 +3,7 @@ import { actionSeedFromCommand } from "../src/lib/snippets.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { snippetsHost } from "./snippets-ui-setup.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -74,7 +74,7 @@ describe("snippets-ui: a secret's snippet becomes an action", () => {
       await act(async () => {
         fireEvent.change(field as HTMLElement, { target: { value } });
       });
-      await act(() => Bun.sleep(60));
+      await uiIdle();
     };
     const click = async (name: string) => {
       const button = screen.queryByRole("button", { name });
@@ -82,7 +82,7 @@ describe("snippets-ui: a secret's snippet becomes an action", () => {
       await act(async () => {
         fireEvent.click(button as HTMLElement);
       });
-      await act(() => Bun.sleep(150));
+      await uiIdle();
     };
     await fill("Projeto", h.repo);
     await click("Novo snippet");

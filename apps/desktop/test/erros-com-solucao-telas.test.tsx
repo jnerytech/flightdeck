@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { registerDom } from "./dom.ts";
+import { uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render } = await import("@testing-library/react");
@@ -25,7 +26,7 @@ const press = async (view: ReturnType<typeof render>, name: string) => {
   await act(async () => {
     fireEvent.click(button as HTMLElement);
   });
-  await act(() => Bun.sleep(10));
+  await uiIdle();
 };
 
 describe("erros-com-solucao: refusals shown by forms", () => {

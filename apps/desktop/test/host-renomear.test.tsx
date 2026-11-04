@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { Profiler } from "react";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { uiIdle } from "./wait.ts";
 
 registerDom();
 const {
@@ -68,7 +69,7 @@ const type = async (value: string) => {
     fireEvent.change(field() as HTMLInputElement, { target: { value } });
   });
   // Outside act the input's state is flushed a tick later: let it land before anything submits.
-  await act(() => Bun.sleep(50));
+  await uiIdle();
 };
 const save = async () => click(await button("Salvar nome"));
 

@@ -5,7 +5,7 @@ import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts"
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
-import { waiter } from "./wait.ts";
+import { uiIdle, waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -98,7 +98,7 @@ async function filter(fields: { pasta?: string; de?: string; ate?: string; orige
   await act(async () => {
     fireEvent.click(apply as HTMLElement);
   });
-  await act(() => Bun.sleep(50));
+  await uiIdle();
 }
 
 describe("historico-host", () => {

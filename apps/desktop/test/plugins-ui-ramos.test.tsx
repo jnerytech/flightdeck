@@ -6,7 +6,7 @@ import { tempDir } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { ok, pluginsHost, write } from "./plugins-ui-setup.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -47,7 +47,7 @@ async function click(name: string | RegExp, role = "button") {
   await act(async () => {
     fireEvent.click(element as HTMLElement);
   });
-  await act(() => Bun.sleep(150));
+  await uiIdle();
 }
 
 async function tab(name: string) {
@@ -299,7 +299,7 @@ describe("plugins-ui: fechar com Esc", () => {
     await act(async () => {
       fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
     });
-    await act(() => Bun.sleep(100));
+    await uiIdle();
   };
 
   test("Esc fecha o diálogo de instalar e o de atualizar sem fazer nada", async () => {
