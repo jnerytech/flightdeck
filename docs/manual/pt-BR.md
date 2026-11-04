@@ -2455,7 +2455,8 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
   versão encontrada e a mínima, o que deixa de funcionar sem ela, e o comando para instalá-la no
   sistema daquele host com um botão de **copiar**. **Verificar de novo** pergunta ao host outra vez.
   O resumo diz "Tudo certo", "Opcionais faltando: N" ou "Obrigatórias faltando: N", e um host com
-  uma obrigatória faltando ganha uma marca vermelha na barra lateral.
+  uma obrigatória faltando ganha uma marca vermelha na barra lateral. O `flightdeckd doctor` imprime o mesmo agrupamento no terminal, depois das suas próprias
+  verificações, com a correção para o sistema do host sob cada uma que falta ou está desatualizada.
 - **Layout da página do host:** a página abre nas **Sessões** daquele host (as que precisam de você
   primeiro, depois as mais recentes; **Ver todas as sessões** abre a lista de Sessões já filtrada
   pelo host) e nos **Projetos** dele (os mesmos cartões da lista de Projetos; **Ver todos os

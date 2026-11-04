@@ -2467,7 +2467,8 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
   one, what stops working without it, and the command to install it on that host's system with a
   **copy** button. **Check again** asks the host again. The headline says "All set", "N optional
   missing" or "N required missing", and a host with a required one missing shows a red mark in the
-  sidebar.
+  sidebar. `flightdeckd doctor` prints the same grouping in the terminal after its own checks, with the
+  fix for the host's system under each one that is missing or outdated.
 - **Host page layout:** the page opens on that host's **Sessions** (the ones that need you
   first, then the latest; **See all sessions** opens the Sessions list already filtered by the host)
   and its **Projects** (the same cards as the Projects list; **See all projects** opens that list

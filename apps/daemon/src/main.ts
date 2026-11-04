@@ -53,6 +53,7 @@ import { resolvePricing } from "./costs/pricing.ts";
 import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
 import { checkDeps, type DepsEnv } from "./deps/deps.ts";
+import { formatDeps } from "./deps/format.ts";
 import { runDoctor } from "./doctor.ts";
 import { type Exec, spawnExec } from "./exec.ts";
 import { runGh } from "./github/gh.ts";
@@ -1418,6 +1419,22 @@ async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
     deps.log.log(`${item.status.toUpperCase().padEnd(4)} ${item.name.padEnd(16)} ${item.detail}`);
     if (item.fix) deps.log.log(`     -> ${item.fix}`);
   }
+  // What the host needs and does without, grouped like the app's Dependencies section.
+  const found = await checkDeps(
+    deps.depsEnv ?? {
+      platform: process.platform,
+      which: (name) => whichOnPath(name),
+      version: async (path) => {
+        const { code, stdout } = await (deps.exec ?? spawnExec)([path, "--version"]);
+        return code === 0 ? (stdout.split("\n")[0] ?? null) : null;
+      },
+      allowedRoots: (await load()).allowedRoots,
+      serviceInstalled: async () => (await serviceCommand(ctx)) !== null,
+      linger: () => lingerState(ctx),
+      hooks: async () => hooksStatus(settings, hookTarget(await load(), self)),
+    },
+  );
+  for (const line of formatDeps(found, process.platform)) deps.log.log(line);
   return report.ok ? 0 : 1;
 }
 

@@ -3516,4 +3516,5 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   (`--status-ok`) held to the AA contrast test of the other status colors in both themes.
 - **The sidebar.** The host gets a red mark (with a label) when a required dependency is missing or outdated; the app asks each host
   that announces `deps` once it is connected, and Check again updates the mark.
-- **Not in this change:** the link to the manual from each row, and the `flightdeckd doctor` grouping in the terminal (next).
+- **`flightdeckd doctor`** prints the same grouping after its own checks (`formatDeps`), in English like the rest of the terminal output.
+- **Not in this change:** the link to the manual from each row.
