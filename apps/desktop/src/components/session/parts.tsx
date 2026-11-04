@@ -8,6 +8,12 @@ export function SessionHeader(props: {
   controls?: ReactNode;
   /** A row of its own under the buttons (the persona controls). */
   extra?: ReactNode;
+  /** The buttons that fold into a "More actions" menu when the header is narrow. */
+  actions?: ReactNode;
+  /** Dialogs of the actions: they stay mounted whether the menu is open or not. */
+  dialogs?: ReactNode;
+  /** The path and cost as one line of text: the tooltip of the title when the header is narrow. */
+  hint?: string;
 }) {
   return (
     <header className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
