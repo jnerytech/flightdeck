@@ -159,6 +159,13 @@ export const en: Dictionary = {
     logTitleChanged: "The title changed on the board (it was “{lost}”).",
   },
   roiUi: {
+    clientRate: {
+      form: "Hourly rate of {name}",
+      label: "Hourly rate for this client (US$)",
+      help: "Used for every project of the client that has no rate of its own. Empty means none.",
+      save: "Save the rate",
+      invalid: "The rate must be a number from 0 to 1,000,000.",
+    },
     settingsPanel: {
       title: "Return on cost settings",
       defaultRate: "Default hourly rate (US$)",

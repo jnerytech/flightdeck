@@ -161,6 +161,13 @@ export const ptBR = {
     logTitleChanged: "O título mudou no quadro (era “{lost}”).",
   },
   roiUi: {
+    clientRate: {
+      form: "Valor da hora de {name}",
+      label: "Valor da hora deste cliente (US$)",
+      help: "Vale para todo projeto do cliente que não tenha valor próprio. Vazio quer dizer nenhum.",
+      save: "Salvar o valor",
+      invalid: "O valor deve ser um número de 0 a 1.000.000.",
+    },
     settingsPanel: {
       title: "Configurações do retorno sobre o custo",
       defaultRate: "Valor da hora padrão (US$)",
