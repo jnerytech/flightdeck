@@ -47,12 +47,12 @@ export function ProjectHeader(props: {
 /** The project's numbers as a chip: the live sessions out of all of them. */
 export function CountChip(props: { live: number; total: number; label: string }) {
   return (
-    <span
+    <output
       aria-label={props.label}
       className="rounded-full bg-muted px-2 text-muted-foreground tabular-nums"
     >
       {props.live}/{props.total}
-    </span>
+    </output>
   );
 }
 
