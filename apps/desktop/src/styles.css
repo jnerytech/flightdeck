@@ -366,7 +366,7 @@
   border-radius: 0.5rem;
   --column-tone: var(--column-backlog);
   border-top: 2px solid var(--column-tone);
-  background: color-mix(in oklch, var(--column-tone) 8%, var(--background));
+  background: color-mix(in oklab, var(--column-tone) 8%, var(--background));
 }
 .board-column[data-column="in_progress"] {
   --column-tone: var(--column-progress);
