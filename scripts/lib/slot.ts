@@ -45,7 +45,13 @@ export interface SlotEnv {
   now(): number;
   sleep(ms: number): Promise<void>;
   log(line: string): void;
-  spawn(command: string[], nice: boolean): SlotChild;
+  /**
+   * Starts the command. `asHolder` marks the child as running under this process's lock, so a slot
+   * call it makes itself runs at once (see `holder`).
+   */
+  spawn(command: string[], nice: boolean, asHolder?: boolean): SlotChild;
+  /** The pid named by `FLIGHTDECK_SLOT_HOLDER` in this process's environment, if any. */
+  holder?: number;
   /** Asks a process to stop (SIGTERM). */
   terminate(pid: number): void;
   /** The user's processes; absent where the platform cannot list them (no renicing then). */
