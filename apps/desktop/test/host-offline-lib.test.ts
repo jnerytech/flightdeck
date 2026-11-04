@@ -32,4 +32,8 @@ describe("host-offline", () => {
     expect(mayBeRefusedAddress("timeout", "ws://100.64.0.9:7430/v1/ws")).toBe(false);
     expect(mayBeRefusedAddress("lost", "ws://100.64.0.9:7430/v1/ws")).toBe(false);
   });
+
+  test("an address that does not parse gives no refused-address hint", () => {
+    expect(mayBeRefusedAddress("refused", "not an address")).toBe(false);
+  });
 });
