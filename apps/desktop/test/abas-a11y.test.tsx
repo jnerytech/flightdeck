@@ -103,7 +103,6 @@ describe("abas: acessibilidade da barra de abas", () => {
     });
     const badge = document.querySelector('[data-badge="needs-you"]');
     expect(badge?.className).toContain("bg-status-needs-you");
-    expect(badge?.className).toContain("text-background");
     expect(badge?.className).not.toContain("text-white");
   });
 });

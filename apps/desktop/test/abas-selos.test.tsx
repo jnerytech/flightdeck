@@ -72,9 +72,9 @@ describe("abas: selos e botão de aba nova", () => {
         hosts: [{ id: "h", name: "pc", status: "online", sessions: [session("idle", 1)] }] as never,
       });
     });
-    expect(
-      screen.queryByText("Precisa de você", { selector: "[role=tab] [data-badge]" }),
-    ).not.toBeNull();
+    const dot = document.querySelector("[role=tab] [data-badge]") as HTMLElement;
+    expect(dot.getAttribute("aria-label")).toBe("Precisa de você");
+    expect(dot.textContent).toBe("");
   });
 
   test("each kind of screen has its icon: session, card (and its diff), terminal, reader, Custos, agent", () => {

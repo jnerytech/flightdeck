@@ -460,8 +460,21 @@ async function pageScrollsSideways(page: Page): Promise<string | null> {
   });
 }
 
+/** The tabs share the strip like a browser's: one width, and not under the minimum. */
+async function tabWidthsProblem(page: Page, minimum: number): Promise<string | null> {
+  const widths = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>(".tab-item")].map((tab) =>
+      Math.round(tab.getBoundingClientRect().width),
+    ),
+  );
+  if (widths.length === 0) return "no tabs";
+  if (Math.max(...widths) - Math.min(...widths) > 1) return `widths differ: ${widths.join(", ")}`;
+  if (Math.min(...widths) < minimum) return `a tab is ${Math.min(...widths)}px, under ${minimum}px`;
+  return null;
+}
+
 /** Twelve tabs, as a window left open for a day, with `first` on screen (the active tab). */
-const crowdedWindow = (c: Context, first: Route) =>
+const crowdedWindow = (c: Context, first: Route, count = 12) =>
   JSON.stringify({
     v: 1,
     split: null,
@@ -483,17 +496,19 @@ const crowdedWindow = (c: Context, first: Route) =>
           { name: "project", host: ALFA, projectId: c.ids.project },
           { name: "teams" },
           { name: "personas" },
-        ].map((route) => ({ route, pinned: false })),
+        ]
+          .slice(0, count)
+          .map((route) => ({ route, pinned: false })),
       },
     ],
   });
 
 /** Opens the demo on a window with twelve tabs: no `?route=`, which would start a fresh window. */
-async function openCrowded(c: Context, first: Route) {
+async function openCrowded(c: Context, first: Route, count = 12) {
   await c.page.goto(c.url);
   await c.page.evaluate(
     ([key, value]) => localStorage.setItem(key as string, value as string),
-    ["flightdeck.workspace", crowdedWindow(c, first)],
+    ["flightdeck.workspace", crowdedWindow(c, first, count)],
   );
   const query = new URLSearchParams({ lang: c.lang, theme: "light", reconnect: "fast" });
   await c.page.goto(`${c.url}?${query}`);
@@ -554,6 +569,14 @@ export async function layout(c: Context, problems: string[]) {
         );
       }
     }
+    // Equal widths with 12 tabs and with 2, and 12 never under 80px.
+    await openCrowded(c, { name: "hub" });
+    const crowdedTabs = await tabWidthsProblem(c.page, 80);
+    if (crowdedTabs)
+      problems.push(`${c.lang} ${viewport.width}x${viewport.height} 12 abas: ${crowdedTabs}`);
+    await openCrowded(c, { name: "hub" }, 2);
+    const fewTabs = await tabWidthsProblem(c.page, 80);
+    if (fewTabs) problems.push(`${c.lang} ${viewport.width}x${viewport.height} 2 abas: ${fewTabs}`);
   }
   for (const viewport of VIEWPORTS) {
     await c.page.setViewportSize(viewport);
