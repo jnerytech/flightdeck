@@ -140,7 +140,7 @@ describe("conexoes-ui: ssh asks for a password", () => {
 
   test("the form offers password authentication, which keeps no reference to the password", async () => {
     const { d } = await open();
-    await click("Conexões");
+    await click("SSH");
     await click("Novo destino");
     const fill = async (label: string, value: string) => {
       const field = screen.queryByLabelText(label);

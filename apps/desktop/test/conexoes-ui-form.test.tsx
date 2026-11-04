@@ -38,9 +38,9 @@ async function open(options: SshDaemonOptions = { targets: [VPS, LAB] }) {
   cleanups.push(() => store.dispose());
   await store.addHost({ name: "pc", url: d.url, token: TOKEN });
   render(<App store={store} />);
-  await settle(() => screen.queryByRole("button", { name: "Conexões" }) !== null);
+  await settle(() => screen.queryByRole("button", { name: "SSH" }) !== null);
   await act(async () => {
-    fireEvent.click(screen.queryByRole("button", { name: "Conexões" }) as HTMLElement);
+    fireEvent.click(screen.queryByRole("button", { name: "SSH" }) as HTMLElement);
   });
   await settle(() => d.commands.some((c) => c.type === "ssh.list"));
   await uiIdle();

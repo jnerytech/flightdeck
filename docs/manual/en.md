@@ -681,10 +681,14 @@ live; the list is the project's, so a session of another project never shows her
 
 ### The sidebar, the tab strip and Settings
 
-- The sidebar keeps **Sessions**, **Needs you**, **Projects** and **Board** on top; the rest is in
-  three folding groups: **Work** (Workflows, Costs, Conversations, Teams), **Library** (Personas,
-  Snippets, Plugins, Vault) and **Infra** (Connections, History). A group with nothing to offer is
-  not drawn, the folded groups are remembered, and the narrow icon rail has no headings.
+- The sidebar groups its items by purpose, in five folding groups: **Work** (Sessions, Needs you,
+  Projects, Board), **Automation** (Workflows, Teams, Conversations), **Observability** (Costs,
+  History), **Library** (Personas, Snippets, Plugins, Vault) and **Machines** (the hosts, each with
+  its state dot, health mark and menu, a **+** to add one, then **SSH**, the saved SSH destinations).
+  The open page has a filled row and a bar at its left edge, items with sub-pages end in a chevron,
+  recent features carry a **Beta** or **New** badge, and **Manual** at the foot opens this manual in
+  the browser (its icon says it leaves the app). A group with nothing to offer is not drawn, the
+  folded groups are remembered, and the narrow icon rail has no headings.
 - With one area, the tab strip sits in the top bar on the breadcrumb's row; with a split, each
   area has its own strip. The strip keeps three tools: the active tab's **Actions** menu (move left
   or right, move to the other area, pin), **New tab** and **Split**.

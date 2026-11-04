@@ -666,11 +666,15 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
 
 ### A barra lateral, a barra de abas e as Configurações
 
-- A barra lateral mantém **Sessões**, **Precisa de você**, **Projetos** e **Board** no topo; o
-  resto fica em três grupos que dobram: **Trabalho** (Workflows, Custos, Conversas, Times),
-  **Biblioteca** (Personas, Snippets, Plugins, Cofre) e **Infra** (Conexões, Histórico). Um grupo
-  sem nada a oferecer não aparece, os grupos dobrados são lembrados, e o trilho estreito de ícones
-  não tem títulos.
+- A barra lateral agrupa os itens por finalidade, em cinco grupos que dobram: **Trabalho** (Sessões,
+  Precisa de você, Projetos, Board), **Automação** (Workflows, Times, Conversas),
+  **Observabilidade** (Custos, Histórico), **Biblioteca** (Personas, Snippets, Plugins, Cofre) e
+  **Máquinas** (os hosts, cada um com o pontinho de estado, a marca de saúde e o menu, um **+** para
+  adicionar, e depois **SSH**, os destinos SSH salvos). A página aberta tem a linha preenchida e uma
+  barra na borda esquerda, os itens com subpáginas terminam em uma seta, as novidades levam um selo
+  **Beta** ou **Novo**, e o **Manual** no pé abre este manual no navegador (o ícone diz que sai do
+  app). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados, e o trilho
+  estreito de ícones não tem títulos.
 - Com uma área, a barra de abas fica na barra do topo, na linha do caminho; com a tela dividida,
   cada área tem a sua. A barra mantém três ferramentas: o menu de **Ações** da aba ativa (mover
   para a esquerda ou a direita, mover para a outra área, fixar), **Nova aba** e **Dividir**.

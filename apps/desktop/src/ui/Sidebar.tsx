@@ -1,8 +1,11 @@
 import type { DepsResult } from "@flightdeck/protocol";
 import {
+  BookOpen,
   ChevronDown,
+  ChevronRight,
   CircleAlert,
   CircleX,
+  ExternalLink,
   type LucideProps,
   MoreHorizontal,
   Plane,
@@ -69,6 +72,12 @@ function NavButton(props: {
   active?: boolean;
   /** Something waits here: full contrast even when it is not the open screen. */
   strong?: boolean;
+  /** The item has sub-pages: a chevron at its end. */
+  chevron?: boolean;
+  /** A recent feature: a small badge after the label, already translated ("Beta", "New"). */
+  badge?: string;
+  /** The item leaves the app (the manual): its icon says so. */
+  external?: boolean;
 }) {
   const railName = props.hint ? `${props.label} (${props.hint})` : props.label;
   return (
@@ -80,9 +89,11 @@ function NavButton(props: {
         ITEM,
         props.collapsed && "justify-center px-0",
         (props.active || props.strong) && "text-sidebar-foreground",
-        props.active && "bg-sidebar-accent font-medium",
+        props.active && "nav-active bg-sidebar-accent font-medium",
       )}
-      aria-label={props.name ?? (props.collapsed ? railName : undefined)}
+      aria-label={
+        props.name ?? (props.collapsed ? railName : props.badge ? props.label : undefined)
+      }
       title={props.collapsed ? railName : undefined}
       disabled={props.disabled ?? false}
       onClick={props.onClick}
@@ -100,7 +111,29 @@ function NavButton(props: {
         props.icon
       )}
       {!props.collapsed && <span className="min-w-0 flex-1 truncate">{props.label}</span>}
+      {!props.collapsed && props.badge && (
+        <span
+          data-slot="nav-badge"
+          className="rounded bg-sidebar-accent px-1 font-medium text-[10px] text-sidebar-foreground/80 uppercase"
+        >
+          {props.badge}
+        </span>
+      )}
       {!props.collapsed && props.tail}
+      {!props.collapsed && props.chevron && (
+        <ChevronRight
+          data-slot="nav-chevron"
+          aria-hidden="true"
+          className="size-3.5 shrink-0 text-sidebar-foreground/50"
+        />
+      )}
+      {!props.collapsed && props.external && (
+        <ExternalLink
+          data-slot="nav-external"
+          aria-hidden="true"
+          className="size-3.5 shrink-0 text-sidebar-foreground/50"
+        />
+      )}
     </button>
   );
 }
@@ -141,6 +174,8 @@ function NavGroup(props: {
   collapsed: boolean;
   folded: boolean;
   onToggle(): void;
+  /** Something at the end of the title (the + of Machines). */
+  action?: ReactNode;
   children: ReactNode;
 }) {
   const items = Children.toArray(props.children).filter(Boolean);
@@ -154,18 +189,21 @@ function NavGroup(props: {
   }
   return (
     <fieldset aria-label={props.label} className="sidebar-group">
-      <button
-        type="button"
-        aria-expanded={!props.folded}
-        onClick={props.onToggle}
-        className="sidebar-group-title"
-      >
-        <ChevronDown
-          aria-hidden="true"
-          className={cn("size-3 transition-transform duration-150", props.folded && "-rotate-90")}
-        />
-        {props.label}
-      </button>
+      <div className="sidebar-group-head">
+        <button
+          type="button"
+          aria-expanded={!props.folded}
+          onClick={props.onToggle}
+          className="sidebar-group-title"
+        >
+          <ChevronDown
+            aria-hidden="true"
+            className={cn("size-3 transition-transform duration-150", props.folded && "-rotate-90")}
+          />
+          {props.label}
+        </button>
+        {props.action}
+      </div>
       {!props.folded && items}
     </fieldset>
   );
@@ -220,6 +258,112 @@ export function Sidebar(props: {
     if (navHost) go(build(navHost.id));
   };
 
+  /** The hosts of the Machines group: a dot each in the rail, a list with a menu each otherwise. */
+  const hostsList = collapsed ? (
+    <div className="flex flex-col items-center gap-1 pt-3">
+      {state.hosts.map((host) => (
+        <button
+          key={host.id}
+          type="button"
+          aria-label={t("sidebar.openHost", { host: host.name })}
+          title={host.name}
+          className="flex size-8 items-center justify-center rounded-md hover:bg-sidebar-accent"
+          onClick={() => go({ name: "host", host: host.id })}
+        >
+          <HostDot host={host} t={t} />
+        </button>
+      ))}
+    </div>
+  ) : (
+    <ul className="flex flex-col gap-0.5">
+      {state.hosts.map((host) => (
+        <li key={host.id} className="group flex items-center gap-1">
+          <button
+            type="button"
+            className={cn(ITEM, "min-w-0 flex-1")}
+            aria-label={t("sidebar.openHost", { host: host.name })}
+            onClick={() => go({ name: "host", host: host.id })}
+          >
+            <HostDot host={host} t={t} />
+            <span className="min-w-0 flex-1 truncate">{host.name}</span>
+          </button>
+          {requiredMissing(state.deps[host.id]) && (
+            <CircleX
+              role="img"
+              aria-label={t("hostDeps.badge", { host: host.name })}
+              className="size-3.5 shrink-0 text-status-error"
+            />
+          )}
+          {host.hostInfo?.apiKeySanitized === false && (
+            <TriangleAlert
+              role="img"
+              aria-label={t("sidebar.keyPassed", { host: host.name })}
+              className="size-3.5 shrink-0 text-status-needs-you"
+            />
+          )}
+          {host.hostInfo && host.hostInfo.daemonVersion !== APP_VERSION && (
+            <CircleAlert
+              role="img"
+              aria-label={t("sidebar.versionDiffers", { host: host.name })}
+              className="size-3.5 shrink-0 text-status-needs-you"
+            >
+              <title>
+                {t("sidebar.versionTitle", {
+                  daemon: host.hostInfo.daemonVersion,
+                  app: APP_VERSION,
+                })}
+              </title>
+            </CircleAlert>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6 opacity-0 focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+                aria-label={t("sidebar.hostMenu", { host: host.name })}
+              >
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {/* An incompatible host offers nothing but its page and removal. */}
+              <DropdownMenuItem
+                onSelect={() => {
+                  props.onNewTab();
+                  go({ name: "host", host: host.id });
+                }}
+              >
+                {t("tabs.openInNew")}
+              </DropdownMenuItem>
+              {host.status !== "incompatible" && (
+                <>
+                  <DropdownMenuItem onSelect={() => go({ name: "history", host: host.id })}>
+                    {t("sidebar.hostHistory")}
+                  </DropdownMenuItem>
+                  {hasFeature(host.hostInfo?.features, "workflows", true) && (
+                    <DropdownMenuItem onSelect={() => go({ name: "projects", host: host.id })}>
+                      {t("sidebar.hostProjects")}
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onSelect={() => props.onNewSession(host.id)}>
+                    {t("sidebar.newSession")}
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuItem onSelect={() => setRenaming(host)}>
+                {t("hostPage.rename")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setRemoving(host)}>
+                {t("sidebar.removeHost")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: the double click only repeats what a click on an item already did
     <div
@@ -238,46 +382,6 @@ export function Sidebar(props: {
         go={go}
       />
       <nav aria-label={t("sidebarGroups.main")} className="sidebar-nav">
-        <NavButton
-          collapsed={collapsed}
-          icon={<NavIcon name="sessions" aria-hidden="true" className={icon} />}
-          active={here === "sessions"}
-          label={t("sidebar.sessions")}
-          name={t("sidebar.openSessions")}
-          onClick={() => go({ name: "hub" })}
-        />
-        <NavButton
-          collapsed={collapsed}
-          icon={<NavIcon name="needs-you" aria-hidden="true" className={icon} />}
-          active={here === "needs-you"}
-          strong={pending > 0}
-          attention={pending > 0}
-          {...(pending > 0 ? { hint: String(pending) } : {})}
-          label={t("sidebar.needsYou")}
-          onClick={() => go({ name: "needs-you" })}
-          tail={
-            pending > 0 && (
-              <Badge className="h-4 min-w-4 px-1 tabular-nums" variant="default">
-                {pending}
-              </Badge>
-            )
-          }
-        />
-        <NavButton
-          collapsed={collapsed}
-          icon={<NavIcon name="projects" aria-hidden="true" className={icon} />}
-          active={here === "projects"}
-          label={t("sidebar.projects")}
-          onClick={() => go({ name: "all-projects" })}
-        />
-        <NavButton
-          collapsed={collapsed}
-          icon={<NavIcon name="board" aria-hidden="true" className={icon} />}
-          active={here === "board"}
-          label={t("sidebar.board")}
-          disabled={!navHost}
-          onClick={() => navHost && props.onOpenProjectScreen(navHost.id, "board")}
-        />
         <NavGroup
           id="work"
           label={t("sidebarGroups.work")}
@@ -287,12 +391,89 @@ export function Sidebar(props: {
         >
           <NavButton
             collapsed={collapsed}
+            icon={<NavIcon name="sessions" aria-hidden="true" className={icon} />}
+            active={here === "sessions"}
+            label={t("sidebar.sessions")}
+            name={t("sidebar.openSessions")}
+            onClick={() => go({ name: "hub" })}
+          />
+          <NavButton
+            collapsed={collapsed}
+            icon={<NavIcon name="needs-you" aria-hidden="true" className={icon} />}
+            active={here === "needs-you"}
+            strong={pending > 0}
+            attention={pending > 0}
+            {...(pending > 0 ? { hint: String(pending) } : {})}
+            label={t("sidebar.needsYou")}
+            onClick={() => go({ name: "needs-you" })}
+            tail={
+              pending > 0 && (
+                <Badge className="h-4 min-w-4 px-1 tabular-nums" variant="default">
+                  {pending}
+                </Badge>
+              )
+            }
+          />
+          <NavButton
+            collapsed={collapsed}
+            icon={<NavIcon name="projects" aria-hidden="true" className={icon} />}
+            active={here === "projects"}
+            label={t("sidebar.projects")}
+            onClick={() => go({ name: "all-projects" })}
+          />
+          <NavButton
+            collapsed={collapsed}
+            icon={<NavIcon name="board" aria-hidden="true" className={icon} />}
+            active={here === "board"}
+            label={t("sidebar.board")}
+            disabled={!navHost}
+            onClick={() => navHost && props.onOpenProjectScreen(navHost.id, "board")}
+          />
+        </NavGroup>
+        <NavGroup
+          id="automation"
+          label={t("sidebarGroups.automation")}
+          collapsed={collapsed}
+          folded={folded.includes("automation")}
+          onToggle={() => toggle("automation")}
+        >
+          <NavButton
+            collapsed={collapsed}
             icon={<NavIcon name="workflows" aria-hidden="true" className={icon} />}
             active={here === "workflows"}
             label={t("sidebar.workflows")}
             disabled={!navHost}
             onClick={() => navHost && props.onOpenProjectScreen(navHost.id, "workflows")}
           />
+          {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "teams", false)) && (
+            <NavButton
+              collapsed={collapsed}
+              icon={<NavIcon name="teams" aria-hidden="true" className={icon} />}
+              active={here === "teams"}
+              label={t("sidebar.teams")}
+              badge={t("sidebar.badgeBeta")}
+              onClick={() => go({ name: "teams" })}
+            />
+          )}
+          {/* Hosts from phase 21 carry messages between sessions. */}
+          {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "messaging", false)) && (
+            <NavButton
+              collapsed={collapsed}
+              icon={<NavIcon name="conversations" aria-hidden="true" className={icon} />}
+              active={here === "conversations"}
+              label={t("sidebar.conversations")}
+              badge={t("sidebar.badgeNew")}
+              onClick={() => go({ name: "conversations" })}
+            />
+          )}
+        </NavGroup>
+        <NavGroup
+          id="observability"
+          label={t("sidebarGroups.observability")}
+          collapsed={collapsed}
+          folded={folded.includes("observability")}
+          onToggle={() => toggle("observability")}
+        >
           {/* Hosts from phase 8 on read their costs from the transcripts. */}
           {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "costs", false)) && (
             <NavButton
@@ -303,25 +484,13 @@ export function Sidebar(props: {
               onClick={() => go({ name: "costs" })}
             />
           )}
-          {/* Hosts from phase 21 carry messages between sessions. */}
-          {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "messaging", false)) && (
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="conversations" aria-hidden="true" className={icon} />}
-              active={here === "conversations"}
-              label={t("sidebar.conversations")}
-              onClick={() => go({ name: "conversations" })}
-            />
-          )}
-          {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "teams", false)) && (
-            <NavButton
-              collapsed={collapsed}
-              icon={<NavIcon name="teams" aria-hidden="true" className={icon} />}
-              active={here === "teams"}
-              label={t("sidebar.teams")}
-              onClick={() => go({ name: "teams" })}
-            />
-          )}
+          <NavButton
+            collapsed={collapsed}
+            icon={<NavIcon name="history" aria-hidden="true" className={icon} />}
+            label={t("sidebar.history")}
+            disabled={!navHost}
+            onClick={needHost((host) => ({ name: "history", host }))}
+          />
         </NavGroup>
         <NavGroup
           id="library"
@@ -361,16 +530,29 @@ export function Sidebar(props: {
             collapsed={collapsed}
             icon={<NavIcon name="vault" aria-hidden="true" className={icon} />}
             label={t("sidebar.vault")}
+            chevron
             onClick={() => go({ name: "vault" })}
           />
         </NavGroup>
         <NavGroup
-          id="infra"
-          label={t("sidebarGroups.infra")}
+          id="machines"
+          label={t("sidebarGroups.machines")}
           collapsed={collapsed}
-          folded={folded.includes("infra")}
-          onToggle={() => toggle("infra")}
+          folded={folded.includes("machines")}
+          onToggle={() => toggle("machines")}
+          action={
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-6"
+              aria-label={t("sidebar.addHost")}
+              onClick={() => go({ name: "add-host" })}
+            >
+              <Plus />
+            </Button>
+          }
         >
+          {hostsList}
           {/* Hosts from phase 15 keep ssh destinos. */}
           {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "ssh", false)) && (
             <NavButton
@@ -380,143 +562,12 @@ export function Sidebar(props: {
               onClick={() => go({ name: "connections" })}
             />
           )}
-          <NavButton
-            collapsed={collapsed}
-            icon={<NavIcon name="history" aria-hidden="true" className={icon} />}
-            label={t("sidebar.history")}
-            disabled={!navHost}
-            onClick={needHost((host) => ({ name: "history", host }))}
-          />
         </NavGroup>
       </nav>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {collapsed ? (
-          <div className="flex flex-col items-center gap-1 pt-3">
-            {state.hosts.map((host) => (
-              <button
-                key={host.id}
-                type="button"
-                aria-label={t("sidebar.openHost", { host: host.name })}
-                title={host.name}
-                className="flex size-8 items-center justify-center rounded-md hover:bg-sidebar-accent"
-                onClick={() => go({ name: "host", host: host.id })}
-              >
-                <HostDot host={host} t={t} />
-              </button>
-            ))}
-          </div>
-        ) : (
+        {!collapsed && (
           <>
-            <SectionTitle
-              label={t("sidebar.hosts")}
-              open={hostsOpen}
-              onToggle={() => setHostsOpen(!hostsOpen)}
-              action={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-6"
-                  aria-label={t("sidebar.addHost")}
-                  onClick={() => go({ name: "add-host" })}
-                >
-                  <Plus />
-                </Button>
-              }
-            />
-            {hostsOpen && (
-              <ul className="flex flex-col gap-0.5">
-                {state.hosts.map((host) => (
-                  <li key={host.id} className="group flex items-center gap-1">
-                    <button
-                      type="button"
-                      className={cn(ITEM, "min-w-0 flex-1")}
-                      aria-label={t("sidebar.openHost", { host: host.name })}
-                      onClick={() => go({ name: "host", host: host.id })}
-                    >
-                      <HostDot host={host} t={t} />
-                      <span className="min-w-0 flex-1 truncate">{host.name}</span>
-                    </button>
-                    {requiredMissing(state.deps[host.id]) && (
-                      <CircleX
-                        role="img"
-                        aria-label={t("hostDeps.badge", { host: host.name })}
-                        className="size-3.5 shrink-0 text-status-error"
-                      />
-                    )}
-                    {host.hostInfo?.apiKeySanitized === false && (
-                      <TriangleAlert
-                        role="img"
-                        aria-label={t("sidebar.keyPassed", { host: host.name })}
-                        className="size-3.5 shrink-0 text-status-needs-you"
-                      />
-                    )}
-                    {host.hostInfo && host.hostInfo.daemonVersion !== APP_VERSION && (
-                      <CircleAlert
-                        role="img"
-                        aria-label={t("sidebar.versionDiffers", { host: host.name })}
-                        className="size-3.5 shrink-0 text-status-needs-you"
-                      >
-                        <title>
-                          {t("sidebar.versionTitle", {
-                            daemon: host.hostInfo.daemonVersion,
-                            app: APP_VERSION,
-                          })}
-                        </title>
-                      </CircleAlert>
-                    )}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-6 opacity-0 focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
-                          aria-label={t("sidebar.hostMenu", { host: host.name })}
-                        >
-                          <MoreHorizontal />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        {/* An incompatible host offers nothing but its page and removal. */}
-                        <DropdownMenuItem
-                          onSelect={() => {
-                            props.onNewTab();
-                            go({ name: "host", host: host.id });
-                          }}
-                        >
-                          {t("tabs.openInNew")}
-                        </DropdownMenuItem>
-                        {host.status !== "incompatible" && (
-                          <>
-                            <DropdownMenuItem
-                              onSelect={() => go({ name: "history", host: host.id })}
-                            >
-                              {t("sidebar.hostHistory")}
-                            </DropdownMenuItem>
-                            {hasFeature(host.hostInfo?.features, "workflows", true) && (
-                              <DropdownMenuItem
-                                onSelect={() => go({ name: "projects", host: host.id })}
-                              >
-                                {t("sidebar.hostProjects")}
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onSelect={() => props.onNewSession(host.id)}>
-                              {t("sidebar.newSession")}
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                        <DropdownMenuItem onSelect={() => setRenaming(host)}>
-                          {t("hostPage.rename")}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => setRemoving(host)}>
-                          {t("sidebar.removeHost")}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </li>
-                ))}
-              </ul>
-            )}
             {pinned.length > 0 && (
               <>
                 <SectionTitle
@@ -565,7 +616,19 @@ export function Sidebar(props: {
           collapsed={collapsed}
           icon={<NavIcon name="settings" aria-hidden="true" className={icon} />}
           label={t("sidebar.settings")}
+          chevron
           onClick={() => go({ name: "settings" })}
+        />
+        <NavButton
+          collapsed={collapsed}
+          icon={<BookOpen aria-hidden="true" className={icon} />}
+          label={t("sidebar.manual")}
+          external
+          onClick={() =>
+            void props.store.openLink(
+              `https://github.com/jnerytech/flightdeck/blob/main/docs/manual/${t.lang === "pt-BR" ? "pt-BR" : "en"}.md`,
+            )
+          }
         />
         <NavButton
           collapsed={collapsed}

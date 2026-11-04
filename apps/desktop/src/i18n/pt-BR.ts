@@ -752,7 +752,10 @@ export const ptBR = {
     board: "Board",
     workflows: "Workflows",
     costs: "Custos",
-    connections: "Conexões",
+    connections: "SSH",
+    manual: "Manual",
+    badgeBeta: "Beta",
+    badgeNew: "Novo",
     snippets: "Snippets",
     personas: "Personas",
     plugins: "Plugins",
@@ -3012,8 +3015,10 @@ export const ptBR = {
   sidebarGroups: {
     main: "Principal",
     work: "Trabalho",
+    automation: "Automação",
+    observability: "Observabilidade",
     library: "Biblioteca",
-    infra: "Infra",
+    machines: "Máquinas",
   },
   settingsRail: {
     label: "Seções das configurações",

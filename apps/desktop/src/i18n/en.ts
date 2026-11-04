@@ -756,7 +756,10 @@ export const en: Dictionary = {
     board: "Board",
     workflows: "Workflows",
     costs: "Costs",
-    connections: "Connections",
+    connections: "SSH",
+    manual: "Manual",
+    badgeBeta: "Beta",
+    badgeNew: "New",
     snippets: "Snippets",
     personas: "Personas",
     plugins: "Plugins",
@@ -3010,8 +3013,10 @@ export const en: Dictionary = {
   sidebarGroups: {
     main: "Main",
     work: "Work",
+    automation: "Automation",
+    observability: "Observability",
     library: "Library",
-    infra: "Infra",
+    machines: "Machines",
   },
   settingsRail: {
     label: "Settings sections",

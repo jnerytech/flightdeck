@@ -38,7 +38,7 @@ async function open() {
   cleanups.push(() => store.dispose());
   const hostId = await store.addHost({ name: "pc", url: d.url, token: TOKEN });
   render(<App store={store} />);
-  await settle(() => screen.queryByRole("button", { name: "Conexões" }) !== null);
+  await settle(() => screen.queryByRole("button", { name: "SSH" }) !== null);
   return { d, store, hostId };
 }
 

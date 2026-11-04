@@ -25,13 +25,16 @@ afterEach(async () => {
  * `hit-24` / `hit-inline` (styles.css) are the same height as one shared class, so a screen does
  * not count a raw layout utility for it.
  */
-const TALL = ["min-h-6", "hit-24", "hit-inline"];
+const TALL = ["min-h-6", "hit-24", "hit-inline", "sidebar-group-title"];
 const tall = (el: Element | null) =>
   (el?.className ?? "").split(" ").some((name) => TALL.includes(name));
 /** The screens the layout ratchet counts must use the shared class, never the raw utility. */
 const shared = (el: Element | null) => {
   const names = (el?.className ?? "").split(" ");
-  return !names.includes("min-h-6") && names.some((name) => name.startsWith("hit-"));
+  return (
+    !names.includes("min-h-6") &&
+    names.some((name) => name.startsWith("hit-") || name === "sidebar-group-title")
+  );
 };
 
 describe("alvos: raw buttons keep a 24 px target", () => {
@@ -41,7 +44,11 @@ describe("alvos: raw buttons keep a 24 px target", () => {
     const sectionTitles = () =>
       screen
         .queryAllByRole("button")
-        .filter((b) => b.hasAttribute("aria-expanded") && b.className.includes("uppercase"));
+        .filter(
+          (b) =>
+            b.hasAttribute("aria-expanded") &&
+            (b.className.includes("uppercase") || b.className.includes("sidebar-group-title")),
+        );
     await settle(() => sectionTitles().length > 0);
     const titles = sectionTitles();
     expect(titles.length).toBeGreaterThan(0);

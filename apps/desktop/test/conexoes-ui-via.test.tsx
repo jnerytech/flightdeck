@@ -46,9 +46,9 @@ async function open(via: SshDaemonOptions = {}, vpsOnline = true) {
   });
   pc.targets.push(bastion, inner);
   render(<App store={store} />);
-  await settle(() => screen.queryByRole("button", { name: "Conexões" }) !== null);
+  await settle(() => screen.queryByRole("button", { name: "SSH" }) !== null);
   await act(async () => {
-    fireEvent.click(screen.queryByRole("button", { name: "Conexões" }) as HTMLElement);
+    fireEvent.click(screen.queryByRole("button", { name: "SSH" }) as HTMLElement);
   });
   await settle(() => screen.queryByRole("button", { name: "Conectar inner" }) !== null);
   return { pc, vps, store, pcId, vpsId };

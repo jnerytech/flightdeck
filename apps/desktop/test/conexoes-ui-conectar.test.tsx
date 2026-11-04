@@ -30,9 +30,9 @@ async function open(hostKey?: SshHostKeyCheck) {
   cleanups.push(() => store.dispose());
   const hostId = await store.addHost({ name: "pc", url: d.url, token: TOKEN });
   render(<App store={store} />);
-  await settle(() => screen.queryByRole("button", { name: "Conexões" }) !== null);
+  await settle(() => screen.queryByRole("button", { name: "SSH" }) !== null);
   await act(async () => {
-    fireEvent.click(screen.queryByRole("button", { name: "Conexões" }) as HTMLElement);
+    fireEvent.click(screen.queryByRole("button", { name: "SSH" }) as HTMLElement);
   });
   await settle(() => screen.queryByRole("button", { name: "Conectar vps" }) !== null);
   return { d, store, hostId };

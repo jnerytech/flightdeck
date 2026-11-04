@@ -43,8 +43,8 @@ async function open(options: Parameters<typeof sshDaemon>[1] = { targets: TARGET
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
   render(<App store={store} />);
   // Mounting the app reconnects the host, which announces its features again.
-  await settle(() => screen.queryByRole("button", { name: "Conexões" }) !== null);
-  const nav = screen.queryByRole("button", { name: "Conexões" });
+  await settle(() => screen.queryByRole("button", { name: "SSH" }) !== null);
+  const nav = screen.queryByRole("button", { name: "SSH" });
   expect(nav).not.toBeNull();
   await act(async () => {
     fireEvent.click(nav as HTMLElement);
@@ -73,7 +73,7 @@ describe("conexoes-ui: the screen", () => {
     await settle(() => store.getState().hosts.every((h) => h.status === "online"));
     await settle(() => d.commands.some((c) => c.type === "host.info"));
     render(<App store={store} />);
-    await stays(() => screen.queryByRole("button", { name: "Conexões" }) === null, 100);
+    await stays(() => screen.queryByRole("button", { name: "SSH" }) === null, 100);
   });
 
   test("each destino shows its name, user@host:port and tags, with Conectar, Editar, Duplicar and Remover", async () => {
