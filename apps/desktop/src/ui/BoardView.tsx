@@ -330,19 +330,16 @@ export const BoardView = memo(function BoardView(props: {
   });
 
   const create = async () => {
-    const column = createIn;
+    // The column whose + was pressed is part of the command: one step, nothing to move afterwards.
     const made = await store.hostCommand(hostId, "card.create", {
       projectId,
       title: title.trim(),
       description,
+      ...(createIn === "backlog" ? {} : { column: createIn }),
     });
     // Issue #229: only a card that exists closes the dialog; a refused one keeps what was typed
     // (the banner says why). A made card says so, with a way to open it (issue #188).
     if (!made) return made;
-    // A card is born in the Backlog: the column whose + was pressed gets it right after (#115).
-    if (column !== "backlog") {
-      void store.hostCommand(hostId, "card.move", { cardId: made.id, column });
-    }
     close();
     store.success(t("kanban.created", { title: made.title }), {
       label: t("kanban.openCard"),
