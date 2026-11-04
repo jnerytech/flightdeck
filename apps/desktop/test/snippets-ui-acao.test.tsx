@@ -62,12 +62,22 @@ describe("snippets-ui: a secret's snippet becomes an action", () => {
     await act(async () => {
       fireEvent.click(screen.queryByRole("button", { name: "Snippets" }) as HTMLElement);
     });
-    await settle(
-      () =>
-        (screen.queryByLabelText("Projeto") as HTMLSelectElement | null)?.querySelector(
-          `option[value="${h.repo}"]`,
-        ) != null,
-    );
+    try {
+      await settle(
+        () =>
+          (screen.queryByLabelText("Projeto") as HTMLSelectElement | null)?.querySelector(
+            `option[value="${h.repo}"]`,
+          ) != null,
+      );
+    } catch (error) {
+      // A CI log is all there is of a run on another platform: say what the select held.
+      const held = [
+        ...((screen.queryByLabelText("Projeto") as HTMLSelectElement | null)?.options ?? []),
+      ].map((o) => o.value);
+      throw new Error(
+        `${(error as Error).message}; wanted ${h.repo}, the select held ${JSON.stringify(held)}`,
+      );
+    }
     const fill = async (label: string, value: string) => {
       const field = screen.queryByLabelText(label);
       expect(field).not.toBeNull();
