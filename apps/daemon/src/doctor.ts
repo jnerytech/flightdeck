@@ -10,6 +10,8 @@ export interface DoctorDeps {
   isDirectory(path: string): boolean | Promise<boolean>;
   serviceInstalled(): Promise<boolean>;
   healthy(): Promise<boolean>;
+  /** When nothing healthy answers: the address the daemon refused, if that is why. */
+  refused?(): Promise<string | null>;
   tailscaleIp(): Promise<string | null>;
   hooks(): HooksState | Promise<HooksState>;
   claudePath(): string | null;
