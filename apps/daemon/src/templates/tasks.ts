@@ -20,6 +20,15 @@ const PREVIEW_BYTES = 65_536;
 /** What opens in a preview first: text, Markdown and CSV. */
 const PREVIEWABLE = /\.(txt|md|markdown|csv)$/i;
 
+/** What a file system call gives, or `fallback` when it fails (a folder or file that is gone). */
+async function orElse<T, F>(run: () => Promise<T>, fallback: F): Promise<T | F> {
+  try {
+    return await run();
+  } catch {
+    return fallback;
+  }
+}
+
 /**
  * Walks `folder` without following links or entering hidden folders, and without git: what a
  * plain file system says. Stops at the bounds instead of running away.
@@ -29,14 +38,14 @@ async function walk(folder: string, into: Snapshot): Promise<void> {
   let seen = 0;
   while (queue.length > 0 && seen < MAX_WALKED) {
     const { dir, depth } = queue.shift() as { dir: string; depth: number };
-    const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+    const entries = await orElse(() => readdir(dir, { withFileTypes: true }), []);
     for (const entry of entries) {
       if (entry.name.startsWith(".")) continue;
       const path = join(dir, entry.name);
       if (entry.isDirectory()) {
         if (depth < MAX_DEPTH) queue.push({ dir: path, depth: depth + 1 });
       } else if (entry.isFile()) {
-        const info = await lstat(path).catch(() => null);
+        const info = await orElse(() => lstat(path), null);
         if (!info) continue;
         into[path] = { size: info.size, mtimeMs: info.mtimeMs };
         if (++seen >= MAX_WALKED) break;
@@ -89,8 +98,8 @@ export class TaskTracker {
       throw refused();
     }
     // A link, or a link anywhere on the way, leads out of the folders: not read.
-    const info = await lstat(target).catch(() => null);
-    const real = await realpath(target).catch(() => null);
+    const info = await orElse(() => lstat(target), null);
+    const real = await orElse(() => realpath(target), null);
     if (
       !info?.isFile() ||
       real === null ||

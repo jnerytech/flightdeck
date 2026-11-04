@@ -78,4 +78,52 @@ describe("mode-switch-ui: the app opens in the host's mode", () => {
     await waitFor(() => screen.getByRole("heading", { name: "Language" }));
     expect(screen.queryByRole("button", { name: "Show everything" })).toBeNull();
   });
+
+  test("Given simple Settings, When the theme, a folder and notifications are changed, Then the app's store takes each", async () => {
+    const { store } = await open({ mode: "simple", locked: false });
+    await act(async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Settings" }));
+    });
+    await waitFor(() => screen.getByRole("heading", { name: "Language" }));
+    await act(async () => {
+      fireEvent.change(screen.getByRole("combobox", { name: "Theme" }), {
+        target: { value: "dark" },
+      });
+    });
+    expect(store.theme.mode).toBe("dark");
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("checkbox", { name: "Tell me when a task needs my answer or is done" }),
+      );
+    });
+    await waitFor(() => expect(store.getState().settings.notifyUpdates).toBe(false));
+    fireEvent.change(screen.getByRole("textbox", { name: "Folder to add" }), {
+      target: { value: "/tmp" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
+    });
+    await waitFor(() =>
+      expect(
+        (screen.getByRole("textbox", { name: "Folder to add" }) as HTMLInputElement).value,
+      ).toBe(""),
+    );
+  });
+
+  test("Given a platform with a folder dialog, When Choose folder is pressed in Settings, Then the pick fills the box", async () => {
+    const mem = memoryPlatform(false, "en");
+    mem.platform.pickFolder = async () => "/tmp/picked";
+    await open({ mode: "simple", locked: false }, mem);
+    await act(async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Settings" }));
+    });
+    await act(async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Choose folder…" }));
+    });
+    await waitFor(() =>
+      expect(
+        (screen.getByRole("textbox", { name: "Folder to add" }) as HTMLInputElement).value,
+      ).toBe("/tmp/picked"),
+    );
+  });
 });

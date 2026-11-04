@@ -150,4 +150,18 @@ describe("settings-simple-ui: five things and nothing else", () => {
     expect(screen.getByRole("heading", { name: "Pastas que as tarefas podem usar" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Mostrar tudo" })).toBeTruthy();
   });
+
+  test("Given the one-line question, When it is cancelled, Then nothing changes and the question closes", async () => {
+    const calls = view();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Show everything" }));
+    });
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("alertdialog")).getByRole("button", { name: "Cancel" }),
+      );
+    });
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(calls).toEqual([]);
+  });
 });

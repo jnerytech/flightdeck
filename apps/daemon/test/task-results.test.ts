@@ -130,6 +130,20 @@ describe("task-results: over the protocol, after a template starts", () => {
   });
 });
 
+describe("task-results: folders and files that are gone", () => {
+  test("Given a folder that does not exist, When a task begins, Then the look is empty and nothing throws", async () => {
+    const tracker = new TaskTracker({ dir: tempDir() });
+    expect(await tracker.prepare([join(tempDir(), "missing")])).toEqual({});
+  });
+
+  test("Given a Markdown file that is not there, When previewed, Then it is refused like any other file it cannot read", async () => {
+    const { tracker, output } = await began();
+    await expect(tracker.preview("s1", join(output, "gone.md"))).rejects.toMatchObject({
+      code: "forbidden_cwd",
+    });
+  });
+});
+
 describe("task-results: a preview of what a task made", () => {
   test("Given a text, Markdown or CSV file the task made, When previewed, Then its start comes back", async () => {
     const { tracker, output } = await began();

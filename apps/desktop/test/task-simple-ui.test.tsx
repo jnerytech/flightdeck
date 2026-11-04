@@ -280,4 +280,33 @@ describe("task-simple-ui: a task, not a transcript", () => {
     expect(screen.getByRole("list", { name: "Arquivos" })).toBeTruthy();
     expect(screen.getByRole("textbox", { name: "Pedir mudanças" })).toBeTruthy();
   });
+
+  test("Given an inline preview, When Close preview is pressed, Then the preview goes away", async () => {
+    view({ ...emptySession(), status: "idle", items: [said("ok"), done] }, { results: files });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Open report.md" }));
+    });
+    await waitFor(() => screen.getByRole("region", { name: "Preview of report.md" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Close preview" }));
+    });
+    expect(screen.queryByRole("region", { name: "Preview of report.md" })).toBeNull();
+  });
+
+  test("Given a done or a stopped task, When Show details is pressed, Then the full view is asked for", async () => {
+    const finished = view(
+      { ...emptySession(), status: "idle", items: [said("ok"), done] },
+      { results: files },
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Show details" }));
+    });
+    expect(finished).toEqual(["details:"]);
+    cleanup();
+    const stopped = view({ ...emptySession(), status: "ended", items: [said("ok")] });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Show details" }));
+    });
+    expect(stopped).toEqual(["details:"]);
+  });
 });

@@ -143,4 +143,47 @@ describe("home-simple-ui: where simple mode begins", () => {
     view({ templates: [] });
     expect(screen.getByText("This computer has no ready-made tasks yet.")).toBeTruthy();
   });
+
+  test("Given a template with a choice and a card opened, When the choice is made and the dialog is dismissed, Then the form answers and closes", async () => {
+    const withChoice: typeof BUILTIN_TEMPLATES = [
+      {
+        id: "tone",
+        title: { en: "Rewrite in a tone", "pt-BR": "Reescrever num tom" },
+        description: { en: "Changes the tone.", "pt-BR": "Muda o tom." },
+        icon: "sparkles",
+        fields: [
+          {
+            id: "tone",
+            kind: "choice",
+            label: { en: "Which tone?", "pt-BR": "Qual tom?" },
+            choices: [
+              { id: "warm", label: { en: "Warm", "pt-BR": "Caloroso" } },
+              { id: "formal", label: { en: "Formal", "pt-BR": "Formal" } },
+            ],
+          },
+        ],
+        prompt: { en: "Rewrite in a {tone} tone.", "pt-BR": "Reescreva num tom {tone}." },
+        preset: "read_only",
+        planFirst: false,
+      },
+    ];
+    const calls = view({ templates: withChoice });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Rewrite in a tone/ }));
+    });
+    const start = () =>
+      screen.getByRole("button", { name: "Start this task" }) as HTMLButtonElement;
+    expect(start().disabled).toBe(true);
+    await act(async () => {
+      fireEvent.change(screen.getByRole("combobox", { name: "Which tone?" }), {
+        target: { value: "warm" },
+      });
+    });
+    await waitFor(() => expect(start().disabled).toBe(false));
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(calls).toEqual([]);
+  });
 });

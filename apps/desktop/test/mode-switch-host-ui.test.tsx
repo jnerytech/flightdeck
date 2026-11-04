@@ -64,4 +64,20 @@ describe("mode-switch-host-ui: the host's own page offers simple mode", () => {
     expect(screen.queryByRole("button", { name: "Use simple mode on this host" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Unlock this host's mode" })).not.toBeNull();
   });
+
+  test("Given the lock question, When it is cancelled, Then the host stays unlocked", async () => {
+    const { store, hostId } = await hostPage({ mode: "full", locked: false });
+    await click("Lock this host to its mode");
+    await click("Cancel");
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(store.getState().hosts.find((h) => h.id === hostId)?.hostInfo?.ui?.locked).toBe(false);
+  });
+
+  test("Given a locked host, When it is unlocked, Then the host says it is open again", async () => {
+    const { store, hostId } = await hostPage({ mode: "full", locked: true });
+    await click("Unlock this host's mode");
+    await waitFor(() =>
+      expect(store.getState().hosts.find((h) => h.id === hostId)?.hostInfo?.ui?.locked).toBe(false),
+    );
+  });
 });
