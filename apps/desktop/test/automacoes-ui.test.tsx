@@ -3,7 +3,7 @@ import { actionsFor, carriesThirdParty, TRIGGER_TYPES } from "../src/lib/automat
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
-import { waiter } from "./wait.ts";
+import { stays, waiter } from "./wait.ts";
 import { workflowDaemon } from "./workflow-fixtures.ts";
 
 registerDom();
@@ -237,9 +237,13 @@ describe("automacoes-ui: the guided creation", () => {
     await click("Próximo");
     await change("Nome da automação", "Ruim");
     await click("Salvar");
-    await act(() => Bun.sleep(300));
-    expect(automationsOf(d)).toHaveLength(0);
-    expect(screen.queryByRole("dialog", { name: "Nova automação" })).not.toBeNull();
+    await stays(
+      () =>
+        automationsOf(d).length === 0 &&
+        screen.queryByRole("dialog", { name: "Nova automação" }) !== null,
+      300,
+      "a bad automation is refused and the dialog stays open",
+    );
   });
 });
 

@@ -4,7 +4,7 @@ import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { personasHost } from "./personas-ui-setup.ts";
-import { settle } from "./wait.ts";
+import { settle, stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -223,8 +223,7 @@ describe("personas-ui: applying a persona to an open session", () => {
     await act(async () => {
       store.router.push({ name: "external", host: hostId, claudeSessionId: "c-2" });
     });
-    await act(() => Bun.sleep(150));
-    expect(screen.queryByRole("button", { name: "Persona" })).toBeNull();
+    await stays(() => screen.queryByRole("button", { name: "Persona" }) === null, 150);
     await act(async () => {
       store.router.push({ name: "external", host: hostId, claudeSessionId: "c-1" });
     });

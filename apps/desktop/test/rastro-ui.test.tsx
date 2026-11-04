@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
-import { settle } from "./wait.ts";
+import { settle, stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -292,8 +292,7 @@ describe("replay: step by step", () => {
     expect(steps()).not.toContain("Passo 1 de");
     await click("Pausar");
     const frozen = steps();
-    await act(() => Bun.sleep(700));
-    expect(steps()).toBe(frozen);
+    await stays(() => steps() === frozen, 700, "a paused replay stays on its step");
     await click("Tocar");
     await settle(() => steps().includes("Passo 10 de 11"), 6000);
     expect(steps()).toContain("Passo 10 de 11");

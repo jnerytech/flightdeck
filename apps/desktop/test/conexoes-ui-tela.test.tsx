@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sshDaemon, sshTarget } from "./ssh-daemon.ts";
-import { waiter } from "./wait.ts";
+import { stays, waiter } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -73,8 +73,7 @@ describe("conexoes-ui: the screen", () => {
     await settle(() => store.getState().hosts.every((h) => h.status === "online"));
     await settle(() => d.commands.some((c) => c.type === "host.info"));
     render(<App store={store} />);
-    await act(() => Bun.sleep(30));
-    expect(screen.queryByRole("button", { name: "Conexões" })).toBeNull();
+    await stays(() => screen.queryByRole("button", { name: "Conexões" }) === null, 100);
   });
 
   test("each destino shows its name, user@host:port and tags, with Conectar, Editar, Duplicar and Remover", async () => {

@@ -3,7 +3,7 @@ import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts"
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
-import { waiter } from "./wait.ts";
+import { stays, waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -371,9 +371,13 @@ describe("custos-ui", () => {
       await store.addHost({ name: "velho", url: legacy.url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
-    await act(() => Bun.sleep(50));
-    expect(screen.queryByRole("button", { name: "Custos" })).toBeNull();
-    expect(legacy.asked.some((t) => t.startsWith("costs."))).toBe(false);
+    await stays(
+      () =>
+        screen.queryByRole("button", { name: "Custos" }) === null &&
+        !legacy.asked.some((t) => t.startsWith("costs.")),
+      100,
+      "a host without costs shows no Custos button and is never asked for costs",
+    );
     expect(store.getState().error).toBeNull();
     // A phase 7 host (quota, no costs) keeps the usage panel of the SDK.
     cleanup();
