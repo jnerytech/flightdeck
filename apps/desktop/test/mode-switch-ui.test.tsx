@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, waitFor as pollFor, TOKEN } from "./fixtures.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
@@ -31,6 +32,8 @@ async function open(
 }
 
 const nav = () => screen.getByRole("navigation", { name: "Simple mode" });
+const folderBox = () =>
+  screen.queryByRole("textbox", { name: "Folder to add" }) as HTMLInputElement | null;
 
 describe("mode-switch-ui: the app opens in the host's mode", () => {
   test("Given a host set to simple, Then the app shows Home with templates and a narrow menu of three, and none of the full app's screens", async () => {
@@ -103,10 +106,11 @@ describe("mode-switch-ui: the app opens in the host's mode", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
     });
-    await waitFor(() =>
-      expect(
-        (screen.getByRole("textbox", { name: "Folder to add" }) as HTMLInputElement).value,
-      ).toBe(""),
+    // The box clears when the host answers roots.add: the project's wait, not Testing Library's 1 s.
+    await settle(
+      () => folderBox()?.value === "",
+      undefined,
+      "the folder box cleared after Add folder",
     );
   });
 
@@ -128,10 +132,11 @@ describe("mode-switch-ui: the app opens in the host's mode", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
     });
-    await waitFor(() =>
-      expect(
-        (screen.getByRole("textbox", { name: "Folder to add" }) as HTMLInputElement).value,
-      ).toBe(""),
+    // The box clears when the host answers roots.add: the project's wait, not Testing Library's 1 s.
+    await settle(
+      () => folderBox()?.value === "",
+      undefined,
+      "the folder box cleared after Add folder",
     );
   });
 
