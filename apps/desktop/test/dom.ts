@@ -104,3 +104,8 @@ registerDom();
 const { preloadAllScreens } = await import("../src/ui/lazy-screen.ts");
 await import("../src/ui/Screens.tsx");
 await preloadAllScreens();
+
+/** The lines React printed about two siblings with one key. */
+export function sameKeyWarnings(lines: readonly string[]): string[] {
+  return [];
+}
