@@ -160,7 +160,7 @@ export function HostPage(props: {
                 onSeeAllProjects={props.onSeeAllProjects}
                 onNewSession={props.onNewSession}
               />
-              {hasFeature(info?.features, "deps", false) && (
+              {hasFeature(info?.features, "depsCheck", false) && (
                 <HostDeps
                   store={store}
                   deps={overviewState.deps[host.id] ?? null}

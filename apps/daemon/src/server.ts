@@ -445,7 +445,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     // A message may carry images (`session.send` with `images`).
     "session.images",
     ...(opts.doctor ? ["doctor.run"] : []),
-    ...(opts.deps ? ["deps"] : []),
+    ...(opts.deps ? ["depsCheck"] : []),
     ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
     ...(opts.github ? ["github"] : []),
     ...(opts.boardsync ? ["boardsync"] : []),
@@ -1747,7 +1747,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           await cloneRepo(command.payload, opts.allowedRoots, opts.git ?? spawnGit),
         );
       case "deps.check":
-        if (!opts.deps) throw featureOff("deps");
+        if (!opts.deps) throw featureOff("depsCheck");
         return ok(command.type, await opts.deps());
       case "doctor.run":
         if (!opts.doctor) throw featureOff("doctor.run");

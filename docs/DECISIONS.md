@@ -3504,7 +3504,7 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 
 ## The host's dependencies (issue #121)
 
-- **One command, the doctor's probes.** `deps.check` (feature `deps`) answers `{ items }`, each with its group, state (`ok`, `outdated`,
+- **One command, the doctor's probes.** `deps.check` (feature `depsCheck`: `deps` already names the cards' dependencies) answers `{ items }`, each with its group, state (`ok`, `outdated`,
   `missing`, `na`), version, path, the least version, the features that break (ids the app translates) and a fix per OS. Programs are
   found with `whichOnPath` and asked `--version`; git needs 2.5 for worktrees. Fake CLIs and fakes of the machine drive the tests.
 - **What the first draft left out, on purpose.** Claude Code is found and versioned, not asked whether it is signed in (that is the
@@ -3515,6 +3515,6 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   warning, OK a green check, not applicable a gray dash; each row and the headline also say it in words. The green is a new token
   (`--status-ok`) held to the AA contrast test of the other status colors in both themes.
 - **The sidebar.** The host gets a red mark (with a label) when a required dependency is missing or outdated; the app asks each host
-  that announces `deps` once it is connected, and Check again updates the mark.
+  that announces `depsCheck` once it is connected, and Check again updates the mark.
 - **`flightdeckd doctor`** prints the same grouping after its own checks (`formatDeps`), in English like the rest of the terminal output.
 - **Not in this change:** the link to the manual from each row.

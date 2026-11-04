@@ -199,7 +199,7 @@ describe("deps-check: over the protocol", () => {
     const client = new FrameClient(serve(true).url);
     await client.request("hello", { token: TOKEN, client: "t" });
     const info = await client.data<{ features: string[] }>("host.info", {});
-    expect(info?.features).toContain("deps");
+    expect(info?.features).toContain("depsCheck");
     const got = await client.data<{ items: DepResult[] }>("deps.check", {});
     expect(find(got?.items ?? [], "gh").state).toBe("missing");
     client.close();
@@ -209,7 +209,7 @@ describe("deps-check: over the protocol", () => {
     const client = new FrameClient(serve(false).url);
     await client.request("hello", { token: TOKEN, client: "t" });
     const info = await client.data<{ features: string[] }>("host.info", {});
-    expect(info?.features).not.toContain("deps");
+    expect(info?.features).not.toContain("depsCheck");
     const ack = await client.request("deps.check", {});
     expect(ack.ok).toBe(false);
     client.close();

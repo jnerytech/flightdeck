@@ -2323,7 +2323,7 @@ export class AppStore {
     }
     // Phase 19: the daemon decides a request with the rules the app hands it.
     if (hasFeature(hostInfo?.features, "actions", false)) this.sendVaultRules(hostId, conn);
-    if (hasFeature(hostInfo?.features, "deps", false)) void this.checkDeps(hostId);
+    if (hasFeature(hostInfo?.features, "depsCheck", false)) void this.checkDeps(hostId);
     if (hasFeature(hostInfo?.features, "costs", false)) {
       const list = await conn.request("budget.list", {}).catch(() => null);
       if (list) this.update({ budgets: { ...this.state.budgets, [hostId]: list.budgets } });
