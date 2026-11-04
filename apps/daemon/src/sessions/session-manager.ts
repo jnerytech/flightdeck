@@ -198,17 +198,21 @@ export class SessionManager {
 
   /** Open permission requests of a session, oldest first, as its summaries list them. */
   pendingPermissions(sessionId: string): PendingPermission[] {
-    return this.store.pendingPermissions(sessionId).map((p) => {
-      const risk = this.classify(sessionId, p.toolName, p.input);
-      return {
-        requestId: p.id,
-        toolName: p.toolName,
-        createdAt: p.createdAt,
-        input: summarizeInput(p.input),
-        risk: risk.level,
-        riskReason: risk.reason,
-      };
-    });
+    // A request the host is still wording (phase 33) is not announced yet, so it is not listed yet.
+    return this.store
+      .pendingPermissions(sessionId)
+      .filter((p) => this.broker.isAnnounced(p.id))
+      .map((p) => {
+        const risk = this.classify(sessionId, p.toolName, p.input);
+        return {
+          requestId: p.id,
+          toolName: p.toolName,
+          createdAt: p.createdAt,
+          input: summarizeInput(p.input),
+          risk: risk.level,
+          riskReason: risk.reason,
+        };
+      });
   }
 
   /** A request's risk, against the session's cwd. */
