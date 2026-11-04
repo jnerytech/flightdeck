@@ -4,7 +4,6 @@
  */
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import {
-  chmodSync,
   mkdirSync,
   readFileSync,
   rmSync,
@@ -12,6 +11,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from "node:fs";
+import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { withIdleQuery } from "../src/account/readers.ts";
 import { excludeLocalSettingsAsync, freshBase } from "../src/board/worktree.ts";
@@ -252,10 +252,14 @@ describe("cobertura-0330: project finder, ssh agent", () => {
     const root = tempDir("fd-cob-scan-");
     for (const name of ["a/.git", "locked/inner/.git", "b/.git"])
       mkdirSync(join(root, name), { recursive: true });
-    chmodSync(join(root, "locked"), 0o000);
-    cleanups.push(() => chmodSync(join(root, "locked"), 0o755));
-    const found = await scanRepos([root]);
-    expect(found.repos.map((r) => r.name)).toEqual(expect.arrayContaining(["a", "b"]));
+    // A listing that fails for one folder, on every OS (chmod 000 does nothing on Windows).
+    const failing = (async (dir: Parameters<typeof readdir>[0], ...rest: unknown[]) => {
+      if (String(dir).endsWith("locked"))
+        throw Object.assign(new Error("EACCES"), { code: "EACCES" });
+      return (readdir as (...args: unknown[]) => Promise<unknown>)(dir, ...rest);
+    }) as typeof readdir;
+    const found = await scanRepos([root], { readdir: failing });
+    expect(found.repos.map((r) => r.name).sort()).toEqual(["a", "b"]);
   });
 
   test("a scan stops after opening 2000 folders and says it was cut short", async () => {

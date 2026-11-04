@@ -9,6 +9,8 @@ export interface ScanOptions {
   depth?: number;
   /** The most repositories returned (200 by default). */
   cap?: number;
+  /** How a folder is listed (`fs/promises` by default); tests pass one that fails for a folder. */
+  readdir?: typeof readdir;
 }
 
 const DEFAULT_DEPTH = 2;
