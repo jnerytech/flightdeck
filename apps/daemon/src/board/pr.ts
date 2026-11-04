@@ -140,12 +140,16 @@ export interface PrProvider {
   buildLog(opts: { cwd: string; url: string; buildId: string }): Promise<string>;
 }
 
+/** Starts a program that was found: runCommand, or a stand-in that starts nothing. */
+export type CommandRunner = (cmd: string[], cwd: string, input?: string) => Promise<CommandResult>;
+
 /** Runs a CLI looked up on the current PATH (so the tests' fakes win). */
 export async function cli(
   name: string,
   args: string[],
   cwd: string,
   input?: string,
+  run: CommandRunner = runCommand,
 ): Promise<CommandResult> {
   const bin = whichOnPath(name);
   if (!bin)
@@ -154,7 +158,7 @@ export async function cli(
     });
   // The Azure CLI's free text is made safe for its .cmd shim (az-text.ts); the others keep theirs.
   const safe = name === "az" ? sanitizeAzArgs(args) : args;
-  return runCommand([bin, ...safe], cwd, input).catch(mapSpawnError);
+  return run([bin, ...safe], cwd, input).catch(mapSpawnError);
 }
 
 /** Stdout of a CLI call that must succeed; the error names the subcommand (`gh pr view`). */
@@ -163,8 +167,9 @@ export async function cliOk(
   args: string[],
   cwd: string,
   input?: string,
+  run: CommandRunner = runCommand,
 ): Promise<string> {
-  const result = await cli(name, args, cwd, input);
+  const result = await cli(name, args, cwd, input, run);
   if (result.code !== 0) {
     const what = [name, ...args.slice(0, name === "az" ? 3 : 2)].join(" ");
     throw new FlightdeckError(
@@ -201,7 +206,8 @@ export const cliJson = async <T>(
   args: string[],
   cwd: string,
   input?: string,
-): Promise<T> => JSON.parse(await cliOk(name, args, cwd, input)) as T;
+  run: CommandRunner = runCommand,
+): Promise<T> => JSON.parse(await cliOk(name, args, cwd, input, run)) as T;
 
 /** Worst check wins: any failure fails, anything unfinished is pending; no checks, `null`. */
 function summarize(results: Array<"passing" | "failing" | "pending">): ChecksState | null {
@@ -256,20 +262,44 @@ export function tail(text: string, limit: number): string {
     .replace(/^\uFFFD+/, "")}`;
 }
 
+/**
+ * A PR host over its CLI. `run` starts the program found on PATH: runCommand, or a stand-in a test
+ * hands over so that no process starts (the lookup, the safe text and the errors stay the same).
+ */
+abstract class CliProvider {
+  protected readonly run: CommandRunner;
+
+  constructor(opts: { run?: CommandRunner } = {}) {
+    this.run = opts.run ?? runCommand;
+  }
+
+  protected call(name: string, args: string[], cwd: string, input?: string) {
+    return cli(name, args, cwd, input, this.run);
+  }
+
+  protected ok(name: string, args: string[], cwd: string, input?: string) {
+    return cliOk(name, args, cwd, input, this.run);
+  }
+
+  protected json<T>(name: string, args: string[], cwd: string, input?: string) {
+    return cliJson<T>(name, args, cwd, input, this.run);
+  }
+}
+
 /** GitHub through `gh`. */
-export class GithubCli implements PrProvider {
+export class GithubCli extends CliProvider implements PrProvider {
   async create(opts: CreatePr): Promise<string> {
     const existing = await this.url(opts);
     if (existing) return existing;
     const { cwd, base, head, title, body } = opts;
     const args = ["pr", "create", "--base", base, "--head", head, "--title", title, "--body", body];
     // gh prints progress lines before the URL.
-    const out = await cliOk("gh", args, cwd);
+    const out = await this.ok("gh", args, cwd);
     return out.trim().split(/\r?\n/).at(-1) ?? "";
   }
 
   async status({ cwd, url }: { cwd: string; url: string }): Promise<PrStatus> {
-    const pr = await cliJson<{ state: string; statusCheckRollup?: GhCheck[] }>(
+    const pr = await this.json<{ state: string; statusCheckRollup?: GhCheck[] }>(
       "gh",
       ["pr", "view", url, "--json", "state,statusCheckRollup"],
       cwd,
@@ -299,7 +329,7 @@ export class GithubCli implements PrProvider {
     const { owner, repo, number, prUrl } = ghParts(url);
     // Every page, 100 at a time (the REST default is 30): `--slurp` wraps the pages in an array.
     // A plain GET: no -f/-F field, which would make `gh api` a POST.
-    const pages = await cliJson<GhComment[][]>(
+    const pages = await this.json<GhComment[][]>(
       "gh",
       [
         "api",
@@ -310,12 +340,12 @@ export class GithubCli implements PrProvider {
       cwd,
     );
     const inline = pages.flat();
-    const { reviews } = await cliJson<{ reviews: GhReview[] }>(
+    const { reviews } = await this.json<{ reviews: GhReview[] }>(
       "gh",
       ["pr", "view", prUrl, "--json", "reviews"],
       cwd,
     );
-    const threads = await cliJson<GhThreads>(
+    const threads = await this.json<GhThreads>(
       "gh",
       [
         "api",
@@ -378,7 +408,11 @@ export class GithubCli implements PrProvider {
    */
   async health({ cwd, url }: { cwd: string; url: string }): Promise<PrHealth> {
     const { prUrl } = ghParts(url);
-    const result = await cli("gh", ["pr", "checks", prUrl, "--json", "name,bucket,link"], cwd);
+    const result = await this.call(
+      "gh",
+      ["pr", "checks", prUrl, "--json", "name,bucket,link"],
+      cwd,
+    );
     if (!result.stdout.trim()) {
       throw new FlightdeckError(
         "invalid_state",
@@ -388,7 +422,7 @@ export class GithubCli implements PrProvider {
       );
     }
     const rows = JSON.parse(result.stdout) as Array<{ name: string; bucket: string; link: string }>;
-    const { mergeable } = await cliJson<{ mergeable: string }>(
+    const { mergeable } = await this.json<{ mergeable: string }>(
       "gh",
       ["pr", "view", prUrl, "--json", "mergeable"],
       cwd,
@@ -418,7 +452,7 @@ export class GithubCli implements PrProvider {
     buildId: string;
   }): Promise<string> {
     const { owner, repo } = ghParts(url);
-    const text = await cliOk(
+    const text = await this.ok(
       "gh",
       ["run", "view", urlName("run", buildId), "--repo", `${owner}/${repo}`, "--log-failed"],
       cwd,
@@ -427,7 +461,7 @@ export class GithubCli implements PrProvider {
   }
 
   async url({ cwd, head }: { cwd: string; head: string }): Promise<string | null> {
-    const result = await cli("gh", ["pr", "view", head, "--json", "url"], cwd);
+    const result = await this.call("gh", ["pr", "view", head, "--json", "url"], cwd);
     if (result.code !== 0) return null;
     return (JSON.parse(result.stdout) as { url: string }).url;
   }
@@ -497,12 +531,12 @@ interface AzRecord {
 }
 
 /** Azure DevOps through `az repos` (organization and project detected from the remote). */
-export class AzureDevOpsCli implements PrProvider {
+export class AzureDevOpsCli extends CliProvider implements PrProvider {
   async create(opts: CreatePr): Promise<string> {
     const existing = await this.url(opts);
     if (existing) return existing;
     const { cwd, base, head, title, body } = opts;
-    const pr = await cliJson<AzPr>(
+    const pr = await this.json<AzPr>(
       "az",
       [
         "repos",
@@ -526,12 +560,12 @@ export class AzureDevOpsCli implements PrProvider {
 
   async status({ cwd, url }: { cwd: string; url: string }): Promise<PrStatus> {
     const id = /\/pullrequest\/(\d+)/.exec(url)?.[1] ?? "";
-    const pr = await cliJson<{ status: string }>(
+    const pr = await this.json<{ status: string }>(
       "az",
       ["repos", "pr", "show", "--id", id, "--output", "json"],
       cwd,
     );
-    const policies = await cliJson<Array<{ status: string }>>(
+    const policies = await this.json<Array<{ status: string }>>(
       "az",
       ["repos", "pr", "policy", "list", "--id", id, "--output", "json"],
       cwd,
@@ -549,12 +583,12 @@ export class AzureDevOpsCli implements PrProvider {
    */
   async health({ cwd, url }: { cwd: string; url: string }): Promise<PrHealth> {
     const { org, project, id } = azParts(url);
-    const pr = await cliJson<{ mergeStatus?: string; repository: { project: { id: string } } }>(
+    const pr = await this.json<{ mergeStatus?: string; repository: { project: { id: string } } }>(
       "az",
       ["repos", "pr", "show", "--id", id, "--output", "json"],
       cwd,
     );
-    const { value } = await cliJson<{ value: AzEvaluation[] }>(
+    const { value } = await this.json<{ value: AzEvaluation[] }>(
       "az",
       [
         "devops",
@@ -611,7 +645,7 @@ export class AzureDevOpsCli implements PrProvider {
       `project=${project}`,
       `buildId=${urlName("build", buildId)}`,
     ];
-    const { records } = await cliJson<{ records: AzRecord[] }>(
+    const { records } = await this.json<{ records: AzRecord[] }>(
       "az",
       ["devops", "invoke", "--area", "build", "--resource", "timeline", ...route].concat([
         "--org",
@@ -627,7 +661,7 @@ export class AzureDevOpsCli implements PrProvider {
     const share = Math.floor(BUILD_LOG_BYTES / Math.max(failed.length, 1));
     const parts: string[] = [];
     for (const record of failed) {
-      const text = await cliOk(
+      const text = await this.ok(
         "az",
         [
           "devops",
@@ -653,7 +687,7 @@ export class AzureDevOpsCli implements PrProvider {
   }
 
   async url({ cwd, head }: { cwd: string; head: string }): Promise<string | null> {
-    const prs = await cliJson<AzPr[]>(
+    const prs = await this.json<AzPr[]>(
       "az",
       ["repos", "pr", "list", "--source-branch", head, "--status", "active", "--output", "json"],
       cwd,
@@ -668,7 +702,7 @@ export class AzureDevOpsCli implements PrProvider {
    */
   async comments({ cwd, url }: { cwd: string; url: string }): Promise<PrComment[]> {
     const { org, project, repo, id } = azParts(url);
-    const { value } = await cliJson<{ value: AzThread[] }>(
+    const { value } = await this.json<{ value: AzThread[] }>(
       "az",
       [
         "devops",
