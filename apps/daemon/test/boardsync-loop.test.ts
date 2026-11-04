@@ -52,11 +52,11 @@ async function loopSetup(intervalMs?: number) {
     onUpdate: (projectId) => updates.push(projectId),
   });
   const live = () => time.pending.filter((timer) => !timer.cleared).length;
-  /** Lets the awaited work of a run settle. */
-  const settle = async () => {
+  /** Lets the awaited work of a run drain its microtasks. */
+  const drain = async () => {
     for (let i = 0; i < 20; i += 1) await Promise.resolve();
   };
-  return { ...s, time, calls, updates, gate, loop, live, settle, project: s.project.id };
+  return { ...s, time, calls, updates, gate, loop, live, drain, project: s.project.id };
 }
 
 const failure = (reason: string, params?: Record<string, string>) =>
@@ -73,12 +73,12 @@ describe("board-sync-loop: polling, one run at a time, back off and pauses", () 
     const s = await loopSetup();
     s.loop.start();
     s.time.advance(0);
-    await s.settle();
+    await s.drain();
     expect(s.calls).toEqual([s.project]);
     s.time.advance(DEFAULT_INTERVAL_MS);
-    await s.settle();
+    await s.drain();
     s.time.advance(DEFAULT_INTERVAL_MS);
-    await s.settle();
+    await s.drain();
     expect(s.calls).toHaveLength(3);
     expect(s.updates).toHaveLength(3);
   });
@@ -88,10 +88,10 @@ describe("board-sync-loop: polling, one run at a time, back off and pauses", () 
     s.gate.hold = () => {};
     s.loop.start();
     s.time.advance(0);
-    await s.settle();
+    await s.drain();
     const first = s.loop.syncNow(s.project);
     const second = s.loop.syncNow(s.project);
-    await s.settle();
+    await s.drain();
     expect(s.calls).toHaveLength(1);
     s.gate.hold?.();
     s.gate.hold = null;
@@ -105,10 +105,10 @@ describe("board-sync-loop: polling, one run at a time, back off and pauses", () 
     await s.loop.syncNow(s.project);
     expect(s.calls).toHaveLength(1);
     s.time.advance(DEFAULT_INTERVAL_MS - 1);
-    await s.settle();
+    await s.drain();
     expect(s.calls).toHaveLength(1);
     s.time.advance(1);
-    await s.settle();
+    await s.drain();
     expect(s.calls).toHaveLength(2);
   });
 
@@ -119,13 +119,13 @@ describe("board-sync-loop: polling, one run at a time, back off and pauses", () 
     const waits: number[] = [];
     let seen = 0;
     s.time.advance(0);
-    await s.settle();
+    await s.drain();
     for (const wait of [60_000, 120_000, 240_000, 480_000, 900_000, 900_000]) {
       s.time.advance(wait - 1);
-      await s.settle();
+      await s.drain();
       expect(s.calls.length).toBe(seen + 1);
       s.time.advance(1);
-      await s.settle();
+      await s.drain();
       seen += 1;
       waits.push(wait);
       expect(s.calls.length).toBe(seen + 1);
@@ -133,9 +133,9 @@ describe("board-sync-loop: polling, one run at a time, back off and pauses", () 
     expect(waits.at(-1)).toBe(MAX_BACKOFF_MS);
     s.gate.fail = null;
     s.time.advance(MAX_BACKOFF_MS);
-    await s.settle();
+    await s.drain();
     s.time.advance(DEFAULT_INTERVAL_MS);
-    await s.settle();
+    await s.drain();
     expect(s.calls.length).toBe(seen + 3);
   });
 
@@ -145,14 +145,14 @@ describe("board-sync-loop: polling, one run at a time, back off and pauses", () 
     s.gate.fail = failure("board_sync_rate_limited", { resetAt });
     s.loop.start();
     s.time.advance(0);
-    await s.settle();
+    await s.drain();
     expect(s.store.get(s.project)?.pausedUntil).toBe(resetAt);
     s.gate.fail = null;
     s.time.advance(4 * 60_000);
-    await s.settle();
+    await s.drain();
     expect(s.calls).toHaveLength(1);
     s.time.advance(60_000);
-    await s.settle();
+    await s.drain();
     expect(s.calls).toHaveLength(2);
     expect(s.store.get(s.project)?.pausedUntil).toBeNull();
   });
@@ -162,11 +162,11 @@ describe("board-sync-loop: polling, one run at a time, back off and pauses", () 
     s.gate.hold = () => {};
     s.loop.start();
     s.time.advance(0);
-    await s.settle();
+    await s.drain();
     s.loop.stop();
     s.gate.hold?.();
     s.gate.hold = null;
-    await s.settle();
+    await s.drain();
     expect(s.live()).toBe(0);
   });
 
@@ -175,7 +175,7 @@ describe("board-sync-loop: polling, one run at a time, back off and pauses", () 
     s.store.unlink(s.project);
     s.loop.start();
     s.time.advance(DEFAULT_INTERVAL_MS);
-    await s.settle();
+    await s.drain();
     expect(s.calls).toEqual([]);
     s.store.link({
       projectId: s.project,
@@ -187,7 +187,7 @@ describe("board-sync-loop: polling, one run at a time, back off and pauses", () 
     });
     s.loop.watch(s.project);
     s.time.advance(0);
-    await s.settle();
+    await s.drain();
     expect(s.calls).toEqual([s.project]);
     s.loop.unwatch(s.project);
     expect(s.live()).toBe(0);

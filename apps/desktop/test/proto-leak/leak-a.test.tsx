@@ -5,7 +5,8 @@ registerDom();
 
 // What an earlier file of the same process left behind, whichever file runs first.
 const seen = globalThis as unknown as { __protoMarkers?: Array<() => void> };
-const markers = (seen.__protoMarkers ??= []);
+seen.__protoMarkers ??= [];
+const markers = seen.__protoMarkers;
 const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
 const leakedMethod = markers.some((m) => proto.scrollIntoView === m);
 const leakedMember = "__fdLeak" in proto;

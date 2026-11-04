@@ -204,7 +204,7 @@ export function ProjectsPage(props: {
             }
           />
         )}
-        <div className="flex flex-wrap gap-2">
+        <div className="button-row">
           {host && hasFeature(host.hostInfo?.features, "projects.scan", false) && (
             <FindProjects store={store} hostId={hostId} onAdded={() => void reload()} />
           )}

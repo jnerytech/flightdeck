@@ -423,6 +423,10 @@ export const DAEMON_FEATURES = [
   "summary",
   "webhook",
   "account",
+  "prWatch",
+  "runEnv",
+  "github",
+  "boardsync",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];
 

@@ -967,8 +967,9 @@ export const ptBR = {
   },
   daemonFeature: {
     account: "a conta do Claude",
-
     prWatch: "a vigia de PR",
+    github: "o login do GitHub",
+    boardsync: "a sincronia do board",
     runEnv: "o ambiente de execução",
     history: "o histórico",
     central: "a central de sessões",

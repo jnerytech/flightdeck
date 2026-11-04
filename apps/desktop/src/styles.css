@@ -939,3 +939,10 @@
   position: relative;
   display: flex;
 }
+
+/* A row of buttons that wraps, each at its own height. */
+@utility button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
