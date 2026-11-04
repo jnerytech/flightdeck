@@ -179,6 +179,10 @@ describe("resumo-lista", () => {
       tool: null,
       since: managed.updatedAt,
     });
+    // The history one sits behind "N sessões anteriores" (issue #111).
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /sess(?:ões|ão) anterior(?:es)?/ }));
+    });
     // And each row shows it.
     expect(row("app-a")).toContain("Pedido: rode os testes · rodando Bash");
     expect(row("app-b")).toContain("Pedido: apague o rascunho · esperando aprovação de Write");

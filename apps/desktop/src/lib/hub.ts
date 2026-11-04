@@ -428,7 +428,8 @@ export function hubView(
   searching: boolean,
 ): HubGroupView[] {
   return groups.map((group) => {
-    const isEarlier = (r: HubRow) => r.origin === "history" || r.state === "ended";
+    // A pinned session is one the person wants close: it stays with the live ones.
+    const isEarlier = (r: HubRow) => !r.pinned && (r.origin === "history" || r.state === "ended");
     const earlier = group.rows
       .filter(isEarlier)
       .sort((a, b) => b.lastActivity.localeCompare(a.lastActivity));

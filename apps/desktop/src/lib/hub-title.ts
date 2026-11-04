@@ -46,14 +46,15 @@ export function cleanTitle(text: string | null | undefined): string | null {
 
 /**
  * What a row calls a session: the name the person gave, then the host's title (the summary), then
- * the persona with the task, then the first prompt, then the folder.
+ * the persona with the task, then the folder. The host's title is the summary or the first prompt.
  */
 export function rowTitle(sources: TitleSources): string {
   const name = cleanTitle(sources.name);
   if (name) return name;
   const title = cleanTitle(sources.title);
   if (title) return title;
+  // The last prompt changes every turn, so it names a session only beside its persona.
   const task = cleanTitle(sources.request);
   if (task && sources.persona) return `${sources.persona.name} · ${task}`;
-  return task ?? basename(sources.cwd);
+  return basename(sources.cwd);
 }

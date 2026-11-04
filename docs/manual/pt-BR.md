@@ -452,11 +452,12 @@ lugar só, agrupadas por projeto e ordenadas pela última atividade.
   vivo e um chip por host, que abre a página do host). Um projeto com sessões ao vivo começa
   aberto, com elas no topo (as que precisam de você primeiro); um projeto sem nada ao vivo começa
   recolhido. As sessões encerradas e do histórico ficam atrás de **N sessões anteriores**, da mais
-  nova para a mais antiga. Digitar no filtro também casa com o nome do projeto e abre tudo o que
-  casar. Uma fileira de chips **Hosts** sob o aviso de hosts mostra só as sessões de um host
+  nova para a mais antiga. Digitar no filtro também casa com o nome do projeto, e qualquer filtro (texto, host, origem,
+  estado, persona, fixadas) abre tudo o que ele mantém. Uma sessão fixada fica sempre com as ao
+  vivo. Uma fileira de chips **Hosts** sob o aviso de hosts mostra só as sessões de um host
   (aperte de novo para limpar).
-- **Títulos.** A sessão se chama pelo nome, senão pelo resumo que o Claude Code escreveu, senão
-  pela persona com a tarefa, senão pelo primeiro prompt, senão pela pasta. Os invólucros do
+- **Títulos.** A sessão se chama pelo nome, senão pelo título que o host dá a ela (o resumo que o
+  Claude Code escreveu, ou o primeiro prompt), senão pela persona com a tarefa, senão pela pasta. Os invólucros do
   sistema (`<task-notification>`, "Another Claude session sent a message:", saída de comando
   local) nunca aparecem num título.
 

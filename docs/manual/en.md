@@ -466,10 +466,11 @@ one place, grouped by project and ordered by last activity.
   one chip per host, which opens that host's page). A project with live sessions starts open, with
   those on top (the ones that need you first); a project with nothing live starts folded. The
   ended and history sessions sit behind **N earlier sessions**, newest first. Typing in the filter
-  also matches project names and opens everything that matches. A row of **Hosts** chips under
+  also matches project names, and any filter (text, host, origin, state, persona, pinned) opens
+  everything it keeps. A pinned session always stays with the live ones. A row of **Hosts** chips under
   the hosts banner shows one host's sessions only (press it again to clear).
-- **Titles.** A session is called by its name, else the summary Claude Code wrote, else the persona
-  with the task, else its first prompt, else its folder. System wrappers (`<task-notification>`,
+- **Titles.** A session is called by its name, else the title its host gives it (the summary Claude
+  Code wrote, or its first prompt), else the persona with the task, else its folder. System wrappers (`<task-notification>`,
   "Another Claude session sent a message:", local-command output) never appear in a title.
 
 ### What the list shows

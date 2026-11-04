@@ -151,7 +151,14 @@ export function SessionsHub(props: {
   // Each project: open when it has live sessions (or a search is on), its history behind a count.
   const [open, setOpen] = useState<Record<string, boolean | undefined>>({});
   const [earlierOpen, setEarlierOpen] = useState<Record<string, boolean | undefined>>({});
-  const searching = filter.text.trim() !== "";
+  // Any filter narrows the list on purpose: what it keeps is shown, not folded away.
+  const searching =
+    filter.text.trim() !== "" ||
+    filter.host !== "" ||
+    filter.origin !== "" ||
+    filter.state !== "" ||
+    filter.persona !== "" ||
+    filter.pinnedOnly;
   const views = useMemo(
     () => hubView(allGroups, open, earlierOpen, searching),
     [allGroups, open, earlierOpen, searching],
