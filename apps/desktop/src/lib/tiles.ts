@@ -31,7 +31,7 @@ const ORDER: Partial<Record<HubState, number>> = { needs_you: 0, running: 1, idl
 /** The sessions the tiles show: the ones that need you first, then the running, then the idle. */
 export function pickTiles(
   rows: HubRow[],
-  project: { hostId: string; projectKey: string },
+  project: { hostId: string; projectKey: string; path?: string },
   count: TileCount,
 ): HubRow[] {
   return rows
