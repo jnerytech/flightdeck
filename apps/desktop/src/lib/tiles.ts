@@ -26,13 +26,47 @@ export function tileColumns(count: TileCount): number {
   return count === 2 || count === 4 ? 2 : 3;
 }
 
+/** The layouts of the tiles (issue #94): a grid drawn by an icon, or Auto for every live session. */
+export const TILE_LAYOUTS = ["2", "3", "2x2", "2x3", "auto"] as const;
+export type TileLayout = (typeof TILE_LAYOUTS)[number];
+export const DEFAULT_TILE_LAYOUT: TileLayout = "2";
+
+/** The saved layout; the old counts 4 and 6 are the 2×2 and 2×3 grids they were. */
+export function loadTileLayout(_storage: { getItem(key: string): string | null }): TileLayout {
+  return DEFAULT_TILE_LAYOUT;
+}
+
+export function saveTileLayout(
+  _storage: { setItem(key: string, value: string): void },
+  _layout: TileLayout,
+): void {}
+
+/** How many tiles a layout holds; `null` for Auto, which holds every live session. */
+export function tileSlots(_layout: TileLayout): number | null {
+  return 0;
+}
+
+/** The columns of the grid for a layout, given how many tiles are shown. */
+export function tileColumns2(_layout: TileLayout, _shown: number): number {
+  return 1;
+}
+
+/** The live sessions the layout cannot show. */
+export function hiddenTiles(
+  _rows: HubRow[],
+  _project: { hostId: string; projectKey: string },
+  _layout: TileLayout,
+): number {
+  return 0;
+}
+
 const ORDER: Partial<Record<HubState, number>> = { needs_you: 0, running: 1, idle: 2 };
 
 /** The sessions the tiles show: the ones that need you first, then the running, then the idle. */
 export function pickTiles(
   rows: HubRow[],
   project: { hostId: string; projectKey: string },
-  count: TileCount,
+  count: TileCount | TileLayout,
 ): HubRow[] {
   return rows
     .filter(
@@ -49,7 +83,7 @@ export function pickTiles(
         (ORDER[a.state] ?? 9) - (ORDER[b.state] ?? 9) ||
         b.lastActivity.localeCompare(a.lastActivity),
     )
-    .slice(0, count);
+    .slice(0, typeof count === "number" ? count : 0);
 }
 
 const lines = (text: string) =>
