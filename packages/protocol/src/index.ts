@@ -607,6 +607,10 @@ export const Project = z.object({
   personaSubagents: PersonaSubagentsMode.default("all"),
   /** Phase 36: the hours a done card is worth when it has no estimate of its own. */
   defaultHours: z.number().nullable().default(null),
+  /** Phase 36: the optional value signals this project has switched on (both off by default). */
+  roiSignals: z
+    .object({ commits: z.boolean(), issues: z.boolean() })
+    .default({ commits: false, issues: false }),
   /**
    * Phase 29: the project key of the folder (the normalized remote, else the folder on this host),
    * the same one sessions and costs carry; absent from a daemon that does not send it.
@@ -1186,6 +1190,16 @@ export interface RoiProject {
   name: string;
   current: RoiPeriod;
   previous: RoiPeriod;
+  /** The optional signals the project has on, for the asked period; absent when none is. */
+  signals?: RoiSignalValues;
+}
+
+/** Phase 36: agent commits (approximate: counted by a trailer) and closed issues, or why not. */
+export interface RoiSignalValues {
+  agentCommits?: number;
+  issuesClosed?: number;
+  /** Why the closed issues are missing: `gh_missing`, `gh_logged_out` or `gh_failed`. */
+  issuesError?: string;
 }
 
 export interface RoiSummaryResult {
@@ -1982,6 +1996,11 @@ export const ProjectUpdatePayload = z.object({
   personaSubagents: PersonaSubagentsMode.optional(),
   /** Phase 36: `null` removes the default. */
   defaultHours: z.number().min(0).max(1000).nullable().optional(),
+  /** Phase 36: which optional value signals are on; a field left out keeps its value. */
+  roiSignals: z
+    .object({ commits: z.boolean().optional(), issues: z.boolean().optional() })
+    .strict()
+    .optional(),
 });
 export const CardIdPayload = z.object({ cardId: z.string() });
 /** Phase 6: with `workflow`, the card runs that trusted workflow with `inputs`. */

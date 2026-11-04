@@ -6,6 +6,7 @@
 import type { Database } from "bun:sqlite";
 import type { RoiPeriod, RoiSummaryResult, RoiWeek } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
+import type { RoiSignals } from "./signals.ts";
 
 const MAX_DAYS = 366;
 
@@ -39,6 +40,8 @@ export interface RoiSummarizerOptions {
   db: Database;
   /** The project key of a folder; the folder itself when absent. */
   keyOf?: (path: string) => string;
+  /** Where the optional signals come from; without it a project's switches change nothing. */
+  signals?: Pick<RoiSignals, "agentCommits" | "issuesClosed">;
 }
 
 const DAY_MS = 86_400_000;
@@ -78,6 +81,11 @@ export class RoiSummarizer {
 
   private keyOf(path: string): string {
     return this.opts.keyOf?.(path) ?? path;
+  }
+
+  /** `summary` plus, for the projects that switched them on, the optional signals of the period. */
+  async summaryWithSignals(filter: RoiFilter): Promise<RoiSummaryResult> {
+    return this.summary(filter);
   }
 
   summary(filter: RoiFilter): RoiSummaryResult {

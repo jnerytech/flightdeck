@@ -128,6 +128,8 @@ interface ProjectRow {
   persona_by_column: string | null;
   persona_subagents: PersonaSubagentsMode | null;
   default_hours: number | null;
+  roi_commits: number;
+  roi_issues: number;
 }
 
 function toProject(row: ProjectRow): Project {
@@ -146,6 +148,8 @@ function toProject(row: ProjectRow): Project {
     personaByColumn: row.persona_by_column ? JSON.parse(row.persona_by_column) : {},
     personaSubagents: row.persona_subagents ?? "all",
     defaultHours: row.default_hours,
+    // Stub (roi-sinais-config): the columns are not read yet.
+    roiSignals: { commits: false, issues: false },
   };
 }
 
@@ -394,7 +398,7 @@ export class Board {
     const head = await git(path, "rev-parse", "--abbrev-ref", "HEAD");
     const project: Omit<
       Project,
-      "worktreeInclude" | "personaByColumn" | "personaSubagents" | "defaultHours"
+      "worktreeInclude" | "personaByColumn" | "personaSubagents" | "defaultHours" | "roiSignals"
     > = {
       id: ulid(),
       path,

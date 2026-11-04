@@ -41,4 +41,6 @@ export type ProjectPatch = Partial<Omit<NewProject, "path">> & {
   personaSubagents?: PersonaSubagentsMode;
   /** Phase 36: the hours a done card is worth without an estimate; `null` removes it. */
   defaultHours?: number | null;
+  /** Phase 36: which optional value signals are on; a field left out keeps its value. */
+  roiSignals?: { commits?: boolean; issues?: boolean };
 };
