@@ -89,6 +89,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Preços](#preços)
   - [Orçamentos](#orçamentos)
   - [Histórico da cota](#histórico-da-cota)
+  - [Retorno sobre o custo](#retorno-sobre-o-custo)
 - [Clientes: agrupar o trabalho entre hosts e projetos](#clientes-agrupar-o-trabalho-entre-hosts-e-projetos)
 - [Resumo da sessão e webhooks](#resumo-da-sessão-e-webhooks)
 - [Central de notificações](#central-de-notificações)
@@ -2134,6 +2135,50 @@ de 5 minutos viram uma só.
 - **Tooltip:** as barras do topo da tela Sessões mostram a mesma projeção.
 - **Quem consumiu a janela:** a fatia de cada projeto no custo estimado desde o início da janela
   de 5 horas atual. É uma atribuição aproximada, porque o plano não diz quem usou a cota.
+
+### Retorno sobre o custo
+
+Nos hosts que anunciam `roi`, a página do board do projeto começa com um cartão de **Retorno sobre o custo**, e a tela
+de Custos ganha uma **tabela de projetos**, uma **tabela de pessoas** e um bloco de configurações. A primeira pergunta é
+*entregamos mais pelo que custou?* Todos os números são correlacionados e estimados: horas e valores são digitados, não
+medidos, e um card concluído não é um resultado verificado. As telas nunca falam em lucro nem em economia.
+
+- **O cartão.** Escolha 7 dias, 30 dias ou este mês. A primeira linha diz quantos itens foram entregues (cards
+  concluídos, separados em *planejados*, que já estavam no board quando o período começou, e *não planejados*, criados e
+  concluídos dentro dele), quanto os agentes custaram e se isso é mais, menos ou praticamente o mesmo (dentro de 5%) que
+  no período anterior, com o custo por item dos dois. Abaixo: cards concluídos e PRs mesclados, custo por card e por PR,
+  a linha de retrabalho (rodadas de conserto e o custo delas), horas e valor estimados marcados como estimativa e uma
+  tendência de 8 semanas com texto alternativo. **Como isso é calculado?** lista cada número com as suas entradas.
+- **A tabela de Custos.** Uma linha por projeto do escopo de clientes escolhido: custo, cards, PRs, custo por card e por
+  PR, horas estimadas, valor estimado e retorno sobre o custo (estimativa). Clique no cabeçalho de uma coluna para
+  ordenar, e de novo para inverter. O traço quer dizer que o número não pode ser calculado (sem cards, sem valor da
+  hora). O rodapé soma as linhas. **Exportar a tabela de projetos em CSV** salva uma linha por projeto, com uma coluna
+  que diz como cada número foi feito; o arquivo sempre usa ponto como separador decimal.
+- **Pessoas.** *Tokens contra entrega, por pessoa* agrupa hosts numa pessoa com nome (por exemplo, o host em que os
+  agentes de alguém rodam) com um limite mensal de tokens e/ou de custo. Mostra o uso do mês contra o limite, o que foi
+  entregue e os tokens por card. As pessoas aparecem por nome: é uma visão, não um ranking, e hosts não são pessoas.
+  Nada é imposto; quem para o trabalho continuam sendo os orçamentos de host e de cliente.
+
+#### Onde defino o valor da hora?
+
+O valor da hora é um dado financeiro da pessoa e fica no app; os hosts nunca o veem. Vale o do próprio projeto, depois
+o do cliente dele, depois o padrão.
+
+- **Padrão e tempo de revisão:** Custos, **Configurações do retorno sobre o custo**. Ali também se escolhe se o *seu*
+  tempo de revisão conta como custo (no máximo o limite que você define para cada decisão; desligado por padrão, e o
+  cartão mostra o tempo de espera como informação de qualquer forma) e se cuidam das pessoas.
+- **Um cliente:** a tela **Clientes**, **Valor da hora deste cliente**.
+- **Um projeto:** o bloco **Horas e valor** do cartão na página do board, que também guarda as horas que cada card vale
+  por padrão. As horas de um card só ficam no detalhe dele, **Horas estimadas deste card**.
+
+#### Por que um projeto não tem retorno sobre o custo?
+
+- **Sem valor da hora:** o cartão diz *Defina o valor da hora para ver o valor estimado*; o custo por card e por PR
+  continuam aparecendo.
+- **Sem horas:** cards concluídos sem estimativa e sem padrão do projeto são contados e citados, e não somam horas.
+- **Nada entregue:** o cartão diz isso e ainda mostra o que os agentes custaram.
+- **Ainda sem custo:** a razão precisa de um custo maior que zero.
+- **O host está offline ou não anuncia `roi`:** os números dele faltam; os outros continuam somando.
 
 ## Clientes: agrupar o trabalho entre hosts e projetos
 
