@@ -226,6 +226,8 @@ interface SessionViewProps {
   session: SessionState;
   actions: SessionActions;
   focusRequestId?: string | null;
+  /** Names this conversation so its scroll position is kept when the person comes back to the tab. */
+  scrollKey?: string;
   /** The host announces `rules` (phase 7): approvals offer "permitir sempre". */
   alwaysAllow?: boolean;
   /** "Abrir no terminal" (phase 8), when the view belongs to a session of its own. */
