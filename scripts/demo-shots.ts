@@ -508,6 +508,7 @@ function shots(ids: DemoIds): Shot[] {
     { name: "host-offline", route: { name: "host", host: "demo-offline" } },
     { name: "host-reconectando", route: { name: "host", host: "demo-slow" } },
     { name: "host-incompativel", route: { name: "host", host: "demo-old" } },
+    { name: "projeto-blocos", route: { name: "project", host: ALFA, projectId: ids.project } },
     {
       name: "projeto-vazio",
       route: { name: "board", host: ALFA, projectId: ids.emptyProject },
