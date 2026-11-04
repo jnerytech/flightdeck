@@ -29,35 +29,47 @@ export function tileColumns(count: TileCount): number {
 /** The layouts of the tiles (issue #94): a grid drawn by an icon, or Auto for every live session. */
 export const TILE_LAYOUTS = ["2", "3", "2x2", "2x3", "auto"] as const;
 export type TileLayout = (typeof TILE_LAYOUTS)[number];
-export const DEFAULT_TILE_LAYOUT: TileLayout = "2";
+export const DEFAULT_TILE_LAYOUT: TileLayout = "auto";
 
 /** The saved layout; the old counts 4 and 6 are the 2×2 and 2×3 grids they were. */
-export function loadTileLayout(_storage: { getItem(key: string): string | null }): TileLayout {
-  return DEFAULT_TILE_LAYOUT;
+export function loadTileLayout(storage: { getItem(key: string): string | null }): TileLayout {
+  const saved = storage.getItem(TILE_COUNT_KEY);
+  if (saved === "4") return "2x2";
+  if (saved === "6") return "2x3";
+  return TILE_LAYOUTS.find((layout) => layout === saved) ?? DEFAULT_TILE_LAYOUT;
 }
 
 export function saveTileLayout(
-  _storage: { setItem(key: string, value: string): void },
-  _layout: TileLayout,
-): void {}
+  storage: { setItem(key: string, value: string): void },
+  layout: TileLayout,
+): void {
+  storage.setItem(TILE_COUNT_KEY, layout);
+}
+
+const SLOTS: Record<TileLayout, number | null> = { "2": 2, "3": 3, "2x2": 4, "2x3": 6, auto: null };
 
 /** How many tiles a layout holds; `null` for Auto, which holds every live session. */
-export function tileSlots(_layout: TileLayout): number | null {
-  return 0;
+export function tileSlots(layout: TileLayout): number | null {
+  return SLOTS[layout];
 }
 
 /** The columns of the grid for a layout, given how many tiles are shown. */
-export function tileColumns2(_layout: TileLayout, _shown: number): number {
-  return 1;
+export function tileColumns2(layout: TileLayout, shown: number): number {
+  if (layout === "2" || layout === "2x2") return 2;
+  if (layout === "3" || layout === "2x3") return 3;
+  if (shown <= 3) return Math.max(1, shown);
+  return shown <= 4 ? 2 : shown <= 9 ? 3 : 4;
 }
 
 /** The live sessions the layout cannot show. */
 export function hiddenTiles(
-  _rows: HubRow[],
-  _project: { hostId: string; projectKey: string },
-  _layout: TileLayout,
+  rows: HubRow[],
+  project: { hostId: string; projectKey: string },
+  layout: TileLayout,
 ): number {
-  return 0;
+  const slots = tileSlots(layout);
+  const live = pickTiles(rows, project, "auto").length;
+  return slots === null ? 0 : Math.max(0, live - slots);
 }
 
 const ORDER: Partial<Record<HubState, number>> = { needs_you: 0, running: 1, idle: 2 };
@@ -83,7 +95,7 @@ export function pickTiles(
         (ORDER[a.state] ?? 9) - (ORDER[b.state] ?? 9) ||
         b.lastActivity.localeCompare(a.lastActivity),
     )
-    .slice(0, typeof count === "number" ? count : 0);
+    .slice(0, (typeof count === "number" ? count : tileSlots(count)) ?? undefined);
 }
 
 const lines = (text: string) =>
