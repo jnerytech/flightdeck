@@ -88,6 +88,14 @@ describe("github-login: the device flow through gh", () => {
     expect(killed).toHaveLength(1);
   });
 
+  test("when the tree kill fails, gh itself is still stopped", async () => {
+    fakeGh([WAITING]);
+    const logins = login({ kill: async () => Promise.reject(new Error("no taskkill")) });
+    await logins.start();
+    logins.cancel();
+    expect(await poll(() => !logins.running, 4000)).toBe(true);
+  });
+
   test("a login that finishes ends the run", async () => {
     fakeGh([{ args: ["auth", "login"], stderr: CODE_TEXT, delayMs: 200 }]);
     const logins = login();
