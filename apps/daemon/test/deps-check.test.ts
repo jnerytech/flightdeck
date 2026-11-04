@@ -33,6 +33,7 @@ function machine(
     serviceInstalled: async () => true,
     linger: async () => "on",
     hooks: async () => "installed",
+    account: async () => "signed_in",
     ...rest,
   };
   return env;
@@ -41,10 +42,11 @@ function machine(
 const find = (items: DepResult[], id: string) => items.find((item) => item.id === id) as DepResult;
 
 describe("deps-check: the dependencies of a host", () => {
-  test("a host with everything in place has four required and six optional, each ok or not applicable", async () => {
+  test("a host with everything in place has five required and six optional, each ok or not applicable", async () => {
     const { items } = await checkDeps(machine());
     expect(items.filter((i) => i.group === "required").map((i) => i.id)).toEqual([
       "claude",
+      "claudeAuth",
       "git",
       "service",
       "folders",
@@ -59,6 +61,7 @@ describe("deps-check: the dependencies of a host", () => {
     ]);
     expect(items.map((i) => [i.id, i.state])).toEqual([
       ["claude", "ok"],
+      ["claudeAuth", "ok"],
       ["git", "ok"],
       ["service", "ok"],
       ["folders", "ok"],
@@ -89,6 +92,24 @@ describe("deps-check: the dependencies of a host", () => {
       for (const f of item.fix) expect(f.command.length).toBeGreaterThan(0);
     }
     expect(find(items, "gh").fix.find((f) => f.os === "win32")?.command).toContain("winget");
+  });
+
+  test("Claude Code signed in: signed out is missing with the sign-in command; an API key or a third party is fine; unknown or no claude is not applicable", async () => {
+    const row = async (env: Parameters<typeof machine>[0]) =>
+      find((await checkDeps(machine(env))).items, "claudeAuth");
+    expect(await row({})).toMatchObject({ group: "required", state: "ok" });
+    expect(await row({ account: async () => "api_key" })).toMatchObject({ state: "ok" });
+    expect(await row({ account: async () => "third_party" })).toMatchObject({ state: "ok" });
+    const out = await row({ account: async () => "signed_out" });
+    expect(out).toMatchObject({ state: "missing", breaks: ["sessions"] });
+    expect(out.fix.every((f) => f.command === "claude auth login")).toBe(true);
+    expect(out.fix.map((f) => f.os).sort()).toEqual(["darwin", "linux", "win32"]);
+    expect((await row({ account: async () => "unknown" })).state).toBe("na");
+    expect((await row({ account: async () => null })).state).toBe("na");
+    // Nothing to sign in to without claude: the missing claude is the problem, said once.
+    expect((await row({ without: ["claude"], account: async () => "signed_out" })).state).toBe(
+      "na",
+    );
   });
 
   test("a git too old for worktrees is outdated, with the least version that works", async () => {

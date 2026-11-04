@@ -77,6 +77,7 @@ describe("deps-doctor: the terminal prints the same grouping as the app", () => 
       serviceInstalled: async () => true,
       linger: async () => "on",
       hooks: async () => "installed",
+      account: async () => "signed_in",
     };
     const cliDeps: CliDeps = {
       env: {},

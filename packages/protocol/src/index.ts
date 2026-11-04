@@ -1467,6 +1467,7 @@ export interface DoctorResult {
 /** What the host needs to do its job (`required`) or to turn a feature on (`optional`). */
 export const DEP_IDS = [
   "claude",
+  "claudeAuth",
   "git",
   "service",
   "folders",

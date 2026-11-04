@@ -14,6 +14,8 @@ export interface DepsEnv {
   /** Whether the user's systemd survives logout (Linux); null where it does not apply. */
   linger(): Promise<"on" | "off" | null>;
   hooks(): Promise<"installed" | "absent" | "outdated">;
+  /** Who the host's own `claude` is signed in as, as the account card reads it (never a credential file); null when unknown. */
+  account(): Promise<"signed_in" | "signed_out" | "api_key" | "third_party" | "unknown" | null>;
 }
 
 type Os = "linux" | "darwin" | "win32";
@@ -134,6 +136,11 @@ async function service(env: DepsEnv): Promise<DepResult> {
   };
 }
 
+/** Claude Code signed in: what the account card reads, asked only when `claude` is there. */
+async function signedIn(_env: DepsEnv, _noClaude: boolean): Promise<DepResult> {
+  return { id: "claudeAuth", group: "required", state: "na", breaks: [], fix: [] };
+}
+
 async function powershell(env: DepsEnv): Promise<DepResult> {
   const base = {
     id: "pwsh" as const,
@@ -172,6 +179,7 @@ export async function checkDeps(env: DepsEnv): Promise<DepsResult> {
   };
   const order: DepId[] = [
     "claude",
+    "claudeAuth",
     "git",
     "service",
     "folders",
@@ -186,6 +194,7 @@ export async function checkDeps(env: DepsEnv): Promise<DepsResult> {
   for (const id of ["claude", "git", "gh", "az", "ssh", "tailscale"] as const) {
     found.set(id, await tool(env, id));
   }
+  found.set("claudeAuth", await signedIn(env, found.get("claude")?.state === "missing"));
   found.set("service", await service(env));
   found.set("folders", folders);
   found.set("pwsh", await powershell(env));

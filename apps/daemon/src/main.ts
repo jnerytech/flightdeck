@@ -1126,6 +1126,7 @@ export async function startDaemon(
           options.serviceInstalled ??
           (async () => (await serviceCommand(osServiceContext(false))) !== null),
         linger: options.linger ?? (() => lingerState(osServiceContext(false))),
+        account: async () => (await account?.get())?.status ?? null,
         hooks: () =>
           hooksStatus(
             claudeSettingsPath(),
@@ -1431,6 +1432,8 @@ async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
       allowedRoots: (await load()).allowedRoots,
       serviceInstalled: async () => (await serviceCommand(ctx)) !== null,
       linger: () => lingerState(ctx),
+      // The terminal does not ask the Claude account: the card in the app does.
+      account: async () => null,
       hooks: async () => hooksStatus(settings, hookTarget(await load(), self)),
     },
   );
