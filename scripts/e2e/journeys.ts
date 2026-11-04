@@ -461,6 +461,39 @@ async function lastRowProblem(page: Page): Promise<string | null> {
   });
 }
 
+/**
+ * The / menu of a session with 100 commands (issue #102): the page does not scroll either way, the
+ * menu takes at most 40% of the window and the message box stays on screen.
+ */
+async function slashMenuProblems(c: Context): Promise<string[]> {
+  await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
+  const box = c.page.getByLabel(c.t("session.message"), { exact: true });
+  await box.fill("/");
+  const menu = c.page.getByRole("listbox", { name: c.t("session.snippets") });
+  await menu.waitFor({ timeout: WAIT });
+  const options = await menu.getByRole("option").count();
+  return c.page.evaluate(
+    ({ options: count, label }) => {
+      const found: string[] = [];
+      const { innerWidth: width, innerHeight: height } = window;
+      const root = document.documentElement;
+      if (root.scrollWidth > width) found.push("a página rola para o lado com o menu /");
+      if (root.scrollHeight > height) found.push("a página rola para baixo com o menu /");
+      if (count < 100) found.push(`o menu lista só ${count} itens`);
+      const popover = document.querySelector<HTMLElement>(".prompt-menu");
+      const at = popover?.getBoundingClientRect();
+      if (at && at.height > height * 0.4 + 1) {
+        found.push(`o menu ocupa ${Math.round(at.height)} de ${height}`);
+      }
+      const field = document.querySelector<HTMLElement>(`[aria-label="${label}"]`);
+      const box = field?.getBoundingClientRect();
+      if (!box || box.top < 0 || box.bottom > height) found.push("a caixa de mensagem sai da tela");
+      return found;
+    },
+    { options, label: c.t("session.message") },
+  );
+}
+
 export async function layout(c: Context, problems: string[]) {
   const screens: Array<[string, Route]> = [
     ["hub", { name: "hub" }],
@@ -484,6 +517,9 @@ export async function layout(c: Context, problems: string[]) {
       const where = `${c.lang} ${viewport.width}x${viewport.height} ${name}`;
       for (const issue of await overflow(c.page)) problems.push(`${where}: ${issue}`);
     }
+    for (const issue of await slashMenuProblems(c)) {
+      problems.push(`${c.lang} ${viewport.width}x${viewport.height} menu /: ${issue}`);
+    }
     await open(c, { name: "hub" });
     const hidden = await lastRowProblem(c.page);
     if (hidden) {
@@ -491,5 +527,10 @@ export async function layout(c: Context, problems: string[]) {
         `${c.lang} ${viewport.width}x${viewport.height}: o fim da lista não aparece depois de rolar (${hidden})`,
       );
     }
+  }
+  // The smallest window the app allows (tauri.conf.json): 40% of its height is the tightest case.
+  await c.page.setViewportSize({ width: 720, height: 480 });
+  for (const issue of await slashMenuProblems(c)) {
+    problems.push(`${c.lang} 720x480 menu /: ${issue}`);
   }
 }
