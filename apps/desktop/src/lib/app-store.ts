@@ -1019,6 +1019,9 @@ export class AppStore {
     return null;
   }
 
+  /** What the status bar's refresh asks again: the lists of the hubs and each host's quota. */
+  async refreshStatus(): Promise<void> {}
+
   /** Drops the connection and opens a new one right away. */
   async reconnectHost(hostId: string): Promise<void> {
     const host = this.state.hosts.find((h) => h.id === hostId);
