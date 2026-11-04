@@ -3487,3 +3487,14 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   backoff from the first delay and connects at once; a connection that is online or already trying is left alone. A wake-up
   within 2 s of the last one that acted is ignored, so focus spam cannot storm a host. The listeners are set in `init()` (it
   begins with `dispose()`), not in the constructor, which would be undone by it.
+
+## A refused address (issue #106, follow-up)
+
+- **The doctor names the cause; the app can only hint.** The origin filter answers 403 before any upgrade, and a browser
+  WebSocket reports only that it closed, so the app sees the same close as for a daemon that is down. Telling them apart in the
+  app would need either an HTTP probe (the webview's CSP allows no `http:` in `connect-src`, and widening it lets any injected
+  script talk out over plain HTTP) or an upgrade that closes with a code (it would end the guarantee, tested in `redes`, that a
+  refused address gets no handshake at all). Neither is worth it for a message, so the app shows a hint for a refused connection
+  to a non-loopback host: "or the daemon refused this machine's address ... allowedNetworks".
+- **The 403 now says the address** (`forbidden: <ip>`, the client's own address, which it already has), so `flightdeckd doctor`
+  reads it from `/health` and reports "the daemon refused this machine's address (<ip>)" as a failure, with the setup fix.

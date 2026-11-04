@@ -3409,6 +3409,8 @@ export const en: Dictionary = {
     hintLinux: "On the host, check that the daemon runs, and that it starts at boot:",
     hintWsl: "On WSL, also turn on systemd in /etc/wsl.conf (then run wsl --shutdown on Windows):",
     hintGeneric: "Check that the host is on and reachable, and that the daemon runs there.",
+    hintAddress:
+      "Or the daemon refused this machine's address: on the host, add its network to allowedNetworks (flightdeckd setup does it for Tailscale).",
   },
   hostPage: {
     simpleTitle: "Simple mode",

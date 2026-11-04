@@ -61,8 +61,14 @@ export function compareVersions(a: string, b: string): number {
 }
 
 /** The address the daemon says it refused (403 `forbidden: <ip>` from the origin filter), or null. */
-export async function refusedAddress(_url: string, _timeoutMs: number): Promise<string | null> {
-  return null;
+export async function refusedAddress(url: string, timeoutMs: number): Promise<string | null> {
+  try {
+    const answer = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    if (answer.status !== 403) return null;
+    return /^forbidden: (\S+)$/.exec((await answer.text()).trim())?.[1] ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** Polls `url` until it answers 2xx or `timeoutMs` passes. */

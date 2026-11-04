@@ -2457,7 +2457,11 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
   local, WSL ou Linux, o aviso lista os comandos para conferir o daemon
   (`systemctl --user status flightdeckd`, `sudo loginctl enable-linger $USER` e `systemd=true` em
   `/etc/wsl.conf` no WSL). O app também tenta um host desconectado na hora, e reinicia a contagem,
-  quando a janela volta a ter o foco ou a rede volta (no máximo uma vez a cada 2 segundos).
+  quando a janela volta a ter o foco ou a rede volta (no máximo uma vez a cada 2 segundos). Quando o daemon roda mas recusa o endereço desta máquina
+  (ele está fora de `allowedNetworks`), o `flightdeckd doctor` diz isso e cita o endereço; o app não
+  consegue separar isso de um daemon parado, então, para um host que não está nesta máquina, ele
+  acrescenta a dica de conferir `allowedNetworks` (o `flightdeckd setup` inclui as redes do
+  Tailscale).
 - **Notificações** trazem o nome do host.
 - **Fechar a janela** manda o app para a bandeja (desligável em Configurações). **Iniciar com o
   Windows** fica em Configurações, desligado por padrão.
