@@ -509,6 +509,14 @@ function shots(ids: DemoIds): Shot[] {
     { name: "host-reconectando", route: { name: "host", host: "demo-slow" } },
     { name: "host-incompativel", route: { name: "host", host: "demo-old" } },
     {
+      // Issue #105: the project page with its session tiles; it fails if no tile shows.
+      name: "projeto-blocos",
+      route: { name: "project", host: ALFA, projectId: ids.project },
+      prepare: async (page) => {
+        await page.locator("[data-slot='session-tile']").first().waitFor({ timeout: 15_000 });
+      },
+    },
+    {
       name: "projeto-vazio",
       route: { name: "board", host: ALFA, projectId: ids.emptyProject },
     },

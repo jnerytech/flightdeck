@@ -145,12 +145,18 @@ export function SessionTiles(props: {
   state: HubRowState;
   hostId: string;
   projectKey: string;
+  /** The project's folder: a session keyed by its folder still belongs to it. */
+  path?: string;
   onOpen(row: HubRow): void;
 }) {
   const { store, hostId } = props;
   const { t } = store.i18n;
   const [count, setCount] = useState<TileCount>(() => store.tileCount());
-  const rows = pickTiles(hubRows(props.state), { hostId, projectKey: props.projectKey }, count);
+  const rows = pickTiles(
+    hubRows(props.state),
+    { hostId, projectKey: props.projectKey, ...(props.path ? { path: props.path } : {}) },
+    count,
+  );
   const grid = useRef<HTMLUListElement>(null);
   if (rows.length === 0) return null;
   const columns = tileColumns(count);

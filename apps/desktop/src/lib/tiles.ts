@@ -1,4 +1,5 @@
 import type { HubRow, HubState } from "./hub.ts";
+import { isInside } from "./paths.ts";
 import type { SessionState } from "./session-state.ts";
 
 /** How many sessions of a project the page can show side by side. */
@@ -41,7 +42,9 @@ export function pickTiles(
         row.origin === "flightdeck" &&
         !row.archived &&
         row.hostId === project.hostId &&
-        row.projectKey === project.projectKey &&
+        // The daemon keys a session by its folder until git has been asked, so the folder counts too.
+        (row.projectKey === project.projectKey ||
+          (project.path !== undefined && isInside(row.cwd, project.path))) &&
         ORDER[row.state] !== undefined,
     )
     .sort(
