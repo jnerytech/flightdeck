@@ -800,6 +800,7 @@ export const ptBR = {
     toggleProject: "Mostrar ou esconder {name}",
     liveCount: "{n} ao vivo",
     earlier: "{n} sessões anteriores",
+    earlierOne: "1 sessão anterior",
     openHost: "Abrir o host {name}",
     hostsLabel: "Hosts",
     showMore: "Mostrar mais {n}",

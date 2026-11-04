@@ -204,7 +204,7 @@ describe("direcao-visual: três colunas", () => {
     const { store } = await setup();
     // The transcript from the terminal is an earlier session: open it, so all three are listed.
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /sessões anteriores/ }));
+      fireEvent.click(screen.getByRole("button", { name: /sess(?:ões|ão) anterior(?:es)?/ }));
     });
     // The managed ones and the transcript from the terminal, in the order they are listed.
     const order = [...main().querySelectorAll("li[data-active]")].map((li) =>

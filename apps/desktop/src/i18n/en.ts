@@ -800,6 +800,7 @@ export const en: Dictionary = {
     toggleProject: "Show or hide {name}",
     liveCount: "{n} live",
     earlier: "{n} earlier sessions",
+    earlierOne: "1 earlier session",
     openHost: "Open host {name}",
     hostsLabel: "Hosts",
     showMore: "Show {n} more",

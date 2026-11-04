@@ -627,7 +627,9 @@ export function SessionsHub(props: {
                     setEarlierOpen({ ...earlierOpen, [group.key]: !groupView.earlierShown })
                   }
                 >
-                  {t("hub.earlier", { n: groupView.earlier.length })}
+                  {groupView.earlier.length === 1
+                    ? t("hub.earlierOne")
+                    : t("hub.earlier", { n: groupView.earlier.length })}
                 </Button>
               )}
             </section>
