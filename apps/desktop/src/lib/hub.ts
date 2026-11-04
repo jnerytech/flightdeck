@@ -315,7 +315,7 @@ export function hubRows(state: HubRowState): HubRow[] {
 }
 
 const matches = (row: HubRow, filter: HubFilter) =>
-  `${row.title}\n${row.cwd}\n${row.hostName}`
+  `${row.title}\n${row.cwd}\n${row.hostName}\n${groupName(row.projectKey)}`
     .toLowerCase()
     .includes(filter.text.trim().toLowerCase()) &&
   (!filter.host || row.hostName === filter.host) &&
@@ -417,21 +417,33 @@ export interface HubGroupView {
   rows: HubRow[];
 }
 
-/** Stubbed until the test commit is in. */
+/**
+ * Each group as drawn. A group is open when the person said so, else when it has live sessions or
+ * a search is on; its earlier sessions come behind a count unless asked for (or searching).
+ */
 export function hubView(
   groups: HubGroup[],
-  _open: Record<string, boolean | undefined>,
-  _earlierOpen: Record<string, boolean | undefined>,
-  _searching: boolean,
+  open: Record<string, boolean | undefined>,
+  earlierOpen: Record<string, boolean | undefined>,
+  searching: boolean,
 ): HubGroupView[] {
-  return groups.map((group) => ({
-    group,
-    live: group.rows,
-    earlier: [],
-    expanded: true,
-    earlierShown: true,
-    rows: group.rows,
-  }));
+  return groups.map((group) => {
+    const isEarlier = (r: HubRow) => r.origin === "history" || r.state === "ended";
+    const earlier = group.rows
+      .filter(isEarlier)
+      .sort((a, b) => b.lastActivity.localeCompare(a.lastActivity));
+    const live = group.rows.filter((r) => !isEarlier(r));
+    const expanded = open[group.key] ?? (searching || live.length > 0);
+    const earlierShown = searching || earlierOpen[group.key] === true;
+    return {
+      group,
+      live,
+      earlier,
+      expanded,
+      earlierShown,
+      rows: expanded ? [...live, ...(earlierShown ? earlier : [])] : [],
+    };
+  });
 }
 
 /** The groups cut to their first `limit` rows in display order, and how many rows were left out. */
