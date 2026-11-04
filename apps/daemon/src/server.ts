@@ -90,6 +90,7 @@ import type { Changes } from "./review/changes.ts";
 import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
 import type { SessionFiles } from "./review/session-files.ts";
+import { type RoiSummarizer, roiPeriod } from "./roi/summary.ts";
 import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
@@ -149,6 +150,8 @@ export interface ServerOptions {
   doctor?: (appVersion?: string) => Promise<DoctorResult>;
   /** Sign-in with GitHub and start from a GitHub project (phase 37): the `github.*` commands. */
   github?: GithubService;
+  /** What the agents cost and delivered, per project (phase 36): `roi.summary`. */
+  roi?: RoiSummarizer;
   /** Board sync with an external board (phase 38): the `boardsync.*` commands. */
   boardsync?: BoardSyncService;
   /** Announce `projects.scan` and `projects.clone` in `host.info`: "find my projects" needs them. */
@@ -431,6 +434,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
     ...(opts.github ? ["github"] : []),
     ...(opts.boardsync ? ["boardsync"] : []),
+    ...(opts.roi ? ["roi"] : []),
     ...(opts.central ? ["central"] : []),
     ...(opts.board ? ["workflows"] : []),
     // Phase 24: the run.yaml of a card and its processes.
@@ -569,6 +573,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         : {}),
       ...(summary ? { summary } : {}),
     };
+  }
+
+  function roi(): RoiSummarizer {
+    if (!opts.roi) throw featureOff("roi");
+    return opts.roi;
   }
 
   function boardsync(): BoardSyncService {
@@ -1510,8 +1519,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { projectId, ...patch } = command.payload;
         return ok(command.type, await board().forWire(board().updateProject(projectId, patch)));
       }
-      case "board.get":
-        return ok(command.type, board().getBoard(command.payload.projectId));
+      case "board.get": {
+        const found = board().getBoard(command.payload.projectId);
+        return ok(command.type, { ...found, project: await board().forWire(found.project) });
+      }
       case "roots.add": {
         requireVaultTransport(ws.data.origin, "roots.add", opts.log);
         const { path, confirm } = command.payload;
@@ -1670,6 +1681,8 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { depth } = command.payload;
         return ok(command.type, await scanRepos(opts.allowedRoots, depth ? { depth } : {}));
       }
+      case "roi.summary":
+        return ok(command.type, await roi().summaryWithSignals(roiPeriod(command.payload)));
       case "boardsync.boards":
         return ok(command.type, { boards: await boardsync().boards() });
       case "boardsync.link":

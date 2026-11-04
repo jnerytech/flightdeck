@@ -350,6 +350,7 @@ const validCommands: Record<CommandType, unknown> = {
   "doctor.run": { appVersion: "0.32.0" },
   "projects.scan": { depth: 2 },
   "projects.clone": { url: "https://example.com/a/b.git", root: "/work" },
+  "roi.summary": { from: "2026-10-01", to: "2026-10-31" },
   "boardsync.boards": {},
   "boardsync.link": { projectId: "p1", boardId: "PVT_1" },
   "boardsync.unlink": { projectId: "p1" },

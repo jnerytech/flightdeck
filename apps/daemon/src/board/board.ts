@@ -24,6 +24,7 @@ import { isInside, resolveAllowedCwd } from "../paths.ts";
 import { isProjectRule } from "../permissions/permission-updates.ts";
 import { type Prepare, withoutPersonas } from "../personas/prepare.ts";
 import type { Quota } from "../quota/quota.ts";
+import { type DoneVia, forgetDone, recordDone } from "../roi/done-log.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import type { SecretScanner } from "../snippets/model.ts";
 import { ulid } from "../ulid.ts";
@@ -126,7 +127,14 @@ interface ProjectRow {
   issues: string | null;
   persona_by_column: string | null;
   persona_subagents: PersonaSubagentsMode | null;
+  default_hours: number | null;
+  roi_commits: number;
+  roi_issues: number;
 }
+
+/** The fields of a patch that were given, so a missing one keeps its value. */
+const definedOnly = <T extends object>(patch: T | undefined): Partial<T> =>
+  Object.fromEntries(Object.entries(patch ?? {}).filter(([, v]) => v !== undefined)) as Partial<T>;
 
 function toProject(row: ProjectRow): Project {
   return {
@@ -143,6 +151,8 @@ function toProject(row: ProjectRow): Project {
     issues: row.issues ? IssuesConfig.parse(JSON.parse(row.issues)) : null,
     personaByColumn: row.persona_by_column ? JSON.parse(row.persona_by_column) : {},
     personaSubagents: row.persona_subagents ?? "all",
+    defaultHours: row.default_hours,
+    roiSignals: { commits: row.roi_commits === 1, issues: row.roi_issues === 1 },
   };
 }
 
@@ -206,6 +216,7 @@ interface CardRow {
   issue_external: number;
   external_url: string | null;
   external_gone: number;
+  estimate_hours: number | null;
   arena_of: string | null;
   variant: string | null;
   unblock_when: UnblockWhen;
@@ -388,7 +399,10 @@ export class Board {
         { path },
       );
     const head = await git(path, "rev-parse", "--abbrev-ref", "HEAD");
-    const project: Omit<Project, "worktreeInclude" | "personaByColumn" | "personaSubagents"> = {
+    const project: Omit<
+      Project,
+      "worktreeInclude" | "personaByColumn" | "personaSubagents" | "defaultHours" | "roiSignals"
+    > = {
       id: ulid(),
       path,
       name: input.name?.trim() || basename(path),
@@ -439,12 +453,14 @@ export class Board {
       ...(patch.personaSubagents
         ? { personaSubagents: subagentsMode(patch.personaSubagents) }
         : {}),
+      ...(patch.defaultHours !== undefined ? { defaultHours: patch.defaultHours } : {}),
+      roiSignals: { ...current.roiSignals, ...definedOnly(patch.roiSignals) },
     };
     this.db
       .query(
         `UPDATE projects SET name = ?, base_branch = ?, pr_provider = ?, setup_script = ?,
          prompt_template = ?, auto_approve = ?, issues = ?, persona_by_column = ?,
-         persona_subagents = ? WHERE id = ?`,
+         persona_subagents = ?, default_hours = ?, roi_commits = ?, roi_issues = ? WHERE id = ?`,
       )
       .run(
         next.name,
@@ -456,6 +472,9 @@ export class Board {
         next.issues ? JSON.stringify(next.issues) : null,
         JSON.stringify(next.personaByColumn),
         next.personaSubagents,
+        next.defaultHours,
+        next.roiSignals.commits ? 1 : 0,
+        next.roiSignals.issues ? 1 : 0,
         id,
       );
     return next;
@@ -524,6 +543,7 @@ export class Board {
       issueExternal: row.issue_external === 1,
       externalUrl: row.external_url,
       externalGone: row.external_gone === 1,
+      estimateHours: row.estimate_hours,
       blockedBy: this.blockersOf(id),
       blocking: this.blockingOf(id),
       waitingOn: rows.length === 0 ? this.unsatisfied(id, row.unblock_when) : [],
@@ -801,6 +821,8 @@ export class Board {
     patch: {
       title?: string | undefined;
       description?: string | undefined;
+      /** Phase 36: `null` removes the estimate. */
+      estimateHours?: number | null | undefined;
       blockedBy?: string[] | undefined;
       unblockWhen?: UnblockWhen | undefined;
       autoStart?: { workflow: string | null } | null | undefined;
@@ -810,12 +832,13 @@ export class Board {
     if (patch.blockedBy) this.checkBlockers(id, card.projectId, patch.blockedBy);
     this.db
       .query(
-        `UPDATE cards SET title = ?, description = ?, unblock_when = ?, auto_start = ?, updated_at = ?
-         WHERE id = ?`,
+        `UPDATE cards SET title = ?, description = ?, estimate_hours = ?, unblock_when = ?, auto_start = ?,
+           updated_at = ? WHERE id = ?`,
       )
       .run(
         patch.title ?? card.title,
         patch.description ?? card.description,
+        patch.estimateHours === undefined ? card.estimateHours : patch.estimateHours,
         patch.unblockWhen ?? card.unblockWhen,
         autoStartOf(patch.autoStart === undefined ? card.autoStart : patch.autoStart),
         now(),
@@ -1668,7 +1691,7 @@ export class Board {
   async completeCard(id: string, confirm: boolean): Promise<Card> {
     if (!confirm)
       throw new FlightdeckError("invalid_state", "confirm completing the card", "complete_confirm");
-    this.place(id, { type: "moved", column: "done" });
+    this.place(id, { type: "moved", column: "done" }, "completed");
     await this.finish(id);
     return this.getCard(id);
   }
@@ -1701,6 +1724,7 @@ export class Board {
     const holdingUp = this.blockingOf(id);
     const heldBy = this.blockersOf(id);
     this.db.query("DELETE FROM card_runs WHERE card_id = ?").run(id);
+    forgetDone(this.db, id);
     this.db.query("DELETE FROM cards WHERE id = ?").run(id);
     const discarded = { ...last, worktreePath: null, branch: null, discarded: true };
     this.emit(discarded);
@@ -1826,12 +1850,17 @@ export class Board {
 
   // -- internals ------------------------------------------------------------
 
-  private place(id: string, event: BoardEvent): void {
+  private place(id: string, event: BoardEvent, via?: DoneVia): void {
     const card = this.getCard(id);
     const next = nextColumn({ column: card.column, locked: card.columnLocked }, event);
     this.db
       .query("UPDATE cards SET board_column = ?, column_locked = ?, updated_at = ? WHERE id = ?")
       .run(next.column, next.locked ? 1 : 0, now(), id);
+    // The first time a card is done is the fact the ROI view counts delivered work by.
+    if (next.column === "done" && card.column !== "done") {
+      const how = via ?? (event.type === "pr" && event.state === "merged" ? "merged" : "moved");
+      recordDone(this.db, id, how, now());
+    }
     this.changed(id);
   }
 

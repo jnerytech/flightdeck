@@ -45,6 +45,7 @@
     "smoke:webhook": "bun run scripts/smoke-webhook.ts",
     "smoke:github": "bun run scripts/smoke-github.ts",
     "smoke:boardsync": "bun run scripts/smoke-boardsync.ts",
+    "smoke:roi": "bun run scripts/smoke-roi.ts",
     "smoke:perf": "bun run scripts/smoke-perf.ts",
     "tdd:audit": "bun run scripts/tdd-audit.ts",
     "test:related": "bun run scripts/test-related.ts",

@@ -8,6 +8,7 @@
  * idle and ended; cards in every column and one with a diff; an empty project; 60+ sessions and a
  * long transcript; the plan quota; costs from usage in the transcripts; a very long title.
  */
+import { Database } from "bun:sqlite";
 import { execFileSync } from "node:child_process";
 import { chmodSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
@@ -656,6 +657,41 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   await client.call("card.move", { cardId: waiting.id, column: "waiting" });
   const done = await card("Atualizar dependências", "Atualize e rode os testes.");
   await client.call("card.move", { cardId: done.id, column: "done" });
+
+  // Phase 36: delivered work for the ROI card, whatever day the demo runs. This month so far: four
+  // cards done (two planned, two unplanned; two as merged PRs); the period before it: two.
+  await client.call("project.update", { projectId: project.id, defaultHours: 2 });
+  const finished: string[] = [done.id];
+  for (const title of ["Ajustar o rodapé", "Revisar os textos", "Trocar o ícone"]) {
+    const extra = await card(title, "Entregue na demo.");
+    await client.call("card.move", { cardId: extra.id, column: "done" });
+    finished.push(extra.id);
+  }
+  for (const title of ["Corrigir o menu", "Limpar o cache"]) {
+    const old = await card(title, "Entregue antes.");
+    await client.call("card.move", { cardId: old.id, column: "done" });
+    finished.push(old.id);
+  }
+  const marks = new Database(join(alfa.dataDir, "flightdeck.db"));
+  const nowIso = new Date().toISOString();
+  const longAgo = new Date(Date.now() - 40 * 86_400_000).toISOString();
+  const monthStart = new Date(`${nowIso.slice(0, 7)}-01T00:00:00Z`);
+  // Noon of the day before this month began: inside the period before, however short the month so far.
+  const before = new Date(monthStart.getTime() - 12 * 3_600_000).toISOString();
+  const plan: Array<[string, string, string, string]> = [
+    [finished[0] as string, nowIso, nowIso, "moved"],
+    [finished[1] as string, nowIso, longAgo, "merged"],
+    [finished[2] as string, nowIso, longAgo, "merged"],
+    [finished[3] as string, nowIso, nowIso, "moved"],
+    [finished[4] as string, before, longAgo, "moved"],
+    [finished[5] as string, before, longAgo, "moved"],
+  ];
+  for (const [cardId, doneAt, createdAt, via] of plan) {
+    marks
+      .query("UPDATE card_done SET done_at = ?, card_created_at = ?, via = ? WHERE card_id = ?")
+      .run(doneAt, createdAt, via, cardId);
+  }
+  marks.close();
 
   // Two budgets far above the day's usage, so Configurações lists them without raising an alert.
   await client.call("budget.set", {

@@ -75,6 +75,10 @@ sessions from one place, without opening each machine.
 - Clients: group projects across hosts by rules (a remote prefix or a folder), with a switcher that
   filters sessions, board, costs, budgets, conversations and the vault, a cost and month-limit
   roll-up per client, and defaults (persona, snippets, vault tag) that never hide an approval.
+- Return on cost: a card on each project's board and a table on the Costs screen say whether the
+  agents delivered more for what it cost (cards done, PRs merged, planned and unplanned, cost per
+  item, rework), with the hours and rates you type kept in the app and every estimate marked as one.
+  Export the table as CSV; see tokens against delivery per person, never as a ranking.
 - Session summary and webhooks: a short summary of a session (what was asked and done, the
   files, the cost, the open question) built from its transcript with no model call, and webhook
   targets (Slack, Discord or a signed JSON endpoint) told when a session needs you, ends or fails,

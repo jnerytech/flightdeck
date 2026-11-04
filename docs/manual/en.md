@@ -90,6 +90,7 @@ are written in Portuguese.
   - [Prices](#prices)
   - [Budgets](#budgets)
   - [Quota history](#quota-history)
+  - [Return on cost](#return-on-cost)
 - [Clients: grouping work across hosts and projects](#clients-grouping-work-across-hosts-and-projects)
 - [Session summary and webhooks](#session-summary-and-webhooks)
 - [Notification center](#notification-center)
@@ -2147,6 +2148,53 @@ Every quota reading from a managed session is kept for 30 days. Identical readin
 - **Who used the window:** each project's share of the estimated cost since the start of the
   current 5-hour window. It is an approximate attribution, because the plan does not say who used
   the quota.
+
+### Return on cost
+
+For hosts that announce `roi`, the project's board page starts with a **Return on cost** card and the Costs screen
+gains a **project table**, a **people table** and a settings block. It answers one question first: *did we deliver more
+for what it cost?* Every figure is correlated and estimated: hours and rates are typed, not measured, and a card done is
+not a verified result. The screens never call it profit or savings.
+
+- **The card.** Choose 7 days, 30 days or this month. The first line says how many items were delivered (cards done,
+  split into *planned*, which were on the board before the period began, and *unplanned*, created and done inside it),
+  what the agents cost, and whether that is more, fewer or about the same (within 5%) as the period before, with the
+  cost per item of both. Below it: cards done and PRs merged, cost per card and per PR, the rework line (fix rounds and
+  their cost), estimated hours and value marked as an estimate, and an 8-week trend with a text alternative.
+  **How is this computed?** lists each number with its inputs.
+- **Optional signals.** In the card's **Hours and rate** block, each project can switch on *agent commits* (commits of
+  the period with a `Co-Authored-By: Claude` trailer; approximate, because a person can add the trailer too) and *issues
+  closed* (asked of the host's `gh`, kept for an hour; the card says when `gh` is missing or signed out). Both are off by
+  default.
+- **The Costs table.** One row per project of the chosen client scope: cost, cards, PRs, cost per card and per PR,
+  estimated hours, estimated value and return on cost (estimate). Click a column header to sort, again to reverse. A
+  dash means the figure cannot be computed (no cards, no rate). The footer adds up the rows. **Export the project table
+  as CSV** saves one row per project, with a column that says how each figure was made; the file always uses a dot as
+  the decimal mark.
+- **People.** *Tokens against delivery, by person* groups hosts into a named person (for example, the host that
+  someone's agents run on) with a monthly token and/or cost limit. It shows the month's use against the limit, what was
+  delivered, and tokens per card. People are listed by name: it is a view, not a ranking, and hosts are not people.
+  Nothing is enforced; the existing host and client budgets are the ones that stop work.
+
+#### Where do I set the hourly rate?
+
+The rate is the person's own money figure and stays in the app; the hosts never see it. The project's own rate wins,
+then its client's, then the default.
+
+- **Default and review time:** Costs, **Return on cost settings**. There you also choose whether *your* review time
+  counts as cost (at most the cap you set for each decision; off by default, and the card shows the waiting time as
+  information either way) and manage the people.
+- **A client:** the **Clients** screen, **Hourly rate for this client**.
+- **A project:** the card's **Hours and rate** block on the board page, which also holds the hours each card is worth by
+  default. A single card's hours are set in the card's detail, **Estimated hours for this card**.
+
+#### Why is there no ROI for a project?
+
+- **No rate:** the card says *Set an hourly rate to see the estimated value*; the cost per card and per PR still show.
+- **No hours:** done cards without an estimate and without a project default are counted and named, and add no hours.
+- **Nothing delivered:** the card says so and still shows what the agents cost.
+- **No cost yet:** the ratio needs a cost above zero.
+- **The host is offline or does not announce `roi`:** its figures are missing; the others still add up.
 
 ## Clients: grouping work across hosts and projects
 
