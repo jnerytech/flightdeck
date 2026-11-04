@@ -61,6 +61,9 @@ describe("board-tints: the columns are tinted by status in both themes", () => {
     const rule = /\.board-column\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
     expect(rule).toContain("border-top");
     expect(rule).toContain("color-mix");
+    // In oklab, which has no hue to travel: in oklch a near-white background and an amber tone mixed
+    // through a pink.
+    expect(rule).toContain("color-mix(in oklab,");
     for (const column of COLUMNS) {
       expect(css).toContain(`--column-tone: var(--column-${column})`);
     }
