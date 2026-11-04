@@ -47,6 +47,28 @@ describe("deps-doctor: the terminal prints the same grouping as the app", () => 
     expect(text).not.toContain("sudo apt install claude");
   });
 
+  test("a missing program shows its install page, with the package-manager line when there is one", () => {
+    const lines = formatDeps(
+      {
+        items: [
+          dep("az", "optional", "missing", {
+            fix: [
+              { os: "linux", url: "https://learn.microsoft.com/cli/azure/install-azure-cli-linux" },
+            ],
+          }),
+          dep("gh", "optional", "missing", {
+            fix: [{ os: "linux", command: "sudo apt install gh", url: "https://cli.github.com" }],
+          }),
+        ],
+      },
+      "linux",
+    ).join("\n");
+    expect(lines).toContain("page: https://learn.microsoft.com/cli/azure/install-azure-cli-linux");
+    expect(lines).not.toContain("-> undefined");
+    expect(lines).toContain("-> sudo apt install gh");
+    expect(lines).toContain("page: https://cli.github.com");
+  });
+
   test("everything in place says so in the headline", () => {
     expect(formatDeps({ items: [dep("claude", "required", "ok")] }, "linux")[0]).toBe(
       "Dependencies: all set",
