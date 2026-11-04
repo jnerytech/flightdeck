@@ -108,6 +108,7 @@ import { probeHost } from "./probe-host.ts";
 import { isHot } from "./quota.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
+import type { RoiMoney } from "./roi.ts";
 import { RoiSettings } from "./roi-settings.ts";
 import type { Route } from "./router.ts";
 import {
@@ -2657,6 +2658,19 @@ export class AppStore {
     return answers.flatMap(({ hostId, asked }) =>
       asked.ok ? [{ hostId, result: asked.data }] : [],
     );
+  }
+
+  /** Phase 36: what the person typed that turns the work of a project into money. */
+  roiMoneyOf(projectKey: string): RoiMoney {
+    const clientId = this.clientScope().clientOf(projectKey);
+    const settings = this.roi.data();
+    return {
+      rate: this.roi.rateFor(projectKey, clientId === UNASSIGNED ? null : clientId),
+      billed: null,
+      planShareUsd: null,
+      countReview: settings.countReview,
+      reviewCapSeconds: settings.reviewCapMinutes * 60,
+    };
   }
 
   /** Phase 29: the clients, their rules and overrides, kept by the app. */

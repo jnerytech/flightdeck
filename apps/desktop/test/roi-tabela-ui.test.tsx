@@ -104,12 +104,12 @@ for (const [lang, t] of [
 
     test("a column header sorts both ways and says which way it is sorted", async () => {
       await costsPage(lang);
-      await settle(() => screen.queryAllByRole("row").length >= 4);
+      await settle(() => screen.queryByRole("table", { name: t.roiUi.tableTitle }) !== null);
       const names = () =>
         dataRows()
           .slice(0, -1)
           .map((r) => cellsOf(r)[0]);
-      const header = (name: string) => screen.getByRole("columnheader", { name: new RegExp(name) });
+      const header = (name: string) => screen.getByRole("columnheader", { name });
       await act(async () => {
         fireEvent.click(within(header(t.roiUi.table.cost)).getByRole("button"));
       });

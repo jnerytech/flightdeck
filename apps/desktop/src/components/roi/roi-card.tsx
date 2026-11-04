@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
-import { UNASSIGNED } from "@/lib/clients";
 import { periodRange, usd } from "@/lib/costs";
 import { compare, EMPTY_PERIOD, figures, headline, mergePeriods } from "@/lib/roi";
 
@@ -63,15 +62,7 @@ export function RoiCard(props: { store: AppStore; hostId: string; project: Proje
   }, [load]);
 
   // Cheap, and read on every render: saving a rate bumps `version` to render again.
-  const clientId = store.clientScope().clientOf(key);
-  const settings = store.roi.data();
-  const money = {
-    rate: store.roi.rateFor(key, clientId === UNASSIGNED ? null : clientId),
-    billed: null,
-    planShareUsd: null,
-    countReview: settings.countReview,
-    reviewCapSeconds: settings.reviewCapMinutes * 60,
-  };
+  const money = store.roiMoneyOf(key);
 
   if (!periods) {
     return (
