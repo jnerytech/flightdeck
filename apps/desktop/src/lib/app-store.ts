@@ -815,9 +815,13 @@ export class AppStore {
     return (this.options.day ?? localDay)(this.now());
   }
 
-  /** Phase 36: the day the hosts' ROI figures end on; stub, still the local day. */
+  /**
+   * Phase 36: the day the hosts' ROI figures end on. A host dates a delivery by its UTC day, so
+   * the range ends on today's UTC day: west of Greenwich, late in the evening, the local day is
+   * still yesterday and today's work would fall outside it.
+   */
   roiToday(): string {
-    return this.today();
+    return new Date(this.now()).toISOString().slice(0, 10);
   }
 
   /** HH:MM of an instant, in this machine's time zone unless injected. */

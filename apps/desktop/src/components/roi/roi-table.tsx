@@ -45,7 +45,7 @@ export function RoiTable(props: {
   useEffect(() => {
     let live = true;
     const load = () =>
-      void store.roiSummaries(from, to).then((all) => {
+      void store.roiSummaries(from, to === store.today() ? store.roiToday() : to).then((all) => {
         if (live) setAnswers(all.filter((a) => hostKey.split("|").includes(a.hostId)));
       });
     load();

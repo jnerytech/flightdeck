@@ -61,7 +61,7 @@ export function RoiCard(props: { store: AppStore; hostId: string; project: Proje
   const [version, setVersion] = useState(0);
 
   const load = useCallback(async () => {
-    const { from, to } = periodRange(choice, store.today());
+    const { from, to } = periodRange(choice, store.roiToday());
     const answers = await store.roiSummaries(from, to);
     const found = answers.flatMap(({ result }) =>
       result.projects.filter((p) => p.projectKey === key),
