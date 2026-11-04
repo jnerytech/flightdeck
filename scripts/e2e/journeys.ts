@@ -468,12 +468,14 @@ async function lastRowProblem(page: Page): Promise<string | null> {
 async function slashMenuProblems(c: Context): Promise<string[]> {
   await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
   const box = c.page.getByLabel(c.t("session.message"), { exact: true });
+  // Where the box is before the menu opens: opening it must not move it, nor cover it.
+  const before = await box.boundingBox();
   await box.fill("/");
   const menu = c.page.getByRole("listbox", { name: c.t("session.snippets") });
   await menu.waitFor({ timeout: WAIT });
   const options = await menu.getByRole("option").count();
   return c.page.evaluate(
-    ({ options: count, label }) => {
+    ({ options: count, label, was }) => {
       const found: string[] = [];
       const { innerWidth: width, innerHeight: height } = window;
       const root = document.documentElement;
@@ -487,10 +489,14 @@ async function slashMenuProblems(c: Context): Promise<string[]> {
       }
       const field = document.querySelector<HTMLElement>(`[aria-label="${label}"]`);
       const box = field?.getBoundingClientRect();
-      if (!box || box.top < 0 || box.bottom > height) found.push("a caixa de mensagem sai da tela");
+      if (!box) found.push("a caixa de mensagem sumiu");
+      else if (was && Math.abs(box.top - was.y) > 1)
+        found.push("o menu / mexeu na caixa de mensagem");
+      else if (popover && at && box.top < at.bottom - 1)
+        found.push("o menu / cobre a caixa de mensagem");
       return found;
     },
-    { options, label: c.t("session.message") },
+    { options, label: c.t("session.message"), was: before },
   );
 }
 
