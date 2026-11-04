@@ -208,7 +208,7 @@ export function TabBar(props: {
                   data-tab-id={tab.id}
                   aria-keyshortcuts={`${tab.pinned ? "" : "Delete "}${MOVE_KEYS}`}
                   {...(tab.pinned ? { "aria-label": label } : {})}
-                  className="flex min-w-0 flex-1 items-center gap-1.5 rounded-t-md px-2 py-1.5 outline-none hover:bg-accent/60"
+                  className="flex min-w-0 flex-1 items-center gap-1.5 rounded-t-md px-2 py-1.5 outline-none hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => tabs.activate(tab.id)}
                   onDoubleClick={() => tabs.commit(tab.id)}
                   onKeyDown={(e) => {
