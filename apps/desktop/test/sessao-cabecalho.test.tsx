@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 
 registerDom();
@@ -7,24 +7,20 @@ const screen = liveScreen(within);
 const { SessionHeader } = await import("../src/components/session/parts.tsx");
 
 /** Reports a width to every box that is observed, as a real layout would. */
-let width: number | null = null;
 const real = globalThis.ResizeObserver;
-beforeEach(() => {
-  if (width === null) return;
-  const w = width;
+function layoutWidth(width: number) {
   globalThis.ResizeObserver = class {
     constructor(private readonly callback: (entries: unknown[]) => void) {}
     observe() {
-      this.callback([{ contentRect: { width: w } }]);
+      this.callback([{ contentRect: { width } }]);
     }
     disconnect() {}
     unobserve() {}
   } as unknown as typeof ResizeObserver;
-});
+}
 afterEach(() => {
   cleanup();
   globalThis.ResizeObserver = real;
-  width = null;
 });
 
 const header = () => (
@@ -51,7 +47,7 @@ describe("sessao-cabecalho: the session header at narrow widths", () => {
   });
 
   test("narrow: one line with the title and the status, the path in the tooltip, the rest in a menu", async () => {
-    width = 360;
+    layoutWidth(360);
     render(header());
     await act(async () => {});
     expect(screen.getByRole("heading", { name: "Revisão do PR 128" }).getAttribute("title")).toBe(
@@ -66,7 +62,7 @@ describe("sessao-cabecalho: the session header at narrow widths", () => {
   });
 
   test("narrow: the menu holds the buttons and the persona row", async () => {
-    width = 360;
+    layoutWidth(360);
     render(header());
     await act(async () => {});
     await act(async () => void fireEvent.click(more() as HTMLElement));
