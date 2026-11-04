@@ -163,7 +163,7 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     await act(async () => {
       store.router.push({ name: "card", host: hostId, projectId, cardId: card.id });
     });
-    await act(() => Bun.sleep(150));
+    await settle(() => screen.queryByRole("button", { name: "Iniciar em arena" }) !== null);
     await click("Iniciar em arena");
     await settle(() => options("Persona da variante 1").length > 1);
     await fill("Persona da variante 1", "host:seguranca");
@@ -189,7 +189,7 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     await act(async () => {
       store.router.push({ name: "card", host: hostId, projectId, cardId: card.id });
     });
-    await act(() => Bun.sleep(150));
+    await settle(() => screen.queryByRole("button", { name: "Iniciar em arena" }) !== null);
     await click("Iniciar em arena");
     await settle(() => options("Persona da variante 1").length > 1);
     await fill("Persona da variante 1", "app:minha");

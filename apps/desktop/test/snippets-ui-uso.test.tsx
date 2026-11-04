@@ -246,8 +246,7 @@ describe("snippets-uso: the palette", () => {
     await act(async () => {
       fireEvent.keyDown(use as HTMLElement, { key: "Escape" });
     });
-    await act(() => Bun.sleep(100));
-    expect(screen.queryByLabelText("msg")).toBeNull();
+    await settle(() => screen.queryByLabelText("msg") === null);
   });
 
   test("a context field the person fills goes into the text", async () => {

@@ -62,7 +62,12 @@ describe("snippets-ui: a secret's snippet becomes an action", () => {
     await act(async () => {
       fireEvent.click(screen.queryByRole("button", { name: "Snippets" }) as HTMLElement);
     });
-    await act(() => Bun.sleep(100));
+    await settle(
+      () =>
+        (screen.queryByLabelText("Projeto") as HTMLSelectElement | null)?.querySelector(
+          `option[value="${h.repo}"]`,
+        ) != null,
+    );
     const fill = async (label: string, value: string) => {
       const field = screen.queryByLabelText(label);
       expect(field).not.toBeNull();

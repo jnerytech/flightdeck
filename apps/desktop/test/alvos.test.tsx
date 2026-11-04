@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { memoriaHost } from "./memoria-ui-setup.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -37,10 +38,12 @@ describe("alvos: raw buttons keep a 24 px target", () => {
   test("the sidebar's section titles are 24 px tall", async () => {
     const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
     render(<App store={store} />);
-    await act(() => Bun.sleep(20));
-    const titles = screen
-      .queryAllByRole("button")
-      .filter((b) => b.hasAttribute("aria-expanded") && b.className.includes("uppercase"));
+    const sectionTitles = () =>
+      screen
+        .queryAllByRole("button")
+        .filter((b) => b.hasAttribute("aria-expanded") && b.className.includes("uppercase"));
+    await settle(() => sectionTitles().length > 0);
+    const titles = sectionTitles();
     expect(titles.length).toBeGreaterThan(0);
     for (const title of titles) {
       expect(tall(title)).toBe(true);

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -8,7 +9,6 @@ const { ActionButton: Button } = await import("../src/components/feedback/action
 
 afterEach(cleanup);
 
-const tick = () => act(() => Bun.sleep(10));
 const press = async (name: string) => {
   const button = screen.queryByRole("button", { name });
   expect(button).not.toBeNull();
@@ -79,7 +79,9 @@ describe("botao-clique: the shared button answers a click", () => {
     await press("Abrir");
     expect(calls).toBe(1);
     work.open();
-    await tick();
+    await settle(
+      () => screen.queryByRole("button", { name: /Abrir/ })?.getAttribute("aria-busy") == null,
+    );
     const after = screen.queryByRole("button", { name: /Abrir/ }) as HTMLButtonElement | null;
     expect(after?.getAttribute("aria-busy")).toBeNull();
     expect(after?.disabled).toBe(false);
@@ -90,7 +92,11 @@ describe("botao-clique: the shared button answers a click", () => {
     render(<Button onClick={() => work.promise.catch(() => {})}>Abrir</Button>);
     await press("Abrir");
     work.fail(new Error("falhou"));
-    await tick();
+    await settle(
+      () =>
+        (screen.queryByRole("button", { name: /Abrir/ }) as HTMLButtonElement | null)?.disabled ===
+        false,
+    );
     expect(
       (screen.queryByRole("button", { name: /Abrir/ }) as HTMLButtonElement | null)?.disabled,
     ).toBe(false);
@@ -133,6 +139,8 @@ describe("botao-clique: the shared button answers a click", () => {
     });
     expect(calls).toBe(1);
     work.open();
-    await tick();
+    await act(async () => {
+      await work.promise;
+    });
   });
 });

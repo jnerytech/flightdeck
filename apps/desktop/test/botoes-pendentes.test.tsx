@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { translator } from "../src/i18n/index.ts";
 import { liveScreen, registerDom } from "./dom.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -136,7 +137,7 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
       },
     } as unknown as AppStore;
     render(<SessionMessages store={store} hostId="h" sessionId="s1" />);
-    await act(() => Bun.sleep(10));
+    await settle(() => button("Mandar para outra sessão…") !== null);
     await click(button("Mandar para outra sessão…"));
     await act(async () => {
       fireEvent.change(screen.getByLabelText("Texto da mensagem"), { target: { value: "oi" } });
