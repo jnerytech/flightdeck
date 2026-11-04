@@ -50,7 +50,8 @@ const typeInBox = async (text: string) => {
   await act(async () => {
     fireEvent.change(box() as HTMLElement, { target: { value: text } });
   });
-  await act(() => Bun.sleep(150));
+  // The menu lists the snippets once the host's list has come; a slow runner is later than 150 ms.
+  await settle(() => menu().length > 0);
 };
 const menu = () => {
   const list = screen.queryByRole("listbox", { name: "Snippets de prompt" });
