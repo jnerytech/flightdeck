@@ -59,6 +59,28 @@ describe("telas-rotas: routes that open a screen", () => {
     await settle(() => screen.queryByText("Este projeto não está neste host.") !== null);
   });
 
+  test("the pin button of an open session pins it and flips to the pressed state", async () => {
+    const { store, hostId, sessionId } = await setup();
+    await act(async () => {
+      store.router.push({ name: "session", host: hostId, id: sessionId });
+    });
+    const pin = () => screen.queryByRole("button", { name: "Fixar sessão" });
+    await settle(() => pin() !== null);
+    expect(pin()?.getAttribute("aria-pressed")).toBe("false");
+    await act(async () => {
+      fireEvent.click(pin() as HTMLElement);
+    });
+    await settle(() => pin()?.getAttribute("aria-pressed") === "true");
+    const metas = Object.entries(store.getState().meta);
+    expect(metas).toHaveLength(1);
+    expect(metas[0]?.[1]?.pinned).toBe(true);
+    await act(async () => {
+      fireEvent.click(pin() as HTMLElement);
+    });
+    await settle(() => pin()?.getAttribute("aria-pressed") === "false");
+    expect(Object.values(store.getState().meta)[0]?.pinned).toBe(false);
+  });
+
   test("a history route with a folder opens the history filtered by it", async () => {
     const { store, hostId, project } = await setup();
     await act(async () => {

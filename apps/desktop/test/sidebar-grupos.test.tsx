@@ -107,6 +107,34 @@ describe("sidebar-grupos: the bar in groups", () => {
     expect(screen.getByRole("button", { name: "Vault" })).toBeTruthy();
   });
 
+  test("folding Work and Infra hides their items and leaves the other groups alone", async () => {
+    const { view } = setup();
+    render(view());
+    const heading = (name: string) => screen.getByRole("button", { name });
+    for (const [name, item] of [
+      ["Work", "Costs"],
+      ["Infra", "Connections"],
+    ] as const) {
+      await act(async () => {
+        fireEvent.click(heading(name));
+      });
+      expect(heading(name).getAttribute("aria-expanded")).toBe("false");
+      expect(screen.queryByRole("button", { name: item })).toBeNull();
+    }
+    expect(heading("Library").getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("button", { name: "Vault" })).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(heading("Work"));
+    });
+    await act(async () => {
+      fireEvent.click(heading("Infra"));
+    });
+    expect(heading("Work").getAttribute("aria-expanded")).toBe("true");
+    expect(heading("Infra").getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("button", { name: "Costs" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Connections" })).toBeTruthy();
+  });
+
   test("the icon rail has no headings and lists every item", () => {
     const { view } = setup();
     render(view(true));

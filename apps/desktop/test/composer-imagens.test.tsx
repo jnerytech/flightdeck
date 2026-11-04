@@ -80,6 +80,14 @@ describe("composer-imagens: images in the message box", () => {
     expect(sent).toEqual([{ text: "", images: [{ mediaType: "image/jpeg", data: "iVBORw==" }] }]);
   });
 
+  test("dragging over the box is accepted only when the host takes images", () => {
+    const withImages = setup(true);
+    expect(fireEvent.dragOver(withImages.box, { dataTransfer: { types: ["Files"] } })).toBe(false);
+    cleanup();
+    const without = setup(false);
+    expect(fireEvent.dragOver(without.box, { dataTransfer: { types: ["Files"] } })).toBe(true);
+  });
+
   test("a refused file says why and attaches nothing", async () => {
     const { box } = setup();
     await paste(box, file("image/svg+xml"));
