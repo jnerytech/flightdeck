@@ -753,6 +753,33 @@ Para hosts que anunciam `github` há dois lugares:
 Para testar: na página do host aperte **Entrar com o GitHub**, confirme no GitHub; em **Projetos** aperte
 **Começar pelo GitHub**, escolha um repositório e aperte **Começar**.
 
+
+### Sincronização do quadro com o GitHub Projects
+
+Para hosts que anunciam `boardsync` (precisa do `gh` do host conectado, veja **Começar pelo GitHub**), o botão
+**Sincronizar** do **Board** de um projeto liga o projeto a um quadro do GitHub Projects (v2):
+
+- **Ligar quadro.** Escolha um dos seus quadros e aperte **Ligar quadro**. Os itens dele viram cards (uma issue guarda o
+  link e, quando foi escrita por um estranho, a marca de terceiros e fica sem aprovação automática); o **Status** de cada
+  item põe o card numa coluna. Depois disso o host lê o quadro a cada minuto, e **Sincronizar agora** faz isso na hora.
+- **Mapa de status.** Cada status do quadro tem uma coluna aqui: por padrão Todo e Backlog para Backlog, In Progress para
+  Em andamento, In Review para Em revisão, Done para Concluído. Mude uma coluna e aperte **Salvar mapa**; um status
+  *Sem mapa* deixa os cards onde estão. *Esperando você* não tem par no GitHub, então os cards que vão para lá não são
+  enviados.
+- **Só leitura por padrão.** Mover um card aqui não muda nada no quadro até você ligar **Enviar minhas mudanças de card ao
+  quadro**. Ligar pede confirmação e precisa da permissão `project`; se o login não a tem, a mensagem diz e nada é
+  enviado. O envio só muda o Status de itens que já são cards: nunca cria, edita ou apaga um item.
+- **Conflitos.** Se um card mudou de coluna aqui e o item mudou lá desde a última sincronização, vale a mudança mais
+  recente. Um empate em até dois segundos vai para o quadro quando o envio está desligado e para este lado quando está
+  ligado. O valor que perdeu nunca é descartado: o **Registro da sincronização** do card mostra, com os dois horários. Um
+  card que está rodando não é movido pelo quadro (o registro diz isso).
+- **No card.** **Abrir no quadro** abre o item; *Não está mais no quadro* aparece quando ele foi arquivado ou removido (o
+  card fica); o **Registro da sincronização** lista conflitos, movimentos pulados e envios que falharam.
+- **Desligar** para a sincronização e mantém os cards, com seus links.
+
+Para testar: entre no GitHub na página do host, abra o **Board** de um projeto, aperte **Sincronizar**, escolha um quadro e
+**Ligar quadro**.
+
 ### Ciclo do card
 
 - **Em revisão:** o card entra quando um turno termina bem. Um turno com erro, interrompido por

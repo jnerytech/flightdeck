@@ -16,6 +16,11 @@ import { McpConfig } from "./agentcfg/mcp.ts";
 import { Automations } from "./automations/automations.ts";
 import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
+import { BoardSync } from "./boardsync/engine.ts";
+import { GithubBoards } from "./boardsync/github.ts";
+import { BoardSyncLoop } from "./boardsync/loop.ts";
+import { BoardSyncService } from "./boardsync/service.ts";
+import { BoardSyncStore } from "./boardsync/store.ts";
 import { Central, messageExternal } from "./central/central.ts";
 import { startChannel } from "./central/channel.ts";
 import { sendSessionStart } from "./central/hook-command.ts";
@@ -49,6 +54,7 @@ import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
 import { runDoctor } from "./doctor.ts";
 import { type Exec, spawnExec } from "./exec.ts";
+import { runGh } from "./github/gh.ts";
 import { GithubService } from "./github/service.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
@@ -702,6 +708,20 @@ export async function startDaemon(
   // The diff of every session and card, for the review (phase 11).
   const changes = new Changes({ db: store.db, board, log: logger.log.bind(logger) });
   const issues = new Issues({ board, autoApprove });
+  // Phase 38: the boards of GitHub Projects, read through the host's gh and synced on a timer.
+  const boardSyncStore = new BoardSyncStore(store.db);
+  const boardProvider = new GithubBoards({ gh: runGh });
+  const boardEngine = new BoardSync({
+    board,
+    store: boardSyncStore,
+    provider: boardProvider,
+    autoApprove,
+  });
+  const boardLoop = new BoardSyncLoop({
+    engine: boardEngine,
+    store: boardSyncStore,
+    timers: { set: (fn, ms) => setTimeout(fn, ms), clear: (id) => clearTimeout(id as Timer) },
+  });
   // Phase 13: they listen to the board's PR polling for `ci_failed`, and run the schedule.
   const automations = new Automations({
     db: store.db,
@@ -1019,6 +1039,13 @@ export async function startDaemon(
     fsDirs: true,
     findProjects: true,
     // Sign-in with GitHub through the host's gh, and start from a repo or an issue (phase 37).
+    boardsync: new BoardSyncService({
+      board,
+      store: boardSyncStore,
+      provider: boardProvider,
+      engine: boardEngine,
+      loop: boardLoop,
+    }),
     github: new GithubService({
       roots: config.allowedRoots,
       board,
@@ -1181,6 +1208,7 @@ export async function startDaemon(
   watchFile(configFile, { interval: options.configWatchMs ?? 2000 }, onConfigChange);
 
   logger.log(`flightdeckd ${DAEMON_VERSION} listening on ${server.url} (runtime=${runtimeKind})`);
+  boardLoop.start();
   if (config.allowedRoots.length === 0) {
     logger.error(
       'aviso: allowedRoots está vazio; nenhuma sessão poderá ser criada (rode "flightdeckd setup")',
@@ -1207,6 +1235,7 @@ export async function startDaemon(
         await automations.idle();
         prWatch.stop();
         for (const unwatch of unwatchRunEnv) unwatch();
+        boardLoop.stop();
         board.stop();
         terminals.stop();
         await central.stop();

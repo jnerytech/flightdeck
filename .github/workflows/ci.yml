@@ -115,8 +115,8 @@ jobs:
           bun run smoke:otel
           bun run smoke:webhook
           bun run smoke:conta
-
           bun run smoke:github
+          bun run smoke:boardsync
 
       # The Tauri context needs the built frontend (frontendDist) to exist.
       - name: cargo check do app

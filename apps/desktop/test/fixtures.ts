@@ -8,6 +8,10 @@ import { McpConfig } from "../../daemon/src/agentcfg/mcp.ts";
 import { Automations } from "../../daemon/src/automations/automations.ts";
 import type { BgService } from "../../daemon/src/bg/service.ts";
 import { Board } from "../../daemon/src/board/board.ts";
+import { BoardSync } from "../../daemon/src/boardsync/engine.ts";
+import { BoardSyncLoop } from "../../daemon/src/boardsync/loop.ts";
+import { BoardSyncService } from "../../daemon/src/boardsync/service.ts";
+import { BoardSyncStore } from "../../daemon/src/boardsync/store.ts";
 import { Central } from "../../daemon/src/central/central.ts";
 import { ProjectKeys } from "../../daemon/src/central/project-key.ts";
 import { Forker } from "../../daemon/src/checkpoints/fork.ts";
@@ -55,6 +59,7 @@ import { TelemetryStore } from "../../daemon/src/telemetry/store.ts";
 import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
 import { Vault } from "../../daemon/src/vault/vault.ts";
 import type { WebhookSender } from "../../daemon/src/webhook/sender.ts";
+import { FakeProvider } from "../../daemon/test/boardsync-fake.ts";
 import { testRootsPlatform } from "../../daemon/test/helpers.ts";
 import { fakePtys } from "../../daemon/test/pty-helpers.ts";
 import { fakeRunHost } from "../../daemon/test/run-helpers.ts";
@@ -143,6 +148,8 @@ export function daemon(
     firstRun?: boolean;
     /** Sign-in with GitHub and start from a repo (phase 37), through the `gh` on the PATH and a fake clone. */
     github?: boolean | { gh?: GhRunner };
+    /** Board sync with an external board (phase 38), over an in-memory provider the test controls. */
+    boardsync?: boolean;
     /** The host's switch for sessions without permission prompts (bypass-ui): on from the start. */
     bypass?: boolean;
   } = {},
@@ -379,6 +386,27 @@ export function daemon(
       })
     : undefined;
   if (githubService) cleanups.push(() => githubService.loginCancel());
+  /** Phase 38: board sync over the in-memory provider; the loop is never started. */
+  const boardProvider = new FakeProvider();
+  const boardSyncStore = new BoardSyncStore(store.db);
+  const boardSyncService = options.boardsync
+    ? (() => {
+        const engine = new BoardSync({ board, store: boardSyncStore, provider: boardProvider });
+        const loop = new BoardSyncLoop({
+          engine,
+          store: boardSyncStore,
+          timers: { set: (fn, ms) => setTimeout(fn, ms), clear: (id) => clearTimeout(id as Timer) },
+        });
+        cleanups.push(() => loop.stop());
+        return new BoardSyncService({
+          board,
+          store: boardSyncStore,
+          provider: boardProvider,
+          engine,
+          loop,
+        });
+      })()
+    : undefined;
   /** What the fake git was asked, and the versions `doctor.run` was asked with. */
   const gitCalls: string[][] = [];
   const doctorAsked: Array<string | undefined> = [];
@@ -419,6 +447,7 @@ export function daemon(
       fsDirs: true,
       ...firstRunOptions,
       ...(githubService ? { github: githubService } : {}),
+      ...(boardSyncService ? { boardsync: boardSyncService } : {}),
       rootsPlatform: testRootsPlatform(),
       sessionSettings: true,
       bypass: {
@@ -521,6 +550,8 @@ export function daemon(
         prepared: await preparePersonas(personaStore, payload.persona, payload.cwd),
       }),
     gitCalls,
+    boardProvider,
+    boardSyncStore,
     doctorAsked,
   };
 }

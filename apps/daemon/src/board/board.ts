@@ -204,6 +204,8 @@ interface CardRow {
   notice_params: string | null;
   issue_ref: string | null;
   issue_external: number;
+  external_url: string | null;
+  external_gone: number;
   arena_of: string | null;
   variant: string | null;
   unblock_when: UnblockWhen;
@@ -520,6 +522,8 @@ export class Board {
         .get(id)?.n as number,
       issueRef: row.issue_ref,
       issueExternal: row.issue_external === 1,
+      externalUrl: row.external_url,
+      externalGone: row.external_gone === 1,
       blockedBy: this.blockersOf(id),
       blocking: this.blockingOf(id),
       waitingOn: rows.length === 0 ? this.unsatisfied(id, row.unblock_when) : [],
@@ -1828,6 +1832,11 @@ export class Board {
     this.db
       .query("UPDATE cards SET board_column = ?, column_locked = ?, updated_at = ? WHERE id = ?")
       .run(next.column, next.locked ? 1 : 0, now(), id);
+    this.changed(id);
+  }
+
+  /** Tells the watchers about a card whose fields changed outside the board (the board sync's). */
+  announce(id: string): void {
     this.changed(id);
   }
 

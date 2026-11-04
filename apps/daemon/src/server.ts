@@ -53,6 +53,7 @@ import type { Automations } from "./automations/automations.ts";
 import type { BgService } from "./bg/service.ts";
 import type { Board } from "./board/board.ts";
 import { manageCard } from "./board/manage.ts";
+import type { BoardSyncService } from "./boardsync/service.ts";
 import { type Central, messageExternal } from "./central/central.ts";
 import type { Forker } from "./checkpoints/fork.ts";
 import type { Rewinder } from "./checkpoints/rewind.ts";
@@ -148,6 +149,8 @@ export interface ServerOptions {
   doctor?: (appVersion?: string) => Promise<DoctorResult>;
   /** Sign-in with GitHub and start from a GitHub project (phase 37): the `github.*` commands. */
   github?: GithubService;
+  /** Board sync with an external board (phase 38): the `boardsync.*` commands. */
+  boardsync?: BoardSyncService;
   /** Announce `projects.scan` and `projects.clone` in `host.info`: "find my projects" needs them. */
   findProjects?: boolean;
   /** How `projects.clone` runs git; the real one when absent (tests give theirs). */
@@ -427,6 +430,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.doctor ? ["doctor.run"] : []),
     ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
     ...(opts.github ? ["github"] : []),
+    ...(opts.boardsync ? ["boardsync"] : []),
     ...(opts.central ? ["central"] : []),
     ...(opts.board ? ["workflows"] : []),
     // Phase 24: the run.yaml of a card and its processes.
@@ -565,6 +569,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         : {}),
       ...(summary ? { summary } : {}),
     };
+  }
+
+  function boardsync(): BoardSyncService {
+    if (!opts.boardsync) throw featureOff("boardsync");
+    return opts.boardsync;
   }
 
   function github(): GithubService {
@@ -1661,6 +1670,28 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { depth } = command.payload;
         return ok(command.type, await scanRepos(opts.allowedRoots, depth ? { depth } : {}));
       }
+      case "boardsync.boards":
+        return ok(command.type, { boards: await boardsync().boards() });
+      case "boardsync.link":
+        return ok(command.type, await boardsync().link(command.payload));
+      case "boardsync.unlink":
+        boardsync().unlink(command.payload.projectId);
+        return ok(command.type);
+      case "boardsync.setMap":
+        return ok(
+          command.type,
+          await boardsync().setMap(command.payload.projectId, command.payload.columnMap),
+        );
+      case "boardsync.setPush": {
+        const { projectId, push, confirm } = command.payload;
+        return ok(command.type, await boardsync().setPush(projectId, push, confirm));
+      }
+      case "boardsync.status":
+        return ok(command.type, await boardsync().status(command.payload.projectId));
+      case "boardsync.syncNow":
+        return ok(command.type, await boardsync().syncNow(command.payload.projectId));
+      case "boardsync.log":
+        return ok(command.type, { entries: boardsync().log(command.payload.cardId) });
       case "github.status":
         return ok(command.type, await github().status());
       case "github.login.start":

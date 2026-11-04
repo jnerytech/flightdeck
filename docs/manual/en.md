@@ -770,6 +770,31 @@ For hosts that announce `github` there are two places:
 To try it: on the host's page press **Sign in with GitHub**, confirm on GitHub, then on **Projects** press
 **Start from GitHub**, pick a repository, press **Start**.
 
+
+### Board sync with GitHub Projects
+
+For hosts that announce `boardsync` (it needs the host's `gh` signed in, see **Starting from GitHub**), the **Sync**
+button on a project's **Board** links the project to a GitHub Projects (v2) board:
+
+- **Link board.** Pick one of your boards and press **Link board**. Its items become cards (an issue keeps its
+  link and, when a stranger wrote it, the third-party mark with no automatic approval); the **Status** of each item puts
+  the card in a column. After that the host reads the board every minute, and **Sync now** does it at once.
+- **Status mapping.** Each status of the board has a column here: by default Todo and Backlog to Backlog, In Progress to
+  In progress, In review to In review, Done to Done. Change a column and press **Save mapping**; a status set to *Not
+  mapped* leaves cards where they are. *Needs you* has no GitHub counterpart, so cards that go there are not sent.
+- **Read only by default.** Moving a card here changes nothing on the board until you turn on **Push my card moves to the
+  board**. Turning it on asks to confirm and needs the `project` permission; if the login does not have it, the message
+  says so and nothing is sent. Push only changes the Status of items that already are cards: it never creates, edits or
+  deletes an item.
+- **Conflicts.** If a card moved here and the item changed there since the last sync, the newest change wins. A tie within
+  two seconds goes to the board when push is off and to this side when push is on. The value that lost is never dropped:
+  the card's **Sync log** shows it, with both times. A card that is running is not moved by the board (the log says so).
+- **On a card.** **Open on the board** opens the item; *No longer on the board* appears when it was archived or removed
+  (the card stays); the **Sync log** lists conflicts, skipped moves and pushes that failed.
+- **Unlink** stops the sync and keeps the cards, with their links.
+
+To try it: sign in with GitHub on the host's page, open a project's **Board**, press **Sync**, pick a board, **Link board**.
+
 ### Card lifecycle
 
 - **In review:** the card enters when a turn ends well. A turn that errors, is interrupted by
