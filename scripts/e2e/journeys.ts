@@ -468,7 +468,8 @@ async function lastRowProblem(page: Page): Promise<string | null> {
 async function slashMenuProblems(c: Context): Promise<string[]> {
   await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
   const box = c.page.getByLabel(c.t("session.message"), { exact: true });
-  // Where the box is before the menu opens: opening it must not move it, nor cover it.
+  // Where the box is with some text and no menu: opening the menu must not move it, nor cover it.
+  await box.fill("x");
   const before = await box.boundingBox();
   await box.fill("/");
   const menu = c.page.getByRole("listbox", { name: c.t("session.snippets") });
