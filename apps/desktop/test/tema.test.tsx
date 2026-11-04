@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { contrastRatio } from "../src/lib/contrast.ts";
 import { THEME_KEY, ThemeController, type ThemeEnv } from "../src/lib/theme.ts";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
@@ -146,10 +147,8 @@ describe("tema", () => {
     const { mem } = themePlatform();
     const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);
-    const settings = await screen.findByRole("button", { name: "Configurações" });
-    await act(async () => {
-      fireEvent.click(settings as HTMLElement);
-    });
+    await screen.findByRole("button", { name: /^Menu da conta de / });
+    await chooseFromAccountMenu("Configurações");
     const select = screen.queryByLabelText("Tema") as HTMLSelectElement | null;
     expect(select).not.toBeNull();
     expect(select?.value).toBe("system");

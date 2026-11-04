@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { settle } from "./wait.ts";
@@ -46,11 +47,7 @@ function setup(autostart: "unsupported" | "supported" = "unsupported", stored?: 
 }
 
 async function openSettings() {
-  const button = screen.queryByRole("button", { name: "Configurações" });
-  expect(button).not.toBeNull();
-  await act(async () => {
-    fireEvent.click(button as HTMLElement);
-  });
+  await chooseFromAccountMenu("Configurações");
   // The Settings screen loads on demand: wait for it (its "Tema" control) before the test reads it.
   await settle(() => screen.queryByLabelText("Tema") !== null);
 }

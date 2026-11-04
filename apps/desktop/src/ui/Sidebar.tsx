@@ -17,6 +17,7 @@ import {
 import { Children, type ReactNode, useState } from "react";
 import { ClientSwitcher } from "@/components/clients/client-switcher";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
+import { AccountFooter } from "@/components/shell/account-footer";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -259,6 +260,10 @@ export function Sidebar(props: {
   };
 
   /** The hosts of the Machines group: a dot each in the rail, a list with a menu each otherwise. */
+  const account =
+    state.hosts.map((host) => state.account[host.id]).find((a) => a?.name) ??
+    state.hosts.map((host) => state.account[host.id]).find((a) => a) ??
+    null;
   const hereHost = props.route?.name === "host" ? props.route.host : null;
   const hostsList = collapsed ? (
     <div className="flex flex-col items-center gap-1 pt-3">
@@ -630,29 +635,17 @@ export function Sidebar(props: {
             </kbd>
           }
         />
-        <NavButton
+        <AccountFooter
+          account={account}
           collapsed={collapsed}
-          icon={<NavIcon name="settings" aria-hidden="true" className={icon} />}
-          label={t("sidebar.settings")}
-          chevron
-          onClick={() => go({ name: "settings" })}
-        />
-        <NavButton
-          collapsed={collapsed}
-          icon={<BookOpen aria-hidden="true" className={icon} />}
-          label={t("sidebar.manual")}
-          external
-          onClick={() =>
+          t={t}
+          go={go}
+          onToggleTheme={props.onToggleTheme}
+          onOpenManual={() =>
             void props.store.openLink(
               `https://github.com/jnerytech/flightdeck/blob/main/docs/manual/${t.lang === "pt-BR" ? "pt-BR" : "en"}.md`,
             )
           }
-        />
-        <NavButton
-          collapsed={collapsed}
-          icon={<SunMoon aria-hidden="true" className={icon} />}
-          label={t("sidebar.theme")}
-          onClick={props.onToggleTheme}
         />
       </div>
       {renaming && (

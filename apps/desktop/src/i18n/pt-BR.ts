@@ -5,6 +5,12 @@
  */
 export const ptBR = {
   nav: { back: "Voltar", forward: "Avançar", overview: "Início" },
+  sidebarAccount: {
+    menu: "Menu da conta de {name}",
+    none: "Conta Claude",
+    unread: "Ainda não lida",
+    plan: "Plano {plan}",
+  },
   home: {
     title: "Início",
     range: "Últimos 7 dias · todos os hosts",

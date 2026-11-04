@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
@@ -42,9 +43,7 @@ async function openSettings(features: string[] = ["watch"]) {
   render(<App store={store} />);
   await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
   await settle(() => store.getState().hosts[0]?.hostInfo != null);
-  await act(async () => {
-    fireEvent.click(screen.getByRole("button", { name: "Configurações" }));
-  });
+  await chooseFromAccountMenu("Configurações");
   return { store, daemon };
 }
 

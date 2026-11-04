@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { waiter } from "./wait.ts";
@@ -46,11 +47,7 @@ function setup(opts: { taken?: string[]; stored?: string } = {}) {
 }
 
 async function openSettings() {
-  const button = screen.queryByRole("button", { name: "Configurações" });
-  expect(button).not.toBeNull();
-  await act(async () => {
-    fireEvent.click(button as HTMLElement);
-  });
+  await chooseFromAccountMenu("Configurações");
 }
 
 async function saveShortcut(value: string) {

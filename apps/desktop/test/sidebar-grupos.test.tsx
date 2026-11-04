@@ -233,22 +233,9 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
     const slot = (name: string, what: string) =>
       screen.getByRole("button", { name }).querySelector(`[data-slot='${what}']`);
     expect(slot("Vault", "nav-chevron")).not.toBeNull();
-    expect(slot("Settings", "nav-chevron")).not.toBeNull();
     expect(slot("Costs", "nav-chevron")).toBeNull();
     expect(slot("Teams", "nav-badge")?.textContent).toBe("Beta");
     expect(slot("Conversations", "nav-badge")?.textContent).toBe("New");
     expect(slot("Board", "nav-badge")).toBeNull();
-  });
-
-  test("the manual is an external link, with its icon, and it opens the manual of the app's language", async () => {
-    const { view, opened } = setup();
-    render(view());
-    const manual = screen.getByRole("button", { name: "Manual" });
-    expect(manual.querySelector("[data-slot='nav-external']")).not.toBeNull();
-    await act(async () => {
-      fireEvent.click(manual);
-    });
-    expect(opened).toHaveLength(1);
-    expect(opened[0]).toMatch(/docs\/manual\/en\.md$/);
   });
 });

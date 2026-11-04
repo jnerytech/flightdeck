@@ -98,7 +98,14 @@ describe("sidebar-conta: the account at the foot of the bar", () => {
     expect(routes).toEqual([{ name: "settings" }]);
     await chooseFromAccountMenu("Toggle theme");
     expect(themed()).toBe(1);
-    await chooseFromAccountMenu("Manual");
+    // The manual leaves the app, and its icon says so.
+    const trigger = screen.getByRole("button", { name: /^Account menu for / });
+    await act(async () => {
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
+    });
+    const manual = await screen.findByRole("menuitem", { name: "Manual" });
+    expect(manual.querySelector("[data-slot='nav-external']")).not.toBeNull();
+    await act(async () => void fireEvent.click(manual));
     expect(opened).toHaveLength(1);
     expect(opened[0]).toMatch(/docs\/manual\/en\.md$/);
   });
@@ -109,7 +116,7 @@ describe("sidebar-conta: the account at the foot of the bar", () => {
     for (const name of ["Settings", "Toggle theme", "Manual"]) {
       expect(screen.queryByRole("button", { name })).toBeNull();
     }
-    expect(screen.getByRole("button", { name: "Search" })).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Search the history (Ctrl+K)" })).not.toBeNull();
   });
 
   test("in the collapsed rail the account is its initial, and still opens the menu", async () => {

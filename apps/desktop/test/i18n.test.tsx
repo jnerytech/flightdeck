@@ -17,6 +17,7 @@ import { ptBR } from "../src/i18n/pt-BR.ts";
 import { summaryNotifications } from "../src/lib/notify.ts";
 import { trayMenu, trayStatus } from "../src/lib/tray.ts";
 import type { TrayMenu, TrayStatus } from "../src/platform/types.ts";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
@@ -272,10 +273,8 @@ describe("i18n", () => {
     render(<App store={store} />);
     expect(document.documentElement.lang).toBe("pt-BR");
     // The screens are lazy chunks: wait for each one instead of guessing a delay.
-    const settings = await screen.findByRole("button", { name: "Configurações" });
-    await act(async () => {
-      fireEvent.click(settings);
-    });
+    await screen.findByRole("button", { name: /^Menu da conta de / });
+    await chooseFromAccountMenu("Configurações");
     const select = (await screen.findByLabelText("Idioma")) as HTMLSelectElement;
     expect([...select.options].map((o) => o.textContent)).toEqual([
       "Português (Brasil)",

@@ -3,6 +3,12 @@ import type { Dictionary } from "./index.ts";
 /** English: the same keys as pt-BR.ts (a missing or extra one fails typecheck). */
 export const en: Dictionary = {
   nav: { back: "Back", forward: "Forward", overview: "Home" },
+  sidebarAccount: {
+    menu: "Account menu for {name}",
+    none: "Claude account",
+    unread: "Not read yet",
+    plan: "{plan} plan",
+  },
   home: {
     title: "Home",
     range: "Last 7 days · all hosts",
