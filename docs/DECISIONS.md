@@ -3547,3 +3547,14 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 - **Manual** is a footer item that opens `docs/manual/<language>.md` on GitHub in the browser; it carries an external-link icon. It is the
   only item that leaves the app (the issue also named GitHub releases, which the app already reaches from the update banner).
 - **Tests that clicked "Conexões"** now click "SSH"; the screen is still called Connections where its page names it.
+
+## Home, the account foot and the start screen (issues #123, #127)
+
+- **Home is a new route, `overview`.** The old `home` route stays the Sessions list (its tests and the demo rely on it). The sidebar's first item of Work is Home; the page asks every online host for `costs.summary` (when it announces `costs`) and `usage.summary` over seven days and adds them up in `lib/home-kpis.ts`. No new command.
+- **Turns that failed and turn time were not recorded anywhere.** `usage_daily` gains `failed_turns` and `duration_ms` (migration, default 0), filled by the ledger from `turn.result`; the usage rows carry `failedTurns` and `durationMs`, optional so an older daemon still parses. One host without them makes the app's failed turns and success rate unknown ("—"), not zero. Days stored before the columns read as 0 and 0; a test upgrades a 0.36.1 database in place.
+- **The spend card compares with the month's host budgets** (sum of spent over sum of limit of host-scope monthly budgets) while its number is the last seven days: the two periods differ on purpose, and the line says "this month". Day and project budgets do not count.
+- **Cards open Costs or History without filters**: the Costs route has no period or filter to carry, and History needs a host, so Turns opens the first online host's. Sparklines are one accent with no axes, and each says its seven values to a screen reader.
+- **Average cost per turn uses the usage ledger's cost** (managed sessions, what the SDK reports) over its turns, so the numerator and denominator come from the same sessions; the Spend card uses the transcripts' estimate for all sessions.
+- **The sidebar's foot is the Claude account** (first host with an account name, else the first with any account) and a menu with Settings, Toggle theme and Manual; Search stays a button. About fifteen tests that clicked those buttons go through `chooseFromAccountMenu`.
+- **Home is the start screen of a fresh desktop window only**: `AppStoreOptions.startRoute` is the fallback of `Workspace.restore`, passed by `main.tsx`. A saved window keeps its tabs; the web demo entry and the tests keep Sessions.
+

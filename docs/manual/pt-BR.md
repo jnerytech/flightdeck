@@ -666,15 +666,25 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
 
 ### A barra lateral, a barra de abas e as Configurações
 
-- A barra lateral agrupa os itens por finalidade, em cinco grupos que dobram: **Trabalho** (Sessões,
+- A barra lateral agrupa os itens por finalidade, em cinco grupos que dobram: **Trabalho** (Início, Sessões,
   Precisa de você, Projetos, Board), **Automação** (Workflows, Times, Conversas),
   **Observabilidade** (Custos, Histórico), **Biblioteca** (Personas, Snippets, Plugins, Cofre) e
   **Máquinas** (os hosts, cada um com o pontinho de estado, a marca de saúde e o menu, um **+** para
   adicionar, e depois **SSH**, os destinos SSH salvos). A página aberta tem a linha preenchida e uma
   barra na borda esquerda, os itens com subpáginas terminam em uma seta, as novidades levam um selo
-  **Beta** ou **Novo**, e o **Manual** no pé abre este manual no navegador (o ícone diz que sai do
-  app). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados, e o trilho
+  **Beta** ou **Novo**. No pé da barra, a conta do Claude (e-mail e plano, lidos do cartão da conta
+  do host; o trilho mostra só a inicial) abre um menu com **Configurações**, **Alternar tema** e
+  **Manual**, que abre este manual no navegador (o ícone diz que sai do app). Na página de um host,
+  a linha dele em Máquinas também fica marcada. Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados, e o trilho
   estreito de ícones não tem títulos.
+- O **Início** (primeiro em Trabalho) é uma faixa de quatro cartões com os últimos sete dias de todos
+  os hosts online, cada um com um gráfico pequeno: **Gasto** (com o orçamento mensal dos hosts, quando
+  há), **Turnos** (ok e com falha), **Tokens** (com o que veio do cache) e o **turno médio** (custo,
+  tempo e taxa de sucesso). Gasto, Tokens e o turno médio abrem Custos; Turnos abre o Histórico do
+  primeiro host online. Os turnos com falha e o tempo do turno são contados pelo daemon a partir
+  desta versão: um host com daemon mais antigo mostra "—" em vez de um zero inventado, e os dias
+  anteriores à atualização contam como sem falhas e sem tempo. O app abre no Início quando a janela é
+  nova; uma janela que você já usou volta com as abas dela.
 - Com uma área, a barra de abas fica na barra do topo, na linha do caminho; com a tela dividida,
   cada área tem a sua. A barra mantém três ferramentas: o menu de **Ações** da aba ativa (mover
   para a esquerda ou a direita, mover para a outra área, fixar), **Nova aba** e **Dividir**.
