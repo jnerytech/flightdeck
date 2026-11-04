@@ -187,6 +187,37 @@ describe("board-ui", () => {
     expect(screen.queryByLabelText("Título do card")).not.toBeNull();
   });
 
+  test("cada coluna mostra o ícone, a contagem em pílula e um + que cria o card nela", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    for (const title of ["A", "B"]) await createCard(title);
+    const count = (name: string) =>
+      within(screen.getByRole("region", { name })).getByTestId("column-count").textContent;
+    expect(count("Backlog")).toBe("2");
+    expect(count("Concluído")).toBe("0");
+    for (const name of ["Backlog", "Em andamento", "Esperando você", "Em revisão", "Concluído"]) {
+      expect(
+        screen.getByRole("region", { name }).querySelector("[data-slot='column-icon']"),
+      ).not.toBeNull();
+    }
+    await click("Adicionar card em Em revisão");
+    await type("Título do card", "Direto na revisão");
+    await click("Criar card");
+    await settle(() => column("Em revisão").includes("Direto na revisão"));
+    expect(column("Em revisão")).toEqual(["Direto na revisão"]);
+    expect(column("Backlog")).toEqual(["A", "B"]);
+    expect(count("Em revisão")).toBe("1");
+  });
+
+  test("uma coluna vazia mostra uma caixa tracejada e quieta que diz Vazio", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    const done = screen.getByRole("region", { name: "Concluído" });
+    const empty = within(done).getByRole("button", { name: "Adicionar card" });
+    expect(empty.textContent).toBe("Vazio");
+    expect(empty.className).toContain("border-dashed");
+  });
+
   test("arrastar entre colunas move o card; soltar sobre outro card reordena a coluna", async () => {
     const { repo, board } = await setup();
     await openBoard(repo);
