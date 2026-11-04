@@ -739,8 +739,14 @@ function routeScreen(props: ScreenProps): ReactNode {
           store={store}
           hostId={route.host}
           projectId={route.projectId}
-          onOpenCard={(cardId) =>
-            go({ name: "card", host: route.host, projectId: route.projectId, cardId })
+          onOpenCard={(cardId, edit) =>
+            go({
+              name: "card",
+              host: route.host,
+              projectId: route.projectId,
+              cardId,
+              ...(edit ? { edit: true as const } : {}),
+            })
           }
           onOpenProject={(projectId) => go({ name: "board", host: route.host, projectId })}
         />
@@ -752,6 +758,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           store={store}
           hostId={route.host}
           cardId={route.cardId}
+          edit={route.edit === true}
           onBack={() => go({ name: "board", host: route.host, projectId: route.projectId })}
         />
       );

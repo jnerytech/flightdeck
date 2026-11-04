@@ -718,6 +718,13 @@ export const ptBR = {
     moveTo: "Mover para {column}",
     moveUp: "Mover para cima",
     moveDown: "Mover para baixo",
+    edit: "Editar…",
+    delete: "Excluir…",
+    deleteMessage: 'Excluir o card "{title}"? Ele nunca começou, então só o card é removido.',
+    deleteStarted:
+      'O card "{title}" já começou, então não pode ser excluído. Descarte-o para remover também o worktree e a branch dele.',
+    deleteConfirm: "Excluir card",
+    discardInstead: "Descartar card",
   },
   shell: {
     sidebar: "Barra lateral",
@@ -2881,6 +2888,8 @@ export const ptBR = {
     back: "Voltar ao board",
     description: "Descrição",
     saveDescription: "Salvar descrição",
+    title: "Título",
+    saveTitle: "Salvar título",
     workflow: "Workflow",
     noWorkflow: "Nenhum (card simples)",
     input: "Input {name}",

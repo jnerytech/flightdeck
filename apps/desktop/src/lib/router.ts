@@ -28,7 +28,7 @@ export type Route =
   /** One project: its Board, Sessions, Workflows, Costs and settings (issue #9). */
   | { name: "project"; host: string; projectId: string }
   | { name: "board"; host: string; projectId: string }
-  | { name: "card"; host: string; projectId: string; cardId: string }
+  | { name: "card"; host: string; projectId: string; cardId: string; edit?: true }
   | { name: "workflows"; host: string; projectId: string; projectName: string }
   /** A project's agent: MCP servers, CLAUDE.md, agents and skills (phase 12). */
   | { name: "agent"; host: string; projectId: string; projectName: string }

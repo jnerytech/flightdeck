@@ -721,6 +721,14 @@ export const en: Dictionary = {
     moveTo: "Move to {column}",
     moveUp: "Move up",
     moveDown: "Move down",
+    edit: "Edit…",
+    delete: "Delete…",
+    deleteMessage:
+      'Delete the card "{title}"? It never started, so nothing but the card is removed.',
+    deleteStarted:
+      'The card "{title}" already started, so it cannot be deleted. Discard it to remove its worktree and branch too.',
+    deleteConfirm: "Delete card",
+    discardInstead: "Discard card",
   },
   shell: {
     sidebar: "Sidebar",
@@ -2879,6 +2887,8 @@ export const en: Dictionary = {
     back: "Back to the board",
     description: "Description",
     saveDescription: "Save description",
+    title: "Title",
+    saveTitle: "Save title",
     workflow: "Workflow",
     noWorkflow: "None (plain card)",
     input: "Input {name}",
