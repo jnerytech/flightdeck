@@ -24,7 +24,7 @@ async function setup(withPlatform: boolean, url?: (real: string) => string) {
     token: TOKEN,
   });
   await waitFor(() => store.getState().hosts.find((h) => h.id === hostId));
-  return { store, hostId, calls };
+  return { store, hostId, calls, mem };
 }
 
 describe("abrir-resultado: opening what a task made, through the platform", () => {
@@ -50,6 +50,14 @@ describe("abrir-resultado: opening what a task made, through the platform", () =
     expect(store.canOpenPaths(hostId)).toBe(false);
     expect(await store.openPath(hostId, "/work/a.docx")).toBe(false);
     expect(calls).toEqual([]);
+  });
+
+  test("Given a platform that cannot open the file, Then it says so and nothing else happens", async () => {
+    const { store, hostId, mem } = await setup(true);
+    mem.platform.openPath = async () => {
+      throw new Error("no program is set for this file");
+    };
+    expect(await store.openPath(hostId, "/work/Reports/a.docx")).toBe(false);
   });
 
   test("Given a path that is not absolute, Then it is refused", async () => {

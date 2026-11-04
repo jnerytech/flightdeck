@@ -309,4 +309,25 @@ describe("task-simple-ui: a task, not a transcript", () => {
     });
     expect(stopped).toEqual(["details:"]);
   });
+
+  test("Given a big file, Then its size reads in MB", () => {
+    view(
+      { ...emptySession(), status: "idle", items: [said("ok"), done] },
+      {
+        results: {
+          truncated: false,
+          files: [
+            {
+              path: "/w/video.mp4",
+              name: "video.mp4",
+              sizeBytes: 3 * 1024 * 1024,
+              modifiedAt: "2026-11-03T10:00:00.000Z",
+              change: "new",
+            },
+          ],
+        },
+      },
+    );
+    expect(screen.getByText("3.0 MB")).toBeTruthy();
+  });
 });
