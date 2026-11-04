@@ -448,6 +448,18 @@ confirma.
 A tela **Sessões** é a principal do app: todas as sessões do Claude Code dos hosts online, num
 lugar só, agrupadas por projeto e ordenadas pela última atividade.
 
+- **Projeto primeiro.** Cada projeto é um grupo que se recolhe (o nome, a contagem de sessões ao
+  vivo e um chip por host, que abre a página do host). Um projeto com sessões ao vivo começa
+  aberto, com elas no topo (as que precisam de você primeiro); um projeto sem nada ao vivo começa
+  recolhido. As sessões encerradas e do histórico ficam atrás de **N sessões anteriores**, da mais
+  nova para a mais antiga. Digitar no filtro também casa com o nome do projeto e abre tudo o que
+  casar. Uma fileira de chips **Hosts** sob o aviso de hosts mostra só as sessões de um host
+  (aperte de novo para limpar).
+- **Títulos.** A sessão se chama pelo nome, senão pelo resumo que o Claude Code escreveu, senão
+  pela persona com a tarefa, senão pelo primeiro prompt, senão pela pasta. Os invólucros do
+  sistema (`<task-notification>`, "Another Claude session sent a message:", saída de comando
+  local) nunca aparecem num título.
+
 ### O que aparece na lista
 
 | Origem | De onde vem |
@@ -1993,8 +2005,8 @@ Cada turno de uma sessão gerenciada traz a cota do plano do Claude. Todas as se
 usam o mesmo login, então a cota é do host. O daemon guarda a última leitura de cada janela (5
 horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janela reinicia.
 
-- **No app:** o topo da tela Sessões mostra, para cada host online, as barras de 5 horas e de 7
-  dias, com a porcentagem, a hora de reinício e a idade da leitura ("lida há 12 min").
+- **No app:** o topo da tela Sessões mostra, para cada conta do Claude, as barras de 5 horas e de 7
+  dias (hosts com a mesma conta compartilham um cartão, com o nome de todos), com a porcentagem, a hora de reinício e a idade da leitura ("lida há 12 min").
   - A barra fica vermelha a partir de `quota.pauseAt`.
   - Cruzar o `pauseAt` gera uma notificação, uma vez por janela.
 - **Só terminal:** os hooks não trazem a cota. Quem usa só sessões do terminal vê barras vazias ou

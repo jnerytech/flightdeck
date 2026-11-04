@@ -462,6 +462,16 @@ saves after you confirm.
 The **Sessions** screen is the app's main one: every Claude Code session of the online hosts in
 one place, grouped by project and ordered by last activity.
 
+- **Project first.** Each project is a group you can fold (its name, a count of live sessions and
+  one chip per host, which opens that host's page). A project with live sessions starts open, with
+  those on top (the ones that need you first); a project with nothing live starts folded. The
+  ended and history sessions sit behind **N earlier sessions**, newest first. Typing in the filter
+  also matches project names and opens everything that matches. A row of **Hosts** chips under
+  the hosts banner shows one host's sessions only (press it again to clear).
+- **Titles.** A session is called by its name, else the summary Claude Code wrote, else the persona
+  with the task, else its first prompt, else its folder. System wrappers (`<task-notification>`,
+  "Another Claude session sent a message:", local-command output) never appear in a title.
+
 ### What the list shows
 
 | Origin | Where it comes from |
@@ -2004,8 +2014,8 @@ same login, so the quota belongs to the host. The daemon keeps the last reading 
 (5 hours, 7 days and any others that come along), and a reading stops being valid when its
 window resets.
 
-- **In the app:** the top of the Sessions screen shows, for each online host, the 5-hour and
-  7-day bars, with the percentage, the reset time and the age of the reading ("read 12 min
+- **In the app:** the top of the Sessions screen shows, for each Claude account, the 5-hour and
+  7-day bars (hosts signed in to the same account share one card, named after all of them), with the percentage, the reset time and the age of the reading ("read 12 min
   ago").
   - The bar turns red from `quota.pauseAt`.
   - Crossing `pauseAt` raises a notification, once per window.

@@ -134,6 +134,11 @@ async function setup(platform = memoryPlatform()) {
   await hook("ext-run", "SessionStart", two as string);
   await hook("ext-run", "UserPromptSubmit", two as string, { prompt: "rode" });
   await act(async () => store.router.push({ name: "hub" }));
+  // The history one is folded behind "N sessões anteriores": open it, the checks below read all four.
+  await settle(() => screen.queryByRole("button", { name: /sessões anteriores/ }) !== null);
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: /sessões anteriores/ }));
+  });
   await settle(() => group("central").length === 4);
   // The hooks' states land after the rows: wait for them too, or the checks race the app.
   await settle(
@@ -169,7 +174,8 @@ describe("hub-ui: o que se repete vai para o cabeçalho do grupo", () => {
   test("a host shared by every row of a group is said once, in its header; each row keeps only what differs", async () => {
     await setup();
     const region = screen.getByRole("region", { name: "Projeto central" });
-    const header = region.querySelector("[data-slot='group-meta']");
+    // Issue #111: the host is a chip in the header, a link to the host page.
+    const header = region.querySelector("button[aria-label='Abrir o host alfa']");
     expect(header?.textContent).toBe("alfa");
     for (const title of ["repo-run", "repo-ask", "Gerenciada"]) {
       const meta = (item(title) as HTMLElement).querySelector("[data-slot='row-meta']");

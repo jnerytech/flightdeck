@@ -38,6 +38,12 @@ const history = (host: string, n: number, project: string) => ({
   messageCount: 3,
 });
 
+const shared = (host: string, n: number) => ({
+  ...history(host, n, "web"),
+  projectKey: "github.com/acme/web",
+  title: `web ${host} ${n}`,
+});
+
 /** Two online hosts: `api` has one live terminal session and three old ones; `docs` only old ones. */
 function setup() {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 600_000 });
@@ -59,8 +65,14 @@ function setup() {
       },
     },
     hub: {
-      alfa: { managed: [], history: [1, 2, 3].map((n) => history("alfa", n, "api")) },
-      beta: { managed: [], history: [1, 2].map((n) => history("beta", n, "docs")) },
+      alfa: {
+        managed: [],
+        history: [...[1, 2, 3].map((n) => history("alfa", n, "api")), shared("alfa", 1)],
+      },
+      beta: {
+        managed: [],
+        history: [...[1, 2].map((n) => history("beta", n, "docs")), shared("beta", 1)],
+      },
     },
   };
   const view = () => (
@@ -152,5 +164,18 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
     await click(beta);
     expect(screen.getByRole("region", { name: "Projeto api" })).toBeTruthy();
     expect(pushed).toEqual([]);
+  });
+
+  test("a project on two hosts has a chip for each in the header, and each row names its own host", async () => {
+    const { pushed } = setup();
+    await settle(() => titles().length > 0);
+    const header = screen.getByRole("region", { name: "Projeto web" });
+    expect(within(header).getByRole("button", { name: "Abrir o host alfa" })).toBeTruthy();
+    expect(within(header).getByRole("button", { name: "Abrir o host beta" })).toBeTruthy();
+    await click(within(header).getByRole("button", { name: "Mostrar ou esconder web" }));
+    await click(within(header).getByRole("button", { name: "2 sessões anteriores" }));
+    const row = within(header).getByRole("listitem", { name: "web beta 1" });
+    await click(within(row).getByRole("button", { name: "Abrir o host beta" }));
+    expect(pushed).toEqual([{ name: "host", host: "beta" }]);
   });
 });
