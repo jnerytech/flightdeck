@@ -14,8 +14,20 @@ afterEach(() => {
   for (const s of stores.splice(0)) s.dispose();
 });
 
-const ago = (days: number, hours = 0) =>
-  new Date(Date.now() - days * 86_400_000 - hours * 3_600_000).toISOString();
+/**
+ * Local calendar days, never "hours ago": an hour ago is yesterday at 00:30, and the panel groups
+ * by the local day. `today` is the start of today's local day, so it never crosses midnight.
+ */
+const startOfToday = () => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+};
+const ago = (days: number, earlierToday = false) => {
+  if (earlierToday) return new Date(startOfToday().getTime() + 1_000).toISOString();
+  if (days === 0) return new Date().toISOString();
+  const day = startOfToday();
+  return new Date(day.getFullYear(), day.getMonth(), day.getDate() - days, 12, 0, 0).toISOString();
+};
 
 async function setup(entries: unknown[]) {
   const phone = memoryPlatform();
@@ -36,7 +48,7 @@ const ENTRIES = [
     route: { name: "settings" },
     read: false,
   },
-  { id: "2", at: ago(0, 1), title: "Precisa de você", body: "alfa · Bash", read: false },
+  { id: "2", at: ago(0, true), title: "Precisa de você", body: "alfa · Bash", read: false },
   { id: "3", at: ago(2), title: "Sessão terminou", body: "alfa · testes", read: true },
 ];
 

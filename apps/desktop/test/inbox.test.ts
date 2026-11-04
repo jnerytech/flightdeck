@@ -59,6 +59,29 @@ describe("inbox", () => {
     expect(groups[0]?.entries.map((e) => e.id)).toEqual(["t2", "t1"]);
   });
 
+  test("the day is the local one even when the UTC date is already another (late evening, early morning)", () => {
+    const local = (d: number, h: number, m: number) => new Date(2026, 10, d, h, m, 0);
+    // 23:30 local: in any zone east of UTC-0 minus a few hours the UTC date is already tomorrow's.
+    const late = groupByDay(
+      [
+        entry("night", local(3, 23, 20).toISOString()),
+        entry("dawn", local(3, 0, 10).toISOString()),
+        entry("before", local(2, 23, 50).toISOString()),
+      ],
+      local(3, 23, 30),
+    );
+    expect(late.map((g) => [g.day, g.entries.map((e) => e.id)])).toEqual([
+      ["today", ["night", "dawn"]],
+      ["yesterday", ["before"]],
+    ]);
+    // 00:30 local: an hour ago is still yesterday, whatever the UTC date says.
+    const early = groupByDay(
+      [entry("now", local(3, 0, 30).toISOString()), entry("hour", local(2, 23, 30).toISOString())],
+      local(3, 0, 30),
+    );
+    expect(early.map((g) => g.day)).toEqual(["today", "yesterday"]);
+  });
+
   test("saves and loads; a corrupt value loads as empty", () => {
     const store = new Map<string, string>();
     const storage = {
