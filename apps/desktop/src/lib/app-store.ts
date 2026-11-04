@@ -1532,7 +1532,12 @@ export class AppStore {
           }
           for (const s of external?.sessions ?? []) {
             const key = sessionKey(host.id, s.claudeSessionId);
-            if (!sameJson(externals[key], s)) {
+            // A list read before a hook but answered after its frame is older than what the
+            // frame put in the state: it must not undo it.
+            const held = externals[key];
+            const older =
+              held !== undefined && Date.parse(s.lastEventAt) < Date.parse(held.lastEventAt);
+            if (!older && !sameJson(held, s)) {
               externals[key] = s;
               externalsChanged = true;
             }
