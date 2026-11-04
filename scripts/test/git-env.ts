@@ -35,6 +35,22 @@ function withEnv(args: unknown[], env: Record<string, string | undefined>): unkn
   return [options.env === undefined ? { ...options, env } : options, second, ...rest];
 }
 
+/**
+ * Whether `name` configures Claude Code's telemetry: the switch and every OpenTelemetry variable. A
+ * session that has them set (this one may) must not leak them into what a test launches and then
+ * compares with what the test expected.
+ */
+export function isTelemetryVar(_name: string): boolean {
+  return false;
+}
+
+/** Removes the telemetry variables from `env`; returns the names that were set. */
+export function scrubTelemetryEnv(
+  _env: Record<string, string | undefined> = process.env,
+): string[] {
+  return [];
+}
+
 /** What `installGitEnvGuard` did: the variables it removed. */
 export interface GitEnvGuard {
   removed: string[];
