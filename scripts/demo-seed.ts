@@ -20,7 +20,7 @@ import { serializeTemplate } from "../apps/daemon/src/templates/files.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
 import { type UsageLoad, waitUsageLoaded } from "./lib/demo-ready.ts";
-import { ACOES_ACTION, DANGER_SESSION } from "./lib/e2e-journeys.ts";
+import { acoesActions, DANGER_SESSION } from "./lib/e2e-journeys.ts";
 import { installFakeCli } from "./test/fake-cli.ts";
 import { realTempDir } from "./test/temp-dir.ts";
 
@@ -106,7 +106,7 @@ export interface DemoIds {
 
 /** A workflow with a plan, a gate that asks to review it and the implementation. */
 /** One versioned action per language: the actions journey trusts it from the Ações screen. */
-const ACTIONS_YAML = Object.values(ACOES_ACTION)
+const ACTIONS_YAML = acoesActions()
   .map(
     (name) => `- name: ${name}
   description: Mostra a versão do Bun

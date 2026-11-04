@@ -18,11 +18,26 @@ export const JOURNEYS: readonly string[] = [
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
 
+/** The names the versioned actions are built from, one per language. */
+const ACOES_BASE: Readonly<Record<string, string>> = { "pt-BR": "versao", en: "version" };
+
+/** How many repeats of the acoes journey one demo can serve: each trusts an action of its own. */
+export const ACOES_POOL = 8;
+
 /**
- * The versioned action the acoes journey trusts, one per language: the demo keeps its state
- * between runs, so the second language would find the first one's already trusted.
+ * The versioned action the acoes journey trusts in a language and repeat: the demo keeps its state
+ * between runs, so a second run (the other language, or `--repeat-each`) would find it trusted.
  */
-export const ACOES_ACTION: Readonly<Record<string, string>> = { "pt-BR": "versao", en: "version" };
+export function acoesAction(lang: string, repeat: number): string {
+  return `${ACOES_BASE[lang]}-${repeat + 1}`;
+}
+
+/** Every action the demo seeds for the acoes journey. */
+export function acoesActions(): string[] {
+  return LANGUAGES.flatMap((lang) =>
+    Array.from({ length: ACOES_POOL }, (_, repeat) => acoesAction(lang, repeat)),
+  );
+}
 
 export const VIEWPORTS: ReadonlyArray<{ width: number; height: number }> = [
   { width: 1280, height: 800 },
