@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { DANGER_SESSION, type DemoSeed, seedDemo } from "../../../scripts/demo-seed.ts";
+import { acoesActions } from "../../../scripts/lib/e2e-journeys.ts";
 import { FrameClient } from "../../daemon/test/history-helpers.ts";
 
 // Two daemons, real git and a fake `gh`: more than the default 5 s.
@@ -43,13 +44,12 @@ describe("demo-issue-risco: what the issue-and-risk journey needs from the demo"
     expect(danger?.status).toBe("awaiting_permission");
   });
 
-  test("the web project versions one action per language, none trusted yet, for the actions journey", async () => {
+  test("the web project versions the actions pool of every language, none trusted yet, for the actions journey", async () => {
     const result = await alfa.data<{
       actions: Array<{ name: string; source: string; trusted: boolean }>;
     }>("actions.list", { projectId: seed.ids.project });
-    expect(result?.actions.map((a) => [a.name, a.source, a.trusted])).toEqual([
-      ["versao", "versioned", false],
-      ["version", "versioned", false],
-    ]);
+    const rows = (result?.actions ?? []).map((a) => [a.name, a.source, a.trusted] as const);
+    const expected = acoesActions().map((name) => [name, "versioned", false] as const);
+    expect([...rows].sort()).toEqual([...expected].sort());
   });
 });
