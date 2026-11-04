@@ -37,6 +37,22 @@ describe("crumb-largura: the tab strip starts at the same place on every screen"
     expect(screen.getByRole("button", { name: "Hosts" }).getAttribute("title")).toBe("Hosts");
   });
 
+  test("a step is cut with an ellipsis and is still a target at least 24 px high", () => {
+    render(
+      <Breadcrumb
+        crumbs={[{ label: "Hosts", route: { name: "hub" } }, { label: "Atual" }]}
+        label="Path"
+        onGo={() => {}}
+      />,
+    );
+    const step = screen.getByRole("button", { name: "Hosts" });
+    const classes = step.className.split(/\s+/);
+    expect(classes).toContain("truncate");
+    // A block has the height of its line: 24 px of height and of line keep the text centered in it.
+    expect(classes).toContain("min-h-6");
+    expect(classes).toContain("leading-6");
+  });
+
   test("the active tab's outline is drawn on the whole tab, so its close button is inside it", () => {
     const source = readFileSync(join(import.meta.dir, "../src/ui/TabBar.tsx"), "utf8");
     expect(source).toContain("has-[[role=tab]:focus-visible]:ring-2");
