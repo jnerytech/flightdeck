@@ -34,6 +34,29 @@ const options = (label: string) =>
     (o) => o.textContent ?? "",
   );
 
+/**
+ * Waits for the apply picker to list the host's personas. On a timeout the message says what the
+ * store and the page held (a CI log is all there is of a run on another platform).
+ */
+async function pickerReady(store: InstanceType<typeof AppStore>, label: string) {
+  try {
+    // The host answers after the fake claude of the open session has started: slow on a Windows runner.
+    await settle(() => options(label).length > 1, 20_000);
+  } catch (error) {
+    const state = store.getState();
+    const seen = {
+      hosts: state.hosts.map((h) => [h.name, h.status]),
+      personas: Object.fromEntries(
+        Object.entries(state.personas).map(([id, list]) => [id, list.map((p) => p.id)]),
+      ),
+      error: state.error,
+      options: options(label),
+      page: (document.body.textContent ?? "").slice(0, 400),
+    };
+    throw new Error(`${(error as Error).message}; the app held ${JSON.stringify(seen)}`);
+  }
+}
+
 async function openSession(language = "pt-BR") {
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
@@ -52,7 +75,7 @@ describe("personas-ui: applying a persona to an open session", () => {
   test("the screen says how the instruction went: sent, queued behind a pending request, or sent to the terminal", async () => {
     const { store, sessionId } = await openSession();
     await click("Persona");
-    await settle(() => options("Aplicar nesta sessão (como instrução)").length > 1);
+    await pickerReady(store, "Aplicar nesta sessão (como instrução)");
     await act(async () => {
       fireEvent.change(
         screen.queryByLabelText("Aplicar nesta sessão (como instrução)") as HTMLElement,
@@ -89,7 +112,7 @@ describe("personas-ui: applying a persona to an open session", () => {
   test("the same notes in English", async () => {
     const { store } = await openSession("en");
     await click("Persona");
-    await settle(() => options("Apply to this session (as an instruction)").length > 1);
+    await pickerReady(store, "Apply to this session (as an instruction)");
     await act(async () => {
       fireEvent.change(
         screen.queryByLabelText("Apply to this session (as an instruction)") as HTMLElement,
@@ -120,11 +143,11 @@ describe("personas-ui: applying a persona to an open session", () => {
   });
 
   test("Aplicar persona sends the role message, says it is a conversation instruction, and Voltar ao normal leaves it", async () => {
-    const { d, sessionId } = await openSession();
+    const { d, store, sessionId } = await openSession();
     // One control in the header; the picker and its buttons open from it.
     expect(screen.queryByLabelText("Aplicar nesta sessão (como instrução)")).toBeNull();
     await click("Persona");
-    await settle(() => options("Aplicar nesta sessão (como instrução)").length > 1);
+    await pickerReady(store, "Aplicar nesta sessão (como instrução)");
     expect(options("Aplicar nesta sessão (como instrução)")).toContain("QA / testes");
     // An open session keeps its system prompt: the app says so before anything is sent.
     expect(
@@ -195,7 +218,7 @@ describe("personas-ui: applying a persona to an open session", () => {
       store.router.push({ name: "external", host: hostId, claudeSessionId: "c-1" });
     });
     await click("Persona");
-    await settle(() => options("Aplicar nesta sessão (como instrução)").length > 1);
+    await pickerReady(store, "Aplicar nesta sessão (como instrução)");
     expect(options("Aplicar nesta sessão (como instrução)")).toContain("QA / testes");
     await act(async () => {
       fireEvent.change(
