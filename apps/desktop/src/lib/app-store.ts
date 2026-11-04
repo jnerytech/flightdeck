@@ -107,6 +107,7 @@ import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
 import { summaryNotifications } from "./notify.ts";
 import { basename } from "./paths.ts";
+import type { WorktreeFilter } from "./project-tree.ts";
 import { probeHost } from "./probe-host.ts";
 import { isHot } from "./quota.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
@@ -276,6 +277,8 @@ export interface AppState {
   clientList: Client[];
   /** Phase 36: counts the saves of `store.roi`, so the screens that read its settings render again. */
   roiRevision: number;
+  /** The checkout picked in the sidebar tree: it narrows the board and the Sessions list (issue #116). */
+  worktreeFilter: WorktreeFilter | null;
   /** Phase 29: projects pinned to a client by hand (null: pinned to Unassigned). */
   clientOverrides: Record<string, string | null>;
   /** Phase 29: "all", "unassigned" or a client id; what the work screens show. */
@@ -815,6 +818,7 @@ export class AppStore {
       projects: {},
       clientList: this.clients.list(),
       roiRevision: 0,
+      worktreeFilter: null,
       clientOverrides: this.clients.overrides(),
       clientSelection: loadSelection(platform.storage, this.clients.list()),
       clientBudgets: [],
@@ -1400,6 +1404,9 @@ export class AppStore {
   rememberProjects(hostId: string, projects: Project[]): void {
     this.update({ projects: { ...this.state.projects, [hostId]: projects } });
   }
+
+  /** Picks the checkout the board and the Sessions list narrow to, or clears it. Stubbed until the test commit is in. */
+  setWorktreeFilter(_filter: WorktreeFilter | null): void {}
 
   /** The key of a project of a host: the daemon's, else the one its folder would have. */
   projectKeyOf(hostId: string, project: Project): string {
