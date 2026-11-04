@@ -11,8 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { CLIENT_COLORS, type Client, type ClientColor } from "../lib/clients.ts";
+import { hasFeature } from "../lib/version.ts";
 import { ClientBudget } from "./ClientBudget.tsx";
 import { ClientDefaults } from "./ClientDefaults.tsx";
+import { ClientRate } from "./ClientRate.tsx";
 import { ClientRules } from "./ClientRules.tsx";
 import { ClientsSuggest } from "./ClientsSuggest.tsx";
 import { ClientsTransfer } from "./ClientsTransfer.tsx";
@@ -26,6 +28,7 @@ export function ClientsPage(props: {
   const { store, state } = props;
   const { t } = store.i18n;
   const clients = state.clientList;
+  const withRoi = state.hosts.some((h) => hasFeature(h.hostInfo?.features, "roi", false));
   const [name, setName] = useState("");
   const [renaming, setRenaming] = useState<Client | null>(null);
   const [removing, setRemoving] = useState<Client | null>(null);
@@ -123,6 +126,7 @@ export function ClientsPage(props: {
                   <ClientRules store={store} state={state} client={client} />
                   <ClientBudget store={store} state={state} client={client} />
                   <ClientDefaults store={store} state={state} client={client} />
+                  {withRoi && <ClientRate store={store} client={client} />}
                 </Stack>
               </li>
             ))}
