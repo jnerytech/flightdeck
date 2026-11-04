@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Board, type BoardOptions } from "../src/board/board.ts";
 import type { Card } from "../src/board/types.ts";
@@ -16,6 +16,30 @@ Object.assign(process.env, {
   GIT_COMMITTER_EMAIL: "teste@flightdeck.invalid",
 });
 
+/**
+ * What a git call that did not succeed reports: the exit code, or the signal that ended it, and
+ * what git wrote. A call the test's own time limit killed has no exit code and no output; saying
+ * so keeps it from reading as a git failure (`git add .: ` with nothing after it, on Windows CI).
+ */
+export function gitFailure(
+  args: string[],
+  result: {
+    exitCode: number | null;
+    signalCode?: string | number | null;
+    stdout: string;
+    stderr: string;
+  },
+): string {
+  const command = `git ${args.join(" ")}`;
+  const ended =
+    result.exitCode === null
+      ? `${command} was killed by ${result.signalCode ?? "a signal"} before it finished (a test that runs out of its time limit kills the child it waits on)`
+      : `${command} exited with code ${result.exitCode}`;
+  // `git commit` with nothing to commit says so on stdout only.
+  const output = [result.stderr.trim(), result.stdout.trim()].filter(Boolean).join("\n");
+  return `${ended}: ${output || "(no output)"}`;
+}
+
 /** Runs git synchronously, failing the test on a non-zero exit. */
 export function git(cwd: string, ...args: string[]): string {
   const bin = whichOnPath("git") ?? "git";
@@ -27,15 +51,28 @@ export function git(cwd: string, ...args: string[]): string {
     stderr: "pipe",
   });
   if (proc.exitCode !== 0) {
-    throw new Error(`git ${args.join(" ")}: ${proc.stderr.toString()}`);
+    throw new Error(
+      gitFailure(args, {
+        exitCode: proc.exitCode,
+        signalCode: proc.signalCode ?? null,
+        stdout: proc.stdout.toString(),
+        stderr: proc.stderr.toString(),
+      }),
+    );
   }
   return proc.stdout.toString().trim();
 }
 
-/** Allowed root with a git repository (`main`, one commit with README and .gitignore). */
-export function gitRepo(name = "repo") {
-  const root = tempDir("fd-board-");
-  const repo = join(root, name);
+let seed: string | undefined;
+
+/**
+ * The repository every `gitRepo` copies, built with git once per process. Five git processes per
+ * repository were most of the time of the board tests on Windows, where a process start is slow and,
+ * when the runner itself slows down, slower still: tests that only needed a repository timed out.
+ */
+function seedRepo(): string {
+  if (seed) return seed;
+  const repo = join(tempDir("fd-board-seed-"), "repo");
   mkdirSync(repo);
   git(repo, "init", "-q", "-b", "main");
   git(repo, "config", "commit.gpgsign", "false");
@@ -44,6 +81,16 @@ export function gitRepo(name = "repo") {
   writeFileSync(join(repo, ".gitignore"), "node_modules/\n");
   git(repo, "add", ".");
   git(repo, "commit", "-q", "-m", "inicial");
+  seed = repo;
+  return repo;
+}
+
+/** Allowed root with a git repository (`main`, one commit with README and .gitignore). */
+export function gitRepo(name = "repo") {
+  const root = tempDir("fd-board-");
+  const repo = join(root, name);
+  // Timestamps kept, so the index still matches the files it describes.
+  cpSync(seedRepo(), repo, { recursive: true, preserveTimestamps: true });
   return { root, repo };
 }
 
