@@ -5,7 +5,7 @@ import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { usd } from "@/lib/costs";
-import { type RoiColumn, rowsFrom, sortRows, totalsOf } from "@/lib/roi-table";
+import { csvOf, type RoiColumn, rowsFrom, sortRows, totalsOf } from "@/lib/roi-table";
 
 const COLUMNS: RoiColumn[] = [
   "project",
@@ -73,9 +73,23 @@ export function RoiTable(props: {
         : { column, direction: "asc" },
     );
 
+  const exportCsv = async () => {
+    const text = csvOf(shown, [...COLUMNS.map(label), t("roiUi.table.derivation")], (row) =>
+      row.figures.derivation.map((d) => t(d.key as Key, d.vars)).join("; "),
+    );
+    await store.saveFile(`roi-${from}_${to}.csv`, text);
+  };
+
   return (
     <section aria-label={t("roiUi.tableTitle")} className="flex flex-col gap-2">
-      <h2 className="font-medium text-sm">{t("roiUi.tableTitle")}</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="font-medium text-sm">{t("roiUi.tableTitle")}</h2>
+        {rows.length > 0 && (
+          <Button variant="outline" size="sm" onClick={exportCsv}>
+            {t("roiUi.table.exportCsv")}
+          </Button>
+        )}
+      </div>
       {rows.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("roiUi.table.empty")}</p>
       ) : (
