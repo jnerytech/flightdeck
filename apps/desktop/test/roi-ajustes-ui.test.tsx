@@ -132,6 +132,36 @@ for (const [lang, t] of [
       expect(store.roi.data().people).toHaveLength(1);
     });
 
+    test("a host ticked and then unticked is not counted for the person", async () => {
+      const { store } = await costsPage(lang);
+      await settle(() => screen.queryByLabelText(S.personName) !== null);
+      const box = () =>
+        within(screen.getByRole("group", { name: S.personHosts })).getByLabelText(
+          "alfa",
+        ) as HTMLInputElement;
+      await act(async () => {
+        fireEvent.click(box());
+      });
+      expect(box().checked).toBe(true);
+      await act(async () => {
+        fireEvent.click(box());
+      });
+      expect(box().checked).toBe(false);
+      await type(S.personName, "Bia");
+      await press(S.addPerson);
+      expect(store.roi.data().people).toMatchObject([{ name: "Bia", hostIds: [] }]);
+    });
+
+    test("a limit that is not a number is refused with its reason and no person is added", async () => {
+      const { store } = await costsPage(lang);
+      await settle(() => screen.queryByLabelText(S.personName) !== null);
+      await type(S.personName, "Cy");
+      await type(S.tokenLimit, "abc");
+      await press(S.addPerson);
+      expect(screen.queryByText(S.error.person_limit_invalid)).not.toBeNull();
+      expect(store.roi.data().people).toEqual([]);
+    });
+
     test("a host without roi shows no settings", async () => {
       await costsPage(lang, { roi: false });
       await settle(() => screen.queryByText(t.costsUi.perDay) !== null);

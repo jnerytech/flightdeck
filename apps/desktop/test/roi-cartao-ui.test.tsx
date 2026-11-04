@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { afterEach, describe, expect, setDefaultTimeout, spyOn, test } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { type AxeViolation, blocking, describeViolation } from "../../../scripts/lib/axe.ts";
@@ -269,6 +269,75 @@ for (const [lang, t] of [
           ) !== null,
       );
       expect(screen.queryByText(t.roiUi.caveat)).not.toBeNull();
+    });
+
+    test("typing the default hours and saving sends them to the host and recomputes the hours", async () => {
+      await roiPage(lang, { usage: USAGE, done: SHOP });
+      await settle(() => screen.queryByLabelText(t.roiUi.defaultHours) !== null);
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText(t.roiUi.defaultHours), { target: { value: "2" } });
+      });
+      expect((screen.getByLabelText(t.roiUi.defaultHours) as HTMLInputElement).value).toBe("2");
+      await click(t.roiUi.saveHours);
+      await settle(() => screen.queryByText(t.roiUi.hours.replace("{hours}", "6")) !== null);
+    });
+
+    test("typing a project rate and saving keeps it in the app and turns hours into a value", async () => {
+      const page = await roiPage(lang, { usage: USAGE, done: SHOP });
+      await act(async () => {
+        await page.store.hostCommand(page.hostId, "project.update", {
+          projectId: page.project?.id ?? "",
+          defaultHours: 2,
+        });
+      });
+      await settle(() => screen.queryByLabelText(t.roiUi.projectRate) !== null);
+      await settle(() => screen.queryByText(t.roiUi.hours.replace("{hours}", "6")) !== null);
+      expect(screen.queryByText(t.roiUi.noRate)).not.toBeNull();
+      await act(async () => {
+        fireEvent.change(screen.getByLabelText(t.roiUi.projectRate), { target: { value: "50" } });
+      });
+      expect((screen.getByLabelText(t.roiUi.projectRate) as HTMLInputElement).value).toBe("50");
+      await click(t.roiUi.saveRate);
+      await settle(
+        () => screen.queryByText(t.roiUi.value.replace("{value}", "US$ 300.00")) !== null,
+      );
+      expect(Object.values(page.store.roi.data().projectRates)).toEqual([50]);
+    });
+
+    test("the card refreshes on its 30 second timer", async () => {
+      const original = globalThis.setInterval;
+      const ticks: Array<() => void> = [];
+      const interval = spyOn(globalThis, "setInterval").mockImplementation(((
+        fn: () => void,
+        ms?: number,
+      ) => {
+        if (ms === 30_000) ticks.push(fn);
+        return original(fn, ms);
+      }) as unknown as typeof setInterval);
+      try {
+        const { d } = await roiPage(lang, { usage: USAGE, done: SHOP });
+        await settle(
+          () => screen.queryByText(t.roiUi.cost.replace("{cost}", "US$ 12.00")) !== null,
+        );
+        expect(ticks.length).toBeGreaterThan(0);
+        const key = d.keys.known(join(d.root, "shop"));
+        d.eventStore.db
+          .query(
+            `INSERT INTO usage_entries (message_id, at, day, project_key, model, origin, speed, input, output,
+               cache_read, cache_write_5m, cache_write_1h, cost_usd)
+             VALUES ('late', '2026-10-12T11:00:00Z', '2026-10-12', ?, 'm', 'app', 'standard', 1, 0, 0, 0, 0, 3)`,
+          )
+          .run(key);
+        expect(screen.queryByText(t.roiUi.cost.replace("{cost}", "US$ 15.00"))).toBeNull();
+        await act(async () => {
+          for (const tick of ticks) tick();
+        });
+        await settle(
+          () => screen.queryByText(t.roiUi.cost.replace("{cost}", "US$ 15.00")) !== null,
+        );
+      } finally {
+        interval.mockRestore();
+      }
     });
 
     test("no blocking accessibility violation", async () => {
