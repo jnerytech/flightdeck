@@ -8,7 +8,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
-const { HostDeps } = await import("../src/components/hosts/host-deps.tsx");
+const { HostHealth } = await import("../src/components/hosts/host-health.tsx");
 const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
 
 setDefaultTimeout(30_000);
@@ -58,7 +58,15 @@ function setup(deps: DepsResult | null) {
   let checks = 0;
   const view = (
     <TooltipProvider>
-      <HostDeps store={store} deps={deps} os="linux" onCheck={async () => void checks++} />
+      <HostHealth
+        store={store}
+        host={{ id: "h1", name: "pc", hostInfo: { os: "linux", features: [] } } as never}
+        deps={deps}
+        doctor={null}
+        checkedAt={null}
+        onCheck={async () => void checks++}
+        onAddFolder={() => {}}
+      />
     </TooltipProvider>
   );
   return { view, copied, checks: () => checks };
@@ -68,7 +76,7 @@ describe("deps-ui: the dependencies of a host", () => {
   test("a headline, a Required and an Optional group, each row with an icon and its state in words", () => {
     const { view } = setup(MISSING_REQUIRED);
     render(view);
-    const section = screen.getByRole("region", { name: "Dependencies" });
+    const section = screen.getByRole("region", { name: "Health & dependencies" });
     expect(within(section).getByText("2 required missing")).not.toBeNull();
     const required = within(section).getByRole("list", { name: "Required" });
     expect(within(required).getAllByRole("listitem")).toHaveLength(3);
@@ -148,7 +156,7 @@ describe("deps-ui: on the host page and the sidebar", () => {
       async () => void fireEvent.click(screen.getByRole("button", { name: "Abrir host pc" })),
     );
     const section = await pollFor(
-      () => screen.queryByRole("region", { name: "Dependências" }) ?? undefined,
+      () => screen.queryByRole("region", { name: "Saúde e dependências" }) ?? undefined,
       "the section",
     );
     await pollFor(

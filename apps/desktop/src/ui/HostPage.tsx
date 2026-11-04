@@ -4,8 +4,7 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
 import { BypassSwitch } from "@/components/hosts/bypass-switch";
 import { GithubPanel } from "@/components/hosts/github-panel";
-import { HostDeps } from "@/components/hosts/host-deps";
-import { HostDoctor } from "@/components/hosts/host-doctor";
+import { HostHealth } from "@/components/hosts/host-health";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { HostOverview } from "@/components/hosts/host-overview";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
@@ -46,6 +45,8 @@ const OVERVIEW_KEYS = [
   "projects",
   "cards",
   "deps",
+  "doctor",
+  "healthAt",
 ] as const;
 
 /**
@@ -86,8 +87,14 @@ export function HostPage(props: {
   const [hooks, setHooks] = useState<HooksStatusResult | null>(null);
   const [confirming, setConfirming] = useState<"install" | "uninstall" | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [tab, setTab] = useState("overview");
   const now = useNow();
   const overviewState = useStoreSlice(store, OVERVIEW_KEYS);
+  // Opening the page reads the health again when the last read is older than a few minutes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only the host and its being online matter
+  useEffect(() => {
+    if (host.status === "online") void store.ensureHealth(host.id);
+  }, [store, host.id, host.status]);
   const offline = host.status !== "online" && host.status !== "incompatible";
   useEffect(() => {
     if (host.status !== "online") return;
@@ -142,7 +149,7 @@ export function HostPage(props: {
         {info?.apiKeySanitized === false && (
           <InlineNotice>{t("hostPage.apiKeyForwarded")}</InlineNotice>
         )}
-        <Tabs defaultValue="overview">
+        <Tabs value={tab} onValueChange={setTab}>
           <TabsList aria-label={t("hostHome.tabs")}>
             <TabsTrigger value="overview">{t("hostHome.overview")}</TabsTrigger>
             <TabsTrigger value="usage">{t("hostHome.usage")}</TabsTrigger>
@@ -160,12 +167,16 @@ export function HostPage(props: {
                 onSeeAllProjects={props.onSeeAllProjects}
                 onNewSession={props.onNewSession}
               />
-              {hasFeature(info?.features, "depsCheck", false) && (
-                <HostDeps
+              {(hasFeature(info?.features, "depsCheck", false) ||
+                hasFeature(info?.features, "doctor.run", false)) && (
+                <HostHealth
                   store={store}
+                  host={host}
                   deps={overviewState.deps[host.id] ?? null}
-                  os={info?.os ?? ""}
-                  onCheck={() => store.checkDeps(host.id)}
+                  doctor={overviewState.doctor[host.id] ?? null}
+                  checkedAt={overviewState.healthAt[host.id] ?? null}
+                  onCheck={() => store.checkHealth(host.id)}
+                  onAddFolder={() => setTab("settings")}
                 />
               )}
               {hasFeature(info?.features, "account", false) && (
@@ -218,9 +229,6 @@ export function HostPage(props: {
               <AllowedFolders store={store} host={host} />
               <BypassSwitch store={store} host={host} />
               <SimpleModePanel store={store} host={host} />
-              {host.status === "online" && hasFeature(info?.features, "doctor.run", false) && (
-                <HostDoctor store={store} host={host} />
-              )}
               {host.status === "online" && hasFeature(info?.features, "github", false) && (
                 <GithubPanel store={store} host={host} />
               )}

@@ -88,7 +88,7 @@ function setup(
         store={store}
         host={host}
         deps={options.deps === undefined ? DEPS : options.deps}
-        doctor={DOCTOR}
+        doctor={options.deps === null ? null : DOCTOR}
         checkedAt={options.checkedAt === undefined ? NOW - 3 * 60_000 : options.checkedAt}
         onCheck={async () => void checks++}
         onAddFolder={() => added.push("x")}

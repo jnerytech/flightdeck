@@ -35,48 +35,55 @@ async function hostPage(language: string, firstRun: boolean) {
 }
 
 describe("doctor-app: the check of a host, in its page", () => {
-  test("a host that cannot run the doctor shows no panel", async () => {
+  test("a host that cannot run the doctor shows no health section", async () => {
     await hostPage("pt-BR", false);
-    await settle(() => screen.queryByText("Pastas permitidas") !== null);
-    expect(screen.queryByRole("button", { name: "Verificar" })).toBeNull();
+    await settle(() => screen.queryByText("Informações") !== null);
+    expect(screen.queryByRole("region", { name: "Saúde e dependências" })).toBeNull();
   });
 
-  test("Verificar asks the host with the app version and lists each item with a plain fix for the ones that failed", async () => {
+  test("the host is asked by itself with the app version, and each check shows an icon and a word, with a plain fix for the ones that failed", async () => {
     const { d } = await hostPage("pt-BR", true);
-    await settle(() => screen.queryByRole("button", { name: "Verificar" }) !== null);
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Verificar" }));
-    });
-    await settle(() => screen.queryByRole("list", { name: "Resultado da verificação" }) !== null);
+    const section = await waitForSection();
+    await settle(() => (section.textContent ?? "").includes("Pastas permitidas"));
     expect(d.doctorAsked).toEqual([APP_VERSION]);
-    const items = within(
-      screen.getByRole("list", { name: "Resultado da verificação" }),
-    ).getAllByRole("listitem");
+    const items = within(within(section).getByRole("list", { name: "Verificações" })).getAllByRole(
+      "listitem",
+    );
     expect(items).toHaveLength(3);
     expect(items[0]?.textContent).toContain("Pastas permitidas");
-    expect(items[0]?.textContent).toContain("ok");
+    expect(items[0]?.textContent).toContain("OK");
     expect(items[0]?.textContent).not.toContain("Como consertar");
     const claude = items[1]?.textContent ?? "";
     expect(claude).toContain("Claude Code");
-    expect(claude).toContain("atenção");
+    expect(claude).toContain("Atenção");
     expect(claude).toContain("Como consertar: Instale o Claude Code no host e reinicie o daemon.");
-    expect(screen.queryByText("Itens que precisam de atenção: 1")).not.toBeNull();
+    expect(items[1]?.querySelector("[data-slot='dep-icon']")?.getAttribute("data-icon")).toBe(
+      "warning",
+    );
+    expect(section.textContent).toContain("Opcionais faltando: 1");
+    expect(section.textContent).toContain("Verificado agora");
   });
 
-  test("the same panel in English", async () => {
-    await hostPage("en", true);
-    await settle(() => screen.queryByRole("button", { name: "Check" }) !== null);
+  test("Verificar de novo asks again, and the same section in English", async () => {
+    const { d } = await hostPage("en", true);
+    const section = await waitForSection("Health & dependencies");
+    await settle(() => (section.textContent ?? "").includes("Allowed folders"));
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Check" }));
+      fireEvent.click(within(section).getByRole("button", { name: "Check again" }));
     });
-    await settle(() => screen.queryByRole("list", { name: "Check results" }) !== null);
-    const claude = within(screen.getByRole("list", { name: "Check results" })).getAllByRole(
+    await settle(() => d.doctorAsked.length === 2);
+    const claude = within(within(section).getByRole("list", { name: "Checks" })).getAllByRole(
       "listitem",
     )[1];
-    expect(claude?.textContent).toContain("warning");
+    expect(claude?.textContent).toContain("Warning");
     expect(claude?.textContent).toContain(
       "How to fix: Install Claude Code on the host and restart the daemon.",
     );
-    expect(screen.queryByText("Items that need attention: 1")).not.toBeNull();
+    expect(section.textContent).toContain("1 optional missing");
   });
 });
+
+async function waitForSection(name = "Saúde e dependências") {
+  await settle(() => screen.queryByRole("region", { name }) !== null);
+  return screen.getByRole("region", { name });
+}

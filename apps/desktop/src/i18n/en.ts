@@ -25,14 +25,7 @@ export const en: Dictionary = {
     folderNeeded: "Pick or type a folder.",
   },
   doctor: {
-    title: "Check this host",
-    hint: "Checks the daemon version, Claude Code, the hooks, the ports and the allowed folders, and says how to fix what fails.",
-    run: "Check",
-    results: "Check results",
-    status: { ok: "ok", warn: "warning", fail: "failed" },
     fix: "How to fix: {step}",
-    allGood: "Everything is in place on this host.",
-    problems: "Items that need attention: {n}",
     check: {
       config: "Configuration",
       folders: "Allowed folders",
@@ -3395,6 +3388,14 @@ export const en: Dictionary = {
     probeUnreachable:
       "could not connect: check that the daemon is running and that the address matches. On the host, run flightdeckd doctor",
   },
+  hostHealth: {
+    title: "Health & dependencies",
+    checked: "Checked {ago}",
+    warning: "Warning",
+    failed: "Failed",
+    addFolder: "Add folder",
+    groups: { required: "Required", optional: "Optional", checks: "Checks" },
+  },
   hostDeps: {
     title: "Dependencies",
     check: "Check again",
@@ -3415,6 +3416,7 @@ export const en: Dictionary = {
       tailscale: "Tailscale",
       pwsh: "PowerShell",
       hooks: "Claude Code hooks",
+      claudeAuth: "Claude Code signed in",
     },
     breaks: {
       sessions: "sessions cannot start or resume",

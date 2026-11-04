@@ -27,14 +27,7 @@ export const ptBR = {
     folderNeeded: "Escolha ou digite uma pasta.",
   },
   doctor: {
-    title: "Verificar este host",
-    hint: "Confere a versão do daemon, o Claude Code, os hooks, as portas e as pastas permitidas, e diz como consertar o que falhar.",
-    run: "Verificar",
-    results: "Resultado da verificação",
-    status: { ok: "ok", warn: "atenção", fail: "falhou" },
     fix: "Como consertar: {step}",
-    allGood: "Tudo certo neste host.",
-    problems: "Itens que precisam de atenção: {n}",
     check: {
       config: "Configuração",
       folders: "Pastas permitidas",
@@ -3397,6 +3390,14 @@ export const ptBR = {
     probeUnreachable:
       "não foi possível conectar: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor",
   },
+  hostHealth: {
+    title: "Saúde e dependências",
+    checked: "Verificado {ago}",
+    warning: "Atenção",
+    failed: "Falhou",
+    addFolder: "Adicionar pasta",
+    groups: { required: "Obrigatórias", optional: "Opcionais", checks: "Verificações" },
+  },
   hostDeps: {
     title: "Dependências",
     check: "Verificar de novo",
@@ -3417,6 +3418,7 @@ export const ptBR = {
       tailscale: "Tailscale",
       pwsh: "PowerShell",
       hooks: "Hooks do Claude Code",
+      claudeAuth: "Claude Code com login feito",
     },
     breaks: {
       sessions: "as sessões não iniciam nem retomam",

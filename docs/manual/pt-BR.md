@@ -272,18 +272,24 @@ e retoma cada sessão do último evento visto.
 
 Sem nenhum host, o app mostra quatro passos no lugar das telas de sempre: instalar e iniciar o
 daemon (`flightdeckd setup`), copiar o link de pareamento que ele imprime, colar o link e
-apertar **Testar e adicionar**, e então o app abre a página do próprio host. Ali você aperta
-**Verificar** em **Verificar este host** e libera as pastas de projetos em **Pastas permitidas**.
+apertar **Testar e adicionar**, e então o app abre a página do próprio host. Ali você lê
+**Saúde e dependências** (o app verifica sozinho) e libera as pastas de projetos em **Pastas permitidas**.
 Depois, **Achar meus projetos** (em **Projetos**) preenche o Board sem digitar caminho.
 
 #### Verificar um host
 
-**Verificar este host** (na página do host, para hosts online cujo daemon anuncia `doctor.run`)
-pede ao daemon que se confira: configuração, pastas permitidas, serviço, daemon, Claude Code,
-hooks, Tailscale e a versão do daemon contra a do app. Cada item fica **ok**, **atenção** ou
-**falhou**; cada um que não está **ok** vem com um passo simples para consertar, no idioma do app.
-O daemon segue respondendo enquanto confere (nada trava). As mesmas conferências rodam no
-terminal com `flightdeckd doctor`.
+**Saúde e dependências** (na aba Visão geral do host) é uma seção só para o que o host precisa e
+como ele está. O app lê sozinho quando o host conecta, quando você abre a página do host (se a
+última leitura tem mais de cinco minutos) e depois de uma atualização do daemon, e diz "Verificado
+há 3 min"; **Verificar de novo** lê agora. As dependências são **Obrigatórias** (Claude Code e o
+login dele, git, o serviço que sobe o daemon no boot, uma pasta permitida) e **Opcionais** (GitHub,
+Azure, SSH, Tailscale, PowerShell no Windows, os hooks); as conferências do próprio daemon
+(configuração, daemon, Tailscale, modelos, ferramentas do time, versão contra a do app) ficam em
+**Verificações**. Cada linha tem um ícone e uma palavra (OK, atenção, falhou, desatualizada,
+faltando, não se aplica), o que deixa de funcionar sem ela e um passo simples para consertar. Onde o
+app já tem a ação, a linha tem um botão: **Instalar hooks** (pergunta antes), **Atualizar o daemon
+para X** (pergunta antes) e **Adicionar pasta**. O que precisa de `sudo` ou de instalador só aparece
+para copiar: o app nunca o executa. As mesmas conferências rodam no terminal com `flightdeckd doctor`.
 ### Sessões sem pedidos de permissão
 
 Por padrão nenhuma sessão de um host roda em **Ignorar permissões** (toda ferramenta roda sem
@@ -2446,7 +2452,7 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
 - **Precisa de você:** na barra lateral, com o contador de pedidos abertos em todos os hosts. A
   tela lista os pedidos, do mais antigo ao mais novo, e o cartão do pedido escolhido fica ao
   lado: **A** aprova, **N** nega e **Esc** fecha o detalhe. **Abrir sessão** leva à conversa.
-- **Dependências:** a aba Visão geral da página do host tem uma seção **Dependências** que agrupa o
+- **Dependências:** a aba Visão geral da página do host tem uma seção **Saúde e dependências** (abaixo) que agrupa o
   que o host precisa em **Obrigatórias** (Claude Code, git com worktrees, o serviço que sobe o
   daemon no boot, ao menos uma pasta permitida) e **Opcionais** (as ferramentas do GitHub, do Azure,
   o SSH e o Tailscale, o PowerShell no Windows, os hooks do Claude Code). Cada linha tem um ícone e

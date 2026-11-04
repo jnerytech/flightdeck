@@ -283,18 +283,24 @@ requests show up as inline cards with **Approve** and **Deny**. The app reconnec
 
 With no host yet, the app shows four steps instead of the usual screens: install and start the
 daemon (`flightdeckd setup`), copy the pairing link it prints, paste it and press **Test and
-add**, and then the app opens the host's own page. There you press **Check** in **Check this
-host** and add the project folders in **Allowed folders**. **Find my projects** (in **Projects**)
+add**, and then the app opens the host's own page. There you read **Health & dependencies**
+(the app checks by itself) and add the project folders in **Allowed folders**. **Find my projects** (in **Projects**)
 then fills the Board without typing a path.
 
 #### Checking a host
 
-**Check this host** (on the host's page, online hosts with a daemon that announces `doctor.run`)
-asks the daemon to check itself: configuration, allowed folders, service, daemon, Claude Code,
-hooks, Tailscale and the daemon's version against the app's. Every item is **ok**, **warning** or
-**failed**; each one that is not **ok** comes with a plain step to fix it, in the app's language.
-The daemon keeps answering while it checks (nothing blocks). The same checks run in a terminal
-with `flightdeckd doctor`.
+**Health & dependencies** (on the host's Overview tab) is one section for what the host needs and how
+it is doing. The app reads it by itself when the host connects, when you open the host's page (if
+the last reading is over five minutes old) and after a daemon update, and says "Checked 3 min
+ago"; **Check again** reads it now. The dependencies come in **Required** (Claude Code and its
+sign-in, git, the service that starts the daemon at boot, an allowed folder) and **Optional**
+(GitHub, Azure, SSH, Tailscale, PowerShell on Windows, the hooks); the checks of the daemon itself
+(configuration, daemon, Tailscale, templates, team tools, version against the app's) are under
+**Checks**. Every row has an icon and a word (OK, warning, failed, outdated, missing, not
+applicable), what stops working without it and a plain step to fix it. Where the app already has the
+action, the row has a button: **Install hooks** (it asks first), **Update daemon to X** (it asks
+first) and **Add folder**. What needs `sudo` or an installer is only shown to copy: the app never
+runs it. The same checks run in a terminal with `flightdeckd doctor`.
 ### Sessions without permission prompts
 
 By default no session of a host can run in **Bypass permissions** (every tool runs without asking).
@@ -2458,7 +2464,7 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
   lists the requests, oldest to newest, and the selected request's card sits next to it: **A**
   approves, **N** denies and **Esc** closes the detail. **Open session** takes you to the
   conversation.
-- **Dependencies:** the host page's Overview tab has a **Dependencies** section that groups what
+- **Dependencies:** the host page's Overview tab has a **Health & dependencies** section (below) that groups what
   the host needs into **Required** (Claude Code, git with worktrees, the service that starts the
   daemon at boot, at least one allowed folder) and **Optional** (the GitHub, Azure, SSH and
   Tailscale tools, PowerShell on Windows, the Claude Code hooks). Each row has an icon and a word
