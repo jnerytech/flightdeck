@@ -2,7 +2,11 @@ import { posix, win32 } from "node:path";
 import type { ServiceContext } from "./service.ts";
 
 /** What the PATH helpers need of the OS: the platform, the home and a way to run commands. */
-export type PathEnv = Pick<ServiceContext, "platform" | "home" | "exec">;
+export type PathEnv = Pick<ServiceContext, "platform" | "home" | "exec"> & {
+  /** The text of a file, or null when it is not there; with `writeFile`, lets Linux edit `~/.profile`. */
+  readFile?(path: string): Promise<string | null>;
+  writeFile?(path: string, content: string): void | Promise<void>;
+};
 
 const KEY = "HKCU\\Environment";
 /** The registry types the user's Path can have; `REG_EXPAND_SZ` is what Windows itself writes. */

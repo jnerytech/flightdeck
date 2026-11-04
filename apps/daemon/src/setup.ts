@@ -27,6 +27,8 @@ export interface SetupDeps {
   installHooks(): void | Promise<void>;
   /** Prints the pairing link. */
   pair(): Promise<void>;
+  /** Whether the user's systemd keeps running without a login (Linux); null where it does not apply. */
+  linger?(): Promise<"on" | "off" | null>;
 }
 
 /** What Tailscale uses: the CGNAT range of IPv4 and the ULA range of IPv6. */

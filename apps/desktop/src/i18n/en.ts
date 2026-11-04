@@ -43,6 +43,7 @@ export const en: Dictionary = {
       tailscale: "Tailscale",
       version: "Version",
       templates: "Templates",
+      linger: "Start at boot",
     },
     steps: {
       config: "Run flightdeckd setup on the host to redo the configuration.",
@@ -55,6 +56,8 @@ export const en: Dictionary = {
       version: "Update the daemon with the update button on this page.",
       templates:
         "Fix or remove the template files named above, in the templates folder of the host.",
+      linger:
+        "On the host, run sudo loginctl enable-linger $USER (on WSL also turn on systemd in /etc/wsl.conf).",
     },
   },
   findProjects: {

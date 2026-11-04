@@ -13,6 +13,8 @@ export interface DoctorDeps {
   tailscaleIp(): Promise<string | null>;
   hooks(): HooksState | Promise<HooksState>;
   claudePath(): string | null;
+  /** Whether the user's systemd keeps running without a login (Linux); null where it does not apply. */
+  linger?(): Promise<"on" | "off" | null>;
   /** Template files the host could not load (phase 33); absent when it has no templates. */
   templateProblems?(): Promise<Array<{ file: string; reason: string }>>;
   /** The running daemon's version and, when the app told it, the app's: only a running daemon has them. */
@@ -29,7 +31,8 @@ export type DoctorCheckId =
   | "hooks"
   | "tailscale"
   | "version"
-  | "templates";
+  | "templates"
+  | "linger";
 
 export interface DoctorCheck {
   id: DoctorCheckId;

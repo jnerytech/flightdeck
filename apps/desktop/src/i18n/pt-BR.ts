@@ -45,6 +45,7 @@ export const ptBR = {
       tailscale: "Tailscale",
       version: "Versão",
       templates: "Modelos",
+      linger: "Iniciar no boot",
     },
     steps: {
       config: "Rode flightdeckd setup no host para refazer a configuração.",
@@ -57,6 +58,8 @@ export const ptBR = {
       version: "Atualize o daemon com o botão de atualização desta página.",
       templates:
         "Corrija ou remova os arquivos de modelo citados acima, na pasta de modelos do host.",
+      linger:
+        "No host, rode sudo loginctl enable-linger $USER (no WSL, ligue também o systemd em /etc/wsl.conf).",
     },
   },
   findProjects: {
