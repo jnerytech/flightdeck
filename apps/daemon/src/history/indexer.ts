@@ -316,9 +316,11 @@ export class HistoryIndexer {
     claudeSessionId: string,
     cursor?: string,
     limit = 100,
+    _tail = false,
   ): Promise<{
     session: HistorySession;
     cwdExists: boolean;
+    cursor?: string;
     messages: HistoryMessage[];
     nextCursor: string | null;
     prevCursor: string | null;

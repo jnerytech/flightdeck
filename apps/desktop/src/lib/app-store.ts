@@ -1494,6 +1494,7 @@ export class AppStore {
     hostId: string,
     claudeSessionId: string,
     cursor?: string,
+    _tail = false,
   ): Promise<HistoryGetResult | null> {
     try {
       const conn = this.connections.get(hostId);
