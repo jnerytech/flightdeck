@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
 import { useFormatNumber, useT } from "@/i18n/context";
+import { uniqueKeys } from "@/lib/unique-keys";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import type { Key } from "../i18n/index.ts";
@@ -208,6 +209,8 @@ export const CostsPage = memo(function CostsPage(props: {
     if (file) await store.saveFile(file.filename, file.csv);
   };
   const byDay = summary?.byDay ?? [];
+  // The same session can come from two hosts: each row needs a key of its own.
+  const topKeys = uniqueKeys((summary?.topSessions ?? []).map((s) => s.claudeSessionId));
   // One set of labels for the whole screen, so a project reads the same in the list, the chart
   // and the table; two that share a folder name are told apart.
   const labels = projectLabels([
@@ -507,8 +510,8 @@ export const CostsPage = memo(function CostsPage(props: {
             <section aria-label={t("costsUi.top")}>
               <Panel title={t("costsUi.top")}>
                 <ul className="flex flex-col">
-                  {summary.topSessions.map((s) => (
-                    <li key={s.claudeSessionId}>
+                  {summary.topSessions.map((s, i) => (
+                    <li key={topKeys[i]}>
                       <Button
                         variant="ghost"
                         size="sm"

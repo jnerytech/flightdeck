@@ -2,7 +2,7 @@
 // down and up again between files left React event handling detached from the new document.
 // Bun's networking globals are kept, and the daemon tests run unaffected next to it.
 
-import { afterAll } from "bun:test";
+import { afterAll, afterEach } from "bun:test";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 
 // Keep Bun's networking primitives: the UI tests talk to a real in-process daemon. Daemon tests
@@ -71,6 +71,30 @@ function restorePrototypes(snapshot: Map<object, Members>): void {
  * after the file: a test that patches `HTMLElement.prototype.scrollIntoView` and never restores it
  * would otherwise leak into the files that run after it.
  */
+/** What the console printed since the file started; the wrapper is installed once per process. */
+const printed: string[] = [];
+let wrapped = false;
+
+/**
+ * A repeated React key is a bug that only shows as a console line, and a list that drops or
+ * duplicates rows on its next update: any test that prints one fails.
+ */
+function guardSameKeys(): void {
+  printed.length = 0;
+  if (!wrapped) {
+    wrapped = true;
+    const real = console.error;
+    console.error = (...args: unknown[]) => {
+      printed.push(args.map(String).join(" "));
+      real(...args);
+    };
+  }
+  afterEach(() => {
+    const bad = sameKeyWarnings(printed.splice(0));
+    if (bad.length > 0) throw new Error(`React saw a repeated key:\n${bad.join("\n")}`);
+  });
+}
+
 export function registerDom(): void {
   if (GlobalRegistrator.isRegistered) {
     // Every test file calls this first. The DOM stays for the whole process, so what a file left in
@@ -84,6 +108,7 @@ export function registerDom(): void {
   }
   const snapshot = snapshotPrototypes();
   afterAll(() => restorePrototypes(snapshot));
+  guardSameKeys();
 }
 
 /**
@@ -104,3 +129,8 @@ registerDom();
 const { preloadAllScreens } = await import("../src/ui/lazy-screen.ts");
 await import("../src/ui/Screens.tsx");
 await preloadAllScreens();
+
+/** The lines React printed about two siblings with one key. */
+export function sameKeyWarnings(lines: readonly string[]): string[] {
+  return lines.filter((line) => line.includes("with the same key"));
+}
