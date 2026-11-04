@@ -139,7 +139,7 @@ import {
 import type { TerminalHost } from "./terminal-session.ts";
 import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
-import { loadTileCount, saveTileCount, type TileCount } from "./tiles.ts";
+import { loadTileLayout, saveTileLayout, type TileLayout } from "./tiles.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
 import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
@@ -1246,13 +1246,13 @@ export class AppStore {
     return true;
   }
 
-  /** How many tiles the project page shows; kept across starts. */
-  tileCount(): TileCount {
-    return loadTileCount(this.platform.storage);
+  /** The layout of the tiles on the project page; kept across starts (issue #94). */
+  tileLayout(): TileLayout {
+    return loadTileLayout(this.platform.storage);
   }
 
-  setTileCount(count: TileCount): void {
-    saveTileCount(this.platform.storage, count);
+  setTileLayout(layout: TileLayout): void {
+    saveTileLayout(this.platform.storage, layout);
   }
 
   /** Sends a message to a session of a host, whether it is the open one or not. */

@@ -657,8 +657,11 @@ settings, where the folder, base branch, setup and personas are edited).
 
 ### Sessions side by side
 
-When the project has sessions that Flightdeck started, the page shows them as **tiles**: 2, 3, 4 or
-6 at a time (pick the number in **Tiles on screen**; it is kept). The sessions that need you come
+When the project has sessions that Flightdeck started, the page shows them as **tiles**. The
+**Layout** control above them is a row of icons that draw the grid: 2 side by side, 3 columns, a
+2×2 grid, a 2×3 grid, and **Auto** (the default), which shows every live session. Hover an icon for
+its name; the choice is kept. When the layout holds fewer tiles than there are live sessions, the
+page says how many are left out ("+2 not shown"). The sessions that need you come
 first, then the running ones, then the idle ones. Each tile has the session's name (a button that
 opens it), its status, its **last lines**, the **request** it is waiting on (with **Allow** and
 **Deny**) and a small message box: **Enter** sends, **Ctrl+Enter** adds a new line, and the send

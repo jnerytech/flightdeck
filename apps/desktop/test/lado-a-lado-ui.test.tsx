@@ -95,27 +95,40 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
     expect(within(dois).getByText("idle")).toBeTruthy();
   });
 
-  test("the count is 2, 3, 4 or 6 tiles, 4 to start, and it is kept", async () => {
+  test("the layout is a row of icons, Auto to start, each with a name and a tooltip, and the choice is kept", async () => {
     const { store } = await setup(["a", "b", "c", "d", "e"]);
-    const group = screen.getByRole("group", { name: "Tiles on screen" });
-    expect(
-      within(group)
-        .getAllByRole("radio")
-        .map((r) => r.getAttribute("aria-label")),
-    ).toEqual(["2 tiles", "3 tiles", "4 tiles", "6 tiles"]);
-    await waitFor(() => tiles().length === 4, "four tiles");
-    expect(
-      (within(group).getByRole("radio", { name: "4 tiles" }) as HTMLInputElement).checked,
-    ).toBe(true);
+    const group = screen.getByRole("group", { name: "Layout" });
+    const radios = within(group).getAllByRole("radio");
+    expect(radios.map((r) => r.getAttribute("aria-label"))).toEqual([
+      "2 side by side",
+      "3 columns",
+      "2×2 grid",
+      "2×3 grid",
+      "Auto",
+    ]);
+    expect(radios.map((r) => r.closest("label")?.getAttribute("title"))).toEqual([
+      "2 side by side",
+      "3 columns",
+      "2×2 grid",
+      "2×3 grid",
+      "Auto: every live session",
+    ]);
+    await waitFor(() => tiles().length === 5, "all five tiles in Auto");
+    expect((within(group).getByRole("radio", { name: "Auto" }) as HTMLInputElement).checked).toBe(
+      true,
+    );
+    expect(screen.queryByText(/not shown/)).toBeNull();
     await act(async () => {
-      fireEvent.click(within(group).getByRole("radio", { name: "2 tiles" }));
+      fireEvent.click(within(group).getByRole("radio", { name: "2 side by side" }));
     });
     expect(tiles()).toHaveLength(2);
-    expect(store.tileCount()).toBe(2);
+    expect(screen.getByText("+3 not shown")).toBeTruthy();
+    expect(store.tileLayout()).toBe("2");
     await act(async () => {
-      fireEvent.click(within(group).getByRole("radio", { name: "6 tiles" }));
+      fireEvent.click(within(group).getByRole("radio", { name: "2×3 grid" }));
     });
     expect(tiles()).toHaveLength(5);
+    expect(screen.queryByText(/not shown/)).toBeNull();
   });
 
   test("the session that needs you comes first, shows its request, and Allow answers it", async () => {
