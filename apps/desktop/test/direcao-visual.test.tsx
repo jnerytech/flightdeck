@@ -84,7 +84,7 @@ describe("direcao-visual", () => {
   test("superfícies em camadas: o fundo um tom abaixo dos painéis, nunca preto puro, borda com alfa", () => {
     const light = block(":root");
     const dark = block(".dark");
-    expect(lightness(light["--background"])).toBeLessThan(lightness(light["--card"]));
+    expect(lightness(light["--background"])).toBeLessThan(lightness(light["--surface-1"]));
     expect(lightness(light["--background"])).toBeGreaterThan(0.96);
     expect(lightness(dark["--background"])).toBeLessThan(lightness(dark["--surface-1"]) - 0.02);
     // A deep gray: not pure black, not mid gray.
