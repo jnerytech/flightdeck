@@ -78,6 +78,7 @@ async function run() {
       "host.info",
       {},
     );
+    if (!info) throw new Error("host.info was refused");
     for (const feature of ["ui.mode", "templates", "tasks"]) {
       if (!info?.features.includes(feature)) throw new Error(`missing feature ${feature}`);
     }
