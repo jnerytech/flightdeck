@@ -2,7 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { overBaseline } from "../lib/layout-ratchet.ts";
-import { fixedWaitCounts, fixedWaitSites } from "../lib/lazy-wait-ratchet.ts";
+import {
+  actSleepCounts,
+  fixedWaitCounts,
+  fixedWaitSites,
+  uncommentedActSleeps,
+} from "../lib/lazy-wait-ratchet.ts";
 import { realTempDir } from "./temp-dir.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
@@ -79,5 +84,42 @@ describe("lazy-wait-ratchet: a fixed wait followed by a one-shot query only goes
     expect(
       overBaseline(fixedWaitCounts(resolve(ROOT, "apps/desktop/test"), ROOT), baseline),
     ).toEqual([]);
+  });
+});
+
+describe("lazy-wait-ratchet: an act sleep in a desktop test says why it waits", () => {
+  test("an act(() => Bun.sleep(…)) with no reason above it is a site, in each of its spellings", () => {
+    expect(uncommentedActSleeps("await act(() => Bun.sleep(30));")).toBe(1);
+    expect(uncommentedActSleeps("await act(async () => Bun.sleep(30));")).toBe(1);
+    expect(uncommentedActSleeps("await act(async () => await Bun.sleep(30));")).toBe(1);
+    expect(uncommentedActSleeps("const wait = (ms: number) => act(() => Bun.sleep(ms));")).toBe(1);
+    expect(
+      uncommentedActSleeps("a();\nawait act(() => Bun.sleep(1));\nawait act(() => Bun.sleep(2));"),
+    ).toBe(2);
+  });
+
+  test("a '// timing:' comment on the line above says why, and the sleep is allowed", () => {
+    const why = "// timing: the hold lasts two seconds.\nawait act(() => Bun.sleep(2300));";
+    expect(uncommentedActSleeps(why)).toBe(0);
+    expect(uncommentedActSleeps("// timing: x\n\nawait act(() => Bun.sleep(1));")).toBe(0);
+    expect(uncommentedActSleeps("// some other comment\nawait act(() => Bun.sleep(1));")).toBe(1);
+  });
+
+  test("a settle, a stays or a sleep outside act is not a site", () => {
+    expect(uncommentedActSleeps("await settle(() => ok());")).toBe(0);
+    expect(uncommentedActSleeps("await stays(() => ok(), 100);")).toBe(0);
+    expect(uncommentedActSleeps("await Bun.sleep(30);")).toBe(0);
+  });
+
+  test("it counts per file and skips the files that hold the shared waits", () => {
+    const dir = realTempDir("act-sleep-");
+    writeFileSync(resolve(dir, "a.test.tsx"), "await act(() => Bun.sleep(1));\n");
+    writeFileSync(resolve(dir, "wait.ts"), "await act(() => Bun.sleep(1));\n");
+    writeFileSync(resolve(dir, "ok.test.tsx"), "// timing: x\nawait act(() => Bun.sleep(1));\n");
+    expect(actSleepCounts(dir, dir)).toEqual({ "a.test.tsx": 1 });
+  });
+
+  test("no desktop test has an act sleep without its reason", () => {
+    expect(actSleepCounts(resolve(ROOT, "apps/desktop/test"), ROOT)).toEqual({});
   });
 });

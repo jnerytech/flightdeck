@@ -76,3 +76,16 @@ export function fixedWaitCounts(dir: string, root: string): Record<string, numbe
   walk(dir);
   return counts;
 }
+
+/** Sleeps inside `act`: how a desktop test waits for a screen. */
+export function uncommentedActSleeps(source: string): number {
+  void source;
+  return 0;
+}
+
+/** Every desktop test source under `dir` with its uncommented act sleeps, keyed under `root`. */
+export function actSleepCounts(dir: string, root: string): Record<string, number> {
+  void dir;
+  void root;
+  return { "stub.ts": 1 };
+}
