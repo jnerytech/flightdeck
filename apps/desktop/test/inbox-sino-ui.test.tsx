@@ -113,8 +113,13 @@ describe("inbox-sino-ui: which notification is unread, and what each one is abou
       ["2", false],
     ]);
     expect(screen.queryByRole("heading", { name: "Configurações" })).toBeNull();
+    // It is read now, so it moved below the unread one and lost its control.
+    const again = rows(screen.getByRole("dialog")).map(
+      (r) => r.querySelector("[data-slot='row-title']")?.textContent,
+    );
+    expect(again).toEqual(["Sessão B", "Sessão A"]);
     expect(
-      within(rows(screen.getByRole("dialog"))[0] as HTMLElement).queryByRole("button", {
+      within(rows(screen.getByRole("dialog"))[1] as HTMLElement).queryByRole("button", {
         name: "Marcar como lida",
       }),
     ).toBeNull();

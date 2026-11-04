@@ -1135,8 +1135,16 @@ export class AppStore {
     saveInbox(this.platform.storage, inbox);
   }
 
-  inboxMarkRead(id: string): void {
-    this.setInbox(markRead(this.state.inbox, id));
+  /** Marks entries read: the one of a click, or every entry a collapsed row stands for. */
+  inboxMarkRead(ids: string | string[]): void {
+    const wanted = new Set(typeof ids === "string" ? [ids] : ids);
+    this.setInbox([...wanted].reduce((list, id) => markRead(list, id), this.state.inbox));
+  }
+
+  /** Drops entries: a notification about something that is gone. */
+  inboxDismiss(ids: string[]): void {
+    const gone = new Set(ids);
+    this.setInbox(this.state.inbox.filter((e) => !gone.has(e.id)));
   }
 
   inboxMarkAllRead(): void {
