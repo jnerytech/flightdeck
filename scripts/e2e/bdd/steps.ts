@@ -98,3 +98,100 @@ both(
   async (c, session = "") =>
     waitFor(async () => (await request(c, session).count()) === 0, "o pedido saiu da fila"),
 );
+
+// Simple mode (phase 33): the same daemon, shown to someone who never opens a terminal.
+const simpleNav = (c: Context) => c.page.locator(`nav[aria-label="${c.t("simple.modeLabel")}"]`);
+
+both(
+  Given,
+  { pt: "que o modo simples está ligado em {string}", en: "simple mode is on for {string}" },
+  async (c) => {
+    // Only when the person has not chosen yet: a choice made later must survive a reload.
+    await c.page.addInitScript(() => {
+      if (!localStorage.getItem("flightdeck.uiMode")) {
+        localStorage.setItem("flightdeck.uiMode", JSON.stringify({ "demo-alfa": "simple" }));
+      }
+    });
+    await open(c, { name: "hub" });
+    await simpleNav(c).waitFor({ timeout: WAIT });
+  },
+);
+
+both(
+  When,
+  {
+    pt: "começo a tarefa {string} na pasta de notas",
+    en: "I start the task {string} on the notes folder",
+  },
+  async (c, title = "") => {
+    await c.page.getByRole("button", { name: title }).first().click();
+    const dialog = c.page.getByRole("dialog");
+    await dialog.getByRole("textbox").fill(c.ids.notesFolder);
+    await dialog.getByRole("button", { name: c.t("simple.home.start"), exact: true }).click();
+  },
+);
+
+both(When, { pt: "respondo sim à pergunta", en: "I answer yes to the question" }, async (c) =>
+  c.page
+    .getByRole("button", { name: c.t("simple.yes"), exact: true })
+    .click({ timeout: SESSION_WAIT }),
+);
+
+both(Then, { pt: "a tarefa termina", en: "the task is done" }, async (c) =>
+  c.page
+    .locator('[data-slot="task-chip"]', { hasText: c.t("simple.state.done") })
+    .waitFor({ timeout: SESSION_WAIT }),
+);
+
+both(
+  Then,
+  {
+    pt: "o arquivo {string} aparece entre os arquivos da tarefa",
+    en: "the file {string} is listed among the task's files",
+  },
+  async (c, name = "") =>
+    c.page.locator(".task-file-name", { hasText: name }).waitFor({ timeout: WAIT }),
+);
+
+both(
+  When,
+  {
+    pt: "escolho mostrar tudo nas configurações",
+    en: "I choose to show everything in the settings",
+  },
+  async (c) => {
+    await simpleNav(c)
+      .getByRole("button", { name: c.t("simple.nav.settings") })
+      .click();
+    await c.page
+      .getByRole("button", { name: c.t("simple.settings.everything"), exact: true })
+      .click();
+    await c.page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: c.t("simple.settings.everythingYes"), exact: true })
+      .click();
+  },
+);
+
+both(Then, { pt: "o app completo aparece", en: "the full app shows" }, async (c) =>
+  simpleNav(c).waitFor({ state: "detached", timeout: WAIT }),
+);
+
+both(
+  When,
+  {
+    pt: "volto ao modo simples pela página do host {string}",
+    en: "I go back to simple mode from the page of host {string}",
+  },
+  async (c) => {
+    await open(c, { name: "host", host: ALFA });
+    await c.page.getByRole("button", { name: c.t("hostPage.simpleUse"), exact: true }).click();
+  },
+);
+
+both(
+  Then,
+  { pt: "o início do modo simples aparece", en: "the home of simple mode shows" },
+  async (c) =>
+    c.page.getByRole("heading", { name: c.t("simple.home.title") }).waitFor({ timeout: WAIT }),
+);

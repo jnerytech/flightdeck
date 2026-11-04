@@ -100,6 +100,8 @@ export interface DemoIds {
   telemetrySession: string;
   /** A finished terminal session whose transcript has tools and subagents: the Rastro tab (phase 25). */
   traceSession: string;
+  /** A folder of the first host that simple mode's tasks may work in (phase 33). */
+  notesFolder: string;
 }
 
 /** A workflow with a plan, a gate that asks to review it and the implementation. */
@@ -361,6 +363,7 @@ async function host(work: string, name: string): Promise<HostRun> {
   mkdirSync(projects, { recursive: true });
   mkdirSync(history, { recursive: true });
   writeHistory(history, join(projects, "flightdeck-web"));
+  mkdirSync(join(projects, "notes"), { recursive: true });
   // A host's own task for simple mode's Home (phase 33): a Markdown file in the templates folder.
   mkdirSync(join(base, "data", "templates"), { recursive: true });
   writeFileSync(
@@ -376,6 +379,26 @@ async function host(work: string, name: string): Promise<HostRun> {
       fields: [{ id: "folder", kind: "folder", label: { en: "Folder", "pt-BR": "Pasta" } }],
       prompt: { en: "Tidy the notes in {folder}.", "pt-BR": "Arrume as notas em {folder}." },
       preset: "edit_folder",
+      planFirst: false,
+    }),
+  );
+  // One that asks before it writes and leaves a summary behind: the question and the result.
+  writeFileSync(
+    join(base, "data", "templates", "demo-summary.md"),
+    serializeTemplate({
+      id: "demo-summary",
+      title: { en: "Write a summary", "pt-BR": "Escrever um resumo" },
+      description: {
+        en: "Reads a folder of notes and writes a short summary.",
+        "pt-BR": "Lê uma pasta de notas e escreve um resumo curto.",
+      },
+      icon: "file-text",
+      fields: [{ id: "folder", kind: "folder", label: { en: "Folder", "pt-BR": "Pasta" } }],
+      prompt: {
+        en: "[tool] [result:Flightdeck results/summary.md] Summarize the notes in {folder}.",
+        "pt-BR": "[tool] [result:Flightdeck results/summary.md] Resuma as notas em {folder}.",
+      },
+      preset: "ask_before_changes",
       planFirst: false,
     }),
   );
@@ -923,6 +946,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       rewindSession: rewind.sessionId,
       telemetrySession,
       traceSession: TRACE_SESSION,
+      notesFolder: join(alfa.projects, "notes"),
     },
     stop: async () => {
       // Newest first: each restore puts back the PATH it saw, so the oldest must go last.
