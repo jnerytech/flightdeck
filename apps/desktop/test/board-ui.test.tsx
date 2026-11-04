@@ -188,7 +188,7 @@ describe("board-ui", () => {
   });
 
   test("cada coluna mostra o ícone, a contagem em pílula e um + que cria o card nela", async () => {
-    const { repo } = await setup();
+    const { repo, store } = await setup();
     await openBoard(repo);
     for (const title of ["A", "B"]) await createCard(title);
     const count = (name: string) =>
@@ -200,11 +200,22 @@ describe("board-ui", () => {
         screen.getByRole("region", { name }).querySelector("[data-slot='column-icon']"),
       ).not.toBeNull();
     }
+    const sent: Array<[string, unknown]> = [];
+    const send = store.hostCommand.bind(store) as (...a: unknown[]) => Promise<unknown>;
+    store.hostCommand = ((host: string, type: string, payload: unknown) => {
+      sent.push([type, payload]);
+      return send(host, type, payload);
+    }) as never;
     await click("Adicionar card em Em revisão");
     await type("Título do card", "Direto na revisão");
     await click("Criar card");
     await settle(() => column("Em revisão").includes("Direto na revisão"));
     expect(column("Em revisão")).toEqual(["Direto na revisão"]);
+    // One command that says the column, not a create followed by a move that could fail or race.
+    expect(sent.filter(([type]) => type === "card.create")).toMatchObject([
+      ["card.create", { column: "review" }],
+    ]);
+    expect(sent.some(([type]) => type === "card.move")).toBe(false);
     expect(column("Backlog")).toEqual(["A", "B"]);
     expect(count("Em revisão")).toBe("1");
   });
