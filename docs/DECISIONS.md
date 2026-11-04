@@ -3125,8 +3125,15 @@ Proof of concept, run 2026-11-03 on the phase host (git 2.43.0, gh 2.88.1):
   the spec is there, in both languages, step for step. The same behavior is asserted by the `roi-*-ui` tests.
 - **`smoke:roi`** finishes two cards on a `--runtime fake` daemon and checks counts, the project default of hours, a
   card's own estimate and the refusal of a malformed range. It does not merge a PR or close an issue.
-- **Not done:** the opt-in signals (`roi-sinais`: agent commits, issues closed) and their switches in the project
-  settings, the "as of" mark for an offline host, and done cards plus a fixed rate in the demo seed for `demo:shots`.
+- **Optional signals (`roi-sinais`).** Two switches per project, both off, stored in `projects.roi_commits` and
+  `roi_issues` and sent as `Project.roiSignals`; `project.update` changes them one field at a time. `roi.summary` carries
+  `signals` only for the projects that turned them on. Agent commits are counted per commit that has a
+  `Co-Authored-By: Claude` trailer in the period (two folders of one project key add up) and the card calls them
+  approximate. Issues closed come from the host's `gh` (`issue list --state closed --search closed:<from>..<to>`), kept for
+  an hour per folder and period; a missing, signed-out or failing `gh` is `issuesError` (`gh_missing`, `gh_logged_out`,
+  `gh_failed`) and is told on the card. Azure Boards is not read.
+- **Not done:** the "as of" mark for an offline host, and the items of the acceptance list the maintainer added after
+  the first hand-off (executable BDD steps, the demo seed and prints, the spec-verifier run), tracked in the report.
 
 ## Lazy screens in tests
 

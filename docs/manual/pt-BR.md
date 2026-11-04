@@ -2149,6 +2149,10 @@ medidos, e um card concluído não é um resultado verificado. As telas nunca fa
   no período anterior, com o custo por item dos dois. Abaixo: cards concluídos e PRs mesclados, custo por card e por PR,
   a linha de retrabalho (rodadas de conserto e o custo delas), horas e valor estimados marcados como estimativa e uma
   tendência de 8 semanas com texto alternativo. **Como isso é calculado?** lista cada número com as suas entradas.
+- **Sinais opcionais.** No bloco **Horas e valor** do cartão, cada projeto pode ligar *commits de agentes* (commits do
+  período com o trailer `Co-Authored-By: Claude`; aproximado, porque uma pessoa também pode pôr o trailer) e *issues
+  fechadas* (perguntadas ao `gh` do host, guardadas por uma hora; o cartão diz quando o `gh` falta ou está sem login).
+  Os dois vêm desligados.
 - **A tabela de Custos.** Uma linha por projeto do escopo de clientes escolhido: custo, cards, PRs, custo por card e por
   PR, horas estimadas, valor estimado e retorno sobre o custo (estimativa). Clique no cabeçalho de uma coluna para
   ordenar, e de novo para inverter. O traço quer dizer que o número não pode ser calculado (sem cards, sem valor da

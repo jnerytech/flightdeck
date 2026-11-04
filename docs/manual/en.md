@@ -2162,6 +2162,10 @@ not a verified result. The screens never call it profit or savings.
   cost per item of both. Below it: cards done and PRs merged, cost per card and per PR, the rework line (fix rounds and
   their cost), estimated hours and value marked as an estimate, and an 8-week trend with a text alternative.
   **How is this computed?** lists each number with its inputs.
+- **Optional signals.** In the card's **Hours and rate** block, each project can switch on *agent commits* (commits of
+  the period with a `Co-Authored-By: Claude` trailer; approximate, because a person can add the trailer too) and *issues
+  closed* (asked of the host's `gh`, kept for an hour; the card says when `gh` is missing or signed out). Both are off by
+  default.
 - **The Costs table.** One row per project of the chosen client scope: cost, cards, PRs, cost per card and per PR,
   estimated hours, estimated value and return on cost (estimate). Click a column header to sort, again to reverse. A
   dash means the figure cannot be computed (no cards, no rate). The footer adds up the rows. **Export the project table
