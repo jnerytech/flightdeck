@@ -827,6 +827,14 @@
   display: inline-flex;
 }
 
+/* A breadcrumb step with a long name shortens with an ellipsis; its title says the whole name. */
+@utility crumb-name {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* A form row and its help line: the reason a button is disabled sits under the first field. */
 @utility field-row-wrap {
   display: flex;
