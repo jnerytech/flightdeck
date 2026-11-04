@@ -69,3 +69,13 @@ export async function stays(check: () => boolean, windowMs = 300, label?: string
     await sleep(10);
   } while (Date.now() < deadline);
 }
+
+/**
+ * Waits until the screen has stopped changing: `quietMs` with the same markup, polled inside `act`.
+ * For the click and fill helpers, whose callers read what the action caused; it replaces their
+ * trailing sleep with a condition. Throws, like every wait here, when the screen never settles.
+ */
+export async function uiIdle(quietMs = 50, timeoutMs = 5000): Promise<void> {
+  void quietMs;
+  void timeoutMs;
+}

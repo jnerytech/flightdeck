@@ -1,6 +1,14 @@
 import { expect, describe as suite, test } from "bun:test";
 import { registerDom } from "./dom.ts";
-import { plainWaiter, settleMaybe, settlePlain, stays, WaitTimeout, waiter } from "./wait.ts";
+import {
+  plainWaiter,
+  settleMaybe,
+  settlePlain,
+  stays,
+  uiIdle,
+  WaitTimeout,
+  waiter,
+} from "./wait.ts";
 
 registerDom();
 
@@ -65,5 +73,34 @@ suite("wait: stays checks that a thing does NOT happen, by watching for the whol
     );
     expect((error as Error).message).toBe("broke before 1000 ms: the dialog stays closed");
     expect(n).toBe(3);
+  });
+});
+
+suite("wait: uiIdle returns once the screen has stopped changing, not after a guessed time", () => {
+  test("it waits through a screen that keeps changing and returns after the last change", async () => {
+    let lastChange = 0;
+    let stop = false;
+    const timer = setInterval(() => {
+      document.body.textContent = String(Date.now());
+      lastChange = Date.now();
+    }, 15);
+    setTimeout(() => {
+      stop = true;
+      clearInterval(timer);
+    }, 150);
+    await uiIdle();
+    expect(stop).toBe(true);
+    expect(Date.now() - lastChange).toBeGreaterThanOrEqual(30);
+  });
+
+  test("a screen that never settles throws, naming the wait", async () => {
+    const timer = setInterval(() => {
+      document.body.textContent = String(Math.random());
+    }, 5);
+    const error = await uiIdle(40, 200).catch((e: unknown) => e);
+    clearInterval(timer);
+    expect((error as Error).message).toBe(
+      "timeout (200 ms) waiting for: the screen to stop changing",
+    );
   });
 });
