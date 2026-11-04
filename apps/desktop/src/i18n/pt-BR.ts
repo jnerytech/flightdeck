@@ -1677,6 +1677,7 @@ export const ptBR = {
     close: "Fechar",
   },
   session: {
+    moreActions: "Mais ações",
     bypassMessage:
       'Em {host}, "{session}" vai executar tudo sem perguntar antes, a partir de agora, até você voltar o modo. Pode editar e apagar arquivos e rodar comandos.',
     bypassConfirm: "Mudar para ignorar permissões",
