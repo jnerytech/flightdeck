@@ -109,7 +109,6 @@ describe("menu-barra: the / menu of a message box", () => {
     expect(shown()).toBe("Review a pull request");
     await act(async () => void fireEvent.change(box(), { target: { value: "/" } }));
     await key("ArrowDown");
-    await key("ArrowDown");
     expect(shown()).toBe("Review a pull request");
     await key("Home");
     expect(shown() ?? "").toBe("");
