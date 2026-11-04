@@ -73,7 +73,7 @@ function TaskScreen(props: {
       onStop={() => void store.hostCommand(hostId, "session.close", { sessionId })}
       onAnswer={(requestId, decision) => void store.respondTo(hostId, requestId, decision)}
       onOpenFull={props.onDetails}
-      onCopy={(text) => void store.copyText(text)}
+      onCopy={store.copyText.bind(store)}
       onOpenFile={(path) => void store.openPath(hostId, path)}
       onRevealFile={(path) => void store.revealPath(hostId, path)}
       onPreview={async (path) => {

@@ -36,6 +36,8 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
     const mem = memoryPlatform(false, "en");
     mem.platform.openPath = async (path) => void opened.push(`open:${path}`);
     mem.platform.revealPath = async (path) => void opened.push(`reveal:${path}`);
+    let picked = "";
+    mem.platform.pickFolder = async () => picked;
     const d = makeDaemon(cleanups, { simple: true, ui: { mode: "simple", locked: false } });
     const server = d.listen();
     const store = new AppStore(mem.platform, { baseDelayMs: 10, maxDelayMs: 20 });
@@ -47,14 +49,13 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
     // Start a task from a card.
     const folder = join(d.root, "notes");
     mkdirSync(folder, { recursive: true });
+    picked = folder;
     await click(/Summarise a folder/);
-    fireEvent.change(
-      within(await waitFor(() => screen.getByRole("dialog"), WAIT)).getAllByRole(
-        "textbox",
-      )[0] as HTMLElement,
-      {
-        target: { value: folder },
-      },
+    await click("Choose folder…");
+    await waitFor(() =>
+      expect(
+        (within(screen.getByRole("dialog")).getAllByRole("textbox")[0] as HTMLInputElement).value,
+      ).toBe(folder),
     );
     await click("Start this task");
     await chip("Done");
@@ -62,6 +63,7 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
     // It made a file; asking for changes runs another turn, and the files are asked for again.
     const result = join(folder, "Flightdeck results", "summary.md");
     writeFileSync(result, "# Summary\n- one\n");
+    writeFileSync(join(folder, "Flightdeck results", "extra.md"), "# Extra\n");
     fireEvent.change(
       await waitFor(() => screen.getByRole("textbox", { name: "Ask for changes" }), WAIT),
       {
@@ -117,6 +119,19 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
     await click("Open summary.md");
     await click("Show summary.md in its folder");
     await waitFor(() => expect(opened.length).toBe(4));
+
+    // A second task: Home lists both, newest first.
+    await act(async () => {
+      fireEvent.click(within(nav()).getByRole("button", { name: "Home" }));
+    });
+    await click(/^Summarise a folder/);
+    await click("Choose folder…");
+    await click("Start this task");
+    await chip("Done");
+    await click("Back");
+    await waitFor(() =>
+      expect(screen.getAllByRole("button", { name: /^Open Summarise a folder/ })).toHaveLength(2),
+    );
 
     // Settings: the language changes at once.
     await act(async () => {
