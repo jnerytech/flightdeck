@@ -7,6 +7,7 @@ import type {
 } from "@flightdeck/protocol";
 import { type T, translator } from "../i18n/index.ts";
 import type { AppState } from "./app-store.ts";
+import { rowTitle } from "./hub-title.ts";
 import { basename } from "./paths.ts";
 
 const PT = translator("pt-BR");
@@ -225,7 +226,13 @@ export function hubRows(state: HubRowState): HubRow[] {
         key: `${host.id}/m/${s.id}`,
         origin: "flightdeck",
         sessionId: s.id,
-        title: name ?? s.name ?? basename(s.cwd),
+        title: rowTitle({
+          name,
+          title: s.name,
+          persona: s.persona ?? null,
+          request: s.summary?.request ?? null,
+          cwd: s.cwd,
+        }),
         state: MANAGED[live?.status ?? s.status],
         controllable: false,
         lastActivity: live?.updatedAt ?? s.updatedAt,
@@ -243,7 +250,13 @@ export function hubRows(state: HubRowState): HubRow[] {
           key: `${host.id}/b/${b.id}`,
           origin: "background",
           sessionId: null,
-          title: name ?? b.name ?? basename(b.cwd),
+          title: rowTitle({
+            name,
+            title: b.name,
+            persona: null,
+            request: null,
+            cwd: b.cwd,
+          }),
           state: BACKGROUND[b.state] ?? "idle",
           controllable: false,
           lastActivity: b.startedAt === null ? "" : new Date(b.startedAt).toISOString(),
@@ -260,7 +273,13 @@ export function hubRows(state: HubRowState): HubRow[] {
           key: `${host.id}/e/${s.claudeSessionId}`,
           origin: "terminal",
           sessionId: null,
-          title: name ?? basename(s.cwd ?? s.claudeSessionId),
+          title: rowTitle({
+            name,
+            title: null,
+            persona: s.persona ?? null,
+            request: s.summary?.request ?? null,
+            cwd: s.cwd ?? s.claudeSessionId,
+          }),
           state: EXTERNAL[s.status],
           controllable: s.controllable,
           lastActivity: s.lastEventAt,
@@ -277,7 +296,13 @@ export function hubRows(state: HubRowState): HubRow[] {
           key: `${host.id}/h/${s.claudeSessionId}`,
           origin: "history",
           sessionId: null,
-          title: name ?? s.title ?? basename(s.cwd),
+          title: rowTitle({
+            name,
+            title: s.title,
+            persona: null,
+            request: s.summary?.request ?? null,
+            cwd: s.cwd,
+          }),
           state: "ended",
           controllable: false,
           lastActivity: s.lastTs ?? "",
