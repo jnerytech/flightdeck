@@ -1778,8 +1778,11 @@ suggested model, effort, tools and permission mode, and the instructions of the 
   keeps your version on the host (**Pack, edited**); **Restore original** brings the pack's back.
 - **Host**, **Project** (choose one: its own and the versioned `.flightdeck/personas/*.md`, which
   you **Trust** first) and **Global (this app)**, kept in the app.
-- **New persona** and **Edit** open the editor with a **Preview** of what the session gets. A
-  persona never holds a secret: one is refused with the reason.
+- **New persona** and **Edit** open the editor with a **Preview** of what the session gets. **Edit**
+  opens the form inside the persona's own card, with the first field focused and the card scrolled
+  into view; **New persona** opens it at the top. **Cancel** and **Save** put the scroll back and
+  the focus on the Edit button. **Model** is a choice (**Other…** for free text) and **Tools** a
+  multi-select. A persona never holds a secret: one is refused with the reason.
 - **Publish as agent** writes the persona to `.claude/agents/persona-<id>.md` through the
   agent editor, with confirmation, so it also works for plain `claude`.
 

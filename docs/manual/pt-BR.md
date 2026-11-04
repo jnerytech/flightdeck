@@ -1764,8 +1764,12 @@ modelo, esforço, ferramentas e modo de permissão sugeridos, e as instruções 
   uma guarda a sua versão no host (**Pacote, editada**); **Restaurar original** traz a do pacote.
 - **Host**, **Projeto** (escolha um: as dele e as versionadas em `.flightdeck/personas/*.md`, que
   você **Confia** antes) e **Globais (deste app)**, guardadas no app.
-- **Nova persona** e **Editar** abrem o editor com uma **Prévia** do que a sessão recebe. Uma
-  persona nunca guarda segredo: a que tiver é recusada com o motivo.
+- **Nova persona** e **Editar** abrem o editor com uma **Prévia** do que a sessão recebe. **Editar**
+  abre o formulário dentro do cartão da própria persona, com o primeiro campo em foco e o cartão
+  trazido para a tela; **Nova persona** abre no topo. **Cancelar** e **Salvar** devolvem a rolagem
+  e o foco ao botão Editar. **Modelo** é uma escolha (**Outro…** para texto livre) e
+  **Ferramentas** uma seleção múltipla. Uma persona nunca guarda segredo: a que tiver é recusada
+  com o motivo.
 - **Publicar como agente** grava a persona em `.claude/agents/persona-<id>.md` pelo
   editor de agentes, com confirmação, e ela vale também para o `claude` puro.
 

@@ -3500,3 +3500,13 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   (7420 to 7422). It asks for port 0, and a ratchet test now refuses a fixed 742x in a server started by a test (`startServer`,
   `Bun.serve`, `.listen(`, or a config written for a `startDaemon` without a spread that lets the caller override it). Pure
   functions and pairing links that only mention 742x are data, not servers.
+
+## Persona editor in place (#134)
+
+- **In place, not a side sheet.** Edit expands the persona's own card into its form where the person is; the first field takes the
+  focus and the form scrolls into view (`block: "nearest"`). A new persona still opens at the top, where the + is. Cancel and Save put
+  the scroll back and focus the Edit button; a saved pack persona changes scope (it becomes the host's copy), so its card is a new
+  one and the button is looked for again by the persona's id after the list reloads.
+- **Model and tools as choices.** The host announces no list of models, so the select offers the aliases (opus, sonnet, haiku) and the
+  ids the pack uses, with "Other…" for free text (a persona whose model is not in the list opens on it). Tools are a multi-select of
+  the tools Claude Code names plus `mcp__flightdeck`, keeping any tool a persona already had that is not in the list.

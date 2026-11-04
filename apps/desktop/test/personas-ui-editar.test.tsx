@@ -25,9 +25,11 @@ async function open(
   before?: (store: InstanceType<typeof AppStore>, hostId: string) => Promise<unknown>,
 ) {
   scrolled.length = 0;
-  (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView = function (this: Element) {
+  const record = function (this: Element) {
     scrolled.push(this);
   };
+  (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView = record;
+  (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView = record;
   const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   const h = await personasHost(cleanups, store);
@@ -62,7 +64,7 @@ describe("personas-ui-editar: Edit opens where the persona is (issue #134)", () 
     expect(form).not.toBeNull();
     expect(screen.getAllByRole("textbox", { name: "Nome" })).toHaveLength(1);
     expect(within(form).getByLabelText("Nome") === document.activeElement).toBe(true);
-    expect(scrolled).toContain(form);
+    expect(scrolled.some((el) => el.tagName === "FORM" && last.contains(el))).toBe(true);
     // The other cards are still there, with their own Edit buttons.
     expect(items().length).toBeGreaterThan(1);
   });
