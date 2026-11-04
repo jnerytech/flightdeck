@@ -161,6 +161,22 @@ export const ptBR = {
     logTitleChanged: "O título mudou no quadro (era “{lost}”).",
   },
   roiUi: {
+    signals: {
+      title: "Sinais opcionais",
+      commits:
+        "Contar commits de agentes (aproximado: commits com o trailer Co-Authored-By: Claude)",
+      issues: "Contar issues fechadas (pergunta ao gh do host, guardado por uma hora)",
+      agentCommits: {
+        one: "{n} commit de agente (aproximado)",
+        other: "{n} commits de agentes (aproximado)",
+      },
+      issuesClosed: { one: "{n} issue fechada", other: "{n} issues fechadas" },
+      error: {
+        gh_missing: "Issues fechadas: o gh não está instalado no host.",
+        gh_logged_out: "Issues fechadas: o gh está sem login no host.",
+        gh_failed: "Issues fechadas: o gh não conseguiu responder.",
+      },
+    },
     clientRate: {
       form: "Valor da hora de {name}",
       label: "Valor da hora deste cliente (US$)",

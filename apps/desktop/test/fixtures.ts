@@ -152,7 +152,7 @@ export function daemon(
     /** Board sync with an external board (phase 38), over an in-memory provider the test controls. */
     boardsync?: boolean;
     /** What the agents cost and delivered, per project (phase 36). */
-    roi?: boolean;
+    roi?: boolean | { signals: ConstructorParameters<typeof RoiSummarizer>[0]["signals"] };
     /** The host's switch for sessions without permission prompts (bypass-ui): on from the start. */
     bypass?: boolean;
   } = {},
@@ -392,7 +392,11 @@ export function daemon(
     : undefined;
   if (githubService) cleanups.push(() => githubService.loginCancel());
   const roiSummarizer = options.roi
-    ? new RoiSummarizer({ db: store.db, keyOf: (path) => keys.known(path) })
+    ? new RoiSummarizer({
+        db: store.db,
+        keyOf: (path) => keys.known(path),
+        ...(typeof options.roi === "object" ? { signals: options.roi.signals } : {}),
+      })
     : undefined;
   /** Phase 38: board sync over the in-memory provider; the loop is never started. */
   const boardProvider = new FakeProvider();

@@ -159,6 +159,21 @@ export const en: Dictionary = {
     logTitleChanged: "The title changed on the board (it was “{lost}”).",
   },
   roiUi: {
+    signals: {
+      title: "Optional signals",
+      commits: "Count agent commits (approximate: commits with a Co-Authored-By: Claude trailer)",
+      issues: "Count issues closed (asks the host's gh, kept for an hour)",
+      agentCommits: {
+        one: "{n} agent commit (approximate)",
+        other: "{n} agent commits (approximate)",
+      },
+      issuesClosed: { one: "{n} issue closed", other: "{n} issues closed" },
+      error: {
+        gh_missing: "Issues closed: gh is not installed on the host.",
+        gh_logged_out: "Issues closed: gh is signed out on the host.",
+        gh_failed: "Issues closed: gh could not answer.",
+      },
+    },
     clientRate: {
       form: "Hourly rate of {name}",
       label: "Hourly rate for this client (US$)",
