@@ -89,10 +89,25 @@ export interface QuotaGroup<H extends { id: string }> {
   hosts: H[];
 }
 
-/** Stubbed until the test commit is in. */
+/**
+ * Groups the hosts by the Claude account they are signed in to (its email and organization), in
+ * the order the hosts come. A host that is not signed in, or whose account is not known yet,
+ * stays in a group of its own.
+ */
 export function quotaGroups<H extends { id: string }>(
   hosts: H[],
-  _account: Record<string, AccountState | undefined>,
+  account: Record<string, AccountState | undefined>,
 ): QuotaGroup<H>[] {
-  return hosts.map((host) => ({ key: host.id, hosts: [host] }));
+  const groups = new Map<string, QuotaGroup<H>>();
+  for (const host of hosts) {
+    const state = account[host.id];
+    const key =
+      state?.status === "signed_in" && state.name
+        ? `${state.name}|${state.organization ?? ""}`
+        : host.id;
+    const group = groups.get(key);
+    if (group) group.hosts.push(host);
+    else groups.set(key, { key, hosts: [host] });
+  }
+  return [...groups.values()];
 }
