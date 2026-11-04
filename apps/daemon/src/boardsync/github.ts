@@ -19,6 +19,7 @@ export interface GithubBoardsOptions {
 }
 
 const PAGE_CAP = 20;
+const STATUS_FIELD_NAME = "Status";
 const BOARD_ID = /^[A-Za-z0-9_=-]+$/;
 
 const OWNER = "owner { ... on User { login } ... on Organization { login } }";
@@ -26,10 +27,11 @@ const PROJECT = `id title number url ${OWNER}`;
 
 const LIST_QUERY = `query { viewer { login projectsV2(first: 50) { nodes { ${PROJECT} } } organizations(first: 20) { nodes { login projectsV2(first: 50) { nodes { ${PROJECT} } } } } } }`;
 
+// The field's name is a variable too: a query with no quote or newline crosses a Windows .cmd shim.
 const FIELD_QUERY =
-  'query($board: ID!) { node(id: $board) { ... on ProjectV2 { field(name: "Status") { ... on ProjectV2SingleSelectField { id options { id name } } } } } }';
+  "query($board: ID!, $field: String!) { node(id: $board) { ... on ProjectV2 { field(name: $field) { ... on ProjectV2SingleSelectField { id options { id name } } } } } }";
 
-const PULL_QUERY = `query($board: ID!, $cursor: String) { viewer { login } node(id: $board) { ... on ProjectV2 { items(first: 100, after: $cursor) { pageInfo { hasNextPage endCursor } nodes { id isArchived updatedAt fieldValueByName(name: "Status") { ... on ProjectV2ItemFieldSingleSelectValue { name } } content { __typename ... on Issue { number title body url repository { nameWithOwner } author { login } authorAssociation } ... on PullRequest { number title body url repository { nameWithOwner } author { login } authorAssociation } ... on DraftIssue { title body } } } } } } }`;
+const PULL_QUERY = `query($board: ID!, $cursor: String, $field: String!) { viewer { login } node(id: $board) { ... on ProjectV2 { items(first: 100, after: $cursor) { pageInfo { hasNextPage endCursor } nodes { id isArchived updatedAt fieldValueByName(name: $field) { ... on ProjectV2ItemFieldSingleSelectValue { name } } content { __typename ... on Issue { number title body url repository { nameWithOwner } author { login } authorAssociation } ... on PullRequest { number title body url repository { nameWithOwner } author { login } authorAssociation } ... on DraftIssue { title body } } } } } } }`;
 
 const SET_QUERY =
   "mutation($board: ID!, $item: ID!, $field: ID!, $option: String!) { updateProjectV2ItemFieldValue(input: { projectId: $board, itemId: $item, fieldId: $field, value: { singleSelectOptionId: $option } }) { projectV2Item { updatedAt } } }";
@@ -159,7 +161,7 @@ export class GithubBoards implements BoardProvider {
     this.checkBoard(boardId);
     const data = await this.graphql<{
       node: { field: { id: string; options: Array<{ id: string; name: string }> } | null } | null;
-    }>(FIELD_QUERY, { board: boardId });
+    }>(FIELD_QUERY, { board: boardId, field: STATUS_FIELD_NAME });
     if (!data.node) throw refuse("board_not_found", "the board was not found");
     return data.node.field
       ? { fieldId: data.node.field.id, options: data.node.field.options }
@@ -178,7 +180,7 @@ export class GithubBoards implements BoardProvider {
         node: {
           items: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: GhNode[] };
         } | null;
-      }>(PULL_QUERY, { board: boardId, ...(cursor ? { cursor } : {}) });
+      }>(PULL_QUERY, { board: boardId, field: STATUS_FIELD_NAME, ...(cursor ? { cursor } : {}) });
       if (!data.node) throw refuse("board_not_found", "the board was not found");
       if (page === PAGE_CAP) {
         truncated = true;

@@ -20,6 +20,11 @@ export interface FakeRule {
   code?: number;
   /** Holds the process this long after it wrote its output, like a login waiting for the browser. */
   delayMs?: number;
+  /**
+   * Leaves a child behind that keeps stdout and stderr open for this long, like the `bun` a Windows
+   * `.cmd` shim starts: ending the shim does not close the pipes.
+   */
+  holdPipesMs?: number;
 }
 
 export interface FakeCli {
@@ -38,7 +43,7 @@ const MAIN = join(import.meta.dir, "fake-cli-main.ts");
 export interface FakeCliOptions {
   /**
    * Refuses, like Bun does for a Windows .cmd shim, an argument with a newline or one of
-   * `< > & | ^ "` or `%`, before recording the call. On by default for `az` (a .cmd on Windows),
+   * `< > & | ^ "` or `%`, before recording the call. On by default for every fake (`gh` and `az` are .cmd shims on Windows),
    * so the refusal shows on every platform the suite runs on.
    */
   rejectCmdChars?: boolean;
@@ -63,7 +68,7 @@ export function installFakeCli(
   respond(rules);
   writeFileSync(
     join(dir, "options.json"),
-    JSON.stringify({ rejectCmdChars: options.rejectCmdChars ?? name === "az" }),
+    JSON.stringify({ rejectCmdChars: options.rejectCmdChars ?? true }),
   );
 
   const keys = Object.keys(env).filter((k) => k.toUpperCase() === "PATH");

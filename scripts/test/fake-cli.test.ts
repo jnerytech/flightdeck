@@ -100,3 +100,31 @@ test("a rule can match by text inside the arguments, which is how a GraphQL call
     fake.restore();
   }
 });
+
+test("every fake refuses what Bun refuses for a Windows .cmd shim, unless told not to", async () => {
+  const env: Record<string, string | undefined> = { ...process.env };
+  const fake = installFakeCli("gh", [{ args: [], stdout: "ok\n" }], env);
+  const lenient = installFakeCli("gh", [{ args: [], stdout: "ok\n" }], env, {
+    rejectCmdChars: false,
+  });
+  try {
+    const run = async (arg: string) => {
+      const proc = Bun.spawn(["bash", "-c", `"${fake.dir}/gh" "$1"`, "x", arg], {
+        env: env as Record<string, string>,
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      return { code: await proc.exited, out: await new Response(proc.stdout).text() };
+    };
+    expect((await run('query { field(name: "Status") }')).code).toBe(1);
+    expect((await run("plain")).out).toBe("ok\n");
+    const loose = Bun.spawn(["bash", "-c", `"${lenient.dir}/gh" 'a "quoted" word'`], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    expect(await loose.exited).toBe(0);
+  } finally {
+    fake.restore();
+    lenient.restore();
+  }
+});

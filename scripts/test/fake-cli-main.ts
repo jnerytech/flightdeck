@@ -32,5 +32,13 @@ if (!rule) {
 }
 if (rule.stdout) process.stdout.write(rule.stdout);
 if (rule.stderr) process.stderr.write(rule.stderr);
+if (rule.holdPipesMs) {
+  const hold = `setTimeout(() => {}, ${Number(rule.holdPipesMs)})`;
+  Bun.spawn([process.execPath, "-e", hold], {
+    stdout: "inherit",
+    stderr: "inherit",
+    stdin: "ignore",
+  }).unref();
+}
 if (rule.delayMs) await Bun.sleep(rule.delayMs);
 process.exit(rule.code ?? 0);
