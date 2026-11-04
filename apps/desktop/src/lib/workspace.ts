@@ -72,7 +72,7 @@ export class Workspace {
   static restore(
     stored: unknown,
     newId?: () => string,
-    _fallback: Route = { name: "home" },
+    fallback: Route = { name: "home" },
   ): Workspace {
     const data = (stored ?? {}) as Partial<Record<keyof WorkspaceSnapshot, unknown>>;
     const areas = (data.v === 1 && Array.isArray(data.areas) ? data.areas : [])
@@ -83,11 +83,11 @@ export class Workspace {
     if (areas.length === 2 && areas.some((area) => area.tabs.length === 0)) {
       areas.splice(0, 2, ...areas.filter((area) => area.tabs.length > 0));
     }
-    if (areas.length === 0) return new Workspace({ name: "home" }, newId);
+    if (areas.length === 0) return new Workspace(fallback, newId);
     let split: Orientation | null = null;
     if (areas.length === 2) split = data.split === "horizontal" ? "horizontal" : "vertical";
     const fraction = typeof data.fraction === "number" ? data.fraction : 0.5;
-    return new Workspace({ name: "home" }, newId, {
+    return new Workspace(fallback, newId, {
       areas,
       split,
       focus: data.focus === 1 && areas.length === 2 ? 1 : 0,
