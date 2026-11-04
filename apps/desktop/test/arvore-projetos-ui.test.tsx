@@ -86,9 +86,7 @@ describe("arvore-projetos-ui: the project tree in the sidebar (issue #116)", () 
     expect(within(nodes[1] as HTMLElement).getByText("base develop")).toBeTruthy();
     // The state dots are named, not only colored.
     expect(within(nodes[1] as HTMLElement).getByRole("img", { name: "running" })).toBeTruthy();
-    expect(
-      within(nodes[2] as HTMLElement).getByRole("img", { name: "needs you" }),
-    ).toBeTruthy();
+    expect(within(nodes[2] as HTMLElement).getByRole("img", { name: "needs you" })).toBeTruthy();
   });
 
   test("picking a node narrows to it and opens the project's board; picking it again clears", async () => {
