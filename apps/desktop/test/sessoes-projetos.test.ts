@@ -80,4 +80,14 @@ describe("sessoes-projetos: a project folds its history behind a count (issue #1
     expect(hubView(only, { [key]: true }, {}, false)[0]?.expanded).toBe(true);
     expect(hubView(only, { [key]: false }, {}, true)[0]?.rows).toEqual([]);
   });
+
+  test("a pinned session stays with the live ones, even an ended or history one", () => {
+    const groups = hubGroups(
+      [row(1, { state: "running" }), history(2, { pinned: true }), history(3)],
+      DEFAULT_HUB_FILTER,
+    );
+    const [view] = hubView(groups, {}, {}, false);
+    expect(view?.live.map((r) => r.key)).toEqual(["h/2", "h/1"]);
+    expect(view?.earlier.map((r) => r.key)).toEqual(["h/3"]);
+  });
 });
