@@ -259,6 +259,7 @@ export function Sidebar(props: {
   };
 
   /** The hosts of the Machines group: a dot each in the rail, a list with a menu each otherwise. */
+  const hereHost = props.route?.name === "host" ? props.route.host : null;
   const hostsList = collapsed ? (
     <div className="flex flex-col items-center gap-1 pt-3">
       {state.hosts.map((host) => (
@@ -267,7 +268,11 @@ export function Sidebar(props: {
           type="button"
           aria-label={t("sidebar.openHost", { host: host.name })}
           title={host.name}
-          className="flex size-8 items-center justify-center rounded-md hover:bg-sidebar-accent"
+          aria-current={hereHost === host.id ? "page" : undefined}
+          className={cn(
+            "flex size-8 items-center justify-center rounded-md hover:bg-sidebar-accent",
+            hereHost === host.id && "nav-active bg-sidebar-accent",
+          )}
           onClick={() => go({ name: "host", host: host.id })}
         >
           <HostDot host={host} t={t} />
@@ -280,7 +285,13 @@ export function Sidebar(props: {
         <li key={host.id} className="group flex items-center gap-1">
           <button
             type="button"
-            className={cn(ITEM, "min-w-0 flex-1")}
+            className={cn(
+              ITEM,
+              "min-w-0 flex-1",
+              hereHost === host.id &&
+                "nav-active bg-sidebar-accent font-medium text-sidebar-foreground",
+            )}
+            aria-current={hereHost === host.id ? "page" : undefined}
             aria-label={t("sidebar.openHost", { host: host.name })}
             onClick={() => go({ name: "host", host: host.id })}
           >
