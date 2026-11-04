@@ -20,6 +20,11 @@ export interface FakeRule {
   code?: number;
   /** Holds the process this long after it wrote its output, like a login waiting for the browser. */
   delayMs?: number;
+  /**
+   * Leaves a child behind that keeps stdout and stderr open for this long, like the `bun` a Windows
+   * `.cmd` shim starts: ending the shim does not close the pipes.
+   */
+  holdPipesMs?: number;
 }
 
 export interface FakeCli {
