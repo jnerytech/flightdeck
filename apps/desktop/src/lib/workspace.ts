@@ -69,7 +69,11 @@ export class Workspace {
   }
 
   /** The window as it comes back after a restart; anything unusable gives a fresh window. */
-  static restore(stored: unknown, newId?: () => string): Workspace {
+  static restore(
+    stored: unknown,
+    newId?: () => string,
+    _fallback: Route = { name: "home" },
+  ): Workspace {
     const data = (stored ?? {}) as Partial<Record<keyof WorkspaceSnapshot, unknown>>;
     const areas = (data.v === 1 && Array.isArray(data.areas) ? data.areas : [])
       .slice(0, 2)
