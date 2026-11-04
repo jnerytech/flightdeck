@@ -142,22 +142,63 @@ export type InboxSection = "today" | "earlier";
  * one `group` that are both unread, or both read, on the same side of midnight collapse into one row.
  */
 export function inboxRows(
-  _list: InboxEntry[],
-  _now: Date,
+  list: InboxEntry[],
+  now: Date,
 ): Array<{ section: InboxSection; rows: InboxRow[] }> {
-  return [];
+  const today = dayKey(now);
+  const newest = [...list].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+  const sections: Record<InboxSection, InboxRow[]> = { today: [], earlier: [] };
+  const open = new Map<string, InboxRow>();
+  for (const entry of newest) {
+    const section: InboxSection = dayKey(new Date(entry.at)) === today ? "today" : "earlier";
+    const key = entry.group ? `${section}/${entry.read}/${entry.group}` : null;
+    const row = key ? open.get(key) : undefined;
+    if (row) {
+      row.ids.push(entry.id);
+      row.count++;
+      continue;
+    }
+    const made: InboxRow = { entry, ids: [entry.id], count: 1 };
+    if (key) open.set(key, made);
+    sections[section].push(made);
+  }
+  return (["today", "earlier"] as const)
+    .map((section) => ({
+      section,
+      // Unread first; the sort is stable, so each half stays newest first.
+      rows: sections[section].sort((a, b) => Number(a.entry.read) - Number(b.entry.read)),
+    }))
+    .filter((group) => group.rows.length > 0);
 }
 
 /** The badge: the unread rows, which are the dots the panel shows. */
-export function unreadRows(_list: InboxEntry[], _now: Date): number {
-  return 0;
+export function unreadRows(list: InboxEntry[], now: Date): number {
+  return inboxRows(list, now)
+    .flatMap((group) => group.rows)
+    .filter((row) => !row.entry.read).length;
 }
+
+const SHORT = 70;
+const cut = (text: string) => (text.length > SHORT ? `${text.slice(0, SHORT - 1)}…` : text);
+const fileName = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 
 /** A request in plain words, from the tool and its input. */
 export function describeRequest(
-  _toolName: string,
-  _input: Record<string, unknown> | undefined,
-  _t: T,
+  toolName: string,
+  input: Record<string, unknown> | undefined,
+  t: T,
 ): string {
-  return "";
+  const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+  if (toolName === "AskUserQuestion") {
+    const first = Array.isArray(input?.questions) ? input.questions[0] : undefined;
+    const question = text((first as { question?: unknown } | undefined)?.question);
+    if (question) return t("inbox.asks", { question: cut(question) });
+  }
+  const command = text(input?.command).split("\n")[0] ?? "";
+  if (toolName === "Bash" && command) return t("inbox.runs", { command: cut(command) });
+  const file = text(input?.file_path ?? input?.notebook_path);
+  if (["Edit", "MultiEdit", "Write", "NotebookEdit"].includes(toolName) && file) {
+    return t("inbox.edits", { file: fileName(file) });
+  }
+  return t("inbox.uses", { tool: toolName });
 }
