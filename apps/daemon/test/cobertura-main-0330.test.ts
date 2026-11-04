@@ -145,7 +145,7 @@ describe("cobertura-main-0330: the running daemon", () => {
       },
       { HOME: home, USERPROFILE: home },
       { log: () => {}, error: () => {} },
-      { serviceInstalled: async () => true },
+      { serviceInstalled: async () => true, linger: async () => null },
     );
     stops.push(() => daemon.stop());
     const info = await ask(daemon.url, "host.info", {});

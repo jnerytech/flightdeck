@@ -89,6 +89,7 @@ import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostNameError, hostNameError } from "./host-name.ts";
+import type { RetryState } from "./host-offline.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import {
   type HubFilter,
@@ -139,7 +140,7 @@ import {
 import type { TerminalHost } from "./terminal-session.ts";
 import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
-import { loadTileCount, saveTileCount, type TileCount } from "./tiles.ts";
+import { loadTileLayout, saveTileLayout, type TileLayout } from "./tiles.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
 import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
@@ -177,6 +178,10 @@ export interface HostView extends HostConfig {
   info: HelloResult | null;
   /** From `host.info`, fetched on each connect; `null` until then or on daemons without it. */
   hostInfo: HostInfoResult | null;
+  /** When `hostInfo` arrived (epoch ms), so its uptime can be aged. */
+  infoAt: number;
+  /** The last failed try and the next one, while the host is offline. */
+  retry: RetryState | null;
   /** Why the daemon refused this app's protocol, while `status` is `incompatible`. */
   incompatibility: string | null;
   /** Phase 9: an update of the daemon asked from the app, until it comes back on `target`. */
@@ -313,6 +318,7 @@ export type HostCommandType = Extract<
   | `terminal.${string}`
   | `runenv.${string}`
   | "roots.add"
+  | "history.get"
   | "host.bypass"
   | `ssh.${string}`
   | `snippets.${string}`
@@ -453,6 +459,8 @@ export interface Settings {
 export interface AppStoreOptions {
   baseDelayMs?: number;
   maxDelayMs?: number;
+  /** Least time between two wake-ups (focus, network back) that retry the offline hosts. */
+  wakeDebounceMs?: number;
   /** How long the global search waits for each host. */
   searchTimeoutMs?: number;
   /** Milliseconds now: the age of quota readings. */
@@ -646,6 +654,10 @@ const REAL_TIMERS = {
   clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
 
+/** Where the window's events (focus, the network) arrive: `window` in a browser or the webview, else the runtime's own global. */
+const wakeTarget = (): Partial<Window> =>
+  ("window" in globalThis ? globalThis.window : globalThis) as unknown as Partial<Window>;
+
 /** The least time between two checks the app starts by itself for one host. */
 const AUTO_UPDATE_CHECK_MS = 10 * 60_000;
 
@@ -654,6 +666,8 @@ const newHostView = (config: HostConfig): HostView => ({
   status: "offline",
   info: null,
   hostInfo: null,
+  infoAt: 0,
+  retry: null,
   incompatibility: null,
   daemonUpdate: null,
   updateCheck: null,
@@ -710,6 +724,8 @@ export class AppStore {
   private trayMenuTimer: unknown = null;
   private offTrayAction: (() => void) | null = null;
   private readonly openRequestListeners = new Set<(item: PendingItem) => void>();
+
+  private stopWake: (() => void) | null = null;
 
   constructor(
     private readonly platform: Platform,
@@ -920,6 +936,7 @@ export class AppStore {
     this.update({ inbox: loadInbox(this.platform.storage) });
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
+    this.listenForWake();
     this.theme.start();
     this.i18n.start();
     this.update({
@@ -1246,13 +1263,13 @@ export class AppStore {
     return true;
   }
 
-  /** How many tiles the project page shows; kept across starts. */
-  tileCount(): TileCount {
-    return loadTileCount(this.platform.storage);
+  /** The layout of the tiles on the project page; kept across starts (issue #94). */
+  tileLayout(): TileLayout {
+    return loadTileLayout(this.platform.storage);
   }
 
-  setTileCount(count: TileCount): void {
-    saveTileCount(this.platform.storage, count);
+  setTileLayout(layout: TileLayout): void {
+    saveTileLayout(this.platform.storage, layout);
   }
 
   /** Sends a message to a session of a host, whether it is the open one or not. */
@@ -2023,7 +2040,30 @@ export class AppStore {
     );
   }
 
+  /** The window coming back or the network returning is the moment to try the offline hosts. */
+  private listenForWake(): void {
+    const target = wakeTarget();
+    if (typeof target.addEventListener !== "function") return;
+    const wake = () => {
+      for (const conn of this.connections.values()) conn.wake();
+    };
+    const visible = () => {
+      if (typeof document === "undefined" || document.visibilityState !== "hidden") wake();
+    };
+    target.addEventListener("online", wake);
+    target.addEventListener("focus", wake);
+    if (typeof document !== "undefined") document.addEventListener("visibilitychange", visible);
+    this.stopWake = () => {
+      target.removeEventListener?.("online", wake);
+      target.removeEventListener?.("focus", wake);
+      if (typeof document !== "undefined")
+        document.removeEventListener("visibilitychange", visible);
+    };
+  }
+
   dispose(): void {
+    this.stopWake?.();
+    this.stopWake = null;
     if (this.peersTimer) clearInterval(this.peersTimer);
     this.peersTimer = null;
     for (const conn of this.connections.values()) conn.dispose();
@@ -2100,6 +2140,9 @@ export class AppStore {
       clientName: "flightdeck-desktop",
       hostId: config.id,
       ...(this.options.baseDelayMs !== undefined ? { baseDelayMs: this.options.baseDelayMs } : {}),
+      ...(this.options.wakeDebounceMs !== undefined
+        ? { wakeDebounceMs: this.options.wakeDebounceMs }
+        : {}),
       ...(this.options.maxDelayMs !== undefined ? { maxDelayMs: this.options.maxDelayMs } : {}),
       lastSeqFor: (sessionId) =>
         this.state.sessions[sessionKey(config.id, sessionId)]?.lastSeq ?? 0,
@@ -2199,6 +2242,7 @@ export class AppStore {
       status,
       info: conn.info,
       incompatibility: conn.incompatibility,
+      retry: conn.retry,
     }));
     if (status === "online") {
       void this.loadHostInfo(hostId, conn);
@@ -2250,7 +2294,7 @@ export class AppStore {
     this.updateHost(hostId, (h) => {
       // Back on the version it was updating to: the update is over.
       const done = h.daemonUpdate && hostInfo?.daemonVersion === h.daemonUpdate.target;
-      return { ...h, hostInfo, ...(done ? { daemonUpdate: null } : {}) };
+      return { ...h, hostInfo, infoAt: Date.now(), ...(done ? { daemonUpdate: null } : {}) };
     });
     // ssh asks for passwords through the daemon: this app is who answers.
     if (hasFeature(hostInfo?.features, "ssh", false)) {

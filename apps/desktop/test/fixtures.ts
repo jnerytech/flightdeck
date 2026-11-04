@@ -73,8 +73,10 @@ export const TOKEN = "desktop-test-token-0123456789";
 export async function waitFor<T>(
   check: () => T | undefined | null | false,
   label = "condição",
+  /** How long to wait: 3 s for work done in this process; more for what spawns real processes. */
+  timeoutMs = 3000,
 ): Promise<T> {
-  const deadline = Date.now() + 3000;
+  const deadline = Date.now() + timeoutMs;
   for (;;) {
     const value = check();
     if (value) return value;

@@ -226,6 +226,33 @@ describe("times-ui: the teams of a host", () => {
     ]);
   });
 
+  test("Novo time makes the Developer the workers' default persona, in every row, added ones too", async () => {
+    const { teams } = await open();
+    await click("Novo time");
+    await change("Objetivo", "codar");
+    await change("Nome do time", "dev");
+    await workerRows(2);
+    await settle(
+      () =>
+        (screen.queryByLabelText("Persona da executora 2 (opcional)") as HTMLSelectElement | null)
+          ?.value === "dev",
+    );
+    expect(
+      (screen.queryByLabelText("Persona da executora 1 (opcional)") as HTMLSelectElement).value,
+    ).toBe("dev");
+    // The coordinator is not a worker: it keeps the default.
+    expect(
+      (screen.queryByLabelText("Persona da coordenadora (opcional)") as HTMLSelectElement).value,
+    ).toBe("");
+    await click("Criar time");
+    await settle(() => row("dev") !== null);
+    const members = (await teams())[0]?.members as Array<{ name: string; persona: string | null }>;
+    expect(members.filter((m) => m.name.includes("executora")).map((m) => m.persona)).toEqual([
+      "dev",
+      "dev",
+    ]);
+  });
+
   test("Pausar and Retomar change the team's state; Mandar a todos sends to every member", async () => {
     const { teams, client } = await open();
     await click("Novo time");

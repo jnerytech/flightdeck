@@ -14,6 +14,7 @@ import { AsyncQueue } from "../async-queue.ts";
 import { quotaReadings } from "../quota/quota.ts";
 import { whichOnPath } from "../which.ts";
 import { describeCommands, type SdkSlashCommand } from "./commands.ts";
+import type { FlightdeckMcpServer } from "./flightdeck-mcp.ts";
 import type {
   AgentRun,
   AgentRuntime,
@@ -49,6 +50,8 @@ export interface ClaudeSdkRuntimeOptions {
   query?: QueryFn;
   /** Injected in tests; defaults to the SDK's `forkSession`. */
   forkSession?: (id: string, options: ForkOptions) => Promise<{ sessionId: string }>;
+  /** The Flightdeck MCP server every session gets; none when absent. */
+  mcpServer?: FlightdeckMcpServer;
 }
 
 const MAX_TOOL_RESULT = 4000;
@@ -204,6 +207,7 @@ export function normalizeSdkMessage(message: SDKMessage): RuntimeEvent[] {
 export class ClaudeSdkRuntime implements AgentRuntime {
   private readonly query: QueryFn;
   readonly claudePath: string | undefined;
+  private readonly mcpServer: FlightdeckMcpServer | undefined;
 
   private readonly fork: NonNullable<ClaudeSdkRuntimeOptions["forkSession"]>;
 
@@ -211,6 +215,7 @@ export class ClaudeSdkRuntime implements AgentRuntime {
     this.query = options.query ?? (sdkQuery as QueryFn);
     this.fork = options.forkSession ?? sdkForkSession;
     this.claudePath = resolveClaudePath(options.claudePath);
+    this.mcpServer = options.mcpServer;
   }
 
   /**
@@ -281,6 +286,23 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       // Hooks from the user's settings fire here too; the receptor ignores sessions marked so.
       env: { ...opts.env, FLIGHTDECK_MANAGED: "1" },
       settingSources: ["user", "project", "local"],
+      // Added to the user's and the project's servers, never instead of them. The key is the one
+      // `claude mcp add flightdeck` uses, so a person who registered it by hand still has one entry.
+      ...(this.mcpServer
+        ? {
+            mcpServers: {
+              flightdeck: {
+                type: "stdio" as const,
+                command: this.mcpServer.command,
+                args: this.mcpServer.args,
+                // The session's own id: the MCP server knows who is sending (phase 21).
+                ...(opts.env.FLIGHTDECK_SESSION
+                  ? { env: { FLIGHTDECK_SESSION: opts.env.FLIGHTDECK_SESSION } }
+                  : {}),
+              },
+            },
+          }
+        : {}),
       systemPrompt: {
         type: "preset",
         preset: "claude_code",

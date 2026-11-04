@@ -5,16 +5,19 @@ import { AllowedFolders } from "@/components/hosts/allowed-folders";
 import { BypassSwitch } from "@/components/hosts/bypass-switch";
 import { GithubPanel } from "@/components/hosts/github-panel";
 import { HostDoctor } from "@/components/hosts/host-doctor";
+import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
 import { Field } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
+import { useNow } from "@/hooks/use-now";
 import { useT } from "@/i18n/context";
 import { useHostLatency } from "@/lib/use-store";
 import type { Key } from "../i18n/index.ts";
 import type { AppStore, HostView } from "../lib/app-store.ts";
 import type { HostNameError } from "../lib/host-name.ts";
+import { hostUptime } from "../lib/host-offline.ts";
 import type { UsageHistoryTarget } from "../lib/usage-rows.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -53,6 +56,8 @@ export function HostPage(props: {
   const [hooks, setHooks] = useState<HooksStatusResult | null>(null);
   const [confirming, setConfirming] = useState<"install" | "uninstall" | null>(null);
   const [removing, setRemoving] = useState(false);
+  const now = useNow();
+  const offline = host.status !== "online" && host.status !== "incompatible";
   useEffect(() => {
     if (host.status !== "online") return;
     void store.hostCommand(host.id, "hooks.status", {}).then(setHooks);
@@ -88,6 +93,7 @@ export function HostPage(props: {
       }
     >
       <div className="flex max-w-3xl flex-col gap-5">
+        {offline && <HostOfflineBanner host={host} onReconnect={props.onReconnect} />}
         {host.status === "incompatible" && (
           <InlineNotice>
             <span className="flex flex-col gap-1">
@@ -113,7 +119,7 @@ export function HostPage(props: {
             onOpenHistory={props.onOpenHistory}
           />
         )}
-        <Panel title={t("hostPage.info")}>
+        <Panel title={t("hostPage.info")} label={t("hostPage.info")}>
           {info ? (
             <ul className="flex flex-col gap-1 text-sm">
               <li>{`${info.os} · ${info.arch}`}</li>
@@ -126,11 +132,13 @@ export function HostPage(props: {
                 {t("hostPage.claude", { version: info.claudeVersion ?? t("hostPage.unknown") })}
               </li>
               <li>{t("hostPage.active", { n: info.activeSessions })}</li>
-              <li>{t("hostPage.uptime", { n: info.uptimeSec })}</li>
+              <li>{t("hostPage.uptime", { n: hostUptime(info.uptimeSec, host.infoAt, now) })}</li>
               <HostLatency store={store} hostId={host.id} />
             </ul>
           ) : (
-            <p className="text-muted-foreground text-sm">{t("hostPage.unavailable")}</p>
+            <p className="text-muted-foreground text-sm">
+              {offline ? t("hostOffline.title") : t("hostPage.unavailable")}
+            </p>
           )}
         </Panel>
         <AllowedFolders store={store} host={host} />
@@ -150,7 +158,9 @@ export function HostPage(props: {
           <section aria-label={t("hostPage.hooks")}>
             <Panel title={t("hostPage.hooks")}>
               <p className="text-sm">
-                {t(hooks ? HOOK_LABELS[hooks.status] : "hostPage.hooksAsking")}
+                {offline
+                  ? t("hostOffline.title")
+                  : t(hooks ? HOOK_LABELS[hooks.status] : "hostPage.hooksAsking")}
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setConfirming("install")}>

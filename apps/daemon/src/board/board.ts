@@ -1719,6 +1719,31 @@ export class Board {
       );
     }
     if (card.branch) must(await git(repo, "branch", "-D", card.branch), "git branch -D");
+    return this.removeFromBoard(id, "discarded");
+  }
+
+  /**
+   * Deletes a card that never started (no worktree, no branch, no session, no run). Returns its
+   * last state, marked `discarded` like a discarded card, so the app drops it the same way.
+   * A card that started has work to clean up and goes through `discardCard`.
+   */
+  deleteCard(id: string, confirm: boolean): Card {
+    if (!confirm)
+      throw new FlightdeckError("invalid_state", "confirm deleting the card", "delete_confirm");
+    const card = this.getCard(id);
+    const ran = this.db.query("SELECT 1 FROM card_runs WHERE card_id = ?").get(id) !== null;
+    if (card.worktreePath || card.branch || card.sessionId || ran) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "the card already started: discard it instead of deleting it",
+        "card_delete_started",
+      );
+    }
+    return this.removeFromBoard(id, "deleted");
+  }
+
+  /** The card leaves the board and the cards it held up are free of it; `discardCard` cleans its worktree first. */
+  private removeFromBoard(id: string, verb: "discarded" | "deleted"): Card {
     const last = this.getCard(id);
     this.workflows.forget(id);
     const holdingUp = this.blockingOf(id);
@@ -1726,17 +1751,17 @@ export class Board {
     this.db.query("DELETE FROM card_runs WHERE card_id = ?").run(id);
     forgetDone(this.db, id);
     this.db.query("DELETE FROM cards WHERE id = ?").run(id);
-    const discarded = { ...last, worktreePath: null, branch: null, discarded: true };
-    this.emit(discarded);
+    const gone = { ...last, worktreePath: null, branch: null, discarded: true };
+    this.emit(gone);
     // A card that is gone can never be done: the cards it held up are free of it.
-    const notice = `Blocker "${last.title}" was discarded and no longer blocks this card.`;
+    const notice = `Blocker "${last.title}" was ${verb} and no longer blocks this card.`;
     for (const dependent of holdingUp) {
       this.db.query("UPDATE cards SET notice = ? WHERE id = ?").run(notice, dependent);
       this.afterBlockerChange(dependent);
       this.changed(dependent);
     }
     for (const blocker of heldBy) this.changed(blocker);
-    return discarded;
+    return gone;
   }
 
   /** Calls `listener` after every round of the PR polling. */

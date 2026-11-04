@@ -114,6 +114,31 @@ describe("setup", () => {
     expect((await loadConfig(h.configFile)).allowedRoots).toEqual([a, b]);
   });
 
+  test("a Linux host whose linger is off ends with a loud warning and the command, after the pairing link", async () => {
+    const h = harness();
+    h.deps.linger = async () => "off";
+    await runSetup(h.deps);
+    const warning = h.out.findIndex((line) => line.includes("sudo loginctl enable-linger $USER"));
+    expect(warning).toBeGreaterThan(-1);
+    expect(h.out.join("\n")).toContain("WARNING");
+    expect(h.out.join("\n")).toContain("after a reboot");
+    // Last thing printed: nobody scrolls past it.
+    expect(h.out.slice(warning).some((line) => line.includes("pair"))).toBe(false);
+    expect(h.calls.at(-1)).toBe("pair");
+  });
+
+  test("with linger on, or where it does not apply, setup says nothing about it", async () => {
+    for (const state of ["on", null] as const) {
+      const h = harness();
+      h.deps.linger = async () => state;
+      await runSetup(h.deps);
+      expect(h.out.join("\n")).not.toContain("linger");
+    }
+    const none = harness();
+    await runSetup(none.deps);
+    expect(none.out.join("\n")).not.toContain("linger");
+  });
+
   test("the PATH step runs right after the binary is placed, and not when running from source", async () => {
     const h = harness();
     await runSetup(h.deps);
