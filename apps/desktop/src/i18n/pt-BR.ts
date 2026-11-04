@@ -3040,6 +3040,16 @@ export const ptBR = {
       "não foi possível conectar: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor",
   },
   hostPage: {
+    simpleTitle: "Modo simples",
+    simpleHint:
+      "Um app mais calmo para quem não usa terminal: tarefas prontas, perguntas em linguagem simples, resultados como arquivos. Muda só o jeito de ver este host, não o que ele faz.",
+    simpleUse: "Usar o modo simples neste host",
+    simpleDefault: "Tornar o modo simples o padrão deste host",
+    simpleDefaultFull: "Tornar o modo completo o padrão deste host",
+    simpleLock: "Travar este host no modo atual",
+    simpleLockMessage: "Quem abrir {host} ficará no modo dele, sem caminho para o outro. Travar?",
+    simpleLockConfirm: "Travar",
+    simpleUnlock: "Destravar o modo deste host",
     incompatible: "incompatível: atualize o daemon",
     info: "Informações",
     daemon: "flightdeckd {version}",

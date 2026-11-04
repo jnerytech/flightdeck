@@ -4,6 +4,7 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
 import { BypassSwitch } from "@/components/hosts/bypass-switch";
 import { HostDoctor } from "@/components/hosts/host-doctor";
+import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
 import { Field } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
@@ -133,6 +134,7 @@ export function HostPage(props: {
         </Panel>
         <AllowedFolders store={store} host={host} />
         <BypassSwitch store={store} host={host} />
+        <SimpleModePanel store={store} host={host} />
         {host.status === "online" && hasFeature(info?.features, "doctor.run", false) && (
           <HostDoctor store={store} host={host} />
         )}

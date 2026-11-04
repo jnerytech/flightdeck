@@ -6,9 +6,14 @@ import { SettingsView } from "@/components/simple/settings-view";
 import { TaskView } from "@/components/simple/task-view";
 import { Button } from "@/components/ui/button";
 import { translator } from "../../i18n/index.ts";
-import { type AppState, type AppStore, sessionKey } from "../../lib/app-store.ts";
+import {
+  type AppState,
+  type AppStore,
+  type SidebarSession,
+  sessionKey,
+} from "../../lib/app-store.ts";
 import { basename } from "../../lib/paths.ts";
-import { taskState } from "../../lib/simple-task.ts";
+import { type TaskState, taskState } from "../../lib/simple-task.ts";
 import { useSessionState } from "../../lib/use-store.ts";
 
 type Screen =
@@ -17,14 +22,14 @@ type Screen =
   | { name: "files" }
   | { name: "settings" };
 
-const STATE_OF = {
-  starting: "working",
-  running: "working",
-  awaiting_permission: "waiting",
-  idle: "done",
-  ended: "stopped",
-  error: "failed",
-} as const;
+/** A session's status as the state a task shows. */
+function stateOf(status: SidebarSession["status"]): TaskState {
+  if (status === "awaiting_permission") return "waiting";
+  if (status === "idle") return "done";
+  if (status === "ended") return "stopped";
+  if (status === "error") return "failed";
+  return "working";
+}
 
 /** One task: its conversation underneath, only the result on top. */
 function TaskScreen(props: {
@@ -178,7 +183,7 @@ export function SimpleApp(props: { store: AppStore; state: AppState; hostId: str
         .map((s) => ({
           sessionId: s.id,
           title: s.name ?? basename(s.cwd),
-          state: STATE_OF[s.status],
+          state: stateOf(s.status),
         })),
     [host?.sessions],
   );

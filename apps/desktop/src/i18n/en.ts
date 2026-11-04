@@ -3036,6 +3036,17 @@ export const en: Dictionary = {
       "could not connect: check that the daemon is running and that the address matches. On the host, run flightdeckd doctor",
   },
   hostPage: {
+    simpleTitle: "Simple mode",
+    simpleHint:
+      "A calmer app for people who do not use a terminal: ready tasks, plain questions, results as files. It changes only how this host looks, not what it can do.",
+    simpleUse: "Use simple mode on this host",
+    simpleDefault: "Make simple mode the default for this host",
+    simpleDefaultFull: "Make full mode the default for this host",
+    simpleLock: "Lock this host to its mode",
+    simpleLockMessage:
+      "Everyone who opens {host} will stay in its mode, with no way to the other one. Lock it?",
+    simpleLockConfirm: "Lock",
+    simpleUnlock: "Unlock this host's mode",
     incompatible: "incompatible: update the daemon",
     info: "Information",
     daemon: "flightdeckd {version}",
