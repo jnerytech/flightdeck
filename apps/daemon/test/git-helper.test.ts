@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
-import { git, gitFailure, gitRepo } from "./board-helpers.ts";
+import { git, gitFailure, gitRepo, gitRepoWithOrigin } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
 
 const messageOf = (fn: () => unknown): string => {
@@ -72,5 +72,39 @@ describe("git-helper: the test repository", () => {
     expect(git(a.repo, "log", "--format=%s")).toBe("só em a\ninicial");
     expect(git(b.repo, "log", "--format=%s")).toBe("inicial");
     expect(git(b.repo, "status", "--porcelain")).toBe("");
+  });
+});
+
+describe("git-helper: the test repository with an origin", () => {
+  const spies: Array<{ mockRestore(): void }> = [];
+  afterEach(() => {
+    for (const spy of spies.splice(0)) spy.mockRestore();
+  });
+
+  test("after the first one, it costs one git process: its main is already on origin", () => {
+    gitRepoWithOrigin();
+    const spawned = spyOn(Bun, "spawnSync");
+    spies.push(spawned);
+    gitRepoWithOrigin();
+    gitRepoWithOrigin();
+    expect(spawned.mock.calls.length).toBe(2);
+    spawned.mockRestore();
+    const { repo, remote } = gitRepoWithOrigin();
+    expect(git(repo, "remote", "get-url", "origin")).toBe(remote);
+    expect(git(repo, "rev-parse", "origin/main")).toBe(git(repo, "rev-parse", "HEAD"));
+    expect(git(remote, "log", "--format=%s", "main")).toBe("inicial");
+    expect(git(repo, "status", "--porcelain")).toBe("");
+  });
+
+  test("each origin is its own: what one copy pushes reaches no other copy", () => {
+    const a = gitRepoWithOrigin();
+    const b = gitRepoWithOrigin();
+    expect(a.remote).not.toBe(b.remote);
+    writeFileSync(join(a.repo, "README.md"), "# repo\nmudou\n");
+    git(a.repo, "commit", "-q", "-am", "só em a");
+    git(a.repo, "push", "-q", "origin", "main");
+    expect(git(a.remote, "log", "--format=%s", "main")).toBe("só em a\ninicial");
+    expect(git(b.remote, "log", "--format=%s", "main")).toBe("inicial");
+    expect(git(gitRepoWithOrigin().remote, "log", "--format=%s", "main")).toBe("inicial");
   });
 });
