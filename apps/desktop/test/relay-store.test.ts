@@ -91,6 +91,8 @@ async function host(name: string, origin: string) {
 async function app(...hosts: Array<{ name: string; url: string; token: string }>) {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000, peersSyncMs: 100 });
   cleanups.push(() => store.dispose());
+  // The relay is the subject: the dependency check the app starts on connect would run the real programs' versions.
+  store.checkHealth = async () => {};
   for (const h of hosts) await store.addHost({ name: h.name, url: h.url, token: h.token });
   await until(async () => store.getState().hosts.every((h) => h.hostInfo != null));
   return store;
