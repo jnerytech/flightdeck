@@ -8,6 +8,7 @@
  * idle and ended; cards in every column and one with a diff; an empty project; 60+ sessions and a
  * long transcript; the plan quota; costs from usage in the transcripts; a very long title.
  */
+
 import { execFileSync } from "node:child_process";
 import { chmodSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
@@ -15,6 +16,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { type Ack, parseServerMessage } from "@flightdeck/protocol";
 import { loadConfig } from "../apps/daemon/src/config.ts";
 import { startDaemon } from "../apps/daemon/src/main.ts";
+import { serializeTemplate } from "../apps/daemon/src/templates/files.ts";
 import { commitWorkflow, sha256 } from "../apps/daemon/test/workflow-helpers.ts";
 import type { DemoHost } from "../apps/desktop/src/demo/boot.ts";
 import { type UsageLoad, waitUsageLoaded } from "./lib/demo-ready.ts";
@@ -359,6 +361,24 @@ async function host(work: string, name: string): Promise<HostRun> {
   mkdirSync(projects, { recursive: true });
   mkdirSync(history, { recursive: true });
   writeHistory(history, join(projects, "flightdeck-web"));
+  // A host's own task for simple mode's Home (phase 33): a Markdown file in the templates folder.
+  mkdirSync(join(base, "data", "templates"), { recursive: true });
+  writeFileSync(
+    join(base, "data", "templates", "demo-notes.md"),
+    serializeTemplate({
+      id: "demo-notes",
+      title: { en: "Tidy my notes", "pt-BR": "Arrumar minhas notas" },
+      description: {
+        en: "Fixes spelling and headings in a folder of notes.",
+        "pt-BR": "Corrige a ortografia e os títulos de uma pasta de notas.",
+      },
+      icon: "notebook",
+      fields: [{ id: "folder", kind: "folder", label: { en: "Folder", "pt-BR": "Pasta" } }],
+      prompt: { en: "Tidy the notes in {folder}.", "pt-BR": "Arrume as notas em {folder}." },
+      preset: "edit_folder",
+      planFirst: false,
+    }),
+  );
   const token = crypto.randomUUID().replaceAll("-", "");
   const config = join(base, "config.json");
   writeFileSync(

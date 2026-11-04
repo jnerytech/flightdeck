@@ -25,6 +25,8 @@ interface Shot {
    * prints have none, so they look as they did before clients existed.
    */
   clients?: { selected?: string };
+  /** Simple mode on the demo's first host (phase 33): the print starts at its Home. */
+  simple?: boolean;
   /** After the screen loads: open the palette, scroll a long list to its end… */
   prepare?(page: Page): Promise<void>;
 }
@@ -299,6 +301,9 @@ function shots(ids: DemoIds): Shot[] {
           .getByRole("button", { name: /\((turno|turn) 2\)$/ })
           .first()
           .click();
+        // The pointer stays where the click was, over the new screen's button: its hover color
+        // is not the one the print (and the contrast check) should see.
+        await page.mouse.move(1000, 700);
         await page.waitForTimeout(800);
       },
     },
@@ -408,6 +413,37 @@ function shots(ids: DemoIds): Shot[] {
           .getByRole("combobox", { name: /^(Host dos custos|Costs host)/ })
           .selectOption("__all__");
         await page.waitForTimeout(1500);
+      },
+    },
+    { name: "simples-inicio", route: { name: "hub" }, simple: true },
+    {
+      name: "simples-tarefa-espera",
+      route: { name: "hub" },
+      simple: true,
+      prepare: async (page) => {
+        await page
+          .getByRole("button", { name: /Testes do backend/ })
+          .first()
+          .click();
+        // The pointer stays where the click was, over the new screen's button: its hover color
+        // is not the one the print (and the contrast check) should see.
+        await page.mouse.move(1000, 700);
+        await page.waitForTimeout(800);
+      },
+    },
+    {
+      name: "simples-tarefa-pronta",
+      route: { name: "hub" },
+      simple: true,
+      prepare: async (page) => {
+        await page
+          .getByRole("button", { name: /Revisão do PR 128/ })
+          .first()
+          .click();
+        // The pointer stays where the click was, over the new screen's button: its hover color
+        // is not the one the print (and the contrast check) should see.
+        await page.mouse.move(1000, 700);
+        await page.waitForTimeout(800);
       },
     },
     {
@@ -529,10 +565,16 @@ export async function takeShots(
             (seed) => {
               try {
                 const keys = ["flightdeck.clients", "flightdeck.clientFilter"];
-                for (const key of [...keys, "flightdeck.clientBudgetAlerts"]) {
+                for (const key of [...keys, "flightdeck.clientBudgetAlerts", "flightdeck.uiMode"]) {
                   localStorage.removeItem(key);
                 }
-                if (seed) {
+                if (seed?.simple) {
+                  localStorage.setItem(
+                    "flightdeck.uiMode",
+                    JSON.stringify({ "demo-alfa": "simple" }),
+                  );
+                }
+                if (seed?.withClients) {
                   localStorage.setItem(keys[0] as string, seed.clients);
                   if (seed.selected) localStorage.setItem(keys[1] as string, seed.selected);
                 }
@@ -540,7 +582,14 @@ export async function takeShots(
                 // No storage, no clients.
               }
             },
-            shot.clients ? { clients: DEMO_CLIENTS, selected: shot.clients.selected ?? "" } : null,
+            shot.clients || shot.simple
+              ? {
+                  clients: DEMO_CLIENTS,
+                  selected: shot.clients?.selected ?? "",
+                  simple: shot.simple === true,
+                  withClients: shot.clients !== undefined,
+                }
+              : null,
           );
           const query = new URLSearchParams({ theme, lang, route: JSON.stringify(shot.route) });
           await page.goto(`${url}?${query}`);

@@ -1210,3 +1210,35 @@
   gap: 0.5rem;
   font-size: 0.9375rem;
 }
+
+/* Simple mode (phase 33): the frame, a narrow menu of three and the screen beside it. */
+@utility simple-frame {
+  display: flex;
+  min-height: 100vh;
+  background: var(--color-background);
+  color: var(--color-foreground);
+}
+
+@utility simple-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 11rem;
+  flex-shrink: 0;
+  padding: 1rem 0.5rem;
+  border-right: 1px solid var(--color-border);
+}
+
+@utility simple-nav-item {
+  justify-content: flex-start;
+  width: 100%;
+  &[aria-current="page"] {
+    background: var(--color-accent);
+  }
+}
+
+@utility simple-main {
+  flex: 1;
+  min-width: 0;
+  padding: 1.5rem;
+}
