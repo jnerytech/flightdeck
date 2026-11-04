@@ -37,6 +37,8 @@ export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
   });
 
   switch (route.name) {
+    case "overview":
+      return path({ label: t("nav.overview") });
     case "hub":
     case "home":
     case "start":
