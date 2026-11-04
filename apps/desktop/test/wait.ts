@@ -59,7 +59,13 @@ export async function settleMaybe(check: () => boolean, timeoutMs = 5000): Promi
  * before the thing had time to happen; this fails as soon as it does.
  */
 export async function stays(check: () => boolean, windowMs = 300, label?: string): Promise<void> {
-  void check;
-  void windowMs;
-  void label;
+  const sleep = await inAct();
+  const deadline = Date.now() + windowMs;
+  do {
+    if (!check()) {
+      const what = label ?? check.toString().replace(/\s+/g, " ").trim();
+      throw new WaitTimeout(`broke before ${windowMs} ms: ${what}`);
+    }
+    await sleep(10);
+  } while (Date.now() < deadline);
 }
