@@ -1,5 +1,6 @@
 import { posix } from "node:path";
 import { testArgs } from "../test/timeout.ts";
+import { coverageTargets } from "./related-coverage.ts";
 
 export interface Related {
   path: string;
@@ -68,6 +69,8 @@ export interface PlanDeps {
   /** Runs git with the given arguments; `null` when git fails. */
   git: (args: string[]) => string | null;
   readFile: (path: string) => string;
+  /** Collect coverage of the run into this folder, and name the changed files it must cover. */
+  coverageDir?: string;
 }
 
 export interface Plan {
@@ -75,9 +78,11 @@ export interface Plan {
   output: string;
   /** The command to run, or `null` when there is nothing to run. */
   command: string[] | null;
+  /** The changed source files the run must cover at 100%; only when coverage was asked for. */
+  targets?: string[];
 }
 
-export function planRelated({ base, platform, git, readFile }: PlanDeps): Plan {
+export function planRelated({ base, platform, git, readFile, coverageDir }: PlanDeps): Plan {
   const ref = base ?? git(["merge-base", "HEAD", "main"])?.trim();
   if (!ref) return { code: 2, output: "test:related: no base to compare with", command: null };
   const label = base ?? ref.slice(0, 7);
@@ -88,6 +93,17 @@ export function planRelated({ base, platform, git, readFile }: PlanDeps): Plan {
     .filter((path) => GLOBAL_FILE.test(path))
     .map((path) => `warning: ${path} affects every test, run the full suite`);
   const related = selectRelated(changed, sources);
+  const targets = coverageDir
+    ? coverageTargets(changed, (path) => (sources.has(path) ? (sources.get(path) ?? null) : null))
+    : undefined;
+  if (related.length === 0 && targets && targets.length > 0) {
+    const lines = targets.map((path) => `  ${path}: no related test loads this file`);
+    const output = [
+      `test:related: ${targets.length} changed source file(s) with no test`,
+      ...lines,
+    ];
+    return { code: 1, output: output.join("\n"), command: null, targets };
+  }
   if (related.length === 0) {
     const none = `test:related: no test file is related to the ${changed.length} changed file(s) since ${label}`;
     return { code: 0, output: [none, ...warnings].join("\n"), command: null };
@@ -99,15 +115,17 @@ export function planRelated({ base, platform, git, readFile }: PlanDeps): Plan {
   ].join("\n");
   const run = [
     "bun",
-    "--config=bunfig.area.toml",
-    ...testArgs(
-      platform,
-      related.map((r) => `./${r.path}`),
-    ),
+    // The area config turns coverage off; the related one turns it on without the 100% gate.
+    coverageDir ? "--config=bunfig.related.toml" : "--config=bunfig.area.toml",
+    ...testArgs(platform, [
+      ...(coverageDir ? [`--coverage-dir=${coverageDir}`] : []),
+      ...related.map((r) => `./${r.path}`),
+    ]),
   ];
   return {
     code: 0,
     output,
     command: related.length > SLOT_ABOVE ? ["bun", "run", "slot", "--", ...run] : run,
+    ...(targets ? { targets } : {}),
   };
 }

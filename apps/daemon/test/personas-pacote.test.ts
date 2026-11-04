@@ -29,6 +29,8 @@ const SPEC_IDS = [
   "dba",
   // Phase 21 coordinates its teams with this one.
   "coordenador",
+  // Issue #92: the one that writes the code, the default worker of a team.
+  "dev",
 ];
 
 async function codeOf(fn: () => unknown): Promise<string> {
@@ -40,8 +42,8 @@ async function codeOf(fn: () => unknown): Promise<string> {
   }
 }
 
-describe("personas-pacote: as dez", () => {
-  test("são as nove da spec, na ordem da tabela, e a coordenadora dos times da Fase 21, nos dois idiomas", () => {
+describe("personas-pacote: as onze", () => {
+  test("são a desenvolvedora (issue #92), as nove da spec, na ordem da tabela, e a coordenadora dos times da Fase 21, nos dois idiomas", () => {
     expect(PACK_IDS).toEqual(SPEC_IDS);
     for (const language of ["pt-BR", "en"] as const) {
       expect([language, packPersonas(language).map((p) => p.id)]).toEqual([language, SPEC_IDS]);
@@ -114,6 +116,25 @@ describe("personas-pacote: as dez", () => {
     expect(packPersonas("pt-BR").find((p) => p.id === "arquiteto")?.permissionMode).toBe("plan");
   });
 
+  test("a desenvolvedora escreve código: teste primeiro, mudança pequena, segue o CLAUDE.md, roda as checagens e nunca faz push", () => {
+    for (const language of ["pt-BR", "en"] as const) {
+      const dev = packPersonas(language).find((p) => p.id === "dev");
+      expect([language, dev?.name]).toEqual([
+        language,
+        language === "en" ? "Developer" : "Desenvolvedor",
+      ]);
+      // No tool list and no plan mode: it has to be able to edit and run.
+      expect([language, dev?.tools, dev?.permissionMode]).toEqual([language, null, null]);
+      const body = dev?.body ?? "";
+      const must =
+        language === "en"
+          ? [/test first/i, /CLAUDE\.md/, /ADR/, /small/i, /never push/i, /checks/i]
+          : [/teste primeiro/i, /CLAUDE\.md/, /ADR/, /pequen/i, /nunca faça push/i, /checagens/i];
+      for (const rule of must)
+        expect([language, String(rule), rule.test(body)]).toEqual([language, String(rule), true]);
+    }
+  });
+
   test("a coordenadora só lê e coordena: confere com o Bash, fala com as executoras pelo MCP do Flightdeck e não implementa", () => {
     for (const language of ["pt-BR", "en"] as const) {
       const coordinator = packPersonas(language).find((p) => p.id === "coordenador");
@@ -154,7 +175,7 @@ describe("personas-pacote: as dez", () => {
     const first = packPersonas("pt-BR");
     (first[0] as { body: string }).body = "alterado";
     first.pop();
-    expect(packPersonas("pt-BR")).toHaveLength(10);
+    expect(packPersonas("pt-BR")).toHaveLength(11);
     expect(packPersonas("pt-BR")[0]?.body).not.toBe("alterado");
   });
 });
@@ -214,7 +235,7 @@ describe("personas-pacote: no daemon", () => {
     // One entry per id: the edited one stands in for the pack's, whatever the language.
     expect((await revisor()).map((p) => p.body)).toEqual(["Revise só o que mudou."]);
     expect((await revisor("en")).map((p) => p.body)).toEqual(["Revise só o que mudou."]);
-    expect((await personas.list({ scope: "host" })).personas).toHaveLength(10);
+    expect((await personas.list({ scope: "host" })).personas).toHaveLength(11);
     expect((await personas.resolve({ id: "revisor" }, {})).persona.body).toBe(
       "Revise só o que mudou.",
     );
@@ -241,7 +262,7 @@ describe("personas-pacote: no daemon", () => {
     expect((await personas.get("qa", {})).scope).toBe("pack");
     await personas.save({ scope: "host", persona: edit("minha", "Uma minha.") });
     await personas.remove("host", "minha");
-    expect((await personas.list({ scope: "host" })).personas).toHaveLength(10);
+    expect((await personas.list({ scope: "host" })).personas).toHaveLength(11);
   });
 
   test("a edição vale as regras de sempre, e a do projeto vale mais que a editada e que a do pacote", async () => {

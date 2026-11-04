@@ -318,6 +318,8 @@ export const SessionEvent = z.discriminatedUnion("type", [
     name: z.string().nullable(),
     permissionMode: PermissionMode,
     persona: SessionPersona.optional(),
+    /** The Claude session this one continues (a resume from History), so the screen can show its turns. */
+    resumedFrom: z.string().optional(),
   }),
   z.object({
     type: z.literal("session.status"),
@@ -1446,6 +1448,8 @@ export const DOCTOR_CHECK_IDS = [
   "tailscale",
   "version",
   "templates",
+  "mcp",
+  "linger",
 ] as const;
 
 /** One thing `doctor.run` checked; `fix` is what to run, absent when the check passed. */
@@ -2863,6 +2867,8 @@ export const Command = z.discriminatedUnion("type", [
   ),
   cmd("card.complete", CardConfirmPayload),
   cmd("card.discard", CardConfirmPayload),
+  /** Removes a card that never started; a started one is refused (use `card.discard`). */
+  cmd("card.delete", CardConfirmPayload),
   cmd("card.dismissUnblocked", CardIdPayload),
   cmd("external.list", z.object({}).strict()),
   cmd("external.watch", z.object({}).strict()),
@@ -4235,6 +4241,7 @@ export interface CommandResults {
   "card.manage": Card;
   "card.complete": Card;
   "card.discard": Card;
+  "card.delete": Card;
   "card.dismissUnblocked": Card;
   "external.list": { sessions: ExternalSession[] };
   "external.watch": undefined;

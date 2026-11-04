@@ -3,6 +3,7 @@ import { ArrowUp, ChevronRight, File, Folder } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
+import { FieldRow } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -130,7 +131,7 @@ export function FolderPicker(props: {
             <span key={step.path} className="flex items-center gap-1">
               <ChevronRight className="size-3" aria-hidden />
               {index === crumbs.length - 1 ? (
-                <span aria-current="location" className="font-medium">
+                <span aria-current="location" title={step.name} className="crumb-name font-medium">
                   {step.name}
                 </span>
               ) : (
@@ -138,6 +139,8 @@ export function FolderPicker(props: {
                   type="button"
                   variant="ghost"
                   size="xs"
+                  className="crumb-name"
+                  title={step.name}
                   onClick={() => void open(step.path)}
                 >
                   {step.name}
@@ -174,7 +177,7 @@ export function FolderPicker(props: {
             <ul
               aria-label={t("folderPicker.list")}
               aria-busy={loading}
-              className="flex max-h-72 flex-col overflow-y-auto aria-busy:opacity-60"
+              className="flex max-h-72 min-w-0 flex-col overflow-y-auto aria-busy:opacity-60"
               onKeyDown={onKeyDown}
             >
               {listing.dirs.map((dir) => (
@@ -184,10 +187,11 @@ export function FolderPicker(props: {
                     variant="ghost"
                     size="sm"
                     className="w-full justify-start"
+                    title={dir.name}
                     onClick={() => void open(dir.path)}
                   >
                     <Folder aria-hidden />
-                    {dir.name}
+                    <span className="min-w-0 truncate">{dir.name}</span>
                   </Button>
                 </li>
               ))}
@@ -198,10 +202,11 @@ export function FolderPicker(props: {
                     variant="ghost"
                     size="sm"
                     className="w-full justify-start"
+                    title={file.name}
                     onClick={() => props.onPick(file.path)}
                   >
                     <File aria-hidden />
-                    {file.name}
+                    <span className="min-w-0 truncate">{file.name}</span>
                   </Button>
                 </li>
               ))}
@@ -218,33 +223,37 @@ export function FolderPicker(props: {
           {t("folderPicker.hidden")}
         </label>
         <DialogFooter>
-          {!loading && listing?.parent !== undefined && listing?.path && (
-            <Button
+          {/* The buttons wrap onto a second line in a narrow window; the reason a button is
+              disabled is the row's help line (issue #99). */}
+          <FieldRow className="w-full justify-end">
+            {!loading && listing?.parent !== undefined && listing?.path && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="mr-auto"
+                aria-label={t("folderPicker.up")}
+                onClick={() => void open(listing.parent ?? undefined)}
+              >
+                <ArrowUp aria-hidden />
+              </Button>
+            )}
+            {nativeDialog && (
+              <Button type="button" variant="outline" onClick={() => void chooseWithSystem()}>
+                {t("folderPicker.system")}
+              </Button>
+            )}
+            <Button type="button" variant="outline" onClick={props.onClose}>
+              {t("common.cancel")}
+            </Button>
+            <ActionButton
               type="button"
-              variant="ghost"
-              className="mr-auto"
-              aria-label={t("folderPicker.up")}
-              onClick={() => void open(listing.parent ?? undefined)}
+              disabled={!current}
+              disabledReason={t("folderPicker.openFirst")}
+              onClick={() => current && props.onPick(current)}
             >
-              <ArrowUp aria-hidden />
-            </Button>
-          )}
-          {nativeDialog && (
-            <Button type="button" variant="outline" onClick={() => void chooseWithSystem()}>
-              {t("folderPicker.system")}
-            </Button>
-          )}
-          <Button type="button" variant="outline" onClick={props.onClose}>
-            {t("common.cancel")}
-          </Button>
-          <ActionButton
-            type="button"
-            disabled={!current}
-            disabledReason={t("folderPicker.openFirst")}
-            onClick={() => current && props.onPick(current)}
-          >
-            {t("folderPicker.choose")}
-          </ActionButton>
+              {t("folderPicker.choose")}
+            </ActionButton>
+          </FieldRow>
         </DialogFooter>
       </DialogContent>
     </Dialog>

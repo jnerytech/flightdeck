@@ -173,6 +173,59 @@ describe("other platforms", () => {
     },
   );
 
+  /** A home with files in memory: what `~/.profile` holds, and what was written to it. */
+  const withProfile = (initial: string | null, failWrite = false) => {
+    const files = new Map<string, string>(
+      initial === null ? [] : [["/home/dev/.profile", initial]],
+    );
+    const env: PathEnv = {
+      platform: "linux",
+      home: "/home/dev",
+      exec: async () => ({ code: 0, stdout: "" }),
+      readFile: async (path) => files.get(path) ?? null,
+      writeFile: async (path, content) => {
+        if (failWrite) throw new Error("read-only");
+        files.set(path, content);
+      },
+    };
+    return { env, files };
+  };
+  const BIN_LINE = 'export PATH="/home/dev/.flightdeck/bin:$PATH"';
+  const count = (text: string | undefined) => (text ?? "").split(BIN_LINE).length - 1;
+
+  test("linux appends the folder to ~/.profile, keeping what was there, and asks for a new terminal", async () => {
+    const h = withProfile("# mine\nexport EDITOR=vim\n");
+    const out = await addToUserPath(h.env, "/home/dev/.flightdeck/bin");
+    const profile = h.files.get("/home/dev/.profile");
+    expect(profile?.startsWith("# mine\nexport EDITOR=vim\n")).toBe(true);
+    expect(count(profile)).toBe(1);
+    expect(out.join("\n")).toContain(".profile");
+    expect(out.join("\n")).toContain("new terminal");
+  });
+
+  test("linux creates ~/.profile when there is none, and a second setup adds nothing", async () => {
+    const h = withProfile(null);
+    await addToUserPath(h.env, "/home/dev/.flightdeck/bin");
+    const once = h.files.get("/home/dev/.profile");
+    expect(count(once)).toBe(1);
+    const out = await addToUserPath(h.env, "/home/dev/.flightdeck/bin");
+    expect(h.files.get("/home/dev/.profile")).toBe(once);
+    expect(out.join("\n")).toContain("already");
+  });
+
+  test("linux leaves a profile that already has the folder untouched", async () => {
+    const own = `# mine\n${BIN_LINE}\n`;
+    const h = withProfile(own);
+    await addToUserPath(h.env, "/home/dev/.flightdeck/bin");
+    expect(h.files.get("/home/dev/.profile")).toBe(own);
+  });
+
+  test("linux that cannot write the profile says how to do it by hand, and does not throw", async () => {
+    const h = withProfile("", true);
+    const out = await addToUserPath(h.env, "/home/dev/.flightdeck/bin");
+    expect(out.join("\n")).toContain(BIN_LINE);
+  });
+
   test("remove prints nothing and runs nothing", async () => {
     const h = unix("linux");
     expect(await removeFromUserPath(h.env, "/home/dev/.flightdeck/bin")).toEqual([]);

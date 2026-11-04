@@ -46,6 +46,7 @@ const PACK = [
   "frontend",
   "dba",
   "coordenador",
+  "dev",
 ];
 
 let step = "preparar";
@@ -189,7 +190,7 @@ async function run(work: string): Promise<void> {
       pack.personas.some((p) => p.scope !== "pack")
     ) {
       throw new Error(
-        `o pacote devia ter as dez, na ordem: ${pack.personas.map((p) => p.id).join(",")}`,
+        `o pacote devia ter as onze, na ordem: ${pack.personas.map((p) => p.id).join(",")}`,
       );
     }
     const english = await client.call<Listed>("personas.list", { scope: "host", language: "en" });

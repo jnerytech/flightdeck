@@ -1,17 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { HubRow } from "../src/lib/hub.ts";
 import { emptySession, type SessionState } from "../src/lib/session-state.ts";
-import {
-  DEFAULT_TILE_COUNT,
-  lastLines,
-  loadTileCount,
-  pendingOf,
-  pickTiles,
-  saveTileCount,
-  TILE_COUNT_KEY,
-  TILE_COUNTS,
-  tileColumns,
-} from "../src/lib/tiles.ts";
+import { lastLines, pendingOf, pickTiles } from "../src/lib/tiles.ts";
 
 const row = (n: number, over: Partial<HubRow> = {}): HubRow => ({
   key: `h/m/s${n}`,
@@ -36,11 +26,6 @@ const row = (n: number, over: Partial<HubRow> = {}): HubRow => ({
 const project = { hostId: "h", projectKey: "proj" };
 
 describe("lado-a-lado: which sessions the tiles show", () => {
-  test("the counts are 2, 3, 4 and 6, and the grid has 2, 3, 2 and 3 columns", () => {
-    expect([...TILE_COUNTS]).toEqual([2, 3, 4, 6]);
-    expect(TILE_COUNTS.map(tileColumns)).toEqual([2, 3, 2, 3]);
-  });
-
   test("only the project's live managed sessions, the ones that need you first, then running, then idle", () => {
     const rows = [
       row(1, { state: "idle" }),
@@ -53,12 +38,40 @@ describe("lado-a-lado: which sessions the tiles show", () => {
       row(8, { archived: true }),
       row(9, { state: "idle", lastActivity: "2026-11-03T12:00:00.000Z" }),
     ];
-    expect(pickTiles(rows, project, 6).map((r) => r.sessionId)).toEqual(["s3", "s2", "s9", "s1"]);
+    expect(pickTiles(rows, project, "2x3").map((r) => r.sessionId)).toEqual([
+      "s3",
+      "s2",
+      "s9",
+      "s1",
+    ]);
+  });
+
+  test("a session whose key is still the folder's counts for the project by its folder (issue #105)", () => {
+    // The daemon answers `known(cwd)` with the folder key until git has been asked: the project's
+    // own key is the remote's, so the keys differ for the same folder.
+    const real = { hostId: "h", projectKey: "github.com/acme/app", path: "/work/app" };
+    const rows = [
+      row(1, { cwd: "/work/app", projectKey: "host:alfa:/work/app" }),
+      row(2, { cwd: "/work/app/sub", projectKey: "host:alfa:/work/app/sub" }),
+      row(3, { cwd: "/work/app", projectKey: "github.com/acme/app" }),
+      row(4, { cwd: "/work/other", projectKey: "host:alfa:/work/other" }),
+      row(5, { cwd: "/work/application", projectKey: "host:alfa:/work/application" }),
+      row(6, { hostId: "x", cwd: "/work/app", projectKey: "host:beta:/work/app" }),
+    ];
+    expect(
+      pickTiles(rows, real, "auto")
+        .map((r) => r.sessionId)
+        .sort(),
+    ).toEqual(["s1", "s2", "s3"]);
+    // Without the path, only the key counts, as before.
+    expect(
+      pickTiles(rows, { hostId: "h", projectKey: real.projectKey }, "auto").map((r) => r.sessionId),
+    ).toEqual(["s3"]);
   });
 
   test("it stops at the count, and the same state is ordered by the latest activity", () => {
     const rows = [1, 2, 3, 4, 5].map((n) => row(n, { state: "running" }));
-    expect(pickTiles(rows, project, 2).map((r) => r.sessionId)).toEqual(["s5", "s4"]);
+    expect(pickTiles(rows, project, "2").map((r) => r.sessionId)).toEqual(["s5", "s4"]);
   });
 });
 
@@ -106,24 +119,5 @@ describe("lado-a-lado: what a tile shows", () => {
     expect(pendingOf(session)).toEqual({ requestId: "r2", toolName: "Write" });
     expect(pendingOf({ ...session, pending: [] })).toBeNull();
     expect(pendingOf(base)).toBeNull();
-  });
-});
-
-describe("lado-a-lado: the saved count", () => {
-  const store = (initial?: string) => {
-    const data = new Map<string, string>(initial ? [[TILE_COUNT_KEY, initial]] : []);
-    return {
-      getItem: (key: string) => data.get(key) ?? null,
-      setItem: (key: string, value: string) => void data.set(key, value),
-    };
-  };
-
-  test("it comes back as saved, and anything else is the default", () => {
-    const storage = store();
-    expect(loadTileCount(storage)).toBe(DEFAULT_TILE_COUNT);
-    saveTileCount(storage, 6);
-    expect(loadTileCount(storage)).toBe(6);
-    expect(loadTileCount(store("5"))).toBe(DEFAULT_TILE_COUNT);
-    expect(loadTileCount(store("lixo"))).toBe(DEFAULT_TILE_COUNT);
   });
 });

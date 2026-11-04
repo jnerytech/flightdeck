@@ -25,12 +25,13 @@ export function Breadcrumb(props: { crumbs: Crumb[]; label: string; onGo(route: 
                   <button
                     type="button"
                     className="inline-flex min-h-6 items-center truncate rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    title={crumb.label}
                     onClick={() => crumb.route && props.onGo(crumb.route)}
                   >
                     {crumb.label}
                   </button>
                 ) : (
-                  <span className={labelClass} {...labelProps}>
+                  <span className={labelClass} title={crumb.label} {...labelProps}>
                     {crumb.label}
                   </span>
                 )}

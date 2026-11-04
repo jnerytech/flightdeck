@@ -33,6 +33,7 @@ import {
   type WorkflowRun,
 } from "@flightdeck/protocol";
 import { backoffDelay } from "./backoff.ts";
+import type { RetryState } from "./host-offline.ts";
 
 /** Fire-and-forget commands: failures surface through the connection status instead. */
 const ignore = () => {};
@@ -76,6 +77,9 @@ export class RequestError extends Error {
     this.name = "RequestError";
   }
 }
+
+/** Wake-ups closer than this to the last one that acted are ignored. */
+const WAKE_DEBOUNCE_MS = 2000;
 
 export interface HostConnectionOptions {
   url: string;
@@ -128,6 +132,8 @@ export interface HostConnectionOptions {
   lastSeqFor(sessionId: string): number;
   baseDelayMs?: number;
   maxDelayMs?: number;
+  /** Least time between two `wake()` calls that do something (focus spam must not storm the host). */
+  wakeDebounceMs?: number;
   /** Silence from the host after which the link counts as dead (the daemon pings every 15 s). */
   staleMs?: number;
   /** How long a connection may take to get its `hello` answered before it is given up. */
@@ -152,6 +158,12 @@ export class HostConnection {
   incompatibility: string | null = null;
   /** Round trip of the last heartbeat, as measured by the daemon. */
   latencyMs: number | null = null;
+  /** Set while the host is offline and a try is scheduled; `null` otherwise. */
+  retry: RetryState | null = null;
+  /** When the current try started, and whether the watchdog (not the socket) ended it. */
+  private triedAt = 0;
+  private gaveUp = false;
+  private lastWake = Number.NEGATIVE_INFINITY;
   private ws: WebSocket | null = null;
   private attempt = 0;
   private nextId = 0;
@@ -180,6 +192,8 @@ export class HostConnection {
   constructor(private readonly opts: HostConnectionOptions) {}
 
   connect(): void {
+    this.triedAt = Date.now();
+    this.gaveUp = false;
     this.setStatus("connecting");
     const ws = new WebSocket(this.opts.url);
     this.ws = ws;
@@ -194,6 +208,7 @@ export class HostConnection {
         (info) => {
           this.info = info;
           this.attempt = 0;
+          this.retry = null;
           this.setStatus("online");
           if (this.watching) this.send("sessions.watch", {}).catch(ignore);
           // Daemons before phase 4 answer with an error: nothing to watch there.
@@ -279,6 +294,21 @@ export class HostConnection {
       }
     });
     ws.addEventListener("close", (event) => this.onClose(ws, event.code));
+  }
+
+  /**
+   * The window came back or the network did: if the host is waiting out a backoff, try now and
+   * start the backoff over. A connection that is online or already trying is left alone.
+   */
+  wake(): void {
+    if (this.disposed || this.status !== "offline") return;
+    const now = Date.now();
+    if (now - this.lastWake < (this.opts.wakeDebounceMs ?? WAKE_DEBOUNCE_MS)) return;
+    this.lastWake = now;
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+    this.attempt = 0;
+    this.connect();
   }
 
   /** Sends a command once online; rejects with code `offline` otherwise. */
@@ -427,6 +457,7 @@ export class HostConnection {
           this.suspect = true;
           return;
         }
+        this.gaveUp = true;
         this.onClose(ws, 1006);
         ws.close();
       },
@@ -451,8 +482,11 @@ export class HostConnection {
       this.setStatus("unauthorized");
       return;
     }
-    this.setStatus("offline");
     const delay = backoffDelay(this.attempt++, this.opts.baseDelayMs, this.opts.maxDelayMs);
+    // A browser socket only says that it closed: the story is told by what came before.
+    const kind = this.status === "online" ? "lost" : this.gaveUp ? "timeout" : "refused";
+    this.retry = { kind, lastTryAt: this.triedAt, nextRetryAt: Date.now() + delay };
+    this.setStatus("offline");
     this.timer = setTimeout(() => this.connect(), delay);
   }
 
