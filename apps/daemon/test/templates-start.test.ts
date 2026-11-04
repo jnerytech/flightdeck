@@ -133,6 +133,37 @@ describe("templates-start: a task from a template", () => {
     }
   });
 
+  test("Given a template that asks for no folder, When a task starts, Then it is refused: there is nowhere to work", async () => {
+    const { start } = await setup([
+      custom({
+        id: "no-folder",
+        fields: [{ id: "topic", kind: "text", label: both("Topic") }],
+        prompt: both("Write about {topic}."),
+      }),
+    ]);
+    const ack = await start({
+      templateId: "no-folder",
+      language: "en",
+      values: { topic: "tea" },
+    });
+    expect(ack.ok).toBe(false);
+    expect(refusal(ack)).toMatchObject({ code: "bad_request", reason: "template_no_folder" });
+  });
+
+  test("Given a folder the host allows but that is not there, When a task starts, Then it is refused like a folder outside", async () => {
+    const { start, root } = await setup();
+    const ack = await start({
+      templateId: "summarise-folder",
+      language: "en",
+      values: { folder: join(root, "missing") },
+    });
+    expect(ack.ok).toBe(false);
+    expect(refusal(ack)).toMatchObject({
+      code: "forbidden_cwd",
+      reason: "template_folder_outside",
+    });
+  });
+
   test("Given a folder the host does not allow, When a task starts, Then it is refused with the folder to ask for, and no session exists", async () => {
     const { start, outside, manager } = await setup();
     const ack = await start({
