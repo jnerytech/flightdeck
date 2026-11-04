@@ -3511,3 +3511,16 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   to a non-loopback host: "or the daemon refused this machine's address ... allowedNetworks".
 - **The 403 now says the address** (`forbidden: <ip>`, the client's own address, which it already has), so `flightdeckd doctor`
   reads it from `/health` and reports "the daemon refused this machine's address (<ip>)" as a failure, with the setup fix.
+
+## The rc/0362 gate: ui-contraste meets three older tests
+
+- **Dark lines (`cromo-calmo`).** Phase 10's rule said every line is at most 6% alpha. #98 replaced the dark ones with opaque colors
+  on purpose: a 6% line cannot be 3:1 against a surface (WCAG 1.4.11), and the dark theme's panels and dividers had disappeared. The
+  rule is now two: the light lines stay faint (6% alpha, #98 did not touch them), and the dark lines are opaque with a floor of 3:1
+  and a ceiling of 6:1 against the background, both surfaces and the sidebar. The floor is also in `theme-contrast`; the ceiling is
+  what keeps them from being harsh, since a brighter border would still pass the floor.
+- **Tokens that point at tokens (`abas-a11y`).** `--card` is `var(--surface-1)` now, so a test that reads a token has to follow the
+  reference; its `tokens()` helper resolves `var()` (the check is kept, not dropped).
+- **The summary card (`sessao-rolagem`).** #97 made the summary a one-line card, and the first version folded it every time. The
+  older rule stays: the card opens the first time a session is seen (it is still a bounded card in the header that pushes the
+  conversation down) and is one line after, with the preview. The e2e overlap check holds in both states.
