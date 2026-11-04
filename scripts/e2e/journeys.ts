@@ -8,7 +8,7 @@ import type { Page } from "@playwright/test";
 import type { Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../demo-seed.ts";
-import { ACOES_ACTION, DANGER_SESSION, VIEWPORTS } from "../lib/e2e-journeys.ts";
+import { acoesAction, DANGER_SESSION, VIEWPORTS } from "../lib/e2e-journeys.ts";
 import { ensureOnline } from "../lib/e2e-online.ts";
 
 const ALFA = "demo-alfa";
@@ -19,6 +19,8 @@ export type Context = {
   url: string;
   lang: Lang;
   ids: DemoIds;
+  /** Which repeat of the journey this is (`--repeat-each`), 0 for a plain run. */
+  repeat: number;
   t: ReturnType<typeof translator>;
 };
 
@@ -270,7 +272,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       projectId: c.ids.project,
       projectName: "flightdeck-web",
     });
-    const name = ACOES_ACTION[c.lang] as string;
+    const name = acoesAction(c.lang, c.repeat);
     const row = c.page.getByRole("listitem", { name: c.t("actionsUi.row", { name }) });
     await row.getByText(c.t("actionsUi.notTrusted"), { exact: true }).waitFor({ timeout: WAIT });
     await row.getByRole("button", { name: c.t("actionsUi.trust", { name }) }).click();

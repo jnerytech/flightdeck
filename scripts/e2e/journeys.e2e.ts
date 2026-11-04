@@ -34,13 +34,14 @@ for (const language of LANGUAGES) {
     });
 
     for (const name of JOURNEYS) {
-      test(name, async ({ page }) => {
+      test(name, async ({ page }, info) => {
         const { url, ids } = demo();
         await (journeys[name] as (c: Context) => Promise<void>)({
           page,
           url,
           lang,
           ids,
+          repeat: info.repeatEachIndex,
           t: translator(lang),
         });
       });
@@ -51,7 +52,7 @@ for (const language of LANGUAGES) {
       test.setTimeout(600_000);
       const { url, ids } = demo();
       const problems: string[] = [];
-      await layout({ page, url, lang, ids, t: translator(lang) }, problems);
+      await layout({ page, url, lang, ids, repeat: 0, t: translator(lang) }, problems);
       if (problems.length > 0) {
         throw new Error(`e2e: ${problems.length} problemas\n${problems.join("\n")}`);
       }

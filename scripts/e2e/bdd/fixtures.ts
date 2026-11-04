@@ -8,7 +8,7 @@ export const test = base.extend<{ c: Context }>({
     const { E2E_DEMO_URL: url, E2E_DEMO_IDS: ids } = process.env;
     if (!url || !ids) throw new Error("o demo não foi iniciado (global setup)");
     const lang = locale as Lang;
-    await use({ page, url, lang, ids: JSON.parse(ids), t: translator(lang) });
+    await use({ page, url, lang, ids: JSON.parse(ids), repeat: 0, t: translator(lang) });
   },
 });
 
