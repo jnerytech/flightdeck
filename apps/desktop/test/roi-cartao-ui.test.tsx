@@ -146,6 +146,17 @@ for (const [lang, t] of [
       expect(document.body.textContent).not.toContain(t.roiUi.value.replace(" {value}", ""));
     });
 
+    test("a rate with no estimated hours asks for the hours, not for a rate", async () => {
+      const { store } = await roiPage(lang, { usage: USAGE, done: SHOP });
+      store.roi.setDefaultRate(60);
+      await settle(() => screen.queryByText(plural(t.roiUi.cardsDone, 3)) !== null);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: t.roiUi.period7 }));
+      });
+      await settle(() => screen.queryByText(t.roiUi.noHours) !== null);
+      expect(screen.queryByText(t.roiUi.noRate)).toBeNull();
+    });
+
     test("it leads with delivered against cost: planned and unplanned, and the cost per item against the period before", async () => {
       await roiPage(lang, {
         usage: [...USAGE, ["2026-09-20", 10, 10]],

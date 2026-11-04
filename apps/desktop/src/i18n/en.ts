@@ -273,6 +273,7 @@ export const en: Dictionary = {
     value: "Estimated value {value}",
     roi: "Return on cost (estimate) {roi} times",
     noRate: "Set an hourly rate to see the estimated value.",
+    noHours: "Add estimated hours to see the estimated value.",
     waited: "Requests waited {hours} h for you",
     approx: "{n} done dates are approximate",
     outside: "{cost} was spent outside any card",

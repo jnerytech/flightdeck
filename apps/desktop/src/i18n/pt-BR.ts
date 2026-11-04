@@ -276,6 +276,7 @@ export const ptBR = {
     value: "Valor estimado {value}",
     roi: "Retorno sobre o custo (estimativa) {roi} vezes",
     noRate: "Defina um valor da hora para ver o valor estimado.",
+    noHours: "Informe as horas estimadas para ver o valor estimado.",
     waited: "Pedidos esperaram {hours} h por você",
     approx: "{n} datas de conclusão são aproximadas",
     outside: "{cost} foi gasto fora de qualquer card",
