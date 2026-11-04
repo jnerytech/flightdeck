@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../scripts/test/fake-cli.ts";
 import { runGh } from "../src/github/gh.ts";
+import { GithubService } from "../src/github/service.ts";
 import { type GithubStartRequest, startFromGithub } from "../src/github/start.ts";
 import { Issues, UNTRUSTED_MARK } from "../src/issues/issues.ts";
 import type { GitRunner } from "../src/project-find.ts";
@@ -87,10 +88,29 @@ function setup() {
         },
       },
     );
-  return { ...ctx, clones, suspended, sessions, start };
+  return { ...ctx, clones, suspended, sessions, start, cloner, issues };
 }
 
 describe("github-start: a repo or an issue becomes a project, a card or a session", () => {
+  test("the service starts a session through the host's own session starter", async () => {
+    fakeGh([]);
+    const s = setup();
+    const started: string[] = [];
+    const service = new GithubService({
+      roots: [s.root],
+      board: s.board,
+      issues: s.issues,
+      git: s.cloner,
+      startSession: async (session) => {
+        started.push(session.cwd);
+        return { sessionId: "s-9" };
+      },
+    });
+    const result = await service.start({ repo: "acme/app", root: s.root, mode: "session" });
+    expect(result.sessionId).toBe("s-9");
+    expect(started).toEqual([join(s.root, "app")]);
+  });
+
   test("clones into the root and registers the project with the GitHub issue integration", async () => {
     fakeGh([]);
     const s = setup();

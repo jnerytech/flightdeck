@@ -29,6 +29,7 @@ const GH_RULES: FakeRule[] = [
     delayMs: 30_000,
   },
   { args: ["api", "user"], stdout: "octocat\n" },
+  { args: ["auth", "logout"] },
   {
     args: ["repo", "list"],
     stdout: JSON.stringify([
@@ -148,6 +149,8 @@ describe("github-protocol: the commands", () => {
     expect(login?.ok && login.data).toEqual({ code: CODE, url: "https://github.com/login/device" });
     const cancel = await ask(h.server, "github.login.cancel", {});
     expect(cancel?.ok).toBe(true);
+    const out = await ask(h.server, "github.logout", {});
+    expect(out?.ok).toBe(true);
     const repos = await ask(h.server, "github.repos", {});
     expect(repos?.ok && (repos.data as { repos: Array<{ name: string }> }).repos[0]?.name).toBe(
       "octocat/app",

@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../scripts/test/fake-cli.ts";
 import { runGh } from "../src/github/gh.ts";
 import { Github } from "../src/github/github.ts";
@@ -98,5 +101,53 @@ describe("github-issues: the open issues of one repo", () => {
     await expect(new Github({ gh: runGh }).issues("acme/app")).rejects.toMatchObject({
       reason: "gh_logged_out",
     });
+  });
+});
+
+describe("github-issues: a gh failure nothing maps", () => {
+  test("reading one issue and listing them both say what gh said", async () => {
+    fakeGh([
+      SIGNED_IN,
+      { args: ["api", "user"], stdout: "octocat\n" },
+      { args: ["issue"], code: 1, stderr: "network is unreachable\n" },
+    ]);
+    const github = new Github({ gh: runGh });
+    await expect(github.issue("acme/app", "4")).rejects.toMatchObject({
+      reason: "issues_failed",
+      params: { detail: "network is unreachable" },
+    });
+    await expect(github.issues("acme/app")).rejects.toMatchObject({ reason: "issues_failed" });
+  });
+});
+
+describe("github-gh: the real runner", () => {
+  test("runs gh from the PATH and answers null when there is none", async () => {
+    const fake = fakeGh([{ args: ["api", "user"], stdout: "octocat\n" }]);
+    expect(await runGh(["api", "user"])).toMatchObject({ code: 0, stdout: "octocat\n" });
+    expect(fake.calls()).toEqual([["api", "user"]]);
+    fake.restore();
+    const path = process.env.PATH;
+    process.env.PATH = "";
+    try {
+      expect(await runGh(["api", "user"])).toBeNull();
+    } finally {
+      process.env.PATH = path;
+    }
+  });
+
+  test("a gh that cannot be started for another reason than missing is not hidden", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "fd-badgh-"));
+    cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
+    // A file the system cannot run: a text file named gh.exe on Windows, a bad shebang elsewhere.
+    const name = process.platform === "win32" ? "gh.exe" : "gh";
+    writeFileSync(join(dir, name), "#!/no/such/interpreter\n");
+    chmodSync(join(dir, name), 0o755);
+    const path = process.env.PATH;
+    process.env.PATH = dir;
+    try {
+      await expect(runGh(["api", "user"])).rejects.toBeDefined();
+    } finally {
+      process.env.PATH = path;
+    }
   });
 });
