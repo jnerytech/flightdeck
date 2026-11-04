@@ -180,6 +180,26 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
     expect(screen.getByRole("button", { name: "Vault" }).getAttribute("aria-current")).toBeNull();
   });
 
+  test("on a host's page its row under Machines is marked like the page items, in the rail too", () => {
+    const { view } = setup(ALL, undefined, { name: "host", host: "h1" });
+    const { unmount } = render(view());
+    const host = screen.getByRole("button", { name: "Open host alfa" });
+    expect(host.getAttribute("aria-current")).toBe("page");
+    expect(host.className).toContain("nav-active");
+    unmount();
+    render(view(true));
+    expect(
+      screen.getByRole("button", { name: "Open host alfa" }).getAttribute("aria-current"),
+    ).toBe("page");
+    cleanup();
+    // On another page no host row is marked.
+    const other = setup(ALL, undefined, { name: "costs" });
+    render(other.view());
+    expect(
+      screen.getByRole("button", { name: "Open host alfa" }).getAttribute("aria-current"),
+    ).toBeNull();
+  });
+
   test("a chevron on what has sub-pages, Beta and New on recent features, and the Needs you count stays", () => {
     const { view } = setup();
     render(view());
