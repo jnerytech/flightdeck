@@ -575,7 +575,7 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
 
   function watching(): PrWatch {
-    if (!opts.watch) throw new FlightdeckError("invalid_state", "vigia de PR indisponível");
+    if (!opts.watch) throw featureOff("prWatch");
     return opts.watch;
   }
 
@@ -816,7 +816,7 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
 
   function runenv() {
-    if (!opts.runenv) throw new FlightdeckError("invalid_state", "ambiente de execução desativado");
+    if (!opts.runenv) throw featureOff("runEnv");
     return opts.runenv;
   }
 
@@ -1216,6 +1216,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           throw new FlightdeckError(
             "invalid_state",
             "reativar a aprovação automática pede confirm: true",
+            "autoapprove_resume_confirm",
           );
         }
         autoApprove().resume(command.payload.sessionKey);
@@ -1705,6 +1706,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           throw new FlightdeckError(
             "invalid_state",
             "ligar o terminal dá um shell completo neste host: confirme com confirm: true",
+            "terminal_enable_confirm",
           );
         }
         manager.setEnabled(enabled);

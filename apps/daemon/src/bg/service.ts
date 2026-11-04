@@ -162,7 +162,12 @@ export class BgService {
     if (input.cardId !== undefined) {
       const card = this.opts.card?.(input.cardId);
       if (!card) {
-        throw new FlightdeckError("not_found", `card ${input.cardId} does not exist`);
+        throw new FlightdeckError(
+          "not_found",
+          `card ${input.cardId} does not exist`,
+          "card_not_found",
+          { id: input.cardId },
+        );
       }
       ({ cwd, prompt } = card);
       name ??= card.name;

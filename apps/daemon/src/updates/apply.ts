@@ -82,6 +82,7 @@ export class DaemonUpdater {
       throw new FlightdeckError(
         "update_needs_service",
         "o daemon não roda como serviço: atualize no host com flightdeckd update --from <binário novo>",
+        "update_needs_service",
       );
     }
     await this.start(platform, file);
@@ -101,7 +102,10 @@ export class DaemonUpdater {
       await writeFile(file, bytes);
       await chmod(file, 0o755);
     } catch (error) {
-      throw new FlightdeckError("update_verification_failed", (error as Error).message);
+      const why = (error as Error).message;
+      throw new FlightdeckError("update_verification_failed", why, "update_signature_failed", {
+        why,
+      });
     }
   }
 

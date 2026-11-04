@@ -824,6 +824,8 @@ export const en: Dictionary = {
       "Allowing a prod tag needs a window of days and hours, and does not apply outside it: use ask.",
   },
   daemonFeature: {
+    prWatch: "PR watching",
+    runEnv: "the run environment",
     history: "the history",
     central: "the central session list",
     vault: "the vault",
@@ -874,6 +876,14 @@ export const en: Dictionary = {
     bg: "background sessions",
   },
   daemonRefusal: {
+    autoapprove_resume_confirm: "Resuming auto-approval needs your confirmation.",
+    terminal_enable_confirm:
+      "Turning the terminal on gives a full shell on this host: confirm it to go on.",
+    central_confirm: "Changing the host's ~/.claude/settings.json needs your confirmation.",
+    permission_request_closed: "The permission request {id} is not open.",
+    update_needs_service:
+      "The daemon does not run as a service: update on the host with flightdeckd update --from <new binary>.",
+    update_signature_failed: "The update could not be verified: {why}",
     messaging_session_missing: "The session {id} does not exist.",
     messaging_plain_session:
       "A plain claude with no channel only receives through Claude Code's own exchange.",

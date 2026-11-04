@@ -820,6 +820,8 @@ export const ptBR = {
       "Liberar uma tag prod pede uma janela de dias e horas, e não vale fora dela: use ask.",
   },
   daemonFeature: {
+    prWatch: "a vigia de PR",
+    runEnv: "o ambiente de execução",
     history: "o histórico",
     central: "a central de sessões",
     vault: "o cofre",
@@ -870,6 +872,14 @@ export const ptBR = {
     bg: "sessões em segundo plano",
   },
   daemonRefusal: {
+    autoapprove_resume_confirm: "Reativar a aprovação automática pede a sua confirmação.",
+    terminal_enable_confirm:
+      "Ligar o terminal dá um shell completo neste host: confirme para seguir.",
+    central_confirm: "Mexer no ~/.claude/settings.json do host pede a sua confirmação.",
+    permission_request_closed: "O pedido de permissão {id} não está aberto.",
+    update_needs_service:
+      "O daemon não roda como serviço: atualize no host com flightdeckd update --from <binário novo>.",
+    update_signature_failed: "Não foi possível verificar a atualização: {why}",
     messaging_session_missing: "A sessão {id} não existe.",
     messaging_plain_session:
       "Um claude puro, sem canal, só recebe pela troca nativa do Claude Code.",

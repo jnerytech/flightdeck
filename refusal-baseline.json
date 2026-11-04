@@ -1,7 +1,1 @@
-{
-  "apps/daemon/src/updates/apply.ts": 2,
-  "apps/daemon/src/bg/service.ts": 1,
-  "apps/daemon/src/central/central.ts": 1,
-  "apps/daemon/src/server.ts": 4,
-  "apps/daemon/src/permissions/permission-broker.ts": 1
-}
+{}

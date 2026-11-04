@@ -3,6 +3,12 @@
 
 /** Every reason of the daemon outside the snippet model: the app has a text for each, in both languages. */
 export const DAEMON_REASONS = [
+  "autoapprove_resume_confirm",
+  "terminal_enable_confirm",
+  "central_confirm",
+  "permission_request_closed",
+  "update_needs_service",
+  "update_signature_failed",
   "messaging_session_missing",
   "messaging_plain_session",
   "messaging_channel_down",
