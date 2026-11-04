@@ -2428,6 +2428,10 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
 - **Precisa de você:** na barra lateral, com o contador de pedidos abertos em todos os hosts. A
   tela lista os pedidos, do mais antigo ao mais novo, e o cartão do pedido escolhido fica ao
   lado: **A** aprova, **N** nega e **Esc** fecha o detalhe. **Abrir sessão** leva à conversa.
+- **Barra de status:** a linha no pé da janela mostra a cota do plano de relance (a janela mais
+  usada entre os seus hosts online e o tempo até ela reiniciar, por exemplo "78% · 3d 9h", ou
+  "Cota: sem leitura"), quantos hosts estão online ("Hosts online: 2/3") e um botão **Atualizar status** que
+  pergunta de novo aos hosts as sessões e a cota.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude
   ganha um selo ⚠.

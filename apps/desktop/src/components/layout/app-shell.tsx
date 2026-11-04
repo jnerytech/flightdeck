@@ -26,6 +26,8 @@ export function AppShell(props: {
   header: ReactNode;
   sidebar: (collapsed: boolean) => ReactNode;
   labels: AppShellLabels;
+  /** A bar under the sidebar and the content. */
+  footer?: ReactNode;
   children: ReactNode;
 }) {
   const narrow = useMediaQuery(NARROW_QUERY);
@@ -35,7 +37,12 @@ export function AppShell(props: {
   const { labels } = props;
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   return (
-    <div className="grid h-screen grid-rows-[auto_minmax(0,1fr)] bg-background text-foreground">
+    <div
+      className={cn(
+        "grid h-screen bg-background text-foreground",
+        props.footer ? "grid-rows-[auto_minmax(0,1fr)_auto]" : "grid-rows-[auto_minmax(0,1fr)]",
+      )}
+    >
       <header className="flex h-12 items-center gap-2 border-b px-3">
         <Button
           variant="ghost"
@@ -66,6 +73,7 @@ export function AppShell(props: {
           <HeaderSlot.Provider value={slot}>{props.children}</HeaderSlot.Provider>
         </main>
       </div>
+      {props.footer}
     </div>
   );
 }

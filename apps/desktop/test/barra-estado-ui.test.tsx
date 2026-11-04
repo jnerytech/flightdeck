@@ -71,7 +71,7 @@ describe("barra-estado-ui: the bottom bar", () => {
   test("it shows the quota at a glance and how many hosts are online", () => {
     const { view } = setup();
     render(view);
-    const bar = screen.getByRole("contentinfo", { name: "Status bar" });
+    const bar = screen.getByLabelText("Status bar");
     expect(bar.textContent).toContain("78% · 3d 9h");
     expect(bar.textContent).toContain("Hosts online: 2/3");
   });
@@ -79,10 +79,10 @@ describe("barra-estado-ui: the bottom bar", () => {
   test("without a reading it says so, and Refresh asks for the lists again", async () => {
     const { view, refreshed } = setup(false);
     render(view);
-    const bar = screen.getByRole("contentinfo", { name: "Status bar" });
+    const bar = screen.getByLabelText("Status bar");
     expect(bar.textContent).toContain("Quota: no reading");
     await act(
-      async () => void fireEvent.click(within(bar).getByRole("button", { name: "Refresh" })),
+      async () => void fireEvent.click(within(bar).getByRole("button", { name: "Refresh status" })),
     );
     expect(refreshed()).toBe(1);
   });
@@ -98,12 +98,13 @@ describe("barra-estado-ui: the bottom bar", () => {
     });
     await pollFor(() => store.getState().hosts[0]?.status === "online" || undefined, "online");
     const bar = await pollFor(
-      () => screen.queryByRole("contentinfo", { name: "Barra de status" }) ?? undefined,
+      () => screen.queryByLabelText("Barra de status") ?? undefined,
       "the bar",
     );
     expect(bar.textContent).toContain("Hosts online: 1/1");
     await act(
-      async () => void fireEvent.click(within(bar).getByRole("button", { name: "Atualizar" })),
+      async () =>
+        void fireEvent.click(within(bar).getByRole("button", { name: "Atualizar status" })),
     );
   });
 });

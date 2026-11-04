@@ -2440,6 +2440,10 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
   lists the requests, oldest to newest, and the selected request's card sits next to it: **A**
   approves, **N** denies and **Esc** closes the detail. **Open session** takes you to the
   conversation.
+- **Status bar:** the line at the bottom of the window shows the plan quota at a glance (the
+  window most used among your online hosts and the time until it resets, for example "78% · 3d 9h",
+  or "Quota: no reading"), how many hosts are online ("Hosts online: 2/3") and a **Refresh status** button
+  that asks the hosts again for their sessions and quota.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
   badge.

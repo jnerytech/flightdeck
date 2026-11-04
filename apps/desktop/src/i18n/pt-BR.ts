@@ -2846,6 +2846,13 @@ export const ptBR = {
     notifyBody: "{title}: todos os bloqueios acabaram.",
     satisfied: "pronto",
   },
+  statusBar: {
+    label: "Barra de status",
+    noQuota: "Cota: sem leitura",
+    quotaTitle: "Cota do plano: a janela mais usada e o tempo até ela reiniciar",
+    hosts: "Hosts online: {online}/{total}",
+    refresh: "Atualizar status",
+  },
   kanban: {
     needTitle: "Dê um título ao card",
     card: "Card {title}",

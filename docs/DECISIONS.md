@@ -3442,3 +3442,13 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   the screen, so the layout ratchet is not raised.
 - **The + puts a card in its column.** A card is born in the Backlog; for another column the app moves it right after the create
   (`card.move`), because `card.create` takes no column. The empty box is still a button named "Add card".
+
+## A status bar at the bottom (issue #118, from the Orca reference of #114)
+
+- **One quiet line, three facts.** The window of the plan quota under most pressure across the online hosts with a reading (its percent
+  and the time left, "78% · 3d 9h", in the two largest units), how many hosts are online of the total, and a refresh. The bar is
+  a labelled region (a `section`) the app shell draws under the sidebar and the content; it never grows past the window (`overflow: hidden`, one line).
+- **Refresh asks again for what the hub and the quota hold:** the session lists of every online host and each host's `quota.get`. It does
+  not reconnect anything: that is the host page's Reconnect.
+- **Not done:** the reference's extra items (usage meter, notifications state) are not here; the quota, the hosts and the refresh are the
+  three the issue asked for.

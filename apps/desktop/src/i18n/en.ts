@@ -2844,6 +2844,13 @@ export const en: Dictionary = {
     notifyBody: "{title}: every blocker is done.",
     satisfied: "done",
   },
+  statusBar: {
+    label: "Status bar",
+    noQuota: "Quota: no reading",
+    quotaTitle: "Plan quota: the window most used, and the time until it resets",
+    hosts: "Hosts online: {online}/{total}",
+    refresh: "Refresh status",
+  },
   kanban: {
     needTitle: "Give the card a title",
     card: "Card {title}",

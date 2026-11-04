@@ -5,6 +5,7 @@ import { AskpassPrompt } from "@/components/connections/askpass-prompt";
 import { Notices } from "@/components/feedback/notices";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
+import { StatusBar } from "@/components/shell/status-bar";
 import { SnippetUse } from "@/components/snippets/snippet-use";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -378,6 +379,9 @@ export function App({ store }: { store: AppStore }) {
               />
               <NotificationBell store={store} inbox={state.inbox} t={t} go={go} />
             </>
+          }
+          footer={
+            <StatusBar store={store} state={state} onRefresh={() => void store.refreshStatus()} />
           }
           sidebar={(collapsed) => (
             <Sidebar

@@ -337,6 +337,25 @@
 }
 
 /* A column under a dragged card: it shows where the card would land. */
+/* The bottom bar: one quiet line of facts, never wider than the window. */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+  height: 1.75rem;
+  padding-inline: 0.75rem;
+  overflow: hidden;
+  white-space: nowrap;
+  border-top: 1px solid var(--border);
+  background: var(--sidebar);
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+.status-bar > button {
+  margin-inline-start: auto;
+}
+
 /* A board column: a thin top line and a faint tint of the column's own tone. */
 .board-column {
   display: flex;

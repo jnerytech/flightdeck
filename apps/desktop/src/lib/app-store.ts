@@ -1020,7 +1020,18 @@ export class AppStore {
   }
 
   /** What the status bar's refresh asks again: the lists of the hubs and each host's quota. */
-  async refreshStatus(): Promise<void> {}
+  async refreshStatus(): Promise<void> {
+    await Promise.all([
+      this.refreshHub(),
+      ...this.state.hosts
+        .filter((host) => host.status === "online")
+        .map(async (host) => {
+          const conn = this.connections.get(host.id);
+          const state = conn ? await quiet(conn.request("quota.get", {})) : null;
+          if (state) this.onQuota(host.id, state);
+        }),
+    ]);
+  }
 
   /** Drops the connection and opens a new one right away. */
   async reconnectHost(hostId: string): Promise<void> {
