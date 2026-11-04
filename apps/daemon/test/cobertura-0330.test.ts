@@ -230,11 +230,22 @@ describe("cobertura-0330: project finder, ssh agent", () => {
       join(tempDir(), "dest"),
     ]);
     expect(failed.code).not.toBe(0);
-    const impatient = gitRunner(100);
+    // A git command that really runs for seconds on every OS: an alias that starts this Bun (git
+    // runs `!` aliases with its own sh, also on Windows, which has no `sleep` on the path).
+    const bun = process.execPath.replaceAll("\\", "/");
+    const impatient = gitRunner(300);
     const started = Date.now();
-    const slow = await impatient(["-c", "alias.slow=!sleep 5", "slow"]);
+    const slow = await impatient([
+      "-c",
+      `alias.slow=!"${bun}" -e "setTimeout(() => {}, 5000)"`,
+      "slow",
+    ]);
+    const took = Date.now() - started;
     expect(slow.code).not.toBe(0);
-    expect(Date.now() - started).toBeLessThan(4_000);
+    // It waited for the timer (a git that failed at once would be back sooner) and was stopped well
+    // before the five seconds were up.
+    expect(took).toBeGreaterThanOrEqual(250);
+    expect(took).toBeLessThan(4_000);
   });
 
   test("a scan skips a folder it cannot read and still finds the others", async () => {
