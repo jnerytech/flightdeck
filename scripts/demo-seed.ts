@@ -106,6 +106,8 @@ export interface DemoIds {
   scrollSession: string;
   /** A session in a folder with a long path, whose first message holds a long unbroken id (issue #103). */
   longSession: string;
+  /** A session with a very long title: its crumb is cut with an ellipsis (issue #133). */
+  longTitleSession: string;
 }
 
 /** A workflow with a plan, a gate that asks to review it and the implementation. */
@@ -793,7 +795,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     "Revisão do PR 128",
     `Revise o PR. [ratelimit:five_hour=0.62@${later(2)}] [ratelimit:seven_day=0.35@${later(100)}]`,
   );
-  await session(LONG_TITLE, "Planeje os passos.");
+  const longTitle = await session(LONG_TITLE, "Planeje os passos.");
   // A worker's worktree path is long, and its messages quote ids that never break.
   const deep = join(
     web,
@@ -1046,6 +1048,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       notesFolder: join(alfa.projects, "notes"),
       scrollSession: long.sessionId,
       longSession: longSession.sessionId,
+      longTitleSession: longTitle.sessionId,
     },
     stop: async () => {
       // Newest first: each restore puts back the PATH it saw, so the oldest must go last.
