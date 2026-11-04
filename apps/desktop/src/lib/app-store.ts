@@ -100,10 +100,18 @@ import {
   saveHubFilter,
   saveHubView,
 } from "./hub.ts";
-import { addEntry, type InboxEntry, loadInbox, markAllRead, markRead, saveInbox } from "./inbox.ts";
+import {
+  addEntry,
+  type InboxAbout,
+  type InboxEntry,
+  loadInbox,
+  markAllRead,
+  markRead,
+  saveInbox,
+} from "./inbox.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
-import { summaryNotifications } from "./notify.ts";
+import { externalRequestNotification, summaryNotifications } from "./notify.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
 import { isHot } from "./quota.ts";
@@ -1115,7 +1123,12 @@ export class AppStore {
   }
 
   /** Sends an OS notification and keeps it in the notification center. */
-  private notifyUser(n: Notification, route?: Route, fallbackUrl?: string | null): void {
+  private notifyUser(
+    notification: Notification & { about?: InboxAbout },
+    route?: Route,
+    fallbackUrl?: string | null,
+  ): void {
+    const { about, ...n } = notification;
     const entry: InboxEntry = {
       id: crypto.randomUUID(),
       at: new Date().toISOString(),
@@ -1124,6 +1137,9 @@ export class AppStore {
       ...(n.link ? { link: n.link } : {}),
       ...(route ? { route } : {}),
       ...(fallbackUrl ? { fallbackUrl } : {}),
+      ...(about ? { subject: about.subject, host: about.host } : {}),
+      ...(about?.ask ? { ask: about.ask } : {}),
+      ...(about?.group ? { group: about.group } : {}),
       read: false,
     };
     this.setInbox(addEntry(this.state.inbox, entry));
@@ -2441,7 +2457,8 @@ export class AppStore {
     const linkFor = (requestId: string) => requestLink(hostId, requestId);
     const focused = this.platform.isFocused();
     const t = this.i18n.t;
-    for (const n of summaryNotifications(prev, next, label, focused, linkFor, t)) {
+    const names = { subject: next.name ?? basename(next.cwd), host: host.name, group: key };
+    for (const n of summaryNotifications(prev, next, label, focused, linkFor, t, names)) {
       this.notifyUser(n);
     }
   }
@@ -2498,12 +2515,32 @@ export class AppStore {
       this.state.externals[sessionKey(hostId, frame.claudeSessionId)]?.cwd ?? null,
     );
     if (!this.platform.isFocused()) {
-      this.notifyUser({
-        title: this.i18n.t("notify.externalTitle"),
-        body: `${host?.name ?? hostId} · ${frame.toolName}`,
-        link: requestLink(hostId, frame.requestId),
-      });
+      this.notifyUser(
+        externalRequestNotification(
+          {
+            hostId,
+            hostName: host?.name ?? hostId,
+            subject: this.externalTitle(hostId, frame.claudeSessionId),
+            claudeSessionId: frame.claudeSessionId,
+            toolName: frame.toolName,
+            input: frame.input,
+            link: requestLink(hostId, frame.requestId),
+          },
+          this.i18n.t,
+        ),
+      );
     }
+  }
+
+  /** A terminal session's name for a notification: the one given to it, else its folder or its id. */
+  private externalTitle(hostId: string, claudeSessionId: string): string {
+    const key = sessionKey(hostId, claudeSessionId);
+    const cwd = this.state.externals[key]?.cwd;
+    return (
+      this.state.meta[key]?.name ??
+      this.state.hub[hostId]?.history.find((h) => h.claudeSessionId === claudeSessionId)?.title ??
+      (cwd ? basename(cwd) : claudeSessionId.slice(0, 8))
+    );
   }
 
   /** A discarded card leaves; any other replaces what the app had. */

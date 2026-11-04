@@ -1,7 +1,7 @@
 import type { PendingPermission, SessionStatus } from "@flightdeck/protocol";
 import { type T, translator } from "../i18n/index.ts";
 import type { Notification } from "../platform/types.ts";
-import type { InboxAbout } from "./inbox.ts";
+import { describeRequest, type InboxAbout } from "./inbox.ts";
 
 /** A notification, with what it is about for the notification center. */
 export type AboutNotification = Notification & { about?: InboxAbout };
@@ -25,7 +25,7 @@ export function summaryNotifications(
   /** The `flightdeck://` link of a request, opened by a click on its notification (phase 8). */
   linkFor?: (requestId: string) => string,
   t: T = translator("pt-BR"),
-  _names?: { subject: string; host: string; group: string },
+  names?: { subject: string; host: string; group: string },
 ): AboutNotification[] {
   if (focused || !prev) return [];
   const known = new Set(prev.pendingPermissions.map((p) => p.requestId));
@@ -35,16 +35,30 @@ export function summaryNotifications(
       title: t("notify.waiting", { label }),
       body: t("notify.allow", { tool: p.toolName }),
       ...(linkFor ? { link: linkFor(p.requestId) } : {}),
+      ...(names
+        ? {
+            about: {
+              subject: names.subject,
+              host: names.host,
+              ask: describeRequest(p.toolName, p.input, t),
+              group: names.group,
+            },
+          }
+        : {}),
     }));
   if (IN_TURN.has(prev.status) && next.status === "idle") {
-    notifications.push({ title: t("notify.turnDone", { label }), body: t("notify.turnDoneBody") });
+    notifications.push({
+      title: t("notify.turnDone", { label }),
+      body: t("notify.turnDoneBody"),
+      ...(names ? { about: { subject: names.subject, host: names.host } } : {}),
+    });
   }
   return notifications;
 }
 
 /** The notification of a terminal session's permission request, with what the panel needs to name it. */
 export function externalRequestNotification(
-  _args: {
+  args: {
     hostId: string;
     hostName: string;
     subject: string;
@@ -53,7 +67,17 @@ export function externalRequestNotification(
     input: Record<string, unknown> | undefined;
     link: string;
   },
-  _t: T,
+  t: T,
 ): AboutNotification {
-  return { title: "", body: "" };
+  return {
+    title: t("notify.externalTitle"),
+    body: `${args.hostName} · ${args.toolName}`,
+    link: args.link,
+    about: {
+      subject: args.subject,
+      host: args.hostName,
+      ask: describeRequest(args.toolName, args.input, t),
+      group: `${args.hostId}/${args.claudeSessionId}`,
+    },
+  };
 }
