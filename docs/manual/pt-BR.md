@@ -671,6 +671,10 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
 Cada projeto (um repositório git do host) tem um board com cinco colunas: Backlog, Em andamento,
 Esperando você, Em revisão e Concluído. Um card vira uma branch `fd/<slug>`, uma worktree e uma
 sessão; o card anda sozinho conforme a sessão e o PR, e também pode ser arrastado à mão.
+Cada coluna tem a sua cor de fundo e uma linha fina no topo (Backlog neutro, Em andamento âmbar,
+Esperando você laranja, Em revisão verde, Concluído apagado), o ícone do status, o número de cards
+numa pílula e um **+** que põe um card direto nessa coluna. Uma coluna vazia mostra uma caixa
+tracejada e discreta que diz "Vazio" e também cria um card quando você a aperta.
 
 ### Escolher uma pasta
 

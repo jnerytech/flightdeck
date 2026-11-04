@@ -2853,6 +2853,8 @@ export const ptBR = {
     waitingQuotaUntil: "aguardando cota até {time}",
     waitingQuota: "aguardando cota",
     addCard: "Adicionar card",
+    addCardTo: "Adicionar card em {column}",
+    empty: "Vazio",
     boardOf: "Board de {project}",
     filter: "Filtrar cards",
     titleLabel: "Título do card",

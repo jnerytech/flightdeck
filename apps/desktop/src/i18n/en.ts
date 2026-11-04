@@ -2851,6 +2851,8 @@ export const en: Dictionary = {
     waitingQuotaUntil: "waiting for the quota until {time}",
     waitingQuota: "waiting for the quota",
     addCard: "Add card",
+    addCardTo: "Add card to {column}",
+    empty: "Empty",
     boardOf: "Board of {project}",
     filter: "Filter cards",
     titleLabel: "Card title",

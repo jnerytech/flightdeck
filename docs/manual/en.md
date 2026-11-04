@@ -685,6 +685,10 @@ live; the list is the project's, so a session of another project never shows her
 Each project (a git repository on the host) has a board with five columns: Backlog, In progress,
 Needs you, In review and Done. A card becomes a branch `fd/<slug>`, a worktree and a session; the
 card moves by itself according to the session and the PR, and it can also be dragged by hand.
+Each column has its own tint and a thin line on top (Backlog neutral, In progress amber, Needs you
+orange, In review green, Done muted), its status icon, the number of cards as a pill and a **+**
+that adds a card straight into that column. An empty column shows a quiet dashed box that says
+"Empty" and also adds a card when pressed.
 
 ### Choosing a folder
 
