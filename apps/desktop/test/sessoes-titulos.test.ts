@@ -38,7 +38,7 @@ describe("sessoes-titulos: the order a title is chosen in", () => {
   const base = { name: null, title: null, persona: null, request: null, cwd: "/work/api" };
   const persona = { id: "qa", name: "QA / testes", icon: null };
 
-  test("name, then the summary title, then persona + task, then the first prompt, then the folder", () => {
+  test("name, then the host\u2019s title (summary or first prompt), then persona + task, then the folder", () => {
     expect(
       rowTitle({ ...base, name: "Meu nome", title: "Resumo", persona, request: "tarefa" }),
     ).toBe("Meu nome");
@@ -48,7 +48,8 @@ describe("sessoes-titulos: the order a title is chosen in", () => {
     expect(rowTitle({ ...base, persona, request: "Corrigir o login" })).toBe(
       "QA / testes · Corrigir o login",
     );
-    expect(rowTitle({ ...base, request: "Corrigir o login" })).toBe("Corrigir o login");
+    // The last prompt changes every turn: without a persona it does not name the session.
+    expect(rowTitle({ ...base, request: "Corrigir o login" })).toBe("api");
     expect(rowTitle(base)).toBe("api");
   });
 
