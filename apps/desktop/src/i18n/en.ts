@@ -3162,6 +3162,7 @@ export const en: Dictionary = {
     search: "Search projects",
     searchPlaceholder: "Name, host, branch or folder",
     sortBy: "Sort by",
+    clearHost: "Clear host filter: {host}",
     sorts: {
       activity: "Last activity",
       name: "Name",
@@ -3392,6 +3393,19 @@ export const en: Dictionary = {
     probeRefused: "token refused: run flightdeckd pair on the host and paste the new link",
     probeUnreachable:
       "could not connect: check that the daemon is running and that the address matches. On the host, run flightdeckd doctor",
+  },
+  hostHome: {
+    tabs: "Host sections",
+    overview: "Overview",
+    usage: "Usage",
+    settings: "Settings",
+    sessionsTitle: "Sessions of {host}",
+    projectsTitle: "Projects of {host}",
+    seeAllSessions: "See all sessions",
+    seeAllProjects: "See all projects",
+    noSessions: "No sessions on this host yet.",
+    noProjects: "No projects on this host yet.",
+    newSession: "New session",
   },
   hostOffline: {
     label: "Connection status",

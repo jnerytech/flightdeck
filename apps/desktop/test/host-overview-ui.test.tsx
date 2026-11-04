@@ -104,9 +104,7 @@ describe("host-overview-ui: a host page leads with its sessions and projects", (
     // The one waiting for permission comes before the running one; beta's session is not here.
     expect(titles("Sessions of alfa")).toEqual(["web", "api"]);
     expect(titles("Projects of alfa").sort()).toEqual(["api", "web"]);
-    const all = [...document.querySelectorAll("[role='region']")].map((r) =>
-      r.getAttribute("aria-label"),
-    );
+    const all = screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"));
     expect(all.indexOf("Sessions of alfa")).toBeLessThan(all.indexOf("Projects of alfa"));
     expect(document.body.textContent).not.toContain("docs");
   });

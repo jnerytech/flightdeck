@@ -5,12 +5,11 @@ import { AssignMenu } from "@/components/clients/assign-menu";
 import { ClientChip } from "@/components/clients/client-chip";
 import { HostsBanner } from "@/components/hosts/hosts-banner";
 import { CardGrid } from "@/components/hub/card-grid";
-import { SessionCard } from "@/components/hub/session-card";
+import { SessionCard, STATE_TONES } from "@/components/hub/session-card";
 import { ViewToggle } from "@/components/hub/view-toggle";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
-import type { StateTone } from "@/components/status/status-dot";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,13 +47,6 @@ import { hasFeature } from "../lib/version.ts";
 /** How often the hub asks the hosts about their background sessions. */
 const BG_REFRESH_MS = 10_000;
 
-const TONES: Record<HubState, StateTone> = {
-  running: "running",
-  needs_you: "needs-you",
-  idle: "idle",
-  ended: "ended",
-};
-
 /** Native selects: the filters stay light, and keyboard and screen readers work as they are. */
 
 /**
@@ -71,6 +63,8 @@ export function SessionsHub(props: {
   density: Density;
   /** Only this project's sessions, with a chip that clears it (from the project page). */
   project?: { hostId: string; projectKey: string; name: string } | undefined;
+  /** Only this host's sessions (its name), set by the route: it applies the host filter once. */
+  host?: string | undefined;
 }) {
   const { store, state } = props;
   const [filter, setFilter] = useState<HubFilter>(() => store.hubFilter());
@@ -83,6 +77,15 @@ export function SessionsHub(props: {
   useEffect(() => {
     if (props.project) setOnly(props.project);
   }, [askedKey]);
+  // A host asked for by the route ("See all" on its page) becomes the hub's host filter.
+  const askedHost = props.host;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a different host asked for by the route applies
+  useEffect(() => {
+    if (askedHost === undefined) return;
+    const next = { ...store.hubFilter(), host: askedHost };
+    setFilter(next);
+    store.saveHubFilter(next);
+  }, [askedHost]);
   const [renaming, setRenaming] = useState<HubRow | null>(null);
   const [name, setName] = useState("");
   // Reload when hosts come online (and say what they offer) or sessions come and go. A host that
@@ -453,7 +456,7 @@ export function SessionsHub(props: {
                       project={group.name}
                       host={row.hostName}
                       stateLabel={t(`hub.stateDots.${row.state}` as Key)}
-                      tone={TONES[row.state]}
+                      tone={STATE_TONES[row.state]}
                       line={sessionLineText(row.summary, store.now(), t)}
                       {...cardCost(row)}
                       persona={row.persona?.name ?? null}
@@ -491,7 +494,7 @@ export function SessionsHub(props: {
                         )}
                       >
                         <StatusDot
-                          tone={TONES[row.state]}
+                          tone={STATE_TONES[row.state]}
                           label={t(`hub.stateDots.${row.state}` as Key)}
                         />
                         <Tooltip>

@@ -3164,6 +3164,7 @@ export const ptBR = {
     search: "Buscar projetos",
     searchPlaceholder: "Nome, host, branch ou pasta",
     sortBy: "Ordenar por",
+    clearHost: "Limpar o filtro de host: {host}",
     sorts: {
       activity: "Última atividade",
       name: "Nome",
@@ -3394,6 +3395,19 @@ export const ptBR = {
     probeRefused: "token recusado: rode flightdeckd pair no host e cole o link novo",
     probeUnreachable:
       "não foi possível conectar: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor",
+  },
+  hostHome: {
+    tabs: "Seções do host",
+    overview: "Visão geral",
+    usage: "Consumo",
+    settings: "Configurações",
+    sessionsTitle: "Sessões de {host}",
+    projectsTitle: "Projetos de {host}",
+    seeAllSessions: "Ver todas as sessões",
+    seeAllProjects: "Ver todos os projetos",
+    noSessions: "Nenhuma sessão neste host ainda.",
+    noProjects: "Nenhum projeto neste host ainda.",
+    newSession: "Nova sessão",
   },
   hostOffline: {
     label: "Estado da conexão",

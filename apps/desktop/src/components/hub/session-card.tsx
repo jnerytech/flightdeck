@@ -1,6 +1,15 @@
 import type { ReactNode } from "react";
 import { type StateTone, StatusDot } from "@/components/status/status-dot";
 import { cn } from "@/lib/utils";
+import type { HubState } from "../../lib/hub.ts";
+
+/** The tone of the dot of each state of a session, in every list that shows them. */
+export const STATE_TONES: Record<HubState, StateTone> = {
+  running: "running",
+  needs_you: "needs-you",
+  idle: "idle",
+  ended: "ended",
+};
 
 /**
  * One session as a card: title (it opens the session), project, host, status, the last line, the

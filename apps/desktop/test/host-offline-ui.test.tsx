@@ -77,7 +77,15 @@ describe("host-offline-ui", () => {
     });
     expect(info.textContent).toContain("Host desconectado");
     expect(text()).not.toContain("informações indisponíveis");
-    const hooks = screen.queryByRole("region", { name: "Hooks do Claude Code" });
+    await act(async () => {
+      fireEvent.mouseDown(screen.getByRole("tab", { name: "Configurações" }));
+      fireEvent.click(screen.getByRole("tab", { name: "Configurações" }));
+    });
+    const hooks = await waitFor(() => {
+      const found = screen.queryByRole("region", { name: "Hooks do Claude Code" });
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
     expect(hooks?.textContent).toContain("Host desconectado");
     expect(text()).not.toContain("consultando…");
   });

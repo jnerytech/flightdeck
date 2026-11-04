@@ -1,9 +1,10 @@
-import { FolderGit2 } from "lucide-react";
+import { FolderGit2, X } from "lucide-react";
 import { useState } from "react";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { ProjectCardTile } from "@/components/projects/project-card-tile";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useProjectCards } from "@/hooks/use-project-cards";
 import type { AppState, AppStore } from "../lib/app-store.ts";
@@ -31,7 +32,9 @@ export function ProjectsOverview(props: {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<ProjectSort>("activity");
   const cards = useProjectCards(store, state);
-  const shown = sortProjectCards(filterProjectCards(cards, query), sort);
+  const hostName = props.host ? state.hosts.find((h) => h.id === props.host)?.name : undefined;
+  const scoped = props.host ? cards.filter((card) => card.hostId === props.host) : cards;
+  const shown = sortProjectCards(filterProjectCards(scoped, query), sort);
 
   return (
     <Page
@@ -47,6 +50,17 @@ export function ProjectsOverview(props: {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
+          {props.host && (
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label={t("projectsOverview.clearHost", { host: hostName ?? props.host })}
+              onClick={props.onClearHost}
+            >
+              {hostName ?? props.host}
+              <X aria-hidden="true" />
+            </Button>
+          )}
           <NativeSelect
             inline
             aria-label={t("projectsOverview.sortBy")}
@@ -62,8 +76,8 @@ export function ProjectsOverview(props: {
         </div>
       }
     >
-      {cards.length === 0 && <EmptyState icon={FolderGit2} title={t("states.emptyProjects")} />}
-      {cards.length > 0 && shown.length === 0 && (
+      {scoped.length === 0 && <EmptyState icon={FolderGit2} title={t("states.emptyProjects")} />}
+      {scoped.length > 0 && shown.length === 0 && (
         <EmptyState title={t("projectsOverview.noMatch")} />
       )}
       <ul aria-label={t("projectsOverview.title")} className="card-grid">

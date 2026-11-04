@@ -8,7 +8,12 @@ export type Route =
   /** The selected session, the new-session form of the selected host, or the hub. */
   | { name: "home" }
   /** `project`: the hub shows only the sessions of that project, with a chip to clear it. */
-  | { name: "hub"; project?: { hostId: string; projectKey: string; name: string } }
+  | {
+      name: "hub";
+      project?: { hostId: string; projectKey: string; name: string };
+      /** Only the sessions of this host (its name): "See all" from the host page. */
+      host?: string;
+    }
   /** What an area with no tab shows: where to begin. Never kept as a tab. */
   | { name: "start" }
   /** The requests waiting for the user (phase 10). */
