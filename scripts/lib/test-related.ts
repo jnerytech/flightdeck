@@ -68,6 +68,8 @@ export interface PlanDeps {
   /** Runs git with the given arguments; `null` when git fails. */
   git: (args: string[]) => string | null;
   readFile: (path: string) => string;
+  /** Collect coverage of the run into this folder, and name the changed files it must cover. */
+  coverageDir?: string;
 }
 
 export interface Plan {
@@ -75,6 +77,8 @@ export interface Plan {
   output: string;
   /** The command to run, or `null` when there is nothing to run. */
   command: string[] | null;
+  /** The changed source files the run must cover at 100%; only when coverage was asked for. */
+  targets?: string[];
 }
 
 export function planRelated({ base, platform, git, readFile }: PlanDeps): Plan {
