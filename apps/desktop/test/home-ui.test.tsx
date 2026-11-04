@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { Budget, CostsSummary, UsageSummary } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { daemon as makeDaemon, memoryPlatform, waitFor as pollFor, TOKEN } from "./fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
@@ -9,6 +9,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { emptySummary } = await import("../src/lib/client-costs.ts");
 const { HomePage } = await import("../src/ui/HomePage.tsx");
+const { App } = await import("../src/ui/App.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -168,5 +169,26 @@ describe("home-ui: four cards with the last seven days of every host", () => {
     render(view);
     expect(screen.getByText("No host is connected yet.")).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Open Spend" })).toBeNull();
+  });
+});
+
+describe("home-ui: Home is a screen of the app", () => {
+  test("opening the route shows Home in the page and its tab, and the bar marks it", async () => {
+    const cleanups: Array<() => unknown> = [];
+    const server = makeDaemon(cleanups, {}).listen();
+    const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+    });
+    await pollFor(() => store.getState().hosts[0]?.status === "online" || undefined, "online");
+    await act(async () => {
+      store.tabs.open({ name: "overview" });
+    });
+    expect(await screen.findByRole("heading", { name: "Home" })).not.toBeNull();
+    expect(screen.getByRole("tab", { name: /Home/ })).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Home" }).getAttribute("aria-current")).toBe("page");
+    for (const fn of cleanups.splice(0).reverse()) await fn();
   });
 });
