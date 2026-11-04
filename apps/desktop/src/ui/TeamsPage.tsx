@@ -6,7 +6,7 @@ import { Field, FieldRow, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { ModelSelect } from "@/components/personas/model-select";
-import { PersonaPicker } from "@/components/personas/persona-picker";
+import { PersonaPicker, useSuggestedPersona } from "@/components/personas/persona-picker";
 import { AddProject } from "@/components/projects/add-project";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,13 +35,19 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
   const projectId = projects.some((p) => p.id === picked) ? picked : (projects[0]?.id ?? "");
   const [persona, setPersona] = useState("");
   const [model, setModel] = useState("");
-  /** One row per worker: the row's persona and model ("" is the default). */
-  const [rows, setRows] = useState<Array<{ persona: string; model: string }>>([
-    { persona: "", model: "" },
-    { persona: "", model: "" },
+  /**
+   * One row per worker: the row's persona and model ("" is the default). A persona nobody picked
+   * is `null` and shows the Developer when the host has it.
+   */
+  type Row = { persona: string | null; model: string };
+  const [rows, setRows] = useState<Row[]>([
+    { persona: null, model: "" },
+    { persona: null, model: "" },
   ]);
-  const setRow = (index: number, change: Partial<{ persona: string; model: string }>) =>
+  const setRow = (index: number, change: Partial<Row>) =>
     setRows((all) => all.map((row, i) => (i === index ? { ...row, ...change } : row)));
+  const workerDefault = useSuggestedPersona(store, hostId, "dev", true);
+  const personaOf = (row: Row) => row.persona ?? workerDefault;
   const create = async () => {
     const team = await store.hostCommand(hostId, "teams.create", {
       projectId,
@@ -49,9 +55,7 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
       ...(name.trim() ? { name: name.trim() } : {}),
       workers: rows.length,
       ...(persona ? { coordinatorPersona: persona } : {}),
-      ...(rows.some((row) => row.persona)
-        ? { workerPersonas: rows.map((row) => row.persona) }
-        : {}),
+      ...(rows.some(personaOf) ? { workerPersonas: rows.map(personaOf) } : {}),
       ...(model ? { coordinatorModel: model } : {}),
       ...(rows.some((row) => row.model)
         ? { workerModels: rows.map((row) => row.model || null) }
@@ -114,7 +118,7 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
               store={store}
               hostId={hostId}
               label={t("teamsUi.workerPersona", { n: i + 1 })}
-              value={row.persona}
+              value={personaOf(row)}
               onChange={(value) => setRow(i, { persona: value })}
               idsOnly
             />
@@ -141,7 +145,7 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
           className="self-start"
           disabled={rows.length >= 8}
           aria-label={t("teamsUi.addRow")}
-          onClick={() => setRows((all) => [...all, { persona: "", model: "" }])}
+          onClick={() => setRows((all) => [...all, { persona: null, model: "" }])}
         >
           {t("teamsUi.addWorkerButton")}
         </Button>

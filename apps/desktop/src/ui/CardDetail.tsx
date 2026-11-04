@@ -5,7 +5,7 @@ import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
-import { PersonaPicker } from "@/components/personas/persona-picker";
+import { PersonaPicker, useSuggestedPersona } from "@/components/personas/persona-picker";
 import { CardHours } from "@/components/roi/card-hours";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -85,8 +85,10 @@ export const CardDetail = memo(function CardDetail(props: {
   /** Workflows the card can start with: trusted and valid on the project's base branch. */
   const [workflows, setWorkflows] = useState<WorkflowInfo[]>([]);
   const [workflow, setWorkflow] = useState("");
-  /** Phase 20: the persona the card starts in, a picker value. */
-  const [persona, setPersona] = useState("");
+  /** Phase 20: the persona the card starts in, a picker value; `null` until picked (the Developer shows). */
+  const [picked, setPersona] = useState<string | null>(null);
+  const suggested = useSuggestedPersona(store, hostId, "dev");
+  const persona = picked ?? suggested;
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const projectId = card?.projectId ?? "";
   const chosen = workflows.find((w) => w.name === workflow);

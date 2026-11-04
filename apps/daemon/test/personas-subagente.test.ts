@@ -543,7 +543,7 @@ describe("personas-subagente: o interruptor do projeto", () => {
     await addPersona("do-projeto");
     const names = async () =>
       Object.keys((await personas.subagents({ projectPath: repo })).agents).sort();
-    expect(await names()).toHaveLength(11);
+    expect(await names()).toHaveLength(12);
     expect(await names()).toContain("persona-do-projeto");
     board.updateProject(id, { personaSubagents: "project" });
     expect(board.getProject(id).personaSubagents).toBe("project");
@@ -557,7 +557,7 @@ describe("personas-subagente: o interruptor do projeto", () => {
     board.updateProject(id, { personaSubagents: "none" });
     expect(await personas.subagents({ projectPath: repo })).toEqual({ agents: {}, untrusted: [] });
     board.updateProject(id, { personaSubagents: "all" });
-    expect(await names()).toHaveLength(11);
+    expect(await names()).toHaveLength(12);
   });
 
   test("só all, project e none; a pasta que não é de projeto nenhum fica no padrão", async () => {
@@ -579,7 +579,7 @@ describe("personas-subagente: o interruptor do projeto", () => {
     const { id } = await project;
     await addPersona("do-projeto");
     await start({ cwd: repo, prompt: "oi" });
-    expect(Object.keys(runtime.starts[0]?.agents ?? {})).toHaveLength(11);
+    expect(Object.keys(runtime.starts[0]?.agents ?? {})).toHaveLength(12);
     board.updateProject(id, { personaSubagents: "none" });
     await start({ cwd: repo, prompt: "oi" });
     expect(runtime.starts[1]?.agents).toBeUndefined();

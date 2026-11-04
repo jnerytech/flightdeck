@@ -1738,8 +1738,11 @@ Uma **persona** é um papel de engenharia que o Claude assume numa sessão: nome
 modelo, esforço, ferramentas e modo de permissão sugeridos, e as instruções do papel. A tela
 **Personas** (barra lateral, para hosts que as guardam) lista pelo lugar onde ficam:
 
-- **Pacote**: dez vêm prontas, em português e inglês (arquiteto, revisor de segurança, QA, SRE,
-  performance, revisor de código, docs, frontend, DBA e o coordenador de time da Fase 21). Editar
+- **Pacote**: onze vêm prontas, em português e inglês (arquiteto, revisor de segurança, QA, SRE,
+  performance, revisor de código, docs, frontend, DBA, o coordenador de time da Fase 21 e o
+  **Desenvolvedor**, o que escreve o código: teste primeiro, mudanças pequenas e no escopo, segue o
+  CLAUDE.md e os ADRs do projeto, roda as checagens do projeto antes de dizer que terminou, nunca
+  faz push). Editar
   uma guarda a sua versão no host (**Pacote, editada**); **Restaurar original** traz a do pacote.
 - **Host**, **Projeto** (escolha um: as dele e as versionadas em `.flightdeck/personas/*.md`, que
   você **Confia** antes) e **Globais (deste app)**, guardadas no app.
@@ -1751,7 +1754,7 @@ modelo, esforço, ferramentas e modo de permissão sugeridos, e as instruções 
 Para usar:
 
 - **+ Nova sessão**, **Ctrl+K** (**Nova sessão como <persona>**), **Persona do card** ao lado de
-  **Iniciar** e cada variante de **Iniciar em arena** têm um campo **Persona**. A sessão abre nela:
+  **Iniciar** (sugere o Desenvolvedor, quando o host o tem; escolha **Nenhuma** para iniciar sem persona) e cada variante de **Iniciar em arena** têm um campo **Persona**. A sessão abre nela:
   as instruções vão depois do prompt do sistema, com o modelo, o esforço e as ferramentas sugeridos.
   Uma persona só tira: as ferramentas dela são parte das da sessão, e o modo dela só vale quando é
   menos permissivo.
@@ -1929,8 +1932,9 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
   própria worktree.
 - **Times** (barra lateral) cria um time: o projeto, o objetivo, um nome e, se quiser, a persona e o
   modelo da coordenadora. As executoras são linhas: cada uma tem a sua persona e o seu modelo, e
-  você acrescenta ou tira linhas (o número de linhas é o número de executoras, de 1 a 8). Sem
-  escolha, o modelo é o da persona. O modelo de cada membro aparece na linha dele.
+  você acrescenta ou tira linhas (o número de linhas é o número de executoras, de 1 a 8). A
+  persona de cada executora começa como o Desenvolvedor, quando o host o tem; escolha **Nenhuma**
+  para o padrão simples. Sem escolha, o modelo é o da persona. O modelo de cada membro aparece na linha dele.
 - **O ciclo da coordenadora:**
   1. quebrar o objetivo em tarefas, cada uma com o que significa "pronto";
   2. mandar uma tarefa para cada executora e pedir um aviso quando ela ficar ociosa;
