@@ -73,6 +73,14 @@ async function setup(names: string[]) {
 const tiles = () =>
   Array.from(document.querySelectorAll<HTMLElement>("[data-slot='session-tile']"));
 
+/**
+ * The session that needs you sorts first only once its request has reached the screen, so the
+ * first tile is the quiet one until then: a test that grabs `tiles()[0]` too early holds the wrong tile.
+ */
+async function needsYouFirst() {
+  await waitFor(() => tiles().length === 2 && tiles()[0]?.getAttribute("aria-label") === "pede");
+}
+
 describe("lado-a-lado-ui: the tiles of a project", () => {
   test("a section names them, and each session of the project is a tile with its status and last lines", async () => {
     await setup(["um", "dois", "tres"]);
@@ -112,8 +120,7 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
 
   test("the session that needs you comes first, shows its request, and Allow answers it", async () => {
     const { store, hostId, ids } = await setup(["pede", "quieta"]);
-    await waitFor(() => tiles().length === 2, "two tiles");
-    expect(tiles()[0]?.getAttribute("aria-label")).toBe("pede");
+    await needsYouFirst();
     const tile = tiles()[0] as HTMLElement;
     const ask = await waitFor(
       () => within(tile).queryByRole("group", { name: "Request" }),
@@ -132,7 +139,7 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
 
   test("Deny answers the request of that tile too, and the request goes away", async () => {
     const { store, hostId, ids } = await setup(["pede", "quieta"]);
-    await waitFor(() => tiles().length === 2, "two tiles");
+    await needsYouFirst();
     const tile = tiles()[0] as HTMLElement;
     await waitFor(() => within(tile).queryByRole("group", { name: "Request" }), "request");
     await act(async () => {
