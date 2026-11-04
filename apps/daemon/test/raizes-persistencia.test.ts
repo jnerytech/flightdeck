@@ -17,7 +17,7 @@ describe("raizes-persistencia: roots.add on a running daemon", () => {
     const file = join(dir, "config.json");
     writeFileSync(
       file,
-      JSON.stringify({ hostName: "h", port: 7421, token: TOKEN, dataDir: join(dir, "data") }),
+      JSON.stringify({ hostName: "h", port: 0, token: TOKEN, dataDir: join(dir, "data") }),
     );
     const daemon = await startDaemon(
       { command: "start", config: file, runtime: "fake" },

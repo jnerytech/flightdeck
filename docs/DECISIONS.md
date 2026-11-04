@@ -3487,3 +3487,16 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   backoff from the first delay and connects at once; a connection that is online or already trying is left alone. A wake-up
   within 2 s of the last one that acted is ignored, so focus spam cannot storm a host. The listeners are set in `init()` (it
   begins with `dispose()`), not in the constructor, which would be undone by it.
+
+## The rc/0361 gate: three leaks of the machine into the tests
+
+- **The focus ring** (`abas-foco`): the crumb fix moved the tab's ring to the strip with `has-[[role=tab]:focus-visible]` so the outline
+  holds the close button, and left the focused element with none. Both stay: the tab has its own ring (it works where `:has` is
+  missing) and the strip draws the outline around the tab and its ×.
+- **Telemetry variables** (`isolamento-telemetria`): a session that has Claude Code's telemetry on sets `CLAUDE_CODE_ENABLE_TELEMETRY`
+  and `OTEL_*`; `launch()` passes the environment on, so `otlp-ligar` compared what the test expected with what the session had.
+  The test preload now strips them next to the `GIT_*` variables, from `process.env` and from the default environment of a spawned child.
+- **Fixed ports** (`portas-fixas`): `raizes-persistencia` started a daemon on 7421, which the real daemon of the machine holds
+  (7420 to 7422). It asks for port 0, and a ratchet test now refuses a fixed 742x in a server started by a test (`startServer`,
+  `Bun.serve`, `.listen(`, or a config written for a `startDaemon` without a spread that lets the caller override it). Pure
+  functions and pairing links that only mention 742x are data, not servers.
