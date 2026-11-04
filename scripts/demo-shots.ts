@@ -334,6 +334,15 @@ function shots(ids: DemoIds): Shot[] {
         await page.waitForTimeout(600);
       },
     },
+    {
+      // Issue #123: Home, the four cards with their seven days.
+      name: "inicio-kpis",
+      route: { name: "overview" },
+      prepare: async (page) => {
+        await page.locator(".kpi-card").first().waitFor({ timeout: 8000 });
+        await page.waitForTimeout(600);
+      },
+    },
     { name: "custos", route: { name: "costs" } },
     // Phase 36: the ROI card of the web project, and the project and people tables of Costs.
     {
