@@ -67,7 +67,9 @@ async function setup() {
   });
   const cardId = created?.id ?? "";
   await store.hostCommand(hostId, "card.start", { cardId });
-  await waitFor(() => d.board.getCard(cardId).worktreePath);
+  // The start returns before the worktree exists: it adds one with about eight git calls, which
+  // took 1.1 to 1.7 s of this setup on the Windows runner and once more than 3 s.
+  await waitFor(() => d.board.getCard(cardId).worktreePath, "worktree", 30_000);
   return {
     ...d,
     store,
