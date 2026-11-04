@@ -131,11 +131,7 @@ export function FolderPicker(props: {
             <span key={step.path} className="flex items-center gap-1">
               <ChevronRight className="size-3" aria-hidden />
               {index === crumbs.length - 1 ? (
-                <span
-                  aria-current="location"
-                  title={step.name}
-                  className="max-w-48 truncate font-medium"
-                >
+                <span aria-current="location" title={step.name} className="crumb-name font-medium">
                   {step.name}
                 </span>
               ) : (
@@ -143,11 +139,11 @@ export function FolderPicker(props: {
                   type="button"
                   variant="ghost"
                   size="xs"
-                  className="max-w-48"
+                  className="crumb-name"
                   title={step.name}
                   onClick={() => void open(step.path)}
                 >
-                  <span className="truncate">{step.name}</span>
+                  {step.name}
                 </Button>
               )}
             </span>
