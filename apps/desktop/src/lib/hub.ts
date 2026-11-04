@@ -303,6 +303,17 @@ const matches = (row: HubRow, filter: HubFilter) =>
 /** Repository name of a group: last path segment of the remote or of the folder. */
 const groupName = (key: string) => basename(key.replace(/^host:[^:]*:/, ""));
 
+/** The order of a list of sessions: the ones that need you first, then pinned, standard names, latest activity. */
+export function hubRowOrder(a: HubRow, b: HubRow): number {
+  return (
+    Number(b.state === "needs_you") - Number(a.state === "needs_you") ||
+    Number(b.pinned) - Number(a.pinned) ||
+    Number(b.standardName != null) - Number(a.standardName != null) ||
+    (a.standardName ?? "").localeCompare(b.standardName ?? "", undefined, { numeric: true }) ||
+    b.lastActivity.localeCompare(a.lastActivity)
+  );
+}
+
 /**
  * Filtered rows by project; the ones that need you first, then pinned, then the standard names
  * in order (phase 21: only hosts with names give them), then latest activity; groups by latest
@@ -315,14 +326,8 @@ export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
     if (list) list.push(row);
     else byKey.set(row.projectKey, [row]);
   }
-  const order = (a: HubRow, b: HubRow) =>
-    Number(b.state === "needs_you") - Number(a.state === "needs_you") ||
-    Number(b.pinned) - Number(a.pinned) ||
-    Number(b.standardName != null) - Number(a.standardName != null) ||
-    (a.standardName ?? "").localeCompare(b.standardName ?? "", undefined, { numeric: true }) ||
-    b.lastActivity.localeCompare(a.lastActivity);
   return [...byKey.entries()]
-    .map(([key, list]) => ({ key, name: groupName(key), rows: [...list].sort(order) }))
+    .map(([key, list]) => ({ key, name: groupName(key), rows: [...list].sort(hubRowOrder) }))
     .sort((a, b) => (b.rows[0]?.lastActivity ?? "").localeCompare(a.rows[0]?.lastActivity ?? ""));
 }
 
