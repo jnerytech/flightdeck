@@ -64,10 +64,11 @@ describe("snippets-ui: a secret's snippet becomes an action", () => {
     });
     try {
       await settle(
+        // By value in JS: a Windows path in a CSS selector is full of escape sequences.
         () =>
-          (screen.queryByLabelText("Projeto") as HTMLSelectElement | null)?.querySelector(
-            `option[value="${h.repo}"]`,
-          ) != null,
+          [
+            ...((screen.queryByLabelText("Projeto") as HTMLSelectElement | null)?.options ?? []),
+          ].some((o) => o.value === h.repo),
       );
     } catch (error) {
       // A CI log is all there is of a run on another platform: say what the select held.
