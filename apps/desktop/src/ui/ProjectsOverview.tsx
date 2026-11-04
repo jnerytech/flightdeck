@@ -1,21 +1,19 @@
-import type { CostsSummary } from "@flightdeck/protocol";
 import { FolderGit2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
+import { ProjectCardTile } from "@/components/projects/project-card-tile";
 import { Input } from "@/components/ui/input";
+import { useProjectCards } from "@/hooks/use-project-cards";
 import type { AppState, AppStore } from "../lib/app-store.ts";
-import { addDays, localDay, usd } from "../lib/costs.ts";
-import { type HubRowState, hubRows } from "../lib/hub.ts";
+import type { HubRowState } from "../lib/hub.ts";
 import {
-  buildProjectCards,
   filterProjectCards,
   type ProjectCard,
   type ProjectSort,
   sortProjectCards,
 } from "../lib/project-cards.ts";
-import { hasFeature } from "../lib/version.ts";
 
 const SORTS: ProjectSort[] = ["activity", "name", "cost", "attention"];
 
@@ -29,44 +27,7 @@ export function ProjectsOverview(props: {
   const { t } = store.i18n;
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<ProjectSort>("activity");
-  const [costs, setCosts] = useState<Record<string, CostsSummary | undefined>>({});
-
-  // The projects and their cards come from the palette's load; the week's cost from each host.
-  const hostKey = state.hosts.map((h) => `${h.id}:${h.status}`).join(",");
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reload when the hosts' set or status changes
-  useEffect(() => {
-    void store.loadPalette();
-    const today = localDay(Date.now());
-    const filter = { from: addDays(today, -6), to: today };
-    for (const host of state.hosts) {
-      if (host.status !== "online" || !hasFeature(host.hostInfo?.features, "costs", false))
-        continue;
-      void store.hostCommand(host.id, "costs.summary", filter).then((summary) => {
-        if (summary) setCosts((all) => ({ ...all, [host.id]: summary }));
-      });
-    }
-  }, [store, hostKey]);
-
-  const cards = useMemo(
-    () =>
-      buildProjectCards({
-        hosts: state.hosts
-          .filter((host) => host.status === "online")
-          .map((host) => ({
-            id: host.id,
-            name: host.name,
-            projects: state.projects[host.id] ?? [],
-          })),
-        keyOf: (hostId, project) => store.projectKeyOf(hostId, project),
-        rows: hubRows(state),
-        cards: Object.entries(state.cards).map(([key, card]) => ({
-          hostId: state.hosts.find((h) => key.startsWith(`${h.id}/`))?.id ?? "",
-          card,
-        })),
-        costs,
-      }),
-    [state, store, costs],
-  );
+  const cards = useProjectCards(store, state);
   const shown = sortProjectCards(filterProjectCards(cards, query), sort);
 
   return (
@@ -104,37 +65,12 @@ export function ProjectsOverview(props: {
       )}
       <ul aria-label={t("projectsOverview.title")} className="card-grid">
         {shown.map((card) => (
-          <li key={`${card.hostId}/${card.projectId}`} data-project={card.name}>
-            <button
-              type="button"
-              aria-label={t("projectsOverview.open", { name: card.name, host: card.hostName })}
-              className="card-button rounded-lg border bg-card text-left hover:bg-accent/40 focus-visible:ring-2"
-              onClick={() => props.onOpen(card)}
-            >
-              <span className="row-spread">
-                <span className="truncate font-medium">{card.name}</span>
-                <span className="text-muted-foreground text-xs">{card.hostName}</span>
-              </span>
-              <span className="text-muted-foreground text-xs">{card.branch}</span>
-              <span className="facts-wrap text-sm">
-                <span>{t("projectsOverview.live", { n: card.liveSessions })}</span>
-                <span>{t("projectsOverview.inProgress", { n: card.inProgress })}</span>
-                <span className={card.needsYou > 0 ? "font-medium text-status-needs-you" : ""}>
-                  {t("projectsOverview.needsYou", { n: card.needsYou })}
-                </span>
-              </span>
-              <span className="row-spread text-muted-foreground text-xs">
-                <span title={card.lastActivity ? store.formatDateTime(card.lastActivity) : ""}>
-                  {card.lastActivity
-                    ? `${t("projectsOverview.lastActivity")}: ${store.formatWhen(card.lastActivity)}`
-                    : t("projectsOverview.noActivity")}
-                </span>
-                <span title={t("projectsOverview.costWeek")}>
-                  {card.costWeekUsd === null ? t("projectsOverview.noCost") : usd(card.costWeekUsd)}
-                </span>
-              </span>
-            </button>
-          </li>
+          <ProjectCardTile
+            key={`${card.hostId}/${card.projectId}`}
+            store={store}
+            card={card}
+            onOpen={() => props.onOpen(card)}
+          />
         ))}
       </ul>
     </Page>
