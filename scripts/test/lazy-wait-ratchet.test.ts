@@ -35,11 +35,29 @@ describe("lazy-wait-ratchet: a fixed wait followed by a one-shot query only goes
   test("a query in the next block or function is not right after the wait", () => {
     const helper = `const click = async () => {\n  await act(() => Bun.sleep(30));\n};\n\nconst find = () => screen.queryByRole("button");`;
     const nested = `test("a", async () => {\n  if (x) {\n    await Bun.sleep(5);\n  }\n  screen.queryByRole("a");\n});`;
-    expect(fixedWaitSites(helper)).toBe(0);
+    expect(fixedWaitSites(helper)).toBe(1);
     expect(fixedWaitSites(nested)).toBe(0);
     expect(
       fixedWaitSites(`if (x) {\n  await Bun.sleep(5);\n  const a = screen.queryByRole("a");\n}`),
     ).toBe(1);
+  });
+
+  test("a helper that ends in a fixed wait is a site: every caller then reads once after a guess", () => {
+    const arrow = `const click = async (name: string) => {\n  fireEvent.click(find(name));\n  await act(() => Bun.sleep(30));\n};\n`;
+    const declared = `async function fill(label: string) {\n  change(label);\n  await Bun.sleep(10);\n}\n`;
+    const inDescribe = `describe("a", () => {\n  const press = async () => {\n    go();\n    await act(() => Bun.sleep(20));\n  };\n});\n`;
+    expect(fixedWaitSites(arrow)).toBe(1);
+    expect(fixedWaitSites(declared)).toBe(1);
+    expect(fixedWaitSites(inDescribe)).toBe(1);
+  });
+
+  test("a fixed wait with work after it, or in the middle of a test, is not a helper tail", () => {
+    const work = `const click = async () => {\n  await act(() => Bun.sleep(30));\n  done();\n};\n`;
+    const inTest = `test("a", async () => {\n  go();\n  await act(() => Bun.sleep(30));\n  expect(x).toBe(1);\n});\n`;
+    const inIf = `const f = async () => {\n  if (x) {\n    await Bun.sleep(5);\n  }\n  done();\n};\n`;
+    expect(fixedWaitSites(work)).toBe(0);
+    expect(fixedWaitSites(inTest)).toBe(0);
+    expect(fixedWaitSites(inIf)).toBe(0);
   });
 
   test("it counts per file, skips the files that hold the shared waits and files with none", () => {
