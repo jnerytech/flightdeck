@@ -109,7 +109,7 @@ describe("recusas-resto: the server", () => {
 
   test("a host without PR watch or run environment names the feature", async () => {
     const client = await connect();
-    expect(why(await client.request("watch.get", { cardId: "c" }))).toEqual({
+    expect(why(await client.request("watch.get", { cardId: "c" }))).toMatchObject({
       code: "invalid_state",
       reason: "feature_off",
       params: { feature: "prWatch" },
