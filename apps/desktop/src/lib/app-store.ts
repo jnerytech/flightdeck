@@ -815,6 +815,11 @@ export class AppStore {
     return (this.options.day ?? localDay)(this.now());
   }
 
+  /** Phase 36: the day the hosts' ROI figures end on; stub, still the local day. */
+  roiToday(): string {
+    return this.today();
+  }
+
   /** HH:MM of an instant, in this machine's time zone unless injected. */
   formatTime(iso: string): string {
     if (this.options.formatTime) return this.options.formatTime(iso);
