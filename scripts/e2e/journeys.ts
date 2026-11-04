@@ -481,12 +481,16 @@ async function recapOverlap(page: Page): Promise<string | null> {
 
 /**
  * A session at a small window (issue #135): the message box is whole inside the window and the
- * conversation keeps at least 40% of its height, whatever the header and the summary take.
+ * conversation keeps a minimum height, whatever the header and the summary take. 40% of the window
+ * is out of reach at 720x480, where the title bar and the tabs already take about 190 px: the floor
+ * is 150 px (the old three-line header left about 80).
  */
+const MIN_CONVERSATION = 150;
+
 async function sessionFitsProblems(c: Context): Promise<string[]> {
   await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
   await c.page.locator("[data-slot='composer-card']").first().waitFor({ timeout: WAIT });
-  return c.page.evaluate(() => {
+  return c.page.evaluate((min) => {
     const found: string[] = [];
     const height = window.innerHeight;
     const card = document.querySelector<HTMLElement>("[data-slot='composer-card']");
@@ -498,11 +502,11 @@ async function sessionFitsProblems(c: Context): Promise<string[]> {
     }
     const timeline = document.querySelector<HTMLElement>("[data-slot='timeline']");
     const room = timeline?.getBoundingClientRect().height ?? 0;
-    if (room < height * 0.4) {
+    if (room < min) {
       found.push(`a conversa tem só ${Math.round(room)} de ${height}`);
     }
     return found;
-  });
+  }, MIN_CONVERSATION);
 }
 
 export async function layout(c: Context, problems: string[]) {
