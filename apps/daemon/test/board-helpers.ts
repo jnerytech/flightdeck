@@ -94,10 +94,54 @@ export function gitRepo(name = "repo") {
   return { root, repo };
 }
 
+let seedWithOrigin: { repo: string; remote: string } | undefined;
+
+/** The seed copied into a repository whose origin is a bare `remote.git` with main pushed. */
+function seedOrigin(): { repo: string; remote: string } {
+  if (seedWithOrigin) return seedWithOrigin;
+  const root = tempDir("fd-board-seed-");
+  const repo = join(root, "repo");
+  const remote = join(root, "remote.git");
+  cpSync(seedRepo(), repo, { recursive: true, preserveTimestamps: true });
+  git(root, "init", "-q", "--bare", "-b", "main", "remote.git");
+  git(repo, "remote", "add", "origin", remote);
+  git(repo, "push", "-q", "origin", "main");
+  seedWithOrigin = { repo, remote };
+  return seedWithOrigin;
+}
+
+/**
+ * Allowed root with a repository whose `origin` is a bare `remote.git` next to it, main pushed (and
+ * `origin/main` known): copies of a seed pair, then one git call to point origin at this copy.
+ */
+export function gitRepoWithOrigin(name = "repo") {
+  const seeds = seedOrigin();
+  const root = tempDir("fd-board-");
+  const repo = join(root, name);
+  const remote = join(root, "remote.git");
+  cpSync(seeds.repo, repo, { recursive: true, preserveTimestamps: true });
+  cpSync(seeds.remote, remote, { recursive: true, preserveTimestamps: true });
+  git(repo, "remote", "set-url", "origin", remote);
+  return { root, repo, remote };
+}
+
 /** Board over an in-memory store, a FakeRuntime and a fresh repo inside the allowed root. */
 /** `delayMs` slows the FakeRuntime down, for tests that act while a turn is running. */
 export function newBoard(overrides: Partial<BoardOptions> = {}, delayMs = 1) {
-  const { root, repo } = gitRepo();
+  return boardOver(gitRepo(), overrides, delayMs);
+}
+
+/** `newBoard` whose repository already has its origin (`remote`), as `gitRepoWithOrigin` makes it. */
+export function newBoardWithOrigin(overrides: Partial<BoardOptions> = {}, delayMs = 1) {
+  const { remote, ...where } = gitRepoWithOrigin();
+  return { ...boardOver(where, overrides, delayMs), remote };
+}
+
+function boardOver(
+  { root, repo }: { root: string; repo: string },
+  overrides: Partial<BoardOptions>,
+  delayMs: number,
+) {
   const store = new EventStore(":memory:");
   const runtime = new FakeRuntime({ delayMs });
   const manager = new SessionManager({
