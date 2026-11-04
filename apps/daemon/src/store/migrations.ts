@@ -839,4 +839,9 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE cards ADD COLUMN estimate_hours REAL;
   ALTER TABLE projects ADD COLUMN default_hours REAL;
   `,
+  // Phase 36: the optional value signals a project switched on; both off by default.
+  `
+  ALTER TABLE projects ADD COLUMN roi_commits INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE projects ADD COLUMN roi_issues INTEGER NOT NULL DEFAULT 0;
+  `,
 ];

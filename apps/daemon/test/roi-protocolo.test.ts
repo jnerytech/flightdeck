@@ -61,6 +61,8 @@ describe("roi-protocolo: the commands and the new fields", () => {
     expect(parse("project.update", { projectId: "p", defaultHours: 2 })).toBe(true);
     expect(parse("project.update", { projectId: "p", defaultHours: null })).toBe(true);
     expect(parse("project.update", { projectId: "p", defaultHours: -1 })).toBe(false);
+    expect(parse("project.update", { projectId: "p", roiSignals: { commits: true } })).toBe(true);
+    expect(parse("project.update", { projectId: "p", roiSignals: { tests: true } })).toBe(false);
   });
 
   test("roi.summary answers over the socket, and host.info announces roi", async () => {

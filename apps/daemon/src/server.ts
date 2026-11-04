@@ -1681,7 +1681,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await scanRepos(opts.allowedRoots, depth ? { depth } : {}));
       }
       case "roi.summary":
-        return ok(command.type, roi().summary(roiPeriod(command.payload)));
+        return ok(command.type, await roi().summaryWithSignals(roiPeriod(command.payload)));
       case "boardsync.boards":
         return ok(command.type, { boards: await boardsync().boards() });
       case "boardsync.link":

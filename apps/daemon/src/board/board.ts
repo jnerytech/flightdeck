@@ -132,6 +132,10 @@ interface ProjectRow {
   roi_issues: number;
 }
 
+/** The fields of a patch that were given, so a missing one keeps its value. */
+const definedOnly = <T extends object>(patch: T | undefined): Partial<T> =>
+  Object.fromEntries(Object.entries(patch ?? {}).filter(([, v]) => v !== undefined)) as Partial<T>;
+
 function toProject(row: ProjectRow): Project {
   return {
     id: row.id,
@@ -148,8 +152,7 @@ function toProject(row: ProjectRow): Project {
     personaByColumn: row.persona_by_column ? JSON.parse(row.persona_by_column) : {},
     personaSubagents: row.persona_subagents ?? "all",
     defaultHours: row.default_hours,
-    // Stub (roi-sinais-config): the columns are not read yet.
-    roiSignals: { commits: false, issues: false },
+    roiSignals: { commits: row.roi_commits === 1, issues: row.roi_issues === 1 },
   };
 }
 
@@ -451,12 +454,13 @@ export class Board {
         ? { personaSubagents: subagentsMode(patch.personaSubagents) }
         : {}),
       ...(patch.defaultHours !== undefined ? { defaultHours: patch.defaultHours } : {}),
+      roiSignals: { ...current.roiSignals, ...definedOnly(patch.roiSignals) },
     };
     this.db
       .query(
         `UPDATE projects SET name = ?, base_branch = ?, pr_provider = ?, setup_script = ?,
          prompt_template = ?, auto_approve = ?, issues = ?, persona_by_column = ?,
-         persona_subagents = ?, default_hours = ? WHERE id = ?`,
+         persona_subagents = ?, default_hours = ?, roi_commits = ?, roi_issues = ? WHERE id = ?`,
       )
       .run(
         next.name,
@@ -469,6 +473,8 @@ export class Board {
         JSON.stringify(next.personaByColumn),
         next.personaSubagents,
         next.defaultHours,
+        next.roiSignals.commits ? 1 : 0,
+        next.roiSignals.issues ? 1 : 0,
         id,
       );
     return next;

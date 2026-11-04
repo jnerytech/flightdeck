@@ -4,7 +4,7 @@
  * rework, the estimated hours and the approvals' waits. Facts only: no rate, price or value.
  */
 import type { Database } from "bun:sqlite";
-import type { RoiPeriod, RoiSummaryResult, RoiWeek } from "@flightdeck/protocol";
+import type { RoiPeriod, RoiSignalValues, RoiSummaryResult, RoiWeek } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import type { RoiSignals } from "./signals.ts";
 
@@ -85,7 +85,41 @@ export class RoiSummarizer {
 
   /** `summary` plus, for the projects that switched them on, the optional signals of the period. */
   async summaryWithSignals(filter: RoiFilter): Promise<RoiSummaryResult> {
-    return this.summary(filter);
+    const result = this.summary(filter);
+    const { signals } = this.opts;
+    if (!signals) return result;
+    const folders = this.opts.db
+      .query<{ path: string; roi_commits: number; roi_issues: number }, []>(
+        "SELECT path, roi_commits, roi_issues FROM projects WHERE roi_commits = 1 OR roi_issues = 1",
+      )
+      .all();
+    const projects = await Promise.all(
+      result.projects.map(async (project) => {
+        const mine = folders.filter((f) => this.keyOf(f.path) === project.projectKey);
+        if (mine.length === 0) return project;
+        const values: RoiSignalValues = {};
+        const commits = mine.filter((f) => f.roi_commits === 1);
+        if (commits.length > 0) {
+          const counts = await Promise.all(
+            commits.map((f) => signals.agentCommits(f.path, filter.from, filter.to)),
+          );
+          values.agentCommits = counts.reduce((sum, n) => sum + n, 0);
+        }
+        const issues = mine.filter((f) => f.roi_issues === 1);
+        if (issues.length > 0) {
+          const answers = await Promise.all(
+            issues.map((f) => signals.issuesClosed(f.path, filter.from, filter.to)),
+          );
+          const failed = answers.find((a) => "error" in a);
+          if (failed && "error" in failed) values.issuesError = failed.error;
+          else {
+            values.issuesClosed = answers.reduce((sum, a) => sum + ("count" in a ? a.count : 0), 0);
+          }
+        }
+        return { ...project, signals: values };
+      }),
+    );
+    return { ...result, projects };
   }
 
   summary(filter: RoiFilter): RoiSummaryResult {

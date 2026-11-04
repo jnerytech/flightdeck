@@ -110,7 +110,9 @@ describe("roi-registro: the done-log", () => {
 
   test("the migration gives the cards already in Concluído an approximate row from their last update", () => {
     const db = new Database(":memory:");
-    for (const sql of MIGRATIONS.slice(0, -2)) db.exec(sql);
+    // Found by content, not by position: later migrations come after it.
+    const doneLog = MIGRATIONS.findIndex((sql) => sql.includes("CREATE TABLE card_done"));
+    for (const sql of MIGRATIONS.slice(0, doneLog)) db.exec(sql);
     db.exec(
       `INSERT INTO projects (id, path, name, base_branch, pr_provider, prompt_template, auto_approve)
        VALUES ('p1', '/x', 'x', 'main', 'none', '', '{}')`,
@@ -120,7 +122,7 @@ describe("roi-registro: the done-log", () => {
        VALUES ('c1', 'p1', 'old', '', 'done', 1, '2026-09-01T10:00:00Z', '2026-09-20T10:00:00Z'),
               ('c2', 'p1', 'open', '', 'review', 2, '2026-09-02T10:00:00Z', '2026-09-21T10:00:00Z')`,
     );
-    db.exec(MIGRATIONS.at(-2) as string);
+    db.exec(MIGRATIONS[doneLog] as string);
     expect(readDone(db, "c1")).toEqual({
       cardId: "c1",
       projectId: "p1",
