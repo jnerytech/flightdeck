@@ -13,5 +13,10 @@
     "hash": "e28af243885bd5d401b2fd1ae489f6c7ae9a1560",
     "scope": "recusas-recurso",
     "reason": "Fix made while assembling rc/0330: the account feature was missing from DAEMON_FEATURES; the recusas-recurso test already existed and was red after the merge."
+  },
+  {
+    "hash": "25bf03fd9d305b628aac3d3fc2d4828cd4aeb58a",
+    "scope": "print-theme",
+    "reason": "fix(print-theme) removed the doubled :root that an rc/0330 merge left on fase-33. Its red test(print-theme) 3de6e5be landed earlier, in main through fix-dark-prints, outside the audited range, and the css-theme guard pins the fixed state."
   }
 ]

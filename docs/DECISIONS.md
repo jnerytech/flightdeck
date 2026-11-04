@@ -3400,6 +3400,10 @@ violation is reported as stale and fails the audit, so the list cannot grow sile
 range (a later release audits from a newer tag) is ignored and shown as an `ignored` note; and the output prints every
 waived commit. Nothing else in the audit is relaxed. New entries need the maintainer's agreement.
 
+Added for rc/0360, with the maintainer's agreement: `25bf03fd` (print-theme), the removal of the doubled `:root` that an
+rc/0330 merge left on fase-33. Its red `test(print-theme)` commit `3de6e5be` is in `main` (through fix-dark-prints), outside
+the range the audit reads, and the css-theme guard pins the fixed state.
+
 ## Phase 38: board sync with external boards (GitHub Projects first)
 
 - **GitHub goes through the host's `gh api graphql`.** The daemon holds no token. The provider's `scopes()` reads
