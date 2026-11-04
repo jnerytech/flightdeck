@@ -349,8 +349,9 @@ flightdeckd doctor                         # what is missing, with the command t
    service will run. It then puts that folder on your `PATH`. On Windows it is added to your **user**
    `Path` (registry `HKCU\Environment`, without duplicates, keeping the other entries) and
    open programs are told, so only terminals opened afterwards see it. On Linux and macOS it
-   prints the `export PATH="$HOME/.flightdeck/bin:$PATH"` line to add to your shell profile and
-   edits no file. `service uninstall` takes the entry off the Windows `Path` again;
+   appends the `export PATH="$HOME/.flightdeck/bin:$PATH"` line to `~/.profile` once (a second
+   `setup` adds nothing, and the rest of the file is kept; if it cannot write the file it prints the
+   line for you to add). `service uninstall` takes the entry off the Windows `Path` again;
 2. asks for the project folders, one per answer, and refuses a folder that does not exist: they
    become `allowedRoots` in the config;
 3. when Tailscale is up, asks whether you use Flightdeck from other devices (the default is
@@ -392,6 +393,9 @@ flightdeckd service uninstall           # stops the daemon and removes the servi
   (`Restart=always`, `RestartSec=5`) and runs `systemctl --user enable --now flightdeckd`.
   Without *linger*, the service only starts after your login; `install` prints the command
   `sudo loginctl enable-linger $USER` for you to run (it never runs anything with sudo).
+  `setup` ends with a **WARNING** block with that command when linger is off (on WSL it also says
+  to turn on `systemd=true` in `/etc/wsl.conf`), and `flightdeckd doctor`, and the host's Doctor in
+  the app, list "linger" as a failure until it is on.
 - **Windows:** creates the scheduled task `Flightdeck\flightdeckd` at the user's logon, without
   elevated privileges and without a visible window (it imports an XML with
   `schtasks /Create /XML`; the console is hidden by `conhost.exe --headless`). The task only has a
@@ -657,8 +661,11 @@ settings, where the folder, base branch, setup and personas are edited).
 
 ### Sessions side by side
 
-When the project has sessions that Flightdeck started, the page shows them as **tiles**: 2, 3, 4 or
-6 at a time (pick the number in **Tiles on screen**; it is kept). The sessions that need you come
+When the project has sessions that Flightdeck started, the page shows them as **tiles**. The
+**Layout** control above them is a row of icons that draw the grid: 2 side by side, 3 columns, a
+2×2 grid, a 2×3 grid, and **Auto** (the default), which shows every live session. Hover an icon for
+its name; the choice is kept. When the layout holds fewer tiles than there are live sessions, the
+page says how many are left out ("+2 not shown"). The sessions that need you come
 first, then the running ones, then the idle ones. Each tile has the session's name (a button that
 opens it), its status, its **last lines**, the **request** it is waiting on (with **Allow** and
 **Deny**) and a small message box: **Enter** sends, **Ctrl+Enter** adds a new line, and the send
@@ -804,6 +811,11 @@ To try it: sign in with GitHub on the host's page, open a project's **Board**, p
   `git status` is clean. Otherwise the card warns and the worktree stays.
 - **Discard:** Discard (with confirmation, and a warning if there are unpushed changes) removes
   the worktree and the local branch.
+- **Edit and delete:** the card's **⋯** menu has **Edit…**, which opens the card with its title ready
+  to change (the card page also edits the description and, with ROI on, the estimate), and
+  **Delete…**, which names the card and asks first. Delete is only for a card that never started
+  (no worktree, branch or session). For one that did, the dialog says why and offers **Discard card**
+  instead. The cards that waited for a deleted card are freed of it, with a notice.
 
 ### PR providers
 
@@ -1160,6 +1172,12 @@ register it in Claude Code:
 ```sh
 claude mcp add flightdeck -- flightdeckd mcp
 ```
+
+Sessions that Flightdeck starts itself (a team's coordinator and workers, board cards and plain
+sessions) get this server with no setup: the daemon adds it to the session, next to your own MCP
+servers. You only need the command above for a `claude` you open in a terminal outside Flightdeck.
+The Doctor's "Team tools" line tells you when the daemon's program is no longer where sessions
+expect it.
 
 ## History
 
@@ -1753,8 +1771,10 @@ A **persona** is an engineering role Claude takes in a session: a name, a descri
 suggested model, effort, tools and permission mode, and the instructions of the role. The
 **Personas** screen (sidebar, for hosts that keep them) lists them by where they live:
 
-- **Pack**: ten come ready, in English and Portuguese (architect, security reviewer, QA, SRE,
-  performance, code reviewer, docs, frontend, DBA and the team coordinator of phase 21). Editing one
+- **Pack**: eleven come ready, in English and Portuguese (architect, security reviewer, QA, SRE,
+  performance, code reviewer, docs, frontend, DBA, the team coordinator of phase 21 and the
+  **Developer**, the one that writes the code: test first, small scoped changes, follows the
+  project's CLAUDE.md and ADRs, runs the project's checks before saying done, never pushes). Editing one
   keeps your version on the host (**Pack, edited**); **Restore original** brings the pack's back.
 - **Host**, **Project** (choose one: its own and the versioned `.flightdeck/personas/*.md`, which
   you **Trust** first) and **Global (this app)**, kept in the app.
@@ -1765,7 +1785,8 @@ suggested model, effort, tools and permission mode, and the instructions of the 
 
 Using one:
 
-- **+ New session**, **Ctrl+K** (**New session as <persona>**), **Card persona** next to **Start**,
+- **+ New session**, **Ctrl+K** (**New session as <persona>**), **Card persona** next to **Start**
+  (it suggests the Developer when the host has it; pick **None** to start without one),
   and each variant of **Start in arena** have a **Persona** field. The session opens in it: the
   instructions go after the system prompt, with the model, effort and tools it suggests. A persona
   only takes away: its tools are a subset of the session's, and its permission mode counts only
@@ -1941,7 +1962,8 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   worktree.
 - **Teams** (sidebar) creates a team: the project, the goal, a name and, if you want, the
   coordinator's persona and model. The workers are rows: each has its own persona and model, and
-  you add or remove rows (the number of rows is the number of workers, 1 to 8). With no choice,
+  you add or remove rows (the number of rows is the number of workers, 1 to 8). A worker's
+  persona starts as the Developer when the host has it; pick **None** for the plain default. With no choice,
   the model is the persona's. Each member's model shows on its line.
 - **The coordinator's cycle:**
   1. split the goal into tasks, each with what "done" means;
@@ -2438,7 +2460,16 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
   conversation.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
-  badge.
+  badge. The uptime keeps counting while the page is open.
+- **A host that is offline** shows a banner at the top of its page: the state, what failed in plain
+  words (nothing answered, no answer in time, the link dropped, the token refused), the time of the
+  last try, a countdown to the next automatic try and **Reconnect now**, which shows its progress
+  and then "Still offline." if it failed. The sections that need the connection say "Host offline"
+  instead of "checking…". For a refused connection to a local, WSL or Linux host, the banner lists
+  the commands to check the daemon (`systemctl --user status flightdeckd`,
+  `sudo loginctl enable-linger $USER`, and `systemd=true` in `/etc/wsl.conf` on WSL). The app also
+  tries an offline host at once, and starts the countdown over, when the window regains focus or
+  the network comes back (at most once every 2 seconds).
 - **Notifications** carry the host name.
 - **Closing the window** sends the app to the tray (can be turned off in Settings). **Start with
   Windows** is in Settings, off by default.

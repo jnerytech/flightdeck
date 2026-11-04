@@ -338,8 +338,9 @@ O `setup` faz, nesta ordem:
    vai rodar. Depois coloca essa pasta no seu `PATH`. No Windows ela entra no `Path` do
    **usuário** (registro `HKCU\Environment`, sem duplicar e mantendo as outras entradas) e os
    programas abertos são avisados, então só terminais abertos depois a enxergam. No Linux e no
-   macOS imprime a linha `export PATH="$HOME/.flightdeck/bin:$PATH"` para você pôr no perfil do
-   shell e não edita arquivo nenhum. O `service uninstall` tira a entrada do `Path` do Windows;
+   macOS acrescenta a linha `export PATH="$HOME/.flightdeck/bin:$PATH"` ao `~/.profile` uma só vez
+   (um segundo `setup` não acrescenta nada, e o resto do arquivo é mantido; se não conseguir
+   gravar, imprime a linha para você pôr). O `service uninstall` tira a entrada do `Path` do Windows;
 2. pergunta as pastas dos projetos, uma por resposta, e recusa pasta que não existe: elas viram
    `allowedRoots` na config;
 3. com a Tailscale ativa, pergunta se você usa o Flightdeck de outros dispositivos (o padrão é
@@ -380,7 +381,10 @@ flightdeckd service uninstall           # para o daemon e remove o serviço
 - **Linux (WSL, Orange Pi, VPS):** grava `~/.config/systemd/user/flightdeckd.service`
   (`Restart=always`, `RestartSec=5`) e roda `systemctl --user enable --now flightdeckd`. Sem
   *linger*, o serviço só sobe depois do seu login; o `install` imprime o comando
-  `sudo loginctl enable-linger $USER` para você rodar (ele nunca executa nada com sudo).
+  `sudo loginctl enable-linger $USER` para você rodar (ele nunca executa nada com sudo). O `setup`
+  termina com um bloco de **AVISO** com esse comando quando o linger está desligado (no WSL diz
+  também para ligar `systemd=true` em `/etc/wsl.conf`), e o `flightdeckd doctor`, e o Doutor do host
+  no app, mostram "linger" como falha até ele ser ligado.
 - **Windows:** cria a tarefa agendada `Flightdeck\flightdeckd` no logon do usuário, sem
   privilégio elevado e sem janela visível (importa um XML com `schtasks /Create /XML`; o console
   fica escondido por `conhost.exe --headless`).
@@ -642,8 +646,11 @@ configurações de projetos do host, onde se editam pasta, branch base, setup e 
 
 ### Sessões lado a lado
 
-Quando o projeto tem sessões iniciadas pelo Flightdeck, a página as mostra como **blocos**: 2, 3, 4
-ou 6 por vez (escolha o número em **Blocos na tela**; ele fica guardado). As sessões que precisam de
+Quando o projeto tem sessões iniciadas pelo Flightdeck, a página as mostra como **blocos**. O
+controle **Disposição** acima deles é uma fileira de ícones que desenham a grade: 2 lado a lado, 3
+colunas, grade 2×2, grade 2×3 e **Automática** (o padrão), que mostra todas as sessões ativas.
+Passe o mouse num ícone para ver o nome; a escolha fica guardada. Quando a disposição comporta menos
+blocos do que há sessões ativas, a página diz quantas ficaram de fora ("+2 fora da tela"). As sessões que precisam de
 você vêm primeiro, depois as rodando, depois as ociosas. Cada bloco tem o nome da sessão (um botão
 que a abre), o status, as **últimas linhas**, o **pedido** que ela espera (com **Permitir** e
 **Negar**) e uma caixa de mensagem pequena: **Enter** envia, **Ctrl+Enter** quebra a linha, e o
@@ -789,6 +796,11 @@ Para testar: entre no GitHub na página do host, abra o **Board** de um projeto,
   estiver limpo. Senão, o card avisa e a worktree fica.
 - **Descarte:** Descartar (com confirmação, e um aviso se houver alterações não enviadas)
   remove a worktree e a branch local.
+- **Editar e excluir:** o menu **⋯** do card tem **Editar…**, que abre o card com o título pronto
+  para mudar (a página do card também edita a descrição e, com o ROI ligado, a estimativa), e
+  **Excluir…**, que cita o card e pergunta antes. Excluir vale só para um card que nunca começou
+  (sem worktree, branch nem sessão). Para um que já começou, a janela explica o motivo e oferece
+  **Descartar card** no lugar. Os cards que esperavam o excluído ficam livres dele, com um aviso.
 
 ### Provedores de PR
 
@@ -1145,6 +1157,12 @@ app. Para registrar no Claude Code:
 ```sh
 claude mcp add flightdeck -- flightdeckd mcp
 ```
+
+As sessões que o próprio Flightdeck abre (coordenadora e executoras de um time, cartões do quadro e
+sessões comuns) já recebem esse servidor, sem configurar nada: o daemon o junta à sessão, ao lado
+dos seus servidores MCP. O comando acima só é preciso para um `claude` aberto num terminal fora do
+Flightdeck. A linha "Ferramentas do time" do Doutor avisa quando o programa do daemon não está mais
+onde as sessões esperam.
 
 ## Histórico
 
@@ -1738,8 +1756,11 @@ Uma **persona** é um papel de engenharia que o Claude assume numa sessão: nome
 modelo, esforço, ferramentas e modo de permissão sugeridos, e as instruções do papel. A tela
 **Personas** (barra lateral, para hosts que as guardam) lista pelo lugar onde ficam:
 
-- **Pacote**: dez vêm prontas, em português e inglês (arquiteto, revisor de segurança, QA, SRE,
-  performance, revisor de código, docs, frontend, DBA e o coordenador de time da Fase 21). Editar
+- **Pacote**: onze vêm prontas, em português e inglês (arquiteto, revisor de segurança, QA, SRE,
+  performance, revisor de código, docs, frontend, DBA, o coordenador de time da Fase 21 e o
+  **Desenvolvedor**, o que escreve o código: teste primeiro, mudanças pequenas e no escopo, segue o
+  CLAUDE.md e os ADRs do projeto, roda as checagens do projeto antes de dizer que terminou, nunca
+  faz push). Editar
   uma guarda a sua versão no host (**Pacote, editada**); **Restaurar original** traz a do pacote.
 - **Host**, **Projeto** (escolha um: as dele e as versionadas em `.flightdeck/personas/*.md`, que
   você **Confia** antes) e **Globais (deste app)**, guardadas no app.
@@ -1751,7 +1772,7 @@ modelo, esforço, ferramentas e modo de permissão sugeridos, e as instruções 
 Para usar:
 
 - **+ Nova sessão**, **Ctrl+K** (**Nova sessão como <persona>**), **Persona do card** ao lado de
-  **Iniciar** e cada variante de **Iniciar em arena** têm um campo **Persona**. A sessão abre nela:
+  **Iniciar** (sugere o Desenvolvedor, quando o host o tem; escolha **Nenhuma** para iniciar sem persona) e cada variante de **Iniciar em arena** têm um campo **Persona**. A sessão abre nela:
   as instruções vão depois do prompt do sistema, com o modelo, o esforço e as ferramentas sugeridos.
   Uma persona só tira: as ferramentas dela são parte das da sessão, e o modo dela só vale quando é
   menos permissivo.
@@ -1929,8 +1950,9 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
   própria worktree.
 - **Times** (barra lateral) cria um time: o projeto, o objetivo, um nome e, se quiser, a persona e o
   modelo da coordenadora. As executoras são linhas: cada uma tem a sua persona e o seu modelo, e
-  você acrescenta ou tira linhas (o número de linhas é o número de executoras, de 1 a 8). Sem
-  escolha, o modelo é o da persona. O modelo de cada membro aparece na linha dele.
+  você acrescenta ou tira linhas (o número de linhas é o número de executoras, de 1 a 8). A
+  persona de cada executora começa como o Desenvolvedor, quando o host o tem; escolha **Nenhuma**
+  para o padrão simples. Sem escolha, o modelo é o da persona. O modelo de cada membro aparece na linha dele.
 - **O ciclo da coordenadora:**
   1. quebrar o objetivo em tarefas, cada uma com o que significa "pronto";
   2. mandar uma tarefa para cada executora e pedir um aviso quando ela ficar ociosa;
@@ -2426,7 +2448,16 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
   lado: **A** aprova, **N** nega e **Esc** fecha o detalhe. **Abrir sessão** leva à conversa.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude
-  ganha um selo ⚠.
+  ganha um selo ⚠. O tempo no ar continua contando enquanto a página está aberta.
+- **Um host desconectado** mostra um aviso no topo da página dele: o estado, o que falhou em
+  palavras simples (nada respondeu, sem resposta a tempo, a conexão caiu, o token foi recusado), a
+  hora da última tentativa, a contagem até a próxima tentativa automática e **Reconectar agora**,
+  que mostra o andamento e depois "Continua desconectado." se falhou. As seções que dependem da
+  conexão dizem "Host desconectado" em vez de "consultando…". Para uma conexão recusada em um host
+  local, WSL ou Linux, o aviso lista os comandos para conferir o daemon
+  (`systemctl --user status flightdeckd`, `sudo loginctl enable-linger $USER` e `systemd=true` em
+  `/etc/wsl.conf` no WSL). O app também tenta um host desconectado na hora, e reinicia a contagem,
+  quando a janela volta a ter o foco ou a rede volta (no máximo uma vez a cada 2 segundos).
 - **Notificações** trazem o nome do host.
 - **Fechar a janela** manda o app para a bandeja (desligável em Configurações). **Iniciar com o
   Windows** fica em Configurações, desligado por padrão.

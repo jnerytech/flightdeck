@@ -43,6 +43,9 @@ export const en: Dictionary = {
       tailscale: "Tailscale",
       version: "Version",
       templates: "Templates",
+      mcp: "Team tools",
+
+      linger: "Start at boot",
     },
     steps: {
       config: "Run flightdeckd setup on the host to redo the configuration.",
@@ -55,6 +58,10 @@ export const en: Dictionary = {
       version: "Update the daemon with the update button on this page.",
       templates:
         "Fix or remove the template files named above, in the templates folder of the host.",
+      mcp: "Run flightdeckd setup on the host to put the daemon back where sessions expect it.",
+
+      linger:
+        "On the host, run sudo loginctl enable-linger $USER (on WSL also turn on systemd in /etc/wsl.conf).",
     },
   },
   findProjects: {
@@ -721,6 +728,14 @@ export const en: Dictionary = {
     moveTo: "Move to {column}",
     moveUp: "Move up",
     moveDown: "Move down",
+    edit: "Edit…",
+    delete: "Delete…",
+    deleteMessage:
+      'Delete the card "{title}"? It never started, so nothing but the card is removed.',
+    deleteStarted:
+      'The card "{title}" already started, so it cannot be deleted. Discard it to remove its worktree and branch too.',
+    deleteConfirm: "Delete card",
+    discardInstead: "Discard card",
   },
   shell: {
     sidebar: "Sidebar",
@@ -1519,6 +1534,9 @@ export const en: Dictionary = {
     nothing_ahead: "There is nothing ahead of {base}.",
     complete_confirm: "Confirm completing the card.",
     discard_confirm: "Confirm discarding the card.",
+    delete_confirm: "Confirm deleting the card.",
+    card_delete_started:
+      "The card already started, so it cannot be deleted: discard it to clean up its work.",
     base_not_local: "The base {base} is not a local branch.",
     rebase_conflict: "Updating with {base} conflicts in: {files}.",
     merge_conflict: "Merging with {base} conflicts in: {files}.",
@@ -2876,6 +2894,8 @@ export const en: Dictionary = {
     back: "Back to the board",
     description: "Description",
     saveDescription: "Save description",
+    title: "Title",
+    saveTitle: "Save title",
     workflow: "Workflow",
     noWorkflow: "None (plain card)",
     input: "Input {name}",
@@ -3101,8 +3121,22 @@ export const en: Dictionary = {
   tiles: {
     title: "Sessions side by side",
     hint: "Alt+arrows move between the tiles.",
-    count: "Tiles on screen",
-    countOption: "{n} tiles",
+    layout: "Layout",
+    layoutOption: {
+      "2": "2 side by side",
+      "3": "3 columns",
+      "2x2": "2×2 grid",
+      "2x3": "2×3 grid",
+      auto: "Auto",
+    },
+    layoutTip: {
+      "2": "2 side by side",
+      "3": "3 columns",
+      "2x2": "2×2 grid",
+      "2x3": "2×3 grid",
+      auto: "Auto: every live session",
+    },
+    notShown: "+{n} not shown",
     lines: "Last lines",
     nothingYet: "Nothing said yet.",
     request: "Request",
@@ -3358,6 +3392,23 @@ export const en: Dictionary = {
     probeRefused: "token refused: run flightdeckd pair on the host and paste the new link",
     probeUnreachable:
       "could not connect: check that the daemon is running and that the address matches. On the host, run flightdeckd doctor",
+  },
+  hostOffline: {
+    label: "Connection status",
+    title: "Host offline",
+    connecting: "Connecting…",
+    unauthorized: "The host refused the token. Pair this host again.",
+    refused: "Nothing answered at {url}. The daemon is probably not running.",
+    timeout: "The host did not answer in time. The network may be down or the daemon stuck.",
+    lost: "The connection to the host dropped.",
+    lastTry: "Last try: {time}",
+    nextTry: "Next try in {n} s",
+    reconnectNow: "Reconnect now",
+    reconnecting: "Reconnecting…",
+    still: "Still offline.",
+    hintLinux: "On the host, check that the daemon runs, and that it starts at boot:",
+    hintWsl: "On WSL, also turn on systemd in /etc/wsl.conf (then run wsl --shutdown on Windows):",
+    hintGeneric: "Check that the host is on and reachable, and that the daemon runs there.",
   },
   hostPage: {
     simpleTitle: "Simple mode",

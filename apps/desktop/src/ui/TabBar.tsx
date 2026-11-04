@@ -190,7 +190,7 @@ export function TabBar(props: {
                 {...(prod === undefined ? {} : { "data-prod": String(prod) })}
                 {...(dropOn?.id === tab.id ? { "data-drop": dropOn.side } : {})}
                 className={cn(
-                  "tab-item group flex items-center rounded-t-md border border-b-0 text-sm",
+                  "tab-item group flex items-center rounded-t-md border border-b-0 text-sm has-[[role=tab]:focus-visible]:ring-2 has-[[role=tab]:focus-visible]:ring-ring",
                   selected ? "bg-background" : "bg-muted/40 text-muted-foreground",
                   prod && "border-2 border-destructive",
                   dropOn?.id === tab.id &&
@@ -209,7 +209,7 @@ export function TabBar(props: {
                   title={label}
                   aria-keyshortcuts={`${tab.pinned ? "" : "Delete "}${MOVE_KEYS}`}
                   {...(tab.pinned ? { "aria-label": label } : {})}
-                  className="flex min-w-0 flex-1 items-center gap-1.5 rounded-t-md px-2 py-1.5 outline-none hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex min-w-0 flex-1 items-center gap-1.5 rounded-t-md px-2 py-1.5 outline-none hover:bg-accent/60"
                   onClick={() => tabs.activate(tab.id)}
                   onDoubleClick={() => tabs.commit(tab.id)}
                   onKeyDown={(e) => {

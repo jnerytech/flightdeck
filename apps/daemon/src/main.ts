@@ -58,6 +58,7 @@ import { runGh } from "./github/gh.ts";
 import { GithubService } from "./github/service.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
+import { lingerState } from "./linger.ts";
 import { acquireLock, readLockPid } from "./lock.ts";
 import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
@@ -94,6 +95,7 @@ import { terminalRunHost } from "./runenv/host.ts";
 import { RunManager } from "./runenv/manager.ts";
 import { CardPorts } from "./runenv/ports.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
+import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { DAEMON_VERSION, startServer } from "./server.ts";
 import {
@@ -524,10 +526,17 @@ interface CreatedRuntime {
   accountReaders?: ReturnType<typeof accountReaders>;
 }
 
-async function createRuntime(kind: RuntimeKind, claudePath?: string): Promise<CreatedRuntime> {
+async function createRuntime(
+  kind: RuntimeKind,
+  claudePath?: string,
+  mcpServer?: FlightdeckMcpServer,
+): Promise<CreatedRuntime> {
   if (kind === "fake") return { runtime: new FakeRuntime(), accountReaders: demoAccountReaders() };
   const { ClaudeSdkRuntime } = await import("./runtime/claude-sdk-runtime.ts");
-  const runtime = new ClaudeSdkRuntime(claudePath ? { claudePath } : {});
+  const runtime = new ClaudeSdkRuntime({
+    ...(claudePath ? { claudePath } : {}),
+    ...(mcpServer ? { mcpServer } : {}),
+  });
   const path = runtime.claudePath ?? null;
   const { query } = await import("@anthropic-ai/claude-agent-sdk");
   return {
@@ -573,6 +582,10 @@ export async function startDaemon(
     projectGit?: AsyncGitRunner;
     /** Whether the OS service is installed, for `doctor.run`; the real service manager when absent. */
     serviceInstalled?: () => Promise<boolean>;
+    /** Whether linger is on, for `doctor.run`; `loginctl` when absent. */
+    linger?: () => Promise<"on" | "off" | null>;
+    /** The machine's service manager, for the probes above when they are not given; the real one when absent. */
+    serviceContext?: (dryRun: boolean) => ServiceContext;
     /** Whether a port is free, for the cards' blocks; the real loopback probe when absent. */
     portProbe?: (port: number) => Promise<boolean>;
   } = {},
@@ -585,7 +598,15 @@ export async function startDaemon(
   if (!lock) throw new AlreadyRunningError(config.dataDir);
   const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   const claudePath = config.claude?.executablePath ?? config.claudePath;
-  const { runtime, claude, accountReaders: readers } = await createRuntime(runtimeKind, claudePath);
+  const {
+    runtime,
+    claude,
+    accountReaders: readers,
+  } = await createRuntime(
+    runtimeKind,
+    claudePath,
+    flightdeckMcpServer(daemonCommand(process.execPath, Bun.main), configFile),
+  );
   // The plan quota is the host's: every managed session feeds it (phase 7).
   const quota = new Quota({ pauseAt: config.quota.pauseAt });
   const quotaHistory = new QuotaHistory({ db: store.db });
@@ -1070,8 +1091,14 @@ export async function startDaemon(
         isDirectory: async (path) => (await stat(path).catch(() => null))?.isDirectory() === true,
         serviceInstalled:
           options.serviceInstalled ??
-          (async () => (await serviceCommand(osServiceContext(false))) !== null),
+          (async () =>
+            (await serviceCommand((options.serviceContext ?? osServiceContext)(false))) !== null),
         healthy: async () => true,
+        mcp: () => mcpReachable(daemonCommand(process.execPath, Bun.main)),
+
+        linger:
+          options.linger ??
+          (() => lingerState((options.serviceContext ?? osServiceContext)(false))),
         tailscaleIp: () => tailscaleIp(spawnExec),
         hooks: () =>
           hooksStatus(
@@ -1329,6 +1356,18 @@ async function* linesOf(stream: ReadableStream<Uint8Array>): AsyncGenerator<stri
   if (pending) yield pending;
 }
 
+/** The command managed sessions run for the Flightdeck MCP server, and whether its program is still there. */
+async function mcpReachable(self: string[]): Promise<{ command: string; exists: boolean }> {
+  const command = self[0] ?? "";
+  return { command, exists: (await stat(command).catch(() => null))?.isFile() === true };
+}
+
+/** The text of a file, or null when it is not there. */
+const readTextOrNull = (path: string) =>
+  Bun.file(path)
+    .text()
+    .catch(() => null);
+
 /** `flightdeckd doctor`: what a first run needs, with the fix for each failure. Exit 1 on a failure. */
 async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
   const file = configPath(args);
@@ -1348,6 +1387,9 @@ async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
     tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
     hooks: async () => hooksStatus(settings, hookTarget(await load(), self)),
     claudePath: () => whichOnPath("claude"),
+    mcp: () => mcpReachable(self),
+
+    linger: () => lingerState(ctx),
     templateProblems: async () =>
       (
         await loadTemplates({
@@ -1426,8 +1468,10 @@ async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
         return true;
       },
       addToPath: async () => {
-        for (const line of await addToUserPath(base, binDir(base))) deps.log.log(line);
+        const env = { ...base, readFile: readTextOrNull };
+        for (const line of await addToUserPath(env, binDir(base))) deps.log.log(line);
       },
+      linger: () => lingerState(base),
       installService: async () => {
         const ctx = ctxOf(false);
         if ((await serviceCommand(ctx)) !== null) await stopInstalledDaemon(install(), ctx, deps);

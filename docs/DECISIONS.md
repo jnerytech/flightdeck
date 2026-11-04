@@ -3431,3 +3431,72 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 - **Not verified here:** the stderr text of a missing scope and of a rate limit, and the `Status` field name on boards that
   renamed it, come from memory and the fakes; the proof of concept in the spec settles them.
 
+
+## Team sessions get the flightdeck MCP (v0.36.1, issue #95)
+
+- **Where it is injected.** `ClaudeSdkRuntime.start` is the single place every managed session passes through (coordinator,
+  workers, board cards, plain sessions), so the `mcpServers.flightdeck` entry is added there, not in the team code. The command
+  is the one the daemon runs itself (`daemonCommand`, so the compiled binary or `bun run <bin>`) plus `mcp --config <file>`.
+  Its environment carries the session's own `FLIGHTDECK_SESSION`, which is how the tools know who is sending.
+- **Merge, not replace.** The option adds to the servers of the user's and the project's settings (`settingSources` is
+  unchanged and `strictMcpConfig` is not set). The key is `flightdeck`, the one `claude mcp add flightdeck` uses, so a person who
+  registered it by hand ends with one entry; the daemon's entry wins for sessions it starts, because it is the one that knows
+  the session id and the config file. The check for a hand-made entry is therefore by key, not by reading `~/.claude.json`.
+- **Permission mode.** Nothing changes: a worker starts in the mode the team chose, and the injection never sets `plan`.
+- **Doctor.** New `mcp` check ("Team tools"): a warning when the program the entry points to no longer exists, with the fix
+  `run: flightdeckd setup`. It reads the file, it does not start the server.
+- **Test.** `mcp-sessoes` takes the exact entry the runtime gives the SDK, starts it as a real child process against a daemon,
+  and calls `send_to_session` through it.
+
+## Edit and delete a board card (issue #104)
+
+- **Delete is only for a card that never started.** `card.delete { cardId, confirm }` refuses with `delete_confirm` without
+  `confirm`, and with `card_delete_started` (not `card_started`, which already means "an arena starts from a new card") when
+  the card has a worktree, a branch, a session or any run. A started card has work to clean up, so the app's dialog says why
+  and offers the existing `card.discard` instead.
+- **No separate `card.deleted` event.** A discarded card already leaves every board through its last `card.updated` marked
+  `discarded: true`, and the app already drops cards on that flag. Delete reuses it (both go through `removeFromBoard`), so an
+  older app version also drops a deleted card correctly and the wire gains no new frame.
+- **Dependents.** The cards that waited for the deleted card are freed of it, exactly as for a discard: the blocker row goes,
+  the card gets the notice `Blocker "<title>" was deleted and no longer blocks this card.`, and its wait ends (auto-start
+  included). The alternative, keeping a dangling `dependsOn` to a card that can never be done, would hold them forever.
+- **Edit.** The card page has an editable title (Save title) next to the description it already edited; the estimate stays in
+  the ROI hours field. **Edit…** in the card menu opens the card with the title focused (the route carries `edit: true`, never
+  saved in the address). All of it goes through the existing `card.update`.
+
+## Offline hosts and a daemon that does not start at boot (issue #106)
+
+- **Why a host is offline is inferred, not read.** A browser WebSocket only reports that the socket closed, so the app
+  classifies a failed try by what came before it: it was online (`lost`), the watchdog gave up on a hello nobody answered
+  (`timeout`), or it never opened (`refused`, the usual "daemon not running"). The state is `{ kind, lastTryAt, nextRetryAt }`
+  on the connection, copied to the host view, and cleared on `online`.
+- **Hints are by kind and address.** The Linux/WSL commands (`systemctl --user status flightdeckd`,
+  `sudo loginctl enable-linger $USER`, `systemd=true` in `/etc/wsl.conf`) show for a refused connection to a loopback address
+  or a host last seen as Linux; other kinds get a generic line. Not done here: retrying at once on window focus or when the
+  network returns (item 4 of the issue); the backoff keeps trying on its own.
+- **Uptime is aged in the app.** `host.info` is a snapshot, so the app keeps when it arrived (`infoAt`) and shows
+  `uptimeSec + elapsed`, ticking each second, instead of re-asking the host.
+- **Linger is a doctor failure, not a prompt.** `setup` never runs `sudo`. It ends with a WARNING block (printed last) and the
+  doctor reports `linger` as a failure with the command, on Linux only (`loginctl show-user -p Linger`; other platforms and
+  an unreadable answer add no check).
+- **PATH on Linux and macOS.** `setup` appends `export PATH="<home>/.flightdeck/bin:$PATH"` to `~/.profile`, once (it looks
+  for the exact line first), keeping the rest of the file, and prints the line instead when it cannot write. A shell that reads
+  only `~/.bashrc` or `~/.zprofile` still needs a new login; the output says to open a new terminal.
+- **Retry on wake-up.** The window gaining focus, the page becoming visible and the browser's `online` event call `wake()` on
+  each connection. It acts only on a connection that is waiting out a backoff (`offline`), clears the timer, restarts the
+  backoff from the first delay and connects at once; a connection that is online or already trying is left alone. A wake-up
+  within 2 s of the last one that acted is ignored, so focus spam cannot storm a host. The listeners are set in `init()` (it
+  begins with `dispose()`), not in the constructor, which would be undone by it.
+
+## The rc/0361 gate: three leaks of the machine into the tests
+
+- **The focus ring** (`abas-foco`): the crumb fix moved the tab's ring to the strip with `has-[[role=tab]:focus-visible]` so the outline
+  holds the close button, and left the focused element with none. Both stay: the tab has its own ring (it works where `:has` is
+  missing) and the strip draws the outline around the tab and its ×.
+- **Telemetry variables** (`isolamento-telemetria`): a session that has Claude Code's telemetry on sets `CLAUDE_CODE_ENABLE_TELEMETRY`
+  and `OTEL_*`; `launch()` passes the environment on, so `otlp-ligar` compared what the test expected with what the session had.
+  The test preload now strips them next to the `GIT_*` variables, from `process.env` and from the default environment of a spawned child.
+- **Fixed ports** (`portas-fixas`): `raizes-persistencia` started a daemon on 7421, which the real daemon of the machine holds
+  (7420 to 7422). It asks for port 0, and a ratchet test now refuses a fixed 742x in a server started by a test (`startServer`,
+  `Bun.serve`, `.listen(`, or a config written for a `startDaemon` without a spread that lets the caller override it). Pure
+  functions and pairing links that only mention 742x are data, not servers.
