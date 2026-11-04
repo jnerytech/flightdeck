@@ -16,6 +16,7 @@ export const MENU_GROUPS: readonly MenuGroup[] = ["commands", "snippets", "skill
 
 /** Which group an item belongs to: snippets by key, then by the shape of the command's name. */
 export function groupOf(item: MenuItem): MenuGroup {
+  if (item.group) return item.group;
   if (!item.key.startsWith("slash:")) return "snippets";
   const name = item.name.replace(/^\//, "");
   if (name.startsWith("mcp__")) return "mcp";

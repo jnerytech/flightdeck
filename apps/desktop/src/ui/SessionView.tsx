@@ -32,6 +32,7 @@ import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import type { T } from "../i18n/index.ts";
 import { usd } from "../lib/costs.ts";
+import type { MenuGroup, MenuItem } from "../lib/prompt-menu.ts";
 import { activityOf } from "../lib/session-activity.ts";
 import { type ImageRefusal, readImage, refuseImage } from "../lib/session-images.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
@@ -42,6 +43,12 @@ import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
 
 /** The permission modes a live session can switch between. */
+/** The menu group of each kind of command the daemon names. */
+const GROUP_OF_KIND: Record<"builtin" | "skill" | "mcp", MenuGroup> = {
+  builtin: "commands",
+  skill: "skills",
+  mcp: "mcp",
+};
 const MODES = ["plan", "default", "acceptEdits"] as const;
 const ALL_MODES = [...MODES, "bypassPermissions"] as const;
 
@@ -292,20 +299,32 @@ export function SessionView(props: SessionViewProps) {
   const [bypassAsk, setBypassAsk] = useState(false);
   const [model, setModel] = useState("");
   const slash = session.slashCommands;
+  const described = session.commands;
+  // A daemon that describes the commands gives each its group and its description; an older one
+  // gives the names only, and the menu groups them by the shape of the name.
+  const commandItems: MenuItem[] = useMemo(
+    () =>
+      described
+        ? described.map((command) => ({
+            key: `slash:${command.name}`,
+            name: `/${command.name}`,
+            ...(command.description ? { description: command.description } : {}),
+            group: GROUP_OF_KIND[command.kind],
+          }))
+        : (slash ?? []).map((name) => ({ key: `slash:${name}`, name: `/${name}` })),
+    [described, slash],
+  );
   // Typing `/` offers the snippets and the commands of the session together.
   const offered: PromptSnippets | undefined = useMemo(
     () =>
       props.prompts || slash
         ? {
-            list: async () => [
-              ...((await props.prompts?.list()) ?? []),
-              ...(slash ?? []).map((name) => ({ key: `slash:${name}`, name: `/${name}` })),
-            ],
+            list: async () => [...((await props.prompts?.list()) ?? []), ...commandItems],
             fill: async (key) =>
               key.startsWith("slash:") ? `/${key.slice(6)} ` : (props.prompts?.fill(key) ?? ""),
           }
         : undefined,
-    [props.prompts, slash],
+    [props.prompts, slash, commandItems],
   );
   const latestAssistant = [...session.items]
     .reverse()

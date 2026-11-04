@@ -343,6 +343,8 @@ export const SessionEvent = z.discriminatedUnion("type", [
     tools: z.array(z.string()),
     /** The slash commands the session has (`/compact`, a skill, ...), without the slash. */
     slashCommands: z.array(z.string()).optional(),
+    /** The same commands with a description and a kind; an older daemon sends the names only. */
+    commands: z.array(SlashCommandInfo).optional(),
   }),
   /** `images`: how many came with the message (the bytes stay out of the log). */
   z.object({

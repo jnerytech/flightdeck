@@ -4,6 +4,7 @@ import type { AssistantBlock, McpLiveStatus } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { ulid } from "../ulid.ts";
 import { whichOnPath } from "../which.ts";
+import { describeCommands } from "./commands.ts";
 import type {
   AgentRun,
   AgentRuntime,
@@ -233,7 +234,19 @@ class FakeRun implements AgentRun {
         claudeSessionId: this.claudeSessionId,
         model: this.opts.model ?? "fake-model",
         tools: ["Read", "Write", "Bash"],
-        ...(this.slashCommands ? { slashCommands: this.slashCommands } : {}),
+        ...(this.slashCommands
+          ? {
+              slashCommands: this.slashCommands,
+              // Like the SDK: Claude Code's own are the plain names, the rest are namespaced.
+              commands: describeCommands(
+                this.slashCommands.map((name) => ({
+                  name,
+                  description: `Run /${name}`,
+                  builtin: !name.includes(":") && !name.startsWith("mcp__"),
+                })),
+              ),
+            }
+          : {}),
       });
     }
     const windows = [...text.matchAll(/\[ratelimit:(\w+)=([\d.]+)@(\d+)\]/g)].map(

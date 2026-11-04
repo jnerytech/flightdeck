@@ -9,6 +9,7 @@ import type {
   RiskLevel,
   SessionPersona,
   SessionStatus,
+  SlashCommandInfo,
   ToolInput,
 } from "@flightdeck/protocol";
 
@@ -64,6 +65,8 @@ export interface SessionState {
   permissionMode?: PermissionMode;
   /** The slash commands the session has, from `session.init`. */
   slashCommands?: string[];
+  /** The same commands with a description and a kind, from a daemon that sends them. */
+  commands?: SlashCommandInfo[];
   /** The persona the session runs in (phase 20), from how it opened and from what was applied since. */
   persona?: SessionPersona;
   /** Claude Code's id, from `session.init`: "Abrir no terminal" resumes it. */
@@ -140,6 +143,7 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
         model: event.model,
         claudeSessionId: event.claudeSessionId,
         ...(event.slashCommands ? { slashCommands: event.slashCommands } : {}),
+        ...(event.commands ? { commands: event.commands } : {}),
       };
     case "message.user":
       return push({
