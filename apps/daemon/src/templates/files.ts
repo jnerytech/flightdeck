@@ -85,7 +85,8 @@ export async function loadTemplates(options: {
 }): Promise<LoadedTemplates> {
   const templates = [...options.builtins];
   const problems: TemplateProblem[] = [];
-  const taken = new Map(options.builtins.map((template) => [template.id, "built-in"]));
+  // A file is named by its id, so two files cannot share one: only a built-in can hold it already.
+  const builtinIds = new Set(options.builtins.map((template) => template.id));
   const names = await readdir(options.dir).catch((error: NodeJS.ErrnoException) => {
     if (error.code === "ENOENT" || error.code === "ENOTDIR") return [] as string[];
     throw error;
@@ -96,13 +97,9 @@ export async function loadTemplates(options: {
         await readFile(join(options.dir, name), "utf8"),
         name.slice(0, -3),
       );
-      const owner = taken.get(template.id);
-      if (owner === "built-in") {
+      if (builtinIds.has(template.id)) {
         problems.push({ file: name, reason: `the id ${template.id} is a built-in template's` });
-      } else if (owner) {
-        problems.push({ file: name, reason: `the id ${template.id} is already used by ${owner}` });
       } else {
-        taken.set(template.id, name);
         templates.push(template);
       }
     } catch (error) {
