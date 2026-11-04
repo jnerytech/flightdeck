@@ -8,6 +8,7 @@ import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Toolbar } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
+import { RoiPeople } from "@/components/roi/roi-people";
 import { RoiTable } from "@/components/roi/roi-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -448,6 +449,7 @@ export const CostsPage = memo(function CostsPage(props: {
                 />
               </Panel>
             </section>
+            {withRoi && <RoiPeople store={store} />}
             {withRoi && (
               <RoiTable
                 store={store}

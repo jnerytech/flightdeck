@@ -53,10 +53,10 @@ export interface HumanTokens {
   value: string;
 }
 
-/** 3,100,000 reads "3.1" million; at most two decimals, none when they would be zeros. */
+/** 3,100,000 reads "3.1" million, and so does 442,857 ("0.44"): a million is the unit from 100,000 up; at most two decimals, none when they would be zeros. */
 export function humanTokens(tokens: number): HumanTokens {
   const [unit, divisor] =
-    tokens >= 1_000_000
+    tokens >= 100_000
       ? (["million", 1_000_000] as const)
       : tokens >= 1_000
         ? (["thousand", 1_000] as const)
