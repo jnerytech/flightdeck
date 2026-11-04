@@ -13,6 +13,8 @@ import { ensureOnline } from "../lib/e2e-online.ts";
 
 const ALFA = "demo-alfa";
 export const WAIT = 15_000;
+/** A session needs the host to start it: on a loaded machine that takes far longer than a click. */
+export const SESSION_WAIT = 60_000;
 
 export type Context = {
   page: Page;
@@ -57,6 +59,14 @@ async function demoHostsOnline(c: Context): Promise<boolean> {
   return true;
 }
 
+/** Starts a session of the fake runtime from the New session screen. */
+export async function createSession(c: Context, prompt: string, name?: string) {
+  await open(c, { name: "new-session", host: ALFA });
+  if (name) await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
+  await c.page.getByLabel(c.t("newSession.prompt"), { exact: true }).fill(prompt);
+  await c.page.getByRole("button", { name: c.t("newSession.create"), exact: true }).click();
+}
+
 export async function waitFor(check: () => Promise<boolean>, what: string, timeout = WAIT) {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
@@ -69,17 +79,17 @@ export async function waitFor(check: () => Promise<boolean>, what: string, timeo
 export const journeys: Record<string, (c: Context) => Promise<void>> = {
   // 1. Approve a Bash request from the queue with the A key and see the queue shrink.
   "aprovar-bash-com-a": async (c) => {
-    // Any request will do: the demo keeps its state from one journey to the next.
-    const rows = c.page.locator("main ul li button");
+    // The demo's seeded requests run out after a few runs, so the journey asks for its own.
+    const session = `Aprovar e2e ${Date.now()}`;
+    await createSession(c, "[bash] ls", session);
     await open(c, { name: "needs-you" });
-    await rows.first().waitFor({ timeout: WAIT });
-    const before = await rows.count();
-    await rows.first().click();
+    const row = c.page.locator("main ul li button", { hasText: session });
+    await row.first().click({ timeout: SESSION_WAIT });
     const card = c.page.locator("fieldset[data-request-id]").first();
     await card.waitFor({ timeout: WAIT });
     await card.focus();
     await c.page.keyboard.press("a");
-    await waitFor(async () => (await rows.count()) < before, "o pedido saiu da fila");
+    await waitFor(async () => (await row.count()) === 0, "o pedido saiu da fila");
   },
 
   // 2. Open a session, send a message and read the fake runtime's answer.
@@ -310,7 +320,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
 
   // 12. Configurações lets two projects of alfa message each other, both ways, and lists it.
   mensagens: async (c) => {
-    const source = `e2e-${c.lang}`;
+    // A rule of the same pair is listed once per run, and the demo keeps them all.
+    const source = `e2e-${c.lang}-${Date.now()}`;
     await open(c, { name: "settings" });
     const section = c.page.getByRole("region", {
       name: c.t("messagingRulesUi.title", { host: "alfa" }),

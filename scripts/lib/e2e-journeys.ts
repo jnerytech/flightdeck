@@ -24,14 +24,19 @@ const ACOES_BASE: Readonly<Record<string, string>> = { "pt-BR": "versao", en: "v
 /** How many repeats of the acoes journey one demo can serve: each trusts an action of its own. */
 export const ACOES_POOL = 8;
 
-/** The versioned action the acoes journey trusts in a language and repeat (stub: not unique yet). */
-export function acoesAction(lang: string, _repeat: number): string {
-  return ACOES_BASE[lang] as string;
+/**
+ * The versioned action the acoes journey trusts in a language and repeat: the demo keeps its state
+ * between runs, so a second run (the other language, or `--repeat-each`) would find it trusted.
+ */
+export function acoesAction(lang: string, repeat: number): string {
+  return `${ACOES_BASE[lang]}-${repeat + 1}`;
 }
 
 /** Every action the demo seeds for the acoes journey. */
 export function acoesActions(): string[] {
-  return [];
+  return LANGUAGES.flatMap((lang) =>
+    Array.from({ length: ACOES_POOL }, (_, repeat) => acoesAction(lang, repeat)),
+  );
 }
 
 export const VIEWPORTS: ReadonlyArray<{ width: number; height: number }> = [

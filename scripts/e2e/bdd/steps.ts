@@ -1,5 +1,5 @@
 /** The steps of the BDD pilot: each is written once per language, and the UI text comes from the dictionaries. */
-import { type Context, open, WAIT, waitFor } from "../journeys.ts";
+import { type Context, createSession, open, SESSION_WAIT, WAIT, waitFor } from "../journeys.ts";
 import { Given, Then, When } from "./fixtures.ts";
 
 type Step = (c: Context, ...args: string[]) => Promise<void>;
@@ -16,17 +16,8 @@ const both = (kind: typeof Given | typeof When | typeof Then, words: Words, run:
 };
 
 const ALFA = "demo-alfa";
-/** A session needs the host to start it: on a loaded machine that takes far longer than a click. */
-const SESSION_WAIT = 60_000;
 const request = (c: Context, session: string) =>
   c.page.locator("main ul li button", { hasText: session });
-
-async function createSession(c: Context, prompt: string, name?: string) {
-  await open(c, { name: "new-session", host: ALFA });
-  if (name) await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
-  await c.page.getByLabel(c.t("newSession.prompt"), { exact: true }).fill(prompt);
-  await c.page.getByRole("button", { name: c.t("newSession.create"), exact: true }).click();
-}
 
 both(
   Given,
