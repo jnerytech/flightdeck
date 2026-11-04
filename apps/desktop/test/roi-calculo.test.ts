@@ -36,6 +36,23 @@ describe("roi-calculo: the arithmetic and where each number comes from", () => {
     });
   });
 
+  test("a rate with no estimated hours gives no value and no ROI, instead of a value of zero and an ROI of -1", () => {
+    const f = figures(period({ costUsd: 12, cards: 4, hours: 0, cardsWithoutEstimate: 4 }), {
+      ...NO_MONEY,
+      rate: 60,
+    });
+    expect(f.valueUsd).toBeNull();
+    expect(f.roi).toBeNull();
+    // A billed amount alone still makes a value.
+    const billed = figures(period({ costUsd: 10, hours: 0 }), {
+      ...NO_MONEY,
+      rate: 60,
+      billed: 20,
+    });
+    expect(billed.valueUsd).toBe(20);
+    expect(billed.roi).toBe(1);
+  });
+
   test("hours times the rate is the estimated value, and the ROI is (value - cost) / cost", () => {
     const f = figures(period({ costUsd: 12, cards: 3, hours: 6 }), { ...NO_MONEY, rate: 60 });
     expect(f.valueUsd).toBe(360);
