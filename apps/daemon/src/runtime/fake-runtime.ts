@@ -46,8 +46,12 @@ function envSlashCommands(): string[] | undefined {
   return Number.isInteger(count) && count > 0 ? fakeSlashCommands(count) : undefined;
 }
 
-export function fakeSlashCommands(_count: number): string[] {
-  return [];
+export function fakeSlashCommands(count: number): string[] {
+  return Array.from({ length: count }, (_, i) => {
+    if (i % 3 === 1) return `plugin:skill-${i}`;
+    if (i % 3 === 2) return `mcp__server__prompt-${i}`;
+    return `command-${i}`;
+  });
 }
 
 export class FakeRuntime implements AgentRuntime {
