@@ -778,62 +778,6 @@
   height: 0.5rem;
 }
 
-:root {
-  /* The weight scale: strong for titles and primary actions, label for filters and pills, text for the rest. */
-  --weight-strong: 600;
-  --weight-label: 500;
-  --weight-text: 400;
-  /* The motion tokens as plain variables (the theme's are inlined into utilities, not emitted). */
-  --motion-fast: 120ms;
-  --motion-base: 180ms;
-  --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
-  /* The app's background sits a step under the panels (neutral-50 against white). */
-  --background: oklch(0.98 0 0);
-  --foreground: oklch(0.2 0.01 270);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.01 270);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.01 270);
-  /* The single accent: the primary button, the focus ring and the active item. */
-  --brand: oklch(0.55 0.2 275);
-  --primary: var(--brand);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.955 0.003 270);
-  --secondary-foreground: oklch(0.2 0.01 270);
-  --muted: oklch(0.955 0.003 270);
-  --muted-foreground: oklch(0.5 0.01 270);
-  --accent: oklch(0.945 0.004 270);
-  --accent-foreground: oklch(0.2 0.01 270);
-  --destructive: oklch(0.55 0.22 27);
-  --border: oklch(0 0 0 / 6%);
-  --input: oklch(0 0 0 / 12%);
-  --ring: var(--brand);
-  --sidebar: oklch(0.965 0.002 270);
-  --sidebar-foreground: oklch(0.2 0.01 270);
-  --sidebar-primary: var(--brand);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.93 0.004 270);
-  --sidebar-accent-foreground: oklch(0.2 0.01 270);
-  --sidebar-border: oklch(0 0 0 / 6%);
-  --sidebar-ring: var(--brand);
-  /* Session states, as a dot (8 px) and as text on the background, AA in both themes. */
-  --status-running: oklch(0.5 0.16 255);
-  --status-needs-you: oklch(0.52 0.15 55);
-  --status-idle: oklch(0.5 0.01 270);
-  --status-ended: oklch(0.54 0 0);
-  --status-error: oklch(0.5 0.2 27);
-  --status-risk: oklch(0.5 0.2 330);
-  /* A client's color, as a dot; the same in both themes, never the only sign of the client. */
-  --client-indigo: oklch(0.62 0.15 275);
-  --client-emerald: oklch(0.62 0.15 160);
-  --client-amber: oklch(0.7 0.15 80);
-  --client-rose: oklch(0.62 0.17 15);
-  --client-sky: oklch(0.64 0.12 230);
-  --client-violet: oklch(0.6 0.16 305);
-  --client-teal: oklch(0.6 0.1 190);
-  --client-orange: oklch(0.68 0.16 50);
-}
-
 /* The sidebar's main block and its folding groups. */
 @utility sidebar-nav {
   display: flex;
