@@ -30,6 +30,8 @@ interface Row {
   input_tokens: number;
   output_tokens: number;
   turns: number;
+  failed_turns: number;
+  duration_ms: number;
 }
 
 /** Cost, tokens and turns of the managed sessions, by day and project. */
@@ -74,15 +76,25 @@ export class UsageLedger {
   ): void {
     this.db
       .query(
-        `INSERT INTO usage_daily (day, project_key, cost_usd, input_tokens, output_tokens, turns)
-         VALUES (?, ?, ?, ?, ?, 1)
+        `INSERT INTO usage_daily (day, project_key, cost_usd, input_tokens, output_tokens, turns, failed_turns, duration_ms)
+         VALUES (?, ?, ?, ?, ?, 1, ?, ?)
          ON CONFLICT (day, project_key) DO UPDATE SET
            cost_usd = cost_usd + excluded.cost_usd,
            input_tokens = input_tokens + excluded.input_tokens,
            output_tokens = output_tokens + excluded.output_tokens,
-           turns = turns + 1`,
+           turns = turns + 1,
+           failed_turns = failed_turns + excluded.failed_turns,
+           duration_ms = duration_ms + excluded.duration_ms`,
       )
-      .run(day, projectKey, cost, turn.usage?.inputTokens ?? 0, turn.usage?.outputTokens ?? 0);
+      .run(
+        day,
+        projectKey,
+        cost,
+        turn.usage?.inputTokens ?? 0,
+        turn.usage?.outputTokens ?? 0,
+        turn.isError ? 1 : 0,
+        Number.isFinite(turn.durationMs) ? Math.round(turn.durationMs) : 0,
+      );
   }
 
   /** The last `days` days (today included), newest first, then by project. */
@@ -103,8 +115,8 @@ export class UsageLedger {
           inputTokens: row.input_tokens,
           outputTokens: row.output_tokens,
           turns: row.turns,
-          failedTurns: 0,
-          durationMs: 0,
+          failedTurns: row.failed_turns,
+          durationMs: row.duration_ms,
         }),
       );
     return { days, rows };

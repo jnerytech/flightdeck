@@ -57,6 +57,7 @@ describe("home-uso: the ledger counts failed turns and the time they took", () =
     l.record("s1", "/a", turn(true, 2000));
     at -= DAY;
     l.record("s2", "/b", turn(false, 3000));
+    at += DAY;
     const rows = l.summary(3).rows;
     expect(rows.map((r) => [r.day, r.projectKey, r.failedTurns, r.durationMs])).toEqual([
       ["2026-10-10", "p:/a", 1, 2000],
