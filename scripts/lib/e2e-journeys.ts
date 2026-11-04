@@ -44,5 +44,11 @@ export const VIEWPORTS: ReadonlyArray<{ width: number; height: number }> = [
   { width: 800, height: 600 },
 ];
 
+/** The widths the page must never scroll sideways at (issue #103), with 12 tabs and long ids. */
+export const OVERFLOW_VIEWPORTS: ReadonlyArray<{ width: number; height: number }> = [
+  { width: 1024, height: 768 },
+  { width: 1919, height: 1080 },
+];
+
 /** The name of the demo session that holds the high-risk request (the issue-e-risco journey). */
 export const DANGER_SESSION = "Limpar a pasta build";
