@@ -565,6 +565,8 @@ export class Board {
     input: {
       title: string;
       description: string;
+      /** The column the card is born in; the Backlog when absent. */
+      column?: BoardColumn;
       issueRef?: string;
       issueExternal?: boolean;
       /** Phase 31: what the card waits for. */
