@@ -1,5 +1,5 @@
-import { writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import type { AssistantBlock, McpLiveStatus } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { ulid } from "../ulid.ts";
@@ -36,7 +36,8 @@ class Interrupted extends Error {}
  * `[commit]`, fails the run on `[fail]` and honors `interrupt`. `[cost:x]` adds `x` to the
  * session's cumulative cost, which every `turn.result` reports (like `total_cost_usd`).
  * `[ratelimit:<window>=<fraction>@<epoch seconds>]` reports a plan quota reading, and
- * `[bash]` asks permission for a Bash command, with suggestions.
+ * `[bash]` asks permission for a Bash command, with suggestions. `[result:<path>]` writes a
+ * small Markdown file at `<path>` under the cwd, as a task that made a result would.
  */
 export class FakeRuntime implements AgentRuntime {
   /** Every `start` call, so tests can inspect what the session manager handed over. */
@@ -235,6 +236,9 @@ class FakeRun implements AgentRun {
       if (text.includes("[tool]")) await this.toolCall(abort.signal);
       if (text.includes("[bash]")) await this.bashCall(abort.signal);
       if (text.includes("[commit]")) await this.commit(text);
+      for (const [, path] of text.matchAll(/\[result:([^\]]+)\]/g)) {
+        await this.writeResult(path ?? "");
+      }
       for (const [, cost] of text.matchAll(/\[cost:(\d+(?:\.\d+)?)\]/g)) {
         const total = this.costs.get(this.claudeSessionId) ?? 0;
         this.costs.set(this.claudeSessionId, total + Number(cost));
@@ -250,6 +254,17 @@ class FakeRun implements AgentRun {
     } finally {
       this.turnAbort = null;
     }
+  }
+
+  /** `[result:<path>]`: writes a small Markdown file under the cwd, like a task that made a result. */
+  private async writeResult(path: string): Promise<void> {
+    const file = join(this.opts.cwd, path);
+    const inside = relative(this.opts.cwd, file);
+    if (inside.startsWith("..") || isAbsolute(inside)) {
+      throw new Error(`result path outside the folder: ${path}`);
+    }
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, `# ${basename(file)}\n\nMade by the fake runtime.\n`);
   }
 
   /** `[persona]`: what the session was opened with, so a smoke can see the role it plays. */
