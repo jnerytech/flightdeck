@@ -1775,6 +1775,10 @@ export const UsageRow = z.object({
   inputTokens: z.number().int(),
   outputTokens: z.number().int(),
   turns: z.number().int(),
+  /** How many of the turns ended in an error; absent from a daemon that does not count them. */
+  failedTurns: z.number().int().optional(),
+  /** The time the turns took, in milliseconds; absent from a daemon that does not add it up. */
+  durationMs: z.number().optional(),
 });
 export type UsageRow = z.infer<typeof UsageRow>;
 
