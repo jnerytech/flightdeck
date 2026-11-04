@@ -21,16 +21,29 @@ export interface DepsEnv {
 type Os = "linux" | "darwin" | "win32";
 type Fix = DepResult["fix"];
 
-const fixes = (linux: string, darwin: string, win32: string): Fix => [
-  { os: "linux", command: linux },
-  { os: "darwin", command: darwin },
-  { os: "win32", command: win32 },
+type OsFix = { command?: string; url?: string };
+
+/** The fix per operating system: a package-manager command where one exists, and the install page. */
+const fixes = (linux: OsFix, darwin: OsFix, win32: OsFix): Fix => [
+  { os: "linux", ...linux },
+  { os: "darwin", ...darwin },
+  { os: "win32", ...win32 },
 ];
 
-const CLAUDE_INSTALL = "npm install -g @anthropic-ai/claude-code";
+const CLAUDE_INSTALL = {
+  command: "npm install -g @anthropic-ai/claude-code",
+  url: "https://docs.anthropic.com/en/docs/claude-code/setup",
+};
 
 /** The least git that has `git worktree`: what every card, project and diff stands on. */
 const GIT_MIN = "2.5.0";
+
+const GIT_PAGE = "https://git-scm.com/downloads";
+const GH_PAGE = "https://cli.github.com";
+const AZ_PAGE = "https://learn.microsoft.com/cli/azure/install-azure-cli";
+const SSH_PAGE =
+  "https://learn.microsoft.com/windows-server/administration/openssh/openssh_install_firstuse";
+const TAILSCALE_PAGE = "https://tailscale.com/download";
 
 /** How each program is found and installed, and what stops working without it. */
 const TOOLS: Record<
@@ -45,39 +58,52 @@ const TOOLS: Record<
   git: {
     group: "required",
     breaks: ["projects", "worktrees", "changes", "board"],
-    fix: fixes("sudo apt install git", "brew install git", "winget install --id Git.Git"),
+    fix: fixes(
+      { command: "sudo apt install git", url: GIT_PAGE },
+      { command: "brew install git", url: GIT_PAGE },
+      { command: "winget install --id Git.Git", url: GIT_PAGE },
+    ),
     min: GIT_MIN,
   },
   gh: {
     group: "optional",
     breaks: ["github", "pullRequests", "boardSync"],
-    fix: fixes("sudo apt install gh", "brew install gh", "winget install --id GitHub.cli"),
+    fix: fixes(
+      { command: "sudo apt install gh", url: GH_PAGE },
+      { command: "brew install gh", url: GH_PAGE },
+      { command: "winget install --id GitHub.cli", url: GH_PAGE },
+    ),
   },
   az: {
     group: "optional",
     breaks: ["azure"],
+    // Linux has no one-line package install: the page lists the repository steps.
     fix: fixes(
-      "curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash",
-      "brew install azure-cli",
-      "winget install --id Microsoft.AzureCLI",
+      { url: "https://learn.microsoft.com/cli/azure/install-azure-cli-linux" },
+      { command: "brew install azure-cli", url: AZ_PAGE },
+      { command: "winget install --id Microsoft.AzureCLI", url: AZ_PAGE },
     ),
   },
   ssh: {
     group: "optional",
     breaks: ["remoteHosts", "teleport"],
     fix: fixes(
-      "sudo apt install openssh-client",
-      "xcode-select --install",
-      "Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0",
+      { command: "sudo apt install openssh-client", url: SSH_PAGE },
+      { command: "xcode-select --install", url: SSH_PAGE },
+      {
+        command: "Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0",
+        url: SSH_PAGE,
+      },
     ),
   },
   tailscale: {
     group: "optional",
     breaks: ["pairing"],
+    // Linux has no one-line package install either: the page picks the distribution.
     fix: fixes(
-      "curl -fsSL https://tailscale.com/install.sh | sh",
-      "brew install tailscale",
-      "winget install --id Tailscale.Tailscale",
+      { url: TAILSCALE_PAGE },
+      { command: "brew install tailscale", url: TAILSCALE_PAGE },
+      { command: "winget install --id Tailscale.Tailscale", url: TAILSCALE_PAGE },
     ),
   },
 };
@@ -149,7 +175,11 @@ async function signedIn(env: DepsEnv, noClaude: boolean): Promise<DepResult> {
   return {
     ...base,
     state: "missing",
-    fix: fixes("claude auth login", "claude auth login", "claude auth login"),
+    fix: fixes(
+      { command: "claude auth login" },
+      { command: "claude auth login" },
+      { command: "claude auth login" },
+    ),
   };
 }
 
