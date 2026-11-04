@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { git } from "../../daemon/test/board-helpers.ts";
 import { registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { settle, stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
@@ -65,7 +65,7 @@ describe("deps-ui: the desktop is told when a card is unblocked", () => {
     await settle(() => phone.notifications.length === 1);
     const seen = phone.notifications.length;
     await store.hostCommand(hostId, "card.update", { cardId: b.id, title: "B2" });
-    await act(() => Bun.sleep(200));
+    await stays(() => phone.notifications.length === seen, 200);
     expect(phone.notifications).toHaveLength(seen);
   });
 });

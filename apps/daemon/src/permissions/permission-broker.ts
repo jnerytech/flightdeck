@@ -139,6 +139,8 @@ export class PermissionBroker {
       throw new FlightdeckError(
         "not_found",
         `pedido de permissão ${payload.requestId} não está aberto`,
+        "permission_request_closed",
+        { id: payload.requestId },
       );
     }
     if (payload.decision === "allow") {

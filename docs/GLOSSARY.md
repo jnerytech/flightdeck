@@ -76,6 +76,13 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | executora | worker | A session of a team that does one task in its own card |
 | nome padrão | standard name | `project · persona · number`, the name every session gets; the number is never reused |
 | apelido | alias | `project-persona-number`, the address of a session in messages; a rename adds one and keeps the old |
+| Retorno sobre o custo (estimativa) | Return on cost (estimate) | (value − cost) / cost, with the value typed by the person (hours × hourly rate, plus what was billed); never called profit or savings |
+| Valor estimado | Estimated value | Estimated hours times the hourly rate, plus the amount billed; an estimate, not a measurement |
+| Horas estimadas | Estimated hours | The hours a done card is worth: the card's own, else the project's default; typed, not measured |
+| trabalho entregue | delivered work | Cards done and PRs merged in the period, from the host's own records, split into planned and unplanned |
+| planejado | planned | A card that was already on the board when the period began and was done inside it |
+| não planejado | unplanned | A card created and done inside the same period |
+| pessoa | person | A named group of hosts the app keeps, with a monthly token and/or cost limit; a view, never a ranking |
 | laço | loop | A pair of sessions messaging back and forth too fast; the host pauses the pair and tells you |
 | Soltar o par | Free the pair | Lets a pair paused for a loop talk again, in Needs you and in Settings |
 | exceção | exception | A pair (by session, project, team or host) allowed to talk beyond the default, one way or both |

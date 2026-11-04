@@ -168,7 +168,8 @@ describe("abas: a barra de abas", () => {
     await act(async () => {
       store.tabs.open({ name: "needs-you" });
     });
-    const bar = screen.queryByRole("tablist", { name: "Abas" })?.parentElement as HTMLElement;
+    // The bar holds the scrolling strip and the tools; the new-tab button is one of its children.
+    const bar = screen.queryByRole("button", { name: "Nova aba" })?.parentElement as HTMLElement;
     const tools = [...bar.querySelectorAll(":scope > button")].map(
       (b) => b.getAttribute("aria-label") ?? "",
     );

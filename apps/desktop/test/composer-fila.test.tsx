@@ -9,11 +9,14 @@ const { emptySession } = await import("../src/lib/session-state.ts");
 
 afterEach(cleanup);
 
-function setup(images = false) {
+function setup(images = false, failures = 0) {
   const sent: Array<{ text: string; images: unknown }> = [];
+  let failing = failures;
   const actions = {
-    send: async (text: string, withImages?: unknown) =>
-      void sent.push({ text, images: withImages }),
+    send: async (text: string, withImages?: unknown) => {
+      sent.push({ text, images: withImages });
+      if (failing-- > 0) throw new Error("host unreachable");
+    },
     interrupt: async () => {},
     close: async () => {},
     resume: async () => {},
@@ -115,5 +118,20 @@ describe("composer-fila: messages queued while a turn runs", () => {
         { text: "com imagem", images: [{ mediaType: "image/png", data: "iVBORw==" }] },
       ]),
     );
+  });
+
+  test("a send that fails keeps the message in the queue, and the next idle turn tries it again", async () => {
+    const { sent, queue, turn } = setup(false, 1);
+    await queue("importante");
+    await turn("idle");
+    await waitFor(() => expect(sent.map((m) => m.text)).toEqual(["importante"]));
+    // It failed: the message is still waiting in the list.
+    expect(
+      within(screen.getByRole("list", { name: "Na fila" })).getByText("importante"),
+    ).toBeTruthy();
+    await turn("running");
+    await turn("idle");
+    await waitFor(() => expect(sent.map((m) => m.text)).toEqual(["importante", "importante"]));
+    await waitFor(() => expect(screen.queryByRole("list", { name: "Na fila" })).toBeNull());
   });
 });

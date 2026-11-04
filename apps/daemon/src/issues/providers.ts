@@ -21,7 +21,11 @@ const LIMIT = 50;
  * value like `-R other/repo` or `@file` must never reach gh or az as an option or a file.
  */
 function checkedId(id: string): string {
-  if (!/^\d+$/.test(id)) throw new FlightdeckError("invalid_state", `id de issue inválido: ${id}`);
+  if (!/^\d+$/.test(id)) {
+    throw new FlightdeckError("invalid_state", `id de issue inválido: ${id}`, "issue_id_invalid", {
+      id,
+    });
+  }
   return id;
 }
 
@@ -35,9 +39,9 @@ export interface IssueProvider {
 
 /** GitHub authors whose content is yours: you, and people with write access to the repository. */
 export const TRUSTED_ASSOCIATIONS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
-const GH_FIELDS = "number,title,body,url,author,labels,createdAt,authorAssociation";
+export const GH_FIELDS = "number,title,body,url,author,labels,createdAt,authorAssociation";
 
-interface GhIssue {
+export interface GhIssue {
   number: number;
   title: string;
   body: string | null;
@@ -93,7 +97,7 @@ export class GithubIssues implements IssueProvider {
     return result.code === 0 ? result.stdout.trim().toLowerCase() || null : null;
   }
 
-  private toIssue(issue: GhIssue, me: string | null): Issue {
+  toIssue(issue: GhIssue, me: string | null): Issue {
     const author = issue.author?.login ?? "";
     const yours = me !== null && author.toLowerCase() === me;
     return {

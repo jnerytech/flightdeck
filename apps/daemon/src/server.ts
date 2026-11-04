@@ -54,6 +54,7 @@ import type { Automations } from "./automations/automations.ts";
 import type { BgService } from "./bg/service.ts";
 import type { Board } from "./board/board.ts";
 import { manageCard } from "./board/manage.ts";
+import type { BoardSyncService } from "./boardsync/service.ts";
 import { type Central, messageExternal } from "./central/central.ts";
 import type { Forker } from "./checkpoints/fork.ts";
 import type { Rewinder } from "./checkpoints/rewind.ts";
@@ -65,6 +66,7 @@ import { statuslineData } from "./costs/statusline.ts";
 import { coalesceDeltas, type DeltaCoalescer, drainAll } from "./delta-coalescer.ts";
 import { FlightdeckError, featureOff } from "./errors.ts";
 import { listDirs, listFiles } from "./fs-dirs.ts";
+import type { GithubService } from "./github/service.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Issues } from "./issues/issues.ts";
@@ -89,6 +91,7 @@ import type { Changes } from "./review/changes.ts";
 import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
 import type { SessionFiles } from "./review/session-files.ts";
+import { type RoiSummarizer, roiPeriod } from "./roi/summary.ts";
 import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
@@ -149,6 +152,12 @@ export interface ServerOptions {
   fsDirs?: boolean;
   /** Runs the host's self-check for `doctor.run`; absent, the command is refused and not announced. */
   doctor?: (appVersion?: string) => Promise<DoctorResult>;
+  /** Sign-in with GitHub and start from a GitHub project (phase 37): the `github.*` commands. */
+  github?: GithubService;
+  /** What the agents cost and delivered, per project (phase 36): `roi.summary`. */
+  roi?: RoiSummarizer;
+  /** Board sync with an external board (phase 38): the `boardsync.*` commands. */
+  boardsync?: BoardSyncService;
   /** Announce `projects.scan` and `projects.clone` in `host.info`: "find my projects" needs them. */
   findProjects?: boolean;
   /** How `projects.clone` runs git; the real one when absent (tests give theirs). */
@@ -434,6 +443,9 @@ export function startServer(opts: ServerOptions): RunningServer {
     "session.images",
     ...(opts.doctor ? ["doctor.run"] : []),
     ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
+    ...(opts.github ? ["github"] : []),
+    ...(opts.boardsync ? ["boardsync"] : []),
+    ...(opts.roi ? ["roi"] : []),
     ...(opts.central ? ["central"] : []),
     ...(opts.board ? ["workflows"] : []),
     // Phase 24: the run.yaml of a card and its processes.
@@ -574,6 +586,21 @@ export function startServer(opts: ServerOptions): RunningServer {
     };
   }
 
+  function roi(): RoiSummarizer {
+    if (!opts.roi) throw featureOff("roi");
+    return opts.roi;
+  }
+
+  function boardsync(): BoardSyncService {
+    if (!opts.boardsync) throw featureOff("boardsync");
+    return opts.boardsync;
+  }
+
+  function github(): GithubService {
+    if (!opts.github) throw featureOff("github");
+    return opts.github;
+  }
+
   /**
    * Asks git for the project key of each folder without blocking, so the sync `listed` below reads
    * the cache: a cold folder would otherwise cost one blocking git spawn on the event loop, which
@@ -596,7 +623,7 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
 
   function watching(): PrWatch {
-    if (!opts.watch) throw new FlightdeckError("invalid_state", "vigia de PR indisponível");
+    if (!opts.watch) throw featureOff("prWatch");
     return opts.watch;
   }
 
@@ -842,7 +869,7 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
 
   function runenv() {
-    if (!opts.runenv) throw new FlightdeckError("invalid_state", "ambiente de execução desativado");
+    if (!opts.runenv) throw featureOff("runEnv");
     return opts.runenv;
   }
 
@@ -1245,6 +1272,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           throw new FlightdeckError(
             "invalid_state",
             "reativar a aprovação automática pede confirm: true",
+            "autoapprove_resume_confirm",
           );
         }
         autoApprove().resume(command.payload.sessionKey);
@@ -1506,8 +1534,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { projectId, ...patch } = command.payload;
         return ok(command.type, await board().forWire(board().updateProject(projectId, patch)));
       }
-      case "board.get":
-        return ok(command.type, board().getBoard(command.payload.projectId));
+      case "board.get": {
+        const found = board().getBoard(command.payload.projectId);
+        return ok(command.type, { ...found, project: await board().forWire(found.project) });
+      }
       case "roots.add": {
         requireVaultTransport(ws.data.origin, "roots.add", opts.log);
         const { path, confirm } = command.payload;
@@ -1666,6 +1696,46 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { depth } = command.payload;
         return ok(command.type, await scanRepos(opts.allowedRoots, depth ? { depth } : {}));
       }
+      case "roi.summary":
+        return ok(command.type, await roi().summaryWithSignals(roiPeriod(command.payload)));
+      case "boardsync.boards":
+        return ok(command.type, { boards: await boardsync().boards() });
+      case "boardsync.link":
+        return ok(command.type, await boardsync().link(command.payload));
+      case "boardsync.unlink":
+        boardsync().unlink(command.payload.projectId);
+        return ok(command.type);
+      case "boardsync.setMap":
+        return ok(
+          command.type,
+          await boardsync().setMap(command.payload.projectId, command.payload.columnMap),
+        );
+      case "boardsync.setPush": {
+        const { projectId, push, confirm } = command.payload;
+        return ok(command.type, await boardsync().setPush(projectId, push, confirm));
+      }
+      case "boardsync.status":
+        return ok(command.type, await boardsync().status(command.payload.projectId));
+      case "boardsync.syncNow":
+        return ok(command.type, await boardsync().syncNow(command.payload.projectId));
+      case "boardsync.log":
+        return ok(command.type, { entries: boardsync().log(command.payload.cardId) });
+      case "github.status":
+        return ok(command.type, await github().status());
+      case "github.login.start":
+        return ok(command.type, await github().loginStart());
+      case "github.login.cancel":
+        github().loginCancel();
+        return ok(command.type);
+      case "github.logout":
+        await github().logout();
+        return ok(command.type);
+      case "github.repos":
+        return ok(command.type, { repos: await github().repos(command.payload.query) });
+      case "github.issues":
+        return ok(command.type, { issues: await github().issues(command.payload.repo) });
+      case "github.start":
+        return ok(command.type, await github().start(command.payload));
       case "projects.clone":
         if (!opts.findProjects) throw featureOff("projects.clone");
         return ok(
@@ -1803,6 +1873,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           throw new FlightdeckError(
             "invalid_state",
             "ligar o terminal dá um shell completo neste host: confirme com confirm: true",
+            "terminal_enable_confirm",
           );
         }
         manager.setEnabled(enabled);

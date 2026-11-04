@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
-import { waiter } from "./wait.ts";
+import { stays, waiter } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
@@ -203,8 +203,7 @@ describe("resumo-ui", () => {
   test("a host without the feature shows nothing at all", async () => {
     const { store } = await online("en", { legacy: true });
     await show(store);
-    await act(() => Bun.sleep(50));
-    expect(screen.queryByRole("region")).toBeNull();
+    await stays(() => screen.queryByRole("region") === null, 100);
   });
 
   test("a session that changed no file has no files row", async () => {

@@ -3,7 +3,7 @@ import { CLIENTS_KEY, UNASSIGNED } from "../src/lib/clients.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -115,6 +115,28 @@ describe("clients-costs: the Costs screen across hosts", () => {
     expect(rows).toEqual(["BetaUS$ 3.00", "AcmeUS$ 2.00", "Sem clienteUS$ 1.00"]);
   });
 
+  test("a summary that names no model shows the totals without a top-model card", async () => {
+    const { store } = await setup();
+    await settle(() => total() === "US$ 3.00");
+    expect(screen.queryByText("Modelo principal")).not.toBeNull();
+    const ask = store.hostCommand.bind(store);
+    (store as unknown as { hostCommand: unknown }).hostCommand = async (
+      hostId: string,
+      type: string,
+      payload: unknown,
+    ) => {
+      const answer = await (ask as (h: string, t: string, p: unknown) => Promise<unknown>)(
+        hostId,
+        type,
+        payload,
+      );
+      return type === "costs.summary" ? { ...(answer as object), byModel: [] } : answer;
+    };
+    await pickHost("__all__");
+    await settle(() => screen.queryByText("Modelo principal") === null);
+    expect(total()).toBe("US$ 6.00");
+  });
+
   test("one host splits its own spend by client too", async () => {
     await setup();
     await settle(() => rowsOf("Por cliente").length === 2);
@@ -182,7 +204,7 @@ describe("clients-costs: the Costs screen across hosts", () => {
     }) as typeof store.hostCommand;
     await act(async () => store.setClientSelection("acme"));
     await settle(() => total() === "US$ 2.00");
-    await act(() => Bun.sleep(100));
+    await uiIdle();
     expect(asked.sort()).toEqual(['"*"', '"*"', '"github.com/acme/api"']);
   });
 });

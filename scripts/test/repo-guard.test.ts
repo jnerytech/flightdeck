@@ -52,7 +52,8 @@ describe("isolamento: a test must not write into the repository", () => {
   test("a changed core setting of the repository config is reported, and core.bare by name", () => {
     const edited = repo();
     const a = installRepoGuard(edited);
-    git(edited, "config", "core.ignorecase", "true");
+    // A setting git does not set by itself on any platform (core.ignorecase is already true on Windows).
+    git(edited, "config", "core.abbrev", "13");
     expect(() => assertRepoUntouched(a)).toThrow(/config/);
 
     const bare = repo();

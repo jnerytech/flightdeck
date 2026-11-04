@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { translator } from "../src/i18n/index.ts";
 import { liveScreen, registerDom } from "./dom.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -117,7 +118,7 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
         <MaintenanceSection store={store} hostId="h" />
       </TContext.Provider>,
     );
-    await act(() => Bun.sleep(10));
+    await uiIdle();
     await expectBusyOnce("Fazer backup agora", backup.calls, () => backup.settle(null));
     await expectBusyOnce("Simular", prune.calls, () => prune.settle(null));
   });
@@ -136,7 +137,7 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
       },
     } as unknown as AppStore;
     render(<SessionMessages store={store} hostId="h" sessionId="s1" />);
-    await act(() => Bun.sleep(10));
+    await settle(() => button("Mandar para outra sessão…") !== null);
     await click(button("Mandar para outra sessão…"));
     await act(async () => {
       fireEvent.change(screen.getByLabelText("Texto da mensagem"), { target: { value: "oi" } });
@@ -220,7 +221,7 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
         <PrComments store={store} hostId="h" cardId="c1" moment="m" />
       </TContext.Provider>,
     );
-    await act(() => Bun.sleep(10));
+    await uiIdle();
     await expectBusyOnce("Enviar ao agente (1)", send.calls, () => send.settle({ sent: 1 }));
   });
 
@@ -280,7 +281,7 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
         <VaultReport store={store} />
       </TContext.Provider>,
     );
-    await act(() => Bun.sleep(10));
+    await uiIdle();
     await expectBusyOnce("Exportar CSV", exported.calls, () => exported.settle({ csv: "a,b" }));
   });
 });

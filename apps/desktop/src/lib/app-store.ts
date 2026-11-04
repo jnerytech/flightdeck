@@ -30,6 +30,7 @@ import type {
   Project,
   QuotaState,
   RiskLevel,
+  RoiSummaryResult,
   RuleIssue,
   RunConfigInfo,
   RunState,
@@ -107,6 +108,8 @@ import { probeHost } from "./probe-host.ts";
 import { isHot } from "./quota.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
+import type { RoiMoney } from "./roi.ts";
+import { RoiSettings } from "./roi-settings.ts";
 import type { Route } from "./router.ts";
 import {
   applyEnvelope,
@@ -258,6 +261,8 @@ export interface AppState {
   projects: Record<string, Project[]>;
   /** Phase 29: the clients, in the order their rules are tried; kept by `store.clients`. */
   clientList: Client[];
+  /** Phase 36: counts the saves of `store.roi`, so the screens that read its settings render again. */
+  roiRevision: number;
   /** Phase 29: projects pinned to a client by hand (null: pinned to Unassigned). */
   clientOverrides: Record<string, string | null>;
   /** Phase 29: "all", "unassigned" or a client id; what the work screens show. */
@@ -368,6 +373,9 @@ export type HostCommandType = Extract<
   | "doctor.run"
   | "projects.scan"
   | "projects.clone"
+  | `github.${string}`
+  | `boardsync.${string}`
+  | "roi.summary"
   | "session.files"
   | `snapshots.${string}`
   | `rewind.${string}`
@@ -721,6 +729,9 @@ export class AppStore {
     this.globalSnippets = new GlobalSnippets(platform);
     this.globalPersonas = new GlobalPersonas(platform);
     this.clients = new Clients(platform, { onChange: () => this.syncClients() });
+    this.roi = new RoiSettings(platform, {
+      onChange: () => this.update({ roiRevision: this.state.roiRevision + 1 }),
+    });
     this.clientBudgetsSeen = JSON.stringify(this.clients.budgets());
     this.webhooks = new Webhooks({
       platform,
@@ -773,6 +784,7 @@ export class AppStore {
       terminalEnv: null,
       projects: {},
       clientList: this.clients.list(),
+      roiRevision: 0,
       clientOverrides: this.clients.overrides(),
       clientSelection: loadSelection(platform.storage, this.clients.list()),
       clientBudgets: [],
@@ -823,6 +835,15 @@ export class AppStore {
   /** Today as `YYYY-MM-DD`, in this machine's time zone unless injected. */
   today(): string {
     return (this.options.day ?? localDay)(this.now());
+  }
+
+  /**
+   * Phase 36: the day the hosts' ROI figures end on. A host dates a delivery by its UTC day, so
+   * the range ends on today's UTC day: west of Greenwich, late in the evening, the local day is
+   * still yesterday and today's work would fall outside it.
+   */
+  roiToday(): string {
+    return new Date(this.now()).toISOString().slice(0, 10);
   }
 
   /** HH:MM of an instant, in this machine's time zone unless injected. */
@@ -2706,8 +2727,45 @@ export class AppStore {
   readonly globalSnippets: GlobalSnippets;
   /** Phase 20: the global personas, kept by the app. */
   readonly globalPersonas: GlobalPersonas;
+  /**
+   * Phase 36: each online host's `roi.summary` for the days given. A host without the feature, or
+   * that cannot be reached, is left out; the card says how many answered.
+   */
+  async roiSummaries(
+    from: string,
+    to: string,
+  ): Promise<Array<{ hostId: string; result: RoiSummaryResult }>> {
+    const hosts = this.getState().hosts.filter(
+      (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "roi", false),
+    );
+    const answers = await Promise.all(
+      hosts.map(async (host) => ({
+        hostId: host.id,
+        asked: await this.hostRequest(host.id, "roi.summary", { from, to }),
+      })),
+    );
+    return answers.flatMap(({ hostId, asked }) =>
+      asked.ok ? [{ hostId, result: asked.data }] : [],
+    );
+  }
+
+  /** Phase 36: what the person typed that turns the work of a project into money. */
+  roiMoneyOf(projectKey: string): RoiMoney {
+    const clientId = this.clientScope().clientOf(projectKey);
+    const settings = this.roi.data();
+    return {
+      rate: this.roi.rateFor(projectKey, clientId === UNASSIGNED ? null : clientId),
+      billed: null,
+      planShareUsd: null,
+      countReview: settings.countReview,
+      reviewCapSeconds: settings.reviewCapMinutes * 60,
+    };
+  }
+
   /** Phase 29: the clients, their rules and overrides, kept by the app. */
   readonly clients: Clients;
+  /** Phase 36: the rates, the plan price and the people, kept by the app. */
+  readonly roi: RoiSettings;
   /** Phase 30: the webhook targets and the sending. */
   readonly webhooks: Webhooks;
   private readonly webhookFeed: WebhookFeed;

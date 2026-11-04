@@ -12,7 +12,7 @@ const TEST_FILE = /\.test\.tsx?$/;
 const GLOBAL_FILE =
   /^(?:package\.json|bun\.lock|bunfig[\w.]*\.toml|tsconfig[\w.]*\.json|scripts\/test\/preload\.ts|(?:apps|packages)\/[^/]+\/package\.json)$/;
 /** More files than this go through the machine-wide slot. */
-const SLOT_ABOVE = 60;
+export const SLOT_ABOVE = 60;
 
 /** The module specifiers a source file imports, re-exports or loads with `import()`. */
 export function importsOf(source: string): string[] {

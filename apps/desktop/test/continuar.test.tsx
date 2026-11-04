@@ -3,7 +3,7 @@ import { utimesSync } from "node:fs";
 import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+import { stays, waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -98,13 +98,11 @@ describe("continuar", () => {
     expect(screen.queryByText("possivelmente em uso")).not.toBeNull();
     await click("Continuar no Flightdeck");
     expect(screen.queryByText(/pode estar em uso em outro lugar/)).not.toBeNull();
-    await act(() => Bun.sleep(30));
-    expect(runtime.starts).toEqual([]);
+    await stays(() => runtime.starts.length === 0, 100);
 
     await click("Cancelar");
     expect(screen.queryByText(/pode estar em uso em outro lugar/)).toBeNull();
-    await act(() => Bun.sleep(30));
-    expect(runtime.starts).toEqual([]);
+    await stays(() => runtime.starts.length === 0, 100);
 
     await click("Continuar no Flightdeck");
     await click("Continuar mesmo assim");

@@ -3,7 +3,7 @@ import { actionSeedFromCommand } from "../src/lib/snippets.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { snippetsHost } from "./snippets-ui-setup.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -62,14 +62,29 @@ describe("snippets-ui: a secret's snippet becomes an action", () => {
     await act(async () => {
       fireEvent.click(screen.queryByRole("button", { name: "Snippets" }) as HTMLElement);
     });
-    await act(() => Bun.sleep(100));
+    try {
+      await settle(
+        () =>
+          (screen.queryByLabelText("Projeto") as HTMLSelectElement | null)?.querySelector(
+            `option[value="${h.repo}"]`,
+          ) != null,
+      );
+    } catch (error) {
+      // A CI log is all there is of a run on another platform: say what the select held.
+      const held = [
+        ...((screen.queryByLabelText("Projeto") as HTMLSelectElement | null)?.options ?? []),
+      ].map((o) => o.value);
+      throw new Error(
+        `${(error as Error).message}; wanted ${h.repo}, the select held ${JSON.stringify(held)}`,
+      );
+    }
     const fill = async (label: string, value: string) => {
       const field = screen.queryByLabelText(label);
       expect(field).not.toBeNull();
       await act(async () => {
         fireEvent.change(field as HTMLElement, { target: { value } });
       });
-      await act(() => Bun.sleep(60));
+      await uiIdle();
     };
     const click = async (name: string) => {
       const button = screen.queryByRole("button", { name });
@@ -77,7 +92,7 @@ describe("snippets-ui: a secret's snippet becomes an action", () => {
       await act(async () => {
         fireEvent.click(button as HTMLElement);
       });
-      await act(() => Bun.sleep(150));
+      await uiIdle();
     };
     await fill("Projeto", h.repo);
     await click("Novo snippet");

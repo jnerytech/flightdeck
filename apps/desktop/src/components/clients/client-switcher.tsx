@@ -44,6 +44,10 @@ export function ClientSwitcher(props: {
       ? t("clients.unassigned")
       : (selected?.name ?? t("clients.allClients"));
   const counts = switcherCounts(store.clientScope(), hubRows(state), pending, selection);
+  const others =
+    counts.othersWaiting > 0 ? t("clients.othersWaiting", { count: counts.othersWaiting }) : "";
+  // The rail has no room for the badge: its words go to the name and a dot marks the icon.
+  const railMark = collapsed && others !== "";
 
   return (
     <Inline gap={1}>
@@ -53,11 +57,24 @@ export function ClientSwitcher(props: {
           <Button
             variant="ghost"
             size="sm"
-            aria-label={t("clients.switcher", { name })}
-            title={name}
+            aria-label={
+              railMark
+                ? `${t("clients.switcher", { name })} (${others})`
+                : t("clients.switcher", { name })
+            }
+            title={railMark ? `${name} (${others})` : name}
             className="min-w-0 flex-1 justify-start"
           >
-            {selected ? <ClientDot color={selected.color} /> : <Briefcase aria-hidden="true" />}
+            <span className="icon-mark">
+              {selected ? <ClientDot color={selected.color} /> : <Briefcase aria-hidden="true" />}
+              {railMark && (
+                <span
+                  data-attention
+                  aria-hidden="true"
+                  className="-right-1 -top-1 absolute size-2 rounded-full bg-primary"
+                />
+              )}
+            </span>
             {!collapsed && <span className="min-w-0 flex-1 truncate text-left">{name}</span>}
           </Button>
         </DropdownMenuTrigger>
@@ -87,7 +104,7 @@ export function ClientSwitcher(props: {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      {counts.othersWaiting > 0 && (
+      {counts.othersWaiting > 0 && !collapsed && (
         <Badge
           role="img"
           aria-label={t("clients.othersWaiting", { count: counts.othersWaiting })}

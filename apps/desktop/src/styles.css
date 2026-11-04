@@ -784,7 +784,6 @@
   flex-direction: column;
   gap: 0.125rem;
 }
-
 @utility sidebar-group {
   display: flex;
   min-width: 0;
@@ -828,7 +827,6 @@
   flex-direction: column;
   gap: 0.25rem;
 }
-
 @utility field-row {
   display: flex;
   flex-wrap: wrap;
@@ -1185,4 +1183,17 @@
   flex: 1;
   min-width: 0;
   padding: 1.5rem;
+}
+
+/* An icon with a dot or a count pinned to its corner. */
+@utility icon-mark {
+  position: relative;
+  display: flex;
+}
+
+/* A row of buttons that wraps, each at its own height. */
+@utility button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }

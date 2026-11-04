@@ -23,7 +23,8 @@ export interface IssuesOptions {
   autoApprove?: Pick<AutoApprover, "suspend">;
 }
 
-const invalid = (message: string) => new FlightdeckError("invalid_state", message);
+const invalid = (message: string, reason: string, params?: Record<string, string | number>) =>
+  new FlightdeckError("invalid_state", message, reason, params);
 
 export class Issues {
   constructor(private readonly opts: IssuesOptions) {}
@@ -43,15 +44,26 @@ export class Issues {
     const { path, provider, configured } = await this.provider(projectId);
     const parsed = parseIssueRef(issueRef);
     if (!parsed || parsed.provider !== configured.provider) {
-      throw invalid(`${issueRef} não é uma issue do ${configured.provider} deste projeto`);
+      throw invalid(
+        `${issueRef} não é uma issue do ${configured.provider} deste projeto`,
+        "issue_not_this_project",
+        { issue: issueRef, provider: configured.provider },
+      );
     }
     // Only this project's own repository: the remote decides, not the reference.
     const ref = provider.refOf(parsed.id);
     if (ref.toLowerCase() !== issueRef.toLowerCase()) {
-      throw invalid(`${issueRef} é de outro repositório que o do projeto`);
+      throw invalid(`${issueRef} é de outro repositório que o do projeto`, "issue_other_repo", {
+        issue: issueRef,
+      });
     }
     const existing = this.opts.board.cardForIssue(projectId, ref);
-    if (existing) throw invalid(`a issue ${ref} já tem o card ${existing}`);
+    if (existing) {
+      throw invalid(`a issue ${ref} já tem o card ${existing}`, "issue_has_card", {
+        ref,
+        card: existing,
+      });
+    }
     const issue = await provider.get(path, parsed.id);
     const description = [issue.external ? UNTRUSTED_MARK : "", issue.body, issue.url]
       .filter((part) => part.trim() !== "")
@@ -72,18 +84,19 @@ export class Issues {
   private async provider(projectId: string) {
     const project = this.opts.board.getProject(projectId);
     const configured = project.issues;
-    if (!configured) throw invalid("o projeto não tem integração de issues");
+    if (!configured) throw invalid("o projeto não tem integração de issues", "project_no_issues");
     const remote = await git(project.path, "remote", "get-url", "origin");
-    if (remote.code !== 0) throw invalid("o projeto não tem o remoto origin");
+    if (remote.code !== 0) throw invalid("o projeto não tem o remoto origin", "project_no_origin");
     const url = remote.stdout.trim();
     let provider: IssueProvider;
     if (configured.provider === "github") {
       const repo = githubCoords(url);
-      if (!repo) throw invalid(`o remoto ${url} não é do GitHub`);
+      if (!repo) throw invalid(`o remoto ${url} não é do GitHub`, "remote_not_github", { url });
       provider = new GithubIssues(repo);
     } else {
       const coords = azureCoords(url);
-      if (!coords) throw invalid(`o remoto ${url} não é do Azure DevOps`);
+      if (!coords)
+        throw invalid(`o remoto ${url} não é do Azure DevOps`, "remote_not_azure", { url });
       provider = new AzureIssues(coords);
     }
     return { path: project.path, provider, configured };

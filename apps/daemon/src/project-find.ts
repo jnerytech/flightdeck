@@ -9,6 +9,8 @@ export interface ScanOptions {
   depth?: number;
   /** The most repositories returned (200 by default). */
   cap?: number;
+  /** How a folder is listed (`fs/promises` by default); tests pass one that fails for a folder. */
+  readdir?: typeof readdir;
 }
 
 const DEFAULT_DEPTH = 2;
@@ -45,6 +47,7 @@ export async function scanRepos(
 ): Promise<ProjectsScanResult> {
   const depth = options.depth ?? DEFAULT_DEPTH;
   const cap = options.cap ?? DEFAULT_CAP;
+  const list = options.readdir ?? readdir;
   const real = await Promise.all(roots.map(realFolder));
   const found = new Map<string, { name: string; path: string; root: string }>();
   let truncated = false;
@@ -73,7 +76,7 @@ export async function scanRepos(
           break;
         }
         opened++;
-        const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+        const entries = await list(dir, { withFileTypes: true }).catch(() => []);
         for (const entry of entries) {
           if (!entry.isDirectory() || entry.name.startsWith(".") || SKIPPED.has(entry.name)) {
             continue;
@@ -140,7 +143,7 @@ function checkUrl(url: string): void {
 }
 
 /** The root, as a real path, when it is a folder inside the allowed roots. */
-async function allowedRoot(root: string, roots: readonly string[]): Promise<string> {
+export async function allowedRoot(root: string, roots: readonly string[]): Promise<string> {
   const real = await realFolder(root);
   const allowed = await Promise.all(roots.map(realFolder));
   if (real && allowed.some((r) => r !== null && isInside(r, real))) return real;
@@ -192,20 +195,32 @@ export async function cloneRepo(
 }
 
 const CLONE_TIMEOUT_MS = 5 * 60_000;
+/** How long the text of stderr is waited for once git itself has ended. */
+const STDERR_GRACE_MS = 2_000;
 
-/** The real `git`: no prompt for a password, and a time limit. */
-export const spawnGit: GitRunner = async (args) => {
-  const proc = Bun.spawn(["git", ...args], {
-    stdout: "ignore",
-    stderr: "pipe",
-    stdin: "ignore",
-    env: { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_ASKPASS: "echo" },
-  });
-  const timer = setTimeout(() => proc.kill(), CLONE_TIMEOUT_MS);
-  try {
-    const [stderr, code] = await Promise.all([new Response(proc.stderr).text(), proc.exited]);
-    return { code, stderr };
-  } finally {
-    clearTimeout(timer);
-  }
-};
+/** A `git` runner: no prompt for a password, and a command still running after `timeoutMs` is stopped. */
+export const gitRunner =
+  (timeoutMs: number): GitRunner =>
+  async (args) => {
+    const proc = Bun.spawn(["git", ...args], {
+      stdout: "ignore",
+      stderr: "pipe",
+      stdin: "ignore",
+      env: { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_ASKPASS: "echo" },
+    });
+    const timer = setTimeout(() => proc.kill(), timeoutMs);
+    try {
+      const stderr = new Response(proc.stderr).text();
+      const code = await proc.exited;
+      // A child that outlives a killed git can hold the pipe open: its text is not worth the wait.
+      return {
+        code,
+        stderr: await Promise.race([stderr, Bun.sleep(STDERR_GRACE_MS).then(() => "")]),
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
+/** The real `git`, with the five minutes a clone gets. */
+export const spawnGit: GitRunner = gitRunner(CLONE_TIMEOUT_MS);

@@ -1,10 +1,12 @@
 import type { Arena, ArenaVariant, StepRun, WorkflowInfo } from "@flightdeck/protocol";
 import { memo, useEffect, useState } from "react";
+import { CardSyncLog } from "@/components/board/board-sync";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { PersonaPicker } from "@/components/personas/persona-picker";
+import { CardHours } from "@/components/roi/card-hours";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +73,8 @@ export const CardDetail = memo(function CardDetail(props: {
   const withReview = hasFeature(host?.hostInfo?.features, "review", false);
   const withArena = hasFeature(host?.hostInfo?.features, "arena", false);
   const withDeps = hasFeature(host?.hostInfo?.features, "deps", false);
+  const withSync = hasFeature(host?.hostInfo?.features, "boardsync", false);
+  const withRoi = hasFeature(host?.hostInfo?.features, "roi", false);
   /** Estimated cost of every session of the card, and of the open run's (phase 8). */
   const [cardCost, setCardCost] = useState<number | null>(null);
   const [runCost, setRunCost] = useState<number | null>(null);
@@ -245,6 +249,18 @@ export const CardDetail = memo(function CardDetail(props: {
             </ActionButton>
           )}
           {card.issueExternal && <ExternalSeal t={t} />}
+          {withSync && card.externalUrl && (
+            <ActionButton
+              variant="outline"
+              size="sm"
+              onClick={() => store.openLink(card.externalUrl ?? "")}
+            >
+              {t("boardSyncUi.openItem")}
+            </ActionButton>
+          )}
+          {withSync && card.externalGone && (
+            <Badge variant="outline">{t("boardSyncUi.gone")}</Badge>
+          )}
           {card.prState && <Badge variant="outline">{t(`pr.${card.prState}` as Key)}</Badge>}
           {card.checksState && (
             <Badge variant="outline">{t(`checks.${card.checksState}` as Key)}</Badge>
@@ -289,6 +305,7 @@ export const CardDetail = memo(function CardDetail(props: {
             {t("cardUi.saveDescription")}
           </ActionButton>
         </div>
+        {withRoi && <CardHours store={store} hostId={hostId} card={card} />}
         <div className="flex flex-wrap items-center gap-2">
           <NativeSelect
             inline
@@ -501,6 +518,9 @@ export const CardDetail = memo(function CardDetail(props: {
               store.respondGate(hostId, { runId: run.id, ...step }, decision, note)
             }
           />
+        )}
+        {withSync && card.externalUrl && (
+          <CardSyncLog store={store} hostId={hostId} cardId={cardId} />
         )}
         <div className="flex gap-2">
           <Button

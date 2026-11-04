@@ -1,4 +1,6 @@
 /** The steps of the BDD pilot: each is written once per language, and the UI text comes from the dictionaries. */
+import { en } from "../../../apps/desktop/src/i18n/en.ts";
+import { ptBR } from "../../../apps/desktop/src/i18n/pt-BR.ts";
 import { type Context, open, WAIT, waitFor } from "../journeys.ts";
 import { Given, Then, When } from "./fixtures.ts";
 
@@ -194,4 +196,84 @@ both(
   { pt: "o início do modo simples aparece", en: "the home of simple mode shows" },
   async (c) =>
     c.page.getByRole("heading", { name: c.t("simple.home.title") }).waitFor({ timeout: WAIT }),
+);
+
+// Return on cost (phase 36): the headline of the project page and the people table.
+const dictionary = (c: Context) => (c.lang === "en" ? en : ptBR);
+/** A regular expression for a dictionary text with its `{placeholders}` left open. */
+const pattern = (template: string) =>
+  new RegExp(
+    template
+      .split(/\{\w+\}/)
+      .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join(".*"),
+  );
+
+both(
+  Given,
+  {
+    pt: "que o projeto da demo concluiu mais cards neste mês que no período anterior",
+    en: "the demo project finished more cards this month than in the period before",
+  },
+  // The demo seed does it (the `demo-roi` test holds the numbers): nothing to do here.
+  async () => {},
+);
+
+both(
+  When,
+  { pt: "abro o board do projeto da demo", en: "I open the board of the demo project" },
+  async (c) => open(c, { name: "board", host: ALFA, projectId: c.ids.project }),
+);
+
+both(
+  Then,
+  {
+    pt: "o cartão de retorno sobre o custo diz que entregou mais que o período anterior",
+    en: "the return on cost card says it delivered more than the period before",
+  },
+  async (c) => {
+    const roi = dictionary(c).roiUi;
+    const card = c.page.getByRole("region", { name: roi.title });
+    await card.getByText(pattern(roi.headline.more)).waitFor({ timeout: WAIT });
+  },
+);
+
+both(Given, { pt: "que estou na tela de Custos", en: "I am on the Costs screen" }, async (c) =>
+  open(c, { name: "costs" }),
+);
+
+both(
+  When,
+  {
+    pt: "adiciono a pessoa {string} no primeiro host com limite mensal de {string} tokens",
+    en: "I add the person {string} on the first host with a monthly limit of {string} tokens",
+  },
+  async (c, name = "", limit = "") => {
+    const settings = dictionary(c).roiUi.settingsPanel;
+    await c.page.getByLabel(settings.personName, { exact: true }).fill(name);
+    await c.page
+      .getByRole("group", { name: settings.personHosts })
+      .getByRole("checkbox")
+      .first()
+      .check({ timeout: WAIT });
+    await c.page.getByLabel(settings.tokenLimit, { exact: true }).fill(limit);
+    await c.page.getByRole("button", { name: settings.addPerson, exact: true }).click();
+  },
+);
+
+both(
+  Then,
+  {
+    pt: "a tabela de pessoas lista {string} contra um limite de 5 milhões de tokens",
+    en: "the people table lists {string} against a limit of 5 million tokens",
+  },
+  async (c, name = "") => {
+    const people = dictionary(c).roiUi.people;
+    const table = c.page.getByRole("table", { name: people.title });
+    const row = table.getByRole("row").filter({ has: c.page.getByRole("rowheader", { name }) });
+    const limit = people.tokens.million.replace("{n}", "5");
+    await row.getByText(pattern(people.shareOfLimit.replace("{limit}", limit))).waitFor({
+      timeout: WAIT,
+    });
+  },
 );

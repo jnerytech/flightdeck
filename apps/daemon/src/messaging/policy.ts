@@ -61,7 +61,7 @@ export const MAX_TEXT_BYTES = 32 * 1024;
 
 export type Access =
   | { ok: true; via: "project" | "team" | "exception" }
-  | { ok: false; reason: string };
+  | { ok: false; reason: string; code: "messaging_self" | "messaging_no_route" };
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
@@ -178,7 +178,11 @@ const selects = (selector: Selector, party: Party): boolean =>
 /** Whether the sender may message the target. */
 export function access(from: Party, to: Party, policy: Policy): Access {
   if (addressOf(from) === addressOf(to)) {
-    return { ok: false, reason: "uma sessão não manda mensagem para si mesma" };
+    return {
+      ok: false,
+      reason: "uma sessão não manda mensagem para si mesma",
+      code: "messaging_self",
+    };
   }
   if (from.projectKey !== null && from.projectKey === to.projectKey) {
     return { ok: true, via: "project" };
@@ -194,6 +198,7 @@ export function access(from: Party, to: Party, policy: Policy): Access {
     ok: false,
     reason:
       "as sessões não são do mesmo projeto nem do mesmo time, e nenhuma exceção em Configurações libera este par",
+    code: "messaging_no_route",
   };
 }
 

@@ -3,6 +3,7 @@ import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -151,7 +152,9 @@ describe("direcao-visual: cabeçalho", () => {
     await act(async () => {
       await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
     });
-    await act(() => Bun.sleep(300));
+    await settle(
+      () => screen.queryByRole("button", { name: /^(Abrir Sessões|Open Sessions)$/ }) !== null,
+    );
     await sidebar.openHub();
     const path = () => screen.queryByRole("navigation", { name: "Você está em" }) as HTMLElement;
     expect(path()?.textContent).toBe("Sessões");
@@ -160,6 +163,7 @@ describe("direcao-visual: cabeçalho", () => {
     await act(async () => {
       store.router.push({ name: "session", host: hostId, id: sessionId });
     });
+    await settle(() => path()?.textContent === "SessõesAlpha");
     expect(path()?.textContent).toBe("SessõesAlpha");
     expect(within(path()).queryByText("Alpha")?.getAttribute("aria-current")).toBe("page");
     expect(within(path()).queryByRole("button", { name: "Alpha" })).toBeNull();

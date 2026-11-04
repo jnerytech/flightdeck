@@ -10,7 +10,7 @@ import type { ConnectionStatus } from "../src/lib/host-connection.ts";
 import { hostStatusView, hostsBanner } from "../src/lib/host-status.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+import { stays, waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -78,15 +78,10 @@ describe("estados-avisos", () => {
     expect(alertTexts().join(" | ")).toContain("está fora das pastas permitidas do host.");
     expect(alertTexts().join(" | ")).toContain("flightdeckd setup");
     expect(alertTexts().join(" | ")).toContain("O card nao-existe não existe.");
-    const notFound = alerts().find((a) => (a.textContent ?? "").includes("Não encontrado"));
-    // The daemon's own message is behind "Detalhes".
-    expect(notFound?.textContent ?? "").not.toContain("sessão x");
-    const details = notFound ? within(notFound).queryByRole("button", { name: "Detalhes" }) : null;
-    expect(details).not.toBeNull();
-    await act(async () => {
-      fireEvent.click(details as HTMLElement);
-    });
-    expect(notFound?.textContent ?? "").toContain("sessão x");
+    // The daemon now names the reason, so the toast says it in the app's language, with no "Detalhes".
+    const notFound = alerts().find((a) => (a.textContent ?? "").includes("A sessão x não existe"));
+    expect(notFound).not.toBeUndefined();
+    expect(within(notFound as HTMLElement).queryByRole("button", { name: "Detalhes" })).toBeNull();
     const close = notFound ? within(notFound).queryByRole("button", { name: "Fechar" }) : null;
     expect(close).not.toBeNull();
     await act(async () => {
@@ -323,6 +318,8 @@ describe("estados-avisos", () => {
     await settle(() => screen.queryByRole("listitem", { name: "Viva" }) !== null);
     expect(screen.queryByRole("listitem", { name: "Viva" })).not.toBeNull();
     expect(sessionId).not.toBe("");
+    // Its reconnecting hosts must not outlive the test and keep working under the next one.
+    store.dispose();
   });
 
   test("um botão em ação fica desabilitado, com spinner, e não aceita duplo clique", async () => {
@@ -385,7 +382,14 @@ describe("estados-avisos", () => {
     expect(submit.disabled).toBe(true);
     expect(submit.getAttribute("aria-busy")).toBe("true");
     await settle(() => store.getState().hosts.length > 0);
-    await act(async () => Bun.sleep(100));
+    await stays(
+      () =>
+        store
+          .getState()
+          .hosts.map((h) => h.name)
+          .join() === "pc",
+      100,
+    );
     expect(store.getState().hosts.map((h) => h.name)).toEqual(["pc"]);
   });
 
@@ -428,10 +432,13 @@ describe("estados-avisos", () => {
     await settle(() => d.manager.get(sessionId).status === "idle");
     await act(async () => store.router.push({ name: "session", host: hostId, id: sessionId }));
     await settle(() => screen.queryByRole("button", { name: "Encerrar" }) !== null);
+    // The session's history is replayed after the page opens; a click before it ends is lost to a remount.
+    await settle(() => (document.body.textContent ?? "").includes("turno concluído"));
 
     await act(async () => {
       fireEvent.click(screen.queryByRole("button", { name: "Encerrar" }) as HTMLElement);
     });
+    await settle(() => screen.queryByRole("alertdialog") !== null);
     let dialog = screen.queryByRole("alertdialog") as HTMLElement;
     expect(dialog?.textContent ?? "").toContain("Encerrar esta sessão?");
     expect(dialog).not.toBeNull();
@@ -443,6 +450,7 @@ describe("estados-avisos", () => {
     await act(async () => {
       fireEvent.click(screen.queryByRole("button", { name: "Encerrar" }) as HTMLElement);
     });
+    await settle(() => screen.queryByRole("alertdialog") !== null);
     dialog = screen.queryByRole("alertdialog") as HTMLElement;
     await act(async () => {
       fireEvent.click(inDialog("Encerrar sessão") as HTMLElement);
@@ -459,6 +467,7 @@ describe("estados-avisos", () => {
     await act(async () => {
       fireEvent.click(screen.queryByRole("menuitem", { name: "Remover host" }) as HTMLElement);
     });
+    await settle(() => screen.queryByRole("alertdialog") !== null);
     dialog = screen.queryByRole("alertdialog") as HTMLElement;
     expect(dialog?.textContent ?? "").toContain("alfa");
     await act(async () => {

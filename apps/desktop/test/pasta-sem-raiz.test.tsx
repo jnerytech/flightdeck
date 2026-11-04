@@ -69,7 +69,7 @@ describe("pasta-sem-raiz: a host that allows no folder says so and offers to add
     const button = screen.queryByRole("button", { name: "Escolher" }) as HTMLElement;
     const reason = screen.queryByText("Abra uma pasta antes") as HTMLElement;
     expect(reason.parentElement).toBe(button.parentElement);
-    expect(button.parentElement?.className).toContain("action-with-reason");
+    expect(button.parentElement?.className).toContain("action-button-box");
     expect(reason.className).toContain("action-reason");
   });
 });

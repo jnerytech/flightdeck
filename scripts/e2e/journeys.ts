@@ -85,7 +85,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
     const box = c.page.getByLabel(c.t("session.message"), { exact: true });
     await box.fill("ola do e2e");
-    await box.press("Control+Enter");
+    await box.press("Enter");
     await c.page.getByText("Echo: ola do e2e").first().waitFor({ timeout: WAIT });
   },
 

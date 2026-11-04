@@ -452,7 +452,6 @@ describe("mudancas-ui", () => {
     await click("Conversa");
     expect(screen.queryByRole("region", { name: "Mudanças" })).toBeNull();
     writeFileSync(join(ctx.repo, "tarde.txt"), "um\n");
-    await act(() => Bun.sleep(700));
     await openChanges();
     await settle(() => files().includes("tarde.txt"));
     expect(files()).toContain("tarde.txt");

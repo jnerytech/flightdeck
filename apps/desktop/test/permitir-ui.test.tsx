@@ -7,7 +7,7 @@ import { poll, record } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
-import { waiter } from "./wait.ts";
+import { stays, waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -237,8 +237,11 @@ describe("permitir-ui", () => {
     await sidebar.hostAction("Projetos", "alfa");
     await settle(() => screen.queryByRole("button", { name: "Editar repo" }) !== null);
     await click("Editar repo");
-    await act(() => Bun.sleep(100));
-    expect(screen.queryByRole("region", { name: "Regras" })).toBeNull();
-    expect(store.getState().error).toBeNull();
+    await stays(
+      () =>
+        screen.queryByRole("region", { name: "Regras" }) === null &&
+        store.getState().error === null,
+      100,
+    );
   });
 });

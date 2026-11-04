@@ -141,6 +141,7 @@ describe("risco-ui: do daemon à tela", () => {
     await act(async () => {
       fireEvent.pointerDown(hold);
     });
+    // timing: the hold gesture lasts two seconds; there is nothing to wait on but the clock.
     await act(() => Bun.sleep(2300));
     await waitFor(() => d.manager.get(sessionId).status !== "awaiting_permission");
     expect(d.manager.get(sessionId).status).not.toBe("awaiting_permission");

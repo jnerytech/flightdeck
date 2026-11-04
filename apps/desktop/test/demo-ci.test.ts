@@ -87,7 +87,9 @@ describe("demo-prints: axe e CI", () => {
       scripts: Record<string, string>;
       devDependencies: Record<string, string>;
     };
-    expect(pkg.scripts.e2e).toBe("playwright test -c scripts/e2e/playwright.config.ts");
+    expect(pkg.scripts.e2e).toBe(
+      "bddgen -c scripts/e2e/playwright.config.ts && playwright test -c scripts/e2e/playwright.config.ts",
+    );
     expect(pkg.scripts.demo).toBe("bun run scripts/demo.ts");
     expect(pkg.devDependencies["axe-core"]).toMatch(/^\d+\.\d+\.\d+$/);
   });

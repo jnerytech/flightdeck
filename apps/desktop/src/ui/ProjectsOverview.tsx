@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/layout/states";
 import { Input } from "@/components/ui/input";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { addDays, localDay, usd } from "../lib/costs.ts";
-import { hubRows } from "../lib/hub.ts";
+import { type HubRowState, hubRows } from "../lib/hub.ts";
 import {
   buildProjectCards,
   filterProjectCards,
@@ -22,7 +22,7 @@ const SORTS: ProjectSort[] = ["activity", "name", "cost", "attention"];
 /** Every project of every host as cards, with search and sort (issue #9). */
 export function ProjectsOverview(props: {
   store: AppStore;
-  state: AppState;
+  state: Pick<AppState, "projects" | "cards"> & HubRowState;
   onOpen(card: ProjectCard): void;
 }) {
   const { store, state } = props;

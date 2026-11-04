@@ -8,6 +8,9 @@ import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Toolbar } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
+import { RoiPeople } from "@/components/roi/roi-people";
+import { RoiSettingsPanel } from "@/components/roi/roi-settings-panel";
+import { RoiTable } from "@/components/roi/roi-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMinLoading } from "@/hooks/use-min-loading";
@@ -123,6 +126,10 @@ export const CostsPage = memo(function CostsPage(props: {
     false,
   );
   const withPersonas = personaHosts.length > 0;
+  const roiHosts = hosts
+    .filter((h) => hostIds.includes(h.id) && hasFeature(h.hostInfo?.features, "roi", false))
+    .map((h) => h.id);
+  const withRoi = roiHosts.length > 0;
   const personaKey = personaHosts.map((h) => h.id).join("|");
   // The names of the personas the breakdown shows (phase 20).
   useEffect(() => {
@@ -443,6 +450,18 @@ export const CostsPage = memo(function CostsPage(props: {
                 />
               </Panel>
             </section>
+            {withRoi && <RoiPeople store={store} />}
+            {withRoi && <RoiSettingsPanel store={store} />}
+            {withRoi && (
+              <RoiTable
+                store={store}
+                hostIds={roiHosts}
+                from={days.from}
+                to={days.to}
+                selection={selection}
+                projectName={projectName}
+              />
+            )}
             <div className="grid gap-4 @3xl:grid-cols-3">
               <Breakdown
                 name={t("costsUi.byProject")}

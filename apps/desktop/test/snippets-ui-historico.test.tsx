@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { snippetsHost } from "./snippets-ui-setup.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -59,7 +59,7 @@ async function open() {
   await act(async () => {
     fireEvent.click(screen.queryByRole("button", { name: "Snippets" }) as HTMLElement);
   });
-  await act(() => Bun.sleep(80));
+  await uiIdle();
   await click("Importar do histórico do shell");
   return { store, ...h };
 }
@@ -70,7 +70,7 @@ async function click(name: string) {
   await act(async () => {
     fireEvent.click(button as HTMLElement);
   });
-  await act(() => Bun.sleep(120));
+  await uiIdle();
 }
 
 const lines = () => {

@@ -24,7 +24,11 @@ export async function snippetsHost(
   while (store.getState().hosts[0]?.status !== "online" && Date.now() < deadline) {
     await Bun.sleep(10);
   }
-  await store.hostCommand(hostId, "project.add", { path: repo });
+  const project = await store.hostCommand(hostId, "project.add", { path: repo });
+  // The daemon registers the folder in its real form (on Windows a temp folder given by its short
+  // 8.3 name comes back long, and the drive letter may change case): the screens list that one, so
+  // the tests that pick the project by its path use it too.
+  const registered = project?.path ?? repo;
   const save = async (input: Record<string, unknown>): Promise<Snippet> =>
     (await store.hostCommand(hostId, "snippets.save", {
       scope: "host",
@@ -34,5 +38,5 @@ export async function snippetsHost(
     mkdirSync(join(repo, ".flightdeck"), { recursive: true });
     writeFileSync(join(repo, ".flightdeck", "snippets.yaml"), text);
   };
-  return { d, hostId, repo, save, writeFile };
+  return { d, hostId, repo: registered, save, writeFile };
 }

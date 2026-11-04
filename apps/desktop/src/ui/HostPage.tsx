@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
 import { BypassSwitch } from "@/components/hosts/bypass-switch";
+import { GithubPanel } from "@/components/hosts/github-panel";
 import { HostDoctor } from "@/components/hosts/host-doctor";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
 import { Field } from "@/components/layout/form";
@@ -137,6 +138,9 @@ export function HostPage(props: {
         <SimpleModePanel store={store} host={host} />
         {host.status === "online" && hasFeature(info?.features, "doctor.run", false) && (
           <HostDoctor store={store} host={host} />
+        )}
+        {host.status === "online" && hasFeature(info?.features, "github", false) && (
+          <GithubPanel store={store} host={host} />
         )}
         <DaemonUpdate store={store} host={host} />
         {info?.apiKeySanitized === false && (

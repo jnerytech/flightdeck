@@ -46,7 +46,7 @@ async function cardWithWork(prProvider: PrProviderKind) {
     description: "Cria o arquivo novo",
   });
   await ctx.board.startCard(card.id);
-  const started = await cardWhen(ctx.board, card.id, (c) => c.column === "review");
+  const started = await cardWhen(ctx.board, card.id, (c) => c.column === "review", 12_000);
   const worktree = started?.worktreePath ?? ctx.repo;
   writeFileSync(join(worktree, "novo.txt"), "novo\n");
   git(worktree, "add", "novo.txt");
@@ -160,13 +160,15 @@ describe("pr: Azure DevOps", () => {
         "json",
       ],
     ]);
-    expect(await cardWhen(board, card.id, (c) => c.checksState === "passing")).not.toBeNull();
+    // Each fake `az` is a Bun process: 7 calls in this case, about a second each on a loaded Pi.
+    const SLOW = 12_000;
+    expect(await cardWhen(board, card.id, (c) => c.checksState === "passing", SLOW)).not.toBeNull();
     expect(az.calls()).toContainEqual(["repos", "pr", "show", "--id", "12", "--output", "json"]);
     az.respond([
       { args: ["pr", "show"], stdout: JSON.stringify({ status: "abandoned" }) },
       { args: ["policy", "list"], stdout: "[]" },
     ]);
-    const closed = await cardWhen(board, card.id, (c) => c.prState === "closed");
+    const closed = await cardWhen(board, card.id, (c) => c.prState === "closed", SLOW);
     expect(closed).toMatchObject({ column: "waiting", checksState: null });
   });
 

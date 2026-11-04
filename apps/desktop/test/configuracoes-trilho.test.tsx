@@ -63,12 +63,20 @@ describe("configuracoes-trilho: the rail and the search", () => {
   test("a rail button takes you to its section: it scrolls there and the focus follows", async () => {
     setup();
     const scrolled: string[] = [];
-    Element.prototype.scrollIntoView = function (this: Element) {
+    // On HTMLElement.prototype, where other test files in the same process also put theirs: a stub
+    // on Element.prototype would sit behind it. Put the previous one back afterwards.
+    const proto = HTMLElement.prototype as unknown as { scrollIntoView?: unknown };
+    const before = proto.scrollIntoView;
+    proto.scrollIntoView = function (this: Element) {
       scrolled.push(this.getAttribute("aria-label") ?? "");
     };
-    await act(async () => {
-      fireEvent.click(within(rail()).getByRole("button", { name: "Janela" }));
-    });
+    try {
+      await act(async () => {
+        fireEvent.click(within(rail()).getByRole("button", { name: "Janela" }));
+      });
+    } finally {
+      proto.scrollIntoView = before;
+    }
     expect(scrolled).toEqual(["Janela"]);
     const section = screen.getByRole("region", { name: "Janela" });
     expect(document.activeElement).toBe(section);

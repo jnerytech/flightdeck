@@ -120,6 +120,13 @@ describe("conta-cartao-ui: signed in", () => {
     expect(inCard().queryAllByRole("meter").length).toBe(2);
   });
 
+  test("a window with no reset time reads as just its percentage, and shows no reset line", () => {
+    show({ state: state({ windows: [{ ...win("five_hour", 0.42, 3), resetsAt: null }] }) });
+    const meter = inCard().queryByRole("meter", { name: "5 hours of alfa" });
+    expect(meter?.getAttribute("aria-valuetext")).toBe("42%");
+    expect(inBar("five_hour").queryByText(/resets in/)).toBeNull();
+  });
+
   test("the Opus and Sonnet bars appear only when the host reports them", () => {
     show({
       state: state({

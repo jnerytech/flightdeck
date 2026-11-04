@@ -28,6 +28,8 @@ interface Shot {
   clients?: { selected?: string };
   /** Simple mode on the demo's first host (phase 33): the print starts at its Home. */
   simple?: boolean;
+  /** Phase 36: an hourly rate and one person kept in the page's storage before it loads. */
+  roi?: boolean;
   /** After the screen loads: open the palette, scroll a long list to its end… */
   prepare?(page: Page): Promise<void>;
 }
@@ -55,6 +57,18 @@ const DEMO_CLIENTS = JSON.stringify({
   ],
   overrides: {},
   budgets: { acme: 500 },
+});
+
+/** What the ROI prints start with: a rate of 60 an hour and Ana, who owns the first host. */
+const DEMO_ROI = JSON.stringify({
+  v: 1,
+  defaultRate: 60,
+  clientRates: {},
+  projectRates: {},
+  planPrice: null,
+  countReview: false,
+  reviewCapMinutes: 5,
+  people: [{ id: "ana", name: "Ana", hostIds: [ALFA], tokenLimit: 5_000_000, costLimit: null }],
 });
 
 const agentRoute = (ids: DemoIds): Route => ({
@@ -321,6 +335,41 @@ function shots(ids: DemoIds): Shot[] {
       },
     },
     { name: "custos", route: { name: "costs" } },
+    // Phase 36: the ROI card of the web project, and the project and people tables of Costs.
+    {
+      name: "roi-cartao",
+      roi: true,
+      route: { name: "board", host: ALFA, projectId: ids.project },
+      prepare: async (page) => {
+        await page
+          .getByRole("region", { name: /^(Return on cost|Retorno sobre o custo)$/ })
+          .waitFor({ timeout: 8000 });
+      },
+    },
+    {
+      name: "roi-custos-pessoas",
+      roi: true,
+      route: { name: "costs" },
+      prepare: async (page) => {
+        const table = page.getByRole("table", {
+          name: /^(Tokens against delivery, by person|Tokens contra entrega, por pessoa)$/,
+        });
+        await table.waitFor({ timeout: 8000 });
+        await table.scrollIntoViewIfNeeded();
+      },
+    },
+    {
+      name: "roi-custos-tabelas",
+      roi: true,
+      route: { name: "costs" },
+      prepare: async (page) => {
+        const table = page.getByRole("table", {
+          name: /^(Return on cost by project|Retorno sobre o custo por projeto)$/,
+        });
+        await table.waitFor({ timeout: 8000 });
+        await table.scrollIntoViewIfNeeded();
+      },
+    },
     // The time panel of Custos (phase 23): the wait for permissions and the slowest tools.
     {
       name: "custos-tempo",
@@ -582,31 +631,38 @@ export async function takeShots(
             (seed) => {
               try {
                 const keys = ["flightdeck.clients", "flightdeck.clientFilter"];
-                for (const key of [...keys, "flightdeck.clientBudgetAlerts", "flightdeck.uiMode"]) {
+                for (const key of [
+                  ...keys,
+                  "flightdeck.clientBudgetAlerts",
+                  "flightdeck.roi",
+                  "flightdeck.uiMode",
+                ]) {
                   localStorage.removeItem(key);
                 }
-                if (seed?.simple) {
+                if (seed.simple) {
                   localStorage.setItem(
                     "flightdeck.uiMode",
                     JSON.stringify({ "demo-alfa": "simple" }),
                   );
                 }
-                if (seed?.withClients) {
-                  localStorage.setItem(keys[0] as string, seed.clients);
-                  if (seed.selected) localStorage.setItem(keys[1] as string, seed.selected);
+                if (seed.clients) {
+                  localStorage.setItem(keys[0] as string, seed.clients.clients);
+                  if (seed.clients.selected) {
+                    localStorage.setItem(keys[1] as string, seed.clients.selected);
+                  }
                 }
+                if (seed.roi) localStorage.setItem("flightdeck.roi", seed.roi);
               } catch {
                 // No storage, no clients.
               }
             },
-            shot.clients || shot.simple
-              ? {
-                  clients: DEMO_CLIENTS,
-                  selected: shot.clients?.selected ?? "",
-                  simple: shot.simple === true,
-                  withClients: shot.clients !== undefined,
-                }
-              : null,
+            {
+              clients: shot.clients
+                ? { clients: DEMO_CLIENTS, selected: shot.clients.selected ?? "" }
+                : null,
+              roi: shot.roi ? DEMO_ROI : null,
+              simple: shot.simple === true,
+            },
           );
           const query = new URLSearchParams({ theme, lang, route: JSON.stringify(shot.route) });
           await page.goto(`${url}?${query}`);

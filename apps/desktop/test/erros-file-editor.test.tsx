@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { registerDom } from "./dom.ts";
+import { uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
@@ -39,7 +40,7 @@ describe("erros: the file editor", () => {
           />
         </TContext.Provider>,
       );
-      await act(() => Bun.sleep(10));
+      await uiIdle();
       const text = document.body.textContent ?? "";
       expect(text).toContain(FORBIDDEN[language]);
       expect(text).toContain("raw-detail-from-host");

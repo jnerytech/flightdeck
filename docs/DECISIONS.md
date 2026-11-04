@@ -2883,6 +2883,26 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
   enter animations. Both go to part 2.
 
 
+
+## Phase 37: GitHub sign-in and start from a GitHub project
+
+- **The sign-in is the host's `gh`, not an OAuth client of ours.** Issue #16 asks for the device flow, the token in the OS
+  keyring and the narrowest scopes. `gh auth login --web` is that device flow (a one-time code, no client secret, no OAuth
+  app to register) and `gh` keeps the token in the keyring where the host has one. The daemon is Bun and has no keyring
+  binding; it never needs one because it never holds the token. `github.status` reads `gh auth status` (account, scopes,
+  and whether the login is in the keyring, `gh`'s hosts file or an environment variable) and returns no token. A login that
+  comes from `GH_TOKEN` or `GITHUB_TOKEN` is shown as managed by the environment and cannot be signed out from the app.
+- **Scopes:** `repo` and `read:project`, fixed in the sign-in arguments. `project` (write) is not asked for in this phase.
+- **Names reach `gh` only after they are checked:** a repo is `owner/name`, an issue is digits, a search text is one argument
+  after `--`, at most 100 characters and no control character.
+- **Start reads the issue before it clones.** A number that does not exist costs nothing. A folder that already is a clone of
+  the repo (any form of the `origin` URL) is reused, another repo under that name is refused with `clone_exists`, and a card
+  made twice from the same issue is the same card. An issue from outside the repo's people carries phase 13's third-party
+  mark in the card and in a session's first prompt.
+- **Not verified here:** the exact text `gh` prints for the code and for `gh auth status` was written from memory of the
+  current releases and has to be confirmed with a real `gh` and account (the proof of concept in the spec); the fakes
+  reproduce it, so a difference shows up as a one-line change in `status.ts` or `login.ts`.
+
 ## Blocking-call audit
 
 Ranked by frequency × cost on Windows. "Closed" means a ratchet or an earlier fix already holds it.
@@ -3034,6 +3054,91 @@ are out of scope. This supersedes item 4 of the blocking-call audit: the sync fa
   opens a new one; duplicates in an older snapshot fold into one.
 - `session.create` takes no first prompt: the session starts idle and the first message begins
   its first turn. The New session form has a Model select (default, opus, sonnet, haiku).
+
+
+## Phase 38: board sync with external boards (GitHub Projects first)
+
+- **GitHub goes through the host's `gh api graphql`.** The daemon holds no token. The provider's `scopes()` reads
+  `gh auth status`; a token that lists no scopes (fine-grained) counts as read and write, and the calls themselves refuse
+  with `board_sync_scope_missing` when it is not. `setStatus` checks the write scope before it sends anything.
+- **Every pull reads every page.** Whether GraphQL or REST honours `If-None-Match` is not confirmed (see the research), so
+  the GitHub provider is not conditional: it reads up to 20 pages of 100 items and the engine compares the result with what
+  each card last saw. The `notModified` answer and the cursor stay in the interface for a provider that has them.
+- **A status change at the provider is a manual move on this board.** The spec said a locked card is not moved. On the
+  board, "locked" only stops the automatic moves (a PR state, a session event); a person's move always goes through, and
+  a status changed on the external board is a person's move. So sync moves locked cards, with `moveCard`, which may lock
+  them again in the Backlog or Done as a hand move does. A card that is queued, in a workflow run or in progress with a
+  session is not moved: the log gets a `move_skipped` entry with the status it did not apply.
+- **Only the title is pulled after creation.** A card gets the item's title, body and link when it is made. Later, a
+  changed title at the provider replaces the card's title (the old one goes to the log as `title_changed`); the body is not
+  pulled again, because the card's description is where people add their own notes.
+- **A trigger marks a local move.** `cards.local_moved_at` is set by a database trigger when `board_column` changes, so
+  no board code had to change; a sync that settles the card (pull applied, conflict lost, push sent) clears it. With push
+  off the mark stays on a card that moved here, which is what makes a later change at the provider a conflict to be settled
+  by time and logged.
+- **No `boardsync.updated` event in this phase.** The cards a sync changes already reach the app through `board.watch`
+  (`card.updated`); the app asks `boardsync.status` when the Sync control opens and after Sync now.
+- **Push gives up after five tries.** A move that fails to send is logged (`push_failed`, with the reason) and tried at the
+  next sync; after five in a row a single `push_gave_up` entry is written and the card is left alone.
+- **Not verified here:** the stderr text of a missing scope and of a rate limit, and the `Status` field name on boards that
+  renamed it, come from memory and the fakes; the proof of concept in the spec settles them.
+
+## Phase 36: ROI per project
+
+Proof of concept, run 2026-11-03 on the phase host (git 2.43.0, gh 2.88.1):
+
+1. **Agent commits.** `git log --since="30 days ago" --format=%B | grep -ci "^Co-Authored-By: Claude"` gave 2968 of 2983
+   commits (99.5%) in this repository, so the trailer separates agent commits well **here**. It does not prove the
+   marker is independent: the trailer is added by the attribution rule the sessions are given, not by Claude Code on its
+   own, and a repository with human commits was not available to measure the false-positive side. Decision: the commit
+   signal is offered, **off by default**, and labelled approximate on screen.
+2. **Approval waits.** Only managed sessions write a request with both `created_at` and `resolved_at`
+   (`permission_requests`, `event-store.ts`); the vault keeps `heldMs` on its own decision rows; the hook path of
+   terminal and external sessions has no equivalent table. Decision: the "requests waited N h for you" total covers
+   **managed-session approvals** and the card says so; the vault wait is not added to it.
+3. **Issues closed.** `gh issue list --state closed --search "closed:>=2026-10-01" --limit 100` answered 100 rows in
+   0.77 s with a token; without a token (`GH_CONFIG_DIR` empty, no `GH_TOKEN`) it exits at once with "To get started
+   with GitHub CLI, please run: gh auth login". Decision: the signal is read **on demand**, cached for an hour, and a
+   missing login is the refusal `gh_logged_out`.
+- **Planned and unplanned (addendum).** A done card is *planned* when it existed before the period began and *unplanned*
+  when it was created inside it. The card's creation time is copied into the done-log row so the split survives a later
+  edit, and needs no input from the person.
+- **Person (addendum).** A person is a named group of hosts kept in the app; the daemon returns tokens, never a person or
+  a limit. The person budget is shown, not enforced, and the table is ordered by name.
+
+**Built in the app (areas `roi-cartao-ui` to `roi-smoke`) and where it stands:**
+
+- **The project's key on `board.get`.** The board view got its project from `board.get`, which did not pass it through
+  `forWire`, so the project had no `projectKey`; the card then asked for the path and matched nothing the host had
+  summarized under its key. `board.get` now sends the project like `project.list` does (`roi-chave`). The test
+  fixture gives the board `projectKeys` only when `roi` is on, as `main.ts` does.
+- **Where each input lives.** Default hourly rate, "count my review time" with its cap and the people: Costs, *Return on
+  cost settings* (`RoiSettingsPanel`). A client's rate: the Clients screen (`ClientRate`). A project's rate and its
+  default hours per card: the card on the board page (*Hours and rate*). One card's hours: the card detail. All money
+  stays in the app's storage (`flightdeck.roi`); the daemon never sees it.
+- **Plan price and billed amount are not used yet.** `RoiSettings` stores a plan price, but `store.roiMoneyOf` passes
+  `planShareUsd: null` and `billed: null`, and the settings screen does not offer them: how to split a monthly plan price
+  across projects for a 7-day period is a decision of its own. Nothing on screen claims a plan share.
+- **Token units.** A count reads in millions from 100,000 up (`442,857` reads "0.44 million tokens", as the scenario
+  says), in thousands from 1,000, plain below.
+- **People table loads before it shows.** It says "Reading the hosts…" until the hosts answered; a person whose hosts did
+  not answer shows zeros, and the "as of <time>" mark for an offline host is **not** built yet.
+- **BDD features.** The 14 scenarios of the spec live in `scripts/e2e/bdd/roi/` (en and pt), outside the glob of
+  `bddgen`; `roi-bdd` parses them and checks that every scenario is there, step for step. Two key ones also run as
+  journeys, with wording fitted to the demo's data: the headline (`roi-headline`: delivered more than the period before)
+  and the people table (`roi-people`), in `bdd/features/` with steps in `steps.ts`. The rest are asserted by the
+  `roi-*-ui` tests.
+- **`smoke:roi`** finishes two cards on a `--runtime fake` daemon and checks counts, the project default of hours, a
+  card's own estimate and the refusal of a malformed range. It does not merge a PR or close an issue.
+- **Optional signals (`roi-sinais`).** Two switches per project, both off, stored in `projects.roi_commits` and
+  `roi_issues` and sent as `Project.roiSignals`; `project.update` changes them one field at a time. `roi.summary` carries
+  `signals` only for the projects that turned them on. Agent commits are counted per commit that has a
+  `Co-Authored-By: Claude` trailer in the period (two folders of one project key add up) and the card calls them
+  approximate. Issues closed come from the host's `gh` (`issue list --state closed --search closed:<from>..<to>`), kept for
+  an hour per folder and period; a missing, signed-out or failing `gh` is `issuesError` (`gh_missing`, `gh_logged_out`,
+  `gh_failed`) and is told on the card. Azure Boards is not read.
+- **Not done:** the "as of" mark for an offline host, and the items of the acceptance list the maintainer added after
+  the first hand-off (executable BDD steps, the demo seed and prints, the spec-verifier run), tracked in the report.
 
 ## Lazy screens in tests
 
@@ -3275,3 +3380,45 @@ A daemon that started before a release said nothing about it for up to a day, be
 - **Showing in the folder (`reveal`)** skips the list of extensions (a folder may be shown) and keeps the text checks, the no-link rule and `same_path`.
 - **Paths.** Any two leading separators (`\\`, `/\`, `\\?\`, `\\.\`) are refused before the disk is touched, because on Windows they are network or device paths and merely looking them up sends credentials. On Windows only `X:\` and `X:/` start a path; elsewhere only `/`. The opener gets the plain form (`dunce::simplified`), as `explorer.exe` cannot open `\\?\C:\...`.
 - **Rust tests run in CI only.** The Pi lacks pkg-config and the GTK/WebKit dev libraries, so `cargo test` runs in the CI Rust step (Windows, where the disk tests for 8.3 names and junctions run).
+
+## TDD audit waivers (rc/0330)
+
+While assembling rc/0330, three `fix` commits landed without an earlier `test(<same scope>)` commit: `61bbf253`
+(projetos-pagina), `cb3dc865` (mudancas-ui) and `e28af243` (recusas-recurso). Each repaired a test or a ratchet that the
+merged branches broke only in combination, so the guarding tests already existed, under another scope or in the commit
+itself. The audit counts a test commit only if it comes earlier in `git log --reverse`, so a later `test(...)` commit
+cannot satisfy it, and rc/0330 was already merged elsewhere, so history is not rewritten.
+
+`scripts/tdd-audit-waivers.json` lists the accepted exceptions as `{ hash, scope, reason }`. The rules are strict: a waiver
+matches the full 40-character hash and the scope only; one whose commit is inside the audited range but is not a
+violation is reported as stale and fails the audit, so the list cannot grow silently; one whose commit is outside the
+range (a later release audits from a newer tag) is ignored and shown as an `ignored` note; and the output prints every
+waived commit. Nothing else in the audit is relaxed. New entries need the maintainer's agreement.
+
+## Phase 38: board sync with external boards (GitHub Projects first)
+
+- **GitHub goes through the host's `gh api graphql`.** The daemon holds no token. The provider's `scopes()` reads
+  `gh auth status`; a token that lists no scopes (fine-grained) counts as read and write, and the calls themselves refuse
+  with `board_sync_scope_missing` when it is not. `setStatus` checks the write scope before it sends anything.
+- **Every pull reads every page.** Whether GraphQL or REST honours `If-None-Match` is not confirmed (see the research), so
+  the GitHub provider is not conditional: it reads up to 20 pages of 100 items and the engine compares the result with what
+  each card last saw. The `notModified` answer and the cursor stay in the interface for a provider that has them.
+- **A status change at the provider is a manual move on this board.** The spec said a locked card is not moved. On the
+  board, "locked" only stops the automatic moves (a PR state, a session event); a person's move always goes through, and
+  a status changed on the external board is a person's move. So sync moves locked cards, with `moveCard`, which may lock
+  them again in the Backlog or Done as a hand move does. A card that is queued, in a workflow run or in progress with a
+  session is not moved: the log gets a `move_skipped` entry with the status it did not apply.
+- **Only the title is pulled after creation.** A card gets the item's title, body and link when it is made. Later, a
+  changed title at the provider replaces the card's title (the old one goes to the log as `title_changed`); the body is not
+  pulled again, because the card's description is where people add their own notes.
+- **A trigger marks a local move.** `cards.local_moved_at` is set by a database trigger when `board_column` changes, so
+  no board code had to change; a sync that settles the card (pull applied, conflict lost, push sent) clears it. With push
+  off the mark stays on a card that moved here, which is what makes a later change at the provider a conflict to be settled
+  by time and logged.
+- **No `boardsync.updated` event in this phase.** The cards a sync changes already reach the app through `board.watch`
+  (`card.updated`); the app asks `boardsync.status` when the Sync control opens and after Sync now.
+- **Push gives up after five tries.** A move that fails to send is logged (`push_failed`, with the reason) and tried at the
+  next sync; after five in a row a single `push_gave_up` entry is written and the card is left alone.
+- **Not verified here:** the stderr text of a missing scope and of a rate limit, and the `Status` field name on boards that
+  renamed it, come from memory and the fakes; the proof of concept in the spec settles them.
+

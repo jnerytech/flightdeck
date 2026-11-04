@@ -94,6 +94,23 @@ describe("abas-ordenar: arrastar e guardar", () => {
     expect(names()).toEqual(["Precisa de você", "Configurações", "Sessões"]);
   });
 
+  test("a tab dragged leftwards marks the drop place before the tab it is over, and drops there", async () => {
+    await three();
+    const [first, , last] = screen.queryAllByRole("tab");
+    await act(async () => {
+      fireEvent.dragStart(last as HTMLElement);
+      fireEvent.dragOver(first as HTMLElement);
+    });
+    const wrapper = first?.parentElement as HTMLElement;
+    expect(wrapper.getAttribute("data-drop")).toBe("before");
+    expect(wrapper.className).toContain("border-l-primary");
+    expect(wrapper.className).not.toContain("border-r-primary");
+    await act(async () => {
+      fireEvent.drop(first as HTMLElement);
+    });
+    expect(names()).toEqual(["Configurações", "Sessões", "Precisa de você"]);
+  });
+
   test("a drag that ends elsewhere clears the mark", async () => {
     await three();
     const [first, second] = screen.queryAllByRole("tab");

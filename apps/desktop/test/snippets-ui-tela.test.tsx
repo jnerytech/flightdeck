@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { snippetsHost } from "./snippets-ui-setup.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -31,7 +31,7 @@ async function open(seed?: (h: Awaited<ReturnType<typeof snippetsHost>>) => Prom
   await act(async () => {
     fireEvent.click(nav as HTMLElement);
   });
-  await act(() => Bun.sleep(80));
+  await uiIdle();
   return { store, ...h };
 }
 
@@ -47,7 +47,7 @@ const click = async (name: string) => {
   await act(async () => {
     fireEvent.click(button as HTMLElement);
   });
-  await act(() => Bun.sleep(80));
+  await uiIdle();
 };
 
 const choose = async (label: string, value: string) => {
@@ -56,7 +56,7 @@ const choose = async (label: string, value: string) => {
   await act(async () => {
     fireEvent.change(field as HTMLElement, { target: { value } });
   });
-  await act(() => Bun.sleep(80));
+  await uiIdle();
 };
 
 describe("snippets-ui: the screen", () => {

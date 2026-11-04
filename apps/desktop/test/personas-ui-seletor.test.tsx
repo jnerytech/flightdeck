@@ -3,7 +3,7 @@ import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { personasHost } from "./personas-ui-setup.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -41,7 +41,7 @@ async function click(name: string) {
   await act(async () => {
     fireEvent.click(button as HTMLElement);
   });
-  await act(() => Bun.sleep(150));
+  await uiIdle();
 }
 
 async function fill(label: string, value: string) {
@@ -50,7 +50,7 @@ async function fill(label: string, value: string) {
   await act(async () => {
     fireEvent.change(field as HTMLElement, { target: { value } });
   });
-  await act(() => Bun.sleep(40));
+  await uiIdle();
 }
 
 const options = (label: string) =>
@@ -163,7 +163,7 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     await act(async () => {
       store.router.push({ name: "card", host: hostId, projectId, cardId: card.id });
     });
-    await act(() => Bun.sleep(150));
+    await settle(() => screen.queryByRole("button", { name: "Iniciar em arena" }) !== null);
     await click("Iniciar em arena");
     await settle(() => options("Persona da variante 1").length > 1);
     await fill("Persona da variante 1", "host:seguranca");
@@ -172,6 +172,7 @@ describe("personas-ui: choosing a persona when a session opens", () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Iniciar" }));
     });
     for (let i = 0; i < 100 && (await d.board.arena(card.id)).variants.length < 2; i++) {
+      // timing: polls the daemon's board, which has no screen signal.
       await act(() => Bun.sleep(20));
     }
     expect((await d.board.arena(card.id)).variants.map((v) => v.persona)).toEqual([
@@ -189,7 +190,7 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     await act(async () => {
       store.router.push({ name: "card", host: hostId, projectId, cardId: card.id });
     });
-    await act(() => Bun.sleep(150));
+    await settle(() => screen.queryByRole("button", { name: "Iniciar em arena" }) !== null);
     await click("Iniciar em arena");
     await settle(() => options("Persona da variante 1").length > 1);
     await fill("Persona da variante 1", "app:minha");

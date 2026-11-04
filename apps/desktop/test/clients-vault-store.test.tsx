@@ -3,7 +3,7 @@ import { SCOPE_RULE_PREFIX, stripGenerated } from "../src/lib/client-vault.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
-import { settle } from "./wait.ts";
+import { settle, stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, render, within } = await import("@testing-library/react");
@@ -155,7 +155,7 @@ describe("clients-vault: turning scope on and off", () => {
     await act(async () => {
       store.clients.setDefaults(acme, { vaultScope: false });
     });
-    await act(() => Bun.sleep(400));
+    await stays(() => sent().length === before, 400);
     expect(sent().length).toBe(before);
   });
 });
@@ -179,7 +179,7 @@ describe("clients-vault: when the client's projects change", () => {
   test("a change that is only the person's own rules makes no notice", async () => {
     const { store, secret, said } = await open(true);
     await store.setVaultRules(secret.id, [OWN]);
-    await act(() => Bun.sleep(400));
+    await stays(() => said.length === 0, 400);
     expect(said).toEqual([]);
   });
 });

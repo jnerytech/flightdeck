@@ -297,11 +297,12 @@ function Team(props: {
   };
   const reportOf = (name: string) =>
     props.status?.members.find((m) => m.name === name)?.lastReport ?? null;
+  const rowClass = `flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm${props.focused ? " ring-2 ring-ring" : ""}`;
   return (
     <li
       aria-label={t("teamsUi.row", { name: team.name })}
       {...(props.focused ? { "aria-current": "true" as const } : {})}
-      className={`flex flex-col gap-2 rounded-lg border bg-card p-3 text-sm${props.focused ? " ring-2 ring-ring" : ""}`}
+      className={rowClass}
     >
       <div className="flex flex-wrap items-center gap-2">
         <strong>{team.name}</strong>

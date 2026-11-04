@@ -4,7 +4,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
 registerDom();
-const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const menu = tabMenu({ act, fireEvent, screen } as never);
 const { AppStore } = await import("../src/lib/app-store.ts");
@@ -77,7 +77,11 @@ describe("abas: arrastar para reordenar", () => {
     });
     expect(names()).toEqual(["Sessões", "Configurações", "Precisa de você"]);
     // The menu closes with the focus back on the tab's own button or the tab, never on the page.
-    expect(document.activeElement).not.toBe(document.body);
+    // The menu hands the focus back after it closes, a beat later on a slow runner: wait for it,
+    // and fail with a short message (a failed `expect` on the element dumps the whole page).
+    await waitFor(() => {
+      if (document.activeElement === document.body) throw new Error("the focus is on the page");
+    });
   });
 
   test("a pinned tab keeps its group: the unpinned tab next to it cannot go left past it", async () => {

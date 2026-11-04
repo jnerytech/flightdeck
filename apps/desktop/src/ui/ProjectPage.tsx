@@ -6,12 +6,13 @@ import { NAV_ICONS } from "@/components/nav-icons";
 import { SessionTiles } from "@/components/projects/session-tiles";
 import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
+import type { HubRowState } from "../lib/hub.ts";
 import type { Route } from "../lib/router.ts";
 import { hasFeature } from "../lib/version.ts";
 
 interface Destination {
   key: string;
-  label: Key;
+  labelKey: Key;
   hint: Key;
   icon: LucideIcon;
   route: Route;
@@ -20,7 +21,7 @@ interface Destination {
 /** One project: where Board, Sessions, Workflows, Costs and its settings open from (issue #9). */
 export function ProjectPage(props: {
   store: AppStore;
-  state: AppState;
+  state: Pick<AppState, "projects"> & HubRowState;
   hostId: string;
   projectId: string;
   go(route: Route): void;
@@ -45,14 +46,14 @@ export function ProjectPage(props: {
   const destinations: Destination[] = [
     {
       key: "board",
-      label: "sidebar.board",
+      labelKey: "sidebar.board",
       hint: "projectPage.boardHint",
       icon: NAV_ICONS.board,
       route: { name: "board", host: hostId, projectId },
     },
     {
       key: "sessions",
-      label: "sidebar.sessions",
+      labelKey: "sidebar.sessions",
       hint: "projectPage.sessionsHint",
       icon: NAV_ICONS.sessions,
       route: {
@@ -62,7 +63,7 @@ export function ProjectPage(props: {
     },
     {
       key: "workflows",
-      label: "sidebar.workflows",
+      labelKey: "sidebar.workflows",
       hint: "projectPage.workflowsHint",
       icon: NAV_ICONS.workflows,
       route: { name: "workflows", host: hostId, projectId, projectName: project.name },
@@ -71,7 +72,7 @@ export function ProjectPage(props: {
       ? [
           {
             key: "costs",
-            label: "sidebar.costs" as const,
+            labelKey: "sidebar.costs" as const,
             hint: "projectPage.costsHint" as const,
             icon: NAV_ICONS.costs,
             route: { name: "costs" } as Route,
@@ -80,7 +81,7 @@ export function ProjectPage(props: {
       : []),
     {
       key: "settings",
-      label: "sidebar.settings",
+      labelKey: "sidebar.settings",
       hint: "projectPage.settingsHint",
       icon: Settings,
       route: { name: "projects", host: hostId },
@@ -93,11 +94,11 @@ export function ProjectPage(props: {
       subtitle={`${host?.name ?? hostId} · ${project.baseBranch} · ${project.path}`}
     >
       <ul aria-label={project.name} className="card-grid" data-slot="project-destinations">
-        {destinations.map(({ key, label, hint, icon: Icon, route }) => (
+        {destinations.map(({ key, labelKey, hint, icon: Icon, route }) => (
           <li key={key}>
             <button
               type="button"
-              aria-label={t(label)}
+              aria-label={t(labelKey)}
               className="card-link rounded-lg border bg-card text-left hover:bg-accent/40 focus-visible:ring-2"
               onClick={() => props.go(route)}
             >
@@ -106,7 +107,7 @@ export function ProjectPage(props: {
                 className="icon-nudge size-5 shrink-0 text-muted-foreground"
               />
               <span className="stack-hair">
-                <span className="font-medium">{t(label)}</span>
+                <span className="font-medium">{t(labelKey)}</span>
                 <span className="text-muted-foreground text-sm">{t(hint)}</span>
               </span>
             </button>

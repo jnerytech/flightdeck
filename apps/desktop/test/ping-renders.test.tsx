@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { Profiler } from "react";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { stays, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, render, within, waitFor } = await import("@testing-library/react");
@@ -31,7 +32,7 @@ async function pinged() {
   await waitFor(() => expect(screen.queryByLabelText("pc: online")).not.toBeNull(), {
     timeout: 8000,
   });
-  await act(() => Bun.sleep(150));
+  await uiIdle();
   store.subscribe(() => counts.notes++);
   return { store, counts };
 }
@@ -39,14 +40,14 @@ async function pinged() {
 describe("ping-renders: a heartbeat only moves the latency it carries", () => {
   test("pings that arrive while nothing else happens do not notify the state's subscribers", async () => {
     const { counts } = await pinged();
-    await act(() => Bun.sleep(600));
+    await stays(() => counts.notes === 0, 600);
     expect(counts.notes).toBe(0);
   });
 
   test("and the app commits no render for them", async () => {
     const { counts } = await pinged();
     const before = counts.commits;
-    await act(() => Bun.sleep(600));
+    await stays(() => counts.commits === before, 600);
     expect(counts.commits - before).toBe(0);
   });
 });

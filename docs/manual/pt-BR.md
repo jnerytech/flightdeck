@@ -89,6 +89,7 @@ fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
   - [Preços](#preços)
   - [Orçamentos](#orçamentos)
   - [Histórico da cota](#histórico-da-cota)
+  - [Retorno sobre o custo](#retorno-sobre-o-custo)
 - [Clientes: agrupar o trabalho entre hosts e projetos](#clientes-agrupar-o-trabalho-entre-hosts-e-projetos)
 - [Resumo da sessão e webhooks](#resumo-da-sessão-e-webhooks)
 - [Central de notificações](#central-de-notificações)
@@ -724,6 +725,61 @@ fd/<slug> <base>` e acrescenta `.flightdeck/worktrees/` ao `.git/info/exclude` d
   ou uma pasta que já exista. O git roda sem pedir senha e para depois de cinco minutos, então um
   repositório privado precisa de chave SSH ou de um credential helper já configurado no host.
   Toda recusa diz o motivo.
+
+
+### Começar pelo GitHub
+
+Para hosts que anunciam `github` há dois lugares:
+
+- **Hosts, painel do GitHub.** **Entrar com o GitHub** pede ao `gh` do host que inicie o fluxo de
+  dispositivo do GitHub. O painel mostra um código de uso único: aperte **Abrir o GitHub**,
+  digite o código naquela página e confirme. O painel percebe sozinho e mostra **Conectado como
+  <conta>**, onde o login fica guardado (o chaveiro do sistema, o arquivo do próprio `gh`, ou uma
+  variável de ambiente do daemon) e as permissões (`repo`, `read:project`). O Flightdeck nunca vê o
+  seu token: quem guarda é o `gh`. **Sair** pede ao `gh` que o esqueça; um login que vem de
+  `GH_TOKEN` ou `GITHUB_TOKEN` é do ambiente do daemon e não dá para sair por aqui. Se o `gh` não
+  estiver instalado no host, o painel avisa; instale e aperte **Verificar de novo**.
+- **Projetos, Começar pelo GitHub.** Lista os seus repositórios (ou busque), escolha um e, se
+  quiser, uma das issues abertas dele. Escolha a pasta permitida onde clonar e se abre **Um card do
+  quadro** ou **Uma sessão**. O host clona o repositório nessa pasta (ou usa o clone que já estiver
+  lá), registra como projeto e então:
+  - **o card** leva o título, o corpo e o link da issue (uma vez por issue); a issue escrita por
+    alguém de fora das pessoas do repositório vem marcada como conteúdo de terceiros e fica sem
+    aprovação automática;
+  - **a sessão** abre no clone com a issue citada no primeiro prompt, sob a mesma marca quando
+    vem de fora.
+  Sem issue, só o repositório é clonado e registrado. Uma pasta com esse nome que seja outro
+  repositório é recusada, e toda recusa diz o motivo.
+
+Para testar: na página do host aperte **Entrar com o GitHub**, confirme no GitHub; em **Projetos** aperte
+**Começar pelo GitHub**, escolha um repositório e aperte **Começar**.
+
+
+### Sincronização do quadro com o GitHub Projects
+
+Para hosts que anunciam `boardsync` (precisa do `gh` do host conectado, veja **Começar pelo GitHub**), o botão
+**Sincronizar** do **Board** de um projeto liga o projeto a um quadro do GitHub Projects (v2):
+
+- **Ligar quadro.** Escolha um dos seus quadros e aperte **Ligar quadro**. Os itens dele viram cards (uma issue guarda o
+  link e, quando foi escrita por um estranho, a marca de terceiros e fica sem aprovação automática); o **Status** de cada
+  item põe o card numa coluna. Depois disso o host lê o quadro a cada minuto, e **Sincronizar agora** faz isso na hora.
+- **Mapa de status.** Cada status do quadro tem uma coluna aqui: por padrão Todo e Backlog para Backlog, In Progress para
+  Em andamento, In Review para Em revisão, Done para Concluído. Mude uma coluna e aperte **Salvar mapa**; um status
+  *Sem mapa* deixa os cards onde estão. *Esperando você* não tem par no GitHub, então os cards que vão para lá não são
+  enviados.
+- **Só leitura por padrão.** Mover um card aqui não muda nada no quadro até você ligar **Enviar minhas mudanças de card ao
+  quadro**. Ligar pede confirmação e precisa da permissão `project`; se o login não a tem, a mensagem diz e nada é
+  enviado. O envio só muda o Status de itens que já são cards: nunca cria, edita ou apaga um item.
+- **Conflitos.** Se um card mudou de coluna aqui e o item mudou lá desde a última sincronização, vale a mudança mais
+  recente. Um empate em até dois segundos vai para o quadro quando o envio está desligado e para este lado quando está
+  ligado. O valor que perdeu nunca é descartado: o **Registro da sincronização** do card mostra, com os dois horários. Um
+  card que está rodando não é movido pelo quadro (o registro diz isso).
+- **No card.** **Abrir no quadro** abre o item; *Não está mais no quadro* aparece quando ele foi arquivado ou removido (o
+  card fica); o **Registro da sincronização** lista conflitos, movimentos pulados e envios que falharam.
+- **Desligar** para a sincronização e mantém os cards, com seus links.
+
+Para testar: entre no GitHub na página do host, abra o **Board** de um projeto, aperte **Sincronizar**, escolha um quadro e
+**Ligar quadro**.
 
 ### Ciclo do card
 
@@ -2079,6 +2135,54 @@ de 5 minutos viram uma só.
 - **Tooltip:** as barras do topo da tela Sessões mostram a mesma projeção.
 - **Quem consumiu a janela:** a fatia de cada projeto no custo estimado desde o início da janela
   de 5 horas atual. É uma atribuição aproximada, porque o plano não diz quem usou a cota.
+
+### Retorno sobre o custo
+
+Nos hosts que anunciam `roi`, a página do board do projeto começa com um cartão de **Retorno sobre o custo**, e a tela
+de Custos ganha uma **tabela de projetos**, uma **tabela de pessoas** e um bloco de configurações. A primeira pergunta é
+*entregamos mais pelo que custou?* Todos os números são correlacionados e estimados: horas e valores são digitados, não
+medidos, e um card concluído não é um resultado verificado. As telas nunca falam em lucro nem em economia.
+
+- **O cartão.** Escolha 7 dias, 30 dias ou este mês. A primeira linha diz quantos itens foram entregues (cards
+  concluídos, separados em *planejados*, que já estavam no board quando o período começou, e *não planejados*, criados e
+  concluídos dentro dele), quanto os agentes custaram e se isso é mais, menos ou praticamente o mesmo (dentro de 5%) que
+  no período anterior, com o custo por item dos dois. Abaixo: cards concluídos e PRs mesclados, custo por card e por PR,
+  a linha de retrabalho (rodadas de conserto e o custo delas), horas e valor estimados marcados como estimativa e uma
+  tendência de 8 semanas com texto alternativo. **Como isso é calculado?** lista cada número com as suas entradas.
+- **Sinais opcionais.** No bloco **Horas e valor** do cartão, cada projeto pode ligar *commits de agentes* (commits do
+  período com o trailer `Co-Authored-By: Claude`; aproximado, porque uma pessoa também pode pôr o trailer) e *issues
+  fechadas* (perguntadas ao `gh` do host, guardadas por uma hora; o cartão diz quando o `gh` falta ou está sem login).
+  Os dois vêm desligados.
+- **A tabela de Custos.** Uma linha por projeto do escopo de clientes escolhido: custo, cards, PRs, custo por card e por
+  PR, horas estimadas, valor estimado e retorno sobre o custo (estimativa). Clique no cabeçalho de uma coluna para
+  ordenar, e de novo para inverter. O traço quer dizer que o número não pode ser calculado (sem cards, sem valor da
+  hora). O rodapé soma as linhas. **Exportar a tabela de projetos em CSV** salva uma linha por projeto, com uma coluna
+  que diz como cada número foi feito; o arquivo sempre usa ponto como separador decimal.
+- **Pessoas.** *Tokens contra entrega, por pessoa* agrupa hosts numa pessoa com nome (por exemplo, o host em que os
+  agentes de alguém rodam) com um limite mensal de tokens e/ou de custo. Mostra o uso do mês contra o limite, o que foi
+  entregue e os tokens por card. As pessoas aparecem por nome: é uma visão, não um ranking, e hosts não são pessoas.
+  Nada é imposto; quem para o trabalho continuam sendo os orçamentos de host e de cliente.
+
+#### Onde defino o valor da hora?
+
+O valor da hora é um dado financeiro da pessoa e fica no app; os hosts nunca o veem. Vale o do próprio projeto, depois
+o do cliente dele, depois o padrão.
+
+- **Padrão e tempo de revisão:** Custos, **Configurações do retorno sobre o custo**. Ali também se escolhe se o *seu*
+  tempo de revisão conta como custo (no máximo o limite que você define para cada decisão; desligado por padrão, e o
+  cartão mostra o tempo de espera como informação de qualquer forma) e se cuidam das pessoas.
+- **Um cliente:** a tela **Clientes**, **Valor da hora deste cliente**.
+- **Um projeto:** o bloco **Horas e valor** do cartão na página do board, que também guarda as horas que cada card vale
+  por padrão. As horas de um card só ficam no detalhe dele, **Horas estimadas deste card**.
+
+#### Por que um projeto não tem retorno sobre o custo?
+
+- **Sem valor da hora:** o cartão diz *Defina o valor da hora para ver o valor estimado*; o custo por card e por PR
+  continuam aparecendo.
+- **Sem horas:** cards concluídos sem estimativa e sem padrão do projeto são contados e citados, e não somam horas.
+- **Nada entregue:** o cartão diz isso e ainda mostra o que os agentes custaram.
+- **Ainda sem custo:** a razão precisa de um custo maior que zero.
+- **O host está offline ou não anuncia `roi`:** os números dele faltam; os outros continuam somando.
 
 ## Clientes: agrupar o trabalho entre hosts e projetos
 

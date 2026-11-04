@@ -36,64 +36,69 @@ export function SessionTabs(props: {
   const changes = props.enabled && !!props.claudeSessionId;
   const time = !!props.telemetry && !!props.claudeSessionId;
   const rastro = !!props.trace && !!props.claudeSessionId;
-  if (!changes && !props.messagingId && !time && !rastro) return props.children;
+  const bar = changes || !!props.messagingId || time || rastro;
+  // The same elements with or without the bar: the conversation must keep its place in the tree
+  // when the bar shows up (Claude Code names the session a moment after it opens), or what was
+  // typed in its box is lost with it.
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex gap-2 border-b px-4 py-2">
-        <Button
-          variant="outline"
-          size="sm"
-          aria-pressed={tab === "conversation"}
-          className="aria-pressed:bg-accent"
-          onClick={() => setTab("conversation")}
-        >
-          {t("changes.conversationTab")}
-        </Button>
-        {changes && (
+      {bar && (
+        <div className="flex gap-2 border-b px-4 py-2">
           <Button
             variant="outline"
             size="sm"
-            aria-pressed={tab === "changes"}
+            aria-pressed={tab === "conversation"}
             className="aria-pressed:bg-accent"
-            onClick={() => setTab("changes")}
+            onClick={() => setTab("conversation")}
           >
-            {t("changes.tab")}
+            {t("changes.conversationTab")}
           </Button>
-        )}
-        {time && (
-          <Button
-            variant="outline"
-            size="sm"
-            aria-pressed={tab === "time"}
-            className="aria-pressed:bg-accent"
-            onClick={() => setTab("time")}
-          >
-            {t("telemetry.tab")}
-          </Button>
-        )}
-        {rastro && (
-          <Button
-            variant="outline"
-            size="sm"
-            aria-pressed={tab === "trace"}
-            className="aria-pressed:bg-accent"
-            onClick={() => setTab("trace")}
-          >
-            {t("trace.tab")}
-          </Button>
-        )}
-        {props.messagingId && (
-          <Button
-            variant="outline"
-            size="sm"
-            aria-pressed={tab === "messages"}
-            className="aria-pressed:bg-accent"
-            onClick={() => setTab("messages")}
-          >
-            {t("sessionMessages.tab")}
-          </Button>
-        )}
-      </div>
+          {changes && (
+            <Button
+              variant="outline"
+              size="sm"
+              aria-pressed={tab === "changes"}
+              className="aria-pressed:bg-accent"
+              onClick={() => setTab("changes")}
+            >
+              {t("changes.tab")}
+            </Button>
+          )}
+          {time && (
+            <Button
+              variant="outline"
+              size="sm"
+              aria-pressed={tab === "time"}
+              className="aria-pressed:bg-accent"
+              onClick={() => setTab("time")}
+            >
+              {t("telemetry.tab")}
+            </Button>
+          )}
+          {rastro && (
+            <Button
+              variant="outline"
+              size="sm"
+              aria-pressed={tab === "trace"}
+              className="aria-pressed:bg-accent"
+              onClick={() => setTab("trace")}
+            >
+              {t("trace.tab")}
+            </Button>
+          )}
+          {props.messagingId && (
+            <Button
+              variant="outline"
+              size="sm"
+              aria-pressed={tab === "messages"}
+              className="aria-pressed:bg-accent"
+              onClick={() => setTab("messages")}
+            >
+              {t("sessionMessages.tab")}
+            </Button>
+          )}
+        </div>
+      )}
       <div hidden={tab !== "conversation"} className="min-h-0 flex-1">
         {props.children}
       </div>

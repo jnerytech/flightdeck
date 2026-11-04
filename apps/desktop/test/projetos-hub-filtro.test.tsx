@@ -3,7 +3,7 @@ import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
 registerDom();
-const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { SessionsHub } = await import("../src/ui/SessionsHub.tsx");
 const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
@@ -74,7 +74,7 @@ describe("projetos-hub-filtro: the hub filtered to one project", () => {
   test("with a project, only its sessions are drawn, and a chip names it", async () => {
     const { view } = setup();
     render(view(API));
-    await act(() => Bun.sleep(20));
+    await waitFor(() => expect(rowsDrawn()).toBeGreaterThan(0));
     expect(rowsDrawn()).toBe(2);
     expect(screen.queryByText("Project: api")).not.toBeNull();
   });
@@ -82,7 +82,7 @@ describe("projetos-hub-filtro: the hub filtered to one project", () => {
   test("the chip clears the filter and the other projects come back", async () => {
     const { view } = setup();
     render(view(API));
-    await act(() => Bun.sleep(20));
+    await waitFor(() => expect(rowsDrawn()).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole("button", { name: "Clear the project filter" }));
     expect(rowsDrawn()).toBe(3);
     expect(screen.queryByText("Project: api")).toBeNull();
@@ -91,10 +91,10 @@ describe("projetos-hub-filtro: the hub filtered to one project", () => {
   test("a new project from the route replaces the one cleared before", async () => {
     const { view } = setup();
     const shown = render(view(API));
-    await act(() => Bun.sleep(20));
+    await waitFor(() => expect(rowsDrawn()).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole("button", { name: "Clear the project filter" }));
     shown.rerender(view({ hostId: "h1", projectKey: "host:alfa:/work/web", name: "web" }));
-    await act(() => Bun.sleep(20));
+    await waitFor(() => expect(screen.queryByText("Project: web")).not.toBeNull());
     expect(rowsDrawn()).toBe(1);
     expect(screen.queryByText("Project: web")).not.toBeNull();
   });
@@ -102,13 +102,13 @@ describe("projetos-hub-filtro: the hub filtered to one project", () => {
   test("without a project there is no chip, and in Portuguese the chip follows the dictionary", async () => {
     const plain = setup();
     const first = render(plain.view());
-    await act(() => Bun.sleep(20));
+    await waitFor(() => expect(rowsDrawn()).toBeGreaterThan(0));
     expect(rowsDrawn()).toBe(3);
     expect(screen.queryByRole("button", { name: "Clear the project filter" })).toBeNull();
     first.unmount();
     const pt = setup("pt-BR");
     render(pt.view(API));
-    await act(() => Bun.sleep(20));
+    await waitFor(() => expect(screen.queryByText("Projeto: api")).not.toBeNull());
     expect(screen.queryByText("Projeto: api")).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Limpar o filtro de projeto" })).not.toBeNull();
   });

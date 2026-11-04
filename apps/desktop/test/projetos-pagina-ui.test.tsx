@@ -4,7 +4,7 @@ import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
 registerDom();
-const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { ProjectPage } = await import("../src/ui/ProjectPage.tsx");
 
@@ -53,7 +53,7 @@ function setup(options: { language?: string; known?: boolean; features?: string[
 describe("projetos-pagina-ui: the project page", () => {
   test("it names the project, its host, branch and folder", async () => {
     render(setup().view);
-    await act(() => Bun.sleep(10));
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "api" })).not.toBeNull());
     expect(screen.getByRole("heading", { name: "api" })).not.toBeNull();
     expect(screen.queryByText("alfa · develop · /work/api")).not.toBeNull();
   });
@@ -61,7 +61,7 @@ describe("projetos-pagina-ui: the project page", () => {
   test("it links Board, Sessions, Workflows, Costs and Settings, each to its screen", async () => {
     const { view, went } = setup();
     render(view);
-    await act(() => Bun.sleep(10));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Board" })).not.toBeNull());
     const links = screen.getAllByRole("button").map((b) => b.getAttribute("aria-label") ?? "");
     expect(links).toEqual(["Board", "Sessions", "Workflows", "Costs", "Settings"]);
     for (const name of links) fireEvent.click(screen.getByRole("button", { name }));
@@ -76,7 +76,7 @@ describe("projetos-pagina-ui: the project page", () => {
 
   test("a host without the costs feature has no Costs link", async () => {
     render(setup({ features: [] }).view);
-    await act(() => Bun.sleep(10));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Board" })).not.toBeNull());
     const links = screen.getAllByRole("button").map((b) => b.getAttribute("aria-label") ?? "");
     expect(links).toEqual(["Board", "Sessions", "Workflows", "Settings"]);
   });
@@ -84,7 +84,9 @@ describe("projetos-pagina-ui: the project page", () => {
   test("a project the app does not know yet is looked for on its host, and the page says so while it is not there", async () => {
     const { view, loaded } = setup({ known: false });
     render(view);
-    await act(() => Bun.sleep(10));
+    await waitFor(() =>
+      expect(screen.queryByText("This project is not on this host.")).not.toBeNull(),
+    );
     expect(loaded).toEqual(["h1"]);
     expect(screen.queryByText("This project is not on this host.")).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Board" })).toBeNull();
@@ -92,7 +94,7 @@ describe("projetos-pagina-ui: the project page", () => {
 
   test("in Portuguese the links and the notice follow the dictionary", async () => {
     render(setup({ language: "pt-BR" }).view);
-    await act(() => Bun.sleep(10));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Board" })).not.toBeNull());
     const links = screen.getAllByRole("button").map((b) => b.getAttribute("aria-label") ?? "");
     expect(links).toEqual(["Board", "Sessões", "Workflows", "Custos", "Configurações"]);
   });

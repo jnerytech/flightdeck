@@ -7,6 +7,7 @@ import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts"
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { uiIdle } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -116,7 +117,7 @@ describe("ao-vivo: o leitor", () => {
     });
     const settle = async (check: () => boolean) => {
       const deadline = Date.now() + 3000;
-      while (!check() && Date.now() < deadline) await act(() => Bun.sleep(10));
+      while (!check() && Date.now() < deadline) await uiIdle();
     };
     await settle(() => store.getState().hosts[0]?.status === "online");
     await sidebar.hostAction("Histórico");

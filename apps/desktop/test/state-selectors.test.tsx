@@ -4,6 +4,7 @@ import type { Route } from "../src/lib/router.ts";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
+import { settle, stays, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
@@ -32,13 +33,7 @@ async function threeHosts() {
     await store.addHost({ name: "beta", url: beta.url, token: TOKEN });
     await store.addHost({ name: "gama", url: "ws://127.0.0.1:1/", token: TOKEN });
   });
-  const deadline = Date.now() + 5000;
-  while (
-    store.getState().hosts.filter((h) => h.status === "online").length < 2 &&
-    Date.now() < deadline
-  ) {
-    await act(() => Bun.sleep(10));
-  }
+  await settle(() => store.getState().hosts.filter((h) => h.status === "online").length >= 2);
   return { store, alfa, beta };
 }
 
@@ -49,10 +44,10 @@ describe("state-selectors: a quiet app does not refetch or redraw what did not c
   test("a host that keeps failing to connect does not make the hub ask the online hosts again", async () => {
     const { store, alfa, beta } = await threeHosts();
     render(<App store={store} />);
-    await act(() => Bun.sleep(600));
+    await uiIdle(200);
     const before = [listCalls(alfa), listCalls(beta)];
     // The unreachable host changes status meanwhile: that is not a reason to ask the others.
-    await act(() => Bun.sleep(2500));
+    await stays(() => listCalls(alfa) === before[0] && listCalls(beta) === before[1], 2500);
     expect([listCalls(alfa), listCalls(beta)]).toEqual(before);
   });
 
@@ -276,6 +271,7 @@ describe("state-selectors: an unrelated change of the state does not render the 
       let before = -1;
       for (let waited = 0; (seen.calls === 0 || seen.calls !== before) && waited < 5000; ) {
         before = seen.calls;
+        // timing: a render counter with no screen signal; the loop reads it until it stops moving.
         await act(() => Bun.sleep(150));
         waited += 150;
       }

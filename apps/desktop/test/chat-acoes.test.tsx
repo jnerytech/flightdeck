@@ -1,9 +1,11 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+const { MessageActions } = await import("../src/components/session/message-actions.tsx");
+const { translator } = await import("../src/i18n/index.ts");
 const { SessionView } = await import("../src/ui/SessionView.tsx");
 const { applyEnvelope, emptySession } = await import("../src/lib/session-state.ts");
 
@@ -126,5 +128,36 @@ describe("chat-acoes: the action row under each assistant message", () => {
       event: { type: "message.assistant", blocks: [{ type: "text", text: "oi" }] },
     } as never);
     expect(state.items[0]).toMatchObject({ kind: "assistant", at: "2026-11-03T10:00:00.000Z" });
+  });
+
+  test("the age under a message is worked out again on every tick of the clock", async () => {
+    const ticks: Array<() => void> = [];
+    const interval = spyOn(globalThis, "setInterval").mockImplementation(((fn: () => void) => {
+      ticks.push(fn);
+      return 1;
+    }) as unknown as typeof setInterval);
+    const start = Date.now();
+    const at = new Date(start - 10_000).toISOString();
+    render(
+      <MessageActions
+        text="x"
+        at={at}
+        t={translator("pt-BR")}
+        copyText={undefined}
+        fork={undefined}
+        pin={undefined}
+      />,
+    );
+    expect(screen.getByText("agora")).toBeTruthy();
+    const now = spyOn(Date, "now").mockReturnValue(start + 120_000);
+    try {
+      await act(async () => {
+        for (const tick of ticks) tick();
+      });
+      expect(screen.getByText("há 2 min")).toBeTruthy();
+    } finally {
+      now.mockRestore();
+      interval.mockRestore();
+    }
   });
 });

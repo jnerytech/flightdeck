@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { MessageInfo } from "@flightdeck/protocol";
 import { registerDom } from "./dom.ts";
+import { uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
@@ -57,7 +58,7 @@ describe("estados-vazios: rules and session messages", () => {
           <RulesSection store={store} hostId="h" projectId="p" />
         </TContext.Provider>,
       );
-      await act(() => Bun.sleep(10));
+      await uiIdle();
       expect(view.container.textContent).toContain(EMPTY_RULES[language]);
       expect(view.container.querySelector("ul")).toBeNull();
     });
@@ -65,7 +66,7 @@ describe("estados-vazios: rules and session messages", () => {
     test(`a session with no messages says how to send one, in ${language}`, async () => {
       const store = fakeStore(language, { "messages.list": { messages: [] } });
       const view = render(<SessionMessages store={store} hostId="h" sessionId="c1" />);
-      await act(() => Bun.sleep(10));
+      await uiIdle();
       expect(view.container.textContent).toContain(EMPTY_MESSAGES[language]);
       expect(view.container.querySelector("ul")).toBeNull();
     });
@@ -79,7 +80,7 @@ describe("estados-vazios: rules and session messages", () => {
         projectId="p"
       />,
     );
-    await act(() => Bun.sleep(10));
+    await uiIdle();
     expect(rules.container.textContent).toContain("Bash(git status:*)");
     expect(rules.container.textContent).not.toContain(EMPTY_RULES.en);
     cleanup();
@@ -90,7 +91,7 @@ describe("estados-vazios: rules and session messages", () => {
         sessionId="c1"
       />,
     );
-    await act(() => Bun.sleep(10));
+    await uiIdle();
     expect(messages.container.textContent).toContain("a revisão está pronta");
     expect(messages.container.textContent).not.toContain(EMPTY_MESSAGES.en);
   });

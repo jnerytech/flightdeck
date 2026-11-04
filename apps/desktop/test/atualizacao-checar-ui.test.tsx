@@ -147,6 +147,9 @@ const click = async (name: string) => {
   });
 };
 
+/** Lets time pass to prove that nothing happens in it; it is not a wait for something to appear. */
+const quiet = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
+
 describe("atualizacao-checar-ui: the host page checks for a daemon update", () => {
   test("a daemon older than the app is asked once on its own, and the update button shows", async () => {
     clock.at = Date.parse("2026-11-03T10:30:00.000Z");
@@ -189,7 +192,7 @@ describe("atualizacao-checar-ui: the host page checks for a daemon update", () =
     await waitFor(() =>
       expect(screen.queryByRole("button", { name: "Verificar atualizações" })).not.toBeNull(),
     );
-    await Bun.sleep(100);
+    await quiet(100);
     expect(daemon.state.checks).toBe(0);
     await click("Verificar atualizações");
     await waitFor(() =>

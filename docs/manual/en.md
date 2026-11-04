@@ -90,6 +90,7 @@ are written in Portuguese.
   - [Prices](#prices)
   - [Budgets](#budgets)
   - [Quota history](#quota-history)
+  - [Return on cost](#return-on-cost)
 - [Clients: grouping work across hosts and projects](#clients-grouping-work-across-hosts-and-projects)
 - [Session summary and webhooks](#session-summary-and-webhooks)
 - [Notification center](#notification-center)
@@ -741,6 +742,59 @@ fd/<slug> <base>` and appends `.flightdeck/worktrees/` to the repository's `.git
   a folder that already exists. git runs with password prompts off and stops after five minutes,
   so a private repository needs an SSH key or a credential helper already set up on the host.
   Every refusal says why.
+
+
+### Starting from GitHub
+
+For hosts that announce `github` there are two places:
+
+- **Hosts, GitHub panel.** **Sign in with GitHub** asks the host's `gh` to start GitHub's device
+  flow. The panel shows a one-time code: press **Open GitHub**, type the code on that page and
+  confirm. The panel notices by itself and shows **Signed in as <account>**, where the login is
+  kept (the system keyring, `gh`'s own file, or an environment variable of the daemon) and the
+  permissions (`repo`, `read:project`). Flightdeck never sees your token: `gh` keeps it. **Sign
+  out** asks `gh` to forget it; a login that comes from `GH_TOKEN` or `GITHUB_TOKEN` is managed by
+  the daemon's environment and cannot be signed out here. If `gh` is not installed on the host the
+  panel says so; install it and press **Check again**.
+- **Projects, Start from GitHub.** Lists your repositories (or search them), then pick one and,
+  if you like, one of its open issues. Choose the allowed folder to clone into and whether to open
+  **A board card** or **A session**. The host clones the repository into that folder (or reuses the
+  clone already there), registers it as a project, and then:
+  - **a card** takes the issue's title, body and link (once per issue); an issue written by
+    someone outside the repository's people is marked as third-party content and gets no
+    automatic approval;
+  - **a session** opens in the clone with the issue quoted in its first prompt, under the same
+    mark when it comes from outside.
+  Without an issue, only the repository is cloned and registered. A folder with that name that is
+  another repository is refused, and every refusal says why.
+
+To try it: on the host's page press **Sign in with GitHub**, confirm on GitHub, then on **Projects** press
+**Start from GitHub**, pick a repository, press **Start**.
+
+
+### Board sync with GitHub Projects
+
+For hosts that announce `boardsync` (it needs the host's `gh` signed in, see **Starting from GitHub**), the **Sync**
+button on a project's **Board** links the project to a GitHub Projects (v2) board:
+
+- **Link board.** Pick one of your boards and press **Link board**. Its items become cards (an issue keeps its
+  link and, when a stranger wrote it, the third-party mark with no automatic approval); the **Status** of each item puts
+  the card in a column. After that the host reads the board every minute, and **Sync now** does it at once.
+- **Status mapping.** Each status of the board has a column here: by default Todo and Backlog to Backlog, In Progress to
+  In progress, In review to In review, Done to Done. Change a column and press **Save mapping**; a status set to *Not
+  mapped* leaves cards where they are. *Needs you* has no GitHub counterpart, so cards that go there are not sent.
+- **Read only by default.** Moving a card here changes nothing on the board until you turn on **Push my card moves to the
+  board**. Turning it on asks to confirm and needs the `project` permission; if the login does not have it, the message
+  says so and nothing is sent. Push only changes the Status of items that already are cards: it never creates, edits or
+  deletes an item.
+- **Conflicts.** If a card moved here and the item changed there since the last sync, the newest change wins. A tie within
+  two seconds goes to the board when push is off and to this side when push is on. The value that lost is never dropped:
+  the card's **Sync log** shows it, with both times. A card that is running is not moved by the board (the log says so).
+- **On a card.** **Open on the board** opens the item; *No longer on the board* appears when it was archived or removed
+  (the card stays); the **Sync log** lists conflicts, skipped moves and pushes that failed.
+- **Unlink** stops the sync and keeps the cards, with their links.
+
+To try it: sign in with GitHub on the host's page, open a project's **Board**, press **Sync**, pick a board, **Link board**.
 
 ### Card lifecycle
 
@@ -2094,6 +2148,53 @@ Every quota reading from a managed session is kept for 30 days. Identical readin
 - **Who used the window:** each project's share of the estimated cost since the start of the
   current 5-hour window. It is an approximate attribution, because the plan does not say who used
   the quota.
+
+### Return on cost
+
+For hosts that announce `roi`, the project's board page starts with a **Return on cost** card and the Costs screen
+gains a **project table**, a **people table** and a settings block. It answers one question first: *did we deliver more
+for what it cost?* Every figure is correlated and estimated: hours and rates are typed, not measured, and a card done is
+not a verified result. The screens never call it profit or savings.
+
+- **The card.** Choose 7 days, 30 days or this month. The first line says how many items were delivered (cards done,
+  split into *planned*, which were on the board before the period began, and *unplanned*, created and done inside it),
+  what the agents cost, and whether that is more, fewer or about the same (within 5%) as the period before, with the
+  cost per item of both. Below it: cards done and PRs merged, cost per card and per PR, the rework line (fix rounds and
+  their cost), estimated hours and value marked as an estimate, and an 8-week trend with a text alternative.
+  **How is this computed?** lists each number with its inputs.
+- **Optional signals.** In the card's **Hours and rate** block, each project can switch on *agent commits* (commits of
+  the period with a `Co-Authored-By: Claude` trailer; approximate, because a person can add the trailer too) and *issues
+  closed* (asked of the host's `gh`, kept for an hour; the card says when `gh` is missing or signed out). Both are off by
+  default.
+- **The Costs table.** One row per project of the chosen client scope: cost, cards, PRs, cost per card and per PR,
+  estimated hours, estimated value and return on cost (estimate). Click a column header to sort, again to reverse. A
+  dash means the figure cannot be computed (no cards, no rate). The footer adds up the rows. **Export the project table
+  as CSV** saves one row per project, with a column that says how each figure was made; the file always uses a dot as
+  the decimal mark.
+- **People.** *Tokens against delivery, by person* groups hosts into a named person (for example, the host that
+  someone's agents run on) with a monthly token and/or cost limit. It shows the month's use against the limit, what was
+  delivered, and tokens per card. People are listed by name: it is a view, not a ranking, and hosts are not people.
+  Nothing is enforced; the existing host and client budgets are the ones that stop work.
+
+#### Where do I set the hourly rate?
+
+The rate is the person's own money figure and stays in the app; the hosts never see it. The project's own rate wins,
+then its client's, then the default.
+
+- **Default and review time:** Costs, **Return on cost settings**. There you also choose whether *your* review time
+  counts as cost (at most the cap you set for each decision; off by default, and the card shows the waiting time as
+  information either way) and manage the people.
+- **A client:** the **Clients** screen, **Hourly rate for this client**.
+- **A project:** the card's **Hours and rate** block on the board page, which also holds the hours each card is worth by
+  default. A single card's hours are set in the card's detail, **Estimated hours for this card**.
+
+#### Why is there no ROI for a project?
+
+- **No rate:** the card says *Set an hourly rate to see the estimated value*; the cost per card and per PR still show.
+- **No hours:** done cards without an estimate and without a project default are counted and named, and add no hours.
+- **Nothing delivered:** the card says so and still shows what the agents cost.
+- **No cost yet:** the ratio needs a cost above zero.
+- **The host is offline or does not announce `roi`:** its figures are missing; the others still add up.
 
 ## Clients: grouping work across hosts and projects
 

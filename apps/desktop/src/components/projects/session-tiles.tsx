@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { Key } from "../../i18n/index.ts";
 import { type AppState, type AppStore, sessionKey } from "../../lib/app-store.ts";
-import { type HubRow, hubRows } from "../../lib/hub.ts";
+import { type HubRow, type HubRowState, hubRows } from "../../lib/hub.ts";
 import { statusTone } from "../../lib/status.ts";
 import {
   lastLines,
@@ -142,7 +142,7 @@ function SessionTile(props: { store: AppStore; hostId: string; row: HubRow; onOp
 /** Sessions of one project side by side: 2, 3, 4 or 6 tiles, the ones that need you first. */
 export function SessionTiles(props: {
   store: AppStore;
-  state: AppState;
+  state: HubRowState;
   hostId: string;
   projectKey: string;
   onOpen(row: HubRow): void;

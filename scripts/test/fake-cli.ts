@@ -10,10 +10,21 @@ import { delimiter, join } from "node:path";
 export interface FakeRule {
   /** Every one of these must appear among the arguments. */
   args: string[];
+  /** Every one of these must appear inside some argument (a GraphQL query or a variable). */
+  contains?: string[];
   /** Only answers the n-th call of the fake (1-based), to fail once and then pass. */
   call?: number;
   stdout?: string;
+  /** What the fake writes to stderr (a login's one-time code, an error message). */
+  stderr?: string;
   code?: number;
+  /** Holds the process this long after it wrote its output, like a login waiting for the browser. */
+  delayMs?: number;
+  /**
+   * Leaves a child behind that keeps stdout and stderr open for this long, like the `bun` a Windows
+   * `.cmd` shim starts: ending the shim does not close the pipes.
+   */
+  holdPipesMs?: number;
 }
 
 export interface FakeCli {
@@ -32,7 +43,7 @@ const MAIN = join(import.meta.dir, "fake-cli-main.ts");
 export interface FakeCliOptions {
   /**
    * Refuses, like Bun does for a Windows .cmd shim, an argument with a newline or one of
-   * `< > & | ^ "` or `%`, before recording the call. On by default for `az` (a .cmd on Windows),
+   * `< > & | ^ "` or `%`, before recording the call. On by default for every fake (`gh` and `az` are .cmd shims on Windows),
    * so the refusal shows on every platform the suite runs on.
    */
   rejectCmdChars?: boolean;
@@ -57,7 +68,7 @@ export function installFakeCli(
   respond(rules);
   writeFileSync(
     join(dir, "options.json"),
-    JSON.stringify({ rejectCmdChars: options.rejectCmdChars ?? name === "az" }),
+    JSON.stringify({ rejectCmdChars: options.rejectCmdChars ?? true }),
   );
 
   const keys = Object.keys(env).filter((k) => k.toUpperCase() === "PATH");

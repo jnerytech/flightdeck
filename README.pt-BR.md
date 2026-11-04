@@ -81,6 +81,11 @@ sessões num lugar só, sem abrir cada máquina.
   seletor que filtra sessões, board, custos, orçamentos, conversas e o cofre, a soma de custos e do
   limite mensal por cliente e padrões (persona, snippets, tag do cofre) que nunca escondem uma
   aprovação.
+- Retorno sobre o custo: um cartão no board de cada projeto e uma tabela na tela de Custos dizem se
+  os agentes entregaram mais pelo que custou (cards concluídos, PRs mesclados, planejados e não
+  planejados, custo por item, retrabalho), com as horas e os valores que você digita guardados no
+  app e toda estimativa marcada como tal. Exporte a tabela em CSV; veja tokens contra entrega por
+  pessoa, nunca como ranking.
 - Resumo da sessão e webhooks: um resumo curto de uma sessão (o que foi pedido e feito,
   os arquivos, o custo, a pergunta em aberto), montado do transcript sem chamar modelo, e alvos de
   webhook (Slack, Discord ou um endereço JSON assinado) avisados quando uma sessão precisa de você,

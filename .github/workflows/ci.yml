@@ -116,6 +116,9 @@ jobs:
           bun run smoke:webhook
           bun run smoke:conta
           bun run smoke:simple
+          bun run smoke:github
+          bun run smoke:boardsync
+          bun run smoke:roi
 
       - name: System libraries of the Tauri shell (Linux)
         if: runner.os == 'Linux'

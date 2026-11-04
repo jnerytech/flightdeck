@@ -6,7 +6,7 @@ import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
-import { waiter } from "./wait.ts";
+import { stays, waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -192,8 +192,7 @@ describe("agente-ui", () => {
     expect(within(row("local")).queryByText("Só leitura")).not.toBeNull();
     expect(screen.queryByText(/O \.mcp\.json é versionado/)).not.toBeNull();
     // Nothing runs because the list was opened.
-    await act(() => Bun.sleep(300));
-    expect(existsSync(marker)).toBe(false);
+    await stays(() => !existsSync(marker), 300, "the marker file is not written");
   });
 
   test("Testar mostra o comando exato, cancelar não roda nada e confirmar lista ferramentas e recursos", async () => {
@@ -205,8 +204,7 @@ describe("agente-ui", () => {
     expect(dialog.textContent).toContain(process.execPath);
     expect(dialog.textContent).toContain("subiu.txt");
     await click("Cancelar");
-    await act(() => Bun.sleep(300));
-    expect(existsSync(marker)).toBe(false);
+    await stays(() => !existsSync(marker), 300, "the marker file is not written");
 
     await click("Testar eco");
     await settle(() => screen.queryByRole("alertdialog") !== null);

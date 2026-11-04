@@ -635,6 +635,12 @@ export const Project = z.object({
   personaByColumn: z.partialRecord(BoardColumn, z.string()).default({}),
   /** The personas offered as `persona-<id>` subagents in this project (phase 20). */
   personaSubagents: PersonaSubagentsMode.default("all"),
+  /** Phase 36: the hours a done card is worth when it has no estimate of its own. */
+  defaultHours: z.number().nullable().default(null),
+  /** Phase 36: the optional value signals this project has switched on (both off by default). */
+  roiSignals: z
+    .object({ commits: z.boolean(), issues: z.boolean() })
+    .default({ commits: false, issues: false }),
   /**
    * Phase 29: the project key of the folder (the normalized remote, else the folder on this host),
    * the same one sessions and costs carry; absent from a daemon that does not send it.
@@ -722,6 +728,11 @@ export const Card = z.object({
   issueRef: z.string().nullable().default(null),
   /** Phase 13: the issue's author is third party, so the card's content is untrusted. */
   issueExternal: z.boolean().default(false),
+  /** Phase 38: the item of an external board this card follows, and whether it has left that board. */
+  externalUrl: z.string().nullable().default(null),
+  externalGone: z.boolean().default(false),
+  /** Phase 36: the hours this card is worth, an estimate the person typed. */
+  estimateHours: z.number().nullable().default(null),
   /** Phase 31: the cards that must be done first, in the order the person set them. */
   blockedBy: z.array(z.string()).default([]),
   /** Phase 31: the cards this one holds up (the other end of `blockedBy`, never stored twice). */
@@ -1266,6 +1277,163 @@ export interface ProjectsScanResult {
 /** What `projects.clone` answers: the new repository's folder. */
 export interface ProjectsCloneResult {
   path: string;
+}
+
+/** Phase 36: one week of the ROI trend. Counts and the cost in US$ the agents spent; never a rate or a value. */
+export interface RoiWeek {
+  /** First day of the week (YYYY-MM-DD); the weeks end on the period's last day and go back by seven. */
+  from: string;
+  to: string;
+  costUsd: number;
+  tokens: number;
+  cards: number;
+  planned: number;
+  unplanned: number;
+  prsMerged: number;
+}
+
+/** Phase 36: what one project delivered, and cost, in a period. */
+export interface RoiPeriod {
+  costUsd: number;
+  /** Input, output and cache tokens of the period. */
+  tokens: number;
+  /** Cards done, split into those already on the board when the period began and those created in it. */
+  cards: number;
+  planned: number;
+  unplanned: number;
+  prsMerged: number;
+  plannedPrs: number;
+  unplannedPrs: number;
+  /** Done cards that came from an issue. */
+  issuesResolved: number;
+  /** PR-watch fix rounds of the cards done in the period, and what they cost. */
+  fixRounds: number;
+  fixCostUsd: number;
+  /** Estimated hours of the done cards (the card's, else the project's default) and how many had none. */
+  hours: number;
+  cardsWithoutEstimate: number;
+  /** Managed-session approvals resolved in the period, and how long they waited for the person. */
+  decisions: number;
+  waitedSeconds: number;
+  /** Cost that belongs to no card of the project (a manual session in it). */
+  outsideCardsUsd: number;
+  /** The log was approximated for some of these cards (the date comes from their last update). */
+  approxCards: number;
+  /** The last eight weeks ending on the period's last day, oldest first. */
+  weeks: RoiWeek[];
+}
+
+export interface RoiProject {
+  projectKey: string;
+  name: string;
+  current: RoiPeriod;
+  previous: RoiPeriod;
+  /** The optional signals the project has on, for the asked period; absent when none is. */
+  signals?: RoiSignalValues;
+}
+
+/** Phase 36: agent commits (approximate: counted by a trailer) and closed issues, or why not. */
+export interface RoiSignalValues {
+  agentCommits?: number;
+  issuesClosed?: number;
+  /** Why the closed issues are missing: `gh_missing`, `gh_logged_out` or `gh_failed`. */
+  issuesError?: string;
+}
+
+export interface RoiSummaryResult {
+  from: string;
+  to: string;
+  previousFrom: string;
+  previousTo: string;
+  projects: RoiProject[];
+}
+
+/** Phase 38: where a project's board sync stands. `linked: false` carries nothing else. */
+export interface BoardSyncStatus {
+  linked: boolean;
+  provider?: string;
+  boardId?: string;
+  boardTitle?: string;
+  columnMap?: Partial<Record<string, BoardColumn>>;
+  /** Local moves are sent to the board. */
+  push?: boolean;
+  lastSyncedAt?: string | null;
+  lastError?: string | null;
+  pausedUntil?: string | null;
+  /** The board has more items than one pull reads. */
+  truncated?: boolean;
+  /** The board's Status options, for the map editor. */
+  statusOptions?: string[];
+}
+
+/** One board of the external provider. */
+export interface BoardSyncBoard {
+  id: string;
+  title: string;
+  owner: string;
+  number: number;
+  url: string;
+}
+
+/** What one sync did. */
+export interface BoardSyncReport {
+  created: number;
+  moved: number;
+  updated: number;
+  conflicts: number;
+  unmapped: number;
+  gone: number;
+  skipped: number;
+  pushed: number;
+  redacted: number;
+  truncated: boolean;
+  notModified: boolean;
+}
+
+/** One line of a card's sync log: a conflict, a skipped move, a push that failed. */
+export interface BoardSyncLogEntry {
+  at: string;
+  kind: string;
+  winner: "local" | "external" | null;
+  lostValue: string | null;
+  lostAt: string | null;
+  keptValue: string | null;
+  keptAt: string | null;
+  detail: string | null;
+}
+
+/** Phase 37: whether the host's `gh` is signed in to GitHub. Never a token. */
+export interface GithubStatusResult {
+  installed: boolean;
+  loggedIn: boolean;
+  login: string | null;
+  scopes: string[];
+  /** Where `gh` keeps the login. */
+  source: "keyring" | "file" | "env" | null;
+}
+
+/** The device flow's one-time code and the page where it is typed. */
+export interface GithubLoginResult {
+  code: string;
+  url: string;
+}
+
+export interface GithubRepoItem {
+  /** `owner/name`. */
+  name: string;
+  description: string;
+  private: boolean;
+  url: string;
+  updatedAt: string;
+}
+
+export interface GithubStartResult {
+  projectId: string;
+  path: string;
+  cardId?: string;
+  sessionId?: string;
+  /** The folder was already a clone of the repo. */
+  reused: boolean;
 }
 
 export const DOCTOR_CHECK_IDS = [
@@ -1965,6 +2133,13 @@ export const ProjectUpdatePayload = z.object({
   /** The default persona by column; `null` removes the one of a column. */
   personaByColumn: z.partialRecord(BoardColumn, z.string().nullable()).optional(),
   personaSubagents: PersonaSubagentsMode.optional(),
+  /** Phase 36: `null` removes the default. */
+  defaultHours: z.number().min(0).max(1000).nullable().optional(),
+  /** Phase 36: which optional value signals are on; a field left out keeps its value. */
+  roiSignals: z
+    .object({ commits: z.boolean().optional(), issues: z.boolean().optional() })
+    .strict()
+    .optional(),
 });
 export const CardIdPayload = z.object({ cardId: z.string() });
 /** Phase 6: with `workflow`, the card runs that trusted workflow with `inputs`. */
@@ -2648,6 +2823,8 @@ export const Command = z.discriminatedUnion("type", [
       cardId: z.string(),
       title: z.string().min(1).optional(),
       description: z.string().optional(),
+      /** Phase 36: `null` removes the estimate. */
+      estimateHours: z.number().min(0).max(1000).nullable().optional(),
       ...CardDeps,
     }),
   ),
@@ -3668,6 +3845,64 @@ export const Command = z.discriminatedUnion("type", [
   cmd("session.files", z.object({ claudeSessionId: z.string() })),
   /** Git repositories inside the allowed roots (bounded depth and count), for "find my projects". */
   cmd("projects.scan", z.object({ depth: z.number().int().min(1).max(3).optional() }).strict()),
+  /** Phase 37: the host's gh login (device flow), the person's repos and issues, and start from them. */
+  cmd("github.status", z.object({}).strict()),
+  cmd("github.login.start", z.object({}).strict()),
+  cmd("github.login.cancel", z.object({}).strict()),
+  cmd("github.logout", z.object({}).strict()),
+  cmd("github.repos", z.object({ query: z.string().max(100).optional() }).strict()),
+  cmd("github.issues", z.object({ repo: z.string().min(1).max(200) }).strict()),
+  cmd(
+    "github.start",
+    z
+      .object({
+        repo: z.string().min(1).max(200),
+        issue: z.string().min(1).max(20).optional(),
+        root: z.string().min(1),
+        mode: z.enum(["card", "session"]),
+      })
+      .strict(),
+  ),
+  /** Phase 36: what the agents cost and delivered, per project key, for a period and the one before it. */
+  cmd(
+    "roi.summary",
+    z
+      .object({
+        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        projectKey: z.string().min(1).max(500).optional(),
+      })
+      .strict(),
+  ),
+  /** Phase 38: board sync with an external board (GitHub Projects first). */
+  cmd("boardsync.boards", z.object({}).strict()),
+  cmd(
+    "boardsync.link",
+    z
+      .object({
+        projectId: z.string().min(1),
+        boardId: z.string().min(1).max(200),
+        columnMap: z.record(z.string().min(1).max(200), BoardColumn).optional(),
+      })
+      .strict(),
+  ),
+  cmd("boardsync.unlink", z.object({ projectId: z.string().min(1) }).strict()),
+  cmd(
+    "boardsync.setMap",
+    z
+      .object({
+        projectId: z.string().min(1),
+        columnMap: z.record(z.string().min(1).max(200), BoardColumn),
+      })
+      .strict(),
+  ),
+  cmd(
+    "boardsync.setPush",
+    z.object({ projectId: z.string().min(1), push: z.boolean(), confirm: z.boolean() }).strict(),
+  ),
+  cmd("boardsync.status", z.object({ projectId: z.string().min(1) }).strict()),
+  cmd("boardsync.syncNow", z.object({ projectId: z.string().min(1) }).strict()),
+  cmd("boardsync.log", z.object({ cardId: z.string().min(1) }).strict()),
   /** Clones a repository into a folder inside the allowed roots; a refusal carries its reason. */
   cmd(
     "projects.clone",
@@ -4216,6 +4451,22 @@ export interface CommandResults {
   "doctor.run": DoctorResult;
   "projects.scan": ProjectsScanResult;
   "projects.clone": ProjectsCloneResult;
+  "roi.summary": RoiSummaryResult;
+  "boardsync.boards": { boards: BoardSyncBoard[] };
+  "boardsync.link": BoardSyncStatus;
+  "boardsync.unlink": undefined;
+  "boardsync.setMap": BoardSyncStatus;
+  "boardsync.setPush": BoardSyncStatus;
+  "boardsync.status": BoardSyncStatus;
+  "boardsync.syncNow": { status: BoardSyncStatus; report: BoardSyncReport };
+  "boardsync.log": { entries: BoardSyncLogEntry[] };
+  "github.status": GithubStatusResult;
+  "github.login.start": GithubLoginResult;
+  "github.login.cancel": undefined;
+  "github.logout": undefined;
+  "github.repos": { repos: GithubRepoItem[] };
+  "github.issues": { issues: Issue[] };
+  "github.start": GithubStartResult;
   "fs.files": FsFilesResult;
   "session.files": { files: SessionFile[] };
   "pr.comments.send": { sent: number };

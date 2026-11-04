@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DaemonManifest } from "@flightdeck/protocol";
 import { signForTest, TEST_PUBLIC_KEY } from "../../../scripts/test/minisign.ts";
+import type { FlightdeckError } from "../src/errors.ts";
 import { runCli } from "../src/main.ts";
 import { startServer } from "../src/server.ts";
 import { type ServiceContext, systemdUnit, windowsTaskXml } from "../src/service.ts";
@@ -174,6 +175,29 @@ describe("daemon-update-apply", () => {
     expect(await code(badSig.updates.apply(true))).toBe("update_verification_failed");
     expect(badSig.files()).toEqual([]);
     expect(badSig.calls.some((c) => c[0] === "systemd-run")).toBe(false);
+  });
+
+  test("the two refusals of the update carry a reason the app translates", async () => {
+    const refusal = async (promise: Promise<unknown>) => {
+      try {
+        await promise;
+      } catch (error) {
+        const { code, reason, params } = error as FlightdeckError;
+        return { code, reason, params };
+      }
+      throw new Error("it did not refuse");
+    };
+    const tampered = new Uint8Array(BINARY);
+    tampered[0] = (tampered[0] as number) ^ 1;
+    const verification = await refusal(updater(release(tampered, BINARY)).updates.apply(true));
+    expect(verification.code).toBe("update_verification_failed");
+    expect(verification.reason).toBe("update_signature_failed");
+    expect(typeof verification.params?.why).toBe("string");
+    expect(await refusal(updater(release(), { installed: false }).updates.apply(true))).toEqual({
+      code: "update_needs_service",
+      reason: "update_needs_service",
+      params: undefined,
+    });
   });
 
   test("sem serviço: update_needs_service, sem disparar nada nem deixar arquivo", async () => {
