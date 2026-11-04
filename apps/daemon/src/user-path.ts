@@ -68,14 +68,34 @@ async function broadcast(env: PathEnv): Promise<boolean> {
 
 const entries = (value: string) => value.split(";").filter((entry) => entry.trim() !== "");
 
+const profileLine = (dir: string) => `export PATH="${dir}:$PATH"`;
+
+/** What to do by hand when the profile cannot be edited. */
+const byHand = (dir: string) => [
+  'To run "flightdeckd" from any folder, add this line to your shell profile:',
+  `  ${profileLine(dir)}`,
+];
+
+/** Linux and macOS: appends the folder to `~/.profile` once; without file access, says how. */
+async function addToProfile(env: PathEnv, dir: string): Promise<string[]> {
+  const { readFile, writeFile } = env;
+  if (!readFile || !writeFile) return byHand(dir);
+  const file = posix.join(env.home, ".profile");
+  const line = profileLine(dir);
+  const current = (await readFile(file)) ?? "";
+  if (current.includes(line)) return [`${dir} is already in ${file}.`];
+  const separator = current === "" || current.endsWith("\n") ? "" : "\n";
+  try {
+    await writeFile(file, `${current}${separator}# Flightdeck\n${line}\n`);
+  } catch {
+    return [`Flightdeck could not edit ${file}.`, ...byHand(dir)];
+  }
+  return [`Added ${dir} to your PATH in ${file}.`, 'Open a new terminal to use "flightdeckd".'];
+}
+
 /** Puts `dir` on the user's PATH; returns the lines to print. */
 export async function addToUserPath(env: PathEnv, dir: string): Promise<string[]> {
-  if (!isWindows(env)) {
-    return [
-      'To run "flightdeckd" from any folder, add this line to your shell profile:',
-      `  export PATH="${dir}:$PATH"`,
-    ];
-  }
+  if (!isWindows(env)) return addToProfile(env, dir);
   const { value, type } = await readPath(env);
   if (entries(value).some((entry) => sameFolder(env, entry, dir))) {
     return [`${dir} is already on your Path.`];

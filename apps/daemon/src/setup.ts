@@ -204,6 +204,17 @@ export async function runSetup(deps: SetupDeps, options: SetupOptions = {}): Pro
     throw error;
   }
   await deps.pair();
+  // Last, so it is the thing left on the screen: a daemon that does not start at boot is easy to miss.
+  if ((await deps.linger?.()) === "off") {
+    deps.log.error(
+      [
+        "WARNING: linger is off for this user, so the daemon will not start after a reboot (or after WSL restarts) until you log in.",
+        "Turn it on:",
+        "  sudo loginctl enable-linger $USER",
+        "On WSL also turn on systemd in /etc/wsl.conf ([boot] systemd=true), then run wsl --shutdown from Windows.",
+      ].join("\n"),
+    );
+  }
 }
 
 /**

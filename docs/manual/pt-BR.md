@@ -338,8 +338,9 @@ O `setup` faz, nesta ordem:
    vai rodar. Depois coloca essa pasta no seu `PATH`. No Windows ela entra no `Path` do
    **usuário** (registro `HKCU\Environment`, sem duplicar e mantendo as outras entradas) e os
    programas abertos são avisados, então só terminais abertos depois a enxergam. No Linux e no
-   macOS imprime a linha `export PATH="$HOME/.flightdeck/bin:$PATH"` para você pôr no perfil do
-   shell e não edita arquivo nenhum. O `service uninstall` tira a entrada do `Path` do Windows;
+   macOS acrescenta a linha `export PATH="$HOME/.flightdeck/bin:$PATH"` ao `~/.profile` uma só vez
+   (um segundo `setup` não acrescenta nada, e o resto do arquivo é mantido; se não conseguir
+   gravar, imprime a linha para você pôr). O `service uninstall` tira a entrada do `Path` do Windows;
 2. pergunta as pastas dos projetos, uma por resposta, e recusa pasta que não existe: elas viram
    `allowedRoots` na config;
 3. com a Tailscale ativa, pergunta se você usa o Flightdeck de outros dispositivos (o padrão é
@@ -380,7 +381,10 @@ flightdeckd service uninstall           # para o daemon e remove o serviço
 - **Linux (WSL, Orange Pi, VPS):** grava `~/.config/systemd/user/flightdeckd.service`
   (`Restart=always`, `RestartSec=5`) e roda `systemctl --user enable --now flightdeckd`. Sem
   *linger*, o serviço só sobe depois do seu login; o `install` imprime o comando
-  `sudo loginctl enable-linger $USER` para você rodar (ele nunca executa nada com sudo).
+  `sudo loginctl enable-linger $USER` para você rodar (ele nunca executa nada com sudo). O `setup`
+  termina com um bloco de **AVISO** com esse comando quando o linger está desligado (no WSL diz
+  também para ligar `systemd=true` em `/etc/wsl.conf`), e o `flightdeckd doctor`, e o Doutor do host
+  no app, mostram "linger" como falha até ele ser ligado.
 - **Windows:** cria a tarefa agendada `Flightdeck\flightdeckd` no logon do usuário, sem
   privilégio elevado e sem janela visível (importa um XML com `schtasks /Create /XML`; o console
   fica escondido por `conhost.exe --headless`).

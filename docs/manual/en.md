@@ -349,8 +349,9 @@ flightdeckd doctor                         # what is missing, with the command t
    service will run. It then puts that folder on your `PATH`. On Windows it is added to your **user**
    `Path` (registry `HKCU\Environment`, without duplicates, keeping the other entries) and
    open programs are told, so only terminals opened afterwards see it. On Linux and macOS it
-   prints the `export PATH="$HOME/.flightdeck/bin:$PATH"` line to add to your shell profile and
-   edits no file. `service uninstall` takes the entry off the Windows `Path` again;
+   appends the `export PATH="$HOME/.flightdeck/bin:$PATH"` line to `~/.profile` once (a second
+   `setup` adds nothing, and the rest of the file is kept; if it cannot write the file it prints the
+   line for you to add). `service uninstall` takes the entry off the Windows `Path` again;
 2. asks for the project folders, one per answer, and refuses a folder that does not exist: they
    become `allowedRoots` in the config;
 3. when Tailscale is up, asks whether you use Flightdeck from other devices (the default is
@@ -392,6 +393,9 @@ flightdeckd service uninstall           # stops the daemon and removes the servi
   (`Restart=always`, `RestartSec=5`) and runs `systemctl --user enable --now flightdeckd`.
   Without *linger*, the service only starts after your login; `install` prints the command
   `sudo loginctl enable-linger $USER` for you to run (it never runs anything with sudo).
+  `setup` ends with a **WARNING** block with that command when linger is off (on WSL it also says
+  to turn on `systemd=true` in `/etc/wsl.conf`), and `flightdeckd doctor`, and the host's Doctor in
+  the app, list "linger" as a failure until it is on.
 - **Windows:** creates the scheduled task `Flightdeck\flightdeckd` at the user's logon, without
   elevated privileges and without a visible window (it imports an XML with
   `schtasks /Create /XML`; the console is hidden by `conhost.exe --headless`). The task only has a
