@@ -80,7 +80,7 @@ describe("mode-switch-ui: the app opens in the host's mode", () => {
   });
 
   test("Given simple Settings, When the theme, a folder and notifications are changed, Then the app's store takes each", async () => {
-    const { store } = await open({ mode: "simple", locked: false });
+    const { store, d } = await open({ mode: "simple", locked: false });
     await act(async () => {
       fireEvent.click(await screen.findByRole("button", { name: "Settings" }));
     });
@@ -98,7 +98,7 @@ describe("mode-switch-ui: the app opens in the host's mode", () => {
     });
     await waitFor(() => expect(store.getState().settings.notifyUpdates).toBe(false));
     fireEvent.change(screen.getByRole("textbox", { name: "Folder to add" }), {
-      target: { value: "/tmp" },
+      target: { value: d.root },
     });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
