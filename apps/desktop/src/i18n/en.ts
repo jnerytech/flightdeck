@@ -1125,6 +1125,8 @@ export const en: Dictionary = {
     account: "the Claude account",
     prWatch: "PR watching",
     runEnv: "the run environment",
+    templates: "ready-made tasks",
+    tasks: "task results",
     history: "the history",
     central: "the central session list",
     vault: "the vault",
