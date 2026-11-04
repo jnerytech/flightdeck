@@ -844,8 +844,9 @@
 @utility header-crumbs {
   display: flex;
   min-width: 0;
-  flex: 0 1 auto;
-  max-width: 24rem;
+  /* A width of its own: the tabs start at the same x whatever the crumbs say. */
+  flex: 0 0 24rem;
+  max-width: 40%;
   align-items: center;
   gap: 0.5rem;
 }
