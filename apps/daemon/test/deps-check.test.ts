@@ -89,7 +89,7 @@ describe("deps-check: the dependencies of a host", () => {
     });
     for (const item of [find(items, "claude"), find(items, "gh")]) {
       expect(item.fix.map((f) => f.os).sort()).toEqual(["darwin", "linux", "win32"]);
-      for (const f of item.fix) expect(f.command.length).toBeGreaterThan(0);
+      for (const f of item.fix) expect((f.command ?? f.url ?? "").length).toBeGreaterThan(0);
     }
     expect(find(items, "gh").fix.find((f) => f.os === "win32")?.command).toContain("winget");
   });
