@@ -3381,6 +3381,11 @@ A daemon that started before a release said nothing about it for up to a day, be
 - **Paths.** Any two leading separators (`\\`, `/\`, `\\?\`, `\\.\`) are refused before the disk is touched, because on Windows they are network or device paths and merely looking them up sends credentials. On Windows only `X:\` and `X:/` start a path; elsewhere only `/`. The opener gets the plain form (`dunce::simplified`), as `explorer.exe` cannot open `\\?\C:\...`.
 - **Rust tests run in CI only.** The Pi lacks pkg-config and the GTK/WebKit dev libraries, so `cargo test` runs in the CI Rust step (Windows, where the disk tests for 8.3 names and junctions run).
 
+### Not done in this phase (found by the spec check)
+
+- **Tray, notifications and window title do not follow the host's mode yet.** The spec says the tray and the notifications use the plain sentence ("Waiting for your answer: Create the file…") and that the window title and tray follow the mode of the host that raised them. Today a notification still reads "<host · session>: needs you / Allow Write?", and the tray and the window title are the same in both modes. The cause is that `session.summary` lists a pending request without its `plain` wording (only the `permission.requested` event carries it), and that setting the window title needs a new Tauri call that this machine cannot compile. The question card, the task screen and the app itself are in plain words; only the three surfaces outside the window are not. It needs a protocol change (`plain` on `PendingPermission`), a platform method for the title and the tray, and a Rust review, so it is left for its own slice.
+- **Contrast of the simple screens is checked by the prints, not by the unit tests.** `simple-screens.test.tsx` runs axe on every simple screen in both languages with the color-contrast rule off (happy-dom has no layout or computed colors); `demo:shots` checks contrast on the three simple prints in both themes and languages.
+
 ## TDD audit waivers (rc/0330)
 
 While assembling rc/0330, three `fix` commits landed without an earlier `test(<same scope>)` commit: `61bbf253`
