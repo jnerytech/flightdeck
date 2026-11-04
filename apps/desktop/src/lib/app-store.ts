@@ -740,7 +740,11 @@ export class AppStore {
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
   ) {
-    this.workspace = Workspace.restore(storedWorkspace(platform.storage));
+    this.workspace = Workspace.restore(
+      storedWorkspace(platform.storage),
+      undefined,
+      options.startRoute,
+    );
     this.router = this.workspace.router;
     this.workspace.subscribe(() => {
       platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.workspace.snapshot()));
