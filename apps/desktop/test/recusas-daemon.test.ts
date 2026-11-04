@@ -56,7 +56,7 @@ const REASONS = [
   "complete_confirm",
   "discard_confirm",
   "delete_confirm",
-  "card_started",
+  "card_delete_started",
   "base_not_local",
   "rebase_conflict",
   "merge_conflict",

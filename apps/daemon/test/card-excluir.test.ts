@@ -56,7 +56,7 @@ describe("card-excluir", () => {
     expect(started?.worktreePath).not.toBeNull();
     expect(refusal(() => board.deleteCard(card.id, true))).toEqual({
       code: "invalid_state",
-      reason: "card_started",
+      reason: "card_delete_started",
     });
     expect(board.getCard(card.id).worktreePath).toBe(started?.worktreePath ?? null);
   });

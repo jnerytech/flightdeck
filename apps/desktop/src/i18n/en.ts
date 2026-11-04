@@ -1520,7 +1520,7 @@ export const en: Dictionary = {
     complete_confirm: "Confirm completing the card.",
     discard_confirm: "Confirm discarding the card.",
     delete_confirm: "Confirm deleting the card.",
-    card_started:
+    card_delete_started:
       "The card already started, so it cannot be deleted: discard it to clean up its work.",
     base_not_local: "The base {base} is not a local branch.",
     rebase_conflict: "Updating with {base} conflicts in: {files}.",

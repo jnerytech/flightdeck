@@ -1736,7 +1736,7 @@ export class Board {
       throw new FlightdeckError(
         "invalid_state",
         "the card already started: discard it instead of deleting it",
-        "card_started",
+        "card_delete_started",
       );
     }
     return this.removeFromBoard(id, "deleted");
