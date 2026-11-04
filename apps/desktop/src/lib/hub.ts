@@ -404,11 +404,28 @@ export function sharedMeta(rows: HubRow[]): {
 /** How many rows the hub draws before "show more": the DOM of 9,000 sessions is not worth drawing. */
 export const HUB_ROW_CAP = 200;
 
+/** Where the open or folded state of each project is kept (issue #111). */
+export const HUB_OPEN_KEY = "flightdeck.hubOpen";
+
+/** The projects the person opened or folded last time, by project key; anything unreadable is none. Stubbed until the test commit is in. */
+export function loadHubOpen(_storage: {
+  getItem(key: string): string | null;
+}): Record<string, boolean> {
+  return {};
+}
+
+export function saveHubOpen(
+  _storage: { setItem(key: string, value: string): void },
+  _open: Record<string, boolean | undefined>,
+): void {}
+
 /** A project group as the screen draws it: folded, with its history behind a count. */
 export interface HubGroupView {
   group: HubGroup;
   /** Live and needs-you sessions, in the group's order. */
   live: HubRow[];
+  /** How many sessions the project has in all (the live ones are `live.length`). */
+  total: number;
   /** Sessions that ended or come from the history, newest first. */
   earlier: HubRow[];
   expanded: boolean;
@@ -439,6 +456,7 @@ export function hubView(
     return {
       group,
       live,
+      total: group.rows.length,
       earlier,
       expanded,
       earlierShown,

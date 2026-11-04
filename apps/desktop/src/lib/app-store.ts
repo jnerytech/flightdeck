@@ -96,8 +96,10 @@ import {
   type HubView,
   hubRows,
   loadHubFilter,
+  loadHubOpen,
   loadHubView,
   saveHubFilter,
+  saveHubOpen,
   saveHubView,
 } from "./hub.ts";
 import { addEntry, type InboxEntry, loadInbox, markAllRead, markRead, saveInbox } from "./inbox.ts";
@@ -919,6 +921,14 @@ export class AppStore {
   }
 
   /** How the hub draws its sessions: lines or cards. */
+  hubOpen(): Record<string, boolean> {
+    return loadHubOpen(this.platform.storage);
+  }
+
+  saveHubOpen(open: Record<string, boolean | undefined>): void {
+    saveHubOpen(this.platform.storage, open);
+  }
+
   hubView(): HubView {
     return loadHubView(this.platform.storage);
   }

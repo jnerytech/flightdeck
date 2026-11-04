@@ -45,14 +45,31 @@ const shared = (host: string, n: number) => ({
 });
 
 /** Two online hosts: `api` has one live terminal session and three old ones; `docs` only old ones. */
-function setup() {
-  const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 600_000 });
+function setup(options: { open?: Record<string, boolean>; needsYou?: boolean } = {}) {
+  const mem = memoryPlatform();
+  if (options.open)
+    mem.platform.storage.setItem("flightdeck.hubOpen", JSON.stringify(options.open));
+  const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
   const pushed: unknown[] = [];
   store.router.push = ((route: unknown) => void pushed.push(route)) as never;
   const state = {
     ...store.getState(),
     hosts: [host("alfa"), host("beta")],
     externals: {
+      ...(options.needsYou
+        ? {
+            "alfa/e2": {
+              claudeSessionId: "e2",
+              cwd: "/work/api/pedido",
+              projectKey: "host:alfa:/work/api",
+              status: "awaiting_permission",
+              controllable: false,
+              lastEventAt: new Date(1_700_000_200_000).toISOString(),
+              summary: null,
+              persona: null,
+            },
+          }
+        : {}),
       "alfa/e1": {
         claudeSessionId: "e1",
         cwd: "/work/api",
@@ -103,38 +120,90 @@ const click = async (el: HTMLElement) => {
   await uiIdle();
 };
 
+const API = "host:alfa:/work/api";
+const expandAll = () => screen.getByRole("button", { name: "Expandir tudo" });
+const collapseAll = () => screen.getByRole("button", { name: "Recolher tudo" });
+
 describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)", () => {
-  test("a project with a live session shows it, and its three old ones sit behind a count", async () => {
+  test("every project starts folded: a heading, a folder, a live/total chip and its host chips, no rows", async () => {
     setup();
+    await settle(() => screen.queryByRole("heading", { name: "api" }) !== null);
+    expect(titles()).toEqual([]);
+    const region = screen.getByRole("region", { name: "Projeto api" });
+    const heading = within(region).getByRole("heading", { name: "api" });
+    // A real section heading: bold and larger than the muted line it was, with its folder.
+    expect(heading.className).toContain("font-semibold");
+    expect(heading.className).not.toContain("text-muted-foreground");
+    expect(region.querySelector("svg.lucide-folder")).not.toBeNull();
+    expect(within(region).getByText("1/4").getAttribute("aria-label")).toBe(
+      "1 ao vivo de 4 sessões",
+    );
+    expect(within(region).getByRole("button", { name: "Abrir o host alfa" })).toBeTruthy();
+    expect(
+      within(region)
+        .getByRole("button", { name: "Mostrar ou esconder api" })
+        .getAttribute("aria-expanded"),
+    ).toBe("false");
+  });
+
+  test("a folded project still shows the sessions that need you", async () => {
+    setup({ needsYou: true });
     await settle(() => titles().length > 0);
-    expect(titles()).toEqual(["api"]);
+    expect(titles()).toEqual(["pedido"]);
+    expect(screen.getByText("2/5")).toBeTruthy();
+  });
+
+  test("opening a project shows its live sessions, its old ones behind a count; folding it again hides them", async () => {
+    setup();
+    await settle(() => screen.queryByRole("heading", { name: "api" }) !== null);
+    const toggle = () => screen.getByRole("button", { name: "Mostrar ou esconder api" });
+    await click(toggle());
+    expect(titles()).toEqual(["src"]);
     const more = screen.getByRole("button", { name: "3 sessões anteriores" });
     expect(more.getAttribute("aria-expanded")).toBe("false");
     await click(more);
     expect(titles()).toHaveLength(4);
+    await click(toggle());
+    expect(titles()).toEqual([]);
+  });
+
+  test("the choice is remembered per project: what was opened comes back open", async () => {
+    const first = setup();
+    await settle(() => screen.queryByRole("heading", { name: "api" }) !== null);
+    await click(screen.getByRole("button", { name: "Mostrar ou esconder api" }));
+    expect(first.store.hubOpen()).toEqual({ [API]: true });
+    cleanup();
+    setup({ open: { [API]: true } });
+    await settle(() => titles().length > 0);
+    expect(titles()).toEqual(["src"]);
     expect(
-      screen.getByRole("button", { name: "3 sessões anteriores" }).getAttribute("aria-expanded"),
-    ).toBe("true");
+      screen
+        .getByRole("button", { name: "Mostrar ou esconder docs" })
+        .getAttribute("aria-expanded"),
+    ).toBe("false");
   });
 
-  test("a project with nothing live starts folded; its header opens it, and folds it again", async () => {
-    setup();
-    await settle(() => titles().length > 0);
-    const toggle = () => screen.getByRole("button", { name: "Mostrar ou esconder docs" });
-    expect(toggle().getAttribute("aria-expanded")).toBe("false");
-    expect(screen.queryByText("antiga docs 1")).toBeNull();
-    await click(toggle());
-    expect(toggle().getAttribute("aria-expanded")).toBe("true");
-    expect(screen.getByRole("button", { name: "2 sessões anteriores" })).toBeTruthy();
-    await click(toggle());
-    expect(screen.queryByRole("button", { name: "2 sessões anteriores" })).toBeNull();
+  test("Expand all opens every project, Collapse all folds them, and both are remembered", async () => {
+    const { store } = setup();
+    await settle(() => screen.queryByRole("heading", { name: "api" }) !== null);
+    await click(expandAll());
+    for (const name of ["api", "docs", "web", "solo"]) {
+      expect(
+        screen
+          .getByRole("button", { name: `Mostrar ou esconder ${name}` })
+          .getAttribute("aria-expanded"),
+      ).toBe("true");
+    }
+    expect(Object.values(store.hubOpen()).every((open) => open)).toBe(true);
+    await click(collapseAll());
+    expect(titles()).toEqual([]);
+    expect(Object.values(store.hubOpen()).every((open) => !open)).toBe(true);
+    expect(Object.keys(store.hubOpen()).length).toBeGreaterThanOrEqual(4);
   });
 
-  test("the header says how many are live, and typing a project's name opens its history", async () => {
+  test("typing a project's name opens its history", async () => {
     setup();
-    await settle(() => titles().length > 0);
-    const header = screen.getByRole("region", { name: "Projeto api" });
-    expect(within(header).getByText("1 ao vivo")).toBeTruthy();
+    await settle(() => screen.queryByRole("heading", { name: "docs" }) !== null);
     await act(async () => {
       fireEvent.change(screen.getByLabelText("Filtrar sessões"), { target: { value: "docs" } });
     });
@@ -144,15 +213,15 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
 
   test("a host chip in the header opens the host page", async () => {
     const { pushed } = setup();
-    await settle(() => titles().length > 0);
+    await settle(() => screen.queryByRole("heading", { name: "api" }) !== null);
     const header = screen.getByRole("region", { name: "Projeto api" });
     await click(within(header).getByRole("button", { name: "Abrir o host alfa" }));
     expect(pushed).toEqual([{ name: "host", host: "alfa" }]);
   });
 
-  test("a row of an old session names its host as a chip too, and the chip row filters by host", async () => {
-    const { pushed } = setup();
-    await settle(() => titles().length > 0);
+  test("the chip row filters by host", async () => {
+    setup();
+    await settle(() => screen.queryByRole("heading", { name: "api" }) !== null);
     const chips = screen.getByRole("group", { name: "Hosts" });
     const alfa = within(chips).getByRole("button", { name: "alfa" });
     const beta = within(chips).getByRole("button", { name: "beta" });
@@ -162,17 +231,15 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
     ]);
     await click(beta);
     expect(beta.getAttribute("aria-pressed")).toBe("true");
-    // Only beta's project is left.
     expect(screen.queryByRole("region", { name: "Projeto api" })).toBeNull();
     expect(screen.getByRole("region", { name: "Projeto docs" })).toBeTruthy();
     await click(beta);
     expect(screen.getByRole("region", { name: "Projeto api" })).toBeTruthy();
-    expect(pushed).toEqual([]);
   });
 
-  test("a project on two hosts has a chip for each in the header, and each row names its own host", async () => {
+  test("a project on two hosts has a chip for each in the header, and an open row names its own host", async () => {
     const { pushed } = setup();
-    await settle(() => titles().length > 0);
+    await settle(() => screen.queryByRole("heading", { name: "web" }) !== null);
     const header = screen.getByRole("region", { name: "Projeto web" });
     expect(within(header).getByRole("button", { name: "Abrir o host alfa" })).toBeTruthy();
     expect(within(header).getByRole("button", { name: "Abrir o host beta" })).toBeTruthy();
@@ -183,9 +250,9 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
     expect(pushed).toEqual([{ name: "host", host: "beta" }]);
   });
 
-  test("one earlier session is said in the singular (issue #111)", async () => {
+  test("one earlier session is said in the singular", async () => {
     setup();
-    await settle(() => titles().length > 0);
+    await settle(() => screen.queryByRole("heading", { name: "solo" }) !== null);
     await click(screen.getByRole("button", { name: "Mostrar ou esconder solo" }));
     expect(screen.getByRole("button", { name: "1 sessão anterior" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "1 sessões anteriores" })).toBeNull();
