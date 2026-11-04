@@ -226,6 +226,14 @@
   bottom: 0.75rem;
 }
 
+/* The summary's folded line: the toggle, then a one-line preview that is cut, never wrapped. */
+@utility recap-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
 /* A short list that scrolls inside its panel instead of pushing the screen. */
 @utility rows-scroll {
   max-height: 10rem;

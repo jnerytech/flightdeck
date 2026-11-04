@@ -9,14 +9,12 @@ import { useStoreSlice } from "@/lib/use-store";
 import type { T } from "../i18n/index.ts";
 import type { AppStore } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
+import { recapPreview } from "../lib/recap-preview.ts";
 import { hasFeature } from "../lib/version.ts";
 
 const HOSTS = ["hosts"] as const;
 /** How long to wait before asking again while the host has no summary for the session. */
 const RETRY_MS = 8000;
-
-/** The sessions whose summary was shown: it opens the first time and starts collapsed after. */
-const SEEN = new Set<string>();
 
 /** The rows of a summary as label and text, in the order a person reads them. */
 function rows(recap: SessionRecap, question: string | undefined, t: T): Array<[string, string]> {
@@ -79,25 +77,32 @@ export function RecapPanel(props: {
     };
   }, [store, hostId, claudeSessionId, question, supported, stamp, attempt, retryMs]);
 
-  const seenKey = `${hostId}/${claudeSessionId}`;
-  const [open, setOpen] = useState(() => !SEEN.has(seenKey));
-  useEffect(() => {
-    SEEN.add(seenKey);
-  }, [seenKey]);
+  // Folded to one line until opened: it is a card of the header, and the conversation comes first.
+  const [open, setOpen] = useState(false);
   if (!supported || recap === undefined) return null;
   const lines = recap ? rows(recap, question, t) : [];
   return (
-    <Panel size="sm" label={t("recap.region")} className="shrink-0">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="toggle-start"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-      >
-        {open ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
-        {t("recap.region")}
-      </Button>
+    <Panel size="sm" label={t("recap.region")} className="shrink-0" slot="recap">
+      <div className="recap-head">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="toggle-start shrink-0"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          {open ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+          {t("recap.region")}
+        </Button>
+        {!open && (
+          <span
+            data-slot="recap-preview"
+            className="min-w-0 truncate text-muted-foreground text-sm"
+          >
+            {recap ? recapPreview(recap) : t("recap.empty")}
+          </span>
+        )}
+      </div>
       {!open ? null : lines.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("recap.empty")}</p>
       ) : (
