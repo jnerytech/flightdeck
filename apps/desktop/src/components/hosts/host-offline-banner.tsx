@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useNow } from "@/hooks/use-now";
 import { useT } from "@/i18n/context";
 import type { HostView } from "../../lib/app-store.ts";
-import { offlineHint } from "../../lib/host-offline.ts";
+import { mayBeRefusedAddress, offlineHint } from "../../lib/host-offline.ts";
 
 const COMMAND = "rounded bg-muted px-1 font-mono text-xs";
 // Commands, not prose: the same in every language.
@@ -73,6 +73,7 @@ export function HostOfflineBanner(props: { host: HostView; onReconnect(): void }
           </Stack>
         )}
         {hint === "generic" && <p>{t("hostOffline.hintGeneric")}</p>}
+        {mayBeRefusedAddress(kind, host.url) && <p>{t("hostOffline.hintAddress")}</p>}
       </Stack>
     </section>
   );
