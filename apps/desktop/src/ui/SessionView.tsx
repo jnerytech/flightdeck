@@ -551,7 +551,13 @@ export function SessionView(props: SessionViewProps) {
         )}
       </div>
       <ComposerDock>
-        <PromptMenu prompts={offered} text={text} label={t("session.snippets")} onFill={setText} />
+        <PromptMenu
+          prompts={offered}
+          text={text}
+          label={t("session.snippets")}
+          onFill={setText}
+          input={box}
+        />
         {queued.length > 0 && (
           <ul aria-label={t("session.queue")} className="composer-images">
             {queued.map((item, at) => (

@@ -1699,6 +1699,12 @@ export const ptBR = {
     historyGap: "parte do histórico não está mais disponível no host",
     message: "Mensagem",
     snippets: "Snippets de prompt",
+    promptMenu: {
+      commands: "Comandos",
+      snippets: "Snippets",
+      skills: "Skills",
+      mcp: "Prompts MCP",
+    },
     placeholder: "Digite / para comandos",
     attach: "Anexar imagem",
     statusLine: "Estado da sessão",
