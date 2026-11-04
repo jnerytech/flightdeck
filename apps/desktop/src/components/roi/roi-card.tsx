@@ -1,4 +1,4 @@
-import type { Project, RoiPeriod } from "@flightdeck/protocol";
+import type { Project, RoiPeriod, RoiSignalValues } from "@flightdeck/protocol";
 import { useCallback, useEffect, useId, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,22 @@ import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { periodRange, usd } from "@/lib/costs";
 import { compare, EMPTY_PERIOD, figures, headline, mergePeriods } from "@/lib/roi";
+
+/** The signals of the same project on several hosts: counts add up, the first refusal is told. */
+function mergeSignals(list: Array<RoiSignalValues | undefined>): RoiSignalValues {
+  const merged: RoiSignalValues = {};
+  for (const signals of list) {
+    if (!signals) continue;
+    if (signals.agentCommits !== undefined) {
+      merged.agentCommits = (merged.agentCommits ?? 0) + signals.agentCommits;
+    }
+    if (signals.issuesClosed !== undefined) {
+      merged.issuesClosed = (merged.issuesClosed ?? 0) + signals.issuesClosed;
+    }
+    if (signals.issuesError && !merged.issuesError) merged.issuesError = signals.issuesError;
+  }
+  return merged;
+}
 
 type Choice = "month" | "7d" | "30d";
 const CHOICES: Array<{ id: Choice; label: Key }> = [
@@ -29,6 +45,8 @@ export function RoiCard(props: { store: AppStore; hostId: string; project: Proje
   const [choice, setChoice] = useState<Choice>("month");
   const [periods, setPeriods] = useState<{ current: RoiPeriod; previous: RoiPeriod } | null>(null);
   const [answered, setAnswered] = useState(0);
+  const [signals, setSignals] = useState<RoiSignalValues>({});
+  const [on, setOn] = useState(project.roiSignals);
   const [how, setHow] = useState(false);
   const [hours, setHours] = useState(
     project.defaultHours === null ? "" : String(project.defaultHours),
@@ -49,6 +67,7 @@ export function RoiCard(props: { store: AppStore; hostId: string; project: Proje
       result.projects.filter((p) => p.projectKey === key),
     );
     setAnswered(answers.length);
+    setSignals(mergeSignals(found.map((p) => p.signals)));
     setPeriods({
       current: mergePeriods(found.map((p) => p.current)),
       previous: mergePeriods(found.map((p) => p.previous)),
@@ -93,6 +112,14 @@ export function RoiCard(props: { store: AppStore; hostId: string; project: Proje
       projectId: project.id,
       defaultHours: parsed,
     });
+    await load();
+  };
+  const setSignal = async (name: "commits" | "issues", value: boolean) => {
+    await store.hostCommand(props.hostId, "project.update", {
+      projectId: project.id,
+      roiSignals: { [name]: value },
+    });
+    setOn({ ...on, [name]: value });
     await load();
   };
   const saveRate = () => {
@@ -165,6 +192,13 @@ export function RoiCard(props: { store: AppStore; hostId: string; project: Proje
           <li>{t("roiUi.waited", { hours: Math.round((now.waitedSeconds / 3600) * 10) / 10 })}</li>
         )}
         {now.approxCards > 0 && <li>{t("roiUi.approx", { n: now.approxCards })}</li>}
+        {signals.agentCommits !== undefined && (
+          <li>{t("roiUi.signals.agentCommits", { n: signals.agentCommits })}</li>
+        )}
+        {signals.issuesClosed !== undefined && (
+          <li>{t("roiUi.signals.issuesClosed", { n: signals.issuesClosed })}</li>
+        )}
+        {signals.issuesError && <li>{t(`roiUi.signals.error.${signals.issuesError}` as Key)}</li>}
         {now.outsideCardsUsd > 0 && (
           <li>{t("roiUi.outside", { cost: usd(now.outsideCardsUsd) })}</li>
         )}
@@ -231,6 +265,27 @@ export function RoiCard(props: { store: AppStore; hostId: string; project: Proje
           <Button size="sm" variant="outline" onClick={saveRate}>
             {t("roiUi.saveRate")}
           </Button>
+          <fieldset
+            aria-label={t("roiUi.signals.title")}
+            className="m-0 flex min-w-0 flex-col gap-1 border-0 p-0 text-xs"
+          >
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={on.commits}
+                onChange={(e) => void setSignal("commits", e.target.checked)}
+              />
+              {t("roiUi.signals.commits")}
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={on.issues}
+                onChange={(e) => void setSignal("issues", e.target.checked)}
+              />
+              {t("roiUi.signals.issues")}
+            </label>
+          </fieldset>
         </div>
       </details>
     </section>
