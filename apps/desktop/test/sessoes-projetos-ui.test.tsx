@@ -67,7 +67,11 @@ function setup() {
     hub: {
       alfa: {
         managed: [],
-        history: [...[1, 2, 3].map((n) => history("alfa", n, "api")), shared("alfa", 1)],
+        history: [
+          ...[1, 2, 3].map((n) => history("alfa", n, "api")),
+          shared("alfa", 1),
+          history("alfa", 1, "solo"),
+        ],
       },
       beta: {
         managed: [],
@@ -177,5 +181,13 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
     const row = within(header).getByRole("listitem", { name: "web beta 1" });
     await click(within(row).getByRole("button", { name: "Abrir o host beta" }));
     expect(pushed).toEqual([{ name: "host", host: "beta" }]);
+  });
+
+  test("one earlier session is said in the singular (issue #111)", async () => {
+    setup();
+    await settle(() => titles().length > 0);
+    await click(screen.getByRole("button", { name: "Mostrar ou esconder solo" }));
+    expect(screen.getByRole("button", { name: "1 sessão anterior" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "1 sessões anteriores" })).toBeNull();
   });
 });
