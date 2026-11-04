@@ -4383,3 +4383,14 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   first one's state (`workers: 1`, `fullyParallel: false`). Balancing them means splitting the
   journeys into independent tests, which is #292, not a one-line change.
 
+
+## Board columns tinted by status (issue #115, from the Orca reference of #114)
+
+- **Ideas, not brand.** Each column gets a thin top line and an 8% tint of its own tone, a status icon, the count as a pill, a +
+  and a quiet dashed empty box. The tones are our own tokens (`--column-backlog|progress|waiting|review|done`) in both themes:
+  neutral, amber, orange, green, muted. The reference has four columns; ours has five, so Needs you gets its own orange.
+- **Guards.** A test reads the tokens of both themes: the line must read at 3:1 on the background, and the foreground and the
+  muted foreground stay AA (4.5:1) on the 8% tint. The column styles live in `styles.css` (`.board-column`), not as utilities in
+  the screen, so the layout ratchet is not raised.
+- **The + puts a card in its column.** A card is born in the Backlog; for another column the app moves it right after the create
+  (`card.move`), because `card.create` takes no column. The empty box is still a button named "Add card".
