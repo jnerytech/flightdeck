@@ -53,8 +53,8 @@ function InboxItem(props: {
         <span className="text-muted-foreground text-xs">{says}</span>
         {gone && <span className="text-muted-foreground text-xs">{t("inbox.gone")}</span>}
       </button>
-      <span className="inbox-actions">
-        {unread && (
+      {unread && (
+        <span className="inbox-mark">
           <Button
             variant="ghost"
             size="icon"
@@ -64,13 +64,18 @@ function InboxItem(props: {
           >
             <Check aria-hidden="true" />
           </Button>
-        )}
-        {gone && (
-          <Button variant="ghost" size="sm" onClick={() => props.onDismiss(row)}>
-            {t("inbox.dismiss")}
-          </Button>
-        )}
-      </span>
+        </span>
+      )}
+      {gone && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="inbox-dismiss"
+          onClick={() => props.onDismiss(row)}
+        >
+          {t("inbox.dismiss")}
+        </Button>
+      )}
     </li>
   );
 }
@@ -92,7 +97,7 @@ export function NotificationCenter(props: {
   const { t, unread } = props;
   const groups = inboxRows(props.entries, new Date());
   return (
-    <PopoverContent align="end" className="inbox-panel">
+    <PopoverContent align="end" className="inbox-panel w-[min(26rem,90vw)]">
       <div className="inbox-head">
         <h2 className="font-semibold text-sm">{t("inbox.title")}</h2>
         <div className="inbox-head-actions">

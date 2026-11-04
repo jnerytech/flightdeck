@@ -1210,18 +1210,19 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  width: 24rem;
   max-height: 28rem;
   padding: 0.75rem;
 }
 @utility inbox-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.25rem 0.5rem;
 }
 @utility inbox-head-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.25rem;
 }
 @utility inbox-groups {
@@ -1243,21 +1244,24 @@
 @utility inbox-item {
   position: relative;
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
   border-radius: var(--radius-md);
   &:hover {
     background-color: var(--accent);
   }
-  &:hover .inbox-actions {
+  &:hover .inbox-mark {
     opacity: 1;
+  }
+  &:hover .inbox-time {
+    visibility: hidden;
   }
 }
 @utility inbox-pick {
   display: flex;
-  flex: 1;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.125rem;
+  width: 100%;
   min-width: 0;
   padding: 0.375rem 0.5rem;
   text-align: left;
@@ -1271,6 +1275,7 @@
   align-items: baseline;
   gap: 0.5rem;
   width: 100%;
+  min-width: 0;
 }
 @utility inbox-time {
   margin-left: auto;
@@ -1278,14 +1283,18 @@
   font-size: 0.75rem;
   color: var(--muted-foreground);
 }
-@utility inbox-actions {
-  display: flex;
-  align-items: center;
-  padding: 0.25rem;
+@utility inbox-mark {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
   opacity: 0;
   &:focus-within {
     opacity: 1;
   }
+}
+@utility inbox-dismiss {
+  align-self: flex-start;
+  margin: 0 0.5rem 0.375rem;
 }
 @utility unread-dot {
   align-self: center;
