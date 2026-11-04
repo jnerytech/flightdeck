@@ -1,6 +1,7 @@
 import {
   ChevronDown,
   CircleAlert,
+  Lock,
   type LucideProps,
   MoreHorizontal,
   Plane,
@@ -438,6 +439,18 @@ export function Sidebar(props: {
                       <HostDot host={host} t={t} />
                       <span className="min-w-0 flex-1 truncate">{host.name}</span>
                     </button>
+                    {host.hostInfo?.ui?.mode === "simple" && (
+                      <span data-slot="host-mode-badge" className="host-mode-badge">
+                        {t("sidebar.hostSimple")}
+                      </span>
+                    )}
+                    {host.hostInfo?.ui?.locked === true && (
+                      <Lock
+                        role="img"
+                        aria-label={t("sidebar.hostLocked", { host: host.name })}
+                        className="size-3.5 shrink-0 text-muted-foreground"
+                      />
+                    )}
                     {host.hostInfo?.apiKeySanitized === false && (
                       <TriangleAlert
                         role="img"
