@@ -404,6 +404,36 @@ export function sharedMeta(rows: HubRow[]): {
 /** How many rows the hub draws before "show more": the DOM of 9,000 sessions is not worth drawing. */
 export const HUB_ROW_CAP = 200;
 
+/** A project group as the screen draws it: folded, with its history behind a count. */
+export interface HubGroupView {
+  group: HubGroup;
+  /** Live and needs-you sessions, in the group's order. */
+  live: HubRow[];
+  /** Sessions that ended or come from the history, newest first. */
+  earlier: HubRow[];
+  expanded: boolean;
+  earlierShown: boolean;
+  /** What is drawn: nothing when folded, else the live ones and, when asked for, the earlier ones. */
+  rows: HubRow[];
+}
+
+/** Stubbed until the test commit is in. */
+export function hubView(
+  groups: HubGroup[],
+  _open: Record<string, boolean | undefined>,
+  _earlierOpen: Record<string, boolean | undefined>,
+  _searching: boolean,
+): HubGroupView[] {
+  return groups.map((group) => ({
+    group,
+    live: group.rows,
+    earlier: [],
+    expanded: true,
+    earlierShown: true,
+    rows: group.rows,
+  }));
+}
+
 /** The groups cut to their first `limit` rows in display order, and how many rows were left out. */
 export function capGroups(
   groups: HubGroup[],
