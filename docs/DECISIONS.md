@@ -3102,6 +3102,32 @@ Proof of concept, run 2026-11-03 on the phase host (git 2.43.0, gh 2.88.1):
   edit, and needs no input from the person.
 - **Person (addendum).** A person is a named group of hosts kept in the app; the daemon returns tokens, never a person or
   a limit. The person budget is shown, not enforced, and the table is ordered by name.
+
+**Built in the app (areas `roi-cartao-ui` to `roi-smoke`) and where it stands:**
+
+- **The project's key on `board.get`.** The board view got its project from `board.get`, which did not pass it through
+  `forWire`, so the project had no `projectKey`; the card then asked for the path and matched nothing the host had
+  summarized under its key. `board.get` now sends the project like `project.list` does (`roi-chave`). The test
+  fixture gives the board `projectKeys` only when `roi` is on, as `main.ts` does.
+- **Where each input lives.** Default hourly rate, "count my review time" with its cap and the people: Costs, *Return on
+  cost settings* (`RoiSettingsPanel`). A client's rate: the Clients screen (`ClientRate`). A project's rate and its
+  default hours per card: the card on the board page (*Hours and rate*). One card's hours: the card detail. All money
+  stays in the app's storage (`flightdeck.roi`); the daemon never sees it.
+- **Plan price and billed amount are not used yet.** `RoiSettings` stores a plan price, but `store.roiMoneyOf` passes
+  `planShareUsd: null` and `billed: null`, and the settings screen does not offer them: how to split a monthly plan price
+  across projects for a 7-day period is a decision of its own. Nothing on screen claims a plan share.
+- **Token units.** A count reads in millions from 100,000 up (`442,857` reads "0.44 million tokens", as the scenario
+  says), in thousands from 1,000, plain below.
+- **People table loads before it shows.** It says "Reading the hosts…" until the hosts answered; a person whose hosts did
+  not answer shows zeros, and the "as of <time>" mark for an offline host is **not** built yet.
+- **BDD features are not executed.** The 14 scenarios live in `scripts/e2e/bdd/roi/` (en and pt), outside the glob of
+  `bddgen`, because the steps over the demo app do not exist. `roi-bdd` parses them and checks that every scenario of
+  the spec is there, in both languages, step for step. The same behavior is asserted by the `roi-*-ui` tests.
+- **`smoke:roi`** finishes two cards on a `--runtime fake` daemon and checks counts, the project default of hours, a
+  card's own estimate and the refusal of a malformed range. It does not merge a PR or close an issue.
+- **Not done:** the opt-in signals (`roi-sinais`: agent commits, issues closed) and their switches in the project
+  settings, the "as of" mark for an offline host, and done cards plus a fixed rate in the demo seed for `demo:shots`.
+
 ## Lazy screens in tests
 
 - `lazyScreen` moved to `apps/desktop/src/ui/lazy-screen.ts`. After `preloadAllScreens()` a lazy
