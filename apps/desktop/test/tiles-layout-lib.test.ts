@@ -8,7 +8,7 @@ import {
   saveTileLayout,
   TILE_COUNT_KEY,
   TILE_LAYOUTS,
-  tileColumns2,
+  tileColumns,
   tileSlots,
 } from "../src/lib/tiles.ts";
 
@@ -44,8 +44,8 @@ describe("tiles-layout: a grid drawn by an icon", () => {
   });
 
   test("the columns follow the layout, and Auto fits the sessions it shows", () => {
-    expect(["2", "3", "2x2", "2x3"].map((l) => tileColumns2(l as never, 6))).toEqual([2, 3, 2, 3]);
-    expect([1, 2, 3, 4, 5, 6, 7, 9, 10].map((n) => tileColumns2("auto", n))).toEqual([
+    expect(["2", "3", "2x2", "2x3"].map((l) => tileColumns(l as never, 6))).toEqual([2, 3, 2, 3]);
+    expect([1, 2, 3, 4, 5, 6, 7, 9, 10].map((n) => tileColumns("auto", n))).toEqual([
       1, 2, 3, 2, 3, 3, 3, 3, 4,
     ]);
   });

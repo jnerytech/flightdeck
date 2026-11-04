@@ -642,8 +642,11 @@ configurações de projetos do host, onde se editam pasta, branch base, setup e 
 
 ### Sessões lado a lado
 
-Quando o projeto tem sessões iniciadas pelo Flightdeck, a página as mostra como **blocos**: 2, 3, 4
-ou 6 por vez (escolha o número em **Blocos na tela**; ele fica guardado). As sessões que precisam de
+Quando o projeto tem sessões iniciadas pelo Flightdeck, a página as mostra como **blocos**. O
+controle **Disposição** acima deles é uma fileira de ícones que desenham a grade: 2 lado a lado, 3
+colunas, grade 2×2, grade 2×3 e **Automática** (o padrão), que mostra todas as sessões ativas.
+Passe o mouse num ícone para ver o nome; a escolha fica guardada. Quando a disposição comporta menos
+blocos do que há sessões ativas, a página diz quantas ficaram de fora ("+2 fora da tela"). As sessões que precisam de
 você vêm primeiro, depois as rodando, depois as ociosas. Cada bloco tem o nome da sessão (um botão
 que a abre), o status, as **últimas linhas**, o **pedido** que ela espera (com **Permitir** e
 **Negar**) e uma caixa de mensagem pequena: **Enter** envia, **Ctrl+Enter** quebra a linha, e o

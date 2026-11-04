@@ -1,30 +1,7 @@
 import type { HubRow, HubState } from "./hub.ts";
 import type { SessionState } from "./session-state.ts";
 
-/** How many sessions of a project the page can show side by side. */
-export const TILE_COUNTS = [2, 3, 4, 6] as const;
-export type TileCount = (typeof TILE_COUNTS)[number];
-
 export const TILE_COUNT_KEY = "flightdeck.tileCount";
-export const DEFAULT_TILE_COUNT: TileCount = 4;
-
-/** The saved count; anything that is not one of the counts is the default. */
-export function loadTileCount(storage: { getItem(key: string): string | null }): TileCount {
-  const saved = Number(storage.getItem(TILE_COUNT_KEY));
-  return TILE_COUNTS.find((count) => count === saved) ?? DEFAULT_TILE_COUNT;
-}
-
-export function saveTileCount(
-  storage: { setItem(key: string, value: string): void },
-  count: TileCount,
-): void {
-  storage.setItem(TILE_COUNT_KEY, String(count));
-}
-
-/** Columns of the grid for a count: 2 and 3 in one row, 4 as 2×2, 6 as 3×2. */
-export function tileColumns(count: TileCount): number {
-  return count === 2 || count === 4 ? 2 : 3;
-}
 
 /** The layouts of the tiles (issue #94): a grid drawn by an icon, or Auto for every live session. */
 export const TILE_LAYOUTS = ["2", "3", "2x2", "2x3", "auto"] as const;
@@ -54,7 +31,7 @@ export function tileSlots(layout: TileLayout): number | null {
 }
 
 /** The columns of the grid for a layout, given how many tiles are shown. */
-export function tileColumns2(layout: TileLayout, shown: number): number {
+export function tileColumns(layout: TileLayout, shown: number): number {
   if (layout === "2" || layout === "2x2") return 2;
   if (layout === "3" || layout === "2x3") return 3;
   if (shown <= 3) return Math.max(1, shown);
@@ -78,7 +55,7 @@ const ORDER: Partial<Record<HubState, number>> = { needs_you: 0, running: 1, idl
 export function pickTiles(
   rows: HubRow[],
   project: { hostId: string; projectKey: string },
-  count: TileCount | TileLayout,
+  layout: TileLayout,
 ): HubRow[] {
   return rows
     .filter(
@@ -95,7 +72,7 @@ export function pickTiles(
         (ORDER[a.state] ?? 9) - (ORDER[b.state] ?? 9) ||
         b.lastActivity.localeCompare(a.lastActivity),
     )
-    .slice(0, (typeof count === "number" ? count : tileSlots(count)) ?? undefined);
+    .slice(0, tileSlots(layout) ?? undefined);
 }
 
 const lines = (text: string) =>

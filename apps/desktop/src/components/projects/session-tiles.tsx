@@ -9,11 +9,12 @@ import { type AppState, type AppStore, sessionKey } from "../../lib/app-store.ts
 import { type HubRow, type HubRowState, hubRows } from "../../lib/hub.ts";
 import { statusTone } from "../../lib/status.ts";
 import {
+  hiddenTiles,
   lastLines,
   pendingOf,
   pickTiles,
-  TILE_COUNTS,
-  type TileCount,
+  TILE_LAYOUTS,
+  type TileLayout,
   tileColumns,
 } from "../../lib/tiles.ts";
 import { useSessionState } from "../../lib/use-store.ts";
@@ -139,6 +140,37 @@ function SessionTile(props: { store: AppStore; hostId: string; row: HubRow; onOp
   );
 }
 
+/** The grid a layout draws: boxes in rows (Auto is a box with a corner dot). */
+const DRAWN: Record<TileLayout, { columns: number; rows: number }> = {
+  "2": { columns: 2, rows: 1 },
+  "3": { columns: 3, rows: 1 },
+  "2x2": { columns: 2, rows: 2 },
+  "2x3": { columns: 3, rows: 2 },
+  auto: { columns: 2, rows: 2 },
+};
+
+function LayoutIcon(props: { layout: TileLayout }) {
+  const { columns, rows } = DRAWN[props.layout];
+  const w = (16 - (columns - 1) * 2) / columns;
+  const h = (12 - (rows - 1) * 2) / rows;
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 12" className="size-5" fill="currentColor">
+      {Array.from({ length: columns * rows }, (_, i) => (
+        <rect
+          // biome-ignore lint/suspicious/noArrayIndexKey: a fixed drawing
+          key={i}
+          x={(i % columns) * (w + 2)}
+          y={Math.floor(i / columns) * (h + 2)}
+          width={w}
+          height={h}
+          rx="1"
+          opacity={props.layout === "auto" && i > 0 ? 0.45 : 1}
+        />
+      ))}
+    </svg>
+  );
+}
+
 /** Sessions of one project side by side: 2, 3, 4 or 6 tiles, the ones that need you first. */
 export function SessionTiles(props: {
   store: AppStore;
@@ -149,11 +181,14 @@ export function SessionTiles(props: {
 }) {
   const { store, hostId } = props;
   const { t } = store.i18n;
-  const [count, setCount] = useState<TileCount>(() => store.tileCount());
-  const rows = pickTiles(hubRows(props.state), { hostId, projectKey: props.projectKey }, count);
+  const [layout, setLayout] = useState<TileLayout>(() => store.tileLayout());
+  const project = { hostId, projectKey: props.projectKey };
+  const all = hubRows(props.state);
+  const rows = pickTiles(all, project, layout);
+  const hidden = hiddenTiles(all, project, layout);
   const grid = useRef<HTMLUListElement>(null);
   if (rows.length === 0) return null;
-  const columns = tileColumns(count);
+  const columns = tileColumns(layout, rows.length);
   const move = (e: KeyboardEvent<HTMLUListElement>) => {
     const step = MOVES[e.key];
     if (!e.altKey || !step) return;
@@ -172,25 +207,34 @@ export function SessionTiles(props: {
         <h2 id="tiles-title" className="font-semibold text-base">
           {t("tiles.title")}
         </h2>
-        <fieldset aria-label={t("tiles.count")} className="tile-count">
-          {TILE_COUNTS.map((n) => (
-            <label key={n} className="tile-count-option">
+        <fieldset aria-label={t("tiles.layout")} className="tile-count">
+          {TILE_LAYOUTS.map((option) => (
+            <label
+              key={option}
+              className="tile-count-option"
+              title={t(`tiles.layoutTip.${option}`)}
+            >
               <input
                 type="radio"
-                name="tile-count"
-                aria-label={t("tiles.countOption", { n })}
-                checked={count === n}
+                name="tile-layout"
+                aria-label={t(`tiles.layoutOption.${option}`)}
+                checked={layout === option}
                 onChange={() => {
-                  setCount(n);
-                  store.setTileCount(n);
+                  setLayout(option);
+                  store.setTileLayout(option);
                 }}
               />
-              <span aria-hidden="true">{n}</span>
+              <LayoutIcon layout={option} />
             </label>
           ))}
         </fieldset>
       </div>
-      <p className="text-muted-foreground text-xs">{t("tiles.hint")}</p>
+      <p className="text-muted-foreground text-xs">
+        {t("tiles.hint")}
+        {hidden > 0 && (
+          <span className="ms-2 font-medium">{t("tiles.notShown", { n: hidden })}</span>
+        )}
+      </p>
       {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: Alt+arrows move between the tiles inside */}
       <ul
         ref={grid}

@@ -139,14 +139,7 @@ import {
 import type { TerminalHost } from "./terminal-session.ts";
 import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
-import {
-  loadTileCount,
-  loadTileLayout,
-  saveTileCount,
-  saveTileLayout,
-  type TileCount,
-  type TileLayout,
-} from "./tiles.ts";
+import { loadTileLayout, saveTileLayout, type TileLayout } from "./tiles.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
 import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
 import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
@@ -1251,15 +1244,6 @@ export class AppStore {
     if (!ui) return false;
     this.updateHost(hostId, (h) => (h.hostInfo ? { ...h, hostInfo: { ...h.hostInfo, ui } } : h));
     return true;
-  }
-
-  /** How many tiles the project page shows; kept across starts. */
-  tileCount(): TileCount {
-    return loadTileCount(this.platform.storage);
-  }
-
-  setTileCount(count: TileCount): void {
-    saveTileCount(this.platform.storage, count);
   }
 
   /** The layout of the tiles on the project page; kept across starts (issue #94). */
