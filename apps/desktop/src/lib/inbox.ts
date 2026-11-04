@@ -30,6 +30,14 @@ export interface InboxEntry {
   read: boolean;
 }
 
+/** What a notification is about, kept with it so the panel can name it. */
+export interface InboxAbout {
+  subject: string;
+  host: string;
+  ask?: string;
+  group?: string;
+}
+
 /** What a click on an entry does. */
 export type InboxTarget =
   | { kind: "link"; link: string }
