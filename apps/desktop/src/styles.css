@@ -143,7 +143,9 @@
   /* A deep gray, never pure black; panels a step above. */
   --background: oklch(0.175 0.005 270);
   --foreground: oklch(0.95 0.005 270);
-  --card: oklch(0.21 0.006 270);
+  --surface-1: oklch(0.21 0.006 270);
+  --surface-2: oklch(0.27 0.006 270);
+  --card: var(--surface-1);
   --card-foreground: oklch(0.95 0.005 270);
   --popover: oklch(0.235 0.006 270);
   --popover-foreground: oklch(0.95 0.005 270);
@@ -157,8 +159,8 @@
   --accent: oklch(0.28 0.006 270);
   --accent-foreground: oklch(0.95 0.005 270);
   --destructive: oklch(0.7 0.19 22);
-  --border: oklch(1 0 0 / 6%);
-  --input: oklch(1 0 0 / 12%);
+  --border: oklch(0.3 0.006 270);
+  --input: oklch(0.34 0.006 270);
   --ring: var(--brand);
   --sidebar: oklch(0.155 0.005 270);
   --sidebar-foreground: oklch(0.95 0.005 270);
@@ -166,7 +168,7 @@
   --sidebar-primary-foreground: oklch(0.16 0.01 270);
   --sidebar-accent: oklch(0.25 0.006 270);
   --sidebar-accent-foreground: oklch(0.95 0.005 270);
-  --sidebar-border: oklch(1 0 0 / 6%);
+  --sidebar-border: oklch(0.3 0.006 270);
   --sidebar-ring: var(--brand);
   --status-running: oklch(0.75 0.13 255);
   --status-needs-you: oklch(0.8 0.14 70);
