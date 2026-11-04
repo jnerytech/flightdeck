@@ -660,6 +660,7 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
 
   // Phase 36: delivered work for the ROI card, whatever day the demo runs. This month so far: four
   // cards done (two planned, two unplanned; two as merged PRs); the period before it: two.
+  await client.call("project.update", { projectId: project.id, defaultHours: 2 });
   const finished: string[] = [done.id];
   for (const title of ["Ajustar o rodapé", "Revisar os textos", "Trocar o ícone"]) {
     const extra = await card(title, "Entregue na demo.");

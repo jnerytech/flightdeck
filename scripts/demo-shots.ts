@@ -341,6 +341,18 @@ function shots(ids: DemoIds): Shot[] {
       },
     },
     {
+      name: "roi-custos-pessoas",
+      roi: true,
+      route: { name: "costs" },
+      prepare: async (page) => {
+        const table = page.getByRole("table", {
+          name: /^(Tokens against delivery, by person|Tokens contra entrega, por pessoa)$/,
+        });
+        await table.waitFor({ timeout: 8000 });
+        await table.scrollIntoViewIfNeeded();
+      },
+    },
+    {
       name: "roi-custos-tabelas",
       roi: true,
       route: { name: "costs" },
