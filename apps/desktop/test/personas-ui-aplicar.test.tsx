@@ -50,6 +50,8 @@ async function pickerReady(store: InstanceType<typeof AppStore>, label: string) 
         Object.entries(state.personas).map(([id, list]) => [id, list.map((p) => p.id)]),
       ),
       error: state.error,
+      route: store.router.current.name,
+      tabs: store.tabs.tabs.map((tab) => [tab.id === store.tabs.activeId, tab.router.current.name]),
       options: options(label),
       page: (document.body.textContent ?? "").slice(0, 400),
     };
@@ -64,11 +66,20 @@ async function openSession(language = "pt-BR") {
   const { sessionId } = await h.d.manager.create({ cwd: h.repo, prompt: "oi" });
   await poll(() => h.d.manager.get(sessionId).status === "idle");
   render(<App store={store} />);
-  await settle(() => store.getState().hosts[0]?.hostInfo?.features?.includes("personas") === true);
+  // The App's own start (`init`) reloads the saved hosts and reconnects them; a route pushed before
+  // it ends is lost to its reset, which a slow runner shows as the test still being on the hub.
+  await settle(
+    () =>
+      store.getState().hostsLoaded &&
+      store.getState().hosts[0]?.status === "online" &&
+      store.getState().hosts[0]?.hostInfo?.features?.includes("personas") === true,
+  );
+  const hostId = store.getState().hosts[0]?.id ?? h.hostId;
   await act(async () => {
-    store.router.push({ name: "session", host: h.hostId, id: sessionId });
+    store.router.push({ name: "session", host: hostId, id: sessionId });
   });
-  return { store, sessionId, ...h };
+  await settle(() => store.router.current.name === "session");
+  return { store, sessionId, ...h, hostId };
 }
 
 describe("personas-ui: applying a persona to an open session", () => {

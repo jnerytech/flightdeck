@@ -24,7 +24,14 @@ const keep = {
 };
 
 export function registerDom(): void {
-  if (GlobalRegistrator.isRegistered) return;
+  if (GlobalRegistrator.isRegistered) {
+    // Every test file calls this first. The DOM stays for the whole process, so what a file left in
+    // the browser storage (a view choice, a stored window) must not reach the next one, whatever
+    // order the files run in on the platform.
+    globalThis.localStorage?.clear();
+    globalThis.sessionStorage?.clear();
+    return;
+  }
   GlobalRegistrator.register();
   Object.assign(globalThis, keep);
 }
