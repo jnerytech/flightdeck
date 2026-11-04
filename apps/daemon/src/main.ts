@@ -58,6 +58,7 @@ import { runGh } from "./github/gh.ts";
 import { GithubService } from "./github/service.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
+import { lingerState } from "./linger.ts";
 import { acquireLock, readLockPid } from "./lock.ts";
 import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
@@ -581,6 +582,8 @@ export async function startDaemon(
     projectGit?: AsyncGitRunner;
     /** Whether the OS service is installed, for `doctor.run`; the real service manager when absent. */
     serviceInstalled?: () => Promise<boolean>;
+    /** Whether linger is on, for `doctor.run`; `loginctl` when absent. */
+    linger?: () => Promise<"on" | "off" | null>;
     /** Whether a port is free, for the cards' blocks; the real loopback probe when absent. */
     portProbe?: (port: number) => Promise<boolean>;
   } = {},
@@ -1089,6 +1092,8 @@ export async function startDaemon(
           (async () => (await serviceCommand(osServiceContext(false))) !== null),
         healthy: async () => true,
         mcp: () => mcpReachable(daemonCommand(process.execPath, Bun.main)),
+
+        linger: options.linger ?? (() => lingerState(osServiceContext(false))),
         tailscaleIp: () => tailscaleIp(spawnExec),
         hooks: () =>
           hooksStatus(
@@ -1352,6 +1357,12 @@ async function mcpReachable(self: string[]): Promise<{ command: string; exists: 
   return { command, exists: (await stat(command).catch(() => null))?.isFile() === true };
 }
 
+/** The text of a file, or null when it is not there. */
+const readTextOrNull = (path: string) =>
+  Bun.file(path)
+    .text()
+    .catch(() => null);
+
 /** `flightdeckd doctor`: what a first run needs, with the fix for each failure. Exit 1 on a failure. */
 async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
   const file = configPath(args);
@@ -1372,6 +1383,8 @@ async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
     hooks: async () => hooksStatus(settings, hookTarget(await load(), self)),
     claudePath: () => whichOnPath("claude"),
     mcp: () => mcpReachable(self),
+
+    linger: () => lingerState(ctx),
     templateProblems: async () =>
       (
         await loadTemplates({
@@ -1450,8 +1463,10 @@ async function runSetupCommand(args: CliArgs, deps: CliDeps): Promise<void> {
         return true;
       },
       addToPath: async () => {
-        for (const line of await addToUserPath(base, binDir(base))) deps.log.log(line);
+        const env = { ...base, readFile: readTextOrNull };
+        for (const line of await addToUserPath(env, binDir(base))) deps.log.log(line);
       },
+      linger: () => lingerState(base),
       installService: async () => {
         const ctx = ctxOf(false);
         if ((await serviceCommand(ctx)) !== null) await stopInstalledDaemon(install(), ctx, deps);

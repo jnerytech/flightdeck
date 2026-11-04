@@ -1447,6 +1447,7 @@ export const DOCTOR_CHECK_IDS = [
   "version",
   "templates",
   "mcp",
+  "linger",
 ] as const;
 
 /** One thing `doctor.run` checked; `fix` is what to run, absent when the check passed. */

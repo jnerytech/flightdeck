@@ -46,6 +46,8 @@ export const ptBR = {
       version: "Versão",
       templates: "Modelos",
       mcp: "Ferramentas do time",
+
+      linger: "Iniciar no boot",
     },
     steps: {
       config: "Rode flightdeckd setup no host para refazer a configuração.",
@@ -59,6 +61,9 @@ export const ptBR = {
       templates:
         "Corrija ou remova os arquivos de modelo citados acima, na pasta de modelos do host.",
       mcp: "Rode flightdeckd setup no host para pôr o daemon onde as sessões esperam.",
+
+      linger:
+        "No host, rode sudo loginctl enable-linger $USER (no WSL, ligue também o systemd em /etc/wsl.conf).",
     },
   },
   findProjects: {
@@ -3389,6 +3394,24 @@ export const ptBR = {
     probeRefused: "token recusado: rode flightdeckd pair no host e cole o link novo",
     probeUnreachable:
       "não foi possível conectar: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor",
+  },
+  hostOffline: {
+    label: "Estado da conexão",
+    title: "Host desconectado",
+    connecting: "Conectando…",
+    unauthorized: "O host recusou o token. Pareie este host de novo.",
+    refused: "Nada respondeu em {url}. O daemon provavelmente não está rodando.",
+    timeout: "O host não respondeu a tempo. A rede pode estar fora ou o daemon travado.",
+    lost: "A conexão com o host caiu.",
+    lastTry: "Última tentativa: {time}",
+    nextTry: "Próxima tentativa em {n} s",
+    reconnectNow: "Reconectar agora",
+    reconnecting: "Reconectando…",
+    still: "Continua desconectado.",
+    hintLinux: "No host, confira se o daemon está rodando e se ele sobe no boot:",
+    hintWsl:
+      "No WSL, ligue também o systemd em /etc/wsl.conf (depois rode wsl --shutdown no Windows):",
+    hintGeneric: "Confira se o host está ligado e alcançável, e se o daemon roda lá.",
   },
   hostPage: {
     simpleTitle: "Modo simples",
