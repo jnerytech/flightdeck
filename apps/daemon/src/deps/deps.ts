@@ -137,8 +137,20 @@ async function service(env: DepsEnv): Promise<DepResult> {
 }
 
 /** Claude Code signed in: what the account card reads, asked only when `claude` is there. */
-async function signedIn(_env: DepsEnv, _noClaude: boolean): Promise<DepResult> {
-  return { id: "claudeAuth", group: "required", state: "na", breaks: [], fix: [] };
+async function signedIn(env: DepsEnv, noClaude: boolean): Promise<DepResult> {
+  const base = {
+    id: "claudeAuth" as const,
+    group: "required" as const,
+    breaks: ["sessions"] as DepFeature[],
+  };
+  const status = noClaude ? null : await env.account();
+  if (status === null || status === "unknown") return { ...base, state: "na", fix: [] };
+  if (status !== "signed_out") return { ...base, state: "ok", fix: [] };
+  return {
+    ...base,
+    state: "missing",
+    fix: fixes("claude auth login", "claude auth login", "claude auth login"),
+  };
 }
 
 async function powershell(env: DepsEnv): Promise<DepResult> {
