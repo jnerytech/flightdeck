@@ -35,6 +35,9 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   that imports a changed file (transitively), prints each with the reason, and runs them in one
   call (through the slot above 60 files). A change to `package.json`, a `bunfig` or the preload
   prints a warning: run the full suite then.
+- Which function a file is missing: `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` runs
+  the tests that reach the files (or the ones named after --tests) and lists the functions no test
+  called as `file:line`. Bun's coverage only counts them. It instruments in memory, never the sources.
 - Before hand-off from a session: `bun run typecheck`, `bun run lint`, `bun run tdd:audit`
   and `bun run test:related`. The full suite (`bun run test`) runs at the orchestrator's version
   gate and in CI, not in every session.
