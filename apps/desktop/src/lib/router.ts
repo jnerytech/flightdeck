@@ -24,7 +24,7 @@ export type Route =
   /** `focus`: the picker of Board or Workflows (a nav item), not the whole page. */
   | { name: "projects"; host: string; focus?: "board" | "workflows" }
   /** Every project of every host, as cards (issue #9). */
-  | { name: "all-projects" }
+  | { name: "all-projects"; host?: string }
   /** One project: its Board, Sessions, Workflows, Costs and settings (issue #9). */
   | { name: "project"; host: string; projectId: string }
   | { name: "board"; host: string; projectId: string }
