@@ -25,7 +25,7 @@ afterEach(async () => {
 function startedWith(
   mcpServer: FlightdeckMcpServer | undefined,
   permissionMode: "default" | "acceptEdits" | "plan",
-  sessionId = "s1",
+  sessionId: string | null = "s1",
 ): Options {
   let captured: Options | undefined;
   const query: QueryFn = (params) => {
@@ -47,7 +47,7 @@ function startedWith(
   new ClaudeSdkRuntime({ query, ...(mcpServer ? { mcpServer } : {}) }).start({
     cwd: "/proj",
     permissionMode,
-    env: { PATH: "/bin", FLIGHTDECK_SESSION: sessionId },
+    env: { PATH: "/bin", ...(sessionId === null ? {} : { FLIGHTDECK_SESSION: sessionId }) },
     canUseTool: async () => ({ behavior: "allow" }),
   });
   return captured as Options;
@@ -74,6 +74,13 @@ describe("mcp-sessoes", () => {
         args: ["mcp"],
         env: { FLIGHTDECK_SESSION: "s1" },
       },
+    });
+  });
+
+  test("a session that carries no id still gets the server, with no environment of its own", () => {
+    const options = startedWith({ command: "/fd", args: ["mcp"] }, "default", null);
+    expect(options.mcpServers).toEqual({
+      flightdeck: { type: "stdio", command: "/fd", args: ["mcp"] },
     });
   });
 

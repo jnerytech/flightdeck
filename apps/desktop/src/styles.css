@@ -1323,4 +1323,22 @@
 @utility spark-area {
   fill: color-mix(in oklab, var(--primary) 12%, transparent);
   stroke: none;
+
+/* The hosts of the sidebar's Machines group: a column of dots in the rail, a list with a row each. */
+@utility rail-hosts {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding-top: 0.75rem;
+}
+@utility host-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+@utility host-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }

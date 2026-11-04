@@ -17,4 +17,10 @@ describe("host-offline", () => {
     expect(offlineHint("timeout", "ws://127.0.0.1:7430/v1/ws", "linux")).toBe("generic");
     expect(offlineHint("lost", "ws://127.0.0.1:7430/v1/ws", "linux")).toBe("generic");
   });
+
+  test("an address that does not parse falls back on the OS the host last reported", () => {
+    expect(offlineHint("refused", "not an address", "linux")).toBe("linux");
+    expect(offlineHint("refused", "not an address", "win32")).toBe("generic");
+    expect(offlineHint("refused", "not an address", null)).toBe("generic");
+  });
 });
