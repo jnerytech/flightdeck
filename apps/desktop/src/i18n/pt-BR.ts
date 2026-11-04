@@ -45,6 +45,7 @@ export const ptBR = {
       tailscale: "Tailscale",
       version: "Versão",
       templates: "Modelos",
+      mcp: "Ferramentas do time",
     },
     steps: {
       config: "Rode flightdeckd setup no host para refazer a configuração.",
@@ -57,6 +58,7 @@ export const ptBR = {
       version: "Atualize o daemon com o botão de atualização desta página.",
       templates:
         "Corrija ou remova os arquivos de modelo citados acima, na pasta de modelos do host.",
+      mcp: "Rode flightdeckd setup no host para pôr o daemon onde as sessões esperam.",
     },
   },
   findProjects: {

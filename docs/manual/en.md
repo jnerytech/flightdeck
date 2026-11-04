@@ -1161,6 +1161,12 @@ register it in Claude Code:
 claude mcp add flightdeck -- flightdeckd mcp
 ```
 
+Sessions that Flightdeck starts itself (a team's coordinator and workers, board cards and plain
+sessions) get this server with no setup: the daemon adds it to the session, next to your own MCP
+servers. You only need the command above for a `claude` you open in a terminal outside Flightdeck.
+The Doctor's "Team tools" line tells you when the daemon's program is no longer where sessions
+expect it.
+
 ## History
 
 Each host's daemon indexes that host's Claude Code transcripts, including the sessions that were

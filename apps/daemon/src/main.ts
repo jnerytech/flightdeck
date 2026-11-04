@@ -94,6 +94,7 @@ import { terminalRunHost } from "./runenv/host.ts";
 import { RunManager } from "./runenv/manager.ts";
 import { CardPorts } from "./runenv/ports.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
+import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { DAEMON_VERSION, startServer } from "./server.ts";
 import {
@@ -524,10 +525,17 @@ interface CreatedRuntime {
   accountReaders?: ReturnType<typeof accountReaders>;
 }
 
-async function createRuntime(kind: RuntimeKind, claudePath?: string): Promise<CreatedRuntime> {
+async function createRuntime(
+  kind: RuntimeKind,
+  claudePath?: string,
+  mcpServer?: FlightdeckMcpServer,
+): Promise<CreatedRuntime> {
   if (kind === "fake") return { runtime: new FakeRuntime(), accountReaders: demoAccountReaders() };
   const { ClaudeSdkRuntime } = await import("./runtime/claude-sdk-runtime.ts");
-  const runtime = new ClaudeSdkRuntime(claudePath ? { claudePath } : {});
+  const runtime = new ClaudeSdkRuntime({
+    ...(claudePath ? { claudePath } : {}),
+    ...(mcpServer ? { mcpServer } : {}),
+  });
   const path = runtime.claudePath ?? null;
   const { query } = await import("@anthropic-ai/claude-agent-sdk");
   return {
@@ -585,7 +593,15 @@ export async function startDaemon(
   if (!lock) throw new AlreadyRunningError(config.dataDir);
   const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   const claudePath = config.claude?.executablePath ?? config.claudePath;
-  const { runtime, claude, accountReaders: readers } = await createRuntime(runtimeKind, claudePath);
+  const {
+    runtime,
+    claude,
+    accountReaders: readers,
+  } = await createRuntime(
+    runtimeKind,
+    claudePath,
+    flightdeckMcpServer(daemonCommand(process.execPath, Bun.main), configFile),
+  );
   // The plan quota is the host's: every managed session feeds it (phase 7).
   const quota = new Quota({ pauseAt: config.quota.pauseAt });
   const quotaHistory = new QuotaHistory({ db: store.db });
@@ -1072,6 +1088,7 @@ export async function startDaemon(
           options.serviceInstalled ??
           (async () => (await serviceCommand(osServiceContext(false))) !== null),
         healthy: async () => true,
+        mcp: () => mcpReachable(daemonCommand(process.execPath, Bun.main)),
         tailscaleIp: () => tailscaleIp(spawnExec),
         hooks: () =>
           hooksStatus(
@@ -1329,6 +1346,12 @@ async function* linesOf(stream: ReadableStream<Uint8Array>): AsyncGenerator<stri
   if (pending) yield pending;
 }
 
+/** The command managed sessions run for the Flightdeck MCP server, and whether its program is still there. */
+async function mcpReachable(self: string[]): Promise<{ command: string; exists: boolean }> {
+  const command = self[0] ?? "";
+  return { command, exists: (await stat(command).catch(() => null))?.isFile() === true };
+}
+
 /** `flightdeckd doctor`: what a first run needs, with the fix for each failure. Exit 1 on a failure. */
 async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
   const file = configPath(args);
@@ -1348,6 +1371,7 @@ async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
     tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
     hooks: async () => hooksStatus(settings, hookTarget(await load(), self)),
     claudePath: () => whichOnPath("claude"),
+    mcp: () => mcpReachable(self),
     templateProblems: async () =>
       (
         await loadTemplates({

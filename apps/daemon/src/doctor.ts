@@ -13,6 +13,8 @@ export interface DoctorDeps {
   tailscaleIp(): Promise<string | null>;
   hooks(): HooksState | Promise<HooksState>;
   claudePath(): string | null;
+  /** Whether the Flightdeck MCP server managed sessions get can start: its command, and whether that file exists. */
+  mcp?(): Promise<{ command: string; exists: boolean }>;
   /** Template files the host could not load (phase 33); absent when it has no templates. */
   templateProblems?(): Promise<Array<{ file: string; reason: string }>>;
   /** The running daemon's version and, when the app told it, the app's: only a running daemon has them. */
@@ -29,7 +31,8 @@ export type DoctorCheckId =
   | "hooks"
   | "tailscale"
   | "version"
-  | "templates";
+  | "templates"
+  | "mcp";
 
 export interface DoctorCheck {
   id: DoctorCheckId;
@@ -145,6 +148,21 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
         `could not load: ${brokenTemplates.map((p) => `${p.file} (${p.reason})`).join("; ")}`,
         "fix or remove those files in the templates folder",
       ),
+    );
+  }
+
+  const mcp = await deps.mcp?.();
+  if (mcp) {
+    checks.push(
+      mcp.exists
+        ? check("mcp", "mcp", "ok", mcp.command)
+        : check(
+            "mcp",
+            "mcp",
+            "warn",
+            `${mcp.command} is gone: sessions start without the team tools (send_to_session, list_sessions)`,
+            SETUP,
+          ),
     );
   }
 

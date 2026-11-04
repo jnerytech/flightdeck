@@ -1446,6 +1446,7 @@ export const DOCTOR_CHECK_IDS = [
   "tailscale",
   "version",
   "templates",
+  "mcp",
 ] as const;
 
 /** One thing `doctor.run` checked; `fix` is what to run, absent when the check passed. */
