@@ -181,8 +181,11 @@ describe("desktop: conexão com o host", () => {
     const gap = () => (conn.retry?.nextRetryAt ?? 0) - (conn.retry?.lastTryAt ?? 0);
     await waitFor(() => gap() >= 200, "second failure");
     const seen = conn.retry?.lastTryAt ?? 0;
-    conn.wake();
-    await waitFor(() => (conn.retry?.lastTryAt ?? 0) > seen && gap() === 100, "backoff restarted");
+    // A wake-up that lands while a try is running is ignored by design: ask again until one acts.
+    await waitFor(() => {
+      conn.wake();
+      return (conn.retry?.lastTryAt ?? 0) > seen && gap() === 100;
+    }, "backoff restarted");
   });
 
   test("wake calls close together make one reconnect, and an online host is left alone", async () => {
