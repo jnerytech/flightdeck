@@ -6,6 +6,7 @@ import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { usd } from "@/lib/costs";
 import { csvOf, type RoiColumn, rowsFrom, sortRows, totalsOf } from "@/lib/roi-table";
+import { useStoreSlice } from "@/lib/use-store";
 
 const COLUMNS: RoiColumn[] = [
   "project",
@@ -38,6 +39,8 @@ export function RoiTable(props: {
 }) {
   const { store, from, to, selection, projectName } = props;
   const t = useT();
+  // The money is the app's own settings: a saved rate shows at once.
+  useStoreSlice(store, ["roiRevision"]);
   const [answers, setAnswers] = useState<Array<{ hostId: string; result: RoiSummaryResult }>>([]);
   const [sort, setSort] = useState<{ column: RoiColumn; direction: "asc" | "desc" } | null>(null);
   const hostKey = props.hostIds.join("|");

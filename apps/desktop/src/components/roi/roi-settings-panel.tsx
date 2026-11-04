@@ -21,7 +21,7 @@ function amountOf(text: string): number | null | "bad" {
 export function RoiSettingsPanel(props: { store: AppStore }) {
   const { store } = props;
   const t = useT();
-  const hosts = useStoreSlice(store, ["hosts"]).hosts;
+  const hosts = useStoreSlice(store, ["hosts", "roiRevision"]).hosts;
   const [, bump] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const settings = store.roi.data();
