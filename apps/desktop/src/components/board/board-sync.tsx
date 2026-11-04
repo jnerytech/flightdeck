@@ -23,6 +23,7 @@ import { refusalText } from "@/i18n/errors";
 import { formatDateTime } from "@/i18n/format";
 import type { Key, T } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
+import { uniqueKeys } from "@/lib/unique-keys";
 
 const COLUMNS: readonly BoardColumn[] = ["backlog", "in_progress", "waiting", "review", "done"];
 
@@ -327,6 +328,12 @@ export function CardSyncLog(props: { store: AppStore; hostId: string; cardId: st
     });
   }, [store, hostId, cardId]);
   if (entries === null) return null;
+  // Two entries of the same second, kind and values read alike: each still gets its own key.
+  const keys = uniqueKeys(
+    entries.map(
+      (entry) => `${entry.at}-${entry.kind}-${entry.detail ?? ""}-${entry.keptValue ?? ""}`,
+    ),
+  );
   return (
     <section aria-label={t("boardSyncUi.log")} className="flex flex-col gap-1">
       <p className="font-medium text-sm">{t("boardSyncUi.log")}</p>
@@ -334,11 +341,8 @@ export function CardSyncLog(props: { store: AppStore; hostId: string; cardId: st
         <p className="text-muted-foreground text-xs">{t("boardSyncUi.logEmpty")}</p>
       )}
       <ul className="flex flex-col gap-1">
-        {entries.map((entry) => (
-          <li
-            key={`${entry.at}-${entry.kind}-${entry.detail ?? ""}-${entry.keptValue ?? ""}`}
-            className="text-xs"
-          >
+        {entries.map((entry, i) => (
+          <li key={keys[i]} className="text-xs">
             {logLine(entry, t)}
           </li>
         ))}
