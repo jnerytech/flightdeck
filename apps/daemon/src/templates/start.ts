@@ -86,12 +86,10 @@ export async function startTemplate(
       try {
         folders.push(await resolveAllowedCwd(place, deps.allowedRoots));
       } catch (error) {
-        if (error instanceof FlightdeckError && error.code === "forbidden_cwd") {
-          throw refuse("forbidden_cwd", error.message, "template_folder_outside", {
-            folder: given,
-          });
-        }
-        throw error;
+        // `resolveAllowedCwd` fails only with `forbidden_cwd` (outside the roots, or not there).
+        throw refuse("forbidden_cwd", (error as Error).message, "template_folder_outside", {
+          folder: given,
+        });
       }
     }
     answers.set(field.id, given);
