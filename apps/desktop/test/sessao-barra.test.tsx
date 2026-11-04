@@ -133,7 +133,8 @@ describe("sessao-barra: the composer toolbar", () => {
     );
     await act(async () => void fireEvent.change(box(), { target: { value: "/" } }));
     await act(async () => {});
-    expect(screen.getAllByRole("group").map((g) => g.getAttribute("aria-label"))).toEqual([
+    const menu = within(screen.getByRole("listbox"));
+    expect(menu.getAllByRole("group").map((g) => g.getAttribute("aria-label"))).toEqual([
       "Comandos (1)",
       "Skills (1)",
       "Prompts MCP (1)",
