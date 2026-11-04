@@ -113,8 +113,18 @@ const DAY_MS = 24 * 3_600_000;
 const OUTBOX_MS = 24 * 3_600_000;
 const FLIGHTDECK = "flightdeck";
 
-const bad = (message: string) => new FlightdeckError("bad_request", message);
-const notFound = (message: string) => new FlightdeckError("not_found", message);
+type Params = Record<string, string | number>;
+const bad = (message: string, reason: string, params?: Params) =>
+  new FlightdeckError("bad_request", message, reason, params);
+const notFound = (message: string, reason: string, params?: Params) =>
+  new FlightdeckError("not_found", message, reason, params);
+
+/** An address that does not lead to a session: the words for the logs, and the reason for the app. */
+interface Missing {
+  error: string;
+  reason: string;
+  params: Params;
+}
 
 const toInfo = (row: Row): MessageInfo => ({
   id: row.id,
@@ -259,18 +269,27 @@ export class Messaging {
     const id = who.session ?? this.opts.endpoints.byLaunch(who.launch as string);
     const info = id ? this.opts.endpoints.list().find((e) => e.id === id) : undefined;
     if (!info) {
-      throw notFound("a sessão que pede não existe neste host: não sei quem está mandando");
+      throw notFound(
+        "a sessão que pede não existe neste host: não sei quem está mandando",
+        "messaging_asker_unknown",
+      );
     }
     return this.partyOf(info);
   }
 
-  private target(address: string): Target | { error: string } {
+  private target(address: string): Target | Missing {
     const { host, id } = split(address);
     if (host === null || host === this.opts.host) {
       const sessionId = this.opts.names?.resolve(id) ?? id;
       const list = this.opts.endpoints.list();
       const info = list.find((e) => e.id === id) ?? list.find((e) => e.id === sessionId);
-      if (!info) return { error: `sessão ${address} não encontrada neste host` };
+      if (!info) {
+        return {
+          error: `sessão ${address} não encontrada neste host`,
+          reason: "messaging_target_not_found",
+          params: { address },
+        };
+      }
       return {
         party: this.partyOf(info),
         receives: info.controllable,
@@ -279,11 +298,23 @@ export class Messaging {
       };
     }
     const sessions = this.peers.get(host);
-    if (!sessions) return { error: `o host ${host} não é conhecido: o app descreve os hosts` };
+    if (!sessions) {
+      return {
+        error: `o host ${host} não é conhecido: o app descreve os hosts`,
+        reason: "messaging_host_unknown",
+        params: { host },
+      };
+    }
     const alias = slug(id);
     const peer =
       sessions.find((s) => s.id === id) ?? sessions.find((s) => s.aliases?.includes(alias));
-    if (!peer) return { error: `sessão ${address} não encontrada no host ${host}` };
+    if (!peer) {
+      return {
+        error: `sessão ${address} não encontrada no host ${host}`,
+        reason: "messaging_peer_not_found",
+        params: { address, host },
+      };
+    }
     return {
       party: this.peerParty(host, peer),
       receives: peer.receives,
@@ -348,9 +379,9 @@ export class Messaging {
   ): { sender: Party; target: Party; info: EndpointInfo | null } {
     const sender = this.resolve(as);
     const target = this.target(address);
-    if ("error" in target) throw notFound(target.error);
+    if ("error" in target) throw notFound(target.error, target.reason, target.params);
     const allowed = access(sender, target.party, this.policy);
-    if (!allowed.ok) throw new FlightdeckError("invalid_state", allowed.reason);
+    if (!allowed.ok) throw new FlightdeckError("invalid_state", allowed.reason, allowed.code);
     return { sender, target: target.party, info: target.local };
   }
 
@@ -361,10 +392,13 @@ export class Messaging {
       throw new FlightdeckError(
         "invalid_state",
         "a sessão é de outro host: o read_session só lê sessões deste host",
+        "messaging_read_other_host",
       );
     }
     const read = await this.opts.endpoints.read(info.id, last);
-    if (!read) throw notFound(`sessão ${address} não encontrada`);
+    if (!read) {
+      throw notFound(`sessão ${address} não encontrada`, "messaging_target_not_found", { address });
+    }
     return read;
   }
 
@@ -765,7 +799,9 @@ export class Messaging {
   /** Replaces the policy; `unpause` frees pairs the loop detector paused. */
   setPolicy(raw: unknown, unpause: string[] = []): { policy: Policy; paused: string[] } {
     const { policy, errors } = validatePolicy(raw);
-    if (errors.length > 0) throw bad(errors.join("; "));
+    if (errors.length > 0) {
+      throw bad(errors.join("; "), "messaging_policy_invalid", { errors: errors.join("; ") });
+    }
     this.policy = policy;
     this.opts.db
       .query(

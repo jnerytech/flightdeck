@@ -21,7 +21,11 @@ const LIMIT = 50;
  * value like `-R other/repo` or `@file` must never reach gh or az as an option or a file.
  */
 function checkedId(id: string): string {
-  if (!/^\d+$/.test(id)) throw new FlightdeckError("invalid_state", `id de issue inválido: ${id}`);
+  if (!/^\d+$/.test(id)) {
+    throw new FlightdeckError("invalid_state", `id de issue inválido: ${id}`, "issue_id_invalid", {
+      id,
+    });
+  }
   return id;
 }
 

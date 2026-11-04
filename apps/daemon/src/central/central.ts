@@ -151,6 +151,7 @@ export class Central {
       throw new FlightdeckError(
         "invalid_state",
         "mexer no ~/.claude/settings.json do host pede confirm: true",
+        "central_confirm",
       );
     }
   }

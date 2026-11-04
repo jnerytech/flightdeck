@@ -881,6 +881,9 @@ export const ptBR = {
   },
   daemonFeature: {
     account: "a conta do Claude",
+
+    prWatch: "a vigia de PR",
+    runEnv: "o ambiente de execução",
     history: "o histórico",
     central: "a central de sessões",
     vault: "o cofre",
@@ -934,6 +937,62 @@ export const ptBR = {
     account_refresh_too_soon: "A conta foi lida há pouco: tente de novo em {waitSeconds} s.",
     account_unavailable:
       "A conta do Claude deste host não pôde ser lida. Confira se o `claude` está instalado lá e tente de novo.",
+
+    autoapprove_resume_confirm: "Reativar a aprovação automática pede a sua confirmação.",
+    terminal_enable_confirm:
+      "Ligar o terminal dá um shell completo neste host: confirme para seguir.",
+    central_confirm: "Mexer no ~/.claude/settings.json do host pede a sua confirmação.",
+    permission_request_closed: "O pedido de permissão {id} não está aberto.",
+    update_needs_service:
+      "O daemon não roda como serviço: atualize no host com flightdeckd update --from <binário novo>.",
+    update_signature_failed: "Não foi possível verificar a atualização: {why}",
+    messaging_session_missing: "A sessão {id} não existe.",
+    messaging_plain_session:
+      "Um claude puro, sem canal, só recebe pela troca nativa do Claude Code.",
+    messaging_channel_down: "O canal do terminal não está conectado.",
+    messaging_idle_other_host:
+      "A sessão {address} é de outro host: o aviso de ocioso só vale para sessões deste host.",
+    messaging_asker_unknown: "A sessão que pede não existe neste host: não sei quem está mandando.",
+    messaging_target_not_found: "A sessão {address} não foi encontrada.",
+    messaging_host_unknown: "O host {host} não é conhecido: o app descreve os hosts.",
+    messaging_peer_not_found: "A sessão {address} não foi encontrada no host {host}.",
+    messaging_self: "Uma sessão não manda mensagem para si mesma.",
+    messaging_no_route:
+      "As sessões não são do mesmo projeto nem do mesmo time, e nenhuma exceção em Configurações libera este par.",
+    messaging_read_other_host: "A sessão é de outro host: o read_session só lê sessões deste host.",
+    messaging_policy_invalid: "As regras de mensagens não valem: {errors}",
+    project_no_issues:
+      "Este projeto não tem integração de issues: configure nas definições do projeto.",
+    project_no_origin: "Este projeto não tem o remoto origin.",
+    remote_not_github: "O remoto {url} não é do GitHub.",
+    remote_not_azure: "O remoto {url} não é do Azure DevOps.",
+    issue_id_invalid: "{id} não é um id de issue válido: só dígitos.",
+    issue_not_this_project: "{issue} não é uma issue do {provider} deste projeto.",
+    issue_other_repo: "{issue} é de outro repositório que o do projeto.",
+    issue_has_card: "A issue {ref} já tem o card {card}.",
+    plugin_arg_refused: "O valor {value} foi recusado: seria lido como uma opção.",
+    plugin_not_installed: "{id} não está instalado.",
+    marketplace_missing: "O marketplace {marketplace} não existe.",
+    plugin_not_in_marketplace: "{id} não está no marketplace.",
+    marketplace_update_failed: "Não deu para atualizar o marketplace {marketplace}: {why}",
+    plugin_preview_unavailable_update:
+      "O conteúdo de {id} não pode ser mostrado antes de atualizar.",
+    plugin_validate_refused: "O validador de plugins recusou: {errors}",
+    plugin_preview_unavailable_install:
+      "O conteúdo de {name} não pode ser mostrado antes de instalar.",
+    plugin_pinned: "{id} está fixado na versão {version}: solte antes de atualizar.",
+    plugin_remove_confirm: "Remover um plugin pede a sua confirmação.",
+    marketplace_add_confirm: "Adicionar um marketplace pede a sua confirmação.",
+    marketplace_remove_confirm: "Remover um marketplace pede a sua confirmação.",
+    plugin_content_changed: "O conteúdo mudou desde que foi mostrado: veja a prévia de novo.",
+    marketplace_catalog_unreadable: "O catálogo do marketplace {marketplace} não pôde ser lido.",
+    plugin_command_mismatch: "Só se aceita o comando que foi mostrado: peça de novo para ver.",
+    plugins_stopped: "O gerenciador de plugins foi parado.",
+    plugin_cli_failed: "claude plugin {command} falhou: {why}",
+    plugin_cli_not_json: "claude plugin {command} não devolveu JSON.",
+    claude_not_found: "O claude não foi encontrado no PATH deste host.",
+    plugin_dir_missing: "A pasta {dir} não existe.",
+    plugin_too_many_files: "O plugin tem arquivos demais (mais de {max}).",
     team_quota_until:
       "A cota do plano está acima do limite até {until}: crie o time depois, senão ele nasce parado.",
     team_quota_over:

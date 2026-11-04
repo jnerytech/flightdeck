@@ -886,6 +886,9 @@ export const en: Dictionary = {
   },
   daemonFeature: {
     account: "the Claude account",
+
+    prWatch: "PR watching",
+    runEnv: "the run environment",
     history: "the history",
     central: "the central session list",
     vault: "the vault",
@@ -939,6 +942,63 @@ export const en: Dictionary = {
     account_refresh_too_soon: "The account was read a moment ago: try again in {waitSeconds} s.",
     account_unavailable:
       "This host's Claude account could not be read. Check that `claude` is installed there, then try again.",
+
+    autoapprove_resume_confirm: "Resuming auto-approval needs your confirmation.",
+    terminal_enable_confirm:
+      "Turning the terminal on gives a full shell on this host: confirm it to go on.",
+    central_confirm: "Changing the host's ~/.claude/settings.json needs your confirmation.",
+    permission_request_closed: "The permission request {id} is not open.",
+    update_needs_service:
+      "The daemon does not run as a service: update on the host with flightdeckd update --from <new binary>.",
+    update_signature_failed: "The update could not be verified: {why}",
+    messaging_session_missing: "The session {id} does not exist.",
+    messaging_plain_session:
+      "A plain claude with no channel only receives through Claude Code's own exchange.",
+    messaging_channel_down: "The terminal's channel is not connected.",
+    messaging_idle_other_host:
+      "The session {address} is on another host: the idle notice only covers sessions of this host.",
+    messaging_asker_unknown:
+      "The session that is asking does not exist on this host: it is not known who is sending.",
+    messaging_target_not_found: "The session {address} was not found.",
+    messaging_host_unknown: "The host {host} is not known: the app describes the hosts.",
+    messaging_peer_not_found: "The session {address} was not found on the host {host}.",
+    messaging_self: "A session does not message itself.",
+    messaging_no_route:
+      "The sessions are not in the same project or team, and no exception in Settings frees this pair.",
+    messaging_read_other_host:
+      "The session is on another host: read_session only reads sessions of this host.",
+    messaging_policy_invalid: "The messaging rules are not valid: {errors}",
+    project_no_issues: "This project has no issue integration: set it in the project's settings.",
+    project_no_origin: "This project has no origin remote.",
+    remote_not_github: "The remote {url} is not a GitHub one.",
+    remote_not_azure: "The remote {url} is not an Azure DevOps one.",
+    issue_id_invalid: "{id} is not a valid issue id: it is digits only.",
+    issue_not_this_project: "{issue} is not an issue of this project's {provider}.",
+    issue_other_repo: "{issue} belongs to another repository than the project's.",
+    issue_has_card: "The issue {ref} already has the card {card}.",
+    plugin_arg_refused: "The value {value} is refused: it would read as an option.",
+    plugin_not_installed: "{id} is not installed.",
+    marketplace_missing: "The marketplace {marketplace} does not exist.",
+    plugin_not_in_marketplace: "{id} is not in the marketplace.",
+    marketplace_update_failed: "The marketplace {marketplace} could not be refreshed: {why}",
+    plugin_preview_unavailable_update: "The content of {id} cannot be shown before updating.",
+    plugin_validate_refused: "The plugin validator refused it: {errors}",
+    plugin_preview_unavailable_install: "The content of {name} cannot be shown before installing.",
+    plugin_pinned: "{id} is pinned at version {version}: release it before updating.",
+    plugin_remove_confirm: "Removing a plugin needs your confirmation.",
+    marketplace_add_confirm: "Adding a marketplace needs your confirmation.",
+    marketplace_remove_confirm: "Removing a marketplace needs your confirmation.",
+    plugin_content_changed: "The content changed since it was shown: look at the preview again.",
+    marketplace_catalog_unreadable:
+      "The catalog of the marketplace {marketplace} could not be read.",
+    plugin_command_mismatch:
+      "Only the command that was shown can be accepted: ask to see it again.",
+    plugins_stopped: "The plugin manager was stopped.",
+    plugin_cli_failed: "claude plugin {command} failed: {why}",
+    plugin_cli_not_json: "claude plugin {command} did not answer JSON.",
+    claude_not_found: "claude was not found on this host's PATH.",
+    plugin_dir_missing: "The folder {dir} does not exist.",
+    plugin_too_many_files: "The plugin has too many files (more than {max}).",
     team_quota_until:
       "The plan quota is over its limit until {until}: create the team later, or it would start paused.",
     team_quota_over:
