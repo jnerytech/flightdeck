@@ -6,6 +6,7 @@ import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { uiIdle } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -54,7 +55,7 @@ async function online(language: string) {
   await act(async () => {
     await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
   });
-  await act(() => Bun.sleep(300));
+  await uiIdle(300);
   return { d, store, sessionId, hostId: store.getState().hosts[0]?.id ?? "" };
 }
 
@@ -139,7 +140,7 @@ describe("textos", () => {
     await act(async () => {
       store.router.push({ name: "session", host: hostId, id: sessionId });
     });
-    await act(() => Bun.sleep(200));
+    await uiIdle(200);
     const session = main().textContent ?? "";
     for (const word of ["End", "idle"]) {
       expect(session).toMatch(new RegExp(word));
@@ -154,7 +155,7 @@ describe("textos", () => {
     await act(async () => {
       store.router.push({ name: "projects", host: hostId });
     });
-    await act(() => Bun.sleep(300));
+    await uiIdle(300);
     const page = main().textContent ?? "";
     for (const text of [
       "Projects of alfa",
@@ -171,7 +172,7 @@ describe("textos", () => {
     await act(async () => {
       store.router.push({ name: "projects", host: hostId, focus: "board" });
     });
-    await act(() => Bun.sleep(300));
+    await uiIdle(300);
     expect(main().textContent ?? "").toContain("Board of alfa");
   });
 
@@ -181,7 +182,7 @@ describe("textos", () => {
       store.router.push({ name: "settings" });
     });
     // Settings is a lazy screen: its chunk arrives after the route changes.
-    await act(() => Bun.sleep(300));
+    await uiIdle(300);
     const prefs = main().textContent ?? "";
     for (const text of [
       "Appearance",
@@ -196,7 +197,7 @@ describe("textos", () => {
     await act(async () => {
       store.router.push({ name: "host", host: hostId });
     });
-    await act(() => Bun.sleep(300));
+    await uiIdle(300);
     const host = main().textContent ?? "";
     for (const text of ["Information", "Claude Code hooks", "Rename", "Reconnect", "Remove host"]) {
       expect(host).toContain(text);
@@ -231,7 +232,7 @@ describe("textos", () => {
       await act(async () => {
         store.router.push(route);
       });
-      await act(() => Bun.sleep(150));
+      await uiIdle(150);
       // What is read: the text and the attributes that are spoken or shown.
       const attributes = [...document.querySelectorAll("[placeholder], [aria-label], [title]")]
         .map(

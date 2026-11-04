@@ -51,7 +51,7 @@ async function open(withTerminal = true, extra: Array<Record<string, unknown>> =
     await act(async () => {
       store.router.push({ name: "terminal", host: h.hostId, terminalId });
     });
-    await act(() => Bun.sleep(100));
+    await uiIdle();
   }
   return { store, copied, terminalId, ...h };
 }

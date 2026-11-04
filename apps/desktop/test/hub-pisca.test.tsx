@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup } = await import("@testing-library/react");
@@ -34,10 +35,7 @@ async function online() {
   const daemon = legacyDaemon(cleanups);
   daemon.hub.managed = [managed("s1"), managed("s2")];
   await act(() => store.addHost({ name: "alfa", url: daemon.url, token: TOKEN }));
-  const deadline = Date.now() + 5000;
-  while (store.getState().hosts[0]?.status !== "online" && Date.now() < deadline) {
-    await act(() => Bun.sleep(10));
-  }
+  await settle(() => store.getState().hosts[0]?.status === "online");
   const hostId = store.getState().hosts[0]?.id ?? "";
   return { store, daemon, hostId };
 }

@@ -58,6 +58,7 @@ const release = async (el: HTMLElement) => {
     fireEvent.pointerUp(el);
   });
 };
+// timing: the risk seal's gestures (hold, long press) are clock windows; the callers name the duration.
 const wait = (ms: number) => act(() => Bun.sleep(ms));
 
 describe("risco-ui: o selo", () => {

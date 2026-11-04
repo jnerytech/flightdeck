@@ -172,6 +172,7 @@ describe("personas-ui: choosing a persona when a session opens", () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Iniciar" }));
     });
     for (let i = 0; i < 100 && (await d.board.arena(card.id)).variants.length < 2; i++) {
+      // timing: polls the daemon's board, which has no screen signal.
       await act(() => Bun.sleep(20));
     }
     expect((await d.board.arena(card.id)).variants.map((v) => v.persona)).toEqual([

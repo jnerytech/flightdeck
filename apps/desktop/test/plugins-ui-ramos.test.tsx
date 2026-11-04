@@ -100,7 +100,7 @@ describe("plugins-ui: casos de borda", () => {
     await act(async () => {
       fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
     });
-    await act(() => Bun.sleep(100));
+    await uiIdle();
     await click("Remover quebrado");
     await click("Remover plugin", "button");
     await settle(() => calls(fake).some((c) => c.startsWith("plugin uninstall")));

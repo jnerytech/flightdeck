@@ -335,7 +335,7 @@ describe("custos-ui", () => {
     );
     mem.save.cancel = true;
     await click("Exportar CSV");
-    await act(() => Bun.sleep(50));
+    await settle(() => mem.saved.length === 1);
     expect(mem.saved).toHaveLength(1);
     expect(store.getState().error).toBeNull();
   });

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { registerDom } from "./dom.ts";
+import { uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
@@ -35,7 +36,7 @@ describe("uso-turnos: the legacy usage table counts turns from the dictionary", 
           <UsagePanel store={store} hostId="h" online costs={false} />
         </TContext.Provider>,
       );
-      await act(() => Bun.sleep(10));
+      await uiIdle();
       const cells = [...view.container.querySelectorAll("td")].map((td) => td.textContent);
       expect(cells).toContain(one);
       expect(cells).toContain(other);
@@ -60,7 +61,7 @@ describe("uso-turnos: the usage table groups the token count with the language's
           <UsagePanel store={store} hostId="h" online costs />
         </TContext.Provider>,
       );
-      await act(() => Bun.sleep(10));
+      await uiIdle();
       const cells = [...view.container.querySelectorAll("td")].map((td) => td.textContent);
       expect(cells).toContain(shown);
     });

@@ -59,7 +59,7 @@ async function open() {
   await act(async () => {
     fireEvent.click(screen.queryByRole("button", { name: "Snippets" }) as HTMLElement);
   });
-  await act(() => Bun.sleep(80));
+  await uiIdle();
   await click("Importar do histórico do shell");
   return { store, ...h };
 }

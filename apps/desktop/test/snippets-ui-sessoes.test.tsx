@@ -62,7 +62,7 @@ async function open(onExternal = false) {
       });
       store.router.push({ name: "external", host: h.hostId, claudeSessionId: "ext-1" });
     });
-    await act(() => Bun.sleep(100));
+    await uiIdle();
   }
   return { store, asked, ...h };
 }

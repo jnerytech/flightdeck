@@ -31,7 +31,7 @@ async function open(seed?: (h: Awaited<ReturnType<typeof snippetsHost>>) => Prom
   await act(async () => {
     fireEvent.click(nav as HTMLElement);
   });
-  await act(() => Bun.sleep(80));
+  await uiIdle();
   return { store, ...h };
 }
 

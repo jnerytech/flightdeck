@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { renderProbe } from "./render-probe.tsx";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
@@ -80,7 +80,7 @@ describe("hub-list: the sessions hub does its work once per change of its inputs
     const store = newStore();
     const { state, reads } = bigState(store, 30);
     const view = render(hub(store, state));
-    await act(() => Bun.sleep(20));
+    await uiIdle();
     expect(reads.rows).toBe(1);
     for (let i = 0; i < 100; i++) {
       view.rerender(hub(store, { ...state, error: `unrelated ${i}` }));
@@ -116,7 +116,7 @@ describe("hub-list: the sessions hub does its work once per change of its inputs
       const { state } = bigState(store, n);
       const probe = renderProbe();
       render(probe.wrap(hub(store, state)));
-      await act(() => Bun.sleep(20));
+      await uiIdle();
       cleanup();
       return probe.stats.ms;
     };

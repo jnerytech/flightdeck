@@ -125,7 +125,7 @@ describe("leitor", () => {
     await act(async () => {
       fireEvent.scroll(log);
     });
-    await act(() => Bun.sleep(50));
+    await settle(() => shown().length === 50);
     expect(shown()).toHaveLength(50);
 
     log.scrollTop = 800;

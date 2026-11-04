@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -63,7 +64,7 @@ describe("cofre-ui: remove", () => {
     await click("Remover github");
     await type(LABEL, "github");
     await click("Remover");
-    await act(() => Bun.sleep(20));
+    await settle(() => store.getState().secrets.length === 0);
     expect(store.getState().secrets).toEqual([]);
     expect(await store.vault.value(meta.id)).toBeNull();
   });

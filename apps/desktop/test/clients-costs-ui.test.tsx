@@ -3,7 +3,7 @@ import { CLIENTS_KEY, UNASSIGNED } from "../src/lib/clients.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -204,7 +204,7 @@ describe("clients-costs: the Costs screen across hosts", () => {
     }) as typeof store.hostCommand;
     await act(async () => store.setClientSelection("acme"));
     await settle(() => total() === "US$ 2.00");
-    await act(() => Bun.sleep(100));
+    await uiIdle();
     expect(asked.sort()).toEqual(['"*"', '"*"', '"github.com/acme/api"']);
   });
 });

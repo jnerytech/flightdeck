@@ -29,7 +29,7 @@ async function open() {
   await act(async () => {
     fireEvent.click(screen.queryByRole("button", { name: "Snippets" }) as HTMLElement);
   });
-  await act(() => Bun.sleep(80));
+  await uiIdle();
   return { store, ...h };
 }
 

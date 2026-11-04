@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sshDaemon, sshTarget } from "./ssh-daemon.ts";
-import { stays, waiter } from "./wait.ts";
+import { stays, uiIdle, waiter } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -50,7 +50,7 @@ async function open(options: Parameters<typeof sshDaemon>[1] = { targets: TARGET
     fireEvent.click(nav as HTMLElement);
   });
   await settle(() => d.commands.some((c) => c.type === "ssh.list"));
-  await act(() => Bun.sleep(20));
+  await uiIdle();
   return { d, store, hostId };
 }
 

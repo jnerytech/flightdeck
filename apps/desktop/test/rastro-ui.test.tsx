@@ -272,7 +272,7 @@ describe("replay: step by step", () => {
     await openTrace();
     await click("Replay");
     await settle(() => daemon.commands.some((c) => c.type === "snapshots.files"));
-    await act(() => Bun.sleep(50));
+    await settle(() => steps().includes("Passo 1 de 11"));
     expect(steps()).toContain("Passo 1 de 11");
     // (The fake host does not serve the transcript below the tab: only the refusal matters here.)
     expect(store.getState().notices.map((n) => n.text)).not.toContain("sem snapshot deste turno");

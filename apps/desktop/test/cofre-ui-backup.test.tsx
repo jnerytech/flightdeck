@@ -4,7 +4,7 @@ import { exportVault, fromFdvault, previewImport, toFdvault } from "../src/lib/v
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
-import { uiIdle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -168,7 +168,7 @@ describe("cofre-ui: backup", () => {
     await act(async () => {
       fireEvent.submit(form as HTMLFormElement);
     });
-    await act(() => Bun.sleep(30));
+    await settle(() => saved.length === 1);
     expect(saved).toHaveLength(1);
   });
 

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { Profiler } from "react";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { uiIdle } from "./wait.ts";
+import { stays, uiIdle } from "./wait.ts";
 
 registerDom();
 const {
@@ -135,9 +135,9 @@ describe("host-renomear: the app is quiet while nothing happens", () => {
   // process) it waited seconds for a gap and the menu clicks of the rename tests ran out of time.
   test("two online hosts, left alone for 700 ms, commit almost no renders", async () => {
     await setup();
-    await act(() => Bun.sleep(100));
+    await uiIdle();
     const before = commits;
-    await act(() => Bun.sleep(700));
+    await stays(() => commits - before <= 3, 700);
     expect(commits - before).toBeLessThanOrEqual(3);
   });
 });

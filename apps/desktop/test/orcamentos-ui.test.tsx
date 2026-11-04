@@ -4,7 +4,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
 import { sidebarNav } from "./sidebar.ts";
-import { waiter } from "./wait.ts";
+import { uiIdle, waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -284,7 +284,7 @@ describe("orcamentos-ui", () => {
     await click("Configurações");
     await settle(() => section() !== null);
     await choose("Escopo", "project");
-    await act(() => Bun.sleep(100));
+    await uiIdle();
     const project = field("Projeto do orçamento");
     expect(project.tagName).toBe("INPUT");
     await choose("Projeto do orçamento", "/work/solo");
@@ -377,7 +377,7 @@ describe("orcamentos-ui", () => {
       await store.addHost({ name: "alfa", url: legacy.url, token: TOKEN });
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
-    await act(() => Bun.sleep(50));
+    await uiIdle();
     await click("Configurações");
     expect(section()).toBeNull();
     expect(legacy.asked.some((t) => t === "budget.list")).toBe(false);

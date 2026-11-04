@@ -43,7 +43,7 @@ async function open(options: SshDaemonOptions = { targets: [VPS, LAB] }) {
     fireEvent.click(screen.queryByRole("button", { name: "Conexões" }) as HTMLElement);
   });
   await settle(() => d.commands.some((c) => c.type === "ssh.list"));
-  await act(() => Bun.sleep(30));
+  await uiIdle();
   return { d, store };
 }
 

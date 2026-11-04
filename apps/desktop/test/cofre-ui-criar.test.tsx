@@ -2,6 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -67,7 +68,7 @@ describe("cofre-ui: create", () => {
     await fill("Valor", VALUE);
     await fill("Etiquetas (separadas por vírgula)", "ci, prod");
     await click("Guardar");
-    await act(() => Bun.sleep(20));
+    await settle(() => store.getState().secrets.length === 1);
     const [meta] = store.getState().secrets;
     expect(meta).toMatchObject({ name: "github", type: "token", tags: ["ci", "prod"] });
     expect(meta ? await store.vault.value(meta.id) : null).toBe(VALUE);
@@ -97,7 +98,7 @@ describe("cofre-ui: create", () => {
     expect(meta ? await store.vault.value(meta.id) : null).toBe(PRIVATE_KEY);
     expect(document.body.innerHTML).not.toContain("generated-private-material");
     await click("Copiar chave pública");
-    await act(() => Bun.sleep(20));
+    await settle(() => copied.length === 1);
     expect(copied).toEqual([PUBLIC_KEY]);
   });
 
@@ -106,7 +107,7 @@ describe("cofre-ui: create", () => {
     await click("Novo segredo");
     await fill("Nome", "imported");
     await click("Importar arquivo de chave");
-    await act(() => Bun.sleep(20));
+    await settle(() => store.getState().secrets.length === 1);
     expect(store.getState().secrets).toHaveLength(1);
     expect(removed).toEqual([]);
   });
@@ -121,7 +122,7 @@ describe("cofre-ui: create", () => {
       fireEvent.click(box as HTMLElement);
     });
     await click("Importar arquivo de chave");
-    await act(() => Bun.sleep(20));
+    await settle(() => removed.length > 0);
     expect(store.getState().secrets[0]?.type).toBe("ssh-key");
     expect(removed).toEqual(["C:/keys/id_ed25519"]);
   });

@@ -40,7 +40,7 @@ async function open(feature = true) {
   await store.addHost({ name: "pc", url: d.url, token: TOKEN });
   render(<App store={store} />);
   await settle(() => d.sent("askpass.watch").length > 0 || !feature);
-  await act(() => Bun.sleep(30));
+  await uiIdle();
   return { d, store, platform };
 }
 
@@ -167,7 +167,7 @@ describe("conexoes-ui: ssh asks for a password", () => {
     await store.addHost({ name: "pc", url: d.url, token: TOKEN });
     render(<App store={store} />);
     await settle(() => d.sent("askpass.watch").length > 0);
-    await act(() => Bun.sleep(30));
+    await settle(() => store.getState().hosts[0]?.status === "online");
     expect(store.getState().hosts[0]?.status).toBe("online");
     expect(store.getState().notices).toEqual([]);
   });
