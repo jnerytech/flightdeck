@@ -194,4 +194,33 @@ describe("resumos", () => {
       "awaiting_permission:Bash,Write",
     ]);
   });
+
+  test("three simultaneous requests are listed one more at a time, each only once announced", async () => {
+    const { manager, project } = newManager({
+      runtime: {
+        start: (opts) => ({
+          events: (async function* () {
+            yield { type: "session.init" as const, claudeSessionId: "c", model: "m", tools: [] };
+            await new Promise(() => {});
+          })(),
+          send: () => {
+            for (const tool of ["Bash", "Write", "Read"]) {
+              void opts.canUseTool(tool, {}, { signal: new AbortController().signal });
+            }
+          },
+          interrupt: async () => {},
+          close: async () => {},
+        }),
+      },
+    });
+    const received: EventEnvelope[] = [];
+    manager.watchSummaries((e) => received.push(e));
+    const { sessionId } = await manager.create({ cwd: project, prompt: "tres" });
+    const counts = () =>
+      summaries(received)
+        .filter((s) => s.sessionId === sessionId)
+        .map((s) => s.pendingPermissions.length);
+    await poll(() => counts().length >= 4, 1000);
+    expect(counts()).toEqual([0, 1, 2, 3]);
+  });
 });
