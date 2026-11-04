@@ -4,7 +4,28 @@
  * Terms follow docs/GLOSSARY.md.
  */
 export const ptBR = {
-  nav: { back: "Voltar", forward: "Avançar" },
+  nav: { back: "Voltar", forward: "Avançar", overview: "Início" },
+  home: {
+    title: "Início",
+    range: "Últimos 7 dias · todos os hosts",
+    spend: "Gasto",
+    noBudget: "Sem orçamento definido",
+    ofBudget: "{spent} de {limit} de orçamento no mês",
+    turns: "Turnos",
+    turnsOk: "{n} ok",
+    turnsFailed: "{n} com falha",
+    tokens: "Tokens",
+    cacheRead: "{n} lidos do cache",
+    average: "Custo médio / turno",
+    avgTime: "Tempo médio do turno",
+    successRate: "{rate} de sucesso",
+    unknown: "—",
+    openCard: "Abrir {card}",
+    chart: "{card}, últimos 7 dias: {values}",
+    noHosts: "Nenhum host conectado ainda.",
+    partial: "Alguns hosts não responderam: {hosts}.",
+    olderDaemon: "Turnos com falha e tempo do turno pedem um daemon com os contadores do Início.",
+  },
   hosts: {
     status: {
       online: "online",

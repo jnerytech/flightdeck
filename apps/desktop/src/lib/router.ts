@@ -7,6 +7,8 @@ import type { ActionSeed } from "./snippets.ts";
 export type Route =
   /** The selected session, the new-session form of the selected host, or the hub. */
   | { name: "home" }
+  /** Home (issue #123): the last seven days of every host in four cards. */
+  | { name: "overview" }
   /** `project`: the hub shows only the sessions of that project, with a chip to clear it. */
   | { name: "hub"; project?: { hostId: string; projectKey: string; name: string } }
   /** What an area with no tab shows: where to begin. Never kept as a tab. */
@@ -133,6 +135,7 @@ export class Router {
 const NAMES: Record<Route["name"], true> = {
   start: true,
   home: true,
+  overview: true,
   hub: true,
   "needs-you": true,
   session: true,
