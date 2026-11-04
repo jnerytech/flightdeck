@@ -720,6 +720,8 @@ export class AppStore {
   private offTrayAction: (() => void) | null = null;
   private readonly openRequestListeners = new Set<(item: PendingItem) => void>();
 
+  private stopWake: (() => void) | null = null;
+
   constructor(
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
@@ -929,6 +931,7 @@ export class AppStore {
     this.update({ inbox: loadInbox(this.platform.storage) });
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
+    this.listenForWake();
     this.theme.start();
     this.i18n.start();
     this.update({
@@ -2032,7 +2035,33 @@ export class AppStore {
     );
   }
 
+  /** The window coming back or the network returning is the moment to try the offline hosts. */
+  private listenForWake(): void {
+    // `window` when there is one (a browser, the webview); the runtime's own global is not where its events go.
+    const target = (typeof window !== "undefined"
+      ? window
+      : globalThis) as unknown as Partial<Window>;
+    if (typeof target.addEventListener !== "function") return;
+    const wake = () => {
+      for (const conn of this.connections.values()) conn.wake();
+    };
+    const visible = () => {
+      if (typeof document === "undefined" || document.visibilityState !== "hidden") wake();
+    };
+    target.addEventListener("online", wake);
+    target.addEventListener("focus", wake);
+    if (typeof document !== "undefined") document.addEventListener("visibilitychange", visible);
+    this.stopWake = () => {
+      target.removeEventListener?.("online", wake);
+      target.removeEventListener?.("focus", wake);
+      if (typeof document !== "undefined")
+        document.removeEventListener("visibilitychange", visible);
+    };
+  }
+
   dispose(): void {
+    this.stopWake?.();
+    this.stopWake = null;
     if (this.peersTimer) clearInterval(this.peersTimer);
     this.peersTimer = null;
     for (const conn of this.connections.values()) conn.dispose();

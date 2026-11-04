@@ -2438,7 +2438,8 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
   conexão dizem "Host desconectado" em vez de "consultando…". Para uma conexão recusada em um host
   local, WSL ou Linux, o aviso lista os comandos para conferir o daemon
   (`systemctl --user status flightdeckd`, `sudo loginctl enable-linger $USER` e `systemd=true` em
-  `/etc/wsl.conf` no WSL).
+  `/etc/wsl.conf` no WSL). O app também tenta um host desconectado na hora, e reinicia a contagem,
+  quando a janela volta a ter o foco ou a rede volta (no máximo uma vez a cada 2 segundos).
 - **Notificações** trazem o nome do host.
 - **Fechar a janela** manda o app para a bandeja (desligável em Configurações). **Iniciar com o
   Windows** fica em Configurações, desligado por padrão.

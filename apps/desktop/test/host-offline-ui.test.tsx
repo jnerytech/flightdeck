@@ -98,9 +98,9 @@ describe("host-offline-ui", () => {
   test("the window regaining focus or the network coming back tries the offline host at once", async () => {
     const store = await offlineHost();
     for (const fire of [
-      () => window.dispatchEvent(new Event("online")),
-      () => window.dispatchEvent(new Event("focus")),
-      () => document.dispatchEvent(new Event("visibilitychange")),
+      () => window.dispatchEvent(new window.Event("online")),
+      () => window.dispatchEvent(new window.Event("focus")),
+      () => document.dispatchEvent(new window.Event("visibilitychange")),
     ]) {
       // Past the debounce, as a person coming back minutes later would be.
       await act(async () => {

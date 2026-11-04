@@ -78,6 +78,9 @@ export class RequestError extends Error {
   }
 }
 
+/** Wake-ups closer than this to the last one that acted are ignored. */
+const WAKE_DEBOUNCE_MS = 2000;
+
 export interface HostConnectionOptions {
   url: string;
   token: string;
@@ -160,6 +163,7 @@ export class HostConnection {
   /** When the current try started, and whether the watchdog (not the socket) ended it. */
   private triedAt = 0;
   private gaveUp = false;
+  private lastWake = Number.NEGATIVE_INFINITY;
   private ws: WebSocket | null = null;
   private attempt = 0;
   private nextId = 0;
@@ -296,7 +300,16 @@ export class HostConnection {
    * The window came back or the network did: if the host is waiting out a backoff, try now and
    * start the backoff over. A connection that is online or already trying is left alone.
    */
-  wake(): void {}
+  wake(): void {
+    if (this.disposed || this.status !== "offline") return;
+    const now = Date.now();
+    if (now - this.lastWake < (this.opts.wakeDebounceMs ?? WAKE_DEBOUNCE_MS)) return;
+    this.lastWake = now;
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+    this.attempt = 0;
+    this.connect();
+  }
 
   /** Sends a command once online; rejects with code `offline` otherwise. */
   request<T extends CommandType>(type: T, payload: CommandPayload<T>): Promise<CommandResults[T]> {

@@ -3450,3 +3450,8 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 - **PATH on Linux and macOS.** `setup` appends `export PATH="<home>/.flightdeck/bin:$PATH"` to `~/.profile`, once (it looks
   for the exact line first), keeping the rest of the file, and prints the line instead when it cannot write. A shell that reads
   only `~/.bashrc` or `~/.zprofile` still needs a new login; the output says to open a new terminal.
+- **Retry on wake-up.** The window gaining focus, the page becoming visible and the browser's `online` event call `wake()` on
+  each connection. It acts only on a connection that is waiting out a backoff (`offline`), clears the timer, restarts the
+  backoff from the first delay and connects at once; a connection that is online or already trying is left alone. A wake-up
+  within 2 s of the last one that acted is ignored, so focus spam cannot storm a host. The listeners are set in `init()` (it
+  begins with `dispose()`), not in the constructor, which would be undone by it.
