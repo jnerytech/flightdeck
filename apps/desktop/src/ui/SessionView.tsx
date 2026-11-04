@@ -288,6 +288,13 @@ export function SessionView(props: SessionViewProps) {
   const lastSeq = props.session.items.at(-1)?.seq ?? 0;
   const firstSeq = props.session.items[0]?.seq ?? 0;
   const lastHeight = useRef(0);
+  // Where the view itself last put the scroll: the scroll event of that move says nothing about the
+  // reader, and by the time it is delivered the layout may have grown (a panel, a code block).
+  const pinnedTop = useRef<number | null>(null);
+  const pin = (box: HTMLElement) => {
+    box.scrollTop = box.scrollHeight;
+    pinnedTop.current = box.scrollTop;
+  };
   const lastFirst = useRef(firstSeq);
   const scrollKey = props.scrollKey;
   const lastSeqRef = useRef(lastSeq);
@@ -307,7 +314,7 @@ export function SessionView(props: SessionViewProps) {
   useLayoutEffect(() => {
     const box = timeline.current;
     if (!box) return;
-    if (following.current) box.scrollTop = box.scrollHeight;
+    if (following.current) pin(box);
     else if (firstSeq < lastFirst.current) {
       // Older messages came in above what is being read: the view stays on the same message.
       box.scrollTop += box.scrollHeight - lastHeight.current;
@@ -322,7 +329,7 @@ export function SessionView(props: SessionViewProps) {
     const box = timeline.current;
     if (!box || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
-      if (following.current) box.scrollTop = box.scrollHeight;
+      if (following.current) pin(box);
       lastHeight.current = box.scrollHeight;
     });
     observer.observe(box);
@@ -555,6 +562,9 @@ export function SessionView(props: SessionViewProps) {
           ref={timeline}
           onScroll={(e) => {
             const box = e.currentTarget;
+            const own = pinnedTop.current === box.scrollTop;
+            pinnedTop.current = null;
+            if (own && following.current) return;
             const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight <= END_SLACK;
             following.current = atEnd;
             lastHeight.current = box.scrollHeight;
