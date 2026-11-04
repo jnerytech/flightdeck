@@ -43,6 +43,7 @@ export const en: Dictionary = {
       tailscale: "Tailscale",
       version: "Version",
       templates: "Templates",
+      mcp: "Team tools",
     },
     steps: {
       config: "Run flightdeckd setup on the host to redo the configuration.",
@@ -55,6 +56,7 @@ export const en: Dictionary = {
       version: "Update the daemon with the update button on this page.",
       templates:
         "Fix or remove the template files named above, in the templates folder of the host.",
+      mcp: "Run flightdeckd setup on the host to put the daemon back where sessions expect it.",
     },
   },
   findProjects: {

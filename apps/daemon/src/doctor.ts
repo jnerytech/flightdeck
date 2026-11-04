@@ -151,6 +151,21 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
     );
   }
 
+  const mcp = await deps.mcp?.();
+  if (mcp) {
+    checks.push(
+      mcp.exists
+        ? check("mcp", "mcp", "ok", mcp.command)
+        : check(
+            "mcp",
+            "mcp",
+            "warn",
+            `${mcp.command} is gone: sessions start without the team tools (send_to_session, list_sessions)`,
+            SETUP,
+          ),
+    );
+  }
+
   const hooks = await deps.hooks();
   checks.push(
     hooks === "installed"

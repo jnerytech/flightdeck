@@ -6,8 +6,8 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { runDoctor } from "../src/doctor.ts";
 import { Idle } from "../src/messaging/idle.ts";
-import { flightdeckMcpServer } from "../src/runtime/flightdeck-mcp.ts";
 import { ClaudeSdkRuntime, type QueryFn } from "../src/runtime/claude-sdk-runtime.ts";
+import { type FlightdeckMcpServer, flightdeckMcpServer } from "../src/runtime/flightdeck-mcp.ts";
 import { startServer } from "../src/server.ts";
 import { newManager, tempDir } from "./helpers.ts";
 import { setup } from "./mensagens-helpers.ts";
@@ -23,11 +23,7 @@ afterEach(async () => {
 
 /** Starts a run and returns the options the SDK would have received. */
 function startedWith(
-  mcpServer: ConstructorParameters<typeof ClaudeSdkRuntime>[0] extends infer O
-    ? O extends { mcpServer?: infer M }
-      ? M
-      : never
-    : never,
+  mcpServer: FlightdeckMcpServer | undefined,
   permissionMode: "default" | "acceptEdits" | "plan",
   sessionId = "s1",
 ): Options {
@@ -132,7 +128,7 @@ describe("mcp-sessoes", () => {
       file,
       JSON.stringify({ token: TOKEN, port: server.port, dataDir: join(tempDir(), "data") }),
     );
-    const main = join(import.meta.dir, "..", "src", "main.ts");
+    const main = join(import.meta.dir, "..", "src", "bin.ts");
     const given = startedWith(
       flightdeckMcpServer([process.execPath, "run", main], file),
       "default",
@@ -141,6 +137,7 @@ describe("mcp-sessoes", () => {
     const transport = new StdioClientTransport({
       command: given.command,
       args: given.args,
+      cwd: tempDir(),
       env: { PATH: process.env.PATH ?? "", HOME: tempDir(), ...given.env },
     });
     const client = new Client({ name: "teste", version: "1.0.0" });
@@ -161,7 +158,7 @@ describe("mcp-sessoes", () => {
     });
     const text = (sent.content as Array<{ text?: string }>)[0]?.text ?? "";
     expect(sent.isError).toBeFalsy();
-    expect(JSON.parse(text)).toMatchObject({ delivered: true });
+    expect(JSON.parse(text)).toMatchObject({ resultado: "entregue" });
   });
 
   test("doctor: the MCP server of sessions starts, or says the one line that fixes it", async () => {

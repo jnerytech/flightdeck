@@ -5,6 +5,7 @@ export interface FlightdeckMcpServer {
 }
 
 /** `flightdeckd mcp` for this daemon: the same binary (or `bun run <main>`) and the same config file. */
-export function flightdeckMcpServer(_self: string[], _configFile: string): FlightdeckMcpServer {
-  return { command: "", args: [] };
+export function flightdeckMcpServer(self: string[], configFile: string): FlightdeckMcpServer {
+  const [command = "", ...rest] = self;
+  return { command, args: [...rest, "mcp", "--config", configFile] };
 }

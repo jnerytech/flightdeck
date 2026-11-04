@@ -1146,6 +1146,12 @@ app. Para registrar no Claude Code:
 claude mcp add flightdeck -- flightdeckd mcp
 ```
 
+As sessões que o próprio Flightdeck abre (coordenadora e executoras de um time, cartões do quadro e
+sessões comuns) já recebem esse servidor, sem configurar nada: o daemon o junta à sessão, ao lado
+dos seus servidores MCP. O comando acima só é preciso para um `claude` aberto num terminal fora do
+Flightdeck. A linha "Ferramentas do time" do Doutor avisa quando o programa do daemon não está mais
+onde as sessões esperam.
+
 ## Histórico
 
 O daemon de cada host indexa os transcripts do Claude Code desse host, inclusive as sessões que
