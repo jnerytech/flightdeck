@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
-import { startDaemon } from "../src/main.ts";
+import { type CliDeps, runCli, startDaemon } from "../src/main.ts";
 import type { ServiceContext } from "../src/service.ts";
 import { poll, tempDir } from "./helpers.ts";
 
@@ -70,5 +70,88 @@ describe("cobertura-0361: the doctor of a running daemon asks the service manage
       status: "fail",
       fix: "run: sudo loginctl enable-linger $USER",
     });
+  });
+});
+
+/** What the CLI needs to run `doctor` or `setup` on a Linux machine of its own, asking nothing real. */
+function cliOn(home: string, lines: string[], extra: Partial<CliDeps> = {}): CliDeps {
+  return {
+    env: {},
+    log: { log: (m) => lines.push(m), error: (m) => lines.push(m) },
+    exit: () => {},
+    onSignal: () => {},
+    exec: async () => ({ code: 1, stdout: "" }),
+    serviceContext: (dryRun) => ({
+      platform: "linux",
+      home,
+      user: "u",
+      command: [join(home, "flightdeckd")],
+      systemRoot: "",
+      tempDir: home,
+      dryRun,
+      exec: async (cmd) => ({
+        code: 0,
+        stdout: cmd.includes("loginctl") ? "Linger=no\n" : "ExecStart=/h/flightdeckd start\n",
+      }),
+      writeFile: () => {},
+      removeFile: () => {},
+      which: () => null,
+    }),
+    ...extra,
+  };
+}
+
+describe("cobertura-0361: the CLI's own wiring", () => {
+  test("doctor says the program the sessions' MCP server runs is gone when it is not there", async () => {
+    const dir = tempDir("fd-cob-0361-doctor-");
+    const file = join(dir, "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({ token: "t".repeat(32), dataDir: dir, port: 1, allowedRoots: [dir] }),
+    );
+    const lines: string[] = [];
+    await runCli(
+      ["doctor", "--config", file],
+      cliOn(dir, lines, { selfCommand: [join(dir, "gone", "flightdeckd")] }),
+    );
+    expect(lines.join("\n")).toMatch(/WARN\s+mcp\s+.*gone/);
+  });
+
+  test("setup puts the binary in place, adds it to the PATH through ~/.profile it could not read, and warns about linger", async () => {
+    const dir = tempDir("fd-cob-0361-setup-");
+    const home = join(dir, "home");
+    mkdirSync(home);
+    const binary = join(dir, "flightdeckd-copy");
+    writeFileSync(binary, "#!/bin/sh\n");
+    const alive = Bun.serve({
+      port: 0,
+      hostname: "127.0.0.1",
+      fetch: () => Response.json({ ok: true }),
+    });
+    stops.push(async () => void alive.stop(true));
+    const file = join(dir, "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({
+        hostName: "h",
+        bind: "127.0.0.1",
+        port: alive.port,
+        token: "t".repeat(32),
+        dataDir: join(dir, "data"),
+        allowedRoots: [],
+      }),
+    );
+    const lines: string[] = [];
+    await runCli(
+      ["setup", "--yes", "--folders", dir, "--config", file],
+      cliOn(home, lines, {
+        selfCommand: [binary],
+        stdin: new ReadableStream({ start: (c) => c.close() }),
+        serviceHealthTimeoutMs: 5000,
+      }),
+    );
+    const text = lines.join("\n");
+    expect(text).toContain(".profile");
+    expect(text).toContain("WARNING: linger is off");
   });
 });
