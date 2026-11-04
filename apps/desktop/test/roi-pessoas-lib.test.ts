@@ -81,15 +81,15 @@ describe("roi-pessoas-ui: the rows", () => {
 });
 
 describe("roi-pessoas-ui: reading a token count", () => {
-  test("plain under a thousand, thousands, millions, trimmed to two decimals", () => {
+  test("plain under a thousand, thousands, millions from a hundred thousand, trimmed to two decimals", () => {
     expect(humanTokens(0)).toEqual({ unit: "plain", value: "0" });
     expect(humanTokens(950)).toEqual({ unit: "plain", value: "950" });
     expect(humanTokens(1_000)).toEqual({ unit: "thousand", value: "1" });
     expect(humanTokens(12_340)).toEqual({ unit: "thousand", value: "12.34" });
-    expect(humanTokens(999_999)).toEqual({ unit: "thousand", value: "1000" });
-    expect(humanTokens(5_000_000)).toEqual({ unit: "million", value: "5" });
+    expect(humanTokens(99_999)).toEqual({ unit: "thousand", value: "100" });
+    expect(humanTokens(100_000)).toEqual({ unit: "million", value: "0.1" });
+    expect(humanTokens(442_857)).toEqual({ unit: "million", value: "0.44" });
     expect(humanTokens(3_100_000)).toEqual({ unit: "million", value: "3.1" });
-    expect(humanTokens(442_857)).toEqual({ unit: "thousand", value: "442.86" });
-    expect(humanTokens(2_999_999)).toEqual({ unit: "million", value: "3" });
+    expect(humanTokens(5_000_000)).toEqual({ unit: "million", value: "5" });
   });
 });

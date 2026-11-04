@@ -28,7 +28,13 @@ const utcDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 /** A host that used 3.1 million tokens this month and delivered 7 cards, 4 of them as merged PRs. */
 async function costsPage(
   lang: "en" | "pt-BR",
-  people: Array<{ name: string; tokenLimit?: number | null; costLimit?: number | null }>,
+  people: Array<{
+    name: string;
+    tokenLimit?: number | null;
+    costLimit?: number | null;
+    /** A person with none of the host's: a host belongs to one person only. */
+    noHost?: boolean;
+  }>,
   work = { tokens: 3_100_000, merged: 4, completed: 3 },
   options: Parameters<typeof makeDaemon>[1] = {},
 ) {
@@ -68,7 +74,9 @@ async function costsPage(
         .run("2026-10-10T12:00:00Z", via, card.id);
     }
   }
-  for (const person of people) store.roi.addPerson({ ...person, hostIds: [hostId] });
+  for (const { noHost, ...person } of people) {
+    store.roi.addPerson({ ...person, hostIds: noHost ? [] : [hostId] });
+  }
   await act(async () => {
     store.router.push({ name: "costs" });
   });
@@ -125,7 +133,7 @@ for (const [lang, t] of [
     });
 
     test("people are listed by name, not by delivery, and the page says it is not a ranking", async () => {
-      await costsPage(lang, [{ name: "Zed" }, { name: "Ana" }]);
+      await costsPage(lang, [{ name: "Zed" }, { name: "Ana", noHost: true }]);
       await settle(() => peopleTable(T) !== null);
       const names = within(peopleTable(T) as HTMLElement)
         .getAllByRole("rowheader")
