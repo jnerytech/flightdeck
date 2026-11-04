@@ -15,6 +15,7 @@ import { Children, type ReactNode, useState } from "react";
 import { ClientSwitcher } from "@/components/clients/client-switcher";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
+import { AccountFooter } from "@/components/shell/account-footer";
 import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
@@ -233,6 +234,11 @@ export function Sidebar(
     if (navHost) go(build(navHost.id));
   };
 
+  /** The Claude account the foot shows: the first host with a name, else the first with any. */
+  const account =
+    state.hosts.map((host) => state.account[host.id]).find((a) => a?.name) ??
+    state.hosts.map((host) => state.account[host.id]).find((a) => a) ??
+    null;
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: the double click only repeats what a click on an item already did
     <div
@@ -584,17 +590,17 @@ export function Sidebar(
           onClick={props.onOpenSearch}
           tail={<ShortcutKeys keys={["Mod", "K"]} className="text-muted-foreground" />}
         />
-        <NavButton
+        <AccountFooter
+          account={account}
           collapsed={collapsed}
-          icon={<NavIcon name="settings" aria-hidden="true" className={icon} />}
-          label={t("sidebar.settings")}
-          onClick={() => go({ name: "settings" })}
-        />
-        <NavButton
-          collapsed={collapsed}
-          icon={<SunMoon aria-hidden="true" className={icon} />}
-          label={t("sidebar.theme")}
-          onClick={props.onToggleTheme}
+          t={t}
+          go={go}
+          onToggleTheme={props.onToggleTheme}
+          onOpenManual={() =>
+            void props.store.openLink(
+              `https://github.com/jnerytech/flightdeck/blob/main/docs/manual/${t.lang === "pt-BR" ? "pt-BR" : "en"}.md`,
+            )
+          }
         />
         {props.onSimpleMode && (
           <NavButton

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { poll } from "../../daemon/test/helpers.ts";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { uiIdle, waiter } from "./wait.ts";
@@ -98,8 +99,11 @@ describe("direcao-visual: barra lateral", () => {
     // Search with its shortcut, settings and the theme button close the bar.
     const search = inAside().queryByRole("button", { name: "Buscar no histórico (Ctrl+K)" });
     expect(search?.querySelector("kbd")?.textContent).toBe("Ctrl+K");
-    expect(inAside().queryByRole("button", { name: "Configurações" })).not.toBeNull();
-    expect(inAside().queryByRole("button", { name: "Alternar tema" })).not.toBeNull();
+    expect(
+      inAside()
+        .queryByRole("button", { name: /^Menu da conta de / })
+        ?.getAttribute("data-slot"),
+    ).toBe("account-trigger");
   });
 
   test("o contador de Precisa de você só aparece quando há pedidos", async () => {
@@ -127,7 +131,8 @@ describe("direcao-visual: barra lateral", () => {
     expect(await go("Board")).toBe("projects");
     expect(await go("Workflows")).toBe("projects");
     expect(await go("Abrir Sessões")).toBe("hub");
-    expect(await go("Configurações")).toBe("settings");
+    await chooseFromAccountMenu("Configurações");
+    expect(store.router.current.name).toBe("settings");
   });
 
   test("Hosts recolhe; cada host tem pontinho de estado, nome e menu", async () => {
@@ -194,7 +199,7 @@ describe("direcao-visual: barra lateral", () => {
     await click(inAside().queryByRole("button", { name: "Buscar no histórico (Ctrl+K)" }));
     expect(store.getState().searchOpen).toBe(true);
     const before = store.theme.resolved;
-    await click(inAside().queryByRole("button", { name: "Alternar tema" }));
+    await chooseFromAccountMenu("Alternar tema");
     expect(store.theme.resolved).not.toBe(before);
   });
 
@@ -210,7 +215,7 @@ describe("direcao-visual: barra lateral", () => {
       inAside().queryByRole("button", { name: "Abrir Sessões" })?.getAttribute("title"),
     ).toBeNull();
     expect(inAside().queryByRole("button", { name: /^Precisa de você/ })).not.toBeNull();
-    expect(inAside().queryByRole("button", { name: "Configurações" })).not.toBeNull();
+    expect(inAside().queryByRole("button", { name: /^Menu da conta de / })).not.toBeNull();
     // A host is just its dot, which still opens the host.
     await click(inAside().queryByRole("button", { name: "Abrir host alfa" }));
     expect(store.router.current.name).toBe("host");
