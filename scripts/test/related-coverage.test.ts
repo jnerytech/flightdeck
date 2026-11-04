@@ -152,11 +152,9 @@ describe("related-coverage: the plan of test:related with coverage", () => {
     const result = plan(["apps/daemon/src/a.ts"], "/tmp/cov");
     expect(result.command).toEqual([
       "bun",
-      "--config=bunfig.area.toml",
+      "--config=bunfig.related.toml",
       "test",
       "--timeout=15000",
-      "--coverage",
-      "--coverage-reporter=lcov",
       "--coverage-dir=/tmp/cov",
       "./apps/daemon/test/a.test.ts",
     ]);
@@ -172,7 +170,8 @@ describe("related-coverage: the plan of test:related with coverage", () => {
 
   test("without a coverage dir the plan is the one it always was", () => {
     const result = plan(["apps/daemon/src/a.ts"]);
-    expect(result.command).not.toContain("--coverage");
+    expect(result.command).not.toContain("--coverage-dir=/tmp/cov");
+    expect(result.command?.[1]).toBe("--config=bunfig.area.toml");
     expect(result.targets).toBeUndefined();
   });
 });
