@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { colorOf, contrast, tokensOf } from "../lib/theme-contrast.ts";
+import { colorOf, contrast, oklchOf, tokensOf } from "../lib/theme-contrast.ts";
 
 const css = readFileSync(resolve(import.meta.dir, "../../apps/desktop/src/styles.css"), "utf8");
 
@@ -72,6 +72,45 @@ describe("theme-contrast: the dark theme's surfaces and lines (issue #98)", () =
         surface,
         true,
       ]);
+    }
+  });
+});
+
+describe("theme-contrast: warm neutrals (issue #119)", () => {
+  const NEUTRALS = [
+    "--background",
+    "--surface-1",
+    "--surface-2",
+    "--popover",
+    "--foreground",
+    "--muted-foreground",
+    "--border",
+    "--input",
+    "--sidebar",
+    "--sidebar-border",
+  ];
+
+  test("oklchOf reads the parts of a token, through var()", () => {
+    const vars = new Map([
+      ["--a", "oklch(0.5 0.01 75)"],
+      ["--b", "var(--a)"],
+    ]);
+    expect(oklchOf("var(--b)", vars)).toEqual({ l: 0.5, c: 0.01, h: 75 });
+    expect(oklchOf("oklch(1 0 0 / 6%)", vars)).toBeNull();
+    expect(oklchOf(undefined, vars)).toBeNull();
+  });
+
+  test("the surfaces, lines and text of both themes lean warm (hue 50 to 100) with very little chroma", () => {
+    for (const selector of [":root", ".dark"]) {
+      const vars = new Map([...tokensOf(css, ":root"), ...tokensOf(css, selector)]);
+      for (const name of NEUTRALS) {
+        const parts = oklchOf(vars.get(name), vars);
+        // Light lines are translucent black: nothing to read a hue from, and nothing cool either.
+        if (!parts) continue;
+        const where = `${selector} ${name}`;
+        expect([where, (parts.h >= 50 && parts.h <= 100) || parts.c === 0]).toEqual([where, true]);
+        expect([where, parts.c <= 0.02]).toEqual([where, true]);
+      }
     }
   });
 });

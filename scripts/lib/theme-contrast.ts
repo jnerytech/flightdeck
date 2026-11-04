@@ -51,3 +51,16 @@ export function contrast(a: Rgb, b: Rgb): number {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
   return (hi + 0.05) / (lo + 0.05);
 }
+
+/** The L, C and H of an opaque `oklch(L C H)` token (following `var()`), or null. */
+export function oklchOf(
+  value: string | undefined,
+  vars: ReadonlyMap<string, string>,
+  depth = 0,
+): { l: number; c: number; h: number } | null {
+  if (value === undefined || depth > 4) return null;
+  const ref = /^var\((--[\w-]+)\)$/.exec(value);
+  if (ref) return oklchOf(vars.get(ref[1] as string), vars, depth + 1);
+  const m = OKLCH.exec(value);
+  return m ? { l: Number(m[1]), c: Number(m[2]), h: Number(m[3]) } : null;
+}
