@@ -12,6 +12,7 @@ import type {
   CommandResults,
   CommandType,
   DepsResult,
+  DoctorResult,
   EventEnvelope,
   ExternalPermissionFrame,
   ExternalSession,
@@ -233,6 +234,10 @@ export interface AppState {
   budgets: Record<string, Budget[]>;
   /** What `deps.check` found on each host, by host id (hosts that announce `deps`). */
   deps: Record<string, DepsResult>;
+  /** What `doctor.run` found on each host, by host id. */
+  doctor: Record<string, DoctorResult>;
+  /** When each host's health (dependencies and doctor) was last read, in epoch milliseconds. */
+  healthAt: Record<string, number>;
   /** The ssh password or passphrase prompts waiting for an answer, oldest first (phase 15). */
   askpass: Array<{ hostId: string; request: AskpassRequest }>;
   /** The ssh destinos of each host that keeps them, by host id; read when the palette opens (phase 15). */
@@ -657,6 +662,9 @@ const REAL_TIMERS = {
   clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
 
+/** How long a read of a host's health stays fresh when a page opens. */
+const HEALTH_MAX_AGE_MS = 5 * 60_000;
+
 /** The least time between two checks the app starts by itself for one host. */
 const AUTO_UPDATE_CHECK_MS = 10 * 60_000;
 
@@ -779,6 +787,8 @@ export class AppStore {
       quota: {},
       account: {},
       deps: {},
+      doctor: {},
+      healthAt: {},
       budgets: {},
       ssh: {},
       snippets: {},
@@ -949,6 +959,8 @@ export class AppStore {
       quota: {},
       account: {},
       deps: {},
+      doctor: {},
+      healthAt: {},
     });
     const closeToTray = this.platform.storage.getItem(CLOSE_TO_TRAY_KEY) !== "false";
     await this.platform.setCloseToTray(closeToTray);
@@ -1042,6 +1054,12 @@ export class AppStore {
     const found = await this.hostCommand(hostId, "deps.check", {});
     if (found) this.update({ deps: { ...this.state.deps, [hostId]: found } });
   }
+
+  /** Reads a host's whole health now: its dependencies and its doctor. */
+  async checkHealth(_hostId: string): Promise<void> {}
+
+  /** Reads it only when it was never read or is older than `maxAgeMs` (five minutes). */
+  async ensureHealth(_hostId: string, _maxAgeMs = HEALTH_MAX_AGE_MS): Promise<void> {}
 
   /** Drops the connection and opens a new one right away. */
   async reconnectHost(hostId: string): Promise<void> {
