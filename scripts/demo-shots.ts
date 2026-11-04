@@ -12,6 +12,7 @@ import type { Route } from "../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "./demo-seed.ts";
 import { AXE_RUN_OPTIONS, type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
 import { launchFirst } from "./lib/browser.ts";
+import { type Rgb, themeProblem } from "./lib/print-theme.ts";
 import { PENDING_SELECTOR } from "./lib/shots-loaded.ts";
 import { type VisualMode, VOLATILE_RULES } from "./lib/visual.ts";
 
@@ -489,6 +490,22 @@ async function stabilize(page: Page): Promise<void> {
   );
 }
 
+/**
+ * Runs in the page: the page's background as sRGB, whatever CSS color syntax computes to (oklch,
+ * color-mix...), read back from a canvas pixel.
+ */
+function pageBackground(): Rgb {
+  const style = getComputedStyle(document.body);
+  const paint = style.backgroundColor === "rgba(0, 0, 0, 0)" ? "white" : style.backgroundColor;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 1;
+  const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+  ctx.fillStyle = paint;
+  ctx.fillRect(0, 0, 1, 1);
+  const [r = 255, g = 255, b = 255] = ctx.getImageData(0, 0, 1, 1).data;
+  return [r, g, b];
+}
+
 export async function takeShots(
   url: string,
   ids: DemoIds,
@@ -569,6 +586,13 @@ export async function takeShots(
               ? {}
               : { animations: "disabled" as const, caret: "hide" as const }),
           });
+          // A dark print that came out light is a broken print, not a pretty one.
+          const mismatch = themeProblem(
+            theme,
+            `${theme} ${lang} ${shot.name}`,
+            await page.evaluate(pageBackground),
+          );
+          if (mismatch) problems.push(mismatch);
           // The same screen, checked for accessibility: serious and critical violations fail.
           await page.addScriptTag({ path: AXE });
           const found = await page.evaluate(
@@ -598,7 +622,7 @@ export async function takeShots(
   }
   if (problems.length > 0) {
     throw new Error(
-      `axe: ${problems.length} violações serious ou critical\n${problems.join("\n")}`,
+      `prints: ${problems.length} problems (axe serious or critical, or a background that does not match the theme)\n${problems.join("\n")}`,
     );
   }
   return SHOTS_DIR;
