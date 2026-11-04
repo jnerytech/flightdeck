@@ -161,6 +161,25 @@ export const ptBR = {
     logTitleChanged: "O título mudou no quadro (era “{lost}”).",
   },
   roiUi: {
+    people: {
+      title: "Tokens contra entrega, por pessoa",
+      person: "Pessoa",
+      used: "Usado no mês",
+      delivered: "Entregue no mês",
+      perCard: "Tokens por card",
+      shareOfLimit: "{share}% de {limit} usados",
+      noLimit: "{used} usados",
+      cards: { one: "{n} card", other: "{n} cards" },
+      prs: { one: "{n} PR", other: "{n} PRs" },
+      tokens: {
+        plain: "{n} tokens",
+        thousand: "{n} mil tokens",
+        million: "{n} milhões de tokens",
+      },
+      note: "Hosts não são pessoas, e custo e entrega são correlacionados. É uma visão, não um ranking: as pessoas aparecem por nome.",
+      empty:
+        "Nenhuma pessoa configurada. Agrupe hosts em uma pessoa nas configurações de Custos para ver esta tabela.",
+    },
     tableTitle: "Retorno sobre o custo por projeto",
     table: {
       project: "Projeto",

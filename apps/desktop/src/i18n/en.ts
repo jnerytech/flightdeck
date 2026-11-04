@@ -159,6 +159,25 @@ export const en: Dictionary = {
     logTitleChanged: "The title changed on the board (it was “{lost}”).",
   },
   roiUi: {
+    people: {
+      title: "Tokens against delivery, by person",
+      person: "Person",
+      used: "Used this month",
+      delivered: "Delivered this month",
+      perCard: "Tokens per card",
+      shareOfLimit: "{share}% of {limit} used",
+      noLimit: "{used} used",
+      cards: { one: "{n} card", other: "{n} cards" },
+      prs: { one: "{n} PR", other: "{n} PRs" },
+      tokens: {
+        plain: "{n} tokens",
+        thousand: "{n} thousand tokens",
+        million: "{n} million tokens",
+      },
+      note: "Hosts are not people, and cost and delivery are correlated. This is a view, not a ranking: the people are listed by name.",
+      empty:
+        "No person is set up. Group hosts into a person in the Costs settings to see this table.",
+    },
     tableTitle: "Return on cost by project",
     table: {
       project: "Project",
