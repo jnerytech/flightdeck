@@ -33,6 +33,7 @@ import {
   type WorkflowRun,
 } from "@flightdeck/protocol";
 import { backoffDelay } from "./backoff.ts";
+import type { RetryState } from "./host-offline.ts";
 
 /** Fire-and-forget commands: failures surface through the connection status instead. */
 const ignore = () => {};
@@ -152,6 +153,8 @@ export class HostConnection {
   incompatibility: string | null = null;
   /** Round trip of the last heartbeat, as measured by the daemon. */
   latencyMs: number | null = null;
+  /** Set while the host is offline and a try is scheduled; `null` otherwise. */
+  retry: RetryState | null = null;
   private ws: WebSocket | null = null;
   private attempt = 0;
   private nextId = 0;

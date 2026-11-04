@@ -89,6 +89,7 @@ import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostNameError, hostNameError } from "./host-name.ts";
+import type { RetryState } from "./host-offline.ts";
 import { type HostConfig, loadHosts, saveHosts } from "./hosts.ts";
 import {
   type HubFilter,
@@ -177,6 +178,10 @@ export interface HostView extends HostConfig {
   info: HelloResult | null;
   /** From `host.info`, fetched on each connect; `null` until then or on daemons without it. */
   hostInfo: HostInfoResult | null;
+  /** When `hostInfo` arrived (epoch ms), so its uptime can be aged. */
+  infoAt: number;
+  /** The last failed try and the next one, while the host is offline. */
+  retry: RetryState | null;
   /** Why the daemon refused this app's protocol, while `status` is `incompatible`. */
   incompatibility: string | null;
   /** Phase 9: an update of the daemon asked from the app, until it comes back on `target`. */
@@ -654,6 +659,8 @@ const newHostView = (config: HostConfig): HostView => ({
   status: "offline",
   info: null,
   hostInfo: null,
+  infoAt: 0,
+  retry: null,
   incompatibility: null,
   daemonUpdate: null,
   updateCheck: null,
@@ -2199,6 +2206,7 @@ export class AppStore {
       status,
       info: conn.info,
       incompatibility: conn.incompatibility,
+      retry: conn.retry,
     }));
     if (status === "online") {
       void this.loadHostInfo(hostId, conn);

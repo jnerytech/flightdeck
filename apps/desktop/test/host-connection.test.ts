@@ -120,6 +120,40 @@ describe("desktop: conexão com o host", () => {
     conn.unsubscribe("qualquer");
   });
 
+  test("an unreachable host carries what failed, when it was tried and when the next try is due", async () => {
+    const before = Date.now();
+    const { conn } = connect("ws://127.0.0.1:1/v1/ws");
+    await waitFor(() => conn.retry !== null, "retry state");
+    const retry = conn.retry;
+    expect(retry?.kind).toBe("refused");
+    expect(retry?.lastTryAt).toBeGreaterThanOrEqual(before);
+    expect(retry?.lastTryAt).toBeLessThanOrEqual(Date.now());
+    // The first delay is the base one (10 ms here).
+    expect((retry?.nextRetryAt ?? 0) - (retry?.lastTryAt ?? 0)).toBeGreaterThanOrEqual(10);
+    expect((retry?.nextRetryAt ?? 0) - (retry?.lastTryAt ?? 0)).toBeLessThanOrEqual(40);
+  });
+
+  test("a link that drops after being online is lost, and coming back online clears the state", async () => {
+    const { listen } = daemon();
+    const first = listen();
+    const { conn } = connect(first.url);
+    await waitFor(() => conn.status === "online", "online");
+    expect(conn.retry).toBeNull();
+    await first.stop();
+    await waitFor(() => conn.retry !== null, "retry state");
+    expect(conn.retry?.kind).toBe("lost");
+    listen(first.port);
+    await waitFor(() => conn.status === "online", "back online");
+    expect(conn.retry).toBeNull();
+  });
+
+  test("a hello that is never answered is a timeout", async () => {
+    const { conn } = connect(quietHost(undefined, { ackHello: false }), TOKEN, {
+      connectTimeoutMs: 80,
+    });
+    await waitFor(() => conn.retry?.kind === "timeout", "timeout state");
+  });
+
   /** A host that acks `hello` and then says nothing but what `speak` sends: a half-open link. */
   function quietHost(
     speak?: (send: (frame: unknown) => void) => void,
