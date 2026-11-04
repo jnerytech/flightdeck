@@ -8,6 +8,7 @@ import { poll } from "../../daemon/test/helpers.ts";
 import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
 import { seedDemoHosts } from "../src/demo/boot.ts";
 import { Router } from "../src/lib/router.ts";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
@@ -138,7 +139,7 @@ describe("navegacao", () => {
 
   test("abrir um pedido fecha Configurações (sem beco sem saída); Alt+←, Alt+→, botões do mouse e Voltar", async () => {
     await setup();
-    await click("Configurações");
+    await chooseFromAccountMenu("Configurações");
     // Settings is a lazy screen: its chunk may still be loading when the click returns.
     await settle(() => heading("Configurações"));
     expect(heading("Configurações")).toBe(true);

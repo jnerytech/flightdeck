@@ -9,6 +9,9 @@ registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
+/** The page itself: the sidebar's account row shows the first host's email too. */
+const page = () =>
+  within(document.querySelector('[aria-label^="Area"], [aria-label^="Área"]') as HTMLElement);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
@@ -75,7 +78,7 @@ describe("conta-pagina-host: the host page", () => {
     const { open } = await setup([{ name: "alfa", email: "alfa@example.com" }]);
     await open("alfa");
     await settle(() => card("alfa") !== null);
-    await settle(() => screen.queryByText("alfa@example.com") !== null);
+    await settle(() => page().queryByText("alfa@example.com") !== null);
     const usage = screen.queryByRole("region", { name: "Usage in the last 7 days" });
     expect(usage).not.toBeNull();
     const order = (card("alfa") as HTMLElement).compareDocumentPosition(usage as HTMLElement);
@@ -95,12 +98,12 @@ describe("conta-pagina-host: the host page", () => {
       { name: "beta", email: "beta@example.com" },
     ]);
     await open("alfa");
-    await settle(() => screen.queryByText("alfa@example.com") !== null);
-    expect(screen.queryByText("beta@example.com")).toBeNull();
+    await settle(() => page().queryByText("alfa@example.com") !== null);
+    expect(page().queryByText("beta@example.com")).toBeNull();
     expect(watchers("alfa")).toBe(1);
     await open("beta");
-    await settle(() => screen.queryByText("beta@example.com") !== null);
-    expect(screen.queryByText("alfa@example.com")).toBeNull();
+    await settle(() => page().queryByText("beta@example.com") !== null);
+    expect(page().queryByText("alfa@example.com")).toBeNull();
     await settle(() => watchers("alfa") === 0);
     expect(watchers("beta")).toBe(1);
   });

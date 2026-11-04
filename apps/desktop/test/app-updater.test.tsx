@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { settle } from "./wait.ts";
@@ -106,7 +107,7 @@ describe("app-updater", () => {
   test("Configurações: Procurar agora consulta; desligar o aviso para a verificação ao abrir", async () => {
     const mem = setup({ available: null });
     const store = await start(mem);
-    await click("Configurações");
+    await chooseFromAccountMenu("Configurações");
     // Settings is a lazy screen: its chunk may still be loading when the click returns.
     await settle(
       () => screen.queryByRole("button", { name: "Procurar atualização agora" }) !== null,
