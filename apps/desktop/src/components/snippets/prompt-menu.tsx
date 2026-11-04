@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { type RefObject, useEffect, useState } from "react";
 
 /** The prompt snippets a message box offers after `/` (phase 18). */
 export interface PromptSnippets {
-  list(): Promise<Array<{ key: string; name: string }>>;
+  list(): Promise<Array<{ key: string; name: string; description?: string }>>;
   fill(key: string): Promise<string>;
 }
 
@@ -15,6 +15,8 @@ export function PromptMenu(props: {
   text: string;
   label: string;
   onFill(text: string): void;
+  /** The message box the menu is for: it gets the keys and the combobox roles while the menu is open. */
+  input?: RefObject<HTMLTextAreaElement | null>;
 }) {
   const [prompts, setPrompts] = useState<Array<{ key: string; name: string }> | null>(null);
   const slash =
