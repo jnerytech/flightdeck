@@ -559,7 +559,7 @@ export class Board {
     };
   }
 
-  /** A new card goes to the end of the Backlog. */
+  /** A new card goes to the end of the column it is born in: the Backlog unless it says another. */
   createCard(
     projectId: string,
     input: {
@@ -587,24 +587,26 @@ export class Board {
     this.getProject(projectId);
     const blockedBy = input.blockedBy ?? [];
     this.checkBlockers(null, projectId, blockedBy);
+    const column = input.column ?? "backlog";
     const { last } = this.db
-      .query<{ last: number | null }, [string]>(
-        "SELECT MAX(position) AS last FROM cards WHERE project_id = ? AND board_column = 'backlog'",
+      .query<{ last: number | null }, [string, string]>(
+        "SELECT MAX(position) AS last FROM cards WHERE project_id = ? AND board_column = ?",
       )
-      .get(projectId) ?? { last: null };
+      .get(projectId, column) ?? { last: null };
     const id = ulid();
     const at = now();
     this.db
       .query(
         `INSERT INTO cards (id, project_id, title, description, board_column, position, issue_ref,
            issue_external, arena_of, variant, unblock_when, auto_start, created_at, updated_at)
-         VALUES (?, ?, ?, ?, 'backlog', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
         projectId,
         input.title,
         input.description,
+        column,
         (last ?? 0) + 1,
         input.issueRef ?? null,
         input.issueExternal ? 1 : 0,

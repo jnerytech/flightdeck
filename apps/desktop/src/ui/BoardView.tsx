@@ -303,18 +303,13 @@ export const BoardView = memo(function BoardView(props: {
   });
 
   const create = () => {
-    const column = createIn;
+    // The column whose + was pressed is part of the command: one step, nothing to move afterwards.
     const made = store.hostCommand(hostId, "card.create", {
       projectId,
       title: title.trim(),
       description,
+      ...(createIn === "backlog" ? {} : { column: createIn }),
     });
-    // A card is born in the Backlog: the column whose + was pressed gets it right after.
-    if (column !== "backlog") {
-      void made.then((card) => {
-        if (card) void store.hostCommand(hostId, "card.move", { cardId: card.id, column });
-      });
-    }
     close();
     return made;
   };

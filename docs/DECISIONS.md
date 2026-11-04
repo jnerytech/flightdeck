@@ -3440,8 +3440,10 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 - **Guards.** A test reads the tokens of both themes: the line must read at 3:1 on the background, and the foreground and the
   muted foreground stay AA (4.5:1) on the 8% tint. The column styles live in `styles.css` (`.board-column`), not as utilities in
   the screen, so the layout ratchet is not raised.
-- **The + puts a card in its column.** A card is born in the Backlog; for another column the app moves it right after the create
-  (`card.move`), because `card.create` takes no column. The empty box is still a button named "Add card".
+- **The + puts a card in its column, in one command.** `card.create` takes an optional `column` (additive: an older daemon ignores it and
+  the card lands in the Backlog, as before). A create followed by a move could leave the card in the Backlog when the move fails or
+  races another window, so the board inserts the card straight into the column, at its end. The empty box is still a button named
+  "Add card".
 
 ## A status bar at the bottom (issue #118, from the Orca reference of #114)
 
