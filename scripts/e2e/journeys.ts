@@ -451,7 +451,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     // Leaving the screen for another and coming back: the same place.
     await c.page.getByRole("button", { name: c.t("sidebar.projects"), exact: true }).click();
     await log.waitFor({ state: "detached", timeout: WAIT });
-    await c.page.getByRole("button", { name: c.t("nav.back"), exact: true }).click();
+    await c.page
+      .getByRole("tab", { name: /Conversa longa/ })
+      .first()
+      .click();
     const back = c.page
       .locator("[tabindex='0'].overflow-y-auto")
       .filter({ hasText: "Passo 24" })
