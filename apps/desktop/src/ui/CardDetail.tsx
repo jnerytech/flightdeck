@@ -586,6 +586,7 @@ export const CardDetail = memo(function CardDetail(props: {
           >
             <SessionView
               title={`${card.title} · ${openedStep.stepId}`}
+              scrollKey={`${sessionKey(hostId, cardId)}/${openedStep.stepId}`}
               session={stepSession}
               actions={store}
               t={store.i18n.t}
@@ -598,6 +599,7 @@ export const CardDetail = memo(function CardDetail(props: {
           <div role="log" aria-label={t("cardUi.cardConversation")} className="card-chat">
             <SessionView
               title={card.title}
+              scrollKey={sessionKey(hostId, sessionId)}
               session={session}
               actions={store}
               t={store.i18n.t}
