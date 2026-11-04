@@ -60,6 +60,9 @@ describe("task-activity: one live sentence about what the task is doing", () => 
     const tools = Array.from({ length: 12 }, (_, i) => read(`/home/ana/Notas/n${i}.md`));
     expect(now(tools, "pt-BR").text).toBe("Lendo 12 arquivos em Notas");
     expect(now([write("/w/relatório.md")], "pt-BR").text).toBe("Escrevendo relatório.md");
+    expect(now([write("/w/Notas/a.md"), write("/w/Notas/b.md")], "pt-BR").text).toBe(
+      "Escrevendo 2 arquivos em Notas",
+    );
     expect(now([bash()], "pt-BR").text).toBe("Trabalhando em uma etapa");
     expect(now([grep()], "pt-BR").text).toBe("Olhando os seus arquivos");
   });

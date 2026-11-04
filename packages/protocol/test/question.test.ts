@@ -219,4 +219,28 @@ describe("plain-info: the request in both languages, from one source", () => {
       outcome: "needs_full_access",
     });
   });
+
+  test("Given Portuguese, Then change, delete, move, copy and read have their own sentences", () => {
+    const pt = (request: QuestionRequest) => ask(request, "pt-BR");
+    expect(
+      pt({
+        toolName: "Edit",
+        input: { file_path: "/w/notas.md", old_string: "a", new_string: "b" },
+      }).sentence,
+    ).toBe("Alterar uma parte de notas.md");
+    expect(pt({ toolName: "Bash", input: { command: "rm a b c d e" } }).sentence).toBe(
+      "Apagar a, b, c e mais 2",
+    );
+    expect(
+      pt({ toolName: "Bash", input: { command: "mv rascunho.docx Final/rascunho.docx" } }).sentence,
+    ).toBe("Mover rascunho.docx para Final");
+    expect(pt({ toolName: "Bash", input: { command: "cp a.csv b.csv" } }).sentence).toBe(
+      "Copiar a.csv para b.csv",
+    );
+    expect(pt({ toolName: "Read", input: { file_path: "/w/a/plano.pdf" } }).sentence).toBe(
+      "Ler o arquivo plano.pdf",
+    );
+    expect(pt({ toolName: "Read", input: {} }).sentence).toBe("Olhar os seus arquivos");
+    expect(ask({ toolName: "Read", input: {} }).sentence).toBe("Look through your files");
+  });
 });
