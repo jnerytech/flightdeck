@@ -237,6 +237,8 @@ describe("board-ui", () => {
       "Mover para Concluído",
       "Mover para cima",
       "Mover para baixo",
+      "Editar…",
+      "Excluir…",
     ]);
     await act(async () => {
       fireEvent.click(menuEntry("Mover para Em revisão") as HTMLElement);
@@ -251,6 +253,55 @@ describe("board-ui", () => {
     expect(
       screen.queryByRole("region", { name: "Em revisão" })?.contains(document.activeElement),
     ).toBe(true);
+  });
+
+  test("Editar… abre o card com o título pronto para editar, e Salvar título grava", async () => {
+    const { repo, board } = await setup();
+    await openBoard(repo);
+    await createCard("Ideia velha", "d");
+    await cardMenu("Ideia velha", "Editar…");
+    await settle(() => screen.queryByRole("button", { name: "Voltar ao board" }) !== null);
+    const field = screen.queryByLabelText("Título") as HTMLInputElement | null;
+    expect(field?.value).toBe("Ideia velha");
+    expect(document.activeElement).toBe(field);
+    await type("Título", "Ideia nova");
+    await click("Salvar título");
+    const id = board.getBoard(board.listProjects()[0]?.id ?? "").columns[0]?.cards[0]?.id ?? "";
+    await settle(() => board.getCard(id).title === "Ideia nova");
+    expect(board.getCard(id).title).toBe("Ideia nova");
+  });
+
+  test("Excluir… cita o card, Cancelar o mantém e Excluir card o remove do board", async () => {
+    const { repo, board } = await setup();
+    await openBoard(repo);
+    await createCard("Sobrando", "d");
+    await cardMenu("Sobrando", "Excluir…");
+    expect(dialog()?.textContent ?? "").toContain("Sobrando");
+    await click("Cancelar");
+    expect(dialog()).toBeNull();
+    expect(cardItem("Sobrando")).not.toBeNull();
+    await cardMenu("Sobrando", "Excluir…");
+    await click("Excluir card");
+    await settle(() => cardItem("Sobrando") === null);
+    expect(cardItem("Sobrando")).toBeNull();
+    expect(board.getBoard(board.listProjects()[0]?.id ?? "").columns[0]?.cards).toEqual([]);
+  });
+
+  test("Excluir… de um card que já começou explica a recusa e oferece Descartar card no lugar", async () => {
+    const { repo, board } = await setup();
+    await openBoard(repo);
+    await createCard("Em curso", "faça");
+    await openCard("Em curso");
+    await click("Iniciar");
+    await click("Voltar ao board");
+    await settle(() => column("Em revisão").includes("Em curso"));
+    await cardMenu("Em curso", "Excluir…");
+    expect(dialog()?.textContent ?? "").toContain("já começou");
+    expect(screen.queryByRole("button", { name: "Excluir card" })).toBeNull();
+    await click("Descartar card");
+    await settle(() => cardItem("Em curso") === null);
+    expect(git(repo, "branch", "--list", "fd/em-curso")).toBe("");
+    expect(board.listProjects()).toHaveLength(1);
   });
 
   test("Mover para cima e para baixo reordenam a coluna, e ficam desligados nas pontas", async () => {
