@@ -116,7 +116,15 @@ describe("deps-check: the dependencies of a host", () => {
     expect((await linux({ serviceInstalled: async () => false })).state).toBe("missing");
     expect((await linux({ without: ["systemctl"] })).state).toBe("missing");
     const win = find(
-      (await checkDeps(machine({ platform: "win32", linger: async () => null }))).items,
+      (
+        await checkDeps(
+          machine({
+            platform: "win32",
+            linger: async () => null,
+            serviceInstalled: async () => false,
+          }),
+        )
+      ).items,
       "service",
     );
     expect(win.state).toBe("missing");

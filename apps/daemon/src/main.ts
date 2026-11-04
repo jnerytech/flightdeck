@@ -52,7 +52,7 @@ import { Costs } from "./costs/costs.ts";
 import { resolvePricing } from "./costs/pricing.ts";
 import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
-import { checkDeps } from "./deps/deps.ts";
+import { checkDeps, type DepsEnv } from "./deps/deps.ts";
 import { runDoctor } from "./doctor.ts";
 import { type Exec, spawnExec } from "./exec.ts";
 import { runGh } from "./github/gh.ts";
@@ -1820,6 +1820,8 @@ function printResult(deps: CliDeps, result: { output: string[]; instructions: st
 
 export interface CliDeps {
   env: Record<string, string | undefined>;
+  /** The machine the dependency check probes, in `doctor`; the real one when absent (tests give theirs). */
+  depsEnv?: DepsEnv;
   log: Logger;
   exit(code: number): void;
   onSignal(signal: "SIGINT" | "SIGTERM", handler: () => Promise<void>): void;
