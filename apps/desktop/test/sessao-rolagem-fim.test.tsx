@@ -86,6 +86,19 @@ describe("sessao-rolagem-fim: opening lands on the latest message", () => {
     expect(s.size.top).toBe(1900);
   });
 
+  test("the scroll event of the view's own jump to the end, read after the layout grew, is not the person leaving", async () => {
+    render(view(items(20)));
+    const s = scroller({ scroll: 1000, client: 400, top: 0 });
+    await grow();
+    expect(s.size.top).toBe(1000);
+    // The browser delivers that scroll event a frame later, when a panel has already grown the content.
+    s.size.scroll = 1800;
+    await act(async () => void fireEvent.scroll(s.el));
+    expect(screen.queryByRole("button", { name: /Jump to latest|Ir para a última/ })).toBeNull();
+    await grow();
+    expect(s.size.top).toBe(1800);
+  });
+
   test("once the person scrolled up, growth leaves the view where it is", async () => {
     render(view(items(20)));
     const s = scroller({ scroll: 1000, client: 400, top: 100 });
