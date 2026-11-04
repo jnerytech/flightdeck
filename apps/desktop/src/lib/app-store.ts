@@ -1049,17 +1049,32 @@ export class AppStore {
     return null;
   }
 
-  /** Asks a host for its dependencies and keeps the answer; the sidebar and the host page read it. */
-  async checkDeps(hostId: string): Promise<void> {
-    const found = await this.hostCommand(hostId, "deps.check", {});
-    if (found) this.update({ deps: { ...this.state.deps, [hostId]: found } });
+  /** Reads a host's whole health now: its dependencies and its doctor; the sidebar and the host page read it. */
+  async checkHealth(hostId: string): Promise<void> {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    const features = host?.hostInfo?.features;
+    const [deps, doctor] = await Promise.all([
+      hasFeature(features, "depsCheck", false)
+        ? this.hostCommand(hostId, "deps.check", {})
+        : Promise.resolve(null),
+      hasFeature(features, "doctor.run", false)
+        ? this.hostCommand(hostId, "doctor.run", { appVersion: APP_VERSION })
+        : Promise.resolve(null),
+    ]);
+    if (!deps && !doctor) return;
+    this.update({
+      ...(deps ? { deps: { ...this.state.deps, [hostId]: deps } } : {}),
+      ...(doctor ? { doctor: { ...this.state.doctor, [hostId]: doctor } } : {}),
+      healthAt: { ...this.state.healthAt, [hostId]: this.now() },
+    });
   }
 
-  /** Reads a host's whole health now: its dependencies and its doctor. */
-  async checkHealth(_hostId: string): Promise<void> {}
-
   /** Reads it only when it was never read or is older than `maxAgeMs` (five minutes). */
-  async ensureHealth(_hostId: string, _maxAgeMs = HEALTH_MAX_AGE_MS): Promise<void> {}
+  async ensureHealth(hostId: string, maxAgeMs = HEALTH_MAX_AGE_MS): Promise<void> {
+    const at = this.state.healthAt[hostId];
+    if (at !== undefined && this.now() - at < maxAgeMs) return;
+    await this.checkHealth(hostId);
+  }
 
   /** Drops the connection and opens a new one right away. */
   async reconnectHost(hostId: string): Promise<void> {
@@ -2341,7 +2356,7 @@ export class AppStore {
     }
     // Phase 19: the daemon decides a request with the rules the app hands it.
     if (hasFeature(hostInfo?.features, "actions", false)) this.sendVaultRules(hostId, conn);
-    if (hasFeature(hostInfo?.features, "depsCheck", false)) void this.checkDeps(hostId);
+    void this.checkHealth(hostId);
     if (hasFeature(hostInfo?.features, "costs", false)) {
       const list = await conn.request("budget.list", {}).catch(() => null);
       if (list) this.update({ budgets: { ...this.state.budgets, [hostId]: list.budgets } });
