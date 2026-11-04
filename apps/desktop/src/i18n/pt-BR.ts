@@ -1713,6 +1713,13 @@ export const ptBR = {
     endMessage: "Encerrar esta sessão? O Claude Code para; dá para retomá-la depois.",
     endConfirm: "Encerrar sessão",
     pruned: "conversa removida pela retenção",
+    earlier: {
+      title: "Antes de retomar",
+      unreadable: "Não foi possível ler os turnos anteriores: {reason}",
+      empty: "O transcript não tem turnos anteriores para mostrar.",
+      truncated:
+        "Só os primeiros {count} turnos anteriores aparecem. Abra o transcript no Histórico para ver o resto.",
+    },
     historyGap: "parte do histórico não está mais disponível no host",
     message: "Mensagem",
     snippets: "Snippets de prompt",

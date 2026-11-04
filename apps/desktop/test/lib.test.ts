@@ -24,6 +24,16 @@ describe("desktop: backoff", () => {
 });
 
 describe("desktop: estado da sessão", () => {
+  test("a sessão retomada guarda de qual conversa vem; uma comum não tem isso (issue #108)", () => {
+    const created = { type: "session.created", cwd: "/p", name: null, permissionMode: "default" };
+    const resumed = applyEnvelope(
+      emptySession(),
+      env(1, { ...created, resumedFrom: "abc" } as never),
+    );
+    expect(resumed.resumedFrom).toBe("abc");
+    expect(applyEnvelope(emptySession(), env(1, created as never)).resumedFrom).toBeUndefined();
+  });
+
   test("monta a conversa, junta deltas e descarta duplicados", () => {
     let s = emptySession();
     s = applyEnvelope(

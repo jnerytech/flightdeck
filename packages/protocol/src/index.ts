@@ -318,6 +318,8 @@ export const SessionEvent = z.discriminatedUnion("type", [
     name: z.string().nullable(),
     permissionMode: PermissionMode,
     persona: SessionPersona.optional(),
+    /** The Claude session this one continues (a resume from History), so the screen can show its turns. */
+    resumedFrom: z.string().optional(),
   }),
   z.object({
     type: z.literal("session.status"),
