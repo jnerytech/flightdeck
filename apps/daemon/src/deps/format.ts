@@ -55,8 +55,9 @@ export function formatDeps(deps: DepsResult, os: string): string[] {
       if (item.breaks.length > 0) {
         lines.push(`             without it: ${item.breaks.map((b) => BREAKS[b]).join(", ")}`);
       }
-      const fix = item.fix.find((f) => f.os === os)?.command;
-      if (fix) lines.push(`             -> ${fix}`);
+      const fix = item.fix.find((f) => f.os === os);
+      if (fix?.command) lines.push(`             -> ${fix.command}`);
+      if (fix?.url) lines.push(`             page: ${fix.url}`);
     }
   }
   return lines;

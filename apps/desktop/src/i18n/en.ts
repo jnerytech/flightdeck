@@ -3397,6 +3397,8 @@ export const en: Dictionary = {
     groups: { required: "Required", optional: "Optional", checks: "Checks" },
   },
   hostDeps: {
+    installPage: "Install page",
+    installPageFor: "Open the install page for {name}",
     title: "Dependencies",
     check: "Check again",
     checking: "Checking…",

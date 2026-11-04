@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { formatAgo } from "../../i18n/format.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
-import { type DepLook, depLook, depsSummary, fixFor } from "../../lib/deps-summary.ts";
+import { type DepLook, depLook, depsSummary, fixFor, fixPageFor } from "../../lib/deps-summary.ts";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 const ICONS = { check: Check, warning: TriangleAlert, cross: X, dash: Minus } as const;
@@ -40,6 +40,8 @@ interface HealthRow {
   breaks: string | null;
   /** What to do by hand: a command to copy, or a plain step. */
   copy: string | null;
+  /** The official install page, opened in the browser. */
+  page: string | null;
   step: string | null;
   action: { label: string; run(): void } | null;
 }
@@ -101,6 +103,7 @@ export function HostHealth(props: {
             })
           : null,
       copy: lacking ? fixFor(item, os) : null,
+      page: lacking ? fixPageFor(item, os) : null,
       step: null,
       action,
     };
@@ -124,6 +127,7 @@ export function HostHealth(props: {
       found: [check.detail],
       breaks: null,
       copy: null,
+      page: null,
       step:
         check.status === "ok"
           ? null
@@ -183,7 +187,7 @@ export function HostHealth(props: {
         {row.found.length > 0 && <span className="dep-found">{row.found.join(" · ")}</span>}
         {row.breaks && <span className="text-sm">{row.breaks}</span>}
         {row.step && <span className="text-sm">{row.step}</span>}
-        {(row.copy || row.action) && (
+        {(row.copy || row.page || row.action) && (
           <span className="dep-fix">
             {row.copy && (
               <>
@@ -198,6 +202,16 @@ export function HostHealth(props: {
                   <Copy aria-hidden="true" />
                 </Button>
               </>
+            )}
+            {row.page && (
+              <Button
+                variant="link"
+                size="sm"
+                aria-label={t("hostDeps.installPageFor", { name: row.name })}
+                onClick={() => store.openLink(row.page as string)}
+              >
+                {t("hostDeps.installPage")}
+              </Button>
             )}
             {row.action && (
               <Button variant="outline" size="sm" onClick={row.action.run}>
