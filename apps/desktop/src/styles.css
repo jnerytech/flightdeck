@@ -1323,6 +1323,7 @@
 @utility spark-area {
   fill: color-mix(in oklab, var(--primary) 12%, transparent);
   stroke: none;
+}
 
 /* The hosts of the sidebar's Machines group: a column of dots in the rail, a list with a row each. */
 @utility rail-hosts {
