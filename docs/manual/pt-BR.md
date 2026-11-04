@@ -2695,3 +2695,38 @@ Outros scripts do `package.json`: `bun run coverage`, `bun run format` (Biome co
 gerado pelo CLI), `bun run release:version`, `bun run release:assets`,
 `bun run release:tauri-config` e `bun run release:sign` (os quatro últimos são usados pela
 [release](#releases)).
+
+## Modo simples
+
+O modo simples é uma face mais calma do mesmo app, para quem não usa terminal. Ele muda só o jeito
+de ver um host, não o que ele faz: as sessões, as permissões e os arquivos são os mesmos.
+
+**O que você vê.** Um menu estreito com três lugares: *Início*, *Arquivos* e *Configurações*.
+
+- *Início* pergunta "O que você quer que seja feito?" e mostra tarefas prontas como cartões (resumir uma
+  pasta, redigir um relatório, revisar um documento, comparar arquivos). Um cartão pede de uma a
+  três coisas, como uma pasta, e começa a tarefa. As tarefas que esperam por você vêm primeiro,
+  depois as recentes.
+- Uma *tarefa* mostra numa linha o que está fazendo, faz as perguntas em palavras simples com
+  **Sim, pode continuar** e **Não** (e avisa quando algo não pode ser desfeito) e, ao terminar, mostra um resumo e
+  os arquivos que fez. Abra um arquivo, mostre-o na pasta ou peça mudanças. *Mostrar detalhes* abre
+  a visão completa da sessão.
+- *Arquivos* lista o que as tarefas recentes fizeram, do mais novo ao mais antigo.
+- *Configurações* tem o idioma, o tema, as pastas que as tarefas podem usar, as notificações e
+  *Mostrar tudo*, que volta ao app completo depois de uma confirmação.
+
+**Segurança.** Uma tarefa nunca pula as perguntas: ela só pode ler, perguntar antes de mudar ou
+editar a pasta escolhida. Os resultados vão para uma pasta *Flightdeck results* ao lado dos seus
+arquivos. O modo simples esconde, não protege: quem está no modo completo faz tudo o que o host
+permite.
+
+**Trocar de modo.** No modo completo, abra a página de um host e use o painel *Modo simples*:
+*Usar o modo simples neste host* é uma escolha sua, guardada neste app. *Tornar o modo simples o
+padrão deste host* define o que a próxima pessoa vê. *Travar este host no modo atual* tira a troca
+para todos: um host travado fica no modo dele e *Mostrar tudo* não aparece. Destrave pelo mesmo
+painel.
+
+**Suas próprias tarefas.** Um host pode ter tarefas como arquivos Markdown na pasta `templates/` dos
+dados do daemon: um cabeçalho com título, ícone, campos, predefinição e se começa planejando, e uma
+seção de instrução por idioma (`# en`, `# pt-BR`). Um arquivo com problema é ignorado e a checagem
+de saúde do host (*doctor*) o lista.

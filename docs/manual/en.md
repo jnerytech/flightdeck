@@ -2722,3 +2722,35 @@ Other `package.json` scripts: `bun run coverage`, `bun run format` (Biome with `
 component as the CLI generated it), `bun run release:version`, `bun run release:assets`,
 `bun run release:tauri-config` and `bun run release:sign` (the last four are used by the
 [release](#releases)).
+
+## Simple mode
+
+Simple mode is a calmer face of the same app, for people who do not use a terminal. It changes only
+how a host looks, not what it can do: the sessions, the permissions and the files are the same.
+
+**What you see.** A narrow menu with three places: *Home*, *Files* and *Settings*.
+
+- *Home* asks "What do you want done?" and shows ready-made tasks as cards (summarise a folder,
+  draft a report, review a document, compare files). A card asks for one to three things, such as a
+  folder, and starts the task. Tasks that wait for you come first, then your recent tasks.
+- A *task* shows what it is doing in a line, asks its questions in plain words with **Yes, go ahead** and
+  **No, don't** (and says when something cannot be undone), and when it is done shows a summary and the
+  files it made. Open a file, show it in its folder, or ask for changes. *Show details* opens the
+  full view of the session.
+- *Files* lists what your recent tasks made, newest first.
+- *Settings* has the language, the theme, the folders tasks may use, notifications and *Show
+  everything*, which goes back to the full app after a confirmation.
+
+**Safety.** A task never skips questions: it can only read, ask before it changes things, or edit
+the chosen folder. Results go to a *Flightdeck results* folder next to your files. Simple mode hides
+things, it does not protect them: a person in full mode can do everything the host allows.
+
+**Switching.** In full mode, open a host's page and use the *Simple mode* panel: *Use simple mode on
+this host* is your own choice, kept in this app. *Make simple mode the default for this host* sets
+what the next person sees. *Lock this host to its mode* removes the switch for everyone: a locked
+host stays in its mode and *Show everything* is not offered. Unlock it from the same panel.
+
+**Your own templates.** A host can add tasks as Markdown files in `templates/` inside the daemon's
+data folder: a header with the title, icon, fields, preset and whether to plan first, then one
+prompt section per language (`# en`, `# pt-BR`). A file with a problem is skipped and the host's
+health check (*doctor*) lists it.
