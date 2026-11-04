@@ -87,6 +87,16 @@ describe("abas: o × de cada aba", () => {
     expect(screen.queryByRole("tab", { name: "Sessões" })).toBeNull();
   });
 
+  test("the focus ring is on the tab itself, and the strip's outline still holds the close button", async () => {
+    await twoTabs();
+    const focus = tab("Sessões");
+    // The focused element carries its own ring (what a keyboard user sees even where :has is
+    // missing), and its strip draws the outline around the tab and its ×.
+    expect(focus.className).toContain("focus-visible:ring-2");
+    expect(focus.className).toContain("focus-visible:ring-ring");
+    expect(focus.parentElement?.className).toContain("has-[[role=tab]:focus-visible]:ring-2");
+  });
+
   test("a tab shows its hover and keyboard focus states", async () => {
     await twoTabs();
     const className = tab("Sessões").className;
