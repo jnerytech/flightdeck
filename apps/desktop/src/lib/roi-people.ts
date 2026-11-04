@@ -16,10 +16,36 @@ export interface PersonRow {
 
 /** One row per person, ordered by name: delivery never decides the order. */
 export function personRows(
-  _people: Person[],
-  _summaries: Array<{ hostId: string; result: RoiSummaryResult }>,
+  people: Person[],
+  summaries: Array<{ hostId: string; result: RoiSummaryResult }>,
 ): PersonRow[] {
-  return [];
+  return [...people]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((person) => {
+      let tokens = 0;
+      let costUsd = 0;
+      let cards = 0;
+      let prsMerged = 0;
+      for (const { hostId, result } of summaries) {
+        if (!person.hostIds.includes(hostId)) continue;
+        for (const { current } of result.projects) {
+          tokens += current.tokens;
+          costUsd += current.costUsd;
+          cards += current.cards;
+          prsMerged += current.prsMerged;
+        }
+      }
+      return {
+        person,
+        tokens,
+        costUsd,
+        cards,
+        prsMerged,
+        tokensPerCard: cards > 0 ? tokens / cards : null,
+        tokenShare: person.tokenLimit ? tokens / person.tokenLimit : null,
+        costShare: person.costLimit ? costUsd / person.costLimit : null,
+      };
+    });
 }
 
 export interface HumanTokens {
@@ -28,6 +54,12 @@ export interface HumanTokens {
 }
 
 /** 3,100,000 reads "3.1" million; at most two decimals, none when they would be zeros. */
-export function humanTokens(_tokens: number): HumanTokens {
-  return { unit: "plain", value: "" };
+export function humanTokens(tokens: number): HumanTokens {
+  const [unit, divisor] =
+    tokens >= 1_000_000
+      ? (["million", 1_000_000] as const)
+      : tokens >= 1_000
+        ? (["thousand", 1_000] as const)
+        : (["plain", 1] as const);
+  return { unit, value: String(Number((tokens / divisor).toFixed(2))) };
 }
