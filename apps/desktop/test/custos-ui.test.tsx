@@ -428,6 +428,22 @@ describe("custos-ui", () => {
     expect(text("Custo estimado")).toBe("US$ 7.00");
   });
 
+  test("a session that two hosts both report is two rows of the top, and React sees no repeated key", async () => {
+    const { store } = await online();
+    // The same Claude session id on both hosts (the demo's hosts share their history).
+    const other = makeDaemon(cleanups, { costs: true });
+    spend(other, { day: "2026-10-15", key: "kA", cost: 3, session: "s-term" });
+    const second = other.listen();
+    await act(async () => {
+      await store.addHost({ name: "beta", url: second.url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts[1]?.hostInfo !== null);
+    await click("Custos");
+    await choose("Host dos custos", "__all__");
+    await settle(() => text("Custo estimado") === "US$ 7.00");
+    await settle(() => (region("Top sessões")?.querySelectorAll("li").length ?? 0) === 2);
+  });
+
   test("sem dia injetado, hoje é o dia desta máquina", () => {
     const local = new AppStore(memoryPlatform(false).platform, { now: () => START });
     const today = (() => {
