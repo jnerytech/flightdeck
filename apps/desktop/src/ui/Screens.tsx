@@ -5,6 +5,7 @@ import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
 import { PersonaSwitch } from "@/components/personas/persona-switch";
+import { EarlierTurns } from "@/components/session/earlier-turns";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { Lang } from "@/i18n/index";
@@ -207,6 +208,13 @@ function ManagedSession(props: {
           )
         }
         focusRequestId={props.focus}
+        {...(session.resumedFrom
+          ? {
+              earlier: (
+                <EarlierTurns store={store} hostId={hostId} claudeSessionId={session.resumedFrom} />
+              ),
+            }
+          : {})}
         recap={
           claudeId && (
             <RecapPanel store={store} hostId={hostId} claudeSessionId={claudeId} stamp={status} />

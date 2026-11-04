@@ -117,6 +117,7 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
         ...next,
         cwd: event.cwd,
         permissionMode: event.permissionMode,
+        ...(event.resumedFrom ? { resumedFrom: event.resumedFrom } : {}),
         ...(event.persona ? { persona: event.persona } : {}),
       };
     case "session.status": {

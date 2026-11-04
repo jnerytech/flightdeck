@@ -1699,6 +1699,13 @@ export const en: Dictionary = {
     endMessage: "End this session? Claude Code stops; you can resume it later.",
     endConfirm: "End session",
     pruned: "conversation removed by retention",
+    earlier: {
+      title: "Before resuming",
+      unreadable: "Could not read the earlier turns: {reason}",
+      empty: "The transcript has no earlier turns to show.",
+      truncated:
+        "Only the first {count} earlier turns are shown. Open the transcript in History for the rest.",
+    },
     historyGap: "part of the history is no longer available on the host",
     message: "Message",
     snippets: "Prompt snippets",
