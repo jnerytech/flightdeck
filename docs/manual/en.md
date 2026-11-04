@@ -807,6 +807,11 @@ To try it: sign in with GitHub on the host's page, open a project's **Board**, p
   `git status` is clean. Otherwise the card warns and the worktree stays.
 - **Discard:** Discard (with confirmation, and a warning if there are unpushed changes) removes
   the worktree and the local branch.
+- **Edit and delete:** the card's **⋯** menu has **Edit…**, which opens the card with its title ready
+  to change (the card page also edits the description and, with ROI on, the estimate), and
+  **Delete…**, which names the card and asks first. Delete is only for a card that never started
+  (no worktree, branch or session). For one that did, the dialog says why and offers **Discard card**
+  instead. The cards that waited for a deleted card are freed of it, with a notice.
 
 ### PR providers
 

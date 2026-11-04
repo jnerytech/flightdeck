@@ -792,6 +792,11 @@ Para testar: entre no GitHub na página do host, abra o **Board** de um projeto,
   estiver limpo. Senão, o card avisa e a worktree fica.
 - **Descarte:** Descartar (com confirmação, e um aviso se houver alterações não enviadas)
   remove a worktree e a branch local.
+- **Editar e excluir:** o menu **⋯** do card tem **Editar…**, que abre o card com o título pronto
+  para mudar (a página do card também edita a descrição e, com o ROI ligado, a estimativa), e
+  **Excluir…**, que cita o card e pergunta antes. Excluir vale só para um card que nunca começou
+  (sem worktree, branch nem sessão). Para um que já começou, a janela explica o motivo e oferece
+  **Descartar card** no lugar. Os cards que esperavam o excluído ficam livres dele, com um aviso.
 
 ### Provedores de PR
 

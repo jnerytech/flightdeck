@@ -2181,6 +2181,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { cardId, confirm } = command.payload;
         return ok(command.type, await board().completeCard(cardId, confirm === true));
       }
+      case "card.delete": {
+        const { cardId, confirm } = command.payload;
+        return ok(command.type, board().deleteCard(cardId, confirm === true));
+      }
       case "card.discard": {
         const { cardId, confirm } = command.payload;
         return ok(command.type, await board().discardCard(cardId, confirm === true));

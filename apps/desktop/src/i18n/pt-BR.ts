@@ -720,6 +720,13 @@ export const ptBR = {
     moveTo: "Mover para {column}",
     moveUp: "Mover para cima",
     moveDown: "Mover para baixo",
+    edit: "Editar…",
+    delete: "Excluir…",
+    deleteMessage: 'Excluir o card "{title}"? Ele nunca começou, então só o card é removido.',
+    deleteStarted:
+      'O card "{title}" já começou, então não pode ser excluído. Descarte-o para remover também o worktree e a branch dele.',
+    deleteConfirm: "Excluir card",
+    discardInstead: "Descartar card",
   },
   shell: {
     sidebar: "Barra lateral",
@@ -1517,6 +1524,9 @@ export const ptBR = {
     nothing_ahead: "Não há nada à frente de {base}.",
     complete_confirm: "Confirme a conclusão do card.",
     discard_confirm: "Confirme o descarte do card.",
+    delete_confirm: "Confirme a exclusão do card.",
+    card_delete_started:
+      "O card já começou e não pode ser excluído: descarte-o para limpar o trabalho dele.",
     base_not_local: "A base {base} não é uma branch local.",
     rebase_conflict: "Atualizar com {base} dá conflito em: {files}.",
     merge_conflict: "Juntar com {base} dá conflito em: {files}.",
@@ -2880,6 +2890,8 @@ export const ptBR = {
     back: "Voltar ao board",
     description: "Descrição",
     saveDescription: "Salvar descrição",
+    title: "Título",
+    saveTitle: "Salvar título",
     workflow: "Workflow",
     noWorkflow: "Nenhum (card simples)",
     input: "Input {name}",

@@ -723,6 +723,14 @@ export const en: Dictionary = {
     moveTo: "Move to {column}",
     moveUp: "Move up",
     moveDown: "Move down",
+    edit: "Edit…",
+    delete: "Delete…",
+    deleteMessage:
+      'Delete the card "{title}"? It never started, so nothing but the card is removed.',
+    deleteStarted:
+      'The card "{title}" already started, so it cannot be deleted. Discard it to remove its worktree and branch too.',
+    deleteConfirm: "Delete card",
+    discardInstead: "Discard card",
   },
   shell: {
     sidebar: "Sidebar",
@@ -1521,6 +1529,9 @@ export const en: Dictionary = {
     nothing_ahead: "There is nothing ahead of {base}.",
     complete_confirm: "Confirm completing the card.",
     discard_confirm: "Confirm discarding the card.",
+    delete_confirm: "Confirm deleting the card.",
+    card_delete_started:
+      "The card already started, so it cannot be deleted: discard it to clean up its work.",
     base_not_local: "The base {base} is not a local branch.",
     rebase_conflict: "Updating with {base} conflicts in: {files}.",
     merge_conflict: "Merging with {base} conflicts in: {files}.",
@@ -2878,6 +2889,8 @@ export const en: Dictionary = {
     back: "Back to the board",
     description: "Description",
     saveDescription: "Save description",
+    title: "Title",
+    saveTitle: "Save title",
     workflow: "Workflow",
     noWorkflow: "None (plain card)",
     input: "Input {name}",

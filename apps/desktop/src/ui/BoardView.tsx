@@ -34,6 +34,7 @@ import { issueNumber } from "../lib/issues.ts";
 import { statusTone } from "../lib/status.ts";
 import { hasFeature } from "../lib/version.ts";
 import { BoardColumnEmpty } from "./BoardColumnEmpty.tsx";
+import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { ExternalSeal, IssuesPanel } from "./IssuesPanel.tsx";
 
 function CardTile(props: {
@@ -41,7 +42,7 @@ function CardTile(props: {
   /** The name of the workflow the card is running, when known. */
   workflow?: string;
   formatTime(iso: string): string;
-  labels: { actions: string; start: string };
+  labels: { actions: string; start: string; edit: string; delete: string };
   /** Phase 31: the titles of the cards it waits for and of those it holds up. */
   deps: { waiting: string; holding: string };
   /** The ways to move the card without dragging it, in menu order. */
@@ -49,6 +50,10 @@ function CardTile(props: {
   onOpen(): void;
   /** "Iniciar card" from the card's menu, without opening it (phase 10). */
   onStart(): void;
+  /** Opens the card with its title ready to edit. */
+  onEdit(): void;
+  /** Asks to delete the card (a card that already started is offered Discard instead). */
+  onDelete(): void;
   onDragStart(): void;
   onDropOn(): void;
 }) {
@@ -104,6 +109,8 @@ function CardTile(props: {
                 {move.label}
               </DropdownMenuItem>
             ))}
+            <DropdownMenuItem onSelect={props.onEdit}>{props.labels.edit}</DropdownMenuItem>
+            <DropdownMenuItem onSelect={props.onDelete}>{props.labels.delete}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -155,11 +162,14 @@ function CardTile(props: {
 const BOARDVIEW_KEYS = ["runs", "hosts", "cards"] as const;
 
 /** A project's board: five columns, drag and drop between and within them, text filter. */
+/** A card that has a worktree, a branch or a session has work to clean up: it is discarded, not deleted. */
+const hasStarted = (card: Card) => Boolean(card.worktreePath || card.branch || card.sessionId);
+
 export const BoardView = memo(function BoardView(props: {
   store: AppStore;
   hostId: string;
   projectId: string;
-  onOpenCard(cardId: string): void;
+  onOpenCard(cardId: string, edit?: boolean): void;
   /** A project was added from here: its board opens. */
   onOpenProject?(projectId: string): void;
 }) {
@@ -179,6 +189,8 @@ export const BoardView = memo(function BoardView(props: {
   const loading = useMinLoading(project === null);
   /** The new-card dialog. */
   const [creating, setCreating] = useState(false);
+  /** The card whose Delete… is asking for confirmation. */
+  const [deleting, setDeleting] = useState<Card | null>(null);
   /** The column a dragged card is over. */
   const [over, setOver] = useState<string | null>(null);
   /** The issues panel (phase 13), on a daemon that announces issues. */
@@ -391,6 +403,8 @@ export const BoardView = memo(function BoardView(props: {
                       labels={{
                         actions: store.i18n.t("board.cardActions", { title: card.title }),
                         start: store.i18n.t("board.startCard"),
+                        edit: store.i18n.t("board.edit"),
+                        delete: store.i18n.t("board.delete"),
                       }}
                       deps={{
                         waiting: titlesOf(card.waitingOn),
@@ -398,6 +412,8 @@ export const BoardView = memo(function BoardView(props: {
                       }}
                       moves={movesOf(card)}
                       onOpen={() => props.onOpenCard(card.id)}
+                      onEdit={() => props.onOpenCard(card.id, true)}
+                      onDelete={() => setDeleting(card)}
                       onStart={() =>
                         void store.hostCommand(hostId, "card.start", { cardId: card.id })
                       }
@@ -418,6 +434,27 @@ export const BoardView = memo(function BoardView(props: {
           ))}
         </div>
       </div>
+      {deleting && (
+        <ConfirmDialog
+          message={
+            hasStarted(deleting)
+              ? t("board.deleteStarted", { title: deleting.title })
+              : t("board.deleteMessage", { title: deleting.title })
+          }
+          confirmLabel={hasStarted(deleting) ? t("board.discardInstead") : t("board.deleteConfirm")}
+          destructive
+          onCancel={() => setDeleting(null)}
+          onConfirm={() => {
+            const card = deleting;
+            setDeleting(null);
+            // A started card has work to clean up, so it goes through the existing discard.
+            void store.hostCommand(hostId, hasStarted(card) ? "card.discard" : "card.delete", {
+              cardId: card.id,
+              confirm: true,
+            });
+          }}
+        />
+      )}
       {issuesOpen && project && (
         <IssuesPanel
           store={store}
