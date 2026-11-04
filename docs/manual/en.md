@@ -1717,8 +1717,16 @@ The bell at the right of the top bar keeps every notification the app sends: a r
 needs you, a session that ended, a budget or quota alert, a PR watch result, a card that was
 unblocked. A badge on the bell counts the unread ones.
 
-- Click the bell to open the panel: newest first, grouped by day (Today, Yesterday, then the date).
-- Click an entry to mark it read and open its screen (a request opens on its card; a quota alert
+- Click the bell to open the panel: unread first, then newest first, in two groups (Today and
+  Earlier). Opening the panel marks nothing as read.
+- An unread row has a dot, a bold title and the word "unread" for a screen reader; a read row has
+  none of them. The badge counts the dots. Each row names the session, card or team and the host,
+  and says what it asks in words ("Asks: which DB to use?"), not the tool's name. A session's
+  repeated requests become one row with a count ("3 times"). A row whose card or request is gone
+  says so and has **Dismiss**.
+- Hover a row (or focus it) for a small **Mark as read** control: it marks that row and opens
+  nothing.
+- Click an entry to mark just it read and open its screen (a request opens on its card; a quota alert
   opens the host). A budget alert opens Costs already filtered by its host and project, or by
   its client; a team alert opens Teams with that team first and marked. A card's entry (a PR watch
   result, an unblocked card) opens the PR in your browser when the card is gone.
