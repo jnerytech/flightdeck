@@ -10,9 +10,15 @@ export interface DoctorDeps {
   isDirectory(path: string): boolean | Promise<boolean>;
   serviceInstalled(): Promise<boolean>;
   healthy(): Promise<boolean>;
+  /** When nothing healthy answers: the address the daemon refused, if that is why. */
+  refused?(): Promise<string | null>;
   tailscaleIp(): Promise<string | null>;
   hooks(): HooksState | Promise<HooksState>;
   claudePath(): string | null;
+  /** Whether the Flightdeck MCP server managed sessions get can start: its command, and whether that file exists. */
+  mcp?(): Promise<{ command: string; exists: boolean }>;
+  /** Whether the user's systemd keeps running without a login (Linux); null where it does not apply. */
+  linger?(): Promise<"on" | "off" | null>;
   /** Template files the host could not load (phase 33); absent when it has no templates. */
   templateProblems?(): Promise<Array<{ file: string; reason: string }>>;
   /** The running daemon's version and, when the app told it, the app's: only a running daemon has them. */
@@ -29,7 +35,9 @@ export type DoctorCheckId =
   | "hooks"
   | "tailscale"
   | "version"
-  | "templates";
+  | "templates"
+  | "mcp"
+  | "linger";
 
 export interface DoctorCheck {
   id: DoctorCheckId;
@@ -110,16 +118,26 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
   );
 
   const address = `${config.bind}:${config.port}`;
+  const healthy = await deps.healthy();
+  const refused = healthy ? null : ((await deps.refused?.()) ?? null);
   checks.push(
-    (await deps.healthy())
+    healthy
       ? check("daemon", "daemon", "ok", `answering on ${address}`)
-      : check(
-          "daemon",
-          "daemon",
-          "fail",
-          `nothing answers on ${address}`,
-          "run: flightdeckd service start (or flightdeckd start, in a terminal, to see the error)",
-        ),
+      : refused
+        ? check(
+            "daemon",
+            "daemon",
+            "fail",
+            `the daemon refused this machine's address (${refused}): add its network to allowedNetworks (or run flightdeckd setup)`,
+            "run: flightdeckd setup (it adds the Tailscale networks), or add the network to allowedNetworks in the config",
+          )
+        : check(
+            "daemon",
+            "daemon",
+            "fail",
+            `nothing answers on ${address}`,
+            "run: flightdeckd service start (or flightdeckd start, in a terminal, to see the error)",
+          ),
   );
 
   const claude = deps.claudePath();
@@ -145,6 +163,36 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
         `could not load: ${brokenTemplates.map((p) => `${p.file} (${p.reason})`).join("; ")}`,
         "fix or remove those files in the templates folder",
       ),
+    );
+  }
+
+  const mcp = await deps.mcp?.();
+  if (mcp) {
+    checks.push(
+      mcp.exists
+        ? check("mcp", "mcp", "ok", mcp.command)
+        : check(
+            "mcp",
+            "mcp",
+            "warn",
+            `${mcp.command} is gone: sessions start without the team tools (send_to_session, list_sessions)`,
+            SETUP,
+          ),
+    );
+  }
+
+  const linger = await deps.linger?.();
+  if (linger) {
+    checks.push(
+      linger === "on"
+        ? check("linger", "linger", "ok", "on: the daemon starts at boot")
+        : check(
+            "linger",
+            "linger",
+            "fail",
+            "off: the daemon will not start after a reboot (or after WSL restarts) until you log in",
+            "run: sudo loginctl enable-linger $USER",
+          ),
     );
   }
 

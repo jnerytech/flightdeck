@@ -564,12 +564,18 @@
   display: grid;
   gap: 0.75rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  &[data-columns="1"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
   &[data-columns="3"] {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+  &[data-columns="4"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
   @media (max-width: 640px) {
     grid-template-columns: minmax(0, 1fr);
-    &[data-columns="3"] {
+    &[data-columns] {
       grid-template-columns: minmax(0, 1fr);
     }
   }
@@ -835,6 +841,14 @@
   display: inline-flex;
 }
 
+/* A breadcrumb step with a long name shortens with an ellipsis; its title says the whole name. */
+@utility crumb-name {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* A form row and its help line: the reason a button is disabled sits under the first field. */
 @utility field-row-wrap {
   display: flex;
@@ -858,8 +872,9 @@
 @utility header-crumbs {
   display: flex;
   min-width: 0;
-  flex: 0 1 auto;
-  max-width: 24rem;
+  /* A width of its own: the tabs start at the same x whatever the crumbs say. */
+  flex: 0 0 24rem;
+  max-width: 40%;
   align-items: center;
   gap: 0.5rem;
 }

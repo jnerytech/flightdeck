@@ -38,6 +38,21 @@ describe("doctor", () => {
     ]);
   });
 
+  test("linger off is a failure with the command that fixes it; on or not applicable adds no failure", async () => {
+    const off = await runDoctor(deps({ linger: async () => "off" }));
+    expect(off.ok).toBe(false);
+    expect(off.checks.find((c) => c.id === "linger")).toMatchObject({
+      status: "fail",
+      fix: "run: sudo loginctl enable-linger $USER",
+    });
+    expect(off.checks.find((c) => c.id === "linger")?.detail).toContain("after a reboot");
+    const on = await runDoctor(deps({ linger: async () => "on" }));
+    expect(on.checks.find((c) => c.id === "linger")).toMatchObject({ status: "ok" });
+    expect(on.ok).toBe(true);
+    const none = await runDoctor(deps({ linger: async () => null }));
+    expect(none.checks.find((c) => c.id === "linger")).toBeUndefined();
+  });
+
   test("an unreadable config says the cause and stops: nothing else can be checked", async () => {
     const report = await runDoctor(
       deps({

@@ -78,6 +78,7 @@ const validCommands: Record<CommandType, unknown> = {
   "card.pr.create": { cardId: "c" },
   "card.complete": { cardId: "c", confirm: true },
   "card.discard": { cardId: "c", confirm: true },
+  "card.delete": { cardId: "c", confirm: true },
   "card.dismissUnblocked": { cardId: "c" },
   "external.list": {},
   "external.watch": {},

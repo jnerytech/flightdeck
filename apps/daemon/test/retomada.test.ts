@@ -116,6 +116,18 @@ describe("retomada", () => {
     expect(manager.get(sessionId).claudeSessionId).toBe(ID);
   });
 
+  test("a sessão retomada diz de qual conversa vem, para a tela mostrar os turnos de antes (issue #108)", async () => {
+    const { client, store } = await setup(MAYBE_ACTIVE_MS + 1000);
+    const result = await client.data<{ sessionId: string }>("history.resume", {
+      claudeSessionId: ID,
+    });
+    const created = store
+      .eventsSince(result?.sessionId ?? "")
+      .map((e) => e.event)
+      .find((e) => e.type === "session.created");
+    expect(created).toMatchObject({ type: "session.created", resumedFrom: ID });
+  });
+
   test("sessão parada há mais de 2 minutos retoma sem force e aceita um nome", async () => {
     const { client, manager, runtime } = await setup(MAYBE_ACTIVE_MS + 1000);
     const result = await client.data<{ sessionId: string }>("history.resume", {

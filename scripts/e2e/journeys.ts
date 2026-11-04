@@ -462,6 +462,48 @@ async function lastRowProblem(page: Page): Promise<string | null> {
 }
 
 /**
+ * The Choose folder dialog (issue #99): the dialog does not scroll sideways, and every button of
+ * its footer, with the reason a disabled one gives, is inside the dialog's box.
+ */
+async function folderDialogProblems(c: Context): Promise<string[]> {
+  await open(c, { name: "new-session", host: ALFA });
+  await c.page.getByRole("button", { name: c.t("folderPicker.browse"), exact: true }).click();
+  const dialog = c.page.getByRole("dialog", { name: c.t("folderPicker.title") });
+  await dialog.waitFor({ timeout: WAIT });
+  await dialog.getByRole("list", { name: c.t("folderPicker.list") }).waitFor({ timeout: WAIT });
+  const system = c.t("folderPicker.system");
+  return dialog.evaluate((box, systemLabel) => {
+    // The demo runs in a browser, which has no system dialog and short folder names: add what the
+    // desktop app shows (the button with its real label, a folder with a very long name).
+    const cancel = box.querySelector<HTMLElement>(
+      "[data-slot='dialog-footer'] button[data-variant='outline']",
+    );
+    const extra = cancel?.cloneNode(true) as HTMLElement | undefined;
+    if (cancel && extra) {
+      extra.textContent = systemLabel;
+      cancel.before(extra);
+    }
+    const row = box.querySelector<HTMLElement>("ul li");
+    const long = row?.cloneNode(true) as HTMLElement | undefined;
+    const label = long?.querySelector("button")?.lastElementChild ?? long?.querySelector("button");
+    if (row && long && label) {
+      label.textContent = "pasta-com-um-nome-muito-comprido-".repeat(8);
+      row.before(long);
+    }
+    const found: string[] = [];
+    if (box.scrollWidth > box.clientWidth + 1) found.push("a janela de pasta rola para o lado");
+    const edge = box.getBoundingClientRect();
+    for (const button of box.querySelectorAll<HTMLElement>("[data-slot='dialog-footer'] button")) {
+      const at = button.getBoundingClientRect();
+      if (at.left < edge.left - 1 || at.right > edge.right + 1) {
+        found.push(`o botão "${button.textContent?.trim()}" sai da janela de pasta`);
+      }
+    }
+    return found;
+  }, system);
+}
+
+/**
  * The session's summary is a card of the header: its box ends where the conversation begins, folded
  * and open (issue #97). Returns what is wrong, or null.
  */
@@ -525,6 +567,16 @@ export async function layout(c: Context, problems: string[]) {
     ],
     ["historico", { name: "history", host: ALFA }],
   ];
+  // The tab strip starts at the same x whatever the crumbs say ("Hosts > alfa" is wider than "Settings").
+  const lefts: number[] = [];
+  for (const [, route] of screens.filter(([n]) => n === "host" || n === "configuracoes")) {
+    await open(c, route);
+    const box = await c.page.locator(".header-tabs").first().boundingBox();
+    if (box) lefts.push(Math.round(box.x));
+  }
+  if (new Set(lefts).size > 1) {
+    problems.push(`${c.lang}: o início das abas muda com o título (${lefts.join(" ≠ ")})`);
+  }
   for (const viewport of VIEWPORTS) {
     await c.page.setViewportSize(viewport);
     for (const [name, route] of screens) {
@@ -532,19 +584,27 @@ export async function layout(c: Context, problems: string[]) {
       const where = `${c.lang} ${viewport.width}x${viewport.height} ${name}`;
       for (const issue of await overflow(c.page)) problems.push(`${where}: ${issue}`);
       if (name === "sessao") {
-        // Folded (the default), then open: the summary never overlaps the conversation.
-        const folded = await recapOverlap(c.page);
-        if (folded) problems.push(`${where}: ${folded} (fechado)`);
+        // Both states of the card (the first time a session is seen it starts open): the summary
+        // never overlaps the conversation, as found and after flipping it.
         const toggle = c.page.locator("[data-slot='recap'] button[aria-expanded]").first();
+        const state = async () =>
+          (await toggle.count()) > 0 && (await toggle.getAttribute("aria-expanded")) === "true"
+            ? "aberto"
+            : "fechado";
+        const first = await recapOverlap(c.page);
+        if (first) problems.push(`${where}: ${first} (${await state()})`);
         if ((await toggle.count()) > 0) {
           await toggle.click();
-          const opened = await recapOverlap(c.page);
-          if (opened) problems.push(`${where}: ${opened} (aberto)`);
+          const flipped = await recapOverlap(c.page);
+          if (flipped) problems.push(`${where}: ${flipped} (${await state()})`);
         }
       }
     }
     for (const issue of await sessionFitsProblems(c)) {
       problems.push(`${c.lang} ${viewport.width}x${viewport.height} sessão: ${issue}`);
+    }
+    for (const issue of await folderDialogProblems(c)) {
+      problems.push(`${c.lang} ${viewport.width}x${viewport.height} pasta: ${issue}`);
     }
     await open(c, { name: "hub" });
     const hidden = await lastRowProblem(c.page);
@@ -554,9 +614,12 @@ export async function layout(c: Context, problems: string[]) {
       );
     }
   }
-  // The smallest window the app allows (tauri.conf.json), where the header is tightest.
+  // The smallest window the app allows (tauri.conf.json), where the header and the dialog are tightest.
   await c.page.setViewportSize({ width: 720, height: 480 });
   for (const issue of await sessionFitsProblems(c)) {
     problems.push(`${c.lang} 720x480 sessão: ${issue}`);
+  }
+  for (const issue of await folderDialogProblems(c)) {
+    problems.push(`${c.lang} 720x480 pasta: ${issue}`);
   }
 }

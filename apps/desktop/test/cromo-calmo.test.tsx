@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { colorOf, contrast, tokensOf } from "../../../scripts/lib/theme-contrast.ts";
 import { activeNav } from "../src/lib/nav-active.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
@@ -62,11 +63,25 @@ describe("cromo-calmo", () => {
     expect(other?.className).toContain("text-sidebar-foreground/70");
   });
 
-  test("borders and separators are softer than before, in both themes", () => {
-    for (const selector of [":root", ".dark"]) {
-      for (const name of ["--border", "--sidebar-border"]) {
-        const alpha = Number(/\/\s*(\d+)%/.exec(token(selector, name))?.[1]);
-        expect(alpha).toBeLessThanOrEqual(6);
+  test("lines: the light ones stay faint (6% alpha); the dark ones are opaque, 3:1 against the surfaces but never harsher than 6:1 (issue #98)", () => {
+    const css = readFileSync(resolve(import.meta.dir, "../src/styles.css"), "utf8");
+    // Light: translucent black, as softened in phase 10 (#98 left the light theme alone).
+    for (const name of ["--border", "--sidebar-border"]) {
+      const alpha = Number(/\/\s*(\d+)%/.exec(token(":root", name))?.[1]);
+      expect(alpha).toBeLessThanOrEqual(6);
+    }
+    // Dark: #98 made them opaque so the divisions show; the floor (3:1, WCAG 1.4.11) is also
+    // guarded in scripts/test/theme-contrast.test.ts, and the ceiling keeps them from being harsh.
+    const vars = new Map([...tokensOf(css, ":root"), ...tokensOf(css, ".dark")]);
+    const rgb = (name: string) => {
+      const color = colorOf(vars.get(name), vars);
+      if (!color) throw new Error(`${name} is not an opaque color: ${vars.get(name)}`);
+      return color;
+    };
+    for (const line of ["--border", "--sidebar-border"]) {
+      for (const surface of ["--background", "--surface-1", "--surface-2", "--sidebar"]) {
+        const ratio = contrast(rgb(line), rgb(surface));
+        expect([line, surface, ratio >= 3 && ratio <= 6]).toEqual([line, surface, true]);
       }
     }
   });

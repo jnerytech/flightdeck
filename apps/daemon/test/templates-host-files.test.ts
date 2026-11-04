@@ -134,6 +134,7 @@ describe("templates-host-files: the doctor and the protocol", () => {
       config: () => ({ bind: "127.0.0.1", port: 7777, allowedRoots: ["/code"] }),
       isDirectory: () => true,
       serviceInstalled: async () => true,
+      linger: async () => null,
       healthy: async () => true,
       tailscaleIp: async () => null,
       hooks: () => "installed" as const,
@@ -191,7 +192,7 @@ describe("templates-host-files: the in-app doctor", () => {
       {},
       { log: () => {}, error: () => {} },
       // Nothing real: the host's service manager is never asked.
-      { serviceInstalled: async () => true },
+      { serviceInstalled: async () => true, linger: async () => null },
     );
     cleanups.push(() => daemon.stop());
     const client = new FrameClient(daemon.url);

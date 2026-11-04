@@ -73,6 +73,14 @@ async function setup(names: string[]) {
 const tiles = () =>
   Array.from(document.querySelectorAll<HTMLElement>("[data-slot='session-tile']"));
 
+/**
+ * The session that needs you sorts first only once its request has reached the screen, so the
+ * first tile is the quiet one until then: a test that grabs `tiles()[0]` too early holds the wrong tile.
+ */
+async function needsYouFirst() {
+  await waitFor(() => tiles().length === 2 && tiles()[0]?.getAttribute("aria-label") === "pede");
+}
+
 describe("lado-a-lado-ui: the tiles of a project", () => {
   test("a section names them, and each session of the project is a tile with its status and last lines", async () => {
     await setup(["um", "dois", "tres"]);
@@ -87,33 +95,45 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
     expect(within(dois).getByText("idle")).toBeTruthy();
   });
 
-  test("the count is 2, 3, 4 or 6 tiles, 4 to start, and it is kept", async () => {
+  test("the layout is a row of icons, Auto to start, each with a name and a tooltip, and the choice is kept", async () => {
     const { store } = await setup(["a", "b", "c", "d", "e"]);
-    const group = screen.getByRole("group", { name: "Tiles on screen" });
-    expect(
-      within(group)
-        .getAllByRole("radio")
-        .map((r) => r.getAttribute("aria-label")),
-    ).toEqual(["2 tiles", "3 tiles", "4 tiles", "6 tiles"]);
-    await waitFor(() => tiles().length === 4, "four tiles");
-    expect(
-      (within(group).getByRole("radio", { name: "4 tiles" }) as HTMLInputElement).checked,
-    ).toBe(true);
+    const group = screen.getByRole("group", { name: "Layout" });
+    const radios = within(group).getAllByRole("radio");
+    expect(radios.map((r) => r.getAttribute("aria-label"))).toEqual([
+      "2 side by side",
+      "3 columns",
+      "2×2 grid",
+      "2×3 grid",
+      "Auto",
+    ]);
+    expect(radios.map((r) => r.closest("label")?.getAttribute("title"))).toEqual([
+      "2 side by side",
+      "3 columns",
+      "2×2 grid",
+      "2×3 grid",
+      "Auto: every live session",
+    ]);
+    await waitFor(() => tiles().length === 5, "all five tiles in Auto");
+    expect((within(group).getByRole("radio", { name: "Auto" }) as HTMLInputElement).checked).toBe(
+      true,
+    );
+    expect(screen.queryByText(/not shown/)).toBeNull();
     await act(async () => {
-      fireEvent.click(within(group).getByRole("radio", { name: "2 tiles" }));
+      fireEvent.click(within(group).getByRole("radio", { name: "2 side by side" }));
     });
     expect(tiles()).toHaveLength(2);
-    expect(store.tileCount()).toBe(2);
+    expect(screen.getByText("+3 not shown")).toBeTruthy();
+    expect(store.tileLayout()).toBe("2");
     await act(async () => {
-      fireEvent.click(within(group).getByRole("radio", { name: "6 tiles" }));
+      fireEvent.click(within(group).getByRole("radio", { name: "2×3 grid" }));
     });
     expect(tiles()).toHaveLength(5);
+    expect(screen.queryByText(/not shown/)).toBeNull();
   });
 
   test("the session that needs you comes first, shows its request, and Allow answers it", async () => {
     const { store, hostId, ids } = await setup(["pede", "quieta"]);
-    await waitFor(() => tiles().length === 2, "two tiles");
-    expect(tiles()[0]?.getAttribute("aria-label")).toBe("pede");
+    await needsYouFirst();
     const tile = tiles()[0] as HTMLElement;
     const ask = await waitFor(
       () => within(tile).queryByRole("group", { name: "Request" }),
@@ -132,7 +152,7 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
 
   test("Deny answers the request of that tile too, and the request goes away", async () => {
     const { store, hostId, ids } = await setup(["pede", "quieta"]);
-    await waitFor(() => tiles().length === 2, "two tiles");
+    await needsYouFirst();
     const tile = tiles()[0] as HTMLElement;
     await waitFor(() => within(tile).queryByRole("group", { name: "Request" }), "request");
     await act(async () => {

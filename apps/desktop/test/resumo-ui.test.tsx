@@ -138,12 +138,18 @@ describe("resumo-ui", () => {
     expect(region.textContent).not.toContain("Open question");
   });
 
-  test("it starts folded to one line, the done text, and opens to every row (issue #97)", async () => {
+  test("the first time a session is seen its summary card is open; seen again it is one line, the done text, and opens to every row (issue #97)", async () => {
     const { store } = await online("en");
     await show(store, "Run the test?");
     const region = () => screen.getByRole("region", { name: "Session summary" });
     await settle(() => screen.queryByRole("region", { name: "Session summary" }) !== null);
     const toggle = () => screen.getByRole("button", { name: "Session summary" });
+    // First time: open, with every row.
+    expect(toggle().getAttribute("aria-expanded")).toBe("true");
+    expect(region().textContent).toContain("Asked");
+    cleanup();
+    await show(store, "Run the test?");
+    await settle(() => screen.queryByRole("region", { name: "Session summary" }) !== null);
     expect(toggle().getAttribute("aria-expanded")).toBe("false");
     // One line: the preview, nothing of the other rows, and no copy button.
     expect(region().textContent).toContain("Retry added with backoff.");

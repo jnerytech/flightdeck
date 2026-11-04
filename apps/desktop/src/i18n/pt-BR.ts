@@ -45,6 +45,9 @@ export const ptBR = {
       tailscale: "Tailscale",
       version: "Versão",
       templates: "Modelos",
+      mcp: "Ferramentas do time",
+
+      linger: "Iniciar no boot",
     },
     steps: {
       config: "Rode flightdeckd setup no host para refazer a configuração.",
@@ -57,6 +60,10 @@ export const ptBR = {
       version: "Atualize o daemon com o botão de atualização desta página.",
       templates:
         "Corrija ou remova os arquivos de modelo citados acima, na pasta de modelos do host.",
+      mcp: "Rode flightdeckd setup no host para pôr o daemon onde as sessões esperam.",
+
+      linger:
+        "No host, rode sudo loginctl enable-linger $USER (no WSL, ligue também o systemd em /etc/wsl.conf).",
     },
   },
   findProjects: {
@@ -718,6 +725,13 @@ export const ptBR = {
     moveTo: "Mover para {column}",
     moveUp: "Mover para cima",
     moveDown: "Mover para baixo",
+    edit: "Editar…",
+    delete: "Excluir…",
+    deleteMessage: 'Excluir o card "{title}"? Ele nunca começou, então só o card é removido.',
+    deleteStarted:
+      'O card "{title}" já começou, então não pode ser excluído. Descarte-o para remover também o worktree e a branch dele.',
+    deleteConfirm: "Excluir card",
+    discardInstead: "Descartar card",
   },
   shell: {
     sidebar: "Barra lateral",
@@ -1515,6 +1529,9 @@ export const ptBR = {
     nothing_ahead: "Não há nada à frente de {base}.",
     complete_confirm: "Confirme a conclusão do card.",
     discard_confirm: "Confirme o descarte do card.",
+    delete_confirm: "Confirme a exclusão do card.",
+    card_delete_started:
+      "O card já começou e não pode ser excluído: descarte-o para limpar o trabalho dele.",
     base_not_local: "A base {base} não é uma branch local.",
     rebase_conflict: "Atualizar com {base} dá conflito em: {files}.",
     merge_conflict: "Juntar com {base} dá conflito em: {files}.",
@@ -1697,6 +1714,13 @@ export const ptBR = {
     endMessage: "Encerrar esta sessão? O Claude Code para; dá para retomá-la depois.",
     endConfirm: "Encerrar sessão",
     pruned: "conversa removida pela retenção",
+    earlier: {
+      title: "Antes de retomar",
+      unreadable: "Não foi possível ler os turnos anteriores: {reason}",
+      empty: "O transcript não tem turnos anteriores para mostrar.",
+      truncated:
+        "Só os primeiros {count} turnos anteriores aparecem. Abra o transcript no Histórico para ver o resto.",
+    },
     historyGap: "parte do histórico não está mais disponível no host",
     message: "Mensagem",
     snippets: "Snippets de prompt",
@@ -2879,6 +2903,8 @@ export const ptBR = {
     back: "Voltar ao board",
     description: "Descrição",
     saveDescription: "Salvar descrição",
+    title: "Título",
+    saveTitle: "Salvar título",
     workflow: "Workflow",
     noWorkflow: "Nenhum (card simples)",
     input: "Input {name}",
@@ -3105,8 +3131,22 @@ export const ptBR = {
   tiles: {
     title: "Sessões lado a lado",
     hint: "Alt+setas movem entre os blocos.",
-    count: "Blocos na tela",
-    countOption: "{n} blocos",
+    layout: "Disposição",
+    layoutOption: {
+      "2": "2 lado a lado",
+      "3": "3 colunas",
+      "2x2": "Grade 2×2",
+      "2x3": "Grade 2×3",
+      auto: "Automática",
+    },
+    layoutTip: {
+      "2": "2 lado a lado",
+      "3": "3 colunas",
+      "2x2": "Grade 2×2",
+      "2x3": "Grade 2×3",
+      auto: "Automática: todas as sessões ativas",
+    },
+    notShown: "+{n} fora da tela",
     lines: "Últimas linhas",
     nothingYet: "Nada dito ainda.",
     request: "Pedido",
@@ -3362,6 +3402,26 @@ export const ptBR = {
     probeRefused: "token recusado: rode flightdeckd pair no host e cole o link novo",
     probeUnreachable:
       "não foi possível conectar: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor",
+  },
+  hostOffline: {
+    label: "Estado da conexão",
+    title: "Host desconectado",
+    connecting: "Conectando…",
+    unauthorized: "O host recusou o token. Pareie este host de novo.",
+    refused: "Nada respondeu em {url}. O daemon provavelmente não está rodando.",
+    timeout: "O host não respondeu a tempo. A rede pode estar fora ou o daemon travado.",
+    lost: "A conexão com o host caiu.",
+    lastTry: "Última tentativa: {time}",
+    nextTry: "Próxima tentativa em {n} s",
+    reconnectNow: "Reconectar agora",
+    reconnecting: "Reconectando…",
+    still: "Continua desconectado.",
+    hintLinux: "No host, confira se o daemon está rodando e se ele sobe no boot:",
+    hintWsl:
+      "No WSL, ligue também o systemd em /etc/wsl.conf (depois rode wsl --shutdown no Windows):",
+    hintGeneric: "Confira se o host está ligado e alcançável, e se o daemon roda lá.",
+    hintAddress:
+      "Ou o daemon recusou o endereço desta máquina: no host, inclua a rede dela em allowedNetworks (o flightdeckd setup faz isso para o Tailscale).",
   },
   hostPage: {
     simpleTitle: "Modo simples",

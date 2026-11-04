@@ -16,6 +16,9 @@ const HOSTS = ["hosts"] as const;
 /** How long to wait before asking again while the host has no summary for the session. */
 const RETRY_MS = 8000;
 
+/** The sessions whose summary was shown: the card opens the first time and is one line after. */
+const SEEN = new Set<string>();
+
 /** The rows of a summary as label and text, in the order a person reads them. */
 function rows(recap: SessionRecap, question: string | undefined, t: T): Array<[string, string]> {
   const list: Array<[string, string | null]> = [
@@ -77,8 +80,13 @@ export function RecapPanel(props: {
     };
   }, [store, hostId, claudeSessionId, question, supported, stamp, attempt, retryMs]);
 
-  // Folded to one line until opened: it is a card of the header, and the conversation comes first.
-  const [open, setOpen] = useState(false);
+  // Open the first time a session is seen, one line after: it is a card of the header, and the
+  // conversation comes first.
+  const seenKey = `${hostId}/${claudeSessionId}`;
+  const [open, setOpen] = useState(() => !SEEN.has(seenKey));
+  useEffect(() => {
+    SEEN.add(seenKey);
+  }, [seenKey]);
   if (!supported || recap === undefined) return null;
   const lines = recap ? rows(recap, question, t) : [];
   return (

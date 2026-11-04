@@ -35,6 +35,24 @@ function withEnv(args: unknown[], env: Record<string, string | undefined>): unkn
   return [options.env === undefined ? { ...options, env } : options, second, ...rest];
 }
 
+/**
+ * Whether `name` configures Claude Code's telemetry: the switch and every OpenTelemetry variable. A
+ * session that has them set (this one may) must not leak them into what a test launches and then
+ * compares with what the test expected.
+ */
+export function isTelemetryVar(name: string): boolean {
+  return name === "CLAUDE_CODE_ENABLE_TELEMETRY" || name.startsWith("OTEL_");
+}
+
+/** Removes the telemetry variables from `env`; returns the names that were set. */
+export function scrubTelemetryEnv(env: Record<string, string | undefined> = process.env): string[] {
+  const removed = Object.keys(env).filter(
+    (name) => isTelemetryVar(name) && env[name] !== undefined,
+  );
+  for (const name of removed) delete env[name];
+  return removed;
+}
+
 /** What `installGitEnvGuard` did: the variables it removed. */
 export interface GitEnvGuard {
   removed: string[];
@@ -46,7 +64,7 @@ export interface GitEnvGuard {
  * process started with, so deleting from `process.env` alone does not reach it.
  */
 export function installGitEnvGuard(): GitEnvGuard {
-  const removed = scrubGitEnv();
+  const removed = [...scrubGitEnv(), ...scrubTelemetryEnv()];
   const clean = { ...process.env };
   const spawn = Bun.spawn.bind(Bun);
   const spawnSync = Bun.spawnSync.bind(Bun);

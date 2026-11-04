@@ -5,7 +5,8 @@ import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
-import { PersonaPicker } from "@/components/personas/persona-picker";
+import { Inline } from "@/components/layout/stack";
+import { PersonaPicker, useSuggestedPersona } from "@/components/personas/persona-picker";
 import { CardHours } from "@/components/roi/card-hours";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,8 @@ export const CardDetail = memo(function CardDetail(props: {
   store: AppStore;
   hostId: string;
   cardId: string;
+  /** Opened from the menu's Edit…: the title field takes focus. */
+  edit?: boolean;
   onBack(): void;
 }) {
   const t = useT();
@@ -57,6 +60,7 @@ export const CardDetail = memo(function CardDetail(props: {
   const state = useStoreSlice(store, CARDDETAIL_KEYS);
   const card = state.cards[sessionKey(hostId, cardId)];
   const [description, setDescription] = useState(card?.description ?? "");
+  const [title, setTitle] = useState(card?.title ?? "");
   const [adjustment, setAdjustment] = useState("");
   const [tab, setTab] = useState<"conversation" | "diff">("conversation");
   const [confirming, setConfirming] = useState<Confirming | null>(null);
@@ -85,8 +89,10 @@ export const CardDetail = memo(function CardDetail(props: {
   /** Workflows the card can start with: trusted and valid on the project's base branch. */
   const [workflows, setWorkflows] = useState<WorkflowInfo[]>([]);
   const [workflow, setWorkflow] = useState("");
-  /** Phase 20: the persona the card starts in, a picker value. */
-  const [persona, setPersona] = useState("");
+  /** Phase 20: the persona the card starts in, a picker value; `null` until picked (the Developer shows). */
+  const [picked, setPersona] = useState<string | null>(null);
+  const suggested = useSuggestedPersona(store, hostId, "dev");
+  const persona = picked ?? suggested;
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const projectId = card?.projectId ?? "";
   const chosen = workflows.find((w) => w.name === workflow);
@@ -291,6 +297,24 @@ export const CardDetail = memo(function CardDetail(props: {
             workflows={workflows}
           />
         )}
+        <Inline gap={2}>
+          <Input
+            aria-label={t("cardUi.title")}
+            value={title}
+            // The menu's Edit… opens the card to change it: the title is where the cursor goes.
+            autoFocus={props.edit === true}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <ActionButton
+            variant="outline"
+            disabled={title.trim() === "" || title.trim() === card.title}
+            onClick={() =>
+              store.hostCommand(hostId, "card.update", { cardId, title: title.trim() })
+            }
+          >
+            {t("cardUi.saveTitle")}
+          </ActionButton>
+        </Inline>
         <div className="flex items-start gap-2">
           <Textarea
             aria-label={t("cardUi.description")}

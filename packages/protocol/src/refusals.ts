@@ -144,6 +144,8 @@ export const DAEMON_REASONS = [
   "nothing_ahead",
   "complete_confirm",
   "discard_confirm",
+  "delete_confirm",
+  "card_delete_started",
   "base_not_local",
   "rebase_conflict",
   "merge_conflict",

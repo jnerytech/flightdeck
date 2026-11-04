@@ -236,6 +236,8 @@ interface SessionViewProps {
   persona?: ReactNode;
   /** The session's summary (phase 30), once Claude Code named the session. */
   recap?: ReactNode;
+  /** The turns a session resumed from History had before (issue #108), above the new ones. */
+  earlier?: ReactNode;
   /** Estimated cost of the session and its subagents (phase 8); `null` when unknown. */
   costUsd?: number | null;
   /** The app's translator and clock (phase 10); pt-BR and the real clock when absent. */
@@ -510,6 +512,7 @@ export function SessionView(props: SessionViewProps) {
             setAway(!atEnd);
           }}
         >
+          {props.earlier}
           {session.pruned && session.items.length === 0 && (
             <p className="text-muted-foreground text-sm">{t("session.pruned")}</p>
           )}
