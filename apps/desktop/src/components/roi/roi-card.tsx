@@ -27,10 +27,10 @@ function mergeSignals(list: Array<RoiSignalValues | undefined>): RoiSignalValues
 }
 
 type Choice = "month" | "7d" | "30d";
-const CHOICES: Array<{ id: Choice; label: Key }> = [
-  { id: "7d", label: "roiUi.period7" },
-  { id: "30d", label: "roiUi.period30" },
-  { id: "month", label: "roiUi.periodMonth" },
+const CHOICES: Array<{ id: Choice; labelKey: Key }> = [
+  { id: "7d", labelKey: "roiUi.period7" },
+  { id: "30d", labelKey: "roiUi.period30" },
+  { id: "month", labelKey: "roiUi.periodMonth" },
 ];
 const REFRESH_MS = 30_000;
 
@@ -146,7 +146,7 @@ export function RoiCard(props: { store: AppStore; hostId: string; project: Proje
               className="aria-pressed:bg-accent"
               onClick={() => setChoice(c.id)}
             >
-              {t(c.label)}
+              {t(c.labelKey)}
             </Button>
           ))}
         </fieldset>
