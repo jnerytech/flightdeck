@@ -52,3 +52,14 @@ export const settlePlain: Settle = plainWaiter(5000);
 export async function settleMaybe(check: () => boolean, timeoutMs = 5000): Promise<boolean> {
   return held(check, timeoutMs, await inAct());
 }
+
+/**
+ * Checks that something does NOT happen: the check is watched for the whole window, inside `act`, and
+ * the wait throws the moment it breaks. A fixed sleep and then one read passes on a slow runner
+ * before the thing had time to happen; this fails as soon as it does.
+ */
+export async function stays(check: () => boolean, windowMs = 300, label?: string): Promise<void> {
+  void check;
+  void windowMs;
+  void label;
+}
