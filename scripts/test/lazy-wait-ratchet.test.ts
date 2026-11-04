@@ -24,6 +24,10 @@ describe("lazy-wait-ratchet: a fixed wait followed by a one-shot query only goes
     expect(fixedWaitSites(`${sleep}\n${timer}`)).toBe(2);
   });
 
+  test("a wait that closes a block nothing opens above is not a helper's last statement", () => {
+    expect(fixedWaitSites("  await Bun.sleep(5);\n});")).toBe(0);
+  });
+
   test("a wait that is followed by findBy, waitFor or a settle is fine", () => {
     expect(fixedWaitSites(`await Bun.sleep(5);\nawait screen.findByRole("button");`)).toBe(0);
     expect(fixedWaitSites(`await Bun.sleep(5);\nawait settle(() => ok());`)).toBe(0);
