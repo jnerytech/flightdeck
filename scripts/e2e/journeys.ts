@@ -4,7 +4,7 @@
  * sideways, and the end of the long list shows after scrolling). The runner is `@playwright/test`
  * (scripts/e2e/journeys.e2e.ts); this file holds the journeys themselves.
  */
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import type { Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../demo-seed.ts";
@@ -412,6 +412,56 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       })
       .click();
     await tile(second).getByText(c.t("deps.unblocked"), { exact: true }).waitFor({ timeout: WAIT });
+  },
+
+  // 15. A long conversation opens on its latest message, stays put when scrolled up while a message
+  // arrives (the button counts it), and is where the reader left it when they come back.
+  "rolagem-fim": async (c) => {
+    const bottom = (el: HTMLElement) => el.scrollHeight - el.scrollTop - el.clientHeight;
+    await open(c, { name: "session", host: ALFA, id: c.ids.longSession });
+    await c.page
+      .getByText("Echo: Passo 24:", { exact: false })
+      .first()
+      .waitFor({ timeout: SESSION_WAIT });
+    const log = c.page
+      .locator("[tabindex='0'].overflow-y-auto")
+      .filter({ hasText: "Passo 24" })
+      .first();
+    // The code block and the summary are what push the layout after the first paint.
+    await c.page.locator("pre").first().waitFor({ timeout: WAIT });
+    await c.page
+      .getByRole("region", { name: c.t("recap.region") })
+      .waitFor({ timeout: SESSION_WAIT });
+    await waitFor(async () => (await log.evaluate(bottom)) <= 24, "a conversa abriu no fim");
+    // Scrolled up, a message that arrives leaves the view where it was and is counted.
+    await log.evaluate((el) => {
+      el.scrollTop = 300;
+    });
+    const jump = c.page.getByRole("button", { name: new RegExp(`^${c.t("session.jumpLatest")}$`) });
+    await jump.waitFor({ timeout: WAIT });
+    const kept = await log.evaluate((el) => el.scrollTop);
+    const box = c.page.getByLabel(c.t("session.message"), { exact: true });
+    await box.fill("mais uma do e2e");
+    await box.press("Enter");
+    await c.page
+      .getByRole("button", { name: /\(\d+ (new|nova|novas)\)/ })
+      .waitFor({ timeout: SESSION_WAIT });
+    await c.page.waitForTimeout(500);
+    expect(Math.abs((await log.evaluate((el) => el.scrollTop)) - kept)).toBeLessThanOrEqual(2);
+    // Leaving the screen for another and coming back: the same place.
+    await c.page.getByRole("button", { name: c.t("sidebar.projects"), exact: true }).click();
+    await log.waitFor({ state: "detached", timeout: WAIT });
+    await c.page
+      .getByRole("tab", { name: /Conversa longa/ })
+      .first()
+      .click();
+    const back = c.page
+      .locator("[tabindex='0'].overflow-y-auto")
+      .filter({ hasText: "Passo 24" })
+      .first();
+    await back.waitFor({ timeout: WAIT });
+    await c.page.waitForTimeout(500);
+    expect(Math.abs((await back.evaluate((el) => el.scrollTop)) - kept)).toBeLessThanOrEqual(2);
   },
 };
 

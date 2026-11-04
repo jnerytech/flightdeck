@@ -1707,6 +1707,8 @@ export const en: Dictionary = {
     insertSnippet: "Insert a snippet",
     mentionFolder: "Mention a file or folder",
     jumpLatest: "Jump to latest",
+    jumpLatestOne: "Jump to latest ({n} new)",
+    jumpLatestMany: "Jump to latest ({n} new)",
     cost: "estimated cost:",
     costLabel: "Session cost",
     resume: "Resume",

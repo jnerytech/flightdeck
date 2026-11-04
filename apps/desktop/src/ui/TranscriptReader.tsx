@@ -1,6 +1,6 @@
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
 import { Copy } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { Note } from "@/components/layout/note";
 import { Message, SessionHeader, SessionPane, Timeline } from "@/components/session/parts";
@@ -24,6 +24,8 @@ export interface ReaderTarget {
 
 /** Scrolling closer than this to the end loads the next page. */
 const NEAR_END_PX = 80;
+/** Within this of the bottom, the reader counts as at the end. */
+const END_SLACK_PX = 24;
 
 /** Adds `page` before or after `list`, skipping messages already there (pages may overlap). */
 function merge(list: HistoryMessage[], page: HistoryMessage[], where: "before" | "after") {
@@ -52,6 +54,10 @@ export function TranscriptReader(props: {
   const atEnd = useRef(false);
   const focused = useRef(false);
   const log = useRef<HTMLDivElement>(null);
+  // At the end of what is loaded: the view stays there while messages arrive and the layout settles.
+  const following = useRef(target.focusUuid === undefined && target.cursor === undefined);
+  const lastHeight = useRef(0);
+  const lastFirst = useRef<string | undefined>(undefined);
   const [confirming, setConfirming] = useState(false);
   /** The session's folder is on the host; `null` until it answers. */
   const [cwdExists, setCwdExists] = useState<boolean | null>(null);
@@ -62,19 +68,51 @@ export function TranscriptReader(props: {
 
   useEffect(() => {
     let live = true;
-    void store.historyGet(target.hostId, target.claudeSessionId, target.cursor).then((page) => {
-      if (!live || !page) return;
-      setSession(page.session);
-      setCwdExists(page.cwdExists ?? null);
-      setMessages(page.messages);
-      setNext(page.nextCursor);
-      atEnd.current = page.nextCursor === null;
-      setPrev(page.prevCursor);
-    });
+    // Opened on a hit or a cursor it starts there; opened plainly it starts on the latest messages.
+    const latest = target.cursor === undefined && target.focusUuid === undefined;
+    void store
+      .historyGet(target.hostId, target.claudeSessionId, target.cursor, latest)
+      .then((page) => {
+        if (!live || !page) return;
+        if (page.cursor !== undefined) lastAfter.current = page.cursor;
+        setSession(page.session);
+        setCwdExists(page.cwdExists ?? null);
+        setMessages(page.messages);
+        setNext(page.nextCursor);
+        atEnd.current = page.nextCursor === null;
+        setPrev(page.prevCursor);
+      });
     return () => {
       live = false;
     };
   }, [store, target]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the end moves when messages come in
+  useLayoutEffect(() => {
+    const box = log.current;
+    if (!box) return;
+    const first = messages[0]?.uuid;
+    if (following.current) box.scrollTop = box.scrollHeight;
+    else if (lastFirst.current !== undefined && first !== lastFirst.current) {
+      // Older messages came in above what is being read: the view stays on the same message.
+      box.scrollTop += box.scrollHeight - lastHeight.current;
+    }
+    lastFirst.current = first;
+    lastHeight.current = box.scrollHeight;
+  }, [messages]);
+  // Images and code settle after the first paint and push the end down.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: new messages add elements to observe
+  useLayoutEffect(() => {
+    const box = log.current;
+    if (!box || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (following.current) box.scrollTop = box.scrollHeight;
+      lastHeight.current = box.scrollHeight;
+    });
+    observer.observe(box);
+    for (const child of Array.from(box.children)) observer.observe(child);
+    return () => observer.disconnect();
+  }, [messages]);
 
   // Opens at the hit once its page is on screen.
   useEffect(() => {
@@ -215,6 +253,8 @@ export function TranscriptReader(props: {
         ref={log}
         onScroll={(e) => {
           const el = e.currentTarget;
+          following.current = el.scrollHeight - el.scrollTop - el.clientHeight <= END_SLACK_PX;
+          lastHeight.current = el.scrollHeight;
           if (next && el.scrollTop + el.clientHeight >= el.scrollHeight - NEAR_END_PX) {
             void loadPage(next, "after");
           }

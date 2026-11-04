@@ -1703,6 +1703,8 @@ export const ptBR = {
     insertSnippet: "Inserir um snippet",
     mentionFolder: "Mencionar arquivo ou pasta",
     jumpLatest: "Ir para a última",
+    jumpLatestOne: "Ir para a última ({n} nova)",
+    jumpLatestMany: "Ir para a última ({n} novas)",
     cost: "custo estimado:",
     costLabel: "Custo da sessão",
     resume: "Retomar",
