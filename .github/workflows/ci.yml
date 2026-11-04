@@ -115,6 +115,7 @@ jobs:
           bun run smoke:otel
           bun run smoke:webhook
           bun run smoke:boardsync
+          bun run smoke:roi
           bun run smoke:conta
 
       # The Tauri context needs the built frontend (frontendDist) to exist.
