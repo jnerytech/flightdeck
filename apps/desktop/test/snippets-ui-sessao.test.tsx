@@ -36,22 +36,49 @@ async function open() {
   });
   await poll(() => h.d.manager.get(sessionId).status === "idle");
   render(<App store={store} />);
-  await settle(() => store.getState().hosts[0]?.hostInfo?.features?.includes("snippets") === true);
+  // The App's own start (`init`) reloads the saved hosts and reconnects them; a route pushed before
+  // it ends is lost to its reset, which a slow runner shows as the test still being on the hub.
+  await settle(
+    () =>
+      store.getState().hostsLoaded &&
+      store.getState().hosts[0]?.status === "online" &&
+      store.getState().hosts[0]?.hostInfo?.features?.includes("snippets") === true,
+  );
+  const hostId = store.getState().hosts[0]?.id ?? h.hostId;
   await act(async () => {
-    store.router.push({ name: "session", host: h.hostId, id: sessionId });
+    store.router.push({ name: "session", host: hostId, id: sessionId });
   });
+  await settle(() => store.router.current.name === "session");
   await settle(() => screen.queryByLabelText("Mensagem") !== null);
-  return { store, sessionId, ...h };
+  return { store, sessionId, ...h, hostId };
 }
 
 const box = () => screen.queryByLabelText("Mensagem") as HTMLTextAreaElement | null;
-const typeInBox = async (text: string) => {
+const typeInBox = async (store: InstanceType<typeof AppStore>, text: string) => {
   expect(box()).not.toBeNull();
   await act(async () => {
     fireEvent.change(box() as HTMLElement, { target: { value: text } });
   });
   // The menu lists the snippets once the host's list has come; a slow runner is later than 150 ms.
-  await settle(() => menu().length > 0);
+  // On a timeout the message says what the store and the page held (a CI log is all there is of a
+  // run on another platform).
+  try {
+    await settle(() => menu().length > 0);
+  } catch (error) {
+    const state = store.getState();
+    const seen = {
+      hosts: state.hosts.map((h) => [h.name, h.status]),
+      snippets: Object.fromEntries(
+        Object.entries(state.snippets).map(([id, list]) => [id, list.map((x) => x.name)]),
+      ),
+      error: state.error,
+      route: store.router.current.name,
+      tabs: store.tabs.tabs.map((tab) => [tab.id === store.tabs.activeId, tab.router.current.name]),
+      box: box()?.value,
+      page: (document.body.textContent ?? "").slice(0, 400),
+    };
+    throw new Error(`${(error as Error).message}; the app held ${JSON.stringify(seen)}`);
+  }
 };
 const menu = () => {
   const list = screen.queryByRole("listbox", { name: "Snippets de prompt" });
@@ -64,16 +91,16 @@ const menu = () => {
 
 describe("snippets-uso: in the session", () => {
   test("/ in the message box lists the prompt snippets of the host and of the app, and not the commands", async () => {
-    await open();
-    await typeInBox("/");
+    const { store } = await open();
+    await typeInBox(store, "/");
     expect(menu().sort()).toEqual(["explicar", "resumir", "revisar", "traduzir"]);
-    await typeInBox("/rev");
+    await typeInBox(store, "/rev");
     expect(menu()).toEqual(["revisar"]);
   });
 
   test("choosing one puts its text in the box, filled from the session's folder", async () => {
-    const { d } = await open();
-    await typeInBox("/rev");
+    const { d, store } = await open();
+    await typeInBox(store, "/rev");
     const option = screen.queryByRole("option", { name: "revisar" });
     expect(option).not.toBeNull();
     await act(async () => {
@@ -85,8 +112,8 @@ describe("snippets-uso: in the session", () => {
   });
 
   test("a snippet with a field to fill goes in as written, for the person to complete", async () => {
-    await open();
-    await typeInBox("/expl");
+    const { store } = await open();
+    await typeInBox(store, "/expl");
     const option = screen.queryByRole("option", { name: "explicar" });
     expect(option).not.toBeNull();
     await act(async () => {
@@ -124,8 +151,8 @@ describe("snippets-uso: in the session", () => {
   });
 
   test("a global prompt with a field to fill also goes in as written", async () => {
-    await open();
-    await typeInBox("/trad");
+    const { store } = await open();
+    await typeInBox(store, "/trad");
     const option = screen.queryByRole("option", { name: "traduzir" });
     expect(option).not.toBeNull();
     await act(async () => {
