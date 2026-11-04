@@ -17,6 +17,7 @@ import {
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { unfoldAll } from "./unfold.ts";
 import { settle } from "./wait.ts";
 
 registerDom();
@@ -134,7 +135,8 @@ async function setup(platform = memoryPlatform()) {
   await hook("ext-run", "SessionStart", two as string);
   await hook("ext-run", "UserPromptSubmit", two as string, { prompt: "rode" });
   await act(async () => store.router.push({ name: "hub" }));
-  // The history one is folded behind "N sessões anteriores": open it, the checks below read all four.
+  // Every project starts folded and the history is behind "N sessões anteriores": open both, the checks below read all four.
+  await unfoldAll(act);
   await settle(
     () => screen.queryByRole("button", { name: /sess(?:ões|ão) anterior(?:es)?/ }) !== null,
   );

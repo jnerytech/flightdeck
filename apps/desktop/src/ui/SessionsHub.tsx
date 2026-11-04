@@ -5,7 +5,13 @@ import { AssignMenu } from "@/components/clients/assign-menu";
 import { ClientChip } from "@/components/clients/client-chip";
 import { HostsBanner } from "@/components/hosts/hosts-banner";
 import { CardGrid } from "@/components/hub/card-grid";
-import { HostChip, HostFilterRow, ProjectHeader } from "@/components/hub/project-header";
+import {
+  CountChip,
+  FoldAll,
+  HostChip,
+  HostFilterRow,
+  ProjectHeader,
+} from "@/components/hub/project-header";
 import { SessionCard } from "@/components/hub/session-card";
 import { ViewToggle } from "@/components/hub/view-toggle";
 import { NativeSelect } from "@/components/layout/form";
@@ -149,7 +155,12 @@ export function SessionsHub(props: {
   /** How many rows are drawn: the cap, and one more cap for each "show more". */
   const [limit, setLimit] = useState(HUB_ROW_CAP);
   // Each project: open when it has live sessions (or a search is on), its history behind a count.
-  const [open, setOpen] = useState<Record<string, boolean | undefined>>({});
+  const [open, setOpenState] = useState<Record<string, boolean | undefined>>(() => store.hubOpen());
+  /** What the person opened or folded is remembered, per project. */
+  const setOpen = (next: Record<string, boolean | undefined>) => {
+    setOpenState(next);
+    store.saveHubOpen(next);
+  };
   const [earlierOpen, setEarlierOpen] = useState<Record<string, boolean | undefined>>({});
   // Any filter narrows the list on purpose: what it keeps is shown, not folded away.
   const searching =
@@ -405,6 +416,12 @@ export function SessionsHub(props: {
     <Page title={t("sidebar.sessions")} toolbar={toolbar}>
       <div className="flex flex-col gap-4">
         <HostsBanner hosts={state.hosts} t={store.i18n.t} />
+        <FoldAll
+          expandLabel={t("hub.expandAll")}
+          collapseLabel={t("hub.collapseAll")}
+          onExpand={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.key, true])))}
+          onCollapse={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.key, false])))}
+        />
         {state.hosts.length > 1 && (
           <HostFilterRow
             label={t("hub.hostsLabel")}
@@ -464,7 +481,7 @@ export function SessionsHub(props: {
                 name={group.name}
                 expanded={groupView?.expanded ?? true}
                 toggleLabel={t("hub.toggleProject", { name: group.name })}
-                onToggle={() => setOpen({ ...open, [group.key]: !(groupView?.expanded ?? true) })}
+                onToggle={() => setOpen({ ...open, [group.key]: !(groupView?.expanded ?? false) })}
               >
                 {clientChip && state.clientSelection === ALL_CLIENTS && (
                   <ClientChip name={clientChip.name} color={clientChip.color} />
@@ -477,11 +494,14 @@ export function SessionsHub(props: {
                     name={group.name}
                   />
                 )}
-                {liveCount > 0 && (
-                  <span className="text-muted-foreground">
-                    {t("hub.liveCount", { n: liveCount })}
-                  </span>
-                )}
+                <CountChip
+                  live={liveCount}
+                  total={groupView?.total ?? group.rows.length}
+                  label={t("hub.countChip", {
+                    live: liveCount,
+                    total: groupView?.total ?? group.rows.length,
+                  })}
+                />
                 {hostChips.map((chip) => (
                   <HostChip
                     key={chip.id}

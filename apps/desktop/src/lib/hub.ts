@@ -407,17 +407,32 @@ export const HUB_ROW_CAP = 200;
 /** Where the open or folded state of each project is kept (issue #111). */
 export const HUB_OPEN_KEY = "flightdeck.hubOpen";
 
-/** The projects the person opened or folded last time, by project key; anything unreadable is none. Stubbed until the test commit is in. */
-export function loadHubOpen(_storage: {
+/** The projects the person opened or folded last time, by project key; anything unreadable is none. */
+export function loadHubOpen(storage: {
   getItem(key: string): string | null;
 }): Record<string, boolean> {
-  return {};
+  try {
+    const stored = JSON.parse(storage.getItem(HUB_OPEN_KEY) ?? "{}") as unknown;
+    if (typeof stored !== "object" || stored === null || Array.isArray(stored)) return {};
+    return Object.fromEntries(
+      Object.entries(stored).filter(
+        (entry): entry is [string, boolean] => typeof entry[1] === "boolean",
+      ),
+    );
+  } catch {
+    return {};
+  }
 }
 
 export function saveHubOpen(
-  _storage: { setItem(key: string, value: string): void },
-  _open: Record<string, boolean | undefined>,
-): void {}
+  storage: { setItem(key: string, value: string): void },
+  open: Record<string, boolean | undefined>,
+): void {
+  const chosen = Object.entries(open).filter(
+    (entry): entry is [string, boolean] => entry[1] !== undefined,
+  );
+  storage.setItem(HUB_OPEN_KEY, JSON.stringify(Object.fromEntries(chosen)));
+}
 
 /** A project group as the screen draws it: folded, with its history behind a count. */
 export interface HubGroupView {
@@ -435,8 +450,8 @@ export interface HubGroupView {
 }
 
 /**
- * Each group as drawn. A group is open when the person said so, else when it has live sessions or
- * a search is on; its earlier sessions come behind a count unless asked for (or searching).
+ * Each group as drawn. A group is open when the person said so, else when a search is on, and
+ * folded it shows only the sessions that need you; its earlier sessions come behind a count unless asked for (or searching).
  */
 export function hubView(
   groups: HubGroup[],
@@ -451,7 +466,8 @@ export function hubView(
       .filter(isEarlier)
       .sort((a, b) => b.lastActivity.localeCompare(a.lastActivity));
     const live = group.rows.filter((r) => !isEarlier(r));
-    const expanded = open[group.key] ?? (searching || live.length > 0);
+    // Every project starts folded (the list gets long); a search or filter opens what it keeps.
+    const expanded = open[group.key] ?? searching;
     const earlierShown = searching || earlierOpen[group.key] === true;
     return {
       group,
@@ -460,7 +476,10 @@ export function hubView(
       earlier,
       expanded,
       earlierShown,
-      rows: expanded ? [...live, ...(earlierShown ? earlier : [])] : [],
+      // Folded, the sessions that need you stay in view: they are the reason to look.
+      rows: expanded
+        ? [...live, ...(earlierShown ? earlier : [])]
+        : live.filter((r) => r.state === "needs_you"),
     };
   });
 }

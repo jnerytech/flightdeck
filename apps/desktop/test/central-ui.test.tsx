@@ -9,6 +9,7 @@ import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts"
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { unfoldAll } from "./unfold.ts";
 import { waiter } from "./wait.ts";
 
 registerDom();
@@ -68,6 +69,7 @@ const rowAction = async (title: string, action: string) => {
 
 /** The history sits behind "N sessões anteriores" (issue #111): opens it once the button is there. */
 const showEarlier = async () => {
+  await unfoldAll(act);
   await settle(
     () => screen.queryByRole("button", { name: /sess(?:ões|ão) anterior(?:es)?/ }) !== null,
   );

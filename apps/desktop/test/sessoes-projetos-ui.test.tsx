@@ -158,7 +158,7 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
     await settle(() => screen.queryByRole("heading", { name: "api" }) !== null);
     const toggle = () => screen.getByRole("button", { name: "Mostrar ou esconder api" });
     await click(toggle());
-    expect(titles()).toEqual(["src"]);
+    expect(titles()).toEqual(["api"]);
     const more = screen.getByRole("button", { name: "3 sessões anteriores" });
     expect(more.getAttribute("aria-expanded")).toBe("false");
     await click(more);
@@ -175,7 +175,7 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
     cleanup();
     setup({ open: { [API]: true } });
     await settle(() => titles().length > 0);
-    expect(titles()).toEqual(["src"]);
+    expect(titles()).toEqual(["api"]);
     expect(
       screen
         .getByRole("button", { name: "Mostrar ou esconder docs" })

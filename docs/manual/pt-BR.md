@@ -452,10 +452,11 @@ confirma.
 A tela **Sessões** é a principal do app: todas as sessões do Claude Code dos hosts online, num
 lugar só, agrupadas por projeto e ordenadas pela última atividade.
 
-- **Projeto primeiro.** Cada projeto é um grupo que se recolhe (o nome, a contagem de sessões ao
-  vivo e um chip por host, que abre a página do host). Um projeto com sessões ao vivo começa
-  aberto, com elas no topo (as que precisam de você primeiro); um projeto sem nada ao vivo começa
-  recolhido. As sessões encerradas e do histórico ficam atrás de **N sessões anteriores**, da mais
+- **Projeto primeiro.** Cada projeto é um grupo com um título em negrito (uma pasta, o nome, um chip
+  **ao vivo/total** e um chip por host, que abre a página do host). **Todo projeto começa
+  recolhido**, mostrando só o cabeçalho e as sessões que precisam de você; abra um pela seta, e a
+  escolha é lembrada por projeto. **Expandir tudo** e **Recolher tudo**, no topo, fazem isso com
+  todos. Aberto, o projeto mostra primeiro as sessões ao vivo (as que precisam de você no topo). As sessões encerradas e do histórico ficam atrás de **N sessões anteriores**, da mais
   nova para a mais antiga. Digitar no filtro também casa com o nome do projeto, e qualquer filtro (texto, host, origem,
   estado, persona, fixadas) abre tudo o que ele mantém. Uma sessão fixada fica sempre com as ao
   vivo. Uma fileira de chips **Hosts** sob o aviso de hosts mostra só as sessões de um host

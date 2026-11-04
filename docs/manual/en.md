@@ -466,9 +466,11 @@ saves after you confirm.
 The **Sessions** screen is the app's main one: every Claude Code session of the online hosts in
 one place, grouped by project and ordered by last activity.
 
-- **Project first.** Each project is a group you can fold (its name, a count of live sessions and
-  one chip per host, which opens that host's page). A project with live sessions starts open, with
-  those on top (the ones that need you first); a project with nothing live starts folded. The
+- **Project first.** Each project is a group with a bold heading (a folder, its name, a **live/total**
+  chip and one chip per host, which opens that host's page). **Every project starts folded**, showing
+  only its header and the sessions that need you; open one with its arrow, and the choice is
+  remembered per project. **Expand all** and **Collapse all** at the top do it for every project.
+  Opened, a project shows its live sessions first (the ones that need you on top). The
   ended and history sessions sit behind **N earlier sessions**, newest first. Typing in the filter
   also matches project names, and any filter (text, host, origin, state, persona, pinned) opens
   everything it keeps. A pinned session always stays with the live ones. A row of **Hosts** chips under

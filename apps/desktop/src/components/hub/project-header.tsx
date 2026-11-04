@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Folder } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -37,8 +37,40 @@ export function ProjectHeader(props: {
       >
         {props.expanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
       </Button>
-      <h3 className="shrink-0 font-medium text-muted-foreground">{props.name}</h3>
+      <Folder aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+      <h3 className="shrink-0 font-semibold text-base text-foreground">{props.name}</h3>
       {props.children}
+    </div>
+  );
+}
+
+/** The project's numbers as a chip: the live sessions out of all of them. */
+export function CountChip(props: { live: number; total: number; label: string }) {
+  return (
+    <span
+      aria-label={props.label}
+      className="rounded-full bg-muted px-2 text-muted-foreground tabular-nums"
+    >
+      {props.live}/{props.total}
+    </span>
+  );
+}
+
+/** Opens or folds every project at once. */
+export function FoldAll(props: {
+  expandLabel: string;
+  collapseLabel: string;
+  onExpand(): void;
+  onCollapse(): void;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      <Button variant="ghost" size="sm" onClick={props.onExpand}>
+        {props.expandLabel}
+      </Button>
+      <Button variant="ghost" size="sm" onClick={props.onCollapse}>
+        {props.collapseLabel}
+      </Button>
     </div>
   );
 }
