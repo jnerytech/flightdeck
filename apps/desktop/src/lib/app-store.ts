@@ -251,6 +251,8 @@ export interface AppState {
   projects: Record<string, Project[]>;
   /** Phase 29: the clients, in the order their rules are tried; kept by `store.clients`. */
   clientList: Client[];
+  /** Phase 36: counts the saves of `store.roi`, so the screens that read its settings render again. */
+  roiRevision: number;
   /** Phase 29: projects pinned to a client by hand (null: pinned to Unassigned). */
   clientOverrides: Record<string, string | null>;
   /** Phase 29: "all", "unassigned" or a client id; what the work screens show. */
@@ -711,7 +713,9 @@ export class AppStore {
     this.globalSnippets = new GlobalSnippets(platform);
     this.globalPersonas = new GlobalPersonas(platform);
     this.clients = new Clients(platform, { onChange: () => this.syncClients() });
-    this.roi = new RoiSettings(platform);
+    this.roi = new RoiSettings(platform, {
+      onChange: () => this.update({ roiRevision: this.state.roiRevision + 1 }),
+    });
     this.clientBudgetsSeen = JSON.stringify(this.clients.budgets());
     this.webhooks = new Webhooks({
       platform,
@@ -763,6 +767,7 @@ export class AppStore {
       terminalEnv: null,
       projects: {},
       clientList: this.clients.list(),
+      roiRevision: 0,
       clientOverrides: this.clients.overrides(),
       clientSelection: loadSelection(platform.storage, this.clients.list()),
       clientBudgets: [],

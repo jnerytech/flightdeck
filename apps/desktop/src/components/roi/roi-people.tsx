@@ -5,6 +5,7 @@ import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { periodRange, usd } from "@/lib/costs";
 import { humanTokens, personRows } from "@/lib/roi-people";
+import { useStoreSlice } from "@/lib/use-store";
 
 const DASH = "—";
 const REFRESH_MS = 30_000;
@@ -17,6 +18,8 @@ const REFRESH_MS = 30_000;
 export function RoiPeople(props: { store: AppStore }) {
   const { store } = props;
   const t = useT();
+  // The people are the app's own settings: a person added or removed shows at once.
+  useStoreSlice(store, ["roiRevision"]);
   const [answers, setAnswers] = useState<Array<{
     hostId: string;
     result: RoiSummaryResult;

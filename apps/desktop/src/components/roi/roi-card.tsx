@@ -9,6 +9,7 @@ import type { Key } from "@/i18n/index";
 import type { AppStore } from "@/lib/app-store";
 import { periodRange, usd } from "@/lib/costs";
 import { compare, EMPTY_PERIOD, figures, headline, mergePeriods } from "@/lib/roi";
+import { useStoreSlice } from "@/lib/use-store";
 
 /** The signals of the same project on several hosts: counts add up, the first refusal is told. */
 function mergeSignals(list: Array<RoiSignalValues | undefined>): RoiSignalValues {
@@ -58,7 +59,8 @@ export function RoiCard(props: { store: AppStore; hostId: string; project: Proje
     const own = store.roi.data().projectRates[key];
     return own === undefined ? "" : String(own);
   });
-  const [version, setVersion] = useState(0);
+  // The money is the app's own settings: a rate saved here or elsewhere shows at once.
+  useStoreSlice(store, ["roiRevision"]);
 
   const load = useCallback(async () => {
     const { from, to } = periodRange(choice, store.roiToday());
@@ -80,7 +82,7 @@ export function RoiCard(props: { store: AppStore; hostId: string; project: Proje
     return () => clearInterval(timer);
   }, [load]);
 
-  // Cheap, and read on every render: saving a rate bumps `version` to render again.
+  // Cheap, and read on every render.
   const money = store.roiMoneyOf(key);
 
   if (!periods) {
@@ -126,7 +128,6 @@ export function RoiCard(props: { store: AppStore; hostId: string; project: Proje
     const parsed = rateText.trim() === "" ? null : Number(rateText);
     if (parsed !== null && !Number.isFinite(parsed)) return;
     store.roi.setProjectRate(key, parsed);
-    setVersion(version + 1);
   };
 
   return (
