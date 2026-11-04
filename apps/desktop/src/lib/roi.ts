@@ -113,7 +113,7 @@ export function figures(period: RoiPeriod, money: RoiMoney): Figures {
   const reviewCostUsd =
     money.countReview && money.rate !== null ? (reviewSeconds / 3600) * money.rate : 0;
   const costUsd = agentsCostUsd + planShareUsd + reviewCostUsd;
-  const hoursValue = money.rate === null ? null : period.hours * money.rate;
+  const hoursValue = money.rate === null || period.hours === 0 ? null : period.hours * money.rate;
   const valueUsd =
     hoursValue === null && money.billed === null ? null : (hoursValue ?? 0) + (money.billed ?? 0);
   const roi = costUsd > 0 && valueUsd !== null ? (valueUsd - costUsd) / costUsd : null;

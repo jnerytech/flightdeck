@@ -178,7 +178,9 @@ export function RoiCard(props: { store: AppStore; hostId: string; project: Proje
             <Badge variant="outline">{t("roiUi.estimate")}</Badge>
           </li>
         ) : (
-          <li className="text-muted-foreground">{t("roiUi.noRate")}</li>
+          <li className="text-muted-foreground">
+            {t(money.rate === null ? "roiUi.noRate" : "roiUi.noHours")}
+          </li>
         )}
         {f.roi !== null && (
           <li className="flex items-center gap-1">
