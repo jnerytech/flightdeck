@@ -170,3 +170,16 @@ describe("roi-sinais: issues closed", () => {
     });
   });
 });
+
+describe("roi-sinais: a folder that is gone", () => {
+  test("neither signal throws: no commits, and gh_failed", async () => {
+    const gh = installFakeCli("gh", [{ args: ["issue", "list"], stdout: "[]" }]);
+    cleanups.push(() => gh.restore());
+    const gone = join(realTempDir("fd-roi-gone-"), "nope");
+    const signals = new RoiSignals();
+    expect(await signals.agentCommits(gone, "2026-10-01", "2026-10-14")).toBe(0);
+    expect(await signals.issuesClosed(gone, "2026-10-01", "2026-10-14")).toEqual({
+      error: "gh_failed",
+    });
+  });
+});
