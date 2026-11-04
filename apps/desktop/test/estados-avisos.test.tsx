@@ -10,7 +10,7 @@ import type { ConnectionStatus } from "../src/lib/host-connection.ts";
 import { hostStatusView, hostsBanner } from "../src/lib/host-status.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+import { stays, waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -382,7 +382,14 @@ describe("estados-avisos", () => {
     expect(submit.disabled).toBe(true);
     expect(submit.getAttribute("aria-busy")).toBe("true");
     await settle(() => store.getState().hosts.length > 0);
-    await act(async () => Bun.sleep(100));
+    await stays(
+      () =>
+        store
+          .getState()
+          .hosts.map((h) => h.name)
+          .join() === "pc",
+      100,
+    );
     expect(store.getState().hosts.map((h) => h.name)).toEqual(["pc"]);
   });
 

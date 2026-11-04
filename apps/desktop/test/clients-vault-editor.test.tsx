@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
-import { settle } from "./wait.ts";
+import { settle, stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -72,14 +72,14 @@ describe("clients-vault: the rules editor of a scoped secret", () => {
   test("a secret of no scoped client has no such note", async () => {
     await open(true);
     await openRules("solto");
-    await act(() => Bun.sleep(80));
+    await stays(() => note() === null, 100);
     expect(note() !== null).toBe(false);
   });
 
   test("with the scope off there is no note either", async () => {
     await open(false);
     await openRules("do-acme");
-    await act(() => Bun.sleep(80));
+    await stays(() => note() === null, 100);
     expect(note() !== null).toBe(false);
   });
 });

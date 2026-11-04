@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { snippetsHost } from "./snippets-ui-setup.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -28,7 +28,7 @@ async function open(seed?: (h: Awaited<ReturnType<typeof snippetsHost>>) => Prom
   await act(async () => {
     fireEvent.click(screen.queryByRole("button", { name: "Snippets" }) as HTMLElement);
   });
-  await act(() => Bun.sleep(80));
+  await uiIdle();
   return { store, ...h };
 }
 
@@ -38,7 +38,7 @@ const click = async (name: string) => {
   await act(async () => {
     fireEvent.click(button as HTMLElement);
   });
-  await act(() => Bun.sleep(100));
+  await uiIdle();
 };
 
 const fill = async (label: string, value: string) => {
@@ -47,7 +47,7 @@ const fill = async (label: string, value: string) => {
   await act(async () => {
     fireEvent.change(field as HTMLElement, { target: { value } });
   });
-  await act(() => Bun.sleep(30));
+  await uiIdle();
 };
 
 const rowNames = () => {

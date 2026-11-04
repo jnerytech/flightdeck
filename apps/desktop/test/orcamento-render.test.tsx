@@ -3,6 +3,7 @@ import { Profiler } from "react";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
+import { settle, stays, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, render, within } = await import("@testing-library/react");
@@ -49,11 +50,8 @@ async function online() {
   await act(async () => {
     await store.addHost({ name: "alfa", url: daemon.url, token: TOKEN });
   });
-  const deadline = Date.now() + 5000;
-  while (store.getState().hosts[0]?.status !== "online" && Date.now() < deadline) {
-    await act(() => Bun.sleep(10));
-  }
-  await act(() => Bun.sleep(200));
+  await settle(() => store.getState().hosts[0]?.status === "online");
+  await uiIdle(200);
   return { store, daemon };
 }
 
@@ -112,9 +110,9 @@ describe("orcamento-render: what a token costs", () => {
         <App store={store} />
       </Profiler>,
     );
-    await act(() => Bun.sleep(300));
+    await uiIdle(300);
     const quiet = commits;
-    await act(() => Bun.sleep(1000));
+    await stays(() => commits === quiet, 1000);
     expect(commits - quiet).toBe(0);
     await stream(daemon, "s9", 30);
     expect(commits - quiet).toBe(0);

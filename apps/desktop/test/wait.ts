@@ -52,3 +52,43 @@ export const settlePlain: Settle = plainWaiter(5000);
 export async function settleMaybe(check: () => boolean, timeoutMs = 5000): Promise<boolean> {
   return held(check, timeoutMs, await inAct());
 }
+
+/**
+ * Checks that something does NOT happen: the check is watched for the whole window, inside `act`, and
+ * the wait throws the moment it breaks. A fixed sleep and then one read passes on a slow runner
+ * before the thing had time to happen; this fails as soon as it does.
+ */
+export async function stays(check: () => boolean, windowMs = 300, label?: string): Promise<void> {
+  const sleep = await inAct();
+  const deadline = Date.now() + windowMs;
+  do {
+    if (!check()) {
+      const what = label ?? check.toString().replace(/\s+/g, " ").trim();
+      throw new WaitTimeout(`broke before ${windowMs} ms: ${what}`);
+    }
+    await sleep(10);
+  } while (Date.now() < deadline);
+}
+
+/**
+ * Waits until the screen has stopped changing: `quietMs` with the same markup, polled inside `act`.
+ * For the click and fill helpers, whose callers read what the action caused; it replaces their
+ * trailing sleep with a condition. Throws, like every wait here, when the screen never settles.
+ */
+export async function uiIdle(quietMs = 50, timeoutMs = 5000): Promise<void> {
+  const sleep = await inAct();
+  const deadline = Date.now() + timeoutMs;
+  let markup = document.body.innerHTML;
+  let since = Date.now();
+  while (Date.now() - since < quietMs) {
+    if (Date.now() >= deadline) {
+      throw new WaitTimeout(`timeout (${timeoutMs} ms) waiting for: the screen to stop changing`);
+    }
+    await sleep(10);
+    const now = document.body.innerHTML;
+    if (now !== markup) {
+      markup = now;
+      since = Date.now();
+    }
+  }
+}

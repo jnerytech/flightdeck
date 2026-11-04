@@ -3,7 +3,7 @@ import type { ExternalSession } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { snippetsHost } from "./snippets-ui-setup.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -62,7 +62,7 @@ async function open(onExternal = false) {
       });
       store.router.push({ name: "external", host: h.hostId, claudeSessionId: "ext-1" });
     });
-    await act(() => Bun.sleep(100));
+    await uiIdle();
   }
   return { store, asked, ...h };
 }
@@ -84,7 +84,7 @@ async function palette(label: string) {
   await act(async () => {
     fireEvent.click(option as HTMLElement);
   });
-  await act(() => Bun.sleep(100));
+  await uiIdle();
 }
 
 async function click(name: string) {
@@ -93,7 +93,7 @@ async function click(name: string) {
   await act(async () => {
     fireEvent.click(button as HTMLElement);
   });
-  await act(() => Bun.sleep(150));
+  await uiIdle();
 }
 
 describe("snippets-uso: terminal sessions and new sessions", () => {

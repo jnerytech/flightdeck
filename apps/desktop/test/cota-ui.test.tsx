@@ -8,7 +8,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
 import { sidebarNav } from "./sidebar.ts";
-import { waiter } from "./wait.ts";
+import { stays, waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -254,14 +254,19 @@ describe("cota-ui", () => {
     await settle(() =>
       store.getState().hosts.every((h) => h.status === "online" && h.hostInfo !== null),
     );
-    await act(() => Bun.sleep(100));
-    expect(screen.queryByRole("region", { name: "Cota de sem" })).toBeNull();
-    expect(screen.queryByRole("region", { name: "Cota de velho" })).toBeNull();
+    await stays(
+      () =>
+        screen.queryByRole("region", { name: "Cota de sem" }) === null &&
+        screen.queryByRole("region", { name: "Cota de velho" }) === null,
+      100,
+    );
     for (const name of ["sem", "velho"]) {
       await click(`Abrir host ${name}`);
       await settle(() => screen.queryByRole("heading", { name }) !== null);
-      await act(() => Bun.sleep(100));
-      expect(screen.queryByRole("region", { name: "Uso dos últimos 7 dias" })).toBeNull();
+      await stays(
+        () => screen.queryByRole("region", { name: "Uso dos últimos 7 dias" }) === null,
+        100,
+      );
     }
     expect(store.getState().error).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();

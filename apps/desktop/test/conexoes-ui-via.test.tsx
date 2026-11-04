@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { type SshDaemonOptions, sshDaemon, sshTarget } from "./ssh-daemon.ts";
-import { waiter } from "./wait.ts";
+import { uiIdle, waiter } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -60,7 +60,7 @@ const click = async (name: string) => {
   await act(async () => {
     fireEvent.click(button as HTMLElement);
   });
-  await act(() => Bun.sleep(40));
+  await uiIdle();
 };
 
 describe("conexoes-ui: opened by another host", () => {

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { translator } from "../src/i18n/index.ts";
 import { liveScreen, registerDom } from "./dom.ts";
+import { uiIdle } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -99,7 +100,7 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
         <MessagingRulesSection store={store} hostId="h" hostName="alfa" />
       </TContext.Provider>,
     );
-    await act(() => Bun.sleep(10));
+    await uiIdle();
     await type("Origem", "alfa");
     await type("Destino", "beta");
     const result = { ok: true, data: { policy: { exceptions: [], retentionDays: 7 }, paused: [] } };

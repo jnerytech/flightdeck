@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { registerDom } from "./dom.ts";
+import { uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, render } = await import("@testing-library/react");
@@ -38,7 +39,7 @@ describe("estados-vazios: usage of a host", () => {
   for (const language of ["en", "pt-BR"] as const) {
     test(`a host with no usage says when the cost appears, instead of a table of headers, in ${language}`, async () => {
       const view = panel(language, fakeStore({ byDay: [] }));
-      await act(() => Bun.sleep(10));
+      await uiIdle();
       expect(view.container.textContent).toContain(EMPTY[language]);
       expect(view.container.querySelector("table")).toBeNull();
     });
@@ -46,7 +47,7 @@ describe("estados-vazios: usage of a host", () => {
 
   test("while the usage is loading, neither the empty text nor an empty table shows", async () => {
     const view = panel("en", fakeStore(null, true));
-    await act(() => Bun.sleep(10));
+    await uiIdle();
     expect(view.container.textContent).not.toContain(EMPTY.en);
     expect(view.container.querySelector("table")).toBeNull();
   });
@@ -56,7 +57,7 @@ describe("estados-vazios: usage of a host", () => {
       "en",
       fakeStore({ byDay: [{ day: "2026-10-31", projectKey: "kA", costUsd: 1.5, tokens: 1200 }] }),
     );
-    await act(() => Bun.sleep(10));
+    await uiIdle();
     expect(view.container.querySelector("table")?.textContent).toContain("kA");
     expect(view.container.textContent).not.toContain(EMPTY.en);
   });

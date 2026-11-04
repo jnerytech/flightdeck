@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { registerDom } from "./dom.ts";
+import { uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render } = await import("@testing-library/react");
@@ -25,7 +26,7 @@ const press = async (view: ReturnType<typeof render>, name: string) => {
   await act(async () => {
     fireEvent.click(button as HTMLElement);
   });
-  await act(() => Bun.sleep(10));
+  await uiIdle();
 };
 
 describe("erros-com-solucao: refusals shown by forms", () => {
@@ -48,7 +49,7 @@ describe("erros-com-solucao: refusals shown by forms", () => {
       i18n: { t: (key: string) => key },
     } as unknown as AppStore;
     const view = render(<MessagingRulesSection store={store} hostId="h" hostName="alfa" />);
-    await act(() => Bun.sleep(10));
+    await uiIdle();
     await press(view, "Salvar retenção");
     expect(view.container.textContent).toContain(`${TEXT} sessão em uso`);
   });
@@ -80,7 +81,7 @@ describe("erros-com-solucao: refusals shown by forms", () => {
       await act(async () => {
         fireEvent.click(submit as HTMLElement);
       });
-      await act(() => Bun.sleep(10));
+      await uiIdle();
       const alert = document.body.querySelector("[role=alert]")?.textContent ?? "";
       expect(alert).toBe(`${shown} ação em uso`);
       view.unmount();
@@ -98,7 +99,7 @@ describe("erros-com-solucao: refusals shown by forms", () => {
           <ChangesPanel store={store} hostId="h" target="session:abc" />
         </TContext.Provider>,
       );
-      await act(() => Bun.sleep(20));
+      await uiIdle();
       expect(view.container.textContent).toContain(`${shown} sem mudanças`);
     });
   }

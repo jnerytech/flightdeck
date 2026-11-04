@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { snippetsHost } from "./snippets-ui-setup.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -51,7 +51,7 @@ async function open(withTerminal = true, extra: Array<Record<string, unknown>> =
     await act(async () => {
       store.router.push({ name: "terminal", host: h.hostId, terminalId });
     });
-    await act(() => Bun.sleep(100));
+    await uiIdle();
   }
   return { store, copied, terminalId, ...h };
 }
@@ -80,7 +80,7 @@ async function choose(label: string) {
   await act(async () => {
     fireEvent.click(option as HTMLElement);
   });
-  await act(() => Bun.sleep(100));
+  await uiIdle();
 }
 
 async function click(name: string) {
@@ -89,7 +89,7 @@ async function click(name: string) {
   await act(async () => {
     fireEvent.click(button as HTMLElement);
   });
-  await act(() => Bun.sleep(150));
+  await uiIdle();
 }
 
 describe("snippets-uso: the palette", () => {
@@ -246,8 +246,7 @@ describe("snippets-uso: the palette", () => {
     await act(async () => {
       fireEvent.keyDown(use as HTMLElement, { key: "Escape" });
     });
-    await act(() => Bun.sleep(100));
-    expect(screen.queryByLabelText("msg")).toBeNull();
+    await settle(() => screen.queryByLabelText("msg") === null);
   });
 
   test("a context field the person fills goes into the text", async () => {

@@ -11,7 +11,7 @@ import { Router } from "../src/lib/router.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
-import { waiter } from "./wait.ts";
+import { stays, waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -402,8 +402,7 @@ describe("navegacao", () => {
     expect(heading("Ajuste")).toBe(true);
     expect(screen.queryByText("Card não encontrado.")).toBeNull();
     // Nothing was asked of the host with an empty project while the card was still loading.
-    await act(async () => Bun.sleep(300));
-    expect(screen.queryByRole("alert")).toBeNull();
+    await stays(() => screen.queryByRole("alert") === null, 300);
     expect(d.board.getCard(card.id).title).toBe("Ajuste");
   });
 

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { translator } from "../src/i18n/index.ts";
 import { liveScreen, registerDom } from "./dom.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -31,7 +32,7 @@ async function headings(label?: (key: string) => string): Promise<string[]> {
       <TimingBreakdown store={store} hostId="h" {...(label ? { label } : {})} />
     </TContext.Provider>,
   );
-  await act(() => Bun.sleep(10));
+  await settle(() => screen.queryAllByRole("heading", { level: 4 }).length > 0);
   return screen.queryAllByRole("heading", { level: 4 }).map((h) => h.textContent ?? "");
 }
 

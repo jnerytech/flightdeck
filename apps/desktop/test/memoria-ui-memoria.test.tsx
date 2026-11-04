@@ -5,7 +5,7 @@ import { tempDir } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { memoriaHost } from "./memoria-ui-setup.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -56,7 +56,7 @@ async function click(name: string | RegExp, role = "button") {
   await act(async () => {
     fireEvent.click(element as HTMLElement);
   });
-  await act(() => Bun.sleep(120));
+  await uiIdle();
 }
 
 async function fill(label: string, value: string) {

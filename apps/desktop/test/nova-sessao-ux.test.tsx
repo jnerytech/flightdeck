@@ -3,7 +3,7 @@ import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { personasHost } from "./personas-ui-setup.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -25,7 +25,7 @@ const fill = async (label: string, value: string) => {
   await act(async () => {
     fireEvent.change(field as HTMLElement, { target: { value } });
   });
-  await act(() => Bun.sleep(30));
+  await uiIdle();
 };
 const press = async (name: string) => {
   const button = screen.queryByRole("button", { name });
@@ -160,10 +160,9 @@ describe("nova-sessao-ux: the form says what it needs", () => {
     await press("Create session");
     expect(created).toHaveLength(1);
     open();
-    await act(() => Bun.sleep(20));
-    expect(
-      screen.queryByRole("button", { name: /Create session/ })?.getAttribute("aria-busy"),
-    ).toBeNull();
+    await settle(
+      () => !screen.queryByRole("button", { name: /Create session/ })?.hasAttribute("aria-busy"),
+    );
   });
 
   test("a host with no allowed folder says so instead of a silent button", async () => {
@@ -217,7 +216,11 @@ describe("nova-sessao-ux: the form says what it needs", () => {
     const view = render(form(loading));
     await fill("First prompt", "faça isto");
     view.rerender(form(host));
-    await act(() => Bun.sleep(10));
+    await settle(
+      () =>
+        (screen.queryByRole("button", { name: "Create session" }) as HTMLButtonElement | null)
+          ?.disabled === false,
+    );
     const button = screen.queryByRole("button", {
       name: "Create session",
     }) as HTMLButtonElement | null;

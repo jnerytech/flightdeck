@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+import { uiIdle, waiter } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -117,7 +117,7 @@ describe("direcao-visual: barra lateral", () => {
     const go = async (name: string) => {
       await click(inAside().queryByRole("button", { name }));
       // Board and Workflows ask the host for its projects first.
-      await act(() => Bun.sleep(40));
+      await uiIdle();
       return store.router.current.name;
     };
     expect(await go("Precisa de você")).toBe("needs-you");

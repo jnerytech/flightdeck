@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { registerDom } from "./dom.ts";
+import { stays } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, waitFor } = await import("@testing-library/react");
@@ -122,7 +123,7 @@ describe("uso-tabela-ui: the history list opened from a usage row", () => {
     expect(asked.at(-1)).not.toHaveProperty("cwd");
     const count = asked.length;
     view.rerender(list(undefined));
-    await act(() => Bun.sleep(30));
+    await stays(() => asked.length === count, 100);
     expect(asked).toHaveLength(count);
   });
 

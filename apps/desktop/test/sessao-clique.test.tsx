@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -64,7 +65,7 @@ describe("sessao-clique: the session screen answers a click", () => {
     await press(/Parar o turno/);
     expect(interrupts).toBe(1);
     work.open();
-    await act(() => Bun.sleep(10));
+    await settle(() => busy(/Parar o turno/) === null);
     expect(busy(/Parar o turno/)).toBeNull();
   });
 
@@ -81,7 +82,7 @@ describe("sessao-clique: the session screen answers a click", () => {
     await press("Retomar");
     expect(busy(/Retomar/)).toBe("true");
     work.open();
-    await act(() => Bun.sleep(10));
+    await settle(() => busy(/Retomar/) === null);
     expect(busy(/Retomar/)).toBeNull();
   });
 
@@ -93,10 +94,10 @@ describe("sessao-clique: the session screen answers a click", () => {
     );
     await press("Encerrar");
     await press("Encerrar sessão");
-    await act(() => Bun.sleep(10));
+    await settle(() => busy(/Encerrar/) === "true");
     expect(busy(/Encerrar/)).toBe("true");
     work.open();
-    await act(() => Bun.sleep(10));
+    await settle(() => busy(/Encerrar/) === null);
     expect(busy(/Encerrar/)).toBeNull();
   });
 

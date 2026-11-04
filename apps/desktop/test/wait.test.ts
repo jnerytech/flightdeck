@@ -1,6 +1,14 @@
 import { expect, describe as suite, test } from "bun:test";
 import { registerDom } from "./dom.ts";
-import { plainWaiter, settleMaybe, settlePlain, WaitTimeout, waiter } from "./wait.ts";
+import {
+  plainWaiter,
+  settleMaybe,
+  settlePlain,
+  stays,
+  uiIdle,
+  WaitTimeout,
+  waiter,
+} from "./wait.ts";
 
 registerDom();
 
@@ -45,5 +53,54 @@ suite("wait: a wait that runs out of time throws and says what it waited for", (
   test("settleMaybe says whether the condition held, and never throws", async () => {
     expect(await settleMaybe(() => true, 50)).toBe(true);
     expect(await settleMaybe(() => false, 30)).toBe(false);
+  });
+});
+
+suite("wait: stays checks that a thing does NOT happen, by watching for the whole window", () => {
+  test("it returns once the window ended with the check holding the whole time", async () => {
+    let n = 0;
+    await stays(() => {
+      n += 1;
+      return true;
+    }, 80);
+    expect(n).toBeGreaterThan(2);
+  });
+
+  test("it throws the moment the check breaks, naming what was meant to hold", async () => {
+    let n = 0;
+    const error = await stays(() => ++n < 3, 1000, "the dialog stays closed").catch(
+      (e: unknown) => e,
+    );
+    expect((error as Error).message).toBe("broke before 1000 ms: the dialog stays closed");
+    expect(n).toBe(3);
+  });
+});
+
+suite("wait: uiIdle returns once the screen has stopped changing, not after a guessed time", () => {
+  test("it waits through a screen that keeps changing and returns after the last change", async () => {
+    let lastChange = 0;
+    let stop = false;
+    const timer = setInterval(() => {
+      document.body.textContent = String(Date.now());
+      lastChange = Date.now();
+    }, 15);
+    setTimeout(() => {
+      stop = true;
+      clearInterval(timer);
+    }, 150);
+    await uiIdle();
+    expect(stop).toBe(true);
+    expect(Date.now() - lastChange).toBeGreaterThanOrEqual(30);
+  });
+
+  test("a screen that never settles throws, naming the wait", async () => {
+    const timer = setInterval(() => {
+      document.body.textContent = String(Math.random());
+    }, 5);
+    const error = await uiIdle(40, 200).catch((e: unknown) => e);
+    clearInterval(timer);
+    expect((error as Error).message).toBe(
+      "timeout (200 ms) waiting for: the screen to stop changing",
+    );
   });
 });

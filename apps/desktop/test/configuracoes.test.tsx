@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -51,9 +52,7 @@ async function openSettings() {
     fireEvent.click(button as HTMLElement);
   });
   // The Settings screen loads on demand: wait for it (its "Tema" control) before the test reads it.
-  for (let waited = 0; screen.queryByLabelText("Tema") === null && waited < 5000; waited += 20) {
-    await act(() => Bun.sleep(20));
-  }
+  await settle(() => screen.queryByLabelText("Tema") !== null);
 }
 
 const checkbox = (label: string) => {

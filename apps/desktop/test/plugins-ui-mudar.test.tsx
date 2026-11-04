@@ -3,7 +3,7 @@ import type { FakeCli, FakeRule } from "../../../scripts/test/fake-cli.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { ok, pluginsHost, write } from "./plugins-ui-setup.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -49,7 +49,7 @@ async function click(name: string | RegExp, role = "button") {
   await act(async () => {
     fireEvent.click(element as HTMLElement);
   });
-  await act(() => Bun.sleep(150));
+  await uiIdle();
 }
 
 const calls = (fake: FakeCli) => fake.calls().map((c) => c.join(" "));

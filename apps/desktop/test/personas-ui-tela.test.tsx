@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { personasHost } from "./personas-ui-setup.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -55,7 +55,7 @@ async function click(name: string) {
   await act(async () => {
     fireEvent.click(button as HTMLElement);
   });
-  await act(() => Bun.sleep(150));
+  await uiIdle();
 }
 
 async function choose(label: string, value: string) {
@@ -64,7 +64,7 @@ async function choose(label: string, value: string) {
   await act(async () => {
     fireEvent.change(field as HTMLElement, { target: { value } });
   });
-  await act(() => Bun.sleep(150));
+  await uiIdle();
 }
 
 describe("personas-ui: the library", () => {
