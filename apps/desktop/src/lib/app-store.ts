@@ -2258,7 +2258,7 @@ export class AppStore {
     this.updateHost(hostId, (h) => {
       // Back on the version it was updating to: the update is over.
       const done = h.daemonUpdate && hostInfo?.daemonVersion === h.daemonUpdate.target;
-      return { ...h, hostInfo, ...(done ? { daemonUpdate: null } : {}) };
+      return { ...h, hostInfo, infoAt: Date.now(), ...(done ? { daemonUpdate: null } : {}) };
     });
     // ssh asks for passwords through the daemon: this app is who answers.
     if (hasFeature(hostInfo?.features, "ssh", false)) {

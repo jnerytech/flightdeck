@@ -9,15 +9,23 @@ export interface RetryState {
 }
 
 /** Seconds the daemon has been up now, from what `host.info` said when it was received. */
-export function hostUptime(uptimeSec: number, _receivedAt: number, _now: number): number {
-  return uptimeSec;
+export function hostUptime(uptimeSec: number, receivedAt: number, now: number): number {
+  return uptimeSec + Math.max(0, Math.floor((now - receivedAt) / 1000));
 }
 
 /** Which troubleshooting hint fits: the Linux/WSL one has the linger commands. */
 export function offlineHint(
-  _kind: OfflineKind,
-  _url: string,
-  _os: string | null,
+  kind: OfflineKind,
+  url: string,
+  os: string | null,
 ): "linux" | "generic" | "none" {
-  return "none";
+  if (kind !== "refused") return "generic";
+  let hostname = "";
+  try {
+    hostname = new URL(url).hostname.toLowerCase();
+  } catch {
+    // An address that does not parse falls back to the OS the host last reported.
+  }
+  const local = hostname === "localhost" || hostname === "[::1]" || hostname.startsWith("127.");
+  return local || os === "linux" ? "linux" : "generic";
 }

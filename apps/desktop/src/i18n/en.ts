@@ -3359,6 +3359,23 @@ export const en: Dictionary = {
     probeUnreachable:
       "could not connect: check that the daemon is running and that the address matches. On the host, run flightdeckd doctor",
   },
+  hostOffline: {
+    label: "Connection status",
+    title: "Host offline",
+    connecting: "Connecting…",
+    unauthorized: "The host refused the token. Pair this host again.",
+    refused: "Nothing answered at {url}. The daemon is probably not running.",
+    timeout: "The host did not answer in time. The network may be down or the daemon stuck.",
+    lost: "The connection to the host dropped.",
+    lastTry: "Last try: {time}",
+    nextTry: "Next try in {n} s",
+    reconnectNow: "Reconnect now",
+    reconnecting: "Reconnecting…",
+    still: "Still offline.",
+    hintLinux: "On the host, check that the daemon runs, and that it starts at boot:",
+    hintWsl: "On WSL, also turn on systemd in /etc/wsl.conf (then run wsl --shutdown on Windows):",
+    hintGeneric: "Check that the host is on and reachable, and that the daemon runs there.",
+  },
   hostPage: {
     simpleTitle: "Simple mode",
     simpleHint:

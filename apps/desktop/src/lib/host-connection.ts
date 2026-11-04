@@ -155,6 +155,9 @@ export class HostConnection {
   latencyMs: number | null = null;
   /** Set while the host is offline and a try is scheduled; `null` otherwise. */
   retry: RetryState | null = null;
+  /** When the current try started, and whether the watchdog (not the socket) ended it. */
+  private triedAt = 0;
+  private gaveUp = false;
   private ws: WebSocket | null = null;
   private attempt = 0;
   private nextId = 0;
@@ -183,6 +186,8 @@ export class HostConnection {
   constructor(private readonly opts: HostConnectionOptions) {}
 
   connect(): void {
+    this.triedAt = Date.now();
+    this.gaveUp = false;
     this.setStatus("connecting");
     const ws = new WebSocket(this.opts.url);
     this.ws = ws;
@@ -197,6 +202,7 @@ export class HostConnection {
         (info) => {
           this.info = info;
           this.attempt = 0;
+          this.retry = null;
           this.setStatus("online");
           if (this.watching) this.send("sessions.watch", {}).catch(ignore);
           // Daemons before phase 4 answer with an error: nothing to watch there.
@@ -430,6 +436,7 @@ export class HostConnection {
           this.suspect = true;
           return;
         }
+        this.gaveUp = true;
         this.onClose(ws, 1006);
         ws.close();
       },
@@ -454,8 +461,11 @@ export class HostConnection {
       this.setStatus("unauthorized");
       return;
     }
-    this.setStatus("offline");
     const delay = backoffDelay(this.attempt++, this.opts.baseDelayMs, this.opts.maxDelayMs);
+    // A browser socket only says that it closed: the story is told by what came before.
+    const kind = this.status === "online" ? "lost" : this.gaveUp ? "timeout" : "refused";
+    this.retry = { kind, lastTryAt: this.triedAt, nextRetryAt: Date.now() + delay };
+    this.setStatus("offline");
     this.timer = setTimeout(() => this.connect(), delay);
   }
 

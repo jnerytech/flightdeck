@@ -2426,7 +2426,15 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
   lado: **A** aprova, **N** nega e **Esc** fecha o detalhe. **Abrir sessão** leva à conversa.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude
-  ganha um selo ⚠.
+  ganha um selo ⚠. O tempo no ar continua contando enquanto a página está aberta.
+- **Um host desconectado** mostra um aviso no topo da página dele: o estado, o que falhou em
+  palavras simples (nada respondeu, sem resposta a tempo, a conexão caiu, o token foi recusado), a
+  hora da última tentativa, a contagem até a próxima tentativa automática e **Reconectar agora**,
+  que mostra o andamento e depois "Continua desconectado." se falhou. As seções que dependem da
+  conexão dizem "Host desconectado" em vez de "consultando…". Para uma conexão recusada em um host
+  local, WSL ou Linux, o aviso lista os comandos para conferir o daemon
+  (`systemctl --user status flightdeckd`, `sudo loginctl enable-linger $USER` e `systemd=true` em
+  `/etc/wsl.conf` no WSL).
 - **Notificações** trazem o nome do host.
 - **Fechar a janela** manda o app para a bandeja (desligável em Configurações). **Iniciar com o
   Windows** fica em Configurações, desligado por padrão.

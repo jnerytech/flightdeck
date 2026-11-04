@@ -2438,7 +2438,14 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
   conversation.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
-  badge.
+  badge. The uptime keeps counting while the page is open.
+- **A host that is offline** shows a banner at the top of its page: the state, what failed in plain
+  words (nothing answered, no answer in time, the link dropped, the token refused), the time of the
+  last try, a countdown to the next automatic try and **Reconnect now**, which shows its progress
+  and then "Still offline." if it failed. The sections that need the connection say "Host offline"
+  instead of "checking…". For a refused connection to a local, WSL or Linux host, the banner lists
+  the commands to check the daemon (`systemctl --user status flightdeckd`,
+  `sudo loginctl enable-linger $USER`, and `systemd=true` in `/etc/wsl.conf` on WSL).
 - **Notifications** carry the host name.
 - **Closing the window** sends the app to the tray (can be turned off in Settings). **Start with
   Windows** is in Settings, off by default.

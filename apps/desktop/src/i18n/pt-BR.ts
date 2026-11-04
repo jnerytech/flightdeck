@@ -3362,6 +3362,24 @@ export const ptBR = {
     probeUnreachable:
       "não foi possível conectar: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor",
   },
+  hostOffline: {
+    label: "Estado da conexão",
+    title: "Host desconectado",
+    connecting: "Conectando…",
+    unauthorized: "O host recusou o token. Pareie este host de novo.",
+    refused: "Nada respondeu em {url}. O daemon provavelmente não está rodando.",
+    timeout: "O host não respondeu a tempo. A rede pode estar fora ou o daemon travado.",
+    lost: "A conexão com o host caiu.",
+    lastTry: "Última tentativa: {time}",
+    nextTry: "Próxima tentativa em {n} s",
+    reconnectNow: "Reconectar agora",
+    reconnecting: "Reconectando…",
+    still: "Continua desconectado.",
+    hintLinux: "No host, confira se o daemon está rodando e se ele sobe no boot:",
+    hintWsl:
+      "No WSL, ligue também o systemd em /etc/wsl.conf (depois rode wsl --shutdown no Windows):",
+    hintGeneric: "Confira se o host está ligado e alcançável, e se o daemon roda lá.",
+  },
   hostPage: {
     simpleTitle: "Modo simples",
     simpleHint:
