@@ -13,6 +13,7 @@ import type { AssistantBlock, PermissionMode } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { quotaReadings } from "../quota/quota.ts";
 import { whichOnPath } from "../which.ts";
+import type { FlightdeckMcpServer } from "./flightdeck-mcp.ts";
 import type {
   AgentRun,
   AgentRuntime,
@@ -47,6 +48,8 @@ export interface ClaudeSdkRuntimeOptions {
   query?: QueryFn;
   /** Injected in tests; defaults to the SDK's `forkSession`. */
   forkSession?: (id: string, options: ForkOptions) => Promise<{ sessionId: string }>;
+  /** The Flightdeck MCP server every session gets; none when absent. */
+  mcpServer?: FlightdeckMcpServer;
 }
 
 const MAX_TOOL_RESULT = 4000;
