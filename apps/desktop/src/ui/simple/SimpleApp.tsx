@@ -7,8 +7,8 @@ import { TaskView } from "@/components/simple/task-view";
 import { Button } from "@/components/ui/button";
 import { translator } from "../../i18n/index.ts";
 import {
-  type AppState,
   type AppStore,
+  type HostView,
   type SidebarSession,
   sessionKey,
 } from "../../lib/app-store.ts";
@@ -156,14 +156,18 @@ function FilesScreen(props: {
 }
 
 /** Simple mode for one host (phase 33): Home, a task, Files and Settings, in a narrow frame. */
-export function SimpleApp(props: { store: AppStore; state: AppState; hostId: string }) {
-  const { store, state, hostId } = props;
+export function SimpleApp(props: {
+  store: AppStore;
+  host: HostView | undefined;
+  notifyUpdates: boolean;
+  hostId: string;
+}) {
+  const { store, host, hostId } = props;
   const lang = useSyncExternalStore(store.i18n.subscribe, () => store.i18n.lang);
   const t = useMemo(() => translator(lang, "simple"), [lang]);
   const theme = useSyncExternalStore(store.theme.subscribe, () => store.theme.mode);
   const [screen, setScreen] = useState<Screen>({ name: "home" });
   const [templates, setTemplates] = useState<Template[]>([]);
-  const host = state.hosts.find((h) => h.id === hostId);
   const mode = store.uiMode(hostId);
 
   useEffect(() => {
@@ -265,7 +269,7 @@ export function SimpleApp(props: { store: AppStore; state: AppState; hostId: str
             onAddFolder={(path) => store.allowRoot(hostId, path)}
             canPickFolder={store.canPickFolder()}
             onPickFolder={() => store.pickFolder()}
-            notifications={state.settings.notifyUpdates}
+            notifications={props.notifyUpdates}
             onNotifications={(enabled) => void store.setNotifyUpdates(enabled)}
             canSwitch={mode.canSwitch}
             onShowEverything={() => toFull()}

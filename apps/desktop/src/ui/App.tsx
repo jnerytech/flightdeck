@@ -331,7 +331,12 @@ export function App({ store }: { store: AppStore }) {
     return (
       <TContext.Provider value={t}>
         <TooltipProvider>
-          <SimpleApp store={store} state={state} hostId={focusHost.id} />
+          <SimpleApp
+            store={store}
+            host={focusHost}
+            notifyUpdates={state.settings.notifyUpdates}
+            hostId={focusHost.id}
+          />
         </TooltipProvider>
       </TContext.Provider>
     );
