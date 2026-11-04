@@ -47,6 +47,7 @@ export async function scanRepos(
 ): Promise<ProjectsScanResult> {
   const depth = options.depth ?? DEFAULT_DEPTH;
   const cap = options.cap ?? DEFAULT_CAP;
+  const list = options.readdir ?? readdir;
   const real = await Promise.all(roots.map(realFolder));
   const found = new Map<string, { name: string; path: string; root: string }>();
   let truncated = false;
@@ -75,7 +76,7 @@ export async function scanRepos(
           break;
         }
         opened++;
-        const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+        const entries = await list(dir, { withFileTypes: true }).catch(() => []);
         for (const entry of entries) {
           if (!entry.isDirectory() || entry.name.startsWith(".") || SKIPPED.has(entry.name)) {
             continue;

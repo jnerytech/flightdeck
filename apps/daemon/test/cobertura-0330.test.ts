@@ -3,14 +3,7 @@
  * other than "missing", a file that is not there, a helper nobody passed an override to.
  */
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import {
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  statSync,
-  symlinkSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { withIdleQuery } from "../src/account/readers.ts";
