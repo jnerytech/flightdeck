@@ -52,8 +52,7 @@ function githubHarness(): ContractHarness & { gh: FakeCli; state: { items: Exter
     pageSize: 100,
     applied: 0,
   };
-  // Like the .cmd shim a Windows host may have: Bun refuses newlines and quotes in its arguments.
-  const gh = installFakeCli("gh", [], process.env, { rejectCmdChars: true });
+  const gh = installFakeCli("gh", []);
   cleanups.push(gh.restore);
 
   const rules = (): FakeRule[] => {
