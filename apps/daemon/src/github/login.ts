@@ -3,6 +3,7 @@
  * and a page, the person types the code there, and `gh` keeps the token (in the OS keyring where one
  * exists). Flightdeck relays the code and the page; it never sees the token.
  */
+import { killTree } from "../board/command.ts";
 import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
 
@@ -21,10 +22,14 @@ export interface GithubLoginOptions {
   codeTimeoutMs?: number;
   loginTimeoutMs?: number;
   log?: (message: string) => void;
+  /** Ends gh and what it started: `taskkill /T` on Windows, the process group elsewhere. */
+  kill?: (pid: number) => Promise<void>;
 }
 
 const CODE_TIMEOUT_MS = 20_000;
 const LOGIN_TIMEOUT_MS = 15 * 60_000;
+/** After gh exits, how long its output may still arrive: a child that kept the pipes must not hold the run. */
+const DRAIN_MS = 500;
 const DEFAULT_PAGE = "https://github.com/login/device";
 
 const fail = (reason: string, message: string, params?: Record<string, string | number>) =>
@@ -70,7 +75,7 @@ export class GithubLogin {
         GITHUB_SCOPES.join(","),
         "--web",
       ],
-      { stdin: "pipe", stdout: "pipe", stderr: "pipe" },
+      { stdin: "pipe", stdout: "pipe", stderr: "pipe", detached: process.platform !== "win32" },
     );
     proc.stdin.write("\n");
     void proc.stdin.end();
@@ -80,7 +85,13 @@ export class GithubLogin {
   }
 
   cancel(): void {
-    this.current?.proc.kill();
+    this.stop(this.current?.proc);
+  }
+
+  /** Ends gh and its children; the process alone when the tree cannot be reached. */
+  private stop(proc: ReturnType<typeof Bun.spawn> | undefined): void {
+    if (!proc) return;
+    void (this.opts.kill ?? killTree)(proc.pid).catch(() => proc.kill());
   }
 
   /** Reads gh's output until the code shows up, and ends the run when gh ends or time runs out. */
@@ -90,10 +101,10 @@ export class GithubLogin {
       let found = false;
       const codeTimer = setTimeout(() => {
         reject(fail("login_timeout", "gh printed no one-time code in time"));
-        proc.kill();
+        this.stop(proc);
       }, this.opts.codeTimeoutMs ?? CODE_TIMEOUT_MS);
       const loginTimer = setTimeout(
-        () => proc.kill(),
+        () => this.stop(proc),
         this.opts.loginTimeoutMs ?? LOGIN_TIMEOUT_MS,
       );
       const read = async (stream: ReadableStream<Uint8Array>) => {
@@ -109,20 +120,23 @@ export class GithubLogin {
           }
         }
       };
-      void Promise.all([
+      const pipes = Promise.all([
         read(proc.stdout as ReadableStream<Uint8Array>),
         read(proc.stderr as ReadableStream<Uint8Array>),
-        proc.exited,
-      ]).then(() => {
-        clearTimeout(codeTimer);
-        clearTimeout(loginTimer);
-        this.current = null;
-        if (!found) {
-          const detail = lastLine(text);
-          this.opts.log?.("github login ended before gh printed a code");
-          reject(fail("login_failed", `gh auth login failed: ${detail}`, { detail }));
-        }
-      });
+      ]);
+      // gh's exit ends the run; its output gets a moment more, never the pipes' own end.
+      void proc.exited
+        .then(() => Promise.race([pipes, Bun.sleep(DRAIN_MS)]))
+        .then(() => {
+          clearTimeout(codeTimer);
+          clearTimeout(loginTimer);
+          this.current = null;
+          if (!found) {
+            const detail = lastLine(text);
+            this.opts.log?.("github login ended before gh printed a code");
+            reject(fail("login_failed", `gh auth login failed: ${detail}`, { detail }));
+          }
+        });
     });
   }
 }
