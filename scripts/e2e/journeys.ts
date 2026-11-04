@@ -461,6 +461,59 @@ async function lastRowProblem(page: Page): Promise<string | null> {
   });
 }
 
+/**
+ * The bell's panel (issue #137): every button of its header and every Dismiss is inside the panel's
+ * box, and the panel does not scroll sideways. A row about a card that is gone is in the list.
+ */
+async function bellPanelProblems(c: Context): Promise<string[]> {
+  const dayStart = new Date().setUTCHours(0, 0, 0, 0);
+  const entry = (id: string, second: number, extra: Record<string, unknown>) => ({
+    id,
+    at: new Date(dayStart + second * 1000).toISOString(),
+    title: "Precisa de você",
+    body: "",
+    read: false,
+    ...extra,
+  });
+  const seed = JSON.stringify([
+    entry("1", 300, {
+      subject: "api · refatorar",
+      host: "alfa",
+      ask: "Pergunta: qual banco usar?",
+    }),
+    entry("2", 200, {
+      subject: "Card B com um nome bem comprido para o painel",
+      host: "alfa",
+      ask: "Quer alterar main.ts",
+      route: { name: "card", host: "demo-alfa", projectId: "gone", cardId: "gone" },
+    }),
+  ]);
+  await c.page.evaluate((value) => localStorage.setItem("flightdeck.inbox", value), seed);
+  await open(c, { name: "hub" });
+  await c.page.getByRole("button", { name: /^(Notifications|Notificações)/ }).click();
+  const dialog = c.page.getByRole("dialog");
+  await dialog.waitFor({ timeout: WAIT });
+  const found = await dialog.evaluate((box) => {
+    const edge = box.getBoundingClientRect();
+    const out: string[] = [];
+    if (box.scrollWidth > box.clientWidth + 1) out.push("o painel rola para o lado");
+    const dismiss = [...box.querySelectorAll<HTMLElement>("button")].filter((b) =>
+      /^(Dismiss|Descartar)$/.test(b.textContent?.trim() ?? ""),
+    );
+    if (dismiss.length === 0) out.push("a linha de um alvo que não existe mais não tem Descartar");
+    const headerButtons = [...(box.querySelector("div")?.querySelectorAll("button") ?? [])];
+    for (const button of [...headerButtons, ...dismiss]) {
+      const at = button.getBoundingClientRect();
+      if (at.width > 0 && (at.left < edge.left - 1 || at.right > edge.right + 1)) {
+        out.push(`o botão "${button.textContent?.trim()}" sai do painel`);
+      }
+    }
+    return out;
+  });
+  await c.page.evaluate(() => localStorage.removeItem("flightdeck.inbox"));
+  return found.map((issue) => `${c.lang} painel do sino: ${issue}`);
+}
+
 export async function layout(c: Context, problems: string[]) {
   const screens: Array<[string, Route]> = [
     ["hub", { name: "hub" }],
@@ -502,4 +555,5 @@ export async function layout(c: Context, problems: string[]) {
       );
     }
   }
+  problems.push(...(await bellPanelProblems(c)));
 }
