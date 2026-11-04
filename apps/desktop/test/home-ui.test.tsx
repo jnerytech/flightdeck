@@ -120,8 +120,9 @@ describe("home-ui: four cards with the last seven days of every host", () => {
   test("a card opens the screen it summarizes", async () => {
     const { view, routes } = setup();
     render(view);
+    await screen.findByRole("button", { name: "Open Spend" });
     for (const name of ["Open Spend", "Open Tokens", "Open Avg cost / turn"]) {
-      await act(async () => void fireEvent.click(await screen.findByRole("button", { name })));
+      await act(async () => void fireEvent.click(screen.getByRole("button", { name })));
     }
     await act(async () => void fireEvent.click(screen.getByRole("button", { name: "Open Turns" })));
     expect(routes).toEqual([
@@ -139,6 +140,14 @@ describe("home-ui: four cards with the last seven days of every host", () => {
     await waitFor(() => expect(turns.textContent).toContain("4"));
     expect(turns.textContent).not.toContain("failed");
     expect(screen.getByRole("button", { name: "Open Avg cost / turn" }).textContent).toContain("—");
+  });
+
+  test("a turn that takes over a minute is read in minutes, and the numbers follow the language", async () => {
+    const { view } = setup({ usage: usage({ failedTurns: 0, durationMs: 360_000 }) });
+    render(view);
+    const average = await screen.findByRole("button", { name: "Open Avg cost / turn" });
+    await waitFor(() => expect(average.textContent).toContain("1 min"));
+    expect(average.textContent).toContain("100% success rate");
   });
 
   test("every online host is asked once for its costs and its usage", async () => {
