@@ -653,6 +653,10 @@ const REAL_TIMERS = {
   clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
 
+/** Where the window's events (focus, the network) arrive: `window` in a browser or the webview, else the runtime's own global. */
+const wakeTarget = (): Partial<Window> =>
+  ("window" in globalThis ? globalThis.window : globalThis) as unknown as Partial<Window>;
+
 /** The least time between two checks the app starts by itself for one host. */
 const AUTO_UPDATE_CHECK_MS = 10 * 60_000;
 
@@ -2037,10 +2041,7 @@ export class AppStore {
 
   /** The window coming back or the network returning is the moment to try the offline hosts. */
   private listenForWake(): void {
-    // `window` when there is one (a browser, the webview); the runtime's own global is not where its events go.
-    const target = (typeof window !== "undefined"
-      ? window
-      : globalThis) as unknown as Partial<Window>;
+    const target = wakeTarget();
     if (typeof target.addEventListener !== "function") return;
     const wake = () => {
       for (const conn of this.connections.values()) conn.wake();
