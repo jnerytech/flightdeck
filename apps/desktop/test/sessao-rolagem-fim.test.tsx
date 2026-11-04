@@ -165,6 +165,27 @@ describe("sessao-rolagem-fim: coming back to a tab", () => {
   });
 });
 
+describe("sessao-rolagem-fim: the places kept are bounded", () => {
+  test("after 200 conversations the oldest place is forgotten and the newest is kept", async () => {
+    for (let i = 0; i <= 200; i++) {
+      const first = render(view(items(3), `cap/${i}`));
+      const s = scroller({ scroll: 2000, client: 400, top: 300 });
+      await act(async () => void fireEvent.scroll(s.el));
+      first.unmount();
+    }
+    // The first one was pushed out: it opens at the end, as a conversation seen for the first time.
+    render(view(items(3), "cap/0"));
+    const forgotten = scroller({ scroll: 1500, client: 400, top: 0 });
+    await grow();
+    expect(forgotten.size.top).toBe(1500);
+    cleanup();
+    // The last one is still where its reader left it.
+    render(view(items(3), "cap/200"));
+    const kept = document.querySelector<HTMLElement>("[tabindex='0'].overflow-y-auto");
+    expect(kept?.scrollTop).toBe(300);
+  });
+});
+
 describe("sessao-rolagem-fim: older messages loaded above", () => {
   test("prepending history keeps what the reader was looking at", async () => {
     const { rerender } = render(view(items(10, 11)));
