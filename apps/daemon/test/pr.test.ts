@@ -5,7 +5,7 @@ import { type FakeCli, type FakeRule, installFakeCli } from "../../../scripts/te
 import { AzureDevOpsCli, GithubCli } from "../src/board/pr.ts";
 import type { PrProviderKind } from "../src/board/types.ts";
 import { Config, loadConfig } from "../src/config.ts";
-import { cardWhen, git, newBoard } from "./board-helpers.ts";
+import { cardWhen, git, newBoard, newBoardWithOrigin } from "./board-helpers.ts";
 import { must, tempDir } from "./helpers.ts";
 
 // Real git and fake CLIs (each one a Bun process) in several waits: more than the default 5 s.
@@ -29,17 +29,23 @@ const ghStatus = (state: string, rollup: unknown[] = []) => ({
   stdout: JSON.stringify({ state, statusCheckRollup: rollup }),
 });
 
-/** Started card whose agent committed a file, in a repo whose origin is a local bare repo. */
-async function cardWithWork(prProvider: PrProviderKind) {
-  const ctx = newBoard({ prPollIntervalMs: 30 });
+/**
+ * Started card whose agent committed a change, in a repo whose origin is a local bare repo with
+ * main on it. The provider answers through the fake CLI in this process: each fake call would
+ * otherwise be a .cmd shim, cmd.exe and a new bun on Windows (the tests of the CLIs themselves, at
+ * the end of each describe, still start them).
+ */
+async function cardWithWork(prProvider: PrProviderKind, cli: FakeCli) {
+  const provider =
+    prProvider === "github"
+      ? new GithubCli({ run: cli.run })
+      : new AzureDevOpsCli({ run: cli.run });
+  const ctx = newBoardWithOrigin({ prPollIntervalMs: 30, prProvider: () => provider });
   cleanups.push(() => ctx.board.stop());
-  const remote = join(ctx.root, "remote.git");
-  git(ctx.root, "init", "-q", "--bare", "remote.git");
-  git(ctx.repo, "remote", "add", "origin", remote);
+  const { remote } = ctx;
   // Push only to local remotes: check where origin points before anything is pushed.
-  expect(git(ctx.repo, "remote", "get-url", "origin")).toBe(remote);
+  expect(git(ctx.repo, "remote", "get-url", "origin")).toBe(join(ctx.root, "remote.git"));
   expect(existsSync(join(remote, "HEAD"))).toBe(true);
-  git(ctx.repo, "push", "-q", "origin", "main");
   const project = await ctx.board.addProject({ path: ctx.repo, prProvider, promptTemplate: "" });
   const card = ctx.board.createCard(project.id, {
     title: "Adicionar arquivo",
@@ -49,9 +55,9 @@ async function cardWithWork(prProvider: PrProviderKind) {
   const started = await cardWhen(ctx.board, card.id, (c) => c.column === "review", 12_000);
   // A card that never started fails here, at the cause, not later past the test's time limit.
   const worktree = must(started?.worktreePath, "the started card's worktree");
-  writeFileSync(join(worktree, "novo.txt"), "novo\n");
-  git(worktree, "add", "novo.txt");
-  git(worktree, "commit", "-q", "-m", "arquivo novo");
+  // A change to a tracked file: one git call commits it.
+  writeFileSync(join(worktree, "README.md"), "# repo\nnovo\n");
+  git(worktree, "commit", "-q", "-am", "arquivo novo");
   return { ...ctx, remote, card, branch: must(started?.branch, "the started card's branch") };
 }
 
@@ -62,7 +68,7 @@ describe("pr: GitHub", () => {
       { args: ["pr", "create"], stdout: `Creating pull request\n${GH_URL}\n` },
       ghStatus("OPEN", [{ conclusion: "SUCCESS" }, { status: "IN_PROGRESS", conclusion: null }]),
     ]);
-    const { board, card, branch, remote, repo } = await cardWithWork("github");
+    const { board, card, branch, remote, repo } = await cardWithWork("github", gh);
     expect(branch).toBe("fd/adicionar-arquivo");
     const opened = await board.createPr(card.id);
     expect(opened).toMatchObject({ prUrl: GH_URL, prState: "open", column: "review" });
@@ -97,7 +103,7 @@ describe("pr: GitHub", () => {
       { args: ["view", "url"], stdout: JSON.stringify({ url: GH_URL }) },
       ghStatus("OPEN"),
     ]);
-    const { board, card } = await cardWithWork("github");
+    const { board, card } = await cardWithWork("github", gh);
     const opened = await board.createPr(card.id);
     expect(opened.prUrl).toBe(GH_URL);
     expect(gh.calls().some((c) => c.includes("create"))).toBe(false);
@@ -140,7 +146,7 @@ describe("pr: Azure DevOps", () => {
       },
       { args: ["pr", "show"], stdout: JSON.stringify({ status: "active" }) },
     ]);
-    const { board, card, branch } = await cardWithWork("azure-devops");
+    const { board, card, branch } = await cardWithWork("azure-devops", az);
     const opened = await board.createPr(card.id);
     expect(opened).toMatchObject({ prUrl: `${AZ_WEB}/pullrequest/12`, prState: "open" });
     expect(az.calls().slice(0, 2)).toEqual([
@@ -227,12 +233,12 @@ describe("pr: erros e configuração", () => {
   });
 
   test("falha do CLI ao consultar o PR vira aviso no card", async () => {
-    fake("gh", [
+    const gh = fake("gh", [
       { args: ["view", "url"], code: 1 },
       { args: ["pr", "create"], stdout: `${GH_URL}\n` },
       { args: ["view", "state,statusCheckRollup"], code: 4 },
     ]);
-    const { board, card } = await cardWithWork("github");
+    const { board, card } = await cardWithWork("github", gh);
     await board.createPr(card.id);
     const warned = await cardWhen(board, card.id, (c) => c.notice !== null);
     expect(warned?.notice ?? "").toContain("gh pr view failed");
