@@ -554,14 +554,19 @@ export async function layout(c: Context, problems: string[]) {
       const where = `${c.lang} ${viewport.width}x${viewport.height} ${name}`;
       for (const issue of await overflow(c.page)) problems.push(`${where}: ${issue}`);
       if (name === "sessao") {
-        // Folded (the default), then open: the summary never overlaps the conversation.
-        const folded = await recapOverlap(c.page);
-        if (folded) problems.push(`${where}: ${folded} (fechado)`);
+        // Both states of the card (the first time a session is seen it starts open): the summary
+        // never overlaps the conversation, as found and after flipping it.
         const toggle = c.page.locator("[data-slot='recap'] button[aria-expanded]").first();
+        const state = async () =>
+          (await toggle.count()) > 0 && (await toggle.getAttribute("aria-expanded")) === "true"
+            ? "aberto"
+            : "fechado";
+        const first = await recapOverlap(c.page);
+        if (first) problems.push(`${where}: ${first} (${await state()})`);
         if ((await toggle.count()) > 0) {
           await toggle.click();
-          const opened = await recapOverlap(c.page);
-          if (opened) problems.push(`${where}: ${opened} (aberto)`);
+          const flipped = await recapOverlap(c.page);
+          if (flipped) problems.push(`${where}: ${flipped} (${await state()})`);
         }
       }
     }
