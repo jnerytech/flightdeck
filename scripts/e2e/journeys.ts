@@ -479,6 +479,32 @@ async function recapOverlap(page: Page): Promise<string | null> {
   });
 }
 
+/**
+ * A session at a small window (issue #135): the message box is whole inside the window and the
+ * conversation keeps at least 40% of its height, whatever the header and the summary take.
+ */
+async function sessionFitsProblems(c: Context): Promise<string[]> {
+  await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
+  await c.page.locator("[data-slot='composer-card']").first().waitFor({ timeout: WAIT });
+  return c.page.evaluate(() => {
+    const found: string[] = [];
+    const height = window.innerHeight;
+    const card = document.querySelector<HTMLElement>("[data-slot='composer-card']");
+    const at = card?.getBoundingClientRect();
+    if (!at || at.top < 0 || at.bottom > height + 1) {
+      found.push(
+        `a caixa de mensagem sai da janela (${Math.round(at?.bottom ?? -1)} de ${height})`,
+      );
+    }
+    const timeline = document.querySelector<HTMLElement>("[data-slot='timeline']");
+    const room = timeline?.getBoundingClientRect().height ?? 0;
+    if (room < height * 0.4) {
+      found.push(`a conversa tem só ${Math.round(room)} de ${height}`);
+    }
+    return found;
+  });
+}
+
 export async function layout(c: Context, problems: string[]) {
   const screens: Array<[string, Route]> = [
     ["hub", { name: "hub" }],
@@ -513,6 +539,9 @@ export async function layout(c: Context, problems: string[]) {
         }
       }
     }
+    for (const issue of await sessionFitsProblems(c)) {
+      problems.push(`${c.lang} ${viewport.width}x${viewport.height} sessão: ${issue}`);
+    }
     await open(c, { name: "hub" });
     const hidden = await lastRowProblem(c.page);
     if (hidden) {
@@ -520,5 +549,10 @@ export async function layout(c: Context, problems: string[]) {
         `${c.lang} ${viewport.width}x${viewport.height}: o fim da lista não aparece depois de rolar (${hidden})`,
       );
     }
+  }
+  // The smallest window the app allows (tauri.conf.json), where the header is tightest.
+  await c.page.setViewportSize({ width: 720, height: 480 });
+  for (const issue of await sessionFitsProblems(c)) {
+    problems.push(`${c.lang} 720x480 sessão: ${issue}`);
   }
 }
