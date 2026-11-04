@@ -11,6 +11,7 @@ import type {
   CommandPayload,
   CommandResults,
   CommandType,
+  DepsResult,
   EventEnvelope,
   ExternalPermissionFrame,
   ExternalSession,
@@ -230,6 +231,8 @@ export interface AppState {
   account: Record<string, AccountState>;
   /** Budgets of each host, by host id; kept by `budget.updated` (phase 8). */
   budgets: Record<string, Budget[]>;
+  /** What `deps.check` found on each host, by host id (hosts that announce `deps`). */
+  deps: Record<string, DepsResult>;
   /** The ssh password or passphrase prompts waiting for an answer, oldest first (phase 15). */
   askpass: Array<{ hostId: string; request: AskpassRequest }>;
   /** The ssh destinos of each host that keeps them, by host id; read when the palette opens (phase 15). */
@@ -346,6 +349,7 @@ export type HostCommandType = Extract<
   | `trace.${string}`
   | `bg.${string}`
   | `budget.${string}`
+  | "deps.check"
   | `changes.${string}`
   | `review.${string}`
   | `file.${string}`
@@ -774,6 +778,7 @@ export class AppStore {
       runs: {},
       quota: {},
       account: {},
+      deps: {},
       budgets: {},
       ssh: {},
       snippets: {},
@@ -943,6 +948,7 @@ export class AppStore {
       runs: {},
       quota: {},
       account: {},
+      deps: {},
     });
     const closeToTray = this.platform.storage.getItem(CLOSE_TO_TRAY_KEY) !== "false";
     await this.platform.setCloseToTray(closeToTray);
@@ -1029,6 +1035,12 @@ export class AppStore {
     this.updateHost(hostId, (h) => ({ ...h, name: name.trim() }));
     this.persistHosts();
     return null;
+  }
+
+  /** Asks a host for its dependencies and keeps the answer; the sidebar and the host page read it. */
+  async checkDeps(hostId: string): Promise<void> {
+    const found = await this.hostCommand(hostId, "deps.check", {});
+    if (found) this.update({ deps: { ...this.state.deps, [hostId]: found } });
   }
 
   /** Drops the connection and opens a new one right away. */
@@ -2311,6 +2323,7 @@ export class AppStore {
     }
     // Phase 19: the daemon decides a request with the rules the app hands it.
     if (hasFeature(hostInfo?.features, "actions", false)) this.sendVaultRules(hostId, conn);
+    if (hasFeature(hostInfo?.features, "deps", false)) void this.checkDeps(hostId);
     if (hasFeature(hostInfo?.features, "costs", false)) {
       const list = await conn.request("budget.list", {}).catch(() => null);
       if (list) this.update({ budgets: { ...this.state.budgets, [hostId]: list.budgets } });

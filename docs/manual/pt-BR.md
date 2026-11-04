@@ -2446,6 +2446,16 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
 - **Precisa de você:** na barra lateral, com o contador de pedidos abertos em todos os hosts. A
   tela lista os pedidos, do mais antigo ao mais novo, e o cartão do pedido escolhido fica ao
   lado: **A** aprova, **N** nega e **Esc** fecha o detalhe. **Abrir sessão** leva à conversa.
+- **Dependências:** a aba Visão geral da página do host tem uma seção **Dependências** que agrupa o
+  que o host precisa em **Obrigatórias** (Claude Code, git com worktrees, o serviço que sobe o
+  daemon no boot, ao menos uma pasta permitida) e **Opcionais** (as ferramentas do GitHub, do Azure,
+  o SSH e o Tailscale, o PowerShell no Windows, os hooks do Claude Code). Cada linha tem um ícone e
+  uma palavra (check verde OK, alerta âmbar para uma opcional faltando ou desatualizada, cruz
+  vermelha para uma obrigatória faltando, traço cinza quando não se aplica ao sistema do host), a
+  versão encontrada e a mínima, o que deixa de funcionar sem ela, e o comando para instalá-la no
+  sistema daquele host com um botão de **copiar**. **Verificar de novo** pergunta ao host outra vez.
+  O resumo diz "Tudo certo", "Opcionais faltando: N" ou "Obrigatórias faltando: N", e um host com
+  uma obrigatória faltando ganha uma marca vermelha na barra lateral.
 - **Layout da página do host:** a página abre nas **Sessões** daquele host (as que precisam de você
   primeiro, depois as mais recentes; **Ver todas as sessões** abre a lista de Sessões já filtrada
   pelo host) e nos **Projetos** dele (os mesmos cartões da lista de Projetos; **Ver todos os

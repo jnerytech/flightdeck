@@ -12,15 +12,27 @@ export type DepLook = {
   tone: "ok" | "warn" | "error" | "off";
 };
 
-export function depsSummary(_items: DepResult[]): DepsSummary {
-  return { kind: "ok", n: 0 };
+export function depsSummary(items: DepResult[]): DepsSummary {
+  const lacking = (group: DepResult["group"]) =>
+    items.filter(
+      (item) => item.group === group && (item.state === "missing" || item.state === "outdated"),
+    ).length;
+  const required = lacking("required");
+  if (required > 0) return { kind: "required", n: required };
+  const optional = lacking("optional");
+  return optional > 0 ? { kind: "optional", n: optional } : { kind: "ok", n: 0 };
 }
 
-export function depLook(_item: DepResult): DepLook {
-  return { icon: "dash", tone: "off" };
+export function depLook(item: DepResult): DepLook {
+  if (item.state === "ok") return { icon: "check", tone: "ok" };
+  if (item.state === "na") return { icon: "dash", tone: "off" };
+  // Outdated, or an optional one missing: it still works, or only a feature goes.
+  if (item.state === "outdated" || item.group === "optional")
+    return { icon: "warning", tone: "warn" };
+  return { icon: "cross", tone: "error" };
 }
 
 /** The command that installs or upgrades the dependency on the host's own OS, or null. */
-export function fixFor(_item: DepResult, _os: string): string | null {
-  return null;
+export function fixFor(item: DepResult, os: string): string | null {
+  return item.fix.find((fix) => fix.os === os)?.command ?? null;
 }

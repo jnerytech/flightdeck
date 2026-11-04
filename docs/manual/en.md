@@ -2458,6 +2458,16 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
   lists the requests, oldest to newest, and the selected request's card sits next to it: **A**
   approves, **N** denies and **Esc** closes the detail. **Open session** takes you to the
   conversation.
+- **Dependencies:** the host page's Overview tab has a **Dependencies** section that groups what
+  the host needs into **Required** (Claude Code, git with worktrees, the service that starts the
+  daemon at boot, at least one allowed folder) and **Optional** (the GitHub, Azure, SSH and
+  Tailscale tools, PowerShell on Windows, the Claude Code hooks). Each row has an icon and a word
+  (green check OK, amber warning for an optional one missing or outdated, red cross for a required one
+  missing, gray dash when it does not apply to the host's system), the version found and the least
+  one, what stops working without it, and the command to install it on that host's system with a
+  **copy** button. **Check again** asks the host again. The headline says "All set", "N optional
+  missing" or "N required missing", and a host with a required one missing shows a red mark in the
+  sidebar.
 - **Host page layout:** the page opens on that host's **Sessions** (the ones that need you
   first, then the latest; **See all sessions** opens the Sessions list already filtered by the host)
   and its **Projects** (the same cards as the Projects list; **See all projects** opens that list

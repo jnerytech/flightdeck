@@ -151,7 +151,10 @@ describe("deps-ui: on the host page and the sidebar", () => {
       () => screen.queryByRole("region", { name: "Dependências" }) ?? undefined,
       "the section",
     );
-    expect(section.textContent).toContain("Obrigatórias faltando: 1");
+    await pollFor(
+      () => (section.textContent ?? "").includes("Obrigatórias faltando: 1") || undefined,
+      "the headline",
+    );
     expect(screen.queryByLabelText("pc: uma dependência obrigatória falta")).not.toBeNull();
     current = depsOf("ok", "ok");
     await act(

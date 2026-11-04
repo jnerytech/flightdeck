@@ -73,6 +73,7 @@ describe("tema", () => {
         "--foreground",
         "--muted-foreground",
         "--status-running",
+        "--status-ok",
         "--status-needs-you",
         "--status-idle",
         "--status-ended",

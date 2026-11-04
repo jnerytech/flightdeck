@@ -42,6 +42,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-status-running: var(--status-running);
+  --color-status-ok: var(--status-ok);
   --color-status-needs-you: var(--status-needs-you);
   --color-status-idle: var(--status-idle);
   --color-status-ended: var(--status-ended);
@@ -123,6 +124,7 @@
   --sidebar-ring: var(--brand);
   /* Session states, as a dot (8 px) and as text on the background, AA in both themes. */
   --status-running: oklch(0.5 0.16 255);
+  --status-ok: oklch(0.5 0.13 150);
   --status-needs-you: oklch(0.52 0.15 55);
   --status-idle: oklch(0.5 0.01 270);
   --status-ended: oklch(0.54 0 0);
@@ -169,6 +171,7 @@
   --sidebar-border: oklch(1 0 0 / 6%);
   --sidebar-ring: var(--brand);
   --status-running: oklch(0.75 0.13 255);
+  --status-ok: oklch(0.78 0.14 150);
   --status-needs-you: oklch(0.8 0.14 70);
   --status-idle: oklch(0.72 0.01 270);
   --status-ended: oklch(0.66 0 0);
@@ -1203,4 +1206,44 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+/* The host's dependencies: a list of rows, each one an icon, a name, its state and what it needs. */
+.dep-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.dep-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+.dep-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+.dep-line svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+.dep-found {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+.dep-fix {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  overflow-wrap: anywhere;
 }

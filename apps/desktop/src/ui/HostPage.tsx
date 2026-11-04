@@ -4,6 +4,7 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
 import { BypassSwitch } from "@/components/hosts/bypass-switch";
 import { GithubPanel } from "@/components/hosts/github-panel";
+import { HostDeps } from "@/components/hosts/host-deps";
 import { HostDoctor } from "@/components/hosts/host-doctor";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { HostOverview } from "@/components/hosts/host-overview";
@@ -44,6 +45,7 @@ const OVERVIEW_KEYS = [
   "background",
   "projects",
   "cards",
+  "deps",
 ] as const;
 
 /**
@@ -158,6 +160,14 @@ export function HostPage(props: {
                 onSeeAllProjects={props.onSeeAllProjects}
                 onNewSession={props.onNewSession}
               />
+              {hasFeature(info?.features, "deps", false) && (
+                <HostDeps
+                  store={store}
+                  deps={overviewState.deps[host.id] ?? null}
+                  os={info?.os ?? ""}
+                  onCheck={() => store.checkDeps(host.id)}
+                />
+              )}
               {hasFeature(info?.features, "account", false) && (
                 <HostAccount store={store} host={host} />
               )}

@@ -1,6 +1,8 @@
+import type { DepsResult } from "@flightdeck/protocol";
 import {
   ChevronDown,
   CircleAlert,
+  CircleX,
   type LucideProps,
   MoreHorizontal,
   Plane,
@@ -435,6 +437,13 @@ export function Sidebar(props: {
                       <HostDot host={host} t={t} />
                       <span className="min-w-0 flex-1 truncate">{host.name}</span>
                     </button>
+                    {requiredMissing(state.deps[host.id]) && (
+                      <CircleX
+                        role="img"
+                        aria-label={t("hostDeps.badge", { host: host.name })}
+                        className="size-3.5 shrink-0 text-status-error"
+                      />
+                    )}
                     {host.hostInfo?.apiKeySanitized === false && (
                       <TriangleAlert
                         role="img"
@@ -587,6 +596,12 @@ export function Sidebar(props: {
     </div>
   );
 }
+
+/** Whether a required dependency of the host is missing or outdated (what the sidebar warns about). */
+const requiredMissing = (deps: DepsResult | undefined) =>
+  deps?.items.some(
+    (item) => item.group === "required" && (item.state === "missing" || item.state === "outdated"),
+  ) === true;
 
 /** A host's connection state as a dot. */
 function HostDot(props: { host: HostView; t: T }) {
