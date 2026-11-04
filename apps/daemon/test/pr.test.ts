@@ -6,7 +6,7 @@ import { AzureDevOpsCli, GithubCli } from "../src/board/pr.ts";
 import type { PrProviderKind } from "../src/board/types.ts";
 import { Config, loadConfig } from "../src/config.ts";
 import { cardWhen, git, newBoard } from "./board-helpers.ts";
-import { tempDir } from "./helpers.ts";
+import { must, tempDir } from "./helpers.ts";
 
 // Real git and fake CLIs (each one a Bun process) in several waits: more than the default 5 s.
 setDefaultTimeout(20_000);
@@ -47,11 +47,12 @@ async function cardWithWork(prProvider: PrProviderKind) {
   });
   await ctx.board.startCard(card.id);
   const started = await cardWhen(ctx.board, card.id, (c) => c.column === "review", 12_000);
-  const worktree = started?.worktreePath ?? ctx.repo;
+  // A card that never started fails here, at the cause, not later past the test's time limit.
+  const worktree = must(started?.worktreePath, "the started card's worktree");
   writeFileSync(join(worktree, "novo.txt"), "novo\n");
   git(worktree, "add", "novo.txt");
   git(worktree, "commit", "-q", "-m", "arquivo novo");
-  return { ...ctx, remote, card, branch: started?.branch ?? "" };
+  return { ...ctx, remote, card, branch: must(started?.branch, "the started card's branch") };
 }
 
 describe("pr: GitHub", () => {
