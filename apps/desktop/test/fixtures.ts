@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { DepsResult } from "@flightdeck/protocol";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import type { Account } from "../../daemon/src/account/account.ts";
 import { Actions } from "../../daemon/src/actions/actions.ts";
@@ -149,6 +150,8 @@ export function daemon(
     snippets?: boolean | { history?: HistorySources };
     /** The short summary of a session (phase 30), over this daemon's history. */
     summary?: boolean;
+    /** What `deps.check` answers (issue #121), fixed or computed at each ask. */
+    deps?: DepsResult | (() => DepsResult);
     /** The sender of the app's webhooks (phase 30). */
     webhook?: WebhookSender;
     /** The personas (phase 20): the pack, the host's in this daemon's database, and open sessions. */
@@ -468,6 +471,12 @@ export function daemon(
       fsDirs: true,
       ...firstRunOptions,
       ...(options.ui ? { ui: { ...options.ui }, onUiSettings: async () => {} } : {}),
+      ...(options.deps
+        ? {
+            deps: async () =>
+              typeof options.deps === "function" ? options.deps() : (options.deps as DepsResult),
+          }
+        : {}),
       ...(options.simple
         ? {
             templates: async () => ({ templates: BUILTIN_TEMPLATES, problems: [] }),

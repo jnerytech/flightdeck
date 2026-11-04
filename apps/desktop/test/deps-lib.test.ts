@@ -1,0 +1,53 @@
+import { describe, expect, test } from "bun:test";
+import type { DepResult } from "@flightdeck/protocol";
+import { depLook, depsSummary, fixFor } from "../src/lib/deps-summary.ts";
+
+const dep = (
+  id: DepResult["id"],
+  group: DepResult["group"],
+  state: DepResult["state"],
+): DepResult => ({
+  id,
+  group,
+  state,
+  breaks: [],
+  fix: [
+    { os: "linux", command: `sudo apt install ${id}` },
+    { os: "win32", command: `winget install ${id}` },
+  ],
+});
+
+describe("deps-lib", () => {
+  test("the headline is red for a required one missing, amber for an optional one, green otherwise", () => {
+    const ok = [dep("claude", "required", "ok"), dep("pwsh", "optional", "na")];
+    expect(depsSummary(ok)).toEqual({ kind: "ok", n: 0 });
+    const optional = [
+      ...ok,
+      dep("gh", "optional", "missing"),
+      dep("hooks", "optional", "outdated"),
+    ];
+    expect(depsSummary(optional)).toEqual({ kind: "optional", n: 2 });
+    const required = [
+      ...optional,
+      dep("git", "required", "missing"),
+      dep("service", "required", "outdated"),
+    ];
+    expect(depsSummary(required)).toEqual({ kind: "required", n: 2 });
+  });
+
+  test("each row has an icon and a tone: green check, amber warning, red cross, gray dash", () => {
+    expect(depLook(dep("git", "required", "ok"))).toEqual({ icon: "check", tone: "ok" });
+    expect(depLook(dep("gh", "optional", "missing"))).toEqual({ icon: "warning", tone: "warn" });
+    expect(depLook(dep("git", "required", "outdated"))).toEqual({ icon: "warning", tone: "warn" });
+    expect(depLook(dep("git", "required", "missing"))).toEqual({ icon: "cross", tone: "error" });
+    expect(depLook(dep("pwsh", "optional", "na"))).toEqual({ icon: "dash", tone: "off" });
+  });
+
+  test("the fix is the command of the host's own OS, and null when it has none", () => {
+    const item = dep("gh", "optional", "missing");
+    expect(fixFor(item, "linux")).toBe("sudo apt install gh");
+    expect(fixFor(item, "win32")).toBe("winget install gh");
+    expect(fixFor(item, "darwin")).toBeNull();
+    expect(fixFor({ ...item, fix: [] }, "linux")).toBeNull();
+  });
+});
