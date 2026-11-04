@@ -1121,8 +1121,6 @@ export const en: Dictionary = {
     roi: "the ROI view",
     account: "the Claude account",
     prWatch: "PR watching",
-    github: "GitHub sign-in",
-    boardsync: "the board sync",
     runEnv: "the run environment",
     history: "the history",
     central: "the central session list",
