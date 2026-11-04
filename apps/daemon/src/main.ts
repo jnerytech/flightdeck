@@ -52,6 +52,7 @@ import { Costs } from "./costs/costs.ts";
 import { resolvePricing } from "./costs/pricing.ts";
 import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
+import { checkDeps } from "./deps/deps.ts";
 import { runDoctor } from "./doctor.ts";
 import { type Exec, spawnExec } from "./exec.ts";
 import { runGh } from "./github/gh.ts";
@@ -1109,6 +1110,26 @@ export async function startDaemon(
             })
           ).problems,
         version: { daemon: DAEMON_VERSION, ...(appVersion ? { app: appVersion } : {}) },
+      }),
+    // The dependencies of this host: the same probes as the doctor, the program on the PATH and its version.
+    deps: () =>
+      checkDeps({
+        platform: process.platform,
+        which: (name) => whichOnPath(name),
+        version: async (path) => {
+          const { code, stdout } = await spawnExec([path, "--version"]);
+          return code === 0 ? (stdout.split("\n")[0] ?? null) : null;
+        },
+        allowedRoots: config.allowedRoots,
+        serviceInstalled:
+          options.serviceInstalled ??
+          (async () => (await serviceCommand(osServiceContext(false))) !== null),
+        linger: options.linger ?? (() => lingerState(osServiceContext(false))),
+        hooks: () =>
+          hooksStatus(
+            claudeSettingsPath(),
+            hookTarget(config, daemonCommand(process.execPath, Bun.main)),
+          ),
       }),
     sessionSettings: true,
     messaging,
