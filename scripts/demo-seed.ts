@@ -102,7 +102,9 @@ export interface DemoIds {
   traceSession: string;
   /** A folder of the first host that simple mode's tasks may work in (phase 33). */
   notesFolder: string;
-  /** A long conversation with a code block and a summary: where it opens and what keeps it still. */
+  /** A long conversation with a code block and a summary: where it opens and what keeps it still (issue #112). */
+  scrollSession: string;
+  /** A session in a folder with a long path, whose first message holds a long unbroken id (issue #103). */
   longSession: string;
 }
 
@@ -792,6 +794,19 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     `Revise o PR. [ratelimit:five_hour=0.62@${later(2)}] [ratelimit:seven_day=0.35@${later(100)}]`,
   );
   await session(LONG_TITLE, "Planeje os passos.");
+  // A worker's worktree path is long, and its messages quote ids that never break.
+  const deep = join(
+    web,
+    ".flightdeck",
+    "worktrees",
+    "md-server-executora-1-com-um-nome-muito-comprido",
+  );
+  mkdirSync(deep, { recursive: true });
+  const longSession = await client.call<{ sessionId: string }>("session.create", {
+    cwd: deep,
+    name: "md-server · executora 1",
+    prompt: `Espere a tarefa de pc-nery/01M6K3MD573NETWEABH2YXKCHG01M6K3MD573NETWEABH2YXKCHG01M6K3MD573NETWEABH2YXKCHG e não comece nada por conta própria. ${"x".repeat(240)}`,
+  });
   const ended = await session("Sessão antiga", "Liste os arquivos.");
   const statusOf = async (sessionId: string) => {
     const list = await client.call<{ sessions: Array<{ id: string; status: string }> }>(
@@ -1029,7 +1044,8 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       telemetrySession,
       traceSession: TRACE_SESSION,
       notesFolder: join(alfa.projects, "notes"),
-      longSession: long.sessionId,
+      scrollSession: long.sessionId,
+      longSession: longSession.sessionId,
     },
     stop: async () => {
       // Newest first: each restore puts back the PATH it saw, so the oldest must go last.

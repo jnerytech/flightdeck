@@ -8,7 +8,7 @@ import { expect, type Page } from "@playwright/test";
 import type { Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../demo-seed.ts";
-import { acoesAction, DANGER_SESSION, VIEWPORTS } from "../lib/e2e-journeys.ts";
+import { acoesAction, DANGER_SESSION, OVERFLOW_VIEWPORTS, VIEWPORTS } from "../lib/e2e-journeys.ts";
 import { ensureOnline } from "../lib/e2e-online.ts";
 
 const ALFA = "demo-alfa";
@@ -418,7 +418,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
   // arrives (the button counts it), and is where the reader left it when they come back.
   "rolagem-fim": async (c) => {
     const bottom = (el: HTMLElement) => el.scrollHeight - el.scrollTop - el.clientHeight;
-    await open(c, { name: "session", host: ALFA, id: c.ids.longSession });
+    await open(c, { name: "session", host: ALFA, id: c.ids.scrollSession });
     await c.page
       .getByText("Echo: Passo 24:", { exact: false })
       .first()
@@ -487,6 +487,83 @@ async function overflow(page: Page): Promise<string[]> {
     }
     return found;
   });
+}
+
+/** The page never scrolls sideways: when it does, the widest element sticking out is named. */
+async function pageScrollsSideways(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const root = document.documentElement;
+    if (root.scrollWidth <= root.clientWidth && document.body.scrollWidth <= root.clientWidth) {
+      return null;
+    }
+    let widest = { name: "?", right: 0 };
+    for (const el of document.querySelectorAll<HTMLElement>("body *")) {
+      const box = el.getBoundingClientRect();
+      if (box.width > 0 && box.right > widest.right) {
+        widest = {
+          name: `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 60)}`,
+          right: box.right,
+        };
+      }
+    }
+    return `scrollWidth ${root.scrollWidth} > ${root.clientWidth}; widest ${widest.name} ends at ${Math.round(widest.right)}`;
+  });
+}
+
+/** The tabs share the strip like a browser's: one width, and not under the minimum. */
+async function tabWidthsProblem(page: Page, minimum: number): Promise<string | null> {
+  const widths = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>(".tab-item")].map((tab) =>
+      Math.round(tab.getBoundingClientRect().width),
+    ),
+  );
+  if (widths.length === 0) return "no tabs";
+  if (Math.max(...widths) - Math.min(...widths) > 1) return `widths differ: ${widths.join(", ")}`;
+  if (Math.min(...widths) < minimum) return `a tab is ${Math.min(...widths)}px, under ${minimum}px`;
+  return null;
+}
+
+/** Twelve tabs, as a window left open for a day, with `first` on screen (the active tab). */
+const crowdedWindow = (c: Context, first: Route, count = 12) =>
+  JSON.stringify({
+    v: 1,
+    split: null,
+    focus: 0,
+    fraction: 0.5,
+    areas: [
+      {
+        active: 0,
+        tabs: [
+          first,
+          { name: "board", host: ALFA, projectId: c.ids.project },
+          { name: "hub" },
+          { name: "needs-you" },
+          { name: "costs" },
+          { name: "settings" },
+          { name: "clients" },
+          { name: "history", host: ALFA },
+          { name: "host", host: ALFA },
+          { name: "project", host: ALFA, projectId: c.ids.project },
+          { name: "teams" },
+          { name: "personas" },
+        ]
+          .slice(0, count)
+          .map((route) => ({ route, pinned: false })),
+      },
+    ],
+  });
+
+/** Opens the demo on a window with twelve tabs: no `?route=`, which would start a fresh window. */
+async function openCrowded(c: Context, first: Route, count = 12) {
+  // Any page of the demo holds the window's storage; the first call starts on one.
+  if (!c.page.url().startsWith(c.url)) await c.page.goto(c.url);
+  await c.page.evaluate(
+    ([key, value]) => localStorage.setItem(key as string, value as string),
+    ["flightdeck.workspace", crowdedWindow(c, first, count)],
+  );
+  const query = new URLSearchParams({ lang: c.lang, theme: "light", reconnect: "fast" });
+  await c.page.goto(`${c.url}?${query}`);
+  await c.page.waitForTimeout(1500);
 }
 
 /** After scrolling every box to its end, the last row of the list is on screen (or why not). */
@@ -587,6 +664,37 @@ export async function layout(c: Context, problems: string[]) {
     ],
     ["historico", { name: "history", host: ALFA }],
   ];
+  // Issue #103: with 12 tabs and a long worktree path, no screen scrolls the page sideways.
+  const crowded: Array<[string, Route]> = [
+    ["sessao-longa", { name: "session", host: ALFA, id: c.ids.longSession }],
+    ...screens,
+  ];
+  for (const viewport of OVERFLOW_VIEWPORTS) {
+    await c.page.setViewportSize(viewport);
+    for (const [name, route] of crowded) {
+      await openCrowded(c, route);
+      // A print of the crowded window on request (the hand-off of issue #103 shows it).
+      if (process.env.E2E_PRINT_DIR && name === "sessao-longa" && viewport.width > 1500) {
+        await c.page.screenshot({
+          path: `${process.env.E2E_PRINT_DIR}/janela-lotada-${c.lang}.png`,
+        });
+      }
+      const sideways = await pageScrollsSideways(c.page);
+      if (sideways) {
+        problems.push(
+          `${c.lang} ${viewport.width}x${viewport.height} ${name} (12 abas): ${sideways}`,
+        );
+      }
+    }
+    // Equal widths with 12 tabs and with 2, and 12 never under 80px.
+    await openCrowded(c, { name: "hub" });
+    const crowdedTabs = await tabWidthsProblem(c.page, 80);
+    if (crowdedTabs)
+      problems.push(`${c.lang} ${viewport.width}x${viewport.height} 12 abas: ${crowdedTabs}`);
+    await openCrowded(c, { name: "hub" }, 2);
+    const fewTabs = await tabWidthsProblem(c.page, 80);
+    if (fewTabs) problems.push(`${c.lang} ${viewport.width}x${viewport.height} 2 abas: ${fewTabs}`);
+  }
   // The tab strip starts at the same x whatever the crumbs say ("Hosts > alfa" is wider than "Settings").
   const lefts: number[] = [];
   for (const [, route] of screens.filter(([n]) => n === "host" || n === "configuracoes")) {

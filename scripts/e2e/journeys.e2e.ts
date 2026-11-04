@@ -48,8 +48,8 @@ for (const language of LANGUAGES) {
     }
 
     test("layout", async ({ page }) => {
-      // Ten screens at two window sizes, each with a settle wait: far more than one journey.
-      test.setTimeout(600_000);
+      // Eleven screens at four window sizes, each with a settle wait: far more than one journey.
+      test.setTimeout(1_200_000);
       const { url, ids } = demo();
       const problems: string[] = [];
       await layout({ page, url, lang, ids, repeat: 0, t: translator(lang) }, problems);
