@@ -1464,6 +1464,61 @@ export interface DoctorResult {
   checks: DoctorCheckResult[];
 }
 
+/** What the host needs to do its job (`required`) or to turn a feature on (`optional`). */
+export const DEP_IDS = [
+  "claude",
+  "git",
+  "service",
+  "folders",
+  "gh",
+  "az",
+  "ssh",
+  "tailscale",
+  "pwsh",
+  "hooks",
+] as const;
+export type DepId = (typeof DEP_IDS)[number];
+
+/** What stops working without a dependency: the names the app translates. */
+export const DEP_FEATURES = [
+  "sessions",
+  "projects",
+  "worktrees",
+  "changes",
+  "board",
+  "autostart",
+  "github",
+  "pullRequests",
+  "boardSync",
+  "azure",
+  "remoteHosts",
+  "teleport",
+  "pairing",
+  "windowsSetup",
+  "liveStatus",
+] as const;
+export type DepFeature = (typeof DEP_FEATURES)[number];
+
+/** One dependency of a host, as `deps.check` found it. */
+export interface DepResult {
+  id: DepId;
+  group: "required" | "optional";
+  /** `na`: it does not apply to this operating system. */
+  state: "ok" | "outdated" | "missing" | "na";
+  version?: string;
+  path?: string;
+  /** The least version that works, when there is one. */
+  minVersion?: string;
+  breaks: DepFeature[];
+  /** How to install or upgrade it, one command per operating system. */
+  fix: Array<{ os: "linux" | "darwin" | "win32"; command: string }>;
+}
+
+/** What `deps.check` answers. */
+export interface DepsResult {
+  items: DepResult[];
+}
+
 /** What `fs.dirs` answers: a folder of the host and its subfolders (never outside the roots). */
 export interface FsDirsResult {
   /** The folder listed (a real path); null for the list of the allowed roots. */
@@ -3920,6 +3975,8 @@ export const Command = z.discriminatedUnion("type", [
   ),
   /** The host checks itself (version, claude, hooks, ports, folders): each failure carries its fix. */
   cmd("doctor.run", z.object({ appVersion: z.string().max(32).optional() }).strict()),
+  /** The host's dependencies, required and optional, and what stops working without each. */
+  cmd("deps.check", z.object({}).strict()),
   cmd("pr.comments.send", z.object({ cardId: z.string(), ids: z.array(z.string()).min(1) })),
   /** Rebase on the base; a conflict aborts it and leaves the worktree as it was. */
   cmd("card.updateFromBase", CardIdPayload),
@@ -4454,6 +4511,7 @@ export interface CommandResults {
   "files.sessions": { sessions: FileSession[] };
   "fs.dirs": FsDirsResult;
   "doctor.run": DoctorResult;
+  "deps.check": DepsResult;
   "projects.scan": ProjectsScanResult;
   "projects.clone": ProjectsCloneResult;
   "roi.summary": RoiSummaryResult;

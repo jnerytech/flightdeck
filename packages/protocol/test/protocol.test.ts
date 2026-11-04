@@ -349,6 +349,7 @@ const validCommands: Record<CommandType, unknown> = {
   "fs.dirs": { path: "/work", hidden: false },
   "fs.files": { path: "/work", hidden: false },
   "doctor.run": { appVersion: "0.32.0" },
+  "deps.check": {},
   "projects.scan": { depth: 2 },
   "projects.clone": { url: "https://example.com/a/b.git", root: "/work" },
   "roi.summary": { from: "2026-10-01", to: "2026-10-31" },

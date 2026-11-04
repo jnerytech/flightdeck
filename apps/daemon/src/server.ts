@@ -11,6 +11,7 @@ import {
   CommandHeader,
   type CommandResults,
   type CommandType,
+  type DepsResult,
   type DoctorResult,
   type EventEnvelope,
   type ExternalPermissionFrame,
@@ -152,6 +153,8 @@ export interface ServerOptions {
   fsDirs?: boolean;
   /** Runs the host's self-check for `doctor.run`; absent, the command is refused and not announced. */
   doctor?: (appVersion?: string) => Promise<DoctorResult>;
+  /** Checks the host's dependencies for `deps.check`; absent, the command is refused and not announced. */
+  deps?: () => Promise<DepsResult>;
   /** Sign-in with GitHub and start from a GitHub project (phase 37): the `github.*` commands. */
   github?: GithubService;
   /** What the agents cost and delivered, per project (phase 36): `roi.summary`. */
@@ -442,6 +445,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     // A message may carry images (`session.send` with `images`).
     "session.images",
     ...(opts.doctor ? ["doctor.run"] : []),
+    ...(opts.deps ? ["deps"] : []),
     ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
     ...(opts.github ? ["github"] : []),
     ...(opts.boardsync ? ["boardsync"] : []),
@@ -1742,6 +1746,9 @@ export function startServer(opts: ServerOptions): RunningServer {
           command.type,
           await cloneRepo(command.payload, opts.allowedRoots, opts.git ?? spawnGit),
         );
+      case "deps.check":
+        if (!opts.deps) throw featureOff("deps");
+        return ok(command.type, await opts.deps());
       case "doctor.run":
         if (!opts.doctor) throw featureOff("doctor.run");
         return ok(command.type, await opts.doctor(command.payload.appVersion));
