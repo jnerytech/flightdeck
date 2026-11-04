@@ -35,8 +35,8 @@ export function AppShell(props: {
   const { labels } = props;
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   return (
-    <div className="grid h-screen grid-rows-[auto_minmax(0,1fr)] bg-background text-foreground">
-      <header className="flex h-12 items-center gap-2 border-b px-3">
+    <div className="grid h-screen grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] bg-background text-foreground">
+      <header className="flex h-12 min-w-0 items-center gap-2 border-b px-3">
         <Button
           variant="ghost"
           size="icon"
