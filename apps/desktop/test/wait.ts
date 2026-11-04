@@ -76,6 +76,19 @@ export async function stays(check: () => boolean, windowMs = 300, label?: string
  * trailing sleep with a condition. Throws, like every wait here, when the screen never settles.
  */
 export async function uiIdle(quietMs = 50, timeoutMs = 5000): Promise<void> {
-  void quietMs;
-  void timeoutMs;
+  const sleep = await inAct();
+  const deadline = Date.now() + timeoutMs;
+  let markup = document.body.innerHTML;
+  let since = Date.now();
+  while (Date.now() - since < quietMs) {
+    if (Date.now() >= deadline) {
+      throw new WaitTimeout(`timeout (${timeoutMs} ms) waiting for: the screen to stop changing`);
+    }
+    await sleep(10);
+    const now = document.body.innerHTML;
+    if (now !== markup) {
+      markup = now;
+      since = Date.now();
+    }
+  }
 }
