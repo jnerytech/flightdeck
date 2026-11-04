@@ -32,6 +32,26 @@ function Other(props: { store: InstanceType<typeof AppStore> }) {
   return <p>{`hosts: ${hosts.length}`}</p>;
 }
 
+/** The table with a range of its own, which the test moves through `range.set`. */
+function Holder(props: {
+  store: InstanceType<typeof AppStore>;
+  hostId: string;
+  range: { set?: (to: string) => void };
+}) {
+  const [to, setTo] = useState("2026-10-14");
+  props.range.set = setTo;
+  return (
+    <RoiTable
+      store={props.store}
+      hostIds={[props.hostId]}
+      from="2026-10-01"
+      to={to}
+      selection="all"
+      projectName={(key) => key}
+    />
+  );
+}
+
 describe("roi-enxuta: a roi.summary refresh renders the card and the table, nothing else", () => {
   test("the figures load without touching the store, so a component on other state stays quiet", async () => {
     const d = makeDaemon(cleanups, { roi: true });
@@ -57,24 +77,10 @@ describe("roi-enxuta: a roi.summary refresh renders the card and the table, noth
     const otherProbe = renderProbe("other");
     // The table's range lives in a holder of its own: changing it must not render the others.
     const range: { set?: (to: string) => void } = {};
-    function Holder() {
-      const [to, setTo] = useState("2026-10-14");
-      range.set = setTo;
-      return (
-        <RoiTable
-          store={store}
-          hostIds={[hostId]}
-          from="2026-10-01"
-          to={to}
-          selection="all"
-          projectName={(key) => key}
-        />
-      );
-    }
     const tree = (
       <TContext.Provider value={translator("en")}>
         {cardProbe.wrap(<RoiCard store={store} hostId={hostId} project={project} />)}
-        {tableProbe.wrap(<Holder />)}
+        {tableProbe.wrap(<Holder store={store} hostId={hostId} range={range} />)}
         {otherProbe.wrap(<Other store={store} />)}
       </TContext.Provider>
     );
