@@ -82,6 +82,7 @@ export function GlobalSearch(props: {
         globalSnippets: store.globalSnippets.list(),
         recents: store.paletteRecents(),
         waiting: needsYou(props.state).length > 0,
+        modeSwitch: modeSwitch(store),
       });
   const visible = sections.flatMap((section) => section.items);
   const back = () => {
@@ -202,4 +203,12 @@ export function GlobalSearch(props: {
       )}
     </dialog>
   );
+}
+
+/** The mode the palette offers to go to, when the host in view allows a change. */
+function modeSwitch(store: AppStore): "simple" | "full" | null {
+  const hostId = store.uiHostId();
+  const now = hostId ? store.uiMode(hostId) : null;
+  if (!now?.canSwitch) return null;
+  return now.mode === "simple" ? "full" : "simple";
 }

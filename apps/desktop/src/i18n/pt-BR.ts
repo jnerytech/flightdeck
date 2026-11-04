@@ -774,6 +774,7 @@ export const ptBR = {
     searchLabel: "Buscar no histórico (Ctrl+K)",
     settings: "Configurações",
     theme: "Alternar tema",
+    simpleMode: "Modo simples",
     openHost: "Abrir host {host}",
     hostMenu: "Menu de {host}",
     hostState: "{host}: {state}",
@@ -898,6 +899,8 @@ export const ptBR = {
   languages: { "pt-BR": "Português (Brasil)", en: "English" },
   palette: {
     toggleTheme: "Alternar tema",
+    switchToSimple: "Mudar para o modo simples",
+    switchToFull: "Mudar para o app completo",
     switchLanguage: "Trocar idioma",
     startCard: "Iniciar card",
     open: "Abrir",
@@ -2995,6 +2998,7 @@ export const ptBR = {
       approvals: "Aprovações",
     },
     palette: "Abrir a paleta de comandos",
+    toggleMode: "Alternar entre o modo simples e o app completo",
     help: "Mostrar os atalhos",
     nextClient: "Trocar para o próximo cliente",
     back: "Voltar",
@@ -3043,6 +3047,8 @@ export const ptBR = {
   },
   simple: {
     modeLabel: "Modo simples",
+    fullApp: "App completo",
+    lockedNote: "Este host está no modo simples. Peça a quem administra para liberar.",
     yes: "Sim, pode continuar",
     no: "Não",
     holdHint: "Segure para dizer sim: isto é difícil de desfazer.",

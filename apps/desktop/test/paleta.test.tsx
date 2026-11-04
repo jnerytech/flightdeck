@@ -149,6 +149,7 @@ describe("paleta", () => {
       "Ir para Precisa de você",
       "Ir para Projetos",
       "Alternar tema",
+      "Mudar para o modo simples",
       "Trocar idioma",
       "Ir para Configurações",
       "Mostrar os atalhos de teclado",

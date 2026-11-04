@@ -6,6 +6,7 @@ import {
   Plane,
   Plus,
   Search,
+  Sparkles,
   SunMoon,
   TriangleAlert,
 } from "lucide-react";
@@ -187,6 +188,8 @@ export function Sidebar(props: {
   /** The next navigation opens a new tab ("Abrir em nova aba"). */
   onNewTab(): void;
   onToggleTheme(): void;
+  /** Switches to simple mode; absent when the host in view does not let the person choose. */
+  onSimpleMode?(): void;
 }) {
   const { state, t, collapsed, go } = props;
   const here = props.route ? activeNav(props.route) : null;
@@ -564,6 +567,14 @@ export function Sidebar(props: {
           label={t("sidebar.theme")}
           onClick={props.onToggleTheme}
         />
+        {props.onSimpleMode && (
+          <NavButton
+            collapsed={collapsed}
+            icon={<Sparkles aria-hidden="true" className={icon} />}
+            label={t("sidebar.simpleMode")}
+            onClick={props.onSimpleMode}
+          />
+        )}
       </div>
       {renaming && (
         <RenameHostDialog

@@ -25,6 +25,7 @@ export type PaletteTarget =
   | { kind: "new-terminal"; hostId: string }
   | { kind: "settings" }
   | { kind: "toggle-theme" }
+  | { kind: "toggle-ui-mode" }
   | { kind: "switch-language" }
   | { kind: "start-card"; hostId: string; cardId: string }
   | { kind: "costs" }
@@ -91,6 +92,8 @@ export function paletteSections(
     recents?: string[];
     /** A request waits for the person: the approve and deny commands show. */
     waiting?: boolean;
+    /** The mode the window could switch to (none when the host is locked). */
+    modeSwitch?: "simple" | "full" | null;
   },
 ): PaletteSection[] {
   const { t } = options;
@@ -288,6 +291,17 @@ export function paletteSections(
         ]
       : []),
     action("theme", t("palette.toggleTheme"), { kind: "toggle-theme" }),
+    ...(options.modeSwitch
+      ? [
+          action(
+            "ui-mode",
+            t(options.modeSwitch === "simple" ? "palette.switchToSimple" : "palette.switchToFull"),
+            { kind: "toggle-ui-mode" },
+            undefined,
+            "toggle-mode",
+          ),
+        ]
+      : []),
     action("language", t("palette.switchLanguage"), { kind: "switch-language" }),
     ...(options.costs
       ? [action("costs", t("palette.goCosts"), { kind: "costs" }, undefined, "go-costs")]

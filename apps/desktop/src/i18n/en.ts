@@ -778,6 +778,7 @@ export const en: Dictionary = {
     searchLabel: "Search the history (Ctrl+K)",
     settings: "Settings",
     theme: "Toggle theme",
+    simpleMode: "Simple mode",
     openHost: "Open host {host}",
     hostMenu: "Menu of {host}",
     hostState: "{host}: {state}",
@@ -901,6 +902,8 @@ export const en: Dictionary = {
   languages: { "pt-BR": "Português (Brasil)", en: "English" },
   palette: {
     toggleTheme: "Toggle theme",
+    switchToSimple: "Switch to simple mode",
+    switchToFull: "Switch to the full app",
     switchLanguage: "Switch language",
     startCard: "Start card",
     open: "Open",
@@ -2993,6 +2996,7 @@ export const en: Dictionary = {
       approvals: "Approvals",
     },
     palette: "Open the command palette",
+    toggleMode: "Switch between simple mode and the full app",
     help: "Show the shortcuts",
     nextClient: "Switch to the next client",
     back: "Back",
@@ -3041,6 +3045,8 @@ export const en: Dictionary = {
   },
   simple: {
     modeLabel: "Simple mode",
+    fullApp: "Full app",
+    lockedNote: "This host is set to simple mode. Ask its admin to unlock it.",
     yes: "Yes, go ahead",
     no: "No, don't",
     holdHint: "Hold to say yes: this one is hard to undo.",

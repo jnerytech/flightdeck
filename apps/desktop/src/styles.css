@@ -1178,6 +1178,14 @@
   border-right: 1px solid var(--color-border);
 }
 
+/* The nav's last block: the way out of simple mode sits at the bottom, whatever the screen's height. */
+@utility simple-nav-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: auto;
+}
+
 @utility simple-nav-item {
   justify-content: flex-start;
   width: 100%;
