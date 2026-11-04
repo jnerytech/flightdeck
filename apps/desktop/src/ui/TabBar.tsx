@@ -206,6 +206,7 @@ export function TabBar(props: {
                   data-preview={tab.preview}
                   {...(tab.preview ? { "aria-description": t("tabs.preview") } : {})}
                   data-tab-id={tab.id}
+                  title={label}
                   aria-keyshortcuts={`${tab.pinned ? "" : "Delete "}${MOVE_KEYS}`}
                   {...(tab.pinned ? { "aria-label": label } : {})}
                   className="flex min-w-0 flex-1 items-center gap-1.5 rounded-t-md px-2 py-1.5 outline-none hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
@@ -263,7 +264,7 @@ export function TabBar(props: {
                         {tag}
                       </span>
                     ))}
-                  {badge && compact && !selected && (
+                  {badge && (
                     <span
                       role="img"
                       data-badge={badge}
@@ -276,21 +277,6 @@ export function TabBar(props: {
                         badgePulses(badge) && "motion-safe:animate-pulse",
                       )}
                     />
-                  )}
-                  {badge && !(compact && !selected) && (
-                    <span
-                      data-badge={badge}
-                      className={cn(
-                        "shrink-0 rounded-full px-1.5 text-xs",
-                        badgePulses(badge) && "motion-safe:animate-pulse",
-                        badge === "needs-you"
-                          ? "bg-status-needs-you text-background"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                      title={t(`tabs.badge.${badge}`)}
-                    >
-                      {tab.pinned ? "" : t(`tabs.badge.${badge}`)}
-                    </span>
                   )}
                 </button>
                 {!tab.pinned && (

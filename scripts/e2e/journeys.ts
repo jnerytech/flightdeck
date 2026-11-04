@@ -505,7 +505,8 @@ const crowdedWindow = (c: Context, first: Route, count = 12) =>
 
 /** Opens the demo on a window with twelve tabs: no `?route=`, which would start a fresh window. */
 async function openCrowded(c: Context, first: Route, count = 12) {
-  await c.page.goto(c.url);
+  // Any page of the demo holds the window's storage; the first call starts on one.
+  if (!c.page.url().startsWith(c.url)) await c.page.goto(c.url);
   await c.page.evaluate(
     ([key, value]) => localStorage.setItem(key as string, value as string),
     ["flightdeck.workspace", crowdedWindow(c, first, count)],
@@ -562,6 +563,12 @@ export async function layout(c: Context, problems: string[]) {
     await c.page.setViewportSize(viewport);
     for (const [name, route] of crowded) {
       await openCrowded(c, route);
+      // A print of the crowded window on request (the hand-off of issue #103 shows it).
+      if (process.env.E2E_PRINT_DIR && name === "sessao-longa" && viewport.width > 1500) {
+        await c.page.screenshot({
+          path: `${process.env.E2E_PRINT_DIR}/janela-lotada-${c.lang}.png`,
+        });
+      }
       const sideways = await pageScrollsSideways(c.page);
       if (sideways) {
         problems.push(
