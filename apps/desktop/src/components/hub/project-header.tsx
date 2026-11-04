@@ -29,15 +29,15 @@ export function ProjectHeader(props: {
     <div className="flex flex-wrap items-center gap-2 px-2 text-xs">
       <Button
         variant="ghost"
-        size="sm"
-        className="h-6 gap-1 px-1 font-medium text-muted-foreground"
+        size="icon"
+        className="size-6 text-muted-foreground"
         aria-expanded={props.expanded}
         aria-label={props.toggleLabel}
         onClick={props.onToggle}
       >
         {props.expanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
-        <span aria-hidden="true">{props.name}</span>
       </Button>
+      <h3 className="shrink-0 font-medium text-muted-foreground">{props.name}</h3>
       {props.children}
     </div>
   );
