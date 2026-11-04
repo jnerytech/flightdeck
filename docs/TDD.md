@@ -26,6 +26,11 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     "never" uses `settleMaybe` (it returns a boolean). A wait that returns a value stays `poll`
     followed by an `expect`. Never define a `settle`, `waitFor` or `until` of your own in a test
     file: `wait-baseline.json` (a ratchet, like the layout one) only goes down.
+    Never wait a guessed time: after an action use `settle` on what the test reads next, `stays` for
+    a thing that must NOT happen (it watches the whole window), or `uiIdle` for a helper's trailing
+    wait (the screen stopped changing). `lazy-wait-baseline.json` (a fixed wait before a one-shot
+    query, or ending a helper) is empty, and an `act(() => Bun.sleep(…))` is allowed only with a
+    `// timing:` comment on the line above saying why the clock is the thing under test.
    - Nada de `toMatchSnapshot` na primeira rodada: ele grava o resultado do stub. Use literais
      escritos à mão (`toBe`, `toMatchInlineSnapshot` com o texto).
    - `toContain` sobre algo que pode ser `undefined`: use `?? ""`.

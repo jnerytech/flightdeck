@@ -77,15 +77,42 @@ export function fixedWaitCounts(dir: string, root: string): Record<string, numbe
   return counts;
 }
 
-/** Sleeps inside `act`: how a desktop test waits for a screen. */
+/** A sleep inside `act`: how a desktop test waits for a screen, in each of its spellings. */
+const ACT_SLEEP = /\bact\((?:async )?\(\) => (?:await )?Bun\.sleep\(/;
+
+/** The comment that says why a clock window is the thing under test (a hold, a debounce). */
+const TIMING_COMMENT = /^\s*\/\/ timing:/;
+
+/**
+ * How many `act(() => Bun.sleep(…))` have no `// timing:` comment on the line above. A sleep in `act`
+ * stands in for a condition (`settle`, `findBy*`, `stays`, `uiIdle`) unless the test is about the clock
+ * itself, and then it says so.
+ */
 export function uncommentedActSleeps(source: string): number {
-  void source;
-  return 0;
+  const lines = source.split("\n");
+  let sites = 0;
+  lines.forEach((line, i) => {
+    if (!ACT_SLEEP.test(line)) return;
+    let above = i - 1;
+    while (above >= 0 && (lines[above] ?? "").trim() === "") above -= 1;
+    if (above < 0 || !TIMING_COMMENT.test(lines[above] ?? "")) sites += 1;
+  });
+  return sites;
 }
 
-/** Every desktop test source under `dir` with its uncommented act sleeps, keyed under `root`. */
+/** Every desktop test source under `dir` with its uncommented act sleeps (none left out), keyed under `root`. */
 export function actSleepCounts(dir: string, root: string): Record<string, number> {
-  void dir;
-  void root;
-  return { "stub.ts": 1 };
+  const counts: Record<string, number> = {};
+  const walk = (current: string) => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const path = resolve(current, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (/\.tsx?$/.test(entry.name) && !SHARED.has(entry.name)) {
+        const n = uncommentedActSleeps(readFileSync(path, "utf8"));
+        if (n > 0) counts[relative(root, path).replaceAll("\\", "/")] = n;
+      }
+    }
+  };
+  walk(dir);
+  return counts;
 }
