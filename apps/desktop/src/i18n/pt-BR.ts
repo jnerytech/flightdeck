@@ -797,6 +797,14 @@ export const ptBR = {
     loopRow: "Laço pausado: {from} e {to}",
     release: "Soltar o par",
   },
+  projectTree: {
+    list: "Branches de {name}",
+    node: "{project}: {branch}",
+    primary: "principal",
+    base: "base {name}",
+    filter: "Branch: {branch}",
+    clear: "Limpar o filtro de branch",
+  },
   hub: {
     view: "Visualização",
     viewList: "Lista",

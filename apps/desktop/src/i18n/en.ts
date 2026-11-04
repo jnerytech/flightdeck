@@ -800,6 +800,14 @@ export const en: Dictionary = {
     loopRow: "Loop paused: {from} and {to}",
     release: "Free the pair",
   },
+  projectTree: {
+    list: "Branches of {name}",
+    node: "{project}: {branch}",
+    primary: "primary",
+    base: "base {name}",
+    filter: "Branch: {branch}",
+    clear: "Clear the branch filter",
+  },
   hub: {
     view: "View",
     viewList: "List",

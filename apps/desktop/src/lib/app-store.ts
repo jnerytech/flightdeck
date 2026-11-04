@@ -107,8 +107,8 @@ import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
 import { summaryNotifications } from "./notify.ts";
 import { basename } from "./paths.ts";
-import type { WorktreeFilter } from "./project-tree.ts";
 import { probeHost } from "./probe-host.ts";
+import type { WorktreeFilter } from "./project-tree.ts";
 import { isHot } from "./quota.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
@@ -1405,8 +1405,10 @@ export class AppStore {
     this.update({ projects: { ...this.state.projects, [hostId]: projects } });
   }
 
-  /** Picks the checkout the board and the Sessions list narrow to, or clears it. Stubbed until the test commit is in. */
-  setWorktreeFilter(_filter: WorktreeFilter | null): void {}
+  /** Picks the checkout the board and the Sessions list narrow to, or clears it. */
+  setWorktreeFilter(filter: WorktreeFilter | null): void {
+    this.update({ worktreeFilter: filter });
+  }
 
   /** The key of a project of a host: the daemon's, else the one its folder would have. */
   projectKeyOf(hostId: string, project: Project): string {
