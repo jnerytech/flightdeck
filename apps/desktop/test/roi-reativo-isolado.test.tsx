@@ -46,7 +46,6 @@ describe("roi-reativo-isolado: the figures follow the rate the person types, who
       />,
     );
     await settle(() => screen.queryByRole("table", { name: ptBR.roiUi.tableTitle }) !== null);
-    await act(async () => Bun.sleep(100));
     await act(async () => {
       store.roi.setDefaultRate(60);
     });
