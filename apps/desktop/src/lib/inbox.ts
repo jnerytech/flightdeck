@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { T } from "../i18n/index.ts";
 import type { Route } from "./router.ts";
 
 export const INBOX_KEY = "flightdeck.inbox";
@@ -18,6 +19,14 @@ export interface InboxEntry {
   route?: Route;
   /** Where a click goes when `route` is a card that is gone: its pull request. */
   fallbackUrl?: string;
+  /** What the notification is about: the session, card or team, named. */
+  subject?: string;
+  /** The host it happened on. */
+  host?: string;
+  /** The request in plain words ("Asks: which DB?"), not the tool's name. */
+  ask?: string;
+  /** Notifications of one thing (one session's questions) share it, so a burst collapses. */
+  group?: string;
   read: boolean;
 }
 
@@ -95,6 +104,10 @@ const Stored = z.array(
     link: z.string().optional(),
     route: z.custom<Route>((v) => typeof v === "object" && v !== null && "name" in v).optional(),
     fallbackUrl: z.string().optional(),
+    subject: z.string().optional(),
+    host: z.string().optional(),
+    ask: z.string().optional(),
+    group: z.string().optional(),
     read: z.boolean(),
   }),
 );
@@ -112,4 +125,39 @@ export function saveInbox(
   list: InboxEntry[],
 ): void {
   storage.setItem(INBOX_KEY, JSON.stringify(list));
+}
+
+/** One line of the panel: the newest of the entries it stands for, and how many there are. */
+export interface InboxRow {
+  entry: InboxEntry;
+  /** The ids of every entry collapsed into the row (the newest first). */
+  ids: string[];
+  count: number;
+}
+
+export type InboxSection = "today" | "earlier";
+
+/**
+ * What the panel draws: Today then Earlier; in each, unread rows first and then by time. Entries of
+ * one `group` that are both unread, or both read, on the same side of midnight collapse into one row.
+ */
+export function inboxRows(
+  _list: InboxEntry[],
+  _now: Date,
+): Array<{ section: InboxSection; rows: InboxRow[] }> {
+  return [];
+}
+
+/** The badge: the unread rows, which are the dots the panel shows. */
+export function unreadRows(_list: InboxEntry[], _now: Date): number {
+  return 0;
+}
+
+/** A request in plain words, from the tool and its input. */
+export function describeRequest(
+  _toolName: string,
+  _input: Record<string, unknown> | undefined,
+  _t: T,
+): string {
+  return "";
 }
