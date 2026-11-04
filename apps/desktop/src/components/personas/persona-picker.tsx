@@ -1,10 +1,24 @@
 import { useEffect, useId } from "react";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
-import { useStoreState } from "@/lib/use-store";
+import { useStoreSlice, useStoreState } from "@/lib/use-store";
 
 const SELECT =
   "h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+/**
+ * The picker value of the host persona `id` ("dev" for the Developer) when the host has it, else
+ * "none". A form shows it until the person picks something, so choosing "none" sticks.
+ */
+export function useSuggestedPersona(
+  store: AppStore,
+  hostId: string,
+  id: string,
+  idsOnly = false,
+): string {
+  const hosts = useStoreSlice(store, ["personas"]).personas[hostId];
+  return hosts?.some((p) => p.id === id) ? (idsOnly ? id : `host:${id}`) : "";
+}
 
 /**
  * Phase 20: which persona a session opens in. The value is `host:<id>` (the pack's, the host's or

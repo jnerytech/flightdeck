@@ -1762,8 +1762,10 @@ A **persona** is an engineering role Claude takes in a session: a name, a descri
 suggested model, effort, tools and permission mode, and the instructions of the role. The
 **Personas** screen (sidebar, for hosts that keep them) lists them by where they live:
 
-- **Pack**: ten come ready, in English and Portuguese (architect, security reviewer, QA, SRE,
-  performance, code reviewer, docs, frontend, DBA and the team coordinator of phase 21). Editing one
+- **Pack**: eleven come ready, in English and Portuguese (architect, security reviewer, QA, SRE,
+  performance, code reviewer, docs, frontend, DBA, the team coordinator of phase 21 and the
+  **Developer**, the one that writes the code: test first, small scoped changes, follows the
+  project's CLAUDE.md and ADRs, runs the project's checks before saying done, never pushes). Editing one
   keeps your version on the host (**Pack, edited**); **Restore original** brings the pack's back.
 - **Host**, **Project** (choose one: its own and the versioned `.flightdeck/personas/*.md`, which
   you **Trust** first) and **Global (this app)**, kept in the app.
@@ -1774,7 +1776,8 @@ suggested model, effort, tools and permission mode, and the instructions of the 
 
 Using one:
 
-- **+ New session**, **Ctrl+K** (**New session as <persona>**), **Card persona** next to **Start**,
+- **+ New session**, **Ctrl+K** (**New session as <persona>**), **Card persona** next to **Start**
+  (it suggests the Developer when the host has it; pick **None** to start without one),
   and each variant of **Start in arena** have a **Persona** field. The session opens in it: the
   instructions go after the system prompt, with the model, effort and tools it suggests. A persona
   only takes away: its tools are a subset of the session's, and its permission mode counts only
@@ -1950,7 +1953,8 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   worktree.
 - **Teams** (sidebar) creates a team: the project, the goal, a name and, if you want, the
   coordinator's persona and model. The workers are rows: each has its own persona and model, and
-  you add or remove rows (the number of rows is the number of workers, 1 to 8). With no choice,
+  you add or remove rows (the number of rows is the number of workers, 1 to 8). A worker's
+  persona starts as the Developer when the host has it; pick **None** for the plain default. With no choice,
   the model is the persona's. Each member's model shows on its line.
 - **The coordinator's cycle:**
   1. split the goal into tasks, each with what "done" means;
