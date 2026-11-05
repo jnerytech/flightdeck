@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { settle, uiIdle } from "./wait.ts";
+import { settle, settleMaybe, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -52,6 +52,12 @@ describe("opencode-session-ui", () => {
       });
     });
     await settle(() => options("Model").includes("anthropic/claude-sonnet-5-5"));
+    const groups = [
+      ...((screen.queryByLabelText("Model") as HTMLSelectElement | null)?.querySelectorAll(
+        "optgroup",
+      ) ?? []),
+    ].map((g) => g.label);
+    expect(groups).toEqual(["anthropic", "opencode"]);
     expect(options("Model")).toEqual([
       "",
       "anthropic/claude-sonnet-5-5",
@@ -62,8 +68,8 @@ describe("opencode-session-ui", () => {
     expect(screen.queryByLabelText("Persona")).toBeNull();
   });
 
-  test("an OpenCode session is created as OpenCode's and its page says so, without the model switch", async () => {
-    const { d } = await open("en", true);
+  test("an OpenCode session is created as OpenCode's; its page and the session list say so, and its model switch offers OpenCode's models", async () => {
+    const { d, store } = await open("en", true);
     expect(screen.queryByLabelText("Agent")).not.toBeNull();
     await act(async () => {
       fireEvent.change(screen.queryByLabelText("Agent") as HTMLElement, {
@@ -89,7 +95,20 @@ describe("opencode-session-ui", () => {
     await settle(() => (d.opencodeRuntime?.starts.length ?? 0) > 0);
     expect(d.opencodeRuntime?.starts[0]?.effort).toBe("high");
     await settle(() => screen.queryByText("OpenCode") !== null);
-    expect(screen.queryByLabelText("Model")).toBeNull();
+    // The live switch offers OpenCode's models, as the form did.
+    await settleMaybe(() => options("Model").length > 1);
+    expect(options("Model")).toEqual([
+      "",
+      "anthropic/claude-sonnet-5-5",
+      "opencode/crouton-alpha-free",
+    ]);
+    // The session list says it is OpenCode's too.
+    await act(async () => {
+      await store.refreshHub();
+      store.router.push({ name: "hub" });
+    });
+    await settleMaybe(() => document.querySelector('[data-slot="runtime-badge"]') !== null);
+    expect(document.querySelector('[data-slot="runtime-badge"]')?.textContent).toBe("OpenCode");
   });
 
   test("a host without OpenCode does not offer the agent; the label is translated", async () => {
@@ -129,6 +148,81 @@ describe("opencode-session-ui", () => {
     expect(shown()).toEqual(["terminal", "timeline", "persona", "recap"]);
     utils.rerender(view("opencode"));
     expect(shown()).toEqual([]);
+  });
+
+  test("an OpenCode session says when a denial stopped the turn, and what went with the first message", () => {
+    const actions = {
+      send: async () => {},
+      interrupt: async () => {},
+      close: async () => {},
+      resume: async () => {},
+      respond: async () => {},
+    };
+    let session = emptySession();
+    const events = [
+      {
+        type: "session.init",
+        claudeSessionId: "ses_1",
+        model: "m",
+        tools: [],
+        contextFiles: ["AGENTS.md"],
+      },
+      {
+        type: "permission.requested",
+        requestId: "r1",
+        toolName: "Bash",
+        input: { command: "ls" },
+      },
+      { type: "permission.resolved", requestId: "r1", decision: "deny" },
+    ];
+    events.forEach((event, i) => {
+      session = applyEnvelope(session, {
+        type: "event",
+        sessionId: "s1",
+        ts: "2026-11-05T00:00:00.000Z",
+        seq: i + 1,
+        event,
+      } as never);
+    });
+    const view = (runtime: "claude" | "opencode", state = session) => (
+      <SessionView
+        title="s"
+        session={state}
+        actions={actions}
+        runtime={runtime}
+        t={translator("en")}
+      />
+    );
+    const utils = render(view("opencode"));
+    expect(
+      screen.queryByText("OpenCode stopped this turn because the request was denied."),
+    ).not.toBeNull();
+    expect(
+      screen.queryByText("Project instructions (AGENTS.md) went with the first message."),
+    ).not.toBeNull();
+    utils.rerender(view("claude"));
+    expect(
+      screen.queryByText("OpenCode stopped this turn because the request was denied."),
+    ).toBeNull();
+    const skipped = applyEnvelope(emptySession(), {
+      type: "event",
+      sessionId: "s1",
+      ts: "2026-11-05T00:00:00.000Z",
+      seq: 1,
+      event: {
+        type: "session.init",
+        claudeSessionId: "ses_1",
+        model: "m",
+        tools: [],
+        contextSkipped: ["AGENTS.md"],
+      },
+    } as never);
+    utils.rerender(view("opencode", skipped));
+    expect(
+      screen.queryByText(
+        "AGENTS.md was not sent: it is over 64 KB, or it links out of the folder or to a credential.",
+      ),
+    ).not.toBeNull();
   });
 
   test("a session error with a reason reads as the app's sentence, in its language", () => {
