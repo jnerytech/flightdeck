@@ -5,6 +5,7 @@ import { ActionButton } from "@/components/feedback/action-button";
 import { StatusText } from "@/components/status/status-text";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useBusy } from "@/hooks/use-busy";
 import type { Key } from "../../i18n/index.ts";
 import { type AppStore, sessionKey } from "../../lib/app-store.ts";
 import { type HubRow, type HubRowState, hubRows } from "../../lib/hub.ts";
@@ -18,6 +19,7 @@ import {
   type TileLayout,
   tileColumns,
 } from "../../lib/tiles.ts";
+import { inputSummary } from "../../lib/tool-input.ts";
 import { useSessionState } from "../../lib/use-store.ts";
 
 const MOVES: Record<string, (at: number, columns: number) => number> = {
@@ -26,6 +28,48 @@ const MOVES: Record<string, (at: number, columns: number) => number> = {
   ArrowUp: (at, columns) => at - columns,
   ArrowDown: (at, columns) => at + columns,
 };
+
+/** A question or a plan is answered where it is shown in full, never on a tile (issue #245). */
+const ANSWERED_IN_SESSION = new Set(["AskUserQuestion", "ExitPlanMode"]);
+
+/** The request a tile waits on: what it would do, and Approve and Deny, or Open for a question. */
+function TileRequest(props: {
+  store: AppStore;
+  hostId: string;
+  pending: NonNullable<ReturnType<typeof pendingOf>>;
+  onOpen(): void;
+}) {
+  const { store, hostId, pending } = props;
+  const { t } = store.i18n;
+  // One answer at a time: both buttons wait for it (L5).
+  const { busy, run } = useBusy();
+  const summary = inputSummary(pending.input);
+  return (
+    <fieldset aria-label={t("tiles.request")} className="session-tile-request">
+      <span className="truncate" title={summary || undefined}>
+        {t("tiles.asks", { tool: pending.toolName })}
+        {summary && <span className="font-mono text-xs"> {summary}</span>}
+      </span>
+      {pending.risk === "high" && pending.riskReason && (
+        <span className="text-status-error text-xs">{pending.riskReason}</span>
+      )}
+      {ANSWERED_IN_SESSION.has(pending.toolName) ? (
+        <Button size="sm" variant="outline" onClick={props.onOpen}>
+          {t("tiles.openToAnswer")}
+        </Button>
+      ) : (
+        /* Issue #182: the same Approve and Deny as every screen, held when the risk is high. */
+        <ApprovalActions
+          size="sm"
+          risk={pending.risk}
+          pending={busy}
+          onApprove={() => run(() => store.respondTo(hostId, pending.requestId, "allow"))}
+          onDeny={() => run(() => store.respondTo(hostId, pending.requestId, "deny"))}
+        />
+      )}
+    </fieldset>
+  );
+}
 
 /** One session: its status, last lines, the request it waits on and a small message box. */
 function SessionTile(props: { store: AppStore; hostId: string; row: HubRow; onOpen(): void }) {
@@ -96,16 +140,13 @@ function SessionTile(props: { store: AppStore; hostId: string; row: HubRow; onOp
         )}
       </output>
       {pending && (
-        <fieldset aria-label={t("tiles.request")} className="session-tile-request">
-          <span>{t("tiles.asks", { tool: pending.toolName })}</span>
-          {/* Issue #182: the same Approve and Deny as every screen, held when the risk is high. */}
-          <ApprovalActions
-            size="sm"
-            risk={pending.risk}
-            onApprove={() => store.respondTo(hostId, pending.requestId, "allow")}
-            onDeny={() => store.respondTo(hostId, pending.requestId, "deny")}
-          />
-        </fieldset>
+        <TileRequest
+          key={pending.requestId}
+          store={store}
+          hostId={hostId}
+          pending={pending}
+          onOpen={props.onOpen}
+        />
       )}
       <div data-slot="composer-card" className="composer-card">
         <Textarea

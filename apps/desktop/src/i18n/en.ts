@@ -3194,6 +3194,7 @@ export const en: Dictionary = {
     nothingYet: "Nothing said yet.",
     request: "Request",
     asks: "Asks to use {tool}",
+    openToAnswer: "Open to answer",
     open: "Open {name}",
     message: "Message to {name}",
     send: "Send",

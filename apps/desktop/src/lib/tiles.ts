@@ -102,6 +102,10 @@ export interface PendingRequest {
   toolName: string;
   /** The daemon's judgement, when it sent one: a high-risk request is held to approve. */
   risk?: RiskLevel;
+  /** Why the daemon judged it so: the tile holds over what it shows (issue #245). */
+  riskReason?: string;
+  /** The tool's input, for the line of what it would do. */
+  input?: Record<string, unknown>;
 }
 
 /** The first request that still waits for an answer. */
@@ -117,6 +121,8 @@ export function pendingOf(session: SessionState): PendingRequest | null {
         requestId: item.requestId,
         toolName: item.toolName,
         ...(item.risk ? { risk: item.risk } : {}),
+        ...(item.riskReason ? { riskReason: item.riskReason } : {}),
+        ...(item.input ? { input: item.input } : {}),
       };
     }
   }

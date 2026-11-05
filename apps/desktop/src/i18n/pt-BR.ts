@@ -3197,6 +3197,7 @@ export const ptBR = {
     nothingYet: "Nada dito ainda.",
     request: "Pedido",
     asks: "Pede para usar {tool}",
+    openToAnswer: "Abrir para responder",
     open: "Abrir {name}",
     message: "Mensagem para {name}",
     send: "Enviar",
