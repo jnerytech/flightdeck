@@ -7,6 +7,7 @@ import type {
 } from "@flightdeck/protocol";
 import { type T, translator } from "../i18n/index.ts";
 import type { AppState } from "./app-store.ts";
+import { rowTitle } from "./hub-title.ts";
 import { basename } from "./paths.ts";
 
 const PT = translator("pt-BR");
@@ -120,6 +121,8 @@ export interface HubGroup {
   key: string;
   /** Repository name (or folder) shown on the group. */
   name: string;
+  /** Where the project is, when another group has the same name; else absent. */
+  hint?: string;
   rows: HubRow[];
 }
 
@@ -225,7 +228,13 @@ export function hubRows(state: HubRowState): HubRow[] {
         key: `${host.id}/m/${s.id}`,
         origin: "flightdeck",
         sessionId: s.id,
-        title: name ?? s.name ?? basename(s.cwd),
+        title: rowTitle({
+          name,
+          title: s.name,
+          persona: s.persona ?? null,
+          request: s.summary?.request ?? null,
+          cwd: s.cwd,
+        }),
         state: MANAGED[live?.status ?? s.status],
         controllable: false,
         lastActivity: live?.updatedAt ?? s.updatedAt,
@@ -243,7 +252,13 @@ export function hubRows(state: HubRowState): HubRow[] {
           key: `${host.id}/b/${b.id}`,
           origin: "background",
           sessionId: null,
-          title: name ?? b.name ?? basename(b.cwd),
+          title: rowTitle({
+            name,
+            title: b.name,
+            persona: null,
+            request: null,
+            cwd: b.cwd,
+          }),
           state: BACKGROUND[b.state] ?? "idle",
           controllable: false,
           lastActivity: b.startedAt === null ? "" : new Date(b.startedAt).toISOString(),
@@ -260,7 +275,13 @@ export function hubRows(state: HubRowState): HubRow[] {
           key: `${host.id}/e/${s.claudeSessionId}`,
           origin: "terminal",
           sessionId: null,
-          title: name ?? basename(s.cwd ?? s.claudeSessionId),
+          title: rowTitle({
+            name,
+            title: null,
+            persona: s.persona ?? null,
+            request: s.summary?.request ?? null,
+            cwd: s.cwd ?? s.claudeSessionId,
+          }),
           state: EXTERNAL[s.status],
           controllable: s.controllable,
           lastActivity: s.lastEventAt,
@@ -277,7 +298,13 @@ export function hubRows(state: HubRowState): HubRow[] {
           key: `${host.id}/h/${s.claudeSessionId}`,
           origin: "history",
           sessionId: null,
-          title: name ?? s.title ?? basename(s.cwd),
+          title: rowTitle({
+            name,
+            title: s.title,
+            persona: null,
+            request: s.summary?.request ?? null,
+            cwd: s.cwd,
+          }),
           state: "ended",
           controllable: false,
           lastActivity: s.lastTs ?? "",
@@ -290,7 +317,7 @@ export function hubRows(state: HubRowState): HubRow[] {
 }
 
 const matches = (row: HubRow, filter: HubFilter) =>
-  `${row.title}\n${row.cwd}\n${row.hostName}`
+  `${row.title}\n${row.cwd}\n${row.hostName}\n${groupName(row.projectKey)}`
     .toLowerCase()
     .includes(filter.text.trim().toLowerCase()) &&
   (!filter.host || row.hostName === filter.host) &&
@@ -303,6 +330,54 @@ const matches = (row: HubRow, filter: HubFilter) =>
 /** Repository name of a group: last path segment of the remote or of the folder. */
 const groupName = (key: string) => basename(key.replace(/^host:[^:]*:/, ""));
 
+const isFolderKey = (key: string) => key.startsWith("host:");
+
+/** The folder names that two folders of one host share: those never join, on any host. */
+function ambiguousNames(rows: HubRow[]): Set<string> {
+  const folders = new Map<string, Set<string>>();
+  for (const { projectKey, hostName } of rows) {
+    if (!isFolderKey(projectKey)) continue;
+    const id = `${hostName}\n${groupName(projectKey)}`;
+    folders.set(id, (folders.get(id) ?? new Set()).add(projectKey));
+  }
+  return new Set(
+    [...folders].filter(([, keys]) => keys.size > 1).map(([id]) => id.split("\n")[1] as string),
+  );
+}
+
+/**
+ * What makes two rows one project. A key the daemon resolved (a remote) is shared by the hosts
+ * already; a folder key (`host:<name>:<path>`) is per host, so the same folder name on two hosts
+ * joins as one project, unless one host has two folders of that name.
+ */
+const mergeKey = (key: string, ambiguous: Set<string>) =>
+  isFolderKey(key) && !ambiguous.has(groupName(key)) ? `folder:${groupName(key)}` : key;
+
+/** The path above a project's name, `depth` segments of it: "work" for /home/a/work/api. */
+function pathHint(key: string, depth: number): string {
+  const path = key.replace(/^host:[^:]*:/, "");
+  const parts = path.split(/[\\/]/).filter(Boolean);
+  // A remote reads as owner and place: all of it above the name.
+  if (!isFolderKey(key)) return parts.slice(0, -1).join("/");
+  return parts.slice(Math.max(0, parts.length - 1 - depth), -1).join("/");
+}
+
+/** Groups that share a name say where they are, with as many path segments as it takes to differ. */
+function withHints(groups: HubGroup[]): HubGroup[] {
+  const byName = new Map<string, HubGroup[]>();
+  for (const group of groups) byName.set(group.name, [...(byName.get(group.name) ?? []), group]);
+  const hints = new Map<string, string>();
+  for (const same of byName.values()) {
+    if (same.length < 2) continue;
+    let depth = 1;
+    const at = () => same.map((g) => pathHint(g.key, depth));
+    while (new Set(at()).size < same.length && depth < 8) depth++;
+    const found = at();
+    for (const [i, g] of same.entries()) hints.set(g.key, found[i] as string);
+  }
+  return groups.map((g) => (hints.has(g.key) ? { ...g, hint: hints.get(g.key) } : g));
+}
+
 /**
  * Filtered rows by project; the ones that need you first, then pinned, then the standard names
  * in order (phase 21: only hosts with names give them), then latest activity; groups by latest
@@ -310,10 +385,12 @@ const groupName = (key: string) => basename(key.replace(/^host:[^:]*:/, ""));
  */
 export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
   const byKey = new Map<string, HubRow[]>();
+  const ambiguous = ambiguousNames(rows);
   for (const row of rows.filter((r) => matches(r, filter))) {
-    const list = byKey.get(row.projectKey);
+    const merged = mergeKey(row.projectKey, ambiguous);
+    const list = byKey.get(merged);
     if (list) list.push(row);
-    else byKey.set(row.projectKey, [row]);
+    else byKey.set(merged, [row]);
   }
   const order = (a: HubRow, b: HubRow) =>
     Number(b.state === "needs_you") - Number(a.state === "needs_you") ||
@@ -321,9 +398,15 @@ export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
     Number(b.standardName != null) - Number(a.standardName != null) ||
     (a.standardName ?? "").localeCompare(b.standardName ?? "", undefined, { numeric: true }) ||
     b.lastActivity.localeCompare(a.lastActivity);
-  return [...byKey.entries()]
-    .map(([key, list]) => ({ key, name: groupName(key), rows: [...list].sort(order) }))
-    .sort((a, b) => (b.rows[0]?.lastActivity ?? "").localeCompare(a.rows[0]?.lastActivity ?? ""));
+  return withHints(
+    [...byKey.entries()]
+      .map(([, list]) => {
+        // A stable key whichever row is newest: the smallest project key among the rows.
+        const key = list.map((r) => r.projectKey).reduce((x, y) => (y < x ? y : x));
+        return { key, name: groupName(key), rows: [...list].sort(order) };
+      })
+      .sort((a, b) => (b.rows[0]?.lastActivity ?? "").localeCompare(a.rows[0]?.lastActivity ?? "")),
+  );
 }
 
 /** The session's line in the lists: "Pedido: …" and what it is doing, at `nowMs`. */
@@ -378,6 +461,86 @@ export function sharedMeta(rows: HubRow[]): {
 
 /** How many rows the hub draws before "show more": the DOM of 9,000 sessions is not worth drawing. */
 export const HUB_ROW_CAP = 200;
+
+/** Where the open or folded state of each project is kept (issue #111). */
+export const HUB_OPEN_KEY = "flightdeck.hubOpen";
+
+/** The projects the person opened or folded last time, by project key; anything unreadable is none. */
+export function loadHubOpen(storage: {
+  getItem(key: string): string | null;
+}): Record<string, boolean> {
+  try {
+    const stored = JSON.parse(storage.getItem(HUB_OPEN_KEY) ?? "{}") as unknown;
+    if (typeof stored !== "object" || stored === null || Array.isArray(stored)) return {};
+    return Object.fromEntries(
+      Object.entries(stored).filter(
+        (entry): entry is [string, boolean] => typeof entry[1] === "boolean",
+      ),
+    );
+  } catch {
+    return {};
+  }
+}
+
+export function saveHubOpen(
+  storage: { setItem(key: string, value: string): void },
+  open: Record<string, boolean | undefined>,
+): void {
+  const chosen = Object.entries(open).filter(
+    (entry): entry is [string, boolean] => entry[1] !== undefined,
+  );
+  storage.setItem(HUB_OPEN_KEY, JSON.stringify(Object.fromEntries(chosen)));
+}
+
+/** A project group as the screen draws it: folded, with its history behind a count. */
+export interface HubGroupView {
+  group: HubGroup;
+  /** Live and needs-you sessions, in the group's order. */
+  live: HubRow[];
+  /** How many sessions the project has in all (the live ones are `live.length`). */
+  total: number;
+  /** Sessions that ended or come from the history, newest first. */
+  earlier: HubRow[];
+  expanded: boolean;
+  earlierShown: boolean;
+  /** What is drawn: nothing when folded, else the live ones and, when asked for, the earlier ones. */
+  rows: HubRow[];
+}
+
+/**
+ * Each group as drawn. A group is open when the person said so, else when a search is on, and
+ * folded it shows only the sessions that need you; its earlier sessions come behind a count unless asked for (or searching).
+ */
+export function hubView(
+  groups: HubGroup[],
+  open: Record<string, boolean | undefined>,
+  earlierOpen: Record<string, boolean | undefined>,
+  searching: boolean,
+): HubGroupView[] {
+  return groups.map((group) => {
+    // A pinned session is one the person wants close: it stays with the live ones.
+    const isEarlier = (r: HubRow) => !r.pinned && (r.origin === "history" || r.state === "ended");
+    const earlier = group.rows
+      .filter(isEarlier)
+      .sort((a, b) => b.lastActivity.localeCompare(a.lastActivity));
+    const live = group.rows.filter((r) => !isEarlier(r));
+    // Every project starts folded (the list gets long); a search or filter opens what it keeps.
+    const expanded = open[group.key] ?? searching;
+    const earlierShown = searching || earlierOpen[group.key] === true;
+    return {
+      group,
+      live,
+      total: group.rows.length,
+      earlier,
+      expanded,
+      earlierShown,
+      // Folded, the sessions that need you stay in view: they are the reason to look.
+      rows: expanded
+        ? [...live, ...(earlierShown ? earlier : [])]
+        : live.filter((r) => r.state === "needs_you"),
+    };
+  });
+}
 
 /** The groups cut to their first `limit` rows in display order, and how many rows were left out. */
 export function capGroups(

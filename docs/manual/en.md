@@ -466,6 +466,24 @@ saves after you confirm.
 The **Sessions** screen is the app's main one: every Claude Code session of the online hosts in
 one place, grouped by project and ordered by last activity.
 
+- **Project first.** Each project is a group with a bold heading (a folder, its name, a **live/total**
+  chip and one chip per host, which opens that host's page). **Every project starts folded**, showing
+  only its header and the sessions that need you; open one with its arrow, and the choice is
+  remembered per project. **Expand all** and **Collapse all** at the top do it for every project.
+  Opened, a project shows its live sessions first (the ones that need you on top). The
+  ended and history sessions sit behind **N earlier sessions**, newest first. Typing in the filter
+  also matches project names, and any filter (text, host, origin, state, persona, pinned) opens
+  everything it keeps. A pinned session always stays with the live ones. **The same project on two
+  hosts is one group** with both host chips, and each row keeps its own host chip. A project
+  without a git remote is matched by its folder name across hosts, but never when one host has two
+  folders with that name: those stay separate groups everywhere. Groups that share a name show a
+  short **path hint** (the folder above the project, for example `work`) beside the heading and in
+  its name for screen readers. A row of **Hosts** chips under
+  the hosts banner shows one host's sessions only (press it again to clear).
+- **Titles.** A session is called by its name, else the title its host gives it (the summary Claude
+  Code wrote, or its first prompt), else the persona with the task, else its folder. System wrappers (`<task-notification>`,
+  "Another Claude session sent a message:", local-command output) never appear in a title.
+
 ### What the list shows
 
 | Origin | Where it comes from |
@@ -2042,8 +2060,8 @@ same login, so the quota belongs to the host. The daemon keeps the last reading 
 (5 hours, 7 days and any others that come along), and a reading stops being valid when its
 window resets.
 
-- **In the app:** the top of the Sessions screen shows, for each online host, the 5-hour and
-  7-day bars, with the percentage, the reset time and the age of the reading ("read 12 min
+- **In the app:** the top of the Sessions screen shows, for each Claude account, the 5-hour and
+  7-day bars (hosts signed in to the same account share one card, named after all of them), with the percentage, the reset time and the age of the reading ("read 12 min
   ago").
   - The bar turns red from `quota.pauseAt`.
   - Crossing `pauseAt` raises a notification, once per window.

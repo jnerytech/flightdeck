@@ -9,6 +9,7 @@ import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts"
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { unfoldAll } from "./unfold.ts";
 import { waiter } from "./wait.ts";
 
 registerDom();
@@ -63,6 +64,19 @@ const rowAction = async (title: string, action: string) => {
   expect(entry).not.toBeNull();
   await act(async () => {
     fireEvent.click(entry as HTMLElement);
+  });
+};
+
+/** The history sits behind "N sessões anteriores" (issue #111): opens it once the button is there. */
+const showEarlier = async () => {
+  await unfoldAll(act);
+  await settle(
+    () => screen.queryByRole("button", { name: /sess(?:ões|ão) anterior(?:es)?/ }) !== null,
+  );
+  const button = screen.getByRole("button", { name: /sess(?:ões|ão) anterior(?:es)?/ });
+  if (button.getAttribute("aria-expanded") === "true") return;
+  await act(async () => {
+    fireEvent.click(button);
   });
 };
 
@@ -136,6 +150,7 @@ async function setup() {
   });
   await settle(() => store.getState().hosts.every((h) => h.status === "online"));
   await click("Abrir Sessões");
+  await showEarlier();
   await settle(() => group("central").length === 3);
   return { alfa, store, hook, receptor, hooksToken, copied, notifications: mem.notifications };
 }
@@ -238,6 +253,7 @@ describe("central-ui", () => {
     await settle(() => screen.queryByLabelText("Mensagem") !== null);
     expect(screen.queryByLabelText("Mensagem")).not.toBeNull();
     await click("Abrir Sessões");
+    await showEarlier();
     await settle(() => group("central").length === 3);
     await click("Do histórico");
     await settle(() => screen.queryByRole("log", { name: "Transcript" }) !== null);
