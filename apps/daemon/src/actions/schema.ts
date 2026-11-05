@@ -111,7 +111,178 @@ export function approvalOf(action: ActionDef): ApprovalMode {
 export { isProd } from "@flightdeck/protocol";
 
 const TAG = /^[\p{L}\p{N}-]{1,32}$/u;
+const APPROVALS: readonly ApprovalMode[] = ["always", "never", "first-per-session"];
 const MAX_TAGS = 8;
+
+type Bad = (code: string, message: string, params?: Record<string, string | number>) => void;
+type Raw = Record<string, unknown>;
+
+/** Unknown fields, the name, the description and the optional text fields. */
+function checkBasics(raw: Raw, bad: Bad): void {
+  for (const key of Object.keys(raw))
+    if (!FIELDS.has(key)) bad("unknown_field", `unknown field: ${key}`, { field: key });
+  if (!isText(raw.name) || !NAME.test(raw.name)) {
+    bad("name_format", "name takes lowercase letters, digits and hyphens, up to 63 characters");
+  }
+  if (!isText(raw.description) || !raw.description.trim())
+    bad("description_required", "description is required");
+  for (const key of ["host", "ssh", "cwd"] as const) {
+    if (raw[key] !== undefined && !isText(raw[key]))
+      bad("field_text", `${key} is a text`, { field: key });
+  }
+}
+
+/** `run` as a list of texts; null (after saying so) when it is not one. */
+function checkRun(raw: Raw, bad: Bad): string[] | null {
+  const run = raw.run;
+  const argv = Array.isArray(run) && run.length > 0 && run.every(isText) ? (run as string[]) : null;
+  if (!argv)
+    bad("run_list", "run is a list of texts (the program and its arguments), never a shell line");
+  return argv;
+}
+
+/** `env` as a map of variable names to texts; whatever is not one is left out. */
+function checkEnv(raw: Raw, bad: Bad): Raw {
+  const env = isRecord(raw.env) ? raw.env : {};
+  if (raw.env !== undefined && !isRecord(raw.env)) bad("env_map", "env is a map of NAME to value");
+  for (const [key, value] of Object.entries(env)) {
+    if (!ENV_NAME.test(key) || !isText(value))
+      bad("env_entry", `env ${key} needs a variable name and a text`, { key });
+  }
+  return env;
+}
+
+/** One parameter's rule: its pattern and its default; null (after saying why) when it is not valid. */
+function checkParam(key: string, spec: unknown, bad: Bad): ActionParam | null {
+  const pattern = isRecord(spec) ? spec.pattern : undefined;
+  if (!isText(pattern) || pattern === "") {
+    bad("param_pattern_missing", `parameter ${key} needs a pattern`, { param: key });
+    return null;
+  }
+  let regex: RegExp;
+  try {
+    regex = paramRegex(pattern);
+  } catch {
+    bad("param_regex_invalid", `the pattern of parameter ${key} is not a valid regex`, {
+      param: key,
+    });
+    return null;
+  }
+  const given = (spec as Record<string, unknown>).default;
+  if (given !== undefined && (!isText(given) || !regex.test(given))) {
+    bad("param_default_mismatch", `the default of parameter ${key} does not match the pattern`, {
+      param: key,
+    });
+    return null;
+  }
+  return { pattern, ...(given !== undefined ? { default: given as string } : {}) };
+}
+
+/** `params` as a map of names to rules; the invalid ones are left out. */
+function checkParams(raw: Raw, bad: Bad): Record<string, ActionParam> {
+  const params: Record<string, ActionParam> = {};
+  const rawParams = isRecord(raw.params) ? raw.params : {};
+  if (raw.params !== undefined && !isRecord(raw.params))
+    bad("params_map", "params is a map of name to rule");
+  for (const [key, spec] of Object.entries(rawParams)) {
+    const param = checkParam(key, spec, bad);
+    if (param) params[key] = param;
+  }
+  return params;
+}
+
+/** The timeout (an integer number of seconds in range) and the approval mode. */
+function checkLimits(raw: Raw, bad: Bad): void {
+  const seconds = raw.timeoutS;
+  if (
+    seconds !== undefined &&
+    (typeof seconds !== "number" ||
+      !Number.isInteger(seconds) ||
+      seconds < 1 ||
+      seconds > MAX_TIMEOUT_S)
+  ) {
+    bad("timeout_range", `timeoutS is an integer from 1 to ${MAX_TIMEOUT_S}`, {
+      max: MAX_TIMEOUT_S,
+    });
+  }
+  if (!(raw.approval === undefined || APPROVALS.includes(raw.approval as ApprovalMode))) {
+    bad("approval_values", "approval is always, never or first-per-session");
+  }
+}
+
+/** The tags, lowercased and without repeats; undefined when there are none or they are not valid. */
+function checkTags(raw: Raw, bad: Bad): string[] | undefined {
+  if (raw.tags === undefined) return undefined;
+  const given = raw.tags;
+  if (
+    !Array.isArray(given) ||
+    given.length > MAX_TAGS ||
+    !given.every((tag) => isText(tag) && TAG.test(tag))
+  ) {
+    bad("tags_list", `tags is a list of up to ${MAX_TAGS} short labels, no spaces (like prod)`, {
+      max: MAX_TAGS,
+    });
+    return undefined;
+  }
+  return [...new Set((given as string[]).map((tag) => tag.toLowerCase()))];
+}
+
+/** No secret in an argument, no parameter as the executable or in the code of an interpreter. */
+function checkArgv(argv: string[], bad: Bad): void {
+  for (const [i, arg] of argv.entries()) {
+    if (referencesIn(arg).some((r) => r.kind === "secret")) {
+      bad(
+        "secret_in_arg",
+        `a secret cannot go in an argument (it shows in the process list): "${arg}"; use env or secretFile`,
+        { arg },
+      );
+    }
+    if (i === 0 && referencesIn(arg).some((r) => r.kind === "param")) {
+      bad("exec_param", "the executable (run[0]) cannot be a parameter");
+    }
+  }
+  argv.forEach((arg, i) => {
+    const flag = CODE_FLAGS[arg.trim().toLowerCase()];
+    if (!flag) return;
+    const codeArgs = flag.all ? argv.slice(i + 1) : argv.slice(i + 1, i + 2);
+    if (codeArgs.some((code) => referencesIn(code).some((r) => r.kind === "param"))) {
+      bad(
+        "param_in_code",
+        `{{param}} cannot take the code position of an interpreter (after ${arg})`,
+        { arg },
+      );
+    }
+  });
+}
+
+/** Every `{{…}}` is declared (a parameter) or in the vault (a secret); an ssh action has no secretFile. */
+function checkReferences(
+  raw: Raw,
+  texts: string[],
+  params: Record<string, ActionParam>,
+  opts: ParseOptions,
+  bad: Bad,
+): void {
+  for (const ref of texts.flatMap(referencesIn)) {
+    if (ref.kind === "param" && !(ref.name in params)) {
+      bad("param_undeclared", `parameter ${ref.name} is used and was not declared`, {
+        param: ref.name,
+      });
+    }
+    if (ref.kind !== "param" && opts.secretIds && !opts.secretIds.has(ref.name)) {
+      bad("secret_unknown", `secret ${ref.name} is not in the vault`, { secret: ref.name });
+    }
+  }
+  if (
+    isText(raw.ssh) &&
+    texts.some((text) => referencesIn(text).some((r) => r.kind === "secretFile"))
+  ) {
+    bad(
+      "ssh_secret_file",
+      "an ssh action has no secretFile: it would be a local path in a remote command; use env",
+    );
+  }
+}
 
 /** The mistakes of one action, or the action once it is valid. */
 export function validateAction(
@@ -129,157 +300,27 @@ export function validateAction(
   const path = isText(raw.name) ? raw.name : "";
   const errors: string[] = [];
   const issues: ActionIssue[] = [];
-  const bad = (code: string, message: string, params?: Record<string, string | number>) => {
+  const bad: Bad = (code, message, params) => {
     errors.push(`${label}: ${message}`);
     issues.push({ path, code, ...(params ? { params } : {}) });
   };
 
-  for (const key of Object.keys(raw))
-    if (!FIELDS.has(key)) bad("unknown_field", `unknown field: ${key}`, { field: key });
-  if (!isText(raw.name) || !NAME.test(raw.name)) {
-    bad("name_format", "name takes lowercase letters, digits and hyphens, up to 63 characters");
-  }
-  if (!isText(raw.description) || !raw.description.trim())
-    bad("description_required", "description is required");
-  for (const key of ["host", "ssh", "cwd"] as const) {
-    if (raw[key] !== undefined && !isText(raw[key]))
-      bad("field_text", `${key} is a text`, { field: key });
-  }
-
-  const run = raw.run;
-  const argv = Array.isArray(run) && run.length > 0 && run.every(isText) ? (run as string[]) : null;
-  if (!argv)
-    bad("run_list", "run is a list of texts (the program and its arguments), never a shell line");
-
-  const env = isRecord(raw.env) ? raw.env : {};
-  if (raw.env !== undefined && !isRecord(raw.env)) bad("env_map", "env is a map of NAME to value");
-  for (const [key, value] of Object.entries(env)) {
-    if (!ENV_NAME.test(key) || !isText(value))
-      bad("env_entry", `env ${key} needs a variable name and a text`, { key });
-  }
-
-  const params: Record<string, ActionParam> = {};
-  const rawParams = isRecord(raw.params) ? raw.params : {};
-  if (raw.params !== undefined && !isRecord(raw.params))
-    bad("params_map", "params is a map of name to rule");
-  for (const [key, spec] of Object.entries(rawParams)) {
-    const pattern = isRecord(spec) ? spec.pattern : undefined;
-    if (!isText(pattern) || pattern === "") {
-      bad("param_pattern_missing", `parameter ${key} needs a pattern`, { param: key });
-      continue;
-    }
-    let regex: RegExp | null = null;
-    try {
-      regex = paramRegex(pattern);
-    } catch {
-      bad("param_regex_invalid", `the pattern of parameter ${key} is not a valid regex`, {
-        param: key,
-      });
-      continue;
-    }
-    const given = (spec as Record<string, unknown>).default;
-    if (given !== undefined && (!isText(given) || !regex.test(given))) {
-      bad("param_default_mismatch", `the default of parameter ${key} does not match the pattern`, {
-        param: key,
-      });
-      continue;
-    }
-    params[key] = { pattern, ...(given !== undefined ? { default: given as string } : {}) };
-  }
-
-  if (raw.timeoutS !== undefined) {
-    const seconds = raw.timeoutS;
-    if (
-      typeof seconds !== "number" ||
-      !Number.isInteger(seconds) ||
-      seconds < 1 ||
-      seconds > MAX_TIMEOUT_S
-    ) {
-      bad("timeout_range", `timeoutS is an integer from 1 to ${MAX_TIMEOUT_S}`, {
-        max: MAX_TIMEOUT_S,
-      });
-    }
-  }
-  if (
-    raw.approval !== undefined &&
-    raw.approval !== "always" &&
-    raw.approval !== "never" &&
-    raw.approval !== "first-per-session"
-  ) {
-    bad("approval_values", "approval is always, never or first-per-session");
-  }
-
-  let tags: string[] | undefined;
-  if (raw.tags !== undefined) {
-    const given = raw.tags;
-    if (
-      !Array.isArray(given) ||
-      given.length > MAX_TAGS ||
-      !given.every((tag) => isText(tag) && TAG.test(tag))
-    ) {
-      bad("tags_list", `tags is a list of up to ${MAX_TAGS} short labels, no spaces (like prod)`, {
-        max: MAX_TAGS,
-      });
-    } else {
-      tags = [...new Set((given as string[]).map((tag) => tag.toLowerCase()))];
-    }
-  }
-
-  if (argv) {
-    for (const [i, arg] of argv.entries()) {
-      if (referencesIn(arg).some((r) => r.kind === "secret")) {
-        bad(
-          "secret_in_arg",
-          `a secret cannot go in an argument (it shows in the process list): "${arg}"; use env or secretFile`,
-          { arg },
-        );
-      }
-      if (i === 0 && referencesIn(arg).some((r) => r.kind === "param")) {
-        bad("exec_param", "the executable (run[0]) cannot be a parameter");
-      }
-    }
-    argv.forEach((arg, i) => {
-      const flag = CODE_FLAGS[arg.trim().toLowerCase()];
-      if (!flag) return;
-      const codeArgs = flag.all ? argv.slice(i + 1) : argv.slice(i + 1, i + 2);
-      if (codeArgs.some((code) => referencesIn(code).some((r) => r.kind === "param"))) {
-        bad(
-          "param_in_code",
-          `{{param}} cannot take the code position of an interpreter (after ${arg})`,
-          { arg },
-        );
-      }
-    });
-  }
+  checkBasics(raw, bad);
+  const argv = checkRun(raw, bad);
+  const env = checkEnv(raw, bad);
+  const params = checkParams(raw, bad);
+  checkLimits(raw, bad);
+  const tags = checkTags(raw, bad);
+  if (argv) checkArgv(argv, bad);
   if (isText(raw.cwd) && referencesIn(raw.cwd).some((r) => r.kind !== "param")) {
     bad("cwd_secret", "cwd cannot carry a secret");
   }
-
   const texts = [
     ...(argv ?? []),
     ...(isText(raw.cwd) ? [raw.cwd] : []),
     ...Object.values(env).filter(isText),
   ];
-  for (const ref of texts.flatMap(referencesIn)) {
-    if (ref.kind === "param" && !(ref.name in params)) {
-      bad("param_undeclared", `parameter ${ref.name} is used and was not declared`, {
-        param: ref.name,
-      });
-    }
-    if (ref.kind !== "param" && opts.secretIds && !opts.secretIds.has(ref.name)) {
-      bad("secret_unknown", `secret ${ref.name} is not in the vault`, { secret: ref.name });
-    }
-  }
-
-  if (
-    isText(raw.ssh) &&
-    texts.some((text) => referencesIn(text).some((r) => r.kind === "secretFile"))
-  ) {
-    bad(
-      "ssh_secret_file",
-      "an ssh action has no secretFile: it would be a local path in a remote command; use env",
-    );
-  }
+  checkReferences(raw, texts, params, opts, bad);
 
   if (errors.length > 0 || !argv) return { action: null, errors, issues };
   const action: ActionDef = {

@@ -153,6 +153,116 @@ const RULE_KEYS = new Set([
   "expiresAt",
 ]);
 
+type Bad = (field: string, code: string, params?: RefusalParams) => void;
+type Item = Record<string, unknown>;
+
+/** What a rule matches on: only known keys, known requesters and purposes, texts and a list of tags. */
+function checkMatch(match: Item, bad: Bad): void {
+  for (const key of Object.keys(match)) {
+    if (!MATCH_KEYS.has(key)) bad(`match.${key}`, "unknown_field");
+  }
+  if (match.requester !== undefined && !REQUESTERS.includes(match.requester as string)) {
+    bad("match.requester", "not_one_of", { allowed: REQUESTERS.join(", ") });
+  }
+  if (match.purpose !== undefined && !PURPOSES.includes(match.purpose as string)) {
+    bad("match.purpose", "not_one_of", { allowed: PURPOSES.join(", ") });
+  }
+  for (const key of ["action", "host", "project", "session"] as const) {
+    if (match[key] !== undefined && !isText(match[key])) bad(`match.${key}`, "not_text");
+  }
+  if (match.tags !== undefined && !(Array.isArray(match.tags) && match.tags.every(isText))) {
+    bad("match.tags", "not_list_of_text");
+  }
+}
+
+/** The days and the two times of a window. */
+function checkWindow(window: Item, bad: Bad): void {
+  const days = window.days;
+  if (
+    !Array.isArray(days) ||
+    days.length === 0 ||
+    !days.every((d) => DAY_ORDER.includes(d as Day))
+  ) {
+    bad("window.days", "not_one_of", { allowed: "mon, tue, wed, thu, fri, sat, sun" });
+  }
+  const from = clock(window.from, false);
+  const to = clock(window.to, true);
+  if (from === null) bad("window.from", "bad_time", { last: "23:59" });
+  if (to === null) bad("window.to", "bad_time", { last: "24:00" });
+  if (from !== null && from === to) bad("window.to", "same_time");
+}
+
+/** `outsideWindow`, the two limits and the expiry. */
+function checkLimitFields(item: Item, bad: Bad): void {
+  if (
+    item.outsideWindow !== undefined &&
+    (typeof item.outsideWindow !== "string" || !DECISIONS.includes(item.outsideWindow))
+  ) {
+    bad("outsideWindow", "not_one_of", { allowed: DECISIONS.join(", ") });
+  }
+  if (item.outsideWindow !== undefined && item.window === undefined) {
+    bad("outsideWindow", "outside_needs_window");
+  }
+  for (const key of ["maxPerHour", "maxPerDay"] as const) {
+    const value = item[key];
+    if (
+      value !== undefined &&
+      !(typeof value === "number" && Number.isInteger(value) && value > 0)
+    ) {
+      bad(key, "not_positive_int");
+    }
+  }
+  if (item.expiresAt !== undefined && !(typeof item.expiresAt === "number" && item.expiresAt > 0)) {
+    bad("expiresAt", "not_timestamp");
+  }
+}
+
+/** The ceiling: what no rule can loosen (a free command with a secret, a prod secret with no window). */
+function checkCeiling(item: Item, match: unknown, bad: Bad): void {
+  const targets = isRecord(match) ? match : {};
+  const loosens = item.decision === "allow" || item.outsideWindow === "allow";
+  if (targets.purpose === "run_with_secret" && loosens) {
+    bad(item.decision === "allow" ? "decision" : "outsideWindow", "no_allow_run_with_secret");
+  }
+  const prodTagged =
+    Array.isArray(targets.tags) && targets.tags.some((tag) => isProdTag(String(tag)));
+  if (
+    prodTagged &&
+    (item.outsideWindow === "allow" || (item.decision === "allow" && item.window === undefined))
+  ) {
+    bad(item.outsideWindow === "allow" ? "outsideWindow" : "window", "prod_needs_window");
+  }
+}
+
+/** The id (required, new), the known keys and the decision. */
+function checkIdentity(item: Item, ids: Set<string>, bad: Bad): void {
+  if (!isText(item.id)) bad("id", "required");
+  else if (ids.has(item.id)) bad("id", "duplicate");
+  else ids.add(item.id);
+  for (const key of Object.keys(item)) if (!RULE_KEYS.has(key)) bad(key, "unknown_field");
+  if (typeof item.decision !== "string" || !DECISIONS.includes(item.decision)) {
+    bad("decision", "not_one_of", { allowed: DECISIONS.join(", ") });
+  }
+}
+
+/** Everything wrong with one rule (the id must be new: `ids` remembers the ones seen). */
+function checkRule(item: Item, ids: Set<string>, bad: Bad): void {
+  checkIdentity(item, ids, bad);
+  const match = item.match === undefined ? {} : item.match;
+  if (!isRecord(match)) bad("match", "not_object");
+  else checkMatch(match, bad);
+
+  if (item.once !== undefined && (item.once !== "session" || item.decision !== "ask")) {
+    bad("once", "once_needs_ask");
+  }
+  if (item.window !== undefined) {
+    if (!isRecord(item.window)) bad("window", "not_object");
+    else checkWindow(item.window, bad);
+  }
+  checkLimitFields(item, bad);
+  checkCeiling(item, match, bad);
+}
+
 /**
  * The rules that are valid, or what is wrong with them: one issue per problem, with a path
  * (`<rule index>.<field>`, the index from 0, empty for the list itself) and a code the app says in
@@ -168,102 +278,10 @@ export function validateRules(raw: unknown): { rules: Rule[]; errors: RuleIssue[
       errors.push({ path: `${index}`, code: "not_object" });
       continue;
     }
-    const bad = (field: string, code: string, params?: RefusalParams) => {
-      errors.push({ path: `${index}.${field}`, code, ...(params ? { params } : {}) });
-    };
     const before = errors.length;
-
-    if (!isText(item.id)) bad("id", "required");
-    else if (ids.has(item.id)) bad("id", "duplicate");
-    else ids.add(item.id);
-    for (const key of Object.keys(item)) if (!RULE_KEYS.has(key)) bad(key, "unknown_field");
-    if (typeof item.decision !== "string" || !DECISIONS.includes(item.decision)) {
-      bad("decision", "not_one_of", { allowed: DECISIONS.join(", ") });
-    }
-
-    const match = item.match === undefined ? {} : item.match;
-    if (!isRecord(match)) bad("match", "not_object");
-    else {
-      for (const key of Object.keys(match)) {
-        if (!MATCH_KEYS.has(key)) bad(`match.${key}`, "unknown_field");
-      }
-      if (match.requester !== undefined && !REQUESTERS.includes(match.requester as string)) {
-        bad("match.requester", "not_one_of", { allowed: REQUESTERS.join(", ") });
-      }
-      if (match.purpose !== undefined && !PURPOSES.includes(match.purpose as string)) {
-        bad("match.purpose", "not_one_of", { allowed: PURPOSES.join(", ") });
-      }
-      for (const key of ["action", "host", "project", "session"] as const) {
-        if (match[key] !== undefined && !isText(match[key])) bad(`match.${key}`, "not_text");
-      }
-      if (match.tags !== undefined && !(Array.isArray(match.tags) && match.tags.every(isText))) {
-        bad("match.tags", "not_list_of_text");
-      }
-    }
-
-    if (item.once !== undefined && (item.once !== "session" || item.decision !== "ask")) {
-      bad("once", "once_needs_ask");
-    }
-
-    const window = item.window;
-    if (window !== undefined) {
-      if (!isRecord(window)) bad("window", "not_object");
-      else {
-        const days = window.days;
-        if (
-          !Array.isArray(days) ||
-          days.length === 0 ||
-          !days.every((d) => DAY_ORDER.includes(d as Day))
-        ) {
-          bad("window.days", "not_one_of", { allowed: "mon, tue, wed, thu, fri, sat, sun" });
-        }
-        const from = clock(window.from, false);
-        const to = clock(window.to, true);
-        if (from === null) bad("window.from", "bad_time", { last: "23:59" });
-        if (to === null) bad("window.to", "bad_time", { last: "24:00" });
-        if (from !== null && from === to) bad("window.to", "same_time");
-      }
-    }
-    if (
-      item.outsideWindow !== undefined &&
-      (typeof item.outsideWindow !== "string" || !DECISIONS.includes(item.outsideWindow))
-    ) {
-      bad("outsideWindow", "not_one_of", { allowed: DECISIONS.join(", ") });
-    }
-    if (item.outsideWindow !== undefined && window === undefined) {
-      bad("outsideWindow", "outside_needs_window");
-    }
-    for (const key of ["maxPerHour", "maxPerDay"] as const) {
-      const value = item[key];
-      if (
-        value !== undefined &&
-        !(typeof value === "number" && Number.isInteger(value) && value > 0)
-      ) {
-        bad(key, "not_positive_int");
-      }
-    }
-    if (
-      item.expiresAt !== undefined &&
-      !(typeof item.expiresAt === "number" && item.expiresAt > 0)
-    ) {
-      bad("expiresAt", "not_timestamp");
-    }
-
-    // The ceiling: what no rule can loosen.
-    const targets = isRecord(match) ? match : {};
-    const loosens = item.decision === "allow" || item.outsideWindow === "allow";
-    if (targets.purpose === "run_with_secret" && loosens) {
-      bad(item.decision === "allow" ? "decision" : "outsideWindow", "no_allow_run_with_secret");
-    }
-    const prodTagged =
-      Array.isArray(targets.tags) && targets.tags.some((tag) => isProdTag(String(tag)));
-    if (
-      prodTagged &&
-      (item.outsideWindow === "allow" || (item.decision === "allow" && window === undefined))
-    ) {
-      bad(item.outsideWindow === "allow" ? "outsideWindow" : "window", "prod_needs_window");
-    }
-
+    checkRule(item, ids, (field, code, params) => {
+      errors.push({ path: `${index}.${field}`, code, ...(params ? { params } : {}) });
+    });
     if (errors.length === before) rules.push(item as unknown as Rule);
   }
   if (errors.length > 0) return { rules: [], errors };
