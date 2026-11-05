@@ -482,8 +482,10 @@ export const CardDetail = memo(function CardDetail(props: {
                   <span>{t("cardUi.finishMerge")}</span>
                   <ActionButton
                     variant="outline"
-                    disabled={!card.worktreePath}
-                    disabledReason={t("cardUi.needWorktree")}
+                    disabled={!card.worktreePath || Boolean(card.prUrl)}
+                    disabledReason={t(
+                      card.prUrl ? "cardUi.finishHasPr" : "cardUi.finishNeedWorktree",
+                    )}
                     onClick={() => {
                       setFinishing(false);
                       setTab("diff");

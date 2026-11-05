@@ -1,5 +1,5 @@
 import type { WorkflowInfo } from "@flightdeck/protocol";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppDialogContent } from "@/components/feedback/dialog-content";
 import { NativeSelect } from "@/components/layout/form";
 import { PersonaPicker, useSuggestedPersona } from "@/components/personas/persona-picker";
@@ -40,7 +40,11 @@ export function CardStartDialog(props: {
         setWorkflows((result?.workflows ?? []).filter((w) => w.trusted && w.errors.length === 0));
       });
   }, [store, hostId, card.projectId]);
+  const starting = useRef(false);
   const start = async () => {
+    // A second click while the first is on its way would start the card twice.
+    if (starting.current) return;
+    starting.current = true;
     const ref = store.personaRef(persona);
     const started = await store.hostCommand(hostId, "card.start", {
       cardId: card.id,

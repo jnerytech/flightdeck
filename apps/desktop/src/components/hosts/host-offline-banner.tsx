@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,8 @@ export function HostOfflineBanner(props: {
   const [asked, setAsked] = useState<number | null>(null);
   const [fresh, setFresh] = useState("");
   const [pairError, setPairError] = useState<string | null>(null);
+  const [pairing, setPairing] = useState(false);
+  const trying = useRef(false);
   const retry = host.retry;
   const connecting = host.status === "connecting";
   const kind = retry?.kind ?? "refused";
@@ -75,20 +77,30 @@ export function HostOfflineBanner(props: {
             className="flex flex-wrap items-end gap-2"
             onSubmit={async (event) => {
               event.preventDefault();
-              setPairError(
-                (await props.onPairAgain?.(fresh).catch((e: Error) => e.message)) ?? null,
-              );
+              // A second submit before the first state update is seen must not start another try.
+              if (trying.current) return;
+              trying.current = true;
+              setPairing(true);
+              const error =
+                (await props.onPairAgain?.(fresh).catch((e: Error) => e.message)) ?? null;
+              trying.current = false;
+              setPairing(false);
+              setPairError(error);
+              if (error === null) setFresh("");
             }}
           >
             <Input
+              type="password"
+              autoComplete="off"
+              spellCheck={false}
               aria-label={t("hostOffline.pairLabel")}
               placeholder={t("hostOffline.pairLabel")}
               className="w-72"
               value={fresh}
               onChange={(e) => setFresh(e.target.value)}
             />
-            <Button type="submit" size="sm" disabled={fresh.trim() === ""}>
-              {t("hostOffline.pairAgain")}
+            <Button type="submit" size="sm" disabled={pairing || fresh.trim() === ""}>
+              {pairing ? t("hostOffline.pairTesting") : t("hostOffline.pairAgain")}
             </Button>
             {pairError && <p role="alert">{pairError}</p>}
           </form>

@@ -349,7 +349,7 @@ export const Settings = memo(function Settings(props: {
   // biome-ignore lint/correctness/useExhaustiveDependencies: only a new request moves the view
   useEffect(() => {
     if (wanted) go(wanted);
-  }, [wanted, shown.length]);
+  }, [wanted]);
 
   return (
     <Page title={t("prefs.title")}>

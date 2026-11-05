@@ -1042,7 +1042,7 @@ export class AppStore {
   /** A new token or pairing link for a host that refused the old one; the error text, or null. */
   async pairAgain(hostId: string, input: string): Promise<string | null> {
     const host = this.state.hosts.find((h) => h.id === hostId);
-    if (!host) return null;
+    if (!host) return this.i18n.t("hostOffline.pairGone");
     const text = input.trim();
     let token = text;
     if (text.toLowerCase().startsWith("flightdeck://")) {
@@ -1053,6 +1053,8 @@ export class AppStore {
     if (!token) return this.i18n.t("hostForm.pairToken");
     const probe = await probeHost(host.url, token, this.i18n.t);
     if (!probe.ok) return probe.error;
+    // The host may have been removed while it was tested: keep no secret for it.
+    if (!this.state.hosts.some((h) => h.id === hostId)) return this.i18n.t("hostOffline.pairGone");
     await this.platform.secrets.set(hostId, token);
     await this.reconnectHost(hostId);
     return null;

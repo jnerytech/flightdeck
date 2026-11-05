@@ -2936,9 +2936,11 @@ export const ptBR = {
     finishComplete:
       "Move o card para Concluído e remove a worktree se não houver alterações pendentes.",
     finishMerge:
-      "Abre as alterações, onde Merge e arquivar leva o trabalho para a branch base e remove a branch.",
+      "Abre as alterações, onde Merge e arquivar leva o trabalho para a branch base e remove a worktree e a branch.",
     finishMergeButton: "Revisar e mesclar",
     alreadyDone: "O card já está em Concluído",
+    finishNeedWorktree: "Inicie o card antes: não há trabalho para mesclar",
+    finishHasPr: "O card tem um pull request: mescle por lá",
     discard: "Descartar",
     completeMessage:
       "Concluir este card? A worktree é removida se não houver alterações pendentes.",
@@ -3443,6 +3445,8 @@ export const ptBR = {
     title: "Host desconectado",
     connecting: "Conectando…",
     pairLabel: "Novo link de pareamento ou token",
+    pairGone: "Esse host não está mais na lista.",
+    pairTesting: "Testando…",
     pairAgain: "Parear de novo",
     unauthorized: "O host recusou o token. Pareie este host de novo.",
     refused: "Nada respondeu em {url}. O daemon provavelmente não está rodando.",

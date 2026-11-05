@@ -31,6 +31,7 @@ import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { boardTitle, COLUMNS, filterCards, positionBefore, projectCards } from "../lib/board.ts";
+import { cardStartBlock } from "../lib/card-start-block.ts";
 import { issueNumber } from "../lib/issues.ts";
 import { statusTone } from "../lib/status.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -421,12 +422,9 @@ export const BoardView = memo(function BoardView(props: {
                         delete: store.i18n.t("board.delete"),
                       }}
                       startOff={
-                        card.queued
+                        cardStartBlock(card) === "queued"
                           ? store.i18n.t("board.startQueued")
-                          : card.sessionStatus &&
-                              ["starting", "running", "awaiting_permission"].includes(
-                                card.sessionStatus,
-                              )
+                          : cardStartBlock(card) === "running"
                             ? store.i18n.t("board.startRunning")
                             : null
                       }

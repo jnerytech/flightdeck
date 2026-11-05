@@ -2935,9 +2935,11 @@ export const en: Dictionary = {
     finishComplete:
       "Moves the card to Done and removes the worktree if there are no pending changes.",
     finishMerge:
-      "Opens the changes, where Merge and archive puts the work into the base branch and removes the branch.",
+      "Opens the changes, where Merge and archive puts the work into the base branch and removes the worktree and the branch.",
     finishMergeButton: "Review and merge",
     alreadyDone: "The card is already in Done",
+    finishNeedWorktree: "Start the card first: there is no work to merge",
+    finishHasPr: "The card has a pull request: merge it there",
     discard: "Discard",
     completeMessage: "Complete this card? The worktree is removed if there are no pending changes.",
     discardMessage: "Discard this card? The worktree and the local branch are deleted.",
@@ -3442,6 +3444,8 @@ export const en: Dictionary = {
     connecting: "Connecting…",
     unauthorized: "The host refused the token. Pair this host again.",
     pairLabel: "New pairing link or token",
+    pairGone: "That host is no longer in the list.",
+    pairTesting: "Testing…",
     pairAgain: "Pair again",
     refused: "Nothing answered at {url}. The daemon is probably not running.",
     timeout: "The host did not answer in time. The network may be down or the daemon stuck.",

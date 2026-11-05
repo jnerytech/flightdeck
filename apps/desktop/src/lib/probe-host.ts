@@ -40,17 +40,20 @@ export function probeHost(
     const ws = new WebSocket(url);
     let hello: HelloResult | null = null;
     let settled = false;
-    const giveUp = timer.set(
-      () => finish({ ok: false, error: t("hostForm.probeTimeout") }),
-      options.timeoutMs ?? PROBE_TIMEOUT_MS,
-    );
+    let giveUp: unknown = null;
     const finish = (result: ProbeResult) => {
       if (settled) return;
       settled = true;
-      timer.clear(giveUp);
+      if (giveUp !== null) timer.clear(giveUp);
       ws.close();
       resolve(result);
     };
+    giveUp = timer.set(
+      () => finish({ ok: false, error: t("hostForm.probeTimeout") }),
+      options.timeoutMs ?? PROBE_TIMEOUT_MS,
+    );
+    // A timer that fired before it was handed back has already finished the probe.
+    if (settled) timer.clear(giveUp);
     ws.addEventListener("open", () => {
       ws.send(JSON.stringify({ id: "hello", type: "hello", payload: { token, client: "probe" } }));
     });
