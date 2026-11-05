@@ -1138,6 +1138,7 @@ export const ptBR = {
     runEnv: "o ambiente de execução",
     templates: "as tarefas prontas",
     tasks: "os resultados das tarefas",
+    logs: "o log do daemon",
     history: "o histórico",
     central: "a central de sessões",
     vault: "o cofre",

@@ -1,12 +1,4 @@
-import {
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  statSync,
-} from "node:fs";
+import { appendFile, mkdir, readFile, rename, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { SecretScanner } from "@flightdeck/protocol";
 
@@ -27,14 +19,17 @@ const MAX_LINE = 2000;
 const MAX_TAIL = 500;
 
 /**
- * The daemon's log file: every line redacted before it is written, one file that rotates into
- * `.1`, `.2`… up to `files` of them. A folder that cannot be written is ignored: logging never
- * stops the daemon.
+ * The daemon's log file: every line redacted before it is queued, one file that rotates into
+ * `.1`, `.2`… up to `files` of them. Nothing here blocks the daemon: `write` queues the line and
+ * a single chain of async writes puts the lines on the disk in order. A folder that cannot be
+ * written is ignored: logging never stops the daemon.
  */
 export class FileLog {
   private readonly maxBytes: number;
   private readonly files: number;
   private readonly now: () => number;
+  /** The writes so far, one after the other; never rejects. */
+  private queue: Promise<void> = Promise.resolve();
 
   constructor(private readonly opts: FileLogOptions) {
     this.maxBytes = opts.maxBytes ?? 5 * 1024 * 1024;
@@ -42,51 +37,71 @@ export class FileLog {
     this.now = opts.now ?? Date.now;
   }
 
-  /** Resolves when every line written so far has been dealt with (stub). */
-  async flush(): Promise<void> {}
-
   path(): string {
     return join(this.opts.dir, NAME);
   }
 
+  /** Resolves when every line written so far has been dealt with (written, or dropped on a failure). */
+  flush(): Promise<void> {
+    return this.queue;
+  }
+
   write(level: "info" | "error", message: string): void {
+    let line: string;
     try {
       const text = this.opts.scanner
         .redact(message)
         .replace(/[\r\n]+/g, " ")
         .slice(0, MAX_LINE);
-      const line = `${new Date(this.now()).toISOString()} ${level === "error" ? "ERROR" : "INFO"} ${text}\n`;
-      mkdirSync(this.opts.dir, { recursive: true });
-      this.rotateFor(line.length);
-      appendFileSync(this.path(), line);
+      line = `${new Date(this.now()).toISOString()} ${level === "error" ? "ERROR" : "INFO"} ${text}\n`;
+    } catch {
+      return;
+    }
+    this.queue = this.queue.then(() => this.append(line));
+  }
+
+  private async append(line: string): Promise<void> {
+    try {
+      await mkdir(this.opts.dir, { recursive: true });
+      await this.rotateFor(line.length);
+      await appendFile(this.path(), line);
     } catch {
       // A log that cannot be written is not worth stopping for.
     }
   }
 
   /** Makes room: when the live file would pass the limit, the files shift one place up. */
-  private rotateFor(incoming: number): void {
+  private async rotateFor(incoming: number): Promise<void> {
     const live = this.path();
-    if (!existsSync(live) || statSync(live).size + incoming <= this.maxBytes) return;
-    const oldest = `${live}.${this.files - 1}`;
-    if (existsSync(oldest)) rmSync(oldest);
+    const size = await stat(live).then(
+      (info) => info.size,
+      () => null,
+    );
+    if (size === null || size + incoming <= this.maxBytes) return;
+    await rm(`${live}.${this.files - 1}`, { force: true });
     for (let n = this.files - 2; n >= 1; n--) {
-      const from = `${live}.${n}`;
-      if (existsSync(from)) renameSync(from, `${live}.${n + 1}`);
+      await rename(`${live}.${n}`, `${live}.${n + 1}`).catch(() => {});
     }
-    renameSync(live, `${live}.1`);
+    await rename(live, `${live}.1`);
   }
 
   /** The last `lines` lines (500 at most), newest last, across the rotated files, redacted again. */
   async tail(lines: number): Promise<string[]> {
     const wanted = Math.min(Math.max(Math.floor(lines), 0), MAX_TAIL);
     if (wanted === 0) return [];
+    // What is still queued goes to the disk first: a reader sees what was just written.
+    await this.flush();
     const out: string[] = [];
     for (let n = 0; n < this.files && out.length < wanted; n++) {
       const file = n === 0 ? this.path() : `${this.path()}.${n}`;
-      if (!existsSync(file)) continue;
-      const text = readFileSync(file, "utf8").split("\n").filter(Boolean);
-      out.unshift(...text.slice(-(wanted - out.length)));
+      const body = await readFile(file, "utf8").catch(() => null);
+      if (body === null) continue;
+      out.unshift(
+        ...body
+          .split("\n")
+          .filter(Boolean)
+          .slice(-(wanted - out.length)),
+      );
     }
     return out.slice(-wanted).map((line) => this.opts.scanner.redact(line));
   }

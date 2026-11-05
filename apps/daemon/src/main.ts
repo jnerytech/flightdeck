@@ -1321,6 +1321,8 @@ export async function startDaemon(
         quota.stop();
         store.close();
         await lock.release();
+        // The last lines (shutting down…) reach the file before the process can exit.
+        await fileLog.flush();
       })();
       return stopped;
     },

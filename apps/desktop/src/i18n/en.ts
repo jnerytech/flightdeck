@@ -1143,6 +1143,7 @@ export const en: Dictionary = {
     runEnv: "the run environment",
     templates: "ready-made tasks",
     tasks: "task results",
+    logs: "the daemon log",
     history: "the history",
     central: "the central session list",
     vault: "the vault",

@@ -98,13 +98,38 @@ describe("log-servidor: a booted daemon logs to a file", () => {
     const client = new FrameClient(daemon.url);
     cleanups.push(() => client.close());
     await client.request("hello", { token: TOKEN, client: "t" });
+    // The tail waits for the queued lines, so the file is complete once it answers.
+    const tail = await client.data<protocol.LogTail>("logs.tail", { lines: 50 });
+    expect(tail?.lines.join("\n")).toContain("listening on");
     const written = readFileSync(join(logDir, "flightdeckd.log"), "utf8");
     expect(written).toContain("listening on");
     // The console still gets it too.
     expect(said.join("\n")).toContain("listening on");
-    const tail = await client.data<protocol.LogTail>("logs.tail", { lines: 50 });
-    expect(tail?.lines.join("\n")).toContain("listening on");
     const info = await client.data<protocol.HostInfoResult>("host.info", {});
     expect(info?.logPath).toBe(join(logDir, "flightdeckd.log"));
+  });
+
+  test("stopping the daemon flushes the log: the last lines are in the file when stop resolves", async () => {
+    const dir = tempDir("fd-logs-stop-");
+    const file = join(dir, "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({
+        hostName: "h",
+        port: 0,
+        token: TOKEN,
+        dataDir: join(dir, "data"),
+        allowedRoots: [dir],
+      }),
+    );
+    const logDir = join(dir, "logs");
+    const daemon = await startDaemon(
+      { command: "start", config: file, runtime: "fake" },
+      {},
+      { log: () => {}, error: () => {} },
+      { logDir },
+    );
+    await daemon.stop();
+    expect(readFileSync(join(logDir, "flightdeckd.log"), "utf8")).toContain("listening on");
   });
 });
