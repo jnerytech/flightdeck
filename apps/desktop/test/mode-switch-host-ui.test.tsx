@@ -81,3 +81,49 @@ describe("mode-switch-host-ui: the host's own page offers simple mode", () => {
     );
   });
 });
+
+/** Two hosts, "one" first; the app on the page of the second. */
+async function secondHostPage() {
+  const first = makeDaemon(cleanups, { simple: true, ui: { mode: "full", locked: false } });
+  const second = makeDaemon(cleanups, { simple: true, ui: { mode: "full", locked: false } });
+  const store = new AppStore(memoryPlatform(false, "en").platform, {
+    baseDelayMs: 10,
+    maxDelayMs: 20,
+  });
+  cleanups.push(() => store.dispose());
+  render(<App store={store} />);
+  const one = await act(() =>
+    store.addHost({ name: "one", url: first.listen().url, token: TOKEN }),
+  );
+  const two = await act(() =>
+    store.addHost({ name: "two", url: second.listen().url, token: TOKEN }),
+  );
+  for (const id of [one, two]) {
+    await pollFor(() => store.getState().hosts.find((h) => h.id === id)?.hostInfo, "host info");
+  }
+  await act(async () => store.router.push({ name: "host", host: two }));
+  return { store, one, two };
+}
+
+describe("mode-switch-host-ui: simple mode follows the host whose page it was chosen on (issue #191, J8)", () => {
+  test("Given two hosts, When simple mode is chosen on the second one's page, Then that host is the one in simple mode", async () => {
+    const { store, one, two } = await secondHostPage();
+    await click("Use simple mode on this host");
+    await waitFor(() => screen.getByRole("heading", { name: "What do you want done?" }));
+    expect(store.getState().selected?.hostId).toBe(two);
+    expect(store.uiMode(two).mode).toBe("simple");
+    expect(store.uiMode(one).mode).toBe("full");
+  });
+
+  test("Given simple mode, When something fails, Then the failure shows as a notice", async () => {
+    const { store } = await secondHostPage();
+    await click("Use simple mode on this host");
+    await waitFor(() => screen.getByRole("heading", { name: "What do you want done?" }));
+    await act(async () => {
+      store.reportError("the task could not start");
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain("the task could not start"),
+    );
+  });
+});
