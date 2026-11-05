@@ -119,14 +119,23 @@ export class AcpClient {
   private async read(): Promise<void> {
     for await (const line of this.transport.lines) {
       if (line.trim() === "") continue;
-      let message: Message;
+      let message: unknown;
       try {
-        message = JSON.parse(line) as Message;
+        message = JSON.parse(line);
       } catch {
         this.opts.log?.("acp: ignored a line that is not JSON");
         continue;
       }
-      this.dispatch(message);
+      if (message === null || typeof message !== "object" || Array.isArray(message)) {
+        this.opts.log?.("acp: ignored a message that is not an object");
+        continue;
+      }
+      // A handler that throws (a shape nobody expected) costs that message, never the reading.
+      try {
+        this.dispatch(message as Message);
+      } catch {
+        this.opts.log?.("acp: a handler failed on a message");
+      }
     }
     this.ended = true;
     for (const [id, pending] of this.pending) {
