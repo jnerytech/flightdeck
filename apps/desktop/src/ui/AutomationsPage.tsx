@@ -22,7 +22,7 @@ const RUN_TONE: Record<AutomationRun["status"], string> = {
   missed: "text-status-needs-you",
 };
 
-function Runs(props: { store: AppStore; automation: Automation; runs: AutomationRun[] }) {
+function Runs(props: Readonly<{ store: AppStore; automation: Automation; runs: AutomationRun[] }>) {
   const { store, automation } = props;
   const { t } = store.i18n;
   if (props.runs.length === 0) {
@@ -53,12 +53,14 @@ function Runs(props: { store: AppStore; automation: Automation; runs: Automation
  * A project's automations: the guided creation, turning one on (after showing what it will do),
  * the history of its firings, editing and removing.
  */
-export function AutomationsPage(props: {
-  store: AppStore;
-  hostId: string;
-  projectId: string;
-  projectName: string;
-}) {
+export function AutomationsPage(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    projectId: string;
+    projectName: string;
+  }>,
+) {
   const { store, hostId, projectId } = props;
   const { t } = store.i18n;
   const [automations, setAutomations] = useState<Automation[] | null>(null);

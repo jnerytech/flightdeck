@@ -12,7 +12,7 @@ const POLL_MS = 1500;
  * The host's GitHub sign-in (phase 37): the host's gh does the device flow and keeps the token, so
  * this panel only shows the one-time code and the page, and then who is signed in. No token here.
  */
-export function GithubPanel(props: { store: AppStore; host: HostView }) {
+export function GithubPanel(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
   const t = useT();
   const [status, setStatus] = useState<GithubStatusResult | null>(null);

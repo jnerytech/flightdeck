@@ -18,7 +18,9 @@ import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 /** The form of a new team: the goal, the project, the workers and the coordinator's persona. */
-function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; onCancel(): void }) {
+function NewTeam(
+  props: Readonly<{ store: AppStore; hostId: string; onCreated(): void; onCancel(): void }>,
+) {
   const { store, hostId } = props;
   const { t } = store.i18n;
   const state = useStoreState(store);
@@ -168,15 +170,17 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
 }
 
 /** One member: its role, persona, state, card and last report, and the persona to switch to. */
-function Member(props: {
-  store: AppStore;
-  hostId: string;
-  member: TeamMember;
-  report: { text: string; at: string } | null;
-  open: boolean;
-  onPersona(persona: string): void;
-  onRemove(): void;
-}) {
+function Member(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    member: TeamMember;
+    report: { text: string; at: string } | null;
+    open: boolean;
+    onPersona(persona: string): void;
+    onRemove(): void;
+  }>,
+) {
   const { store, member } = props;
   const { t } = store.i18n;
   const [persona, setPersona] = useState(member.persona ?? "");
@@ -236,13 +240,15 @@ function Member(props: {
 }
 
 /** The persona and model of a worker about to join a running team. */
-function NewMember(props: {
-  store: AppStore;
-  hostId: string;
-  team: TeamInfo;
-  onAdd(member: { persona: string; model: string }): void;
-  onCancel(): void;
-}) {
+function NewMember(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    team: TeamInfo;
+    onAdd(member: { persona: string; model: string }): void;
+    onCancel(): void;
+  }>,
+) {
   const { store, team } = props;
   const { t } = store.i18n;
   const [persona, setPersona] = useState("");
@@ -278,15 +284,17 @@ function NewMember(props: {
 }
 
 /** One team with its members and its controls. */
-function Team(props: {
-  store: AppStore;
-  hostId: string;
-  team: TeamInfo;
-  status: TeamStatus | null;
-  /** The team an alert opened. */
-  focused: boolean;
-  onChanged(team: TeamInfo): void;
-}) {
+function Team(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    team: TeamInfo;
+    status: TeamStatus | null;
+    /** The team an alert opened. */
+    focused: boolean;
+    onChanged(team: TeamInfo): void;
+  }>,
+) {
   const { store, hostId, team } = props;
   const { t } = store.i18n;
   const [text, setText] = useState("");

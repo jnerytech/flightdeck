@@ -6,13 +6,15 @@ const METER =
 const HOT = "[&::-webkit-meter-optimum-value]:bg-status-error [&::-moz-meter-bar]:bg-status-error";
 
 /** A bar of `value` against `max`, with its label for screen readers; `hot` paints it as an alarm. */
-export function Meter(props: {
-  label: string;
-  value: number;
-  max: number;
-  hot?: boolean;
-  className?: string;
-}) {
+export function Meter(
+  props: Readonly<{
+    label: string;
+    value: number;
+    max: number;
+    hot?: boolean;
+    className?: string;
+  }>,
+) {
   return (
     <meter
       aria-label={props.label}

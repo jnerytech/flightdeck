@@ -20,11 +20,13 @@ import { hasFeature } from "../lib/version.ts";
 const SORTS: ProjectSort[] = ["activity", "name", "cost", "attention"];
 
 /** Every project of every host as cards, with search and sort (issue #9). */
-export function ProjectsOverview(props: {
-  store: AppStore;
-  state: Pick<AppState, "projects" | "cards"> & HubRowState;
-  onOpen(card: ProjectCard): void;
-}) {
+export function ProjectsOverview(
+  props: Readonly<{
+    store: AppStore;
+    state: Pick<AppState, "projects" | "cards"> & HubRowState;
+    onOpen(card: ProjectCard): void;
+  }>,
+) {
   const { store, state } = props;
   const { t } = store.i18n;
   const [query, setQuery] = useState("");

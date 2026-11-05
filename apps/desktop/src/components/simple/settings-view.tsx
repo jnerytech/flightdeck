@@ -29,7 +29,7 @@ export interface SettingsViewProps {
 const THEMES: readonly ThemeMode[] = ["system", "light", "dark"];
 
 /** The little Settings of simple mode: language, theme, folders, notifications and the switch. */
-export function SettingsView(props: SettingsViewProps) {
+export function SettingsView(props: Readonly<SettingsViewProps>) {
   const { t } = props;
   const [folder, setFolder] = useState("");
   const [asking, setAsking] = useState(false);

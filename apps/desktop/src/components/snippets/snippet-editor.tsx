@@ -62,19 +62,21 @@ function errorOf(code: string, message: string, t: ReturnType<typeof useT>, sour
 }
 
 /** Creates or edits a snippet of the host or of the chosen project; it never holds a secret. */
-export function SnippetEditor(props: {
-  store: AppStore;
-  hostId: string;
-  /** The chosen project's path; "" for the host alone. */
-  project: string;
-  snippet: AppSnippet | null;
-  onSaved(): void;
-  onClose(): void;
-  /** The tags a new snippet starts with (the selected client's tag, phase 29). */
-  defaultTags?: string;
-  /** Offered when the daemon refuses a secret: phase 17's actions take secrets. */
-  onMakeAction?(snippet: { name: string; command: string }): void;
-}) {
+export function SnippetEditor(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    /** The chosen project's path; "" for the host alone. */
+    project: string;
+    snippet: AppSnippet | null;
+    onSaved(): void;
+    onClose(): void;
+    /** The tags a new snippet starts with (the selected client's tag, phase 29). */
+    defaultTags?: string;
+    /** Offered when the daemon refuses a secret: phase 17's actions take secrets. */
+    onMakeAction?(snippet: { name: string; command: string }): void;
+  }>,
+) {
   const t = useT();
   const id = useId();
   const saving = useBusy();

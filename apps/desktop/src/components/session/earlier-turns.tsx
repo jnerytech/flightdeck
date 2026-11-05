@@ -18,7 +18,9 @@ type Loaded =
  * The turns a session resumed from History already had, read from the host's transcript and put
  * above the new ones. A transcript that cannot be read says why: the pane is never left blank.
  */
-export function EarlierTurns(props: { store: AppStore; hostId: string; claudeSessionId: string }) {
+export function EarlierTurns(
+  props: Readonly<{ store: AppStore; hostId: string; claudeSessionId: string }>,
+) {
   const { store, hostId, claudeSessionId } = props;
   const { t } = store.i18n;
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });

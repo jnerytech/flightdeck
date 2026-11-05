@@ -57,28 +57,30 @@ const fromProject = (p: Project): Draft => ({
 });
 
 /** Projects of one host (register and edit) and the host's limit of parallel runs. */
-export function ProjectsPage(props: {
-  store: AppStore;
-  hostId: string;
-  hostName: string;
-  onOpenBoard(projectId: string): void;
-  onOpenWorkflows(project: { id: string; name: string }): void;
-  /** The host announces `automation` (phase 13): each project's Automações. */
-  automations: boolean;
-  onOpenAutomations(project: { id: string; name: string }): void;
-  /** The host announces `actions` (phase 17): each project's Ações. */
-  actions: boolean;
-  onOpenActions(project: { id: string; name: string }): void;
-  /** The host announces `rules`: the project's Regras section. */
-  rules: boolean;
-  /** The host announces `agentcfg` (phase 12): the project's Agente screen. */
-  agent: boolean;
-  /** The host announces `personas` (phase 20): a default persona per board column. */
-  personas?: boolean;
-  onOpenAgent(project: { id: string; name: string }): void;
-  /** Only the picker for Board or Workflows (a nav item with several projects). */
-  focus?: "board" | "workflows";
-}) {
+export function ProjectsPage(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    hostName: string;
+    onOpenBoard(projectId: string): void;
+    onOpenWorkflows(project: { id: string; name: string }): void;
+    /** The host announces `automation` (phase 13): each project's Automações. */
+    automations: boolean;
+    onOpenAutomations(project: { id: string; name: string }): void;
+    /** The host announces `actions` (phase 17): each project's Ações. */
+    actions: boolean;
+    onOpenActions(project: { id: string; name: string }): void;
+    /** The host announces `rules`: the project's Regras section. */
+    rules: boolean;
+    /** The host announces `agentcfg` (phase 12): the project's Agente screen. */
+    agent: boolean;
+    /** The host announces `personas` (phase 20): a default persona per board column. */
+    personas?: boolean;
+    onOpenAgent(project: { id: string; name: string }): void;
+    /** Only the picker for Board or Workflows (a nav item with several projects). */
+    focus?: "board" | "workflows";
+  }>,
+) {
   const { store, hostId } = props;
   const [list, setList] = useState<ProjectListResult | null>(null);
   const [editing, setEditing] = useState<string | null>(null);

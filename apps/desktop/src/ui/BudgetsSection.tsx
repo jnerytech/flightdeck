@@ -45,12 +45,14 @@ const EMPTY: Draft = {
 };
 
 /** A host's budgets with what each one spent in its period, and a form to create or edit one. */
-export function BudgetsSection(props: {
-  store: AppStore;
-  hostId: string;
-  hostName: string;
-  budgets: Budget[];
-}) {
+export function BudgetsSection(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    hostName: string;
+    budgets: Budget[];
+  }>,
+) {
   const t = useT();
   const { store, hostId } = props;
   const [draft, setDraft] = useState<Draft>(EMPTY);

@@ -50,11 +50,11 @@ function Body({
   view,
   t,
   onCopyPath,
-}: {
+}: Readonly<{
   view: ApprovalView;
   t: T;
   onCopyPath?: ((path: string) => void) | undefined;
-}) {
+}>) {
   if (view.kind === "bash") {
     return (
       <div className="flex flex-col gap-2">
@@ -118,7 +118,11 @@ const RISK_TONE: Record<RiskLevel, string> = {
   high: "border-status-error text-status-error",
 };
 
-function RiskSeal({ risk, reason, t }: { risk: RiskLevel; reason?: string | undefined; t: T }) {
+function RiskSeal({
+  risk,
+  reason,
+  t,
+}: Readonly<{ risk: RiskLevel; reason?: string | undefined; t: T }>) {
   return (
     <span
       data-risk={risk}
@@ -473,34 +477,36 @@ function resolutionText(
  * the tool will do, readable, with Aprovar and Negar together. With the card focused, A approves,
  * N denies (the reason opens) and Esc leaves it.
  */
-export function ApprovalCard(props: {
-  request: ApprovalRequest;
-  t: T;
-  nowMs: number;
-  /** The host announces `rules` (phase 7): "permitir nesta sessão" and "sempre neste projeto". */
-  alwaysAllow?: boolean;
-  resolution?: {
-    decision: PermissionResolution;
-    message?: string;
-    auto?: AutoApproval;
-    /** AskUserQuestion: the chosen answer of each question (the resolved event carries it). */
-    answers?: Record<string, string>;
-  };
-  /** Test seam: the hold time of a high-risk approval (2 s when absent). */
-  holdMs?: number;
-  /** A promise keeps the card busy until the answer is in; anything else answers at once. */
-  onRespond(
-    decision: "allow" | "deny",
-    message?: string,
-    updatedPermissions?: PermissionUpdate[],
-    /** The tool's input as the user changed it (the answers of AskUserQuestion). */
-    updatedInput?: Record<string, unknown>,
-  ): unknown;
-  /** More buttons next to Aprovar and Negar (the queue's "Abrir sessão"). */
-  actions?: ReactNode;
-  /** Copies the session's folder (the whole path) when the user asks. */
-  onCopyPath?(path: string): void;
-}) {
+export function ApprovalCard(
+  props: Readonly<{
+    request: ApprovalRequest;
+    t: T;
+    nowMs: number;
+    /** The host announces `rules` (phase 7): "permitir nesta sessão" and "sempre neste projeto". */
+    alwaysAllow?: boolean;
+    resolution?: {
+      decision: PermissionResolution;
+      message?: string;
+      auto?: AutoApproval;
+      /** AskUserQuestion: the chosen answer of each question (the resolved event carries it). */
+      answers?: Record<string, string>;
+    };
+    /** Test seam: the hold time of a high-risk approval (2 s when absent). */
+    holdMs?: number;
+    /** A promise keeps the card busy until the answer is in; anything else answers at once. */
+    onRespond(
+      decision: "allow" | "deny",
+      message?: string,
+      updatedPermissions?: PermissionUpdate[],
+      /** The tool's input as the user changed it (the answers of AskUserQuestion). */
+      updatedInput?: Record<string, unknown>,
+    ): unknown;
+    /** More buttons next to Aprovar and Negar (the queue's "Abrir sessão"). */
+    actions?: ReactNode;
+    /** Copies the session's folder (the whole path) when the user asks. */
+    onCopyPath?(path: string): void;
+  }>,
+) {
   const { request, t, resolution } = props;
   /** An answer is on its way: the card is busy and takes no other. */
   const { busy: pending, run } = useBusy();

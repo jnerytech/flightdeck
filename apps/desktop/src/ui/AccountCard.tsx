@@ -100,7 +100,7 @@ const notReadYet = (state: NonNullable<AccountCardProps["state"]>) =>
  * The Claude account a host's own `claude` is signed in to: who, the plan and its windows. It
  * shows what the host reports and never asks for a login, a code or a token.
  */
-export function AccountCard(props: AccountCardProps) {
+export function AccountCard(props: Readonly<AccountCardProps>) {
   const t = useT();
   const { hostName, online, state, now, formatTime } = props;
   const refresh = (label: string, named = true) => (

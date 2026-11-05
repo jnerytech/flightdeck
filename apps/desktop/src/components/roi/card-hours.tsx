@@ -6,7 +6,7 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 
 /** Phase 36: the hours this card is worth, an estimate typed by the person; empty clears it. */
-export function CardHours(props: { store: AppStore; hostId: string; card: Card }) {
+export function CardHours(props: Readonly<{ store: AppStore; hostId: string; card: Card }>) {
   const { store, hostId, card } = props;
   const t = useT();
   const [text, setText] = useState(card.estimateHours === null ? "" : String(card.estimateHours));

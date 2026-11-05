@@ -12,7 +12,9 @@ const SELECT = "h-9 rounded-md border bg-transparent px-2";
  * parser) with the versioned file's own rules, so a secret or a bad entry is left out with the
  * reason; nothing is saved until the person imports.
  */
-export function FileImport(props: { store: AppStore; hostId: string; onImported(): void }) {
+export function FileImport(
+  props: Readonly<{ store: AppStore; hostId: string; onImported(): void }>,
+) {
   const t = useT();
   const id = useId();
   const { store, hostId } = props;

@@ -20,12 +20,14 @@ function trustMessage(workflow: WorkflowInfo, t: T): string {
  * Workflows of a project, as they are on its base branch: validation, the `check` commands each
  * can run and the button that trusts it (after showing those commands).
  */
-export function WorkflowsPage(props: {
-  store: AppStore;
-  hostId: string;
-  projectId: string;
-  projectName: string;
-}) {
+export function WorkflowsPage(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    projectId: string;
+    projectName: string;
+  }>,
+) {
   const t = useT();
   const { store, hostId, projectId } = props;
   const [workflows, setWorkflows] = useState<WorkflowInfo[]>([]);

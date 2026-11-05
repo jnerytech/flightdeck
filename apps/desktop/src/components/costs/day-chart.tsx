@@ -16,14 +16,16 @@ const LABELLED = 7;
  * every day and in the legend; with more projects than tints the biggest spenders get one each
  * and the rest share the last, which the legend calls "other projects".
  */
-export function DayChart(props: {
-  days: string[];
-  byDay: Array<{ day: string; projectKey: string; costUsd: number }>;
-  /** The projects of the period, the biggest spender first. */
-  projects: string[];
-  /** How a project is named on screen. */
-  label: (projectKey: string) => string;
-}) {
+export function DayChart(
+  props: Readonly<{
+    days: string[];
+    byDay: Array<{ day: string; projectKey: string; costUsd: number }>;
+    /** The projects of the period, the biggest spender first. */
+    projects: string[];
+    /** How a project is named on screen. */
+    label: (projectKey: string) => string;
+  }>,
+) {
   const t = useT();
   const { days, byDay, projects, label: projectLabel } = props;
   const totals = new Map<string, number>();

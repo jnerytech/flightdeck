@@ -13,13 +13,15 @@ import type { Route } from "@/lib/router";
 const FOLD_AT = 3;
 
 /** The header's path: the steps above are buttons that go back, the last one says where you are. */
-export function Breadcrumb(props: {
-  crumbs: Crumb[];
-  label: string;
-  /** The name of the menu that holds the steps in between, when there are many. */
-  moreLabel?: string;
-  onGo(route: Route): void;
-}) {
+export function Breadcrumb(
+  props: Readonly<{
+    crumbs: Crumb[];
+    label: string;
+    /** The name of the menu that holds the steps in between, when there are many. */
+    moreLabel?: string;
+    onGo(route: Route): void;
+  }>,
+) {
   const { crumbs } = props;
   const folded = crumbs.length > FOLD_AT;
   const hidden = folded ? crumbs.slice(1, -1) : [];

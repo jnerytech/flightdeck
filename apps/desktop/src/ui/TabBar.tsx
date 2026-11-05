@@ -74,13 +74,15 @@ const title = (tab: Tab, state: AppState, store: AppStore) => {
 };
 
 /** The tabs of the window: icon and title, pin and close. The shortcuts live in `App`. */
-export function TabBar(props: {
-  store: AppStore;
-  state: AppState;
-  tabs: Tabs;
-  /** The split's own buttons, at the end of the bar of the first area. */
-  children?: ReactNode;
-}) {
+export function TabBar(
+  props: Readonly<{
+    store: AppStore;
+    state: AppState;
+    tabs: Tabs;
+    /** The split's own buttons, at the end of the bar of the first area. */
+    children?: ReactNode;
+  }>,
+) {
   const { store, state, tabs } = props;
   const { t } = store.i18n;
   useSyncExternalStore(tabs.subscribe, () => tabs.version);

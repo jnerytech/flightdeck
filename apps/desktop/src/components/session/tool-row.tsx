@@ -1,5 +1,5 @@
 /** A tool call of a stored transcript: the tool and the most telling field of its input, in one line. */
-export function ToolRow(props: { name: string; input: string; label: string }) {
+export function ToolRow(props: Readonly<{ name: string; input: string; label: string }>) {
   return (
     <figure
       aria-label={props.label}

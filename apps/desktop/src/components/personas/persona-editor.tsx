@@ -30,15 +30,17 @@ function placeOf(scope: string | undefined): Place {
  * Phase 20: creates or edits a persona, with a preview of what a session opened in it gets. A
  * pack persona edited here becomes the host's version of it; the id never changes.
  */
-export function PersonaEditor(props: {
-  store: AppStore;
-  hostId: string;
-  /** The chosen project's path; "" for none. */
-  project: string;
-  persona: AppPersona | null;
-  onSaved(): void;
-  onClose(): void;
-}) {
+export function PersonaEditor(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    /** The chosen project's path; "" for none. */
+    project: string;
+    persona: AppPersona | null;
+    onSaved(): void;
+    onClose(): void;
+  }>,
+) {
   const t = useT();
   const id = useId();
   const saving = useBusy();

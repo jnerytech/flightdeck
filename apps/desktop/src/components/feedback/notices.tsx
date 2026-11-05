@@ -12,16 +12,18 @@ import { ConfirmDialog } from "@/ui/ConfirmDialog";
 let instances = 0;
 
 /** A host's error: its translated title, the daemon's message behind Detalhes, and Fechar. */
-function ErrorToast(props: {
-  store: AppStore;
-  noticeId: number;
-  title: string;
-  detail: string;
-  action: NoticeAction | null;
-  retry?: () => void;
-  t: T;
-  onClose(): void;
-}) {
+function ErrorToast(
+  props: Readonly<{
+    store: AppStore;
+    noticeId: number;
+    title: string;
+    detail: string;
+    action: NoticeAction | null;
+    retry?: () => void;
+    t: T;
+    onClose(): void;
+  }>,
+) {
   const [open, setOpen] = useState(false);
   const [asking, setAsking] = useState(false);
   const { t, store, noticeId } = props;

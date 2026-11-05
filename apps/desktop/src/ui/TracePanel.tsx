@@ -39,7 +39,7 @@ export function nodeNumbers(node: TraceNode, t: T): string {
     .join(" · ");
 }
 
-function Node(props: { node: TraceNode; against: number; trace: SessionTrace; t: T }) {
+function Node(props: Readonly<{ node: TraceNode; against: number; trace: SessionTrace; t: T }>) {
   const { node, against, trace, t } = props;
   const numbers = nodeNumbers(node, t);
   const detail = node.kind === "turn" ? null : (node.input ?? node.result);
@@ -88,7 +88,9 @@ function Node(props: { node: TraceNode; against: number; trace: SessionTrace; t:
  * for the time, cost and tokens per node, the costliest and the slowest marked, a filter by tool,
  * the replay and the export (`trace.get`, `trace.export`).
  */
-export function TracePanel(props: { store: AppStore; hostId: string; claudeSessionId: string }) {
+export function TracePanel(
+  props: Readonly<{ store: AppStore; hostId: string; claudeSessionId: string }>,
+) {
   const t = useT();
   const { store, hostId, claudeSessionId } = props;
   const [trace, setTrace] = useState<SessionTrace | null>(null);

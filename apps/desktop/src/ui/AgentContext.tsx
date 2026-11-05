@@ -12,7 +12,9 @@ import type { AppStore } from "../lib/app-store.ts";
  * Phase 26: what enters Claude Code's context when a session starts, source by source, with an
  * estimate of tokens, and what the memory leaves out: only the start of `MEMORY.md` is loaded.
  */
-export function AgentContext(props: { store: AppStore; hostId: string; projectId: string }) {
+export function AgentContext(
+  props: Readonly<{ store: AppStore; hostId: string; projectId: string }>,
+) {
   const { store, hostId, projectId } = props;
   const { t } = store.i18n;
   const number = (value: number) => formatNumber(value, store.i18n.lang);

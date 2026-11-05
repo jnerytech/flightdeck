@@ -57,7 +57,9 @@ function HiddenLine(props: {
  * secret, by the daemon's patterns or by a value of this app's vault, is hidden and locked; the
  * vault's values are compared here and never sent anywhere.
  */
-export function HistoryImport(props: { store: AppStore; hostId: string; onImported(): void }) {
+export function HistoryImport(
+  props: Readonly<{ store: AppStore; hostId: string; onImported(): void }>,
+) {
   const t = useT();
   const id = useId();
   const { store, hostId } = props;

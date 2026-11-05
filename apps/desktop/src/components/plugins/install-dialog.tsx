@@ -22,13 +22,15 @@ export type InstallSource = { plugin: string } | { dir: string };
  * the content shown here; a command the marketplace declares is shown too, and only that one,
  * by its own sha256, is accepted. Nothing is ever installed with a blanket "yes".
  */
-export function InstallDialog(props: {
-  store: AppStore;
-  hostId: string;
-  source: InstallSource;
-  onClose(): void;
-  onDone(): void;
-}) {
+export function InstallDialog(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    source: InstallSource;
+    onClose(): void;
+    onDone(): void;
+  }>,
+) {
   const t = useT();
   const { store, hostId, source } = props;
   const [preview, setPreview] = useState<PluginPreview | null>(null);

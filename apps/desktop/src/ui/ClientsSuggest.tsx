@@ -8,10 +8,12 @@ import { applySuggestion, suggestClients } from "../lib/client-suggest.ts";
 import { UNASSIGNED } from "../lib/clients.ts";
 
 /** What the screen says about the projects without a client: how many, a suggestion, the pins. */
-export function ClientsSuggest(props: {
-  store: AppStore;
-  state: Pick<AppState, "clientList" | "clientOverrides">;
-}) {
+export function ClientsSuggest(
+  props: Readonly<{
+    store: AppStore;
+    state: Pick<AppState, "clientList" | "clientOverrides">;
+  }>,
+) {
   const { store, state } = props;
   const { t } = store.i18n;
   const [asked, setAsked] = useState(false);

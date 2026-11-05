@@ -23,7 +23,9 @@ import type { AppStore } from "@/lib/app-store";
  * clones it into an allowed folder and opens a card or a session. The host's gh does the talking
  * to GitHub; this dialog never sees a token.
  */
-export function StartFromGithub(props: { store: AppStore; hostId: string; onStarted(): void }) {
+export function StartFromGithub(
+  props: Readonly<{ store: AppStore; hostId: string; onStarted(): void }>,
+) {
   const { store, hostId } = props;
   const t = useT();
   const [open, setOpen] = useState(false);

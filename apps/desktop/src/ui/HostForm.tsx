@@ -31,13 +31,15 @@ export function draftFromLink(url: string, name: string, token: string): HostDra
  * Adds a host from a pasted `flightdeck://` link or from address, port and token. Saving goes
  * through `onSubmit`, which tests the connection first.
  */
-export function HostForm(props: {
-  initial?: HostDraft;
-  notice?: string;
-  error?: string | null;
-  /** May return a promise: the form is busy until it settles (the connection is tested). */
-  onSubmit(draft: HostDraft): unknown;
-}) {
+export function HostForm(
+  props: Readonly<{
+    initial?: HostDraft;
+    notice?: string;
+    error?: string | null;
+    /** May return a promise: the form is busy until it settles (the connection is tested). */
+    onSubmit(draft: HostDraft): unknown;
+  }>,
+) {
   const t = useT();
   const [busy, run] = useBusy();
   const [draft, setDraft] = useState<HostDraft>(props.initial ?? emptyDraft());

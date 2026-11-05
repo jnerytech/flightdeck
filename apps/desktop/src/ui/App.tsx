@@ -187,7 +187,7 @@ function windowShortcut(store: AppStore, router: AppStore["router"], e: Keyboard
   }
 }
 
-export function App({ store }: { store: AppStore }) {
+export function App({ store }: Readonly<{ store: AppStore }>) {
   const state = useStoreState(store);
   const themeMode = useSyncExternalStore(store.theme.subscribe, () => store.theme.mode);
   const lang = useSyncExternalStore(store.i18n.subscribe, () => store.i18n.lang);

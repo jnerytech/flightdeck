@@ -11,7 +11,7 @@ import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 
 /** Renders a daemon snippet, where every match comes wrapped in `«` and `»`. */
-export function Snippet({ text }: { text: string }) {
+export function Snippet({ text }: Readonly<{ text: string }>) {
   const parts = text.split(/«|»/);
   // A part's position in the text is its key (parts are immutable and ordered).
   let at = 0;
@@ -38,16 +38,18 @@ export function Snippet({ text }: { text: string }) {
  * the history search across every host (Enter with nothing chosen), merged by date as each host
  * answers. Arrows choose, Enter opens, Tab shows the chosen entry's actions.
  */
-export function GlobalSearch(props: {
-  state: AppState;
-  store: AppStore;
-  /** The app has a Custos screen: "Ir para Custos" for hosts that announce `costs`. */
-  costs: boolean;
-  onSearch(query: string): void;
-  onClose(): void;
-  onOpenHit(hit: GlobalHit): void;
-  onGo(target: PaletteTarget): void;
-}) {
+export function GlobalSearch(
+  props: Readonly<{
+    state: AppState;
+    store: AppStore;
+    /** The app has a Custos screen: "Ir para Custos" for hosts that announce `costs`. */
+    costs: boolean;
+    onSearch(query: string): void;
+    onClose(): void;
+    onOpenHit(hit: GlobalHit): void;
+    onGo(target: PaletteTarget): void;
+  }>,
+) {
   const t = props.store.i18n.t;
   const { search, hosts } = props.state;
   const { store } = props;

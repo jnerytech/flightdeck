@@ -58,11 +58,13 @@ const tokensOf = (t: CostsSummary["totals"]["tokens"]) =>
   t.input + t.output + t.cacheRead + t.cacheWrite5m + t.cacheWrite1h;
 
 /** A breakdown as a two-column table. */
-function Breakdown(props: {
-  name: string;
-  /** `id` tells rows apart when two share a label (two projects in folders of the same name). */
-  rows: Array<{ id?: string; label: string; costUsd: number }>;
-}) {
+function Breakdown(
+  props: Readonly<{
+    name: string;
+    /** `id` tells rows apart when two share a label (two projects in folders of the same name). */
+    rows: Array<{ id?: string; label: string; costUsd: number }>;
+  }>,
+) {
   return (
     <section aria-label={props.name}>
       <Panel title={props.name}>

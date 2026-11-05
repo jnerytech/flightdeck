@@ -38,12 +38,12 @@ const ROW =
   "flex w-full min-w-0 flex-col gap-0.5 rounded-md px-2 py-1.5 text-left transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[active=true]:bg-accent aria-pressed:bg-accent";
 
 /** The first line of a row: a dot, then the text. A span, since a row is a button. */
-function RowHead(props: { children: ReactNode }) {
+function RowHead(props: Readonly<{ children: ReactNode }>) {
   return <span className="flex items-center gap-2">{props.children}</span>;
 }
 
 /** The right-hand side for something that is not a request: a column that scrolls by itself. */
-function DetailColumn(props: { children: ReactNode }) {
+function DetailColumn(props: Readonly<{ children: ReactNode }>) {
   return <div className="flex h-full flex-col gap-3 overflow-y-auto p-4">{props.children}</div>;
 }
 
@@ -284,12 +284,14 @@ function EntryDetail(
 }
 
 /** The requests waiting for the user: the list on the left, the chosen request's card on the right. */
-export function NeedsYou(props: {
-  store: AppStore;
-  state: AppState;
-  go(route: Route): void;
-  onOpenRequest(item: PendingItem): void;
-}) {
+export function NeedsYou(
+  props: Readonly<{
+    store: AppStore;
+    state: AppState;
+    go(route: Route): void;
+    onOpenRequest(item: PendingItem): void;
+  }>,
+) {
   const { store, state, go } = props;
   const { t } = store.i18n;
   const entries: Entry[] = [

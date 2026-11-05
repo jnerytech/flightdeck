@@ -21,7 +21,7 @@ import type { AppStore } from "../lib/app-store.ts";
 import { filterIssues, issueLabel, issueNumber } from "../lib/issues.ts";
 
 /** The external-author seal: third-party content, so no automatic approval on the card. */
-export function ExternalSeal({ t }: { t: AppStore["i18n"]["t"] }) {
+export function ExternalSeal({ t }: Readonly<{ t: AppStore["i18n"]["t"] }>) {
   return (
     <Badge variant="outline" className="text-status-needs-you" title={t("issuesUi.externalHint")}>
       {t("issuesUi.external")}
@@ -29,11 +29,13 @@ export function ExternalSeal({ t }: { t: AppStore["i18n"]["t"] }) {
   );
 }
 
-function ConfigForm(props: {
-  store: AppStore;
-  current: IssuesConfig | null;
-  onSave(config: IssuesConfig): void;
-}) {
+function ConfigForm(
+  props: Readonly<{
+    store: AppStore;
+    current: IssuesConfig | null;
+    onSave(config: IssuesConfig): void;
+  }>,
+) {
   const { t } = props.store.i18n;
   const [provider, setProvider] = useState<IssuesConfig["provider"]>(
     props.current?.provider ?? "github",
@@ -81,13 +83,15 @@ function ConfigForm(props: {
   );
 }
 
-function IssueRow(props: {
-  store: AppStore;
-  issue: Issue;
-  card: Card | null;
-  onCreate(): void;
-  onOpenCard(cardId: string): void;
-}) {
+function IssueRow(
+  props: Readonly<{
+    store: AppStore;
+    issue: Issue;
+    card: Card | null;
+    onCreate(): void;
+    onOpenCard(cardId: string): void;
+  }>,
+) {
   const { store, issue, card } = props;
   const { t } = store.i18n;
   return (
@@ -144,16 +148,18 @@ function IssueRow(props: {
  * The project's issues beside its board: filter, make a card from one, and the provider's
  * connection (GitHub or Azure Boards). An issue by an outside author comes marked.
  */
-export function IssuesPanel(props: {
-  store: AppStore;
-  hostId: string;
-  project: Project;
-  /** The project's cards: an issue that already has one offers Abrir card. */
-  cards: Card[];
-  onClose(): void;
-  onProject(project: Project): void;
-  onOpenCard(cardId: string): void;
-}) {
+export function IssuesPanel(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    project: Project;
+    /** The project's cards: an issue that already has one offers Abrir card. */
+    cards: Card[];
+    onClose(): void;
+    onProject(project: Project): void;
+    onOpenCard(cardId: string): void;
+  }>,
+) {
   const { store, hostId, project } = props;
   const { t } = store.i18n;
   const [issues, setIssues] = useState<Issue[] | null>(null);

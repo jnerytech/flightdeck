@@ -11,13 +11,15 @@ import type { AppStore } from "../lib/app-store.ts";
 import { type ChainNode, chainOf, pickable } from "../lib/deps.ts";
 
 /** The blockers as an indented list: each with its column, and what it waits for in turn. */
-function Chain(props: {
-  nodes: ChainNode[];
-  waiting: ReadonlySet<string>;
-  /** How deep in the chain: what a blocker waits for is marked with an arrow. */
-  depth: number;
-  onRemove?: (id: string) => void;
-}) {
+function Chain(
+  props: Readonly<{
+    nodes: ChainNode[];
+    waiting: ReadonlySet<string>;
+    /** How deep in the chain: what a blocker waits for is marked with an arrow. */
+    depth: number;
+    onRemove?: (id: string) => void;
+  }>,
+) {
   const t = useT();
   return (
     <Stack as="ul" gap={1}>
@@ -57,14 +59,16 @@ function Chain(props: {
  * Phase 31: what a card waits for and what it holds up. The blockers with their chain, the
  * choice of what satisfies one, the auto-start, and the "unblocked" mark to dismiss.
  */
-export function CardDeps(props: {
-  store: AppStore;
-  hostId: string;
-  card: Card;
-  /** The cards of the card's project. */
-  cards: Card[];
-  workflows: WorkflowInfo[];
-}) {
+export function CardDeps(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    card: Card;
+    /** The cards of the card's project. */
+    cards: Card[];
+    workflows: WorkflowInfo[];
+  }>,
+) {
   const t = useT();
   const { store, hostId, card, cards } = props;
   const update = (patch: Record<string, unknown>) =>

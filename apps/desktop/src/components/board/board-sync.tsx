@@ -39,7 +39,9 @@ type Refusal = {
  * sync stands, edit which column each status puts a card in, and decide whether the moves made
  * here are sent back. The host talks to the provider; nothing here sees a token.
  */
-export function BoardSyncControl(props: { store: AppStore; hostId: string; projectId: string }) {
+export function BoardSyncControl(
+  props: Readonly<{ store: AppStore; hostId: string; projectId: string }>,
+) {
   const { store, hostId, projectId } = props;
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -318,7 +320,7 @@ export function logLine(entry: BoardSyncLogEntry, t: T): string {
 }
 
 /** The card's sync log: what a conflict gave up, a move that was not made, a push that failed. */
-export function CardSyncLog(props: { store: AppStore; hostId: string; cardId: string }) {
+export function CardSyncLog(props: Readonly<{ store: AppStore; hostId: string; cardId: string }>) {
   const { store, hostId, cardId } = props;
   const t = useT();
   const [entries, setEntries] = useState<BoardSyncLogEntry[] | null>(null);

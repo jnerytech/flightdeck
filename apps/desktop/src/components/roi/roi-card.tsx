@@ -40,7 +40,7 @@ const REFRESH_MS = 30_000;
  * the money (rates, plan price) is the app's, the counts come from the hosts. What is an estimate
  * says so, and every figure can show how it was made.
  */
-export function RoiCard(props: { store: AppStore; hostId: string; project: Project }) {
+export function RoiCard(props: Readonly<{ store: AppStore; hostId: string; project: Project }>) {
   const { store, project } = props;
   const t = useT();
   const [choice, setChoice] = useState<Choice>("month");

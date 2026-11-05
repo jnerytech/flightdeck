@@ -72,14 +72,16 @@ const COLS: Record<keyof GridCols, Record<Columns, string>> = {
 export type ListTag = "div" | "ul" | "ol";
 
 /** Vertical stack with a gap of the scale. */
-export function Stack(props: {
-  gap?: Gap;
-  as?: ListTag;
-  /** Names the stack for assistive technology (a list says what it lists). */
-  label?: string;
-  className?: string;
-  children: ReactNode;
-}) {
+export function Stack(
+  props: Readonly<{
+    gap?: Gap;
+    as?: ListTag;
+    /** Names the stack for assistive technology (a list says what it lists). */
+    label?: string;
+    className?: string;
+    children: ReactNode;
+  }>,
+) {
   const Tag = props.as ?? "div";
   return (
     <Tag
@@ -92,13 +94,15 @@ export function Stack(props: {
 }
 
 /** Horizontal row that wraps, with a gap of the scale. */
-export function Inline(props: {
-  gap?: Gap;
-  as?: ListTag;
-  label?: string;
-  className?: string;
-  children: ReactNode;
-}) {
+export function Inline(
+  props: Readonly<{
+    gap?: Gap;
+    as?: ListTag;
+    label?: string;
+    className?: string;
+    children: ReactNode;
+  }>,
+) {
   const Tag = props.as ?? "div";
   return (
     <Tag
@@ -111,12 +115,14 @@ export function Inline(props: {
 }
 
 /** Responsive grid by columns, for host cards and quota or cost panels. */
-export function Grid(props: {
-  cols: GridCols;
-  gap?: Gap;
-  className?: string;
-  children: ReactNode;
-}) {
+export function Grid(
+  props: Readonly<{
+    cols: GridCols;
+    gap?: Gap;
+    className?: string;
+    children: ReactNode;
+  }>,
+) {
   const breakpoints = Object.entries(props.cols) as Array<[keyof GridCols, Columns]>;
   return (
     <div
@@ -133,7 +139,7 @@ export function Grid(props: {
 }
 
 /** Filters and search; wraps in narrow windows. */
-export function Toolbar(props: { label: string; children: ReactNode }) {
+export function Toolbar(props: Readonly<{ label: string; children: ReactNode }>) {
   return (
     <div role="toolbar" aria-label={props.label} className="flex flex-wrap items-center gap-2">
       {props.children}

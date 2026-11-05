@@ -5,7 +5,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 /** An empty list or panel: a large soft icon, one sentence and one action. */
-export function EmptyState(props: { title: string; icon?: LucideIcon; action?: ReactNode }) {
+export function EmptyState(
+  props: Readonly<{ title: string; icon?: LucideIcon; action?: ReactNode }>,
+) {
   const Icon = props.icon;
   return (
     <div className="flex flex-col items-center gap-3 rounded-lg bg-muted/30 p-8 text-center">
@@ -20,7 +22,7 @@ export function EmptyState(props: { title: string; icon?: LucideIcon; action?: R
 export type LoadingShape = "rows" | "columns" | "tiles";
 
 /** A list or panel still loading. */
-export function LoadingState(props: { label: string; shape?: LoadingShape }) {
+export function LoadingState(props: Readonly<{ label: string; shape?: LoadingShape }>) {
   const shape = props.shape ?? "rows";
   return (
     <div
@@ -47,7 +49,9 @@ const GRID: Record<LoadingShape, string> = {
 };
 
 /** A list or panel that failed: the message and a way to try again. */
-export function ErrorState(props: { message: string; retryLabel: string; onRetry(): void }) {
+export function ErrorState(
+  props: Readonly<{ message: string; retryLabel: string; onRetry(): void }>,
+) {
   return (
     <div
       role="alert"

@@ -14,7 +14,7 @@ const DOTS: Record<ClientColor, string> = {
 };
 
 /** A client's color as a dot, the same size as a status dot. */
-export function ClientDot(props: { color: ClientColor; className?: string }) {
+export function ClientDot(props: Readonly<{ color: ClientColor; className?: string }>) {
   return (
     <span
       aria-hidden="true"

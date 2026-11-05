@@ -2,19 +2,21 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /** A bordered block of a screen: a heading, then its content. */
-export function Panel(props: {
-  title?: ReactNode;
-  /** `li` for an item of a list. */
-  as?: "section" | "li";
-  /** `sm` is the padding of an item in a list; `md` is a block of the screen. */
-  size?: "md" | "sm";
-  /** Names the block for assistive technology. */
-  label?: string;
-  /** The block's `data-slot`, for tests and layout checks. */
-  slot?: string;
-  children: ReactNode;
-  className?: string;
-}) {
+export function Panel(
+  props: Readonly<{
+    title?: ReactNode;
+    /** `li` for an item of a list. */
+    as?: "section" | "li";
+    /** `sm` is the padding of an item in a list; `md` is a block of the screen. */
+    size?: "md" | "sm";
+    /** Names the block for assistive technology. */
+    label?: string;
+    /** The block's `data-slot`, for tests and layout checks. */
+    slot?: string;
+    children: ReactNode;
+    className?: string;
+  }>,
+) {
   const Tag = props.as ?? "section";
   const small = props.size === "sm";
   return (

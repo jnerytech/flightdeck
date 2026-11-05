@@ -10,7 +10,7 @@ import type { AppStore } from "@/lib/app-store";
 import { validateWatchDraft, watchDraftOf, watchPatchOf } from "../../lib/watch-settings.ts";
 
 /** A labelled control: the label is tied to it by id. */
-function Field(props: { label: string; children: (id: string) => ReactNode }) {
+function Field(props: Readonly<{ label: string; children: (id: string) => ReactNode }>) {
   const id = useId();
   return (
     <Stack gap={1}>
@@ -23,7 +23,9 @@ function Field(props: { label: string; children: (id: string) => ReactNode }) {
 }
 
 /** One project's watch settings: loaded from the host, edited as text, saved as one patch. */
-function ProjectWatchSettings(props: { store: AppStore; hostId: string; project: Project }) {
+function ProjectWatchSettings(
+  props: Readonly<{ store: AppStore; hostId: string; project: Project }>,
+) {
   const t = useT();
   const { store, hostId, project } = props;
   const [saved, setSaved] = useState<WatchSettings | null>(null);
@@ -130,12 +132,14 @@ function ProjectWatchSettings(props: { store: AppStore; hostId: string; project:
  * Phase 22: the PR watch settings of a host's projects (the default for a new PR, the limits of
  * the fixing rounds and the checks that must pass before a push), one block per project.
  */
-export function WatchSettingsSection(props: {
-  store: AppStore;
-  hostId: string;
-  hostName: string;
-  projects: Project[];
-}) {
+export function WatchSettingsSection(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    hostName: string;
+    projects: Project[];
+  }>,
+) {
   const t = useT();
   const { store, hostId } = props;
   useEffect(() => {

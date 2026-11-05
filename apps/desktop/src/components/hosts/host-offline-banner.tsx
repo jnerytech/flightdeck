@@ -16,7 +16,7 @@ const WSL_SYSTEMD = "systemd=true";
  * At the top of the host page while the host is not online: the state, what failed in plain words,
  * the last try, the countdown to the next one and Reconnect now with its result.
  */
-export function HostOfflineBanner(props: { host: HostView; onReconnect(): void }) {
+export function HostOfflineBanner(props: Readonly<{ host: HostView; onReconnect(): void }>) {
   const t = useT();
   const { host } = props;
   const now = useNow();

@@ -15,11 +15,13 @@ const SHORTCUTS = [
 ] as const;
 
 /** What an area with no tab shows: where to begin, the latest sessions and the main shortcuts. */
-export function StartScreen(props: {
-  store: AppStore;
-  hosts: AppState["hosts"];
-  go: (route: Route) => void;
-}) {
+export function StartScreen(
+  props: Readonly<{
+    store: AppStore;
+    hosts: AppState["hosts"];
+    go: (route: Route) => void;
+  }>,
+) {
   const t = useT();
   const { hosts, go } = props;
   const firstHost = hosts.find((host) => host.status === "online");

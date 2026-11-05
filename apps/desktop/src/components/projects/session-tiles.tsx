@@ -27,7 +27,9 @@ const MOVES: Record<string, (at: number, columns: number) => number> = {
 };
 
 /** One session: its status, last lines, the request it waits on and a small message box. */
-function SessionTile(props: { store: AppStore; hostId: string; row: HubRow; onOpen(): void }) {
+function SessionTile(
+  props: Readonly<{ store: AppStore; hostId: string; row: HubRow; onOpen(): void }>,
+) {
   const { store, hostId, row } = props;
   const { t } = store.i18n;
   const sessionId = row.sessionId as string;
@@ -149,7 +151,7 @@ const DRAWN: Record<TileLayout, { columns: number; rows: number }> = {
   auto: { columns: 2, rows: 2 },
 };
 
-function LayoutIcon(props: { layout: TileLayout }) {
+function LayoutIcon(props: Readonly<{ layout: TileLayout }>) {
   const { columns, rows } = DRAWN[props.layout];
   const w = (16 - (columns - 1) * 2) / columns;
   const h = (12 - (rows - 1) * 2) / rows;
@@ -172,15 +174,17 @@ function LayoutIcon(props: { layout: TileLayout }) {
 }
 
 /** Sessions of one project side by side: 2, 3, 4 or 6 tiles, the ones that need you first. */
-export function SessionTiles(props: {
-  store: AppStore;
-  state: HubRowState;
-  hostId: string;
-  projectKey: string;
-  /** The project's folder: a session keyed by its folder still belongs to it. */
-  path?: string;
-  onOpen(row: HubRow): void;
-}) {
+export function SessionTiles(
+  props: Readonly<{
+    store: AppStore;
+    state: HubRowState;
+    hostId: string;
+    projectKey: string;
+    /** The project's folder: a session keyed by its folder still belongs to it. */
+    path?: string;
+    onOpen(row: HubRow): void;
+  }>,
+) {
   const { store, hostId } = props;
   const { t } = store.i18n;
   const [layout, setLayout] = useState<TileLayout>(() => store.tileLayout());

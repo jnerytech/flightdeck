@@ -11,7 +11,7 @@ function dayLabel(day: InboxDay, t: T): string {
 }
 
 /** The count on the bell. */
-export function UnreadBadge(props: { unread: number }) {
+export function UnreadBadge(props: Readonly<{ unread: number }>) {
   return (
     <span
       aria-hidden="true"
@@ -23,14 +23,16 @@ export function UnreadBadge(props: { unread: number }) {
 }
 
 /** The panel under the bell: past notifications, newest first, grouped by day. */
-export function NotificationCenter(props: {
-  entries: InboxEntry[];
-  unread: number;
-  t: T;
-  onPick(entry: InboxEntry): void;
-  onMarkAll(): void;
-  onClear(): void;
-}) {
+export function NotificationCenter(
+  props: Readonly<{
+    entries: InboxEntry[];
+    unread: number;
+    t: T;
+    onPick(entry: InboxEntry): void;
+    onMarkAll(): void;
+    onClear(): void;
+  }>,
+) {
   const { t, unread } = props;
   const groups = groupByDay(props.entries, new Date());
   return (

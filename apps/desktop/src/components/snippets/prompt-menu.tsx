@@ -10,12 +10,14 @@ export interface PromptSnippets {
  * Under a message box: while its text is `/` and a name without spaces, the prompt snippets whose
  * name contains it; the chosen one replaces the text.
  */
-export function PromptMenu(props: {
-  prompts: PromptSnippets | undefined;
-  text: string;
-  label: string;
-  onFill(text: string): void;
-}) {
+export function PromptMenu(
+  props: Readonly<{
+    prompts: PromptSnippets | undefined;
+    text: string;
+    label: string;
+    onFill(text: string): void;
+  }>,
+) {
   const [prompts, setPrompts] = useState<Array<{ key: string; name: string }> | null>(null);
   const slash =
     props.prompts && /^\/\S*$/.test(props.text) ? props.text.slice(1).toLowerCase() : null;

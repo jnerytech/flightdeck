@@ -2,7 +2,7 @@ import type { PluginInventory } from "@flightdeck/protocol";
 import { useT } from "@/i18n/context";
 
 /** What a plugin installs, as read from its folder: shown before any install or update. */
-export function InventoryView(props: { inventory: PluginInventory }) {
+export function InventoryView(props: Readonly<{ inventory: PluginInventory }>) {
   const t = useT();
   const { inventory } = props;
   const names = (label: string, list: string[]) =>

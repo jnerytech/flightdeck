@@ -9,7 +9,7 @@ import { HostStatusBadge } from "./host-status-badge";
  * The list's strip for hosts that are not online: one compact line ("2 hosts com problema") that
  * opens into the ones down and the ones reconnecting; their sessions stay in the list.
  */
-export function HostsBanner(props: { hosts: HostView[]; t: T }) {
+export function HostsBanner(props: Readonly<{ hosts: HostView[]; t: T }>) {
   const { down, reconnecting } = hostsBanner(props.hosts);
   const [open, setOpen] = useState(false);
   const total = down.length + reconnecting.length;

@@ -11,7 +11,7 @@ const WIDTH = 240;
 const HEIGHT = 60;
 
 /** One window's utilization over time, its projection and, for 5 hours, who used it. */
-function WindowChart(props: { store: AppStore; history: QuotaHistory }) {
+function WindowChart(props: Readonly<{ store: AppStore; history: QuotaHistory }>) {
   const t = props.store.i18n.t;
   const { history } = props;
   const label = props.store.i18n.t(`quota.windows.${history.window}` as Key);
@@ -66,7 +66,7 @@ function WindowChart(props: { store: AppStore; history: QuotaHistory }) {
 }
 
 /** The 5-hour and 7-day windows of a host over time. */
-export function QuotaCharts(props: { store: AppStore; hostId: string }) {
+export function QuotaCharts(props: Readonly<{ store: AppStore; hostId: string }>) {
   const t = useT();
   const { store, hostId } = props;
   const [histories, setHistories] = useState<QuotaHistory[]>([]);

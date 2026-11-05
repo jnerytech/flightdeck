@@ -10,7 +10,7 @@ import type { Key } from "../../i18n/index.ts";
  * Phase 22: "Vigiar e consertar" on a card with an open PR: the switch, what the watch is
  * doing, the rounds of fixing with their result, and why the card asks for you.
  */
-export function PrWatchPanel(props: { store: AppStore; hostId: string; cardId: string }) {
+export function PrWatchPanel(props: Readonly<{ store: AppStore; hostId: string; cardId: string }>) {
   const t = useT();
   const { store, hostId, cardId } = props;
   const watch = useStoreState(store).watches[sessionKey(hostId, cardId)];

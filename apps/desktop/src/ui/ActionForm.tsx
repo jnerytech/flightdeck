@@ -102,16 +102,18 @@ function definitionOf(draft: Draft, initial: ActionInfo | null): Record<string, 
  * environment variables fed by vault secrets, and the parameters with their pattern. The daemon
  * validates it, and what it refuses shows here.
  */
-export function ActionForm(props: {
-  store: AppStore;
-  hostId: string;
-  projectId: string;
-  initial: ActionInfo | null;
-  /** A new action's first values, from a snippet with a secret (phase 18). */
-  seed?: ActionSeed;
-  onClose(): void;
-  onSaved(action: ActionInfo): void;
-}) {
+export function ActionForm(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    projectId: string;
+    initial: ActionInfo | null;
+    /** A new action's first values, from a snippet with a secret (phase 18). */
+    seed?: ActionSeed;
+    onClose(): void;
+    onSaved(action: ActionInfo): void;
+  }>,
+) {
   const { store, initial } = props;
   const { t } = store.i18n;
   const [draft, setDraft] = useState<Draft>(() => draftOf(initial, props.seed));

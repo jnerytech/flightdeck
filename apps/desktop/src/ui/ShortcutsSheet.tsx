@@ -6,7 +6,9 @@ import { keysLabel, SHORTCUTS, type ShortcutGroup } from "../lib/shortcuts.ts";
 const GROUPS: ShortcutGroup[] = ["general", "navigation", "tabs", "lists", "approvals"];
 
 /** The `?` sheet: every shortcut of the registry, by group. */
-export function ShortcutsSheet(props: { store: AppStore; mac: boolean; onClose(): void }) {
+export function ShortcutsSheet(
+  props: Readonly<{ store: AppStore; mac: boolean; onClose(): void }>,
+) {
   const { t } = props.store.i18n;
   return (
     <dialog

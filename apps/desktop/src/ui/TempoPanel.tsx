@@ -40,7 +40,7 @@ function label(item: TelemetryItem, t: T): string {
   }
 }
 
-function Step(props: { item: TelemetryItem; longest: number; t: T }) {
+function Step(props: Readonly<{ item: TelemetryItem; longest: number; t: T }>) {
   const { item, longest, t } = props;
   const time = item.durationMs;
   const failedKey = item.error ? "telemetry.failed" : "telemetry.failedPlain";
@@ -61,7 +61,7 @@ function Step(props: { item: TelemetryItem; longest: number; t: T }) {
   );
 }
 
-function PromptBlock(props: { prompt: TelemetryPrompt; n: number; t: T }) {
+function PromptBlock(props: Readonly<{ prompt: TelemetryPrompt; n: number; t: T }>) {
   const { prompt, n, t } = props;
   const longest = Math.max(0, ...prompt.items.map((i) => i.durationMs ?? 0));
   const summary = [
@@ -98,7 +98,9 @@ function PromptBlock(props: { prompt: TelemetryPrompt; n: number; t: T }) {
  * answered (and how long they kept Claude waiting), the API requests and their errors, from
  * Claude Code's OTLP telemetry (`telemetry.session`).
  */
-export function TempoPanel(props: { store: AppStore; hostId: string; claudeSessionId: string }) {
+export function TempoPanel(
+  props: Readonly<{ store: AppStore; hostId: string; claudeSessionId: string }>,
+) {
   const t = useT();
   const { store, hostId, claudeSessionId } = props;
   const [prompts, setPrompts] = useState<TelemetryPrompt[] | null>(null);

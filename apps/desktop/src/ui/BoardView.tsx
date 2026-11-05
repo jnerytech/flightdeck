@@ -37,26 +37,28 @@ import { BoardColumnEmpty } from "./BoardColumnEmpty.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { ExternalSeal, IssuesPanel } from "./IssuesPanel.tsx";
 
-function CardTile(props: {
-  card: Card;
-  /** The name of the workflow the card is running, when known. */
-  workflow?: string;
-  formatTime(iso: string): string;
-  labels: { actions: string; start: string; edit: string; delete: string };
-  /** Phase 31: the titles of the cards it waits for and of those it holds up. */
-  deps: { waiting: string; holding: string };
-  /** The ways to move the card without dragging it, in menu order. */
-  moves: Array<{ key: string; label: string; disabled?: boolean; onSelect(): void }>;
-  onOpen(): void;
-  /** "Iniciar card" from the card's menu, without opening it (phase 10). */
-  onStart(): void;
-  /** Opens the card with its title ready to edit. */
-  onEdit(): void;
-  /** Asks to delete the card (a card that already started is offered Discard instead). */
-  onDelete(): void;
-  onDragStart(): void;
-  onDropOn(): void;
-}) {
+function CardTile(
+  props: Readonly<{
+    card: Card;
+    /** The name of the workflow the card is running, when known. */
+    workflow?: string;
+    formatTime(iso: string): string;
+    labels: { actions: string; start: string; edit: string; delete: string };
+    /** Phase 31: the titles of the cards it waits for and of those it holds up. */
+    deps: { waiting: string; holding: string };
+    /** The ways to move the card without dragging it, in menu order. */
+    moves: Array<{ key: string; label: string; disabled?: boolean; onSelect(): void }>;
+    onOpen(): void;
+    /** "Iniciar card" from the card's menu, without opening it (phase 10). */
+    onStart(): void;
+    /** Opens the card with its title ready to edit. */
+    onEdit(): void;
+    /** Asks to delete the card (a card that already started is offered Discard instead). */
+    onDelete(): void;
+    onDragStart(): void;
+    onDropOn(): void;
+  }>,
+) {
   const t = useT();
   const { card } = props;
   /** The workflow (when its run is known) and the branch, when there are any. */

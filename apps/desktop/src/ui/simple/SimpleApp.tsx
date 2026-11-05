@@ -32,16 +32,18 @@ function stateOf(status: SidebarSession["status"]): TaskState {
 }
 
 /** One task: its conversation underneath, only the result on top. */
-function TaskScreen(props: {
-  store: AppStore;
-  hostId: string;
-  sessionId: string;
-  title: string;
-  locked: boolean;
-  t: ReturnType<typeof translator>;
-  onBack(): void;
-  onDetails(): void;
-}) {
+function TaskScreen(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    sessionId: string;
+    title: string;
+    locked: boolean;
+    t: ReturnType<typeof translator>;
+    onBack(): void;
+    onDetails(): void;
+  }>,
+) {
   const { store, hostId, sessionId, t } = props;
   useEffect(() => store.watchSession(hostId, sessionId), [store, hostId, sessionId]);
   const session = useSessionState(store, sessionKey(hostId, sessionId));
@@ -90,12 +92,14 @@ function TaskScreen(props: {
 }
 
 /** Every file the recent tasks made, newest first. */
-function FilesScreen(props: {
-  store: AppStore;
-  hostId: string;
-  tasks: Array<{ id: string; title: string }>;
-  t: ReturnType<typeof translator>;
-}) {
+function FilesScreen(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    tasks: Array<{ id: string; title: string }>;
+    t: ReturnType<typeof translator>;
+  }>,
+) {
   const { store, hostId, t } = props;
   const [rows, setRows] = useState<Array<{ task: string; file: TaskFile }>>([]);
   const ids = props.tasks.map((task) => task.id).join(",");
@@ -156,12 +160,14 @@ function FilesScreen(props: {
 }
 
 /** Simple mode for one host (phase 33): Home, a task, Files and Settings, in a narrow frame. */
-export function SimpleApp(props: {
-  store: AppStore;
-  host: HostView | undefined;
-  notifyUpdates: boolean;
-  hostId: string;
-}) {
+export function SimpleApp(
+  props: Readonly<{
+    store: AppStore;
+    host: HostView | undefined;
+    notifyUpdates: boolean;
+    hostId: string;
+  }>,
+) {
   const { store, host, hostId } = props;
   const lang = useSyncExternalStore(store.i18n.subscribe, () => store.i18n.lang);
   const t = useMemo(() => translator(lang, "simple"), [lang]);

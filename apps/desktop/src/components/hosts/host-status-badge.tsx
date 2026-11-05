@@ -13,7 +13,7 @@ const TONE_CLASS: Record<HostTone, string> = {
 };
 
 /** A host's connection as colored text: offline and reconnecting never look alike. */
-export function HostStatusBadge(props: { status: ConnectionStatus; t: T }) {
+export function HostStatusBadge(props: Readonly<{ status: ConnectionStatus; t: T }>) {
   const { label, tone } = hostStatusView(props.status, props.t);
   return <span className={cn("text-xs", TONE_CLASS[tone])}>{label}</span>;
 }

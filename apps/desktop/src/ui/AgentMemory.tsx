@@ -30,7 +30,9 @@ const NEW_NAME = /^[A-Za-z0-9][A-Za-z0-9 _-]{0,90}$/;
  * action, each write behind a confirmation and the hash of what was opened; the cleanup
  * suggestions only point, they never change a file.
  */
-export function AgentMemory(props: { store: AppStore; hostId: string; projectId: string }) {
+export function AgentMemory(
+  props: Readonly<{ store: AppStore; hostId: string; projectId: string }>,
+) {
   const { store, hostId, projectId } = props;
   const { t } = store.i18n;
   const [files, setFiles] = useState<MemoryFile[] | null>(null);

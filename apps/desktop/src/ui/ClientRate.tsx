@@ -7,7 +7,7 @@ import type { Client } from "../lib/clients.ts";
 import { RoiSettingsError } from "../lib/roi-settings.ts";
 
 /** Phase 36: the hourly rate of a client, for every project of it that has none of its own. */
-export function ClientRate(props: { store: AppStore; client: Client }) {
+export function ClientRate(props: Readonly<{ store: AppStore; client: Client }>) {
   const { store, client } = props;
   const { t } = store.i18n;
   const saved = store.roi.data().clientRates[client.id];

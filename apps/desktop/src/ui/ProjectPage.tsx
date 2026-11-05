@@ -19,13 +19,15 @@ interface Destination {
 }
 
 /** One project: where Board, Sessions, Workflows, Costs and its settings open from (issue #9). */
-export function ProjectPage(props: {
-  store: AppStore;
-  state: Pick<AppState, "projects"> & HubRowState;
-  hostId: string;
-  projectId: string;
-  go(route: Route): void;
-}) {
+export function ProjectPage(
+  props: Readonly<{
+    store: AppStore;
+    state: Pick<AppState, "projects"> & HubRowState;
+    hostId: string;
+    projectId: string;
+    go(route: Route): void;
+  }>,
+) {
   const { store, state, hostId, projectId } = props;
   const { t } = store.i18n;
   const host = state.hosts.find((h) => h.id === hostId);

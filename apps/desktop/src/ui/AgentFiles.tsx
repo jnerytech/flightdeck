@@ -101,12 +101,14 @@ function FileHeader(props: {
  * One kind of file of the agent: the project's CLAUDE.md, agents or skills (editable, with a hash
  * check) and the user's (read-only). An agent or a skill has a form for its frontmatter.
  */
-export function AgentFiles(props: {
-  store: AppStore;
-  hostId: string;
-  projectId: string;
-  kind: Kind;
-}) {
+export function AgentFiles(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    projectId: string;
+    kind: Kind;
+  }>,
+) {
   const { store, hostId, projectId, kind } = props;
   const { t } = store.i18n;
   const [items, setItems] = useState<AgentCfgItem[] | null>(null);

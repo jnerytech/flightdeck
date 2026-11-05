@@ -35,7 +35,7 @@ interface Target {
 }
 
 /** What rewinding does to each file, from the files' point of view. */
-function PreviewFiles(props: { store: AppStore; preview: RewindPreview }) {
+function PreviewFiles(props: Readonly<{ store: AppStore; preview: RewindPreview }>) {
   const { t } = props.store.i18n;
   const { preview } = props;
   if (preview.files.length === 0) return <p className="text-sm">{t("timeline.nothing")}</p>;
@@ -233,17 +233,19 @@ function ForkDialog(
 }
 
 /** One turn: its prompt, time and files, and the two actions. */
-function TurnRow(props: {
-  store: AppStore;
-  turn: Turn;
-  busy: boolean;
-  /** The id of the panel's busy notice, which says why the rewind is off. */
-  busyId: string;
-  files: SnapshotFiles | undefined;
-  onToggle(): void;
-  onRewind(): void;
-  onFork(): void;
-}) {
+function TurnRow(
+  props: Readonly<{
+    store: AppStore;
+    turn: Turn;
+    busy: boolean;
+    /** The id of the panel's busy notice, which says why the rewind is off. */
+    busyId: string;
+    files: SnapshotFiles | undefined;
+    onToggle(): void;
+    onRewind(): void;
+    onFork(): void;
+  }>,
+) {
   const { store, turn } = props;
   const { t } = store.i18n;
   const noUuidId = useId();

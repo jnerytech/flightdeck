@@ -18,12 +18,14 @@ const splitTags = (text: string): string[] =>
     .filter(Boolean);
 
 /** Creates a secret by hand, generates an SSH key, or imports a key file. */
-export function NewSecretForm(props: {
-  store: AppStore;
-  onClose(): void;
-  /** The tags a new secret starts with: the selected client's vault tag (phase 29). */
-  defaultTags?: string;
-}) {
+export function NewSecretForm(
+  props: Readonly<{
+    store: AppStore;
+    onClose(): void;
+    /** The tags a new secret starts with: the selected client's vault tag (phase 29). */
+    defaultTags?: string;
+  }>,
+) {
   const t = useT();
   const { store } = props;
   const id = useId();

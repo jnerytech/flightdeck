@@ -17,11 +17,13 @@ function previewText(matches: number, t: AppStore["i18n"]["t"]): string {
 }
 
 /** The rules of one client: what joins a project to it, in order, and a form for a new one. */
-export function ClientRules(props: {
-  store: AppStore;
-  state: Pick<AppState, "hosts">;
-  client: Client;
-}) {
+export function ClientRules(
+  props: Readonly<{
+    store: AppStore;
+    state: Pick<AppState, "hosts">;
+    client: Client;
+  }>,
+) {
   const { store, state, client } = props;
   const { t } = store.i18n;
   const [kind, setKind] = useState<RuleInput["kind"]>("remote");

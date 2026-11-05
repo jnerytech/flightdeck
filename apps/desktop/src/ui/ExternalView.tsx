@@ -28,16 +28,18 @@ const STATE_KEYS = {
  * A live session opened outside Flightdeck: its transcript as it grows, its permission requests
  * inline, and a message box when it runs under `flightdeckd claude` (controllable).
  */
-export function ExternalView(props: {
-  store: AppStore;
-  state: AppState;
-  hostId: string;
-  hostName: string;
-  claudeSessionId: string;
-  onResumed(): void;
-  /** Phase 18: the prompt snippets `/` offers in the message box. */
-  prompts?: PromptSnippets;
-}) {
+export function ExternalView(
+  props: Readonly<{
+    store: AppStore;
+    state: AppState;
+    hostId: string;
+    hostName: string;
+    claudeSessionId: string;
+    onResumed(): void;
+    /** Phase 18: the prompt snippets `/` offers in the message box. */
+    prompts?: PromptSnippets;
+  }>,
+) {
   const t = props.store.i18n.t;
   const { store, state, hostId, claudeSessionId: id } = props;
   const key = sessionKey(hostId, id);

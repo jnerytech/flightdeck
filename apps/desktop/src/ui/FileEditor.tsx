@@ -22,14 +22,16 @@ type Phase =
   | { name: "ready"; hash: string; conflict: boolean };
 
 /** A plain text editor (CodeMirror 6) for one file of a target; it saves only if the file is as it was read. */
-export function FileEditor(props: {
-  store: AppStore;
-  hostId: string;
-  target: string;
-  path: string;
-  onSaved(): void;
-  onClose(): void;
-}) {
+export function FileEditor(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    target: string;
+    path: string;
+    onSaved(): void;
+    onClose(): void;
+  }>,
+) {
   const t = useT();
   const { store, hostId, target, path } = props;
   const [phase, setPhase] = useState<Phase>({ name: "opening" });

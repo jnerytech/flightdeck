@@ -21,14 +21,16 @@ interface Row {
  * session read from the transcripts (`costs.summary`); before it, what the SDK reported for the
  * managed sessions (`usage.summary`).
  */
-export function UsagePanel(props: {
-  store: AppStore;
-  hostId: string;
-  online: boolean;
-  costs: boolean;
-  /** A row was clicked: the history of its folder (when it has one) on that day. */
-  onOpenHistory?(filter: UsageHistoryTarget): void;
-}) {
+export function UsagePanel(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    online: boolean;
+    costs: boolean;
+    /** A row was clicked: the history of its folder (when it has one) on that day. */
+    onOpenHistory?(filter: UsageHistoryTarget): void;
+  }>,
+) {
   const t = useT();
   const number = useFormatNumber();
   const { store, hostId, online, costs, onOpenHistory } = props;

@@ -18,7 +18,9 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 
 /** "Find my projects": scan the allowed folders for git repositories, or clone one from a URL. */
-export function FindProjects(props: { store: AppStore; hostId: string; onAdded(): void }) {
+export function FindProjects(
+  props: Readonly<{ store: AppStore; hostId: string; onAdded(): void }>,
+) {
   const { store, hostId } = props;
   const t = useT();
   const [open, setOpen] = useState(false);

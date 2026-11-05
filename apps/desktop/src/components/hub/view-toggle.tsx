@@ -3,13 +3,15 @@ import { Button } from "@/components/ui/button";
 import type { HubView } from "../../lib/hub.ts";
 
 /** The hub's two views, side by side: the pressed one is on. */
-export function ViewToggle(props: {
-  view: HubView;
-  label: string;
-  listLabel: string;
-  cardsLabel: string;
-  onChange(view: HubView): void;
-}) {
+export function ViewToggle(
+  props: Readonly<{
+    view: HubView;
+    label: string;
+    listLabel: string;
+    cardsLabel: string;
+    onChange(view: HubView): void;
+  }>,
+) {
   return (
     <fieldset className="m-0 flex gap-0.5 border-0 p-0">
       <legend className="sr-only">{props.label}</legend>

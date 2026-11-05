@@ -17,13 +17,15 @@ function location(comment: PrComment): string {
  * author (marked when from outside the team), resolved or not. The open ones come selected;
  * "Enviar ao agente" hands the chosen ones to the card's session. Nothing is posted back.
  */
-export function PrComments(props: {
-  store: AppStore;
-  hostId: string;
-  cardId: string;
-  /** Changes whenever the card did (its PR is polled): the comments are read again. */
-  moment: string;
-}) {
+export function PrComments(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    cardId: string;
+    /** Changes whenever the card did (its PR is polled): the comments are read again. */
+    moment: string;
+  }>,
+) {
   const t = useT();
   const { store, hostId, cardId } = props;
   const [comments, setComments] = useState<PrComment[] | null>(null);

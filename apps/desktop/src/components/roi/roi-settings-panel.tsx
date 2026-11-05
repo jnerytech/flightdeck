@@ -18,7 +18,7 @@ function amountOf(text: string): number | null | "bad" {
  * Phase 36: what the person types for the return on cost: the default hourly rate, whether their
  * review time counts, and the people (groups of hosts with a monthly limit). Money stays in the app.
  */
-export function RoiSettingsPanel(props: { store: AppStore }) {
+export function RoiSettingsPanel(props: Readonly<{ store: AppStore }>) {
   const { store } = props;
   const t = useT();
   const hosts = useStoreSlice(store, ["hosts", "roiRevision"]).hosts;

@@ -9,7 +9,7 @@ import { isLocalUrl } from "@/lib/terminal";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
 /** The folders a host lets its sessions and projects use, and a way to add one (the host decides). */
-export function AllowedFolders(props: { store: AppStore; host: HostView }) {
+export function AllowedFolders(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
   const t = useT();
   const [folder, setFolder] = useState("");

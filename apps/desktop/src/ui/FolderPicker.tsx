@@ -34,14 +34,16 @@ function moveByKey(event: React.KeyboardEvent<HTMLUListElement>): boolean {
  * subfolders, a breadcrumb, the arrow keys. On this machine the system dialog is offered too; what
  * it gives is checked by the host like everything else.
  */
-export function FolderPicker(props: {
-  store: AppStore;
-  host: HostView;
-  /** Also list the files of the open folder, and let one be picked. */
-  files?: boolean;
-  onPick(path: string): void;
-  onClose(): void;
-}) {
+export function FolderPicker(
+  props: Readonly<{
+    store: AppStore;
+    host: HostView;
+    /** Also list the files of the open folder, and let one be picked. */
+    files?: boolean;
+    onPick(path: string): void;
+    onClose(): void;
+  }>,
+) {
   const { store, host } = props;
   const t = useT();
   const [listing, setListing] = useState<FsDirsResult | null>(null);

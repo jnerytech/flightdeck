@@ -7,7 +7,9 @@ import type { AppStore } from "../lib/app-store.ts";
  * The files a session wrote, from its transcripts (`session.files`): path, how many tool calls
  * and when. Changes made through Bash never show up here, and the text says so.
  */
-export function SessionFiles(props: { store: AppStore; hostId: string; claudeSessionId: string }) {
+export function SessionFiles(
+  props: Readonly<{ store: AppStore; hostId: string; claudeSessionId: string }>,
+) {
   const t = useT();
   const { store, hostId, claudeSessionId } = props;
   const [files, setFiles] = useState<SessionFile[] | null>(null);

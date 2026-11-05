@@ -9,14 +9,16 @@ interface Row {
 }
 
 /** One project of the host's usage table: its name and total, then its days (each opens History). */
-export function UsageGroupRows(props: {
-  group: UsageGroup<Row>;
-  /** How many columns the table has, for the project's header cell. */
-  columns: number;
-  total: string;
-  format: { cost(usd: number): string; number(n: number): string };
-  onOpenHistory?(filter: UsageHistoryTarget): void;
-}) {
+export function UsageGroupRows(
+  props: Readonly<{
+    group: UsageGroup<Row>;
+    /** How many columns the table has, for the project's header cell. */
+    columns: number;
+    total: string;
+    format: { cost(usd: number): string; number(n: number): string };
+    onOpenHistory?(filter: UsageHistoryTarget): void;
+  }>,
+) {
   const { group, format } = props;
   return (
     <tbody>

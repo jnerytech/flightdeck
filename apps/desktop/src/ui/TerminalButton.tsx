@@ -12,12 +12,14 @@ import { hasFeature } from "../lib/version.ts";
  * command when the host is elsewhere; with the host's own terminals on (phase 14), "Claude aqui"
  * opens it in a tab of the app too. `name` tells several buttons apart in a list.
  */
-export function TerminalButton(props: {
-  store: AppStore;
-  hostId: string;
-  target: TerminalTarget;
-  name?: string;
-}) {
+export function TerminalButton(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    target: TerminalTarget;
+    name?: string;
+  }>,
+) {
   const t = useT();
   const { store, hostId, target, name } = props;
   const launch = store.terminalLaunch(hostId, target);

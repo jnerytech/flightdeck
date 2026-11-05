@@ -14,21 +14,23 @@ import { TracePanel } from "./TracePanel.tsx";
  * conversation is all there is. The conversation stays mounted under the other tab, so what was
  * typed in its box is still there.
  */
-export function SessionTabs(props: {
-  store: AppStore;
-  hostId: string;
-  /** The Claude Code session id, once known. */
-  claudeSessionId: string | null | undefined;
-  /** The host announces `review`. */
-  enabled: boolean;
-  /** Phase 21: the session's id for messages, when the host announces `messaging`. */
-  messagingId?: string | null;
-  /** Phase 23: the host announces `telemetry`, so the Tempo tab has a timeline to show. */
-  telemetry?: boolean;
-  /** Phase 25: the host announces `trace`, so the Rastro tab can show the session's tree. */
-  trace?: boolean;
-  children: ReactNode;
-}) {
+export function SessionTabs(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    /** The Claude Code session id, once known. */
+    claudeSessionId: string | null | undefined;
+    /** The host announces `review`. */
+    enabled: boolean;
+    /** Phase 21: the session's id for messages, when the host announces `messaging`. */
+    messagingId?: string | null;
+    /** Phase 23: the host announces `telemetry`, so the Tempo tab has a timeline to show. */
+    telemetry?: boolean;
+    /** Phase 25: the host announces `trace`, so the Rastro tab can show the session's tree. */
+    trace?: boolean;
+    children: ReactNode;
+  }>,
+) {
   const t = useT();
   const [tab, setTab] = useState<"conversation" | "changes" | "messages" | "time" | "trace">(
     "conversation",

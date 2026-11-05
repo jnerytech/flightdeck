@@ -1,5 +1,5 @@
 /** A horizontal bar as wide as `ratio` (0 to 1) of its row, for a time or a share. */
-export function Bar(props: { ratio: number }) {
+export function Bar(props: Readonly<{ ratio: number }>) {
   return (
     <div
       data-bar

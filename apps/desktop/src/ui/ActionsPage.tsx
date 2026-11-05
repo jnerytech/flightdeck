@@ -29,7 +29,7 @@ function usesProdSecret(action: ActionInfo, secrets: SecretMeta[]): boolean {
 }
 
 /** One action's runs, newest first; the output is shown as the daemon masked it. */
-function Runs(props: { store: AppStore; action: ActionInfo; runs: ActionRunInfo[] }) {
+function Runs(props: Readonly<{ store: AppStore; action: ActionInfo; runs: ActionRunInfo[] }>) {
   const { store, action } = props;
   const { t } = store.i18n;
   if (props.runs.length === 0) {
@@ -72,14 +72,16 @@ function Runs(props: { store: AppStore; action: ActionInfo; runs: ActionRunInfo[
 const problemsOf = (list: ActionList, t: T): string[] =>
   list.issues ? list.issues.map((issue) => actionIssueText(issue, t)) : list.errors;
 
-export function ActionsPage(props: {
-  store: AppStore;
-  hostId: string;
-  projectId: string;
-  projectName: string;
-  /** Opens the form on a new action filled from a snippet (phase 18). */
-  draft?: ActionSeed;
-}) {
+export function ActionsPage(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    projectId: string;
+    projectName: string;
+    /** Opens the form on a new action filled from a snippet (phase 18). */
+    draft?: ActionSeed;
+  }>,
+) {
   const { store, hostId, projectId } = props;
   const { t } = store.i18n;
   const [actions, setActions] = useState<ActionInfo[] | null>(null);

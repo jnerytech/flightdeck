@@ -2,13 +2,15 @@ import { forwardRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /** A session's title, its gray line and its controls, over the timeline. */
-export function SessionHeader(props: {
-  title: ReactNode;
-  subtitle?: ReactNode;
-  controls?: ReactNode;
-  /** A row of its own under the buttons (the persona controls). */
-  extra?: ReactNode;
-}) {
+export function SessionHeader(
+  props: Readonly<{
+    title: ReactNode;
+    subtitle?: ReactNode;
+    controls?: ReactNode;
+    /** A row of its own under the buttons (the persona controls). */
+    extra?: ReactNode;
+  }>,
+) {
   return (
     <header className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
       <div className="min-w-0">
@@ -55,13 +57,15 @@ export const Timeline = forwardRef<
 });
 
 /** One message: the user's in a soft bubble on the right, the assistant's plain. */
-export function Message(props: {
-  from: "user" | "assistant";
-  children: ReactNode;
-  className?: string;
-  "data-uuid"?: string;
-  "aria-current"?: "true";
-}) {
+export function Message(
+  props: Readonly<{
+    from: "user" | "assistant";
+    children: ReactNode;
+    className?: string;
+    "data-uuid"?: string;
+    "aria-current"?: "true";
+  }>,
+) {
   return (
     <div
       data-uuid={props["data-uuid"]}
@@ -80,12 +84,12 @@ export function Message(props: {
 }
 
 /** Under the conversation: what waits to go out, the activity line, the box and its state line. */
-export function ComposerDock(props: { children: ReactNode }) {
+export function ComposerDock(props: Readonly<{ children: ReactNode }>) {
   return <div className="composer-dock">{props.children}</div>;
 }
 
 /** The floating rounded card of the message box and its buttons. */
-export function Composer(props: { children: ReactNode }) {
+export function Composer(props: Readonly<{ children: ReactNode }>) {
   return (
     <div data-slot="composer-card" className="composer-card">
       {props.children}
@@ -94,6 +98,6 @@ export function Composer(props: { children: ReactNode }) {
 }
 
 /** A session pane: header, timeline and composer stacked, filling its column. */
-export function SessionPane(props: { children: ReactNode }) {
+export function SessionPane(props: Readonly<{ children: ReactNode }>) {
   return <section className="flex h-full min-h-0 flex-col">{props.children}</section>;
 }

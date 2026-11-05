@@ -10,13 +10,15 @@ function nextLabels(multiSelect: boolean, labels: string[], label: string, on: b
   return on ? [...labels, label] : labels.filter((l) => l !== label);
 }
 
-export function QuestionForm(props: {
-  questions: AskQuestion[];
-  picks: Record<string, AskPick>;
-  t: T;
-  disabled?: boolean;
-  onChange(question: string, pick: AskPick): void;
-}) {
+export function QuestionForm(
+  props: Readonly<{
+    questions: AskQuestion[];
+    picks: Record<string, AskPick>;
+    t: T;
+    disabled?: boolean;
+    onChange(question: string, pick: AskPick): void;
+  }>,
+) {
   const { questions, picks, t } = props;
   return (
     <Stack gap={4}>

@@ -39,15 +39,17 @@ const HOOK_LABELS = {
  * One host: what `host.info` reports, heartbeat latency, the Claude Code hooks, and rename /
  * reconnect / remove.
  */
-export function HostPage(props: {
-  store: AppStore;
-  host: HostView;
-  onRename(name: string): HostNameError | null;
-  onReconnect(): void;
-  onOpenAutoApprovals(): void;
-  onOpenHistory(filter: UsageHistoryTarget): void;
-  onRemove(): void;
-}) {
+export function HostPage(
+  props: Readonly<{
+    store: AppStore;
+    host: HostView;
+    onRename(name: string): HostNameError | null;
+    onReconnect(): void;
+    onOpenAutoApprovals(): void;
+    onOpenHistory(filter: UsageHistoryTarget): void;
+    onRemove(): void;
+  }>,
+) {
   const t = useT();
   const { host } = props;
   const [renaming, setRenaming] = useState(false);
@@ -232,7 +234,7 @@ export function HostPage(props: {
 }
 
 /** The heartbeat latency line: the only part of the page that renders on a ping. */
-function HostLatency(props: { store: AppStore; hostId: string }) {
+function HostLatency(props: Readonly<{ store: AppStore; hostId: string }>) {
   const t = useT();
   const latency = useHostLatency(props.store, props.hostId);
   return <li>{t("hostPage.latency", { value: latency === null ? "—" : `${latency} ms` })}</li>;

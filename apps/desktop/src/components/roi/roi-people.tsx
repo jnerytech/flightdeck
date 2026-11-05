@@ -15,7 +15,7 @@ const REFRESH_MS = 30_000;
  * the app keeps; the table is a view, not a score: people are listed by name and the page says that
  * hosts are not people and that cost and delivery are only correlated.
  */
-export function RoiPeople(props: { store: AppStore }) {
+export function RoiPeople(props: Readonly<{ store: AppStore }>) {
   const { store } = props;
   const t = useT();
   // The people are the app's own settings: a person added or removed shows at once.

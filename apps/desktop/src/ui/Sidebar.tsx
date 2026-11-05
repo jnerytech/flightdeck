@@ -47,27 +47,29 @@ function NavIcon({ name, ...props }: LucideProps & { name: NavKey }) {
 }
 
 /** One line of the bar: an icon, its label (hidden in the rail, which keeps it as a tooltip) and a tail. */
-function NavButton(props: {
-  icon: ReactNode;
-  label: string;
-  /** The accessible name, when it is not the visible label. */
-  name?: string;
-  collapsed: boolean;
-  onClick(): void;
-  disabled?: boolean;
-  /** A chip or badge after the label: expanded only, the rail has no room for it. */
-  tail?: ReactNode;
-  /** What the tail says in words (a count, a shortcut): the rail moves it to the name and the tooltip. */
-  hint?: string;
-  /** The keys that open this item, for assistive technology (`Control+K`). */
-  keys?: string;
-  /** Something waits here: the rail marks the icon with a dot instead of a badge. */
-  attention?: boolean;
-  /** The screen the user is on: full contrast and marked as the current page. */
-  active?: boolean;
-  /** Something waits here: full contrast even when it is not the open screen. */
-  strong?: boolean;
-}) {
+function NavButton(
+  props: Readonly<{
+    icon: ReactNode;
+    label: string;
+    /** The accessible name, when it is not the visible label. */
+    name?: string;
+    collapsed: boolean;
+    onClick(): void;
+    disabled?: boolean;
+    /** A chip or badge after the label: expanded only, the rail has no room for it. */
+    tail?: ReactNode;
+    /** What the tail says in words (a count, a shortcut): the rail moves it to the name and the tooltip. */
+    hint?: string;
+    /** The keys that open this item, for assistive technology (`Control+K`). */
+    keys?: string;
+    /** Something waits here: the rail marks the icon with a dot instead of a badge. */
+    attention?: boolean;
+    /** The screen the user is on: full contrast and marked as the current page. */
+    active?: boolean;
+    /** Something waits here: full contrast even when it is not the open screen. */
+    strong?: boolean;
+  }>,
+) {
   const railName = props.hint ? `${props.label} (${props.hint})` : props.label;
   return (
     <button
@@ -104,12 +106,14 @@ function NavButton(props: {
 }
 
 /** A section title that folds its list. */
-function SectionTitle(props: {
-  label: string;
-  open: boolean;
-  onToggle(): void;
-  action?: ReactNode;
-}) {
+function SectionTitle(
+  props: Readonly<{
+    label: string;
+    open: boolean;
+    onToggle(): void;
+    action?: ReactNode;
+  }>,
+) {
   return (
     <div className="flex items-center justify-between px-2 pt-3">
       <button
@@ -133,14 +137,16 @@ function SectionTitle(props: {
  * A titled group of items that folds. Without items it is not drawn; in the icon rail it is only
  * a run of icons, since a heading has no room there.
  */
-function NavGroup(props: {
-  id: string;
-  label: string;
-  collapsed: boolean;
-  folded: boolean;
-  onToggle(): void;
-  children: ReactNode;
-}) {
+function NavGroup(
+  props: Readonly<{
+    id: string;
+    label: string;
+    collapsed: boolean;
+    folded: boolean;
+    onToggle(): void;
+    children: ReactNode;
+  }>,
+) {
   const items = Children.toArray(props.children).filter(Boolean);
   if (items.length === 0) return null;
   if (props.collapsed) {
@@ -170,24 +176,26 @@ function NavGroup(props: {
 }
 
 /** The app's bar: logo, navigation, hosts, pinned sessions and the footer; a rail of icons when collapsed. */
-export function Sidebar(props: {
-  store: AppStore;
-  state: AppState;
-  collapsed: boolean;
-  t: T;
-  go(route: Route): void;
-  /** Where the user is, to mark the sidebar item of that screen. */
-  route?: Route;
-  /** Board or Workflows of a host: its only project opens directly, several ask which. */
-  onOpenProjectScreen(hostId: string, kind: "board" | "workflows"): void;
-  onNewSession(hostId: string): void;
-  onRemoveHost(hostId: string): void;
-  onRenameHost(hostId: string, name: string): HostNameError | null;
-  onOpenSearch(): void;
-  /** The next navigation opens a new tab ("Abrir em nova aba"). */
-  onNewTab(): void;
-  onToggleTheme(): void;
-}) {
+export function Sidebar(
+  props: Readonly<{
+    store: AppStore;
+    state: AppState;
+    collapsed: boolean;
+    t: T;
+    go(route: Route): void;
+    /** Where the user is, to mark the sidebar item of that screen. */
+    route?: Route;
+    /** Board or Workflows of a host: its only project opens directly, several ask which. */
+    onOpenProjectScreen(hostId: string, kind: "board" | "workflows"): void;
+    onNewSession(hostId: string): void;
+    onRemoveHost(hostId: string): void;
+    onRenameHost(hostId: string, name: string): HostNameError | null;
+    onOpenSearch(): void;
+    /** The next navigation opens a new tab ("Abrir em nova aba"). */
+    onNewTab(): void;
+    onToggleTheme(): void;
+  }>,
+) {
   const { state, t, collapsed, go } = props;
   const here = props.route ? activeNav(props.route) : null;
   /** The host the screens that need one open on: the selected one, else the first online. */
@@ -589,7 +597,7 @@ export function Sidebar(props: {
 }
 
 /** A host's connection state as a dot. */
-function HostDot(props: { host: HostView; t: T }) {
+function HostDot(props: Readonly<{ host: HostView; t: T }>) {
   return (
     <StatusDot
       {...hostDotView(props.host.status)}

@@ -30,18 +30,20 @@ export function joinPath(root: string, sub: string): string {
 }
 
 /** New session on a host: folder inside one of its allowedRoots, name, permission mode, prompt. */
-export function NewSessionForm(props: {
-  host: HostView;
-  /** Lets the folder be browsed on the host; without it the folder is typed. */
-  store?: AppStore;
-  onCreate(payload: CommandPayload<"session.create">): void | Promise<unknown>;
-  /** The first prompt, filled in (a snippet, phase 18). */
-  prompt?: string;
-  /** More fields above Criar sessão: the persona picker (phase 20). */
-  extra?: React.ReactNode;
-  /** Told the folder as it is chosen, so what depends on it (a client's persona) can follow. */
-  onFolder?(cwd: string): void;
-}) {
+export function NewSessionForm(
+  props: Readonly<{
+    host: HostView;
+    /** Lets the folder be browsed on the host; without it the folder is typed. */
+    store?: AppStore;
+    onCreate(payload: CommandPayload<"session.create">): void | Promise<unknown>;
+    /** The first prompt, filled in (a snippet, phase 18). */
+    prompt?: string;
+    /** More fields above Criar sessão: the persona picker (phase 20). */
+    extra?: React.ReactNode;
+    /** Told the folder as it is chosen, so what depends on it (a client's persona) can follow. */
+    onFolder?(cwd: string): void;
+  }>,
+) {
   const t = useT();
   const roots = props.host.info?.allowedRoots ?? [];
   // The folder picked, else the host's first: its folders may arrive after the form opened.

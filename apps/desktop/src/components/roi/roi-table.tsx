@@ -37,15 +37,17 @@ function ariaSort(
  * what it cost. Sortable by every column; a figure that cannot be computed shows a dash, and the
  * footer adds up the rows.
  */
-export function RoiTable(props: {
-  store: AppStore;
-  hostIds: string[];
-  from: string;
-  to: string;
-  /** The client selection of the screen. */
-  selection: string;
-  projectName: (projectKey: string) => string;
-}) {
+export function RoiTable(
+  props: Readonly<{
+    store: AppStore;
+    hostIds: string[];
+    from: string;
+    to: string;
+    /** The client selection of the screen. */
+    selection: string;
+    projectName: (projectKey: string) => string;
+  }>,
+) {
   const { store, from, to, selection, projectName } = props;
   const t = useT();
   // The money is the app's own settings: a saved rate shows at once.

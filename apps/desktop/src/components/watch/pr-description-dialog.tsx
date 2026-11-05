@@ -10,12 +10,14 @@ import { useT } from "@/i18n/context";
  * Phase 22: the PR description made from the card's sessions, for the person to read and edit.
  * Nothing is opened until the confirmation; a line that looked like a secret was already taken out.
  */
-export function PrDescriptionDialog(props: {
-  text: string;
-  redacted: number;
-  onConfirm(text: string): unknown;
-  onCancel(): void;
-}) {
+export function PrDescriptionDialog(
+  props: Readonly<{
+    text: string;
+    redacted: number;
+    onConfirm(text: string): unknown;
+    onCancel(): void;
+  }>,
+) {
   const t = useT();
   const [text, setText] = useState(props.text);
   return (

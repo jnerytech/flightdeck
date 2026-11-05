@@ -8,7 +8,7 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
  * Phase 9: updating the host's daemon from the app. Behind a confirmation; "atualizando…" until
  * the host comes back on the new version, or why it did not, with the manual command.
  */
-export function DaemonUpdate(props: { store: AppStore; host: HostView }) {
+export function DaemonUpdate(props: Readonly<{ store: AppStore; host: HostView }>) {
   const t = props.store.i18n.t;
   const { store, host } = props;
   const [confirming, setConfirming] = useState(false);

@@ -35,14 +35,16 @@ const VariantContext = createContext<FormVariant>("page");
  * The shared form: a real `<form>`, so Enter in a text field submits it (Enter in a textarea adds
  * a line). Fields stack with labels above, and the buttons close it, primary last.
  */
-export function Form(props: {
-  onSubmit(): void;
-  variant?: FormVariant;
-  className?: string;
-  /** Names the form for assistive technology when the screen has more than one. */
-  "aria-label"?: string;
-  children: ReactNode;
-}) {
+export function Form(
+  props: Readonly<{
+    onSubmit(): void;
+    variant?: FormVariant;
+    className?: string;
+    /** Names the form for assistive technology when the screen has more than one. */
+    "aria-label"?: string;
+    children: ReactNode;
+  }>,
+) {
   const variant = props.variant ?? "page";
   return (
     <VariantContext.Provider value={variant}>
@@ -62,12 +64,14 @@ export function Form(props: {
 }
 
 /** A label above its control, with optional help text and an error linked to the control. */
-export function Field(props: {
-  label: ReactNode;
-  help?: ReactNode;
-  error?: ReactNode;
-  children: (control: FieldControl) => ReactNode;
-}) {
+export function Field(
+  props: Readonly<{
+    label: ReactNode;
+    help?: ReactNode;
+    error?: ReactNode;
+    children: (control: FieldControl) => ReactNode;
+  }>,
+) {
   const id = useId();
   const helpId = props.help ? `${id}-help` : undefined;
   const errorId = props.error ? `${id}-error` : undefined;
@@ -123,20 +127,22 @@ export function NativeSelect({
  * The buttons that close a form: the secondary one first and the primary last, at the end of a
  * dialog and at the left edge of the fields elsewhere. A disabled primary says why under them.
  */
-export function FormActions(props: {
-  /** The primary button's label: the verb of what the form does. */
-  submit: string;
-  disabled?: boolean;
-  /** The form is working (a command is running): the primary shows a spinner and does nothing. */
-  busy?: boolean;
-  /** Why the primary button is disabled: shown under the buttons, never silent. */
-  disabledReason?: ReactNode;
-  /** The secondary button's label; the button only exists with `onCancel`. */
-  cancel?: string;
-  onCancel?(): void;
-  /** More secondary buttons (a wizard's "Voltar"), after the cancel and before the primary. */
-  extra?: ReactNode;
-}) {
+export function FormActions(
+  props: Readonly<{
+    /** The primary button's label: the verb of what the form does. */
+    submit: string;
+    disabled?: boolean;
+    /** The form is working (a command is running): the primary shows a spinner and does nothing. */
+    busy?: boolean;
+    /** Why the primary button is disabled: shown under the buttons, never silent. */
+    disabledReason?: ReactNode;
+    /** The secondary button's label; the button only exists with `onCancel`. */
+    cancel?: string;
+    onCancel?(): void;
+    /** More secondary buttons (a wizard's "Voltar"), after the cancel and before the primary. */
+    extra?: ReactNode;
+  }>,
+) {
   const variant = useContext(VariantContext);
   const id = useId();
   const reason = props.disabled && props.disabledReason ? props.disabledReason : null;
@@ -181,11 +187,13 @@ export function FormActions(props: {
 }
 
 /** A checkbox with its label beside it, for a switch in a toolbar. */
-export function CheckField(props: {
-  checked: boolean;
-  onChange(checked: boolean): void;
-  children: ReactNode;
-}) {
+export function CheckField(
+  props: Readonly<{
+    checked: boolean;
+    onChange(checked: boolean): void;
+    children: ReactNode;
+  }>,
+) {
   return (
     <label className="flex items-center gap-1.5">
       <input
@@ -203,12 +211,14 @@ export function CheckField(props: {
  * An ActionButton inside says why it is disabled there (aligned with the first field), not under
  * itself.
  */
-export function FieldRow(props: {
-  children: ReactNode;
-  className?: string;
-  /** `end` lines the controls up by their bottom edges (fields with labels above them). */
-  align?: "end";
-}) {
+export function FieldRow(
+  props: Readonly<{
+    children: ReactNode;
+    className?: string;
+    /** `end` lines the controls up by their bottom edges (fields with labels above them). */
+    align?: "end";
+  }>,
+) {
   const id = useId();
   const [reason, setReason] = useState<string | null>(null);
   return (

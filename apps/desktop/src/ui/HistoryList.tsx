@@ -42,17 +42,19 @@ function toFilter(draft: Draft): HistoryFilter {
 }
 
 /** Indexed sessions of one host, newest first, with folder, period and origin filters. */
-export function HistoryList(props: {
-  store: AppStore;
-  hostId: string;
-  hostName: string;
-  density: Density;
-  /** The session open on the right, if any. */
-  openId: string | null;
-  onOpen(claudeSessionId: string): void;
-  /** Opened from a usage row: starts filtered by that folder and day (UTC). */
-  initial?: { cwd?: string; projectKey?: string; day?: string };
-}) {
+export function HistoryList(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    hostName: string;
+    density: Density;
+    /** The session open on the right, if any. */
+    openId: string | null;
+    onOpen(claudeSessionId: string): void;
+    /** Opened from a usage row: starts filtered by that folder and day (UTC). */
+    initial?: { cwd?: string; projectKey?: string; day?: string };
+  }>,
+) {
   const { store, hostId } = props;
   const [draft, setDraft] = useState<Draft>(() => ({
     cwd: props.initial?.cwd ?? "",

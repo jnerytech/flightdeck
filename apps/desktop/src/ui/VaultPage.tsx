@@ -29,20 +29,22 @@ function infoText(info: SecretInfo, fingerprint: (value: string) => string): str
   return info.hint ?? info.names?.join(", ") ?? "";
 }
 
-function SecretRow(props: {
-  secret: SecretMeta;
-  info: SecretInfo;
-  /** The value, while it is revealed. */
-  revealed: string | null;
-  onReveal(): void;
-  onCopy(): void;
-  onRemove(): void;
-  onEdit(): void;
-  /** Phase 19: the secret's usage rules. */
-  onRules(): void;
-  onCopyPublicKey(): void;
-  hostName(id: string): string;
-}) {
+function SecretRow(
+  props: Readonly<{
+    secret: SecretMeta;
+    info: SecretInfo;
+    /** The value, while it is revealed. */
+    revealed: string | null;
+    onReveal(): void;
+    onCopy(): void;
+    onRemove(): void;
+    onEdit(): void;
+    /** Phase 19: the secret's usage rules. */
+    onRules(): void;
+    onCopyPublicKey(): void;
+    hostName(id: string): string;
+  }>,
+) {
   const t = useT();
   const { secret, info } = props;
   const detail = infoText(info, (value) => t("vault.fingerprint", { value }));

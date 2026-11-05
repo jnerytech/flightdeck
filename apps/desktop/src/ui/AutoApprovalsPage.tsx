@@ -17,7 +17,7 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
  * What the automatic approval decided on a host (newest first, filtered by project and text) and
  * the sessions it suspended, which only a confirmed Resume turns back on.
  */
-export function AutoApprovalsPage(props: { store: AppStore; hostId: string }) {
+export function AutoApprovalsPage(props: Readonly<{ store: AppStore; hostId: string }>) {
   const { store, hostId } = props;
   const { t } = store.i18n;
   const [decisions, setDecisions] = useState<AutoApprovalRecord[] | null>(null);

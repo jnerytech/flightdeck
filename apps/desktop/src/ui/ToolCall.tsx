@@ -4,11 +4,13 @@ import { cn } from "@/lib/utils";
 import { inputSummary } from "../lib/tool-input.ts";
 
 /** Collapsed tool call: name and input summary; expands to the full input and its result. */
-export function ToolCall(props: {
-  name: string;
-  input: unknown;
-  result?: { content: string; isError: boolean };
-}) {
+export function ToolCall(
+  props: Readonly<{
+    name: string;
+    input: unknown;
+    result?: { content: string; isError: boolean };
+  }>,
+) {
   const t = useT();
   return (
     <details className="group rounded-md border bg-card text-sm">
