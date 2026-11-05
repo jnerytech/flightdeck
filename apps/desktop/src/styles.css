@@ -339,6 +339,12 @@
   height: 1.5rem;
   margin-bottom: 0.125rem;
 }
+/* A tab's badge: a glyph that keeps its size beside the title (issue #172). */
+@utility tab-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
 @utility tab-item {
   /* One basis for every tab: they share the strip equally and shrink together, like a browser's. */
   flex: 0 1 14rem;

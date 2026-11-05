@@ -399,7 +399,7 @@ function TabBadgeGlyph(props: { badge: NonNullable<TabBadge>; label: string }) {
       aria-label={props.label}
       title={props.label}
       className={cn(
-        "inline-flex shrink-0",
+        "tab-badge",
         glyph.className,
         badgePulses(props.badge) && "motion-safe:animate-spin",
       )}
