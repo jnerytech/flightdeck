@@ -3,6 +3,8 @@ export interface Commit {
   subject: string;
   type: string | null;
   scope: string | null;
+  /** The value of a `TDD-Waiver:` trailer: a feat/fix made without a test on purpose. */
+  waiver?: string;
 }
 
 export interface Violation {
@@ -21,15 +23,21 @@ export const FORBIDDEN_MARKERS = [
   { pattern: /\btest\.todo\(/g, text: "test.todo(" },
 ];
 
-/** Parses `git log --format=%H%x1f%s` output into conventional-commit parts. */
+/** The log format `parseCommits` reads: hash, subject and the `TDD-Waiver` trailer's value. */
+export const LOG_FORMAT =
+  "--format=%H%x1f%s%x1f%(trailers:key=TDD-Waiver,valueonly,separator=%x20)";
+
+/** Parses `git log` output in `LOG_FORMAT` (or just `%H%x1f%s`) into conventional-commit parts. */
 export function parseCommits(log: string): Commit[] {
   return log
     .split("\n")
     .filter((line) => line.trim() !== "")
     .map((line) => {
-      const [hash = "", subject = ""] = line.split("\x1f");
+      const [hash = "", subject = "", waiver = ""] = line.split("\x1f");
       const match = CONVENTIONAL.exec(subject);
-      return { hash, subject, type: match?.[1] ?? null, scope: match?.[2] ?? null };
+      const commit: Commit = { hash, subject, type: match?.[1] ?? null, scope: match?.[2] ?? null };
+      if (waiver.trim()) commit.waiver = waiver.trim();
+      return commit;
     });
 }
 
@@ -138,15 +146,17 @@ export function runAudit({ since: asked, git, readFile, waivers = [] }: AuditDep
   if (git(["rev-parse", "--verify", `${since}^{commit}`]) === null) {
     return { code: 2, output: `tag ou commit desconhecido: ${since}` };
   }
-  const commits = parseCommits(
-    git(["log", "--reverse", "--format=%H%x1f%s", `${since}..HEAD`]) ?? "",
-  );
+  const commits = parseCommits(git(["log", "--reverse", LOG_FORMAT, `${since}..HEAD`]) ?? "");
   const files = (git(["ls-files", "*.test.ts", "*.test.tsx"]) ?? "")
     .split("\n")
     .filter(Boolean)
     .map((path) => ({ path, content: readFile(path) }));
   const found = auditCommits(commits);
-  const waived = waivers.filter((w) =>
+  // A TDD-Waiver trailer waives its own commit; one on a commit that needs no waiver is ignored.
+  const trailers: Waiver[] = commits.flatMap((c) =>
+    c.waiver && c.scope ? [{ hash: c.hash, scope: c.scope, reason: `trailer: ${c.waiver}` }] : [],
+  );
+  const waived = [...waivers, ...trailers].filter((w) =>
     found.some((v) => v.commit === w.hash && v.scope === w.scope),
   );
   const inRange = new Set(commits.map((c) => c.hash));
