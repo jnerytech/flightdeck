@@ -344,6 +344,7 @@ export function SessionView(props: SessionViewProps) {
     card?.scrollIntoView?.({ block: "center" });
   }, [focusRequestId, cards]);
   const missed = awaySeq === null ? 0 : props.session.items.filter((i) => i.seq > awaySeq).length;
+  const jumpKey = missed === 1 ? "session.jumpLatestOne" : "session.jumpLatestMany";
   const { session, actions } = props;
   const [text, setText] = useState("");
   const [closing, setClosing] = useState(false);
@@ -620,9 +621,7 @@ export function SessionView(props: SessionViewProps) {
             }}
           >
             <ArrowDown aria-hidden="true" />
-            {missed === 0
-              ? t("session.jumpLatest")
-              : t(missed === 1 ? "session.jumpLatestOne" : "session.jumpLatestMany", { n: missed })}
+            {missed === 0 ? t("session.jumpLatest") : t(jumpKey, { n: missed })}
           </Button>
         )}
       </div>

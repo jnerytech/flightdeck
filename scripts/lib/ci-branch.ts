@@ -58,6 +58,47 @@ async function runIds(branch: string, deps: CiBranchDeps): Promise<number[]> {
   return (JSON.parse(list.stdout) as Array<{ databaseId: number }>).map((run) => run.databaseId);
 }
 
+/** Polls a run until it completes; null (after saying so) when it is still running at the deadline. */
+async function waitForRun(
+  id: number,
+  deps: CiBranchDeps,
+  options: CiBranchOptions,
+): Promise<RunView | null> {
+  const doneBy = deps.now() + options.waitMs;
+  for (;;) {
+    const answer = await deps.gh([
+      "run",
+      "view",
+      String(id),
+      "--json",
+      "status,conclusion,url,jobs",
+    ]);
+    const view = JSON.parse(answer.stdout) as RunView;
+    if (view.status === "completed") return view;
+    if (deps.now() >= doneBy) {
+      deps.log(
+        `ci-branch: run ${id} is still ${view.status} after ${Math.round(options.waitMs / 60_000)} min: ${view.url}`,
+      );
+      return null;
+    }
+    await deps.sleep(options.pollMs);
+  }
+}
+
+/** Prints how to download each artifact of the run. */
+async function logArtifacts(id: number, deps: CiBranchDeps): Promise<void> {
+  const names = await deps.gh([
+    "api",
+    `repos/{owner}/{repo}/actions/runs/${id}/artifacts`,
+    "--jq",
+    "[.artifacts[].name]",
+  ]);
+  if (names.code !== 0) return;
+  for (const name of JSON.parse(names.stdout) as string[]) {
+    deps.log(`  artifact ${name}: gh run download ${id} -n ${name}`);
+  }
+}
+
 /** Dispatches CI on `branch`, waits for it and prints the result. Exit code: 0 green, 1 red, 2 could not run. */
 export async function ciBranch(
   branch: string,
@@ -98,39 +139,11 @@ export async function ciBranch(
     await deps.sleep(options.pollMs);
   }
 
-  const doneBy = deps.now() + options.waitMs;
-  let view: RunView;
-  for (;;) {
-    const answer = await deps.gh([
-      "run",
-      "view",
-      String(id),
-      "--json",
-      "status,conclusion,url,jobs",
-    ]);
-    view = JSON.parse(answer.stdout) as RunView;
-    if (view.status === "completed") break;
-    if (deps.now() >= doneBy) {
-      deps.log(
-        `ci-branch: run ${id} is still ${view.status} after ${Math.round(options.waitMs / 60_000)} min: ${view.url}`,
-      );
-      return 2;
-    }
-    await deps.sleep(options.pollMs);
-  }
+  const view = await waitForRun(id, deps, options);
+  if (view === null) return 2;
 
   deps.log(`ci-branch: ${view.conclusion} ${view.url}`);
   for (const job of view.jobs) deps.log(`  ${job.name}: ${job.conclusion}`);
-  const names = await deps.gh([
-    "api",
-    `repos/{owner}/{repo}/actions/runs/${id}/artifacts`,
-    "--jq",
-    "[.artifacts[].name]",
-  ]);
-  if (names.code === 0) {
-    for (const name of JSON.parse(names.stdout) as string[]) {
-      deps.log(`  artifact ${name}: gh run download ${id} -n ${name}`);
-    }
-  }
+  await logArtifacts(id, deps);
   return view.conclusion === "success" ? 0 : 1;
 }
