@@ -181,4 +181,22 @@ describe("home-kpis: the four cards of Home from what the hosts already count", 
     expect(kpis.average.turnMs).toBe(1000);
     expect(kpis.average.successRate).toBe(0.75);
   });
+
+  test("a host whose day is already the next one counts into the last day of the window, not nowhere (HK-m1)", () => {
+    const kpis = homeKpis(
+      input({
+        costs: [costs([["2026-10-11", 3, 300]])],
+        usage: [
+          usage(row("2026-10-11", { turns: 2, costUsd: 3, failedTurns: 0, durationMs: 100 })),
+        ],
+      }),
+    );
+    expect(kpis.spend.series.at(-1)).toBe(3);
+    expect(kpis.turns.total).toBe(2);
+    expect(kpis.turns.series.at(-1)).toBe(2);
+    expect(kpis.tokens.series.at(-1)).toBe(300);
+    // And a day before the window is still left out.
+    const old = homeKpis(input({ usage: [usage(row("2026-10-01", { turns: 9 }))] }));
+    expect(old.turns.total).toBe(0);
+  });
 });
