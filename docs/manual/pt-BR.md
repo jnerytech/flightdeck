@@ -459,7 +459,11 @@ lugar só, agrupadas por projeto e ordenadas pela última atividade.
   todos. Aberto, o projeto mostra primeiro as sessões ao vivo (as que precisam de você no topo). As sessões encerradas e do histórico ficam atrás de **N sessões anteriores**, da mais
   nova para a mais antiga. Digitar no filtro também casa com o nome do projeto, e qualquer filtro (texto, host, origem,
   estado, persona, fixadas) abre tudo o que ele mantém. Uma sessão fixada fica sempre com as ao
-  vivo. Uma fileira de chips **Hosts** sob o aviso de hosts mostra só as sessões de um host
+  vivo. **O mesmo projeto em dois hosts é um só grupo**, com os dois chips de host, e cada linha
+  mantém o seu chip de host. Um projeto sem remote git é reconhecido pelo nome da pasta entre
+  hosts, mas nunca quando um host tem duas pastas com esse nome: essas ficam em grupos separados em
+  todo lugar. Grupos que repetem o nome mostram uma **dica de caminho** curta (a pasta acima do
+  projeto, por exemplo `work`) ao lado do título e no nome dele para leitores de tela. Uma fileira de chips **Hosts** sob o aviso de hosts mostra só as sessões de um host
   (aperte de novo para limpar).
 - **Títulos.** A sessão se chama pelo nome, senão pelo título que o host dá a ela (o resumo que o
   Claude Code escreveu, ou o primeiro prompt), senão pela persona com a tarefa, senão pela pasta. Os invólucros do
