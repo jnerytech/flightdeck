@@ -45,8 +45,8 @@ describe("worktrees-wiring: the board's cards behind the panel (issue #152)", ()
     let running = false;
     const w = createWorktrees({
       board: s.board,
-      sessions: () => (live ? [{ cwd: join(s.path, "src"), status: "running" }] : []),
-      runLive: (id) => running && id === s.card.id,
+      sessions: { list: () => (live ? [{ cwd: join(s.path, "src"), status: "running" }] : []) },
+      runs: { state: (id) => ({ status: running && id === s.card.id ? "running" : "idle" }) },
     });
     const first = (await w.list()).worktrees;
     expect(first.map((i) => i.cardId).sort()).toEqual([s.card.id, s.variant.id].sort());
@@ -64,8 +64,8 @@ describe("worktrees-wiring: the board's cards behind the panel (issue #152)", ()
     // An ended session does not hold the folder.
     const ended = createWorktrees({
       board: s.board,
-      sessions: () => [{ cwd: s.path, status: "ended" }],
-      runLive: () => false,
+      sessions: { list: () => [{ cwd: s.path, status: "ended" }] },
+      runs: { state: () => ({ status: "idle" }) },
     });
     expect((await ended.list()).worktrees.find((i) => i.path === s.path)?.blockers).toEqual([]);
     const result = await w.remove([{ projectId: s.project.id, path: s.path }]);
@@ -77,7 +77,11 @@ describe("worktrees-wiring: the board's cards behind the panel (issue #152)", ()
     const s = await setup();
     mkdirSync(join(s.path, "big"));
     writeFileSync(join(s.path, "big", "file.bin"), Buffer.alloc(300 * 1024));
-    const w = createWorktrees({ board: s.board, sessions: () => [], runLive: () => false });
+    const w = createWorktrees({
+      board: s.board,
+      sessions: { list: () => [] },
+      runs: { state: () => ({ status: "idle" }) },
+    });
     const { worktrees, disks } = await w.list();
     expect(worktrees.find((i) => i.path === s.path)?.sizeBytes).toBeGreaterThan(300 * 1024);
     expect(disks[0]?.totalBytes).toBeGreaterThan(0);

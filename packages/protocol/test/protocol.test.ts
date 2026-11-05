@@ -85,6 +85,8 @@ const validCommands: Record<CommandType, unknown> = {
   "external.message": { claudeSessionId: "c", text: "oi" },
   "session.meta.set": { claudeSessionId: "c", name: null, pinned: true, archived: false },
   "maintenance.status": {},
+  "worktree.list": {},
+  "worktree.remove": { items: [{ projectId: "p", path: "/x" }] },
   "maintenance.backup": {},
   "maintenance.prune": { dryRun: true },
   "daemon.shutdown": {},

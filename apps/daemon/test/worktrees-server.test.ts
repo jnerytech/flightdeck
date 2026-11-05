@@ -25,8 +25,8 @@ async function serve(withPanel = true) {
       ? {
           worktrees: createWorktrees({
             board: ctx.board,
-            sessions: () => [],
-            runLive: () => false,
+            sessions: { list: () => [] },
+            runs: { state: () => ({ status: "idle" }) },
           }),
         }
       : {}),

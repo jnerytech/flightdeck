@@ -158,6 +158,7 @@ import { PrWatcher } from "./watch/watch.ts";
 import { WebhookSender } from "./webhook/sender.ts";
 import { whichOnPath } from "./which.ts";
 import { shellCheckRunner } from "./workflows/check-runner.ts";
+import { createWorktrees } from "./worktrees/wiring.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
 import { detectWsl, readProcVersion } from "./wsl-host.ts";
 
@@ -1212,6 +1213,7 @@ export async function startDaemon(
     }),
     central,
     maintenance,
+    worktrees: createWorktrees({ board, sessions: manager, runs: runManager }),
     ...(updates ? { updates } : {}),
     snapshots,
     rewinder,
