@@ -1,7 +1,7 @@
 import type { CostsSummary } from "@flightdeck/protocol";
 import { useEffect, useMemo, useState } from "react";
 import type { AppState, AppStore } from "../lib/app-store.ts";
-import { addDays, localDay } from "../lib/costs.ts";
+import { addDays } from "../lib/costs.ts";
 import { type HubRowState, hubRows } from "../lib/hub.ts";
 import { buildProjectCards, type ProjectCard } from "../lib/project-cards.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -17,7 +17,10 @@ export function useProjectCards(
   // biome-ignore lint/correctness/useExhaustiveDependencies: reload when the hosts' set or status changes
   useEffect(() => {
     void store.loadPalette();
-    const today = localDay(Date.now());
+    const today = store.today();
+    // A host that is not online keeps no figure: it is asked again when it comes back.
+    const online = new Set(state.hosts.filter((h) => h.status === "online").map((h) => h.id));
+    setCosts((all) => Object.fromEntries(Object.entries(all).filter(([id]) => online.has(id))));
     const filter = { from: addDays(today, -6), to: today };
     for (const host of state.hosts) {
       if (host.status !== "online" || !hasFeature(host.hostInfo?.features, "costs", false))

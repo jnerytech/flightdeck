@@ -1,6 +1,6 @@
 import type { SessionMeta } from "@flightdeck/protocol";
 import { ListFilter, MoreHorizontal, Radio, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AssignMenu } from "@/components/clients/assign-menu";
 import { ClientChip } from "@/components/clients/client-chip";
 import { HostsBanner } from "@/components/hosts/hosts-banner";
@@ -79,12 +79,13 @@ export function SessionsHub(props: {
   }, [askedKey]);
   // A host asked for by the route ("See all" on its page) becomes the hub's host filter.
   const askedHost = props.host;
+  const routeHost = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: only a different host asked for by the route applies
   useEffect(() => {
     if (askedHost === undefined) return;
-    const next = { ...store.hubFilter(), host: askedHost };
-    setFilter(next);
-    store.saveHubFilter(next);
+    // For this visit only: the filter kept for the next one is not rewritten (issue #207).
+    routeHost.current = true;
+    setFilter({ ...store.hubFilter(), host: askedHost });
   }, [askedHost]);
   const [renaming, setRenaming] = useState<HubRow | null>(null);
   const [name, setName] = useState("");
@@ -201,7 +202,10 @@ export function SessionsHub(props: {
   const set = (patch: Partial<HubFilter>) => {
     const next = { ...filter, ...patch };
     setFilter(next);
-    store.saveHubFilter(next);
+    // A host that came from the route is not the person's choice: keep what was saved for it,
+    // until they pick a host themselves.
+    if (patch.host !== undefined) routeHost.current = false;
+    store.saveHubFilter(routeHost.current ? { ...next, host: store.hubFilter().host } : next);
   };
   const meta = (row: HubRow, patch: Partial<SessionMeta>) =>
     void store.setMeta(row.hostId, row.claudeSessionId as string, patch);

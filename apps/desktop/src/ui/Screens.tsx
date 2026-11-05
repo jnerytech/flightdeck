@@ -712,7 +712,7 @@ function routeScreen(props: ScreenProps): ReactNode {
             go({ name: "project", host: card.hostId, projectId: card.projectId })
           }
           onSeeAllSessions={() => {
-            store.saveHubFilter({ ...store.hubFilter(), host: host.name });
+            // The hub applies the host for this visit only: the saved filter stays the person's.
             go({ name: "hub", host: host.name });
           }}
           onSeeAllProjects={() => go({ name: "all-projects", host: host.id })}
