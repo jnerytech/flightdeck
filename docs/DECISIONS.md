@@ -3964,3 +3964,10 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
 - **No timings file yet.** `bun test --timings` balances shards by duration, but a committed
   timings file would be one more file every branch touches; the shard count is tuned from the
   first runs instead.
+- **`build:desktop` on Windows, found by `checks (windows-latest)`.** `vite.config.ts` imported
+  `entryHtml` from `demo/boot.ts`, whose imports reach `lib/tabs.ts`, which imports the protocol
+  since #198. On Windows Vite does not bundle that workspace package into the config (bun links it
+  through a junction), so Node imports `packages/protocol/src` itself, and its type stripping stops
+  at the parameter property of `PersonaModelError`. `entryHtml` moved to `demo/entry-html.ts`,
+  which imports nothing, and a test keeps every workspace package out of what the config reaches.
+  The `smoke:limits` failure of the first run did not come back on the rerun.
