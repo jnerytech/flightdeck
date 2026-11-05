@@ -125,7 +125,7 @@ describe("opencode-preflight", () => {
     });
     expect(await refusal(preflight.check("/w"))).toEqual({
       reason: "opencode_config_outranks",
-      params: { version: "2.2.5", source: "/w/opencode.json" },
+      params: { version: "2.2.5", what: "/w/opencode.json" },
     });
   });
 
@@ -140,7 +140,7 @@ describe("opencode-preflight", () => {
     const other = [{ type: "document", path: `${GLOBAL}/extra.json` }, ...goodConfig()];
     expect((await refusal(setup({ config: other }).preflight.check("/w")))?.params).toEqual({
       version: "2.2.5",
-      source: `${GLOBAL}/extra.json`,
+      what: `${GLOBAL}/extra.json`,
     });
   });
 
@@ -152,12 +152,12 @@ describe("opencode-preflight", () => {
     );
     expect(await refusal(setup({ agents: allowAfter }).preflight.check("/w"))).toEqual({
       reason: "opencode_config_outranks",
-      params: { version: "2.2.5", agent: "flightdeck" },
+      params: { version: "2.2.5", what: "flightdeck" },
     });
     const missing = goodAgents().filter((a) => a.id !== "flightdeck-plan");
     expect(await refusal(setup({ agents: missing }).preflight.check("/w"))).toEqual({
       reason: "opencode_config_outranks",
-      params: { version: "2.2.5", agent: "flightdeck-plan" },
+      params: { version: "2.2.5", what: "flightdeck-plan" },
     });
   });
 
@@ -172,13 +172,13 @@ describe("opencode-preflight", () => {
     const stubborn = setup({ agents: [...goodAgents(), agent("reviewer", base)] });
     expect(await refusal(stubborn.preflight.check("/w"))).toEqual({
       reason: "opencode_config_outranks",
-      params: { version: "2.2.5", agent: "reviewer" },
+      params: { version: "2.2.5", what: "reviewer" },
     });
     // A hidden agent that is not one of OpenCode's own internal ones counts too.
     const hidden = setup({ agents: [...goodAgents(), agent("sneaky", base, true)] });
     expect((await refusal(hidden.preflight.check("/w")))?.params).toEqual({
       version: "2.2.5",
-      agent: "sneaky",
+      what: "sneaky",
     });
   });
 
