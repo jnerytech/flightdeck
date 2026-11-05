@@ -329,6 +329,7 @@ export const en: Dictionary = {
       "Engineering roles Claude takes on in a session, of host {host}, the projects and the app.",
     apply: {
       trigger: "Persona",
+      none: "None",
       active: "Active persona",
       label: "Apply to this session (as an instruction)",
       apply: "Apply",

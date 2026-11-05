@@ -239,14 +239,23 @@ export function RoiCard(props: { store: AppStore; hostId: string; project: Proje
                   // biome-ignore lint/suspicious/noArrayIndexKey: eight fixed weeks
                   key={i}
                   aria-hidden="true"
-                  className="w-3 bg-primary/70"
-                  style={{ height: `${Math.max(4, (n / maxWeek) * 100)}%` }}
+                  // A week with no card is a faint baseline, not a bar (issue #183).
+                  data-empty={n === 0 ? "true" : undefined}
+                  className={n === 0 ? "w-3 bg-muted-foreground/25" : "w-3 bg-primary/70"}
+                  style={{ height: n === 0 ? "2px" : `${Math.max(8, (n / maxWeek) * 100)}%` }}
                 />
               ))}
             </div>
           </div>
           <div>
-            <Button size="sm" variant="ghost" aria-expanded={how} onClick={() => setHow(!how)}>
+            {/* A link with no side padding: it lines up with the text above it (issue #183). */}
+            <Button
+              size="sm"
+              variant="link"
+              className="toggle-start h-auto px-0"
+              aria-expanded={how}
+              onClick={() => setHow(!how)}
+            >
               {t("roiUi.how")}
             </Button>
             {how && (

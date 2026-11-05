@@ -332,6 +332,7 @@ export const ptBR = {
       "Papéis de engenharia que o Claude assume numa sessão, do host {host}, dos projetos e do app.",
     apply: {
       trigger: "Persona",
+      none: "Nenhuma",
       active: "Persona ativa",
       label: "Aplicar nesta sessão (como instrução)",
       apply: "Aplicar",
