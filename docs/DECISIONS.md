@@ -4114,6 +4114,52 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
 - **WIP limit.** At most 2 open branches per session, stated in CLAUDE.md and docs/TDD.md. It is
   not enforced in code.
 
+## One command per release (issue #275)
+
+- **`bun run release vX.Y.Z`** (the coordinator's, `FLIGHTDECK_COORDINATOR=1`; it refuses without
+  it and touches nothing) is a state machine over `origin/main`, so running it again carries on.
+  Main behind the tag: a branch `release-vX` gets `test(versao)` (the version test moves first and
+  must be red), `chore(versao)` (the three packages and `bun.lock`; the test must be green), the
+  protocol-surface check (a lost baseline line stops the release) and, when `--write` changes the
+  baseline, `chore(release)`; then the branch is pushed, a PR is opened (not through `pr open`,
+  which would close the issue of its first commit) and `pr auto` turns on auto-merge. Main at the
+  version: the surface check, `pr tag vX` (so the CI gate of #264 still decides) and
+  `release:close -- vX --apply`. A tag that exists is not made again; the close still runs.
+- **Why a state machine, not one blocking run.** The PR merges when its checks are green, which
+  takes longer than a session should wait; the second run is the "after merge" half of the
+  issue. Logic in `scripts/lib/release-cmd.ts`, effects injected, no test pushes or tags.
+- **The hook guard knows `bun run release`** (#275, from the security review): the command pushes and
+  tags through child processes the hook never sees, and its own check is the same environment flag,
+  which a command can set inline. `prMergeViolation` now blocks `bun run release` and
+  `bun scripts/release-cmd.ts` in a session, like `pr tag`.
+
+## `release:close` closes what a tag shipped (issue #252)
+
+- **What it reads.** The commits of `<previous v* tag>..<tag>` (`--since` names another start). An
+  issue counts when a subject names it (`(#170)`, the repository's habit) or a body line starts with
+  `Closes`, `Fixes` or `Resolves #N`. A number mentioned anywhere else in a body ("the overlay of
+  #233 is deferred") is listed and never touched, and a pull request's number is skipped.
+- **Dry run first.** Without `--apply` it only reads (the issue, its comments, the milestones) and
+  prints what it would do. With `--apply`, each open issue gets "Shipped in <tag>." (once: an
+  existing comment with that text is not repeated), is closed as completed, and goes to Done on the
+  board; an issue already closed only goes to Done. A second run changes nothing.
+- **The milestone** named after the tag is closed when it has no open issue left and no step of the
+  run failed, so a run that failed halfway leaves it open for the retry. One with issues the tag
+  did not ship stays open and says how many.
+- **REST only.** Every call is `gh api` with `-f` fields (no GraphQL), and the board goes through
+  `FLIGHTDECK_BOARD_CMD`, called as `<cmd> <issue> done ""`: the coordinator's `issue-note.sh`,
+  whose REST queue of #242 survives a rate limit. Without it the board is skipped, said once. The
+  coordinator tooling stays outside the repository; the script only knows the command's contract.
+- **Hardening (issue #287, from the security review of #275).** The tag and `--since` must be
+  `vX.Y.Z` (exit 2 otherwise), so neither can reach git as an option or a range. An issue title is
+  printed with its control characters turned into spaces (no escape sequence in a dry run). A
+  session's `bun run release:close ... --apply` (or `bun scripts/release-close.ts ... --apply`) is
+  blocked by the hook guard like `bun run release`: it closes issues on GitHub, so it is the
+  coordinator's; the dry run stays open. `bun run release` takes a tag as already made only when
+  `git ls-remote` lists exactly `refs/tags/<tag>` on origin (a local tag is anyone's, `pr tag` is
+  what gates a tag, and ls-remote matches a suffix, so `x/refs/tags/<tag>` is not it); an origin it
+  cannot ask is an error, not "absent". It reads a version from main only when it is `x.y.z`.
+
 ## Risky changes get a security review before the hand-off (issue #273)
 
 - **Why.** On 2026-11-05 six reviews found high findings after the hand-off (keep-awake,
@@ -4294,3 +4340,22 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   They lost their skip and note, and the ratchet maximum went from 5 to 1. Only the heartbeat test is
   still skipped: its fix needs a ticker and a clock injected into `startServer`
   (`performance.now()` and `setInterval` for the ping), so #288 stays open for it.
+
+## Prints and axe in four jobs, one per theme and language (issue #291)
+
+- **Why.** After #293 the one prints and axe job (13-15 minutes) was the longest of a PR, and every
+  merge waits for the screenshots check.
+- **The split.** `screenshots-prints` is a matrix of the two themes and the two languages, with
+  `fail-fast: false`. Each job runs `bun run demo:shots` with `SHOTS_THEME` and `SHOTS_LANG`
+  (`scripts/lib/shots-variants.ts`: all four pairs when unset, so a local run prints them all) and
+  uploads its own `prints-<theme>-<lang>` artifact. A filter that names no known pair refuses the
+  run instead of printing nothing. The required `screenshots (prints, axe e e2e)` aggregate is
+  unchanged: the matrix job's result is every pair's. The filter is checked before Chrome starts. For the visual
+  check a leg is still a complete run of its pair: a baseline with no print is reported inside the
+  folders the leg printed (`pairs`), so no leg turns the check off once it moves to `compare`; only
+  `DEMO_SHOTS` (some screens) does.
+- **Not here: the e2e shards.** Shard 1 takes 7-11 minutes and the others seconds because the
+  journeys are one file whose tests share the seeded demo, the second language relying on the
+  first one's state (`workers: 1`, `fullyParallel: false`). Balancing them means splitting the
+  journeys into independent tests, which is #292, not a one-line change.
+

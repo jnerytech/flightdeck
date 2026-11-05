@@ -402,8 +402,29 @@ function handMerge(words: string[]): string | null {
   if (g >= 0 && words[g + 1] === "api" && words.some((w) => /\/pulls\/\d+\/merge$/.test(w))) {
     return "a REST merge";
   }
+  if (releaseCommand(words)) return "bun run release";
+  if (releaseCloseApply(words)) return "bun run release:close --apply";
   const sub = prFlowCommand(words);
   return sub === "merge" || sub === "tag" ? `bun run pr -- ${sub}` : null;
+}
+
+/** True for `bun run release` (or `bun scripts/release-cmd.ts`): it pushes a branch and tags (#275). */
+function releaseCommand(words: string[]): boolean {
+  const b = words.indexOf("bun");
+  if (b < 0) return false;
+  const [first, second] = words.slice(b + 1);
+  return (first === "run" && second === "release") || (first?.endsWith("release-cmd.ts") ?? false);
+}
+
+/** True for `bun run release:close ... --apply` (or `bun scripts/release-close.ts ...`): it closes issues on GitHub (#287). */
+function releaseCloseApply(words: string[]): boolean {
+  const b = words.indexOf("bun");
+  if (b < 0) return false;
+  const [first, second] = words.slice(b + 1);
+  const closes =
+    (first === "run" && second === "release:close") ||
+    (first?.endsWith("release-close.ts") ?? false);
+  return closes && words.includes("--apply");
 }
 
 /** The `bun run pr` (or `bun scripts/pr-flow.ts`) command these words run, or undefined. */
