@@ -3,8 +3,10 @@
  * a committed count, named `*-ratchet.test.ts`) and the protocol surface. They take seconds, so a
  * count that went up fails the run in minutes, before the heavy jobs start.
  */
+import { byCodeUnit } from "@flightdeck/protocol";
+
 const QUICK_TEST = /(?:-ratchet|(?:^|\/)protocol-surface)\.test\.tsx?$/;
 
 export function quickTests(tracked: readonly string[]): string[] {
-  return tracked.filter((path) => QUICK_TEST.test(path)).sort();
+  return tracked.filter((path) => QUICK_TEST.test(path)).sort(byCodeUnit);
 }
