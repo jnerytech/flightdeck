@@ -42,6 +42,9 @@ export class FileLog {
     this.now = opts.now ?? Date.now;
   }
 
+  /** Resolves when every line written so far has been dealt with (stub). */
+  async flush(): Promise<void> {}
+
   path(): string {
     return join(this.opts.dir, NAME);
   }
