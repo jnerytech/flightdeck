@@ -4,6 +4,8 @@
  * sources are only the global folder and our inline document; our two agents resolve with our rules
  * last; the folder's project has no saved `always` rule. A pass is cached for 10 minutes.
  */
+
+import { join } from "node:path";
 import { FlightdeckError } from "../errors.ts";
 import {
   FLIGHTDECK_AGENT,
@@ -13,7 +15,7 @@ import {
   type PermissionRule,
 } from "./opencode-config.ts";
 import type { RunResult } from "./opencode-discovery.ts";
-import { globalConfigDir, type ScopeResult } from "./opencode-scope.ts";
+import { CONFIG_FILES, globalConfigDir, type ScopeResult } from "./opencode-scope.ts";
 
 export const PREFLIGHT_CACHE_MS = 10 * 60_000;
 
@@ -105,7 +107,11 @@ export class OpenCodePreflight {
     const global = globalConfigDir(this.deps.env);
     for (const source of list<{ type?: string; path?: string }>(sources)) {
       const ours = source.type === "document" && source.path === undefined;
-      const theirs = source.type === "directory" && source.path === global;
+      // The global folder, and its config files (the scope scan read them already).
+      const theirs =
+        (source.type === "directory" && source.path === global) ||
+        (source.type === "document" &&
+          CONFIG_FILES.some((name) => source.path === join(global, name)));
       if (!ours && !theirs)
         throw this.refuse("opencode_config_outranks", {
           source: source.path ?? String(source.type),

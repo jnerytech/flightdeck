@@ -38,7 +38,7 @@ export interface ScopeOptions {
   managedDirs?: string[];
 }
 
-const CONFIG_FILES = ["opencode.json", "opencode.jsonc", "config.json"];
+export const CONFIG_FILES = ["opencode.json", "opencode.jsonc", "config.json"];
 const PLUGIN_DIRS = ["plugins", "plugin"];
 /** Files under a plugin folder that the fingerprint reads at most (a plugin may bring node_modules). */
 const MAX_FILES = 2000;
