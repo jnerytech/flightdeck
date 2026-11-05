@@ -101,7 +101,7 @@ describe("security-gate", () => {
       { path: "apps/daemon/src/spoof.ts", why: ["spawn"] },
       { path: "apps/daemon/src/vault/store.ts", why: ["vault or pairing"] },
       { path: "scripts/lib/clean.ts", why: ["delete"] },
-      { path: "scripts/pr-flow.ts", why: ["spawn"] },
+      { path: "scripts/pr-flow.ts", why: ["spawn", "guard"] },
     ]);
   });
 

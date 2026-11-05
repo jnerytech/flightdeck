@@ -76,18 +76,19 @@ const NOT_SOURCE =
 /** Files where `#` starts a comment (in TypeScript it is a private field). */
 const HASH_COMMENTS = /\.(?:sh|py|ps1)$/;
 
-/** The code of one added line, its comments taken out: empty when it is only a comment. */
-function codeOf(line: string, path: string): string {
-  let code = line.replace(/\/\*.*?\*\//g, " ");
-  // The end of a block comment that opened on an earlier line: the code is what follows it.
-  const close = code.lastIndexOf("*/");
-  if (close >= 0) code = code.slice(close + 2);
-  else if (/^\s*\*/.test(code)) return "";
-  // Only a line that starts with "//" or an unclosed "/*" is a comment: a "//" further on may sit
-  // in a string ("http://"), and cutting there could hide code after it.
-  if (/^\s*(?:\/\/|\/\*)/.test(code)) return "";
-  if (HASH_COMMENTS.test(path)) code = code.replace(/^\s*#(?!!).*$/, "");
-  return code.trim();
+/**
+ * Whether an added line is a comment and nothing else. A line is never cut: one that holds any
+ * code is read whole, so a "*\/" in a glob or comment marks in a string cannot hide what it does.
+ */
+function commentOnly(line: string, path: string): boolean {
+  return (
+    /^\s*\/\//.test(line) ||
+    // One block comment and nothing after it, or a block that stays open.
+    /^\s*\/\*(?:(?!\*\/).)*(?:\*\/\s*)?$/.test(line) ||
+    // A doc line inside a block, with no close on it.
+    /^\s*\*(?!\/)(?:(?!\*\/).)*$/.test(line) ||
+    (HASH_COMMENTS.test(path) && /^\s*#(?!!)/.test(line))
+  );
 }
 
 /** The risk areas, in the order they are named, each by what an added line says. */
@@ -118,7 +119,7 @@ const SENSITIVE_PATHS: [string, RegExp][] = [
   // The gate and the checks it stands with: a change that weakens one needs a review too.
   [
     "guard",
-    /^scripts\/(?:lib\/(?:security-gate|claude-hooks|tdd-audit|handoff)\.ts|handoff-check\.ts)$|^\.github\/actions\//,
+    /^scripts\/(?:lib\/(?:security-gate|claude-hooks|tdd-audit|handoff|bounded-run)\.ts|handoff-check\.ts|pr-flow\.ts)$|^\.github\/actions\/|^\.claude\/agents\/security-reviewer\.md$/,
   ],
   [
     "runs code",
@@ -131,7 +132,7 @@ export function riskyFiles(added: Map<string, string[]>): RiskyFile[] {
   const risky: RiskyFile[] = [];
   for (const [path, lines] of added) {
     if (NOT_SOURCE.test(path)) continue;
-    const code = SOURCE.test(path) ? lines.map((line) => codeOf(line, path)).filter(Boolean) : [];
+    const code = SOURCE.test(path) ? lines.filter((line) => !commentOnly(line, path)) : [];
     const why = AREAS.filter(([, pattern]) => code.some((line) => pattern.test(line))).map(
       ([name]) => name,
     );
