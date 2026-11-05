@@ -262,7 +262,37 @@ jobs:
           "CLAUDE_CODE_GIT_BASH_PATH=$bash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Testes (shard ${{ matrix.shard }}/3)
-        run: bun --config=bunfig.area.toml test --timeout=15000 --shard=${{ matrix.shard }}/3
+        run: bun run scripts/run-shard.ts ${{ matrix.shard }}
+
+  # The tests in scripts/test/quarantine.json (issue #288) are left out of the required jobs above
+  # and run here, alone, on both systems. This job never blocks a merge: it is not a required check
+  # and its failure does not fail the run.
+  quarantine:
+    name: quarantine (${{ matrix.os }}, non-blocking)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    needs: changes
+    if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      - name: Quarantined tests
+        run: bun run scripts/run-quarantine.ts
 
   # The rest of the Windows leg: the smokes, the Rust shell, the bundle budget and the
   # performance baseline.
