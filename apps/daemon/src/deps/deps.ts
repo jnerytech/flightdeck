@@ -5,7 +5,7 @@ import { compareVersions } from "../update.ts";
 export interface DepsEnv {
   platform: NodeJS.Platform;
   /** Where `name` is on the PATH (never `Bun.which` without options), or null. */
-  which(name: string): string | null;
+  which(name: string): string | null | Promise<string | null>;
   /** What `<path> --version` says, or null when it does not answer. */
   version(path: string): Promise<string | null>;
   allowedRoots: readonly string[];
@@ -114,9 +114,9 @@ const versionOf = (text: string | null) => /\d+(?:\.\d+)+/.exec(text ?? "")?.[0]
 async function tool(env: DepsEnv, id: keyof typeof TOOLS): Promise<DepResult> {
   const spec = TOOLS[id];
   const base = { id, group: spec.group, breaks: spec.breaks, fix: spec.fix } as const;
-  const path = env.which(id);
+  const path = await env.which(id);
   if (!path) return { ...base, state: "missing", ...(spec.min ? { minVersion: spec.min } : {}) };
-  const version = versionOf(await env.version(path));
+  const version = versionOf(await env.version(path).catch(() => null));
   const old = spec.min && version ? compareVersions(version, spec.min) < 0 : false;
   return {
     ...base,
@@ -135,7 +135,7 @@ async function service(env: DepsEnv): Promise<DepResult> {
   };
   const installed = await env.serviceInstalled();
   if (env.platform === "win32") {
-    const path = env.which("schtasks");
+    const path = await env.which("schtasks");
     const ok = path !== null && installed;
     return {
       ...base,
@@ -145,7 +145,7 @@ async function service(env: DepsEnv): Promise<DepResult> {
     };
   }
   if (env.platform !== "linux") return { ...base, state: "na", fix: [] };
-  const path = env.which("systemctl");
+  const path = await env.which("systemctl");
   const linger = await env.linger();
   const ok = path !== null && installed && linger !== "off";
   return {
@@ -190,10 +190,10 @@ async function powershell(env: DepsEnv): Promise<DepResult> {
     breaks: ["windowsSetup"] as DepFeature[],
   };
   if (env.platform !== "win32") return { ...base, state: "na", fix: [] };
-  const path = env.which("pwsh");
+  const path = await env.which("pwsh");
   const fix: Fix = [{ os: "win32", command: "winget install --id Microsoft.PowerShell" }];
   if (!path) return { ...base, state: "missing", fix };
-  const version = versionOf(await env.version(path));
+  const version = versionOf(await env.version(path).catch(() => null));
   return { ...base, state: "ok", path, ...(version ? { version } : {}), fix };
 }
 
@@ -233,9 +233,10 @@ export async function checkDeps(env: DepsEnv): Promise<DepsResult> {
     "hooks",
   ];
   const found = new Map<DepId, DepResult>();
-  for (const id of ["claude", "git", "gh", "az", "ssh", "tailscale"] as const) {
-    found.set(id, await tool(env, id));
-  }
+  // At the same time: one slow program (az takes seconds) costs its own time only.
+  const ids = ["claude", "git", "gh", "az", "ssh", "tailscale"] as const;
+  const tools = await Promise.all(ids.map((id) => tool(env, id)));
+  ids.forEach((id, i) => found.set(id, tools[i] as DepResult));
   found.set("claudeAuth", await signedIn(env, found.get("claude")?.state === "missing"));
   found.set("service", await service(env));
   found.set("folders", folders);
