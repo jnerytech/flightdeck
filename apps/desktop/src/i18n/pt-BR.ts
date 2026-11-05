@@ -10,6 +10,11 @@ export const ptBR = {
     none: "Conta Claude",
     unread: "Ainda não lida",
     plan: "Plano {plan}",
+    signOutGithub: "Sair do GitHub",
+    signOutGithubHost: "Sair do GitHub ({host})",
+    signOutGithubConfirm:
+      "Sair do GitHub em {host}? As sessões de lá perdem o acesso aos seus repositórios até você entrar de novo.",
+    signOutGithubDone: "Você saiu do GitHub",
   },
   home: {
     title: "Início",
