@@ -40,6 +40,9 @@ export interface ScopeOptions {
 
 export const CONFIG_FILES = ["opencode.json", "opencode.jsonc", "config.json"];
 const PLUGIN_DIRS = ["plugins", "plugin"];
+/** A file that is not there (or went away while the scan ran) reads as `null`. */
+const absent = (): null => null;
+
 /** Files under a plugin folder that the fingerprint reads at most (a plugin may bring node_modules). */
 const MAX_FILES = 2000;
 
@@ -59,7 +62,7 @@ async function walk(dir: string, out: string[], root = dir): Promise<void> {
   for (const name of await entries(dir)) {
     if (out.length >= MAX_FILES) return;
     const path = join(dir, name);
-    const info = await stat(path).catch(() => null);
+    const info = await stat(path).catch(absent);
     if (info?.isDirectory()) await walk(path, out, root);
     else if (info) out.push(relative(root, path));
   }
@@ -108,7 +111,7 @@ export async function scanOpenCodeScope(opts: ScopeOptions): Promise<ScopeResult
   const findings: ScopeFinding[] = [];
   const hash = createHash("sha256");
   const fingerprint = async (path: string) => {
-    const info = await stat(path).catch(() => null);
+    const info = await stat(path).catch(absent);
     hash.update(`${path}\0${info ? `${info.size}:${info.mtimeMs}` : "-"}\n`);
   };
 
@@ -117,7 +120,7 @@ export async function scanOpenCodeScope(opts: ScopeOptions): Promise<ScopeResult
     for (const name of CONFIG_FILES) {
       const path = join(global, name);
       await fingerprint(path);
-      const text = await readFile(path, "utf8").catch(() => null);
+      const text = await readFile(path, "utf8").catch(absent);
       if (text !== null) findings.push(...findingsOf(path, text));
     }
     for (const dir of PLUGIN_DIRS) {
@@ -135,7 +138,7 @@ export async function scanOpenCodeScope(opts: ScopeOptions): Promise<ScopeResult
     for (const name of CONFIG_FILES) {
       const path = join(dir, name);
       await fingerprint(path);
-      if (await stat(path).catch(() => null)) findings.push({ kind: "system_config", path });
+      if (await stat(path).catch(absent)) findings.push({ kind: "system_config", path });
     }
   }
   for (const dir of opts.managedDirs ?? []) {
