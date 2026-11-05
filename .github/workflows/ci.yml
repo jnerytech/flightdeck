@@ -54,16 +54,18 @@ jobs:
         id: plan
         run: bun run scripts/ci-paths.ts
 
-  # Sonar's per-rule open count over the whole repository, which only goes down
-  # (sonar-baseline.json): green unless a rule went up, so a red X always means something (#264).
-  # The changed-lines run stays local (bun run lint:sonar), where its smells are a hint.
-  sonar-lint:
-    name: lint:sonar (ratchet)
-    if: github.event_name == 'pull_request'
+  # The checks that take minutes, first (#272): typecheck, Biome, the TDD order and every ratchet
+  # test. Sonar is SonarCloud's own check on the PR only (#283). The heavy jobs need it, so a count that went up fails the run
+  # in minutes instead of after the 20-minute suites.
+  quick:
+    name: quick checks
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
+      # Full history: the TDD audit counts from the merge-base with main or from the last tag.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
@@ -72,8 +74,26 @@ jobs:
       - name: Instalar dependências
         run: bun install --frozen-lockfile
 
-      - name: lint:sonar --ratchet
-        run: bun run lint:sonar -- --ratchet
+      - name: Identidade do git
+        run: |
+          git config --global user.name "flightdeck-ci"
+          git config --global user.email "ci@flightdeck.invalid"
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Lint
+        run: bun run lint
+
+      # The TDD order (docs/TDD.md): every feat/fix has an earlier test commit with the same scope,
+      # counted from the merge-base with main (a pull request) or from the last tag (a push to
+      # main).
+      - name: TDD audit
+        run: bun run tdd:audit -- --since auto
+
+      # Every *-ratchet.test.ts and the protocol surface (scripts/lib/ci-quick.ts), in seconds.
+      - name: Ratchets
+        run: bun run scripts/ci-quick.ts
 
   # Linux runs the whole suite in one job: the exact 100% line and function gate (bun's lcov has
   # no per-function records, so shards could not be merged without weakening it) and SonarCloud.
@@ -81,8 +101,10 @@ jobs:
     # A dispatched run's jobs have names of their own: a skipped copy of `test (ubuntu-latest)` next to
     # the real check must never stand in for the one the branch rules require.
     name: test (${{ matrix.os }})${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
-    needs: changes
-    if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
+    # It runs even when the quick job failed, and fails at once: GitHub counts a skipped required
+    # check as passed (#272).
+    needs: [changes, quick]
+    if: "!cancelled() && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')"
     strategy:
       fail-fast: false
       matrix:
@@ -94,6 +116,11 @@ jobs:
       run:
         shell: bash
     steps:
+      - name: The quick checks passed
+        run: |
+          test "${{ needs.changes.result }}" = success
+          test "${{ needs.quick.result }}" = success
+
       # Full history: SonarCloud uses the blame to tell new code from old.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -112,18 +139,7 @@ jobs:
           git config --global user.name "flightdeck-ci"
           git config --global user.email "ci@flightdeck.invalid"
 
-      - name: Typecheck
-        run: bun run typecheck
-
-      - name: Lint
-        run: bun run lint
-
-      # The TDD order (docs/TDD.md): every feat/fix has an earlier test commit with the same scope,
-      # counted from the merge-base with main (a pull request) or from the last tag (a push to
-      # main). It needs the full history the checkout above already fetches.
-      - name: TDD audit
-        run: bun run tdd:audit -- --since auto
-
+      # Typecheck, lint and the TDD audit ran in the quick job (#272).
       - name: Testes (cobertura 100%)
         run: bun run test
 
@@ -221,7 +237,7 @@ jobs:
   # aggregate below.
   test-windows-shard:
     name: test shard ${{ matrix.shard }}/3 (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
-    needs: changes
+    needs: [changes, quick]
     if: (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots') && needs.changes.outputs.windows == 'true'
     strategy:
       fail-fast: false
@@ -268,7 +284,7 @@ jobs:
   # performance baseline.
   checks-windows:
     name: checks (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
-    needs: changes
+    needs: [changes, quick]
     if: (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots') && needs.changes.outputs.windows == 'true'
     runs-on: windows-latest
     timeout-minutes: 30
@@ -381,7 +397,7 @@ jobs:
   # always(), so a failed or cancelled shard makes it fail rather than skip.
   test-windows:
     name: test (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
-    needs: [changes, test-windows-shard, checks-windows]
+    needs: [changes, quick, test-windows-shard, checks-windows]
     if: always() && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -390,6 +406,7 @@ jobs:
       - name: Every Windows shard and check passed
         run: |
           test "${{ needs.changes.result }}" = success
+          test "${{ needs.quick.result }}" = success
           if [ "${{ needs.changes.outputs.windows }}" != true ]; then
             echo "Windows skipped by path (scripts/lib/ci-paths.ts)"; exit 0
           fi
@@ -401,7 +418,7 @@ jobs:
   # the seeded demo (fake runtime: no real Claude, no network). #220 runs them apart from e2e.
   screenshots-prints:
     name: prints and axe
-    needs: changes
+    needs: [changes, quick]
     if: needs.changes.outputs.screenshots == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -448,7 +465,7 @@ jobs:
   # In three Playwright shards (#264): each runs a third of the journeys, in both languages.
   screenshots-e2e:
     name: e2e journeys ${{ matrix.shard }}/3
-    needs: changes
+    needs: [changes, quick]
     if: needs.changes.outputs.screenshots == 'true'
     strategy:
       fail-fast: false
@@ -507,7 +524,7 @@ jobs:
   # The check the main ruleset requires: it passes only when the prints and the journeys passed.
   screenshots:
     name: screenshots (prints, axe e e2e)
-    needs: [changes, screenshots-prints, screenshots-e2e]
+    needs: [changes, quick, screenshots-prints, screenshots-e2e]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -517,6 +534,7 @@ jobs:
       - name: The prints and the e2e journeys passed
         run: |
           test "${{ needs.changes.result }}" = success
+          test "${{ needs.quick.result }}" = success
           if [ "${{ needs.changes.outputs.screenshots }}" != true ]; then
             echo "Screens skipped by path (scripts/lib/ci-paths.ts)"; exit 0
           fi
