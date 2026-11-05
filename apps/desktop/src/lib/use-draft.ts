@@ -18,7 +18,8 @@ interface Draft<T> {
  * `extra.stale` says the source moved elsewhere under an edit (#170, #249): a plain save would
  * write over that change. `extra.drop()` gives the edit up for the source ("Use theirs"). `saved`
  * takes what the host keeps of a sent value (`stored`, a trimmed title): an edit typed while the
- * save was on its way then starts from it.
+ * save was on its way then starts from it. `extra.saving` is true from a save until the source moves:
+ * the field shows what was sent, and a Save would send it again.
  */
 export function useDraft<T>(
   source: T,
@@ -26,7 +27,7 @@ export function useDraft<T>(
   value: T,
   edit: (value: T) => void,
   saved: (sent: T, stored?: T) => void,
-  extra: { stale: boolean; drop: () => void },
+  extra: { stale: boolean; saving: boolean; drop: () => void },
 ] {
   const [draft, setDraft] = useState<Draft<T> | null>(null);
   const moved = draft?.savedOver !== undefined && !Object.is(draft.savedOver.source, source);
@@ -46,6 +47,6 @@ export function useDraft<T>(
         }
         return { value: current.value, base: stored };
       }),
-    { stale, drop: () => setDraft(null) },
+    { stale, saving: live?.savedOver !== undefined, drop: () => setDraft(null) },
   ];
 }

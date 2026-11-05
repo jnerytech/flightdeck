@@ -33,7 +33,7 @@ function CardTextField(props: {
 }) {
   const t = useT();
   const { source } = props;
-  const [value, setValue, saved, { stale, drop }] = useDraft(source);
+  const [value, setValue, saved, { stale, saving, drop }] = useDraft(source);
   // Typing the card's own text back is no edit any more: the field follows the card again.
   const edit = (text: string) => (text === source ? drop() : setValue(text));
   return (
@@ -58,7 +58,7 @@ function CardTextField(props: {
           )}
           <ActionButton
             variant="outline"
-            disabled={!props.savable(value) || stale}
+            disabled={!props.savable(value) || stale || saving}
             {...(stale ? { disabledReason: t("cardUi.changedElsewhere") } : {})}
             onClick={async () => {
               const sent = value;
