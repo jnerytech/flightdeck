@@ -3631,7 +3631,7 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 
 ## Sidebar project tree: fold, cap and remembered fold (issue #215)
 
-- **Cap.** A project lists its first 8 checkouts (`TREE_CAP`, the main one and the busiest first, as the tree already orders them);
+- **Cap.** A project lists its first 8 checkouts (`TREE_CAP`; the main one first, then the worktrees by branch name, as the tree already orders them);
   the rest sit behind a button "N more", which becomes "Show fewer". The picked checkout is always listed, even past the cap.
   Expanding is for this run only: a long list should not stay open across starts.
 - **Fold.** The project's name is a button with `aria-expanded`; ArrowLeft folds and ArrowRight unfolds it. The fold is remembered per
