@@ -17,6 +17,8 @@ export interface PrFlowDeps {
   gh(args: string[]): Promise<GhResult>;
   /** Runs `git <args>` in the repository. */
   git(args: string[]): Promise<GhResult>;
+  /** Runs a command (the FLIGHTDECK_PR_OPENED hook, #273); only its exit code is read. */
+  run?(command: string[]): Promise<GhResult>;
   env: Record<string, string | undefined>;
   log(line: string): void;
 }
@@ -239,7 +241,46 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
     return 1;
   }
   deps.log(`#${created.stdout.trim()}`);
+  await prOpenedHook(created.stdout.trim().split(" ")[0] ?? "", branch, base, deps);
   return 0;
+}
+
+/**
+ * Runs FLIGHTDECK_PR_OPENED (#273), when set, with the new PR's number, branch and base: the
+ * coordinator's tooling queues an OpenCode review there. It fails open: the PR is open anyway.
+ */
+/**
+ * The hook's command: a JSON array of strings (a path with spaces, Windows), or words split on
+ * spaces. Empty when unset; null when it starts like JSON but is not an array of strings.
+ */
+function hookCommand(value: string): string[] | null {
+  if (!value.startsWith("[")) return value ? value.split(/\s+/) : [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    const ok =
+      Array.isArray(parsed) && parsed.length > 0 && parsed.every((w) => typeof w === "string");
+    return ok ? (parsed as string[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function prOpenedHook(n: string, branch: string, base: string, deps: PrFlowDeps) {
+  const hook = hookCommand(deps.env.FLIGHTDECK_PR_OPENED?.trim() ?? "");
+  if (hook === null) {
+    deps.log(`FLIGHTDECK_PR_OPENED is not a JSON array of strings; #${n} is open`);
+    return;
+  }
+  if (hook.length === 0 || !deps.run) return;
+  let failure: string | null;
+  try {
+    // Only the exit code: the hook inherits the environment, so what it prints may hold a token.
+    const { code } = await deps.run([...hook, n, branch, base]);
+    failure = code === 0 ? null : `exit ${code}`;
+  } catch (error) {
+    failure = error instanceof Error ? error.message : String(error);
+  }
+  if (failure) deps.log(`FLIGHTDECK_PR_OPENED hook failed (${failure}); #${n} is open`);
 }
 
 async function nextPrs(deps: PrFlowDeps): Promise<number> {
