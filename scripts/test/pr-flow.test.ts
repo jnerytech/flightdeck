@@ -417,6 +417,13 @@ describe("pr-flow: update and merge", () => {
     expect(refused.writes.filter((w) => w.includes("graphql"))).toEqual([]);
   });
 
+  test("auto never retargets a stacked PR when GitHub cannot compare its parent with main (#271)", async () => {
+    const f = fake({ prs: [pr(20, "b", { base: "a" })], fail: /compare/ });
+    expect(await prFlow(["auto", "20"], f.deps)).toBe(2);
+    expect(f.writes).toEqual([]);
+    expect(f.out()).toContain("cannot compare a with main");
+  });
+
   test("auto that GitHub refuses fails with its reason; an unreadable PR fails too (#271)", async () => {
     const refused = fake({ prs: [pr(12, "a")], graphqlError: "Pull request is in clean status" });
     expect(await prFlow(["auto", "12"], refused.deps)).toBe(1);
