@@ -88,7 +88,9 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   by every worktree, so a pop can apply another session's changes. Keep work aside with
   `git diff > /tmp/<name>.patch` and `git apply`, or a WIP commit on your branch.
 - Forbidden in committed code: `.only`, `.skip`, `test.todo`, `toMatchSnapshot` on the first
-  run, weakening an assertion.
+  run, weakening an assertion. The one exception: a test unstable off Ubuntu may be
+  `test.skipIf(notLinux)` with `// unstable: #<issue> <reason>` on its line or the line above (see
+  docs/TDD.md).
 - Tests touch nothing real. The preload replaces `claude` on the PATH with a sentinel and
   `HOME` with a temporary folder, so nothing reads or writes the real `~/.claude`. Other CLIs
   (`gh`, `az`, `ssh`, check commands) are fakes on the test PATH, with a `.cmd` version on
