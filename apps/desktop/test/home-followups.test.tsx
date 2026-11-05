@@ -124,3 +124,62 @@ describe("home-followups: connecting at start is not 'no host' (issue #212)", ()
     expect(screen.getByRole("status").textContent).toBe("Conectando aos seus hosts…");
   });
 });
+
+describe("home-followups: hosts without costs show unknown, and Avg says where it comes from (issue #211)", () => {
+  const spend = () => screen.getByRole("button", { name: "Open Spend" });
+  const tokens = () => screen.getByRole("button", { name: "Open Tokens" });
+
+  test("a host with no costs feature: Spend and Tokens read unknown, never $0, and it is not asked", async () => {
+    const w = world();
+    render(w.view([{ id: "h1", features: [] }], { hostsLoaded: true }));
+    await screen.findByRole("button", { name: "Open Spend" });
+    await waitFor(() => expect(w.asked).toContain("h1:usage.summary"));
+    expect(spend().textContent).toContain("—");
+    expect(spend().textContent).not.toContain("$0");
+    expect(spend().textContent).toContain("No cost data from host-h1");
+    expect(tokens().textContent).toContain("—");
+    expect(w.asked.some((a) => a.endsWith("costs.summary"))).toBe(false);
+    // The turns come from the usage counters every host has.
+    expect(screen.getByRole("button", { name: "Open Turns" }).textContent).toContain("4");
+  });
+
+  test("with one host that has costs and one that has not, the numbers are the first's and the note names the other", async () => {
+    const w = world();
+    render(
+      w.view(
+        [
+          { id: "h1", features: ["costs"] },
+          { id: "h2", features: [] },
+        ],
+        { hostsLoaded: true },
+      ),
+    );
+    await screen.findByRole("button", { name: "Open Spend" });
+    await waitFor(() => expect(spend().textContent).toContain("$2.00"));
+    expect(spend().textContent).toContain("No cost data from host-h2");
+    expect(spend().textContent).not.toContain("host-h1");
+    expect(tokens().textContent).toContain("1.0M");
+  });
+
+  test("when every host has costs there is no note", async () => {
+    const w = world();
+    render(w.view([{ id: "h1" }], { hostsLoaded: true }));
+    await waitFor(() => expect(spend().textContent).toContain("$2.00"));
+    expect(spend().textContent).not.toContain("No cost data");
+  });
+
+  test("the average says it counts managed sessions only, unlike Spend", async () => {
+    const w = world();
+    render(w.view([{ id: "h1" }], { hostsLoaded: true }));
+    await waitFor(() => expect(spend().textContent).toContain("$2.00"));
+    const average = screen.getByRole("button", { name: "Open Avg cost / turn" });
+    expect(average.textContent).toContain("Managed sessions only");
+  });
+
+  test("it reads in Portuguese", async () => {
+    const w = world("pt-BR");
+    render(w.view([{ id: "h1", features: [] }], { hostsLoaded: true }));
+    const card = await screen.findByRole("button", { name: "Abrir Gasto" });
+    expect(card.textContent).toContain("Sem dados de custo de host-h1");
+  });
+});
