@@ -80,10 +80,13 @@ export function HostOfflineBanner(props: {
               );
             }}
           >
-            <label className="flex flex-col gap-1">
-              {t("hostOffline.pairLabel")}
-              <Input value={fresh} onChange={(e) => setFresh(e.target.value)} />
-            </label>
+            <Input
+              aria-label={t("hostOffline.pairLabel")}
+              placeholder={t("hostOffline.pairLabel")}
+              className="w-72"
+              value={fresh}
+              onChange={(e) => setFresh(e.target.value)}
+            />
             <Button type="submit" size="sm" disabled={fresh.trim() === ""}>
               {t("hostOffline.pairAgain")}
             </Button>
