@@ -11,7 +11,7 @@ export function WorktreeChip(props: { filter: WorktreeFilter; t: T; onClear(): v
       <Button
         variant="ghost"
         size="icon"
-        className="size-5"
+        className="size-6"
         aria-label={props.t("projectTree.clear")}
         onClick={props.onClear}
       >

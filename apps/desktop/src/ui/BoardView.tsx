@@ -32,7 +32,7 @@ import type { Key } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { boardTitle, COLUMNS, filterCards, positionBefore, projectCards } from "../lib/board.ts";
 import { issueNumber } from "../lib/issues.ts";
-import { cardInFilter } from "../lib/project-tree.ts";
+import { activeWorktreeFilter, cardInFilter } from "../lib/project-tree.ts";
 import { statusTone } from "../lib/status.ts";
 import { hasFeature } from "../lib/version.ts";
 import { BoardColumnEmpty } from "./BoardColumnEmpty.tsx";
@@ -161,7 +161,7 @@ function CardTile(props: {
   );
 }
 
-const BOARDVIEW_KEYS = ["runs", "hosts", "cards", "worktreeFilter"] as const;
+const BOARDVIEW_KEYS = ["runs", "hosts", "projects", "cards", "worktreeFilter"] as const;
 
 /** A project's board: five columns, drag and drop between and within them, text filter. */
 /** A card that has a worktree, a branch or a session has work to clean up: it is discarded, not deleted. */
@@ -227,10 +227,8 @@ export const BoardView = memo(function BoardView(props: {
 
   const all = projectCards(state, hostId, projectId);
   // The branch picked in the sidebar tree keeps the cards of that checkout (of this project only).
-  const picked =
-    state.worktreeFilter?.hostId === hostId && state.worktreeFilter.projectId === projectId
-      ? state.worktreeFilter
-      : null;
+  const active = activeWorktreeFilter(state);
+  const picked = active?.hostId === hostId && active.projectId === projectId ? active : null;
   const shown = filterCards(all, filter)
     .filter((card) => !onlyBlocked || card.waitingOn.length > 0)
     .filter((card) => !picked || cardInFilter(card, picked));

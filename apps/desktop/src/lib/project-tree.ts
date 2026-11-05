@@ -2,7 +2,7 @@ import type { Card, Project } from "@flightdeck/protocol";
 import type { StateTone } from "@/components/status/status-dot";
 import type { AppState } from "./app-store.ts";
 import type { HubRow } from "./hub.ts";
-import { isInside } from "./paths.ts";
+import { basename, isInside } from "./paths.ts";
 import { statusTone } from "./status.ts";
 
 /** One line under a project in the sidebar: its main checkout or one card's worktree. */
@@ -95,7 +95,7 @@ export function projectTree(
               (card): TreeNode => ({
                 key: `${host.id}/${project.id}/${card.id}`,
                 kind: "worktree",
-                branch: card.branch ?? card.title,
+                branch: card.branch ?? basename(card.worktreePath as string),
                 base: project.baseBranch,
                 path: card.worktreePath as string,
                 tone: card.sessionStatus ? statusTone(card.sessionStatus) : "idle",
@@ -132,5 +132,17 @@ export function rowInFilter(
 export function activeWorktreeFilter(
   state: Pick<AppState, "hosts" | "projects" | "cards" | "worktreeFilter">,
 ): WorktreeFilter | null {
-  return state.worktreeFilter;
+  const picked = state.worktreeFilter;
+  if (!picked) return null;
+  const host = state.hosts.find((h) => h.id === picked.hostId);
+  const there = state.projects[picked.hostId]?.some((p) => p.id === picked.projectId);
+  if (host?.status !== "online" || !there) return null;
+  if (picked.kind === "primary") return picked;
+  const kept = Object.entries(state.cards).some(
+    ([key, card]) =>
+      key.startsWith(`${picked.hostId}/`) &&
+      card.projectId === picked.projectId &&
+      card.worktreePath === picked.path,
+  );
+  return kept ? picked : null;
 }

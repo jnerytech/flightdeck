@@ -43,7 +43,7 @@ import {
   sharedMeta,
 } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
-import { rowInFilter } from "../lib/project-tree.ts";
+import { activeWorktreeFilter, rowInFilter } from "../lib/project-tree.ts";
 import { hasFeature } from "../lib/version.ts";
 
 /** How often the hub asks the hosts about their background sessions. */
@@ -122,6 +122,23 @@ export function SessionsHub(props: {
     };
   }, [store, withBackground]);
 
+  // The branch picked in the sidebar tree, when it still points at a checkout that is there.
+  const picked = activeWorktreeFilter(state);
+  const pickedProject = picked
+    ? state.projects[picked.hostId]?.find((p) => p.id === picked.projectId)
+    : undefined;
+  const worktrees = useMemo(
+    () =>
+      picked
+        ? Object.entries(state.cards)
+            .filter(
+              ([key, card]) =>
+                key.startsWith(`${picked.hostId}/`) && card.projectId === picked.projectId,
+            )
+            .flatMap(([, card]) => (card.worktreePath ? [card.worktreePath] : []))
+        : [],
+    [state.cards, picked],
+  );
   // Only what the rows are made of recomputes them (a typing indicator or an error does not).
   // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state, not all of it
   const rows = useMemo(
@@ -134,16 +151,8 @@ export function SessionsHub(props: {
         )
         .filter((row) => {
           // The branch picked in the sidebar tree keeps the sessions of that checkout.
-          const picked = state.worktreeFilter;
-          if (!picked) return true;
-          const project = state.projects[picked.hostId]?.find((p) => p.id === picked.projectId);
-          if (!project) return true;
-          const worktrees = Object.entries(state.cards)
-            .filter(
-              ([key, card]) => key.startsWith(`${picked.hostId}/`) && card.projectId === project.id,
-            )
-            .flatMap(([, card]) => (card.worktreePath ? [card.worktreePath] : []));
-          return rowInFilter(row, picked, project, worktrees);
+          if (!picked || !pickedProject) return true;
+          return rowInFilter(row, picked, pickedProject, worktrees);
         }),
     [
       store,
@@ -154,9 +163,9 @@ export function SessionsHub(props: {
       state.externals,
       state.names,
       state.background,
-      state.projects,
-      state.cards,
-      state.worktreeFilter,
+      picked,
+      pickedProject,
+      worktrees,
       state.clientList,
       state.clientOverrides,
       state.clientSelection,
@@ -413,12 +422,8 @@ export function SessionsHub(props: {
             </Button>
           </div>
         )}
-        {state.worktreeFilter && (
-          <WorktreeChip
-            filter={state.worktreeFilter}
-            t={t}
-            onClear={() => store.setWorktreeFilter(null)}
-          />
+        {picked && (
+          <WorktreeChip filter={picked} t={t} onClear={() => store.setWorktreeFilter(null)} />
         )}
         {renaming && (
           <div className="flex items-center gap-2">

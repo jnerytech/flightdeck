@@ -363,14 +363,17 @@ describe("board-ui", () => {
     await pick("primary", project.path, "main");
     await settle(() => screen.queryByText("Branch: main") !== null);
     expect(column("Backlog")).toEqual(["Sem worktree"]);
-    // Another worktree keeps none of them, and the chip says so.
+    // A worktree no card has is not there: the filter is inert, no chip and every card shows.
     await pick("worktree", "/wt/outro", "fd/outro");
-    await settle(() => screen.queryByText("Branch: fd/outro") !== null);
-    expect(column("Backlog")).toEqual([]);
+    await settle(() => screen.queryByText("Branch: main") === null);
+    expect(screen.queryByText("Branch: fd/outro")).toBeNull();
+    expect(column("Backlog")).toEqual(["Sem worktree"]);
+    await pick("primary", project.path, "main");
+    await settle(() => screen.queryByText("Branch: main") !== null);
     await click("Limpar o filtro de branch");
     expect(store.getState().worktreeFilter).toBeNull();
-    await settle(() => column("Backlog").length === 1);
-    expect(screen.queryByText("Branch: fd/outro")).toBeNull();
+    expect(screen.queryByText("Branch: main")).toBeNull();
+    expect(column("Backlog")).toEqual(["Sem worktree"]);
   });
 
   test("Concluir e Descartar pedem confirmação; Descartar avisa das alterações não enviadas", async () => {

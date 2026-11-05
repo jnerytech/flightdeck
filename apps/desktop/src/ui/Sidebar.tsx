@@ -14,7 +14,7 @@ import {
   SunMoon,
   TriangleAlert,
 } from "lucide-react";
-import { Children, type ReactNode, useState } from "react";
+import { Children, type ReactNode, useMemo, useState } from "react";
 import { ClientSwitcher } from "@/components/clients/client-switcher";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
 import { ProjectTree } from "@/components/projects/project-tree";
@@ -35,7 +35,7 @@ import type { HostNameError } from "../lib/host-name.ts";
 import { hostDotView } from "../lib/host-status.ts";
 import { hubRows } from "../lib/hub.ts";
 import { activeNav } from "../lib/nav-active.ts";
-import { projectTree } from "../lib/project-tree.ts";
+import { activeWorktreeFilter, projectTree } from "../lib/project-tree.ts";
 import type { Route } from "../lib/router.ts";
 import type { SidebarGroup } from "../lib/sidebar-groups.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
@@ -243,9 +243,18 @@ export function Sidebar(props: {
     budgetAlerts(state).length +
     state.loopAlerts.length +
     watchAlerts(state).length;
-  const rows = hubRows(state);
+  // The sidebar redraws on every store update, streaming events included: the rows and the tree
+  // recompute only when the parts they are made of change.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state
+  const rows = useMemo(
+    () => hubRows(state),
+    [state.hosts, state.hub, state.meta, state.externals, state.names, state.background],
+  );
   const pinned = rows.filter((row) => row.pinned && !row.archived);
-  const tree = projectTree(state, rows);
+  const tree = useMemo(
+    () => projectTree({ hosts: state.hosts, projects: state.projects, cards: state.cards }, rows),
+    [state.hosts, state.projects, state.cards, rows],
+  );
   const [hostsOpen, setHostsOpen] = useState(true);
   const [pinnedOpen, setPinnedOpen] = useState(true);
   const [folded, setFolded] = useState<SidebarGroup[]>(() => props.store.sidebarFolded());
@@ -440,7 +449,8 @@ export function Sidebar(props: {
             <ProjectTree
               store={props.store}
               tree={tree}
-              filter={state.worktreeFilter}
+              filter={activeWorktreeFilter(state)}
+              stay={here === "sessions"}
               t={t}
               go={go}
             />

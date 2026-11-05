@@ -156,6 +156,7 @@ describe("arvore-projetos-ui: stay where you are, say what a node is (issue #116
       expect(button.tabIndex).toBe(0);
     }
     const css = await Bun.file(new URL("../src/styles.css", import.meta.url)).text();
-    expect(css).toMatch(/@utility project-tree-node \{[^}]*focus-visible/s);
+    const node = css.split("@utility project-tree-node")[1]?.split("@utility")[0] ?? "";
+    expect(node).toContain("&:focus-visible");
   });
 });

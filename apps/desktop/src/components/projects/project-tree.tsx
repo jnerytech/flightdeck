@@ -25,6 +25,8 @@ export function ProjectTree(props: {
   store: AppStore;
   tree: TreeProject[];
   filter: WorktreeFilter | null;
+  /** On the Sessions list a pick narrows it in place instead of opening the board. */
+  stay?: boolean;
   t: T;
   go(route: Route): void;
 }) {
@@ -39,6 +41,7 @@ export function ProjectTree(props: {
     };
     if (same(filter, next)) return props.store.setWorktreeFilter(null);
     props.store.setWorktreeFilter(next);
+    if (props.stay) return;
     props.go({ name: "board", host: project.hostId, projectId: project.projectId });
   };
   return (
@@ -64,6 +67,11 @@ export function ProjectTree(props: {
                       branch: node.branch,
                     })}
                     aria-current={current ? "true" : undefined}
+                    aria-describedby={
+                      node.kind === "primary"
+                        ? `${node.key}:badge ${node.key}:base`
+                        : `${node.key}:base`
+                    }
                     className={cn("project-tree-node", current && "nav-active bg-sidebar-accent")}
                     onClick={() => pick(project, node)}
                   >
@@ -73,9 +81,11 @@ export function ProjectTree(props: {
                     />
                     <span className="project-tree-branch">{node.branch}</span>
                     {node.kind === "primary" && (
-                      <span className="project-tree-badge">{t("projectTree.primary")}</span>
+                      <span id={`${node.key}:badge`} className="project-tree-badge">
+                        {t("projectTree.primary")}
+                      </span>
                     )}
-                    <span className="project-tree-base">
+                    <span id={`${node.key}:base`} className="project-tree-base">
                       {t("projectTree.base", { name: node.base })}
                     </span>
                   </button>
