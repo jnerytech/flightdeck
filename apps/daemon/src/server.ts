@@ -71,6 +71,7 @@ import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Issues } from "./issues/issues.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
+import type { Resources } from "./resources/resources.ts";
 import type { ProjectMemory } from "./memory/memory.ts";
 import type { Idle } from "./messaging/idle.ts";
 import type { Messaging } from "./messaging/messages.ts";
@@ -177,6 +178,8 @@ export interface ServerOptions {
   central?: Central;
   /** Retention and backups behind the `maintenance.*` commands (phase 7). */
   maintenance?: Maintenance;
+  /** What the host's sessions and terminals cost it, behind `resources.*` (issue #154). */
+  resources?: Resources;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
   /** Phase 16: secrets the app hands over for one use (`vault.*`). */
@@ -451,6 +454,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     // Phase 24: the run.yaml of a card and its processes.
     ...(opts.runenv && opts.board ? ["runenv"] : []),
     ...(opts.maintenance ? ["maintenance"] : []),
+    ...(opts.resources ? ["resources"] : []),
     ...(opts.quota ? ["quota"] : []),
     ...(opts.account ? ["account"] : []),
     // Project rules live in the board's projects.
@@ -723,6 +727,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function maintenance(): Maintenance {
     if (!opts.maintenance) throw featureOff("maintenance");
     return opts.maintenance;
+  }
+
+  function resources(): Resources {
+    if (!opts.resources) throw featureOff("resources");
+    return opts.resources;
   }
 
   function usage(): UsageLedger {
@@ -1004,6 +1013,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         }
         return ok(command.type, { claudeSessionId, ...meta });
       }
+      case "resources.get":
+        return ok(command.type, await resources().snapshot());
+      case "resources.endOrphan":
+        await resources().endOrphan(command.payload.pid);
+        return ok(command.type, { ended: true });
       case "maintenance.status":
         return ok(command.type, await maintenance().status());
       case "maintenance.backup":
