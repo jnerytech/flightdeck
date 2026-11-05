@@ -20,14 +20,14 @@ const READ = new Set(["Read"]);
 const SEARCH = new Set(["Grep", "Glob", "LS"]);
 const WRITE = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
 
-const kindOf = (name: string): ActivityKind =>
-  READ.has(name)
-    ? "reading"
-    : SEARCH.has(name)
-      ? "searching"
-      : WRITE.has(name)
-        ? "writing"
-        : "running";
+const kindOf = (name: string): ActivityKind => {
+  if (READ.has(name)) return "reading";
+  if (SEARCH.has(name)) return "searching";
+  return WRITE.has(name) ? "writing" : "running";
+};
+
+/** " in <folder>" (with the language's preposition), or nothing without a folder. */
+const within = (preposition: string, folder: string) => (folder ? ` ${preposition} ${folder}` : "");
 
 const SEP = /[\\/]/;
 const parts = (path: string) => path.split(SEP).filter(Boolean);
@@ -40,9 +40,9 @@ const pathOf = (event: ToolEvent): string => {
 const WORDS = {
   en: {
     reading: (n: number, name: string, folder: string) =>
-      n === 1 && name ? `Reading ${name}` : `Reading ${n} files${folder ? ` in ${folder}` : ""}`,
+      n === 1 && name ? `Reading ${name}` : `Reading ${n} files${within("in", folder)}`,
     writing: (n: number, name: string, folder: string) =>
-      n === 1 && name ? `Writing ${name}` : `Writing ${n} files${folder ? ` in ${folder}` : ""}`,
+      n === 1 && name ? `Writing ${name}` : `Writing ${n} files${within("in", folder)}`,
     searching: "Looking through your files",
     running: (n: number) => (n === 1 ? "Working on a step" : `Working on ${n} steps`),
     thinking: "Thinking",
@@ -50,11 +50,9 @@ const WORDS = {
   },
   "pt-BR": {
     reading: (n: number, name: string, folder: string) =>
-      n === 1 && name ? `Lendo ${name}` : `Lendo ${n} arquivos${folder ? ` em ${folder}` : ""}`,
+      n === 1 && name ? `Lendo ${name}` : `Lendo ${n} arquivos${within("em", folder)}`,
     writing: (n: number, name: string, folder: string) =>
-      n === 1 && name
-        ? `Escrevendo ${name}`
-        : `Escrevendo ${n} arquivos${folder ? ` em ${folder}` : ""}`,
+      n === 1 && name ? `Escrevendo ${name}` : `Escrevendo ${n} arquivos${within("em", folder)}`,
     searching: "Olhando os seus arquivos",
     running: (n: number) => (n === 1 ? "Trabalhando em uma etapa" : `Trabalhando em ${n} etapas`),
     thinking: "Pensando",

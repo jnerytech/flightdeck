@@ -36,12 +36,14 @@ const baseName = (path: string) => path.split(SEP).filter(Boolean).at(-1) ?? pat
 /** The folder a path sits in, by name; empty when it has none. */
 const folderName = (path: string) => path.split(SEP).filter(Boolean).at(-2) ?? "";
 
+/** " in <folder>" (with the language's preposition), or nothing without a folder. */
+const within = (preposition: string, folder: string) => (folder ? ` ${preposition} ${folder}` : "");
+
 const WORDS = {
   en: {
     and: "and",
     more: (n: number) => `and ${n} more`,
-    create: (name: string, folder: string) =>
-      `Create the file ${name}${folder ? ` in ${folder}` : ""}`,
+    create: (name: string, folder: string) => `Create the file ${name}${within("in", folder)}`,
     createNote: "This adds a new file. Nothing existing changes.",
     replace: (name: string) => `Replace the contents of ${name}`,
     undone: "This cannot be undone.",
@@ -66,8 +68,7 @@ const WORDS = {
   "pt-BR": {
     and: "e",
     more: (n: number) => `e mais ${n}`,
-    create: (name: string, folder: string) =>
-      `Criar o arquivo ${name}${folder ? ` em ${folder}` : ""}`,
+    create: (name: string, folder: string) => `Criar o arquivo ${name}${within("em", folder)}`,
     createNote: "Isto adiciona um arquivo novo. Nada do que existe muda.",
     replace: (name: string) => `Substituir o conteúdo de ${name}`,
     undone: "Isto não pode ser desfeito.",
@@ -207,6 +208,12 @@ function toolQuestion(toolName: string, words: Words, file: string): PlainQuesti
   return null;
 }
 
+/** What running a command costs, by how risky it is judged. */
+function runConsequence(risk: string, words: (typeof WORDS)[QuestionLanguage]): string {
+  if (risk === "high") return words.runHigh;
+  return risk === "low" ? words.runLow : words.runMedium;
+}
+
 /** The question for a permission request: a sentence and its consequence, never a tool or a command. */
 export function plainQuestion(request: QuestionRequest, language: QuestionLanguage): PlainQuestion {
   const words = WORDS[language];
@@ -221,7 +228,7 @@ export function plainQuestion(request: QuestionRequest, language: QuestionLangua
   return {
     kind: "run",
     sentence: words.run,
-    consequence: risk === "high" ? words.runHigh : risk === "low" ? words.runLow : words.runMedium,
+    consequence: runConsequence(risk, words),
     reversible: risk !== "high",
   };
 }
