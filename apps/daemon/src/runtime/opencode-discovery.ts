@@ -4,7 +4,7 @@
  * canary that proves project config is off on this version: a harmless `opencode.json` in a folder
  * of Flightdeck's own must not be listed as a config source.
  */
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { opencodeConfig, opencodeEnv, VERIFIED_OPENCODE_VERSION } from "./opencode-config.ts";
 import { unexpectedSource } from "./opencode-preflight.ts";
@@ -45,7 +45,7 @@ export interface DiscoveryDeps {
   /** A folder of Flightdeck's own for the canary. */
   dataDir: string;
   which: (bin: string) => string | null;
-  exists: (path: string) => boolean;
+  exists: (path: string) => Promise<boolean>;
   run: (
     argv: string[],
     opts: { cwd: string; env: Record<string, string>; timeoutMs: number },
@@ -57,15 +57,26 @@ export interface DiscoveryDeps {
 
 export const CANARY_MODEL = "flightdeck-canary/none";
 
+/** `size:mtime` of a file, so a replaced OpenCode binary is noticed; null when it is not there. */
+export async function fileStamp(path: string): Promise<string | null> {
+  const info = await stat(path).catch(() => null);
+  return info ? `${info.size}:${info.mtimeMs}` : null;
+}
+
+/** Whether a file is there, without blocking. */
+export async function fileExists(path: string): Promise<boolean> {
+  return (await fileStamp(path)) !== null;
+}
+
 /** `opencode v2.2.5` gives `2.2.5`. */
 export function parseOpenCodeVersion(stdout: string): string | null {
   return /opencode v(\d+\.\d+\.\d+\S*)/.exec(stdout)?.[1] ?? null;
 }
 
-export function resolveOpenCodePath(
+export async function resolveOpenCodePath(
   configured: string | undefined,
   deps: Pick<DiscoveryDeps, "env" | "platform" | "which" | "exists">,
-): string | null {
+): Promise<string | null> {
   if (configured) return configured;
   const onPath = deps.which("opencode");
   if (onPath) return onPath;
@@ -77,7 +88,7 @@ export function resolveOpenCodePath(
     "bin",
     deps.platform === "win32" ? "opencode.exe" : "opencode",
   );
-  return deps.exists(local) ? local : null;
+  return (await deps.exists(local)) ? local : null;
 }
 
 /** Whether `a` is a later version than `b` (numeric parts only). */
@@ -124,7 +135,7 @@ export async function discoverOpenCode(
   deps: DiscoveryDeps,
 ): Promise<OpenCodeInfo> {
   if (!config.enabled) return { available: false, reason: "opencode_disabled" };
-  const path = resolveOpenCodePath(config.executablePath, deps);
+  const path = await resolveOpenCodePath(config.executablePath, deps);
   if (!path) return { available: false, reason: "opencode_missing" };
   const probe = await deps.run([path, "--version"], {
     cwd: deps.dataDir,

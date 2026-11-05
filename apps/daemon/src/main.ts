@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, statSync, unwatchFile, watchFile } from "node:fs";
+import { unwatchFile, watchFile } from "node:fs";
 import { stat } from "node:fs/promises";
 import { homedir, tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
@@ -99,7 +99,12 @@ import { CardPorts } from "./runenv/ports.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
 import { VERIFIED_OPENCODE_VERSION } from "./runtime/opencode-config.ts";
-import { discoverOpenCode, type OpenCodeInfo } from "./runtime/opencode-discovery.ts";
+import {
+  discoverOpenCode,
+  fileExists,
+  fileStamp,
+  type OpenCodeInfo,
+} from "./runtime/opencode-discovery.ts";
 import { OpenCodePreflight } from "./runtime/opencode-preflight.ts";
 import { OpenCodeModels, runCommand } from "./runtime/opencode-process.ts";
 import { OpenCodeRuntime, REAL_KILL_DEPS, treeKiller } from "./runtime/opencode-runtime.ts";
@@ -587,7 +592,7 @@ function discoverHost(config: Config, childEnv: Record<string, string>): Promise
     platform: process.platform,
     dataDir: config.dataDir,
     which: (bin) => Bun.which(bin, { PATH: childEnv.PATH ?? "" }),
-    exists: existsSync,
+    exists: fileExists,
     run: runCommand,
     scan: () => scanOpenCodeScope({ env: childEnv }),
     statFile: fileStamp,
@@ -608,12 +613,6 @@ async function openCodeState(
     info: enabled ? (known ?? (await discoverHost(config, childEnv))) : null,
     platform: process.platform,
   };
-}
-
-/** `size:mtime` of a file, so a replaced OpenCode binary is noticed; null when it is not there. */
-function fileStamp(path: string): Promise<string | null> {
-  const info = statSync(path, { throwIfNoEntry: false });
-  return Promise.resolve(info ? `${info.size}:${info.mtimeMs}` : null);
 }
 
 /**
