@@ -144,8 +144,10 @@ describe("ci-paths: the workflow", () => {
   });
 
   test("lint:sonar on a PR is the per-rule ratchet only, so a red X means a rule went up", () => {
-    expect(job("sonar-lint").name).toBe("lint:sonar (ratchet)");
-    expect(runs("sonar-lint")).toContain("bun run lint:sonar -- --ratchet");
-    expect(runs("sonar-lint")).not.toContain("--base");
+    // In the quick job since #272.
+    const sonar = job("quick").steps.find((s) => (s.run ?? "").includes("lint:sonar"));
+    expect(sonar?.name).toBe("lint:sonar (ratchet)");
+    expect(sonar?.if).toBe("github.event_name == 'pull_request'");
+    expect(sonar?.run).toBe("bun run lint:sonar -- --ratchet");
   });
 });
