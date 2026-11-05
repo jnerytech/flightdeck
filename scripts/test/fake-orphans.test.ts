@@ -51,7 +51,8 @@ async function orphanedFake(dir: string, until: "started" | "ended"): Promise<nu
   const wait =
     until === "ended"
       ? "await c.exited;"
-      : `while (!require("node:fs").existsSync(${JSON.stringify(join(dir, "pids"))} + "/" + c.pid)) await Bun.sleep(10);`;
+      : // At most 3 s: a fake that never records must not keep this parent looping.
+        `const end = Date.now() + 3000; while (Date.now() < end && !require("node:fs").existsSync(${JSON.stringify(join(dir, "pids"))} + "/" + c.pid)) await Bun.sleep(10);`;
   const parent = Bun.spawn(
     [process.execPath, "-e", `${spawn} ${wait} console.log(c.pid); process.exit(0);`],
     { stdout: "pipe", stderr: "ignore" },
