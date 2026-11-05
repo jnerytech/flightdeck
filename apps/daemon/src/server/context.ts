@@ -12,6 +12,8 @@ export interface ServerContext {
   manager: SessionManager;
   /** The service behind a gated option, or the `feature_off` refusal. */
   need<K extends GatedOption>(key: K): NonNullable<ServerOptions[K]>;
+  /** A registered project's folder, by its id (the board must be on). */
+  projectPath(projectId: string): string;
 }
 
 export function serverContext(opts: ServerOptions): ServerContext {
@@ -19,5 +21,6 @@ export function serverContext(opts: ServerOptions): ServerContext {
     opts,
     manager: opts.manager,
     need: (key) => need(opts, key),
+    projectPath: (projectId) => need(opts, "board").getProject(projectId).path,
   };
 }

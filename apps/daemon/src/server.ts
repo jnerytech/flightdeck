@@ -509,24 +509,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "issues");
   }
 
-  function agentcfg(): AgentConfig {
-    return need(opts, "agentcfg");
-  }
-
-  function mcp(): McpConfig {
-    return need(opts, "mcp");
-  }
-
-  const projectPath = (projectId: string) => board().getProject(projectId).path;
-
-  function pluginsApi(): Plugins {
-    return need(opts, "plugins");
-  }
-
-  function memory(): ProjectMemory {
-    return need(opts, "memory");
-  }
-
   function rewinder(): Rewinder {
     return need(opts, "rewinder");
   }
@@ -616,24 +598,8 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "changes");
   }
 
-  function snippets(): Snippets {
-    return need(opts, "snippets");
-  }
-
   function personaSessions(): OpenSessionPersonas {
     return need(opts, "personaSessions");
-  }
-
-  function personas(): Personas {
-    return need(opts, "personas");
-  }
-
-  function snippetUse(): SnippetUse {
-    return need(opts, "snippetUse");
-  }
-
-  function snippetHistory(): HistoryImporter {
-    return need(opts, "snippetHistory");
   }
 
   function review(): ReviewComments {
@@ -819,33 +785,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { claudeSessionId, n } = command.payload;
         return ok(command.type, await opts.snapshots.files(claudeSessionId, n));
       }
-      case "mcp.list":
-        return ok(command.type, {
-          servers: await mcp().list(projectPath(command.payload.projectId)),
-        });
-      case "mcp.test": {
-        const { projectId, name, confirm } = command.payload;
-        return ok(command.type, await mcp().test(projectPath(projectId), name, confirm === true));
-      }
-      case "mcp.save": {
-        const path = projectPath(command.payload.projectId);
-        await mcp().save(path, command.payload.server, command.payload.confirm === true);
-        return ok(command.type, { servers: await mcp().list(path) });
-      }
-      case "mcp.remove": {
-        const path = projectPath(command.payload.projectId);
-        await mcp().remove(path, command.payload.name, command.payload.confirm === true);
-        return ok(command.type, { servers: await mcp().list(path) });
-      }
-      case "mcp.toggle": {
-        const { projectId, name, enabled, confirm, sessionId } = command.payload;
-        const path = projectPath(projectId);
-        await mcp().toggle(path, name, enabled, confirm === true);
-        if (sessionId) await manager.toggleMcpServer(sessionId, name, enabled);
-        return ok(command.type, { servers: await mcp().list(path) });
-      }
-      case "mcp.status":
-        return ok(command.type, { servers: await manager.mcpStatus(command.payload.sessionId) });
       case "card.startArena": {
         const { cardId, ...input } = command.payload;
         return ok(command.type, await board().startArena(cardId, input));
@@ -987,91 +926,6 @@ export function startServer(opts: ServerOptions): RunningServer {
           command.type,
           await issues().createCard(command.payload.projectId, command.payload.issueRef),
         );
-      case "agentcfg.list": {
-        const { projectId, kind } = command.payload;
-        return ok(command.type, { items: await agentcfg().list(projectPath(projectId), kind) });
-      }
-      case "agentcfg.read": {
-        const { projectId, kind, path, origin } = command.payload;
-        return ok(command.type, await agentcfg().read(projectPath(projectId), kind, path, origin));
-      }
-      case "agentcfg.write": {
-        const { projectId, confirm, ...input } = command.payload;
-        const written = await agentcfg().write(projectPath(projectId), {
-          ...input,
-          confirm: confirm === true,
-        });
-        return ok(command.type, written);
-      }
-      case "plugins.list":
-        return ok(command.type, await pluginsApi().list());
-      case "plugins.detail":
-        return ok(command.type, await pluginsApi().detail(command.payload.plugin));
-      case "plugins.preview": {
-        const { plugin, dir } = command.payload;
-        return ok(
-          command.type,
-          await pluginsApi().preview(dir !== undefined ? { dir } : { plugin: plugin as string }),
-        );
-      }
-      case "plugins.previewUpdate":
-        return ok(command.type, await pluginsApi().previewUpdate(command.payload.plugin));
-      case "plugins.install":
-        return ok(command.type, await pluginsApi().install(command.payload));
-      case "plugins.update":
-        return ok(command.type, await pluginsApi().update(command.payload));
-      case "plugins.uninstall": {
-        const { confirm, ...input } = command.payload;
-        return ok(
-          command.type,
-          await pluginsApi().uninstall({ ...input, confirm: confirm === true }),
-        );
-      }
-      case "plugins.pin":
-        return ok(
-          command.type,
-          await pluginsApi().pin(command.payload.plugin, command.payload.pinned),
-        );
-      case "plugins.marketplaceAdd": {
-        const { confirm, ...input } = command.payload;
-        return ok(
-          command.type,
-          await pluginsApi().marketplaceAdd({ ...input, confirm: confirm === true }),
-        );
-      }
-      case "plugins.marketplaceRemove": {
-        const { confirm, ...input } = command.payload;
-        return ok(
-          command.type,
-          await pluginsApi().marketplaceRemove({ ...input, confirm: confirm === true }),
-        );
-      }
-      case "plugins.marketplaceUpdate":
-        return ok(command.type, await pluginsApi().marketplaceUpdate(command.payload.name));
-      case "memory.list":
-        return ok(command.type, await memory().list(projectPath(command.payload.projectId)));
-      case "memory.read": {
-        const { projectId, name } = command.payload;
-        return ok(command.type, await memory().read(projectPath(projectId), name));
-      }
-      case "memory.write": {
-        const { projectId, confirm, ...input } = command.payload;
-        return ok(
-          command.type,
-          await memory().write(projectPath(projectId), { ...input, confirm: confirm === true }),
-        );
-      }
-      case "memory.delete": {
-        const { projectId, confirm, ...input } = command.payload;
-        await memory().remove(projectPath(projectId), { ...input, confirm: confirm === true });
-        return ok(command.type, { name: input.name });
-      }
-      case "memory.budget":
-        return ok(command.type, await memory().budget(projectPath(command.payload.projectId)));
-      case "memory.suggest":
-        return ok(command.type, {
-          suggestions: await memory().suggest(projectPath(command.payload.projectId)),
-        });
       case "session.fork": {
         if (!opts.forker) throw featureOff("forker");
         return ok(command.type, await opts.forker.fork(command.payload));
@@ -1608,46 +1462,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.changeWatchers.get(command.payload.target)?.();
         ws.data.changeWatchers.delete(command.payload.target);
         return ok(command.type);
-      case "snippets.list":
-        return ok(command.type, await snippets().list(command.payload));
-      case "snippets.save":
-        return ok(command.type, await snippets().save(command.payload));
-      case "snippets.get": {
-        const { id, name, projectPath } = command.payload;
-        return ok(
-          command.type,
-          id ? await snippets().get(id) : await snippets().find(name as string, projectPath),
-        );
-      }
-      case "snippets.remove":
-        await snippets().remove(command.payload.id);
-        return ok(command.type);
-      case "snippets.trust":
-        return ok(
-          command.type,
-          await snippets().trust(command.payload.projectPath, command.payload.hash),
-        );
-      case "snippets.favorite":
-        return ok(
-          command.type,
-          await snippets().favorite(command.payload.id, command.payload.favorite),
-        );
-      case "snippets.parse":
-        return ok(command.type, snippets().parse(command.payload.text));
-      case "snippets.importHistory": {
-        const { limit, reveal, select } = command.payload;
-        const importer = snippetHistory();
-        const done = select ? await importer.import(select) : { created: [], skipped: [] };
-        const preview = await importer.preview({
-          ...(limit ? { limit } : {}),
-          ...(reveal ? { reveal } : {}),
-        });
-        return ok(command.type, { ...preview, ...done });
-      }
-      case "personas.list":
-        return ok(command.type, await personas().list(command.payload));
-      case "personas.save":
-        return ok(command.type, await personas().save(command.payload));
       case "session.applyPersona": {
         const { sessionId, claudeSessionId, persona } = command.payload;
         return ok(
@@ -1657,53 +1471,6 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "session.clearPersona":
         return ok(command.type, await personaSessions().clear(command.payload));
-      case "personas.subagents": {
-        const { projectPath, language } = command.payload;
-        return ok(command.type, await personas().subagents({ projectPath, language }));
-      }
-      case "personas.publishAgent":
-        return ok(command.type, await personas().publishAgent(command.payload));
-      case "personas.resolve": {
-        const { ref, projectPath } = command.payload;
-        const store = personas();
-        try {
-          return ok(
-            command.type,
-            await store.resolve(ref, { projectPath, language: ref.language }),
-          );
-        } catch (error) {
-          // A folder the daemon does not allow has no personas of its own: the host's and the pack's apply.
-          if (projectPath && error instanceof FlightdeckError && error.code === "forbidden_cwd") {
-            return ok(command.type, await store.resolve(ref, { language: ref.language }));
-          }
-          throw error;
-        }
-      }
-      case "personas.reset":
-        return ok(
-          command.type,
-          personas().reset(command.payload.id, { language: command.payload.language }),
-        );
-      case "personas.remove":
-        await personas().remove(
-          command.payload.scope,
-          command.payload.id,
-          command.payload.projectPath,
-        );
-        return ok(command.type);
-      case "personas.trust":
-        return ok(
-          command.type,
-          await personas().trust(
-            command.payload.projectPath,
-            command.payload.id,
-            command.payload.hash,
-          ),
-        );
-      case "snippets.render":
-        return ok(command.type, await snippetUse().render(command.payload));
-      case "snippets.use":
-        return ok(command.type, await snippetUse().use(command.payload));
       case "review.list":
         return ok(command.type, { comments: await review().list(command.payload.target) });
       case "review.add":
