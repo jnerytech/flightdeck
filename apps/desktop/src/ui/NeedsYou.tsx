@@ -20,6 +20,7 @@ import {
 } from "../lib/app-store.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
 import { sessionProjectKeys } from "../lib/client-scope.ts";
+import type { ClientColor } from "../lib/clients.ts";
 import { hubRows } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
 import type { Route } from "../lib/router.ts";
@@ -44,6 +45,245 @@ function RowHead(props: { children: ReactNode }) {
 /** The right-hand side for something that is not a request: a column that scrolls by itself. */
 function DetailColumn(props: { children: ReactNode }) {
   return <div className="flex h-full flex-col gap-3 overflow-y-auto p-4">{props.children}</div>;
+}
+
+type ChipOf = (sessionId: string) => { name: string; color: ClientColor } | null;
+
+/** One row of the list: what asks for the person (an alert, a loop, a watch or a request). */
+function EntryRow(props: {
+  entry: Entry;
+  active: boolean;
+  selected: boolean;
+  store: AppStore;
+  chipOf: ChipOf;
+  onActivate(): void;
+}) {
+  const { entry, store } = props;
+  const { t } = store.i18n;
+  if (entry.kind === "alert") {
+    return (
+      <li key={entry.key}>
+        <button type="button" data-active={props.active} className={ROW} onClick={props.onActivate}>
+          <span className="truncate text-sm">{entry.label}</span>
+        </button>
+      </li>
+    );
+  }
+  if (entry.kind === "watch") {
+    const label = t("watchUi.entry", {
+      card: entry.alert.title,
+      reason: entry.alert.watch.reason ?? "",
+    });
+    return (
+      <li key={entry.key}>
+        <button
+          type="button"
+          aria-label={label}
+          aria-pressed={props.selected}
+          data-active={props.active}
+          className={ROW}
+          onClick={props.onActivate}
+        >
+          <RowHead>
+            <StatusDot tone="needs-you" label={t("hub.stateDots.needs_you")} />
+            <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
+          </RowHead>
+        </button>
+      </li>
+    );
+  }
+  if (entry.kind === "loop") {
+    return (
+      <li key={entry.key}>
+        <button
+          type="button"
+          aria-pressed={props.selected}
+          data-active={props.active}
+          className={ROW}
+          onClick={props.onActivate}
+        >
+          <RowHead>
+            <StatusDot tone="needs-you" label={t("hub.stateDots.needs_you")} />
+            <span className="min-w-0 flex-1 truncate text-sm">
+              {t("needsYou.loopRow", { from: entry.alert.from, to: entry.alert.to })}
+            </span>
+          </RowHead>
+        </button>
+      </li>
+    );
+  }
+  const { item } = entry;
+  const summary = inputSummary(item.input);
+  const chip = props.chipOf(item.sessionId);
+  return (
+    <li key={entry.key}>
+      <button
+        type="button"
+        aria-label={`${item.hostName} · ${item.sessionName}: ${item.toolName}`}
+        aria-pressed={props.selected}
+        data-active={props.active}
+        className={ROW}
+        onClick={props.onActivate}
+      >
+        <RowHead>
+          <StatusDot tone="needs-you" label={t("hub.stateDots.needs_you")} />
+          <span className="min-w-0 flex-1 truncate text-sm">{`${item.hostName} · ${item.sessionName}`}</span>
+          {chip && <ClientChip name={chip.name} color={chip.color} />}
+          <time
+            dateTime={item.createdAt}
+            className="shrink-0 text-muted-foreground text-xs tabular-nums"
+          >
+            {formatAgo(store.now() - Date.parse(item.createdAt), t)}
+          </time>
+        </RowHead>
+        <span className="truncate pl-4 text-muted-foreground text-xs">
+          {summary ? `${item.toolName}: ${summary}` : item.toolName}
+        </span>
+      </button>
+    </li>
+  );
+}
+
+type WatchAlertOf = Extract<Entry, { kind: "watch" }>["alert"];
+type LoopAlertOf = Extract<Entry, { kind: "loop" }>["alert"];
+type RequestOf = Extract<Entry, { kind: "request" }>["item"];
+type DetailProps = { store: AppStore; go(route: Route): void };
+
+function WatchDetail({ watching, store, go }: DetailProps & { watching: WatchAlertOf }) {
+  const { t } = store.i18n;
+  return (
+    <DetailColumn>
+      <h2 className="font-semibold text-base">{t("watchUi.notifyTitle")}</h2>
+      <p className="text-sm">{watching.title}</p>
+      <p className="text-sm">{t("watchUi.needsYou", { reason: watching.watch.reason ?? "" })}</p>
+      <Stack as="ul" gap={1} className="text-sm">
+        {watching.watch.rounds.map((round) => (
+          <li key={round.id}>
+            {t("watchUi.round", { n: round.n, status: t(`watchUi.status.${round.status}` as Key) })}
+            {round.summary ? ` — ${round.summary}` : ""}
+          </li>
+        ))}
+      </Stack>
+      <Inline gap={2}>
+        <ActionButton onClick={() => store.setWatch(watching.hostId, watching.cardId, true)}>
+          {t("watchUi.resume")}
+        </ActionButton>
+        {watching.projectId && (
+          <Button
+            variant="outline"
+            onClick={() =>
+              go({
+                name: "card",
+                host: watching.hostId,
+                projectId: watching.projectId as string,
+                cardId: watching.cardId,
+              })
+            }
+          >
+            {t("watchUi.openCard")}
+          </Button>
+        )}
+      </Inline>
+    </DetailColumn>
+  );
+}
+
+function LoopDetail({ loop, store }: DetailProps & { loop: LoopAlertOf }) {
+  const { t } = store.i18n;
+  return (
+    <DetailColumn>
+      <h2 className="font-semibold text-base">{t("needsYou.loopTitle")}</h2>
+      <p className="text-sm">{loop.message}</p>
+      <div>
+        <Button onClick={() => void store.releasePair(loop.hostId, loopPairKey(loop))}>
+          {t("needsYou.release")}
+        </Button>
+      </div>
+    </DetailColumn>
+  );
+}
+
+function RequestDetail({
+  item,
+  store,
+  go,
+  onOpenRequest,
+}: DetailProps & { item: RequestOf; onOpenRequest(item: PendingItem): void }) {
+  const { t } = store.i18n;
+  return (
+    <div className="h-full overflow-y-auto p-4">
+      <ApprovalCard
+        request={{
+          requestId: item.requestId,
+          toolName: item.toolName,
+          input: item.input ?? {},
+          cwd: item.cwd ?? null,
+          createdAt: item.createdAt,
+          ...(item.risk ? { risk: item.risk } : {}),
+          ...(item.riskReason ? { riskReason: item.riskReason } : {}),
+        }}
+        t={t}
+        nowMs={store.now()}
+        onCopyPath={(text) => void store.copyText(text)}
+        onRespond={(decision, message, _updates, updatedInput) =>
+          item.gate
+            ? store.respondGate(
+                item.hostId,
+                item.gate,
+                decision === "allow" ? "approve" : "reject",
+                message,
+              )
+            : store.respondTo(
+                item.hostId,
+                item.requestId,
+                decision,
+                undefined,
+                message,
+                updatedInput,
+              )
+        }
+        actions={
+          // A request for a secret belongs to no session: the card is all there is to open.
+          item.vault ? (
+            <>
+              {item.vaultOnce && (
+                <ActionButton
+                  variant="outline"
+                  onClick={() => store.approveVaultForSession(item.hostId, item.requestId)}
+                >
+                  {t("vaultRulesUi.approveSession")}
+                </ActionButton>
+              )}
+              <Button
+                variant="ghost"
+                onClick={() => item.vaultRule && go({ name: "vault", rule: item.vaultRule })}
+              >
+                {t("vaultRulesUi.fromRequest")}
+              </Button>
+            </>
+          ) : (
+            <Button variant="ghost" onClick={() => onOpenRequest(item)}>
+              {t(item.gate ? "approval.openCard" : "approval.openSession")}
+            </Button>
+          )
+        }
+      />
+    </div>
+  );
+}
+
+/** The right-hand side: the watch, the loop or the request chosen in the list; nothing for an alert. */
+function EntryDetail(
+  props: DetailProps & { chosen: Entry | undefined; onOpenRequest(item: PendingItem): void },
+) {
+  const { chosen, store, go } = props;
+  if (chosen?.kind === "watch")
+    return <WatchDetail watching={chosen.alert} store={store} go={go} />;
+  if (chosen?.kind === "loop") return <LoopDetail loop={chosen.alert} store={store} go={go} />;
+  if (chosen?.kind !== "request") return null;
+  return (
+    <RequestDetail item={chosen.item} store={store} go={go} onOpenRequest={props.onOpenRequest} />
+  );
 }
 
 /** The requests waiting for the user: the list on the left, the chosen request's card on the right. */
@@ -129,219 +369,26 @@ export function NeedsYou(props: {
         <span className="text-muted-foreground text-xs tabular-nums">{entries.length}</span>
       </div>
       <ul className="min-h-0 flex-1 overflow-y-auto p-2">
-        {entries.map((entry, i) => {
-          if (entry.kind === "alert") {
-            return (
-              <li key={entry.key}>
-                <button
-                  type="button"
-                  data-active={cursor === i}
-                  className={ROW}
-                  onClick={() => {
-                    setCursor(i);
-                    open(entry);
-                  }}
-                >
-                  <span className="truncate text-sm">{entry.label}</span>
-                </button>
-              </li>
-            );
-          }
-          if (entry.kind === "watch") {
-            const label = t("watchUi.entry", {
-              card: entry.alert.title,
-              reason: entry.alert.watch.reason ?? "",
-            });
-            return (
-              <li key={entry.key}>
-                <button
-                  type="button"
-                  aria-label={label}
-                  aria-pressed={selected === entry.key}
-                  data-active={cursor === i}
-                  className={ROW}
-                  onClick={() => {
-                    setCursor(i);
-                    open(entry);
-                  }}
-                >
-                  <RowHead>
-                    <StatusDot tone="needs-you" label={t("hub.stateDots.needs_you")} />
-                    <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
-                  </RowHead>
-                </button>
-              </li>
-            );
-          }
-          if (entry.kind === "loop") {
-            return (
-              <li key={entry.key}>
-                <button
-                  type="button"
-                  aria-pressed={selected === entry.key}
-                  data-active={cursor === i}
-                  className={ROW}
-                  onClick={() => {
-                    setCursor(i);
-                    open(entry);
-                  }}
-                >
-                  <RowHead>
-                    <StatusDot tone="needs-you" label={t("hub.stateDots.needs_you")} />
-                    <span className="min-w-0 flex-1 truncate text-sm">
-                      {t("needsYou.loopRow", { from: entry.alert.from, to: entry.alert.to })}
-                    </span>
-                  </RowHead>
-                </button>
-              </li>
-            );
-          }
-          const { item } = entry;
-          const summary = inputSummary(item.input);
-          const chip = chipOf(item.sessionId);
-          return (
-            <li key={entry.key}>
-              <button
-                type="button"
-                aria-label={`${item.hostName} · ${item.sessionName}: ${item.toolName}`}
-                aria-pressed={selected === entry.key}
-                data-active={cursor === i}
-                className={ROW}
-                onClick={() => {
-                  setCursor(i);
-                  open(entry);
-                }}
-              >
-                <RowHead>
-                  <StatusDot tone="needs-you" label={t("hub.stateDots.needs_you")} />
-                  <span className="min-w-0 flex-1 truncate text-sm">{`${item.hostName} · ${item.sessionName}`}</span>
-                  {chip && <ClientChip name={chip.name} color={chip.color} />}
-                  <time
-                    dateTime={item.createdAt}
-                    className="shrink-0 text-muted-foreground text-xs tabular-nums"
-                  >
-                    {formatAgo(store.now() - Date.parse(item.createdAt), t)}
-                  </time>
-                </RowHead>
-                <span className="truncate pl-4 text-muted-foreground text-xs">
-                  {summary ? `${item.toolName}: ${summary}` : item.toolName}
-                </span>
-              </button>
-            </li>
-          );
-        })}
+        {entries.map((entry, i) => (
+          <EntryRow
+            key={entry.key}
+            entry={entry}
+            active={cursor === i}
+            selected={selected === entry.key}
+            store={store}
+            chipOf={chipOf}
+            onActivate={() => {
+              setCursor(i);
+              open(entry);
+            }}
+          />
+        ))}
       </ul>
     </section>
   );
 
-  const item = chosen?.kind === "request" ? chosen.item : null;
-  const loop = chosen?.kind === "loop" ? chosen.alert : null;
-  const watching = chosen?.kind === "watch" ? chosen.alert : null;
-  const detail = watching ? (
-    <DetailColumn>
-      <h2 className="font-semibold text-base">{t("watchUi.notifyTitle")}</h2>
-      <p className="text-sm">{watching.title}</p>
-      <p className="text-sm">{t("watchUi.needsYou", { reason: watching.watch.reason ?? "" })}</p>
-      <Stack as="ul" gap={1} className="text-sm">
-        {watching.watch.rounds.map((round) => (
-          <li key={round.id}>
-            {t("watchUi.round", { n: round.n, status: t(`watchUi.status.${round.status}` as Key) })}
-            {round.summary ? ` — ${round.summary}` : ""}
-          </li>
-        ))}
-      </Stack>
-      <Inline gap={2}>
-        <ActionButton onClick={() => store.setWatch(watching.hostId, watching.cardId, true)}>
-          {t("watchUi.resume")}
-        </ActionButton>
-        {watching.projectId && (
-          <Button
-            variant="outline"
-            onClick={() =>
-              go({
-                name: "card",
-                host: watching.hostId,
-                projectId: watching.projectId as string,
-                cardId: watching.cardId,
-              })
-            }
-          >
-            {t("watchUi.openCard")}
-          </Button>
-        )}
-      </Inline>
-    </DetailColumn>
-  ) : loop ? (
-    <DetailColumn>
-      <h2 className="font-semibold text-base">{t("needsYou.loopTitle")}</h2>
-      <p className="text-sm">{loop.message}</p>
-      <div>
-        <Button onClick={() => void store.releasePair(loop.hostId, loopPairKey(loop))}>
-          {t("needsYou.release")}
-        </Button>
-      </div>
-    </DetailColumn>
-  ) : (
-    item && (
-      <div className="h-full overflow-y-auto p-4">
-        <ApprovalCard
-          request={{
-            requestId: item.requestId,
-            toolName: item.toolName,
-            input: item.input ?? {},
-            cwd: item.cwd ?? null,
-            createdAt: item.createdAt,
-            ...(item.risk ? { risk: item.risk } : {}),
-            ...(item.riskReason ? { riskReason: item.riskReason } : {}),
-          }}
-          t={t}
-          nowMs={store.now()}
-          onCopyPath={(text) => void store.copyText(text)}
-          onRespond={(decision, message, _updates, updatedInput) =>
-            item.gate
-              ? store.respondGate(
-                  item.hostId,
-                  item.gate,
-                  decision === "allow" ? "approve" : "reject",
-                  message,
-                )
-              : store.respondTo(
-                  item.hostId,
-                  item.requestId,
-                  decision,
-                  undefined,
-                  message,
-                  updatedInput,
-                )
-          }
-          actions={
-            // A request for a secret belongs to no session: the card is all there is to open.
-            item.vault ? (
-              <>
-                {item.vaultOnce && (
-                  <ActionButton
-                    variant="outline"
-                    onClick={() => store.approveVaultForSession(item.hostId, item.requestId)}
-                  >
-                    {t("vaultRulesUi.approveSession")}
-                  </ActionButton>
-                )}
-                <Button
-                  variant="ghost"
-                  onClick={() => item.vaultRule && go({ name: "vault", rule: item.vaultRule })}
-                >
-                  {t("vaultRulesUi.fromRequest")}
-                </Button>
-              </>
-            ) : (
-              <Button variant="ghost" onClick={() => props.onOpenRequest(item)}>
-                {t(item.gate ? "approval.openCard" : "approval.openSession")}
-              </Button>
-            )
-          }
-        />
-      </div>
-    )
+  const detail = (
+    <EntryDetail chosen={chosen} store={store} go={go} onOpenRequest={props.onOpenRequest} />
   );
 
   return (
