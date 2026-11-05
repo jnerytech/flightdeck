@@ -3804,6 +3804,20 @@ Probes for this round (2026-11-05; no credential read; every probe session delet
 - **Why not on by default:** it would run OpenCode at every daemon start on every host that has it, and in every test that
   starts a daemon with the `claude` runtime (the preload's `opencode` sentinel would fail them).
 
+### Phase 39: the session UI
+
+- **`session.summary` carries `runtime`.** The sidebar and the session page read the summary event, not `session.list`,
+  so the event gets an optional `runtime` (set for an OpenCode session only; an older app ignores it). Not in the
+  `opencode-protocol` row; added with `opencode-session-ui`.
+- **Claude Code's panels are dropped by SessionView itself.** An OpenCode session's `claudeSessionId` is OpenCode's
+  `ses_...` id, so "Open in terminal" (`claude --resume`), the timeline (Claude's checkpoints), the persona switch and the
+  recap would act on a Claude session that does not exist. SessionView leaves them out, with the model switch, fork and
+  `acceptEdits`, when `runtime` is `opencode`; the screens keep passing them unchanged.
+- **Effort levels are shown as their ids** (`low` ... `max`), as the arena form already does.
+- **Not done in this area:** the empty states of the hidden panels (they are not drawn, so there is no empty state to
+  show) and axe on the new form, which runs with `demo:shots` at the phase's end (the slot was jammed). No `/` commands
+  needs no UI code: OpenCode's `session.init` has no `slashCommands`.
+
 ## A conversation opens on its latest message (issue #112)
 
 - **The end follows the layout, not only the messages.** Images, code blocks and the summary panel change the height after
