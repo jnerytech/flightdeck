@@ -195,6 +195,9 @@ describe("paleta", () => {
       await openPalette();
       await settle(() => sections().includes("Ações"));
       await type(query);
+      // The entries come from data the palette loads when it opens: ArrowDown on an empty list
+      // chooses nothing, so wait for the list the query is about.
+      await settle(() => options().length > 0);
       await press("ArrowDown");
       for (const key of keys) await press(key);
     };
@@ -259,6 +262,7 @@ describe("paleta", () => {
 
     await choose("app-a", "Enter");
     // The project's group heading in the list and the session's own, on the right.
+    await settle(() => screen.queryAllByRole("heading", { name: "app-a" }).length === 2);
     expect(screen.queryAllByRole("heading", { name: "app-a" })).toHaveLength(2);
 
     // Tab again (or Esc) leaves the actions for the list.
