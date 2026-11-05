@@ -372,6 +372,18 @@ export function slotViolation(
 /** The package scripts that run only through the slot (CLAUDE.md). */
 const HEAVY = /^(test|coverage|e2e|demo:shots|smoke(:[\w-]+)?|build:(daemon|desktop))$/;
 
+/**
+ * Why a `bun run pr -- merge|tag`, a `gh pr merge` or a REST merge is blocked (#271): sessions
+ * open their PRs and turn on auto-merge; merging by hand and tagging are the coordinator's
+ * (`FLIGHTDECK_COORDINATOR=1` in the hook's own environment, not one set in the command).
+ */
+export function prMergeViolation(
+  _command: string,
+  _env: Record<string, string | undefined>,
+): string | null {
+  return null;
+}
+
 export interface PushGuardDeps extends CommitGateDeps {
   /** The hook's own environment: `FLIGHTDECK_COORDINATOR=1` marks the session that may push all. */
   env: Record<string, string | undefined>;

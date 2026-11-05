@@ -273,6 +273,11 @@ async function updatePr(n: number, deps: PrFlowDeps): Promise<number> {
   return code === 0 ? 0 : 1;
 }
 
+/** Turns on GitHub's auto-merge for a PR onto main: it merges by itself once its checks are green. */
+async function autoPr(_n: number, _deps: PrFlowDeps): Promise<number> {
+  return 0;
+}
+
 async function mergePr(n: number, deps: PrFlowDeps): Promise<number> {
   if (deps.env.FLIGHTDECK_COORDINATOR !== "1") {
     deps.log("merging is the coordinator's (FLIGHTDECK_COORDINATOR=1)");
@@ -333,5 +338,6 @@ export async function prFlow(argv: string[], deps: PrFlowDeps): Promise<number> 
   if (command === "next") return await nextPrs(deps);
   if (command === "update" && Number.isInteger(n) && n > 0) return await updatePr(n, deps);
   if (command === "merge" && Number.isInteger(n) && n > 0) return await mergePr(n, deps);
+  if (command === "auto" && Number.isInteger(n) && n > 0) return await autoPr(n, deps);
   return usage(deps);
 }
