@@ -1,5 +1,7 @@
 import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import { byCodeUnit } from "@flightdeck/protocol";
+import { writeFileAtomic } from "../atomic-write.ts";
 
 /** The settings an exporter needs to reach the daemon's OTLP receiver. */
 export interface TelemetryTarget {
@@ -55,7 +57,7 @@ async function readSettings(file: string): Promise<Settings | null> {
 
 async function writeSettings(file: string, settings: Settings): Promise<void> {
   await mkdir(dirname(file), { recursive: true });
-  await writeFile(file, `${JSON.stringify(settings, null, 2)}\n`);
+  await writeFileAtomic(file, `${JSON.stringify(settings, null, 2)}\n`);
 }
 
 /** The exporter in `env` is Flightdeck's own: a loopback endpoint with a bearer header. */
@@ -64,7 +66,7 @@ const isOurs = (env: Record<string, string> | undefined) =>
   (env?.OTEL_EXPORTER_OTLP_HEADERS ?? "").startsWith("Authorization=Bearer ");
 
 const present = (env: Record<string, string> | undefined) =>
-  MANAGED_KEYS.filter((key) => env?.[key] !== undefined).sort();
+  MANAGED_KEYS.filter((key) => env?.[key] !== undefined).sort(byCodeUnit);
 
 /** The managed keys that hold a value of the user's, which install would have to overwrite. */
 export async function telemetryConflicts(file: string): Promise<string[]> {

@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 
 const IMPORT =
-  /^[ \t]*(import|export)\s+(type\s+)?(?:([\w*{}\s,$]+?)\s+from\s+)?["']([^"']+)["']/gm;
+  /^[ \t]*(import|export)\s+(type\s+)?(?:([\w*{}$,]+(?:\s+[\w*{}$,]+)*?)\s+from\s+)?["']([^"']+)["']/gm;
 const ONLY_TYPES = /^\{\s*(?:type\s+[\w$]+(?:\s+as\s+[\w$]+)?\s*,?\s*)+\}$/;
 
 /** The module specifiers a source file imports at load time (type-only imports do not load). */

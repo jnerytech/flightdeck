@@ -13,6 +13,7 @@ import type { AssistantBlock, PermissionMode } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { quotaReadings } from "../quota/quota.ts";
 import { whichOnPath } from "../which.ts";
+import { describeCommands, type SdkSlashCommand } from "./commands.ts";
 import type { FlightdeckMcpServer } from "./flightdeck-mcp.ts";
 import type {
   AgentRun,
@@ -34,6 +35,7 @@ export interface QueryHandle extends AsyncIterable<SDKMessage> {
   mcpServerStatus?(): Promise<McpServerStatus[]>;
   setPermissionMode?(mode: PermissionMode): Promise<void>;
   setModel?(model?: string): Promise<void>;
+  supportedCommands?(): Promise<SdkSlashCommand[]>;
 }
 
 export type QueryFn = (params: {
@@ -108,6 +110,19 @@ function toolResultText(content: unknown): string {
       .join("\n");
   }
   return content === undefined ? "" : JSON.stringify(content);
+}
+
+/** The init event with the commands described, when the SDK can say; the names alone otherwise. */
+async function withCommands(
+  event: Extract<RuntimeEvent, { type: "session.init" }>,
+  handle: QueryHandle,
+): Promise<RuntimeEvent> {
+  try {
+    const commands = await handle.supportedCommands?.();
+    return commands ? { ...event, commands: describeCommands(commands) } : event;
+  } catch {
+    return event;
+  }
 }
 
 /** Maps one SDK message to zero or more protocol events. Subagent traffic is left out. */
@@ -323,7 +338,9 @@ export class ClaudeSdkRuntime implements AgentRuntime {
     void (async () => {
       try {
         for await (const message of handle) {
-          for (const event of normalizeSdkMessage(message)) events.push(event);
+          for (const event of normalizeSdkMessage(message)) {
+            events.push(event.type === "session.init" ? await withCommands(event, handle) : event);
+          }
         }
         events.end();
       } catch (error) {

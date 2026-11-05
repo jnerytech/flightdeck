@@ -53,7 +53,7 @@ import type {
   WatchSettings,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { EPHEMERAL_EVENTS } from "@flightdeck/protocol";
+import { byCodeUnit, EPHEMERAL_EVENTS } from "@flightdeck/protocol";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type {
@@ -96,14 +96,24 @@ import {
   type HubView,
   hubRows,
   loadHubFilter,
+  loadHubOpen,
   loadHubView,
   saveHubFilter,
+  saveHubOpen,
   saveHubView,
 } from "./hub.ts";
-import { addEntry, type InboxEntry, loadInbox, markAllRead, markRead, saveInbox } from "./inbox.ts";
+import {
+  addEntry,
+  type InboxAbout,
+  type InboxEntry,
+  loadInbox,
+  markAllRead,
+  markRead,
+  saveInbox,
+} from "./inbox.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
-import { summaryNotifications } from "./notify.ts";
+import { externalRequestNotification, summaryNotifications } from "./notify.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
 import { isHot } from "./quota.ts";
@@ -517,7 +527,7 @@ export interface LoopAlert {
 
 /** The daemon's key for a pair of sessions, the same in both directions. */
 export const loopPairKey = (alert: Pick<LoopAlert, "from" | "to">): string =>
-  [alert.from, alert.to].sort().join("|");
+  [alert.from, alert.to].sort(byCodeUnit).join("|");
 
 export interface PendingItem {
   hostId: string;
@@ -919,6 +929,14 @@ export class AppStore {
   }
 
   /** How the hub draws its sessions: lines or cards. */
+  hubOpen(): Record<string, boolean> {
+    return loadHubOpen(this.platform.storage);
+  }
+
+  saveHubOpen(open: Record<string, boolean | undefined>): void {
+    saveHubOpen(this.platform.storage, open);
+  }
+
   hubView(): HubView {
     return loadHubView(this.platform.storage);
   }
@@ -1106,8 +1124,10 @@ export class AppStore {
     }
     const item = needsYou(this.state).find((i) => `${i.hostId}/${i.requestId}` === key);
     if (!item) return;
-    // The tray never approves a high-risk request: that takes holding the button in the app.
-    if (action === "open" || (action === "approve" && item.risk === "high")) this.openRequest(item);
+    // The tray never approves a high-risk request: that takes holding the button in the app. A
+    // workflow gate is answered on its card, never as a permission (the host refuses its id).
+    if (action === "open" || item.gate || (action === "approve" && item.risk === "high"))
+      this.openRequest(item);
     else if (item.vault && action === "approve") {
       // The daemon records that it was the tray that approved it.
       this.vaultQuestions.get(item.requestId)?.({ scope: "once", via: "tray" });
@@ -1116,7 +1136,12 @@ export class AppStore {
   }
 
   /** Sends an OS notification and keeps it in the notification center. */
-  private notifyUser(n: Notification, route?: Route, fallbackUrl?: string | null): void {
+  private notifyUser(
+    notification: Notification & { about?: InboxAbout },
+    route?: Route,
+    fallbackUrl?: string | null,
+  ): void {
+    const { about, ...n } = notification;
     const entry: InboxEntry = {
       id: crypto.randomUUID(),
       at: new Date().toISOString(),
@@ -1125,6 +1150,9 @@ export class AppStore {
       ...(n.link ? { link: n.link } : {}),
       ...(route ? { route } : {}),
       ...(fallbackUrl ? { fallbackUrl } : {}),
+      ...(about ? { subject: about.subject, host: about.host } : {}),
+      ...(about?.ask ? { ask: about.ask } : {}),
+      ...(about?.group ? { group: about.group } : {}),
       read: false,
     };
     this.setInbox(addEntry(this.state.inbox, entry));
@@ -1140,8 +1168,16 @@ export class AppStore {
     saveInbox(this.platform.storage, inbox);
   }
 
-  inboxMarkRead(id: string): void {
-    this.setInbox(markRead(this.state.inbox, id));
+  /** Marks entries read: the one of a click, or every entry a collapsed row stands for. */
+  inboxMarkRead(ids: string | string[]): void {
+    const wanted = new Set(typeof ids === "string" ? [ids] : ids);
+    this.setInbox([...wanted].reduce((list, id) => markRead(list, id), this.state.inbox));
+  }
+
+  /** Drops entries: a notification about something that is gone. */
+  inboxDismiss(ids: string[]): void {
+    const gone = new Set(ids);
+    this.setInbox(this.state.inbox.filter((e) => !gone.has(e.id)));
   }
 
   inboxMarkAllRead(): void {
@@ -1251,6 +1287,26 @@ export class AppStore {
   uiMode(hostId: string): ModeAnswer {
     const host = this.state.hosts.find((h) => h.id === hostId);
     return effectiveMode(this.state.uiChoices[hostId], host?.hostInfo?.ui);
+  }
+
+  /** The host whose mode the window shows: the selected one, else the first that is online. */
+  uiHostId(): string | null {
+    const { hosts, selected } = this.state;
+    return (
+      hosts.find((h) => h.id === selected?.hostId)?.id ??
+      hosts.find((h) => h.status === "online")?.id ??
+      null
+    );
+  }
+
+  /** Switches the window between simple and full mode; false when the host is locked or none shows. */
+  toggleUiMode(): boolean {
+    const hostId = this.uiHostId();
+    if (!hostId) return false;
+    const now = this.uiMode(hostId);
+    if (!now.canSwitch) return false;
+    this.setUiChoice(hostId, now.mode === "simple" ? "full" : "simple");
+    return true;
   }
 
   /** The person's choice for a host; `null` forgets it, so the host's default speaks again. */
@@ -2440,7 +2496,8 @@ export class AppStore {
     const linkFor = (requestId: string) => requestLink(hostId, requestId);
     const focused = this.platform.isFocused();
     const t = this.i18n.t;
-    for (const n of summaryNotifications(prev, next, label, focused, linkFor, t)) {
+    const names = { subject: next.name ?? basename(next.cwd), host: host.name, group: key };
+    for (const n of summaryNotifications(prev, next, label, focused, linkFor, t, names)) {
       this.notifyUser(n);
     }
   }
@@ -2497,12 +2554,32 @@ export class AppStore {
       this.state.externals[sessionKey(hostId, frame.claudeSessionId)]?.cwd ?? null,
     );
     if (!this.platform.isFocused()) {
-      this.notifyUser({
-        title: this.i18n.t("notify.externalTitle"),
-        body: `${host?.name ?? hostId} · ${frame.toolName}`,
-        link: requestLink(hostId, frame.requestId),
-      });
+      this.notifyUser(
+        externalRequestNotification(
+          {
+            hostId,
+            hostName: host?.name ?? hostId,
+            subject: this.externalTitle(hostId, frame.claudeSessionId),
+            claudeSessionId: frame.claudeSessionId,
+            toolName: frame.toolName,
+            input: frame.input,
+            link: requestLink(hostId, frame.requestId),
+          },
+          this.i18n.t,
+        ),
+      );
     }
+  }
+
+  /** A terminal session's name for a notification: the one given to it, else its folder or its id. */
+  private externalTitle(hostId: string, claudeSessionId: string): string {
+    const key = sessionKey(hostId, claudeSessionId);
+    const cwd = this.state.externals[key]?.cwd;
+    return (
+      this.state.meta[key]?.name ??
+      this.state.hub[hostId]?.history.find((h) => h.claudeSessionId === claudeSessionId)?.title ??
+      (cwd ? basename(cwd) : claudeSessionId.slice(0, 8))
+    );
   }
 
   /** A discarded card leaves; any other replaces what the app had. */
@@ -2959,7 +3036,7 @@ export class AppStore {
     const online = this.state.hosts
       .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false))
       .map((h) => h.id)
-      .sort()
+      .sort(byCodeUnit)
       .join("|");
     if (online === this.clientBudgetHosts) return;
     this.clientBudgetHosts = online;

@@ -4,6 +4,7 @@ import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts"
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { unfoldAll } from "./unfold.ts";
 import { waiter } from "./wait.ts";
 
 registerDom();
@@ -52,6 +53,7 @@ async function setup() {
   });
   await settle(() => store.getState().hosts[0]?.sessions.length === 2);
   await sidebar.openHub();
+  await unfoldAll(act);
   await settle(() => screen.queryByRole("listitem", { name: "Beta" }) !== null);
   return { d, store, mem };
 }
@@ -112,9 +114,15 @@ describe("direcao-visual: três colunas", () => {
     expect(alpha.className).not.toContain("min-h-10");
     expect(within(alpha).queryByRole("img", { name: "ociosa" })).not.toBeNull();
     // The host is the same for the whole group: gray, once, in its header.
-    const groupMeta = alpha.closest("section")?.querySelector("[data-slot='group-meta']");
-    expect(groupMeta?.textContent).toContain("alfa");
-    expect(groupMeta?.className ?? "").toContain("text-muted-foreground");
+    // Issue #111: it is a chip in the header (a link to the host page); the origin stays gray text.
+    const section = alpha.closest("section");
+    expect(section?.querySelector("button[aria-label='Abrir o host alfa']")?.textContent).toBe(
+      "alfa",
+    );
+    expect(section?.querySelector("[data-slot='group-meta']")?.textContent).toContain("Flightdeck");
+    expect(section?.querySelector("[data-slot='group-meta']")?.className ?? "").toContain(
+      "text-muted-foreground",
+    );
     expect(within(alpha).queryByText(/^alfa/)).toBeNull();
     const time = alpha.querySelector("time");
     expect(time?.className ?? "").toContain("tabular-nums");
@@ -196,6 +204,10 @@ describe("direcao-visual: três colunas", () => {
 
   test("J e K movem pela lista, Enter abre e as teclas ficam com o campo quando se digita", async () => {
     const { store } = await setup();
+    // The transcript from the terminal is an earlier session: open it, so all three are listed.
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /sess(?:ões|ão) anterior(?:es)?/ }));
+    });
     // The managed ones and the transcript from the terminal, in the order they are listed.
     const order = [...main().querySelectorAll("li[data-active]")].map((li) =>
       li.getAttribute("aria-label"),

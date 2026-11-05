@@ -466,6 +466,24 @@ saves after you confirm.
 The **Sessions** screen is the app's main one: every Claude Code session of the online hosts in
 one place, grouped by project and ordered by last activity.
 
+- **Project first.** Each project is a group with a bold heading (a folder, its name, a **live/total**
+  chip and one chip per host, which opens that host's page). **Every project starts folded**, showing
+  only its header and the sessions that need you; open one with its arrow, and the choice is
+  remembered per project. **Expand all** and **Collapse all** at the top do it for every project.
+  Opened, a project shows its live sessions first (the ones that need you on top). The
+  ended and history sessions sit behind **N earlier sessions**, newest first. Typing in the filter
+  also matches project names, and any filter (text, host, origin, state, persona, pinned) opens
+  everything it keeps. A pinned session always stays with the live ones. **The same project on two
+  hosts is one group** with both host chips, and each row keeps its own host chip. A project
+  without a git remote is matched by its folder name across hosts, but never when one host has two
+  folders with that name: those stay separate groups everywhere. Groups that share a name show a
+  short **path hint** (the folder above the project, for example `work`) beside the heading and in
+  its name for screen readers. A row of **Hosts** chips under
+  the hosts banner shows one host's sessions only (press it again to clear).
+- **Titles.** A session is called by its name, else the title its host gives it (the summary Claude
+  Code wrote, or its first prompt), else the persona with the task, else its folder. System wrappers (`<task-notification>`,
+  "Another Claude session sent a message:", local-command output) never appear in a title.
+
 ### What the list shows
 
 | Origin | Where it comes from |
@@ -1722,8 +1740,16 @@ The bell at the right of the top bar keeps every notification the app sends: a r
 needs you, a session that ended, a budget or quota alert, a PR watch result, a card that was
 unblocked. A badge on the bell counts the unread ones.
 
-- Click the bell to open the panel: newest first, grouped by day (Today, Yesterday, then the date).
-- Click an entry to mark it read and open its screen (a request opens on its card; a quota alert
+- Click the bell to open the panel: unread first, then newest first, in two groups (Today and
+  Earlier). Opening the panel marks nothing as read.
+- An unread row has a dot, a bold title and the word "unread" for a screen reader; a read row has
+  none of them. The badge counts the dots. Each row names the session, card or team and the host,
+  and says what it asks in words ("Asks: which DB to use?"), not the tool's name. A session's
+  repeated requests become one row with a count ("3 times"). A row whose card or request is gone
+  says so and has **Dismiss**.
+- Hover a row (or focus it) for a small **Mark as read** control: it marks that row and opens
+  nothing.
+- Click an entry to mark just it read and open its screen (a request opens on its card; a quota alert
   opens the host). A budget alert opens Costs already filtered by its host and project, or by
   its client; a team alert opens Teams with that team first and marked. A card's entry (a PR watch
   result, an unblocked card) opens the PR in your browser when the card is gone.
@@ -1783,8 +1809,11 @@ suggested model, effort, tools and permission mode, and the instructions of the 
   keeps your version on the host (**Pack, edited**); **Restore original** brings the pack's back.
 - **Host**, **Project** (choose one: its own and the versioned `.flightdeck/personas/*.md`, which
   you **Trust** first) and **Global (this app)**, kept in the app.
-- **New persona** and **Edit** open the editor with a **Preview** of what the session gets. A
-  persona never holds a secret: one is refused with the reason.
+- **New persona** and **Edit** open the editor with a **Preview** of what the session gets. **Edit**
+  opens the form inside the persona's own card, with the first field focused and the card scrolled
+  into view; **New persona** opens it at the top. **Cancel** and **Save** put the scroll back and
+  the focus on the Edit button. **Model** is a choice (**Other…** for free text) and **Tools** a
+  multi-select. A persona never holds a secret: one is refused with the reason.
 - **Publish as agent** writes the persona to `.claude/agents/persona-<id>.md` through the
   agent editor, with confirmation, so it also works for plain `claude`.
 
@@ -2031,8 +2060,8 @@ same login, so the quota belongs to the host. The daemon keeps the last reading 
 (5 hours, 7 days and any others that come along), and a reading stops being valid when its
 window resets.
 
-- **In the app:** the top of the Sessions screen shows, for each online host, the 5-hour and
-  7-day bars, with the percentage, the reset time and the age of the reading ("read 12 min
+- **In the app:** the top of the Sessions screen shows, for each Claude account, the 5-hour and
+  7-day bars (hosts signed in to the same account share one card, named after all of them), with the percentage, the reset time and the age of the reading ("read 12 min
   ago").
   - The bar turns red from `quota.pauseAt`.
   - Crossing `pauseAt` raises a notification, once per window.
@@ -2888,10 +2917,17 @@ how a host looks, not what it can do: the sessions, the permissions and the file
 the chosen folder. Results go to a *Flightdeck results* folder next to your files. Simple mode hides
 things, it does not protect them: a person in full mode can do everything the host allows.
 
-**Switching.** In full mode, open a host's page and use the *Simple mode* panel: *Use simple mode on
-this host* is your own choice, kept in this app. *Make simple mode the default for this host* sets
-what the next person sees. *Lock this host to its mode* removes the switch for everyone: a locked
-host stays in its mode and *Show everything* is not offered. Unlock it from the same panel.
+**Switching.** In full mode, open a host's page and use the *Simple mode* panel. Its first lines say
+which mode the host opens in and whether it is locked. *Default mode* (*Full app* or *Simple mode*)
+sets what the next person sees; *Use simple mode on this host* is your own choice, kept in this app.
+The *Lock this host to its mode* switch removes the choice for everyone (it asks first); a locked
+host stays in its mode. Each change shows a message, and the host's row in the sidebar carries a
+*Simple* badge when it opens in simple mode and a lock when it is locked.
+
+**Getting out of simple mode.** Every simple screen ends its menu with *Full app* (it asks once).
+On a locked host the menu says to ask its admin to unlock it instead. **Ctrl+Shift+M**, the palette
+(*Switch to the full app*) and, in the full app, *Simple mode* in the sidebar's footer switch the
+mode too, keeping your tabs.
 
 **Your own templates.** A host can add tasks as Markdown files in `templates/` inside the daemon's
 data folder: a header with the title, icon, fields, preset and whether to plan first, then one

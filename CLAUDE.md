@@ -36,21 +36,30 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   (matched by `FLIGHTDECK_SLOT_LABEL`, never another session's), so nobody needs `pkill -f`.
   `--priority` (for the maintainer's full gate) also lowers the other bun test processes of the
   user while it runs.
-- Tests for what you changed: `bun run test:related [--base <ref>]`. It takes the files changed
-  since the merge-base with `main` (or `<ref>`), picks the changed test files plus every test
-  that imports a changed file (transitively), prints each with the reason, and runs them in one
-  call (through the slot above 60 files). The run also collects coverage and fails unless every
+- Tests for what you changed: `bun run test:related [--base <ref>] [--fast]`. It takes the files
+  changed since the merge-base with `main` (or `<ref>`), picks the changed test files plus every
+  test that imports a changed file (transitively; with `--fast`, only directly) or names it as a
+  path, prints each with the reason, and runs them in one call (through the slot above 60 files). The run also collects coverage and fails unless every
   changed source file is at 100% lines and functions, listing the uncovered `file:line` and the
   uncalled functions (`bunfig.related.toml`; the same exclusions as the full suite). A change to `package.json`, a `bunfig` or the preload
   prints a warning: run the full suite then.
 - Which function a file is missing: `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` runs
   the tests that reach the files (or the ones named after --tests) and lists the functions no test
   called as `file:line`. Bun's coverage only counts them. It instruments in memory, never the sources.
+- Sonar rules before a push: `bun run lint:sonar [--base <ref>] [--no-types] [--all]` runs Sonar's
+  own JS/TS rules (eslint-plugin-sonarjs, in `tools/sonar-lint`, aligned with our SonarCloud
+  profile in `scripts/sonar-profile.json`) on the lines changed since the merge-base with `main`,
+  which is the new code the SonarCloud gate judges. `--no-types` skips the rules that need the
+  TypeScript program (a minute faster); `// NOSONAR: <reason>` suppresses a reviewed false positive
+  on both sides, and a NOSONAR with no reason fails. Biome stays the linter.
+  `bun run lint:sonar -- --ratchet` compares the open findings per rule over the whole repo with
+  `sonar-baseline.json`, which only goes down (`--ratchet --write` lowers it after a fix).
 - Before hand-off from a session: `bun run handoff:check` runs `typecheck`, `lint`, `tdd:audit`
   and `test:related` in order and prints a `HANDOFF <branch> <head> ...` stamp line; paste it in
   the hand-off message. The receiver runs `bun run handoff:check -- --verify` in the worktree
   (refused when stale or not all 0). The full suite (`bun run slot -- bun run test`) runs at the
-  orchestrator's version gate and in CI, not in every session.
+  orchestrator's version gate and in CI, not in every session. `bun run lint:sonar` is run
+  next to it, before a push.
 - Format: `bun run format`. Smokes: `bun run slot -- bun run smoke:<name>` (list in
   `package.json`; never `smoke:real` unless asked).
 - Audit: `bun run tdd:audit` audits from the merge-base with `main` (or from the last tag on
@@ -94,6 +103,10 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
 - Full suite, `demo:shots`, `e2e`, the smokes and the builds run only through
   `bun run slot --`, never bare (the guard hook refuses them otherwise): two of them at once overload the machine and make the
   timing-sensitive tests flaky. Area tests, typecheck and lint do not need the slot.
+  `bun run typecheck` and `bun run lint` go through the light lane by themselves
+  (`scripts/lane.ts`): at most two run at once on the machine, one when less than 5 GB is
+  available (one tsc run takes up to 1.5 GB), and the next waits for a place.
+  `FLIGHTDECK_LANE_PLACES` overrides the count.
 
 ## Conventions
 

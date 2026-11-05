@@ -87,4 +87,26 @@ describe("temp-run: each test run has a temp folder of its own, removed at the e
     installTempRun({}, base, () => false);
     expect(readdirSync(base).filter((name) => run.dir.endsWith(name))).toEqual([]);
   });
+
+  test("the sweep never throws: a pid file it cannot read is skipped and the run goes on", () => {
+    const base = realTempDir("fd-temp-run-base-");
+    // A directory where the pid file should be: reading it fails (on Windows, a file held by a
+    // process that has just swept the same folder does the same).
+    mkdirSync(join(base, "fd-run-odd", "pid"), { recursive: true });
+    const run = installTempRun({}, base, () => false);
+    expect(run.dir.startsWith(join(base, "fd-run-"))).toBe(true);
+    expect(readdirSync(base)).toContain("fd-run-odd");
+  });
+
+  test("one process start sweeps at most one dead folder, so a crowd of starting processes does not pile up its budget", () => {
+    const base = realTempDir("fd-temp-run-base-");
+    for (const name of ["fd-run-dead-a", "fd-run-dead-b", "fd-run-dead-c"]) {
+      mkdirSync(join(base, name));
+      writeFileSync(join(base, name, "pid"), "999999");
+    }
+    const run = installTempRun({}, base, () => false);
+    const left = readdirSync(base).filter((name) => name.startsWith("fd-run-dead-"));
+    expect(left).toHaveLength(2);
+    expect(run.dir.startsWith(join(base, "fd-run-"))).toBe(true);
+  });
 });

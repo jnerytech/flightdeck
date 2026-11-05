@@ -452,6 +452,24 @@ confirma.
 A tela **Sessões** é a principal do app: todas as sessões do Claude Code dos hosts online, num
 lugar só, agrupadas por projeto e ordenadas pela última atividade.
 
+- **Projeto primeiro.** Cada projeto é um grupo com um título em negrito (uma pasta, o nome, um chip
+  **ao vivo/total** e um chip por host, que abre a página do host). **Todo projeto começa
+  recolhido**, mostrando só o cabeçalho e as sessões que precisam de você; abra um pela seta, e a
+  escolha é lembrada por projeto. **Expandir tudo** e **Recolher tudo**, no topo, fazem isso com
+  todos. Aberto, o projeto mostra primeiro as sessões ao vivo (as que precisam de você no topo). As sessões encerradas e do histórico ficam atrás de **N sessões anteriores**, da mais
+  nova para a mais antiga. Digitar no filtro também casa com o nome do projeto, e qualquer filtro (texto, host, origem,
+  estado, persona, fixadas) abre tudo o que ele mantém. Uma sessão fixada fica sempre com as ao
+  vivo. **O mesmo projeto em dois hosts é um só grupo**, com os dois chips de host, e cada linha
+  mantém o seu chip de host. Um projeto sem remote git é reconhecido pelo nome da pasta entre
+  hosts, mas nunca quando um host tem duas pastas com esse nome: essas ficam em grupos separados em
+  todo lugar. Grupos que repetem o nome mostram uma **dica de caminho** curta (a pasta acima do
+  projeto, por exemplo `work`) ao lado do título e no nome dele para leitores de tela. Uma fileira de chips **Hosts** sob o aviso de hosts mostra só as sessões de um host
+  (aperte de novo para limpar).
+- **Títulos.** A sessão se chama pelo nome, senão pelo título que o host dá a ela (o resumo que o
+  Claude Code escreveu, ou o primeiro prompt), senão pela persona com a tarefa, senão pela pasta. Os invólucros do
+  sistema (`<task-notification>`, "Another Claude session sent a message:", saída de comando
+  local) nunca aparecem num título.
+
 ### O que aparece na lista
 
 | Origem | De onde vem |
@@ -1706,9 +1724,16 @@ O sino à direita da barra superior guarda toda notificação que o app envia: u
 precisa de você, uma sessão que terminou, um alerta de orçamento ou de cota, o resultado de um
 PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
 
-- Clique no sino para abrir o painel: mais recentes primeiro, agrupadas por dia (Hoje, Ontem e
-  depois a data).
-- Clique numa entrada para marcá-la como lida e abrir a tela dela (um pedido abre no card dele;
+- Clique no sino para abrir o painel: as não lidas primeiro, depois as mais recentes, em dois
+  grupos (Hoje e Antes). Abrir o painel não marca nada como lido.
+- Uma linha não lida tem um ponto, o título em negrito e a palavra "não lida" para o leitor de
+  tela; uma lida não tem nada disso. O selo conta os pontos. Cada linha diz a sessão, o card ou o
+  time e o host, e diz o que pede em palavras ("Pergunta: qual banco usar?"), não o nome da
+  ferramenta. Os pedidos repetidos de uma sessão viram uma linha só com a contagem ("3 vezes").
+  Uma linha cujo card ou pedido não existe mais avisa e tem **Descartar**.
+- Passe o mouse numa linha (ou foque nela) para ver o controle **Marcar como lida**: ele marca
+  aquela linha e não abre nada.
+- Clique numa entrada para marcar só ela como lida e abrir a tela dela (um pedido abre no card dele;
   um alerta de cota abre o host). Um alerta de orçamento abre os Custos já filtrados pelo host e
   pelo projeto dele, ou pelo cliente; um alerta de time abre Times com esse time em primeiro e
   destacado. A entrada de um card (resultado de um PR vigiado, card desbloqueado) abre o PR no
@@ -1769,8 +1794,12 @@ modelo, esforço, ferramentas e modo de permissão sugeridos, e as instruções 
   uma guarda a sua versão no host (**Pacote, editada**); **Restaurar original** traz a do pacote.
 - **Host**, **Projeto** (escolha um: as dele e as versionadas em `.flightdeck/personas/*.md`, que
   você **Confia** antes) e **Globais (deste app)**, guardadas no app.
-- **Nova persona** e **Editar** abrem o editor com uma **Prévia** do que a sessão recebe. Uma
-  persona nunca guarda segredo: a que tiver é recusada com o motivo.
+- **Nova persona** e **Editar** abrem o editor com uma **Prévia** do que a sessão recebe. **Editar**
+  abre o formulário dentro do cartão da própria persona, com o primeiro campo em foco e o cartão
+  trazido para a tela; **Nova persona** abre no topo. **Cancelar** e **Salvar** devolvem a rolagem
+  e o foco ao botão Editar. **Modelo** é uma escolha (**Outro…** para texto livre) e
+  **Ferramentas** uma seleção múltipla. Uma persona nunca guarda segredo: a que tiver é recusada
+  com o motivo.
 - **Publicar como agente** grava a persona em `.claude/agents/persona-<id>.md` pelo
   editor de agentes, com confirmação, e ela vale também para o `claude` puro.
 
@@ -2020,8 +2049,8 @@ Cada turno de uma sessão gerenciada traz a cota do plano do Claude. Todas as se
 usam o mesmo login, então a cota é do host. O daemon guarda a última leitura de cada janela (5
 horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janela reinicia.
 
-- **No app:** o topo da tela Sessões mostra, para cada host online, as barras de 5 horas e de 7
-  dias, com a porcentagem, a hora de reinício e a idade da leitura ("lida há 12 min").
+- **No app:** o topo da tela Sessões mostra, para cada conta do Claude, as barras de 5 horas e de 7
+  dias (hosts com a mesma conta compartilham um cartão, com o nome de todos), com a porcentagem, a hora de reinício e a idade da leitura ("lida há 12 min").
   - A barra fica vermelha a partir de `quota.pauseAt`.
   - Cruzar o `pauseAt` gera uma notificação, uma vez por janela.
 - **Só terminal:** os hooks não trazem a cota. Quem usa só sessões do terminal vê barras vazias ou
@@ -2866,11 +2895,18 @@ editar a pasta escolhida. Os resultados vão para uma pasta *Flightdeck results*
 arquivos. O modo simples esconde, não protege: quem está no modo completo faz tudo o que o host
 permite.
 
-**Trocar de modo.** No modo completo, abra a página de um host e use o painel *Modo simples*:
-*Usar o modo simples neste host* é uma escolha sua, guardada neste app. *Tornar o modo simples o
-padrão deste host* define o que a próxima pessoa vê. *Travar este host no modo atual* tira a troca
-para todos: um host travado fica no modo dele e *Mostrar tudo* não aparece. Destrave pelo mesmo
-painel.
+**Trocar de modo.** No modo completo, abra a página de um host e use o painel *Modo simples*. As
+primeiras linhas dizem em que modo o host abre e se está travado. *Modo padrão* (*App completo* ou
+*Modo simples*) define o que a próxima pessoa vê; *Usar o modo simples neste host* é uma escolha
+sua, guardada neste app. A chave *Travar este host no modo atual* tira a escolha de todos (ela
+pergunta antes); um host travado fica no modo dele. Cada mudança mostra uma mensagem, e a linha do
+host na barra lateral ganha uma etiqueta *Simples* quando ele abre no modo simples e um cadeado
+quando está travado.
+
+**Sair do modo simples.** Toda tela simples termina o menu com *App completo* (pergunta uma vez). Num
+host travado, o menu diz para pedir a quem administra que libere. **Ctrl+Shift+M**, a paleta
+(*Mudar para o app completo*) e, no app completo, *Modo simples* no rodapé da barra lateral também
+trocam o modo, mantendo as suas abas.
 
 **Suas próprias tarefas.** Um host pode ter tarefas como arquivos Markdown na pasta `templates/` dos
 dados do daemon: um cabeçalho com título, ícone, campos, predefinição e se começa planejando, e uma

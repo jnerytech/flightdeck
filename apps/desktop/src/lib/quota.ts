@@ -1,4 +1,4 @@
-import type { QuotaHistory, QuotaState, QuotaWindow } from "@flightdeck/protocol";
+import type { AccountState, QuotaHistory, QuotaState, QuotaWindow } from "@flightdeck/protocol";
 import { formatAgo } from "../i18n/format.ts";
 import type { Key, T } from "../i18n/index.ts";
 
@@ -81,4 +81,33 @@ export function quotaBars(
       age: t("quota.read", { ago: formatAgo(now - Date.parse(reading.readAt), t) }),
     };
   });
+}
+
+/** Hosts that share one Claude account: they share its quota, so they share a card. */
+export interface QuotaGroup<H extends { id: string }> {
+  key: string;
+  hosts: H[];
+}
+
+/**
+ * Groups the hosts by the Claude account they are signed in to (its email and organization), in
+ * the order the hosts come. A host that is not signed in, or whose account is not known yet,
+ * stays in a group of its own.
+ */
+export function quotaGroups<H extends { id: string }>(
+  hosts: H[],
+  account: Record<string, AccountState | undefined>,
+): QuotaGroup<H>[] {
+  const groups = new Map<string, QuotaGroup<H>>();
+  for (const host of hosts) {
+    const state = account[host.id];
+    const key =
+      state?.status === "signed_in" && state.name
+        ? `${state.name}|${state.organization ?? ""}`
+        : host.id;
+    const group = groups.get(key);
+    if (group) group.hosts.push(host);
+    else groups.set(key, { key, hosts: [host] });
+  }
+  return [...groups.values()];
 }

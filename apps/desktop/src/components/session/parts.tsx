@@ -1,5 +1,13 @@
-import { forwardRef, type ReactNode } from "react";
+import { MoreHorizontal } from "lucide-react";
+import { forwardRef, type ReactNode, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useT } from "@/i18n/context";
+import { useWidth } from "@/lib/use-width";
 import { cn } from "@/lib/utils";
+
+/** Below this width of the header's own box it is one line and the actions fold into a menu. */
+const NARROW_HEADER = 560;
 
 /** A session's title, its gray line and its controls, over the timeline. */
 export function SessionHeader(props: {
@@ -8,18 +16,68 @@ export function SessionHeader(props: {
   controls?: ReactNode;
   /** A row of its own under the buttons (the persona controls). */
   extra?: ReactNode;
+  /** The buttons that fold into a "More actions" menu when the header is narrow. */
+  actions?: ReactNode;
+  /** Dialogs of the actions: they stay mounted whether the menu is open or not. */
+  dialogs?: ReactNode;
+  /** The path and cost as one line of text: the tooltip of the title when the header is narrow. */
+  hint?: string;
 }) {
+  const t = useT();
+  const box = useRef<HTMLElement>(null);
+  const width = useWidth(box);
+  const narrow = width > 0 && width < NARROW_HEADER;
+  if (narrow) {
+    return (
+      <header
+        ref={box}
+        className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-2"
+      >
+        <h2 title={props.hint} className="min-w-0 flex-1 truncate font-semibold text-base">
+          {props.title}
+        </h2>
+        <div data-slot="session-controls" className="flex shrink-0 items-center gap-2">
+          {props.controls}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label={t("session.moreActions")}
+              >
+                <MoreHorizontal aria-hidden="true" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              className="flex w-auto max-w-[calc(100vw-2rem)] flex-col gap-2"
+            >
+              {props.actions}
+              {props.extra}
+            </PopoverContent>
+          </Popover>
+          {props.dialogs}
+        </div>
+      </header>
+    );
+  }
   return (
-    <header className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
+    <header
+      ref={box}
+      className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b px-4 py-3"
+    >
       <div className="min-w-0">
         <h2 className="truncate font-semibold text-base">{props.title}</h2>
         {props.subtitle && (
           <div className="flex flex-col text-muted-foreground text-xs">{props.subtitle}</div>
         )}
       </div>
-      {props.controls && (
+      {(props.controls || props.actions || props.dialogs) && (
         <div data-slot="session-controls" className="flex flex-wrap items-end gap-2">
           {props.controls}
+          {props.actions}
+          {props.dialogs}
         </div>
       )}
       {props.extra && (

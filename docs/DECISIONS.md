@@ -3560,6 +3560,88 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   different trees.
 - **Based on `rc/0363`,** which adds `workflow_dispatch` (#129) to the same `on:` block.
 
+
+## The light lane for typecheck and lint
+
+- **Why.** On 2026-11-05 the Pi ran out of memory (148 MB free, load 49) with five or six
+  typechecks running at once outside the slot. One run of `bun run typecheck` was itself three
+  tsc processes at once (`bun run --filter '*'` runs the workspaces in parallel) and then a
+  fourth: measured on the Pi, protocol 0.29 GB, daemon 0.95 GB, desktop 1.46 GB, scripts 1.05 GB.
+- **A lane with two places** (`scripts/lane.ts`, logic in `scripts/lib/lane.ts`). Each place is
+  one of the slot's lock files (`tryAcquire`/`release`), in the temp folder. A third run waits and
+  names the two holders once. It is separate from the heavy slot: a typecheck never waits for a
+  full suite, nor a full suite for a typecheck.
+- **Fail-open and nesting.** A lock that cannot be used runs the command anyway and says so. A
+  call made inside the lane or the heavy slot (`FLIGHTDECK_LANE_HOLDER`, `FLIGHTDECK_SLOT_HOLDER`
+  from #141) runs at once, so a script that runs typecheck inside a slot run never waits for itself.
+- **One project at a time, incremental.** `scripts/typecheck.ts` runs one tsc per project in
+  sequence (protocol, daemon, desktop, scripts), each with `--incremental` and its build info in
+  `node_modules/.cache/tsc/` (ignored, one per checkout). A cold run peaks at 1.48 GB (the desktop
+  project) and took 46 s on the loaded Pi; a run with nothing changed takes 8 s and 0.46 GB. A type
+  error added after a warm run is still reported. One shared tsc for all projects was not tried:
+  it would hold every project's program at once, the opposite of what the lane needs.
+- **The workspaces' own `typecheck` scripts stay** for a run inside one package; a test checks
+  that `PROJECTS` lists every workspace that has one.
+
+## Sonar rules before a push (issue #194)
+
+- **Biome stays the linter; `lint:sonar` only mirrors SonarCloud.** `bun run lint:sonar` runs `eslint-plugin-sonarjs` (Sonar's
+  own JS/TS rules) with no other ESLint rule. The rule list is not hand-written: `scripts/lib/sonar-lint.ts` keeps the plugin
+  rules whose Sonar key (`S1234`, from the rule's documentation URL) is active in the project's SonarCloud profile, "Sonar way
+  comprehensive" for TypeScript, snapshotted in `scripts/sonar-profile.json`. Refresh it with
+  `curl 'https://sonarcloud.io/api/rules/search?organization=jnerytech&qprofile=<key>&activation=true&ps=500&repositories=typescript'`
+  when the profile changes (the API is public for a public project; no token).
+- **Coverage of the profile (2026-11-05).** 211 of its 418 TypeScript rules have an ESLint rule: 160 run on syntax alone and 51
+  need the TypeScript program (`--no-types` skips those). The other 207, and the `tssecurity` taint rules (47) and
+  `tsarchitecture` rules (7), have no local equivalent and are reported only by SonarCloud.
+- **New code only.** SonarCloud's gate judges new code, and `main` has far more old findings than a change can fix, so
+  `lint:sonar` keeps the findings on the lines the branch added or changed (`git diff -U0` against the merge-base). `--all` and
+  `--files` check whole files.
+- **NOSONAR works the same on both sides, with one addition.** A `NOSONAR` comment silences the findings of its line, as in
+  SonarCloud. Locally a `NOSONAR` with no reason after it is itself a finding (`nosonar-reason`): a suppression says why.
+- **A workspace of its own.** `typescript-eslint` refuses TypeScript 7 (`typescript-eslint does not support TS 7.0`, tracking issue
+  typescript-eslint#10940), which the repository uses. The linter lives in the `tools/sonar-lint` workspace with its own
+  `typescript@5.9.3`; the app and the daemon keep TypeScript 7. Drop the pin when typescript-eslint supports TS 7.
+- **Not chosen:** a local SonarQube server (too heavy for the Pi) and scanner runs from the machine (they need the token).
+- **CI.** A fast `lint:sonar` job runs on pull requests only, against the merge-base with the target branch.
+
+## Sonar reads the tests and the same coverage as the gate (issue #205)
+
+- **Tests are test code in Sonar.** `sonar.exclusions` no longer lists the tests; `sonar.test.inclusions` (`**/test/**`, `*.test.ts(x)`,
+  `scripts/e2e/**`) marks them, so Sonar runs its test-scope rules on them. In the SonarCloud TypeScript profile 381 rules are
+  main-scope and 37 test-scope; `lint:sonar` runs each set on its kind of file (`testRules` in `scripts/sonar-profile.json`).
+  The first local run found 120 test findings (116 generic assertions); they are fixed, and 4 profile rules still have no ESLint twin.
+- **One list for coverage.** Sonar read 99.4% while the gate says 100% because the two exclusion lists differed (the build config, type
+  declarations and `scripts/e2e` were counted by Sonar only). `scripts/test/sonar-coverage.test.ts` now checks every tracked file:
+  Sonar counts it for coverage exactly when `isCoverageSource` (the gate's rule) does, so the lists cannot drift. The properties file
+  cannot call code, so it keeps its own glob list and the test is what ties it to `scripts/lib/coverage-check.ts`.
+- **Not verified here:** the scanner itself needs the token, so the overlap of `sonar.sources` and `sonar.tests` (with
+  `sonar.test.inclusions` deciding) is proven by the next SonarCloud run on the PR, not locally.
+- **`explicit-test-skip`.** The two tests that returned early on Windows use `test.skipIf(...)`.
+
+## Sonar bugs and vulnerabilities (issue #198)
+
+- **CSS S8776 and S8767 are ignored for `apps/desktop/src/styles.css`, nothing else.** All 31 findings sit inside Tailwind v4
+  `@utility` blocks (checked one by one): `&:hover`, `&[data-columns]` and declarations inside a nested `@media` are valid CSS
+  nesting there, but Sonar's CSS parser treats `@utility` as an unknown at-rule and reports "Missing scoping root" and "Invalid
+  position for declaration". Rewriting them as plain classes would drop the `@utility` variant support (`hover:`, `md:`) the app
+  uses, so the file is exempt through `sonar.issue.ignore.multicriteria` in `sonar-project.properties`, for these two rules only.
+- **Rust S7493 (3) and S4036 / S2245 / S5443 are NOSONAR with a reason.** The Rust calls already run inside `spawn_blocking_result`
+  (the rule cannot see through the helper); the `git` and `bun` scripts take the executable from the developer's `PATH` on purpose;
+  `Math.random()` only picks a spare port; and the "publicly writable directory" is a list of folder names to hide.
+- **Sorts (S2871, 16 sites): code-unit order unless a person reads the order.** A bare `.sort()` orders by UTF-16 code unit; a
+  locale order differs for mixed case and accents, which would change any key built from a sorted list (persisted state, a dedupe
+  key, a fingerprint) after an upgrade. `byCodeUnit` (`packages/protocol/src/compare.ts`) is the explicit, byte-identical
+  comparator and a test pins that a key joined from a mixed-case list is the same as before. `localeCompare(b, "en")` is used only
+  for the three lists a person reads:
+  - `byCodeUnit`: `ssh/import.ts` (import order), `agentcfg/files.ts` (item order), `lib/tabs.ts` (`routeKey`), `smoke-webhook.ts`
+    (keys compared), `lib/client-scope.ts` (project keys), `lib/app-store.ts` x2 (alert key, online-host key), `telemetry/otlp-env.ts`
+    (managed keys compared), `telemetry/store.ts` (project keys), `personas/store.ts` (untrusted ids), `smoke-rules-vault.ts` and
+    `smoke-automation.ts` (outcomes compared), `actions/schema.ts` (secret ids).
+  - `localeCompare(b, "en")`: `roi/summary.ts` (project rows), `lib/trace.ts` (tool names), `ui/ConnectionsPage.tsx` (tag list).
+- **Also fixed in code:** `reduce` has an initial value, `map` callbacks that take an index say so, a float is compared within a tolerance, and the import
+  pattern of `scripts/lib/bundle-reach.ts` no longer backtracks quadratically (30,000 spaces: 1.2 s to milliseconds).
+
 ## Harness D1: the commit gate, the test-edit guard and the audit in CI (issue #169)
 
 - **A Claude Code hook, not a git `commit-msg` hook.** A git hook reads the message reliably, but it
@@ -3681,6 +3763,21 @@ delivery, or rejected:
 - **`findCommit` and `pushViolation` share one parse** (`gitCalls`): the masked segments, each
   `cd`, `git -C`, and the subcommand's words with their offsets.
 
+## `test:related --fast` for hand-offs (issue #219, part of #216)
+
+- **What `--fast` keeps:** the changed test files, the tests that import a changed file
+  themselves (one step of the import walk), and the tests that name a changed path as a string
+  (`selectByPath`, direct by nature). The changed source files must still be at 100% lines and
+  functions, so a gap the direct tests leave is caught on the Pi.
+- **What it drops:** the tests that reach a changed file only through another module. They run
+  in CI on the pushed branch (#217) and at the coordinator's gate.
+- **Measured** on this tree (tests selected for one changed file, transitive then direct):
+  `packages/protocol/src/index.ts` 688 and 141, `apps/daemon/src/server.ts` 417 and 121,
+  `apps/desktop/src/i18n/en.ts` 359 and 19, `apps/desktop/src/lib/app-store.ts` 345 and 274. A
+  direct set over 60 files still goes through the slot.
+- **The hand-off default** in CLAUDE.md, TDD.md and `tdd-area` is now `bun run test:related --
+  --fast`; the transitive run stays available without the flag.
+
 ## Harness D3: the SPEC template, spec:lint and tdd:audit --spec (issue #169)
 
 - **The template keeps the shape the specs settled on** (Goal, Proof of concept first, Design,
@@ -3700,6 +3797,13 @@ delivery, or rejected:
 - **The table and the commits check each other.** `tdd:audit -- --spec <spec>` fails on an area
   with no `test(<area>)` commit in the range. `new-phase` and `spec-verifier` call it; an older
   table (no Test file column) yields no areas, so their audits run as before.
+
+## The bell says which notification is unread and what it is about (issue #137)
+
+- **Opening the panel already marked nothing**; the bug was that every row looked the same. An unread row now has a dot (the accent color), a bold title and an "unread" word for assistive technology: icon and weight, not color alone. The badge counts the unread rows, so it always equals the dots.
+- **Rows are named by what they are about.** A notification keeps `subject` (the session, card or team), `host`, `ask` (the request in words: the first question of AskUserQuestion, the command of Bash, the file of an edit, else "Wants to use <tool>") and `group`. Entries saved before this keep their old title and body.
+- **A session's repeated requests collapse** into one row with a count when they share a `group` and the same read state on the same side of midnight; reading one never hides an unread one, and clicking a collapsed row reads every entry it stands for. Today and Earlier replace Today, Yesterday and dates.
+- **A target that is gone** (a card with no pull request to fall back on, or a request no longer open) says so in its row and offers Dismiss, which removes the entries of the row; clicking the row only marks it read.
 
 ## Harness D5: rules per area and the SessionStart hook (issue #169)
 
@@ -3727,6 +3831,37 @@ delivery, or rejected:
   by design; review S2-12). Functional core, imperative shell is a paragraph in TDD.md and a line
   in the `scripts` and `daemon` rules.
 
+## Persona editor in place (#134)
+
+- **In place, not a side sheet.** Edit expands the persona's own card into its form where the person is; the first field takes the
+  focus and the form scrolls into view (`block: "nearest"`). A new persona still opens at the top, where the + is. Cancel and Save put
+  the scroll back and focus the Edit button; a saved pack persona changes scope (it becomes the host's copy), so its card is a new
+  one and the button is looked for again by the persona's id after the list reloads.
+- **Model and tools as choices.** The host announces no list of models, so the select offers the aliases (opus, sonnet, haiku) and the
+  ids the pack uses, with "Other…" for free text (a persona whose model is not in the list opens on it). Tools are a multi-select of
+  the tools Claude Code names plus `mcp__flightdeck`, keeping any tool a persona already had that is not in the list.
+
+- **The capacity follows the memory (#216 follow-up).** With 8 Claude sessions (about 3.4 GB)
+  and the bun tests, two tsc runs still pushed the Pi to 1.5 GB free and a memory pressure of
+  14%. The lane now opens one place per 2.5 GB of `MemAvailable`, between 1 and 2, read from
+  `/proc/meminfo` on every try (`lanePlaces`); off Linux it keeps 2, and
+  `FLIGHTDECK_LANE_PLACES` overrides the count. A run already in a place the lane no longer opens
+  finishes normally; only new runs see the smaller lane.
+
+## v0.36.3 review minors (#222): test infrastructure
+
+- **m4, temp-run.** The sweep never throws (the whole of it is guarded, and each pid file is read on its own), sweeps at most one dead folder per process start (the 3 s budget is spent once, and the next start takes the next folder), and clears the read-only attribute before it removes a file (git's objects on Windows). Not done: a CI step that counts the `fd-run-*` folders left after the Windows run (it needs a Windows runner to check), and the `pidAlive` fix for containers that share a TEMP across PID namespaces (the test runs here are not containerised with a shared TEMP; revisit if one appears).
+- **m8, slot.** The nested test starts `process.execPath -e` instead of `echo`, a child under the slot is told `FLIGHTDECK_SLOT_LOCK` (it would otherwise derive another lock from its own temp folder and queue behind its own parent), and the log line is cut to one line instead of carrying a `NOSONAR`.
+- **m10, PR runner: rejected, already covered.** `apps/daemon/test/pr.test.ts` still drives `new GithubCli()` and `new AzureDevOpsCli()` through the default `runCommand` and the fakes' real `.cmd` shim in the status and create tests (the other flow tests use the in-process `fake.run` on purpose, for speed on Windows). The `input` argument is not used by any PR call of the two providers today, so passing it through `run` would test nothing.
+- **m1, ci-branch.** A failed list of the earlier runs stops the script (exit 2, nothing dispatched) instead of reading as "none"; a list that fails while waiting for the new run is one look that failed; a refused dispatch shows gh's stderr (the wrapper keeps it; `spawnExec` drops it); a failed or unreadable look at the run is tried three times and then ends in exit 2 with the reason; a cancelled run exits 2 and says it says nothing about the branch. Not done: two `ci:branch` calls on one branch at the same moment can still pick the same run id (rare, and `gh workflow run` does not print the id on the `gh` versions in use).
+- **m2, ci.yml.** The concurrency key holds `inputs.only`, so a screenshots-only dispatch no longer cancels a full one.
+- **m3, required check names.** Not provable from here (the ruleset's treatment of a skipped duplicate next to a real check of the same name is GitHub's), so the risk is removed instead: a dispatched run's `test` jobs are named `test (<os>) (dispatch)`, which no ruleset requires. Push and pull request runs keep `test (<os>)` exactly.
+- **m11.** The misplaced doc comment of `END_SLACK` is back on it. The restore-at-mount point (a saved `top` clamped by a conversation that has not laid out its images and code yet, which then reads as "at the end") is not reproduced and not changed; it needs a late-growing code block in a browser to show.
+
+## BDD: one English feature per behaviour (issue #131)
+
+The `*.pt.feature` twins are gone. Each behaviour has one English `.feature` (the repo's text is English), and `playwright.config.ts` runs the same features in two projects, `bdd-en` and `bdd-pt` (the app in pt-BR), so a report names the language of each run. The steps are registered once, in English, and look for elements by role and by dictionary key in the language of the run (`c.t(key)`, or the dictionary object); `scripts/test/bdd-guard.test.ts` fails on a new Portuguese twin, a language in a feature's name, a step registered per language, literal UI text in a step (`getByText`, `getByLabel`, `getByRole(..., { name: "…" })`) or an accented letter in a step or feature. Seed data a scenario names uses one name for both languages: the demo's `Write a summary` template has the same title in en and pt-BR, and the approval scenario's session is "BDD approval". The scenarios under `scripts/e2e/bdd/roi/` (parsed only, outside the glob) lost their pt twins too; their parser test still reads Portuguese gherkin, as a parser check. Checked before deleting: each pt feature had the same scenarios and the same step kinds as its English file.
+
 ## Harness D6: the reviewer agents and the protocol-surface ratchet (issue #169)
 
 - **Protocol compatibility is a check, not an agent.** `scripts/lib/protocol-surface.ts` reads
@@ -3750,6 +3885,23 @@ delivery, or rejected:
   and run on sonnet; `harness-config.test.ts` checks it.
 - **No UX reviewer.** `demo:shots` already runs axe in both themes and languages, and the UX
   sessions read the prints.
+
+## A per-rule open-count ratchet for Sonar (issue #204)
+
+- **`sonar-baseline.json` holds how many findings each rule may still have** across the whole repository, as `lint:sonar --ratchet`
+  counts them (every tracked file, the rules that need no type information, NOSONAR respected). A rule above its number fails;
+  `--ratchet --write` lowers the numbers to today's counts and never raises one; `--ratchet --init` writes them once. It reuses the
+  helpers of the layout ratchet (`overBaseline`, `tightened`, `initialised`).
+- **Typed rules are not in the count.** They need the TypeScript program, which takes minutes over the whole repo on the Pi; they are
+  still checked on the changed lines of every pull request, and SonarCloud counts them all.
+- **CI runs it on pull requests**, after the changed-lines check, so a change that adds a finding of any rule fails there while the
+  old ones are burned down in the batches of #197.
+
+## Layout guards in one module (issue #192)
+
+`scripts/lib/layout-guards.ts` is the one browser function (`layoutFindings`, run in the page) that the e2e `layout` journey and `demo:shots` share, replacing the ad hoc `overflow()` (nearly blind: it skipped everything under an `overflow-hidden` ancestor) and the sideways check each fix had added. Its rules are the precise ones of the UX review: the page scrolls sideways; a box is cut by an ancestor that clips on an axis no ancestor scrolls; content is squeezed under 8 px tall; text is cut with an ellipsis to under 48 px; an alert is off screen; a bar grew; a key region (`sidebar-hosts`, `approval-card`, `board-columns`, `form-actions`, each now carrying its `data-slot`) is smaller than its minimum at 1280 px. Each finding names its culprit by `data-slot` path (`sidebar > sidebar-hosts`), not by class soup. "One word per line", unnamed controls and small targets are not rebuilt: axe covers the last two. The geometry runs on the pt-BR layout journey at 720x480, 1280x800 and 1920x1080 (geometry only, no prints).
+
+Noise: the key-region rules are a contract and always fail. The heuristic rules fail only when new against `scripts/layout-findings-baseline.json`, keyed by rule, screen and path (no text, no pixels), and a baseline entry whose finding is gone fails too, so the file only goes down. **There is no baseline file yet**: until it is committed the heuristic findings fail nothing and the run writes what it saw to `playwright-report/layout-findings.json` (the CI e2e artifact); that file, copied to `scripts/layout-findings-baseline.json`, is the first baseline. Not done: the `?gallery` page of the audit's G5 (the prints folder and visual diff already review; a static index from `demo:shots` is cheaper), and a settle that waits for fonts and equal `scrollHeight` instead of the fixed waits of `open()`.
 
 ## Harness D4: the hand-off stamp, checked by the receiver (issue #169)
 

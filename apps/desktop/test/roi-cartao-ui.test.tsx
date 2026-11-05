@@ -343,6 +343,9 @@ for (const [lang, t] of [
     test("no blocking accessibility violation", async () => {
       await roiPage(lang, { usage: USAGE, done: SHOP });
       await settle(() => screen.queryByText(plural(t.roiUi.cardsDone, 3)) !== null);
+      expect(screen.queryByText(plural(t.roiUi.cardsDone, 3))).not.toBeNull();
+      expect(screen.queryByText(plural(t.roiUi.cardsDone, 3))).not.toBeNull();
+      expect(screen.queryByText(plural(t.roiUi.cardsDone, 3))).not.toBeNull();
       const result = await axe.run(document.body, {
         rules: { "color-contrast": { enabled: false } },
       });

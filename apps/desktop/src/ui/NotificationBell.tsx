@@ -4,11 +4,18 @@ import { NotificationCenter, UnreadBadge } from "@/components/notifications/noti
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import type { T } from "../i18n/index.ts";
-import { type AppStore, sessionKey } from "../lib/app-store.ts";
-import { type InboxEntry, inboxTarget, unreadCount } from "../lib/inbox.ts";
+import { type AppStore, needsYou, sessionKey } from "../lib/app-store.ts";
+import {
+  type InboxEntry,
+  type InboxRow,
+  inboxTarget,
+  unreadCount,
+  unreadRows,
+} from "../lib/inbox.ts";
+import { parseRequestLink } from "../lib/request-link.ts";
 import type { Route } from "../lib/router.ts";
 
-/** The bell in the top bar: the unread count and the notification center. */
+/** The bell in the top bar: the unread rows and the notification center. */
 export function NotificationBell(props: {
   store: AppStore;
   inbox: InboxEntry[];
@@ -17,12 +24,23 @@ export function NotificationBell(props: {
 }) {
   const { store, inbox, t } = props;
   const [open, setOpen] = useState(false);
-  const unread = unreadCount(inbox);
-  const pick = (entry: InboxEntry) => {
-    store.inboxMarkRead(entry.id);
+  const unread = unreadRows(inbox, new Date());
+  const state = store.getState();
+  const cardExists = (r: Extract<Route, { name: "card" }>) =>
+    sessionKey(r.host, r.cardId) in state.cards;
+  /** What an entry is about no longer exists: a card with no pull request to fall back on, or a request already answered. */
+  const gone = (entry: InboxEntry) => {
+    if (entry.route?.name === "card" && !entry.fallbackUrl) return !cardExists(entry.route);
+    const request = entry.link ? parseRequestLink(entry.link) : null;
+    return (
+      request !== null &&
+      !needsYou(state).some((i) => i.hostId === request.hostId && i.requestId === request.requestId)
+    );
+  };
+  const pick = (row: InboxRow) => {
+    store.inboxMarkRead(row.ids);
     setOpen(false);
-    const { cards } = store.getState();
-    const target = inboxTarget(entry, (r) => sessionKey(r.host, r.cardId) in cards);
+    const target = inboxTarget(row.entry, cardExists);
     if (target?.kind === "link") store.openRequestLink(target.link);
     else if (target?.kind === "url") store.openLink(target.url);
     else if (target?.kind === "route") props.go(target.route);
@@ -42,9 +60,12 @@ export function NotificationBell(props: {
       </PopoverTrigger>
       <NotificationCenter
         entries={inbox}
-        unread={unread}
+        unread={unreadCount(inbox)}
         t={t}
+        gone={gone}
         onPick={pick}
+        onMarkRead={(row) => store.inboxMarkRead(row.ids)}
+        onDismiss={(row) => store.inboxDismiss(row.ids)}
         onMarkAll={() => store.inboxMarkAllRead()}
         onClear={() => store.inboxClear()}
       />

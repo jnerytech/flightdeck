@@ -1,5 +1,8 @@
 #!/usr/bin/env bun
-/** `bun run test:related [--base <ref>]`: runs only the tests that reach the files changed since the base. */
+/**
+ * `bun run test:related [--base <ref>] [--fast]`: runs only the tests that reach the files changed
+ * since the base (`--fast`: only the tests that import them directly), and checks their coverage.
+ */
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -10,14 +13,18 @@ import { planRelated } from "./lib/test-related.ts";
 const ROOT = resolve(import.meta.dir, "..");
 const args = process.argv.slice(2).filter((a) => a !== "--");
 const flag = args.indexOf("--base");
+// --fast: the changed tests and the tests that import a changed file directly (#219).
+const fast = args.includes("--fast");
 
 const coverageDir = mkdtempSync(join(tmpdir(), "test-related-"));
 const plan = planRelated({
   coverageDir,
+  fast,
   base: flag >= 0 ? args[flag + 1] : undefined,
   platform: process.platform,
   git: (gitArgs) => {
-    const proc = spawnSync("git", gitArgs, { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 26 });
+    const options = { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 26 } as const;
+    const proc = spawnSync("git", gitArgs, options); // NOSONAR: git and bun come from the PATH of the developer running the script
     return proc.status === 0 ? proc.stdout : null;
   },
   readFile: (path) => readFileSync(resolve(ROOT, path), "utf8"),

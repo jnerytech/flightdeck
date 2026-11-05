@@ -38,7 +38,7 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
    confira `git status --short` antes: `test(<área>): <comportamento>`.
 6. **Implementação mínima**, mesmo comando verde, depois a suíte inteira
    (`bun run slot -- bun run test`, que inclui o limite de 100% e o verificador de arquivos-fonte),
-   ou `bun run test:related` numa sessão (a suíte inteira roda na barreira), `bun run typecheck` e
+   ou `bun run test:related -- --fast` numa sessão (a suíte inteira roda no CI), `bun run typecheck` e
    `bun run lint`, encadeados (`&&` ou `set -o pipefail`) para o commit não acontecer depois de
    uma falha. Commit `feat(<área>): ...`.
 7. **Cobertura revela ramo sem teste?** Remova o ramo, escreva o teste, mostre o vermelho e só
@@ -77,9 +77,14 @@ the audit in CI is the wall. `bun run harness:stats` shows how often each rule b
 many commits were waived.
 
 **Antes de entregar uma sessão:** `bun run typecheck`, `bun run lint`, `bun run tdd:audit` e
-`bun run test:related`. O `test:related [--base <ref>]` roda só os testes que alcançam o que
-mudou desde o merge-base com `main` (os arquivos de teste alterados e os que importam, direta ou
-indiretamente, um arquivo alterado), e imprime cada um com o motivo. A suíte completa
+`bun run test:related -- --fast`. O `test:related [--base <ref>]` roda só os testes que alcançam o
+que mudou desde o merge-base com `main` (os arquivos de teste alterados e os que importam, direta ou
+indiretamente, um arquivo alterado), e imprime cada um com o motivo. **`--fast`** (the hand-off
+default, #219) keeps only the tests that import a changed file directly, plus the changed tests
+and the tests that name a changed path, and still demands 100% coverage of the changed source
+files. On a hub file the set shrinks a lot (`packages/protocol/src/index.ts`: 688 tests
+transitively, 141 directly; `apps/desktop/src/i18n/en.ts`: 359 and 19). The transitive set runs
+in CI on the pushed branch. A suíte completa
 (`bun run slot -- bun run test`, com o limiar de 100%) roda na barreira de versão do orquestrador
 e no CI.
 
@@ -134,7 +139,9 @@ em vez de depender de cuidado.
 - **The slot for the heavy runs.** The full suite, `demo:shots`, `e2e`, the smokes and the builds
   run through `bun run slot -- <command>` (an exclusive lock with a queue, `scripts/lib/slot.ts`),
   never bare: two heavy runs at once overload the machine and make the timing-sensitive tests
-  flaky. Area tests, typecheck and lint do not need the slot. A full gate that must not be
+  flaky. Area tests, typecheck and lint do not need the slot; `bun run typecheck` and
+  `bun run lint` take a place in the light lane instead (`scripts/lane.ts`, two places), because
+  one tsc run takes up to 1.5 GB and six at once ran the machine out of memory. A full gate that must not be
   disturbed by the sessions' area tests runs with `--priority` (`bun run slot -- --priority bun run
   test`): while it runs, the slot raises the niceness of the other bun test processes of the
   same user to 15 every few seconds. It only raises (never lowers a niceness), skips its own
