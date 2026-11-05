@@ -47,6 +47,36 @@ describe("handoff-check", () => {
     expect(stampProblem("garbage", HEAD) ?? "").toContain("not a stamp");
   });
 
+  test("--base reaches test:related, for a branch stacked on another (#266)", async () => {
+    const ran: string[] = [];
+    await runHandoff({
+      run: async (command) => {
+        ran.push(command.join(" "));
+        return 0;
+      },
+      branch: "ci-paths",
+      head: HEAD,
+      now: "t",
+      base: "ci-shards",
+    });
+    expect(ran.at(-1)).toBe("bun run test:related -- --fast --base ci-shards");
+  });
+
+  test("the stamp carries the CI of HEAD, and vouches only when it is green too (#266)", async () => {
+    const stamp = async (ci: string) =>
+      runHandoff({ run: async () => 0, branch: "b", head: HEAD, now: "t", ci: async () => ci });
+    const pending = await stamp("pending");
+    expect(pending.stamp).toBe(
+      `HANDOFF b ${HEAD} typecheck=0 lint=0 audit=0 related=0 ci=pending t`,
+    );
+    expect(pending.code).toBe(1);
+    expect(stampProblem(pending.stamp, HEAD)).toBe("failed: ci=pending");
+    const green = await stamp("0");
+    expect(green.code).toBe(0);
+    expect(stampProblem(green.stamp, HEAD)).toBeNull();
+    expect(stampProblem((await stamp("skip")).stamp, HEAD)).toBe("failed: ci=skip");
+  });
+
   test("a hostile stamp is refused in linear time (Sonar S5852) (#232)", () => {
     // A digit can end one pair or start the next: the old pattern backtracked 2^n times on a miss.
     const hostile = `HANDOFF b ${HEAD} ${"x=11".repeat(24)} a b`;

@@ -202,7 +202,8 @@ em vez de depender de cuidado.
   protocol, the dependencies or the workflow run everything; the Tauri shell adds cargo. A job
   skipped by path still reports under the ruleset's name. Every push to `main` runs everything.
 - A release is a tag on a green `main`, and on a commit whose full run (its push to `main`) is
-  green; there is no rc branch to assemble.
+  green; there is no rc branch to assemble. `bun run pr -- tag vX` (the coordinator) tags main's
+  HEAD only after that run passed, and pushes the tag alone as `refs/tags/vX`.
 
 ## Evidência para o /goal
 
