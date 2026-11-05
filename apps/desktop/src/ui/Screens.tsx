@@ -39,6 +39,7 @@ import { RecapPanel } from "./RecapPanel.tsx";
 import { SessionsHub } from "./SessionsHub.tsx";
 import { SessionTabs } from "./SessionTabs.tsx";
 import { SessionView } from "./SessionView.tsx";
+import { SetupPage } from "./SetupPage.tsx";
 import { StartScreen } from "./StartScreen.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 import { TerminalPage } from "./TerminalPage.tsx";
@@ -573,6 +574,8 @@ function routeScreen(props: ScreenProps): ReactNode {
       return <ClientsPage store={store} state={state} />;
     case "plugins":
       return <PluginsPage store={store} />;
+    case "setup":
+      return <SetupPage store={store} state={state} go={go} />;
     case "snippets":
       return <SnippetsPage store={store} go={go} />;
     case "connections":

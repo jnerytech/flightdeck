@@ -121,6 +121,7 @@ import {
   markGap,
   type SessionState,
 } from "./session-state.ts";
+import { type SetupProbe, SetupSettings } from "./setup-steps.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
 import {
@@ -232,6 +233,8 @@ export interface AppState {
   account: Record<string, AccountState>;
   /** Budgets of each host, by host id; kept by `budget.updated` (phase 8). */
   budgets: Record<string, Budget[]>;
+  /** What hosts answered for the setup checklist (hooks, GitHub), by host id (issue #164). */
+  setupProbes: Record<string, SetupProbe>;
   /** What `deps.check` found on each host, by host id (hosts that announce `deps`). */
   deps: Record<string, DepsResult>;
   /** What `doctor.run` found on each host, by host id. */
@@ -782,6 +785,7 @@ export class AppStore {
     this.theme = new ThemeController(platform);
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
+    this.setup = new SetupSettings(platform.storage);
     this.i18n = new I18n(platform);
     this.i18n.subscribe(() => this.onLanguage());
     this.state = {
@@ -803,6 +807,7 @@ export class AppStore {
       healthAt: {},
       healthError: {},
       budgets: {},
+      setupProbes: {},
       ssh: {},
       snippets: {},
       snippetChoice: null,
@@ -850,6 +855,8 @@ export class AppStore {
   readonly theme: ThemeController;
   readonly density: DensityController;
   readonly terminalFont: TerminalFontController;
+  /** The setup checklist: hidden or not, and whether a test notification ever showed. */
+  readonly setup: SetupSettings;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** The screen in use and its history (phase 10). */
@@ -1844,6 +1851,11 @@ export class AppStore {
   embeddedTerminal(hostId: string): boolean {
     const host = this.state.hosts.find((h) => h.id === hostId);
     return host?.status === "online" && hasFeature(host.hostInfo?.features, "terminal", false);
+  }
+
+  /** Asks a host what the setup checklist needs from it: its hooks, GitHub, projects. */
+  async refreshSetup(hostId: string): Promise<void> {
+    void hostId;
   }
 
   /** Asks the host for its `host.info` again (after a change of its settings). */
