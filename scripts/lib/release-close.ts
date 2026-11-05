@@ -184,6 +184,7 @@ export async function releaseClose(
   const milestone = await milestoneOf(deps, tag);
   if (!opts.apply) {
     if (!milestone) deps.log(`no milestone named ${tag}`);
+    else if (milestone.state !== "open") deps.log(`milestone ${tag}: already closed`);
     else {
       const closing = planned.filter((p) => p.open && p.milestone === milestone.number).length;
       const left = Math.max(0, milestone.open_issues - closing);
@@ -202,10 +203,11 @@ export async function releaseClose(
 
   const after = milestone ? await milestoneOf(deps, tag) : undefined;
   if (!after) deps.log(`no milestone named ${tag}`);
+  else if (after.state !== "open") deps.log(`milestone ${tag}: already closed`);
   else if (failures > 0) deps.log(`milestone ${tag}: left open, a step above failed`);
   else if (after.open_issues > 0) {
     deps.log(`milestone ${tag}: ${after.open_issues} open issue(s) left, not closed`);
-  } else if (after.state === "open") {
+  } else {
     const closed = await deps.gh([
       "api",
       "-X",
