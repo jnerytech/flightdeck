@@ -91,6 +91,22 @@ describe("log-app-ui: Settings > Diagnostics (issue #255)", () => {
     expect(w.copied[0]).toContain("pc went offline");
   });
 
+  test("a log file that cannot be read does not stop the copy: the app's own lines are used", async () => {
+    const w = setup();
+    w.mem.platform.logs = {
+      write: async () => {},
+      tail: async () => {
+        throw new Error("unreadable");
+      },
+      openFolder: async () => {},
+    };
+    w.store.appLog.log("warn", "host", "pi: offline");
+    render(view(w.store, <DiagnosticsPanel store={w.store} />));
+    await click(screen.getByRole("button", { name: "Copy diagnostics" }));
+    await settle(() => w.copied.length === 1);
+    expect(w.copied[0]).toContain("pi: offline");
+  });
+
   test("a browser has no file system: the panel is not there", () => {
     const w = setup({ logs: false });
     const { container } = render(view(w.store, <DiagnosticsPanel store={w.store} />));
