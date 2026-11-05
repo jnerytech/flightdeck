@@ -32,10 +32,10 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   (matched by `FLIGHTDECK_SLOT_LABEL`, never another session's), so nobody needs `pkill -f`.
   `--priority` (for the maintainer's full gate) also lowers the other bun test processes of the
   user while it runs.
-- Tests for what you changed: `bun run test:related [--base <ref>]`. It takes the files changed
-  since the merge-base with `main` (or `<ref>`), picks the changed test files plus every test
-  that imports a changed file (transitively), prints each with the reason, and runs them in one
-  call (through the slot above 60 files). The run also collects coverage and fails unless every
+- Tests for what you changed: `bun run test:related [--base <ref>] [--fast]`. It takes the files
+  changed since the merge-base with `main` (or `<ref>`), picks the changed test files plus every
+  test that imports a changed file (transitively; with `--fast`, only directly) or names it as a
+  path, prints each with the reason, and runs them in one call (through the slot above 60 files). The run also collects coverage and fails unless every
   changed source file is at 100% lines and functions, listing the uncovered `file:line` and the
   uncalled functions (`bunfig.related.toml`; the same exclusions as the full suite). A change to `package.json`, a `bunfig` or the preload
   prints a warning: run the full suite then.
@@ -43,8 +43,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   the tests that reach the files (or the ones named after --tests) and lists the functions no test
   called as `file:line`. Bun's coverage only counts them. It instruments in memory, never the sources.
 - Before hand-off from a session: `bun run typecheck`, `bun run lint`, `bun run tdd:audit`
-  and `bun run test:related`. The full suite (`bun run slot -- bun run test`) runs at the
-  orchestrator's version gate and in CI, not in every session.
+  and `bun run test:related -- --fast`. The transitive set and the full suite run in CI on the
+  pushed branch (#216) and at the coordinator's gate, not in every session.
 - Format: `bun run format`. Smokes: `bun run slot -- bun run smoke:<name>` (list in
   `package.json`; never `smoke:real` unless asked).
 - Audit: `bun run tdd:audit` audits from the merge-base with `main` (or from the last tag on
