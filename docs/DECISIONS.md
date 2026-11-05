@@ -3559,3 +3559,27 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   That is accepted: CI minutes are free for this public repository, and the two runs check
   different trees.
 - **Based on `rc/0363`,** which adds `workflow_dispatch` (#129) to the same `on:` block.
+
+## Worktrees panel: size, suggestions and safe removal (issue #152)
+
+- **What is listed.** The worktrees `git worktree list` reports directly inside `<repo>/.flightdeck/worktrees`, as real folders (a link is
+  skipped, and so is anything whose real path leaves that folder). The main checkout and worktrees elsewhere are never listed, so never
+  removable. Arena variants count as cards (the daemon asks the board for every card with a worktree, not only the visible ones).
+- **Facts.** Dirty = `git status --porcelain` is not empty, or fails (when git cannot say, nothing is removed). "Unpushed" = commits
+  reachable from HEAD but from no remote branch and not from the base branch (`rev-list --count HEAD --not --remotes <base>`), so a
+  merged or pushed branch has none, and a branch with work that exists only here is counted. No base branch found: kept as
+  `unknown_base`. Idle = the newest of the last commit, the card's last update and the folder's mtime.
+- **Suggested** = no blocker, idle over 7 days, and the card is Done or its PR merged, or there is no card.
+- **Diverges from the issue on purpose:** the panel never removes a dirty, unpushed or live worktree, not even after a second
+  confirmation. The coordinator's brief asked for "kept, because…"; the way to throw such work away is the card's Discard, which already
+  asks. This keeps the bulk path free of data loss. Dismissing ("keep") with a fingerprint and the notification-center notice for low disk
+  were not built; the panel warns on the host page when a disk has under 10% free.
+- **Removal looks again.** `worktree.remove` re-reads the project's worktrees and refuses a path that is not one of them, then re-checks
+  its blockers, runs `git worktree remove` without `--force`, then `git branch -D` (safe: nothing exists only on it) and frees the card
+  (`worktree_path` NULL, the watchers told). One failure does not stop the rest; the result lists what was removed (with bytes freed) and
+  what was kept and why.
+- **Size.** `du -sk` with a 15 s deadline per folder, run in parallel; a timeout, a failure or a host without `du` (Windows) is
+  `unknown`. The list is read on open and on "Scan again", not polled. Windows 8.3 and long-path cases were not tested; paths are
+  compared with the daemon's `samePath`.
+- **Not built:** the panel on each Project page (the host page has it), the PR-open-with-Watch rule, and the "Freed" total in the
+  notification center.

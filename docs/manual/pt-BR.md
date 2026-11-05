@@ -2456,6 +2456,18 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude
   ganha um selo ⚠. O tempo no ar continua contando enquanto a página está aberta.
+- **Worktrees:** um painel da página do host (hosts que anunciam `worktrees`) lista as worktrees
+  dos cards em `.flightdeck/worktrees` com o tamanho em disco (**desconhecido** quando a medição
+  estourou o tempo, nunca 0), há quanto tempo estão paradas e o card de cada uma. **Sugerida** marca
+  uma worktree limpa, sem commits não enviados e sem sessão ao vivo, parada há mais de 7 dias, cujo
+  card está Concluído ou cujo PR foi mesclado, ou que não tem card. Uma worktree com alterações não
+  commitadas, commits que não existem em outro lugar, sessão ou execução rodando, ou branch base
+  desconhecido fica **mantida**: a linha diz por quê e não pode ser marcada. Filtre por Sugeridas,
+  Protegidas ou Sem card, ordene por idade ou tamanho, **Selecionar sugeridas** ou **Selecionar
+  todas que podem sair**, e então **Remover**: a confirmação cita cada branch e o espaço liberado, e
+  o host confere cada worktree de novo antes de removê-la (sem force), então uma que mudou nesse
+  meio-tempo é mantida. O card, se houver, continua no board sem a worktree. Um disco com menos de
+  10% livre gera aviso. Apagar algo que está mantido continua sendo pelo **Descartar** do card.
 - **Um host desconectado** mostra um aviso no topo da página dele: o estado, o que falhou em
   palavras simples (nada respondeu, sem resposta a tempo, a conexão caiu, o token foi recusado), a
   hora da última tentativa, a contagem até a próxima tentativa automática e **Reconectar agora**,

@@ -6,6 +6,7 @@ import { BypassSwitch } from "@/components/hosts/bypass-switch";
 import { GithubPanel } from "@/components/hosts/github-panel";
 import { HostDoctor } from "@/components/hosts/host-doctor";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
+import { HostWorktrees } from "@/components/hosts/host-worktrees";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
 import { Field } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -119,6 +120,7 @@ export function HostPage(props: {
             onOpenHistory={props.onOpenHistory}
           />
         )}
+        <HostWorktrees store={store} host={host} />
         <Panel title={t("hostPage.info")} label={t("hostPage.info")}>
           {info ? (
             <ul className="flex flex-col gap-1 text-sm">

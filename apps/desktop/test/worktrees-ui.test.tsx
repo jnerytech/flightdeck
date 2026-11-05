@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { WorktreeItem, WorktreesResult } from "@flightdeck/protocol";
+import { formatBytes } from "../src/i18n/format.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { settle } from "./wait.ts";
@@ -89,6 +90,14 @@ const click = (el: Element) =>
   act(async () => {
     fireEvent.click(el);
   });
+
+describe("worktrees-ui: sizes", () => {
+  test("KB, MB and GB with the language's separators", () => {
+    expect(formatBytes(512, "en")).toBe("512 B");
+    expect(formatBytes(300 * MB, "en")).toBe("300 MB");
+    expect(formatBytes(1.5 * 1024 * MB, "pt-BR")).toBe("1,5 GB");
+  });
+});
 
 describe("worktrees-ui: the Worktrees panel (issue #152)", () => {
   test("every worktree is a row with its size ('unknown' when it could not be told), idle time and card", async () => {

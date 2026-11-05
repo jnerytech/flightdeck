@@ -2468,6 +2468,18 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
   badge. The uptime keeps counting while the page is open.
+- **Worktrees:** a host page panel (hosts that announce `worktrees`) lists the cards' worktrees
+  under `.flightdeck/worktrees` with their size on disk (**unknown** when measuring ran out of
+  time, never 0), how long they have been idle, and their card. **Suggested** marks a clean worktree
+  with no unpushed commits and no live session, idle for over 7 days, whose card is Done or whose
+  PR merged, or that has no card. A worktree with uncommitted changes, commits that exist nowhere
+  else, a running session or run, or an unknown base branch is **kept**: the row says why and
+  cannot be ticked. Filter by Suggested, Protected or No card, sort by age or size, **Select
+  suggested** or **Select all that can go**, then **Remove**: the confirmation names every branch
+  and the space it frees, and the host checks each worktree again before removing it (without
+  force), so one that changed meanwhile is kept. The card, if any, stays on the board without its
+  worktree. A disk under 10% free is warned about. Deleting something that is kept still goes through
+  the card's **Discard**.
 - **A host that is offline** shows a banner at the top of its page: the state, what failed in plain
   words (nothing answered, no answer in time, the link dropped, the token refused), the time of the
   last try, a countdown to the next automatic try and **Reconnect now**, which shows its progress
