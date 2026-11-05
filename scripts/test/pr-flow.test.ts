@@ -294,6 +294,25 @@ describe("pr-flow: open", () => {
     expect(failed.f.out()).toContain("FLIGHTDECK_PR_OPENED hook failed (exit 3); #300 is open");
   });
 
+  test("a hook that cannot even start leaves the PR open too (#273)", async () => {
+    const f = fake({
+      pushed: ["sec"],
+      subjects: { sec: ["feat(sec): x (#273)"] },
+      issues: { 273: "Reviews" },
+      env: { FLIGHTDECK_PR_OPENED: "no-such-program" },
+    });
+    const deps = {
+      ...f.deps,
+      run: async (): Promise<{ code: number; stdout: string }> => {
+        throw new Error("ENOENT: no-such-program");
+      },
+    };
+    expect(await prFlow(["open", "sec"], deps)).toBe(0);
+    expect(f.out()).toContain(
+      "FLIGHTDECK_PR_OPENED hook failed (ENOENT: no-such-program); #300 is open",
+    );
+  });
+
   test("without FLIGHTDECK_PR_OPENED no hook runs (#273)", async () => {
     const f = fake({
       pushed: ["sec"],
