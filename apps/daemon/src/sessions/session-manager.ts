@@ -316,7 +316,13 @@ export class SessionManager {
       ...(opts.agents ? { agents: opts.agents } : {}),
     });
     this.store.updateSession(id, { claudeSessionId: opts.claudeSessionId });
-    this.emit(id, { type: "session.created", cwd, name: opts.name, permissionMode });
+    this.emit(id, {
+      type: "session.created",
+      cwd,
+      name: opts.name,
+      permissionMode,
+      resumedFrom: opts.claudeSessionId,
+    });
     this.emit(id, { type: "session.status", status: "starting" });
     this.startRun(id, opts.claudeSessionId);
     this.setStatus(id, "idle", "retomada do histórico");

@@ -124,6 +124,47 @@ describe("host-offline-ui", () => {
     }
   });
 
+  test("a host that refused the token says so, with no countdown to a retry that would be refused again", async () => {
+    const { HostOfflineBanner } = await import("../src/components/hosts/host-offline-banner.tsx");
+    render(
+      <HostOfflineBanner
+        host={
+          {
+            id: "h1",
+            name: "pc",
+            url: "ws://10.0.0.5:7420/v1/ws",
+            status: "unauthorized",
+            retry: null,
+            hostInfo: null,
+          } as never
+        }
+        onReconnect={() => {}}
+      />,
+    );
+    const banner = screen.getByRole("region", { name: "Estado da conexão" });
+    expect(banner.textContent).toContain("O host recusou o token. Pareie este host de novo.");
+    expect(banner.textContent).not.toMatch(/Próxima tentativa/);
+  });
+
+  test("a refused connection to a non-loopback address says the daemon may have refused this machine", async () => {
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    render(<App store={store} />);
+    // 0.0.0.0 reaches this machine and nothing listens: refused, and not a loopback name.
+    await act(() => store.addHost({ name: "pc", url: "ws://0.0.0.0:1/v1/ws", token: TOKEN }));
+    await waitFor(() => expect(store.getState().hosts[0]?.retry?.kind).toBe("refused"));
+    const open = await waitFor(() => {
+      const button = screen.queryByRole("button", { name: "Abrir host pc" });
+      expect(button).not.toBeNull();
+      return button as HTMLElement;
+    });
+    await act(async () => {
+      fireEvent.click(open);
+    });
+    await waitFor(() => expect(text()).toContain("recusou o endereço desta máquina"));
+    expect(text()).toContain("allowedNetworks");
+  });
+
   test("an online host has no banner, and its uptime keeps counting", async () => {
     const d = makeDaemon(cleanups);
     const server = d.listen(0, 20);

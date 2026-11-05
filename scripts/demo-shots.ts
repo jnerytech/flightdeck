@@ -509,6 +509,14 @@ function shots(ids: DemoIds): Shot[] {
     { name: "host-reconectando", route: { name: "host", host: "demo-slow" } },
     { name: "host-incompativel", route: { name: "host", host: "demo-old" } },
     {
+      // Issue #105: the project page with its session tiles; it fails if no tile shows.
+      name: "projeto-blocos",
+      route: { name: "project", host: ALFA, projectId: ids.project },
+      prepare: async (page) => {
+        await page.locator("[data-slot='session-tile']").first().waitFor({ timeout: 15_000 });
+      },
+    },
+    {
       name: "projeto-vazio",
       route: { name: "board", host: ALFA, projectId: ids.emptyProject },
     },
@@ -698,6 +706,23 @@ export async function takeShots(
             await page.evaluate(pageBackground),
           );
           if (mismatch) problems.push(mismatch);
+          // The window never scrolls sideways (issue #103): the widest element is named.
+          const sideways = await page.evaluate(() => {
+            const root = document.documentElement;
+            if (root.scrollWidth <= root.clientWidth) return null;
+            let widest = { name: "?", right: 0 };
+            for (const el of document.querySelectorAll<HTMLElement>("body *")) {
+              const box = el.getBoundingClientRect();
+              if (box.width > 0 && box.right > widest.right) {
+                widest = {
+                  name: `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 60)}`,
+                  right: box.right,
+                };
+              }
+            }
+            return `scrollWidth ${root.scrollWidth} > ${root.clientWidth}; widest ${widest.name} ends at ${Math.round(widest.right)}`;
+          });
+          if (sideways) problems.push(`${theme} ${lang} ${shot.name}: ${sideways}`);
           // The same screen, checked for accessibility: serious and critical violations fail.
           await page.addScriptTag({ path: AXE });
           const found = await page.evaluate(
@@ -727,7 +752,7 @@ export async function takeShots(
   }
   if (problems.length > 0) {
     throw new Error(
-      `prints: ${problems.length} problems (axe serious or critical, or a background that does not match the theme)\n${problems.join("\n")}`,
+      `prints: ${problems.length} problems (axe serious or critical, a background that does not match the theme, or a page that scrolls sideways)\n${problems.join("\n")}`,
     );
   }
   return SHOTS_DIR;

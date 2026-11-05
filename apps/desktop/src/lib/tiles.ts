@@ -1,4 +1,5 @@
 import type { HubRow, HubState } from "./hub.ts";
+import { isInside } from "./paths.ts";
 import type { SessionState } from "./session-state.ts";
 
 export const TILE_COUNT_KEY = "flightdeck.tileCount";
@@ -38,12 +39,15 @@ export function tileColumns(layout: TileLayout, shown: number): number {
   return shown <= 4 ? 2 : shown <= 9 ? 3 : 4;
 }
 
+/** The project a page shows: its host and key, and its folder for sessions still keyed by it. */
+export interface TileProject {
+  hostId: string;
+  projectKey: string;
+  path?: string;
+}
+
 /** The live sessions the layout cannot show. */
-export function hiddenTiles(
-  rows: HubRow[],
-  project: { hostId: string; projectKey: string },
-  layout: TileLayout,
-): number {
+export function hiddenTiles(rows: HubRow[], project: TileProject, layout: TileLayout): number {
   const slots = tileSlots(layout);
   const live = pickTiles(rows, project, "auto").length;
   return slots === null ? 0 : Math.max(0, live - slots);
@@ -52,11 +56,7 @@ export function hiddenTiles(
 const ORDER: Partial<Record<HubState, number>> = { needs_you: 0, running: 1, idle: 2 };
 
 /** The sessions the tiles show: the ones that need you first, then the running, then the idle. */
-export function pickTiles(
-  rows: HubRow[],
-  project: { hostId: string; projectKey: string },
-  layout: TileLayout,
-): HubRow[] {
+export function pickTiles(rows: HubRow[], project: TileProject, layout: TileLayout): HubRow[] {
   return rows
     .filter(
       (row) =>
@@ -64,7 +64,9 @@ export function pickTiles(
         row.origin === "flightdeck" &&
         !row.archived &&
         row.hostId === project.hostId &&
-        row.projectKey === project.projectKey &&
+        // The daemon keys a session by its folder until git has been asked, so the folder counts too.
+        (row.projectKey === project.projectKey ||
+          (project.path !== undefined && isInside(row.cwd, project.path))) &&
         ORDER[row.state] !== undefined,
     )
     .sort(

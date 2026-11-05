@@ -13,6 +13,17 @@ export function hostUptime(uptimeSec: number, receivedAt: number, now: number): 
   return uptimeSec + Math.max(0, Math.floor((now - receivedAt) / 1000));
 }
 
+/** Whether a refused connection to this address may be the daemon refusing this machine (not a loopback one). */
+export function mayBeRefusedAddress(kind: OfflineKind, url: string): boolean {
+  if (kind !== "refused") return false;
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    return !(hostname === "localhost" || hostname === "[::1]" || hostname.startsWith("127."));
+  } catch {
+    return false;
+  }
+}
+
 /** Which troubleshooting hint fits: the Linux/WSL one has the linger commands. */
 export function offlineHint(
   kind: OfflineKind,

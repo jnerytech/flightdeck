@@ -14,14 +14,25 @@ import { assertHomeGuard, installHomeGuard } from "./home-guard.ts";
 import { assertNoNetwork, installNetworkGuard } from "./network-guard.ts";
 import { assertPathUntouched, assertRepoUntouched, installRepoGuard } from "./repo-guard.ts";
 import { assertNoTauriCalls, installTauriGuard } from "./tauri-guard.ts";
+import { installTempRun, removeTempRun } from "./temp-run.ts";
 import { defaultTestTimeoutMs } from "./timeout.ts";
 
 // Area runs (`bun --config=bunfig.area.toml test <file>`) have no --timeout flag, and a preload
 // default reaches the first file only: enough for one file. The full suite passes the flag.
 setDefaultTimeout(defaultTestTimeoutMs(process.platform));
 
+// First of all: every temp folder below (the guards', the tests', their children's) lands in this
+// run's own, removed at the end even when a test or a guard fails (temp-run.ts). `exit` covers a run
+// that ends without reaching afterAll.
+const tempRun = installTempRun();
+process.on("exit", () => {
+  removeTempRun(tempRun);
+});
+
 // A run started from a git command or hook inherits GIT_DIR and friends; a test's `git init --bare`
-// would then re-initialise the real repository. Before every guard, so they see a clean env.
+// would then re-initialise the real repository. A session that has Claude Code's telemetry on sets
+// CLAUDE_CODE_ENABLE_TELEMETRY and OTEL_*, which would leak into what tests launch. Before every
+// guard, so they see a clean env.
 installGitEnvGuard();
 
 // CLI sentinels first, so the claude one ends up first on PATH (tests rely on that).
@@ -52,6 +63,16 @@ assertCliGuardActive(clis);
 assertCheckGuardActive(checks);
 
 afterAll(() => {
+  try {
+    assertGuards();
+  } finally {
+    if (!removeTempRun(tempRun)) {
+      console.error(`temp-run: ${tempRun.dir} is still held; the next run sweeps it`);
+    }
+  }
+});
+
+function assertGuards(): void {
   assertNoClaudeCalls(guard);
   // A fake `gh`/`az` installed by a test sits in front of the sentinel; reaching the sentinel
   // means some code ran the CLI without one.
@@ -69,4 +90,4 @@ afterAll(() => {
   if (existsSync(serviceGuard)) {
     throw new Error(`controlador de serviço real chamado: ${readFileSync(serviceGuard, "utf8")}`);
   }
-});
+}

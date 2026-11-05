@@ -138,6 +138,7 @@ import { TerminalManager } from "./terminal/terminal-manager.ts";
 import { TraceService } from "./trace/service.ts";
 import {
   binaryVersion,
+  refusedAddress,
   requestShutdown,
   runUpdate,
   type StopDeps,
@@ -584,6 +585,8 @@ export async function startDaemon(
     serviceInstalled?: () => Promise<boolean>;
     /** Whether linger is on, for `doctor.run`; `loginctl` when absent. */
     linger?: () => Promise<"on" | "off" | null>;
+    /** The machine's service manager, for the probes above when they are not given; the real one when absent. */
+    serviceContext?: (dryRun: boolean) => ServiceContext;
     /** Whether a port is free, for the cards' blocks; the real loopback probe when absent. */
     portProbe?: (port: number) => Promise<boolean>;
   } = {},
@@ -1089,11 +1092,14 @@ export async function startDaemon(
         isDirectory: async (path) => (await stat(path).catch(() => null))?.isDirectory() === true,
         serviceInstalled:
           options.serviceInstalled ??
-          (async () => (await serviceCommand(osServiceContext(false))) !== null),
+          (async () =>
+            (await serviceCommand((options.serviceContext ?? osServiceContext)(false))) !== null),
         healthy: async () => true,
         mcp: () => mcpReachable(daemonCommand(process.execPath, Bun.main)),
 
-        linger: options.linger ?? (() => lingerState(osServiceContext(false))),
+        linger:
+          options.linger ??
+          (() => lingerState((options.serviceContext ?? osServiceContext)(false))),
         tailscaleIp: () => tailscaleIp(spawnExec),
         hooks: () =>
           hooksStatus(
@@ -1379,6 +1385,7 @@ async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
     isDirectory: async (path) => (await stat(path).catch(() => null))?.isDirectory() === true,
     serviceInstalled: async () => (await serviceCommand(ctx)) !== null,
     healthy: async () => waitHealthy(healthUrl(await load()), 1_000, 250),
+    refused: async () => refusedAddress(healthUrl(await load()), 1_000),
     tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
     hooks: async () => hooksStatus(settings, hookTarget(await load(), self)),
     claudePath: () => whichOnPath("claude"),
