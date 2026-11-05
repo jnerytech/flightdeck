@@ -321,6 +321,18 @@ describe("security-gate", () => {
     ]);
   });
 
+  test("a rename away from a risky path keeps the old path, so moving the CI or a guard out is risky (#284)", () => {
+    const moved = [
+      "diff --git a/.github/workflows/ci.yml b/docs/ci.yml",
+      "similarity index 100%",
+      "rename from .github/workflows/ci.yml",
+      "rename to docs/ci.yml",
+    ].join("\n");
+    expect(riskyFiles(addedLines(moved))).toEqual([
+      { path: ".github/workflows/ci.yml", why: ["workflow"] },
+    ]);
+  });
+
   test("a mode change is a permission change on any file, with or without a code extension (#284)", () => {
     const mode = [
       "diff --git a/bin/fd b/bin/fd",
@@ -333,6 +345,30 @@ describe("security-gate", () => {
     expect(riskyFiles(addedLines(mode))).toEqual([
       { path: "bin/fd", why: ["permission"] },
       { path: "docs/x.md", why: ["permission"] },
+    ]);
+  });
+
+  test('removed lines are keyed by the header paths, so a folder named with " b/" or a deletion keeps its file (#284)', () => {
+    const diff = [
+      "diff --git a/dir b/x.ts b/dir b/x.ts",
+      "--- a/dir b/x.ts",
+      "+++ b/dir b/x.ts",
+      "@@ -1 +0,0 @@",
+      "-if (!ok) return;",
+      "diff --git a/gone.ts b/gone.ts",
+      "deleted file mode 100644",
+      "--- a/gone.ts",
+      "+++ /dev/null",
+      "@@ -1 +0,0 @@",
+      "-rmSync(x);",
+    ].join("\n");
+    expect([...removedLines(diff).keys()]).toEqual(["dir b/x.ts", "gone.ts"]);
+  });
+
+  test("a file whose code at HEAD cannot be read is risky, never taken as empty (#284)", () => {
+    const removed = new Map([["apps/daemon/src/big.ts", ["const x = 1;"]]]);
+    expect(riskyEdits([], removed, () => null)).toEqual([
+      { path: "apps/daemon/src/big.ts", why: ["unreadable at HEAD"] },
     ]);
   });
 
@@ -498,5 +534,19 @@ describe("security-gate: end to end", () => {
       message.indexOf("apps/daemon/src/z.ts (spawn)"),
     );
     expect(message.indexOf("apps/daemon/src/a.ts")).toBeGreaterThan(-1);
+  });
+
+  test("a deleted file is read as empty at HEAD, so only its removed lines count (#284)", () => {
+    const diff = [
+      "diff --git a/apps/daemon/src/gone.ts b/apps/daemon/src/gone.ts",
+      "deleted file mode 100644",
+      "--- a/apps/daemon/src/gone.ts",
+      "+++ /dev/null",
+      "@@ -1 +0,0 @@",
+      "-export const x = 1;",
+    ].join("\n");
+    const { git, calls } = fakeGit({ diff, log: "" });
+    expect(securityVerdict(git)).toEqual({ verdict: "0", message: null });
+    expect(calls.some((c) => c.includes("show"))).toBe(false);
   });
 });
