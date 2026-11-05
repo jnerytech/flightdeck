@@ -3,6 +3,7 @@ import type { KeyboardEvent } from "react";
 import { HoldButton } from "@/components/approval/hold-button";
 import { Button } from "@/components/ui/button";
 import type { T } from "../../i18n/index.ts";
+import { HIGH_RISK_HOLD_MS } from "../../lib/hold.ts";
 
 /** A permission request as a yes/no question with its consequence (simple mode, phase 33). */
 export function QuestionCard(props: {
@@ -58,7 +59,7 @@ export function QuestionCard(props: {
           <HoldButton
             label={t("simple.yes")}
             hint={t("simple.holdHint")}
-            holdMs={props.holdMs ?? 2000}
+            holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
             onHeld={() => props.onAnswer("allow")}
           />
         ) : (

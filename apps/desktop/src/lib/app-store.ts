@@ -87,6 +87,7 @@ import { localDay, usd } from "./costs.ts";
 import { DensityController } from "./density.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
+import { HIGH_RISK_HOLD_MS } from "./hold.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostNameError, hostNameError } from "./host-name.ts";
 import type { RetryState } from "./host-offline.ts";
@@ -169,9 +170,6 @@ import { APP_VERSION, hasFeature, isNewer } from "./version.ts";
 import { WebhookFeed } from "./webhook-feed.ts";
 import { Webhooks } from "./webhooks.ts";
 import { WORKSPACE_KEY, Workspace } from "./workspace.ts";
-
-/** How long a prod or high-risk approval is held, as the approval card measures it. */
-const HOLD_MS = 2000;
 
 /** What the sidebar knows about a session, straight from `session.summary`. */
 export interface SidebarSession {
@@ -3647,7 +3645,7 @@ export class AppStore {
           requestId: request.requestId,
           via: answer.via,
           scope: answer.scope,
-          ...(request.needsHold ? { heldMs: HOLD_MS } : {}),
+          ...(request.needsHold ? { heldMs: HIGH_RISK_HOLD_MS } : {}),
         });
       },
     });
