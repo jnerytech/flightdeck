@@ -4,12 +4,9 @@ import { auditBase, runAudit } from "../lib/tdd-audit.ts";
 const HEAD = "f".repeat(40);
 const BASE = "b".repeat(40);
 
-/** A fake git that answers by the first words of the call; anything else fails (null). */
-function fakeGit(answers: Record<string, string | null>) {
-  return (args: string[]) => {
-    const key = args.join(" ");
-    return key in answers ? answers[key] ?? null : null;
-  };
+/** A fake git that answers by the whole call; anything else fails (null). */
+function fakeGit(answers: Record<string, string>) {
+  return (args: string[]) => answers[args.join(" ")] ?? null;
 }
 
 describe("audit-auto-base", () => {
