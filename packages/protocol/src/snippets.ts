@@ -93,9 +93,24 @@ export function hasControl(text: string, allow: string): boolean {
 
 // -- secrets ---------------------------------------------------------------------------------
 
-/** The words that make a name a secret's: found anywhere in it (`DB_PASSWORD`, `clientSecret`, `authToken`). */
+/** A keyword matched in either case, without a flag: the key's own case tells where a word ends (`clientSecret`). */
+const anyCase = (pattern: string): string => {
+  let out = "";
+  let inClass = false;
+  for (const ch of pattern) {
+    if (ch === "[") inClass = true;
+    if (ch === "]") inClass = false;
+    out += !inClass && /[a-z]/i.test(ch) ? `[${ch.toLowerCase()}${ch.toUpperCase()}]` : ch;
+  }
+  return out;
+};
+
+/** The words that make a name a secret's: found in it (`DB_PASSWORD`, `clientSecret`, `authToken`), never as part of a plain word (`secrets`, `tokenizer`). */
 const SECRET_WORDS =
   "password|passwd|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|private[_-]?key|credential";
+const SECRET_WORD = anyCase(`(?:${SECRET_WORDS})`);
+/** What may follow the word in a name: `_KEY`, `.value`, `2`, or a capitalised word (`Hash`). */
+const NAME_TAIL = "(?:[A-Z][A-Za-z0-9]*|[_.-][A-Za-z0-9_.-]*|[0-9]+)?";
 
 const SECRET_PATTERNS: Array<[string, RegExp]> = [
   ["token do GitHub", /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/g],
@@ -112,8 +127,8 @@ const SECRET_PATTERNS: Array<[string, RegExp]> = [
   [
     "senha na linha",
     new RegExp(
-      `(?:\\bpass|(?<![A-Za-z0-9])[A-Za-z0-9_.-]*?(?:${SECRET_WORDS})[A-Za-z0-9_.-]*)\\\\?["']?\\s*[=:]\\s*\\\\?["']?[^\\s"'\\\\&;,}]{3,}`,
-      "gi",
+      `(?:\\b${anyCase("pass")}|(?<![A-Za-z0-9])[A-Za-z0-9_.-]*?${SECRET_WORD}${NAME_TAIL})\\\\?["']?\\s*[=:]\\s*\\\\?["']?[^\\s"'\\\\&;,}]{3,}`,
+      "g",
     ),
   ],
   ["credencial em URL", /:\/\/[^\s/:@]+:[^\s/@]+@/g],
@@ -121,7 +136,8 @@ const SECRET_PATTERNS: Array<[string, RegExp]> = [
   ["senha do curl", /(?<=\bcurl\b[^\n|;&]*\s(?:-u|--user)\s+)[^\s:]+:\S+/g],
   [
     "cabeçalho de autorização",
-    /\b(?:Proxy-)?Authorization\\?["']?\s*[:=]\s*\\?["']?[^\r\n"'\\]+/gi,
+    // A scheme and its credential, or one long unbroken value: not the word in a sentence.
+    /\b(?:Proxy-)?Authorization\\?["']?\s*[:=]\s*\\?["']?(?:(?:Bearer|Basic|Token|Digest|Negotiate|NTLM|Bot)\s+[^\r\n"'\\]+|[^\s"'\\]{20,})/gi,
   ],
   ["cookie", /\b(?:Set-)?Cookie\s*:\s*[^\r\n]+/gi],
   ["credencial Basic", /\bBasic\s+[A-Za-z0-9+/=]{8,}/g],

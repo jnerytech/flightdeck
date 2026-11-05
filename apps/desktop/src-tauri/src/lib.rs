@@ -400,18 +400,21 @@ fn make_log_dir(dir: &std::path::Path) -> std::io::Result<()> {
     builder.create(dir)
 }
 
-/// Whether `path` is a link of any kind: the link itself is looked at, never what it points to.
-fn is_link(path: &std::path::Path) -> bool {
+/// Whether `path` is a regular file, not a link and not a pipe or a device (the link itself is
+/// looked at, never what it points to). A missing path is not one.
+fn is_regular_file(path: &std::path::Path) -> bool {
     std::fs::symlink_metadata(path)
-        .map(|m| m.file_type().is_symlink())
+        .map(|m| m.file_type().is_file())
         .unwrap_or(false)
 }
 
 /// Opens the live file for appending, owner-only on creation, and never through a link: a link
-/// planted where the log goes would make the log write somewhere else.
+/// planted where the log goes would make the log write somewhere else. Something that is there
+/// and is not a regular file (a link, a pipe that would block the open) is refused.
 fn open_live_log(path: &std::path::Path) -> std::io::Result<std::fs::File> {
-    if is_link(path) {
-        return Err(std::io::Error::other("the log file is a link"));
+    let exists_but_not_regular = std::fs::symlink_metadata(path).is_ok() && !is_regular_file(path);
+    if exists_but_not_regular {
+        return Err(std::io::Error::other("the log file is not a regular file"));
     }
     let mut options = std::fs::OpenOptions::new();
     options.create(true).append(true);
@@ -462,7 +465,7 @@ fn append_line(
 /// that is missing, a link or not a regular file reads as nothing.
 fn read_log_end(path: &std::path::Path) -> Option<String> {
     use std::io::{Read, Seek, SeekFrom};
-    if is_link(path) {
+    if !is_regular_file(path) {
         return None;
     }
     let mut file = std::fs::File::open(path).ok()?;
@@ -537,7 +540,7 @@ async fn open_logs_dir(app: tauri::AppHandle) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
     let dir = app_logs(&app)?;
     spawn_blocking_result(move || {
-        std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        make_log_dir(&dir).map_err(|e| e.to_string())?;
         let plain = dunce::simplified(&dir);
         app.opener()
             .open_path(plain.to_string_lossy().to_string(), None::<String>)
