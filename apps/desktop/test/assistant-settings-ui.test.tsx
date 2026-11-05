@@ -198,7 +198,7 @@ describe("assistant-settings-ui: the keys", () => {
     expect(said).toEqual([
       "The key works.",
       "The provider refused the key. Check it in Settings, Assistant.",
-      "The provider has no credit left on this account.",
+      "The provider says there is no credit left on this key.",
       "The provider cannot be reached. Check the connection.",
     ]);
     expect(document.body.innerHTML).not.toContain("sk-ant-aaaabbbb");

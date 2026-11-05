@@ -285,3 +285,28 @@ describe("assistant-run: the preferences and the keys", () => {
     expect(controller.keys()).toEqual({ anthropic: false, openrouter: false });
   });
 });
+
+describe("assistant-run: the key calls the Settings screen makes", () => {
+  test("saving and removing a key keep the key state in step, and nothing logs the key itself", async () => {
+    const { controller, fake } = setup();
+    expect(await controller.saveKey("anthropic", "sk-ant-0123wxyz")).toEqual({ last4: "wxyz" });
+    expect(controller.keys()).toEqual({ anthropic: true, openrouter: false });
+    expect(await controller.keyStatus("anthropic")).toEqual({ saved: true, last4: "wxyz" });
+    await controller.removeKey("anthropic");
+    expect(controller.keys()).toEqual({ anthropic: false, openrouter: false });
+    expect(JSON.stringify(fake.calls)).not.toContain("sk-ant-0123wxyz");
+  });
+
+  test("test and models are the shell's answers as they are", async () => {
+    const { controller } = setup({
+      api: {
+        test: async () => ({ ok: false, detail: "assistant_auth" }),
+        models: () => [{ id: "claude-haiku-5-5", label: "Haiku 5.5" }],
+      },
+    });
+    expect(await controller.testKey("openrouter")).toEqual({ ok: false, detail: "assistant_auth" });
+    expect(await controller.models("anthropic")).toEqual([
+      { id: "claude-haiku-5-5", label: "Haiku 5.5" },
+    ]);
+  });
+});

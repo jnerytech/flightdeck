@@ -8,9 +8,10 @@ import {
   buildRequest,
   checkOutput,
   KIND_SPECS,
+  type ModelOption,
   SecretScanner,
 } from "@flightdeck/protocol";
-import type { AssistantPlatform } from "@/platform/types";
+import type { AssistantKeyProvider, AssistantPlatform } from "@/platform/types";
 import { RunGate } from "../components/assistant/wand-state.ts";
 import {
   type AssistantPrefs,
@@ -157,6 +158,24 @@ export class AssistantController {
     } finally {
       this.gate.release(input.requestId);
     }
+  }
+
+  async keyStatus(_provider: AssistantKeyProvider): Promise<{ saved: boolean; last4?: string }> {
+    return { saved: false };
+  }
+
+  async saveKey(_provider: AssistantKeyProvider, _key: string): Promise<{ last4: string }> {
+    return { last4: "" };
+  }
+
+  async removeKey(_provider: AssistantKeyProvider): Promise<void> {}
+
+  async testKey(_provider: AssistantKeyProvider): ReturnType<AssistantPlatform["test"]> {
+    return { ok: true };
+  }
+
+  async models(_provider: AssistantKeyProvider): Promise<ModelOption[]> {
+    return [];
   }
 
   async cancel(requestId: string, on: ResolvedProvider): Promise<void> {
