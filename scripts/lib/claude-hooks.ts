@@ -5,6 +5,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { auditBase, FORBIDDEN_MARKERS, parseCommits } from "./tdd-audit.ts";
+import { undocumentedSkips } from "./unstable-skip.ts";
 
 /** git options that take their value as the next word (`git -C <dir> add`). */
 const GIT_OPTIONS_WITH_VALUE = new Set(["-C", "-c", "--git-dir", "--work-tree", "--namespace"]);
@@ -158,7 +159,10 @@ export function testEditViolation(
   const added = TEST_MARKERS.find(
     ({ pattern }) => (after.match(pattern)?.length ?? 0) > (before.match(pattern)?.length ?? 0),
   );
-  if (!added) return null;
+  if (!added) {
+    if (undocumentedSkips(after) <= undocumentedSkips(before)) return null;
+    return `Adding a skipIf that skips off Linux to ${file} is blocked: it needs \`// unstable: #<issue> <reason>\` on the same line or the line above, and the fix goes to that issue (docs/TDD.md).`;
+  }
   return `Adding ${added.text} to ${file} is blocked: committed tests have no .only, .skip, test.todo or first-run toMatchSnapshot (docs/TDD.md). Write the assertion with a hand-written literal.`;
 }
 
@@ -398,8 +402,17 @@ function handMerge(words: string[]): string | null {
   if (g >= 0 && words[g + 1] === "api" && words.some((w) => /\/pulls\/\d+\/merge$/.test(w))) {
     return "a REST merge";
   }
+  if (releaseCommand(words)) return "bun run release";
   const sub = prFlowCommand(words);
   return sub === "merge" || sub === "tag" ? `bun run pr -- ${sub}` : null;
+}
+
+/** True for `bun run release` (or `bun scripts/release-cmd.ts`): it pushes a branch and tags (#275). */
+function releaseCommand(words: string[]): boolean {
+  const b = words.indexOf("bun");
+  if (b < 0) return false;
+  const [first, second] = words.slice(b + 1);
+  return (first === "run" && second === "release") || (first?.endsWith("release-cmd.ts") ?? false);
 }
 
 /** The `bun run pr` (or `bun scripts/pr-flow.ts`) command these words run, or undefined. */

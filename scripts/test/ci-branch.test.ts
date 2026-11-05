@@ -283,18 +283,13 @@ describe("ci.yml: any pushed branch can run the full CI by hand", () => {
     expect(workflow.concurrency.group).toBe(
       "ci-${{ github.ref }}-${{ github.event_name }}-${{ inputs.only }}",
     );
-    const sonar = workflow.jobs.test?.steps.filter((step) =>
-      step.if?.includes("workflow_dispatch"),
-    );
-    expect(sonar?.length).toBeGreaterThan(0);
-    for (const step of sonar ?? []) {
-      expect(step.if).toContain("github.event_name != 'workflow_dispatch'");
-    }
+    // SonarCloud is its own job since #293, skipped as a whole on a dispatch.
+    expect(workflow.jobs.sonar?.if ?? "").toContain("github.event_name != 'workflow_dispatch'");
   });
 
   test("a dispatched run's test jobs never carry the names the branch rules require (a skipped copy must not stand in for the real check)", () => {
     const name = workflow.jobs.test?.name ?? "";
-    expect(name).toContain("test (${{ matrix.os }})");
+    expect(name).toContain("test (ubuntu-latest)");
     expect(name).toContain("github.event_name == 'workflow_dispatch'");
   });
 

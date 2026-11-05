@@ -4143,6 +4143,43 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   sleep where the clock is under test. It only goes down: a file may not exceed its entry.
   Baseline when added: 113 files, 251 sleeps.
 
+## One command per release (issue #275)
+
+- **`bun run release vX.Y.Z`** (the coordinator's, `FLIGHTDECK_COORDINATOR=1`; it refuses without
+  it and touches nothing) is a state machine over `origin/main`, so running it again carries on.
+  Main behind the tag: a branch `release-vX` gets `test(versao)` (the version test moves first and
+  must be red), `chore(versao)` (the three packages and `bun.lock`; the test must be green), the
+  protocol-surface check (a lost baseline line stops the release) and, when `--write` changes the
+  baseline, `chore(release)`; then the branch is pushed, a PR is opened (not through `pr open`,
+  which would close the issue of its first commit) and `pr auto` turns on auto-merge. Main at the
+  version: the surface check, `pr tag vX` (so the CI gate of #264 still decides) and
+  `release:close -- vX --apply`. A tag that exists is not made again; the close still runs.
+- **Why a state machine, not one blocking run.** The PR merges when its checks are green, which
+  takes longer than a session should wait; the second run is the "after merge" half of the
+  issue. Logic in `scripts/lib/release-cmd.ts`, effects injected, no test pushes or tags.
+- **The hook guard knows `bun run release`** (#275, from the security review): the command pushes and
+  tags through child processes the hook never sees, and its own check is the same environment flag,
+  which a command can set inline. `prMergeViolation` now blocks `bun run release` and
+  `bun scripts/release-cmd.ts` in a session, like `pr tag`.
+
+## `release:close` closes what a tag shipped (issue #252)
+
+- **What it reads.** The commits of `<previous v* tag>..<tag>` (`--since` names another start). An
+  issue counts when a subject names it (`(#170)`, the repository's habit) or a body line starts with
+  `Closes`, `Fixes` or `Resolves #N`. A number mentioned anywhere else in a body ("the overlay of
+  #233 is deferred") is listed and never touched, and a pull request's number is skipped.
+- **Dry run first.** Without `--apply` it only reads (the issue, its comments, the milestones) and
+  prints what it would do. With `--apply`, each open issue gets "Shipped in <tag>." (once: an
+  existing comment with that text is not repeated), is closed as completed, and goes to Done on the
+  board; an issue already closed only goes to Done. A second run changes nothing.
+- **The milestone** named after the tag is closed when it has no open issue left and no step of the
+  run failed, so a run that failed halfway leaves it open for the retry. One with issues the tag
+  did not ship stays open and says how many.
+- **REST only.** Every call is `gh api` with `-f` fields (no GraphQL), and the board goes through
+  `FLIGHTDECK_BOARD_CMD`, called as `<cmd> <issue> done ""`: the coordinator's `issue-note.sh`,
+  whose REST queue of #242 survives a rate limit. Without it the board is skipped, said once. The
+  coordinator tooling stays outside the repository; the script only knows the command's contract.
+
 ## Risky changes get a security review before the hand-off (issue #273)
 
 - **Why.** On 2026-11-05 six reviews found high findings after the hand-off (keep-awake,
@@ -4197,6 +4234,22 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   PATH with it, are the session's own. The number, branch and base come last, as positional
   arguments: a hook script must not read them as options.
 
+
+## DECISIONS.md merges with the union driver (issue #290)
+
+- **Why.** Every parallel PR appends a section at the end of this file, so two PRs added at the same
+  place and conflicted on it (#285 and others, 2026-11-05) although nothing was in dispute.
+  `.gitattributes` now says `docs/DECISIONS.md merge=union`: a merge keeps the lines of both sides.
+  `scripts/test/decisions-union.test.ts` proves it on a temporary repository (two branches that each
+  append a section merge cleanly with both kept; without the rule they conflict) and checks that the
+  rule is in the file.
+- **Only this file.** The recent edits of `docs/DECISIONS.md` all land in its last 130 lines. Those
+  of `docs/GLOSSARY.md` and of both manuals land all over the file (a table row, a feature's
+  section), where a union merge would keep two versions of one edited line side by side with no
+  warning. They keep the normal merge and its conflict.
+- **What union does not do.** Two PRs that edit the *same existing line* of DECISIONS.md both keep
+  their version of it, one after the other: read the merged section once before the hand-off. Add a
+  section, do not rewrite an old one.
 ## SonarCloud on the PR is the only Sonar check (issue #283)
 
 - **Why.** The local copy (`bun run lint:sonar`, eslint-plugin-sonarjs in `tools/sonar-lint` with
@@ -4244,3 +4297,58 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   The real calls left (a program that exits, one that does not exist, the system's kill calls) start
   and end at once.
 
+## The Linux leg in parallel jobs, the suite still whole (issue #293)
+
+- **Why.** `test (ubuntu-latest)` took 12-18 minutes: the coverage suite (8 minutes, one process),
+  then SonarCloud (4), then the smokes and cargo (3 on main), one after another in one job.
+- **The split.** `test-suite` runs `bun run test` (the exact 100% line and function gate) and uploads
+  `coverage/lcov.info`; `sonar` downloads it and runs the scan; `checks-linux` runs the smokes and
+  cargo in parallel with the suite, only when the path plan asks for them. The required check
+  `test (ubuntu-latest)` is an aggregate over the five (the plan, quick, the suite, SonarCloud, the
+  checks), so the ruleset is unchanged; it checks the plan and quick first, since GitHub counts a
+  skipped required check as passed. SonarCloud may be skipped (a dispatch); the checks only when the
+  plan needs no smoke and no cargo.
+- **Why the suite is not sharded** (measured 2026-11-05, three coverage shards on the Pi): lines
+  merge exactly (every file has the same lcov line set in each shard), but bun's lcov counts
+  functions per file without naming them, and even the count varies by process (it counts the
+  functions a process compiled: 271 files differed). 111 of 595 files could not be settled from the
+  counts. Sharding with the exact function gate needs named function data (#296, istanbul maps);
+  the merge logic for that stays on the ci-ubuntu-shards branch.
+
+## Unstable tests are skipped off Ubuntu, in the code (issue #288)
+
+- **The user's call (2026-11-05):** "pode skipar todos, exceto os testes do ubuntu", and "skip tests in
+  the code" when asked how. Windows failed on every PR and on main, and `test (windows-latest)` is a
+  required check, so five tests that bet on the machine blocked every merge. A first version put them
+  on a quarantine list that the required jobs left out by name, with a non-blocking job; it was
+  dropped before it merged, because the skip in the code is simpler (no list, no runner scripts, no
+  job, `ci.yml` unchanged) and keeps the test where its author reads it.
+- **The form:** `test.skipIf(notLinux)(…)` with `// unstable: #<issue> <reason>` on the line or the
+  line above (`scripts/lib/unstable-skip.ts`). The tests are untouched otherwise and still run on
+  Ubuntu under the 100% gate. A skip for a platform *capability* is a different thing and needs no
+  note.
+- **What `skipIf` was before:** the hook never blocked `skipIf` (its markers are `.only(`, `.skip(`,
+  `test.todo(` and `toMatchSnapshot(`), and ten capability skips exist. So nothing was loosened:
+  the new rule *adds* a check for the off-Linux form (an Edit or Write that adds one without the
+  note is blocked), and `.skip`, `.only`, `test.todo` and snapshots stay blocked whatever comment
+  is next to them.
+- **The ratchet** (`unstable-skip-ratchet.test.ts`): every skip off Linux has the note with an issue
+  number and a reason, and there are at most 5 (the five below), the number only lowered. Whether
+  the issue is still open is not checked (the tests touch no network): close #288 only when the
+  last skip is gone.
+- **The five:** hub-list "the render time at 9,090 rows is within 2x…" (a ratio of two wall-clock
+  render times); heartbeat "qualquer quadro do cliente conta como vivo…" (10 ms and 25 ms timers
+  against a 75 ms silence limit); platform "lint barra @tauri-apps/*…" (spawns biome; over 15 s on a
+  loaded Windows runner in three runs); proto-restore "two files that patch HTMLElement.prototype…"
+  (a child `bun test` with the whole preload; over 15 s on Windows); wait "it returns once the window
+  ended…" (counts polls in an 80 ms window). The fixes (counts instead of a ratio, an injected ticker
+  and clock for the heartbeat, a longer hang limit for the two child processes) are parked on the
+  branch `timing-fixes-288` for #288.
+- **Known limits (security-reviewer pass, nothing high):** the hook is a guard against slips, not a
+  boundary. It recognises `notLinux` and `process.platform !== "linux"` (also `'linux'`) on one line;
+  it does not see `!=`, a backtick string, an alias of `notLinux`, `skipIf(true)`, a skip in a helper
+  that is not a `*.test.ts`, or `scripts/test/not-linux.ts` changed to `true`, and it takes any
+  `// unstable: #<n> <word>` on the line (not a lookup of the issue, which needs the network). The
+  ratchet bounds the first kind: it is exactly saturated (at most 5 and the five files named), and
+  it runs in CI over the whole checkout. The hook matcher also covers only Edit, Write and Bash, as
+  before. All of it is how the guard already worked for `skipIf`, which it never blocked.
