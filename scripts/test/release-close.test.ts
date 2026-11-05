@@ -266,7 +266,7 @@ describe("release-close", () => {
     );
     await releaseClose("v0.36.4", { apply: false }, f.deps);
     expect(f.lines.some((l) => l.includes("Card"))).toBe(true);
-    for (const line of f.lines) expect(/[\x00-\x1f\x7f]/.test(line)).toBe(false);
+    for (const line of f.lines) expect(/\p{Cc}/u.test(line)).toBe(false);
   });
 
   test("a tag with no milestone of its name says so and closes nothing else", async () => {
