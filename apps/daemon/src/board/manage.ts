@@ -18,15 +18,10 @@ const needs = (what: string): FlightdeckError =>
 /** `YYYY-MM-DD HH:MM`, UTC: the stamp of a note on a card. */
 const stamp = (): string => new Date().toISOString().slice(0, 16).replace("T", " ");
 
-/**
- * A session's own management of the cards of its project (the flightdeck MCP server's card
- * tools): one project only, its own card by default. The rules are the board's own: moving
- * is `card.move`, finishing is `card.complete` or `card.discard`.
- */
-export async function manageCard(
-  deps: ManageDeps,
-  payload: CommandPayload<"card.manage">,
-): Promise<Card> {
+type Payload = CommandPayload<"card.manage">;
+
+/** The card the call is about, once it is in the project the session runs in. */
+function scopedCard(deps: ManageDeps, payload: Payload): Card {
   const { board } = deps;
   // A managed session's own folder wins over the one a client says.
   const cwd = (payload.as.session ? deps.cwdOf(payload.as.session) : null) ?? payload.cwd;
@@ -40,6 +35,12 @@ export async function manageCard(
   if (card.projectId !== found.project.id) {
     throw refuse("card_other_project", "the card belongs to another project than this session's");
   }
+  return card;
+}
+
+/** The change the call asks for, with what each action needs checked first. */
+async function applyAction(board: Board, card: Card, payload: Payload): Promise<Card> {
+  const cardId = card.id;
   switch (payload.action) {
     case "move":
       if (!payload.column) throw needs("a column");
@@ -63,4 +64,13 @@ export async function manageCard(
         ? board.completeCard(cardId, true)
         : board.discardCard(cardId, true);
   }
+}
+
+/**
+ * A session's own management of the cards of its project (the flightdeck MCP server's card
+ * tools): one project only, its own card by default. The rules are the board's own: moving
+ * is `card.move`, finishing is `card.complete` or `card.discard`.
+ */
+export async function manageCard(deps: ManageDeps, payload: Payload): Promise<Card> {
+  return await applyAction(deps.board, scopedCard(deps, payload), payload);
 }

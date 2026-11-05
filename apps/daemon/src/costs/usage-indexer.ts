@@ -186,6 +186,24 @@ const OWNER = `SELECT
      WHERE s.claude_session_id = $id LIMIT 1) AS card,
   EXISTS (SELECT 1 FROM sessions WHERE claude_session_id = $id) AS app`;
 
+/** The transcripts of one project folder: its sessions' files and their subagents' files. */
+async function projectFiles(project: string): Promise<TranscriptFile[]> {
+  const files: TranscriptFile[] = [];
+  for (const item of await entries(project)) {
+    if (item.isFile() && item.name.endsWith(".jsonl")) {
+      const path = join(project, item.name);
+      files.push({ path, claudeSessionId: basename(item.name, ".jsonl"), subagent: false });
+    } else if (item.isDirectory()) {
+      const subagents = join(project, item.name, "subagents");
+      for (const sub of await entries(subagents)) {
+        if (!sub.isFile() || !sub.name.endsWith(".jsonl")) continue;
+        files.push({ path: join(subagents, sub.name), claudeSessionId: item.name, subagent: true });
+      }
+    }
+  }
+  return files;
+}
+
 /**
  * The usage of every assistant message of the transcripts, read incrementally with offsets of
  * its own (`usage_files`). Claude Code writes one line per content block, each with the same
@@ -287,15 +305,7 @@ export class UsageIndexer {
         owner = this.owner(file.claudeSessionId);
         owners.set(file.claudeSessionId, owner);
       }
-      for (;;) {
-        if (this.opts.warmKeys) await this.warm(file, owner);
-        const slice = await this.indexFile(file, owner, this.opts.sliceBytes ?? SLICE_BYTES);
-        added += slice.added;
-        // The file counts as done when its last slice is in, before the pause that follows it.
-        if (first && !slice.more) this.load.filesDone++;
-        await (this.opts.pause ?? zeroTimer)();
-        if (!slice.more || this.stopped) break;
-      }
+      added += await this.indexSlices(file, owner, first);
     }
     if (first) {
       this.load.state = "done";
@@ -305,6 +315,20 @@ export class UsageIndexer {
     }
     this.opts.onPass?.(added);
     return added;
+  }
+
+  /** Reads a file slice by slice until it is all in; returns the entries added. */
+  private async indexSlices(file: TranscriptFile, owner: Owner, first: boolean): Promise<number> {
+    let added = 0;
+    for (;;) {
+      if (this.opts.warmKeys) await this.warm(file, owner);
+      const slice = await this.indexFile(file, owner, this.opts.sliceBytes ?? SLICE_BYTES);
+      added += slice.added;
+      // The file counts as done when its last slice is in, before the pause that follows it.
+      if (first && !slice.more) this.load.filesDone++;
+      await (this.opts.pause ?? zeroTimer)();
+      if (!slice.more || this.stopped) return added;
+    }
   }
 
   /** Sessions read as the terminal's that a managed session claimed since (its id came later). */
@@ -347,21 +371,7 @@ export class UsageIndexer {
     const files: TranscriptFile[] = [];
     for (const root of this.opts.roots) {
       for (const dir of await entries(root)) {
-        if (!dir.isDirectory()) continue;
-        const project = join(root, dir.name);
-        for (const item of await entries(project)) {
-          if (item.isFile() && item.name.endsWith(".jsonl")) {
-            const path = join(project, item.name);
-            files.push({ path, claudeSessionId: basename(item.name, ".jsonl"), subagent: false });
-          } else if (item.isDirectory()) {
-            const subagents = join(project, item.name, "subagents");
-            for (const sub of await entries(subagents)) {
-              if (!sub.isFile() || !sub.name.endsWith(".jsonl")) continue;
-              const path = join(subagents, sub.name);
-              files.push({ path, claudeSessionId: item.name, subagent: true });
-            }
-          }
-        }
+        if (dir.isDirectory()) files.push(...(await projectFiles(join(root, dir.name))));
       }
     }
     return files;

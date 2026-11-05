@@ -306,6 +306,26 @@ export class PrFixer {
     }
   }
 
+  /** Why the first local check did not pass (refused, timed out, failed), or null when all passed. */
+  private async failedCheck(settings: WatchSettings, worktree: string): Promise<string | null> {
+    for (const command of settings.checks) {
+      // Stored settings are checked again: only a plain command and its arguments runs unattended.
+      if (!isWatchCheck(command)) return `local check refused: ${masked(command)}`;
+      const result = await this.opts.checks.run(
+        command,
+        worktree,
+        settings.checkTimeoutMin * 60_000,
+      );
+      if (result.timedOut) {
+        return `local check timed out: ${masked(command)} (after ${settings.checkTimeoutMin} min)`;
+      }
+      if (result.exitCode !== 0) {
+        return `local check failed: ${masked(command)} (exit ${result.exitCode})\n${masked(result.output)}`;
+      }
+    }
+    return null;
+  }
+
   private async play(input: {
     trigger: WatchTrigger;
     n: number;
@@ -353,33 +373,8 @@ export class PrFixer {
         "the last round made no commit, so nothing changed and nothing will trigger another",
       );
     }
-    for (const command of settings.checks) {
-      // Stored settings are checked again: only a plain command and its arguments runs unattended.
-      if (!isWatchCheck(command)) {
-        return this.failed(cardId, end, `local check refused: ${masked(command)}`, spent);
-      }
-      const result = await this.opts.checks.run(
-        command,
-        worktree,
-        settings.checkTimeoutMin * 60_000,
-      );
-      if (result.timedOut) {
-        return this.failed(
-          cardId,
-          end,
-          `local check timed out: ${masked(command)} (after ${settings.checkTimeoutMin} min)`,
-          spent,
-        );
-      }
-      if (result.exitCode !== 0) {
-        return this.failed(
-          cardId,
-          end,
-          `local check failed: ${masked(command)} (exit ${result.exitCode})\n${masked(result.output)}`,
-          spent,
-        );
-      }
-    }
+    const failure = await this.failedCheck(settings, worktree);
+    if (failure) return this.failed(cardId, end, failure, spent);
     if (this.stopped) return;
     if (!watcher.enabled(cardId))
       return end("stopped", "Vigiar was turned off: nothing was pushed", spent);

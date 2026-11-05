@@ -443,6 +443,38 @@ export class SshConnector {
     return file;
   }
 
+  /** The `-o` and `-L` flags the target's own options ask for. */
+  private optionArgs(options: SshTarget["options"]): string[] {
+    const argv: string[] = [];
+    if (options.serverAliveInterval) {
+      argv.push("-o", `ServerAliveInterval=${options.serverAliveInterval}`);
+    }
+    if (options.compression) argv.push("-o", "Compression=yes");
+    for (const forward of options.localForward ?? []) argv.push("-L", forward);
+    return argv;
+  }
+
+  /** The identity file flags and, for a password, the authentication methods. */
+  private identityArgs(target: SshTarget, delivered: DeliveredKey | null): string[] {
+    const argv: string[] = [];
+    if (target.auth === "key-file") argv.push("-i", target.secretRef as string);
+    if (delivered?.identityFile) {
+      argv.push(
+        "-i",
+        this.win ? delivered.identityFile.replaceAll("\\", "/") : delivered.identityFile,
+      );
+    }
+    if (target.auth === "password") {
+      argv.push(
+        "-o",
+        "PreferredAuthentications=password,keyboard-interactive",
+        "-o",
+        "PubkeyAuthentication=no",
+      );
+    }
+    return argv;
+  }
+
   private argv(
     target: SshTarget,
     hops: SshTarget[],
@@ -471,26 +503,7 @@ export class SshConnector {
       "-o",
       `ForwardAgent=${options.forwardAgent ? "yes" : "no"}`,
     ];
-    if (options.serverAliveInterval) {
-      argv.push("-o", `ServerAliveInterval=${options.serverAliveInterval}`);
-    }
-    if (options.compression) argv.push("-o", "Compression=yes");
-    for (const forward of options.localForward ?? []) argv.push("-L", forward);
-    if (target.auth === "key-file") argv.push("-i", target.secretRef as string);
-    if (delivered?.identityFile) {
-      argv.push(
-        "-i",
-        this.win ? delivered.identityFile.replaceAll("\\", "/") : delivered.identityFile,
-      );
-    }
-    if (target.auth === "password") {
-      argv.push(
-        "-o",
-        "PreferredAuthentications=password,keyboard-interactive",
-        "-o",
-        "PubkeyAuthentication=no",
-      );
-    }
+    argv.push(...this.optionArgs(options), ...this.identityArgs(target, delivered));
     if (hops.length > 0) {
       const hop = (h: SshTarget) =>
         `${h.user}@${h.host.includes(":") ? `[${h.host}]` : h.host}:${h.port}`;

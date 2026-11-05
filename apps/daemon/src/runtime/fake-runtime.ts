@@ -30,6 +30,18 @@ export interface FakeRuntimeOptions {
 
 class Interrupted extends Error {}
 
+/** The rate-limit windows a prompt asks for with `[ratelimit:<window>=<utilization>@<reset>]`. */
+function rateLimitWindows(text: string) {
+  return [...text.matchAll(/\[ratelimit:(\w+)=([\d.]+)@(\d+)\]/g)].map(
+    ([, window = "", utilization, resetsAt]) => ({
+      window,
+      utilization: Number(utilization),
+      status: Number(utilization) >= 1 ? ("rejected" as const) : ("allowed" as const),
+      resetsAt: Number(resetsAt) * 1000,
+    }),
+  );
+}
+
 /**
  * Deterministic runtime with no network. Replies `Echo: <text>` in chunks, asks permission for
  * a `Write` tool when the message contains `[tool]`, writes and commits a file in its cwd on
@@ -206,29 +218,25 @@ class FakeRun implements AgentRun {
     }
   }
 
+  private emitInitOnce(): void {
+    if (this.initialized) return;
+    this.initialized = true;
+    this.emit({
+      type: "session.init",
+      claudeSessionId: this.claudeSessionId,
+      model: this.opts.model ?? "fake-model",
+      tools: ["Read", "Write", "Bash"],
+      ...(this.slashCommands ? { slashCommands: this.slashCommands } : {}),
+    });
+  }
+
   private async turn(text: string): Promise<void> {
     const abort = new AbortController();
     this.turnAbort = abort;
     // Monotonic: a wall clock that syncs backwards (WSL, containers) would give a negative duration.
     const started = performance.now();
-    if (!this.initialized) {
-      this.initialized = true;
-      this.emit({
-        type: "session.init",
-        claudeSessionId: this.claudeSessionId,
-        model: this.opts.model ?? "fake-model",
-        tools: ["Read", "Write", "Bash"],
-        ...(this.slashCommands ? { slashCommands: this.slashCommands } : {}),
-      });
-    }
-    const windows = [...text.matchAll(/\[ratelimit:(\w+)=([\d.]+)@(\d+)\]/g)].map(
-      ([, window = "", utilization, resetsAt]) => ({
-        window,
-        utilization: Number(utilization),
-        status: Number(utilization) >= 1 ? ("rejected" as const) : ("allowed" as const),
-        resetsAt: Number(resetsAt) * 1000,
-      }),
-    );
+    this.emitInitOnce();
+    const windows = rateLimitWindows(text);
     if (windows.length > 0) this.emit({ type: "quota", windows });
     try {
       await this.sleep(abort.signal);

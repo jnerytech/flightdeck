@@ -169,39 +169,60 @@ interface Field {
   value: bigint | Uint8Array;
 }
 
-function readFields(buf: Uint8Array): Field[] {
-  const fields: Field[] = [];
-  let pos = 0;
-  const varint = (): bigint => {
+/** A position in a protobuf message; every read moves it and refuses to go past the end. */
+class ProtoReader {
+  private pos = 0;
+  constructor(private readonly buf: Uint8Array) {}
+
+  get done(): boolean {
+    return this.pos >= this.buf.length;
+  }
+
+  varint(): bigint {
     let result = 0n;
     for (let shift = 0n; shift < 70n; shift += 7n) {
-      const byte = buf[pos++];
+      const byte = this.buf[this.pos++];
       if (byte === undefined) throw new OtlpDecodeError("protobuf cut short");
       result |= BigInt(byte & 0x7f) << shift;
       if (!(byte & 0x80)) return result;
     }
     throw new OtlpDecodeError("protobuf varint too long");
-  };
-  while (pos < buf.length) {
-    const key = Number(varint());
+  }
+
+  /** The next `length` bytes, moving past them. */
+  take(length: number): Uint8Array {
+    if (this.pos + length > this.buf.length) throw new OtlpDecodeError("protobuf cut short");
+    const bytes = this.buf.subarray(this.pos, this.pos + length);
+    this.pos += length;
+    return bytes;
+  }
+}
+
+/** The value of one field by its wire type; null for a 32-bit value, which is skipped. */
+function readValue(reader: ProtoReader, wire: number): bigint | Uint8Array | null {
+  if (wire === 0) return reader.varint();
+  if (wire === 1) {
+    const bytes = reader.take(8);
+    return new DataView(bytes.buffer, bytes.byteOffset, 8).getBigUint64(0, true);
+  }
+  if (wire === 2) return reader.take(Number(reader.varint()));
+  if (wire === 5) {
+    reader.take(4);
+    return null;
+  }
+  throw new OtlpDecodeError("protobuf wire type not supported");
+}
+
+function readFields(buf: Uint8Array): Field[] {
+  const fields: Field[] = [];
+  const reader = new ProtoReader(buf);
+  while (!reader.done) {
+    const key = Number(reader.varint());
     const num = key >>> 3;
     const wire = key & 7;
     if (num === 0) throw new OtlpDecodeError("protobuf field 0");
-    if (wire === 0) fields.push({ num, wire, value: varint() });
-    else if (wire === 1) {
-      if (pos + 8 > buf.length) throw new OtlpDecodeError("protobuf cut short");
-      const view = new DataView(buf.buffer, buf.byteOffset + pos, 8);
-      pos += 8;
-      fields.push({ num, wire, value: view.getBigUint64(0, true) });
-    } else if (wire === 2) {
-      const length = Number(varint());
-      if (pos + length > buf.length) throw new OtlpDecodeError("protobuf cut short");
-      fields.push({ num, wire, value: buf.subarray(pos, pos + length) });
-      pos += length;
-    } else if (wire === 5) {
-      if (pos + 4 > buf.length) throw new OtlpDecodeError("protobuf cut short");
-      pos += 4;
-    } else throw new OtlpDecodeError("protobuf wire type not supported");
+    const value = readValue(reader, wire);
+    if (value !== null) fields.push({ num, wire, value });
   }
   return fields;
 }
@@ -244,6 +265,21 @@ function protoAttrs(items: Uint8Array[]): Attrs {
   return out;
 }
 
+/** One `LogRecord`: its attributes, its body and its time (the observed time when it has none). */
+function logRecordEvent(lr: Uint8Array, resource: ReturnType<typeof protoAttrs>): OtlpEvent | null {
+  const fields = readFields(lr);
+  const time = fields.find((f) => f.num === 1 && typeof f.value === "bigint")?.value;
+  const observed = fields.find((f) => f.num === 11 && typeof f.value === "bigint")?.value;
+  const body = bytesOf(fields, 5)[0];
+  const stamp = typeof time === "bigint" ? time : typeof observed === "bigint" ? observed : 0n;
+  return toEvent(
+    protoAttrs(bytesOf(fields, 6)),
+    resource,
+    body ? protoValue(body) : undefined,
+    nanosToMs(stamp),
+  );
+}
+
 function decodeProtobuf(buf: Uint8Array): OtlpEvent[] {
   const events: OtlpEvent[] = [];
   for (const rl of bytesOf(readFields(buf), 1)) {
@@ -252,16 +288,7 @@ function decodeProtobuf(buf: Uint8Array): OtlpEvent[] {
     const resource = protoAttrs(resourceBytes ? bytesOf(readFields(resourceBytes), 1) : []);
     for (const sl of bytesOf(rlFields, 2)) {
       for (const lr of bytesOf(readFields(sl), 2)) {
-        const fields = readFields(lr);
-        const time = fields.find((f) => f.num === 1 && typeof f.value === "bigint")?.value;
-        const observed = fields.find((f) => f.num === 11 && typeof f.value === "bigint")?.value;
-        const body = bytesOf(fields, 5)[0];
-        const event = toEvent(
-          protoAttrs(bytesOf(fields, 6)),
-          resource,
-          body ? protoValue(body) : undefined,
-          nanosToMs(typeof time === "bigint" ? time : typeof observed === "bigint" ? observed : 0n),
-        );
+        const event = logRecordEvent(lr, resource);
         if (event) events.push(event);
       }
     }
@@ -297,6 +324,25 @@ async function readBody(req: Request, max: number): Promise<Uint8Array> {
   return Buffer.concat(chunks);
 }
 
+/** The refusal for a request that may not be read, or the path and type of one that may. */
+async function admit(
+  req: Request,
+  opts: OtlpReceiverOptions,
+): Promise<Response | { path: string; contentType: string }> {
+  const token = await opts.token();
+  if (!token || !tokenMatches(`Bearer ${token}`, req.headers.get("authorization") ?? "")) {
+    return new Response("unauthorized", { status: 401 });
+  }
+  const path = new URL(req.url).pathname;
+  if (path !== "/v1/logs" && path !== "/v1/metrics") {
+    return new Response("not found", { status: 404 });
+  }
+  if (req.method !== "POST") return new Response("POST only", { status: 405 });
+  const contentType = (req.headers.get("content-type") ?? "").split(";")[0]?.trim() ?? "";
+  if (!TYPES.includes(contentType)) return new Response("unsupported type", { status: 415 });
+  return { path, contentType };
+}
+
 /**
  * OTLP/HTTP receiver for Claude Code's logs, always on 127.0.0.1 (the exporter runs on this
  * machine), with its own token. The token comes first: nothing of a request is read or decoded
@@ -308,17 +354,9 @@ export function startOtlpReceiver(opts: OtlpReceiverOptions): OtlpReceiver {
     hostname: "127.0.0.1",
     port: opts.port,
     async fetch(req) {
-      const token = await opts.token();
-      if (!token || !tokenMatches(`Bearer ${token}`, req.headers.get("authorization") ?? "")) {
-        return new Response("unauthorized", { status: 401 });
-      }
-      const path = new URL(req.url).pathname;
-      if (path !== "/v1/logs" && path !== "/v1/metrics") {
-        return new Response("not found", { status: 404 });
-      }
-      if (req.method !== "POST") return new Response("POST only", { status: 405 });
-      const contentType = (req.headers.get("content-type") ?? "").split(";")[0]?.trim() ?? "";
-      if (!TYPES.includes(contentType)) return new Response("unsupported type", { status: 415 });
+      const admitted = await admit(req, opts);
+      if (admitted instanceof Response) return admitted;
+      const { path, contentType } = admitted;
       let body: Uint8Array;
       try {
         body = await readBody(req, max);

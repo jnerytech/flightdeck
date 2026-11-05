@@ -277,23 +277,30 @@ function wildcard(pattern: string, text: string): boolean {
   return new RegExp(`^${pieces.join(".*")}$`).test(text);
 }
 
+/** A field a rule names must equal the context's; a field it leaves out matches anything. */
+const sameOrUnset = <T>(wanted: T | undefined, have: T | undefined): boolean =>
+  wanted === undefined || wanted === have;
+
+const actionMatches = (pattern: string | undefined, action: string | undefined): boolean =>
+  pattern === undefined || (action !== undefined && wildcard(pattern, action));
+
+/** Every tag the rule names is among the context's, ignoring case. */
+function tagsMatch(wanted: string[] | undefined, tags: string[]): boolean {
+  if (wanted === undefined) return true;
+  const have = new Set(tags.map((tag) => tag.toLowerCase()));
+  return wanted.every((tag) => have.has(tag.toLowerCase()));
+}
+
 function matches(match: RuleMatch, ctx: UseContext): boolean {
-  if (match.requester !== undefined && match.requester !== ctx.requester) return false;
-  if (match.purpose !== undefined && match.purpose !== ctx.purpose) return false;
-  if (
-    match.action !== undefined &&
-    !(ctx.action !== undefined && wildcard(match.action, ctx.action))
-  ) {
-    return false;
-  }
-  if (match.host !== undefined && match.host !== ctx.host) return false;
-  if (match.project !== undefined && match.project !== ctx.project) return false;
-  if (match.session !== undefined && match.session !== ctx.session) return false;
-  if (match.tags !== undefined) {
-    const have = new Set(ctx.tags.map((tag) => tag.toLowerCase()));
-    if (!match.tags.every((tag) => have.has(tag.toLowerCase()))) return false;
-  }
-  return true;
+  return (
+    sameOrUnset(match.requester, ctx.requester) &&
+    sameOrUnset(match.purpose, ctx.purpose) &&
+    actionMatches(match.action, ctx.action) &&
+    sameOrUnset(match.host, ctx.host) &&
+    sameOrUnset(match.project, ctx.project) &&
+    sameOrUnset(match.session, ctx.session) &&
+    tagsMatch(match.tags, ctx.tags)
+  );
 }
 
 function insideWindow(window: RuleWindow, at: LocalTime): boolean {

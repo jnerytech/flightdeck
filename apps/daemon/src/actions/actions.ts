@@ -151,6 +151,15 @@ interface Ask {
   };
 }
 
+/** The secret names of a free command without repeats; one that is not a valid name is refused. */
+function freeSecretIds(secrets: string[]): string[] {
+  const ids = [...new Set(secrets)];
+  for (const id of ids)
+    if (!SECRET_ID.test(id))
+      throw bad(`invalid secret name: ${id}`, "action_secret_name_invalid", { secret: id });
+  return ids;
+}
+
 /** A request waiting for the app. */
 interface Waiting {
   controller: AbortController;
@@ -426,6 +435,19 @@ export class Actions {
     return this.execute(found, params, secrets, input.requestedBy, ids, keyId);
   }
 
+  /** Another host is a phase 15 destino of that name: the command runs there with sh -c. */
+  private freeRemote(host: string | undefined): string | null {
+    const remote = host !== undefined && host !== "local" ? host : null;
+    if (remote && !this.opts.ssh) {
+      throw invalid(
+        `host ${remote} is an ssh destination, and this daemon runs no commands on destinations`,
+        "action_ssh_host_unsupported",
+        { host: remote },
+      );
+    }
+    return remote;
+  }
+
   /**
    * A command Claude wrote, with the secrets in its environment (`deploy-token` is
    * `DEPLOY_TOKEN`). It is never automatic: the request carries `always`, with the exact command,
@@ -439,19 +461,8 @@ export class Actions {
     session?: string;
   }): Promise<ActionResult> {
     const requester = this.permit(input.requestedBy);
-    // Another host is a phase 15 destino of that name: the command runs there with sh -c.
-    const remote = input.host !== undefined && input.host !== "local" ? input.host : null;
-    if (remote && !this.opts.ssh) {
-      throw invalid(
-        `host ${remote} is an ssh destination, and this daemon runs no commands on destinations`,
-        "action_ssh_host_unsupported",
-        { host: remote },
-      );
-    }
-    const ids = [...new Set(input.secrets)];
-    for (const id of ids)
-      if (!SECRET_ID.test(id))
-        throw bad(`invalid secret name: ${id}`, "action_secret_name_invalid", { secret: id });
+    const remote = this.freeRemote(input.host);
+    const ids = freeSecretIds(input.secrets);
     const line = remote ? null : await shellLine(input.command, process.platform);
     const keyId = remote ? (this.opts.sshKey?.(remote) ?? null) : null;
     try {
