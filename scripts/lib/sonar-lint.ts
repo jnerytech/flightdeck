@@ -104,12 +104,30 @@ export function formatFindings(findings: Finding[]): string {
   return [...lines, "", `lint:sonar: ${findings.length} finding(s)`].join("\n");
 }
 
+const FILE_HEADER = /^\+\+\+ b\/(.+)$/;
+const HUNK = /^@@ -\S+ \+(\d+)(?:,(\d+))? @@/;
+
 /** The added line numbers per file in a `git diff -U0` text. */
-export function addedLines(_diff: string): Map<string, Set<number>> {
-  return new Map();
+export function addedLines(diff: string): Map<string, Set<number>> {
+  const added = new Map<string, Set<number>>();
+  let lines: Set<number> | null = null;
+  for (const line of diff.split("\n")) {
+    const file = FILE_HEADER.exec(line)?.[1];
+    if (file) {
+      lines = new Set();
+      added.set(file, lines);
+      continue;
+    }
+    const hunk = HUNK.exec(line);
+    if (!hunk || !lines) continue;
+    const start = Number(hunk[1]);
+    const count = hunk[2] === undefined ? 1 : Number(hunk[2]);
+    for (let n = start; n < start + count; n++) lines.add(n);
+  }
+  return added;
 }
 
 /** Keeps the findings on added lines (SonarCloud's new code); files not in `added` count whole. */
-export function onlyNewCode(findings: Finding[], _added: Map<string, Set<number>>): Finding[] {
-  return findings;
+export function onlyNewCode(findings: Finding[], added: Map<string, Set<number>>): Finding[] {
+  return findings.filter((f) => !added.has(f.file) || added.get(f.file)?.has(f.line));
 }
