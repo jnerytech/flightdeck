@@ -46,6 +46,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   which is the new code the SonarCloud gate judges. `--no-types` skips the rules that need the
   TypeScript program (a minute faster); `// NOSONAR: <reason>` suppresses a reviewed false positive
   on both sides, and a NOSONAR with no reason fails. Biome stays the linter.
+  `bun run lint:sonar -- --ratchet` compares the open findings per rule over the whole repo with
+  `sonar-baseline.json`, which only goes down (`--ratchet --write` lowers it after a fix).
 - Before hand-off from a session: `bun run typecheck`, `bun run lint`, `bun run lint:sonar`,
   `bun run tdd:audit` and `bun run test:related`. The full suite (`bun run test`) runs at the
   orchestrator's version gate and in CI, not in every session.

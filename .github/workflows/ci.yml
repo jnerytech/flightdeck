@@ -36,6 +36,10 @@ jobs:
       - name: lint:sonar
         run: bun run lint:sonar -- --base "$(git merge-base HEAD origin/${{ github.base_ref }})"
 
+      # The open count per rule over the whole repository only goes down (sonar-baseline.json).
+      - name: lint:sonar --ratchet
+        run: bun run lint:sonar -- --ratchet
+
   test:
     name: test (${{ matrix.os }})
     strategy:
