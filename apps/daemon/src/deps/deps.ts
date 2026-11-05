@@ -248,7 +248,7 @@ export async function checkDeps(env: DepsEnv): Promise<DepsResult> {
   // At the same time: one slow program (az takes seconds) costs its own time only.
   const ids = ["claude", "git", "gh", "az", "ssh", "tailscale"] as const;
   const tools = await Promise.all(ids.map((id) => tool(env, id)));
-  ids.forEach((id, i) => found.set(id, tools[i] as DepResult));
+  for (const [i, id] of ids.entries()) found.set(id, tools[i] as DepResult);
   found.set("claudeAuth", await signedIn(env, found.get("claude")?.state === "missing"));
   found.set("service", await service(env));
   found.set("folders", folders);
