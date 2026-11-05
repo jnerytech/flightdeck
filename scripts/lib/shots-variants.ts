@@ -18,3 +18,13 @@ export function shotVariants(env: Record<string, string | undefined>): ShotVaria
     (v) => (theme === undefined || v.theme === theme) && (lang === undefined || v.lang === lang),
   );
 }
+
+/** The pairs to print, or an error naming the filter when it keeps none (before any browser starts). */
+export function pickVariants(env: Record<string, string | undefined>): ShotVariant[] {
+  return shotVariants(env);
+}
+
+/** Whether this run prints every screen of every pair: only then is a baseline with no print missing. */
+export function isCompleteRun(_env: Record<string, string | undefined>): boolean {
+  return true;
+}

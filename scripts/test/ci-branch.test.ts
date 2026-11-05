@@ -54,7 +54,8 @@ function fake(options: {
         }),
       );
     }
-    if (a === "api") return ok(JSON.stringify(options.artifacts ?? ["prints", "relatorio-e2e"]));
+    if (a === "api")
+      return ok(JSON.stringify(options.artifacts ?? ["prints-light-pt-BR", "relatorio-e2e-1"]));
     return { code: 1, stdout: `unexpected: ${args.join(" ")}` };
   };
   return {

@@ -40,9 +40,13 @@ describe("ci-prints (#291)", () => {
     expect(upload?.with?.name).toBe("prints-${{ matrix.theme }}-${{ matrix.lang }}");
   });
 
-  test("the takeShots loop goes through shotVariants, and refuses a filter that keeps nothing", () => {
-    const source = readFileSync(join(ROOT, "scripts/demo-shots.ts"), "utf8");
-    expect(source).toContain("shotVariants(process.env)");
-    expect(source).toContain("no theme and language pair matches SHOTS_THEME");
+  test("the prints pick their pairs before Chrome starts, and the visual check knows a leg is not complete", () => {
+    // The behaviour is in shots-variants.test.ts; this checks the two entry points use it.
+    const shots = readFileSync(join(ROOT, "scripts/demo-shots.ts"), "utf8");
+    const picked = shots.indexOf("pickVariants(process.env)");
+    expect(picked).toBeGreaterThan(-1);
+    expect(picked).toBeLessThan(shots.indexOf("launchFirst("));
+    const visual = readFileSync(join(ROOT, "scripts/demo-visual.ts"), "utf8");
+    expect(visual).toContain("complete: isCompleteRun(process.env)");
   });
 });
