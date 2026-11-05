@@ -3,8 +3,10 @@
  * the logic of scripts/lib/visual.ts. Baselines are committed in apps/desktop/visual-baseline,
  * taken from the CI runner (Linux x64), never from another machine: fonts differ.
  */
+
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { isCompleteRun } from "./lib/shots-variants.ts";
 import { checkShots, type VisualIO, type VisualMode } from "./lib/visual.ts";
 
 export const BASELINE_DIR = resolve(import.meta.dir, "../apps/desktop/visual-baseline");
@@ -44,8 +46,9 @@ export function runVisual(mode: VisualMode, shotsDir: string, log: (msg: string)
     baselineDir: BASELINE_DIR,
     diffDir: join(shotsDir, "visual-diff"),
     io: diskIO,
-    // `DEMO_SHOTS` prints only some screens: then a baseline with no print is expected.
-    complete: !process.env.DEMO_SHOTS,
+    // `DEMO_SHOTS` prints only some screens, and a CI leg one pair (#291): then a baseline with no
+    // print is expected.
+    complete: isCompleteRun(process.env),
   });
   if (mode === "update") log(`visual: ${result.updated} baselines written to ${BASELINE_DIR}`);
   else if (mode === "record")

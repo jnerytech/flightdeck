@@ -21,10 +21,16 @@ export function shotVariants(env: Record<string, string | undefined>): ShotVaria
 
 /** The pairs to print, or an error naming the filter when it keeps none (before any browser starts). */
 export function pickVariants(env: Record<string, string | undefined>): ShotVariant[] {
-  return shotVariants(env);
+  const variants = shotVariants(env);
+  if (variants.length === 0) {
+    throw new Error(
+      `no theme and language pair matches SHOTS_THEME=${env.SHOTS_THEME ?? ""} SHOTS_LANG=${env.SHOTS_LANG ?? ""}`,
+    );
+  }
+  return variants;
 }
 
 /** Whether this run prints every screen of every pair: only then is a baseline with no print missing. */
-export function isCompleteRun(_env: Record<string, string | undefined>): boolean {
-  return true;
+export function isCompleteRun(env: Record<string, string | undefined>): boolean {
+  return !env.DEMO_SHOTS && !env.SHOTS_THEME && !env.SHOTS_LANG;
 }

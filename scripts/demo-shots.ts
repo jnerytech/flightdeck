@@ -15,7 +15,7 @@ import { launchFirst } from "./lib/browser.ts";
 import { type Finding, KEY_REGIONS, layoutFindings } from "./lib/layout-guards.ts";
 import { type Rgb, themeProblem } from "./lib/print-theme.ts";
 import { PENDING_SELECTOR } from "./lib/shots-loaded.ts";
-import { shotVariants } from "./lib/shots-variants.ts";
+import { pickVariants } from "./lib/shots-variants.ts";
 import { type VisualMode, VOLATILE_RULES } from "./lib/visual.ts";
 
 export const SHOTS_DIR = resolve(import.meta.dir, "../apps/desktop/screenshots");
@@ -686,18 +686,13 @@ export async function takeShots(
   log: (msg: string) => void,
   visual: VisualMode = "off",
 ): Promise<string> {
+  // All four pairs, or the one a CI job prints (SHOTS_THEME, SHOTS_LANG; #291), refused before
+  // Chrome starts when the filter keeps none.
+  const variants = pickVariants(process.env);
   const browser = await launchFirst((attempt) =>
     chromium.launch({ ...attempt, headless: true, env }),
   );
   const problems: string[] = [];
-  // All four pairs, or the one a CI job prints (SHOTS_THEME, SHOTS_LANG; #291).
-  const variants = shotVariants(process.env);
-  if (variants.length === 0) {
-    await browser.close();
-    throw new Error(
-      `no theme and language pair matches SHOTS_THEME=${process.env.SHOTS_THEME ?? ""} SHOTS_LANG=${process.env.SHOTS_LANG ?? ""}`,
-    );
-  }
   try {
     for (const { theme, lang } of variants) {
       const dir = join(SHOTS_DIR, `${theme}-${lang}`);
