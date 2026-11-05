@@ -88,7 +88,7 @@ const PREFIXES = new Set(["command", "nohup", "time", "exec", "builtin", "env", 
  * ~/.config/gh, ~/.claude/.credentials.json, ~/.claude.json, ~/.flightdeck/config.json, .env*,
  * *.pem, *.key and id_*. Compared without case, with either slash.
  */
-function credential(text: string): boolean {
+export function credential(text: string): boolean {
   const parts = text.toLowerCase().replaceAll("\\", "/").split("/");
   const name = parts.at(-1) as string;
   const after = (dir: string, next: string) =>

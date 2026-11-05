@@ -61,6 +61,8 @@ export class OpenCodeEvents {
   private messageId: string | undefined;
   private readonly names = new Map<string, string>();
   private readonly shown = new Set<string>();
+  /** The fullest input seen per call: a request may carry less than an earlier update. */
+  private readonly inputs = new Map<string, Record<string, unknown>>();
   private costUsd: number | undefined;
 
   /** `session.init`, once per run, when its first prompt goes out, with the context files it took. */
@@ -105,6 +107,7 @@ export class OpenCodeEvents {
         const out: RuntimeEvent[] = [];
         const input =
           update.rawInput && Object.keys(update.rawInput).length > 0 ? update.rawInput : null;
+        if (input) this.inputs.set(id, { ...this.inputs.get(id), ...input });
         const done = update.status === "completed" || update.status === "failed";
         if (input || done) out.push(...this.card(id, input ?? {}));
         if (done) {
@@ -134,10 +137,11 @@ export class OpenCodeEvents {
     tool: MappedTool;
   } {
     const name = toolCall.name ?? this.names.get(toolCall.toolCallId) ?? "";
-    const tool = mapOpenCodeTool(name, toolCall.rawInput ?? {});
+    const input = { ...this.inputs.get(toolCall.toolCallId), ...toolCall.rawInput };
+    const tool = mapOpenCodeTool(name, input);
     if (isChild(toolCall)) return { events: [], child: true, tool };
     if (toolCall.name) this.names.set(toolCall.toolCallId, toolCall.name);
-    return { events: this.card(toolCall.toolCallId, toolCall.rawInput ?? {}), child: false, tool };
+    return { events: this.card(toolCall.toolCallId, input), child: false, tool };
   }
 
   promptEnded(result: AcpPromptResult, durationMs: number): RuntimeEvent[] {

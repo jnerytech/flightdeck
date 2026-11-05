@@ -3,12 +3,13 @@
  * live session. A connection owns the process (spawn, initialize, new or resume, the checked mode,
  * model and effort, close and kill); the run owns the turns, the events and the idle reaper.
  */
-import { readFile, stat } from "node:fs/promises";
+import { readFile, realpath, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { SessionImage } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
+import { credential } from "../permissions/risk.ts";
 import {
   ACP_CLOSED,
   AcpClient,
@@ -124,6 +125,7 @@ function unsupported(mode: string): FlightdeckError {
 }
 
 const selected = (optionId: "once" | "reject") => ({ outcome: { outcome: "selected", optionId } });
+const CANCELLED = { outcome: { outcome: "cancelled" } };
 
 function overridden(detail: string): FlightdeckError {
   return new FlightdeckError(
@@ -368,6 +370,7 @@ class OpenCodeRun implements AgentRun {
   close(): Promise<void> {
     this.closing ??= (async () => {
       this.stopped = true;
+      for (const controller of this.asking.values()) controller.abort();
       this.clearIdle();
       if (this.escalation !== null) this.timers.clear(this.escalation);
       const conn = this.conn;
@@ -489,26 +492,49 @@ class OpenCodeRun implements AgentRun {
   private async permission(toolCall: AcpToolCall): Promise<unknown> {
     const { events, child, tool } = this.normalizer.permissionRequest(toolCall);
     if (child) return selected("reject");
-    this.requested.add(toolCall.toolCallId);
-    this.push(events);
-    await this.events.idle();
-    if (this.permissionMode === "bypassPermissions" && this.opts.allowBypass)
-      return selected("once");
     const id = toolCall.toolCallId;
+    this.requested.add(id);
+    // Registered before the barrier, so a sibling's deny or an interrupt reaches it there too.
     const controller = new AbortController();
     this.asking.set(id, controller);
     try {
+      this.push(events);
+      await this.events.idle();
+      if (this.stopped || controller.signal.aborted) return CANCELLED;
+      if (this.permissionMode === "bypassPermissions" && this.opts.allowBypass)
+        return selected("once");
+      if (await this.readInside(tool.name, tool.input)) return selected("once");
       const decision = await this.opts.canUseTool(tool.name, tool.input, {
         signal: controller.signal,
         toolUseId: id,
       });
-      if (controller.signal.aborted) return { outcome: { outcome: "cancelled" } };
+      if (controller.signal.aborted) return CANCELLED;
       if (decision.behavior === "allow") return selected("once");
       // OpenCode rejects every other pending request of the session with this one.
       for (const [other, sibling] of this.asking) if (other !== id) sibling.abort();
       return selected("reject");
     } finally {
       this.asking.delete(id);
+    }
+  }
+
+  /**
+   * Review M8: OpenCode's "inside the folder" is lexical, so a symlink in a repo could lead a read
+   * out of it. Reads, globs and greps ask in OpenCode, and Flightdeck allows them here only when
+   * the real path is inside the folder's real path and is not a credential.
+   */
+  private async readInside(name: string, input: Record<string, unknown>): Promise<boolean> {
+    if (!["Read", "Glob", "Grep"].includes(name)) return false;
+    const raw = input.file_path ?? input.path ?? ".";
+    if (typeof raw !== "string" || credential(raw)) return false;
+    try {
+      const [root, target] = await Promise.all([
+        realpath(this.opts.cwd),
+        realpath(resolve(this.opts.cwd, raw)),
+      ]);
+      return isInside(root, target) && !credential(target);
+    } catch {
+      return false;
     }
   }
 
