@@ -58,7 +58,7 @@ describe("deps-main: the running daemon looks for the programs on its own PATH",
     expect(by("gh")).toMatchObject({ state: "ok" });
     // The folder of this test is allowed, and no unit or hook exists in the temporary home.
     expect(by("folders")).toMatchObject({ state: "ok" });
-    expect(by("hooks")?.state).not.toBe("ok");
+    expect(by("hooks")?.state).toBe("missing");
   });
 
   /** Starts a daemon with this config extra, asks deps.check and returns the answer's rows. */
