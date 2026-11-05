@@ -32,7 +32,11 @@ export function resolveImport(from: string, spec: string, known: Set<string>): s
 }
 
 /** The test files to run for these changed files: themselves, plus every test that reaches one. */
-export function selectRelated(changed: string[], sources: Map<string, string>): Related[] {
+export function selectRelated(
+  changed: string[],
+  sources: Map<string, string>,
+  { direct = false }: { direct?: boolean } = {},
+): Related[] {
   const known = new Set(sources.keys());
   const importers = new Map<string, string[]>();
   for (const [path, source] of sources) {
@@ -52,7 +56,8 @@ export function selectRelated(changed: string[], sources: Map<string, string>): 
     for (const importer of importers.get(path) ?? []) {
       if (origin.has(importer)) continue;
       origin.set(importer, origin.get(path) as string);
-      queue.push(importer);
+      // `direct` stops at the files that import a changed file themselves.
+      if (!direct) queue.push(importer);
     }
   }
   const changedSet = new Set(changed);
@@ -71,6 +76,8 @@ export interface PlanDeps {
   readFile: (path: string) => string;
   /** Collect coverage of the run into this folder, and name the changed files it must cover. */
   coverageDir?: string;
+  /** `--fast`: only the tests that import a changed file directly (the transitive set runs in CI). */
+  fast?: boolean;
 }
 
 export interface Plan {
@@ -82,7 +89,7 @@ export interface Plan {
   targets?: string[];
 }
 
-export function planRelated({ base, platform, git, readFile, coverageDir }: PlanDeps): Plan {
+export function planRelated({ base, platform, git, readFile, coverageDir, fast }: PlanDeps): Plan {
   const ref = base ?? git(["merge-base", "HEAD", "main"])?.trim();
   if (!ref) return { code: 2, output: "test:related: no base to compare with", command: null };
   const label = base ?? ref.slice(0, 7);
@@ -92,7 +99,7 @@ export function planRelated({ base, platform, git, readFile, coverageDir }: Plan
   const warnings = changed
     .filter((path) => GLOBAL_FILE.test(path))
     .map((path) => `warning: ${path} affects every test, run the full suite`);
-  const byImport = selectRelated(changed, sources);
+  const byImport = selectRelated(changed, sources, { direct: fast });
   const imported = new Set(byImport.map((r) => r.path));
   const related = [
     ...byImport,
@@ -114,7 +121,9 @@ export function planRelated({ base, platform, git, readFile, coverageDir }: Plan
     return { code: 0, output: [none, ...warnings].join("\n"), command: null };
   }
   const output = [
-    `test:related: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label}`,
+    fast
+      ? `test:related --fast: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label} (direct importers only; CI runs the rest)`
+      : `test:related: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label}`,
     ...warnings,
     ...related.map((r) => `  ${r.path}  ${r.why}`),
   ].join("\n");
