@@ -1572,6 +1572,8 @@ export class AppStore {
     claudeSessionId: string,
     cursor?: string,
     tail = false,
+    /** Told why a read was refused (issue #227): the reader tells "not found" from a failure. */
+    refused?: (reason: string | undefined) => void,
   ): Promise<HistoryGetResult | null> {
     try {
       const conn = this.connections.get(hostId);
@@ -1583,6 +1585,7 @@ export class AppStore {
         ...(tail && !cursor ? { tail: true } : {}),
       });
     } catch (error) {
+      refused?.(error instanceof RequestError ? error.reason : undefined);
       // Not indexed yet is a normal state (the indexer catches up), not something to tell the person.
       if (!(error instanceof RequestError && error.reason === "transcript_not_indexed")) {
         this.fail(error);

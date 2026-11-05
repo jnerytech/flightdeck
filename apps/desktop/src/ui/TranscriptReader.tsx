@@ -9,7 +9,7 @@ import { ToolRow } from "@/components/session/tool-row";
 import { Button } from "@/components/ui/button";
 import { useStoreState } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
-import { type AppStore, HISTORY_PAGE } from "../lib/app-store.ts";
+import type { AppStore } from "../lib/app-store.ts";
 import { basename, isInside } from "../lib/paths.ts";
 import { messageParts } from "../lib/tool-line.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -77,20 +77,17 @@ export function TranscriptReader(props: {
     setLoad("loading");
     // Opened on a hit or a cursor it starts there; opened plainly it starts on the latest messages.
     const latest = target.cursor === undefined && target.focusUuid === undefined;
+    let reason: string | undefined;
     void store
-      .hostRequest(target.hostId, "history.get", {
-        claudeSessionId: target.claudeSessionId,
-        limit: HISTORY_PAGE,
-        ...(target.cursor ? { cursor: target.cursor } : {}),
-        ...(latest ? { tail: true } : {}),
+      .historyGet(target.hostId, target.claudeSessionId, target.cursor, latest, (why) => {
+        reason = why;
       })
-      .then((result) => {
+      .then((page) => {
         if (!live) return;
-        if (!result.ok) {
-          setLoad(result.reason === "transcript_not_indexed" ? "missing" : "failed");
+        if (!page) {
+          setLoad(reason === "transcript_not_indexed" ? "missing" : "failed");
           return;
         }
-        const page = result.data;
         setLoad("ready");
         if (page.cursor !== undefined) lastAfter.current = page.cursor;
         // Asked for the latest messages and got a page with no cursor: the daemon predates `tail` and sent page one.
