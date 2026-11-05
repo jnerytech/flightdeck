@@ -99,12 +99,14 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   without options.
 - Never read credentials, tokens, `~/.claude/.credentials.json`, SSH keys or shell history, not
   even in a test or a proof of concept (`.claude/settings.json` denies the obvious paths).
+- Delivery is GitHub Flow: one PR per branch to `main` (`bun run pr -- open <branch>`), merged
+  alone when its required checks are green on its HEAD and it is up to date (`bun run pr -- merge
+  <n>`, the coordinator only); a release is a tag on a green `main`.
 - Sessions push only their own work branches, so CI runs the heavy checks on them (#216); only
-  the coordinator pushes `main`, `rc/*` and tags, and publishes releases. The guard hook refuses
-  the rest: main, `rc/*`, tags, `--tags`/`--all`/`--mirror`, a bare `--force`, and a
+  the coordinator pushes `main` and tags, merges the PRs and publishes releases. The guard hook
+  refuses the rest: main, `rc/*`, tags, `--tags`/`--all`/`--mirror`, a bare `--force`, and a
   `--force-with-lease` to any branch but the one checked out (the coordinator's session runs with
-  `FLIGHTDECK_COORDINATOR=1`). Sessions hand the green HEAD over; the coordinator integrates it
-  into `main`, tags it and releases.
+  `FLIGHTDECK_COORDINATOR=1`).
 
 - Full suite, `demo:shots`, `e2e`, the smokes and the builds run only through
   `bun run slot --`, never bare (the guard hook refuses them otherwise): two of them at once overload the machine and make the

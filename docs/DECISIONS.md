@@ -1762,7 +1762,6 @@ What the Phase 13 interface (`risco-ui`, `issues-ui`, `automacoes-ui`, `arena-ui
 - **Version:** 0.13.0 in the protocol, the daemon and the desktop (`tauri.conf.json` reads the desktop's `package.json`).
 - **`scripts/demo-seed.ts` is out of the coverage count:** the `demo-issue-risco` test is the first unit test to load the seed, which put its ping reply and its old-daemon stub (only used by `demo` and `demo:shots`) into the totals. The seed is demo scaffolding, covered by the e2e and the screenshots, so `bunfig.toml` ignores it like the vendored UI.
 
-
 # Phase 14 decisions: the daemon (embedded terminal)
 
 ## Terminal embutido (daemon)
@@ -2467,7 +2466,6 @@ The app side of phase 21: `conversas-ui`, `times-ui`, the relay between hosts, `
 
 - **`smoke:run`:** a real daemon over a real repository whose committed run.yaml runs an echo server that also starts a child that ignores SIGHUP and SIGTERM. Two cards run at once on different blocks, both answer over HTTP, and Stop leaves no server, child or answering port. Its block starts at a random base. Red on the base commit, where `runenv.config` does not exist.
 
-
 # Phase 28 decisions: performance and stack best practices
 
 ## Baseline
@@ -2882,8 +2880,6 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
 - Not done in part 1: the weight scale (vendored buttons), splitting hover motion into per-component
   enter animations. Both go to part 2.
 
-
-
 ## Phase 37: GitHub sign-in and start from a GitHub project
 
 - **The sign-in is the host's `gh`, not an OAuth client of ours.** Issue #16 asks for the device flow, the token in the OS
@@ -3054,7 +3050,6 @@ are out of scope. This supersedes item 4 of the blocking-call audit: the sync fa
   opens a new one; duplicates in an older snapshot fold into one.
 - `session.create` takes no first prompt: the session starts idle and the first message begins
   its first turn. The New session form has a Model select (default, opus, sonnet, haiku).
-
 
 ## Phase 38: board sync with external boards (GitHub Projects first)
 
@@ -3430,7 +3425,6 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   next sync; after five in a row a single `push_gave_up` entry is written and the card is left alone.
 - **Not verified here:** the stderr text of a missing scope and of a rate limit, and the `Status` field name on boards that
   renamed it, come from memory and the fakes; the proof of concept in the spec settles them.
-
 
 ## Team sessions get the flightdeck MCP (v0.36.1, issue #95)
 
@@ -3973,3 +3967,27 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   with no tier still runs, the left-out ones are named, and there is no coverage gate (a part of
   the tiers covers part of a file). CI runs every tier and keeps the one combined 100% gate on
   Linux. A test checks that every test file of the tree gets a tier.
+
+## GitHub Flow: one PR per branch, a release is a tag on a green main (issue #260)
+
+- **Why.** The owner wants small releases: a batch of 30 branches assembled into an rc conflicted
+  in a dozen places and gated everything on the slowest branch. Each branch now reaches main
+  through its own PR and merges alone when it is green.
+- **One CI trigger per kind of branch.** `push` only on main (what a release tags), `pull_request`
+  for a branch with an open PR (never filtered, so the required checks always report), and
+  `workflow_dispatch` for a branch with no PR yet (`bun run ci:branch` sends it). A work branch no
+  longer runs twice for one commit (on its push and on its PR). A push to main skips only
+  `docs/images/**` (#235).
+- **`bun run pr`** (scripts/lib/pr-flow.ts, through `gh api` only): `open` titles the PR after the
+  issue the branch's subjects name most (or `--issue`) and writes `Closes #N` with the subjects;
+  it opens no second PR for a branch. `next` lists the open PRs in merge order (onto main by number,
+  a stacked PR right after its parent) with what each needs: its parent, a draft, failing, running
+  or missing checks, or the commits it is behind. `update` is GitHub's update-branch. `merge` is the
+  coordinator's (`FLIGHTDECK_COORDINATOR=1`) and merges with a merge commit, pinned to the HEAD it
+  checked, only when the required checks are green there and the PR is not behind main.
+- **The required checks come from the ruleset**, read by REST (`rules/branches/main`), not from a
+  list in the code: the ruleset stays the only place that names them. A check counts as green the
+  way GitHub counts it for a required check: success, skipped or neutral, on the newest run of its
+  name, or a commit status of that name.
+- **Not changed here:** handoff-ci (#221) checks for a push trigger on the branch; with this, a
+  branch with a PR proves itself on its PR run instead, and handoff-ci has to read that run.

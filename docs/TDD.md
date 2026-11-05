@@ -181,6 +181,18 @@ em vez de depender de cuidado.
   (`mock.module(path, () => real)`), because Bun module mocks outlive their file and later files
   in the same run would draw the stand-in.
 
+## Delivery (GitHub Flow, #260)
+
+- Every branch reaches `main` through its own PR: `bun run pr -- open <branch>` titles it after the
+  branch's issue and closes it. A branch stacked on another opens with `--base <parent>`.
+- CI runs once per commit: on the PR (`pull_request`), on `main` (`push`), or by hand for a branch
+  with no PR yet (`bun run ci:branch`).
+- `bun run pr -- next` lists the open PRs in merge order with what each still needs.
+  `bun run pr -- update <n>` brings one up to date with its base. `bun run pr -- merge <n>` (the
+  coordinator) merges with a merge commit, never a squash, and only when the main ruleset's
+  required checks are green on the PR's HEAD and it is up to date.
+- A release is a tag on a green `main`; there is no rc branch to assemble.
+
 ## Evidência para o /goal
 
 - Cada comando de critério mostra o próprio código de saída (`echo $?` logo depois, ou
