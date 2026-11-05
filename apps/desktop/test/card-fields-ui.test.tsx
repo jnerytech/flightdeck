@@ -140,5 +140,60 @@ for (const [lang, t] of [
       await settle(() => field(t.cardUi.description)?.value === "Also round to cents.");
       expect(field(t.cardUi.title)?.value).toBe("Fix the cart total");
     });
+
+    // OpenCode branch review M1: a draft never knew which text it started from, so Save wrote a
+    // stale draft over a change made elsewhere (board sync, another client).
+    test("a change made elsewhere while editing stops a plain Save, says why, and Use theirs shows it", async () => {
+      const { store, hostId, card } = await openByRoute(lang);
+      await settle(() => button(t.cardUi.saveDescription) !== null);
+      await act(async () => {
+        fireEvent.change(field(t.cardUi.description) as HTMLTextAreaElement, {
+          target: { value: "Sum the items and add the tax. + my line" },
+        });
+      });
+      await store.hostCommand(hostId, "card.update", {
+        cardId: card.id,
+        description: "Sum the items and add the tax. + their line",
+      });
+      await settle(() => button(t.cardUi.saveDescription)?.disabled === true);
+      expect(document.body.textContent ?? "").toContain(t.cardUi.changedElsewhere);
+      await act(async () => {
+        fireEvent.click(button(t.cardUi.useTheirs) as HTMLButtonElement);
+      });
+      expect(field(t.cardUi.description)?.value).toBe(
+        "Sum the items and add the tax. + their line",
+      );
+    });
+
+    test("the title stops a plain Save the same way, and Use theirs shows the title made elsewhere", async () => {
+      const { store, hostId, card } = await openByRoute(lang);
+      await settle(() => field(t.cardUi.title)?.value === "Fix the total");
+      await act(async () => {
+        fireEvent.change(field(t.cardUi.title) as HTMLInputElement, {
+          target: { value: "Fix the total, mine" },
+        });
+      });
+      await store.hostCommand(hostId, "card.update", { cardId: card.id, title: "Fix it, theirs" });
+      await settle(() => button(t.cardUi.saveTitle)?.disabled === true);
+      await act(async () => {
+        fireEvent.click(button(t.cardUi.useTheirs) as HTMLButtonElement);
+      });
+      expect(field(t.cardUi.title)?.value).toBe("Fix it, theirs");
+    });
+
+    // OpenCode branch review m1: typing the card's text back is no edit any more.
+    test("typing the card's own text back lets the field follow the card again", async () => {
+      const { store, hostId, card } = await openByRoute(lang);
+      await settle(() => button(t.cardUi.saveDescription) !== null);
+      for (const value of ["x", "Sum the items and add the tax."]) {
+        await act(async () => {
+          fireEvent.change(field(t.cardUi.description) as HTMLTextAreaElement, {
+            target: { value },
+          });
+        });
+      }
+      await store.hostCommand(hostId, "card.update", { cardId: card.id, description: "Changed." });
+      await settle(() => field(t.cardUi.description)?.value === "Changed.");
+    });
   });
 }

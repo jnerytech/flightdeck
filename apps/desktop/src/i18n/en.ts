@@ -2938,6 +2938,8 @@ export const en: Dictionary = {
     cost: "Card cost",
     back: "Back to the board",
     description: "Description",
+    changedElsewhere: "Changed elsewhere while you edited: Use theirs to see it, then edit again.",
+    useTheirs: "Use theirs",
     detailsTitle: "Details",
     runTitle: "Run",
     saveDescription: "Save description",
