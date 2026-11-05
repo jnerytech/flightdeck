@@ -4,7 +4,9 @@
  * stamp line to paste into the hand-off message, also kept in the worktree's git folder
  * (scripts/lib/handoff.ts). The stamp also says whether the required checks are green on HEAD
  * (`ci=0`; push first), from its PR run or main's push run (#266); `--no-ci` writes `ci=skip`, which
- * vouches for nothing. `--base <ref>` is for a branch stacked on another. `--verify` is for the
+ * vouches for nothing. `security=0` unless a change in a risk area (spawn, delete, secret,
+ * permission, vault, pairing) has no `Security-Reviewed:` trailer after it (#273).
+ * `--base <ref>` is for a branch stacked on another. `--verify` is for the
  * receiver: it checks the kept stamp against HEAD.
  * Never run it under the slot: test:related takes the slot by itself when it needs it.
  */
@@ -14,6 +16,7 @@ import { resolve } from "node:path";
 import { spawnExec } from "../apps/daemon/src/exec.ts";
 import { runHandoff, stampProblem } from "./lib/handoff.ts";
 import { headCi } from "./lib/pr-flow.ts";
+import { securityVerdict } from "./lib/security-gate.ts";
 
 const git = (args: string[]) => spawnSync("git", args, { encoding: "utf8" }).stdout?.trim() ?? ""; // NOSONAR: git from the PATH of the developer running the script
 const root = git(["rev-parse", "--show-toplevel"]) || resolve(import.meta.dir, "..");
@@ -34,6 +37,17 @@ if (process.argv.includes("--verify")) {
   process.exit(problem ? 1 : 0);
 }
 
+/** The security gate (#273, lib/security-gate.ts): "0", "unreviewed" or "unknown". */
+function securityGate(): string {
+  const run = (args: string[]) => {
+    const proc = spawnSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 * 2 ** 20 }); // NOSONAR: git from the PATH of the developer running the script
+    return proc.status === 0 ? proc.stdout : null;
+  };
+  const { verdict, message } = securityVerdict(run, base);
+  if (message) console.error(`\n${message}`);
+  return verdict;
+}
+
 const result = await runHandoff({
   run: async (command) => {
     const [program = "bun", ...rest] = command;
@@ -47,6 +61,7 @@ const result = await runHandoff({
   head,
   now: new Date().toISOString(),
   ...(base ? { base } : {}),
+  security: () => Promise.resolve(securityGate()),
   ci: async () =>
     process.argv.includes("--no-ci")
       ? "skip"

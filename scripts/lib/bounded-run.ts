@@ -1,0 +1,70 @@
+/**
+ * Runs a hook command with a deadline (#273): its output ignored (a hook inherits the environment
+ * and may print a token, so nothing it prints reaches a log), and on timeout its whole process
+ * group killed, grandchildren too, so nothing it started keeps the caller waiting.
+ */
+import { spawn, spawnSync } from "node:child_process";
+import { join } from "node:path";
+
+export interface BoundedResult {
+  /** The exit code; null when it was killed or could not start. */
+  code: number | null;
+  /** Why it could not start (the program's name and the error), else empty. */
+  stderr: string;
+  timedOut: boolean;
+}
+
+export interface KillDeps {
+  platform: NodeJS.Platform;
+  /** Runs a program to its end (taskkill on Windows). */
+  runSync: (program: string, args: string[]) => void;
+  /** Sends a signal; a negative pid is a process group. */
+  kill: (pid: number, signal: NodeJS.Signals) => void;
+  systemRoot?: string;
+}
+
+export const SYSTEM_KILL: KillDeps = {
+  platform: process.platform,
+  runSync: (program, args) => {
+    spawnSync(program, args, { stdio: "ignore" });
+  },
+  kill: (pid, signal) => process.kill(pid, signal),
+  systemRoot: process.env.SystemRoot,
+};
+
+/** Kills a process and everything it started: its group on POSIX, its tree on Windows. */
+export function killTree(pid: number, deps: KillDeps = SYSTEM_KILL): void {
+  try {
+    if (deps.platform === "win32") {
+      const taskkill = join(deps.systemRoot ?? String.raw`C:\Windows`, "System32", "taskkill.exe");
+      deps.runSync(taskkill, ["/T", "/F", "/PID", String(pid)]);
+    } else deps.kill(-pid, "SIGKILL");
+  } catch {
+    // Already gone.
+  }
+}
+
+export function runBounded(command: string[], timeoutMs: number): Promise<BoundedResult> {
+  const [program = "", ...args] = command;
+  return new Promise((done) => {
+    let settled = false;
+    const finish = (result: BoundedResult) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      done(result);
+    };
+    // Its own process group on POSIX, so a timeout reaches what it started.
+    const child = spawn(program, args, {
+      detached: process.platform !== "win32",
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    child.on("error", (error) => finish({ code: null, stderr: error.message, timedOut: false }));
+    child.on("exit", (code) => finish({ code, stderr: "", timedOut: false }));
+    const timer = setTimeout(() => {
+      if (child.pid !== undefined) killTree(child.pid);
+      finish({ code: null, stderr: "", timedOut: true });
+    }, timeoutMs);
+  });
+}
