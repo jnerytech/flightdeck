@@ -2563,10 +2563,12 @@ vermelho).
 - **Contador do cache do prompt** (Configurações, desligado por padrão): o Claude Code mantém o
   início da conversa em cache por 5 minutos (1 hora com cache estendido, **Duração do cache** nas
   Configurações), e responder dentro dessa janela custa menos. Com o contador ligado, uma sessão
-  ociosa na lista de Sessões (linha e cartão) mostra um relógio pequeno com o tempo que resta em
-  `m:ss`, na cor de aviso no último minuto e só o relógio quando o cache esfria (a próxima mensagem
+  ociosa na lista de Sessões (linha e cartão) e na linha de estado sob a caixa de mensagem mostra
+  um relógio pequeno com o tempo que resta em `m:ss`, na cor de aviso no último minuto e só o
+  relógio quando o cache esfria (a próxima mensagem
   reenvia todo o contexto como tokens sem cache). Leitores de tela ouvem "Cache do prompt expira em
-  2 minutos 10 segundos". A contagem não roda para sessões em andamento ou encerradas, um único
+  2 minutos 10 segundos". A aba da sessão leva só o ícone do relógio no canto (o tempo fica na dica),
+  então ela não fica mais larga. A contagem não roda para sessões em andamento ou encerradas, um único
   relógio de 1 segundo atende todas, e ele para enquanto a janela está escondida.
 - **Tema:** Claro, Escuro e Sistema (o padrão), em Configurações, na barra lateral e na paleta.
   A escolha fica guardada.

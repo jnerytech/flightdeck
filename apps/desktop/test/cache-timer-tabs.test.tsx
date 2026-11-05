@@ -97,7 +97,9 @@ describe("cache-timer-tabs: on the tab strip (issue #159)", () => {
     const on = await strip(true);
     await act(async () => {
       (on as unknown as { update(patch: Partial<AppState>): void }).update({
-        hosts: [{ id: "h", name: "pc", status: "offline", sessions: [session("running")] }] as never,
+        hosts: [
+          { id: "h", name: "pc", status: "offline", sessions: [session("running")] },
+        ] as never,
       });
     });
     expect(screen.queryByRole("img", { name: /^Prompt cache/ })).toBeNull();
