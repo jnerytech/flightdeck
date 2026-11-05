@@ -160,22 +160,28 @@ export class AssistantController {
     }
   }
 
-  async keyStatus(_provider: AssistantKeyProvider): Promise<{ saved: boolean; last4?: string }> {
-    return { saved: false };
+  keyStatus(provider: AssistantKeyProvider): Promise<{ saved: boolean; last4?: string }> {
+    return this.deps.api.keyStatus(provider);
   }
 
-  async saveKey(_provider: AssistantKeyProvider, _key: string): Promise<{ last4: string }> {
-    return { last4: "" };
+  /** The only place a key goes in; the state of the keys is read again after it. */
+  async saveKey(provider: AssistantKeyProvider, key: string): Promise<{ last4: string }> {
+    const stored = await this.deps.api.setKey(provider, key);
+    await this.refreshKeys();
+    return stored;
   }
 
-  async removeKey(_provider: AssistantKeyProvider): Promise<void> {}
-
-  async testKey(_provider: AssistantKeyProvider): ReturnType<AssistantPlatform["test"]> {
-    return { ok: true };
+  async removeKey(provider: AssistantKeyProvider): Promise<void> {
+    await this.deps.api.deleteKey(provider);
+    await this.refreshKeys();
   }
 
-  async models(_provider: AssistantKeyProvider): Promise<ModelOption[]> {
-    return [];
+  testKey(provider: AssistantKeyProvider): ReturnType<AssistantPlatform["test"]> {
+    return this.deps.api.test(provider);
+  }
+
+  models(provider: AssistantKeyProvider): Promise<ModelOption[]> {
+    return this.deps.api.models(provider);
   }
 
   async cancel(requestId: string, on: ResolvedProvider): Promise<void> {
