@@ -2533,8 +2533,21 @@ their English equivalents.
   project: Open board, Workflows, Open in terminal). Esc goes back from the actions to the list
   and, from there, closes.
 - **Go to Costs** appears when the app has the Costs screen and some host announces `costs`.
-- With nothing typed, a **Recent** section comes first with the last five entries you opened
-  (kept between runs). **Actions** also has **Go to Sessions / Needs you / Projects**, **Show the
+- The row the keyboard is on is a surface with a ring around it, in both themes. A session's row
+  shows its state glyph (running, needs you, idle) and follows it as it changes; a card's row
+  has the card icon.
+- With nothing typed, a **Recent** section comes first with up to six of the entries you opened
+  (kept between runs): what waits for you first, then what runs, then the rest. Each shows
+  **Alt+1** to **Alt+6**, which open it while the palette is open (they do nothing outside it).
+  The order is fixed when the palette opens, so rows do not move under the cursor.
+- The palette opens **narrowed to where you are**: on a board or a card, to its host and project;
+  on a session or a host page, to the host. The filters show as chips under the field; click one to
+  remove it, or **Clear all filters**. The change lasts only until the palette closes.
+- Text that matches no card ends the list with **Create card “text” in project** (the scope's
+  project, or the only project there is). Pasting a GitHub issue link or typing `#123` in a
+  project with an issue provider offers **Create card from issue** instead, which links the issue.
+- Each section shows eight rows, then a button such as **22 more**; each press shows twenty more.
+- **Actions** also has **Go to Sessions / Needs you / Projects**, **Show the
   keyboard shortcuts** and, while a request waits for you, **Approve the oldest request** and
   **Deny the oldest request** (a high-risk request is opened to be held, as in the tray). Each
   command shows its keys at the right.
