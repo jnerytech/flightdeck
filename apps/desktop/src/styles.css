@@ -115,7 +115,8 @@
   --accent-foreground: oklch(0.2 0.01 270);
   --destructive: oklch(0.55 0.22 27);
   --border: oklch(0 0 0 / 6%);
-  --input: oklch(0 0 0 / 12%);
+  /* A field's edge: opaque and 3:1 on every surface (WCAG 1.4.11, issue #176); lines stay subtle. */
+  --input: oklch(0.62 0.005 270);
   --ring: var(--brand);
   --sidebar: oklch(0.965 0.002 270);
   --sidebar-foreground: oklch(0.2 0.01 270);
@@ -129,7 +130,7 @@
   --status-running: oklch(0.5 0.16 255);
   --status-needs-you: oklch(0.52 0.15 55);
   --status-idle: oklch(0.5 0.01 270);
-  --status-ended: oklch(0.54 0 0);
+  --status-ended: oklch(0.52 0 0);
   --status-error: oklch(0.5 0.2 27);
   --status-risk: oklch(0.5 0.2 330);
   /* A client's color, as a dot; the same in both themes, never the only sign of the client. */

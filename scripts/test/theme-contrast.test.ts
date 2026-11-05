@@ -75,3 +75,43 @@ describe("theme-contrast: the dark theme's surfaces and lines (issue #98)", () =
     }
   });
 });
+
+describe("theme-contrast: the light theme's fields and the status colors (issue #176)", () => {
+  const light = tokensOf(css, ":root");
+  const dark = new Map([...light, ...tokensOf(css, ".dark")]);
+  /** The ratio of two tokens, or 0 when one is not an opaque color (the guard never guesses). */
+  const ratio = (vars: ReadonlyMap<string, string>, a: string, b: string) => {
+    const [x, y] = [colorOf(vars.get(a), vars), colorOf(vars.get(b), vars)];
+    return x && y ? contrast(x, y) : 0;
+  };
+  const SURFACES = ["--background", "--surface-1", "--surface-2", "--sidebar", "--popover"];
+
+  test("a field's edge keeps 3:1 against every light surface (WCAG 1.4.11)", () => {
+    for (const surface of SURFACES) {
+      expect([surface, ratio(light, "--input", surface) >= 3]).toEqual([surface, true]);
+    }
+  });
+
+  test("the text on every light surface keeps AA (4.5:1)", () => {
+    for (const surface of SURFACES) {
+      for (const text of ["--foreground", "--muted-foreground"]) {
+        expect([text, surface, ratio(light, text, surface) >= 4.5]).toEqual([text, surface, true]);
+      }
+    }
+  });
+
+  test("every status color reads as text at AA on every surface, in both themes", () => {
+    const states = ["running", "needs-you", "idle", "ended", "error", "risk"];
+    for (const [theme, vars] of [
+      ["light", light],
+      ["dark", dark],
+    ] as const) {
+      for (const state of states) {
+        for (const surface of ["--background", "--surface-1", "--surface-2", "--sidebar"]) {
+          const ok = ratio(vars, `--status-${state}`, surface) >= 4.5;
+          expect([theme, state, surface, ok]).toEqual([theme, state, surface, true]);
+        }
+      }
+    }
+  });
+});
