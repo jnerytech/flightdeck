@@ -56,7 +56,10 @@ describe("md-links", () => {
 
   test("a docs path the code names must exist", () => {
     const code = new Map([
-      ["scripts/test/x.test.ts", 'read("docs/DECISIONS.md"); read("docs/SPEC-fase-99.md")'],
+      [
+        "scripts/test/x.test.ts",
+        'read("docs/DECISIONS.md"); read("docs/SPEC-fase-99.md"); // a `docs/...md` placeholder',
+      ],
     ]);
     expect(missingDocRefs(code, (path) => path === "docs/DECISIONS.md")).toEqual([
       "scripts/test/x.test.ts: docs/SPEC-fase-99.md",
