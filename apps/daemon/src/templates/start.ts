@@ -44,6 +44,38 @@ export interface StartDeps {
   }): { sessionId: string } | Promise<{ sessionId: string }>;
 }
 
+/** What a non-empty answer means: a choice becomes its label, a folder or file the folder to work in. */
+async function answerOf(
+  field: Template["fields"][number],
+  given: string,
+  language: "en" | "pt-BR",
+  deps: StartDeps,
+): Promise<{ text: string; folder?: string }> {
+  if (field.kind === "choice") {
+    const option = field.choices?.find((choice) => choice.id === given);
+    if (!option) {
+      throw refuse(
+        "bad_request",
+        `${given} is not an option of ${field.id}`,
+        "template_choice_invalid",
+        { field: field.id },
+      );
+    }
+    return { text: option.label[language] };
+  }
+  if (field.kind !== "folder" && field.kind !== "file") return { text: given };
+  // A folder the host does not allow is refused with the folder to ask for.
+  const place = field.kind === "folder" ? given : dirname(given);
+  try {
+    return { text: given, folder: await resolveAllowedCwd(place, deps.allowedRoots) };
+  } catch (error) {
+    // `resolveAllowedCwd` fails only with `forbidden_cwd` (outside the roots, or not there).
+    throw refuse("forbidden_cwd", (error as Error).message, "template_folder_outside", {
+      folder: given,
+    });
+  }
+}
+
 /** Fills a template with what the person answered and starts the task it describes. */
 export async function startTemplate(
   template: Template,
@@ -56,43 +88,15 @@ export async function startTemplate(
   const folders: string[] = [];
   for (const field of template.fields) {
     const given = values[field.id]?.trim() ?? "";
-    if (given === "") {
-      if (!field.optional) {
-        throw refuse("bad_request", `${field.id} is needed`, "template_field_missing", {
-          field: field.id,
-        });
-      }
-      answers.set(field.id, NONE[language]);
-      continue;
+    if (given === "" && !field.optional) {
+      throw refuse("bad_request", `${field.id} is needed`, "template_field_missing", {
+        field: field.id,
+      });
     }
-    if (field.kind === "choice") {
-      const option = field.choices?.find((choice) => choice.id === given);
-      if (!option) {
-        throw refuse(
-          "bad_request",
-          `${given} is not an option of ${field.id}`,
-          "template_choice_invalid",
-          {
-            field: field.id,
-          },
-        );
-      }
-      answers.set(field.id, option.label[language]);
-      continue;
-    }
-    if (field.kind === "folder" || field.kind === "file") {
-      // A folder the host does not allow is refused with the folder to ask for.
-      const place = field.kind === "folder" ? given : dirname(given);
-      try {
-        folders.push(await resolveAllowedCwd(place, deps.allowedRoots));
-      } catch (error) {
-        // `resolveAllowedCwd` fails only with `forbidden_cwd` (outside the roots, or not there).
-        throw refuse("forbidden_cwd", (error as Error).message, "template_folder_outside", {
-          folder: given,
-        });
-      }
-    }
-    answers.set(field.id, given);
+    const answer =
+      given === "" ? { text: NONE[language] } : await answerOf(field, given, language, deps);
+    answers.set(field.id, answer.text);
+    if (answer.folder) folders.push(answer.folder);
   }
   const working = folders[0];
   if (!working) {

@@ -52,30 +52,42 @@ function fit(
   return chars.length > limit ? `${chars.slice(0, limit - 1).join("")}…` : flat;
 }
 
+/** One line of the transcript as an object; null for a line that is not JSON. */
+function parseLine(raw: string): Json | null {
+  try {
+    return obj(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+/** The text an assistant message says and the files its tool calls touch. */
+function assistantParts(content: unknown[]): { text: string[]; paths: string[] } {
+  const text: string[] = [];
+  const paths: string[] = [];
+  for (const block of content.map((item) => obj(item))) {
+    if (block.type === "text" && typeof block.text === "string") text.push(block.text);
+    const field = block.type === "tool_use" ? FILE_TOOLS[String(block.name)] : undefined;
+    const path = field ? obj(block.input)[field] : undefined;
+    if (typeof path === "string") paths.push(path);
+  }
+  return { text, paths };
+}
+
 export function buildSummary(input: SummaryInput): SessionRecap {
   let asked: string | null = null;
   let done: string | null = null;
   const touched = new Set<string>();
   for (const raw of input.main.split("\n")) {
-    let entry: Json;
-    try {
-      entry = obj(JSON.parse(raw));
-    } catch {
-      continue;
-    }
-    if (entry.isSidechain === true) continue;
+    const entry = parseLine(raw);
+    if (!entry || entry.isSidechain === true) continue;
     const message = obj(entry.message);
     if (entry.type === "user") {
       asked ??= promptText(message.content);
     } else if (entry.type === "assistant" && Array.isArray(message.content)) {
-      const text: string[] = [];
-      for (const block of message.content.map((item) => obj(item))) {
-        if (block.type === "text" && typeof block.text === "string") text.push(block.text);
-        const field = block.type === "tool_use" ? FILE_TOOLS[String(block.name)] : undefined;
-        const path = field ? obj(block.input)[field] : undefined;
-        if (typeof path === "string") touched.add(path);
-      }
-      if (text.length > 0) done = text.join("\n").trim();
+      const parts = assistantParts(message.content);
+      for (const path of parts.paths) touched.add(path);
+      if (parts.text.length > 0) done = parts.text.join("\n").trim();
     }
   }
   const files = [...touched];

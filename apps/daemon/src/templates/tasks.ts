@@ -38,20 +38,34 @@ async function walk(folder: string, into: Snapshot): Promise<void> {
   let seen = 0;
   while (queue.length > 0 && seen < MAX_WALKED) {
     const { dir, depth } = queue.shift() as { dir: string; depth: number };
-    const entries = await orElse(() => readdir(dir, { withFileTypes: true }), []);
-    for (const entry of entries) {
-      if (entry.name.startsWith(".")) continue;
-      const path = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (depth < MAX_DEPTH) queue.push({ dir: path, depth: depth + 1 });
-      } else if (entry.isFile()) {
-        const info = await orElse(() => lstat(path), null);
-        if (!info) continue;
-        into[path] = { size: info.size, mtimeMs: info.mtimeMs };
-        if (++seen >= MAX_WALKED) break;
-      }
+    const found = await scanFolder(dir, into, MAX_WALKED - seen);
+    seen += found.files;
+    if (depth < MAX_DEPTH)
+      queue.push(...found.folders.map((path) => ({ dir: path, depth: depth + 1 })));
+  }
+}
+
+/** One folder: records its files (at most `room`) in `into`, and lists the folders to walk next. */
+async function scanFolder(
+  dir: string,
+  into: Snapshot,
+  room: number,
+): Promise<{ files: number; folders: string[] }> {
+  const folders: string[] = [];
+  let files = 0;
+  const entries = await orElse(() => readdir(dir, { withFileTypes: true }), []);
+  for (const entry of entries) {
+    if (entry.name.startsWith(".")) continue;
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) folders.push(path);
+    else if (entry.isFile()) {
+      const info = await orElse(() => lstat(path), null);
+      if (!info) continue;
+      into[path] = { size: info.size, mtimeMs: info.mtimeMs };
+      if (++files >= room) break;
     }
   }
+  return { files, folders };
 }
 
 /** Remembers what a task's folders held when it started, and says what it made since. */

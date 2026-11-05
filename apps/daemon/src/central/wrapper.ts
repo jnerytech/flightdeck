@@ -130,6 +130,77 @@ export interface RunClaudeOptions {
   platform?: NodeJS.Platform;
 }
 
+/** The persona the launch asked for; "failed" (after saying why) when it cannot be had. */
+async function requestedPersona(
+  opts: RunClaudeOptions,
+  personaId: string,
+): Promise<ResolvedPersonaResult | "failed"> {
+  try {
+    return await fetchPersona(opts.config, personaId, opts.cwd ?? process.cwd());
+  } catch (error) {
+    opts.log.error(`flightdeckd: persona ${personaId}: ${(error as Error).message}`);
+    return "failed";
+  }
+}
+
+/** Writes the MCP config that gives the session the Flightdeck channel; returns its path. */
+async function writeChannelConfig(
+  opts: RunClaudeOptions,
+  launchId: string,
+  url: string,
+  token: string,
+): Promise<string> {
+  const dir = join(opts.config.dataDir, "channels");
+  await mkdir(dir, { recursive: true });
+  const path = join(dir, `${launchId}.json`);
+  const [command, ...rest] = opts.self;
+  const args = [...rest, "channel", "--launch", launchId, "--url", url, "--token", token];
+  await writeFile(path, JSON.stringify({ mcpServers: { flightdeck: { command, args } } }));
+  return path;
+}
+
+/** The badge only (never the body): the SessionStart hook forwards it to the central. */
+function personaBadge(persona: ResolvedPersonaResult | null): Record<string, string> {
+  if (!persona) return {};
+  const { id, name, icon } = persona.persona;
+  return { FLIGHTDECK_PERSONA: JSON.stringify({ id, name, icon }) };
+}
+
+/** The launch the app's terminal named, when it is a valid id; a new one otherwise. */
+const launchIdOf = (requested: string | undefined): string =>
+  requested && /^[0-9A-Z]{26}$/.test(requested) ? requested : ulid();
+
+/**
+ * The persona subagents as `--agents`: from a file in print mode, inline in an interactive one;
+ * none when the user passed their own `--agents` or the daemon has no personas for the folder.
+ */
+async function agentArgs(
+  opts: RunClaudeOptions,
+  launch: { claude: string; args: string[]; print: boolean; launchId: string },
+  write: (name: string, content: string) => Promise<string>,
+): Promise<string[]> {
+  // The user's own --agents wins, and without the daemon claude opens just the same.
+  const agents = passed(launch.args, "--agents")
+    ? null
+    : await fetchAgents(opts.config, opts.cwd ?? process.cwd());
+  if (!agents || Object.keys(agents).length === 0) return [];
+  const json = JSON.stringify(agents);
+  // Only print mode reads --agents from a file.
+  if (launch.print) return ["--agents", await write(`${launch.launchId}-agents.json`, json)];
+  const interactive = interactiveAgents({
+    json,
+    claude: launch.claude,
+    platform: opts.platform ?? process.platform,
+  });
+  if (interactive.notice) opts.log.error(interactive.notice);
+  return interactive.args;
+}
+
+/** Deletes the files that exist (a null path is skipped). */
+async function removeAll(paths: Array<string | null>): Promise<void> {
+  for (const path of paths) if (path) await rm(path, { force: true });
+}
+
 /**
  * `flightdeckd claude [args]`: the real `claude` in this terminal (stdio inherited, exit code
  * passed through) with the Flightdeck channel, so the app can send messages to the session.
@@ -146,7 +217,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   // environment of every claude we start, and a nested `flightdeckd claude` would reuse it.
   // A persona of an outer claude is not this one's: only `--persona` below sets it.
   const { [TERMINAL_LAUNCH_VAR]: requested, FLIGHTDECK_PERSONA: _outer, ...env } = opts.env;
-  const launchId = requested && /^[0-9A-Z]{26}$/.test(requested) ? requested : ulid();
+  const launchId = launchIdOf(requested);
   // Print mode ignores development channels: plain claude, no channel, no warning.
   const { id: personaId, rest: args, broken } = takePersonaFlag(opts.args);
   if (broken) {
@@ -154,31 +225,14 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
     return 1;
   }
   // Asked for on purpose, so a persona that cannot be had stops here: no claude without the role.
-  let persona: ResolvedPersonaResult | null = null;
-  if (personaId) {
-    try {
-      persona = await fetchPersona(opts.config, personaId, opts.cwd ?? process.cwd());
-    } catch (error) {
-      opts.log.error(`flightdeckd: persona ${personaId}: ${(error as Error).message}`);
-      return 1;
-    }
-  }
+  const persona = personaId ? await requestedPersona(opts, personaId) : null;
+  if (persona === "failed") return 1;
   const print = args.includes("-p") || args.includes("--print");
   const background = args.includes("--bg") || args.includes("--background");
   const url = print ? null : await liveReceptor(opts.config.dataDir, opts.timeoutMs);
   const token = opts.config.hooks.token;
-  let mcpConfigPath: string | null = null;
-  if (url && token) {
-    const dir = join(opts.config.dataDir, "channels");
-    await mkdir(dir, { recursive: true });
-    mcpConfigPath = join(dir, `${launchId}.json`);
-    const [command, ...rest] = opts.self;
-    const args = [...rest, "channel", "--launch", launchId, "--url", url, "--token", token];
-    await writeFile(
-      mcpConfigPath,
-      JSON.stringify({ mcpServers: { flightdeck: { command, args } } }),
-    );
-  } else if (!print) {
+  const mcpConfigPath = url && token ? await writeChannelConfig(opts, launchId, url, token) : null;
+  if (!mcpConfigPath && !print) {
     opts.log.error(
       "flightdeckd: daemon do Flightdeck fora do ar; abrindo o claude sem o canal (o app não poderá mandar mensagens)",
     );
@@ -200,26 +254,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
       ...personaArgs(persona.persona, await write(`${launchId}.md`, persona.persona.body), args),
     );
   }
-  // The personas of the project as agents to call; the user's own --agents wins, and without
-  // the daemon claude opens just the same.
-  const agents = passed(args, "--agents")
-    ? null
-    : await fetchAgents(opts.config, opts.cwd ?? process.cwd());
-  if (agents && Object.keys(agents).length > 0) {
-    const json = JSON.stringify(agents);
-    if (print) {
-      // Only print mode reads --agents from a file.
-      added.push("--agents", await write(`${launchId}-agents.json`, json));
-    } else {
-      const launch = interactiveAgents({
-        json,
-        claude,
-        platform: opts.platform ?? process.platform,
-      });
-      added.push(...launch.args);
-      if (launch.notice) opts.log.error(launch.notice);
-    }
-  }
+  added.push(...(await agentArgs(opts, { claude, args, print, launchId }, write)));
   try {
     const proc = Bun.spawn(
       buildClaudeLaunch({
@@ -234,15 +269,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
           ...wrapperTelemetryEnv(env, print ? null : await telemetryTarget(opts.config)),
           FLIGHTDECK_LAUNCH_ID: launchId,
           // The badge only (never the body): the SessionStart hook forwards it to the central.
-          ...(persona
-            ? {
-                FLIGHTDECK_PERSONA: JSON.stringify({
-                  id: persona.persona.id,
-                  name: persona.persona.name,
-                  icon: persona.persona.icon,
-                }),
-              }
-            : {}),
+          ...personaBadge(persona),
         },
         stdio: ["inherit", "inherit", "inherit"],
       },
@@ -251,10 +278,7 @@ export async function runClaude(opts: RunClaudeOptions): Promise<number> {
   } finally {
     // `claude --bg` returns at once and the session goes on: its channel config and persona
     // files are still read, so they stay (a few small files per background session).
-    if (!background) {
-      if (mcpConfigPath) await rm(mcpConfigPath, { force: true });
-      for (const file of files) await rm(file, { force: true });
-    }
+    if (!background) await removeAll([mcpConfigPath, ...files]);
   }
 }
 
