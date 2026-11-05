@@ -114,16 +114,28 @@ function toolResultText(content: unknown): string {
   return content === undefined ? "" : JSON.stringify(content);
 }
 
-/** The init event with the commands described, when the SDK can say; the names alone otherwise. */
+const COMMANDS_TIMEOUT_MS = 3000;
+
+/**
+ * The init event with the commands described, when the SDK can say in time; the names alone
+ * otherwise (it fails or stalls: the session must not wait on it, since its events queue behind this).
+ */
 async function withCommands(
   event: Extract<RuntimeEvent, { type: "session.init" }>,
   handle: QueryHandle,
+  timeoutMs: number,
 ): Promise<RuntimeEvent> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const commands = await handle.supportedCommands?.();
+    const late = new Promise<undefined>((resolve) => {
+      timer = setTimeout(() => resolve(undefined), timeoutMs);
+    });
+    const commands = await Promise.race([handle.supportedCommands?.(), late]);
     return commands ? { ...event, commands: describeCommands(commands) } : event;
   } catch {
     return event;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -210,6 +222,7 @@ export class ClaudeSdkRuntime implements AgentRuntime {
   private readonly query: QueryFn;
   readonly claudePath: string | undefined;
   private readonly mcpServer: FlightdeckMcpServer | undefined;
+  private readonly commandsTimeoutMs: number;
 
   private readonly fork: NonNullable<ClaudeSdkRuntimeOptions["forkSession"]>;
 
@@ -218,6 +231,7 @@ export class ClaudeSdkRuntime implements AgentRuntime {
     this.fork = options.forkSession ?? sdkForkSession;
     this.claudePath = resolveClaudePath(options.claudePath);
     this.mcpServer = options.mcpServer;
+    this.commandsTimeoutMs = options.commandsTimeoutMs ?? COMMANDS_TIMEOUT_MS;
   }
 
   /**
@@ -341,7 +355,11 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       try {
         for await (const message of handle) {
           for (const event of normalizeSdkMessage(message)) {
-            events.push(event.type === "session.init" ? await withCommands(event, handle) : event);
+            events.push(
+              event.type === "session.init"
+                ? await withCommands(event, handle, this.commandsTimeoutMs)
+                : event,
+            );
           }
         }
         events.end();
