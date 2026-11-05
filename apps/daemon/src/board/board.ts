@@ -1889,6 +1889,14 @@ export class Board {
     this.changed(id);
   }
 
+  /** Every card of the project that has a worktree, arena variants included (stub). */
+  worktreeCards(_projectId: string): Card[] {
+    return [];
+  }
+
+  /** The card no longer has its worktree (stub). */
+  releaseWorktree(_id: string): void {}
+
   /** Tells the watchers about a card whose fields changed outside the board (the board sync's). */
   announce(id: string): void {
     this.changed(id);
