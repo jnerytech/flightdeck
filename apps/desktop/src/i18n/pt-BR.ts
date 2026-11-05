@@ -2891,6 +2891,9 @@ export const ptBR = {
     descriptionLabel: "Descrição do card",
     descriptionPlaceholder: "Descrição",
     newCard: "Novo card",
+    created: "Card criado: {title}",
+    started: "Card iniciado: {title}",
+    openCard: "Abrir",
     columns: {
       backlog: "Backlog",
       in_progress: "Em andamento",

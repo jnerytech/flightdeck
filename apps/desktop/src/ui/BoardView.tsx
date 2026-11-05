@@ -298,6 +298,14 @@ export const BoardView = memo(function BoardView(props: {
       description,
     });
     close();
+    void made.then((card) => {
+      if (card) {
+        store.success(t("kanban.created", { title: card.title }), {
+          label: t("kanban.openCard"),
+          run: () => props.onOpenCard(card.id),
+        });
+      }
+    });
     return made;
   };
   /** Closes the dialog and forgets what was typed. */
@@ -415,7 +423,16 @@ export const BoardView = memo(function BoardView(props: {
                       onEdit={() => props.onOpenCard(card.id, true)}
                       onDelete={() => setDeleting(card)}
                       onStart={() =>
-                        void store.hostCommand(hostId, "card.start", { cardId: card.id })
+                        void store
+                          .hostCommand(hostId, "card.start", { cardId: card.id })
+                          .then((started) => {
+                            if (started) {
+                              store.success(t("kanban.started", { title: card.title }), {
+                                label: t("kanban.openCard"),
+                                run: () => props.onOpenCard(card.id),
+                              });
+                            }
+                          })
                       }
                       onDragStart={() => {
                         dragging.current = card.id;

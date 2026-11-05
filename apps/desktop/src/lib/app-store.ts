@@ -505,6 +505,8 @@ export interface Notice {
   hostId?: string;
   /** Runs the refused action again (after the person fixed what it needed). */
   retry?: () => void;
+  /** A success toast's button: where the news leads (Open the card). */
+  link?: { label: string; run: () => void };
 }
 
 /** Phase 21: a pair of sessions a host paused because they kept answering each other. */
@@ -1897,9 +1899,12 @@ export class AppStore {
   }
 
   /** A short success toast (copied, saved, started…), already translated. */
-  success(text: string): void {
+  success(text: string, link?: { label: string; run: () => void }): void {
     this.update({
-      notices: [...this.state.notices, { id: ++this.noticeSeq, kind: "success", code: "", text }],
+      notices: [
+        ...this.state.notices,
+        { id: ++this.noticeSeq, kind: "success", code: "", text, ...(link ? { link } : {}) },
+      ],
     });
   }
 

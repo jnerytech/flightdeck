@@ -113,7 +113,7 @@ async function openCardMenu(title: string) {
 }
 
 const toastText = () => document.body.textContent ?? "";
-const toastButton = (name: string) => screen.queryByRole("button", { name });
+const toastButtons = (name: string) => screen.queryAllByRole("button", { name });
 
 describe("board-jornada: the board says what happened to a card (issue #188, J5)", () => {
   test("creating a card shows a toast with Abrir, and Abrir opens the new card", async () => {
@@ -121,7 +121,9 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
     await openBoard(repo);
     await createCard("Login");
     await settle(() => toastText().includes("Card criado: Login"));
-    await click("Abrir");
+    await act(async () => {
+      fireEvent.click(toastButtons("Abrir")[0] as HTMLElement);
+    });
     await settle(() => screen.queryByRole("button", { name: "Voltar ao board" }) !== null);
     expect(screen.queryByRole("button", { name: "Voltar ao board" })).not.toBeNull();
   });
@@ -137,6 +139,7 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
       fireEvent.click(entry as HTMLElement);
     });
     await settle(() => toastText().includes("Card iniciado: Login"));
-    expect(toastButton("Abrir")).not.toBeNull();
+    // The created toast is still up, so there are two.
+    expect(toastButtons("Abrir")).toHaveLength(2);
   });
 });

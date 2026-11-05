@@ -2890,6 +2890,9 @@ export const en: Dictionary = {
     descriptionLabel: "Card description",
     descriptionPlaceholder: "Description",
     newCard: "New card",
+    created: "Card created: {title}",
+    started: "Card started: {title}",
+    openCard: "Open",
     columns: {
       backlog: "Backlog",
       in_progress: "In progress",
