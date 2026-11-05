@@ -3791,3 +3791,6 @@ Probes for this round (2026-11-05; no credential read; every probe session delet
 | m12 Claude Code compatibility switches | Reject: setting them made `session/new` hang. `CLAUDE.md` was not read with project config off anyway. |
 | m13 quadratic `linesOf` | Accept: it keeps its scan offset (refactor). |
 | ADR claims with no code | B1, B2 and the typed `session.error` (653014019) now have code. The `preparing` placeholder was not needed: the run's start is synchronous and its preflight runs inside it, so a second send queues on the live run (a test pins one start). The automatic approval gate, the messaging exclusion, `runtime.models`, the doctor row, the UI, the fake `opencode` and both smokes are the remaining areas. |
+- **An empty `XDG_CONFIG_HOME` per OpenCode child (the stronger M6 option): rejected (maintainer).** The person's global
+  config stays: the scope scan and the preflight already refuse global plugins and MCP servers, and losing the person's
+  global models and providers would make the runtime useless for them.
