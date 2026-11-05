@@ -67,13 +67,13 @@ for (const [lang, t] of [
         (document.body.textContent ?? "").includes(fill(t.reader.missing, "alfa")),
       );
       // From here on the host answers every read with an error that is not "not found".
-      const real = store.hostRequest.bind(store);
+      // The store reads through historyGet, which says why a read was refused.
       let reads = 0;
-      store.hostRequest = (async (hostId, type, payload) => {
-        if (type !== "history.get") return real(hostId, type, payload);
+      store.historyGet = (async (_host, _id, _cursor, _tail, refused) => {
         reads++;
-        return { ok: false, code: "internal", message: "disk error" };
-      }) as typeof store.hostRequest;
+        refused?.("internal");
+        return null;
+      }) as typeof store.historyGet;
       const id = store.getState().hosts[0]?.id ?? "";
       await act(async () => {
         store.router.push({ name: "reader", target: { hostId: id, claudeSessionId: "other" } });
