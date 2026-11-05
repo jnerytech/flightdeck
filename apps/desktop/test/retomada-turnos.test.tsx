@@ -66,7 +66,7 @@ describe("retomada-turnos: the earlier turns of a resumed session", () => {
     await act(async () => {
       await Bun.sleep(20);
     });
-    expect(asked.length).toBe(1);
+    expect(asked).toHaveLength(1);
     expect(screen.queryByText("turno 1")).toBeNull();
   });
 });

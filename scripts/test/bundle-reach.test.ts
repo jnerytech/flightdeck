@@ -85,3 +85,11 @@ describe("bundle-lazy: the heavy packages stay out of the entry chunk", () => {
     expect(reached).toEqual([]);
   });
 });
+
+describe("bundle-reach: the import pattern backtracks in linear time", () => {
+  test("a long run of spaces after the names costs milliseconds, not seconds", () => {
+    const started = performance.now();
+    expect(staticImports(`import a${" ".repeat(30_000)}x`)).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(150);
+  });
+});

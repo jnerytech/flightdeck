@@ -26,7 +26,7 @@ describe("estados-forma", () => {
       const status = getByRole("status", { name: "Carregando" });
       expect(status.getAttribute("aria-busy")).toBe("true");
       expect(status.getAttribute("data-shape")).toBe(shape);
-      expect(container.querySelectorAll("[data-slot=skeleton]").length).toBe(blocks);
+      expect(container.querySelectorAll("[data-slot=skeleton]")).toHaveLength(blocks);
     });
   }
 });

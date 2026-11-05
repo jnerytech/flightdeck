@@ -69,7 +69,12 @@ describe("personas-ui: the editor", () => {
     expect(preview()).toContain("Ferramentas: as da sessão");
     await fill("Modelo", "claude-sonnet-5-5");
     await fill("Esforço", "high");
-    await fill("Ferramentas (separadas por vírgula)", "Read, Grep");
+    // Tools are a multi-select now (issue #134).
+    await act(async () => {
+      const tools = screen.getByLabelText("Ferramentas") as HTMLSelectElement;
+      for (const option of tools.options) option.selected = ["Read", "Grep"].includes(option.value);
+      fireEvent.change(tools);
+    });
     await fill("Modo de permissão sugerido", "plan");
     expect(preview()).toContain("claude-sonnet-5-5");
     expect(preview()).toContain("high");
@@ -80,7 +85,11 @@ describe("personas-ui: the editor", () => {
   test("a new persona goes to the host, with what was typed", async () => {
     const { store, hostId } = await open();
     await newPersona();
-    await fill("Ferramentas (separadas por vírgula)", "Read, Grep");
+    await act(async () => {
+      const tools = screen.getByLabelText("Ferramentas") as HTMLSelectElement;
+      for (const option of tools.options) option.selected = ["Read", "Grep"].includes(option.value);
+      fireEvent.change(tools);
+    });
     await click("Salvar persona");
     const listed = await store.hostCommand(hostId, "personas.list", {
       scope: "host",

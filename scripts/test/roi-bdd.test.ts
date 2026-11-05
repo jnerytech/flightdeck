@@ -106,48 +106,33 @@ describe("roi-bdd: the scenarios of the spec", () => {
   });
 
   const files = (existsSync(DIR) ? readdirSync(DIR) : []).filter((f) => f.endsWith(".feature"));
-  const parsed = (language: "en" | "pt") =>
-    files
-      .filter((f) => f.endsWith(`.${language}.feature`))
+  const parsed = () =>
+    [...files]
       .sort()
       .map((f) => ({ file: f, feature: parseFeature(readFileSync(join(DIR, f), "utf8")) }));
 
   test("the English features hold every scenario of the spec, and no other", () => {
-    const titles = parsed("en").flatMap((p) => p.feature.scenarios.map((s) => s.title));
+    const titles = parsed().flatMap((p) => p.feature.scenarios.map((s) => s.title));
     expect(titles.sort()).toEqual(scenarioTitlesOfSpec(SPEC).sort());
     expect(titles).toHaveLength(14);
   });
 
-  test("every file is in its language", () => {
-    for (const language of ["en", "pt"] as const) {
-      expect(parsed(language).length).toBeGreaterThan(0);
-      for (const { feature } of parsed(language)) expect(feature.language).toBe(language);
-    }
-  });
-
-  test("the Portuguese features have the same scenarios, step for step", () => {
-    const shape = (language: "en" | "pt") =>
-      parsed(language).flatMap((p) =>
-        p.feature.scenarios.map((s) => s.steps.map((step) => step.kind).join(",")),
-      );
-    expect(parsed("pt").map((p) => p.file.replace(".pt.", ".en."))).toEqual(
-      parsed("en").map((p) => p.file),
-    );
-    expect(shape("pt")).toEqual(shape("en"));
+  test("every feature is in English, and there is no Portuguese twin (the app language is a run parameter)", () => {
+    expect(files.filter((f) => /\.(en|pt)\.feature$/.test(f))).toEqual([]);
+    expect(parsed().length).toBeGreaterThan(0);
+    for (const { feature } of parsed()) expect(feature.language).toBe("en");
   });
 
   test("every scenario has a Given, a When and a Then, and no step is empty", () => {
-    for (const language of ["en", "pt"] as const) {
-      for (const { file, feature } of parsed(language)) {
-        for (const scenario of feature.scenarios) {
-          const kinds = new Set(scenario.steps.map((s) => s.kind));
-          expect({ file, scenario: scenario.title, kinds: [...kinds].sort() }).toEqual({
-            file,
-            scenario: scenario.title,
-            kinds: ["given", "then", "when"],
-          });
-          expect(scenario.steps.every((s) => s.text.trim() !== "")).toBe(true);
-        }
+    for (const { file, feature } of parsed()) {
+      for (const scenario of feature.scenarios) {
+        const kinds = new Set(scenario.steps.map((s) => s.kind));
+        expect({ file, scenario: scenario.title, kinds: [...kinds].sort() }).toEqual({
+          file,
+          scenario: scenario.title,
+          kinds: ["given", "then", "when"],
+        });
+        expect(scenario.steps.every((s) => s.text.trim() !== "")).toBe(true);
       }
     }
   });

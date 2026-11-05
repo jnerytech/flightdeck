@@ -25,12 +25,20 @@ const mine: SlotHolder = { pid: 10, label: "sonar", command: "bun run test", sta
 const theirs: SlotHolder = { pid: 20, label: "kiwi", command: "bun run e2e", startedAt: 1000 };
 
 /** An in-memory slot: one lock "file", a fake clock that only moves when somebody sleeps. */
-function fake(opts: { files?: Record<string, string>; dead?: number[]; child?: SlotChild } = {}) {
+function fake(
+  opts: {
+    files?: Record<string, string>;
+    dead?: number[];
+    child?: SlotChild;
+    holder?: number;
+  } = {},
+) {
   const files = new Map(Object.entries(opts.files ?? {}));
   const logs: string[] = [];
   const sleeps: number[] = [];
   const terminated: number[] = [];
   const spawned: { command: string[]; nice: boolean }[] = [];
+  const spawnedAsHolder: Array<boolean | undefined> = [];
   let time = 5000;
   let handler: ((code: number) => void) | null = null;
   const listeners = { off: 0 };
@@ -61,8 +69,10 @@ function fake(opts: { files?: Record<string, string>; dead?: number[]; child?: S
     log: (line) => {
       logs.push(line);
     },
-    spawn: (command, nice) => {
+    ...(opts.holder !== undefined ? { holder: opts.holder } : {}),
+    spawn: (command, nice, asHolder) => {
       spawned.push({ command, nice });
+      spawnedAsHolder.push(asHolder);
       return opts.child ?? { wait: async () => 0, kill: () => {} };
     },
     terminate: (pid) => {
@@ -82,6 +92,7 @@ function fake(opts: { files?: Record<string, string>; dead?: number[]; child?: S
     logs,
     sleeps,
     spawned,
+    spawnedAsHolder,
     terminated,
     listeners,
     onSleep,
@@ -285,7 +296,7 @@ describe("slot: waiting in the queue", () => {
       if (n === 2) f.files.delete(PATH);
     });
     expect(await acquire(f.env, "x", () => false)).toBe(true);
-    expect(f.logs.length).toBe(2);
+    expect(f.logs).toHaveLength(2);
     expect(f.logs[1]).toContain("tbug");
   });
 
@@ -621,5 +632,46 @@ describe("slot: --priority", () => {
     expect(await run(f.env, ["bun", "run", "test"])).toBe(0);
     expect(f.listed()).toBe(0);
     expect(f.calls).toEqual([]);
+  });
+});
+
+describe("slot: a command that runs under the slot may call the slot again", () => {
+  test("the command is started as the holder, so what it starts itself can tell", async () => {
+    const f = fake();
+    await run(f.env, ["bun", "run", "test:related"]);
+    expect(f.spawnedAsHolder).toEqual([true]);
+  });
+
+  test("under its holder's lock, a nested call runs the command at once and leaves the lock alone", async () => {
+    const f = fake({
+      files: { [PATH]: held(theirs) },
+      holder: theirs.pid,
+      child: { wait: async () => 3, kill: () => {} },
+    });
+    // Without the rule this would wait for a lock its own parent holds: end that wait, so it fails.
+    f.onSleep.push(() => f.signal(143));
+    expect(await run(f.env, ["--nice", "bun", "test", "x"])).toBe(3);
+    expect(f.spawned).toEqual([{ command: ["bun", "test", "x"], nice: true }]);
+    // It is not a holder of its own, and it queued and waited for nothing.
+    expect(f.spawnedAsHolder).toEqual([false]);
+    expect(f.files.get(PATH)).toBe(held(theirs));
+    expect([...f.files.keys()]).toEqual([PATH]);
+    expect(f.sleeps).toEqual([]);
+    expect(f.logs).toEqual([]);
+  });
+
+  test("a holder variable left over from an old run does not skip the queue: the lock must name that pid", async () => {
+    const other: SlotHolder = { ...theirs, pid: 30 };
+    const f = fake({ files: { [PATH]: held(other) }, holder: theirs.pid });
+    f.onSleep.push(() => f.signal(143));
+    expect(await run(f.env, ["bun", "test", "x"])).toBe(143);
+    expect(f.spawned).toEqual([]);
+  });
+
+  test("nor does the variable of a holder that is gone", async () => {
+    const f = fake({ files: { [PATH]: held(theirs) }, holder: theirs.pid, dead: [theirs.pid] });
+    expect(await run(f.env, ["bun", "test", "x"])).toBe(0);
+    // The dead lock was stale: the slot was taken in the ordinary way.
+    expect(f.spawnedAsHolder).toEqual([true]);
   });
 });

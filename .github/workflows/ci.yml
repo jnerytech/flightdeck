@@ -1,20 +1,66 @@
 name: CI
 
 on:
+  # Every pushed branch runs the whole CI (#216): the full suite on both systems, the prints, e2e
+  # and SonarCloud leave the machine's single test slot, and a session hands off on a green run
+  # (scripts/ci-branch.sh reads it). A new push cancels the branch's previous run (concurrency).
+  # A push that only changes files no test reads starts no run; ci-branches.test.ts keeps that
+  # list honest. Pull requests are never filtered, so their required checks always report.
   push:
-    branches: [main]
+    branches: ["**"]
+    paths-ignore: ["docs/manual/**", "docs/images/**"]
   pull_request:
+  # Any pushed branch can run the whole CI by hand (scripts/ci-branch.sh): the prints, e2e and the
+  # Windows suite then leave the machine's single test slot.
+  workflow_dispatch:
+    inputs:
+      only:
+        description: Which jobs to run
+        type: choice
+        options: [all, screenshots]
+        default: all
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # The job choice is in the key: a screenshots-only dispatch must not cancel a full one.
+  group: ci-${{ github.ref }}-${{ github.event_name }}-${{ inputs.only }}
   cancel-in-progress: true
 
 jobs:
+  # Sonar's own JS/TS rules on the lines a pull request changes, the "new code" the SonarCloud
+  # gate judges, so a finding shows up here in a minute instead of after the full test run.
+  sonar-lint:
+    name: lint:sonar (changed lines)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Full history: the changed lines are taken against the merge-base with the target branch.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      - name: lint:sonar
+        run: bun run lint:sonar -- --base "$(git merge-base HEAD origin/${{ github.base_ref }})"
+
+      # The open count per rule over the whole repository only goes down (sonar-baseline.json).
+      - name: lint:sonar --ratchet
+        run: bun run lint:sonar -- --ratchet
+
   test:
-    name: test (${{ matrix.os }})
+    # A dispatched run's jobs have names of their own: a skipped copy of `test (ubuntu-latest)` next to
+    # the real check must never stand in for the one the branch rules require.
+    name: test (${{ matrix.os }})${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
     strategy:
       fail-fast: false
       matrix:
@@ -62,6 +108,13 @@ jobs:
       - name: Lint
         run: bun run lint
 
+      # The TDD order (docs/TDD.md): every feat/fix has an earlier test commit with the same scope,
+      # counted from the merge-base with main (a pull request) or from the last tag (a push to
+      # main). It needs the full history the checkout above already fetches.
+      - name: TDD audit
+        if: runner.os == 'Linux'
+        run: bun run tdd:audit -- --since auto
+
       - name: Testes (cobertura 100%)
         run: bun run test
 
@@ -70,7 +123,7 @@ jobs:
       # available (pull requests from forks).
       - name: Versão para o SonarCloud
         id: sonar
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && github.event_name != 'workflow_dispatch'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |

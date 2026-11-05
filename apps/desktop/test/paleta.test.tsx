@@ -149,6 +149,7 @@ describe("paleta", () => {
       "Ir para Precisa de você",
       "Ir para Projetos",
       "Alternar tema",
+      "Mudar para o modo simples",
       "Trocar idioma",
       "Ir para Configurações",
       "Mostrar os atalhos de teclado",
@@ -161,6 +162,18 @@ describe("paleta", () => {
     expect(sections()).toEqual(["Cards"]);
     expect(options()).toEqual(["Ajuste"]);
     expect(store.getState().search).toBeNull();
+  });
+
+  test("numa linha, o título ocupa a largura e o caminho encolhe primeiro (nunca o título quebra)", async () => {
+    await setup();
+    await openPalette();
+    await settle(() => sections().length === 5);
+    const row = inPalette("option")[0] as HTMLElement;
+    const [title, detail] = [...row.querySelectorAll("span")] as HTMLElement[];
+    expect(title?.className).toContain("shrink-0");
+    expect(title?.className).toContain("whitespace-nowrap");
+    expect(detail?.className).toContain("min-w-0");
+    expect(detail?.className).toContain("truncate");
   });
 
   test("setas escolhem, Enter abre; Enter sem escolha busca no histórico, que chega depois sem apagar os locais", async () => {
@@ -189,12 +202,46 @@ describe("paleta", () => {
     expect(options()).toEqual(["flamingo"]);
   });
 
+  test("a lista que muda sob o cursor não troca o item escolhido", async () => {
+    const { store } = await setup();
+    await openPalette();
+    await settle(() => sections().length === 5);
+    await press("ArrowDown");
+    expect(selected()).toBe("Gerenciada");
+    // A session that sorts before the chosen one arrives (the list updates under the cursor).
+    const [host] = store.getState().hosts;
+    const first = host?.sessions[0];
+    expect(first).toBeDefined();
+    await act(async () => {
+      (store as unknown as { update(patch: object): void }).update({
+        hosts: [
+          {
+            ...host,
+            sessions: [
+              {
+                ...first,
+                id: "chegou-depois",
+                name: "Chegou depois",
+                updatedAt: "2099-01-01T00:00:00.000Z",
+              },
+              ...(host?.sessions ?? []),
+            ],
+          },
+        ],
+      });
+    });
+    await settle(() => options().includes("Chegou depois"));
+    expect(selected()).toBe("Gerenciada");
+  });
+
   test("Tab abre as ações do item; cada ação leva à tela certa", async () => {
     const { repo, opened } = await setup();
     const choose = async (query: string, ...keys: string[]) => {
       await openPalette();
       await settle(() => sections().includes("Ações"));
       await type(query);
+      // The entry is on screen before the keys move to it (a list that fills late moves the cursor).
+      await settle(() => options().some((option) => option.includes(query)));
       await press("ArrowDown");
       for (const key of keys) await press(key);
     };

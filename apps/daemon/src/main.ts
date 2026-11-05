@@ -957,7 +957,9 @@ export async function startDaemon(
   // back when both are known, so whoever starts a session can read its name at once.
   const warmKeys = (cwd: string) => {
     const looked = [cwd, keyedPath(cwd)].map((folder) => keys.lookup(folder));
-    return looked.every((key) => typeof key === "string") ? undefined : Promise.all(looked);
+    return looked.every((key) => typeof key === "string")
+      ? undefined
+      : Promise.all(looked.map((key) => Promise.resolve(key)));
   };
   const nameOptions: TrackOptions = {
     names,

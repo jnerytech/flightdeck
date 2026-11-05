@@ -32,6 +32,7 @@ type InPlace =
   | "terminal"
   | "new-terminal"
   | "toggle-theme"
+  | "toggle-ui-mode"
   | "switch-language"
   | "start-card"
   | "snippet"
@@ -198,6 +199,11 @@ export function App({ store }: { store: AppStore }) {
   // Alt+←/→ and the mouse's back and forward buttons walk the history.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Ctrl+Shift+M: simple mode and the full app, when the host lets the person choose.
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "m") {
+        if (store.toggleUiMode()) e.preventDefault();
+        return;
+      }
       // The go-to chords and `?` (never while typing in a field).
       const step = chordStep(
         chord.current,
@@ -306,6 +312,7 @@ export function App({ store }: { store: AppStore }) {
       else void store.openInTerminal(target.hostId, target.target);
     } else if (target.kind === "new-terminal") void store.openTerminal(target.hostId);
     else if (target.kind === "toggle-theme") store.theme.toggle();
+    else if (target.kind === "toggle-ui-mode") store.toggleUiMode();
     else if (target.kind === "switch-language") {
       store.i18n.setLang(lang === "pt-BR" ? "en" : "pt-BR");
     } else if (target.kind === "switch-client") {
@@ -324,9 +331,7 @@ export function App({ store }: { store: AppStore }) {
   };
 
   // A host set to simple (or chosen so) shows simple mode in place of the full frame.
-  const focusHost =
-    state.hosts.find((h) => h.id === state.selected?.hostId) ??
-    state.hosts.find((h) => h.status === "online");
+  const focusHost = state.hosts.find((h) => h.id === store.uiHostId());
   if (focusHost && store.uiMode(focusHost.id).mode === "simple") {
     return (
       <TContext.Provider value={t}>
@@ -374,6 +379,7 @@ export function App({ store }: { store: AppStore }) {
               <Breadcrumb
                 crumbs={breadcrumb(route, state, t)}
                 label={t("shell.breadcrumb")}
+                moreLabel={t("shell.breadcrumbMore")}
                 onGo={go}
               />
               <NotificationBell store={store} inbox={state.inbox} t={t} go={go} />
@@ -397,6 +403,9 @@ export function App({ store }: { store: AppStore }) {
               onOpenSearch={() => store.openSearch()}
               onNewTab={() => store.tabs.openNextInNewTab()}
               onToggleTheme={() => store.theme.toggle()}
+              {...(focusHost && store.uiMode(focusHost.id).canSwitch
+                ? { onSimpleMode: () => void store.toggleUiMode() }
+                : {})}
             />
           )}
         >

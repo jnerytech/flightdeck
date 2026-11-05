@@ -12,6 +12,7 @@ import type { Route } from "../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "./demo-seed.ts";
 import { AXE_RUN_OPTIONS, type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
 import { launchFirst } from "./lib/browser.ts";
+import { type Finding, KEY_REGIONS, layoutFindings } from "./lib/layout-guards.ts";
 import { type Rgb, themeProblem } from "./lib/print-theme.ts";
 import { PENDING_SELECTOR } from "./lib/shots-loaded.ts";
 import { type VisualMode, VOLATILE_RULES } from "./lib/visual.ts";
@@ -30,11 +31,75 @@ interface Shot {
   simple?: boolean;
   /** Phase 36: an hourly rate and one person kept in the page's storage before it loads. */
   roi?: boolean;
+  /** Issue #137: notifications kept in the page's storage before it loads (read, unread, collapsed, gone). */
+  inbox?: boolean;
   /** After the screen loads: open the palette, scroll a long list to its end… */
   prepare?(page: Page): Promise<void>;
 }
 
 const ALFA = "demo-alfa";
+
+/** The notifications of the bell's print: today in UTC (the prints' zone), and one three days ago. */
+function demoInbox(lang: string): string {
+  const pt = lang.startsWith("pt");
+  const dayStart = new Date().setUTCHours(0, 0, 0, 0);
+  const today = (second: number) => new Date(dayStart + second * 1000).toISOString();
+  const earlier = new Date(dayStart - 3 * 86_400_000 + 12 * 3_600_000).toISOString();
+  const need = pt ? "Precisa de você" : "Needs you";
+  const ask = (question: string) => (pt ? `Pergunta: ${question}` : `Asks: ${question}`);
+  const entry = (id: string, at: string, extra: Record<string, unknown>) => ({
+    id,
+    at,
+    title: need,
+    body: "",
+    read: false,
+    ...extra,
+  });
+  return JSON.stringify([
+    entry("1", today(300), {
+      subject: "api · refactor",
+      host: "alfa",
+      ask: ask(pt ? "qual banco usar?" : "which DB to use?"),
+      group: "alfa/api",
+    }),
+    entry("2", today(240), {
+      subject: "api · refactor",
+      host: "alfa",
+      ask: ask(pt ? "devo migrar agora?" : "migrate now?"),
+      group: "alfa/api",
+    }),
+    entry("3", today(180), {
+      subject: "api · refactor",
+      host: "alfa",
+      ask: ask(pt ? "qual esquema?" : "which schema?"),
+      group: "alfa/api",
+    }),
+    entry("4", today(120), {
+      subject: "web · tests",
+      host: "alfa",
+      ask: pt ? "Quer executar: bun test" : "Wants to run: bun test",
+      group: "alfa/web",
+    }),
+    entry("5", today(60), {
+      title: pt ? "Card desbloqueado" : "Card unblocked",
+      subject: "Card B",
+      host: "alfa",
+      ask: pt ? "Quer alterar main.ts" : "Wants to change main.ts",
+      route: { name: "card", host: "demo-alfa", projectId: "gone", cardId: "gone" },
+    }),
+    entry("6", today(30), {
+      subject: "docs · notes",
+      host: "alfa",
+      body: pt ? "ociosa" : "idle",
+      read: true,
+    }),
+    entry("7", earlier, {
+      title: pt ? "Orçamento" : "Budget",
+      body: "alfa · 80%",
+      read: true,
+    }),
+  ]);
+}
 
 /** The clients the client prints start with: Acme claims the demo's `github.com/acme/*` projects. */
 const DEMO_CLIENTS = JSON.stringify({
@@ -221,7 +286,10 @@ function shots(ids: DemoIds): Shot[] {
       name: "abas-divididas",
       route: { name: "hub" },
       prepare: async (page) => {
+        // In the sidebar only: the host page and the project headers have buttons of the same name.
         await page
+          .locator("aside")
+          .first()
           .getByRole("button", { name: /^(Abrir host alfa|Open host alfa)$/ })
           .click({ modifiers: ["Control"] });
         await page.getByRole("button", { name: /^(Dividir a tela|Split the screen)$/ }).click();
@@ -332,6 +400,17 @@ function shots(ids: DemoIds): Shot[] {
           .first()
           .click();
         await page.waitForTimeout(600);
+      },
+    },
+    {
+      // Issue #137: the bell's panel, unread rows with their dots, a session's repeats as one row, a read row and a gone target.
+      name: "sino-painel",
+      inbox: true,
+      route: { name: "hub" },
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Notifications|Notificações)/ }).click();
+        await page.getByRole("dialog").waitFor({ timeout: 8000 });
+        await page.waitForTimeout(400);
       },
     },
     { name: "custos", route: { name: "costs" } },
@@ -644,6 +723,7 @@ export async function takeShots(
                   "flightdeck.clientBudgetAlerts",
                   "flightdeck.roi",
                   "flightdeck.uiMode",
+                  "flightdeck.inbox",
                 ]) {
                   localStorage.removeItem(key);
                 }
@@ -660,6 +740,7 @@ export async function takeShots(
                   }
                 }
                 if (seed.roi) localStorage.setItem("flightdeck.roi", seed.roi);
+                if (seed.inbox) localStorage.setItem("flightdeck.inbox", seed.inbox);
               } catch {
                 // No storage, no clients.
               }
@@ -669,6 +750,7 @@ export async function takeShots(
                 ? { clients: DEMO_CLIENTS, selected: shot.clients.selected ?? "" }
                 : null,
               roi: shot.roi ? DEMO_ROI : null,
+              inbox: shot.inbox ? demoInbox(lang) : null,
               simple: shot.simple === true,
             },
           );
@@ -706,6 +788,16 @@ export async function takeShots(
             await page.evaluate(pageBackground),
           );
           if (mismatch) problems.push(mismatch);
+          // The window never scrolls sideways (issue #103) and the key regions have room (#192): the
+          // shared guards name the culprit by its data-slot path.
+          const layout: Finding[] = await page.evaluate(layoutFindings, { regions: KEY_REGIONS });
+          for (const finding of layout) {
+            if (finding.rule === "sideways" || finding.rule.startsWith("region-")) {
+              problems.push(
+                `${theme} ${lang} ${shot.name}: ${finding.rule} ${finding.path} (${finding.detail})`,
+              );
+            }
+          }
           // The same screen, checked for accessibility: serious and critical violations fail.
           await page.addScriptTag({ path: AXE });
           const found = await page.evaluate(
@@ -735,7 +827,7 @@ export async function takeShots(
   }
   if (problems.length > 0) {
     throw new Error(
-      `prints: ${problems.length} problems (axe serious or critical, or a background that does not match the theme)\n${problems.join("\n")}`,
+      `prints: ${problems.length} problems (axe serious or critical, a background that does not match the theme, or a page that scrolls sideways)\n${problems.join("\n")}`,
     );
   }
   return SHOTS_DIR;

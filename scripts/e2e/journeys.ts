@@ -4,12 +4,25 @@
  * sideways, and the end of the long list shows after scrolling). The runner is `@playwright/test`
  * (scripts/e2e/journeys.e2e.ts); this file holds the journeys themselves.
  */
-import type { Page } from "@playwright/test";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { expect, type Page } from "@playwright/test";
 import type { Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../demo-seed.ts";
-import { acoesAction, DANGER_SESSION, VIEWPORTS } from "../lib/e2e-journeys.ts";
+import { acoesAction, DANGER_SESSION, OVERFLOW_VIEWPORTS, VIEWPORTS } from "../lib/e2e-journeys.ts";
 import { ensureOnline } from "../lib/e2e-online.ts";
+import {
+  BARS,
+  type Finding,
+  findingKey,
+  GUARD_SIZES,
+  judge,
+  KEY_REGIONS,
+  layoutFindings,
+  loadBaseline,
+  waitForStable,
+} from "../lib/layout-guards.ts";
 
 const ALFA = "demo-alfa";
 export const WAIT = 15_000;
@@ -37,13 +50,22 @@ export async function open(c: Context, route: Route, prefs = true) {
   // connection to heal in seconds.
   query.set("reconnect", "fast");
   await c.page.goto(`${c.url}?${query}`);
-  await c.page.waitForTimeout(1500);
+  // Not a guess: the sidebar's host dots are drawn (the screens with one), the hosts answer, and
+  // then the layout holds still. A screen without a sidebar (simple mode) has no dots to wait for.
+  await c.page
+    .getByRole("img", { name: /^(alfa|beta): / })
+    .first()
+    .waitFor({ timeout: 5000 })
+    .catch(() => undefined);
   await ensureOnline({
     online: () => demoHostsOnline(c),
-    reload: async () => void (await c.page.reload()),
+    reload: async () => {
+      await c.page.reload();
+    },
     sleep: (ms) => c.page.waitForTimeout(ms),
     now: () => Date.now(),
   });
+  await c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000 });
 }
 
 /** The sidebar's dots of the demo hosts a journey uses: none of them reads offline or connecting. */
@@ -228,6 +250,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await open(c, { name: "hub" });
     // A Ctrl+click opens alfa's page in a second tab (Nova aba would open the palette over the bar).
     await c.page
+      .locator("aside")
+      .first()
       .getByRole("button", { name: c.t("sidebar.openHost", { host: "alfa" }) })
       .click({ modifiers: ["Control"] });
     await waitFor(async () => (await c.page.getByRole("tab").count()) === 2, "duas abas");
@@ -413,30 +437,152 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .click();
     await tile(second).getByText(c.t("deps.unblocked"), { exact: true }).waitFor({ timeout: WAIT });
   },
+
+  // 15. A long conversation opens on its latest message, stays put when scrolled up while a message
+  // arrives (the button counts it), and is where the reader left it when they come back.
+  "rolagem-fim": async (c) => {
+    const bottom = (el: HTMLElement) => el.scrollHeight - el.scrollTop - el.clientHeight;
+    await open(c, { name: "session", host: ALFA, id: c.ids.scrollSession });
+    await c.page
+      .getByText("Echo: Passo 24:", { exact: false })
+      .first()
+      .waitFor({ timeout: SESSION_WAIT });
+    const log = c.page
+      .locator("[tabindex='0'].overflow-y-auto")
+      .filter({ hasText: "Passo 24" })
+      .first();
+    // The code block and the summary are what push the layout after the first paint.
+    await c.page.locator("pre").first().waitFor({ timeout: WAIT });
+    await c.page
+      .getByRole("region", { name: c.t("recap.region") })
+      .waitFor({ timeout: SESSION_WAIT });
+    await waitFor(async () => (await log.evaluate(bottom)) <= 24, "a conversa abriu no fim");
+    // Scrolled up, a message that arrives leaves the view where it was and is counted.
+    await log.evaluate((el) => {
+      el.scrollTop = 300;
+    });
+    const jump = c.page.getByRole("button", { name: new RegExp(`^${c.t("session.jumpLatest")}$`) });
+    await jump.waitFor({ timeout: WAIT });
+    const kept = await log.evaluate((el) => el.scrollTop);
+    const box = c.page.getByLabel(c.t("session.message"), { exact: true });
+    await box.fill("mais uma do e2e");
+    await box.press("Enter");
+    await c.page
+      .getByRole("button", { name: /\(\d+ (new|nova|novas)\)/ })
+      .waitFor({ timeout: SESSION_WAIT });
+    await c.page.waitForTimeout(500);
+    expect(Math.abs((await log.evaluate((el) => el.scrollTop)) - kept)).toBeLessThanOrEqual(2);
+    // Leaving the screen for another and coming back: the same place.
+    await c.page.getByRole("button", { name: c.t("sidebar.projects"), exact: true }).click();
+    await log.waitFor({ state: "detached", timeout: WAIT });
+    await c.page
+      .getByRole("tab", { name: /Conversa longa/ })
+      .first()
+      .click();
+    const back = c.page
+      .locator("[tabindex='0'].overflow-y-auto")
+      .filter({ hasText: "Passo 24" })
+      .first();
+    await back.waitFor({ timeout: WAIT });
+    await c.page.waitForTimeout(500);
+    expect(Math.abs((await back.evaluate((el) => el.scrollTop)) - kept)).toBeLessThanOrEqual(2);
+  },
 };
 
-/** What sticks out of the window sideways, outside a box that scrolls. */
-async function overflow(page: Page): Promise<string[]> {
+/** The page never scrolls sideways: when it does, the guards name the widest element. */
+async function pageScrollsSideways(page: Page): Promise<string | null> {
+  const found: Finding[] = await page.evaluate(layoutFindings, {});
+  const sideways = found.find((finding) => finding.rule === "sideways");
+  return sideways ? `${sideways.path}: ${sideways.detail}` : null;
+}
+
+/** The crumbs end before the bell, and what does not fit is cut with an ellipsis (issue #133). */
+async function crumbsProblem(page: Page): Promise<string | null> {
   return page.evaluate(() => {
-    const width = window.innerWidth;
-    const found: string[] = [];
-    if (document.documentElement.scrollWidth > width) found.push("a página rola para o lado");
-    for (const el of document.querySelectorAll<HTMLElement>("body *")) {
-      const box = el.getBoundingClientRect();
-      if (box.width === 0 || box.height === 0 || box.right <= width + 1) continue;
-      let scrolls = false;
-      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
-        const x = getComputedStyle(p).overflowX;
-        if (x === "auto" || x === "scroll" || x === "hidden" || x === "clip") scrolls = true;
-      }
-      const visibility = getComputedStyle(el);
-      if (!scrolls && visibility.display !== "none" && visibility.visibility !== "hidden") {
-        found.push(`${el.tagName.toLowerCase()} ${String(el.className).slice(0, 50)}`);
-      }
-      if (found.length >= 5) break;
+    const slot = document.querySelector<HTMLElement>(".header-crumbs");
+    const nav = slot?.querySelector<HTMLElement>("nav");
+    const bell = slot?.lastElementChild as HTMLElement | null;
+    if (!slot || !nav || !bell || bell === nav) return "no breadcrumb";
+    const limit = bell.getBoundingClientRect().left + 1;
+    // Where the person is must stay readable: the current step never shrinks to nothing.
+    const current = nav.querySelector<HTMLElement>("[aria-current='page']");
+    if (current && current.getBoundingClientRect().width < 48) {
+      return `the current crumb (${current.textContent}) is ${Math.round(current.getBoundingClientRect().width)}px wide`;
     }
-    return found;
+    for (const el of nav.querySelectorAll<HTMLElement>("li > *")) {
+      const box = el.getBoundingClientRect();
+      if (box.right > limit)
+        return `a crumb (${el.textContent}) ends at ${Math.round(box.right)}, past the bell at ${Math.round(limit)}`;
+      if (el.scrollWidth > el.clientWidth + 1) {
+        const style = getComputedStyle(el);
+        if (style.textOverflow !== "ellipsis" || style.overflow !== "hidden") {
+          return `a crumb (${el.textContent}) is cut without an ellipsis`;
+        }
+      }
+    }
+    return null;
   });
+}
+
+/** The tabs share the strip like a browser's: one width, and not under the minimum. */
+async function tabWidthsProblem(page: Page, minimum: number): Promise<string | null> {
+  const widths = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>(".tab-item")].map((tab) =>
+      Math.round(tab.getBoundingClientRect().width),
+    ),
+  );
+  if (widths.length === 0) return "no tabs";
+  if (Math.max(...widths) - Math.min(...widths) > 1) return `widths differ: ${widths.join(", ")}`;
+  if (Math.min(...widths) < minimum) return `a tab is ${Math.min(...widths)}px, under ${minimum}px`;
+  return null;
+}
+
+/** Twelve tabs, as a window left open for a day, with `first` on screen (the active tab). */
+const crowdedWindow = (c: Context, first: Route, count = 12) =>
+  JSON.stringify({
+    v: 1,
+    split: null,
+    focus: 0,
+    fraction: 0.5,
+    areas: [
+      {
+        active: 0,
+        tabs: [
+          first,
+          { name: "board", host: ALFA, projectId: c.ids.project },
+          { name: "hub" },
+          { name: "needs-you" },
+          { name: "costs" },
+          { name: "settings" },
+          { name: "clients" },
+          { name: "history", host: ALFA },
+          { name: "host", host: ALFA },
+          { name: "project", host: ALFA, projectId: c.ids.project },
+          { name: "teams" },
+          { name: "personas" },
+        ]
+          .slice(0, count)
+          .map((route) => ({ route, pinned: false })),
+      },
+    ],
+  });
+
+/** Opens the demo on a window with twelve tabs: no `?route=`, which would start a fresh window. */
+async function openCrowded(c: Context, first: Route, count = 12) {
+  // Any page of the demo holds the window's storage; the first call starts on one.
+  if (!c.page.url().startsWith(c.url)) await c.page.goto(c.url);
+  await c.page.evaluate(
+    ([key, value]) => localStorage.setItem(key as string, value as string),
+    ["flightdeck.workspace", crowdedWindow(c, first, count)],
+  );
+  const query = new URLSearchParams({ lang: c.lang, theme: "light", reconnect: "fast" });
+  await c.page.goto(`${c.url}?${query}`);
+  await c.page
+    .getByRole("img", { name: /^(alfa|beta): / })
+    .first()
+    .waitFor({ timeout: 5000 })
+    .catch(() => undefined);
+  await c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000 });
 }
 
 /** After scrolling every box to its end, the last row of the list is on screen (or why not). */
@@ -459,6 +605,46 @@ async function lastRowProblem(page: Page): Promise<string | null> {
     if (box.top >= 0 && box.bottom <= window.innerHeight + 1) return null;
     return `${last.getAttribute("aria-label")} em ${Math.round(box.top)}..${Math.round(box.bottom)} de ${window.innerHeight}`;
   });
+}
+
+/**
+ * The / menu of a session with 100 commands (issue #102): the page does not scroll either way, the
+ * menu takes at most 40% of the window and the message box stays on screen.
+ */
+async function slashMenuProblems(c: Context): Promise<string[]> {
+  await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
+  const box = c.page.getByLabel(c.t("session.message"), { exact: true });
+  // Where the box is with some text and no menu: opening the menu must not move it, nor cover it.
+  await box.fill("x");
+  const before = await box.boundingBox();
+  await box.fill("/");
+  const menu = c.page.getByRole("listbox", { name: c.t("session.snippets") });
+  await menu.waitFor({ timeout: WAIT });
+  const options = await menu.getByRole("option").count();
+  return c.page.evaluate(
+    ({ options: count, label, was }) => {
+      const found: string[] = [];
+      const { innerWidth: width, innerHeight: height } = window;
+      const root = document.documentElement;
+      if (root.scrollWidth > width) found.push("a página rola para o lado com o menu /");
+      if (root.scrollHeight > height) found.push("a página rola para baixo com o menu /");
+      if (count < 100) found.push(`o menu lista só ${count} itens`);
+      const popover = document.querySelector<HTMLElement>(".prompt-menu");
+      const at = popover?.getBoundingClientRect();
+      if (at && at.height > height * 0.4 + 1) {
+        found.push(`o menu ocupa ${Math.round(at.height)} de ${height}`);
+      }
+      const field = document.querySelector<HTMLElement>(`[aria-label="${label}"]`);
+      const box = field?.getBoundingClientRect();
+      if (!box) found.push("a caixa de mensagem sumiu");
+      else if (was && Math.abs(box.top - was.y) > 1)
+        found.push("o menu / mexeu na caixa de mensagem");
+      else if (popover && at && box.top < at.bottom - 1)
+        found.push("o menu / cobre a caixa de mensagem");
+      return found;
+    },
+    { options, label: c.t("session.message"), was: before },
+  );
 }
 
 /**
@@ -521,6 +707,99 @@ async function recapOverlap(page: Page): Promise<string | null> {
   });
 }
 
+/** The sidebar's hosts section keeps at least a heading and one row on screen (#171). */
+async function hostsProblem(page: Page): Promise<string | null> {
+  const box = await page.locator("[data-slot='sidebar-hosts']").first().boundingBox();
+  const MIN = 96;
+  if (!box || box.height < MIN) {
+    return `a seção Hosts da barra lateral tem ${Math.round(box?.height ?? 0)} px (mínimo ${MIN})`;
+  }
+  return null;
+}
+
+/**
+ * The bell's panel (issue #137): every button of its header and every Dismiss is inside the panel's
+ * box, and the panel does not scroll sideways. A row about a card that is gone is in the list.
+ */
+async function bellPanelProblems(c: Context): Promise<string[]> {
+  const dayStart = new Date().setUTCHours(0, 0, 0, 0);
+  const entry = (id: string, second: number, extra: Record<string, unknown>) => ({
+    id,
+    at: new Date(dayStart + second * 1000).toISOString(),
+    title: "Precisa de você",
+    body: "",
+    read: false,
+    ...extra,
+  });
+  const seed = JSON.stringify([
+    entry("1", 300, {
+      subject: "api · refatorar",
+      host: "alfa",
+      ask: "Pergunta: qual banco usar?",
+    }),
+    entry("2", 200, {
+      subject: "Card B com um nome bem comprido para o painel",
+      host: "alfa",
+      ask: "Quer alterar main.ts",
+      route: { name: "card", host: "demo-alfa", projectId: "gone", cardId: "gone" },
+    }),
+  ]);
+  await c.page.evaluate((value) => localStorage.setItem("flightdeck.inbox", value), seed);
+  await open(c, { name: "hub" });
+  await c.page.getByRole("button", { name: /^(Notifications|Notificações)/ }).click();
+  const dialog = c.page.getByRole("dialog");
+  await dialog.waitFor({ timeout: WAIT });
+  const found = await dialog.evaluate((box) => {
+    const edge = box.getBoundingClientRect();
+    const out: string[] = [];
+    if (box.scrollWidth > box.clientWidth + 1) out.push("o painel rola para o lado");
+    const dismiss = [...box.querySelectorAll<HTMLElement>("button")].filter((b) =>
+      /^(Dismiss|Descartar)$/.test(b.textContent?.trim() ?? ""),
+    );
+    if (dismiss.length === 0) out.push("a linha de um alvo que não existe mais não tem Descartar");
+    const headerButtons = [...(box.querySelector("div")?.querySelectorAll("button") ?? [])];
+    for (const button of [...headerButtons, ...dismiss]) {
+      const at = button.getBoundingClientRect();
+      if (at.width > 0 && (at.left < edge.left - 1 || at.right > edge.right + 1)) {
+        out.push(`o botão "${button.textContent?.trim()}" sai do painel`);
+      }
+    }
+    return out;
+  });
+  await c.page.evaluate(() => localStorage.removeItem("flightdeck.inbox"));
+  return found.map((issue) => `${c.lang} painel do sino: ${issue}`);
+}
+
+/**
+ * A session at a small window (issue #135): the message box is whole inside the window and the
+ * conversation keeps a minimum height, whatever the header and the summary take. 40% of the window
+ * is out of reach at 720x480, where the title bar and the tabs already take about 190 px: the floor
+ * is 150 px (the old three-line header left about 80).
+ */
+const MIN_CONVERSATION = 150;
+
+async function sessionFitsProblems(c: Context): Promise<string[]> {
+  await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
+  await c.page.locator("[data-slot='composer-card']").first().waitFor({ timeout: WAIT });
+  return c.page.evaluate((min) => {
+    const found: string[] = [];
+    const height = window.innerHeight;
+    const card = document.querySelector<HTMLElement>("[data-slot='composer-card']");
+    const at = card?.getBoundingClientRect();
+    if (!at || at.top < 0 || at.bottom > height + 1) {
+      found.push(
+        `a caixa de mensagem sai da janela (${Math.round(at?.bottom ?? -1)} de ${height})`,
+      );
+    }
+    const timeline = document.querySelector<HTMLElement>("[data-slot='timeline']");
+    const room = timeline?.getBoundingClientRect().height ?? 0;
+    if (room < min) {
+      found.push(`a conversa tem só ${Math.round(room)} de ${height}`);
+    }
+    return found;
+  }, MIN_CONVERSATION);
+}
+
 export async function layout(c: Context, problems: string[]) {
   const screens: Array<[string, Route]> = [
     ["hub", { name: "hub" }],
@@ -537,6 +816,41 @@ export async function layout(c: Context, problems: string[]) {
     ],
     ["historico", { name: "history", host: ALFA }],
   ];
+  // Issue #103: with 12 tabs and a long worktree path, no screen scrolls the page sideways.
+  const crowded: Array<[string, Route]> = [
+    ["sessao-longa", { name: "session", host: ALFA, id: c.ids.longSession }],
+    ["titulo-longo", { name: "session", host: ALFA, id: c.ids.longTitleSession }],
+    ...screens,
+  ];
+  for (const viewport of OVERFLOW_VIEWPORTS) {
+    await c.page.setViewportSize(viewport);
+    for (const [name, route] of crowded) {
+      await openCrowded(c, route);
+      // A print of the crowded window on request (the hand-off of issue #103 shows it).
+      if (process.env.E2E_PRINT_DIR && name === "sessao-longa" && viewport.width > 1500) {
+        await c.page.screenshot({
+          path: `${process.env.E2E_PRINT_DIR}/janela-lotada-${c.lang}.png`,
+        });
+      }
+      const crumbs = await crumbsProblem(c.page);
+      if (crumbs)
+        problems.push(`${c.lang} ${viewport.width}x${viewport.height} ${name}: ${crumbs}`);
+      const sideways = await pageScrollsSideways(c.page);
+      if (sideways) {
+        problems.push(
+          `${c.lang} ${viewport.width}x${viewport.height} ${name} (12 abas): ${sideways}`,
+        );
+      }
+    }
+    // Equal widths with 12 tabs and with 2, and 12 never under 80px.
+    await openCrowded(c, { name: "hub" });
+    const crowdedTabs = await tabWidthsProblem(c.page, 80);
+    if (crowdedTabs)
+      problems.push(`${c.lang} ${viewport.width}x${viewport.height} 12 abas: ${crowdedTabs}`);
+    await openCrowded(c, { name: "hub" }, 2);
+    const fewTabs = await tabWidthsProblem(c.page, 80);
+    if (fewTabs) problems.push(`${c.lang} ${viewport.width}x${viewport.height} 2 abas: ${fewTabs}`);
+  }
   // The tab strip starts at the same x whatever the crumbs say ("Hosts > alfa" is wider than "Settings").
   const lefts: number[] = [];
   for (const [, route] of screens.filter(([n]) => n === "host" || n === "configuracoes")) {
@@ -547,12 +861,18 @@ export async function layout(c: Context, problems: string[]) {
   if (new Set(lefts).size > 1) {
     problems.push(`${c.lang}: o início das abas muda com o título (${lefts.join(" ≠ ")})`);
   }
+  // The geometry guards (issue #192), at three window sizes, on the longest labels (pt-BR). What
+  // they find is named by data-slot path; the heuristic rules fail only when new against the baseline.
+  if (c.lang === "pt-BR") await geometryGuards(c, screens, problems);
   for (const viewport of VIEWPORTS) {
     await c.page.setViewportSize(viewport);
     for (const [name, route] of screens) {
       await open(c, route);
       const where = `${c.lang} ${viewport.width}x${viewport.height} ${name}`;
-      for (const issue of await overflow(c.page)) problems.push(`${where}: ${issue}`);
+      const sideways = await pageScrollsSideways(c.page);
+      if (sideways) problems.push(`${where}: ${sideways}`);
+      const hosts = await hostsProblem(c.page);
+      if (hosts) problems.push(`${where}: ${hosts}`);
       if (name === "sessao") {
         // Both states of the card (the first time a session is seen it starts open): the summary
         // never overlaps the conversation, as found and after flipping it.
@@ -570,8 +890,14 @@ export async function layout(c: Context, problems: string[]) {
         }
       }
     }
+    for (const issue of await sessionFitsProblems(c)) {
+      problems.push(`${c.lang} ${viewport.width}x${viewport.height} sessão: ${issue}`);
+    }
     for (const issue of await folderDialogProblems(c)) {
       problems.push(`${c.lang} ${viewport.width}x${viewport.height} pasta: ${issue}`);
+    }
+    for (const issue of await slashMenuProblems(c)) {
+      problems.push(`${c.lang} ${viewport.width}x${viewport.height} menu /: ${issue}`);
     }
     await open(c, { name: "hub" });
     const hidden = await lastRowProblem(c.page);
@@ -581,9 +907,87 @@ export async function layout(c: Context, problems: string[]) {
       );
     }
   }
-  // The smallest window the app allows (tauri.conf.json), where the longest labels are tightest.
+  // Issue #225: in a split, each area's tab bar keeps its height (it grew to half the area). Only
+  // the bars' tablists are counted (a screen may have tabs of its own), and the split is always
+  // closed again, so the next language starts with one area.
+  await c.page.setViewportSize({ width: 1280, height: 800 });
+  await open(c, { name: "hub" });
+  await c.page.keyboard.press("Control+\\");
+  try {
+    await waitFor(
+      async () => (await c.page.locator(".tab-bar [role=tablist]").count()) === 2,
+      "the split window",
+    );
+    const heights = await c.page
+      .locator(".tab-bar")
+      .evaluateAll((bars) => bars.map((bar) => Math.round(bar.getBoundingClientRect().height)));
+    for (const height of heights) {
+      if (height > 40) problems.push(`${c.lang} split: a tab bar is ${height} px tall`);
+    }
+  } finally {
+    await c.page.keyboard.press("Control+\\");
+  }
+  // Issue #175: a Needs you row's detail line is cut inside the row (a button's own style left it
+  // no width, so it ran past the row with no ellipsis).
+  await c.page.setViewportSize({ width: 1280, height: 800 });
+  await open(c, { name: "needs-you" });
+  const wide = await c.page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>("main li > button")]
+      .filter((row) => [...row.children].some((line) => line.clientWidth > row.clientWidth + 1))
+      .map((row) => row.getAttribute("aria-label") ?? ""),
+  );
+  for (const row of wide) problems.push(`${c.lang} needs you: a line runs past its row (${row})`);
+  // The smallest window the app allows (tauri.conf.json): where the menu and the dialog are tightest.
   await c.page.setViewportSize({ width: 720, height: 480 });
+  await open(c, { name: "hub" });
+  const smallHosts = await hostsProblem(c.page);
+  if (smallHosts) problems.push(`${c.lang} 720x480: ${smallHosts}`);
+  for (const issue of await slashMenuProblems(c)) {
+    problems.push(`${c.lang} 720x480 menu /: ${issue}`);
+  }
+  // The smallest window the app allows (tauri.conf.json), where the header and the dialog are tightest.
+  await c.page.setViewportSize({ width: 720, height: 480 });
+  for (const issue of await sessionFitsProblems(c)) {
+    problems.push(`${c.lang} 720x480 sessão: ${issue}`);
+  }
   for (const issue of await folderDialogProblems(c)) {
     problems.push(`${c.lang} 720x480 pasta: ${issue}`);
+  }
+  problems.push(...(await bellPanelProblems(c)));
+}
+
+const BASELINE_FILE = join(import.meta.dirname, "../layout-findings-baseline.json");
+const FINDINGS_FILE = join(process.cwd(), "playwright-report", "layout-findings.json");
+
+/** Every screen at every guard size: findings by data-slot path, judged against the baseline. */
+async function geometryGuards(c: Context, screens: Array<[string, Route]>, problems: string[]) {
+  const baseline = loadBaseline(() =>
+    existsSync(BASELINE_FILE) ? readFileSync(BASELINE_FILE, "utf8") : null,
+  );
+  const seen: Record<string, string> = {};
+  const fixed: string[] = [];
+  for (const size of GUARD_SIZES) {
+    await c.page.setViewportSize(size);
+    for (const [name, route] of screens) {
+      await open(c, route);
+      const screen = `${name}@${size.width}`;
+      const found: Finding[] = await c.page.evaluate(layoutFindings, {
+        // The key regions are a contract at the usual window: the smallest one is #135's business.
+        regions: size.width >= 1280 ? KEY_REGIONS : [],
+        bars: BARS,
+      });
+      for (const finding of found) seen[findingKey(screen, finding)] = finding.detail;
+      const verdict = judge(screen, found, baseline);
+      problems.push(...verdict.failures);
+      fixed.push(...verdict.fixed);
+    }
+  }
+  // What the run saw, for the baseline file (the report folder is an artifact of the CI run).
+  mkdirSync(dirname(FINDINGS_FILE), { recursive: true });
+  writeFileSync(FINDINGS_FILE, JSON.stringify(seen, null, 2));
+  if (fixed.length > 0) {
+    problems.push(
+      `layout-findings-baseline.json holds findings that are gone: remove\n${fixed.join("\n")}`,
+    );
   }
 }

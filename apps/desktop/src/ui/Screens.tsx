@@ -188,6 +188,7 @@ function ManagedSession(props: {
           ? { prompts: store.promptSnippets(hostId, summary?.cwd ?? session.cwd ?? "") }
           : {})}
         title={summary?.name ?? basename(summary?.cwd ?? session.cwd ?? sessionId)}
+        scrollKey={sessionKey(hostId, sessionId)}
         session={session}
         actions={store}
         {...(pin ? { pin } : {})}

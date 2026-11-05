@@ -7,6 +7,7 @@ import { poll } from "../../daemon/test/helpers.ts";
 import { CLIENTS_KEY, UNASSIGNED } from "../src/lib/clients.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { unfoldAll } from "./unfold.ts";
 import { settle } from "./wait.ts";
 
 registerDom();
@@ -67,6 +68,7 @@ async function setup(clients: unknown[] = TWO, waiting = true) {
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   await act(async () => store.router.push({ name: "hub" }));
+  await unfoldAll(act);
   await settle(() => screen.queryByRole("listitem", { name: "Sessão Solta" }) !== null);
   if (waiting) {
     await d.central.hooksInstall(true);

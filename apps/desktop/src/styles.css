@@ -115,7 +115,8 @@
   --accent-foreground: oklch(0.2 0.01 270);
   --destructive: oklch(0.55 0.22 27);
   --border: oklch(0 0 0 / 6%);
-  --input: oklch(0 0 0 / 12%);
+  /* A field's edge: opaque, 3:1 on the surfaces fields sit on (WCAG 1.4.11, issue #176); lines stay subtle. */
+  --input: oklch(0.62 0.005 270);
   --ring: var(--brand);
   --sidebar: oklch(0.965 0.002 270);
   --sidebar-foreground: oklch(0.2 0.01 270);
@@ -129,7 +130,7 @@
   --status-running: oklch(0.5 0.16 255);
   --status-needs-you: oklch(0.52 0.15 55);
   --status-idle: oklch(0.5 0.01 270);
-  --status-ended: oklch(0.54 0 0);
+  --status-ended: oklch(0.52 0 0);
   --status-error: oklch(0.5 0.2 27);
   --status-risk: oklch(0.5 0.2 330);
   /* A client's color, as a dot; the same in both themes, never the only sign of the client. */
@@ -240,6 +241,13 @@
   overflow-y: auto;
 }
 
+/* A field and its own button on one line, never wrapped: the field takes the width, the button keeps its size. */
+@utility field-with-action {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
 /* A toggle that sits at the start of a column, not stretched across it. */
 @utility toggle-start {
   align-self: flex-start;
@@ -251,6 +259,12 @@
   }
   html {
     color-scheme: light;
+  }
+  /* The browser's style for a button lines its children up at the start (align-items:
+     flex-start), which the reset leaves: a button that stacks lines gave them no width, so a cut
+     line ran past it with no ellipsis (issue #175). A button that sets items-* keeps its own. */
+  button {
+    align-items: stretch;
   }
   html:is(.dark) {
     color-scheme: dark;
@@ -316,17 +330,25 @@
   display: flex;
   align-items: flex-end;
   gap: 0.125rem;
+  /* As wide as its tabs, never wider than its box: past the tabs' minimum the box scrolls. */
   width: max-content;
+  max-width: 100%;
 }
 @utility tab-tool {
   width: 1.5rem;
   height: 1.5rem;
   margin-bottom: 0.125rem;
 }
+/* A tab's badge: a glyph that keeps its size beside the title (issue #172). */
+@utility tab-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
 @utility tab-item {
-  flex: 0 0 auto;
-  min-width: 7rem;
-  max-width: 12rem;
+  /* One basis for every tab: they share the strip equally and shrink together, like a browser's. */
+  flex: 0 1 14rem;
+  min-width: 5rem;
 }
 
 /* The card's conversation: it takes the rest of the pane, and scrolls inside itself only. */
@@ -505,6 +527,7 @@
 
 /* Under the conversation: queue, thumbnails, activity line, the floating box and its state line. */
 @utility composer-dock {
+  position: relative;
   display: flex;
   flex-shrink: 0;
   flex-direction: column;
@@ -801,8 +824,17 @@
 /* The sidebar's main block and its folding groups. */
 @utility sidebar-nav {
   display: flex;
+  min-height: 0;
   flex-direction: column;
+  flex-shrink: 1;
   gap: 0.125rem;
+  overflow-y: auto;
+}
+/* The hosts section: it keeps room for a heading and a row, so the nav above gives way and scrolls. */
+@utility sidebar-hosts {
+  min-height: 7rem;
+  flex: 1 1 0;
+  overflow-y: auto;
 }
 @utility sidebar-group {
   display: flex;
@@ -841,6 +873,36 @@
   display: inline-flex;
 }
 
+/* The / menu: a popover above the message box, so it takes no room in the page and scrolls inside. */
+@utility prompt-menu {
+  position: absolute;
+  inset-inline: 1rem;
+  bottom: 100%;
+  z-index: 20;
+  display: flex;
+  max-height: 40vh;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-popover);
+  color: var(--color-popover-foreground);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+}
+@utility prompt-menu-option {
+  display: block;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  &:hover,
+  &[aria-selected="true"] {
+    background: var(--color-muted);
+  }
+}
+
 /* A breadcrumb step with a long name shortens with an ellipsis; its title says the whole name. */
 @utility crumb-name {
   max-width: 12rem;
@@ -869,6 +931,39 @@
 }
 
 /* The top bar: the breadcrumb, then the tab strip on the same row (one area), or the strip in the area. */
+/* The collapsed rail's host: its initial, with the status dot at the corner (issue #183). */
+@utility rail-host {
+  position: relative;
+  display: flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  &:hover {
+    background: var(--color-sidebar-accent);
+  }
+}
+@utility rail-host-initial {
+  display: flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  background: var(--color-sidebar-accent);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+@utility rail-host-status {
+  position: absolute;
+  right: 0.125rem;
+  bottom: 0.125rem;
+  border-radius: 9999px;
+  background: var(--color-sidebar);
+  padding: 0.125rem;
+}
+
 @utility header-crumbs {
   display: flex;
   min-width: 0;
@@ -885,13 +980,18 @@
   flex: 1 1 0;
   align-self: stretch;
   align-items: flex-end;
+  /* In the header's row the one bar takes the width left by the crumbs. */
+  & > .tab-bar {
+    flex: 1 1 auto;
+  }
 }
 
+/* A tab bar keeps its height wherever it sits: in a split area's column it must not grow (issue #225). */
 @utility tab-bar {
   display: flex;
   height: 2.25rem;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: none;
   align-items: flex-end;
   gap: 0.25rem;
   border-bottom: 1px solid var(--color-border);
@@ -1200,6 +1300,59 @@
   border-right: 1px solid var(--color-border);
 }
 
+/* The nav's last block: the way out of simple mode sits at the bottom, whatever the screen's height. */
+/* A two-option choice drawn as a pill of radios (the host's default mode). */
+@utility seg-control {
+  display: inline-flex;
+  width: fit-content;
+  gap: 0.25rem;
+}
+@utility seg-option {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  padding-inline: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  & input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: inherit;
+  }
+  &:has(input:checked) {
+    background: var(--color-accent);
+    border-color: var(--color-ring);
+  }
+  &:has(input:disabled) {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+@utility host-mode-badge {
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--color-muted);
+  padding-inline: 0.375rem;
+  font-size: 0.6875rem;
+  color: var(--color-muted-foreground);
+}
+
+@utility simple-nav-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: auto;
+}
+
 @utility simple-nav-item {
   justify-content: flex-start;
   width: 100%;
@@ -1225,4 +1378,104 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+/* The notification panel: a row has its own pick area, a hover control and an unread dot. */
+@utility inbox-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 28rem;
+  padding: 0.75rem;
+}
+@utility inbox-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 0.5rem;
+}
+@utility inbox-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+@utility inbox-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+  overflow-y: auto;
+}
+@utility inbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+@utility inbox-list {
+  display: flex;
+  flex-direction: column;
+}
+@utility inbox-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-md);
+  &:hover {
+    background-color: var(--accent);
+  }
+  &:hover .inbox-mark {
+    opacity: 1;
+  }
+  &:hover .inbox-time {
+    visibility: hidden;
+  }
+}
+@utility inbox-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.375rem 0.5rem;
+  text-align: left;
+  border-radius: var(--radius-md);
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+  }
+}
+@utility inbox-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+}
+@utility inbox-time {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+@utility inbox-mark {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  opacity: 0;
+  &:focus-within {
+    opacity: 1;
+  }
+}
+@utility inbox-dismiss {
+  align-self: flex-start;
+  margin: 0 0.5rem 0.375rem;
+}
+@utility unread-dot {
+  align-self: center;
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: var(--primary);
 }

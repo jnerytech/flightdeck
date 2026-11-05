@@ -123,12 +123,12 @@ describe("board-sync-loop: polling, one run at a time, back off and pauses", () 
     for (const wait of [60_000, 120_000, 240_000, 480_000, 900_000, 900_000]) {
       s.time.advance(wait - 1);
       await s.drain();
-      expect(s.calls.length).toBe(seen + 1);
+      expect(s.calls).toHaveLength(seen + 1);
       s.time.advance(1);
       await s.drain();
       seen += 1;
       waits.push(wait);
-      expect(s.calls.length).toBe(seen + 1);
+      expect(s.calls).toHaveLength(seen + 1);
     }
     expect(waits.at(-1)).toBe(MAX_BACKOFF_MS);
     s.gate.fail = null;
@@ -136,7 +136,7 @@ describe("board-sync-loop: polling, one run at a time, back off and pauses", () 
     await s.drain();
     s.time.advance(DEFAULT_INTERVAL_MS);
     await s.drain();
-    expect(s.calls.length).toBe(seen + 3);
+    expect(s.calls).toHaveLength(seen + 3);
   });
 
   test("a rate limit pauses the board until the reset time, and says when", async () => {

@@ -146,7 +146,8 @@ describe("versoes-ui", () => {
     const hosts = within(screen.getByLabelText("Host")).queryAllByRole("option");
     expect(hosts.map((o) => o.textContent)).toEqual(["Todos os hosts"]);
     await openHost();
-    expect(text()).toContain("incompatível: atualize o daemon");
+    // One catalog sentence says what is wrong (issue #181); the daemon's words are under Details.
+    expect(text()).toContain("Versão do host incompatível com este app");
     expect(text()).toContain("flightdeckd update --from");
     expect(text()).toContain("fora do intervalo do daemon [2, 3]");
     expect(screen.queryByLabelText("Hooks do Claude Code")).toBeNull();
