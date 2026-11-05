@@ -1,13 +1,22 @@
 import { MoreHorizontal } from "lucide-react";
-import { forwardRef, type ReactNode, useRef } from "react";
+import { createContext, forwardRef, type ReactNode, useContext, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useT } from "@/i18n/context";
-import { useWidth } from "@/lib/use-width";
+import { useHeight, useWidth } from "@/lib/use-width";
 import { cn } from "@/lib/utils";
 
 /** Below this width of the header's own box it is one line and the actions fold into a menu. */
 const NARROW_HEADER = 560;
+
+/**
+ * Below this height of the session's area it is short (a 720x480 window): the header is one line
+ * and the summary starts folded, so the conversation keeps its room (#232).
+ */
+const SHORT_AREA = 600;
+
+/** Whether the session's area is short; `SessionPane` measures it. */
+export const ShortArea = createContext(false);
 
 /** A session's title, its gray line and its controls, over the timeline. */
 export function SessionHeader(props: {
@@ -26,7 +35,8 @@ export function SessionHeader(props: {
   const t = useT();
   const box = useRef<HTMLElement>(null);
   const width = useWidth(box);
-  const narrow = width > 0 && width < NARROW_HEADER;
+  const short = useContext(ShortArea);
+  const narrow = (width > 0 && width < NARROW_HEADER) || short;
   if (narrow) {
     return (
       <header
@@ -139,7 +149,13 @@ export function Message(props: {
 
 /** Under the conversation: what waits to go out, the activity line, the box and its state line. */
 export function ComposerDock(props: { children: ReactNode }) {
-  return <div className="composer-dock">{props.children}</div>;
+  // In a short area the dock's padding and gaps shrink: the conversation keeps its room (#232).
+  const short = useContext(ShortArea);
+  return (
+    <div className="composer-dock" {...(short ? { "data-short": "true" } : {})}>
+      {props.children}
+    </div>
+  );
 }
 
 /** The floating rounded card of the message box and its buttons. */
@@ -153,5 +169,13 @@ export function Composer(props: { children: ReactNode }) {
 
 /** A session pane: header, timeline and composer stacked, filling its column. */
 export function SessionPane(props: { children: ReactNode }) {
-  return <section className="flex h-full min-h-0 flex-col">{props.children}</section>;
+  const box = useRef<HTMLElement>(null);
+  const height = useHeight(box);
+  return (
+    <section ref={box} className="flex h-full min-h-0 flex-col">
+      <ShortArea.Provider value={height > 0 && height < SHORT_AREA}>
+        {props.children}
+      </ShortArea.Provider>
+    </section>
+  );
 }

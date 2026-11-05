@@ -14,3 +14,18 @@ export function useWidth(ref: { current: HTMLElement | null }): number {
   }, [ref]);
   return width;
 }
+
+/** The height of `ref`'s box, kept up to date; 0 until it is measured. */
+export function useHeight(ref: { current: HTMLElement | null }): number {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const box = ref.current;
+    if (!box || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      setHeight(Math.round(entries[0]?.contentRect.height ?? 0));
+    });
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [ref]);
+  return height;
+}
