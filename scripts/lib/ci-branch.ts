@@ -3,6 +3,8 @@
 export interface GhResult {
   code: number;
   stdout: string;
+  /** Where `gh` writes its errors. */
+  stderr?: string;
 }
 
 export interface CiBranchDeps {

@@ -145,6 +145,93 @@ describe("ci-branch: the full CI on a pushed branch, from the script", () => {
   });
 });
 
+/** A `gh` scripted call by call: each answer comes from the handler, which sees the arguments. */
+function scripted(handler: (args: string[], dispatched: boolean) => Partial<GhResult> | undefined) {
+  const calls: string[][] = [];
+  const logs: string[] = [];
+  let clock = 0;
+  const deps: CiBranchDeps = {
+    gh: async (args) => {
+      calls.push(args);
+      const dispatched = calls.some((c) => c[0] === "workflow");
+      const answer = handler(args, dispatched) ?? { code: 0, stdout: "[]" };
+      return { code: 0, stdout: "", ...answer };
+    },
+    sleep: async (ms) => {
+      clock += ms;
+    },
+    now: () => clock,
+    log: (message) => logs.push(message),
+  };
+  return { calls, logs, deps };
+}
+const RUN = JSON.stringify({
+  status: "completed",
+  conclusion: "success",
+  url: "https://github.com/o/r/actions/runs/77",
+  jobs: [],
+});
+
+describe("ci-branch: when gh itself fails", () => {
+  test("a failed list of the runs that were there before stops with exit 2 and dispatches nothing (else an old run could be taken for the new one)", async () => {
+    const f = scripted((args) =>
+      args[1] === "list" ? { code: 1, stderr: "HTTP 502" } : undefined,
+    );
+    expect(await ciBranch("fix-x", f.deps, FAST)).toBe(2);
+    expect(f.calls.some((c) => c[0] === "workflow")).toBe(false);
+    expect(f.logs.join("\n")).toContain("HTTP 502");
+  });
+
+  test("a refused dispatch shows what gh said on stderr, where gh writes its errors", async () => {
+    const f = scripted((args) =>
+      args[0] === "workflow" ? { code: 1, stdout: "", stderr: "HTTP 422: no ref" } : undefined,
+    );
+    expect(await ciBranch("fix-x", f.deps, FAST)).toBe(2);
+    expect(f.logs.join("\n")).toContain("HTTP 422: no ref");
+  });
+
+  test("one failed look at the run is retried, and the wait goes on", async () => {
+    let views = 0;
+    const f = scripted((args, dispatched) => {
+      if (args[1] === "list")
+        return { stdout: views === 0 && args[0] === "run" ? "[]" : '[{"databaseId":77}]' };
+      if (args[1] === "view")
+        return ++views === 1 ? { code: 1, stderr: "timeout" } : { stdout: RUN };
+      return undefined;
+    });
+    expect(await ciBranch("fix-x", f.deps, FAST)).toBe(0);
+  });
+
+  test("a run that cannot be looked at exits 2 with the reason, not with a stack trace", async () => {
+    const f = scripted((args, dispatched) => {
+      if (args[1] === "list") return { stdout: dispatched ? '[{"databaseId":77}]' : "[]" };
+      if (args[1] === "view") return { code: 1, stderr: "HTTP 503" };
+      return undefined;
+    });
+    expect(await ciBranch("fix-x", f.deps, FAST)).toBe(2);
+    expect(f.logs.join("\n")).toContain("HTTP 503");
+  });
+
+  test("an answer that is not JSON exits 2 too", async () => {
+    const f = scripted((args, dispatched) => {
+      if (args[1] === "list") return { stdout: dispatched ? '[{"databaseId":77}]' : "[]" };
+      if (args[1] === "view") return { stdout: "<html>" };
+      return undefined;
+    });
+    expect(await ciBranch("fix-x", f.deps, FAST)).toBe(2);
+  });
+
+  test("a cancelled run is not a red CI: exit 2, and the log says it was cancelled", async () => {
+    const f = scripted((args, dispatched) => {
+      if (args[1] === "list") return { stdout: dispatched ? '[{"databaseId":77}]' : "[]" };
+      if (args[1] === "view") return { stdout: RUN.replace('"success"', '"cancelled"') };
+      return undefined;
+    });
+    expect(await ciBranch("fix-x", f.deps, FAST)).toBe(2);
+    expect(f.logs.join("\n")).toContain("cancelled");
+  });
+});
+
 /** The workflow read as data, not as text: a rename of a key or a reflow of the file keeps these true. */
 interface Step {
   name?: string;
@@ -156,7 +243,7 @@ interface Step {
 interface Workflow {
   on: { workflow_dispatch: { inputs: { only: { options: string[]; default: string } } } };
   concurrency: { group: string };
-  jobs: Record<string, { if?: string; steps: Step[] }>;
+  jobs: Record<string, { name?: string; if?: string; steps: Step[] }>;
 }
 
 describe("ci.yml: any pushed branch can run the full CI by hand", () => {
@@ -177,7 +264,10 @@ describe("ci.yml: any pushed branch can run the full CI by hand", () => {
   });
 
   test("a dispatched run never cancels the branch's push or pull request run, and skips SonarCloud", () => {
-    expect(workflow.concurrency.group).toBe("ci-${{ github.ref }}-${{ github.event_name }}");
+    // The job choice is in the key too: a screenshots-only dispatch must not cancel a full one.
+    expect(workflow.concurrency.group).toBe(
+      "ci-${{ github.ref }}-${{ github.event_name }}-${{ inputs.only }}",
+    );
     const sonar = workflow.jobs.test?.steps.filter((step) =>
       step.if?.includes("workflow_dispatch"),
     );
@@ -185,6 +275,12 @@ describe("ci.yml: any pushed branch can run the full CI by hand", () => {
     for (const step of sonar ?? []) {
       expect(step.if).toContain("github.event_name != 'workflow_dispatch'");
     }
+  });
+
+  test("a dispatched run's test jobs never carry the names the branch rules require (a skipped copy must not stand in for the real check)", () => {
+    const name = workflow.jobs.test?.name ?? "";
+    expect(name).toContain("test (${{ matrix.os }})");
+    expect(name).toContain("github.event_name == 'workflow_dispatch'");
   });
 
   test("the screenshots job uploads the prints and the Playwright report, even when a step failed", () => {
