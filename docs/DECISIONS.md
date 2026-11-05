@@ -3646,3 +3646,12 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   That is accepted: CI minutes are free for this public repository, and the two runs check
   different trees.
 - **Based on `rc/0363`,** which adds `workflow_dispatch` (#129) to the same `on:` block.
+
+## The sidebar foot: Settings and Sign out of GitHub (issue #213)
+
+- **Settings is a visible item again**, between Search and the account row, marked while Settings is open (HK-m5 of the v0.37 review).
+  It stays in the account menu too, so both paths work and the menu keeps its three items.
+- **Sign out of GitHub** (item 5 of #122) is in the account menu, one item per online host whose `gh` is signed in with a login the app
+  can remove (a login from the daemon's environment is left out; with two hosts the item names the host). Who is signed in is asked
+  when the menu opens, not on every render, so an item can lag one open behind a sign-in made elsewhere. Signing out asks first: it
+  ends repository access for that host's sessions until the next sign-in.
