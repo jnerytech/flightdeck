@@ -95,7 +95,9 @@ describe("keep-awake-ui: the host page's switch (#163)", () => {
 
   test("while the page stays open, a session starting makes it read the status again", async () => {
     const store = await hostPage("en", { held: false });
-    await settle(() => screen.queryByText(/Off|On:/) !== null);
+    await settle(
+      () => screen.queryByText("On: the computer stays awake only while sessions run.") !== null,
+    );
     expect(screen.queryByText("Holding the computer awake now.")).toBeNull();
     store.d.setKeepAwake({ held: true, method: "systemd-inhibit" });
     await act(async () => {
