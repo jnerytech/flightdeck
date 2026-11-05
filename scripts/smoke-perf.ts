@@ -105,6 +105,43 @@ async function until(check: () => boolean, what: string): Promise<void> {
 const percentile = (sorted: number[], p: number) =>
   sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] ?? 0;
 
+type Envelope = Client["events"][number];
+
+/** The text frames add up to the answer and come in far fewer frames than the runtime's deltas. */
+function checkFrames(fresh: Envelope[]): void {
+  const frames = fresh.filter((e) => e.event.type === "message.delta");
+  const text = frames.map((e) => (e.event.type === "message.delta" ? e.event.text : "")).join("");
+  if (text !== `Echo: ${PROMPT}`) throw new Error("the text of the frames is not the answer");
+  const share = frames.length / DELTAS;
+  log(`${DELTAS} deltas of the runtime arrived as ${frames.length} frames (${share.toFixed(2)})`);
+  if (share > MAX_FRAME_SHARE) {
+    throw new Error(`too many frames: ${frames.length} of ${DELTAS} (limit ${MAX_FRAME_SHARE})`);
+  }
+}
+
+/** A text frame carries the last persisted seq; every persisted event follows the one before it. */
+function checkSeqs(fresh: Envelope[], lastPersisted: number): void {
+  let last = lastPersisted;
+  for (const envelope of fresh) {
+    if (envelope.event.type === "message.delta") {
+      if (envelope.seq !== last)
+        throw new Error(`a text frame at seq ${envelope.seq}, not ${last}`);
+    } else {
+      if (envelope.seq !== last + 1) throw new Error(`a hole before seq ${envelope.seq}`);
+      last = envelope.seq;
+    }
+  }
+}
+
+/** `host.info` answers stay fast while the answer streams. */
+function checkResponsiveness(roundTrips: number[]): void {
+  roundTrips.sort((a, b) => a - b);
+  const p99 = percentile(roundTrips, 0.99);
+  log(`host.info while streaming: ${roundTrips.length} calls, p99 ${p99.toFixed(1)} ms`);
+  if (p99 > MAX_P99_MS)
+    throw new Error(`p99 of ${p99.toFixed(1)} ms over the ${MAX_P99_MS} ms limit`);
+}
+
 async function run(): Promise<void> {
   const work = realTempDir("flightdeck-smoke-perf-");
   const projectRoot = join(work, "projects");
@@ -180,33 +217,13 @@ async function run(): Promise<void> {
 
     step = "check the frames";
     const fresh = client.events.slice(before);
-    const frames = fresh.filter((e) => e.event.type === "message.delta");
-    const text = frames.map((e) => (e.event.type === "message.delta" ? e.event.text : "")).join("");
-    if (text !== `Echo: ${PROMPT}`) throw new Error("the text of the frames is not the answer");
-    const share = frames.length / DELTAS;
-    log(`${DELTAS} deltas of the runtime arrived as ${frames.length} frames (${share.toFixed(2)})`);
-    if (share > MAX_FRAME_SHARE) {
-      throw new Error(`too many frames: ${frames.length} of ${DELTAS} (limit ${MAX_FRAME_SHARE})`);
-    }
+    checkFrames(fresh);
 
     step = "check the seqs";
-    let last = lastPersisted;
-    for (const envelope of fresh) {
-      if (envelope.event.type === "message.delta") {
-        if (envelope.seq !== last)
-          throw new Error(`a text frame at seq ${envelope.seq}, not ${last}`);
-      } else {
-        if (envelope.seq !== last + 1) throw new Error(`a hole before seq ${envelope.seq}`);
-        last = envelope.seq;
-      }
-    }
+    checkSeqs(fresh, lastPersisted);
 
     step = "check the responsiveness";
-    roundTrips.sort((a, b) => a - b);
-    const p99 = percentile(roundTrips, 0.99);
-    log(`host.info while streaming: ${roundTrips.length} calls, p99 ${p99.toFixed(1)} ms`);
-    if (p99 > MAX_P99_MS)
-      throw new Error(`p99 of ${p99.toFixed(1)} ms over the ${MAX_P99_MS} ms limit`);
+    checkResponsiveness(roundTrips);
 
     step = "close the session";
     await client.call("session.close", { sessionId });

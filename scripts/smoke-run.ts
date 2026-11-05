@@ -149,8 +149,8 @@ async function answers(url: string): Promise<string | null> {
   }
 }
 
-async function run(work: string): Promise<void> {
-  const token = crypto.randomUUID().replaceAll("-", "");
+/** The app the cards run: a repository with an echo server and the run.yaml that starts it. */
+function createRepo(work: string): string {
   const repo = join(work, "app");
   mkdirSync(join(repo, ".flightdeck"), { recursive: true });
   writeFileSync(join(repo, "README.md"), "# app\n");
@@ -169,6 +169,22 @@ ports: [web]
   git(repo, "config", "commit.gpgsign", "false");
   git(repo, "add", ".");
   git(repo, "commit", "-q", "-m", "app");
+  return repo;
+}
+
+/** The two cards got ports, and ports of different blocks (a block is ten ports). */
+function checkPorts(ports: Array<number | undefined>): void {
+  if (!ports[0] || !ports[1] || ports[0] === ports[1]) {
+    throw new Error(`os cards precisam de portas diferentes: ${JSON.stringify(ports)}`);
+  }
+  if (Math.floor((ports[0] ?? 0) / 10) === Math.floor((ports[1] ?? 0) / 10)) {
+    throw new Error(`os cards precisam de blocos diferentes: ${JSON.stringify(ports)}`);
+  }
+}
+
+async function run(work: string): Promise<void> {
+  const token = crypto.randomUUID().replaceAll("-", "");
+  const repo = createRepo(work);
 
   const configPath = join(work, "config.json");
   writeFileSync(
@@ -235,12 +251,7 @@ ports: [web]
       states.push(await client.call<RunState>("runenv.start", { cardId: card.id }));
     }
     const ports = states.map((s) => s.ports.web);
-    if (!ports[0] || !ports[1] || ports[0] === ports[1]) {
-      throw new Error(`os cards precisam de portas diferentes: ${JSON.stringify(ports)}`);
-    }
-    if (Math.floor((ports[0] ?? 0) / 10) === Math.floor((ports[1] ?? 0) / 10)) {
-      throw new Error(`os cards precisam de blocos diferentes: ${JSON.stringify(ports)}`);
-    }
+    checkPorts(ports);
     log(`portas ${ports[0]} e ${ports[1]}`);
 
     step = "os dois respondem ao mesmo tempo";

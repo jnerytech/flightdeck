@@ -164,9 +164,8 @@ interface Candidate {
   flagged: string[];
 }
 
-async function run(work: string): Promise<void> {
-  // Fixture histories, where this daemon will look: the guard's home and a temporary APPDATA.
-  const appData = join(work, "appdata");
+/** The shell histories the daemon will find: bash, zsh and PowerShell, with a token and a password among them. */
+function writeHistoryFixtures(appData: string): Record<string, string> {
   const sources = defaultHistorySources({
     home: home.dir,
     appData,
@@ -192,6 +191,26 @@ async function run(work: string): Promise<void> {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, content);
   }
+  return fixtures;
+}
+
+/** The project file's command waits for trust and its prompt does not; returns both. */
+function fileSnippets(listed: { snippets: Snip[]; file: { hash: string; trusted: boolean } }) {
+  const byName = Object.fromEntries(listed.snippets.map((s) => [s.name, s]));
+  const tests = byName["testes-rapidos"];
+  const review = byName["revisar-seguranca"];
+  if (!tests || !review || tests.runnable || !review.runnable || listed.file.trusted) {
+    throw new Error(
+      `o comando do arquivo devia esperar confiança e o prompt não: ${JSON.stringify(listed)}`,
+    );
+  }
+  return { tests, review };
+}
+
+async function run(work: string): Promise<void> {
+  // Fixture histories, where this daemon will look: the guard's home and a temporary APPDATA.
+  const appData = join(work, "appdata");
+  const fixtures = writeHistoryFixtures(appData);
   const FIXTURE_COMMANDS = new Set([
     "git status",
     "docker compose up -d",
@@ -256,14 +275,7 @@ async function run(work: string): Promise<void> {
       snippets: Snip[];
       file: { hash: string; trusted: boolean };
     }>("snippets.list", { projectPath: project });
-    const byName = Object.fromEntries(listed.snippets.map((s) => [s.name, s]));
-    const tests = byName["testes-rapidos"];
-    const review = byName["revisar-seguranca"];
-    if (!tests || !review || tests.runnable || !review.runnable || listed.file.trusted) {
-      throw new Error(
-        `o comando do arquivo devia esperar confiança e o prompt não: ${JSON.stringify(listed)}`,
-      );
-    }
+    const { tests, review } = fileSnippets(listed);
     log("o comando do arquivo versionado espera confiança; o prompt não precisa");
 
     step = "colar e rodar no terminal";

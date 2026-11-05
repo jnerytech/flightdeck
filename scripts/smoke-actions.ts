@@ -1,4 +1,7 @@
 #!/usr/bin/env bun
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
 /**
  * Actions smoke: an echo action prints its own token; a stand-in for Claude calls it through the
  * MCP of a `--runtime fake` daemon (a real `flightdeckd mcp` over stdio) and gets `•••(name)` in
@@ -8,9 +11,7 @@
  * value, in no form, is in the daemon's files, its logs, what the MCP client received or this
  * smoke's output.
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
+import { announcedUrl } from "./test/announced-url.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
@@ -226,6 +227,60 @@ class FakeClaude {
   }
 }
 
+/** list_actions names the actions and shows neither the secret nor its variable. */
+function checkListed(text: string): void {
+  if (!text.includes("echo-token")) throw new Error(`list_actions: ${text}`);
+  if (text.includes("deploy-token") || text.includes("TOKEN")) {
+    throw new Error("list_actions mostrou o segredo ou a variável dele");
+  }
+}
+
+/** run_action printed the token masked, and the app got exactly one request, from the Claude. */
+function checkEchoed(echoed: { text: string; error: boolean }, app: App): void {
+  if (echoed.error) throw new Error(`run_action falhou: ${echoed.text}`);
+  if (!echoed.text.includes("•••(deploy-token)")) {
+    throw new Error(`a saída não veio mascarada: ${echoed.text}`);
+  }
+  if (app.requests.length !== 1 || app.requests[0]?.requester !== "claude") {
+    throw new Error("o app devia ter recebido um pedido do Claude");
+  }
+}
+
+/** The secret, in plain, base64 or hex, is in none of the places a leak would show. */
+function assertSecretNotLeaked(secret: string, haystacks: Buffer[]): void {
+  for (const needle of [
+    secret,
+    Buffer.from(secret).toString("base64"),
+    Buffer.from(secret).toString("hex"),
+  ]) {
+    if (haystacks.some((hay) => hay.includes(needle))) {
+      throw new Error("o valor do segredo apareceu nos logs, no banco ou no que o Claude recebeu");
+    }
+  }
+}
+
+/** The two actions of the smoke: one that prints the vault token, one with a checked parameter. */
+async function declareActions(app: App): Promise<void> {
+  // `console.log(process.env.TOKEN)` prints the token the daemon put in the environment.
+  await app.call("actions.save", {
+    definition: {
+      name: "echo-token",
+      description: "Imprime o token do deploy (só para o smoke)",
+      run: [process.execPath, "-e", "console.log(process.env.TOKEN)"],
+      env: { TOKEN: "{{secret.deploy-token}}" },
+    },
+    secretIds: ["deploy-token"],
+  });
+  await app.call("actions.save", {
+    definition: {
+      name: "diz",
+      description: "Diz uma palavra",
+      run: [process.execPath, "-e", "console.log(process.argv[1])", "{{param.palavra}}"],
+      params: { palavra: { pattern: "^[a-z]{1,8}$", default: "oi" } },
+    },
+  });
+}
+
 async function run(work: string): Promise<void> {
   mkdirSync(work, { recursive: true });
   const token = crypto.randomUUID().replaceAll("-", "");
@@ -258,39 +313,13 @@ async function run(work: string): Promise<void> {
   void drain(daemon.stderr, err);
   let claude: FakeClaude | undefined;
   try {
-    const url = await withTimeout(
-      (async () => {
-        for (;;) {
-          const found = out.join("").match(/listening on (ws:\/\/\S+)/)?.[1];
-          if (found) return found;
-          await Bun.sleep(20);
-        }
-      })(),
-      "daemon anunciar a porta",
-    );
+    const url = await withTimeout(announcedUrl(out), "daemon anunciar a porta");
     log(`daemon em ${url}`);
     const app = new App(url, vault);
     await app.open(token);
 
     step = "declarar as ações";
-    // `console.log(process.env.TOKEN)` prints the token the daemon put in the environment.
-    await app.call("actions.save", {
-      definition: {
-        name: "echo-token",
-        description: "Imprime o token do deploy (só para o smoke)",
-        run: [process.execPath, "-e", "console.log(process.env.TOKEN)"],
-        env: { TOKEN: "{{secret.deploy-token}}" },
-      },
-      secretIds: ["deploy-token"],
-    });
-    await app.call("actions.save", {
-      definition: {
-        name: "diz",
-        description: "Diz uma palavra",
-        run: [process.execPath, "-e", "console.log(process.argv[1])", "{{param.palavra}}"],
-        params: { palavra: { pattern: "^[a-z]{1,8}$", default: "oi" } },
-      },
-    });
+    await declareActions(app);
 
     step = "o Claude falso pelo MCP";
     // The MCP command finds the daemon by the port in its config; the daemon chose its own.
@@ -305,21 +334,12 @@ async function run(work: string): Promise<void> {
 
     step = "list_actions sem segredos";
     const listed = await claude.callTool("list_actions", {});
-    if (!listed.text.includes("echo-token")) throw new Error(`list_actions: ${listed.text}`);
-    if (listed.text.includes("deploy-token") || listed.text.includes("TOKEN")) {
-      throw new Error("list_actions mostrou o segredo ou a variável dele");
-    }
+    checkListed(listed.text);
     log("o Claude vê as ações, sem segredo nenhum");
 
     step = "run_action mascarado";
     const echoed = await claude.callTool("run_action", { name: "echo-token" });
-    if (echoed.error) throw new Error(`run_action falhou: ${echoed.text}`);
-    if (!echoed.text.includes("•••(deploy-token)")) {
-      throw new Error(`a saída não veio mascarada: ${echoed.text}`);
-    }
-    if (app.requests.length !== 1 || app.requests[0]?.requester !== "claude") {
-      throw new Error("o app devia ter recebido um pedido do Claude");
-    }
+    checkEchoed(echoed, app);
     log("a ação imprimiu o próprio token e o Claude recebeu •••(deploy-token)");
 
     step = "parâmetro inválido recusado";
@@ -374,21 +394,12 @@ async function run(work: string): Promise<void> {
   }
 
   step = "procurar o valor nos logs, no banco e no que o Claude recebeu";
-  const haystacks = [
+  assertSecretNotLeaked(secret, [
     ...filesOf(dataDir),
     Buffer.from(out.join("")),
     Buffer.from(err.join("")),
     Buffer.from(seen.join("\n")),
-  ];
-  for (const needle of [
-    secret,
-    Buffer.from(secret).toString("base64"),
-    Buffer.from(secret).toString("hex"),
-  ]) {
-    if (haystacks.some((hay) => hay.includes(needle))) {
-      throw new Error("o valor do segredo apareceu nos logs, no banco ou no que o Claude recebeu");
-    }
-  }
+  ]);
   log(
     `${filesOf(dataDir).length} arquivos do daemon, os logs e o que o Claude recebeu sem o valor`,
   );
