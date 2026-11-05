@@ -20,7 +20,7 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-async function click(name: string) {
+async function click(name: string | RegExp) {
   const button = screen.queryByRole("button", { name });
   expect(button).not.toBeNull();
   await act(async () => {
@@ -85,7 +85,7 @@ async function openSession(language = "pt-BR") {
 describe("personas-ui: applying a persona to an open session", () => {
   test("the screen says how the instruction went: sent, queued behind a pending request, or sent to the terminal", async () => {
     const { store, sessionId } = await openSession();
-    await click("Persona");
+    await click(/^Persona(:|$)/);
     await pickerReady(store, "Aplicar nesta sessão (como instrução)");
     await act(async () => {
       fireEvent.change(
@@ -122,7 +122,7 @@ describe("personas-ui: applying a persona to an open session", () => {
 
   test("the same notes in English", async () => {
     const { store } = await openSession("en");
-    await click("Persona");
+    await click(/^Persona(:|$)/);
     await pickerReady(store, "Apply to this session (as an instruction)");
     await act(async () => {
       fireEvent.change(
@@ -157,7 +157,7 @@ describe("personas-ui: applying a persona to an open session", () => {
     const { d, store, sessionId } = await openSession();
     // One control in the header; the picker and its buttons open from it.
     expect(screen.queryByLabelText("Aplicar nesta sessão (como instrução)")).toBeNull();
-    await click("Persona");
+    await click(/^Persona(:|$)/);
     await pickerReady(store, "Aplicar nesta sessão (como instrução)");
     expect(options("Aplicar nesta sessão (como instrução)")).toContain("QA / testes");
     // An open session keeps its system prompt: the app says so before anything is sent.
@@ -223,11 +223,11 @@ describe("personas-ui: applying a persona to an open session", () => {
     await act(async () => {
       store.router.push({ name: "external", host: hostId, claudeSessionId: "c-2" });
     });
-    await stays(() => screen.queryByRole("button", { name: "Persona" }) === null, 150);
+    await stays(() => screen.queryByRole("button", { name: /^Persona(:|$)/ }) === null, 150);
     await act(async () => {
       store.router.push({ name: "external", host: hostId, claudeSessionId: "c-1" });
     });
-    await click("Persona");
+    await click(/^Persona(:|$)/);
     await pickerReady(store, "Aplicar nesta sessão (como instrução)");
     expect(options("Aplicar nesta sessão (como instrução)")).toContain("QA / testes");
     await act(async () => {

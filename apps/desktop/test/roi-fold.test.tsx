@@ -80,4 +80,22 @@ describe("roi-fold: the return on cost card opens folded to its headline", () =>
     expect(toggle()?.getAttribute("aria-expanded")).toBe("true");
     expect(period()).not.toBeNull();
   });
+
+  // Issue #183 (B12 rest): weeks with no card drew the same bar as a week with cards, so a quiet
+  // project read as seven flat bars; and "How is this computed?" sat indented past the text.
+  test("open, a week with no card is drawn as an empty week, and How is this computed lines up with the text", async () => {
+    await board();
+    await act(async () => {
+      fireEvent.click(toggle() as HTMLButtonElement);
+    });
+    const prefix = en.roiUi.trendAlt.split("{")[0] ?? "";
+    const trend = within(card())
+      .queryAllByRole("img")
+      .find((el) => el.getAttribute("aria-label")?.startsWith(prefix));
+    const weeks = [...(trend?.querySelectorAll("span") ?? [])];
+    expect(weeks.length).toBe(8);
+    expect(weeks.every((week) => week.getAttribute("data-empty") === "true")).toBe(true);
+    const how = within(card()).queryByRole("button", { name: en.roiUi.how });
+    expect(how?.getAttribute("data-variant")).toBe("link");
+  });
 });
