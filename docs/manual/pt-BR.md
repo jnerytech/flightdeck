@@ -298,12 +298,18 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   servidor MCP que o Flightdeck dá). O `CLAUDE.md`, os agentes e as skills do projeto também não
   carregam. Um aviso no alto da sessão diz isso, com **Revisar e confiar**.
 - A página do projeto tem **Configuração do projeto**: o que o projeto carregaria, lido sem rodar
-  nada (hooks por evento com a primeira linha de cada comando, servidores MCP e o comando que os
-  inicia, os nomes das variáveis de ambiente, nunca os valores, ferramentas liberadas, agentes,
-  skills, comandos, `CLAUDE.md` e arquivos que não puderam ser lidos), o custo de não confiar e
+  nada (hooks por evento e servidores MCP com o comando inteiro, em um bloco com rolagem e um
+  aviso quando um comando é longo ou tem várias linhas; programas que as configurações executam,
+  como `apiKeyHelper` e `statusLine`; variáveis de ambiente que desviam tráfego ou código, com o
+  valor, e os nomes das outras, nunca os valores; plugins; toda outra chave de configuração
+  presente; ferramentas liberadas; agentes, skills e comandos, e os que trazem hooks, servidores
+  ou permissões de ferramentas no cabeçalho; `CLAUDE.md`; e arquivos que não puderam ser lidos), o custo de não confiar e
   **Confiar neste projeto**. Ele pergunta antes, citando o projeto e o host, porque hooks e
   servidores MCP com confiança rodam comandos naquele computador sem perguntar a você. **Revogar a
   confiança** não pergunta. Confiar vale para as pastas dentro do projeto, não para as ao redor.
+- Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
+  projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
+  segundo plano seguem a mesma regra das sessões do app.
 - O worktree de um card sempre lê a configuração do projeto da pasta principal dele, então uma
   branch nunca traz hooks próprios, com confiança ou sem.
 - Confiar só funciona a partir do próprio computador do host ou pela Tailscale (como liberar uma pasta ou sessões sem pedidos); revogar funciona de qualquer lugar.

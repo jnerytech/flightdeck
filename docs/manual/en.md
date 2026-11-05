@@ -308,12 +308,18 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   gives it). The project's `CLAUDE.md`, agents and skills do not load either. A notice at the top
   of the session says so, with **Review and trust**.
 - The project page has **Project configuration**: what the project would load, read without
-  running anything (hooks by event with the first line of each command, MCP servers and the command
-  that starts them, the names of environment variables, never their values, allowed tools,
-  agents, skills, commands, `CLAUDE.md`, and files that could not be read), the cost of not
+  running anything (hooks by event and MCP servers with their whole command, in a scrollable block
+  with a warning when a command is long or has several lines; programs the settings run, such as
+  `apiKeyHelper` and `statusLine`; environment variables that redirect traffic or code, with their
+  value, and the names of the others, never their values; plugins; every other settings key
+  present; allowed tools; agents, skills and commands, and the ones whose header carries hooks,
+  servers or tool grants; `CLAUDE.md`; and files that could not be read), the cost of not
   trusting, and **Trust this project**. It asks first, naming the project and the host, because
   trusted hooks and MCP servers run commands on that computer without asking you. **Revoke trust**
   asks nothing. Trusting covers the folders inside the project, not the ones around it.
+- Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
+  project, and a folder that holds your allowed roots cannot be trusted at all. Background
+  sessions follow the same rule as the sessions in the app.
 - A card's worktree always reads its project configuration from the project's main folder, so a
   branch never brings hooks of its own, trusted or not.
 - Trusting works only from the host's own computer or over Tailscale (like allowing a folder or sessions without prompts); revoking works from anywhere.
