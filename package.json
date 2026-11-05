@@ -49,6 +49,7 @@
     "smoke:roi": "bun run scripts/smoke-roi.ts",
     "smoke:perf": "bun run scripts/smoke-perf.ts",
     "tdd:audit": "bun run scripts/tdd-audit.ts",
+    "test:tiers": "bun run scripts/test-tiers.ts",
     "test:related": "bun run scripts/test-related.ts",
     "coverage:funcs": "bun run scripts/coverage-funcs.ts",
     "no-sync:baseline": "bun run scripts/no-sync-baseline.ts",
