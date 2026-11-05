@@ -61,6 +61,8 @@ function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route 
         cardId: target.cardId,
       };
     case "board":
+    case "create-card":
+    case "create-card-issue":
       return { name: "board", host: target.hostId, projectId: target.projectId };
     case "workflows":
       return {

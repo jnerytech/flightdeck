@@ -75,3 +75,33 @@ describe("theme-contrast: the dark theme's surfaces and lines (issue #98)", () =
     }
   });
 });
+
+describe("theme-contrast: the palette's selected row can be seen (issue #147)", () => {
+  const dark = tokensOf(css, ".dark");
+  const light = tokensOf(css, ":root");
+  const themes = { light, dark: new Map([...light, ...dark]) };
+  const rgb = (vars: Map<string, string>, name: string) => {
+    const color = colorOf(vars.get(name), vars);
+    if (!color) throw new Error(`${name} is not an opaque oklch color: ${vars.get(name)}`);
+    return color;
+  };
+
+  test("the ring keeps 3:1 against the rows that are not selected (WCAG 1.4.11)", () => {
+    for (const [theme, vars] of Object.entries(themes)) {
+      const ratio = contrast(rgb(vars, "--palette-selection-ring"), rgb(vars, "--popover"));
+      expect([theme, ratio >= 3]).toEqual([theme, true]);
+    }
+  });
+
+  test("the surface stands out from the popover, and the text on it keeps AA", () => {
+    for (const [theme, vars] of Object.entries(themes)) {
+      const surface = rgb(vars, "--palette-selection");
+      expect([theme, contrast(surface, rgb(vars, "--popover")) >= 1.15]).toEqual([theme, true]);
+      expect([theme, contrast(rgb(vars, "--foreground"), surface) >= 4.5]).toEqual([theme, true]);
+      expect([theme, contrast(rgb(vars, "--muted-foreground"), surface) >= 4.5]).toEqual([
+        theme,
+        true,
+      ]);
+    }
+  });
+});
