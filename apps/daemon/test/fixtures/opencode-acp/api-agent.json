@@ -1,0 +1,593 @@
+{
+  "location": {
+    "directory": "/work/project"
+  },
+  "data": [
+    {
+      "id": "flightdeck",
+      "name": "flightdeck",
+      "request": {
+        "settings": {},
+        "headers": {},
+        "body": {}
+      },
+      "description": "Flightdeck",
+      "mode": "primary",
+      "hidden": false,
+      "permissions": [
+        {
+          "action": "*",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "read",
+          "resource": "*.env",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.example",
+          "effect": "allow"
+        },
+        {
+          "action": "*",
+          "resource": "*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "glob",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "grep",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "read",
+          "resource": "*/.env*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.env",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.ssh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.aws/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/.credentials.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.flightdeck/config.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.pem",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.key",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/id_*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.example",
+          "effect": "allow"
+        },
+        {
+          "action": "question",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "*",
+          "resource": "*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "glob",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "grep",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "read",
+          "resource": "*/.env*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.env",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.ssh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.aws/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/.credentials.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.flightdeck/config.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.pem",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.key",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/id_*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.example",
+          "effect": "allow"
+        },
+        {
+          "action": "question",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "browser",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "skill",
+          "resource": "browser",
+          "effect": "deny"
+        }
+      ]
+    },
+    {
+      "id": "compaction",
+      "name": "Compaction",
+      "request": {
+        "settings": {},
+        "headers": {},
+        "body": {}
+      },
+      "mode": "primary",
+      "hidden": true,
+      "permissions": [
+        {
+          "action": "*",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "read",
+          "resource": "*.env",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.example",
+          "effect": "allow"
+        },
+        {
+          "action": "*",
+          "resource": "*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "glob",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "grep",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "read",
+          "resource": "*/.env*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.env",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.ssh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.aws/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/.credentials.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.flightdeck/config.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.pem",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.key",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/id_*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.example",
+          "effect": "allow"
+        },
+        {
+          "action": "question",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "browser",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "skill",
+          "resource": "browser",
+          "effect": "deny"
+        }
+      ]
+    },
+    {
+      "id": "flightdeck-plan",
+      "name": "flightdeck-plan",
+      "request": {
+        "settings": {},
+        "headers": {},
+        "body": {}
+      },
+      "description": "Flightdeck plan",
+      "mode": "primary",
+      "hidden": false,
+      "permissions": [
+        {
+          "action": "*",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "read",
+          "resource": "*.env",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.example",
+          "effect": "allow"
+        },
+        {
+          "action": "*",
+          "resource": "*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "glob",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "grep",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "read",
+          "resource": "*/.env*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.env",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.ssh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.aws/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/.credentials.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.flightdeck/config.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.pem",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.key",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/id_*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.example",
+          "effect": "allow"
+        },
+        {
+          "action": "question",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "*",
+          "resource": "*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "glob",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "grep",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "read",
+          "resource": "*/.env*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.env",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.ssh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.aws/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.config/gh/*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude/.credentials.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.claude.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/.flightdeck/config.json",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.pem",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.key",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*/id_*",
+          "effect": "ask"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.example",
+          "effect": "allow"
+        },
+        {
+          "action": "question",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "edit",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "browser",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "skill",
+          "resource": "browser",
+          "effect": "deny"
+        }
+      ]
+    }
+  ]
+}

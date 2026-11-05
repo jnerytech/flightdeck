@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { FlightdeckError } from "../src/errors.ts";
 import { opencodeConfig, opencodeRules } from "../src/runtime/opencode-config.ts";
 import {
@@ -194,7 +196,7 @@ describe("opencode-preflight", () => {
       reason: "opencode_saved_rules",
       params: {
         version: "2.2.5",
-        rules: "shell echo *\nshell curl -H token:••• https://example.com/ve…",
+        rules: "shell echo *\nshell curl -H token:••• https:•••",
         commands:
           "opencode api DELETE /api/permission/saved/psv_1\nopencode api DELETE /api/permission/saved/psv_2",
       },
@@ -244,10 +246,57 @@ describe("opencode-preflight", () => {
     expect(refused.calls.length).toBe(6);
   });
 
+  test("the answers recorded from OpenCode 2.2.5 pass as they are", async () => {
+    const fixture = (name: string) =>
+      readFileSync(join(import.meta.dir, "fixtures", "opencode-acp", name), "utf8");
+    const calls: string[] = [];
+    const preflight = new OpenCodePreflight({
+      path: "/bin/opencode",
+      version: "2.2.5",
+      env: { HOME: "/home/u" },
+      scan: async () => ({ findings: [], fingerprint: "fp" }),
+      run: async (argv) => {
+        const route = argv[3] ?? "";
+        calls.push(route);
+        const stdout =
+          route === "/api/config"
+            ? fixture("api-config.json")
+            : route === "/api/agent"
+              ? fixture("api-agent.json")
+              : JSON.stringify({ data: [] });
+        return { exitCode: 0, stdout };
+      },
+    });
+    expect(await refusal(preflight.check("/work/project"))).toBe(null);
+    const saved = JSON.parse(fixture("api-permission-saved.json")) as { data: unknown[] };
+    expect(await refusal(setup({ saved: saved.data }).preflight.check("/w"))).toMatchObject({
+      reason: "opencode_saved_rules",
+    });
+  });
+
+  test("a saved rule's id that is not a plain id is left out of the commands; its action is masked too", async () => {
+    const saved = [
+      { id: "psv_1;rm -rf ~", action: "shell", resource: "echo *" },
+      { id: "psv_2", action: "x".repeat(60), resource: "y" },
+    ];
+    expect((await refusal(setup({ saved }).preflight.check("/w")))?.params).toEqual({
+      version: "2.2.5",
+      rules: `shell echo *\n${"x".repeat(40)}… y`,
+      commands: "opencode api DELETE /api/permission/saved/psv_2",
+    });
+  });
+
+  test("two checks of one folder at once share one run of the three commands", async () => {
+    const { preflight, calls } = setup();
+    await Promise.all([preflight.check("/w"), preflight.check("/w")]);
+    expect(calls.length).toBe(3);
+  });
+
   test("maskResource cuts at 40 characters and hides token-like runs", () => {
     expect(maskResource("git push *")).toBe("git push *");
     expect(maskResource("export KEY=sk_live_0123456789abcdefABCDEF")).toBe("export KEY=•••");
     expect(maskResource("a".repeat(10) + " " + "b".repeat(50))).toBe(`${"a".repeat(10)} •••`);
     expect(maskResource("x ".repeat(30))).toBe(`${"x ".repeat(20)}…`);
+    expect(maskResource("auth eyJhbGciOi.J9.eyJzdWIi+Q/x== done")).toBe("auth ••• done");
   });
 });
