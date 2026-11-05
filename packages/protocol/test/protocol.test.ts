@@ -60,6 +60,7 @@ const validCommands: Record<CommandType, unknown> = {
   "board.settings": { maxParallelRuns: 3 },
   "roots.add": { path: "/work/new", confirm: true },
   "host.bypass": { allow: true, confirm: true },
+  "host.keepAwake": { enabled: true },
   "card.manage": { as: { session: "s1" }, action: "move", column: "review" },
   "board.watch": {},
   "card.create": { projectId: "p", title: "t", description: "d" },
