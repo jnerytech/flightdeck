@@ -89,4 +89,12 @@ describe("bounded-run", () => {
     ]);
     expect(existsSync(mark)).toBe(true);
   });
+
+  test("the system's kill ends a process, on any system (#273)", async () => {
+    const child = Bun.spawn([BUN, "-e", "setInterval(() => {}, 1000)"], {
+      stdio: ["ignore", "ignore", "ignore"],
+    });
+    SYSTEM_KILL.kill(child.pid, "SIGKILL");
+    expect(await child.exited).not.toBe(0);
+  });
 });
