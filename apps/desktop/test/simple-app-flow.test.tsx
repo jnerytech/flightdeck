@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, waitFor as pollFor, TOKEN } from "./fixtures.ts";
@@ -18,6 +19,7 @@ afterEach(async () => {
 });
 
 const WAIT = { timeout: 20_000 };
+const realTempFolder = () => join(tmpdir(), `fd-simple-${crypto.randomUUID()}`);
 /** The control may take a moment: the host answers, then the screen draws. */
 const click = async (name: string | RegExp) => {
   const button = await waitFor(() => screen.getByRole("button", { name }), WAIT);
@@ -185,5 +187,59 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
     await click("Show details");
     await waitFor(() => expect(store.uiMode(hostId).mode).toBe("full"));
     expect(store.router.current.name).toBe("session");
+  });
+
+  test("Given Settings, When the theme, a folder, notifications and Show everything are used, Then each reaches the app and the host", async () => {
+    const mem = memoryPlatform(false, "en");
+    const extra = join(realTempFolder(), "more");
+    mkdirSync(extra, { recursive: true });
+    mem.platform.pickFolder = async () => extra;
+    const d = makeDaemon(cleanups, { simple: true, ui: { mode: "simple", locked: false } });
+    const server = d.listen();
+    const store = new AppStore(mem.platform, { baseDelayMs: 10, maxDelayMs: 20 });
+    cleanups.push(() => store.dispose());
+    render(<App store={store} />);
+    const hostId = await act(() => store.addHost({ name: "pc", url: server.url, token: TOKEN }));
+    await pollFor(() => store.getState().hosts.find((h) => h.id === hostId)?.hostInfo, "host info");
+    await act(async () => {
+      fireEvent.click(within(nav()).getByRole("button", { name: "Settings" }));
+    });
+
+    await act(async () => {
+      fireEvent.change(await waitFor(() => screen.getByRole("combobox", { name: "Theme" }), WAIT), {
+        target: { value: "dark" },
+      });
+    });
+    expect(store.theme.mode).toBe("dark");
+
+    // Choose a folder, then add it: the host lists it among the folders tasks may use.
+    await click("Choose folder…");
+    await waitFor(
+      () =>
+        expect(
+          (screen.getByRole("textbox", { name: "Folder to add" }) as HTMLInputElement).value,
+        ).toBe(extra),
+      WAIT,
+    );
+    await click("Add folder");
+    await waitFor(() => expect(document.body.textContent?.includes(extra)).toBe(true), WAIT);
+
+    const tell = screen.getByRole("checkbox", { name: /Tell me when a task needs my answer/ });
+    await act(async () => {
+      fireEvent.click(tell);
+    });
+    await waitFor(() => expect(store.getState().settings.notifyUpdates).toBe(false));
+
+    // Show everything asks first; Cancel keeps Simple mode, the second time it leaves.
+    await click("Show everything");
+    await click("Cancel");
+    expect(store.uiMode(hostId).mode).toBe("simple");
+    await click("Show everything");
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("alertdialog")).getByRole("button", { name: "Show everything" }),
+      );
+    });
+    await waitFor(() => expect(store.uiMode(hostId).mode).toBe("full"));
   });
 });
