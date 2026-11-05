@@ -53,7 +53,7 @@ function agents(): unknown {
 }
 
 function answer(): void {
-  const [first, , , route] = args;
+  const [first, , route] = args;
   if (first === "--version") console.log("opencode v2.2.5");
   else if (first === "models") console.log(MODELS.join("\n"));
   else if (first === "api" && route === "/api/config") {
