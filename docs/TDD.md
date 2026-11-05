@@ -106,7 +106,9 @@ em vez de depender de cuidado.
 - **The slot for the heavy runs.** The full suite, `demo:shots`, `e2e`, the smokes and the builds
   run through `bun run slot -- <command>` (an exclusive lock with a queue, `scripts/lib/slot.ts`),
   never bare: two heavy runs at once overload the machine and make the timing-sensitive tests
-  flaky. Area tests, typecheck and lint do not need the slot. A full gate that must not be
+  flaky. Area tests, typecheck and lint do not need the slot; `bun run typecheck` and
+  `bun run lint` take a place in the light lane instead (`scripts/lane.ts`, two places), because
+  one tsc run takes up to 1.5 GB and six at once ran the machine out of memory. A full gate that must not be
   disturbed by the sessions' area tests runs with `--priority` (`bun run slot -- --priority bun run
   test`): while it runs, the slot raises the niceness of the other `bun test` processes of the
   same user to 15 every few seconds. It only raises (never lowers a niceness), skips its own

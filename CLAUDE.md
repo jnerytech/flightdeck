@@ -79,6 +79,9 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
 - Full suite, `demo:shots`, `e2e`, the smokes and the builds run only through
   `bun run slot --`, never bare: two of them at once overload the machine and make the
   timing-sensitive tests flaky. Area tests, typecheck and lint do not need the slot.
+  `bun run typecheck` and `bun run lint` go through the light lane by themselves
+  (`scripts/lane.ts`): at most two run at once on the machine, since one tsc run takes up to
+  1.5 GB, and a third waits for a place.
 
 ## Conventions
 
