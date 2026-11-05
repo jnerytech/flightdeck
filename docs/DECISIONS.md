@@ -1762,7 +1762,6 @@ What the Phase 13 interface (`risco-ui`, `issues-ui`, `automacoes-ui`, `arena-ui
 - **Version:** 0.13.0 in the protocol, the daemon and the desktop (`tauri.conf.json` reads the desktop's `package.json`).
 - **`scripts/demo-seed.ts` is out of the coverage count:** the `demo-issue-risco` test is the first unit test to load the seed, which put its ping reply and its old-daemon stub (only used by `demo` and `demo:shots`) into the totals. The seed is demo scaffolding, covered by the e2e and the screenshots, so `bunfig.toml` ignores it like the vendored UI.
 
-
 # Phase 14 decisions: the daemon (embedded terminal)
 
 ## Terminal embutido (daemon)
@@ -2467,7 +2466,6 @@ The app side of phase 21: `conversas-ui`, `times-ui`, the relay between hosts, `
 
 - **`smoke:run`:** a real daemon over a real repository whose committed run.yaml runs an echo server that also starts a child that ignores SIGHUP and SIGTERM. Two cards run at once on different blocks, both answer over HTTP, and Stop leaves no server, child or answering port. Its block starts at a random base. Red on the base commit, where `runenv.config` does not exist.
 
-
 # Phase 28 decisions: performance and stack best practices
 
 ## Baseline
@@ -2882,8 +2880,6 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
 - Not done in part 1: the weight scale (vendored buttons), splitting hover motion into per-component
   enter animations. Both go to part 2.
 
-
-
 ## Phase 37: GitHub sign-in and start from a GitHub project
 
 - **The sign-in is the host's `gh`, not an OAuth client of ours.** Issue #16 asks for the device flow, the token in the OS
@@ -3054,7 +3050,6 @@ are out of scope. This supersedes item 4 of the blocking-call audit: the sync fa
   opens a new one; duplicates in an older snapshot fold into one.
 - `session.create` takes no first prompt: the session starts idle and the first message begins
   its first turn. The New session form has a Model select (default, opus, sonnet, haiku).
-
 
 ## Phase 38: board sync with external boards (GitHub Projects first)
 
@@ -3430,7 +3425,6 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   next sync; after five in a row a single `push_gave_up` entry is written and the card is left alone.
 - **Not verified here:** the stderr text of a missing scope and of a rate limit, and the `Status` field name on boards that
   renamed it, come from memory and the fakes; the proof of concept in the spec settles them.
-
 
 ## Team sessions get the flightdeck MCP (v0.36.1, issue #95)
 
@@ -3953,6 +3947,27 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   present, which changed when a host went offline. `group.key` still names a real project for the client scope. A fold saved under the
   old key still counts until the person chooses again; no migration of storage.
 
+## Test tiers by content (issue #261)
+
+- **Why.** The owner asked which tests are unit and which integration. Renaming 800 files into
+  folders would conflict with every open branch, so the tier comes from what a test does, computed
+  on every call (about 100 ms for the tree). No manifest is committed: every PR that adds a test
+  would have to update it, and two such PRs would conflict in it.
+- **The rules** (scripts/lib/test-tiers.ts): a test that starts a process (`Bun.spawn`, `spawnSync`,
+  a fake CLI), a server or a socket (`startServer`, `startDaemon`, `Bun.serve`, a WebSocket,
+  `FrameClient`) is `integration`; one that draws the DOM (`registerDom`, Testing Library) is
+  `component`; the rest is `unit`; `scripts/e2e/*.e2e.ts` and the smokes are `e2e`. Integration
+  wins over component: a screen test against an in-process daemon is heavy. Helpers count function
+  by function, comments stripped: a test that takes only `waitFor` from apps/desktop/test/fixtures.ts
+  is not integration because `daemon()` sits in the same file.
+- **Measured** on the last green main run (Linux, 550 s of test files): unit 249 files 24 s (4%),
+  component 167 files 97 s (18%), integration 386 files 428 s (78%). Today: unit 281,
+  component 180, integration 394, e2e 32 (`bun run test:tiers`).
+- **Use.** `bun run test:related -- --fast --tier unit,component` for a session on the Pi: a test
+  with no tier still runs, the left-out ones are named, and there is no coverage gate (a part of
+  the tiers covers part of a file). CI runs every tier and keeps the one combined 100% gate on
+  Linux. A test checks that every test file of the tree gets a tier.
+
 ## GitHub Flow: one PR per branch, a release is a tag on a green main (issue #260)
 
 - **Why.** The owner wants small releases: a batch of 30 branches assembled into an rc conflicted
@@ -3976,3 +3991,47 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   name, or a commit status of that name.
 - **Not changed here:** handoff-ci (#221) checks for a push trigger on the branch; with this, a
   branch with a PR proves itself on its PR run instead, and handoff-ci has to read that run.
+
+## The hand-off stamp vouches for CI, and a tag needs a green full run (issue #266)
+
+- **What survived of #221.** Its push-trigger requirement and the `gh run list --commit` check
+  died with GitHub Flow (#260). Kept: `test:related` compares with the audit base (origin/main
+  first, the local main only as a fallback), and `handoff:check --base <ref>` for a branch stacked
+  on another.
+- **`ci=` in the stamp.** After the four local checks, `handoff:check` reads the main ruleset's
+  required checks on HEAD (`headCi` in scripts/lib/pr-flow.ts, the same verdict `bun run pr`
+  uses), whatever event ran them: a PR's run or main's push. `0` when green; otherwise `failed`,
+  `pending`, `none` (never run: push the branch, or open its PR) or `unknown` (the ruleset could not
+  be read). `--verify` needs `ci=0` like every other field; `--no-ci` writes `ci=skip`, which
+  vouches for nothing. The stamp's pattern takes word values and still splits its pairs one way
+  only (the #232 ReDoS test keeps it linear).
+- **`bun run pr -- tag vX [--commit <sha>]`** (the coordinator's): a commit on main (main's HEAD by
+  default) is tagged only after its full CI run on main (its push run, which plans everything,
+  #264) completed with success. It refuses a tag that exists, a commit not on main, no run, a run
+  still going or a failed one, and writes nothing then. The tag is pushed alone as `refs/tags/vX`:
+  a push of several tags at once starts no workflow.
+
+## Sessions open their own PRs and turn on auto-merge (issue #271)
+
+- **Why.** The owner decided (2026-11-05) that a session delivers its own work: it pushes its
+  branch, opens the PR and turns on auto-merge, so a green PR no longer waits for the coordinator.
+  The coordinator keeps main, hand merges, tags, releases and the repository settings.
+- **`bun run pr -- auto <n>`** calls GraphQL's `enablePullRequestAutoMerge` with `MERGE` (REST has
+  no auto-merge endpoint). The ruleset's required checks gate the merge, as for `pr merge`. It
+  refuses a draft (GitHub would too). The main ruleset is strict
+  (`strict_required_status_checks_policy`), so GitHub also waits until the PR is up to date, as
+  `pr merge` checks; auto-merge never updates the branch itself (`pr update <n>` does). GitHub
+  refuses auto-merge for a PR that can merge already ("clean status"); `auto` then says the
+  coordinator merges it, since a session does not merge by hand.
+- **Stacked PRs.** Auto-merge onto a branch with no ruleset would merge at once, into the parent.
+  So `auto` refuses a PR onto a branch that `main` does not have yet. The repository does not
+  delete a branch on merge, so GitHub never retargets the child by itself: once `main` has the
+  parent (`compare` says `ahead_by` 0), `auto` moves the PR onto `main` and turns auto-merge on.
+  A compare that fails refuses; it never counts as merged.
+- **The guard** (`prMergeViolation`) blocks `bun run pr -- merge|tag`, `gh pr merge` and a REST
+  `pulls/N/merge` in a session. It reads `FLIGHTDECK_COORDINATOR` from the hook's own environment,
+  so setting it in the command does not pass. `pr merge` refuses without the variable too. Like the
+  other command rules, it reads words outside quotes: a quoted `'…/pulls/12/merge'` path passes.
+  The hook is a guard against slips, not a security boundary.
+- **WIP limit.** At most 2 open branches per session, stated in CLAUDE.md and docs/TDD.md. It is
+  not enforced in code.

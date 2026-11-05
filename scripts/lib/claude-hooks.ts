@@ -372,6 +372,47 @@ export function slotViolation(
 /** The package scripts that run only through the slot (CLAUDE.md). */
 const HEAVY = /^(test|coverage|e2e|demo:shots|smoke(:[\w-]+)?|build:(daemon|desktop))$/;
 
+/**
+ * Why a `bun run pr -- merge|tag`, a `gh pr merge` or a REST merge is blocked (#271): sessions
+ * open their PRs and turn on auto-merge; merging by hand and tagging are the coordinator's
+ * (`FLIGHTDECK_COORDINATOR=1` in the hook's own environment, not one set in the command).
+ */
+export function prMergeViolation(
+  command: string,
+  env: Record<string, string | undefined>,
+): string | null {
+  if (env.FLIGHTDECK_COORDINATOR) return null;
+  for (const segment of commandWords(command).split(/[;&|\n]+/)) {
+    const what = handMerge(segment.trim().split(/\s+/));
+    if (what) {
+      return `${what} is the coordinator's: a session opens its PR and turns on auto-merge, \`bun run pr -- auto <n>\` (CLAUDE.md).`;
+    }
+  }
+  return null;
+}
+
+/** The hand merge or tag one command's words run, or null. */
+function handMerge(words: string[]): string | null {
+  const g = words.indexOf("gh");
+  if (g >= 0 && words[g + 1] === "pr" && words[g + 2] === "merge") return "gh pr merge";
+  if (g >= 0 && words[g + 1] === "api" && words.some((w) => /\/pulls\/\d+\/merge$/.test(w))) {
+    return "a REST merge";
+  }
+  const sub = prFlowCommand(words);
+  return sub === "merge" || sub === "tag" ? `bun run pr -- ${sub}` : null;
+}
+
+/** The `bun run pr` (or `bun scripts/pr-flow.ts`) command these words run, or undefined. */
+function prFlowCommand(words: string[]): string | undefined {
+  const b = words.indexOf("bun");
+  if (b < 0) return undefined;
+  const rest = words.slice(b + 1);
+  let at = -1;
+  if (rest[0] === "run" && rest[1] === "pr") at = 2;
+  else if (rest[0]?.endsWith("pr-flow.ts")) at = 1;
+  return at < 0 ? undefined : rest.slice(at).find((w) => w !== "--");
+}
+
 export interface PushGuardDeps extends CommitGateDeps {
   /** The hook's own environment: `FLIGHTDECK_COORDINATOR=1` marks the session that may push all. */
   env: Record<string, string | undefined>;

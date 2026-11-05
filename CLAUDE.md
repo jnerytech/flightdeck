@@ -43,6 +43,10 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   changed source file is at 100% lines and functions, listing the uncovered `file:line` and the
   uncalled functions (`bunfig.related.toml`; the same exclusions as the full suite). A change to `package.json`, a `bunfig` or the preload
   prints a warning: run the full suite then.
+- Tests by tier (#261, computed from each test's content): `unit`, `component` (the DOM), `integration`
+  (processes, a server, real git) and `e2e` (journeys, smokes). On the Pi, a session runs
+  `bun run test:related -- --fast --tier unit,component` (a fifth of the suite's time, no coverage
+  gate); CI runs every tier and the one combined 100% gate. `bun run test:tiers` prints the counts.
 - Which function a file is missing: `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` runs
   the tests that reach the files (or the ones named after --tests) and lists the functions no test
   called as `file:line`. Bun's coverage only counts them. It instruments in memory, never the sources.
@@ -55,9 +59,10 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   `bun run lint:sonar -- --ratchet` compares the open findings per rule over the whole repo with
   `sonar-baseline.json`, which only goes down (`--ratchet --write` lowers it after a fix).
 - Before hand-off from a session: `bun run handoff:check` runs `typecheck`, `lint`, `tdd:audit`
-  and `test:related` in order and prints a `HANDOFF <branch> <head> ...` stamp line; paste it in
-  the hand-off message. The receiver runs `bun run handoff:check -- --verify` in the worktree
-  (refused when stale or not all 0). The full suite (`bun run slot -- bun run test`) runs at the
+  and `test:related` in order, then reads the required checks of HEAD on GitHub (`ci=`: push the
+  branch first; `--base <ref>` for a branch stacked on another), and prints a
+  `HANDOFF <branch> <head> ...` stamp line; paste it in the hand-off message. The receiver runs
+  `bun run handoff:check -- --verify` in the worktree (refused when stale or not all 0, `ci` too). The full suite (`bun run slot -- bun run test`) runs at the
   orchestrator's version gate and in CI, not in every session. `bun run lint:sonar` is run
   next to it, before a push.
 - Format: `bun run format`. Smokes: `bun run slot -- bun run smoke:<name>` (list in
@@ -95,14 +100,18 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   without options.
 - Never read credentials, tokens, `~/.claude/.credentials.json`, SSH keys or shell history, not
   even in a test or a proof of concept (`.claude/settings.json` denies the obvious paths).
-- Delivery is GitHub Flow: one PR per branch to `main` (`bun run pr -- open <branch>`), merged
-  alone when its required checks are green on its HEAD and it is up to date (`bun run pr -- merge
-  <n>`, the coordinator only); a release is a tag on a green `main`.
-- Sessions push only their own work branches, so CI runs the heavy checks on them (#216); only
-  the coordinator pushes `main` and tags, merges the PRs and publishes releases. The guard hook
-  refuses the rest: main, `rc/*`, tags, `--tags`/`--all`/`--mirror`, a bare `--force`, and a
-  `--force-with-lease` to any branch but the one checked out (the coordinator's session runs with
-  `FLIGHTDECK_COORDINATOR=1`).
+- Delivery is GitHub Flow (#260, #271): one PR per branch to `main`. A session pushes its own
+  branch, opens its PR (`bun run pr -- open <branch>`) and turns on auto-merge
+  (`bun run pr -- auto <n>`): GitHub merges it with a merge commit once its required checks are
+  green on its HEAD and it is up to date (a PR behind `main` waits for `bun run pr -- update <n>`).
+  A stacked PR gets auto-merge once its parent is in
+  `main` (`pr auto` retargets it). A session keeps at most 2 branches open (pushed and not merged
+  yet): it finishes one before it starts a third. A release is a tag on a green `main`.
+- Only the coordinator pushes `main`, `rc/*` and tags, merges by hand (`bun run pr -- merge <n>`)
+  and publishes releases. The guard hook refuses the rest: pushes of main, `rc/*`, tags,
+  `--tags`/`--all`/`--mirror`, a bare `--force`, a `--force-with-lease` to any branch but the one
+  checked out, and a session's `bun run pr -- merge|tag`, `gh pr merge` or REST merge (the
+  coordinator's session runs with `FLIGHTDECK_COORDINATOR=1`).
 
 - Full suite, `demo:shots`, `e2e`, the smokes and the builds run only through
   `bun run slot --`, never bare (the guard hook refuses them otherwise): two of them at once overload the machine and make the
