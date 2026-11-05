@@ -35,6 +35,7 @@ async function offlinePage(lang: "en" | "pt-BR") {
     store.router.push({ name: "host", host: id });
   });
   await settle(() => screen.queryByRole("heading", { name: "pc" }) !== null);
+  return store;
 }
 
 /** The text a control's aria-describedby points to. */
@@ -57,6 +58,19 @@ for (const [lang, t] of [
         expect([name, button?.disabled]).toEqual([name, true]);
         expect(described(button)).toContain(reason);
       }
+    });
+
+    test("an incompatible host's folder row asks to update its daemon, not to reconnect", async () => {
+      const store = await offlinePage(lang);
+      await act(async () => {
+        const host = store.getState().hosts[0];
+        (store as unknown as { update(patch: object): void }).update({
+          hosts: [{ ...host, status: "incompatible" }],
+        });
+      });
+      const add = screen.queryByRole("button", { name: t.toast.allowRoot }) as HTMLElement | null;
+      expect(described(add)).toContain(t.hostPage.needsUpdate.replace("{host}", "pc"));
+      expect(described(add)).not.toContain(t.hostPage.needsOnline.replace("{host}", "pc"));
     });
 
     test("the allowed folder field is off, and Add gives the offline reason, not 'type the folder'", async () => {
