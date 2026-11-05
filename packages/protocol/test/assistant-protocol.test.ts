@@ -10,6 +10,7 @@ import {
   AssistantRequest,
   AssistantResult,
   Command,
+  ModelOption,
   UsageOrigin,
 } from "../src/index.ts";
 
@@ -169,11 +170,32 @@ describe("assistant-protocol", () => {
       "assistant_no_changes",
       "assistant_not_a_repo",
       "assistant_request_id",
+      "assistant_key_invalid",
     ]);
     const sorted = [...ASSISTANT_REASONS].sort();
     expect([refusalTexts("en.ts").sort(), refusalTexts("pt-BR.ts").sort()]).toEqual([
       sorted,
       sorted,
     ]);
+  });
+
+  test("a model option carries an id, a label, an optional group, per-million prices and whether it takes an effort", () => {
+    expect(ModelOption.safeParse({ id: "claude-haiku-5-5", label: "Haiku 5.5" }).success).toBe(
+      true,
+    );
+    expect(
+      ModelOption.safeParse({
+        id: "anthropic/claude-haiku-5.5",
+        label: "Claude Haiku 5.5",
+        group: "anthropic",
+        promptPerMTok: 1,
+        completionPerMTok: 5,
+        supportsEffort: true,
+      }).success,
+    ).toBe(true);
+    // The id is a model id as the providers write it; the label is shown, so it is not empty.
+    expect(ModelOption.safeParse({ id: "has space", label: "x" }).success).toBe(false);
+    expect(ModelOption.safeParse({ id: "ok", label: "" }).success).toBe(false);
+    expect(ModelOption.safeParse({ id: "ok", label: "x", promptPerMTok: -1 }).success).toBe(false);
   });
 });

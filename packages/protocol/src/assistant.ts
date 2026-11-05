@@ -161,3 +161,7 @@ export const ASSISTANT_REASONS = [
   "assistant_request_id",
 ] as const;
 export type AssistantReason = (typeof ASSISTANT_REASONS)[number];
+
+/** A model a provider offers, as the pickers list it (the list comes from the provider through the shell). */
+export const ModelOption = z.object({}).passthrough();
+export type ModelOption = { id: string; label: string };
