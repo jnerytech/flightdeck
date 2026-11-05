@@ -885,13 +885,18 @@
   flex: 1 1 0;
   align-self: stretch;
   align-items: flex-end;
+  /* In the header's row the one bar takes the width left by the crumbs. */
+  & > .tab-bar {
+    flex: 1 1 auto;
+  }
 }
 
+/* A tab bar keeps its height wherever it sits: in a split area's column it must not grow (issue #225). */
 @utility tab-bar {
   display: flex;
   height: 2.25rem;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: none;
   align-items: flex-end;
   gap: 0.25rem;
   border-bottom: 1px solid var(--color-border);
