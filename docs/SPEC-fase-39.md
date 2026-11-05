@@ -135,8 +135,8 @@ session's environment and the injected config, so sessions never share a process
   - `close`: idempotent; `session/close` with a 2 s timeout, stdin closed, kill 3 s later.
   - Kill: POSIX starts the child in its own process group and kills the group; Windows runs `taskkill /PID <pid> /T /F`.
     Behind an injected killer and injected timers. stderr is ignored (no pipe to fill).
-  - **Idle reaper:** after 15 minutes without a turn the process is closed; the next send starts a new one with
-    `session/resume` (no replay). An idle `opencode acp` holds about 110 MB.
+  - **No process until the first send**, and after 15 minutes without a turn the process is closed; the next send
+    starts a new one with `session/resume` (no replay). An idle `opencode acp` holds about 110 MB.
   - `setModel`, `setPermissionMode`: `set_config_option`. `rewindFiles`, `toggleMcpServer`, `mcpServerStatus`,
     `forkSession` and `judgePermission` are absent: rewind falls back to the git snapshots, the others answer
     `runtime_unsupported`.
@@ -197,15 +197,14 @@ scope defines, found by the preflight):
 }
 ```
 
-where `RULES` is everything asks, reads, globs and greps inside the folder are allowed, the credential paths `risk.ts`
-knows ask, and `question` and `subagent` are denied:
+where `RULES` is everything asks, the credential paths `risk.ts` knows ask, and `question` and `subagent` are denied.
+Reads, globs and greps ask too, because OpenCode's inside-the-folder test is lexical: a symlink in a repo leads a read out
+of it with no request (probe, code review M8). The runtime allows a mapped `Read`, `Glob` or `Grep` without a question
+when the real path is inside the folder's real path and is not a credential path:
 
 ```json
 [
   { "action": "*", "resource": "*", "effect": "ask" },
-  { "action": "read", "resource": "*", "effect": "allow" },
-  { "action": "glob", "resource": "*", "effect": "allow" },
-  { "action": "grep", "resource": "*", "effect": "allow" },
   { "action": "read", "resource": "<each credential pattern: *.env, *.env.*, *.pem, *.key, id_*, .ssh/*, .aws/*, ...>", "effect": "ask" },
   { "action": "read", "resource": "*.env.example", "effect": "allow" },
   { "action": "question", "resource": "*", "effect": "deny" },
@@ -276,12 +275,12 @@ empty Flightdeck-owned folder with the same environment rules after the scope sc
 - Migration: `sessions.runtime TEXT NOT NULL DEFAULT 'claude'`.
 - `SessionManagerOptions.runtime` becomes `runtimes: { claude: AgentRuntime; opencode?: AgentRuntime }`; the session's
   stored runtime picks one in every start, resume and lazy reattach.
-- `AgentRuntime.preflight?(cwd, env): Promise<void>` throws a typed `FlightdeckError`. **Wiring:** the manager puts a
-  `preparing` placeholder (holding the message queue) in `live` before the first await, so a second send during the
-  preflight queues instead of starting a second run. `create`, `resume` and `createResumed` await it and throw the typed
-  refusal. A lazy reattach from `send` that fails sets the session to `error` with `session.error { code, message,
-  reason, params }` (`reason` and `params` are new optional fields, for the app to translate) and drops the queued text
-  with a notice.
+- `AgentRuntime.preflight?(cwd): Promise<void>` throws a typed `FlightdeckError`; `create` and `resume` await it, so a
+  refusal leaves no session or keeps it ended. The run's `start` is synchronous and spawns nothing until the first send,
+  and its own preflight (cached) runs inside it, so a lazy reattach registers the live run at once and a second send
+  queues on it (no placeholder; DECISIONS, code review). A run that fails with a typed refusal sets the session to
+  `error` with `session.error { code, message, reason, params }` (`reason` and `params` are new optional fields, for the
+  app to translate).
 - `claudeSessionId` keeps its name and holds OpenCode's session id for OpenCode sessions.
 - Version 1 refuses, with `runtime_unsupported`, an OpenCode session created with a persona; the callers that start
   sessions by themselves (board cards, teams, workflows, templates, GitHub start, history resume) keep `claude`.
