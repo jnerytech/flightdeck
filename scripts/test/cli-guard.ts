@@ -1,15 +1,15 @@
 /**
- * Guard against running the real PR CLIs (`gh`, `az`) from tests and smokes. Same idea as the
- * claude guard: a sentinel per name first on PATH (it records the call and exits 99) and every
- * PATH folder holding a real one taken off (see guard-path.ts). A test that needs one installs
- * its own fake in front.
+ * Guard against running the real PR CLIs (`gh`, `az`) and `opencode` (phase 39) from tests and
+ * smokes. Same idea as the claude guard: a sentinel per name first on PATH (it records the call
+ * and exits 99) and every PATH folder holding a real one taken off (see guard-path.ts). A test
+ * that needs one installs its own fake in front.
  */
 import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { guardPath } from "./guard-path.ts";
 
-export const GUARDED_CLIS = ["gh", "az"] as const;
+export const GUARDED_CLIS = ["gh", "az", "opencode"] as const;
 
 const variants = (name: string) => [name, `${name}.exe`, `${name}.cmd`, `${name}.bat`];
 
