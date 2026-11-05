@@ -24,6 +24,9 @@ const TITLE = "Flightdeck";
  * Browser implementation. Secrets (and the vault's values) stay in memory only: a page has no safe place for tokens, so
  * the web build asks for them again after a reload. Deep links arrive as `#link=<encoded url>`.
  */
+/** The web build has no shell: an API provider is "not configured", as a refusal the app already translates. */
+const NOT_HERE = { reason: "assistant_not_configured" };
+
 export function createWebPlatform(
   win: WebWindow = window as unknown as WebWindow,
   secrets: Map<string, string> = new Map(),
@@ -34,15 +37,13 @@ export function createWebPlatform(
   const linkHandlers = new Set<(url: string) => void>();
   return {
     assistant: {
-      supported: true,
-      keyStatus: async () => ({ saved: true }),
-      setKey: async () => ({ last4: "" }),
+      supported: false,
+      keyStatus: async () => ({ saved: false }),
+      setKey: () => Promise.reject(NOT_HERE),
       deleteKey: async () => {},
-      test: async () => ({ ok: true }),
+      test: () => Promise.reject(NOT_HERE),
       models: async () => [],
-      run: async () => {
-        throw { reason: "assistant_cancelled" };
-      },
+      run: () => Promise.reject(NOT_HERE),
       cancel: async () => {},
       vaultHits: async () => [],
     },

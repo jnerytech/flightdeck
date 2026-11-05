@@ -34,17 +34,16 @@ export function tauriPlatform(
   let pending: Update | null = null;
   return {
     assistant: {
-      supported: false,
-      keyStatus: async () => ({ saved: false }),
-      setKey: async () => ({ last4: "" }),
-      deleteKey: async () => {},
-      test: async () => ({ ok: false }),
-      models: async () => [],
-      run: async () => {
-        throw { reason: "assistant_cancelled" };
-      },
-      cancel: async () => {},
-      vaultHits: async () => [],
+      supported: true,
+      keyStatus: (provider) =>
+        call<{ saved: boolean; last4?: string }>("assistant_key_status", { provider }),
+      setKey: (provider, key) => call<{ last4: string }>("assistant_key_set", { provider, key }),
+      deleteKey: (provider) => call("assistant_key_delete", { provider }),
+      test: (provider) => call("assistant_test", { provider }),
+      models: (provider) => call("assistant_models", { provider }),
+      run: (request, vaultIds) => call("assistant_run", { request, vaultIds }),
+      cancel: (requestId) => call("assistant_cancel", { requestId }),
+      vaultHits: (text, ids) => call<string[]>("vault_hits", { text, ids }),
     },
     storage: win.localStorage,
     secrets: {
