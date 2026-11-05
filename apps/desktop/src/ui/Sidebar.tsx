@@ -545,6 +545,9 @@ export function Sidebar(props: {
             onClick={() => go({ name: "vault" })}
           />
         </NavGroup>
+      </nav>
+
+      <div data-slot="sidebar-hosts" className="sidebar-hosts">
         <NavGroup
           id="machines"
           label={t("sidebarGroups.machines")}
@@ -574,7 +577,7 @@ export function Sidebar(props: {
             />
           )}
         </NavGroup>
-      </nav>
+      </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {!collapsed && (
