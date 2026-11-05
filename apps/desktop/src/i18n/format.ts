@@ -85,7 +85,15 @@ export function formatUsd(value: number, lang: Lang): string {
   return plain(new Intl.NumberFormat(lang, { style: "currency", currency: "USD" }).format(value));
 }
 
-/** A size in bytes as KB, MB or GB with the language's separators. (Stub.) */
-export function formatBytes(_bytes: number, _lang: Lang): string {
-  return "";
+/** A size in bytes as B, KB, MB or GB with the language's separators (one decimal at most). */
+export function formatBytes(bytes: number, lang: Lang): string {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  const number = new Intl.NumberFormat(lang, { maximumFractionDigits: unit === 0 ? 0 : 1 });
+  return `${number.format(value)} ${units[unit]}`;
 }

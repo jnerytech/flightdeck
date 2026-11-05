@@ -3422,6 +3422,33 @@ export const en: Dictionary = {
     hintAddress:
       "Or the daemon refused this machine's address: on the host, add its network to allowedNetworks (flightdeckd setup does it for Tailscale).",
   },
+  resources: {
+    title: "Resources",
+    memory: "Memory",
+    disk: "Disk",
+    load: "Load {n}%",
+    used: "{used} of {total} used",
+    high: "High",
+    critical: "Critical",
+    kinds: { session: "Session", terminal: "Terminal" },
+    session: "Session",
+    project: "Project",
+    memoryCol: "Memory",
+    cpu: "CPU",
+    programs: "Programs",
+    list: "Sessions and terminals by memory",
+    empty: "No session or terminal is running.",
+    notMeasured:
+      "Per-session numbers are not measured here. Processes are only measured on Linux hosts.",
+    orphans: "Leftover processes",
+    orphansHelp:
+      "Started by this host's daemon, but no session owns them. They may be left from a session that is gone.",
+    orphanLine: "{name} · pid {pid} · {age} · {memory}",
+    end: "End",
+    endTitle: "End process",
+    endMessage: "End process {pid} ({name})? The host's daemon started it and no session owns it.",
+    endFailed: "That process could not be ended.",
+  },
   hostPage: {
     simpleTitle: "Simple mode",
     simpleHint:

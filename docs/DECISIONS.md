@@ -3559,3 +3559,30 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   That is accepted: CI minutes are free for this public repository, and the two runs check
   different trees.
 - **Based on `rc/0363`,** which adds `workflow_dispatch` (#129) to the same `on:` block.
+
+## Host resources: memory, disk, sessions and orphans (issue #154)
+
+- **One data source: `/proc`.** The daemon reads `stat` (name, parent, CPU ticks, start, resident pages), the `cwd` link and `uptime`,
+  through an injected `ProcReader` (`resources/procfs.ts`); the reader has no method that returns a command line or an environment,
+  so none can leak into a payload, a log or the UI. Tests use a fake reader or a temp directory shaped like `/proc`; a booted daemon
+  takes `resourcesProc` so no test reads the machine.
+- **Windows and macOS: not measured.** Per-process numbers need `/proc`. Those hosts report the host's memory, disk (`statfs` of the data
+  directory) and load (macOS; Windows has no load average) and `measured: false, reason: "platform"`; the panel says so. Doing it with
+  `ps`/`wmic` was left out: another parser to keep, and the heavy-host case that motivated this is a Linux box.
+- **No timer in the daemon.** `resources.get` takes one snapshot on demand; CPU % needs two readings, so the sampler keeps the
+  previous CPU ticks of each pid between calls (null on the first). The app asks every 5 s only while the panel is on screen and the
+  host online. `resources.watch` (a push) was not built: polling by the panel meets "no timer when nobody watches" without a
+  subscription to manage.
+- **Matching a session to its process.** The SDK starts `claude` as a child of the daemon and gives no pid. A session is matched to a
+  `claude` direct child by working folder (`/proc/<pid>/cwd`), several in one folder by start order against `createdAt`. That can swap
+  the numbers of two sessions in one folder, and a short-lived query (the permission judge) can look like an extra process: an orphan
+  must be at least 60 s old. Capturing the pid through the SDK's `spawnClaudeCodeProcess` would be exact but replaces how the process
+  is started; not done here.
+- **Orphans.** A `claude` that is a direct child of the daemon, owned by no active session and no terminal, older than 60 s. Ending
+  one (`resources.endOrphan`, SIGTERM) re-reads the processes first and refuses anything that is not in that list: a session's, a
+  terminal's, one outside the daemon's tree, the daemon itself.
+- **Terminals** are matched by the PTY's pid and measured with everything under the shell.
+- **Not built:** the status bar segment (#118 is not on this base), a "memory above 90% for 2 minutes" notice (it needs something
+  watching while the panel is closed, which the no-timer rule forbids until the status bar exists), End session per row, the session
+  view's own line, Windows and macOS samplers. The Resources panel is on the host page's single page; when the tabbed host page lands
+  (`host-page-sessions`), pass `active={tab === "usage"}` so a hidden tab does not poll.

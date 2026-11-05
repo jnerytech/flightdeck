@@ -90,7 +90,7 @@ function setup(
 }
 
 const reads = (asked: Array<[string, unknown]>) => asked.filter(([t]) => t === "resources.get");
-const panel = () => screen.getByRole("region", { name: "Resources" });
+const panel = (name = "Resources") => screen.getByRole("region", { name });
 
 describe("recursos-ui: formatting sizes", () => {
   test("KB, MB and GB with the language's separators", () => {
@@ -135,7 +135,7 @@ describe("recursos-ui: the Resources panel of a host (issue #154)", () => {
     await settle(() => reads(w.asked).length >= 2);
     w.set(
       snapshot({
-        rows: [{ ...snapshot().rows[0]!, rssBytes: 2 * GB }, snapshot().rows[1]!],
+        rows: snapshot().rows.map((row) => (row.id === "s1" ? { ...row, rssBytes: 2 * GB } : row)),
       }),
     );
     await settle(
@@ -260,7 +260,7 @@ describe("recursos-ui: the Resources panel of a host (issue #154)", () => {
     render(w.view());
     await settle(() => document.querySelector("[data-slot='resources-memory']") !== null);
     expect(screen.getByRole("region", { name: "Recursos" })).toBeTruthy();
-    expect(panel().textContent).toContain("5 GB de 8 GB em uso");
-    expect(panel().textContent).toContain("12,5%");
+    expect(panel("Recursos").textContent).toContain("5 GB de 8 GB em uso");
+    expect(panel("Recursos").textContent).toContain("12,5%");
   });
 });

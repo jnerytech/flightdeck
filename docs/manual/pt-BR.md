@@ -2456,6 +2456,18 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude
   ganha um selo ⚠. O tempo no ar continua contando enquanto a página está aberta.
+- **Recursos:** um painel da página do host (hosts que anunciam `resources`) mostra a memória e o
+  disco do host em barras, a carga, e uma tabela das sessões e terminais com a maior memória
+  primeiro: projeto, memória, CPU e os programas rodando (só os nomes; nunca uma linha de comando
+  nem o ambiente). Memória ou disco a 80% diz **Alta** e a 90% **Crítica**, em palavras e em cor.
+  **Processos que sobraram** lista um `claude` que o daemon do host iniciou e que nenhuma sessão
+  possui (com mais de um minuto), com pid, idade e memória; **Encerrar** pergunta antes e encerra só
+  esse processo (o daemon confere de novo que ele ainda é filho dele e sem dono). O painel lê a cada
+  5 s enquanto a página está aberta e o host está online, e o daemon não mantém timer para isso. Os
+  números por processo vêm de `/proc`, então só hosts Linux os têm; hosts macOS e Windows mostram a
+  memória e o disco (e a carga, no macOS) e dizem que os processos não são medidos. Uma sessão é
+  ligada ao seu `claude` pela pasta e pela ordem de início, então duas sessões na mesma pasta podem
+  trocar os números.
 - **Um host desconectado** mostra um aviso no topo da página dele: o estado, o que falhou em
   palavras simples (nada respondeu, sem resposta a tempo, a conexão caiu, o token foi recusado), a
   hora da última tentativa, a contagem até a próxima tentativa automática e **Reconectar agora**,

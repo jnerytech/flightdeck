@@ -2468,6 +2468,18 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
   badge. The uptime keeps counting while the page is open.
+- **Resources:** a host page panel (hosts that announce `resources`) shows the host's memory and
+  disk as bars, its load, and a table of its sessions and terminals with the biggest memory first:
+  project, memory, CPU and the programs running (names only; never a command line or an
+  environment). Memory or disk at 80% reads **High** and at 90% **Critical**, in words as well as
+  colour. **Leftover processes** lists a `claude` that the host's daemon started and no session
+  owns (older than a minute), with its pid, age and memory; **End** asks first and ends only that
+  process (the daemon checks again that it is still one of its own children without an owner). The
+  panel reads every 5 s while the page is open and the host is online, and the daemon keeps no
+  timer for it. Per-process numbers come from `/proc`, so only Linux hosts have them; macOS and
+  Windows hosts show the memory and disk (and the load, on macOS) and say the processes are not
+  measured. A session is matched to its `claude` by folder and start order, so two sessions in one
+  folder can swap numbers.
 - **A host that is offline** shows a banner at the top of its page: the state, what failed in plain
   words (nothing answered, no answer in time, the link dropped, the token refused), the time of the
   last try, a countdown to the next automatic try and **Reconnect now**, which shows its progress
