@@ -3475,6 +3475,22 @@ export const ptBR = {
     bypassAllowMessage:
       "Permitir que as sessões em {host} rodem sem pedidos de permissão? O Claude poderá editar e apagar arquivos e rodar comandos em qualquer pasta permitida sem perguntar. Só faça isso numa máquina e em pastas em que você aceite esse risco.",
     bypassTurnOff: "Desligar",
+    keepAwakeTitle: "Manter este computador acordado",
+    keepAwakeHint:
+      "Enquanto uma sessão deste host roda ou espera a sua resposta, o host pede ao computador para não dormir, e assim aprovações e avisos continuam chegando. A tela ainda pode apagar, e fechar a tampa segue as configurações de energia do sistema.",
+    keepAwakeOn: "Ligado: o computador fica acordado só enquanto há sessões.",
+    keepAwakeOff: "Desligado: o computador dorme como o sistema mandar.",
+    keepAwakeHeld: "Segurando o computador acordado agora.",
+    keepAwakeTurnOff: "Desligar",
+    keepAwakeTurnOn: "Ligar",
+    keepAwakeReason: {
+      "no-inhibitor":
+        "Nada neste computador consegue segurá-lo acordado (sem systemd-inhibit, caffeinate nem PowerShell).",
+      "unsupported-platform": "Este sistema não tem como segurar o computador acordado.",
+      "start-failed": "O programa que segura o computador acordado não conseguiu iniciar.",
+      ended:
+        "O programa que segura o computador acordado terminou. Ele volta com a próxima sessão.",
+    },
     rootsHint: "Sessões e projetos só podem usar estas pastas e as que estão dentro delas.",
     host: "Host",
     nameLabel: "Nome do host",

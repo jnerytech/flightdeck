@@ -320,6 +320,7 @@ export type HostCommandType = Extract<
   | "roots.add"
   | "history.get"
   | "host.bypass"
+  | "host.keepAwake"
   | `ssh.${string}`
   | `snippets.${string}`
   | `personas.${string}`
