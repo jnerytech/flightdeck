@@ -246,7 +246,7 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
     await act(async () => {
       fireEvent.click(within(tile).getByRole("button", { name: "Open to answer" }));
     });
-    expect(opened).toEqual([ids[0]]);
+    expect(opened).toEqual([ids[0] as string]);
     expect(store.getState().sessions[key]?.pending.length).toBe(1);
   });
 
