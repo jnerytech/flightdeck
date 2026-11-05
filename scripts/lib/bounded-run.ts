@@ -44,7 +44,36 @@ export function killTree(pid: number, deps: KillDeps = SYSTEM_KILL): void {
   }
 }
 
-export function runBounded(command: string[], timeoutMs: number): Promise<BoundedResult> {
+/** A started process, as runBounded reads it. */
+export interface ChildLike {
+  pid?: number;
+  on(event: "error", listener: (error: Error) => void): unknown;
+  on(event: "exit", listener: (code: number | null) => void): unknown;
+}
+
+/** What runBounded starts, times and kills with (#284: tests pass fakes, no real process or timer). */
+export interface RunDeps {
+  platform: NodeJS.Platform;
+  spawn: (program: string, args: string[], options: { detached: boolean }) => ChildLike;
+  setTimer: (fire: () => void, ms: number) => unknown;
+  clearTimer: (timer: unknown) => void;
+  killTree: (pid: number) => void;
+}
+
+export const SYSTEM_RUN: RunDeps = {
+  platform: process.platform,
+  spawn: (program, args, { detached }) =>
+    spawn(program, args, { detached, stdio: "ignore", windowsHide: true }),
+  setTimer: (fire, ms) => setTimeout(fire, ms),
+  clearTimer: (timer) => clearTimeout(timer as ReturnType<typeof setTimeout>),
+  killTree: (pid) => killTree(pid),
+};
+
+export function runBounded(
+  command: string[],
+  timeoutMs: number,
+  _deps: RunDeps = SYSTEM_RUN,
+): Promise<BoundedResult> {
   const [program = "", ...args] = command;
   return new Promise((done) => {
     let settled = false;

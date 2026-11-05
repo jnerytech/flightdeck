@@ -3,6 +3,8 @@ import {
   addedLines,
   type BranchCommit,
   parseBranchLog,
+  removedLines,
+  riskyEdits,
   riskyFiles,
   securityProblem,
   securityVerdict,
@@ -305,6 +307,74 @@ describe("security-gate", () => {
     ]);
   });
 
+  test("a deleted file keeps its path, so deleting a guard is risky (#284)", () => {
+    const deleted = [
+      "diff --git a/scripts/lib/claude-hooks.ts b/scripts/lib/claude-hooks.ts",
+      "deleted file mode 100644",
+      "--- a/scripts/lib/claude-hooks.ts",
+      "+++ /dev/null",
+      "@@ -1,2 +0,0 @@",
+      "-export const x = 1;",
+    ].join("\n");
+    expect(riskyFiles(addedLines(deleted))).toEqual([
+      { path: "scripts/lib/claude-hooks.ts", why: ["guard"] },
+    ]);
+  });
+
+  test("a mode change is a permission change on any file, with or without a code extension (#284)", () => {
+    const mode = [
+      "diff --git a/bin/fd b/bin/fd",
+      "old mode 100644",
+      "new mode 100755",
+      "diff --git a/docs/x.md b/docs/x.md",
+      "old mode 100644",
+      "new mode 100755",
+    ].join("\n");
+    expect(riskyFiles(addedLines(mode))).toEqual([
+      { path: "bin/fd", why: ["permission"] },
+      { path: "docs/x.md", why: ["permission"] },
+    ]);
+  });
+
+  test("the removed lines of each file come from the hunks, never the headers (#284)", () => {
+    const diff = [
+      "diff --git a/apps/daemon/src/run.ts b/apps/daemon/src/run.ts",
+      "--- a/apps/daemon/src/run.ts",
+      "+++ b/apps/daemon/src/run.ts",
+      "@@ -3,2 +3,0 @@",
+      '-if (!allowed(path)) throw new Error("refused");',
+      "--- a/looks-like-a-header",
+    ].join("\n");
+    expect(removedLines(diff)).toEqual(
+      new Map([
+        [
+          "apps/daemon/src/run.ts",
+          ['if (!allowed(path)) throw new Error("refused");', "-- a/looks-like-a-header"],
+        ],
+      ]),
+    );
+  });
+
+  test("removing a check in a file that still spawns, or removing a risky line, needs a review (#284)", () => {
+    const removed = new Map([
+      ["apps/daemon/src/run.ts", ['if (!allowed(path)) throw new Error("refused");']],
+      ["apps/daemon/src/perm.ts", ["chmodSync(file, 0o600);"]],
+      ["apps/daemon/src/plain.ts", ["const x = 1;"]],
+      ["apps/daemon/src/spawned.ts", ["const y = 2;"]],
+      ["apps/daemon/test/run.test.ts", ["Bun.spawn(['x'])"]],
+    ]);
+    const heads: Record<string, string> = {
+      "apps/daemon/src/run.ts": 'const p = Bun.spawn(["git", path]);',
+      "apps/daemon/src/perm.ts": "export const z = 3;",
+      "apps/daemon/src/plain.ts": "export const x = 1;",
+    };
+    const already = [{ path: "apps/daemon/src/spawned.ts", why: ["spawn"] }];
+    expect(riskyEdits(already, removed, (path) => heads[path] ?? null)).toEqual([
+      { path: "apps/daemon/src/perm.ts", why: ["removes permission"] },
+      { path: "apps/daemon/src/run.ts", why: ["edits spawn code"] },
+    ]);
+  });
+
   test("risky files that no commit of the log touches need a review all the same (#273)", () => {
     const risky = [{ path: "apps/daemon/src/run.ts", why: ["spawn"] }];
     expect(securityProblem(risky, [commit("c", ["docs/x.md"], "an old review")]) ?? "").toContain(
@@ -314,7 +384,12 @@ describe("security-gate", () => {
 });
 
 /** A fake git for the gate: each command's answer, by its subcommand. */
-function fakeGit(answers: { diff?: string | null; log?: string | null; base?: string | null }) {
+function fakeGit(answers: {
+  diff?: string | null;
+  log?: string | null;
+  base?: string | null;
+  show?: Record<string, string>;
+}) {
   const calls: string[][] = [];
   const git = (args: string[]): string | null => {
     calls.push(args);
@@ -327,6 +402,7 @@ function fakeGit(answers: { diff?: string | null; log?: string | null; base?: st
     if (sub === "merge-base") return "base0\n";
     if (sub === "diff") return answers.diff === undefined ? "" : answers.diff;
     if (sub === "log") return answers.log === undefined ? "" : answers.log;
+    if (sub === "show") return answers.show?.[(args.at(-1) ?? "").replace(/^HEAD:/, "")] ?? null;
     return null;
   };
   return { git, calls };
@@ -386,5 +462,21 @@ describe("security-gate: end to end", () => {
     expect(unreviewed.message ?? "").toContain("apps/daemon/src/run.ts (spawn)");
     const reviewed = securityVerdict(fakeGit({ diff: RISKY_DIFF, log: log("no finding") }).git);
     expect(reviewed).toEqual({ verdict: "0", message: null });
+  });
+
+  test("a removed check in a file whose code still spawns makes the verdict unreviewed (#284)", () => {
+    const diff = [
+      "diff --git a/apps/daemon/src/run.ts b/apps/daemon/src/run.ts",
+      "+++ b/apps/daemon/src/run.ts",
+      "@@ -3 +2,0 @@",
+      '-if (!allowed(path)) throw new Error("refused");',
+    ].join("\n");
+    const log = "\x1ea1\x1f\n\napps/daemon/src/run.ts\n";
+    const show = { "apps/daemon/src/run.ts": 'const p = Bun.spawn(["git", path]);' };
+    const { git, calls } = fakeGit({ diff, log, show });
+    const verdict = securityVerdict(git);
+    expect(verdict.verdict).toBe("unreviewed");
+    expect(verdict.message ?? "").toContain("apps/daemon/src/run.ts (edits spawn code)");
+    expect(calls.find((c) => c.includes("show"))).toEqual(["show", "HEAD:apps/daemon/src/run.ts"]);
   });
 });

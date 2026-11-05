@@ -174,6 +174,23 @@ const SENSITIVE_PATHS: [string, RegExp[]][] = [
 /** Whether any of these patterns matches. */
 const any = (patterns: RegExp[], text: string) => patterns.some((pattern) => pattern.test(text));
 
+/** The removed lines of each file in a `git diff -U0` output (#284). */
+export function removedLines(_diff: string): Map<string, string[]> {
+  return new Map();
+}
+
+/**
+ * The files the added lines did not make risky whose removed lines are risky, or whose code that
+ * stays (read from HEAD) is: removing a check in front of a spawn needs a review too (#284).
+ */
+export function riskyEdits(
+  _risky: RiskyFile[],
+  _removed: Map<string, string[]>,
+  _read: (path: string) => string | null,
+): RiskyFile[] {
+  return [];
+}
+
 /** The changed source files (never a test) in a risk area, sorted by path. */
 export function riskyFiles(added: Map<string, string[]>): RiskyFile[] {
   const risky: RiskyFile[] = [];
