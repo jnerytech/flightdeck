@@ -33,9 +33,10 @@ const baseline = existsSync(BASELINE)
   ? readFileSync(BASELINE, "utf8").split("\n").filter(Boolean)
   : [];
 const lost = removed(baseline, current);
+const gone = lost.map((l) => `  ${l}`).join("\n");
 console.log(
   lost.length === 0
     ? `protocol-surface: OK (${baseline.length} baseline line(s) kept)`
-    : `protocol-surface: ${lost.length} line(s) of the release baseline are gone:\n${lost.map((l) => `  ${l}`).join("\n")}`,
+    : `protocol-surface: ${lost.length} line(s) of the release baseline are gone:\n${gone}`,
 );
 process.exit(lost.length === 0 ? 0 : 1);

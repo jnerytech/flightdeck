@@ -9,13 +9,18 @@ export interface SdkSlashCommand {
   builtin?: boolean;
 }
 
+/** The SDK marks Claude Code's own; an MCP prompt is named for its server; the rest are skills. */
+function kindOf(command: SdkSlashCommand): SlashCommandInfo["kind"] {
+  if (command.builtin) return "builtin";
+  return command.name.startsWith("mcp__") ? "mcp" : "skill";
+}
+
 /** The commands of a session as the app lists them: with a description and a kind. */
 export function describeCommands(commands: readonly SdkSlashCommand[]): SlashCommandInfo[] {
   return commands.map((command) => ({
     name: command.name,
     description: command.description,
     ...(command.argumentHint ? { argumentHint: command.argumentHint } : {}),
-    // The SDK marks Claude Code's own; an MCP prompt is named for its server; the rest are skills.
-    kind: command.builtin ? "builtin" : command.name.startsWith("mcp__") ? "mcp" : "skill",
+    kind: kindOf(command),
   }));
 }

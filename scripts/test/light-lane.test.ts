@@ -78,7 +78,7 @@ describe("light-lane", () => {
     );
     expect(await runInLane(["tsc"], l.deps)).toBe(3);
     expect(l.sleeps()).toBe(2);
-    expect(l.logs.filter((line) => line.includes("light lane busy")).length).toBe(1);
+    expect(l.logs.filter((line) => line.includes("light lane busy"))).toHaveLength(1);
     expect(l.logs.join("\n")).toContain("s200: bun run typecheck");
     expect(l.logs.join("\n")).toContain("s201: biome check .");
     expect(l.ran[0]?.holding).toEqual(["/t/lane-1.lock"]);
@@ -110,6 +110,6 @@ describe("light-lane", () => {
     }
     expect(await runInLane(["tsc"], l.deps)).toBe(3);
     expect(l.logs.join("\n")).toContain("running without it");
-    expect(l.ran.length).toBe(1);
+    expect(l.ran).toHaveLength(1);
   });
 });

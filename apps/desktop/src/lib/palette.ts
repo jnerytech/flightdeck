@@ -239,6 +239,34 @@ export function paletteSections(
     return { id, label, detail, target, actions: [], ...(keys ? { shortcut: keys } : {}) };
   };
   const oldest = options.oldest;
+  const decideActions = () => {
+    if (!oldest) return [];
+    if (oldest.opens) {
+      return [
+        action("decide:open", t("palette.openOldest", { what: oldest.text }), {
+          kind: "decide-oldest",
+          decision: "approve",
+        }),
+      ];
+    }
+    return [
+      action(
+        "decide:approve",
+        t("palette.approveOldest", { what: oldest.text }),
+        { kind: "decide-oldest", decision: "approve" },
+        undefined,
+        "A",
+      ),
+      action(
+        "decide:deny",
+        t("palette.denyOldest", { what: oldest.text }),
+        { kind: "decide-oldest", decision: "deny" },
+        undefined,
+        "N",
+      ),
+    ];
+  };
+  const oldestActions = decideActions();
   const actions = [
     ...online.map((host) =>
       action(`new:${host.id}`, t("palette.newSessionIn", { host: host.name }), {
@@ -278,31 +306,7 @@ export function paletteSections(
       undefined,
       "go-projects",
     ),
-    ...(oldest?.opens
-      ? [
-          action("decide:open", t("palette.openOldest", { what: oldest.text }), {
-            kind: "decide-oldest",
-            decision: "approve",
-          }),
-        ]
-      : oldest
-        ? [
-            action(
-              "decide:approve",
-              t("palette.approveOldest", { what: oldest.text }),
-              { kind: "decide-oldest", decision: "approve" },
-              undefined,
-              "A",
-            ),
-            action(
-              "decide:deny",
-              t("palette.denyOldest", { what: oldest.text }),
-              { kind: "decide-oldest", decision: "deny" },
-              undefined,
-              "N",
-            ),
-          ]
-        : []),
+    ...oldestActions,
     action("theme", t("palette.toggleTheme"), { kind: "toggle-theme" }),
     ...(options.modeSwitch
       ? [

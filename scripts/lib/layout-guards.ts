@@ -79,10 +79,17 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   const rectOf = (el: Element) => el.getBoundingClientRect();
   const clips = (value: string) => value === "hidden" || value === "clip";
   const scrolls = (value: string) => value === "auto" || value === "scroll";
+  const outsideX = (box: DOMRect, room: DOMRect) =>
+    box.right > room.right + 2 || box.left < room.left - 2;
+  const outsideY = (box: DOMRect, room: DOMRect) =>
+    box.bottom > room.bottom + 2 || box.top < room.top - 2;
+
+  // The rules are nested functions on purpose: this body runs in the page and stays self-contained.
 
   // 1. The page scrolls sideways: the widest element is the culprit.
-  const root = document.documentElement;
-  if (root.scrollWidth > root.clientWidth) {
+  const checkSideways = () => {
+    const root = document.documentElement;
+    if (root.scrollWidth <= root.clientWidth) return;
     let widest: Element | null = null;
     let right = 0;
     for (const el of document.querySelectorAll("body *")) {
@@ -97,50 +104,49 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
       widest ? pathOf(widest) : "page",
       `scrollWidth ${root.scrollWidth} > ${root.clientWidth}; ends at ${Math.round(right)}`,
     );
-  }
+  };
 
-  for (const el of document.querySelectorAll("body *")) {
-    if (hidden(el)) continue;
-    const style = getComputedStyle(el);
-    const box = rectOf(el);
-    const tiny = box.width <= 2 || box.height <= 2;
-    const floats = style.position === "fixed";
-    // 2. Cut by an ancestor that clips on an axis no ancestor between them scrolls.
-    if (!floats && box.width > 0 && box.height > 0) {
-      let xOpen = true;
-      let yOpen = true;
-      for (let up = el.parentElement; up && up !== document.body; up = up.parentElement) {
-        const parent = getComputedStyle(up);
-        if (parent.position === "fixed") break;
-        const room = rectOf(up);
-        if (xOpen && scrolls(parent.overflowX)) xOpen = false;
-        if (yOpen && scrolls(parent.overflowY)) yOpen = false;
-        if (
-          xOpen &&
-          clips(parent.overflowX) &&
-          (box.right > room.right + 2 || box.left < room.left - 2)
-        ) {
-          add("clipped", pathOf(el), `cut sideways by ${pathOf(up)}`);
-          break;
-        }
-        if (
-          yOpen &&
-          clips(parent.overflowY) &&
-          (box.bottom > room.bottom + 2 || box.top < room.top - 2)
-        ) {
-          add("clipped", pathOf(el), `cut vertically by ${pathOf(up)}`);
-          break;
-        }
+  const cutBy = (
+    parent: CSSStyleDeclaration,
+    box: DOMRect,
+    room: DOMRect,
+    xOpen: boolean,
+    yOpen: boolean,
+  ) => {
+    if (xOpen && clips(parent.overflowX) && outsideX(box, room)) return "sideways";
+    if (yOpen && clips(parent.overflowY) && outsideY(box, room)) return "vertically";
+    return null;
+  };
+
+  // 2. Cut by an ancestor that clips on an axis no ancestor between them scrolls.
+  const checkClipped = (el: Element, box: DOMRect) => {
+    let xOpen = true;
+    let yOpen = true;
+    for (let up = el.parentElement; up && up !== document.body; up = up.parentElement) {
+      const parent = getComputedStyle(up);
+      if (parent.position === "fixed") return;
+      const room = rectOf(up);
+      if (xOpen && scrolls(parent.overflowX)) xOpen = false;
+      if (yOpen && scrolls(parent.overflowY)) yOpen = false;
+      const how = cutBy(parent, box, room, xOpen, yOpen);
+      if (how) {
+        add("clipped", pathOf(el), `cut ${how} by ${pathOf(up)}`);
+        return;
       }
     }
-    // 3. Content squeezed under 8 px tall (a screen-reader-only box is 1 px on purpose).
+  };
+
+  // 3. Content squeezed under 8 px tall (a screen-reader-only box is 1 px on purpose).
+  const checkCollapsed = (el: Element, box: DOMRect, tiny: boolean) => {
     const hasContent = el.children.length > 0 || (el.textContent ?? "").trim() !== "";
-    if (!tiny || box.height < 8) {
-      if (box.height < 8 && hasContent && box.width > 8 && !el.hasAttribute("aria-hidden")) {
-        add("collapsed", pathOf(el), `${Math.round(box.height)} px tall`);
-      }
+    const squeezed = box.height < 8 && hasContent && box.width > 8;
+    if ((!tiny || box.height < 8) && squeezed && !el.hasAttribute("aria-hidden")) {
+      add("collapsed", pathOf(el), `${Math.round(box.height)} px tall`);
     }
-    // 4. Text cut with an ellipsis down to under 48 px.
+  };
+
+  // 4. Text cut with an ellipsis down to under 48 px.
+  const checkTruncated = (el: Element, style: CSSStyleDeclaration) => {
     if (
       style.textOverflow === "ellipsis" &&
       el.scrollWidth > el.clientWidth + 1 &&
@@ -148,48 +154,68 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     ) {
       add("truncated", pathOf(el), `${el.clientWidth} px of ${el.scrollWidth}`);
     }
-  }
+  };
 
   // 5. What asks for attention is on screen without scrolling.
-  for (const el of document.querySelectorAll('[role="alert"], [data-attention]')) {
-    if (hidden(el)) continue;
-    const box = rectOf(el);
-    if (
-      box.bottom > window.innerHeight ||
-      box.top < 0 ||
-      box.right > window.innerWidth ||
-      box.left < 0
-    ) {
-      add(
-        "attention",
-        pathOf(el),
-        `box ${Math.round(box.left)},${Math.round(box.top)} to ${Math.round(box.right)},${Math.round(box.bottom)}`,
-      );
-    }
-  }
-
-  // 6. Bars that must not grow.
-  for (const bar of options.bars ?? []) {
-    for (const el of document.querySelectorAll(bar.selector)) {
-      const height = rectOf(el).height;
-      if (!hidden(el) && height > bar.maxHeight) {
-        add("growth", pathOf(el), `${Math.round(height)} px tall, at most ${bar.maxHeight}`);
+  const checkAttention = () => {
+    for (const el of document.querySelectorAll('[role="alert"], [data-attention]')) {
+      if (hidden(el)) continue;
+      const box = rectOf(el);
+      if (
+        box.bottom > window.innerHeight ||
+        box.top < 0 ||
+        box.right > window.innerWidth ||
+        box.left < 0
+      ) {
+        add(
+          "attention",
+          pathOf(el),
+          `box ${Math.round(box.left)},${Math.round(box.top)} to ${Math.round(box.right)},${Math.round(box.bottom)}`,
+        );
       }
     }
-  }
+  };
+
+  // 6. Bars that must not grow.
+  const checkBars = () => {
+    for (const bar of options.bars ?? []) {
+      for (const el of document.querySelectorAll(bar.selector)) {
+        const height = rectOf(el).height;
+        if (!hidden(el) && height > bar.maxHeight) {
+          add("growth", pathOf(el), `${Math.round(height)} px tall, at most ${bar.maxHeight}`);
+        }
+      }
+    }
+  };
 
   // 7. Key regions: a contract, so a small one is a finding and a required one must exist.
-  for (const region of options.regions ?? []) {
-    const el = document.querySelector(`[data-slot="${region.slot}"]`);
-    if (!el || hidden(el)) {
-      if (region.required) add("region-missing", region.slot, "not on the page");
-      continue;
+  const checkRegions = () => {
+    for (const region of options.regions ?? []) {
+      const el = document.querySelector(`[data-slot="${region.slot}"]`);
+      if (!el || hidden(el)) {
+        if (region.required) add("region-missing", region.slot, "not on the page");
+        continue;
+      }
+      const box = rectOf(el);
+      if (box.height < (region.minHeight ?? 0) || box.width < (region.minWidth ?? 0)) {
+        add("region-small", pathOf(el), `${Math.round(box.width)} x ${Math.round(box.height)} px`);
+      }
     }
+  };
+
+  checkSideways();
+  for (const el of document.querySelectorAll("body *")) {
+    if (hidden(el)) continue;
+    const style = getComputedStyle(el);
     const box = rectOf(el);
-    if (box.height < (region.minHeight ?? 0) || box.width < (region.minWidth ?? 0)) {
-      add("region-small", pathOf(el), `${Math.round(box.width)} x ${Math.round(box.height)} px`);
-    }
+    const tiny = box.width <= 2 || box.height <= 2;
+    if (style.position !== "fixed" && box.width > 0 && box.height > 0) checkClipped(el, box);
+    checkCollapsed(el, box, tiny);
+    checkTruncated(el, style);
   }
+  checkAttention();
+  checkBars();
+  checkRegions();
   return found;
 }
 

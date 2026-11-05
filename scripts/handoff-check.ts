@@ -10,7 +10,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { runHandoff, stampProblem } from "./lib/handoff.ts";
 
-const git = (args: string[]) => spawnSync("git", args, { encoding: "utf8" }).stdout?.trim() ?? "";
+const git = (args: string[]) => spawnSync("git", args, { encoding: "utf8" }).stdout?.trim() ?? ""; // NOSONAR: git from the PATH of the developer running the script
 const root = git(["rev-parse", "--show-toplevel"]) || resolve(import.meta.dir, "..");
 const stampFile = resolve(root, git(["rev-parse", "--git-path", "flightdeck-handoff"]));
 const head = git(["rev-parse", "HEAD"]);

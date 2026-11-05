@@ -108,7 +108,8 @@ export function PromptMenu(props: {
         className="flex min-h-0 flex-col overflow-y-auto p-1 text-sm"
       >
         {sections.map((section) => {
-          const heading = `${t(`session.promptMenu.${section.group}`)} (${section.items.length})`;
+          const groupName = t(`session.promptMenu.${section.group}`);
+          const heading = `${groupName} (${section.items.length})`;
           return (
             // biome-ignore lint/a11y/useSemanticElements: a fieldset is a form control group; this one groups options of a listbox
             <div key={section.group} role="group" aria-label={heading}>
