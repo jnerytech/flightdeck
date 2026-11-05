@@ -64,6 +64,18 @@ describe("selo-barra-loja: the badge follows the bell (issue #233)", () => {
     expect(w.badges).toEqual([2]);
   });
 
+  test("when the window comes back (a tray restore may have dropped the badge) it is sent again", async () => {
+    const w = world([entry("e1", false, "g1"), entry("e2", false, "g2")]);
+    await w.store.init();
+    expect(w.badges).toEqual([2]);
+    globalThis.dispatchEvent(new Event("focus"));
+    expect(w.badges).toEqual([2, 2]);
+    w.store.inboxMarkAllRead();
+    globalThis.dispatchEvent(new Event("focus"));
+    // Nothing unread: nothing to bring back.
+    expect(w.badges).toEqual([2, 2, 0]);
+  });
+
   test("a start with nothing unread tells nothing", async () => {
     const w = world([entry("e1", true)]);
     await w.store.init();
