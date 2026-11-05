@@ -103,11 +103,88 @@ function tabShortcut(store: AppStore, e: KeyboardEvent): boolean {
     if (e.shiftKey) tabs.previous();
     else tabs.next();
   } else if (/^[1-9]$/.test(key) && !e.shiftKey) tabs.goto(Number(key));
-  else if ((key === "PageUp" || key === "PageDown") && e.shiftKey) {
-    const index = tabs.tabs.findIndex((tab) => tab.id === tabs.activeId);
-    tabs.move(tabs.activeId, index + (key === "PageUp" ? -1 : 1));
-  } else return false;
+  else if ((key === "PageUp" || key === "PageDown") && e.shiftKey) moveActiveTab(tabs, key);
+  else return false;
   return true;
+}
+
+/** Ctrl+Shift+PageUp / PageDown: the active tab moves one place left or right. */
+function moveActiveTab(tabs: AppStore["tabs"], key: "PageUp" | "PageDown"): void {
+  const index = tabs.tabs.findIndex((tab) => tab.id === tabs.activeId);
+  tabs.move(tabs.activeId, index + (key === "PageUp" ? -1 : 1));
+}
+
+/** What a Ctrl+K entry does: open a terminal, flip a setting, start a card, or go to its screen. */
+function runPaletteTarget(
+  store: AppStore,
+  target: PaletteTarget,
+  ui: { lang: string; go(route: Route): void; showHelp(): void },
+): void {
+  switch (target.kind) {
+    case "terminal":
+      if (store.embeddedTerminal(target.hostId))
+        void store.openClaudeHere(target.hostId, target.target);
+      else void store.openInTerminal(target.hostId, target.target);
+      return;
+    case "new-terminal":
+      void store.openTerminal(target.hostId);
+      return;
+    case "toggle-theme":
+      store.theme.toggle();
+      return;
+    case "switch-language":
+      store.i18n.setLang(ui.lang === "pt-BR" ? "en" : "pt-BR");
+      return;
+    case "switch-client":
+      store.setClientSelection(target.clientId);
+      return;
+    case "snippet":
+      store.chooseSnippet({ hostId: target.hostId, snippetId: target.snippetId });
+      return;
+    case "pull-link":
+      void store.openPrLink(target.url).then((route) => {
+        if (route) ui.go(route);
+      });
+      return;
+    case "start-card":
+      void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });
+      return;
+    case "shortcuts":
+      ui.showHelp();
+      return;
+    case "decide-oldest":
+      store.decideOldest(target.decision);
+      return;
+    default:
+      ui.go(paletteRoute(target));
+  }
+}
+
+/** Where each go-to chord (`g` then a letter) leads. */
+const CHORD_ROUTES: Record<string, Route | undefined> = {
+  "go-sessions": { name: "hub" },
+  "go-needs-you": { name: "needs-you" },
+  "go-projects": { name: "all-projects" },
+  "go-costs": { name: "costs" },
+  "go-settings": { name: "settings" },
+};
+
+/** Ctrl+K (search), the tab shortcuts, Alt+Shift+C (next client) and Alt+←/→ (history). */
+function windowShortcut(store: AppStore, router: AppStore["router"], e: KeyboardEvent): void {
+  const command = e.ctrlKey || e.metaKey;
+  if (command && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    store.openSearch();
+  } else if (command && tabShortcut(store, e)) {
+    e.preventDefault();
+  } else if (e.altKey && e.shiftKey && e.key.toLowerCase() === "c") {
+    e.preventDefault();
+    store.nextClient();
+  } else if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+    e.preventDefault();
+    if (e.key === "ArrowLeft") router.back();
+    else router.forward();
+  }
 }
 
 export function App({ store }: { store: AppStore }) {
@@ -213,24 +290,11 @@ export function App({ store }: { store: AppStore }) {
       chord.current = step.state;
       if (step.consumed) e.preventDefault();
       if (step.action === "help") setHelp(true);
-      else if (step.action === "go-sessions") router.push({ name: "hub" });
-      else if (step.action === "go-needs-you") router.push({ name: "needs-you" });
-      else if (step.action === "go-projects") router.push({ name: "all-projects" });
-      else if (step.action === "go-costs") router.push({ name: "costs" });
-      else if (step.action === "go-settings") router.push({ name: "settings" });
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        store.openSearch();
-      } else if ((e.ctrlKey || e.metaKey) && tabShortcut(store, e)) {
-        e.preventDefault();
-      } else if (e.altKey && e.shiftKey && e.key.toLowerCase() === "c") {
-        e.preventDefault();
-        store.nextClient();
-      } else if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
-        e.preventDefault();
-        if (e.key === "ArrowLeft") router.back();
-        else router.forward();
+      else if (step.action) {
+        const to = CHORD_ROUTES[step.action];
+        if (to) router.push(to);
       }
+      windowShortcut(store, router, e);
     };
     // Ctrl+click and the middle button open what was clicked in a new tab: the navigation of
     // that event goes to a new tab (the middle button fires no click, so it clicks for itself).
@@ -300,27 +364,7 @@ export function App({ store }: { store: AppStore }) {
   /** An entry or action of the Ctrl+K palette: its screen, or an action in place. */
   const goTo = (target: PaletteTarget) => {
     store.closeSearch();
-    if (target.kind === "terminal") {
-      if (store.embeddedTerminal(target.hostId))
-        void store.openClaudeHere(target.hostId, target.target);
-      else void store.openInTerminal(target.hostId, target.target);
-    } else if (target.kind === "new-terminal") void store.openTerminal(target.hostId);
-    else if (target.kind === "toggle-theme") store.theme.toggle();
-    else if (target.kind === "switch-language") {
-      store.i18n.setLang(lang === "pt-BR" ? "en" : "pt-BR");
-    } else if (target.kind === "switch-client") {
-      store.setClientSelection(target.clientId);
-    } else if (target.kind === "snippet") {
-      store.chooseSnippet({ hostId: target.hostId, snippetId: target.snippetId });
-    } else if (target.kind === "pull-link") {
-      void store.openPrLink(target.url).then((route) => {
-        if (route) go(route);
-      });
-    } else if (target.kind === "start-card") {
-      void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });
-    } else if (target.kind === "shortcuts") setHelp(true);
-    else if (target.kind === "decide-oldest") store.decideOldest(target.decision);
-    else go(paletteRoute(target));
+    runPaletteTarget(store, target, { lang, go, showHelp: () => setHelp(true) });
   };
 
   // A host set to simple (or chosen so) shows simple mode in place of the full frame.

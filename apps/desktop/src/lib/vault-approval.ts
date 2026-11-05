@@ -27,6 +27,38 @@ interface Grant {
 }
 
 /**
+ * The question to wait for: one in flight for the same run is shared, so a run asks once at a time;
+ * a request that needs holding gets a question of its own (one hold, one request).
+ */
+function questionFor(
+  ask: () => Promise<VaultAnswer | null>,
+  needsHold: boolean,
+  asking: Map<string, Promise<VaultAnswer | null>>,
+  runKey: string,
+): Promise<VaultAnswer | null> {
+  if (needsHold) return ask();
+  const inFlight = asking.get(runKey);
+  if (inFlight) return inFlight;
+  const question = ask().finally(() => asking.delete(runKey));
+  asking.set(runKey, question);
+  return question;
+}
+
+/** A run's earlier approval covers this request: it is not held, in time, and the secret not yet delivered. */
+function coveredByGrant(
+  grant: Grant,
+  request: { needsHold?: boolean; secretId: string },
+  nowMs: number,
+): boolean {
+  return !request.needsHold && nowMs < grant.until && !grant.delivered.has(request.secretId);
+}
+
+/** An action that never asks, or that asked once this session and is not set to always. */
+function alreadyApproved(approval: string | undefined, askedBefore: boolean): boolean {
+  return approval === "never" || (approval !== "always" && askedBefore);
+}
+
+/**
  * The phase 17 policy: a request for an action or a free command is put to the user, unless the
  * action says `never`, or says `first-per-session` and the user already approved it. A free
  * command is asked every time. Anything else (a request that names no action) is denied.
@@ -64,27 +96,16 @@ export function actionPolicy(deps: {
 
     const grant = grants.get(runKey);
     // A request that needs holding is never covered by another's approval: each one is held.
-    if (
-      grant &&
-      !request.needsHold &&
-      deps.now() < grant.until &&
-      !grant.delivered.has(request.secretId)
-    ) {
+    if (grant && coveredByGrant(grant, request, deps.now())) {
       grant.delivered.add(request.secretId);
       return approved({ ...grant.answer, scope: "once" });
     }
-    if (!ruled && !free && request.approval === "never") return { kind: "deliver" };
-    if (!ruled && !free && request.approval !== "always" && remembered.has(actionKey)) {
+    if (!ruled && !free && alreadyApproved(request.approval, remembered.has(actionKey))) {
       return { kind: "deliver" };
     }
 
     const ask = () => deps.ask(context).then((answer) => (answer === true ? ONCE : answer || null));
-    // A request that needs holding gets a question of its own: one hold, one request.
-    let question = request.needsHold ? undefined : asking.get(runKey);
-    if (!question) {
-      question = request.needsHold ? ask() : ask().finally(() => asking.delete(runKey));
-      if (!request.needsHold) asking.set(runKey, question);
-    }
+    const question = questionFor(ask, request.needsHold === true, asking, runKey);
     const answer = await question;
     if (!answer) return { kind: "deny", reason: "you denied the request" };
     if (!ruled && !free && request.approval !== "always") remembered.add(actionKey);

@@ -21,6 +21,7 @@ import {
   type QuotaState,
   type RuleIssue,
   type RunState,
+  type ServerMessage,
   type SessionSubscribeResult,
   type TeamsUpdatedFrame,
   type TerminalData,
@@ -244,40 +245,7 @@ export class HostConnection {
       this.lastHeard = (this.opts.watchdog ?? REAL_WATCHDOG).now();
       this.suspect = false;
       const message = parseServerMessage(String(msg.data));
-      if (message.type === "event") return this.opts.onEvent(message);
-      if (message.type === "card.updated") return this.opts.onCardUpdated?.(message.card);
-      if (message.type === "history.changed") return this.opts.onHistoryChanged?.(message);
-      if (message.type === "askpass.request") return this.opts.onAskpass?.(message);
-      if (message.type === "vault.request") return this.opts.onVaultRequest?.(message);
-      if (message.type === "vault.used") return this.opts.onVaultUsed?.(message);
-      if (message.type === "vault.alert") return this.opts.onVaultAlert?.(message);
-      if (message.type === "teams.updated") return this.opts.onTeams?.(message);
-      if (message.type === "messaging.alert") return this.opts.onMessagingAlert?.(message);
-      if (message.type === "watch.updated") return this.opts.onWatch?.(message);
-      if (message.type === "messages.relay" || message.type === "messages.updated") {
-        return this.opts.onMessages?.(message);
-      }
-      if (message.type === "run.updated") return this.opts.onRunUpdated?.(message.run);
-      if (message.type === "runenv.updated") return this.opts.onRunEnvUpdated?.(message.state);
-      if (message.type === "quota.updated") {
-        return this.opts.onQuotaUpdated?.({ windows: message.windows, pauseAt: message.pauseAt });
-      }
-      if (message.type === "account.updated") {
-        const { type: _type, ...state } = message;
-        return this.opts.onAccountUpdated?.(state);
-      }
-      if (message.type === "budget.updated") return this.opts.onBudgetUpdated?.(message);
-      if (message.type === "changes.updated") return this.opts.onChangesUpdated?.(message);
-      if (
-        message.type === "terminal.data" ||
-        message.type === "terminal.exited" ||
-        message.type === "terminal.resync"
-      ) {
-        return this.opts.onTerminal?.(message);
-      }
-      if (message.type === "external.updated" || message.type === "external.permission") {
-        return this.opts.onExternal?.(message);
-      }
+      if (this.forward(message)) return;
       if (message.type === "ping") {
         if (message.lastRttMs !== undefined) this.latencyMs = message.lastRttMs;
         ws.send(JSON.stringify({ type: "pong", id: message.id }));
@@ -294,6 +262,78 @@ export class HostConnection {
       }
     });
     ws.addEventListener("close", (event) => this.onClose(ws, event.code));
+  }
+
+  /** Hands a pushed message to the callback that listens for its type; false for the ones handled here (ping, ack). */
+  private forward(message: ServerMessage): boolean {
+    const o = this.opts;
+    switch (message.type) {
+      case "event":
+        o.onEvent(message);
+        return true;
+      case "card.updated":
+        o.onCardUpdated?.(message.card);
+        return true;
+      case "history.changed":
+        o.onHistoryChanged?.(message);
+        return true;
+      case "askpass.request":
+        o.onAskpass?.(message);
+        return true;
+      case "vault.request":
+        o.onVaultRequest?.(message);
+        return true;
+      case "vault.used":
+        o.onVaultUsed?.(message);
+        return true;
+      case "vault.alert":
+        o.onVaultAlert?.(message);
+        return true;
+      case "teams.updated":
+        o.onTeams?.(message);
+        return true;
+      case "messaging.alert":
+        o.onMessagingAlert?.(message);
+        return true;
+      case "watch.updated":
+        o.onWatch?.(message);
+        return true;
+      case "messages.relay":
+      case "messages.updated":
+        o.onMessages?.(message);
+        return true;
+      case "run.updated":
+        o.onRunUpdated?.(message.run);
+        return true;
+      case "runenv.updated":
+        o.onRunEnvUpdated?.(message.state);
+        return true;
+      case "quota.updated":
+        o.onQuotaUpdated?.({ windows: message.windows, pauseAt: message.pauseAt });
+        return true;
+      case "account.updated": {
+        const { type: _type, ...state } = message;
+        o.onAccountUpdated?.(state);
+        return true;
+      }
+      case "budget.updated":
+        o.onBudgetUpdated?.(message);
+        return true;
+      case "changes.updated":
+        o.onChangesUpdated?.(message);
+        return true;
+      case "terminal.data":
+      case "terminal.exited":
+      case "terminal.resync":
+        o.onTerminal?.(message);
+        return true;
+      case "external.updated":
+      case "external.permission":
+        o.onExternal?.(message);
+        return true;
+      default:
+        return false;
+    }
   }
 
   /**

@@ -105,20 +105,22 @@ export function mergePeriods(periods: readonly RoiPeriod[]): RoiPeriod {
   return merged;
 }
 
-export function figures(period: RoiPeriod, money: RoiMoney): Figures {
-  const agentsCostUsd = period.costUsd;
-  const planShareUsd = money.planShareUsd ?? 0;
-  // Each decision counts at most the cap: the totals give the most it can come to.
-  const reviewSeconds = Math.min(period.waitedSeconds, period.decisions * money.reviewCapSeconds);
-  const reviewCostUsd =
-    money.countReview && money.rate !== null ? (reviewSeconds / 3600) * money.rate : 0;
-  const costUsd = agentsCostUsd + planShareUsd + reviewCostUsd;
-  const hoursValue = money.rate === null || period.hours === 0 ? null : period.hours * money.rate;
-  const valueUsd =
-    hoursValue === null && money.billed === null ? null : (hoursValue ?? 0) + (money.billed ?? 0);
-  const roi = costUsd > 0 && valueUsd !== null ? (valueUsd - costUsd) / costUsd : null;
-  const costPerCard = period.cards > 0 ? costUsd / period.cards : null;
-  const costPerPr = period.prsMerged > 0 ? costUsd / period.prsMerged : null;
+/** The numbers `derivationOf` shows the steps of. */
+interface Derived {
+  costUsd: number;
+  agentsCostUsd: number;
+  planShareUsd: number;
+  reviewCostUsd: number;
+  costPerCard: number | null;
+  costPerPr: number | null;
+  valueUsd: number | null;
+  roi: number | null;
+}
+
+/** The lines that show how the figures were made, in the order a person reads them. */
+function derivationOf(period: RoiPeriod, money: RoiMoney, d: Derived): Figures["derivation"] {
+  const { costUsd, agentsCostUsd, planShareUsd, reviewCostUsd, costPerCard, costPerPr } = d;
+  const { valueUsd, roi } = d;
   const derivation: Figures["derivation"] = [
     {
       key: "roiUi.derive.cost",
@@ -163,6 +165,33 @@ export function figures(period: RoiPeriod, money: RoiMoney): Figures {
       vars: { value: money2(valueUsd), cost: money2(costUsd), roi: roi.toFixed(1) },
     });
   }
+  return derivation;
+}
+
+export function figures(period: RoiPeriod, money: RoiMoney): Figures {
+  const agentsCostUsd = period.costUsd;
+  const planShareUsd = money.planShareUsd ?? 0;
+  // Each decision counts at most the cap: the totals give the most it can come to.
+  const reviewSeconds = Math.min(period.waitedSeconds, period.decisions * money.reviewCapSeconds);
+  const reviewCostUsd =
+    money.countReview && money.rate !== null ? (reviewSeconds / 3600) * money.rate : 0;
+  const costUsd = agentsCostUsd + planShareUsd + reviewCostUsd;
+  const hoursValue = money.rate === null || period.hours === 0 ? null : period.hours * money.rate;
+  const valueUsd =
+    hoursValue === null && money.billed === null ? null : (hoursValue ?? 0) + (money.billed ?? 0);
+  const roi = costUsd > 0 && valueUsd !== null ? (valueUsd - costUsd) / costUsd : null;
+  const costPerCard = period.cards > 0 ? costUsd / period.cards : null;
+  const costPerPr = period.prsMerged > 0 ? costUsd / period.prsMerged : null;
+  const derivation = derivationOf(period, money, {
+    costUsd,
+    agentsCostUsd,
+    planShareUsd,
+    reviewCostUsd,
+    costPerCard,
+    costPerPr,
+    valueUsd,
+    roi,
+  });
   return {
     agentsCostUsd,
     planShareUsd,
@@ -196,16 +225,19 @@ export interface Comparison {
 /** Changes inside this share count as no change. */
 const SAME = 0.05;
 
+/** How the cost per item moved between two periods; null when either has none. */
+function movedBetween(now: number | null, before: number | null): Comparison["costPerItemMoved"] {
+  if (now === null || before === null) return null;
+  const ratio = before === 0 ? 0 : (now - before) / before;
+  if (Math.abs(ratio) <= SAME) return "same";
+  return ratio < 0 ? "lower" : "higher";
+}
+
 /** Did the team deliver more: the counts of cards done in the period against the one before. */
 export function compare(current: RoiPeriod, previous: RoiPeriod): Comparison {
   const costPerItem = current.cards > 0 ? current.costUsd / current.cards : null;
   const previousCostPerItem = previous.cards > 0 ? previous.costUsd / previous.cards : null;
-  let costPerItemMoved: Comparison["costPerItemMoved"] = null;
-  if (costPerItem !== null && previousCostPerItem !== null) {
-    const ratio =
-      previousCostPerItem === 0 ? 0 : (costPerItem - previousCostPerItem) / previousCostPerItem;
-    costPerItemMoved = Math.abs(ratio) <= SAME ? "same" : ratio < 0 ? "lower" : "higher";
-  }
+  const costPerItemMoved = movedBetween(costPerItem, previousCostPerItem);
   if (current.cards === 0 && previous.cards === 0) {
     return {
       verdict: "none",
