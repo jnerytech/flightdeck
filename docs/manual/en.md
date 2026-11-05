@@ -2899,10 +2899,17 @@ how a host looks, not what it can do: the sessions, the permissions and the file
 the chosen folder. Results go to a *Flightdeck results* folder next to your files. Simple mode hides
 things, it does not protect them: a person in full mode can do everything the host allows.
 
-**Switching.** In full mode, open a host's page and use the *Simple mode* panel: *Use simple mode on
-this host* is your own choice, kept in this app. *Make simple mode the default for this host* sets
-what the next person sees. *Lock this host to its mode* removes the switch for everyone: a locked
-host stays in its mode and *Show everything* is not offered. Unlock it from the same panel.
+**Switching.** In full mode, open a host's page and use the *Simple mode* panel. Its first lines say
+which mode the host opens in and whether it is locked. *Default mode* (*Full app* or *Simple mode*)
+sets what the next person sees; *Use simple mode on this host* is your own choice, kept in this app.
+The *Lock this host to its mode* switch removes the choice for everyone (it asks first); a locked
+host stays in its mode. Each change shows a message, and the host's row in the sidebar carries a
+*Simple* badge when it opens in simple mode and a lock when it is locked.
+
+**Getting out of simple mode.** Every simple screen ends its menu with *Full app* (it asks once).
+On a locked host the menu says to ask its admin to unlock it instead. **Ctrl+Shift+M**, the palette
+(*Switch to the full app*) and, in the full app, *Simple mode* in the sidebar's footer switch the
+mode too, keeping your tabs.
 
 **Your own templates.** A host can add tasks as Markdown files in `templates/` inside the daemon's
 data folder: a header with the title, icon, fields, preset and whether to plan first, then one

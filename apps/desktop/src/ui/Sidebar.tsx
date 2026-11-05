@@ -1,11 +1,13 @@
 import {
   ChevronDown,
   CircleAlert,
+  Lock,
   type LucideProps,
   MoreHorizontal,
   Plane,
   Plus,
   Search,
+  Sparkles,
   SunMoon,
   TriangleAlert,
 } from "lucide-react";
@@ -187,6 +189,8 @@ export function Sidebar(props: {
   /** The next navigation opens a new tab ("Abrir em nova aba"). */
   onNewTab(): void;
   onToggleTheme(): void;
+  /** Switches to simple mode; absent when the host in view does not let the person choose. */
+  onSimpleMode?(): void;
 }) {
   const { state, t, collapsed, go } = props;
   const here = props.route ? activeNav(props.route) : null;
@@ -435,6 +439,18 @@ export function Sidebar(props: {
                       <HostDot host={host} t={t} />
                       <span className="min-w-0 flex-1 truncate">{host.name}</span>
                     </button>
+                    {host.hostInfo?.ui?.mode === "simple" && (
+                      <span data-slot="host-mode-badge" className="host-mode-badge">
+                        {t("sidebar.hostSimple")}
+                      </span>
+                    )}
+                    {host.hostInfo?.ui?.locked === true && (
+                      <Lock
+                        role="img"
+                        aria-label={t("sidebar.hostLocked", { host: host.name })}
+                        className="size-3.5 shrink-0 text-muted-foreground"
+                      />
+                    )}
                     {host.hostInfo?.apiKeySanitized === false && (
                       <TriangleAlert
                         role="img"
@@ -564,6 +580,14 @@ export function Sidebar(props: {
           label={t("sidebar.theme")}
           onClick={props.onToggleTheme}
         />
+        {props.onSimpleMode && (
+          <NavButton
+            collapsed={collapsed}
+            icon={<Sparkles aria-hidden="true" className={icon} />}
+            label={t("sidebar.simpleMode")}
+            onClick={props.onSimpleMode}
+          />
+        )}
       </div>
       {renaming && (
         <RenameHostDialog

@@ -1273,6 +1273,26 @@ export class AppStore {
     return effectiveMode(this.state.uiChoices[hostId], host?.hostInfo?.ui);
   }
 
+  /** The host whose mode the window shows: the selected one, else the first that is online. */
+  uiHostId(): string | null {
+    const { hosts, selected } = this.state;
+    return (
+      hosts.find((h) => h.id === selected?.hostId)?.id ??
+      hosts.find((h) => h.status === "online")?.id ??
+      null
+    );
+  }
+
+  /** Switches the window between simple and full mode; false when the host is locked or none shows. */
+  toggleUiMode(): boolean {
+    const hostId = this.uiHostId();
+    if (!hostId) return false;
+    const now = this.uiMode(hostId);
+    if (!now.canSwitch) return false;
+    this.setUiChoice(hostId, now.mode === "simple" ? "full" : "simple");
+    return true;
+  }
+
   /** The person's choice for a host; `null` forgets it, so the host's default speaks again. */
   setUiChoice(hostId: string, mode: UiMode | null): void {
     saveChoice(this.platform.storage, hostId, mode);

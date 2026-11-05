@@ -2877,11 +2877,18 @@ editar a pasta escolhida. Os resultados vão para uma pasta *Flightdeck results*
 arquivos. O modo simples esconde, não protege: quem está no modo completo faz tudo o que o host
 permite.
 
-**Trocar de modo.** No modo completo, abra a página de um host e use o painel *Modo simples*:
-*Usar o modo simples neste host* é uma escolha sua, guardada neste app. *Tornar o modo simples o
-padrão deste host* define o que a próxima pessoa vê. *Travar este host no modo atual* tira a troca
-para todos: um host travado fica no modo dele e *Mostrar tudo* não aparece. Destrave pelo mesmo
-painel.
+**Trocar de modo.** No modo completo, abra a página de um host e use o painel *Modo simples*. As
+primeiras linhas dizem em que modo o host abre e se está travado. *Modo padrão* (*App completo* ou
+*Modo simples*) define o que a próxima pessoa vê; *Usar o modo simples neste host* é uma escolha
+sua, guardada neste app. A chave *Travar este host no modo atual* tira a escolha de todos (ela
+pergunta antes); um host travado fica no modo dele. Cada mudança mostra uma mensagem, e a linha do
+host na barra lateral ganha uma etiqueta *Simples* quando ele abre no modo simples e um cadeado
+quando está travado.
+
+**Sair do modo simples.** Toda tela simples termina o menu com *App completo* (pergunta uma vez). Num
+host travado, o menu diz para pedir a quem administra que libere. **Ctrl+Shift+M**, a paleta
+(*Mudar para o app completo*) e, no app completo, *Modo simples* no rodapé da barra lateral também
+trocam o modo, mantendo as suas abas.
 
 **Suas próprias tarefas.** Um host pode ter tarefas como arquivos Markdown na pasta `templates/` dos
 dados do daemon: um cabeçalho com título, ícone, campos, predefinição e se começa planejando, e uma
