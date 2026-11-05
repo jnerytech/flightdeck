@@ -77,7 +77,7 @@ export function NewSecretForm(props: {
       <label className="flex flex-col gap-1 text-sm">
         {t("vault.typeLabel")}
         <select
-          className="h-9 rounded-md border bg-transparent px-2"
+          className="h-9 rounded-md border border-input bg-transparent px-2"
           value={type}
           onChange={(event) => setType(event.target.value as SecretType)}
         >
