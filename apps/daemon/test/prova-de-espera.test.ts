@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { DAEMON_REASONS, FEATURE_HOLD_PROOF, type PermissionDecision } from "@flightdeck/protocol";
+import { DAEMON_REASONS, FEATURE_HOLD_PROOF } from "@flightdeck/protocol";
 import type { Central } from "../src/central/central.ts";
 import { ExternalSessions } from "../src/central/external.ts";
 import { ExternalPermissions } from "../src/central/external-permissions.ts";
@@ -7,6 +7,7 @@ import { startReceptor } from "../src/central/receptor.ts";
 import { SessionMetaStore } from "../src/central/session-meta.ts";
 import { FlightdeckError } from "../src/errors.ts";
 import { PermissionBroker } from "../src/permissions/permission-broker.ts";
+import type { PermissionDecision } from "../src/runtime/types.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { newManager, poll } from "./helpers.ts";

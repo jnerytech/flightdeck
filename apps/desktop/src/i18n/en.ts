@@ -1234,6 +1234,7 @@ export const en: Dictionary = {
       "Turning the terminal on gives a full shell on this host: confirm it to go on.",
     central_confirm: "Changing the host's ~/.claude/settings.json needs your confirmation.",
     permission_request_closed: "The permission request {id} is not open.",
+    hold_required: "A high-risk request is approved only by holding the button.",
     update_needs_service:
       "The daemon does not run as a service: update on the host with flightdeckd update --from <new binary>.",
     update_signature_failed: "The update could not be verified: {why}",

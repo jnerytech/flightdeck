@@ -18,6 +18,7 @@ import {
   type ExternalSession,
   type ExternalStatus,
   type ExternalUpdated,
+  FEATURE_HOLD_PROOF,
   type HistoryChanged,
   type HostRuntime,
   type IdleFiredFrame,
@@ -456,6 +457,8 @@ const EXTERNAL_LINE: Record<ExternalStatus, SessionLine["state"]> = {
 /** What this daemon has, as `host.info` announces it; the app hides what is missing. */
 function featuresOf(opts: ServerOptions): string[] {
   return [
+    // A high-risk permission allow needs `held: true` (issue #251).
+    FEATURE_HOLD_PROOF,
     // The folder picker of the app browses the host's folders with `fs.dirs`.
     ...(opts.fsDirs ? ["fs.dirs", "fs.files"] : []),
     // A live managed session takes a new permission mode and model, and announces its slash commands.
@@ -870,9 +873,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type);
       case "permission.respond": {
         // External requests (ids `ext-…`) are held hooks; anything else is a managed session's.
-        const { requestId, decision, message, updatedPermissions, updatedInput } = command.payload;
+        const { requestId, decision, message, updatedPermissions, updatedInput, held } =
+          command.payload;
         const external = opts.central?.permissions;
-        if (!external?.respond(requestId, decision, message, updatedPermissions, updatedInput)) {
+        if (
+          !external?.respond(requestId, decision, message, updatedPermissions, updatedInput, held)
+        ) {
           manager.respondPermission(command.payload);
         }
         return ok(command.type);
