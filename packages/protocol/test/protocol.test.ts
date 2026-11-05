@@ -360,6 +360,7 @@ const validCommands: Record<CommandType, unknown> = {
   "boardsync.status": { projectId: "p1" },
   "boardsync.syncNow": { projectId: "p1" },
   "boardsync.log": { cardId: "c1" },
+  "runtime.models": { runtime: "opencode" },
   "github.status": {},
   "github.login.start": {},
   "github.login.cancel": {},
