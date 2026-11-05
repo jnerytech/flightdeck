@@ -2855,6 +2855,7 @@ export const ptBR = {
     title: "Bloqueado por",
     blockingTitle: "Bloqueando",
     none: "Nada bloqueia este card.",
+    pick: "Escolha um card…",
     addLabel: "Adicionar bloqueio",
     add: "Adicionar",
     remove: "Remover bloqueio {title}",
@@ -2904,6 +2905,8 @@ export const ptBR = {
     changedElsewhere:
       "Mudou em outro lugar enquanto você editava: use a versão de lá para vê-la e edite de novo.",
     useTheirs: "Usar a de lá",
+    detailsTitle: "Detalhes",
+    runTitle: "Execução",
     saveDescription: "Salvar descrição",
     title: "Título",
     saveTitle: "Salvar título",

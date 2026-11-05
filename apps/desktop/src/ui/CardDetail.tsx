@@ -3,8 +3,9 @@ import { memo, useEffect, useState } from "react";
 import { CardSyncLog } from "@/components/board/board-sync";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
-import { NativeSelect } from "@/components/layout/form";
+import { Field, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
+import { Panel } from "@/components/layout/panel";
 import { Inline } from "@/components/layout/stack";
 import { PersonaPicker, useSuggestedPersona } from "@/components/personas/persona-picker";
 import { CardHours } from "@/components/roi/card-hours";
@@ -326,164 +327,185 @@ export const CardDetail = memo(function CardDetail(props: {
             workflows={workflows}
           />
         )}
-        <Inline gap={2}>
-          <Input
-            aria-label={t("cardUi.title")}
-            value={title}
-            // The menu's Edit… opens the card to change it: the title is where the cursor goes.
-            autoFocus={props.edit === true}
-            onChange={(e) => editTitle(e.target.value)}
-          />
-          <ActionButton
-            variant="outline"
-            disabled={title.trim() === "" || title.trim() === card.title || titleStale}
-            {...(titleStale ? { disabledReason: t("cardUi.changedElsewhere") } : {})}
-            onClick={async () => {
-              const sent = title;
-              const saved = await store.hostCommand(hostId, "card.update", {
-                cardId,
-                title: sent.trim(),
-              });
-              // A refused save keeps the edit (the banner says why), and so does a newer edit
-              // typed while this one was on its way (it now starts from what was saved).
-              if (saved) setTitleDraft((draft) => settled(draft, sent, sent.trim()));
-            }}
-          >
-            {t("cardUi.saveTitle")}
-          </ActionButton>
-          {titleStale && (
-            <Button variant="ghost" size="sm" onClick={() => setTitleDraft(null)}>
-              {t("cardUi.useTheirs")}
-            </Button>
-          )}
-        </Inline>
-        <div className="flex items-start gap-2">
-          <Textarea
-            aria-label={t("cardUi.description")}
-            value={description}
-            className="min-h-20 flex-1"
-            onChange={(e) => editDescription(e.target.value)}
-          />
-          <ActionButton
-            variant="outline"
-            disabled={description === card.description || descriptionStale}
-            {...(descriptionStale ? { disabledReason: t("cardUi.changedElsewhere") } : {})}
-            onClick={async () => {
-              const sent = description;
-              const saved = await store.hostCommand(hostId, "card.update", {
-                cardId,
-                description: sent,
-              });
-              if (saved) setDescriptionDraft((draft) => settled(draft, sent, sent));
-            }}
-          >
-            {t("cardUi.saveDescription")}
-          </ActionButton>
-          {descriptionStale && (
-            <Button variant="ghost" size="sm" onClick={() => setDescriptionDraft(null)}>
-              {t("cardUi.useTheirs")}
-            </Button>
-          )}
-        </div>
-        {withRoi && <CardHours store={store} hostId={hostId} card={card} />}
-        <div className="flex flex-wrap items-center gap-2">
-          <NativeSelect
-            inline
-            aria-label={t("cardUi.workflow")}
-            value={workflow}
-            onChange={(e) => {
-              setWorkflow(e.target.value);
-              setInputs({});
-            }}
-          >
-            <option value="">{t("cardUi.noWorkflow")}</option>
-            {workflows.map((w) => (
-              <option key={w.name} value={w.name}>
-                {w.name}
-              </option>
+        <Panel
+          title={t("cardUi.detailsTitle")}
+          label={t("cardUi.detailsTitle")}
+          slot="card-details"
+        >
+          <Field label={t("cardUi.title")}>
+            {(control) => (
+              <div className="field-row">
+                <Input
+                  {...control}
+                  className="flex-1"
+                  value={title}
+                  // The menu's Edit… opens the card to change it: the title is where the cursor goes.
+                  autoFocus={props.edit === true}
+                  onChange={(e) => editTitle(e.target.value)}
+                />
+                <ActionButton
+                  variant="outline"
+                  disabled={title.trim() === "" || title.trim() === card.title || titleStale}
+                  {...(titleStale ? { disabledReason: t("cardUi.changedElsewhere") } : {})}
+                  onClick={async () => {
+                    const sent = title;
+                    const saved = await store.hostCommand(hostId, "card.update", {
+                      cardId,
+                      title: sent.trim(),
+                    });
+                    // A refused save keeps the edit (the banner says why), and so does a newer edit
+                    // typed while this one was on its way (it now starts from what was saved).
+                    if (saved) setTitleDraft((draft) => settled(draft, sent, sent.trim()));
+                  }}
+                >
+                  {t("cardUi.saveTitle")}
+                </ActionButton>
+                {titleStale && (
+                  <Button variant="ghost" size="sm" onClick={() => setTitleDraft(null)}>
+                    {t("cardUi.useTheirs")}
+                  </Button>
+                )}
+              </div>
+            )}
+          </Field>
+          <Field label={t("cardUi.description")}>
+            {(control) => (
+              <div className="field-row">
+                <Textarea
+                  {...control}
+                  value={description}
+                  className="min-h-20 flex-1"
+                  onChange={(e) => editDescription(e.target.value)}
+                />
+                <ActionButton
+                  variant="outline"
+                  disabled={description === card.description || descriptionStale}
+                  {...(descriptionStale ? { disabledReason: t("cardUi.changedElsewhere") } : {})}
+                  onClick={async () => {
+                    const sent = description;
+                    const saved = await store.hostCommand(hostId, "card.update", {
+                      cardId,
+                      description: sent,
+                    });
+                    if (saved) setDescriptionDraft((draft) => settled(draft, sent, sent));
+                  }}
+                >
+                  {t("cardUi.saveDescription")}
+                </ActionButton>
+                {descriptionStale && (
+                  <Button variant="ghost" size="sm" onClick={() => setDescriptionDraft(null)}>
+                    {t("cardUi.useTheirs")}
+                  </Button>
+                )}
+              </div>
+            )}
+          </Field>
+          {withRoi && <CardHours store={store} hostId={hostId} card={card} />}
+        </Panel>
+        <Panel title={t("cardUi.runTitle")} label={t("cardUi.runTitle")} slot="card-run">
+          <div className="flex flex-wrap items-end gap-2">
+            <Field label={t("cardUi.workflow")}>
+              {(control) => (
+                <NativeSelect
+                  {...control}
+                  inline
+                  value={workflow}
+                  onChange={(e) => {
+                    setWorkflow(e.target.value);
+                    setInputs({});
+                  }}
+                >
+                  <option value="">{t("cardUi.noWorkflow")}</option>
+                  {workflows.map((w) => (
+                    <option key={w.name} value={w.name}>
+                      {w.name}
+                    </option>
+                  ))}
+                </NativeSelect>
+              )}
+            </Field>
+            {chosen?.inputs.map((name) => (
+              <Input
+                key={name}
+                aria-label={t("cardUi.input", { name })}
+                placeholder={name}
+                className="w-48"
+                value={inputs[name] ?? ""}
+                onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
+              />
             ))}
-          </NativeSelect>
-          {chosen?.inputs.map((name) => (
-            <Input
-              key={name}
-              aria-label={t("cardUi.input", { name })}
-              placeholder={name}
-              className="w-48"
-              value={inputs[name] ?? ""}
-              onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
-            />
-          ))}
-        </div>
-        <div className="flex flex-wrap items-end gap-2">
-          {hasFeature(host?.hostInfo?.features, "personas", false) && (
-            <PersonaPicker
-              store={store}
-              hostId={hostId}
-              label={t("personas.picker.card")}
-              value={persona}
-              onChange={setPersona}
-            />
-          )}
-          <ActionButton
-            onClick={() => {
-              const ref = store.personaRef(persona);
-              return store.hostCommand(hostId, "card.start", {
-                cardId,
-                ...(chosen ? { workflow: chosen.name, inputs } : {}),
-                ...(ref ? { persona: ref } : {}),
-              });
-            }}
-          >
-            {t("cardUi.start")}
-          </ActionButton>
-          {hasFeature(host?.hostInfo?.features, "bg", false) && !card.sessionId && (
+          </div>
+          <div className="flex flex-wrap items-end gap-2">
+            {hasFeature(host?.hostInfo?.features, "personas", false) && (
+              <PersonaPicker
+                store={store}
+                hostId={hostId}
+                label={t("personas.picker.card")}
+                value={persona}
+                onChange={setPersona}
+              />
+            )}
             <ActionButton
-              variant="outline"
-              onClick={async () => {
-                const started = await store.startBackground(hostId, {
+              onClick={() => {
+                const ref = store.personaRef(persona);
+                return store.hostCommand(hostId, "card.start", {
                   cardId,
-                  ...(persona.startsWith("host:") ? { persona: persona.slice(5) } : {}),
+                  ...(chosen ? { workflow: chosen.name, inputs } : {}),
+                  ...(ref ? { persona: ref } : {}),
                 });
-                if (started) store.router.push({ name: "hub" });
               }}
             >
-              {t("bg.start")}
+              {t("cardUi.start")}
             </ActionButton>
-          )}
-          <ActionButton
-            variant="outline"
-            onClick={() => store.hostCommand(hostId, "card.stop", { cardId })}
-          >
-            {t("cardUi.stop")}
-          </ActionButton>
-          <ActionButton
-            variant="outline"
-            disabled={!card.worktreePath || Boolean(card.prUrl)}
-            disabledReason={t(card.prUrl ? "cardUi.prAlreadyOpen" : "cardUi.needWorktree")}
-            onClick={() => openPr()}
-          >
-            {t("cardUi.openPr")}
-          </ActionButton>
-          <Button
-            variant="outline"
-            onClick={() => setConfirming({ kind: "complete", warning: null })}
-          >
-            {t("cardUi.complete")}
-          </Button>
-          {withArena &&
-            variants === 0 &&
-            !card.arenaOf &&
-            !card.worktreePath &&
-            !card.queued &&
-            !arena && (
-              <Button variant="outline" onClick={() => setArenaForm(true)}>
-                {t("arenaUi.start")}
-              </Button>
+            {hasFeature(host?.hostInfo?.features, "bg", false) && !card.sessionId && (
+              <ActionButton
+                variant="outline"
+                onClick={async () => {
+                  const started = await store.startBackground(hostId, {
+                    cardId,
+                    ...(persona.startsWith("host:") ? { persona: persona.slice(5) } : {}),
+                  });
+                  if (started) store.router.push({ name: "hub" });
+                }}
+              >
+                {t("bg.start")}
+              </ActionButton>
             )}
-          <Button variant="destructive" onClick={() => void askDiscard()}>
-            {t("cardUi.discard")}
-          </Button>
-        </div>
+            <ActionButton
+              variant="outline"
+              onClick={() => store.hostCommand(hostId, "card.stop", { cardId })}
+            >
+              {t("cardUi.stop")}
+            </ActionButton>
+            <ActionButton
+              variant="outline"
+              disabled={!card.worktreePath || Boolean(card.prUrl)}
+              disabledReason={t(card.prUrl ? "cardUi.prAlreadyOpen" : "cardUi.needWorktree")}
+              onClick={() => openPr()}
+            >
+              {t("cardUi.openPr")}
+            </ActionButton>
+            <Button
+              variant="outline"
+              onClick={() => setConfirming({ kind: "complete", warning: null })}
+            >
+              {t("cardUi.complete")}
+            </Button>
+            {withArena &&
+              variants === 0 &&
+              !card.arenaOf &&
+              !card.worktreePath &&
+              !card.queued &&
+              !arena && (
+                <Button variant="outline" onClick={() => setArenaForm(true)}>
+                  {t("arenaUi.start")}
+                </Button>
+              )}
+            <Button variant="destructive" onClick={() => void askDiscard()}>
+              {t("cardUi.discard")}
+            </Button>
+          </div>
+        </Panel>
         {withWatch && card.prUrl && <PrWatchPanel store={store} hostId={hostId} cardId={cardId} />}
         {draft && (
           <PrDescriptionDialog
@@ -555,7 +577,7 @@ export const CardDetail = memo(function CardDetail(props: {
             }
           />
         )}
-        <div className="flex items-start gap-2">
+        <div className="field-row">
           <Textarea
             aria-label={t("cardUi.adjustment")}
             placeholder={t("cardUi.adjustmentPlaceholder")}
