@@ -127,6 +127,21 @@ describe("opencode-preflight", () => {
     });
   });
 
+  test("the global folder's own config files are allowed as documents; another file in it is not", async () => {
+    for (const name of ["opencode.json", "opencode.jsonc", "config.json"]) {
+      const config = [
+        { type: "document", path: `${GLOBAL}/${name}`, info: { model: "a/b" } },
+        ...goodConfig(),
+      ];
+      expect(await refusal(setup({ config }).preflight.check("/w"))).toBe(null);
+    }
+    const other = [{ type: "document", path: `${GLOBAL}/extra.json` }, ...goodConfig()];
+    expect((await refusal(setup({ config: other }).preflight.check("/w")))?.params).toEqual({
+      version: "2.2.5",
+      source: `${GLOBAL}/extra.json`,
+    });
+  });
+
   test("our agents must end with our rules followed only by denies", async () => {
     const allowAfter = goodAgents().map((a) =>
       a.id === "flightdeck"
