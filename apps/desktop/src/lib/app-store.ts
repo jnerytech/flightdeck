@@ -2549,7 +2549,12 @@ export class AppStore {
     const t = this.i18n.t;
     const names = { subject: next.name ?? basename(next.cwd), host: host.name, group: key };
     for (const n of summaryNotifications(prev, next, label, focused, linkFor, t, names)) {
-      this.notifyUser(n);
+      // A request's entry keeps its session too: once answered, the bell opens it at that request.
+      const requestId = n.link ? parseRequestLink(n.link)?.requestId : undefined;
+      this.notifyUser(
+        n,
+        requestId ? { name: "session", host: hostId, id: next.id, focus: requestId } : undefined,
+      );
     }
   }
 

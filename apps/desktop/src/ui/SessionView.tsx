@@ -387,10 +387,19 @@ export function SessionView(props: SessionViewProps) {
     for (const child of Array.from(box.children)) observer.observe(child);
     return () => observer.disconnect();
   }, [cards]);
+  // The request the screen was opened for: in view, and once found, focused, so A and N answer it
+  // with no click first (#187). Only once: a card arriving later never takes the focus from the box.
+  const focusedFor = useRef<string | null>(null);
   useEffect(() => {
     if (!focusRequestId || cards === 0) return;
-    const card = timeline.current?.querySelector(`[data-request-id="${focusRequestId}"]`);
+    const card = timeline.current?.querySelector<HTMLElement>(
+      `[data-request-id="${focusRequestId}"]`,
+    );
     card?.scrollIntoView?.({ block: "center" });
+    if (card && focusedFor.current !== focusRequestId) {
+      focusedFor.current = focusRequestId;
+      card.focus({ preventScroll: true });
+    }
   }, [focusRequestId, cards]);
   const missed = missedAfter(props.session.items, awaySeq);
   const jumpKey = missed === 1 ? "session.jumpLatestOne" : "session.jumpLatestMany";

@@ -802,6 +802,8 @@ export const ptBR = {
     empty: "Nada espera por você.",
     seeSessions: "Ver as sessões",
     choose: "Escolha um pedido para ver os detalhes.",
+    leftOne: "Resta 1",
+    leftMany: "Restam {n}",
     resize: "Redimensionar a lista",
     back: "Voltar à lista",
     loopTitle: "Laço pausado",

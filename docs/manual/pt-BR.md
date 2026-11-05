@@ -2483,7 +2483,12 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
 
 - **Precisa de você:** na barra lateral, com o contador de pedidos abertos em todos os hosts. A
   tela lista os pedidos, do mais antigo ao mais novo, e o cartão do pedido escolhido fica ao
-  lado: **A** aprova, **N** nega e **Esc** fecha o detalhe. **Abrir sessão** leva à conversa.
+  lado: **A** aprova, **N** nega e **Esc** fecha o detalhe. **Abrir sessão** leva à conversa. O
+  cartão recebe o foco, então A e N funcionam sem um clique antes, e quando um pedido é
+  respondido o próximo é escolhido, com quantos restam. Um pedido de risco alto continua sendo
+  aprovado só segurando o botão.
+- **De uma notificação:** o clique abre a sessão com o cartão do pedido em foco: uma tecla
+  responde. No sino, a entrada de um pedido já respondido abre a sessão naquele pedido.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude
   ganha um selo ⚠. O tempo no ar continua contando enquanto a página está aberta.

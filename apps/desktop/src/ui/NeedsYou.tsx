@@ -1,5 +1,5 @@
 import { CheckCheck, MousePointerClick } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { GateText } from "@/components/approval/gate-text";
 import { ClientChip } from "@/components/clients/client-chip";
@@ -107,6 +107,28 @@ export function NeedsYou(props: {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
+
+  // Issue #187 (J4): once the chosen request is answered, the one now in its place is chosen, so
+  // a run of requests is answered key after key. A chosen alert that goes leaves nothing chosen.
+  const requests = entries.filter((e) => e.kind === "request");
+  const lastAt = useRef(-1);
+  if (chosen) lastAt.current = requests.findIndex((e) => e.key === selected);
+  useEffect(() => {
+    if (selected === null || chosen) return;
+    const next =
+      lastAt.current < 0 ? undefined : requests[Math.min(lastAt.current, requests.length - 1)];
+    lastAt.current = -1;
+    setSelected(next?.key ?? null);
+  });
+  // The chosen request's card takes the focus: A and N answer it with no click first.
+  const detailBox = useRef<HTMLDivElement>(null);
+  const chosenRequest = chosen?.kind === "request" ? chosen.item.requestId : null;
+  useEffect(() => {
+    if (!chosenRequest) return;
+    detailBox.current
+      ?.querySelector<HTMLElement>("[data-slot='approval-card']")
+      ?.focus({ preventScroll: true });
+  }, [chosenRequest]);
 
   if (entries.length === 0) {
     return (
@@ -287,63 +309,71 @@ export function NeedsYou(props: {
     </DetailColumn>
   ) : (
     item && (
-      <div className="h-full overflow-y-auto p-4">
-        <ApprovalCard
-          request={{
-            requestId: item.requestId,
-            toolName: item.gate
-              ? t("needsYou.gateTool", { step: item.gate.stepId })
-              : item.toolName,
-            input: item.input ?? {},
-            cwd: item.cwd ?? null,
-            createdAt: item.createdAt,
-            ...(item.risk ? { risk: item.risk } : {}),
-            ...(item.riskReason ? { riskReason: item.riskReason } : {}),
-          }}
-          t={t}
-          nowMs={store.now()}
-          onCopyPath={(text) => void store.copyText(text)}
-          {...(item.gateText ? { body: <GateText {...item.gateText} /> } : {})}
-          onRespond={(decision, message, _updates, updatedInput, held) =>
-            item.gate
-              ? store.respondGate(
-                  item.hostId,
-                  item.gate,
-                  decision === "allow" ? "approve" : "reject",
-                  message,
-                )
-              : store.respondTo(item.hostId, item.requestId, decision, {
-                  message,
-                  updatedInput,
-                  held,
-                })
-          }
-          actions={
-            // A request for a secret belongs to no session: the card is all there is to open.
-            item.vault ? (
-              <>
-                {item.vaultOnce && (
-                  <ActionButton
-                    variant="outline"
-                    onClick={() => store.approveVaultForSession(item.hostId, item.requestId)}
+      <div ref={detailBox} className="h-full overflow-y-auto p-4">
+        <Stack gap={2}>
+          <p className="text-muted-foreground text-xs">
+            {requests.length === 1
+              ? t("needsYou.leftOne")
+              : t("needsYou.leftMany", { n: requests.length })}
+          </p>
+          <ApprovalCard
+            key={item.requestId}
+            request={{
+              requestId: item.requestId,
+              toolName: item.gate
+                ? t("needsYou.gateTool", { step: item.gate.stepId })
+                : item.toolName,
+              input: item.input ?? {},
+              cwd: item.cwd ?? null,
+              createdAt: item.createdAt,
+              ...(item.risk ? { risk: item.risk } : {}),
+              ...(item.riskReason ? { riskReason: item.riskReason } : {}),
+            }}
+            t={t}
+            nowMs={store.now()}
+            onCopyPath={(text) => void store.copyText(text)}
+            {...(item.gateText ? { body: <GateText {...item.gateText} /> } : {})}
+            onRespond={(decision, message, _updates, updatedInput, held) =>
+              item.gate
+                ? store.respondGate(
+                    item.hostId,
+                    item.gate,
+                    decision === "allow" ? "approve" : "reject",
+                    message,
+                  )
+                : store.respondTo(item.hostId, item.requestId, decision, {
+                    message,
+                    updatedInput,
+                    held,
+                  })
+            }
+            actions={
+              // A request for a secret belongs to no session: the card is all there is to open.
+              item.vault ? (
+                <>
+                  {item.vaultOnce && (
+                    <ActionButton
+                      variant="outline"
+                      onClick={() => store.approveVaultForSession(item.hostId, item.requestId)}
+                    >
+                      {t("vaultRulesUi.approveSession")}
+                    </ActionButton>
+                  )}
+                  <Button
+                    variant="ghost"
+                    onClick={() => item.vaultRule && go({ name: "vault", rule: item.vaultRule })}
                   >
-                    {t("vaultRulesUi.approveSession")}
-                  </ActionButton>
-                )}
-                <Button
-                  variant="ghost"
-                  onClick={() => item.vaultRule && go({ name: "vault", rule: item.vaultRule })}
-                >
-                  {t("vaultRulesUi.fromRequest")}
+                    {t("vaultRulesUi.fromRequest")}
+                  </Button>
+                </>
+              ) : (
+                <Button variant="ghost" onClick={() => props.onOpenRequest(item)}>
+                  {t(item.gate ? "approval.openCard" : "approval.openSession")}
                 </Button>
-              </>
-            ) : (
-              <Button variant="ghost" onClick={() => props.onOpenRequest(item)}>
-                {t(item.gate ? "approval.openCard" : "approval.openSession")}
-              </Button>
-            )
-          }
-        />
+              )
+            }
+          />
+        </Stack>
       </div>
     )
   );

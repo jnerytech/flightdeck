@@ -2495,7 +2495,12 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
 - **Needs you:** in the sidebar, with the count of open requests across all hosts. The screen
   lists the requests, oldest to newest, and the selected request's card sits next to it: **A**
   approves, **N** denies and **Esc** closes the detail. **Open session** takes you to the
-  conversation.
+  conversation. The card takes the focus, so A and N work with no click first, and once a
+  request is answered the next one is chosen, with how many are left. A high-risk request is
+  still approved only by holding the button.
+- **From a notification:** clicking it opens the session with the request's card focused: one
+  key answers it. In the bell, an entry of a request already answered opens its session at that
+  request.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
   badge. The uptime keeps counting while the page is open.

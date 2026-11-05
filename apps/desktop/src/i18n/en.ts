@@ -805,6 +805,8 @@ export const en: Dictionary = {
     empty: "Nothing is waiting for you.",
     seeSessions: "See the sessions",
     choose: "Choose a request to see its details.",
+    leftOne: "1 left",
+    leftMany: "{n} left",
     resize: "Resize the list",
     back: "Back to the list",
     loopTitle: "Loop paused",
