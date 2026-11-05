@@ -3181,6 +3181,7 @@ export const ptBR = {
       claudeMd: "CLAUDE.md",
       unreadable: "Arquivos que não puderam ser lidos ou seguidos",
       nothing: "Nada: este projeto não traz configuração própria.",
+      omitted: "+{n} a mais, não mostrados",
       action: "Confiar neste projeto",
       revoke: "Revogar a confiança",
       confirm:

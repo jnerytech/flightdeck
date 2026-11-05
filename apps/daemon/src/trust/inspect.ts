@@ -29,10 +29,16 @@ const MAX_FILE = 256 * 1024;
 const MAX_ITEMS = 100;
 const MAX_COMMAND = 300;
 
-/** The first line of a command, cut: the rest of a script is not part of what the person is asked to judge. */
+/**
+ * The first line of a command, cut, with a visible count of the lines left out: the rest of a script
+ * still runs once the project is trusted, so the listing never presents a longer command as one line.
+ */
 function firstLine(text: string): string {
-  const line = text.split(/\r?\n/, 1)[0] ?? "";
-  return line.length > MAX_COMMAND ? `${line.slice(0, MAX_COMMAND)}…` : line;
+  const lines = text.split(/\r?\n|\r/);
+  const first = lines[0] ?? "";
+  const cut = first.length > MAX_COMMAND ? `${first.slice(0, MAX_COMMAND)}…` : first;
+  const more = lines.length - 1;
+  return more > 0 ? `${cut} [+${more} ${more === 1 ? "line" : "lines"}]` : cut;
 }
 
 const exists = (file: string) =>
@@ -109,6 +115,7 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
     unreadable,
     omitted: { hooks: 0, mcpServers: 0, allowRules: 0, envKeys: 0 },
   };
+  const shown = { hooks: 0 };
   for (const file of [".claude/settings.json", ".claude/settings.local.json"]) {
     const settings = await readJson(root, file, unreadable);
     if (!settings) continue;
@@ -119,8 +126,10 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
           .flatMap((hook) =>
             isObject(hook) && typeof hook.command === "string" ? [firstLine(hook.command)] : [],
           );
-        if (commands.length > 0)
-          load.hooks.push({ event, file, commands: commands.slice(0, MAX_ITEMS) });
+        const kept = commands.slice(0, Math.max(0, MAX_ITEMS - shown.hooks));
+        load.omitted.hooks += commands.length - kept.length;
+        shown.hooks += kept.length;
+        if (kept.length > 0) load.hooks.push({ event, file, commands: kept });
       }
     }
     if (isObject(settings.env)) load.envKeys.push(...Object.keys(settings.env));
@@ -136,7 +145,9 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
   }
   const mcp = await readJson(root, ".mcp.json", unreadable);
   if (mcp && isObject(mcp.mcpServers)) {
-    for (const [name, server] of Object.entries(mcp.mcpServers).slice(0, MAX_ITEMS)) {
+    const servers = Object.entries(mcp.mcpServers);
+    load.omitted.mcpServers = Math.max(0, servers.length - MAX_ITEMS);
+    for (const [name, server] of servers.slice(0, MAX_ITEMS)) {
       if (!isObject(server)) continue;
       const command =
         typeof server.command === "string"
@@ -149,7 +160,10 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
       load.mcpServers.push({ name, file: ".mcp.json", command: firstLine(command) });
     }
   }
-  load.envKeys = [...new Set(load.envKeys)].sort().slice(0, MAX_ITEMS);
+  const keys = [...new Set(load.envKeys)].sort();
+  load.omitted.envKeys = Math.max(0, keys.length - MAX_ITEMS);
+  load.envKeys = keys.slice(0, MAX_ITEMS);
+  load.omitted.allowRules = Math.max(0, load.allowRules.length - MAX_ITEMS);
   load.allowRules = load.allowRules.slice(0, MAX_ITEMS);
   load.agents = await names(root, ".claude/agents", false);
   load.skills = await names(root, ".claude/skills", true);

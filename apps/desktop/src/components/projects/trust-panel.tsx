@@ -51,14 +51,21 @@ export function TrustPanel(props: {
     );
   }
   const { state, load } = loaded;
+  const more = (n: number) => (n > 0 ? [t("projectPage.trust.omitted", { n })] : []);
   const groups: Array<[string, string[]]> = [
     [
       t("projectPage.trust.hooks"),
-      load.hooks.flatMap((h) => h.commands.map((c) => `${h.event}: ${c}`)),
+      [
+        ...load.hooks.flatMap((h) => h.commands.map((c) => `${h.event}: ${c}`)),
+        ...more(load.omitted.hooks),
+      ],
     ],
-    [t("projectPage.trust.mcp"), load.mcpServers.map((s) => `${s.name}: ${s.command}`)],
-    [t("projectPage.trust.env"), load.envKeys],
-    [t("projectPage.trust.allow"), load.allowRules],
+    [
+      t("projectPage.trust.mcp"),
+      [...load.mcpServers.map((s) => `${s.name}: ${s.command}`), ...more(load.omitted.mcpServers)],
+    ],
+    [t("projectPage.trust.env"), [...load.envKeys, ...more(load.omitted.envKeys)]],
+    [t("projectPage.trust.allow"), [...load.allowRules, ...more(load.omitted.allowRules)]],
     [t("projectPage.trust.agents"), load.agents],
     [t("projectPage.trust.skills"), load.skills],
     [t("projectPage.trust.commands"), load.commands],

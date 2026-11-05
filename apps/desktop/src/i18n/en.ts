@@ -3178,6 +3178,7 @@ export const en: Dictionary = {
       claudeMd: "CLAUDE.md",
       unreadable: "Files that could not be read or followed",
       nothing: "Nothing: this project brings no configuration of its own.",
+      omitted: "+{n} more not shown",
       action: "Trust this project",
       revoke: "Revoke trust",
       confirm:
