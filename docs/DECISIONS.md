@@ -1,3 +1,6 @@
+> **Frozen (#304).** New decisions go to a file of their own under `docs/decisions/`, named
+> `<yyyy-mm-dd>-<topic>.md` (see `docs/decisions/README.md`). This file keeps the entries up to then.
+
 # Decisões e divergências da Fase 1
 
 Cada item registra onde a implementação diverge de `docs/SPEC.md` ou completa um ponto que a

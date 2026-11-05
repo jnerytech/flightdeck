@@ -5,9 +5,16 @@
  */
 
 /** The sha256 of docs/DECISIONS.md as frozen; a change to it means an entry went to the old file. */
-export const FROZEN_DECISIONS_SHA256 = "";
+export const FROZEN_DECISIONS_SHA256 =
+  "93019d430f56fe31b624d89f5cc72a50460eab199ec5291850dad92b6dd3c143";
 
 /** Why a file under docs/decisions/ is not a decision record as named and titled, or null. */
-export function decisionFileProblem(_name: string, _firstLine: string): string | null {
+export function decisionFileProblem(name: string, firstLine: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/.test(name)) {
+    return `${name}: name it <yyyy-mm-dd>-<topic>.md (lowercase words joined by hyphens)`;
+  }
+  if (!/^# .+ \((?:issue #\d+|phase \d+)\)$/.test(firstLine)) {
+    return `${name}: give it a first line \`# <title> (issue #N)\` or \`(phase N)\``;
+  }
   return null;
 }
