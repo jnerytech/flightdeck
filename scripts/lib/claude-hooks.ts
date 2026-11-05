@@ -55,27 +55,40 @@ function hasShortFlag(arg: string, letters: string): boolean {
   return /^-[a-zA-Z]+$/.test(arg) && [...arg.slice(1)].some((letter) => letters.includes(letter));
 }
 
+/** `git add` of everything at once (`.`, `*`, `--all`, `-A`...). */
+function addViolation(args: string[]): string | null {
+  const wide = args.find(
+    (a) => [".", "*", ":/", "--all", "--update"].includes(a) || hasShortFlag(a, "Au"),
+  );
+  if (!wide) return null;
+  return `git add ${wide} is blocked: stage files by explicit path and check git status --short first (docs/TDD.md).`;
+}
+
+/** `git stash` in any form but `list` and `show`: the stash is shared across worktrees. */
+function stashViolation(args: string[]): string | null {
+  if (["list", "show"].includes(args[0] ?? "")) return null;
+  const what = args[0] && !args[0].startsWith("-") ? `git stash ${args[0]}` : "git stash";
+  return `${what} is blocked: refs/stash is shared across worktrees; use git diff > /tmp/<name>.patch + git apply, or a WIP commit on your branch.`;
+}
+
+/** `git commit -a` / `--all`. */
+function commitAllViolation(args: string[]): string | null {
+  const all = args.find((a) => a === "--all" || hasShortFlag(a, "a"));
+  if (!all) return null;
+  return `git commit ${all} is blocked: stage files by explicit path with git add <files> (docs/TDD.md).`;
+}
+
+const GIT_RULES: Record<string, (args: string[]) => string | null> = {
+  add: addViolation,
+  stash: stashViolation,
+  commit: commitAllViolation,
+};
+
 /** Why a shell command is blocked (docs/TDD.md: stage by explicit path), or null. */
 export function commandViolation(command: string): string | null {
   for (const { sub, args } of gitInvocations(command)) {
-    if (sub === "add") {
-      const wide = args.find(
-        (a) => [".", "*", ":/", "--all", "--update"].includes(a) || hasShortFlag(a, "Au"),
-      );
-      if (wide) {
-        return `git add ${wide} is blocked: stage files by explicit path and check git status --short first (docs/TDD.md).`;
-      }
-    }
-    if (sub === "stash" && !["list", "show"].includes(args[0] ?? "")) {
-      const what = args[0] && !args[0].startsWith("-") ? `git stash ${args[0]}` : "git stash";
-      return `${what} is blocked: refs/stash is shared across worktrees; use git diff > /tmp/<name>.patch + git apply, or a WIP commit on your branch.`;
-    }
-    if (sub === "commit") {
-      const all = args.find((a) => a === "--all" || hasShortFlag(a, "a"));
-      if (all) {
-        return `git commit ${all} is blocked: stage files by explicit path with git add <files> (docs/TDD.md).`;
-      }
-    }
+    const violation = Object.hasOwn(GIT_RULES, sub) ? GIT_RULES[sub]?.(args) : null;
+    if (violation) return violation;
   }
   return null;
 }
