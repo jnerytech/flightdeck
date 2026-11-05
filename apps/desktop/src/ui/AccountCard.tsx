@@ -39,7 +39,7 @@ const PERCENT_COLOR: Partial<Record<QuotaWindow["status"], string>> = {
   rejected: "text-status-error",
 };
 
-const PLANS = ["free", "pro", "max", "team", "enterprise"];
+const PLANS = ["free", "pro", "max", "ultra", "team", "enterprise"];
 
 /**
  * The Claude account a host's own `claude` is signed in to: who, the plan and its windows. It
@@ -117,6 +117,7 @@ export function AccountCard(props: AccountCardProps) {
             </span>
           )}
         </div>
+        {plan && <span className="text-muted-foreground text-xs">{t("account.planHint")}</span>}
         {state.organization && (
           <span className="text-muted-foreground text-sm">{state.organization}</span>
         )}

@@ -981,7 +981,16 @@ export const ptBR = {
     title: "Conta do Claude",
     loading: "Lendo a conta…",
     offline: "{host} está offline: a conta aparece de novo quando ele voltar.",
-    plans: { free: "Free", pro: "Pro", max: "Max", team: "Team", enterprise: "Enterprise" },
+    plans: {
+      free: "Free",
+      pro: "Pro",
+      max: "Max",
+      ultra: "Ultra",
+      team: "Team",
+      enterprise: "Enterprise",
+    },
+    planHint:
+      "Vem do login do claude neste host. Mudou de plano? Saia e entre de novo lá, depois toque em Atualizar.",
     windows: {
       five_hour: "5 horas",
       seven_day: "7 dias",

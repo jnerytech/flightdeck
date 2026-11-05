@@ -984,7 +984,16 @@ export const en: Dictionary = {
     title: "Claude account",
     loading: "Reading the account…",
     offline: "{host} is offline: the account shows again when it is back.",
-    plans: { free: "Free", pro: "Pro", max: "Max", team: "Team", enterprise: "Enterprise" },
+    plans: {
+      free: "Free",
+      pro: "Pro",
+      max: "Max",
+      ultra: "Ultra",
+      team: "Team",
+      enterprise: "Enterprise",
+    },
+    planHint:
+      "From the sign-in of claude on this host. Changed your plan? Sign out and in again there, then Refresh.",
     windows: {
       five_hour: "5 hours",
       seven_day: "7 days",

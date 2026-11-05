@@ -1990,10 +1990,13 @@ terceiros.
 
 #### Qual conta este host está usando?
 
-- O cartão mostra o e-mail da conta, a organização, o plano (Pro, Max, Team, Enterprise) e duas
+- O cartão mostra o e-mail da conta, a organização, o plano (Pro, Max, Ultra, Team, Enterprise) e duas
   barras, **5 horas** e **7 dias**, com a porcentagem usada e quando cada uma reinicia (passe o
   mouse para ver a hora exata). As barras de 7 dias do Opus e do Sonnet só aparecem quando o host
   as informa.
+- O plano vem do login do `claude` no host, que o guarda desde que você entrou: depois de mudar de
+  plano, saia e entre de novo lá e toque em **Atualizar**. As barras são lidas ao vivo e estão sempre
+  em dia.
 - Ele é lido ao abrir a página e de novo a cada 5 minutos enquanto ela fica aberta, e na hora em
   que uma sessão gerenciada termina um turno. "Última leitura há 2 min" diz o quanto está
   fresco. **Atualizar** lê agora; há 30 segundos de espera entre leituras.
