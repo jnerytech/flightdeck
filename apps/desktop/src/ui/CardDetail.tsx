@@ -35,7 +35,7 @@ import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { ExternalSeal } from "./IssuesPanel.tsx";
 import { PrComments } from "./PrComments.tsx";
 import { RunPanel } from "./RunPanel.tsx";
-import { RunTimeline } from "./RunTimeline.tsx";
+import { GateCard, RunTimeline } from "./RunTimeline.tsx";
 import { SessionView } from "./SessionView.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
@@ -318,6 +318,18 @@ export const CardDetail = memo(function CardDetail(props: {
             {reasonText(t, card.notice, card.noticeReason, card.noticeParams)}
           </InlineNotice>
         )}
+        {/* Issue #227: a gate waiting for the person is the first thing on the card, not under the form. */}
+        {run?.steps
+          .filter((step) => step.type === "gate" && step.status === "waiting")
+          .map((step) => (
+            <GateCard
+              key={`${step.stepId}/${step.attempt}`}
+              step={step}
+              onRespond={(gate, decision, note) =>
+                store.respondGate(hostId, { runId: run.id, ...gate }, decision, note)
+              }
+            />
+          ))}
         <Panel
           title={t("cardUi.detailsTitle")}
           label={t("cardUi.detailsTitle")}
@@ -627,6 +639,7 @@ export const CardDetail = memo(function CardDetail(props: {
             onRespond={(step, decision, note) =>
               store.respondGate(hostId, { runId: run.id, ...step }, decision, note)
             }
+            gatesAbove
           />
         )}
         {withSync && card.externalUrl && (

@@ -30,7 +30,7 @@ function BudgetMeter({ run }: { run: WorkflowRun }) {
 }
 
 /** An open gate, answered here with an optional note. */
-function GateCard(props: {
+export function GateCard(props: {
   step: StepRun;
   onRespond(step: StepRun, decision: "approve" | "reject", note: string): unknown;
 }) {
@@ -90,6 +90,8 @@ export function RunTimeline(props: {
   onRespond(step: StepRun, decision: "approve" | "reject", note: string): unknown;
   /** Estimated cost of the run's sessions (phase 8); `null` when unknown. */
   costUsd?: number | null;
+  /** The waiting gate is answered at the top of the card (issue #227): the step only says it waits. */
+  gatesAbove?: boolean;
 }) {
   const t = useT();
   const { run } = props;
@@ -143,7 +145,7 @@ export function RunTimeline(props: {
               ) : (
                 <span className="px-3 text-muted-foreground text-xs">{line}</span>
               )}
-              {step.type === "gate" && step.status === "waiting" && (
+              {step.type === "gate" && step.status === "waiting" && !props.gatesAbove && (
                 <GateCard step={step} onRespond={props.onRespond} />
               )}
             </li>
