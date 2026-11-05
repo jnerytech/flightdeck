@@ -12,6 +12,7 @@ import {
   shownSelection,
   toggleSelection,
 } from "../src/lib/board-select.ts";
+import { positionsBefore } from "../src/lib/board.ts";
 import type { Platform } from "../src/platform/types.ts";
 
 describe("board-multi: the selection (issue #161)", () => {
@@ -79,6 +80,30 @@ describe("board-multi: the column width (issue #161)", () => {
     expect(new BoardWidth(memory({ [COLUMN_WIDTH_KEY]: "9000" }).storage).value).toBe(520);
   });
 
+  test("what is stored is read with care: too small, zero, negative, empty, fractional", () => {
+    const read = (value: string) => new BoardWidth(memory({ [COLUMN_WIDTH_KEY]: value }).storage).value;
+    expect([read("10"), read("0"), read("-5"), read(""), read("300.5")]).toEqual([
+      220, 260, 260, 260, 301,
+    ]);
+  });
+
+  test("a whole number always, and a storage that throws does not stop the width", () => {
+    expect(clampWidth(300.4)).toBe(300);
+    const broken = {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error("quota");
+      },
+      removeItem: () => {},
+    } as unknown as ConstructorParameters<typeof BoardWidth>[0];
+    const w = new BoardWidth(broken);
+    let told = 0;
+    w.subscribe(() => told++);
+    w.set(333);
+    expect(w.value).toBe(333);
+    expect(told).toBe(1);
+  });
+
   test("a value out of range is clamped, and the listeners are told", () => {
     const w = new BoardWidth(memory().storage);
     let told = 0;
@@ -134,15 +159,27 @@ describe("board-multi: moving many cards (issue #161)", () => {
   });
 
   test("they do not run at the same time: the order is the board's", async () => {
-    let running = 0;
-    let most = 0;
-    await moveMany([card("a"), card("b"), card("c")], "review", async () => {
-      running++;
-      most = Math.max(most, running);
-      await Bun.sleep(1);
-      running--;
-      return { ok: true };
+    const started: string[] = [];
+    const gates = new Map<string, () => void>();
+    const run = moveMany([card("a"), card("b")], "review", (id) => {
+      started.push(id);
+      return new Promise((resolve) => gates.set(id, () => resolve({ ok: true })));
     });
-    expect(most).toBe(1);
+    await Promise.resolve();
+    expect(started).toEqual(["a"]);
+    gates.get("a")?.();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(started).toEqual(["a", "b"]);
+    gates.get("b")?.();
+    await run;
+  });
+});
+
+describe("board-multi: where a dropped group lands (OpenCode review of #161)", () => {
+  const at = (id: string, position: number) => ({ id, position }) as unknown as Card;
+  test("n positions between the card before the target and the target, in order", () => {
+    expect(positionsBefore([at("a", 1), at("b", 2)], "b", 2)).toEqual([1 + 1 / 3, 1 + 2 / 3]);
+    expect(positionsBefore([at("a", 1), at("b", 2)], "a", 1)).toEqual([0.5]);
   });
 });
