@@ -65,7 +65,7 @@ const DESTINATIONS: Array<[string, R]> = [
   ["Snippets", { name: "snippets" }],
   ["Plugins", { name: "plugins" }],
   ["Vault", { name: "vault" } as R],
-  ["SSH connections", { name: "connections" }],
+  ["SSH", { name: "connections" }],
   ["Settings", { name: "settings" }],
 ];
 
