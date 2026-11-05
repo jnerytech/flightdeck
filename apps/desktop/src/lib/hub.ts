@@ -409,7 +409,8 @@ export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
         // The group's own key names a real project (the client scope reads it): the smallest
         // project key among the rows. The fold state is kept under the merged identity instead,
         // which a host going offline or a folder merging does not change.
-        const key = list.map((r) => r.projectKey).reduce((x, y) => (y < x ? y : x));
+        const keys = list.map((r) => r.projectKey);
+        const key = keys.reduce((x, y) => (y < x ? y : x), keys[0] ?? "");
         return { key, foldKey: merged, name: groupName(key), rows: [...list].sort(order) };
       })
       .sort((a, b) => (b.rows[0]?.lastActivity ?? "").localeCompare(a.rows[0]?.lastActivity ?? "")),
