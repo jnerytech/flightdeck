@@ -1,6 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { open, readdir, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { normalizeCwd } from "../history/indexer.ts";
 import { localDay } from "../quota/usage.ts";
 import { ulid } from "../ulid.ts";
@@ -189,7 +190,7 @@ const OWNER = `SELECT
 /** The transcripts of one project folder: its sessions' files and their subagents' files. */
 async function projectFiles(project: string): Promise<TranscriptFile[]> {
   const files: TranscriptFile[] = [];
-  for (const item of await entries(project)) {
+  await inSequence(await entries(project), async (item) => {
     if (item.isFile() && item.name.endsWith(".jsonl")) {
       const path = join(project, item.name);
       files.push({ path, claudeSessionId: basename(item.name, ".jsonl"), subagent: false });
@@ -200,7 +201,7 @@ async function projectFiles(project: string): Promise<TranscriptFile[]> {
         files.push({ path: join(subagents, sub.name), claudeSessionId: item.name, subagent: true });
       }
     }
-  }
+  });
   return files;
 }
 
@@ -369,11 +370,11 @@ export class UsageIndexer {
 
   private async files(): Promise<TranscriptFile[]> {
     const files: TranscriptFile[] = [];
-    for (const root of this.opts.roots) {
+    await inSequence(this.opts.roots, async (root) => {
       for (const dir of await entries(root)) {
         if (dir.isDirectory()) files.push(...(await projectFiles(join(root, dir.name))));
       }
-    }
+    });
     return files;
   }
 

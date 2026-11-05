@@ -8,7 +8,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { type Ack, parseServerMessage, type RunState } from "@flightdeck/protocol";
+import { type Ack, inSequence, parseServerMessage, type RunState } from "@flightdeck/protocol";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -226,7 +226,7 @@ async function run(work: string): Promise<void> {
 
     step = "dois cards com worktree";
     const cards: Array<{ id: string; worktree: string }> = [];
-    for (const title of ["um", "dois"]) {
+    await inSequence(["um", "dois"], async (title) => {
       const card = await client.call<{ id: string }>("card.create", {
         projectId: project.id,
         title,
@@ -234,28 +234,28 @@ async function run(work: string): Promise<void> {
       });
       await client.call("card.start", { cardId: card.id });
       cards.push({ id: card.id, worktree: "" });
-    }
-    for (const card of cards) {
+    });
+    await inSequence(cards, async (card) => {
       card.worktree = await untilAsync(async () => {
         const got = await client.call<{ worktreePath: string | null }>("card.get", {
           cardId: card.id,
         });
         return got.worktreePath;
       }, "a worktree do card");
-    }
+    });
     log("os dois cards têm worktree");
 
     step = "Run dos dois cards";
     const states: RunState[] = [];
-    for (const card of cards) {
+    await inSequence(cards, async (card) => {
       states.push(await client.call<RunState>("runenv.start", { cardId: card.id }));
-    }
+    });
     const ports = states.map((s) => s.ports.web);
     checkPorts(ports);
     log(`portas ${ports[0]} e ${ports[1]}`);
 
     step = "os dois respondem ao mesmo tempo";
-    for (const [i, card] of cards.entries()) {
+    await inSequence(cards.entries(), async ([i, card]) => {
       await untilAsync(
         async () => {
           const state = await client.call<RunState>("runenv.get", { cardId: card.id });
@@ -268,25 +268,27 @@ async function run(work: string): Promise<void> {
         "a resposta",
       );
       if (body !== "echo:/ola") throw new Error(`resposta inesperada do card ${i + 1}: ${body}`);
-    }
+    });
     log("os dois servidores respondem, cada um na sua porta");
-    for (const card of cards) {
+    await inSequence(cards, async (card) => {
       const file = join(card.worktree, "pids.json");
       await untilAsync(async () => (existsSync(file) ? true : null), "o pids.json do card");
       const found = JSON.parse(readFileSync(file, "utf8")) as { pid: number; child: number };
       pids.push(found.pid, found.child);
-    }
+    });
 
     step = "Stop encerra tudo";
-    for (const card of cards) await client.call("runenv.stop", { cardId: card.id });
+    await inSequence(cards, async (card) => {
+      await client.call("runenv.stop", { cardId: card.id });
+    });
     await untilAsync(
       async () => (pids.every((pid) => !alive(pid)) ? true : null),
       "os processos e os filhos encerrarem",
     );
-    for (const port of ports) {
+    await inSequence(ports, async (port) => {
       const body = await answers(`http://127.0.0.1:${port}/`);
       if (body !== null) throw new Error(`a porta ${port} ainda responde: ${body}`);
-    }
+    });
     log("os servidores, os filhos e as portas: nada sobrou");
     client.close();
   } finally {

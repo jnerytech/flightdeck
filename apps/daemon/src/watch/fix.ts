@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { isWatchCheck } from "@flightdeck/protocol";
+import { inSequence, isWatchCheck } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { type CommandResult, git as realGit } from "../board/command.ts";
 import { BUILD_LOG_BYTES, type PrComment, type PrProvider, prProvider, tail } from "../board/pr.ts";
@@ -402,14 +402,14 @@ export class PrFixer {
   ): Promise<string> {
     const builds = trigger.failed.filter((c) => c.buildId !== null);
     const parts: string[] = [];
-    for (const check of builds) {
+    await inSequence(builds, async (check) => {
       const text = await provider
         ?.buildLog({ cwd, url, buildId: check.buildId as string })
         .catch(() => "(the log could not be read)");
       parts.push(
         `### ${check.name}\n${tail(text ?? "", Math.floor(BUILD_LOG_BYTES / builds.length))}`,
       );
-    }
+    });
     return parts.join("\n");
   }
 

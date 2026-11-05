@@ -7,6 +7,7 @@
 import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import type { ActionDef } from "./schema.ts";
 
 export interface Fingerprint {
@@ -50,14 +51,14 @@ export async function fingerprint(action: ActionDef, base: string): Promise<Fing
   const { name: _name, description: _description, ...declared } = action;
   const root = action.cwd ? resolve(base, action.cwd) : base;
   const files: Record<string, string> = {};
-  for (const element of action.run) {
+  await inSequence(action.run, async (element) => {
     // A placeholder is not a path yet; a flag or a bare program does not exist as a file here.
-    if (element.includes("{{")) continue;
+    if (element.includes("{{")) return;
     const path = resolve(root, element);
     const info = await stat(path).catch(() => null);
-    if (!info?.isFile() || !(await insideRepository(path))) continue;
+    if (!info?.isFile() || !(await insideRepository(path))) return;
     files[relative(base, path).replaceAll("\\", "/")] = sha(await readFile(path));
-  }
+  });
   return { declaration: sha(canonical(declared)), files };
 }
 

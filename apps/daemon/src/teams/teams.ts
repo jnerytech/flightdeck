@@ -1,3 +1,4 @@
+import { inSequence } from "@flightdeck/protocol";
 /**
  * Phase 21: teams. A coordinator session and workers with cards of their own, started together
  * with the instructions of coordination, paused by the plan quota and resumed with it.
@@ -319,7 +320,9 @@ export class Teams {
           : undefined),
     );
     const workerPersonas: Array<string | null> = [];
-    for (const p of input.workerPersonas ?? []) workerPersonas.push(await this.checkPersona(p));
+    await inSequence(input.workerPersonas ?? [], async (p) => {
+      workerPersonas.push(await this.checkPersona(p));
+    });
     const coordinatorModel = input.coordinatorModel ?? null;
     const name = input.name ?? input.goal.slice(0, 40);
     const checks = input.checks ?? [];
@@ -372,7 +375,7 @@ export class Teams {
         sessionId,
       },
     ];
-    for (const [i, workerName] of workerNames.entries()) {
+    await inSequence(workerNames.entries(), async ([i, workerName]) => {
       members.push(
         await this.startWorker(
           team,
@@ -382,7 +385,7 @@ export class Teams {
           input.workerModels?.[i] ?? null,
         ),
       );
-    }
+    });
     this.opts.db
       .query(
         `INSERT INTO teams (id, name, project_id, goal, coordinator, members, checks, state,

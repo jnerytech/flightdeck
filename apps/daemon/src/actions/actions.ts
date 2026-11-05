@@ -26,6 +26,7 @@ import type {
   VaultUsed,
   VaultVerdict,
 } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
 import { must } from "../board/worktree.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -685,12 +686,12 @@ export class Actions {
   /** The values, by id. The user's own run finds them delivered; anyone else's is asked of the app. */
   private async collect(ids: string[], ask: Ask): Promise<Record<string, string>> {
     const secrets: Record<string, string> = {};
-    for (const id of ids) {
+    await inSequence(ids, async (id) => {
       secrets[id] =
         ask.requester === "you"
           ? this.opts.vault.take(id, `${ask.purposeBase}:you`)
           : await this.request(id, { ...ask, requester: this.permit(ask.requester) });
-    }
+    });
     return secrets;
   }
 

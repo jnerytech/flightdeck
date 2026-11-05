@@ -9,7 +9,7 @@ import type {
   PersonaSubagents,
   PersonaSubagentsMode,
 } from "@flightdeck/protocol";
-import { byCodeUnit } from "@flightdeck/protocol";
+import { byCodeUnit, inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { resolveAllowedCwd } from "../paths.ts";
 import type { SecretScanner } from "../snippets/model.ts";
@@ -390,7 +390,7 @@ export class Personas {
     if (names === null) return null;
     const views: Persona[] = [];
     const errors: string[] = [];
-    for (const name of names.filter((entry) => entry.endsWith(".md")).sort()) {
+    await inSequence(names.filter((entry) => entry.endsWith(".md")).sort(), async (name) => {
       const id = name.slice(0, -3);
       const path = join(dir, name);
       try {
@@ -407,7 +407,7 @@ export class Personas {
       } catch (error) {
         errors.push(`${name}: ${(error as Error).message}`);
       }
-    }
+    });
     return { info: { path: dir, errors }, views };
   }
 }

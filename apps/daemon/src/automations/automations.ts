@@ -6,6 +6,7 @@
  */
 import type { Database } from "bun:sqlite";
 import type { Automation, AutomationRun, Issue } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { FlightdeckError } from "../errors.ts";
 import { type Issues, UNTRUSTED_MARK } from "../issues/issues.ts";
@@ -284,7 +285,9 @@ export class Automations {
               (auto.trigger.type === "issue_label" &&
                 event.issue.labels.includes(auto.trigger.label)))),
     );
-    for (const auto of matching) await this.run(auto, event);
+    await inSequence(matching, async (auto) => {
+      await this.run(auto, event);
+    });
   }
 
   /** Fires the cron automations whose minute has come; slots that went by unseen are missed. */
@@ -314,7 +317,7 @@ export class Automations {
         .filter((auto) => auto.trigger.type === "issue_label")
         .map((auto) => auto.projectId),
     );
-    for (const projectId of projects) {
+    await inSequence(projects, async (projectId) => {
       let issues: Issue[];
       try {
         issues = await this.opts.issues.list(projectId);
@@ -322,10 +325,10 @@ export class Automations {
         this.opts.log?.(
           `automações: a busca de issues do projeto ${projectId} falhou: ${(error as Error).message}`,
         );
-        continue;
+        return;
       }
       for (const issue of issues) await this.fire({ type: "issue_label", projectId, issue });
-    }
+    });
   }
 
   /**
@@ -406,12 +409,13 @@ export class Automations {
       for (let slot = from; slot <= minute; slot += MINUTE) {
         if (!cronMatches(spec, zone, slot)) continue;
         if (fire && minute - slot <= GRACE) {
-          await this.fire({
+          const due = {
             type: "cron",
             projectId: auto.projectId,
             automationId: auto.id,
             minute: slot,
-          });
+          } as const;
+          await this.fire(due); // NOSONAR: a boot (fire=false) never gets here and must finish without yielding
         } else if (last !== undefined) {
           missed.push(slot);
         }

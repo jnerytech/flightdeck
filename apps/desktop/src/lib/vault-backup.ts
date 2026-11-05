@@ -1,3 +1,4 @@
+import { inSequence } from "@flightdeck/protocol";
 import { armor, Decrypter, Encrypter } from "age-encryption";
 import { BackupError } from "./backup-error.ts";
 import type { SecretMeta, Vault } from "./vault.ts";
@@ -46,10 +47,10 @@ export async function exportVault(
   if (passphrase.length < MIN_PASSPHRASE) throw new BackupError("short-passphrase");
   if (passphrase !== confirmation) throw new BackupError("mismatch");
   const entries: BackupEntry[] = [];
-  for (const meta of vault.list()) {
+  await inSequence(vault.list(), async (meta) => {
     const value = await vault.value(meta.id);
     if (value !== null) entries.push({ meta, value });
-  }
+  });
   const encrypter = new Encrypter();
   encrypter.setPassphrase(passphrase);
   encrypter.setScryptWorkFactor(options.workFactor ?? DEFAULT_WORK_FACTOR);
@@ -101,15 +102,15 @@ export async function previewImport(
 ): Promise<ImportPreview> {
   const preview: ImportPreview = { added: [], same: [], conflicting: [] };
   const local = vault.list();
-  for (const entry of await readBackup(file, passphrase)) {
+  await inSequence(await readBackup(file, passphrase), async (entry) => {
     const meta = local.find((s) => s.id === entry.meta.id);
     if (!meta) {
       preview.added.push(entry);
-      continue;
+      return;
     }
     const current: BackupEntry = { meta, value: (await vault.value(meta.id)) ?? "" };
     (sameSecret(current, entry) ? preview.same : preview.conflicting).push(entry);
-  }
+  });
   return preview;
 }
 
@@ -119,9 +120,13 @@ export async function applyImport(
   preview: ImportPreview,
   onConflict: ConflictChoice = "skip",
 ): Promise<ImportResult> {
-  for (const entry of preview.added) await vault.restore(entry.meta, entry.value);
+  await inSequence(preview.added, async (entry) => {
+    await vault.restore(entry.meta, entry.value);
+  });
   if (onConflict === "overwrite") {
-    for (const entry of preview.conflicting) await vault.restore(entry.meta, entry.value);
+    await inSequence(preview.conflicting, async (entry) => {
+      await vault.restore(entry.meta, entry.value);
+    });
   }
   return {
     added: preview.added.length,

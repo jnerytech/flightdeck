@@ -1,3 +1,4 @@
+import { inSequence } from "@flightdeck/protocol";
 /**
  * Phase 38: one sync of a linked project with its external board: pull the items, apply them to the
  * cards, settle conflicts (the newest change wins, the loser goes to the card's log), and push the
@@ -135,17 +136,17 @@ export class BoardSync {
     if (pending.length === 0) return 0;
     const field = await provider.statusField(link.boardId);
     let pushed = 0;
-    for (const cardId of pending) {
+    await inSequence(pending, async (cardId) => {
       const option = field
         ? optionFor(link.columnMap, field.options, board.getCard(cardId).column)
         : null;
       if (!option) {
         // Nothing on the board stands for this column: there is nothing to reconcile.
         store.setExternal(cardId, { localMovedAt: null });
-        continue;
+        return;
       }
       const log = store.logOf(cardId);
-      if (log[0]?.kind === "push_gave_up") continue;
+      if (log[0]?.kind === "push_gave_up") return;
       const failures = log.findIndex((entry) => entry.kind !== "push_failed");
       const recent = failures === -1 ? log.length : failures;
       if (recent >= PUSH_TRIES) {
@@ -159,7 +160,7 @@ export class BoardSync {
           keptAt: null,
           detail: `${PUSH_TRIES} tries failed`,
         });
-        continue;
+        return;
       }
       try {
         const external = store.externalOf(cardId);
@@ -186,7 +187,7 @@ export class BoardSync {
           detail: (error as { reason?: string }).reason ?? (error as Error).message,
         });
       }
-    }
+    });
     return pushed;
   }
 

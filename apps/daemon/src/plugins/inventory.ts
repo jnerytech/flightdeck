@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { lstat, readdir, readFile, readlink, realpath, stat } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { frontmatter } from "../agentcfg/files.ts";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
@@ -79,7 +80,7 @@ async function filesUnder(root: string): Promise<{ files: string[]; links: strin
   const files: string[] = [];
   const links: string[] = [];
   const walk = async (dir: string, rel: string) => {
-    for (const entry of await readdir(dir, { withFileTypes: true })) {
+    await inSequence(await readdir(dir, { withFileTypes: true }), async (entry) => {
       const path = rel === "" ? entry.name : `${rel}/${entry.name}`;
       if (entry.isSymbolicLink()) links.push(path);
       else if (entry.isDirectory()) {
@@ -93,7 +94,7 @@ async function filesUnder(root: string): Promise<{ files: string[]; links: strin
           { max: MAX_FILES },
         );
       }
-    }
+    });
   };
   await walk(root, "");
   return {
@@ -137,7 +138,7 @@ async function contentHash(
   let bytes = 0;
   const tooBig = () =>
     new FlightdeckError("bad_request", "plugin is over the size limit", "plugin_too_big");
-  for (const path of listing.files) {
+  await inSequence(listing.files, async (path) => {
     const file = join(root, path);
     const size = (await stat(file)).size;
     // The declared size is checked before a byte is read; the stream is capped as well, so a
@@ -152,10 +153,10 @@ async function contentHash(
     }
     hash.update("\0");
     bytes += read;
-  }
-  for (const link of listing.links) {
+  });
+  await inSequence(listing.links, async (link) => {
     hash.update(`L\0${link}\0${await readlink(join(root, link))}\0`);
-  }
+  });
   return { hash: hash.digest("hex"), bytes };
 }
 
@@ -208,14 +209,14 @@ async function hooksOf(reading: Reading, manifestJson: Json | null): Promise<Plu
   };
   const own = join(reading.root, "hooks", "hooks.json");
   const hooks = (await exists(own)) ? await fromFile(own, "hooks/hooks.json") : [];
-  for (const item of asList(manifestJson?.hooks as unknown)) {
+  await inSequence(asList(manifestJson?.hooks as unknown), async (item) => {
     if (typeof item !== "string") {
       hooks.push(...hooksOfEvents(item));
-      continue;
+      return;
     }
     const path = await inside(reading, "hooks", item);
     if (path) hooks.push(...(await fromFile(path, item)));
-  }
+  });
   return hooks;
 }
 
@@ -260,22 +261,22 @@ async function skillsUnder(base: string): Promise<string[]> {
   if (!entries) return [];
   const own = join(base, "SKILL.md");
   const names = (await skillFile(own)) ? [await skillName(own, basename(base))] : [];
-  for (const entry of entries) {
+  await inSequence(entries, async (entry) => {
     const file = join(base, entry.name, "SKILL.md");
     if (entry.isDirectory() && (await skillFile(file)))
       names.push(await skillName(file, entry.name));
-  }
+  });
   return names;
 }
 
 /** Skills: skills/ and the folders the manifest adds. */
 async function skillsOf(reading: Reading, manifestJson: Json | null): Promise<string[]> {
   const skills = new Set(await skillsUnder(join(reading.root, "skills")));
-  for (const item of asList(manifestJson?.skills as unknown)) {
-    if (typeof item !== "string") continue;
+  await inSequence(asList(manifestJson?.skills as unknown), async (item) => {
+    if (typeof item !== "string") return;
     const path = await inside(reading, "skills", item);
     if (path) for (const name of await skillsUnder(path)) skills.add(name);
-  }
+  });
   return [...skills];
 }
 
@@ -294,11 +295,11 @@ async function namedOf(
   if (declaredPaths === undefined) return await markdownIn(join(reading.root, key));
   if (isObject(declaredPaths)) return key === "commands" ? Object.keys(declaredPaths) : [];
   const found: string[] = [];
-  for (const item of asList(declaredPaths as unknown)) {
-    if (typeof item !== "string") continue;
+  await inSequence(asList(declaredPaths as unknown), async (item) => {
+    if (typeof item !== "string") return;
     const path = await inside(reading, key, item);
     if (path) found.push(...(path.endsWith(".md") ? [path] : await markdownIn(path)));
-  }
+  });
   return found;
 }
 
@@ -330,7 +331,7 @@ async function serversOf(reading: Reading, manifestJson: Json | null): Promise<P
   };
   const own = join(reading.root, ".mcp.json");
   if (await exists(own)) add(await readJson(reading, own, ".mcp.json"));
-  for (const item of asList(manifestJson?.mcpServers as unknown)) {
+  await inSequence(asList(manifestJson?.mcpServers as unknown), async (item) => {
     if (typeof item !== "string") add(item);
     else if (/\.(mcpb|dxt)$|^https?:/.test(item)) {
       servers.set(basename(item), { name: basename(item), transport: "bundle", target: item });
@@ -338,7 +339,7 @@ async function serversOf(reading: Reading, manifestJson: Json | null): Promise<P
       const path = await inside(reading, "mcpServers", item);
       if (path) add(await readJson(reading, path, item));
     }
-  }
+  });
   return [...servers.values()];
 }
 

@@ -1,4 +1,5 @@
 import type { ProjectsScanResult } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { Search } from "lucide-react";
 import { useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
@@ -54,7 +55,9 @@ export function FindProjects(
   };
   const addPicked = async () => {
     const added: string[] = [];
-    for (const path of picked) if (await register(path)) added.push(path);
+    await inSequence(picked, async (path) => {
+      if (await register(path)) added.push(path);
+    });
     if (added.length > 0) props.onAdded();
     setScan((now) => now && { ...now, repos: now.repos.filter((r) => !added.includes(r.path)) });
     setPicked((now) => now.filter((path) => !added.includes(path)));

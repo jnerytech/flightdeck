@@ -1,4 +1,4 @@
-import { type SnippetInput, SnippetModelError } from "@flightdeck/protocol";
+import { inSequence, type SnippetInput, SnippetModelError } from "@flightdeck/protocol";
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
@@ -48,11 +48,11 @@ export function FileImport(
     if (!found) return;
     const failed: string[] = [];
     let done = 0;
-    for (const snippet of found.snippets) {
+    await inSequence(found.snippets, async (snippet) => {
       const refusal = await saveOne(snippet);
       if (refusal === null) done++;
       else failed.push(`${snippet.name}: ${refusal}`);
-    }
+    });
     setFound(null);
     setMessage([t("snippets.history.imported", { n: done }), ...failed]);
     props.onImported();

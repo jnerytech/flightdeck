@@ -7,7 +7,12 @@
  */
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { type Ack, parseServerMessage, type RoiSummaryResult } from "@flightdeck/protocol";
+import {
+  type Ack,
+  inSequence,
+  parseServerMessage,
+  type RoiSummaryResult,
+} from "@flightdeck/protocol";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -178,7 +183,7 @@ async function run(work: string): Promise<void> {
     });
     await client.call("project.update", { projectId: project.id, defaultHours: 2 });
     const made: string[] = [];
-    for (const title of ["um", "dois"]) {
+    await inSequence(["um", "dois"], async (title) => {
       const card = await client.call<{ id: string }>("card.create", {
         projectId: project.id,
         title,
@@ -186,7 +191,7 @@ async function run(work: string): Promise<void> {
       });
       await client.call("card.move", { cardId: card.id, column: "done" });
       made.push(card.id);
-    }
+    });
     log("dois cards terminados");
 
     step = "resumo com o padrão do projeto";

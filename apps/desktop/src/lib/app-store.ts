@@ -53,7 +53,7 @@ import type {
   WatchSettings,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { byCodeUnit, EPHEMERAL_EVENTS } from "@flightdeck/protocol";
+import { byCodeUnit, EPHEMERAL_EVENTS, inSequence } from "@flightdeck/protocol";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type {
@@ -972,13 +972,13 @@ export class AppStore {
     if (this.platform.globalShortcut.supported) await this.registerShortcut(globalShortcut);
     this.offTrayAction?.();
     this.offTrayAction = this.platform.onTrayAction((action) => this.onTrayAction(action));
-    for (const config of loadHosts(this.platform.storage)) {
+    await inSequence(loadHosts(this.platform.storage), async (config) => {
       this.update({
         hosts: [...this.state.hosts, newHostView(config)],
       });
       const token = await this.platform.secrets.get(config.id);
       if (token) this.connect(config, token);
-    }
+    });
     this.update({ hostsLoaded: true });
     // Last: the saved hosts must not wait for it.
     if (this.platform.terminal.supported) {
@@ -1373,10 +1373,10 @@ export class AppStore {
       .map(async (host) => {
         const conn = this.connections.get(host.id) as HostConnection;
         const projects = await this.loadProjects(host.id);
-        for (const project of projects ?? []) {
+        await inSequence(projects ?? [], async (project) => {
           const board = await quiet(conn.request("board.get", { projectId: project.id }));
           for (const card of cardsIn(board)) this.onCard(host.id, card);
-        }
+        });
       });
     const targets = this.state.hosts
       .filter(
@@ -3106,9 +3106,9 @@ export class AppStore {
    */
   async vaultValuesForScan(): Promise<string[]> {
     const pieces: string[] = [];
-    for (const secret of this.vault.list()) {
+    await inSequence(this.vault.list(), async (secret) => {
       const value = await this.vault.value(secret.id);
-      if (value === null) continue;
+      if (value === null) return;
       // A whole value can be long and many-lined: what a history line would carry is one line,
       // and of an env set, one variable's value.
       for (const line of value.split(/\r?\n/)) {
@@ -3119,7 +3119,7 @@ export class AppStore {
           .replace(/^(["'])(.*)\1$/, "$2");
         if (piece.length >= 6) pieces.push(piece);
       }
-    }
+    });
     return pieces;
   }
 
@@ -3369,13 +3369,13 @@ export class AppStore {
         // The hosts that took the refused set go back to the saved one: none keeps rules the
         // app did not save (they could be looser).
         const saved = this.rules.get(secretId);
-        for (const hostId of accepted) {
+        await inSequence(accepted, async (hostId) => {
           await this.hostRequest(hostId, "vault.rules.set", {
             secretId,
             tags: secret.tags,
             rules: this.effectiveVaultRules(secret, saved),
           });
-        }
+        });
         return result;
       }
       accepted.push(host.id);
@@ -3477,7 +3477,7 @@ export class AppStore {
    */
   private async pushVaultScopes(): Promise<void> {
     const changed = new Set<string>();
-    for (const secret of this.vault.list()) {
+    await inSequence(this.vault.list(), async (secret) => {
       const own = this.rules.get(secret.id);
       const rules = this.effectiveVaultRules(secret, own);
       const text = JSON.stringify(rules);
@@ -3486,7 +3486,7 @@ export class AppStore {
         const widened = await this.pushScopeTo(host, secret, rules, text);
         if (widened) changed.add(widened);
       }
-    }
+    });
     for (const name of changed) this.success(this.i18n.t("clients.scopeChanged", { name }));
   }
 

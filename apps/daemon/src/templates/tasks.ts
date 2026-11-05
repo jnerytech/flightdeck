@@ -1,6 +1,7 @@
 import { lstat, mkdir, open, readdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import type { TaskFile, TaskPreviewResult, TaskResultsResult } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
 
@@ -84,7 +85,9 @@ export class TaskTracker {
   /** A look at the folders before the task starts. */
   async prepare(folders: readonly string[]): Promise<Snapshot> {
     const snapshot: Snapshot = {};
-    for (const folder of folders) await walk(folder, snapshot);
+    await inSequence(folders, async (folder) => {
+      await walk(folder, snapshot);
+    });
     return snapshot;
   }
 
@@ -148,7 +151,9 @@ export class TaskTracker {
   async results(sessionId: string): Promise<TaskResultsResult> {
     const kept = await this.load(sessionId);
     const now: Snapshot = {};
-    for (const folder of kept.folders) await walk(folder, now);
+    await inSequence(kept.folders, async (folder) => {
+      await walk(folder, now);
+    });
     const files: TaskFile[] = [];
     for (const [path, info] of Object.entries(now)) {
       if (!kept.folders.some((folder) => isInside(folder, path))) continue;

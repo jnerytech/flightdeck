@@ -10,6 +10,7 @@ import type {
   WorkflowInfo,
   WorkflowRun,
 } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import type { BoardEvent } from "../board/columns.ts";
 import type { Card, Project } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -328,7 +329,9 @@ export class WorkflowEngine {
         "SELECT DISTINCT session_id FROM step_runs WHERE run_id = ? AND status = 'running' AND session_id IS NOT NULL",
       )
       .all(runId);
-    for (const { session_id } of sessions) await this.manager.interrupt(session_id);
+    await inSequence(sessions, async ({ session_id }) => {
+      await this.manager.interrupt(session_id);
+    });
   }
 
   /** Closes the sessions of the card's runs, except those of `keep` (the run launching). */
@@ -339,7 +342,9 @@ export class WorkflowEngine {
          WHERE r.card_id = ? AND r.id <> ? AND s.session_id IS NOT NULL`,
       )
       .all(cardId, keep);
-    for (const { session_id } of sessions) await this.manager.close(session_id);
+    await inSequence(sessions, async ({ session_id }) => {
+      await this.manager.close(session_id);
+    });
   }
 
   /** Answers an open gate: approved, the run goes on; rejected, it ends as `rejected`. */
@@ -445,9 +450,9 @@ export class WorkflowEngine {
     const workflow = parseWorkflow(run.definition).workflow as Workflow;
     const context: InterpolationContext = { inputs: JSON.parse(run.inputs), steps: {} };
     try {
-      for (const step of workflow.steps) {
+      await inSequence(workflow.steps, async (step) => {
         context.steps[step.id] = await this.runStep(run, worktree, step, context);
-      }
+      });
       this.finish(run, "completed", null);
     } catch (error) {
       if (error instanceof Abandoned) return;

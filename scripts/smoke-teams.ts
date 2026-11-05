@@ -12,6 +12,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
   type Ack,
+  inSequence,
   type MessageInfo,
   parseServerMessage,
   type ServerMessage,
@@ -312,12 +313,12 @@ async function carryBetween(
       })().catch(() => {});
     };
   };
-  for (const host of hosts) {
+  await inSequence(hosts, async (host) => {
     tell(host);
     await host.client.call("messages.watch", {});
-  }
+  });
   const sync = async () => {
-    for (const host of hosts) {
+    await inSequence(hosts, async (host) => {
       const directory = await host.client.call<{ host: string; sessions: unknown[] }>(
         "messages.directory",
         {},
@@ -326,7 +327,7 @@ async function carryBetween(
         host: directory.host,
         sessions: directory.sessions,
       });
-    }
+    });
   };
   const timer = setInterval(() => void sync().catch(() => {}), 150);
   return { sync, stop: () => clearInterval(timer) };
@@ -446,14 +447,14 @@ async function dispatchTasks(
     [first, "Tarefa 1: crie o arquivo pedido. [commit]"],
     [second, "Tarefa 2: faça a outra parte e relate."],
   ] as const;
-  for (const [worker, text] of tasks) {
+  await inSequence(tasks, async ([worker, text]) => {
     const dispatched = await claudeC.tool<{ resultado: string }>("send_to_session", {
       to: worker?.address,
       text,
     });
     if (dispatched.data.resultado === "recusada") throw new Error("o despacho foi recusado");
     await claudeC.tool("notify_when_idle", { session: worker?.address });
-  }
+  });
   await until(async () => {
     const { messages } = await a.client.call<{ messages: MessageInfo[] }>("messages.list", {
       session: coordinator,
@@ -473,7 +474,7 @@ async function reviewWork(
   const [first, second] = workers;
   step = "a coordenadora confere e aceita uma, recusa a outra";
   const verdicts: Array<{ name: string; green: boolean }> = [];
-  for (const worker of [first, second]) {
+  await inSequence([first, second], async (worker) => {
     const card = await claudeC.tool<{ worktreePath: string }>("get_card", {
       cardId: worker?.cardId,
     });
@@ -484,7 +485,7 @@ async function reviewWork(
       ? `Aceito o seu commit ${found.slice(0, 8)}: o check passou.`
       : "Recusado: o check não achou nenhum commit seu. Corrija e feche um commit verde.";
     await claudeC.tool("send_to_session", { to: worker?.address, text: reply });
-  }
+  });
   if (!verdicts[0]?.green || verdicts[1]?.green) {
     throw new Error(
       `a conferência devia aceitar a primeira e recusar a segunda: ${JSON.stringify(verdicts)}`,
@@ -549,12 +550,14 @@ async function run(work: string): Promise<void> {
     await pauseAndResume(a, team.id);
     stop();
   } finally {
-    for (const claude of claudes) await claude.stop();
-    for (const host of hosts) {
+    await inSequence(claudes, async (claude) => {
+      await claude.stop();
+    });
+    await inSequence(hosts, async (host) => {
       host.client.close();
       host.proc.kill();
       await host.proc.exited;
-    }
+    });
   }
 }
 

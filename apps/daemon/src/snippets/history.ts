@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { open, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { Snippet, SnippetHistoryCandidate } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { hasControl, type SecretScanner } from "./model.ts";
 import type { Snippets } from "./store.ts";
 
@@ -193,7 +194,7 @@ export class HistoryImporter {
     const byId = new Map(entries.map((entry) => [idOf(entry.command), entry]));
     const created: Snippet[] = [];
     const skipped: Array<{ id: string; reason: string }> = [];
-    for (const id of new Set(ids)) {
+    await inSequence(new Set(ids), async (id) => {
       const entry = byId.get(id);
       const skip = (reason: string) => skipped.push({ id, reason });
       if (!entry) {
@@ -214,7 +215,7 @@ export class HistoryImporter {
         created.push(saved);
         taken.push(saved);
       }
-    }
+    });
     return { created, skipped };
   }
 
@@ -229,9 +230,9 @@ export class HistoryImporter {
   }> {
     const counts = new Map<string, Entry>();
     const sources: Array<{ shell: string; found: boolean }> = [];
-    for (const { key, shell } of SOURCES) {
+    await inSequence(SOURCES, async ({ key, shell }) => {
       const path = this.opts.sources[key];
-      if (path === undefined) continue;
+      if (path === undefined) return;
       const text = await readHistory(path);
       sources.push({ shell, found: text !== null });
       for (const command of parseHistory(shell, text ?? "").filter(eligible)) {
@@ -240,7 +241,7 @@ export class HistoryImporter {
         if (!entry.shells.includes(shell)) entry.shells.push(shell);
         counts.set(command, entry);
       }
-    }
+    });
     const entries = [...counts.values()].sort(
       (a, b) => b.count - a.count || (a.command < b.command ? -1 : 1),
     );

@@ -7,6 +7,7 @@
 import { mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { type BrowserContext, chromium, type Page } from "playwright-core";
 import type { Route } from "../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "./demo-seed.ts";
@@ -735,7 +736,7 @@ export async function takeShots(
   );
   const problems: string[] = [];
   try {
-    for (const theme of ["light", "dark"] as const) {
+    await inSequence(["light", "dark"] as const, async (theme) => {
       for (const lang of ["pt-BR", "en"] as const) {
         const dir = join(SHOTS_DIR, `${theme}-${lang}`);
         mkdirSync(dir, { recursive: true });
@@ -759,7 +760,7 @@ export async function takeShots(
         await context.close();
         log(`prints ${theme} ${lang}`);
       }
-    }
+    });
   } finally {
     await browser.close();
   }

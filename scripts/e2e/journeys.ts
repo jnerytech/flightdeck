@@ -1,3 +1,4 @@
+import { inSequence } from "@flightdeck/protocol";
 /**
  * The e2e journeys (phase 10): fourteen in a real browser against the seeded demo, in both
  * languages, and a layout check of the main screens at 1280x800 and 800x600 (nothing sticks out
@@ -385,12 +386,12 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     const tile = (title: string) =>
       c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
     await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
-    for (const title of [first, second]) {
+    await inSequence([first, second], async (title) => {
       await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
       await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
       await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
       await tile(title).waitFor({ timeout: WAIT });
-    }
+    });
     await tile(second).getByRole("button", { name: second, exact: true }).click();
     await c.page.getByLabel(c.t("deps.addLabel"), { exact: true }).selectOption({ label: first });
     await c.page.getByRole("button", { name: c.t("deps.add"), exact: true }).click();
@@ -707,7 +708,7 @@ export async function layout(c: Context, problems: string[]) {
     ["titulo-longo", { name: "session", host: ALFA, id: c.ids.longTitleSession }],
     ...screens,
   ];
-  for (const viewport of OVERFLOW_VIEWPORTS) {
+  await inSequence(OVERFLOW_VIEWPORTS, async (viewport) => {
     await c.page.setViewportSize(viewport);
     for (const [name, route] of crowded) {
       await openCrowded(c, route);
@@ -735,18 +736,21 @@ export async function layout(c: Context, problems: string[]) {
     await openCrowded(c, { name: "hub" }, 2);
     const fewTabs = await tabWidthsProblem(c.page, 80);
     if (fewTabs) problems.push(`${c.lang} ${viewport.width}x${viewport.height} 2 abas: ${fewTabs}`);
-  }
+  });
   // The tab strip starts at the same x whatever the crumbs say ("Hosts > alfa" is wider than "Settings").
   const lefts: number[] = [];
-  for (const [, route] of screens.filter(([n]) => n === "host" || n === "configuracoes")) {
-    await open(c, route);
-    const box = await c.page.locator(".header-tabs").first().boundingBox();
-    if (box) lefts.push(Math.round(box.x));
-  }
+  await inSequence(
+    screens.filter(([n]) => n === "host" || n === "configuracoes"),
+    async ([, route]) => {
+      await open(c, route);
+      const box = await c.page.locator(".header-tabs").first().boundingBox();
+      if (box) lefts.push(Math.round(box.x));
+    },
+  );
   if (new Set(lefts).size > 1) {
     problems.push(`${c.lang}: o início das abas muda com o título (${lefts.join(" ≠ ")})`);
   }
-  for (const viewport of VIEWPORTS) {
+  await inSequence(VIEWPORTS, async (viewport) => {
     await c.page.setViewportSize(viewport);
     for (const [name, route] of screens) {
       await open(c, route);
@@ -779,7 +783,7 @@ export async function layout(c: Context, problems: string[]) {
         `${c.lang} ${viewport.width}x${viewport.height}: o fim da lista não aparece depois de rolar (${hidden})`,
       );
     }
-  }
+  });
   // The smallest window the app allows (tauri.conf.json), where the longest labels are tightest.
   await c.page.setViewportSize({ width: 720, height: 480 });
   for (const issue of await folderDialogProblems(c)) {

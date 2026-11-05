@@ -5,6 +5,7 @@
  */
 import { readdir, readFile, realpath } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { claudeMds, frontmatter } from "../agentcfg/files.ts";
 import { displayPath } from "./display-path.ts";
 import { exists } from "./exists.ts";
@@ -96,12 +97,15 @@ export async function contextBudget(input: BudgetInput): Promise<ContextBudget> 
   };
   /** Rules with `paths` load only when Claude works on those files. */
   const rules = async (dir: string) => {
-    for (const rel of (await markdownUnder(dir)).sort((a, b) => (a < b ? -1 : Number(a > b)))) {
-      const path = join(dir, rel);
-      const bytes = await readFile(path);
-      const scoped = frontmatter(bytes.toString("utf8"))?.paths !== undefined;
-      add("rules", path, scoped ? "on-demand" : "start", bytes.length);
-    }
+    await inSequence(
+      (await markdownUnder(dir)).sort((a, b) => (a < b ? -1 : Number(a > b))),
+      async (rel) => {
+        const path = join(dir, rel);
+        const bytes = await readFile(path);
+        const scoped = frontmatter(bytes.toString("utf8"))?.paths !== undefined;
+        add("rules", path, scoped ? "on-demand" : "start", bytes.length);
+      },
+    );
   };
   /** A skill's name and description are in the context; the body comes when it is used. */
   const skills = async (dir: string) => {
@@ -109,13 +113,13 @@ export async function contextBudget(input: BudgetInput): Promise<ContextBudget> 
     const entries = (await readdir(dir, { withFileTypes: true })).sort((a, b) =>
       a.name.localeCompare(b.name),
     );
-    for (const entry of entries) {
+    await inSequence(entries, async (entry) => {
       const path = join(dir, entry.name, "SKILL.md");
-      if (!entry.isDirectory() || !(await exists(path))) continue;
+      if (!entry.isDirectory() || !(await exists(path))) return;
       const data = frontmatter(await readFile(path, "utf8"));
-      if (typeof data?.name !== "string") continue;
+      if (typeof data?.name !== "string") return;
       add("skills", path, "start", Buffer.byteLength(`${data.name}: ${data.description ?? ""}`));
-    }
+    });
   };
 
   const root = await realpath(resolve(input.project));
@@ -129,7 +133,7 @@ export async function contextBudget(input: BudgetInput): Promise<ContextBudget> 
     await file("local", join(dir, "CLAUDE.local.md"), "start");
   }
   const AT_START = new Set(["CLAUDE.md", "CLAUDE.local.md", ".claude/CLAUDE.md"]);
-  for (const rel of await claudeMds(root)) {
+  await inSequence(await claudeMds(root), async (rel) => {
     const path = join(root, rel);
     add(
       rel === "CLAUDE.local.md" ? "local" : "project",
@@ -137,7 +141,7 @@ export async function contextBudget(input: BudgetInput): Promise<ContextBudget> 
       AT_START.has(rel) ? "start" : "on-demand",
       (await readFile(path)).length,
     );
-  }
+  });
   await rules(join(root, ".claude", "rules"));
   await skills(join(root, ".claude", "skills"));
 
@@ -193,8 +197,9 @@ async function memoryIndex(
     .map((e) => e.name)
     .sort((a, b) => (a < b ? -1 : Number(a > b)));
   add("memory", indexPath, "start", loadedBytes, cutBy ? `cortado por ${cutBy}` : undefined);
-  for (const name of topics)
+  await inSequence(topics, async (name) => {
     add("memory", join(dir, name), "on-demand", (await readFile(join(dir, name))).length);
+  });
   return {
     ...empty,
     indexLines: lines.length,

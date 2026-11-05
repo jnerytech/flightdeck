@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 import type { Dirent } from "node:fs";
 import { lstat, mkdir, readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join } from "node:path";
-import { byCodeUnit } from "@flightdeck/protocol";
+import { byCodeUnit, inSequence } from "@flightdeck/protocol";
 import { userHome } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
@@ -139,13 +139,13 @@ const entries = (dir: string): Promise<Dirent[]> =>
 export async function claudeMds(root: string): Promise<string[]> {
   const found = (await exists(join(root, "CLAUDE.local.md"))) ? ["CLAUDE.local.md"] : [];
   const walk = async (dir: string, rel: string, depth: number) => {
-    for (const entry of await readdir(dir, { withFileTypes: true })) {
+    await inSequence(await readdir(dir, { withFileTypes: true }), async (entry) => {
       if (entry.isFile() && entry.name === "CLAUDE.md") found.push(`${rel}${entry.name}`);
       // Links are not followed: they may lead outside the project, or in circles.
       if (entry.isDirectory() && !SKIPPED.has(entry.name) && depth < MAX_DEPTH) {
         await walk(join(dir, entry.name), `${rel}${entry.name}/`, depth + 1);
       }
-    }
+    });
   };
   await walk(root, "", 0);
   return found;
@@ -227,10 +227,10 @@ export class AgentConfig {
     const base = origin === "project" ? ".claude/" : "";
     const paths = await this.pathsOf(root, kind, origin, base);
     const items: AgentCfgItem[] = [];
-    for (const path of [...paths].sort(byCodeUnit)) {
+    await inSequence([...paths].sort(byCodeUnit), async (path) => {
       const bytes = await readFile(join(root, path)).catch(() => null);
       if (bytes) items.push(this.itemOf(bytes, kind, path, origin));
-    }
+    });
     return items;
   }
 

@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { git } from "./command.ts";
 import type { CardDiff, DiffFile, DiffHunk } from "./types.ts";
 import { must } from "./worktree.ts";
@@ -96,7 +97,9 @@ export async function workingDiff(root: string): Promise<DiffFile[]> {
   const untracked = others.stdout.split("\0").filter(Boolean);
   const files = parseUnifiedDiff(pending.stdout, true);
   // One at a time: a tree of untracked files must not open them all at once.
-  for (const path of untracked) files.push(await untrackedFile(root, path));
+  await inSequence(untracked, async (path) => {
+    files.push(await untrackedFile(root, path));
+  });
   return files;
 }
 

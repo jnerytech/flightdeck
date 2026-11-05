@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { SshTarget, SshTestResult, TerminalInfo } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { envInput, remoteCommand } from "../actions/ssh-command.ts";
 import { FlightdeckError } from "../errors.ts";
 import type { Timers } from "../quota/quota.ts";
@@ -336,7 +337,9 @@ export class SshConnector {
         );
       }
     }
-    for (const member of members) await this.trust(member);
+    await inSequence(members, async (member) => {
+      await this.trust(member);
+    });
 
     const delivered: DeliveredKey | null = privateKey
       ? await this.opts.delivery.deliver(privateKey)

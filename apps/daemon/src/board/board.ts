@@ -9,6 +9,7 @@ import {
   type BoardResult,
   type EffortLevel,
   IssuesConfig,
+  inSequence,
   type PermissionUpdate,
   type PersonaRef,
   type PersonaSubagentsMode,
@@ -667,7 +668,7 @@ export class Board {
     }
     const made: string[] = [];
     try {
-      for (const [i, wanted] of input.variants.entries()) {
+      await inSequence(input.variants.entries(), async ([i, wanted]) => {
         const label = "abcd"[i] as string;
         const variant = this.createCard(card.projectId, {
           title: `${card.title} (${label})`,
@@ -686,10 +687,12 @@ export class Board {
           inputs: input.inputs,
           persona: wanted.persona,
         });
-      }
+      });
     } catch (error) {
       // Half an arena is nothing: the variants already made go, and the card stays as it was.
-      for (const id of made) await this.discardCard(id, true);
+      await inSequence(made, async (id) => {
+        await this.discardCard(id, true);
+      });
       throw error;
     }
     this.place(cardId, { type: "started" });
@@ -785,7 +788,9 @@ export class Board {
         "arena_variant_running",
       );
     }
-    for (const id of ids) if (id !== variantId) await this.discardCard(id, true);
+    await inSequence(ids, async (id) => {
+      if (id !== variantId) await this.discardCard(id, true);
+    });
     this.follows.get(variantId)?.();
     this.follows.delete(variantId);
     this.db.transaction(() => {
@@ -1355,10 +1360,10 @@ export class Board {
         "SELECT * FROM card_runs WHERE card_id = ? AND id <> ? AND ended_at IS NULL",
       )
       .all(id, keep);
-    for (const run of open) {
+    await inSequence(open, async (run) => {
       if (run.session_id) await this.opts.manager.close(run.session_id);
       this.db.query("UPDATE card_runs SET ended_at = ? WHERE id = ?").run(now(), run.id);
-    }
+    });
     this.workflows.abandon(id, "execução encerrada com o card", keep);
     await this.workflows.closeSessions(id, keep);
   }
@@ -1711,7 +1716,9 @@ export class Board {
       throw new FlightdeckError("invalid_state", "confirm discarding the card", "discard_confirm");
     const card = this.getCard(id);
     // The variants of an arena go with its card.
-    for (const variant of this.variantIds(id)) await this.discardCard(variant, true);
+    await inSequence(this.variantIds(id), async (variant) => {
+      await this.discardCard(variant, true);
+    });
     await this.closeRuns(id);
     this.follows.get(id)?.();
     this.follows.delete(id);
@@ -1817,7 +1824,9 @@ export class Board {
         // The card may have been discarded while the provider was answering.
         if (this.db.query("SELECT 1 FROM cards WHERE id = ?").get(id)) this.changed(id);
       };
-      for (const { id } of open) await this.pollPr(id).catch(failed(id));
+      await inSequence(open, async ({ id }) => {
+        await this.pollPr(id).catch(failed(id));
+      });
       if (this.stopped) return;
       // Merged, but the worktree removal failed (a busy folder on Windows; its error is the
       // notice): finish again, without asking the provider. Pending changes wait for the user,
@@ -1828,7 +1837,9 @@ export class Board {
            AND worktree_path IS NOT NULL AND notice IS NOT NULL AND notice <> ?`,
         )
         .all(PENDING_NOTICE);
-      for (const { id } of unfinished) await this.finish(id).catch(failed(id));
+      await inSequence(unfinished, async ({ id }) => {
+        await this.finish(id).catch(failed(id));
+      });
       for (const listener of this.prRoundListeners) listener();
     } finally {
       this.polling = false;

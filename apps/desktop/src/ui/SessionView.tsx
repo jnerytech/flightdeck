@@ -1,4 +1,5 @@
 import {
+  inSequence,
   type PermissionMode,
   type PermissionUpdate,
   SESSION_IMAGE_MAX_BYTES,
@@ -406,14 +407,14 @@ export function SessionView(props: Readonly<SessionViewProps>) {
     let have = attached.length;
     const taken: SessionImage[] = [];
     let turned: ImageRefusal | null = null;
-    for (const file of images) {
+    await inSequence(images, async (file) => {
       const why = refuseImage(file, have);
       if (why) turned = why;
       else {
         taken.push(await readImage(file));
         have++;
       }
-    }
+    });
     setRefusal(turned);
     if (taken.length > 0) setAttached((before) => [...before, ...taken]);
   };

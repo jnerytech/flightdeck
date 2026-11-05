@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import type { SshImportEntry, SshImportResult } from "@flightdeck/protocol";
-import { byCodeUnit } from "@flightdeck/protocol";
+import { byCodeUnit, inSequence } from "@flightdeck/protocol";
 import type { FlightdeckError } from "../errors.ts";
 import type { SshTargets } from "./targets.ts";
 
@@ -229,11 +229,11 @@ export class SshImporter {
     stack: string[],
   ): Promise<Directive[]> {
     const out: Directive[] = [];
-    for (const file of await this.included(value)) {
+    await inSequence(await this.included(value), async (file) => {
       if (file !== path && !stack.includes(file)) {
         out.push(...(await this.directives(file, [...stack, path])));
       }
-    }
+    });
     return out;
   }
 
@@ -246,11 +246,11 @@ export class SshImporter {
       return [];
     }
     const out: Directive[] = [];
-    for (const raw of text.split(/\r?\n/)) {
+    await inSequence(text.split(/\r?\n/), async (raw) => {
       const line = raw.trim();
-      if (line === "" || line.startsWith("#")) continue;
+      if (line === "" || line.startsWith("#")) return;
       const parsed = splitDirective(line);
-      if (!parsed) continue;
+      if (!parsed) return;
       const { key, value } = parsed;
       if (key === "host") {
         out.push({ kind: "host", patterns: value.split(/\s+/).map(unquote) });
@@ -262,7 +262,7 @@ export class SshImporter {
       } else {
         out.push({ kind: "param", key, value });
       }
-    }
+    });
     return out;
   }
 

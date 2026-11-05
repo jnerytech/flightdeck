@@ -1,4 +1,5 @@
 import type { TeamInfo, TeamMember, TeamStatus } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { UsersRound } from "lucide-react";
 import { memo, useCallback, useEffect, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
@@ -495,10 +496,10 @@ export const TeamsPage = memo(function TeamsPage(props: {
     if (!list) return;
     setTeams(list.teams);
     const next: Record<string, TeamStatus> = {};
-    for (const team of list.teams) {
+    await inSequence(list.teams, async (team) => {
       const status = await store.hostCommand(current, "teams.status", { team: team.id });
       if (status) next[team.id] = status;
-    }
+    });
     setStatuses(next);
   }, [store, current]);
   useEffect(() => {

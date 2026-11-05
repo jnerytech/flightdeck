@@ -1,4 +1,5 @@
 import type { MessageInfo, RelayMessage } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 
 /**
  * Phase 21: what the app does between daemons of different hosts. A daemon cannot reach another
@@ -66,7 +67,7 @@ export async function relayUpdate(
 /** Each daemon is told the sessions of the other online daemons. */
 export async function syncPeers(deps: RelayDeps): Promise<void> {
   const online = deps.hosts().filter((h) => h.online);
-  for (const host of online) {
+  await inSequence(online, async (host) => {
     const directory = (await deps.call(host.id, "messages.directory", {})) as {
       host: string;
       sessions: unknown[];
@@ -78,5 +79,5 @@ export async function syncPeers(deps: RelayDeps): Promise<void> {
         sessions: directory.sessions,
       });
     }
-  }
+  });
 }

@@ -1,4 +1,5 @@
 import type { TaskFile, TaskResultsResult, Template } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { FolderOpen, Home, Settings as SettingsIcon } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { HomeView } from "@/components/simple/home-view";
@@ -108,10 +109,10 @@ function FilesScreen(
     let alive = true;
     void (async () => {
       const found: Array<{ task: string; file: TaskFile }> = [];
-      for (const task of props.tasks.slice(0, 10)) {
+      await inSequence(props.tasks.slice(0, 10), async (task) => {
         const answer = await store.hostRequest(hostId, "task.results", { sessionId: task.id });
         if (answer.ok) for (const file of answer.data.files) found.push({ task: task.title, file });
-      }
+      });
       found.sort((a, b) => b.file.modifiedAt.localeCompare(a.file.modifiedAt));
       if (alive) setRows(found);
     })();

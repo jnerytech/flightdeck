@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import type { AssistantBlock, McpLiveStatus } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { ulid } from "../ulid.ts";
 import { whichOnPath } from "../which.ts";
@@ -220,10 +221,10 @@ class FakeRun implements AgentRun {
   }
 
   private async stream(text: string, signal: AbortSignal): Promise<void> {
-    for (const chunk of text.match(/.{1,4}/gsu) ?? []) {
+    await inSequence(text.match(/.{1,4}/gsu) ?? [], async (chunk) => {
       this.emit({ type: "message.delta", text: chunk });
       await this.sleep(signal);
-    }
+    });
   }
 
   private emitInitOnce(): void {
@@ -252,9 +253,9 @@ class FakeRun implements AgentRun {
       if (text.includes("[tool]")) await this.toolCall(abort.signal);
       if (text.includes("[bash]")) await this.bashCall(abort.signal);
       if (text.includes("[commit]")) await this.commit(text);
-      for (const [, path] of text.matchAll(/\[result:([^\]]+)\]/g)) {
+      await inSequence(text.matchAll(/\[result:([^\]]+)\]/g), async ([, path]) => {
         await this.writeResult(path ?? "");
-      }
+      });
       for (const [, cost] of text.matchAll(/\[cost:(\d+(?:\.\d+)?)\]/g)) {
         const total = this.costs.get(this.claudeSessionId) ?? 0;
         this.costs.set(this.claudeSessionId, total + Number(cost));
@@ -296,21 +297,24 @@ class FakeRun implements AgentRun {
   private async commit(text: string): Promise<void> {
     const file = `fake-${++this.commits}.txt`;
     await writeFile(join(this.opts.cwd, file), `${text}\n`);
-    for (const args of [
-      ["add", file],
-      ["commit", "-q", "-m", `fake: ${text}`],
-    ]) {
-      const git = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
-        cwd: this.opts.cwd,
-        // The daemon's current environment, not the one it started with (see board/command.ts).
-        env: process.env,
-        stdin: "ignore",
-        stdout: "ignore",
-        stderr: "pipe",
-      });
-      const [error, code] = await Promise.all([new Response(git.stderr).text(), git.exited]);
-      if (code !== 0) throw new Error(`git ${args[0]}: ${error.trim()}`);
-    }
+    await inSequence(
+      [
+        ["add", file],
+        ["commit", "-q", "-m", `fake: ${text}`],
+      ],
+      async (args) => {
+        const git = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
+          cwd: this.opts.cwd,
+          // The daemon's current environment, not the one it started with (see board/command.ts).
+          env: process.env,
+          stdin: "ignore",
+          stdout: "ignore",
+          stderr: "pipe",
+        });
+        const [error, code] = await Promise.all([new Response(git.stderr).text(), git.exited]);
+        if (code !== 0) throw new Error(`git ${args[0]}: ${error.trim()}`);
+      },
+    );
   }
 
   /** `[tool]`: a Write that asks permission, with the session suggestions the CLI would send. */

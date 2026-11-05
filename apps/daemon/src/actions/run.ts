@@ -7,6 +7,7 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { buildChildEnv } from "../env.ts";
 import { FlightdeckError } from "../errors.ts";
 import { type MaskedSecret, maskOutput } from "./mask.ts";
@@ -169,10 +170,10 @@ export async function runAction(
   const started = performance.now();
   try {
     const paths: Record<string, string> = {};
-    for (const [i, id] of files.entries()) {
+    await inSequence(files.entries(), async ([i, id]) => {
       paths[id] = join(folder, `segredo-${i}`);
       await writeFile(paths[id] as string, secrets[id] as string, { mode: 0o600 });
-    }
+    });
     const fill = (text: string) =>
       text.replace(new RegExp(REFERENCE.source, "g"), (_match, kind: string, name: string) => {
         if (kind === "param") return params[name] as string;

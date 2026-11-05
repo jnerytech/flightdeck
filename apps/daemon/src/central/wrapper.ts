@@ -1,6 +1,7 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { PersonaSubagents, ResolvedPersonaResult } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import type { Config } from "../config.ts";
 import { DaemonClient, daemonUrl } from "../mcp.ts";
 import { type TelemetryTarget, wrapperTelemetryEnv } from "../telemetry/otlp-env.ts";
@@ -198,7 +199,9 @@ async function agentArgs(
 
 /** Deletes the files that exist (a null path is skipped). */
 async function removeAll(paths: Array<string | null>): Promise<void> {
-  for (const path of paths) if (path) await rm(path, { force: true });
+  await inSequence(paths, async (path) => {
+    if (path) await rm(path, { force: true });
+  });
 }
 
 /**

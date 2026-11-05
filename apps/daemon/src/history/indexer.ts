@@ -3,6 +3,7 @@ import { watch } from "node:fs";
 import { stat as fileStat, open, readdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { promptText } from "../transcript-text.ts";
 import { type HistoryRecord, parseLines } from "./parser.ts";
@@ -552,7 +553,7 @@ export class HistoryIndexer {
     const pause = this.opts.pause ?? zeroTimer;
     const sliceBytes = this.opts.sliceBytes ?? SLICE_BYTES;
     const results: IndexResult[] = [];
-    for (const path of await this.files()) {
+    await inSequence(await this.files(), async (path) => {
       let merged = null as IndexResult | null;
       for (;;) {
         const { result, more } = await this.indexSlice(path, sliceBytes);
@@ -568,7 +569,7 @@ export class HistoryIndexer {
         results.push(merged);
         this.notify(merged.claudeSessionId);
       }
-    }
+    });
     return results;
   }
 
@@ -600,10 +601,10 @@ export class HistoryIndexer {
   async scan(): Promise<IndexResult[]> {
     this.claimManaged();
     const results: IndexResult[] = [];
-    for (const path of await this.files()) {
+    await inSequence(await this.files(), async (path) => {
       const result = await this.indexFile(path);
       if (result) results.push(result);
-    }
+    });
     for (const { claudeSessionId } of results) this.notify(claudeSessionId);
     return results;
   }
@@ -623,7 +624,7 @@ export class HistoryIndexer {
 
   private async files(): Promise<string[]> {
     const files: string[] = [];
-    for (const root of this.opts.roots) {
+    await inSequence(this.opts.roots, async (root) => {
       for (const dir of await entries(root)) {
         if (!dir.isDirectory()) continue;
         for (const file of await entries(join(root, dir.name))) {
@@ -632,7 +633,7 @@ export class HistoryIndexer {
           }
         }
       }
-    }
+    });
     return files;
   }
 

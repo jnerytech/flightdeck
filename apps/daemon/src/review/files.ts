@@ -10,6 +10,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
 import { must } from "../board/worktree.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -200,12 +201,12 @@ export class ReviewFiles {
   /** Copies older than 7 days leave the trash. */
   private async pruneTrash(): Promise<void> {
     const names = await readdir(this.trash).catch(() => []);
-    for (const name of names) {
+    await inSequence(names, async (name) => {
       const dir = join(this.trash, name);
       const info = await stat(dir).catch(() => null);
       if (info && this.now() - info.mtimeMs > TRASH_MS)
         await rm(dir, { recursive: true, force: true });
-    }
+    });
   }
 
   /**

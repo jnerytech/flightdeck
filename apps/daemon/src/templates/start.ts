@@ -6,6 +6,7 @@ import type {
   TemplatePreset,
   TemplateStartResult,
 } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { isInside, resolveAllowedCwd } from "../paths.ts";
 import type { TaskTracker } from "./tasks.ts";
@@ -86,7 +87,7 @@ export async function startTemplate(
 ): Promise<TemplateStartResult> {
   const answers = new Map<string, string>();
   const folders: string[] = [];
-  for (const field of template.fields) {
+  await inSequence(template.fields, async (field) => {
     const given = values[field.id]?.trim() ?? "";
     if (given === "" && !field.optional) {
       throw refuse("bad_request", `${field.id} is needed`, "template_field_missing", {
@@ -97,7 +98,7 @@ export async function startTemplate(
       given === "" ? { text: NONE[language] } : await answerOf(field, given, language, deps);
     answers.set(field.id, answer.text);
     if (answer.folder) folders.push(answer.folder);
-  }
+  });
   const working = folders[0];
   if (!working) {
     throw refuse("bad_request", "the template asks for no folder to work in", "template_no_folder");
