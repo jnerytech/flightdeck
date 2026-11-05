@@ -189,6 +189,66 @@ describe("security-gate", () => {
     ]);
   });
 
+  test("code after a comment on the same line counts; a comment alone does not (#273)", () => {
+    const added = new Map([
+      ["apps/daemon/src/a.ts", ["/* biome-ignore lint: x */ execSync(command);"]],
+      ["apps/daemon/src/b.ts", ["*/ spawnSync(x);"]],
+      [
+        "apps/daemon/src/c.ts",
+        ["/* spawn( in a comment */", " * spawn( in a doc line", "// rm(x)"],
+      ],
+    ]);
+    expect(riskyFiles(added).map((r) => r.path)).toEqual([
+      "apps/daemon/src/a.ts",
+      "apps/daemon/src/b.ts",
+    ]);
+  });
+
+  test("Rust and Python spawns, deletes and listeners count too (#273)", () => {
+    const added = new Map([
+      ["apps/desktop/src-tauri/src/run.rs", ['let out = Command::new("git").output()?;']],
+      ["apps/desktop/src-tauri/src/clean.rs", ["std::fs::remove_dir_all(&dir)?;"]],
+      ["apps/desktop/src-tauri/src/net.rs", ['let l = TcpListener::bind("0.0.0.0:80")?;']],
+      ["tools/x.py", ["subprocess.run(['git'])", "shutil.rmtree(d)"]],
+    ]);
+    expect(riskyFiles(added)).toEqual([
+      { path: "apps/desktop/src-tauri/src/clean.rs", why: ["delete"] },
+      { path: "apps/desktop/src-tauri/src/net.rs", why: ["network"] },
+      { path: "apps/desktop/src-tauri/src/run.rs", why: ["spawn"] },
+      { path: "tools/x.py", why: ["spawn", "delete"] },
+    ]);
+  });
+
+  test("a mode change, and the files that run code (scripts, build, settings, hooks), are risky with no line added (#273)", () => {
+    const modeOnly = [
+      "diff --git a/scripts/run.sh b/scripts/run.sh",
+      "old mode 100644",
+      "new mode 100755",
+    ].join("\n");
+    const added = addedLines(modeOnly);
+    for (const path of [
+      "package.json",
+      "apps/desktop/package.json",
+      "apps/desktop/src-tauri/Cargo.toml",
+      "apps/desktop/src-tauri/build.rs",
+      "bunfig.area.toml",
+      ".claude/settings.json",
+      ".claude/hooks/guard.ts",
+    ]) {
+      added.set(path, []);
+    }
+    expect(riskyFiles(added)).toEqual([
+      { path: ".claude/hooks/guard.ts", why: ["runs code"] },
+      { path: ".claude/settings.json", why: ["runs code"] },
+      { path: "apps/desktop/package.json", why: ["runs code"] },
+      { path: "apps/desktop/src-tauri/Cargo.toml", why: ["runs code"] },
+      { path: "apps/desktop/src-tauri/build.rs", why: ["runs code"] },
+      { path: "bunfig.area.toml", why: ["runs code"] },
+      { path: "package.json", why: ["runs code"] },
+      { path: "scripts/run.sh", why: ["permission"] },
+    ]);
+  });
+
   test("risky files that no commit of the log touches need a review all the same (#273)", () => {
     const risky = [{ path: "apps/daemon/src/run.ts", why: ["spawn"] }];
     expect(securityProblem(risky, [commit("c", ["docs/x.md"], "an old review")]) ?? "").toContain(
@@ -246,6 +306,7 @@ describe("security-gate: end to end", () => {
     expect(diff.at(-1)).toBe("base0...HEAD");
     const log = calls.find((c) => c.includes("log")) ?? [];
     expect(log).toContain("--topo-order");
+    expect(log).toContain("--no-show-signature");
     expect(log.join(" ")).toContain("unfold");
     expect(log.at(-1)).toBe("base0..HEAD");
   });

@@ -15,15 +15,14 @@ const alive = (pid: number) => {
 };
 
 describe("bounded-run", () => {
-  test("a command that ends gives its exit code and the tail of its stderr (#273)", async () => {
+  test("a command that ends gives its exit code and nothing of what it printed: a hook that inherits the environment may print a token (#273)", async () => {
     const result = await runBounded(
-      [BUN, "-e", 'console.error("x".repeat(900) + "the end"); process.exit(3)'],
+      [BUN, "-e", 'console.error("Authorization: Bearer ghp_secret"); process.exit(3)'],
       10_000,
     );
     expect(result.code).toBe(3);
     expect(result.timedOut).toBe(false);
-    expect(result.stderr.endsWith("the end")).toBe(true);
-    expect(result.stderr.length).toBeLessThanOrEqual(500);
+    expect(result.stderr).toBe("");
   });
 
   test("a program that does not exist is a failure with the reason, never a throw (#273)", async () => {
