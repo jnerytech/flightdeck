@@ -2884,6 +2884,15 @@ export const Command = z.discriminatedUnion("type", [
       archived: z.boolean().optional(),
     }),
   ),
+  /** Issue #152: the worktrees of the cards, with their size, state and why one is kept. */
+  cmd("worktree.list", z.object({ projectId: z.string().optional() }).strict()),
+  /** Removes the listed worktrees that are safe to remove; the daemon checks each one again. */
+  cmd(
+    "worktree.remove",
+    z.object({
+      items: z.array(z.object({ projectId: z.string(), path: z.string() }).strict()).min(1),
+    }),
+  ),
   cmd("maintenance.status", z.object({}).strict()),
   cmd("maintenance.backup", z.object({}).strict()),
   /** Applies the retention policy now; `dryRun` only counts. */
@@ -4193,6 +4202,60 @@ export type BackupInfo = z.infer<typeof BackupInfo>;
 
 /** Rows removed (or that would be, with `dryRun`) per table. */
 export const PruneCounts = z.record(z.string(), z.number());
+
+/** Issue #152: why a worktree is kept and not offered for removal. */
+export const WorktreeBlocker = z.enum([
+  "live_session",
+  "running",
+  "dirty",
+  "unpushed",
+  "unknown_base",
+]);
+export type WorktreeBlocker = z.infer<typeof WorktreeBlocker>;
+export const WorktreeItem = z.object({
+  projectId: z.string(),
+  projectName: z.string(),
+  path: z.string(),
+  branch: z.string().nullable(),
+  cardId: z.string().nullable(),
+  cardTitle: z.string().nullable(),
+  column: BoardColumn.nullable(),
+  prState: PrState.nullable(),
+  dirty: z.boolean(),
+  /** Commits that exist nowhere else: not on a remote and not on the base branch. */
+  unpushed: z.number().int().nonnegative(),
+  /** Bytes on disk; null when the scan was not finished in time (never shown as 0). */
+  sizeBytes: z.number().nonnegative().nullable(),
+  /** The newest of the last commit, the card's last change and the folder's. */
+  lastActivity: z.string(),
+  idleDays: z.number().nonnegative(),
+  blockers: z.array(WorktreeBlocker),
+  /** Safe to remove and worth it: no blocker, finished or without a card, idle over 7 days. */
+  suggested: z.boolean(),
+});
+export type WorktreeItem = z.infer<typeof WorktreeItem>;
+export const WorktreesResult = z.object({
+  worktrees: z.array(WorktreeItem),
+  disks: z.array(
+    z.object({
+      projectId: z.string(),
+      totalBytes: z.number().nonnegative(),
+      freeBytes: z.number().nonnegative(),
+    }),
+  ),
+});
+export type WorktreesResult = z.infer<typeof WorktreesResult>;
+export const WorktreeRemoveResult = z.object({
+  removed: z.array(z.object({ path: z.string(), freedBytes: z.number().nonnegative().nullable() })),
+  kept: z.array(
+    z.object({
+      path: z.string(),
+      reason: z.union([WorktreeBlocker, z.enum(["not_listed", "failed"])]),
+      detail: z.string().optional(),
+    }),
+  ),
+});
+export type WorktreeRemoveResult = z.infer<typeof WorktreeRemoveResult>;
 export type PruneCounts = z.infer<typeof PruneCounts>;
 
 export const MaintenanceStatus = z.object({
@@ -4251,6 +4314,8 @@ export interface CommandResults {
   "external.watch": undefined;
   "external.message": undefined;
   "session.meta.set": SessionMeta & { claudeSessionId: string };
+  "worktree.list": WorktreesResult;
+  "worktree.remove": WorktreeRemoveResult;
   "maintenance.status": MaintenanceStatus;
   "maintenance.backup": BackupInfo;
   "maintenance.prune": PruneCounts;
