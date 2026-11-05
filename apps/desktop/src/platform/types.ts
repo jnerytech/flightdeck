@@ -112,7 +112,8 @@ export interface Platform {
     /** Deletes a file the user picked and asked to remove. */
     removeFile(path: string): Promise<void>;
   };
-  notify(notification: Notification): Promise<void>;
+  /** Whether the system showed it (false: notifications are blocked for the app). */
+  notify(notification: Notification): Promise<boolean>;
   isFocused(): boolean;
   openExternal(url: string): Promise<void>;
   /** Opens a file of THIS machine with the system's default app (phase 33); absent in a browser. */
