@@ -193,8 +193,7 @@ describe("ci-branch: when gh itself fails", () => {
   test("one failed look at the run is retried, and the wait goes on", async () => {
     let views = 0;
     const f = scripted((args, dispatched) => {
-      if (args[1] === "list")
-        return { stdout: views === 0 && args[0] === "run" ? "[]" : '[{"databaseId":77}]' };
+      if (args[1] === "list") return { stdout: dispatched ? '[{"databaseId":77}]' : "[]" };
       if (args[1] === "view")
         return ++views === 1 ? { code: 1, stderr: "timeout" } : { stdout: RUN };
       return undefined;

@@ -41,7 +41,12 @@ interface RunView {
   jobs: Array<{ name: string; conclusion: string | null }>;
 }
 
-async function runIds(branch: string, deps: CiBranchDeps): Promise<number[]> {
+/** What gh said when it failed: its errors go to stderr, older answers to stdout. */
+const said = (answer: GhResult): string =>
+  (answer.stderr?.trim() || answer.stdout.trim()).slice(0, 300);
+
+/** The ids of the dispatch runs of the branch, or null when gh could not say (not "none"). */
+async function runIds(branch: string, deps: CiBranchDeps): Promise<number[] | null> {
   const list = await deps.gh([
     "run",
     "list",
@@ -56,8 +61,25 @@ async function runIds(branch: string, deps: CiBranchDeps): Promise<number[]> {
     "--json",
     "databaseId",
   ]);
-  if (list.code !== 0) return [];
-  return (JSON.parse(list.stdout) as Array<{ databaseId: number }>).map((run) => run.databaseId);
+  if (list.code !== 0) {
+    deps.log(`ci-branch: gh run list failed: ${said(list)}`);
+    return null;
+  }
+  try {
+    return (JSON.parse(list.stdout) as Array<{ databaseId: number }>).map((run) => run.databaseId);
+  } catch {
+    deps.log(`ci-branch: gh run list did not answer JSON: ${said(list)}`);
+    return null;
+  }
+}
+
+function parseView(answer: GhResult): RunView | null {
+  if (answer.code !== 0) return null;
+  try {
+    return JSON.parse(answer.stdout) as RunView;
+  } catch {
+    return null;
+  }
 }
 
 /** Dispatches CI on `branch`, waits for it and prints the result. Exit code: 0 green, 1 red, 2 could not run. */
@@ -70,7 +92,10 @@ export async function ciBranch(
     deps.log(`ci-branch: "${branch}" is not a plain branch name`);
     return 2;
   }
-  const before = new Set(await runIds(branch, deps));
+  // Without the runs that were there before, an old one could be taken for the new one.
+  const known = await runIds(branch, deps);
+  if (!known) return 2;
+  const before = new Set(known);
   const dispatch = await deps.gh([
     "workflow",
     "run",
@@ -82,7 +107,7 @@ export async function ciBranch(
   ]);
   if (dispatch.code !== 0) {
     deps.log(
-      `ci-branch: gh refused the dispatch (is ${branch} pushed to origin?): ${dispatch.stdout.trim()}`,
+      `ci-branch: gh refused the dispatch (is ${branch} pushed to origin?): ${said(dispatch)}`,
     );
     return 2;
   }
@@ -91,7 +116,8 @@ export async function ciBranch(
   const appearBy = deps.now() + options.appearMs;
   let id: number | undefined;
   while (id === undefined) {
-    id = (await runIds(branch, deps)).find((candidate) => !before.has(candidate));
+    // A list that fails now is a look that failed: the run may be there on the next one.
+    id = ((await runIds(branch, deps)) ?? []).find((candidate) => !before.has(candidate));
     if (id !== undefined) break;
     if (deps.now() >= appearBy) {
       deps.log(`ci-branch: the run did not appear within ${Math.round(options.appearMs / 1000)} s`);
@@ -102,6 +128,7 @@ export async function ciBranch(
 
   const doneBy = deps.now() + options.waitMs;
   let view: RunView;
+  let failures = 0;
   for (;;) {
     const answer = await deps.gh([
       "run",
@@ -110,7 +137,19 @@ export async function ciBranch(
       "--json",
       "status,conclusion,url,jobs",
     ]);
-    view = JSON.parse(answer.stdout) as RunView;
+    const parsed = parseView(answer);
+    if (!parsed) {
+      // A network blip must not lose a wait of up to an hour: a few looks, then give up.
+      failures += 1;
+      if (failures >= 3) {
+        deps.log(`ci-branch: could not look at run ${id}: ${said(answer)}`);
+        return 2;
+      }
+      await deps.sleep(options.pollMs);
+      continue;
+    }
+    failures = 0;
+    view = parsed;
     if (view.status === "completed") break;
     if (deps.now() >= doneBy) {
       deps.log(
@@ -122,6 +161,13 @@ export async function ciBranch(
   }
 
   deps.log(`ci-branch: ${view.conclusion} ${view.url}`);
+  if (view.conclusion === "cancelled") {
+    // Another run took its place (or someone stopped it): not a verdict on the code.
+    deps.log(
+      `ci-branch: run ${id} was cancelled, so it says nothing about the branch; run it again`,
+    );
+    return 2;
+  }
   for (const job of view.jobs) deps.log(`  ${job.name}: ${job.conclusion}`);
   const names = await deps.gh([
     "api",

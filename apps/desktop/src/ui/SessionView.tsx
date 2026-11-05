@@ -45,7 +45,6 @@ import { ToolCall } from "./ToolCall.tsx";
 const MODES = ["plan", "default", "acceptEdits"] as const;
 const ALL_MODES = [...MODES, "bypassPermissions"] as const;
 
-/** How far from the end still counts as being at the end, in pixels. */
 /** Where each conversation was left (by `scrollKey`), so a tab that comes back is where its reader was. */
 const positions = new Map<string, { top: number; atEnd: boolean; seq: number }>();
 const MAX_POSITIONS = 200;
@@ -59,6 +58,7 @@ function rememberPosition(key: string, top: number, atEnd: boolean, seq: number)
   }
 }
 
+/** How far from the end still counts as being at the end, in pixels. */
 const END_SLACK = 24;
 
 export interface SessionActions {
