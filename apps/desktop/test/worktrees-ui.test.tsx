@@ -205,6 +205,19 @@ describe("worktrees-ui: the Worktrees panel (issue #152)", () => {
     expect(w.asked.filter(([t]) => t === "worktree.list").length).toBeGreaterThanOrEqual(2);
   });
 
+  test("a ticked row can be unticked, and Scan again reads the list once more", async () => {
+    const w = setup();
+    render(w.view());
+    await ready();
+    await click(box("merged"));
+    expect(box("merged").checked).toBe(true);
+    await click(box("merged"));
+    expect(box("merged").checked).toBe(false);
+    const before = w.asked.filter(([t]) => t === "worktree.list").length;
+    await click(screen.getByRole("button", { name: "Scan again" }));
+    await settle(() => w.asked.filter(([t]) => t === "worktree.list").length === before + 1);
+  });
+
   test("cancelling the confirmation removes nothing", async () => {
     const w = setup();
     render(w.view());

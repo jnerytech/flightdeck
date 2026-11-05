@@ -163,6 +163,44 @@ describe("worktrees: what the cards leave on the disk (issue #152)", () => {
   });
 });
 
+describe("worktrees: a project git or the disk cannot read", () => {
+  test("git failing, or a project folder that is gone, lists nothing and does not throw", async () => {
+    const s = setup();
+    s.add("x");
+    const failing = new Worktrees({
+      ...s.options,
+      git: async () => ({ code: 128, stdout: "", stderr: "not a repository" }),
+    });
+    expect((await failing.list()).worktrees).toEqual([]);
+    const gone = new Worktrees({
+      ...s.options,
+      projects: () => [
+        { id: "p1", name: "api", path: join(s.repo, "..", "missing"), baseBranch: "main" },
+      ],
+      git: async () => ({ code: 0, stdout: "worktree /x\n\n", stderr: "" }),
+    });
+    expect((await gone.list()).worktrees).toEqual([]);
+  });
+
+  test("a disk that cannot be read is left out of the list, and a worktree that vanished is not shown", async () => {
+    const s = setup({ disk: async () => null });
+    const path = s.add("x");
+    expect((await s.worktrees.list()).disks).toEqual([]);
+    const ghost = new Worktrees({
+      ...s.options,
+      git: async (cwd, ...args) =>
+        args[0] === "worktree" && args[1] === "list"
+          ? {
+              code: 0,
+              stdout: `worktree ${path}\n\nworktree ${join(s.repo, ".flightdeck", "worktrees", "ghost")}\n`,
+              stderr: "",
+            }
+          : run(cwd, ...args),
+    });
+    expect((await ghost.list()).worktrees.map((w) => w.path)).toEqual([path]);
+  });
+});
+
 describe("worktrees: removing the safe ones", () => {
   test("it removes the folder and the branch, reports the bytes freed and frees the card", async () => {
     const s = setup();

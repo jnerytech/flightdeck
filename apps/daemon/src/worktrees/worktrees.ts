@@ -1,4 +1,4 @@
-import { lstat, realpath, stat } from "node:fs/promises";
+import { lstat, realpath } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type {
   BoardColumn,
@@ -80,23 +80,24 @@ export class Worktrees {
     const cards = this.opts.cards(project.id);
     const baseKnown =
       (await git(project.path, "rev-parse", "--verify", "--quiet", project.baseBranch)).code === 0;
-    const mine: Array<{ path: string; branch: string | null }> = [];
+    const mine: Array<{ path: string; branch: string | null; mtimeMs: number }> = [];
     for (const entry of parseList(listed.stdout)) {
       // Directly inside the worktrees folder, a real folder (not a link), nowhere else.
       if (resolve(entry.path, "..") !== resolve(dir)) continue;
       try {
-        if ((await lstat(entry.path)).isSymbolicLink()) continue;
+        const info = await lstat(entry.path);
+        if (info.isSymbolicLink()) continue;
         if (resolve(await realpath(entry.path), "..") !== resolve(await realpath(dir))) continue;
+        mine.push({ ...entry, mtimeMs: info.mtimeMs });
       } catch {
-        continue;
+        // Gone since git listed it: not ours to show.
       }
-      mine.push(entry);
     }
     const now = this.opts.now();
     return Promise.all(
       mine.map(async (entry): Promise<WorktreeItem> => {
         const card = cards.find((c) => c.worktreePath && samePath(c.worktreePath, entry.path));
-        const [status, ahead, last, mtime, sizeBytes] = await Promise.all([
+        const [status, ahead, last, sizeBytes] = await Promise.all([
           git(entry.path, "status", "--porcelain"),
           baseKnown
             ? git(
@@ -110,17 +111,17 @@ export class Worktrees {
               )
             : Promise.resolve(null),
           git(entry.path, "log", "-1", "--format=%ct"),
-          stat(entry.path).then(
-            (s) => s.mtimeMs,
-            () => 0,
-          ),
           withSize ? this.opts.size(entry.path) : Promise.resolve(null),
         ]);
         // A status that fails is treated as dirty: when git cannot say, nothing is removed.
         const dirty = status.code !== 0 || status.stdout.trim() !== "";
         const unpushed = ahead && ahead.code === 0 ? Number(ahead.stdout.trim()) || 0 : 0;
         const commitMs = last.code === 0 ? Number(last.stdout.trim()) * 1000 || 0 : 0;
-        const lastMs = Math.max(commitMs, mtime, card ? Date.parse(card.updatedAt) || 0 : 0);
+        const lastMs = Math.max(
+          commitMs,
+          entry.mtimeMs,
+          card ? Date.parse(card.updatedAt) || 0 : 0,
+        );
         const busy = this.opts.busy(entry.path, card?.id ?? null);
         const blockers: WorktreeBlocker[] = [
           ...(busy ? [busy] : []),
