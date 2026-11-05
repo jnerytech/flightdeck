@@ -3558,3 +3558,28 @@ read; the service's state file was not opened.
 - **`opencode models --standalone`** prints one `provider/model` per line without the background service (about 2 s here).
 - **The id keeps its name.** `claudeSessionId` holds OpenCode's session id for OpenCode sessions; renaming the field would
   not be additive.
+
+### Phase 39: second probe round and the permission design
+
+Probes on 2026-11-04 with `anthropic/claude-sonnet-5-5` (four short turns, about 0.04 USD) and with
+`opencode api ... --standalone` (no model call). The probe's saved rule and session were deleted afterwards.
+
+- **Own agents in the config content.** `{"agents": {"flightdeck": {"mode": "primary", "permissions": [...]}}}` (v2 shape)
+  defines a real primary agent, `default_agent` selects it, and `{"disabled": true}` removes `build`, `plan`, `explore` and
+  `general`: the ACP `mode` options were exactly `flightdeck` and `flightdeck-plan`, and `set_config_option mode` switched
+  between them. `opencode api GET /api/agent --standalone` resolves the same config (a private server with the caller's
+  environment); `debug` and `api` without `--standalone` ask the background service, which never sees the variable.
+- **Layer order.** A project `opencode.json` with `*: allow` resolved before the agent's own rules, so the agent's `*: ask`
+  is the last match. v2.2.5 appends `browser` and `skill` denies after the agent's rules.
+- **Saved `always` rules beat `ask`.** Answering `always` to `echo fd-one .` saved `{ action: "shell", resource: "echo *" }`
+  for the folder's OpenCode project, and the same command in the next turn ran with no request. `opencode api GET
+  /api/permission/saved --standalone` run in the folder lists exactly that project's rules.
+- **`question` and `subagent` denied:** Sonnet answered "no question tool" and "no subagent tool"; no request came.
+- **Cost is the session total:** `usage_update.cost.amount` went 0.0361, 0.0397, 0.0416, 0.0433 over the four turns; the
+  prompt answer's `usage` is per turn and adds `cachedReadTokens`, `cachedWriteTokens`, `thoughtTokens`.
+- **Decision (maintainer's review): ask cannot be bypassed by construction.** Every OpenCode process runs only
+  Flightdeck's agents (built-ins disabled), its mode is set explicitly, and before every start and resume a preflight
+  checks the resolved rules, the config sources and the project's saved rules; anything that could beat `ask` refuses the
+  session with its reason (`opencode_config_outranks`, `opencode_saved_rules`, `opencode_preflight_failed`) instead of
+  running and detecting afterwards. Flightdeck never deletes a person's saved rules. The tripwire stays as a second line,
+  for a rule saved from OpenCode's own TUI while a session is live.
