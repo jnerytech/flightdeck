@@ -147,6 +147,12 @@ describe("parseBunLog", () => {
     });
   });
 
+  test("a group that is not a test file (a CI step) takes no times", () => {
+    const log =
+      "##[group]Run the step:\n(pass) stray [9ms]\n##[group]a/b.test.ts:\n(pass) t [2ms]\n";
+    expect(parseBunLog(log)).toEqual({ "a/b.test.ts": 0.002 });
+  });
+
   test("a log with no test files has no times", () => {
     expect(parseBunLog("")).toEqual({});
     expect(parseBunLog("2026-11-05T23:29:21Z nothing here")).toEqual({});
