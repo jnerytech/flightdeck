@@ -16,7 +16,7 @@ function view(risk?: "low" | "medium" | "high") {
   render(
     <TContext.Provider value={translator("en")}>
       <ApprovalActions
-        {...(risk ? { risk } : {})}
+        risk={risk}
         onApprove={() => answers.push("approve")}
         onDeny={() => answers.push("deny")}
       />

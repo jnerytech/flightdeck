@@ -13,7 +13,11 @@ export { HIGH_RISK_HOLD_MS };
  * both off while an answer is on its way.
  */
 export function ApprovalActions(props: {
-  risk?: RiskLevel | undefined;
+  /**
+   * Required, so each caller says it (#245): a forgotten risk used to mean one click. `undefined`
+   * is a request the daemon judged no risk for (an older daemon) or a gate, which has none.
+   */
+  risk: RiskLevel | undefined;
   pending?: boolean;
   size?: "sm";
   /** A plan to approve says so ("Approve the plan" / "Keep planning"). */

@@ -56,6 +56,8 @@ function GateCard(props: {
         {/* Issue #182: a gate is answered with the same Approve and Deny as a request. */}
         <ApprovalActions
           size="sm"
+          // A gate has no risk: it is the workflow's own question, answered on its card.
+          risk={undefined}
           pending={busy}
           onApprove={() => run(() => props.onRespond(step, "approve", note))}
           onDeny={() => run(() => props.onRespond(step, "reject", note))}
