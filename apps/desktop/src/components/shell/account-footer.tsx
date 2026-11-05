@@ -18,6 +18,8 @@ const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(
  */
 export function AccountFooter(props: {
   account: AccountState | null;
+  /** More than one different account and none chosen: how many (0 otherwise). */
+  many: number;
   collapsed: boolean;
   t: T;
   go(route: Route): void;
@@ -30,10 +32,16 @@ export function AccountFooter(props: {
   onSignOutGithub(hostId: string): void;
 }) {
   const { t, account } = props;
-  const name = account?.name ?? t("sidebarAccount.none");
-  const plan = account?.plan
-    ? t("sidebarAccount.plan", { plan: capitalized(account.plan) })
-    : t("sidebarAccount.unread");
+  const name =
+    props.many > 1
+      ? t("sidebarAccount.many", { n: props.many })
+      : (account?.name ?? t("sidebarAccount.none"));
+  const plan =
+    props.many > 1
+      ? t("sidebarAccount.manyHint")
+      : account?.plan
+        ? t("sidebarAccount.plan", { plan: capitalized(account.plan) })
+        : t("sidebarAccount.unread");
   const label = t("sidebarAccount.menu", { name });
   return (
     <DropdownMenu onOpenChange={(open) => open && props.onOpen()}>

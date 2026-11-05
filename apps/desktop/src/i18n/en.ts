@@ -7,6 +7,8 @@ export const en: Dictionary = {
     menu: "Account menu for {name}",
     none: "Claude account",
     unread: "Not read yet",
+    many: "{n} accounts",
+    manyHint: "One per host",
     plan: "{plan} plan",
     signOutGithub: "Sign out of GitHub",
     signOutGithubHost: "Sign out of GitHub ({host})",

@@ -9,6 +9,8 @@ export const ptBR = {
     menu: "Menu da conta de {name}",
     none: "Conta Claude",
     unread: "Ainda não lida",
+    many: "{n} contas",
+    manyHint: "Uma por host",
     plan: "Plano {plan}",
     signOutGithub: "Sair do GitHub",
     signOutGithubHost: "Sair do GitHub ({host})",

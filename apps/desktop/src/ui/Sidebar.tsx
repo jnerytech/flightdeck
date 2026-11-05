@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "../lib/app-store.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
+import { footAccount } from "../lib/foot-account.ts";
 import { type GithubHost, githubSignedIn } from "../lib/github-session.ts";
 import type { HostNameError } from "../lib/host-name.ts";
 import { hostDotView } from "../lib/host-status.ts";
@@ -238,11 +239,8 @@ export function Sidebar(
     if (navHost) go(build(navHost.id));
   };
 
-  /** The Claude account the foot shows: the first host with a name, else the first with any. */
-  const account =
-    state.hosts.map((host) => state.account[host.id]).find((a) => a?.name) ??
-    state.hosts.map((host) => state.account[host.id]).find((a) => a) ??
-    null;
+  /** The Claude account the foot shows: the open host's, how many differ, none from an offline host. */
+  const foot = footAccount(state, props.route);
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: the double click only repeats what a click on an item already did
     <div
@@ -602,7 +600,8 @@ export function Sidebar(
           onClick={() => go({ name: "settings" })}
         />
         <AccountFooter
-          account={account}
+          account={foot.account}
+          many={foot.many}
           githubHosts={githubHosts}
           onOpen={() => void githubSignedIn(props.store, state.hosts).then(setGithubHosts)}
           onSignOutGithub={(hostId) =>
