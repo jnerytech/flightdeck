@@ -1762,7 +1762,6 @@ What the Phase 13 interface (`risco-ui`, `issues-ui`, `automacoes-ui`, `arena-ui
 - **Version:** 0.13.0 in the protocol, the daemon and the desktop (`tauri.conf.json` reads the desktop's `package.json`).
 - **`scripts/demo-seed.ts` is out of the coverage count:** the `demo-issue-risco` test is the first unit test to load the seed, which put its ping reply and its old-daemon stub (only used by `demo` and `demo:shots`) into the totals. The seed is demo scaffolding, covered by the e2e and the screenshots, so `bunfig.toml` ignores it like the vendored UI.
 
-
 # Phase 14 decisions: the daemon (embedded terminal)
 
 ## Terminal embutido (daemon)
@@ -2467,7 +2466,6 @@ The app side of phase 21: `conversas-ui`, `times-ui`, the relay between hosts, `
 
 - **`smoke:run`:** a real daemon over a real repository whose committed run.yaml runs an echo server that also starts a child that ignores SIGHUP and SIGTERM. Two cards run at once on different blocks, both answer over HTTP, and Stop leaves no server, child or answering port. Its block starts at a random base. Red on the base commit, where `runenv.config` does not exist.
 
-
 # Phase 28 decisions: performance and stack best practices
 
 ## Baseline
@@ -2882,8 +2880,6 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
 - Not done in part 1: the weight scale (vendored buttons), splitting hover motion into per-component
   enter animations. Both go to part 2.
 
-
-
 ## Phase 37: GitHub sign-in and start from a GitHub project
 
 - **The sign-in is the host's `gh`, not an OAuth client of ours.** Issue #16 asks for the device flow, the token in the OS
@@ -3054,7 +3050,6 @@ are out of scope. This supersedes item 4 of the blocking-call audit: the sync fa
   opens a new one; duplicates in an older snapshot fold into one.
 - `session.create` takes no first prompt: the session starts idle and the first message begins
   its first turn. The New session form has a Model select (default, opus, sonnet, haiku).
-
 
 ## Phase 38: board sync with external boards (GitHub Projects first)
 
@@ -3430,7 +3425,6 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   next sync; after five in a row a single `push_gave_up` entry is written and the card is left alone.
 - **Not verified here:** the stderr text of a missing scope and of a rate limit, and the `Status` field name on boards that
   renamed it, come from memory and the fakes; the proof of concept in the spec settles them.
-
 
 ## Team sessions get the flightdeck MCP (v0.36.1, issue #95)
 
@@ -3976,6 +3970,25 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   name, or a commit status of that name.
 - **Not changed here:** handoff-ci (#221) checks for a push trigger on the branch; with this, a
   branch with a PR proves itself on its PR run instead, and handoff-ci has to read that run.
+
+## The hand-off stamp vouches for CI, and a tag needs a green full run (issue #266)
+
+- **What survived of #221.** Its push-trigger requirement and the `gh run list --commit` check
+  died with GitHub Flow (#260). Kept: `test:related` compares with the audit base (origin/main
+  first, the local main only as a fallback), and `handoff:check --base <ref>` for a branch stacked
+  on another.
+- **`ci=` in the stamp.** After the four local checks, `handoff:check` reads the main ruleset's
+  required checks on HEAD (`headCi` in scripts/lib/pr-flow.ts, the same verdict `bun run pr`
+  uses), whatever event ran them: a PR's run or main's push. `0` when green; otherwise `failed`,
+  `pending`, `none` (never run: push the branch, or open its PR) or `unknown` (the ruleset could not
+  be read). `--verify` needs `ci=0` like every other field; `--no-ci` writes `ci=skip`, which
+  vouches for nothing. The stamp's pattern takes word values and still splits its pairs one way
+  only (the #232 ReDoS test keeps it linear).
+- **`bun run pr -- tag vX [--commit <sha>]`** (the coordinator's): a commit on main (main's HEAD by
+  default) is tagged only after its full CI run on main (its push run, which plans everything,
+  #264) completed with success. It refuses a tag that exists, a commit not on main, no run, a run
+  still going or a failed one, and writes nothing then. The tag is pushed alone as `refs/tags/vX`:
+  a push of several tags at once starts no workflow.
 
 ## Sessions open their own PRs and turn on auto-merge (issue #271)
 
