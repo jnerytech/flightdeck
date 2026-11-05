@@ -3,6 +3,8 @@
  * live session. A connection owns the process (spawn, initialize, new or resume, the checked mode,
  * model and effort, close and kill); the run owns the turns, the events and the idle reaper.
  */
+import { readFile, stat } from "node:fs/promises";
+import { join } from "node:path";
 import type { SessionImage } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -42,6 +44,31 @@ const KILL_AFTER_MS = 3_000;
 const UNSUPPORTED_MODES = new Set(["acceptEdits", "dontAsk", "auto"]);
 const OUR_MODES = [FLIGHTDECK_AGENT, FLIGHTDECK_PLAN_AGENT];
 const AUTH_HELP = "OpenCode has no login for this provider: run `opencode auth login` on the host";
+
+const AGENTS_MD = "AGENTS.md";
+const AGENTS_MD_MAX = 64 * 1024;
+
+/**
+ * The folder's own AGENTS.md as an embedded text resource for a new session's first prompt (project
+ * config is off, so OpenCode does not read it). Text only: nothing in it is followed or run.
+ */
+async function agentsMd(
+  cwd: string,
+  resumed: boolean,
+): Promise<{ block?: Record<string, unknown>; skipped?: boolean } | null> {
+  if (resumed) return null;
+  const path = join(cwd, AGENTS_MD);
+  const info = await stat(path).catch(() => null);
+  if (!info?.isFile()) return null;
+  if (info.size > AGENTS_MD_MAX) return { skipped: true };
+  const text = await readFile(path, "utf8");
+  return {
+    block: {
+      type: "resource",
+      resource: { uri: `file://${path}`, mimeType: "text/markdown", text },
+    },
+  };
+}
 
 export interface OpenCodeRuntimeOptions {
   path: string;
@@ -227,6 +254,8 @@ class OpenCodeRun implements AgentRun {
   private idle: unknown = null;
   private escalation: unknown = null;
   private turnActive = false;
+  /** Whether the first prompt (and its AGENTS.md) went out. */
+  private contextSent = false;
   private escalated = false;
   private stopped = false;
   private closing: Promise<void> | null = null;
@@ -333,10 +362,23 @@ class OpenCodeRun implements AgentRun {
   private async turn(text: string, images: SessionImage[]): Promise<void> {
     if (!this.conn) await this.connect();
     const conn = this.conn as Connection;
-    this.push(this.normalizer.init(conn.sessionId, conn.model));
+    const context = this.contextSent
+      ? null
+      : await agentsMd(this.opts.cwd, this.opts.resume !== undefined);
+    this.contextSent = true;
+    this.push(
+      this.normalizer.init(conn.sessionId, conn.model, {
+        ...(context?.block ? { files: [AGENTS_MD] } : {}),
+        ...(context?.skipped ? { skipped: [AGENTS_MD] } : {}),
+      }),
+    );
     const blocks = [
+      ...(context?.block ? [context.block] : []),
       ...images.map((image) => ({ type: "image", mimeType: image.mediaType, data: image.data })),
-      ...(text ? [{ type: "text", text }] : []),
+      // ADR 39-2: a text that starts with `/` would run a command's shell blocks without a question.
+      ...(text
+        ? [{ type: "text", text: text.trimStart().startsWith("/") ? `\u200b${text}` : text }]
+        : []),
     ];
     const started = performance.now();
     const elapsed = () => Math.round(performance.now() - started);

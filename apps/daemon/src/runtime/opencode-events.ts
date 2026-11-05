@@ -63,11 +63,24 @@ export class OpenCodeEvents {
   private readonly shown = new Set<string>();
   private costUsd: number | undefined;
 
-  /** `session.init`, once per run, when its first prompt goes out. */
-  init(sessionId: string, model: string): RuntimeEvent[] {
+  /** `session.init`, once per run, when its first prompt goes out, with the context files it took. */
+  init(
+    sessionId: string,
+    model: string,
+    context: { files?: string[]; skipped?: string[] } = {},
+  ): RuntimeEvent[] {
     if (this.initialized) return [];
     this.initialized = true;
-    return [{ type: "session.init", claudeSessionId: sessionId, model, tools: [] }];
+    return [
+      {
+        type: "session.init",
+        claudeSessionId: sessionId,
+        model,
+        tools: [],
+        ...(context.files?.length ? { contextFiles: context.files } : {}),
+        ...(context.skipped?.length ? { contextSkipped: context.skipped } : {}),
+      },
+    ];
   }
 
   update(update: AcpUpdate): RuntimeEvent[] {

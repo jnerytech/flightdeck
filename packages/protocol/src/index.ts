@@ -333,6 +333,10 @@ export const SessionEvent = z.discriminatedUnion("type", [
     tools: z.array(z.string()),
     /** The slash commands the session has (`/compact`, a skill, ...), without the slash. */
     slashCommands: z.array(z.string()).optional(),
+    /** Phase 39: project files sent with the first prompt as context (`AGENTS.md`), by name. */
+    contextFiles: z.array(z.string()).optional(),
+    /** Phase 39: project files left out (too large), by name. */
+    contextSkipped: z.array(z.string()).optional(),
   }),
   /** `images`: how many came with the message (the bytes stay out of the log). */
   z.object({
