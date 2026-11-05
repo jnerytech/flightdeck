@@ -4024,7 +4024,11 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   file is risky when they spawn or kill a process (any `spawn…(`, `exec…(`, `.kill(`), delete
   (`rm(`, `unlink(`, `rm -rf`), name a secret (token, secret, password, credential, API key) or a
   permission (`chmod`, `chown`, permission, `allowedNetworks`), or when its path is in the vault or
-  pairing code. Patterns, not a parser: they err toward asking for a review.
+  pairing code, or when they open a listener or an outbound call (`Bun.serve`, `fetch(`, a
+  WebSocket, `.listen(`). Patterns, not a parser: they err toward asking for a review. The diff's
+  file headers are read only before a file's first hunk (an added line can look like one), names
+  come unquoted, and a merge counts by the files it edited itself. It is a guard against slips,
+  not a security boundary: the trailer is the session's own word that the review ran.
 - **The verdict is a commit trailer,** `Security-Reviewed: <summary>`, on a commit at or after the
   last commit that touched a risky file (an empty `chore(security)` commit is enough). A later
   risky commit needs a new review. A trailer lives with the branch, so `--verify` and any receiver
@@ -4032,6 +4036,8 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   (no base), and only `0` vouches.
 - **The OpenCode review on `pr open`** is the coordinator's tooling: `open` runs the command in
   `FLIGHTDECK_PR_OPENED` with the PR's number, branch and base. The command comes from the
-  session's own environment, never from the repository. A failed hook only prints a line: the PR
-  is open either way.
+  session's own environment, never from the repository, and is split on spaces with no shell. A
+  hook that fails, cannot start or runs past two minutes only prints a line: the PR is open either
+  way. Its program is found by Bun's own PATH lookup, not `whichOnPath`: the environment, and the
+  PATH with it, are the session's own.
 
