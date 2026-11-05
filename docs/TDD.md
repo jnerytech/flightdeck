@@ -197,7 +197,9 @@ em vez de depender de cuidado.
   `bun run pr -- update <n>` brings one up to date with its base. `bun run pr -- merge <n>` (the
   coordinator only; the guard hook refuses it in a session) merges by hand with a merge commit,
   under the same conditions.
-- A release is a tag on a green `main`; there is no rc branch to assemble.
+- A release is a tag on a green `main`; there is no rc branch to assemble. `bun run pr -- tag vX`
+  (the coordinator) tags main's HEAD only after its full CI run on main passed, and pushes the tag
+  alone as `refs/tags/vX`.
 
 ## Evidência para o /goal
 

@@ -59,9 +59,10 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   `bun run lint:sonar -- --ratchet` compares the open findings per rule over the whole repo with
   `sonar-baseline.json`, which only goes down (`--ratchet --write` lowers it after a fix).
 - Before hand-off from a session: `bun run handoff:check` runs `typecheck`, `lint`, `tdd:audit`
-  and `test:related` in order and prints a `HANDOFF <branch> <head> ...` stamp line; paste it in
-  the hand-off message. The receiver runs `bun run handoff:check -- --verify` in the worktree
-  (refused when stale or not all 0). The full suite (`bun run slot -- bun run test`) runs at the
+  and `test:related` in order, then reads the required checks of HEAD on GitHub (`ci=`: push the
+  branch first; `--base <ref>` for a branch stacked on another), and prints a
+  `HANDOFF <branch> <head> ...` stamp line; paste it in the hand-off message. The receiver runs
+  `bun run handoff:check -- --verify` in the worktree (refused when stale or not all 0, `ci` too). The full suite (`bun run slot -- bun run test`) runs at the
   orchestrator's version gate and in CI, not in every session. `bun run lint:sonar` is run
   next to it, before a push.
 - Format: `bun run format`. Smokes: `bun run slot -- bun run smoke:<name>` (list in

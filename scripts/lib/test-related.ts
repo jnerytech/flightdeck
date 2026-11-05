@@ -1,6 +1,7 @@
 import { posix } from "node:path";
 import { testArgs } from "../test/timeout.ts";
 import { coverageTargets } from "./related-coverage.ts";
+import { auditBase } from "./tdd-audit.ts";
 
 export interface Related {
   path: string;
@@ -111,7 +112,8 @@ export function planRelated({
 }: PlanDeps): Plan {
   // A run of some tiers covers only part of a file: the 100% gate is the full run's (CI).
   const coverageDir = tiers ? undefined : asked;
-  const ref = base ?? git(["merge-base", "HEAD", "main"])?.trim();
+  // The same base as tdd:audit (origin/main first); the local main only when that gives none.
+  const ref = base ?? auditBase(git) ?? git(["merge-base", "HEAD", "main"])?.trim();
   if (!ref) return { code: 2, output: "test:related: no base to compare with", command: null };
   const label = base ?? ref.slice(0, 7);
   const changed = (git(["diff", "--name-only", `${ref}...HEAD`]) ?? "").split("\n").filter(Boolean);
