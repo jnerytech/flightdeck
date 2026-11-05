@@ -2546,9 +2546,11 @@ na bandeja. Para mudar, abra **Configurações → Atalho global**, digite a com
 ### Desenho e navegação
 
 O app segue um desenho só, no estilo do Linear: Inter embutida (sem rede), base de 13 px,
-superfícies em camadas, um único token de destaque e o estado das sessões como um pontinho de
-8 px (rodando em azul, precisa de você em âmbar, ociosa em cinza, encerrada esmaecida, erro em
-vermelho).
+superfícies em camadas, um único token de destaque e o estado das sessões como um glifo num espaço
+de 12 px, com forma além da cor: rodando é um anel azul que gira (parado, com o topo aberto, quando
+o sistema pede menos movimento, e parado enquanto está fora da tela), precisa de você é um ponto de
+interrogação âmbar num balão, erro é um círculo de alerta vermelho, ociosa é um pontinho cinza e
+encerrada é um anel esmaecido. Passe o mouse para ver o nome.
 
 - **Barra lateral:** logo, navegação (Sessões, Precisa de você com o contador, Board, Workflows,
   Custos, Histórico), os hosts, as sessões fixadas e, no rodapé, a busca (`Ctrl K`),
