@@ -3328,6 +3328,7 @@ export const ptBR = {
     range: "Intervalo",
   },
   costsUi: {
+    setBudget: "Definir um orçamento",
     title: "Custos",
     subtitle: "equivalente em API, estimado; em assinatura, não é cobrado",
     filters: "Filtros dos custos",

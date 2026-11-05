@@ -1,4 +1,4 @@
-import { memo, type ReactNode, useId, useState, useSyncExternalStore } from "react";
+import { memo, type ReactNode, useEffect, useId, useState, useSyncExternalStore } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -45,6 +45,8 @@ const SETTINGS_KEYS = ["hosts", "budgets", "projects"] as const;
 export const Settings = memo(function Settings(props: {
   store: AppStore;
   settings: SettingsState;
+  /** The part to open on, by id. */
+  section?: string | undefined;
   onCloseToTray(enabled: boolean): void;
   onAutostart(enabled: boolean): void;
   onGlobalShortcut(text: string): void;
@@ -342,6 +344,12 @@ export const Settings = memo(function Settings(props: {
     target?.scrollIntoView?.({ block: "start" });
     target?.focus({ preventScroll: true });
   };
+  // Opened on a part (a budget alert): scroll to it and focus it.
+  const wanted = props.section;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new request moves the view
+  useEffect(() => {
+    if (wanted) go(wanted);
+  }, [wanted, shown.length]);
 
   return (
     <Page title={t("prefs.title")}>

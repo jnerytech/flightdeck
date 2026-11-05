@@ -89,7 +89,8 @@ export function NeedsYou(props: {
   };
   const chosen = entries.find((e) => e.key === selected);
   const open = (entry: Entry) => {
-    if (entry.kind === "alert") go({ name: entry.clientId ? "clients" : "settings" });
+    if (entry.kind === "alert")
+      go(entry.clientId ? { name: "clients" } : { name: "settings", section: "budgets" });
     else setSelected(entry.key);
   };
 

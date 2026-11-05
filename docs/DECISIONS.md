@@ -3591,3 +3591,9 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 
 - **Done.** "Use simple mode on this host" selects that host first, so the switch applies to the host whose page it is on (it used to apply to the selected or first online host, and looked like it did nothing on another). Simple mode mounts the notices, so a failure is no longer silent.
 - **Not done.** An action on "This computer has no ready-made tasks yet", and one exit instead of two ("Show details" goes to full mode without asking, "Show everything" asks): they belong with #132's visible exit.
+
+## Costs and budgets, journey J7 (issue #190)
+
+- **Done.** The `settings` route takes a `section`, and Settings opens on it (focus and scroll); a budget alert in Needs you opens the budgets, not the top. The project page's Costs tile keeps the project (host and project key). Costs has a "Set a budget" button that opens the budgets.
+- **Not done.** The budget form prefilled with the scope Costs is showing (the button opens the section only), and folding the client budgets' second entry point into the same place.
+- **Test fallout.** The menu's Start dialog (part 3 of #188) also needed the `navegacao` and `deps-ui` tests to confirm it; I had missed them on that hand-off and fixed them here.

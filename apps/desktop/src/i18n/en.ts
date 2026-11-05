@@ -3326,6 +3326,7 @@ export const en: Dictionary = {
     range: "Range",
   },
   costsUi: {
+    setBudget: "Set a budget",
     title: "Costs",
     subtitle: "API-equivalent and estimated; on a subscription it is not charged",
     filters: "Cost filters",

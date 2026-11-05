@@ -79,7 +79,11 @@ export function ProjectPage(props: {
             labelKey: "sidebar.costs" as const,
             hint: "projectPage.costsHint" as const,
             icon: NAV_ICONS.costs,
-            route: { name: "costs" } as Route,
+            route: {
+              name: "costs",
+              host: hostId,
+              projectKey: store.projectKeyOf(hostId, project),
+            } as Route,
           },
         ]
       : []),

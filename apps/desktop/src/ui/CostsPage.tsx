@@ -235,6 +235,14 @@ export const CostsPage = memo(function CostsPage(props: {
     <Page
       title={t("costsUi.title")}
       subtitle={t("costsUi.subtitle")}
+      actions={
+        <Button
+          variant="outline"
+          onClick={() => store.router.push({ name: "settings", section: "budgets" })}
+        >
+          {t("costsUi.setBudget")}
+        </Button>
+      }
       toolbar={
         <Toolbar label={t("costsUi.filters")}>
           <NativeSelect

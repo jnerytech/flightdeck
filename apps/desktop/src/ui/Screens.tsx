@@ -538,6 +538,7 @@ function routeScreen(props: ScreenProps): ReactNode {
       <Settings
         store={store}
         settings={state.settings}
+        section={route.section}
         {...settingsActions(store)}
         appUpdate={state.appUpdate}
         theme={props.theme}
