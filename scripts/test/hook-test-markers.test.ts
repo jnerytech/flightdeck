@@ -59,7 +59,7 @@ describe("hook-test-markers", () => {
       );
     expect(write(`${existing}it("new")\n`, existing)).toBeNull();
     expect(write(`${existing}it${ONLY}"new")\n`, existing) ?? "").toContain(ONLY);
-    expect(write(`it${TODO}"x")\n`, null) ?? "").toContain(TODO);
+    expect(write(`${TODO}"x")\n`, null) ?? "").toContain(TODO);
   });
 
   test("a call with missing or odd fields passes (the hook fails open)", () => {
