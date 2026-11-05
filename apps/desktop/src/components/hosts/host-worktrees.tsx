@@ -187,7 +187,10 @@ export function HostWorktrees(props: { store: AppStore; host: HostView }) {
               })}
             </p>
           )}
-          <div role="group" aria-label={t("worktrees.filters")} className="flex flex-wrap gap-2">
+          <fieldset
+            aria-label={t("worktrees.filters")}
+            className="m-0 flex flex-wrap gap-2 border-0 p-0"
+          >
             {FILTERS.map((name) => (
               <Button
                 key={name}
@@ -211,7 +214,7 @@ export function HostWorktrees(props: { store: AppStore; host: HostView }) {
                 <option value="size">{t("worktrees.sortSize")}</option>
               </select>
             </label>
-          </div>
+          </fieldset>
           {count === 0 ? (
             <p className="text-muted-foreground text-sm">{t("worktrees.empty")}</p>
           ) : (
