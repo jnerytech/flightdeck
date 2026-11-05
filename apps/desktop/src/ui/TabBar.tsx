@@ -25,6 +25,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { IconTip } from "@/components/feedback/icon-tip";
 import { NAV_ICONS } from "@/components/nav-icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -199,86 +200,87 @@ export function TabBar(props: {
                       : "border-r-2 border-r-primary"),
                 )}
               >
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={selected}
-                  data-preview={tab.preview}
-                  {...(tab.preview ? { "aria-description": t("tabs.preview") } : {})}
-                  data-tab-id={tab.id}
-                  title={label}
-                  aria-keyshortcuts={`${tab.pinned ? "" : "Delete "}${MOVE_KEYS}`}
-                  {...(tab.pinned ? { "aria-label": label } : {})}
-                  className="flex min-w-0 flex-1 items-center gap-1.5 rounded-t-md px-2 py-1.5 outline-none hover:bg-accent/60"
-                  onClick={() => tabs.activate(tab.id)}
-                  onDoubleClick={() => tabs.commit(tab.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Delete") store.closeTab(tabs, tab.id);
-                    else if (
-                      e.ctrlKey &&
-                      e.shiftKey &&
-                      (e.key === "ArrowLeft" || e.key === "ArrowRight")
-                    ) {
-                      e.preventDefault();
+                <IconTip label={label}>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    data-preview={tab.preview}
+                    {...(tab.preview ? { "aria-description": t("tabs.preview") } : {})}
+                    data-tab-id={tab.id}
+                    aria-keyshortcuts={`${tab.pinned ? "" : "Delete "}${MOVE_KEYS}`}
+                    {...(tab.pinned ? { "aria-label": label } : {})}
+                    className="flex min-w-0 flex-1 items-center gap-1.5 rounded-t-md px-2 py-1.5 outline-none hover:bg-accent/60"
+                    onClick={() => tabs.activate(tab.id)}
+                    onDoubleClick={() => tabs.commit(tab.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Delete") store.closeTab(tabs, tab.id);
+                      else if (
+                        e.ctrlKey &&
+                        e.shiftKey &&
+                        (e.key === "ArrowLeft" || e.key === "ArrowRight")
+                      ) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        moveByKey(tab, e.key === "ArrowLeft" ? -1 : 1);
+                      }
+                    }}
+                    onAuxClick={(e) => {
+                      // The middle button closes a tab (App opens items in a new tab with it).
+                      if (e.button !== 1) return;
                       e.stopPropagation();
-                      moveByKey(tab, e.key === "ArrowLeft" ? -1 : 1);
-                    }
-                  }}
-                  onAuxClick={(e) => {
-                    // The middle button closes a tab (App opens items in a new tab with it).
-                    if (e.button !== 1) return;
-                    e.stopPropagation();
-                    store.closeTab(tabs, tab.id);
-                  }}
-                  draggable
-                  onDragStart={() => {
-                    dragged.current = tab.id;
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    const from = tabs.tabs.findIndex((other) => other.id === dragged.current);
-                    if (from < 0 || tabs.tabs[from]?.id === tab.id) return setDropOn(null);
-                    setDropOn({
-                      id: tab.id,
-                      side: from < tabs.tabs.indexOf(tab) ? "after" : "before",
-                    });
-                  }}
-                  onDragEnd={() => {
-                    dragged.current = null;
-                    setDropOn(null);
-                  }}
-                  onDrop={() => {
-                    const id = dragged.current;
-                    dragged.current = null;
-                    setDropOn(null);
-                    if (id) tabs.move(id, tabs.tabs.indexOf(tab));
-                  }}
-                >
-                  <Icon data-icon={kind} className="size-4 shrink-0" aria-hidden />
-                  {!tab.pinned && (
-                    <span className={cn("truncate", tab.preview && "italic")}>{label}</span>
-                  )}
-                  {!tab.pinned &&
-                    ssh?.tags.map((tag) => (
-                      <span key={tag} className="shrink-0 rounded bg-muted px-1 text-xs">
-                        {tag}
-                      </span>
-                    ))}
-                  {badge && (
-                    <span
-                      role="img"
-                      data-badge={badge}
-                      data-compact="true"
-                      aria-label={t(`tabs.badge.${badge}`)}
-                      title={t(`tabs.badge.${badge}`)}
-                      className={cn(
-                        "size-2 shrink-0 rounded-full",
-                        badge === "needs-you" ? "bg-status-needs-you" : "bg-muted-foreground",
-                        badgePulses(badge) && "motion-safe:animate-pulse",
-                      )}
-                    />
-                  )}
-                </button>
+                      store.closeTab(tabs, tab.id);
+                    }}
+                    draggable
+                    onDragStart={() => {
+                      dragged.current = tab.id;
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      const from = tabs.tabs.findIndex((other) => other.id === dragged.current);
+                      if (from < 0 || tabs.tabs[from]?.id === tab.id) return setDropOn(null);
+                      setDropOn({
+                        id: tab.id,
+                        side: from < tabs.tabs.indexOf(tab) ? "after" : "before",
+                      });
+                    }}
+                    onDragEnd={() => {
+                      dragged.current = null;
+                      setDropOn(null);
+                    }}
+                    onDrop={() => {
+                      const id = dragged.current;
+                      dragged.current = null;
+                      setDropOn(null);
+                      if (id) tabs.move(id, tabs.tabs.indexOf(tab));
+                    }}
+                  >
+                    <Icon data-icon={kind} className="size-4 shrink-0" aria-hidden />
+                    {!tab.pinned && (
+                      <span className={cn("truncate", tab.preview && "italic")}>{label}</span>
+                    )}
+                    {!tab.pinned &&
+                      ssh?.tags.map((tag) => (
+                        <span key={tag} className="shrink-0 rounded bg-muted px-1 text-xs">
+                          {tag}
+                        </span>
+                      ))}
+                    {badge && (
+                      <span
+                        role="img"
+                        data-badge={badge}
+                        data-compact="true"
+                        aria-label={t(`tabs.badge.${badge}`)}
+                        title={t(`tabs.badge.${badge}`)}
+                        className={cn(
+                          "size-2 shrink-0 rounded-full",
+                          badge === "needs-you" ? "bg-status-needs-you" : "bg-muted-foreground",
+                          badgePulses(badge) && "motion-safe:animate-pulse",
+                        )}
+                      />
+                    )}
+                  </button>
+                </IconTip>
                 {!tab.pinned && (
                   <button
                     type="button"

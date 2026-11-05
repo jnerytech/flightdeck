@@ -3577,10 +3577,29 @@ a Mac sees `⌘`.
 | Native `title` naming an icon-only control | the client switcher in the rail | Fixed: `IconTip`, and only in the rail (the expanded one has its name in view) |
 | Native `title` naming an icon-only control | `StatusDot` | Filed: #146 replaces the dot with a glyph and a real tooltip |
 | Native `title` carrying a hint | `HoldButton` ("hold to say yes") | Follow-up: the hint is text a person needs, so a tooltip is wrong too; it should be visible text |
-| Native `title` carrying a hint | tile layout options (`session-tiles`), breadcrumb steps, the day chart's bars, truncated names | Follow-up: one issue for "text the screen cuts or the pointer reveals" |
+| Native `title` carrying a hint | tile layout options (`session-tiles`), breadcrumb steps, the day chart's bars, truncated names | Fixed in issue #239 (below) |
 | Back-out button drawn destructive | none found: every `variant="destructive"` is the irreversible action (Discard, Remove host, Rewind, Deny, Close terminal) | Nothing to fix |
 | In-flight feedback with no duration rule | `Spinner` in `ActionButton`/`busy.tsx`, the activity line, the status line, simple mode's task view | Follow-up: screens defer by `useMinLoading` (150 ms floor), buttons show the spinner at once; the rule (nothing under 100 ms, disabled to 1 s, spinner to 3 s, stages after) needs one hook |
 
 Not done here, on purpose: a lint for `title=` on icon-only buttons (the issue's optional item 4). The audit found about 125 `title=` uses,
 most of them page and panel titles that are a different prop; telling an icon-only button's from the rest needs the layout ratchet's
 pattern, and is worth its own issue.
+
+## Text the screen cuts is revealed by a real tooltip (issue #239)
+
+- **Rule.** Where the layout cuts a name (an ellipsis, a narrow rail), the full text comes from
+  `IconTip` (400 ms on hover, at once on keyboard focus), never from a native `title`, which
+  keyboard users do not get. Text a person needs to act (the hold hint, #238) is not tooltip text:
+  it is written on screen.
+- **Places changed.** Breadcrumb steps (the earlier ones are buttons: hover and focus; the current
+  one is plain text, so it answers to the pointer only, and the page heading carries the same name),
+  tile layout options (focus on the radio opens the label's tooltip), the day chart's columns, the
+  tabs, the folder picker (steps, folders, files), the narrow rail's host buttons and the sidebar's
+  pinned rows.
+- **Day chart.** The columns were not focusable, so the title was the only way to read a day. The
+  chart is now one tab stop with roving focus (arrows, Home, End); the focused day shows its total
+  in the tooltip. Its `aria-label` is unchanged, so screen readers read what they read before.
+- **Not changed.** The legacy `title` assertions of `crumb-largura`, `lado-a-lado-ui` and
+  `abas-largura` now assert the absence of the title (the mechanism changed on purpose). Hub row
+  titles are drawn in full by the cards and need nothing.
+- **Based on `design-keycap`,** which adds `IconTip`; it merges after that branch.

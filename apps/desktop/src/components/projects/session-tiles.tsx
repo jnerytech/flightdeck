@@ -1,6 +1,7 @@
 import { CornerDownLeft } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { IconTip } from "@/components/feedback/icon-tip";
 import { StatusText } from "@/components/status/status-text";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -215,23 +216,21 @@ export function SessionTiles(props: {
         </h2>
         <fieldset aria-label={t("tiles.layout")} className="tile-count">
           {TILE_LAYOUTS.map((option) => (
-            <label
-              key={option}
-              className="tile-count-option"
-              title={t(`tiles.layoutTip.${option}`)}
-            >
-              <input
-                type="radio"
-                name="tile-layout"
-                aria-label={t(`tiles.layoutOption.${option}`)}
-                checked={layout === option}
-                onChange={() => {
-                  setLayout(option);
-                  store.setTileLayout(option);
-                }}
-              />
-              <LayoutIcon layout={option} />
-            </label>
+            <IconTip key={option} label={t(`tiles.layoutTip.${option}`)}>
+              <label className="tile-count-option">
+                <input
+                  type="radio"
+                  name="tile-layout"
+                  aria-label={t(`tiles.layoutOption.${option}`)}
+                  checked={layout === option}
+                  onChange={() => {
+                    setLayout(option);
+                    store.setTileLayout(option);
+                  }}
+                />
+                <LayoutIcon layout={option} />
+              </label>
+            </IconTip>
           ))}
         </fieldset>
       </div>

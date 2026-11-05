@@ -95,7 +95,7 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
     expect(within(dois).getByText("idle")).toBeTruthy();
   });
 
-  test("the layout is a row of icons, Auto to start, each with a name and a tooltip, and the choice is kept", async () => {
+  test("the layout is a row of icons, Auto to start, each with a name and, on focus, a tooltip, and the choice is kept", async () => {
     const { store } = await setup(["a", "b", "c", "d", "e"]);
     const group = screen.getByRole("group", { name: "Layout" });
     const radios = within(group).getAllByRole("radio");
@@ -106,12 +106,12 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
       "2×3 grid",
       "Auto",
     ]);
-    expect(radios.map((r) => r.closest("label")?.getAttribute("title"))).toEqual([
-      "2 side by side",
-      "3 columns",
-      "2×2 grid",
-      "2×3 grid",
-      "Auto: every live session",
+    expect(radios.map((r) => r.closest("label")?.getAttribute("title") ?? null)).toEqual([
+      null,
+      null,
+      null,
+      null,
+      null,
     ]);
     await waitFor(() => tiles().length === 5, "all five tiles in Auto");
     expect((within(group).getByRole("radio", { name: "Auto" }) as HTMLInputElement).checked).toBe(

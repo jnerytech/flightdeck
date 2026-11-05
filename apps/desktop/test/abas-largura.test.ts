@@ -24,6 +24,8 @@ describe("abas-largura: tabs share the width like a browser's (issue #103)", () 
   });
 
   test("a tab says its full title in a tooltip", () => {
-    expect(read("ui/TabBar.tsx")).toMatch(/role="tab"[\s\S]{0,400}title=\{label\}/);
+    const bar = read("ui/TabBar.tsx");
+    expect(bar).toMatch(/<IconTip label=\{label\}>\s*<button[^>]*\s*type="button"\s*role="tab"/);
+    expect(bar).not.toMatch(/role="tab"[\s\S]{0,400}title=\{label\}/);
   });
 });

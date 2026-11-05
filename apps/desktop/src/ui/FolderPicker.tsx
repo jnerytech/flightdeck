@@ -2,6 +2,7 @@ import type { FsDirsResult, FsFilesResult } from "@flightdeck/protocol";
 import { ArrowUp, ChevronRight, File, Folder } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { IconTip } from "@/components/feedback/icon-tip";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
 import { FieldRow } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
@@ -131,20 +132,23 @@ export function FolderPicker(props: {
             <span key={step.path} className="flex items-center gap-1">
               <ChevronRight className="size-3" aria-hidden />
               {index === crumbs.length - 1 ? (
-                <span aria-current="location" title={step.name} className="crumb-name font-medium">
-                  {step.name}
-                </span>
+                <IconTip label={step.name}>
+                  <span aria-current="location" className="crumb-name font-medium">
+                    {step.name}
+                  </span>
+                </IconTip>
               ) : (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  className="crumb-name"
-                  title={step.name}
-                  onClick={() => void open(step.path)}
-                >
-                  {step.name}
-                </Button>
+                <IconTip label={step.name}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    className="crumb-name"
+                    onClick={() => void open(step.path)}
+                  >
+                    {step.name}
+                  </Button>
+                </IconTip>
               )}
             </span>
           ))}
@@ -182,32 +186,34 @@ export function FolderPicker(props: {
             >
               {listing.dirs.map((dir) => (
                 <li key={dir.path}>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    title={dir.name}
-                    onClick={() => void open(dir.path)}
-                  >
-                    <Folder aria-hidden />
-                    <span className="min-w-0 truncate">{dir.name}</span>
-                  </Button>
+                  <IconTip label={dir.name}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => void open(dir.path)}
+                    >
+                      <Folder aria-hidden />
+                      <span className="min-w-0 truncate">{dir.name}</span>
+                    </Button>
+                  </IconTip>
                 </li>
               ))}
               {files.map((file) => (
                 <li key={file.path}>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    title={file.name}
-                    onClick={() => props.onPick(file.path)}
-                  >
-                    <File aria-hidden />
-                    <span className="min-w-0 truncate">{file.name}</span>
-                  </Button>
+                  <IconTip label={file.name}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => props.onPick(file.path)}
+                    >
+                      <File aria-hidden />
+                      <span className="min-w-0 truncate">{file.name}</span>
+                    </Button>
+                  </IconTip>
                 </li>
               ))}
             </ul>

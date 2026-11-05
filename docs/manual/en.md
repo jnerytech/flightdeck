@@ -2092,7 +2092,9 @@ app, cards and workflows, subagents included.
 - **What it shows:**
   - the estimated cost, the tokens and the cache savings (how much less the cache read cost than
     the same volume as normal input);
-  - a per-day chart stacked by project, and the breakdowns by project, model and origin;
+  - a per-day chart stacked by project (Tab reaches the chart, the arrow keys walk the days, and a
+    day says its total in a tooltip on hover or focus), and the breakdowns by project, model and
+    origin;
   - the most expensive sessions, and clicking one opens it;
   - the estimated cost also shows in the session list, the open session, the card and the
     workflow run.

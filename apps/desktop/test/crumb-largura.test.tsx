@@ -20,7 +20,7 @@ describe("crumb-largura: the tab strip starts at the same place on every screen"
     expect(slot).not.toMatch(/flex:\s*0 1 auto/);
   });
 
-  test("a long last crumb is cut with an ellipsis and says its full text in a tooltip", () => {
+  test("a long last crumb is cut with an ellipsis (its full text is in a tooltip, see texto-cortado)", () => {
     render(
       <Breadcrumb
         crumbs={[
@@ -33,8 +33,8 @@ describe("crumb-largura: the tab strip starts at the same place on every screen"
     );
     const last = screen.getByText("A host with a very long name indeed");
     expect(last.className).toContain("truncate");
-    expect(last.getAttribute("title")).toBe("A host with a very long name indeed");
-    expect(screen.getByRole("button", { name: "Hosts" }).getAttribute("title")).toBe("Hosts");
+    expect(last.getAttribute("title")).toBeNull();
+    expect(screen.getByRole("button", { name: "Hosts" }).getAttribute("title")).toBeNull();
   });
 
   test("a step is cut with an ellipsis and is still a target at least 24 px high", () => {
@@ -68,12 +68,12 @@ describe("crumb-largura: a long path is cut with an ellipsis, the earlier steps 
     { label: "agent-runtime-delivery-lens" },
   ];
 
-  test("each label is a block that truncates, with its full text as the tooltip", () => {
+  test("each label is a block that truncates, with a real tooltip (no native title)", () => {
     render(<Breadcrumb crumbs={crumbs.slice(0, 2)} label="Path" onGo={() => {}} />);
     const first = screen.getByRole("button", { name: /wsl - Ubuntu/ });
     expect(first.className).toMatch(/\bblock\b/);
     expect(first.className).toContain("truncate");
-    expect(first.getAttribute("title")).toContain("wsl - Ubuntu");
+    expect(first.getAttribute("title")).toBeNull();
   });
 
   test("the earlier steps shrink first, down to 4rem, and the current one last, with factors that add up to at least 1", () => {

@@ -395,16 +395,16 @@ export function Sidebar(props: {
         {collapsed ? (
           <div className="flex flex-col items-center gap-1 pt-3">
             {state.hosts.map((host) => (
-              <button
-                key={host.id}
-                type="button"
-                aria-label={t("sidebar.openHost", { host: host.name })}
-                title={host.name}
-                className="flex size-8 items-center justify-center rounded-md hover:bg-sidebar-accent"
-                onClick={() => go({ name: "host", host: host.id })}
-              >
-                <HostDot host={host} t={t} />
-              </button>
+              <IconTip key={host.id} label={host.name}>
+                <button
+                  type="button"
+                  aria-label={t("sidebar.openHost", { host: host.name })}
+                  className="flex size-8 items-center justify-center rounded-md hover:bg-sidebar-accent"
+                  onClick={() => go({ name: "host", host: host.id })}
+                >
+                  <HostDot host={host} t={t} />
+                </button>
+              </IconTip>
             ))}
           </div>
         ) : (
@@ -522,14 +522,11 @@ export function Sidebar(props: {
                   <ul className="flex flex-col gap-0.5">
                     {pinned.map((row) => (
                       <li key={row.key}>
-                        <button
-                          type="button"
-                          className={ITEM}
-                          title={`${row.title} · ${row.hostName}`}
-                          onClick={() => go(rowRoute(row))}
-                        >
-                          <span className="min-w-0 flex-1 truncate">{row.title}</span>
-                        </button>
+                        <IconTip label={`${row.title} · ${row.hostName}`}>
+                          <button type="button" className={ITEM} onClick={() => go(rowRoute(row))}>
+                            <span className="min-w-0 flex-1 truncate">{row.title}</span>
+                          </button>
+                        </IconTip>
                       </li>
                     ))}
                   </ul>

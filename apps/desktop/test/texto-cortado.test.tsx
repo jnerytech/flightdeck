@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { translator } from "../src/i18n/index.ts";
 import { liveScreen, registerDom } from "./dom.ts";
@@ -18,6 +18,7 @@ const { DayChart } = await import("../src/components/costs/day-chart.tsx");
 const { SessionTiles } = await import("../src/components/projects/session-tiles.tsx");
 const { FolderPicker } = await import("../src/ui/FolderPicker.tsx");
 const { App } = await import("../src/ui/App.tsx");
+const { Sidebar } = await import("../src/ui/Sidebar.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
@@ -164,19 +165,35 @@ describe("text the screen cuts is revealed by a real tooltip, never a native tit
         <FolderPicker
           store={store}
           host={host as NonNullable<typeof host>}
+          files
           onPick={() => {}}
           onClose={() => {}}
         />
       </TContext.Provider>,
     );
-    const dir = await screen.findByRole("button", { name: /a-folder-with-a-rather-long-name/ });
+    const root = d.root.split("/").pop() as string;
+    const inDialog = () => within(screen.getByRole("dialog"));
+    const press = async (name: string | RegExp) => {
+      await settle(() => inDialog().queryByRole("button", { name }) !== null, 3000, `${name}`);
+      await act(async () => {
+        fireEvent.click(inDialog().getByRole("button", { name }));
+      });
+    };
+    await press(new RegExp(`^${root}`));
+    await press(/a-folder-with-a-rather-long-name/);
+    await press(root);
+    const dir = inDialog().getByRole("button", { name: /a-folder-with-a-rather-long-name/ });
     expect(dir.getAttribute("title")).toBeNull();
-    expect(await tipOf(dir)).toBe("a-folder-with-a-rather-long-name");
-    for (const el of Array.from(document.querySelectorAll("[title]"))) {
-      expect(el.getAttribute("title")).not.toMatch(/a-(folder|file)-with/);
-    }
-    const file = await screen.findByRole("button", { name: /a-file-with-a-rather-long-name/ });
+    await settle(
+      () => inDialog().queryByRole("button", { name: /a-file-with-a-rather-long-name/ }) !== null,
+      3000,
+      "the file is listed",
+    );
+    const file = inDialog().getByRole("button", { name: /a-file-with-a-rather-long-name/ });
     expect(file.getAttribute("title")).toBeNull();
+    expect(await tipOf(file)).toBe("a-file-with-a-rather-long-name.txt");
+    cleanup();
+    expect(document.querySelector("[title]")).toBeNull();
   });
 
   test("tab strip: a tab has no title and says its full name in a tooltip on focus", async () => {
@@ -193,5 +210,35 @@ describe("text the screen cuts is revealed by a real tooltip, never a native tit
     expect(tabs.every((t) => t.getAttribute("title") === null)).toBe(true);
     const target = tabs[tabs.length - 1] ?? (tab as HTMLElement);
     expect((await tipOf(target)).length).toBeGreaterThan(0);
+  });
+
+  test("sidebar: a host in the narrow rail names itself in a tooltip, and no row of the bar carries a title", async () => {
+    const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
+    store.i18n.start();
+    (store as unknown as { update(patch: Record<string, unknown>): void }).update({
+      hosts: [{ id: "h", name: "alfa", status: "offline", sessions: [] }],
+    });
+    render(
+      <Sidebar
+        store={store}
+        state={store.getState()}
+        collapsed
+        t={store.i18n.t}
+        go={() => {}}
+        onOpenProjectScreen={() => {}}
+        onNewSession={() => {}}
+        onRemoveHost={() => {}}
+        onRenameHost={() => null}
+        onOpenSearch={() => {}}
+        onNewTab={() => {}}
+        onToggleTheme={() => {}}
+      />,
+    );
+    const host = screen.getByRole("button", { name: "Open host alfa" });
+    expect(host.getAttribute("title")).toBeNull();
+    expect(await tipOf(host)).toBe("alfa");
+    expect(readFileSync(join(import.meta.dir, "../src/ui/Sidebar.tsx"), "utf8")).not.toMatch(
+      /title=\{`\$\{row\.title\}/,
+    );
   });
 });

@@ -2080,7 +2080,9 @@ do app, dos cards e dos workflows, subagentes incluídos.
 - **O que aparece:**
   - o custo estimado, os tokens e a economia do cache (quanto o cache read custou a menos do que
     o mesmo volume como input normal);
-  - um gráfico por dia, empilhado por projeto, e as quebras por projeto, modelo e origem;
+  - um gráfico por dia, empilhado por projeto (Tab chega ao gráfico, as setas andam pelos dias e
+    cada dia diz o total numa dica ao passar o mouse ou ao receber o foco), e as quebras por
+    projeto, modelo e origem;
   - as sessões mais caras, e clicar numa abre a sessão;
   - o custo estimado também aparece na lista de sessões, na sessão aberta, no card e na execução
     de workflow.
