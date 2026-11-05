@@ -9,6 +9,8 @@ export interface FileLogOptions {
   /** How many files are kept, the live one included (5 when absent). */
   files?: number;
   scanner: Pick<SecretScanner, "redact">;
+  /** The user's home folder: it is `~` in every line (stub). */
+  home?: string;
   now?: () => number;
 }
 
@@ -50,7 +52,7 @@ export class FileLog {
     let line: string;
     try {
       const text = this.opts.scanner
-        .redact(message)
+        .redact(message, false)
         .replace(/[\r\n]+/g, " ")
         .slice(0, MAX_LINE);
       line = `${new Date(this.now()).toISOString()} ${level === "error" ? "ERROR" : "INFO"} ${text}\n`;
@@ -103,6 +105,6 @@ export class FileLog {
           .slice(-(wanted - out.length)),
       );
     }
-    return out.slice(-wanted).map((line) => this.opts.scanner.redact(line));
+    return out.slice(-wanted).map((line) => this.opts.scanner.redact(line, false));
   }
 }

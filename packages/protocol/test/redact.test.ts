@@ -24,8 +24,12 @@ describe("redact: a scanner that removes what it finds", () => {
       expect(scanner.scan(clean)).toEqual([]);
       expect(clean).not.toContain(secret.replace(/^(password|token)\s*[=:]\s*/i, ""));
       expect(clean.startsWith("connecting with ")).toBe(true);
+      // A private key goes to its END line, or to the end of the text when it is cut short.
       expect(
-        clean.endsWith(" to the host") || secret.includes("password") || secret.includes("token"),
+        clean.endsWith(" to the host") ||
+          secret.includes("password") ||
+          secret.includes("token") ||
+          secret.includes("PRIVATE KEY"),
       ).toBe(true);
     }
   });

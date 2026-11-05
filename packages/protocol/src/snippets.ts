@@ -93,18 +93,49 @@ export function hasControl(text: string, allow: string): boolean {
 
 // -- secrets ---------------------------------------------------------------------------------
 
+/** The words that make a name a secret's: found anywhere in it (`DB_PASSWORD`, `clientSecret`, `authToken`). */
+const SECRET_WORDS =
+  "password|passwd|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|private[_-]?key|credential";
+
 const SECRET_PATTERNS: Array<[string, RegExp]> = [
   ["token do GitHub", /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/g],
   ["chave sk-", /\bsk-[A-Za-z0-9_-]{16,}/g],
   ["chave da AWS", /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g],
-  ["chave privada", /-----BEGIN [A-Z ]*PRIVATE KEY-----/g],
+  // The whole block, body and END line; a block cut short (a capped message) goes to the end.
+  [
+    "chave privada",
+    /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g,
+  ],
   ["token Bearer", /\bBearer\s+[A-Za-z0-9._~+/=-]{16,}/gi],
   ["token do Slack", /\bxox[abprs]-[A-Za-z0-9-]{10,}/g],
+  // A name with the word anywhere in it, quoted or not (JSON, escaped JSON), then `=` or `:` and the value.
   [
     "senha na linha",
-    /\b(?:password|passwd|pwd|pass|secret|token|api[_-]?key|apikey|access[_-]?key)\s*[=:]\s*['"]?[^\s'"&;]{3,}/gi,
+    new RegExp(
+      `(?:\\bpass|(?<![A-Za-z0-9])[A-Za-z0-9_.-]*?(?:${SECRET_WORDS})[A-Za-z0-9_.-]*)\\\\?["']?\\s*[=:]\\s*\\\\?["']?[^\\s"'\\\\&;,}]{3,}`,
+      "gi",
+    ),
   ],
   ["credencial em URL", /:\/\/[^\s/:@]+:[^\s/@]+@/g],
+  ["senha em opção", new RegExp(`--(?:${SECRET_WORDS})(?:=|\\s+)[^\\s]+`, "gi")],
+  ["senha do curl", /(?<=\bcurl\b[^\n|;&]*\s(?:-u|--user)\s+)[^\s:]+:\S+/g],
+  [
+    "cabeçalho de autorização",
+    /\b(?:Proxy-)?Authorization\\?["']?\s*[:=]\s*\\?["']?[^\r\n"'\\]+/gi,
+  ],
+  ["cookie", /\b(?:Set-)?Cookie\s*:\s*[^\r\n]+/gi],
+  ["credencial Basic", /\bBasic\s+[A-Za-z0-9+/=]{8,}/g],
+  ["JWT", /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*/g],
+  [
+    "chave de serviço",
+    /\b(?:AIza[0-9A-Za-z_-]{30,}|[sr]k_(?:live|test)_[0-9A-Za-z]{16,}|npm_[A-Za-z0-9]{30,}|glpat-[A-Za-z0-9_-]{16,})/g,
+  ],
+  [
+    "webhook",
+    /\b(?:hooks\.slack\.com\/services\/[A-Za-z0-9/]+|discord(?:app)?\.com\/api\/webhooks\/\d+\/[A-Za-z0-9_-]+)/g,
+  ],
+  ["URL assinada", /[?&](?:sig|signature|x-amz-signature|x-goog-signature)=[^\s&]+/gi],
+  ["token em URL", /:\/\/[A-Za-z0-9_-]{20,}@/g],
 ];
 
 /** Vault values shorter than this are not told apart from ordinary text. */
@@ -134,19 +165,28 @@ export class SecretScanner {
 
   /**
    * The text with every secret it holds replaced by `[redacted]`: what a log line goes through so
-   * that no token, key, link or vault value is ever written. A `{{variable}}` stays: it is a place
-   * for a value, not a value.
+   * that no token, key, link or vault value is ever written. A `{{variable}}` stays (it is a place
+   * for a value, not a value), unless `keepPlaceholders` is false: a log has no such places.
    */
-  redact(text: string, _keepPlaceholders = true): string {
+  redact(text: string, keepPlaceholders = true): string {
     let clean = text;
     for (const [, pattern] of SECRET_PATTERNS) {
-      clean = clean.replace(pattern, (hit) => (hit.includes("{{") ? hit : "[redacted]"));
+      clean = clean.replace(pattern, (hit) =>
+        keepPlaceholders && hit.includes("{{") ? hit : "[redacted]",
+      );
     }
     for (const value of this.vaultValues()) {
       if (value.length >= MIN_VAULT_VALUE) clean = clean.split(value).join("[redacted]");
     }
     return clean;
   }
+}
+
+/**
+ * Replaces the user's home folder with `~` (stub).
+ */
+export function scrubHome(text: string, _home?: string): string {
+  return text;
 }
 
 // -- the model -------------------------------------------------------------------------------

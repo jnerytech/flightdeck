@@ -3584,3 +3584,26 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 ### App log: the Rust review (issue #255)
 
 `tauri-rust-reviewer` read the three commands as a compiler (no `cargo` here, so nothing was compiled or run: **CI is the first build of this Rust**). No critical or high finding. Fixed: appends take a lock so two writers at the rotation boundary do not each rotate (M1); a failed rotation still lets lines in, up to twice the file size (L1); `files` is at least 1 (L2); a file with a broken UTF-8 character is read lossily instead of skipped (L3); a line is cut before it is copied (L4); the Rust tests now need the char-boundary loop, cross files, reach the 500-line cap, cover one file and a bad file, and clean up (T1 to T5). Accepted: a compromised webview can flood the log and push history out (L5), as any webview-writable log can; newline and carriage return are removed so a line cannot be forged, other control characters pass.
+
+### App and daemon logs: privacy review (OpenCode, issue #255)
+
+- **The scanner grew** (`packages/protocol/src/snippets.ts`, so snippets, personas and logs share it): a secret word anywhere in a name
+  (`DB_PASSWORD`, `clientSecret`, `authToken`), quoted or escaped as in JSON, then `=` or `:`; `--password`/`--token` options; `curl -u`;
+  `Authorization`, `Proxy-Authorization`, `Cookie` and `Set-Cookie` headers whole; `Basic`; JWTs; npm, GitLab, Stripe and Google keys;
+  Slack and Discord webhooks; signed-link parameters; a 20+ character user in a URL; and the private key as a whole block (to its END line,
+  or to the end of a message that was cut short). `redact(text, false)` does not keep a hit for holding `{{ }}`: logs and diagnostics use it,
+  snippets keep the old behaviour. Plain words that merely contain `pass` (`bypass=false`, `compass: north`) are left alone. The side
+  effect is that `scan` (the snippet refusal) is stricter in the same way.
+- **The log scanners know the owner's secrets.** Daemon: `createLogScanner` adds the protocol token (it follows rotations made in the
+  config file), `hooks.token` and `Vault.heldValues()` (what the app delivered, in memory for at most 60 s), asked at each line. App: the
+  store keeps a memory-only copy of the vault's values (refreshed whenever the vault list changes) and every host token it has seen, and
+  hands them to `AppLog` and to Copy diagnostics, which now redacts the whole text (host names included). The host's lines are redacted
+  again before they reach the clipboard. A cache of vault values in the webview's memory is the price of a synchronous scanner; nothing of
+  it is saved or sent. The daemon's vault never holds values for long, so most of its coverage comes from the token list.
+- **The file writes stopped blocking the daemon.** The first push failed the no-sync ratchet and the features list (`logs` was missing from
+  `DAEMON_FEATURES` and had no name in the dictionaries). `FileLog` now queues each redacted line on one async chain (ordered, never
+  rejects); `tail` and `stop` flush the queue first, so a reader or a shutdown sees every line written.
+- **Not done in this round (from the same review, for a follow-up):** home-directory scrubbing in lines and `logPath`; `logs.tail` limited
+  to loopback/Tailscale like the vault; 0700/0600 permissions and refusing symlinks (daemon and Rust); byte-bounded tail reads; a rate
+  limit and a batched or single-writer sink in the app; a re-entrancy guard and idempotent install of the console overrides; Rust tests
+  for the new behaviours.

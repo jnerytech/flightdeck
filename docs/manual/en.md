@@ -2622,9 +2622,16 @@ The daemon keeps its own log file too, `flightdeckd.log` in `~/.flightdeck/logs`
 `host.info` says where. On a host page, **Copy the host's last log lines** copies up to 100 of them.
 
 Every line is redacted before it is written, by the same scanner that guards snippets and personas:
-a token (GitHub, Slack, AWS, `sk-` keys), a Bearer header, a `password=` or `token=` on the line,
-a key block, a password in a URL, a pairing link's token and any vault value become `[redacted]`.
-It is a pattern list, not a guarantee: read the lines before you post them in public.
+a token (GitHub, Slack, AWS, `sk-`, npm, GitLab, Stripe and Google keys, JWTs), an `Authorization`
+or `Cookie` header, a name containing password, secret, token or key followed by `=` or `:` (also
+inside JSON, as in `{"apiKey":"…"}` or `DB_PASSWORD=…`), `--password`/`--token` options, `curl -u`,
+a whole private key block, a password or a token in a URL, a webhook URL, a signed link and a
+pairing link's token become `[redacted]`. Besides the patterns, the host never writes its own
+tokens (the protocol's, even after a rotation, and the hooks') or any value the vault holds at
+that moment, and the app never writes a host's token or a vault value of 6 characters or more.
+It is a pattern list, not a guarantee: a secret wrapped in base64, split over two log lines, or a
+short vault value (under 6 characters) is not caught, and paths keep the user name. Read the lines
+before you post them in public.
 
 ### Performance
 

@@ -2605,10 +2605,17 @@ O daemon também guarda um log, `flightdeckd.log` em `~/.flightdeck/logs` (tamb�
 até 100 delas.
 
 Cada linha é editada antes de ser gravada, pelo mesmo verificador que protege snippets e personas:
-um token (GitHub, Slack, AWS, chaves `sk-`), um cabeçalho Bearer, um `password=` ou `token=` na
-linha, um bloco de chave, uma senha numa URL, o token de um link de pareamento e qualquer valor do
-cofre viram `[redacted]`. É uma lista de padrões, não uma garantia: leia as linhas antes de
-postá-las em público.
+um token (GitHub, Slack, AWS, chaves `sk-`, npm, GitLab, Stripe e Google, JWTs), um cabeçalho
+`Authorization` ou `Cookie`, um nome que contém password, secret, token ou key seguido de `=` ou `:`
+(também dentro de JSON, como `{"apiKey":"…"}` ou `DB_PASSWORD=…`), opções `--password`/`--token`,
+`curl -u`, um bloco inteiro de chave privada, uma senha ou um token numa URL, uma URL de webhook,
+um link assinado e o token de um link de pareamento viram `[redacted]`. Além dos padrões, o host
+nunca grava os próprios tokens (o do protocolo, mesmo depois de um rodízio, e o dos hooks) nem
+qualquer valor que o cofre guarda naquele momento, e o app nunca grava o token de um host nem um
+valor do cofre com 6 caracteres ou mais. É uma lista de padrões, não uma garantia: um segredo
+embrulhado em base64, partido em duas linhas de log, ou um valor curto do cofre (menos de 6
+caracteres) não é pego, e os caminhos mantêm o nome do usuário. Leia as linhas antes de postá-las
+em público.
 
 ### Desempenho
 

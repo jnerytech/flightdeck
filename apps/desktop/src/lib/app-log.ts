@@ -17,8 +17,6 @@ const MAX_MESSAGE = 2000;
 /** "Copy diagnostics" carries this many of the last lines. */
 const DIAGNOSTIC_LINES = 50;
 
-const scanner = new SecretScanner();
-
 /**
  * The app's log. Every line is redacted by the protocol's secret scanner before it goes anywhere
  * (the shell's log file, or the memory the diagnostics read), so no token, key, pairing link or
@@ -27,14 +25,17 @@ const scanner = new SecretScanner();
 export class AppLog {
   private readonly now: () => number;
   private lines: string[] = [];
+  private readonly scanner: SecretScanner;
 
   constructor(private readonly opts: AppLogOptions = {}) {
     this.now = opts.now ?? Date.now;
+    const values = opts.values;
+    this.scanner = new SecretScanner(values ? () => values() : () => []);
   }
 
   log(level: LogLevel, source: string, message: string): void {
-    const text = scanner
-      .redact(message)
+    const text = this.scanner
+      .redact(message, false)
       .replace(/[\r\n]+/g, " ")
       .slice(0, MAX_MESSAGE);
     const line = `${new Date(this.now()).toISOString()} ${level.toUpperCase()} ${source} ${text}`;
@@ -105,6 +106,8 @@ export interface DiagnosticsInput {
   os: string;
   hosts: Array<{ name: string; version: string | null; features: string[]; status: string }>;
   lines: string[];
+  /** Values to remove besides the shapes of secrets (host tokens, vault values). */
+  values?: () => string[];
 }
 
 /**
@@ -113,18 +116,21 @@ export interface DiagnosticsInput {
  * redacted once more. It is meant for whoever helps, so it is in English whatever the app's language.
  */
 export function diagnosticsText(input: DiagnosticsInput): string {
+  const scanner = new SecretScanner(input.values ? () => input.values?.() ?? [] : () => []);
   const hosts = input.hosts.map(
     (host) =>
       `  ${host.name}: ${host.status}, flightdeckd ${host.version ?? "unknown"}, features: ${
         host.features.length === 0 ? "none" : host.features.join(", ")
       }`,
   );
-  return [
+  // The whole text goes through the scanner: host names and the system string are copied too.
+  const text = [
     `Flightdeck ${input.appVersion}`,
     `System: ${input.os}`,
     "Hosts:",
     ...(hosts.length === 0 ? ["  none"] : hosts),
     "Last log lines:",
-    ...input.lines.slice(-DIAGNOSTIC_LINES).map((line) => `  ${scanner.redact(line)}`),
+    ...input.lines.slice(-DIAGNOSTIC_LINES).map((line) => `  ${line}`),
   ].join("\n");
+  return scanner.redact(text, false);
 }

@@ -198,6 +198,14 @@ describe("log-app-ui: the host's own log lines", () => {
 describe("log-segredos-app: the store feeds the log the host tokens and the vault values (issue #255)", () => {
   const HOST_TOKEN = "Zk3fakehosttoken0123456789abcdefghijklmnop";
   const VAULT_VALUE = "Vx9fakevaultvalue0123456789";
+  const host = (features: string[]) =>
+    ({
+      id: "h1",
+      name: "pc",
+      status: "online",
+      hostInfo: { daemonVersion: "x", features },
+      sessions: [],
+    }) as never;
 
   test("a host's token and a vault value never reach the memory or the file, even typed into a message", async () => {
     const { store, written } = setup();
@@ -209,5 +217,32 @@ describe("log-segredos-app: the store feeds the log the host tokens and the vaul
     expect(everything).not.toContain(HOST_TOKEN);
     expect(everything).not.toContain(VAULT_VALUE);
     expect(everything).toContain("refused [redacted] and [redacted]");
+  });
+
+  test("the host's lines are redacted again before they reach the clipboard, a hostile host included", async () => {
+    const w = setup();
+    w.store.hostCommand = (async () => ({
+      lines: [`2026 INFO leaked ${HOST_TOKEN} and {"password":"hunter2hunter2"}`],
+      path: "/x",
+    })) as never;
+    await w.store.addHost({ name: "alfa", url: "ws://127.0.0.1:1", token: HOST_TOKEN });
+    render(view(w.store, <HostLogs store={w.store} host={host(["logs"])} />));
+    await click(screen.getByRole("button", { name: "Copy the host's last log lines" }));
+    await settle(() => w.copied.length === 1);
+    expect(w.copied[0]).not.toContain(HOST_TOKEN);
+    expect(w.copied[0]).not.toContain("hunter2hunter2");
+  });
+
+  test("Copy diagnostics redacts the whole text: a host named like a secret is not copied", async () => {
+    const w = setup();
+    await w.store.addHost({
+      name: `box token=${HOST_TOKEN}`,
+      url: "ws://127.0.0.1:1",
+      token: HOST_TOKEN,
+    });
+    render(view(w.store, <DiagnosticsPanel store={w.store} />));
+    await click(screen.getByRole("button", { name: "Copy diagnostics" }));
+    await settle(() => w.copied.length === 1);
+    expect(w.copied[0]).not.toContain(HOST_TOKEN);
   });
 });

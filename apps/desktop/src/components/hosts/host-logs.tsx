@@ -1,3 +1,4 @@
+import { SecretScanner } from "@flightdeck/protocol";
 import { ActionButton } from "@/components/feedback/action-button";
 import { useT } from "@/i18n/context";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
@@ -21,7 +22,9 @@ export function HostLogs(props: { store: AppStore; host: HostView }) {
       store.success(t("diagnostics.hostEmpty"));
       return;
     }
-    await store.copyText(tail.lines.join("\n"));
+    // The host redacts, and so does the app: what reaches the clipboard is never taken on trust.
+    const clean = new SecretScanner(() => store.scanValues()).redact(tail.lines.join("\n"), false);
+    await store.copyText(clean);
     store.success(t("diagnostics.hostCopied", { n: tail.lines.length }));
   };
   return (

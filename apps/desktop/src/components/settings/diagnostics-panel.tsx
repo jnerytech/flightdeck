@@ -31,6 +31,7 @@ export function DiagnosticsPanel(props: { store: AppStore }) {
         features: host.hostInfo?.features ?? [],
       })),
       lines,
+      values: () => store.scanValues(),
     });
     await store.copyText(text);
     store.success(t("diagnostics.copied"));

@@ -766,7 +766,7 @@ export class AppStore {
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
     this.i18n = new I18n(platform);
-    this.appLog = new AppLog({ sink: platform.logs });
+    this.appLog = new AppLog({ sink: platform.logs, values: () => this.scanValues() });
     this.i18n.subscribe(() => this.onLanguage());
     this.state = {
       hosts: [],
@@ -1008,6 +1008,7 @@ export class AppStore {
     url: string;
     token: string;
   }): Promise<{ ok: true; hostId: string } | { ok: false; error: string }> {
+    this.hostTokens.add(input.token);
     const probe = await probeHost(input.url, input.token, this.i18n.t);
     if (!probe.ok) return probe;
     return { ok: true, hostId: await this.addHost(input) };
@@ -2157,6 +2158,7 @@ export class AppStore {
   }
 
   private connect(config: HostConfig, token: string): void {
+    this.hostTokens.add(token);
     const conn = new HostConnection({
       url: config.url,
       token,
@@ -3109,6 +3111,25 @@ export class AppStore {
    * apart from ordinary text (6+ characters), for a scan that runs in the app: they are compared
    * by the caller, never sent and never kept here (phase 18's history import).
    */
+  /**
+   * What the app's log must never write, read at each line: every host's token and the vault's
+   * values (a copy kept in memory only, refreshed when the vault changes, never saved or sent).
+   */
+  scanValues(): string[] {
+    return [...this.hostTokens, ...this.vaultPieces];
+  }
+
+  private readonly hostTokens = new Set<string>();
+  private vaultPieces: string[] = [];
+
+  private async rememberVaultValues(): Promise<void> {
+    try {
+      this.vaultPieces = await this.vaultValuesForScan();
+    } catch {
+      // The log's cache is a convenience: a vault that cannot be read leaves the last one.
+    }
+  }
+
   async vaultValuesForScan(): Promise<string[]> {
     const pieces: string[] = [];
     for (const secret of this.vault.list()) {
@@ -3765,6 +3786,7 @@ export class AppStore {
 
   private update(patch: Partial<AppState>): void {
     this.state = { ...this.state, ...patch };
+    if (patch.secrets) void this.rememberVaultValues();
     if (patch.hosts) this.syncTray();
     if (patch.hosts) this.watchClientBudgetHosts();
     if (patch.hub || patch.projects) this.scheduleVaultScope();

@@ -61,6 +61,7 @@ import { Issues } from "./issues/issues.ts";
 import { lingerState } from "./linger.ts";
 import { acquireLock, readLockPid } from "./lock.ts";
 import { FileLog } from "./logs/file-log.ts";
+import { createLogScanner } from "./logs/scanner.ts";
 import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
 import { daemonUrl, identityOf, startMcp } from "./mcp.ts";
@@ -599,9 +600,16 @@ export async function startDaemon(
   const configFile = configPath(args);
   const config = await loadConfig(configFile);
   // Everything the daemon says goes to the console and, redacted, to a rotated file.
+  // What the log must never write: the daemon's tokens (the protocol's rotates) and what the vault
+  // holds. The vault is made further down; until then there is nothing held.
+  let currentToken = config.token;
+  let heldValues: () => string[] = () => [];
   const fileLog = new FileLog({
     dir: options.logDir ?? join(userHome(env), ".flightdeck", "logs"),
-    scanner: new SecretScanner(),
+    scanner: createLogScanner({
+      tokens: () => [config.token, currentToken, config.hooks.token ?? ""].filter(Boolean),
+      vaultValues: () => heldValues(),
+    }),
   });
   const logger: Logger = {
     log: (message) => {
@@ -886,6 +894,7 @@ export async function startDaemon(
     log: logger.log.bind(logger),
     actions: vaultActions(runtimeKind),
   });
+  heldValues = () => vault.heldValues();
   // Phase 17: the actions that use a secret from the vault without Claude seeing it.
   const actions = new Actions({
     db: store.db,
@@ -1276,7 +1285,10 @@ export async function startDaemon(
   // `pair --rotate` runs in another process: follow the token in the config file.
   const onConfigChange = async () => {
     const token = await readToken(configFile);
-    if (token) server.setToken(token);
+    if (token) {
+      currentToken = token;
+      server.setToken(token);
+    }
   };
   watchFile(configFile, { interval: options.configWatchMs ?? 2000 }, onConfigChange);
 
