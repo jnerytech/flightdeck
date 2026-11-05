@@ -4,6 +4,7 @@
  * Terms follow docs/GLOSSARY.md.
  */
 export const ptBR = {
+  inFlight: { stillWorking: "Ainda trabalhando…" },
   nav: { back: "Voltar", forward: "Avançar" },
   hosts: {
     status: {

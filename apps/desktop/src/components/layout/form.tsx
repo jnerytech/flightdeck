@@ -8,6 +8,8 @@ import {
 } from "react";
 import { Spinner } from "@/components/feedback/busy";
 import { Button } from "@/components/ui/button";
+import { useInFlight } from "@/hooks/use-in-flight";
+import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 
 /** What a form is laid out for: a page, a dialog's body, a bordered panel, or a part of a panel. */
@@ -139,6 +141,8 @@ export function FormActions(props: {
 }) {
   const variant = useContext(VariantContext);
   const id = useId();
+  const stage = useInFlight(Boolean(props.busy));
+  const t = useT();
   const reason = props.disabled && props.disabledReason ? props.disabledReason : null;
   return (
     <div className="flex flex-col gap-2">
@@ -159,10 +163,16 @@ export function FormActions(props: {
           type="submit"
           disabled={props.disabled || props.busy}
           aria-busy={props.busy || undefined}
+          data-feedback={props.busy ? stage : undefined}
           {...(reason ? { "aria-describedby": id } : {})}
         >
-          {props.busy && <Spinner />}
+          {(stage === "spinner" || stage === "slow") && <Spinner />}
           {props.submit}
+          {stage === "slow" && (
+            <span data-stage className="font-normal text-xs opacity-80">
+              {t("inFlight.stillWorking")}
+            </span>
+          )}
         </Button>
       </div>
       {reason && (

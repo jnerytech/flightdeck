@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { IN_FLIGHT, useAfter } from "@/hooks/use-in-flight";
 import { cn } from "@/lib/utils";
 
 /** An empty list or panel: a large soft icon, one sentence and one action. */
@@ -22,6 +23,8 @@ export type LoadingShape = "rows" | "columns" | "tiles";
 /** A list or panel still loading. */
 export function LoadingState(props: { label: string; shape?: LoadingShape }) {
   const shape = props.shape ?? "rows";
+  // Announced at once; the placeholders wait 200 ms so a quick load flashes nothing.
+  const drawn = useAfter(IN_FLIGHT.deferMs);
   return (
     <div
       role="status"
@@ -30,10 +33,12 @@ export function LoadingState(props: { label: string; shape?: LoadingShape }) {
       data-shape={shape}
       className={cn("gap-2", shape === "rows" ? "flex flex-col" : "grid gap-3", GRID[shape])}
     >
-      {shape === "rows" && ROWS.map((w) => <Skeleton key={w} className={cn("h-5", w)} />)}
-      {shape === "columns" &&
+      {drawn && shape === "rows" && ROWS.map((w) => <Skeleton key={w} className={cn("h-5", w)} />)}
+      {drawn &&
+        shape === "columns" &&
         [0, 1, 2, 3, 4].map((n) => <Skeleton key={n} className="h-40 rounded-lg" />)}
-      {shape === "tiles" &&
+      {drawn &&
+        shape === "tiles" &&
         [0, 1, 2, 3].map((n) => <Skeleton key={n} className="h-20 rounded-lg" />)}
     </div>
   );

@@ -2,6 +2,7 @@ import type { Dictionary } from "./index.ts";
 
 /** English: the same keys as pt-BR.ts (a missing or extra one fails typecheck). */
 export const en: Dictionary = {
+  inFlight: { stillWorking: "Still working…" },
   nav: { back: "Back", forward: "Forward" },
   hosts: {
     status: {

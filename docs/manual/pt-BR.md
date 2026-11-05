@@ -506,6 +506,12 @@ histórico.
   turno, uma linha acima da caixa diz o que está acontecendo ("Executando um comando", "Editando
   arquivos", "Esperando você") e há quanto tempo; o indicador para de girar se o sistema pedir
   menos movimento.
+- **Esperando num botão:** um botão cujo comando está rodando ignora um segundo clique na hora.
+  Em menos de um décimo de segundo nada muda na tela; até um segundo ele só parece ocupado; a
+  partir de um segundo mostra um indicador girando; depois de três segundos diz também **Ainda
+  trabalhando…** (ou a etapa, quando o comando informa uma). Uma lista ou painel carregando só
+  desenha os marcadores se a espera passar de dois décimos de segundo, então uma carga rápida não
+  pisca.
 
 ### Hooks do Claude Code
 

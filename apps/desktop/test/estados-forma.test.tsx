@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { registerDom } from "./dom.ts";
+import { InstantClock } from "./in-flight-clock.tsx";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -22,7 +23,11 @@ describe("estados-forma", () => {
 
   for (const [shape, blocks] of SHAPES) {
     test(`${shape}: a busy status with its label and ${blocks} blocks`, () => {
-      const { container, getByRole } = render(<LoadingState label="Carregando" shape={shape} />);
+      const { container, getByRole } = render(
+        <InstantClock>
+          <LoadingState label="Carregando" shape={shape} />
+        </InstantClock>,
+      );
       const status = getByRole("status", { name: "Carregando" });
       expect(status.getAttribute("aria-busy")).toBe("true");
       expect(status.getAttribute("data-shape")).toBe(shape);

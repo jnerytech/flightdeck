@@ -520,6 +520,11 @@ A session appears only once. The order of preference is managed, then terminal, 
   session lets you change it, and a spinner while a turn runs. While a turn runs a line above the
   box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
   long; the spinner stops moving if your system asks for reduced motion.
+- **Waiting on a button:** a button whose command is running ignores a second click at once. Under a
+  tenth of a second nothing changes on screen; up to one second it only looks busy; from one second
+  it shows a spinner; after three seconds it also says **Still working…** (or the stage, when the
+  command reports one). A list or panel that is loading draws its placeholders only if the wait
+  passes two tenths of a second, so a quick load shows no flicker.
 
 ### Claude Code hooks
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { IN_FLIGHT } from "./use-in-flight.ts";
 
 /** The clock and timers of the hook; the real ones by default (tests drive their own). */
 export interface MinLoadingTimers {
@@ -7,7 +8,7 @@ export interface MinLoadingTimers {
   clearTimeout(handle: unknown): void;
 }
 
-/** A loading state that, once shown, stays on for at least `MIN_LOADING_MS`, so it never flashes. */
+/** A loading state that, once its placeholders are drawn (after `IN_FLIGHT.deferMs`), stays on for at least `MIN_LOADING_MS`, so it never flashes. */
 export const MIN_LOADING_MS = 150;
 
 const REAL: MinLoadingTimers = {
@@ -25,7 +26,10 @@ export function useMinLoading(loading: boolean, timers: MinLoadingTimers = REAL)
       setShown(true);
       return;
     }
-    const left = MIN_LOADING_MS - (timers.now() - since.current);
+    // The placeholders are drawn after `deferMs`; the minimum counts from then, and a load that
+    // ended before that never drew them, so it has nothing to hold.
+    const drawnFor = timers.now() - since.current - IN_FLIGHT.deferMs;
+    const left = drawnFor <= 0 ? 0 : MIN_LOADING_MS - drawnFor;
     if (left <= 0) {
       setShown(false);
       return;

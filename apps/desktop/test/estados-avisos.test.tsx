@@ -10,6 +10,7 @@ import type { ConnectionStatus } from "../src/lib/host-connection.ts";
 import { hostStatusView, hostsBanner } from "../src/lib/host-status.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { InstantClock } from "./in-flight-clock.tsx";
 import { stays, waiter } from "./wait.ts";
 
 registerDom();
@@ -125,18 +126,18 @@ describe("estados-avisos", () => {
     expect(MIN_LOADING_MS).toBe(150);
     const view = render(<Probe loading={true} timers={timers} />);
     expect(screen.queryByText("carregando")).not.toBeNull();
-    t = 50;
+    t = 250;
     view.rerender(<Probe loading={false} timers={timers} />);
-    // Done after 50 ms: still showing until 150 ms have passed.
+    // Done at 250 ms, 50 ms after the placeholders were drawn: still showing until 150 ms have passed.
     expect(screen.queryByText("carregando")).not.toBeNull();
-    t = 150;
+    t = 350;
     await act(async () => {
       for (const fn of timeouts.splice(0)) fn();
     });
     expect(screen.queryByText("pronto")).not.toBeNull();
-    t = 200;
-    view.rerender(<Probe loading={true} timers={timers} />);
     t = 400;
+    view.rerender(<Probe loading={true} timers={timers} />);
+    t = 800;
     view.rerender(<Probe loading={false} timers={timers} />);
     expect(screen.queryByText("pronto")).not.toBeNull();
   });
@@ -326,16 +327,18 @@ describe("estados-avisos", () => {
     let release: () => void = () => {};
     const calls: number[] = [];
     render(
-      <ActionButton
-        onClick={() => {
-          calls.push(1);
-          return new Promise<void>((resolve) => {
-            release = resolve;
-          });
-        }}
-      >
-        Salvar
-      </ActionButton>,
+      <InstantClock>
+        <ActionButton
+          onClick={() => {
+            calls.push(1);
+            return new Promise<void>((resolve) => {
+              release = resolve;
+            });
+          }}
+        >
+          Salvar
+        </ActionButton>
+      </InstantClock>,
     );
     const button = screen.queryByRole("button", { name: "Salvar" }) as HTMLButtonElement;
     expect(button.disabled).toBe(false);
