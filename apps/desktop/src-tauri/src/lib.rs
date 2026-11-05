@@ -354,6 +354,12 @@ const LOG_MAX_LINE: usize = 4000;
 /// The most lines `read_log_tail` hands back.
 const LOG_MAX_TAIL: usize = 500;
 const LOG_NAME: &str = "flightdeck.log";
+/// If a rotation keeps failing (a viewer holds the file open on Windows), the live file may grow to
+/// this much before a line is refused: logging is not lost at the first hiccup, and stays bounded.
+const LOG_HARD_LIMIT: u64 = 2 * LOG_MAX_BYTES;
+/// One writer at a time: `append_log` runs on the blocking pool, and two appends at the rotation
+/// boundary would each rotate and push history out.
+static LOG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 /// File `n` of the log: 0 is the live one, 1 the one before it, and so on.
 fn log_path(dir: &std::path::Path, n: usize) -> std::path::PathBuf {
@@ -366,6 +372,7 @@ fn log_path(dir: &std::path::Path, n: usize) -> std::path::PathBuf {
 
 /// Shifts the files one place up: the live one becomes `.1`, the oldest is dropped.
 fn rotate_logs(dir: &std::path::Path, files: usize) -> std::io::Result<()> {
+    let files = files.max(1);
     let oldest = log_path(dir, files - 1);
     if oldest.exists() {
         std::fs::remove_file(&oldest)?;
@@ -387,20 +394,28 @@ fn append_line(
     files: usize,
 ) -> std::io::Result<()> {
     use std::io::Write;
+    let _one_writer = LOG_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     std::fs::create_dir_all(dir)?;
-    let mut text = line.replace(['\r', '\n'], " ");
-    if text.len() > LOG_MAX_LINE {
+    // Cut first, on a character boundary, so a flood is never copied whole.
+    let mut cut = line;
+    if cut.len() > LOG_MAX_LINE {
         let mut end = LOG_MAX_LINE;
-        while !text.is_char_boundary(end) {
+        while !cut.is_char_boundary(end) {
             end -= 1;
         }
-        text.truncate(end);
+        cut = &cut[..end];
     }
+    let mut text = cut.replace(['\r', '\n'], " ");
     text.push('\n');
     let live = log_path(dir, 0);
     let size = std::fs::metadata(&live).map(|m| m.len()).unwrap_or(0);
     if size > 0 && size + text.len() as u64 > max_bytes {
-        rotate_logs(dir, files)?;
+        // A failed rotation still lets the line in, until the hard limit.
+        if rotate_logs(dir, files).is_err() && size + text.len() as u64 > LOG_HARD_LIMIT.max(max_bytes) {
+            return Err(std::io::Error::other("the log is full and cannot rotate"));
+        }
     }
     let mut file = std::fs::OpenOptions::new()
         .create(true)
@@ -417,9 +432,11 @@ fn tail_lines(dir: &std::path::Path, wanted: usize, files: usize) -> Vec<String>
         if out.len() >= wanted {
             break;
         }
-        let Ok(text) = std::fs::read_to_string(log_path(dir, n)) else {
+        // Lossy: a file with a broken character (a crash mid-write) is still read.
+        let Ok(bytes) = std::fs::read(log_path(dir, n)) else {
             continue;
         };
+        let text = String::from_utf8_lossy(&bytes).into_owned();
         let lines: Vec<&str> = text.lines().filter(|l| !l.is_empty()).collect();
         let take = (wanted - out.len()).min(lines.len());
         let mut chunk: Vec<String> = lines[lines.len() - take..]
@@ -486,16 +503,20 @@ mod log_tests {
         append_line(&dir, "next", 1024, 3).unwrap();
         let text = std::fs::read_to_string(log_path(&dir, 0)).unwrap();
         assert_eq!(text, "first second  third\nnext\n");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn a_long_line_is_cut_on_a_character_boundary() {
         let dir = scratch("long");
-        let line = "é".repeat(LOG_MAX_LINE);
+        // Three bytes each, and 4000 is not a multiple of 3: the cut has to step back.
+        let line = "€".repeat(LOG_MAX_LINE);
         append_line(&dir, &line, 1 << 20, 3).unwrap();
         let text = std::fs::read_to_string(log_path(&dir, 0)).unwrap();
         assert!(text.trim_end().len() <= LOG_MAX_LINE);
         assert!(text.ends_with('\n'));
+        assert!(text.trim_end().chars().all(|c| c == '€'));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -510,20 +531,55 @@ mod log_tests {
         assert!(!log_path(&dir, 3).exists());
         let live = std::fs::read_to_string(log_path(&dir, 0)).unwrap();
         assert!(live.contains("message number 39"));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
-    fn the_tail_runs_across_the_files_and_is_bounded() {
+    fn one_file_just_starts_over() {
+        let dir = scratch("single");
+        for _ in 0..10 {
+            append_line(&dir, "only", 10, 1).unwrap();
+        }
+        assert!(log_path(&dir, 0).exists());
+        assert!(!log_path(&dir, 1).exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_tail_crosses_the_files_in_order() {
         let dir = scratch("tail");
         for i in 0..30 {
             append_line(&dir, &format!("n{i}"), 40, 4).unwrap();
         }
-        let last = tail_lines(&dir, 5, 4);
-        assert_eq!(last.len(), 5);
+        // The live file holds fewer than 14 lines, so the answer comes from older files too.
+        let last = tail_lines(&dir, 14, 4);
+        assert_eq!(last.len(), 14);
+        assert_eq!(last.first().map(String::as_str), Some("n16"));
         assert_eq!(last.last().map(String::as_str), Some("n29"));
         assert_eq!(tail_lines(&dir, 0, 4).len(), 0);
-        assert!(tail_lines(&dir, 100_000, 4).len() <= LOG_MAX_TAIL);
         assert!(tail_lines(&scratch("missing"), 5, 4).is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_tail_is_capped() {
+        let dir = scratch("cap");
+        for i in 0..(LOG_MAX_TAIL + 100) {
+            append_line(&dir, &format!("n{i}"), 1 << 20, 2).unwrap();
+        }
+        assert_eq!(tail_lines(&dir, 100_000, 2).len(), LOG_MAX_TAIL);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_file_with_a_broken_character_is_still_read() {
+        let dir = scratch("lossy");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(log_path(&dir, 0), b"good line\nbroken \xff here\n").unwrap();
+        let lines = tail_lines(&dir, 5, 2);
+        assert_eq!(lines.len(), 2);
+        assert!(lines[1].contains("broken"));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
 

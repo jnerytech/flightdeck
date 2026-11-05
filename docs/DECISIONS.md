@@ -3580,3 +3580,7 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   `logs.tail {lines <= 500}` hands out the last lines. A folder that cannot be written is ignored.
 - **Not built:** the daemon's `doctor` naming the path (host.info does), update-install events, and Windows rotation tests (Windows cannot
   rename over an open file: a single writer appends and rotates from the same process, so it never has the file open elsewhere).
+
+### App log: the Rust review (issue #255)
+
+`tauri-rust-reviewer` read the three commands as a compiler (no `cargo` here, so nothing was compiled or run: **CI is the first build of this Rust**). No critical or high finding. Fixed: appends take a lock so two writers at the rotation boundary do not each rotate (M1); a failed rotation still lets lines in, up to twice the file size (L1); `files` is at least 1 (L2); a file with a broken UTF-8 character is read lossily instead of skipped (L3); a line is cut before it is copied (L4); the Rust tests now need the char-boundary loop, cross files, reach the 500-line cap, cover one file and a bad file, and clean up (T1 to T5). Accepted: a compromised webview can flood the log and push history out (L5), as any webview-writable log can; newline and carriage return are removed so a line cannot be forged, other control characters pass.

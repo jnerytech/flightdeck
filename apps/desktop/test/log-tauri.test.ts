@@ -76,8 +76,8 @@ describe("log-tauri: the shell's log file (issue #255)", () => {
     expect(rust).toContain("from_utf8_lossy");
     // L4: the line is cut before the copy that flattens it.
     const body = /fn append_line\([\s\S]*?\n\}\n/.exec(rust)?.[0] ?? "";
-    expect(body.indexOf("truncate")).toBeGreaterThan(-1);
-    expect(body.indexOf("truncate")).toBeLessThan(body.indexOf("replace(["));
+    expect(body.indexOf("is_char_boundary")).toBeGreaterThan(-1);
+    expect(body.indexOf("is_char_boundary")).toBeLessThan(body.indexOf("replace(["));
   });
 
   test("the Rust tests cross a boundary that needs the loop, cross files, reach the cap and clean up", () => {
@@ -85,7 +85,7 @@ describe("log-tauri: the shell's log file (issue #255)", () => {
     expect(tests).toContain('"€".repeat(');
     expect(tests).toContain("tail_lines(&dir, 14, 4)");
     expect(tests).toContain("LOG_MAX_TAIL);");
-    expect(tests).toMatch(/assert_eq!\(tail_lines\(&dir, 100_000, 4\)\.len\(\), LOG_MAX_TAIL\)/);
+    expect(tests).toMatch(/tail_lines\(&dir, 100_000, 2\)\.len\(\),\s*LOG_MAX_TAIL/);
     expect(tests).toContain("remove_dir_all");
     expect(tests).toContain('append_line(&dir, "only", 10, 1)');
   });
