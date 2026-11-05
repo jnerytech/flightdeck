@@ -11,6 +11,7 @@ import {
   AcpError,
   spawnAcp,
 } from "../src/runtime/acp/client.ts";
+import { poll } from "./helpers.ts";
 
 /** An in-memory agent: what the client wrote, and a way to write back. */
 function pair(opts: AcpClientOptions = {}) {
@@ -198,6 +199,34 @@ describe("acp-client", () => {
     agent.send({ jsonrpc: "2.0", id: 1, result: null });
     await done;
     expect(logs.length).toBe(2);
+    expect(logs.join("\n")).not.toContain("SECRET");
+  });
+
+  test("a throwing handler or a line that is not an object does not stop the reading; it is logged without text", async () => {
+    const logs: string[] = [];
+    const agent = pair({
+      log: (m) => logs.push(m),
+      onNotification: () => {
+        throw new Error("SECRET-BAD-SHAPE");
+      },
+    });
+    let closedWith: unknown = null;
+    void agent.client.closed.catch((error: unknown) => {
+      closedWith = error;
+    });
+    let answer: unknown = null;
+    void agent.client.request("session/prompt", {}, { timeoutMs: null }).then((r) => {
+      answer = r;
+    });
+    await agent.wrote(1);
+    agent.send({ jsonrpc: "2.0", method: "session/update", params: {} });
+    agent.sendRaw("null");
+    agent.sendRaw("42");
+    agent.sendRaw("{}");
+    agent.send({ jsonrpc: "2.0", id: 1, result: { stopReason: "end_turn" } });
+    expect(await poll(() => answer)).toEqual({ stopReason: "end_turn" });
+    expect(closedWith).toBe(null);
+    expect(logs.length).toBe(4);
     expect(logs.join("\n")).not.toContain("SECRET");
   });
 
