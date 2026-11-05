@@ -50,7 +50,7 @@ export async function warmKnown(
   const folders = [...opts.manager.list(), ...opts.external.list()].flatMap((s) =>
     s.cwd ? [s.cwd] : [],
   );
-  await Promise.allSettled(folders.map((cwd) => warm(cwd)));
+  await Promise.allSettled(folders.map(async (cwd) => warm(cwd)));
 }
 
 /** Starts naming; returns the function that stops it. */

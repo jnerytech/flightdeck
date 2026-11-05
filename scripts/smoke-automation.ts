@@ -384,14 +384,13 @@ async function run(work: string): Promise<void> {
     );
     if (answered) throw new Error("o rm -rf foi respondido sem você");
     await client.call("permission.respond", { requestId: high.requestId, decision: "deny" });
-    const closedAuto = await until(
+    await until(
       () =>
         client.frames.filter(
           (f) => f.type === "external.permission" && f.state === "closed" && f.auto,
         ).length >= 2,
       "Read e Write aprovados automaticamente",
     );
-    void closedAuto;
     const autos = client.frames.flatMap((f) =>
       f.type === "external.permission" && f.state === "closed" && f.auto
         ? [`${f.toolName}:${f.auto.by}`]

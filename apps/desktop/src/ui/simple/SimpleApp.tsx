@@ -270,7 +270,9 @@ export function SimpleApp(props: {
             canPickFolder={store.canPickFolder()}
             onPickFolder={() => store.pickFolder()}
             notifications={props.notifyUpdates}
-            onNotifications={(enabled) => void store.setNotifyUpdates(enabled)}
+            onNotifications={(enabled) => {
+              void store.setNotifyUpdates(enabled);
+            }}
             canSwitch={mode.canSwitch}
             onShowEverything={() => toFull()}
           />

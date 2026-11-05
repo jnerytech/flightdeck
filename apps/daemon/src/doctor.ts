@@ -85,7 +85,7 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
   }
   const checks = [check("config", "config", "ok", "readable")];
 
-  const found = await Promise.all(config.allowedRoots.map((root) => deps.isDirectory(root)));
+  const found = await Promise.all(config.allowedRoots.map(async (root) => deps.isDirectory(root)));
   const gone = config.allowedRoots.filter((_, index) => !found[index]);
   if (config.allowedRoots.length === 0) {
     checks.push(

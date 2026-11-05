@@ -174,7 +174,7 @@ async function run() {
   }
 }
 
-const work = realTempDir("flightdeck-smoke-conta-");
+realTempDir("flightdeck-smoke-conta-");
 let code = 1;
 try {
   await run();
@@ -185,7 +185,5 @@ try {
   console.error(
     `SMOKE CONTA FAIL at step "${step}": ${error instanceof Error ? error.message : String(error)}`,
   );
-} finally {
-  void work;
 }
 process.exit(code);
