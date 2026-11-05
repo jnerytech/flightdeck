@@ -129,3 +129,17 @@ for (const [lang, t] of [
     });
   });
 }
+
+describe("needs-you-rows: every button that stacks lines gives them its width", () => {
+  // The cause is the browser's style for <button> (align-items: flex-start), which Tailwind's reset
+  // leaves: any button with flex-col and a cut line ran past its box. The base layer resets it.
+  test("the base layer sets align-items: stretch on buttons", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+    const base = css.slice(
+      css.indexOf("@layer base {"),
+      css.indexOf("\n}\n", css.indexOf("@layer base {")),
+    );
+    expect(/\n {2}button \{\n {4}align-items: stretch;\n {2}\}/.test(base)).toBe(true);
+  });
+});
