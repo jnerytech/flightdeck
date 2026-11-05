@@ -24,8 +24,9 @@ describe("ci-branches", () => {
     expect(ci.on.pull_request?.paths).toBeUndefined();
   });
 
-  test("a push that only changes the manual or its images starts no run", () => {
-    expect(ci.on.push?.["paths-ignore"]).toEqual(["docs/manual/**", "docs/images/**"]);
+  test("a push that only changes the doc images starts no run; the manuals, which tests read, still run it", () => {
+    // Not the manuals: the docs tests (md-links, md-size, the split) read them (#235).
+    expect(ci.on.push?.["paths-ignore"]).toEqual(["docs/images/**"]);
   });
 
   test("no test reads a file the push filter skips", () => {
