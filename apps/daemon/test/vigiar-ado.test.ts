@@ -153,6 +153,9 @@ async function watched(rules: FakeRule[]) {
   const watcher = new PrWatcher({
     db: ctx.store.db,
     board: ctx.board,
+    // The fake answers in this process: a real process per call made a round as slow as the
+    // machine (#246). The calls are the same, recorded by the same fake.
+    provider: (kind) => (kind === "azure-devops" ? new AzureDevOpsCli({ run: az.run }) : null),
     onTrigger: (trigger) => {
       triggers.push(trigger);
     },
