@@ -86,6 +86,25 @@ describe("spec-lint", () => {
     expect(lintSpec(spec({ "Acceptance scenarios": named }))).toEqual([]);
   });
 
+  test("a Rust crate inside src-tauri has its tests in its own src and tests; nothing else of the shell is a test", () => {
+    const rows = (file: string) =>
+      [
+        "| Area | Test file | What must pass |",
+        "| --- | --- | --- |",
+        `| \`assistant-keys\` | \`${file}\` | x |`,
+      ].join("\n");
+    const problems = (file: string) => lintSpec(spec({ "Tests and criteria": rows(file) })).length;
+    expect(
+      [
+        "apps/desktop/src-tauri/assistant/src/keys.rs",
+        "apps/desktop/src-tauri/assistant/tests/guard.rs",
+        "apps/desktop/src-tauri/assistant/Cargo.toml",
+        "apps/desktop/src-tauri/a/b/src/x.rs",
+        "apps/desktop/other/src/x.rs",
+      ].map(problems),
+    ).toEqual([0, 0, 1, 1, 1]);
+  });
+
   test("specAreas reads the table's areas, test files and lines", () => {
     expect(specAreas(spec()).map((a) => [a.area, a.testFile])).toEqual([
       ["board-pull", "apps/daemon/test/board-pull.test.ts"],
