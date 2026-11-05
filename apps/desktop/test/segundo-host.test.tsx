@@ -83,3 +83,27 @@ describe("segundo-host: Add host is a palette command", () => {
     expect(sections.flatMap((s) => s.items).map((i) => i.label)).toContain("Add a host");
   });
 });
+
+describe("segundo-host: the palette command goes to the add-host form", () => {
+  test("choosing Adicionar um host in the palette opens the form", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    render(<App store={store} />);
+    await act(async () => {
+      store.tabs.active.router.push({ name: "settings" });
+    });
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    });
+    const input = document.querySelector("dialog input") as HTMLInputElement;
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "host" } });
+    });
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+    });
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Enter" });
+    });
+    expect(store.tabs.active.router.current.name).toBe("add-host");
+  });
+});

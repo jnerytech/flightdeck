@@ -300,4 +300,51 @@ describe("primeira-vez: a host that refused the token can be paired again (issue
     expect(field.value).toBe("");
     expect(button().textContent).toBe("Parear de novo");
   });
+
+  test("when trying throws, the notice shows the message and can try again", async () => {
+    const { HostOfflineBanner } = await import("../src/components/hosts/host-offline-banner.tsx");
+    render(
+      <HostOfflineBanner
+        host={
+          {
+            id: "h1",
+            name: "pc",
+            url: "ws://10.0.0.5:7420/v1/ws",
+            status: "unauthorized",
+            retry: null,
+            hostInfo: null,
+          } as never
+        }
+        onReconnect={() => {}}
+        onPairAgain={() => Promise.reject(new Error("the keychain said no"))}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Novo link de pareamento ou token"), {
+      target: { value: "abc" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Parear de novo" }));
+    });
+    expect(screen.queryByText("the keychain said no")).not.toBeNull();
+    expect(
+      (screen.getByRole("button", { name: "Parear de novo" }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+  });
+
+  test("on the host's page the notice pairs the host again with the token typed", async () => {
+    const { store, hostId } = await refused();
+    render(<App store={store} />);
+    await act(async () => {
+      store.router.push({ name: "host", host: hostId });
+    });
+    fireEvent.change(await screen.findByLabelText("New pairing link or token"), {
+      target: { value: TOKEN },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Pair again" }));
+    });
+    await rtlWaitFor(() => expect(store.getState().hosts[0]?.status).toBe("online"), {
+      timeout: 4000,
+    });
+  });
 });

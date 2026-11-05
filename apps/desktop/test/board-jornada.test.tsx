@@ -234,4 +234,67 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
     expect(move.disabled).toBe(true);
     expect(screen.getByRole("dialog").textContent).toContain("O card já está em Concluído");
   });
+
+  test("Revisar e mesclar, with a worktree, opens the changes of the card", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    await createCard("Login");
+    await openCard("Login");
+    await click("Iniciar");
+    await settle(
+      () =>
+        (screen.queryByRole("button", { name: "Finalizar…" }) as HTMLButtonElement | null) !== null,
+    );
+    // The worktree appears once the card has started.
+    await settle(() => {
+      const open = screen.queryByRole("button", { name: "Abrir PR" }) as HTMLButtonElement | null;
+      return open !== null && !open.disabled;
+    });
+    await click("Finalizar…");
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", { name: "Revisar e mesclar" }),
+      );
+    });
+    expect(screen.getByRole("button", { name: "Mudanças" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+  });
+
+  test("a host with no folder: the reason links to the host's page", async () => {
+    const { store } = await setup();
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    // biome-ignore lint/suspicious/noExplicitAny: the test empties the host's folders
+    (store as any).updateHost(hostId, (h: any) => ({
+      ...h,
+      info: { ...h.info, allowedRoots: [] },
+    }));
+    await act(async () => {
+      store.router.push({ name: "new-session", host: hostId });
+    });
+    await settle(
+      () =>
+        screen.queryByRole("button", { name: "Adicionar uma pasta na página de alfa" }) !== null,
+    );
+    await click("Adicionar uma pasta na página de alfa");
+    expect(store.router.current).toEqual({ name: "host", host: hostId });
+  });
+
+  test("Esc closes the Start dialog and starts nothing", async () => {
+    const { repo, board } = await setup();
+    await openBoard(repo);
+    await createCard("Login");
+    await openCardMenu("Login");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "Iniciar card" }));
+    });
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("dialog", { name: "Iniciar card" }), { key: "Escape" });
+    });
+    await settle(() => screen.queryByRole("dialog", { name: "Iniciar card" }) === null);
+    const id = board
+      .getBoard(board.listProjects()[0]?.id ?? "")
+      .columns.flatMap((c) => c.cards)[0]?.id;
+    expect(board.getCard(id ?? "").sessionId).toBeNull();
+  });
 });
