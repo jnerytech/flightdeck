@@ -48,6 +48,7 @@ import {
   hubGroups,
   hubRows,
   hubView,
+  isSearching,
   sessionLineText,
   sharedMeta,
 } from "../lib/hub.ts";
@@ -163,13 +164,7 @@ export function SessionsHub(props: {
   };
   const [earlierOpen, setEarlierOpen] = useState<Record<string, boolean | undefined>>({});
   // Any filter narrows the list on purpose: what it keeps is shown, not folded away.
-  const searching =
-    filter.text.trim() !== "" ||
-    filter.host !== "" ||
-    filter.origin !== "" ||
-    filter.state !== "" ||
-    filter.persona !== "" ||
-    filter.pinnedOnly;
+  const searching = isSearching(filter);
   const views = useMemo(
     () => hubView(allGroups, open, earlierOpen, searching),
     [allGroups, open, earlierOpen, searching],

@@ -119,6 +119,11 @@ export function saveHubView(
 
 export interface HubGroup {
   key: string;
+  /**
+   * What the fold state is kept under. Unlike `key` it does not depend on which rows are there:
+   * a host going offline or two folders merging leave it as it was.
+   */
+  foldKey: string;
   /** Repository name (or folder) shown on the group. */
   name: string;
   /** Where the project is, when another group has the same name; else absent. */
@@ -403,7 +408,7 @@ export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
       .map(([, list]) => {
         // A stable key whichever row is newest: the smallest project key among the rows.
         const key = list.map((r) => r.projectKey).reduce((x, y) => (y < x ? y : x));
-        return { key, name: groupName(key), rows: [...list].sort(order) };
+        return { key, foldKey: key, name: groupName(key), rows: [...list].sort(order) };
       })
       .sort((a, b) => (b.rows[0]?.lastActivity ?? "").localeCompare(a.rows[0]?.lastActivity ?? "")),
   );
@@ -540,6 +545,18 @@ export function hubView(
         : live.filter((r) => r.state === "needs_you"),
     };
   });
+}
+
+/** Whether the filter narrows the list on purpose, so what it keeps is shown, not folded away. */
+export function isSearching(filter: HubFilter): boolean {
+  return (
+    filter.text.trim() !== "" ||
+    filter.host !== "" ||
+    filter.origin !== "" ||
+    filter.state !== "" ||
+    filter.persona !== "" ||
+    filter.pinnedOnly
+  );
 }
 
 /** The groups cut to their first `limit` rows in display order, and how many rows were left out. */
