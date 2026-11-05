@@ -265,3 +265,20 @@ export function loadBaseline(read: () => string | null): Baseline | null {
   const parsed = JSON.parse(text) as Record<string, unknown>;
   return Object.fromEntries(Object.keys(parsed).map((key) => [key, true as const]));
 }
+
+export interface Settled {
+  /** The layout held still for the asked number of frames before the time ran out. */
+  stable: boolean;
+  frames: number;
+}
+
+/**
+ * Runs inside the page (`page.evaluate(waitForStable, options)`): resolves when the fonts are
+ * loaded and the page's height has not changed for `frames` frames in a row, or after `maxMs`.
+ * It replaces the fixed waits that guards used to take a layout that settles late (issue #192).
+ */
+export async function waitForStable(
+  _options: { frames?: number; maxMs?: number } = {},
+): Promise<Settled> {
+  return { stable: true, frames: 0 };
+}

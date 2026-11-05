@@ -227,3 +227,36 @@ describe("layout-guards: the key regions carry the data-slot the guards look for
     }
   });
 });
+
+import { waitForStable } from "../lib/layout-guards.ts";
+
+describe("layout-guards: a layout that settles late is waited for, not guessed with a fixed wait", () => {
+  /** The page height the next frames will report, one entry per frame. */
+  function heights(values: number[]) {
+    let at = 0;
+    Object.defineProperty(document.documentElement, "scrollHeight", {
+      configurable: true,
+      get: () => values[Math.min(at++, values.length - 1)] ?? 0,
+    });
+    return () => at;
+  }
+  afterEach(() => {
+    Reflect.deleteProperty(document.documentElement, "scrollHeight");
+  });
+
+  test("it resolves once the height held for three frames in a row, and says how many", async () => {
+    heights([100, 100, 120, 130, 130, 130, 130, 130]);
+    const settled = await waitForStable({ frames: 3, maxMs: 2000 });
+    expect(settled).toEqual({ stable: true, frames: 3 });
+  });
+
+  test("a page that keeps growing is given up on at the time limit, and says it did not settle", async () => {
+    let n = 0;
+    Object.defineProperty(document.documentElement, "scrollHeight", {
+      configurable: true,
+      get: () => 100 + n++,
+    });
+    const settled = await waitForStable({ frames: 3, maxMs: 120 });
+    expect(settled.stable).toBe(false);
+  });
+});
