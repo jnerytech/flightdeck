@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { IN_FLIGHT, InFlightTimers, inFlightStage } from "../src/hooks/use-in-flight.ts";
+import { useMinLoading } from "../src/hooks/use-min-loading.ts";
 import { translator } from "../src/i18n/index.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 
@@ -133,5 +134,33 @@ describe("in-flight feedback by duration (issue #240)", () => {
     expect(document.querySelectorAll("[data-slot='skeleton']")).toHaveLength(0);
     await clk.advance(1);
     expect(document.querySelectorAll("[data-slot='skeleton']").length).toBeGreaterThan(0);
+  });
+});
+
+/** `useMinLoading` on a test clock, as the screens use it. */
+function MinProbe(props: { loading: boolean; timers: ReturnType<typeof clock>["timers"] }) {
+  return <p>{useMinLoading(props.loading, props.timers) ? "loading" : "ready"}</p>;
+}
+
+describe("the minimum time counts from when the placeholders are drawn (issue #240)", () => {
+  test("a load that ends before 200 ms is gone at once: its placeholders were never drawn", async () => {
+    const clk = clock();
+    const view = render(<MinProbe loading timers={clk.timers} />);
+    await clk.advance(50);
+    view.rerender(<MinProbe loading={false} timers={clk.timers} />);
+    await clk.advance(0);
+    expect(screen.queryByText("ready")).not.toBeNull();
+  });
+
+  test("a load that ends at 250 ms keeps the placeholders until they have been drawn for 150 ms", async () => {
+    const clk = clock();
+    const view = render(<MinProbe loading timers={clk.timers} />);
+    await clk.advance(250);
+    view.rerender(<MinProbe loading={false} timers={clk.timers} />);
+    expect(screen.queryByText("loading")).not.toBeNull();
+    await clk.advance(99);
+    expect(screen.queryByText("loading")).not.toBeNull();
+    await clk.advance(1);
+    expect(screen.queryByText("ready")).not.toBeNull();
   });
 });
