@@ -61,12 +61,16 @@ for (const [lang, t] of [
       expect(store.router.current.name).toBe("hub");
     });
 
-    test("a host that does not answer gives the failure and a way to try again", async () => {
+    // A screen of a host that does not answer waited on "connecting" forever: after a failed try
+    // it says the host is offline, why, and offers to reconnect.
+    test("a host that does not answer: the screen says it is offline, with Reconnect now", async () => {
       await openReader(lang, "any-session", false);
-      await settle(() => screen.queryByRole("alert") !== null);
-      const alert = screen.queryByRole("alert") as HTMLElement;
-      expect(alert.textContent ?? "").toContain(fill(t.reader.failed, "alfa"));
-      expect(within(alert).queryByRole("button", { name: t.reader.retry })).not.toBeNull();
+      await settle(() => screen.queryByRole("region", { name: t.hostOffline.label }) !== null);
+      const banner = screen.queryByRole("region", { name: t.hostOffline.label }) as HTMLElement;
+      expect(banner.textContent ?? "").toContain(t.hostOffline.title);
+      expect(
+        within(banner).queryByRole("button", { name: t.hostOffline.reconnectNow }),
+      ).not.toBeNull();
     });
   });
 }
