@@ -65,6 +65,7 @@ import type {
   WebhookRequest,
   WebhookResponse,
 } from "../platform/types.ts";
+import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { budgetLabel } from "./budgets.ts";
 import {
@@ -771,6 +772,20 @@ export class AppStore {
     });
     this.usage = new VaultUsageLog(platform);
     this.theme = new ThemeController(platform);
+    this.assistant = new AssistantController({
+      storage: platform.storage,
+      api: platform.assistant,
+      hosts: () =>
+        this.state.hosts.map((host) => ({
+          id: host.id,
+          online: host.status === "online",
+          assistant: hasFeature(host.hostInfo?.features, "assistant", false),
+        })),
+      secrets: () => this.state.secrets.map((secret) => ({ id: secret.id, name: secret.name })),
+      language: () => this.i18n.lang,
+      request: (hostId, type, payload) =>
+        this.hostRequest(hostId, type as HostCommandType, payload as never) as Promise<HostAnswer>,
+    });
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
     this.i18n = new I18n(platform);
@@ -835,6 +850,8 @@ export class AppStore {
 
   /** Light, dark or the system's (phase 10). */
   readonly theme: ThemeController;
+  /** Phase 40: the AI assistant's preferences, keys state and the wand's requests. */
+  readonly assistant: AssistantController;
   readonly density: DensityController;
   readonly terminalFont: TerminalFontController;
   /** pt-BR or English, and the translator (phase 10). */
@@ -956,6 +973,7 @@ export class AppStore {
     this.dispose();
     this.listenForWake();
     this.theme.start();
+    void this.assistant.refreshKeys();
     this.i18n.start();
     this.update({
       hosts: [],
