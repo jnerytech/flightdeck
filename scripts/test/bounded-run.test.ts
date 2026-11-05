@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { runBounded } from "../lib/bounded-run.ts";
+import { killTree, runBounded } from "../lib/bounded-run.ts";
 
 const BUN = process.execPath;
 const alive = (pid: number) => {
@@ -56,5 +56,28 @@ describe("bounded-run", () => {
       if (!dead) await Bun.sleep(100);
     }
     expect(dead).toBe(true);
+  });
+
+  test("the tree kill is taskkill /T on Windows and a group SIGKILL elsewhere; a process already gone is no error (#273)", () => {
+    const calls: string[] = [];
+    const deps = {
+      runSync: (program: string, args: string[]) => {
+        calls.push([program.replaceAll("\\", "/"), ...args].join(" "));
+      },
+      kill: (pid: number, signal: string) => {
+        calls.push(`kill ${pid} ${signal}`);
+      },
+    };
+    killTree(42, { ...deps, platform: "win32", systemRoot: "D:/Win" });
+    killTree(42, { ...deps, platform: "linux" });
+    expect(calls).toEqual(["D:/Win/System32/taskkill.exe /T /F /PID 42", "kill -42 SIGKILL"]);
+    const gone = {
+      ...deps,
+      platform: "linux" as const,
+      kill: () => {
+        throw new Error("ESRCH");
+      },
+    };
+    expect(() => killTree(42, gone)).not.toThrow();
   });
 });
