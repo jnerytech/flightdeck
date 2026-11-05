@@ -277,11 +277,11 @@ describe("opencode-preflight", () => {
   test("a saved rule's id that is not a plain id is left out of the commands; its action is masked too", async () => {
     const saved = [
       { id: "psv_1;rm -rf ~", action: "shell", resource: "echo *" },
-      { id: "psv_2", action: "x".repeat(60), resource: "y" },
+      { id: "psv_2", action: "x ".repeat(30), resource: "y" },
     ];
     expect((await refusal(setup({ saved }).preflight.check("/w")))?.params).toEqual({
       version: "2.2.5",
-      rules: `shell echo *\n${"x".repeat(40)}… y`,
+      rules: `shell echo *\n${"x ".repeat(20)}… y`,
       commands: "opencode api DELETE /api/permission/saved/psv_2",
     });
   });
