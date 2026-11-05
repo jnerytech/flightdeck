@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { hostDownReason } from "@/components/hosts/host-down-reason";
 import { FieldRow } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
 import { Input } from "@/components/ui/input";
@@ -17,10 +18,7 @@ export function AllowedFolders(props: { store: AppStore; host: HostView }) {
   const roots = host.info?.allowedRoots ?? [];
   // Issue #181: an offline host cannot take a folder; the row says so instead of "type the folder".
   const online = host.status === "online";
-  const offlineReason = t(
-    host.status === "incompatible" ? "hostPage.needsUpdate" : "hostPage.needsOnline",
-    { host: host.name },
-  );
+  const offlineReason = hostDownReason(host.status, host.name, t);
   return (
     <Panel title={t("hostPage.rootsTitle")}>
       <p className="text-muted-foreground text-xs">{t("hostPage.rootsHint")}</p>

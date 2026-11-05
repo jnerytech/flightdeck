@@ -89,6 +89,42 @@ for (const [lang, t] of [
       expect(raw?.querySelector("summary")?.textContent).toBe(t.toast.details);
     });
 
+    // OpenCode branch review m1, m2: a refused token and a first connection are not "offline".
+    test("a refused token asks to pair again, and a host still connecting says so, in the folder row and the hooks", async () => {
+      const store = await offlinePage(lang);
+      const as = async (status: string) =>
+        act(async () => {
+          const host = store.getState().hosts[0];
+          (store as unknown as { update(patch: object): void }).update({
+            hosts: [{ ...host, status }],
+          });
+        });
+      const add = () =>
+        screen.queryByRole("button", { name: t.toast.allowRoot }) as HTMLElement | null;
+      const install = () =>
+        screen.queryByRole("button", { name: t.hostPage.install }) as HTMLElement | null;
+      await as("unauthorized");
+      expect(described(add())).toContain(t.hostOffline.unauthorized);
+      expect(described(install())).toContain(t.hostOffline.unauthorized);
+      await as("connecting");
+      expect(described(add())).toContain(t.hostPage.needsConnection.replace("{host}", "pc"));
+      expect(described(install())).toContain(t.hostPage.needsConnection.replace("{host}", "pc"));
+    });
+
+    // OpenCode branch review m4: the notice said the same thing twice.
+    test("an incompatible host's notice says what is wrong once", async () => {
+      const store = await offlinePage(lang);
+      await act(async () => {
+        const host = store.getState().hosts[0];
+        (store as unknown as { update(patch: object): void }).update({
+          hosts: [{ ...host, status: "incompatible", incompatibility: "protocolo 1 apenas" }],
+        });
+      });
+      const notice = document.querySelector("main")?.textContent ?? "";
+      expect(notice).toContain(t.errors.protocol_incompatible);
+      expect(notice).not.toContain(t.hostPage.incompatible);
+    });
+
     test("the allowed folder field is off, and Add gives the offline reason, not 'type the folder'", async () => {
       await offlinePage(lang);
       const reason = t.hostPage.needsOnline.replace("{host}", "pc");

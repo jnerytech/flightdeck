@@ -3519,6 +3519,7 @@ export const ptBR = {
     rootsPlaceholder: "D:\\repos\\...",
     rootsChoose: "Escolher pasta…",
     needsOnline: "{host} está desconectado: reconecte-o para mudar isto.",
+    needsConnection: "{host} ainda não conectou: espere ele responder.",
     needsUpdate: "Atualize o daemon de {host} para mudar isto.",
     rootsNeeded: "Digite a pasta a permitir.",
     bypassTitle: "Sessões sem pedidos de permissão",
