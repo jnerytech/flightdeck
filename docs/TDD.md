@@ -54,7 +54,9 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     `.only`, `.skip` ou `test.todo` em código commitado.
 
 A auditoria `bun run tdd:audit -- --since <tag>` confere a ordem dos commits e a ausência de
-testes desligados.
+testes desligados. With `--spec docs/SPEC-fase-N.md` it also fails on an area of the spec's table
+with no `test(<area>)` commit. From phase 40 on the spec follows `docs/templates/SPEC.md`, and
+`bun run spec:lint <spec>` (run by the suite for every such spec) checks its sections and table.
 
 **Checked at commit time and in CI.** Without `--since` (or with `--since auto`) the audit starts
 at the merge-base with `main`, or at the last tag when `HEAD` is on `main`; CI runs it that way on

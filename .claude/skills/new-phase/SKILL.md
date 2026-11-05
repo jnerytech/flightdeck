@@ -14,21 +14,14 @@ base commit, so no tag is needed while the phase runs.
 
 1. **Context.** Read the previous phase's spec and the end of `docs/DECISIONS.md`, so as not to
    repeat what was already done and to respect the decisions.
-2. **Spec.** Write `docs/SPEC-fase-N.md` in English (see CLAUDE.md), in the format of phases 22
-   to 27:
-   - `# Flightdeck — Phase N spec (<theme>)`
-   - `## Goal`: the problem, where it came from (research, request, bug) and the prerequisites
-     (phases).
-   - `## Proof of concept first`: only when the phase depends on an unconfirmed external
-     behavior (the Claude Code CLI, a file format). Numbered questions, with the result going to
-     DECISIONS.
-   - `## Design`: the pieces, in short bullets.
-   - `## Tests and criteria`: the table `| Area | What must pass |`, with areas in kebab-case
-     and the `-ui` suffix for screens, plus a new smoke if the phase needs one (`smoke:<name>`,
-     printing `SMOKE <NAME> OK`).
-   - `**Acceptance criteria:** the usual ones and <whatever is specific>.` The version is not part
-     of them: a phase branch does not bump it, because phases land out of order; the maintainer
-     sets it at release with the `test(versao)` cycle.
+2. **Spec.** Copy `docs/templates/SPEC.md` to `docs/SPEC-fase-N.md` and fill it in English (see
+   CLAUDE.md). Every `##` heading stays ("None." where a section does not apply); the template
+   says what goes in each. The area table is `| Area | Test file | What must pass |`: areas in
+   kebab-case, `-ui` for screens (tested in `apps/desktop/test/`), the test file named after the
+   area, plus a new smoke if the phase needs one (`smoke:<name>`, printing `SMOKE <NAME> OK`). The
+   version is not an acceptance criterion: a phase branch does not bump it. Then run
+   `bun run spec:lint docs/SPEC-fase-N.md` until it prints `SPEC OK` (the suite checks every spec
+   from phase 40 on).
 3. **Worktree and branch**, from an up-to-date `main`, beside the main checkout. Run from the
    main checkout:
    ```bash
@@ -44,7 +37,7 @@ base commit, so no tag is needed while the phase runs.
 
 Each item with its command and exit code visible:
 
-- [ ] TDD per area and the audit: `bun run tdd:audit -- --since auto` →
+- [ ] TDD per area and the audit: `bun run tdd:audit -- --since auto --spec docs/SPEC-fase-N.md` →
       `TDD AUDIT OK`.
 - [ ] 100% coverage: `bun run slot -- bun run test`. Then `bun run typecheck` and `bun run lint`.
 - [ ] Every smoke in `package.json` except `smoke:real`, each with its `... OK`.
