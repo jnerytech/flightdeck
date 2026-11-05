@@ -4153,11 +4153,18 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
 - **Removed lines count.** A removed line that touches a risk area makes its file risky ("removes
   spawn"). A source file that loses any line and still holds risky code at HEAD (`git show
   HEAD:<path>`) is risky too ("edits spawn code"): taking a check out in front of a spawn or a
-  delete needs a review as much as adding one. Removed comments do not count. Removed lines take
-  their file from the `--- a/` and `+++ b/` headers; a deleted file is not read at HEAD, and a file
-  whose HEAD cannot be read (an error, an output past the buffer) is risky, never taken as empty.
-  Left as a known limit: a file renamed into a test folder or to a non-code extension hides the
-  risky lines it lost, since the new path decides what is code.
+  delete needs a review as much as adding one. A removal of comments or blank lines only reads
+  nothing. Removed lines are keyed by the file's old path (`--- a/`), so a file renamed into a test
+  folder or to a non-code extension still counts the checks it lost; the code that stays is read at
+  its new path. A deleted file is not read at HEAD, and a file whose HEAD cannot be read (an error,
+  an output past the buffer) is risky, never taken as empty.
+- **Renames in the log** (the OpenCode review of #286): `git log` detects renames by itself and
+  lists only the new path, so a review after a move away from a risky path could never vouch. The
+  log runs with `--no-renames`, which lists both sides.
+- **Quoted names fail closed.** A name git still quotes with `core.quotepath=off` (a quote, a
+  backslash, a control character) defeats the header parsing, so the gate stamps `unknown`. A path
+  with " b/" inside it is read exactly from `diff --git a/<p> b/<p>` when both halves match (every
+  change but a rename, whose own lines name its paths).
 - **A mode change is a permission change on any file,** with or without a code extension (a script
   in `bin/` made executable).
 - **runBounded takes its process, timers and kill as deps.** Its tests use a fake process and timer:
