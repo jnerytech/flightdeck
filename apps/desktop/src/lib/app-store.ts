@@ -53,7 +53,7 @@ import type {
   WatchSettings,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { EPHEMERAL_EVENTS } from "@flightdeck/protocol";
+import { byCodeUnit, EPHEMERAL_EVENTS } from "@flightdeck/protocol";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type {
@@ -517,7 +517,7 @@ export interface LoopAlert {
 
 /** The daemon's key for a pair of sessions, the same in both directions. */
 export const loopPairKey = (alert: Pick<LoopAlert, "from" | "to">): string =>
-  [alert.from, alert.to].sort().join("|");
+  [alert.from, alert.to].sort(byCodeUnit).join("|");
 
 export interface PendingItem {
   hostId: string;
@@ -2955,7 +2955,7 @@ export class AppStore {
     const online = this.state.hosts
       .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false))
       .map((h) => h.id)
-      .sort()
+      .sort(byCodeUnit)
       .join("|");
     if (online === this.clientBudgetHosts) return;
     this.clientBudgetHosts = online;

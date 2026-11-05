@@ -1,4 +1,7 @@
 #!/usr/bin/env bun
+import { createHmac } from "node:crypto";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 /**
  * Webhook smoke (phase 30): a `--runtime fake` daemon and a local HTTP server that stands in for
  * Slack, Discord and a generic receiver. The app's webhook layer (targets, formatters, queue)
@@ -6,10 +9,7 @@
  * the three payload shapes, the signature of the generic one, a 429 that is retried, a 404 that
  * stops the target, an address the daemon refuses, and that only the status comes back.
  */
-import { createHmac } from "node:crypto";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { type Ack, parseServerMessage } from "@flightdeck/protocol";
+import { type Ack, byCodeUnit, parseServerMessage } from "@flightdeck/protocol";
 import { Webhooks } from "../apps/desktop/src/lib/webhooks.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
@@ -162,7 +162,7 @@ async function run(work: string): Promise<void> {
           refused: string | null;
         }>("webhook.send", request);
         check(
-          Object.keys(result).sort().join() === "refused,retryAfterMs,status",
+          Object.keys(result).sort(byCodeUnit).join() === "refused,retryAfterMs,status",
           "the answer carries more than the status",
         );
         return {

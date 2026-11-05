@@ -17,7 +17,8 @@ const plan = planRelated({
   base: flag >= 0 ? args[flag + 1] : undefined,
   platform: process.platform,
   git: (gitArgs) => {
-    const proc = spawnSync("git", gitArgs, { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 26 });
+    const options = { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 26 } as const;
+    const proc = spawnSync("git", gitArgs, options); // NOSONAR: git and bun come from the PATH of the developer running the script
     return proc.status === 0 ? proc.stdout : null;
   },
   readFile: (path) => readFileSync(resolve(ROOT, path), "utf8"),

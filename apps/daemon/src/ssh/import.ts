@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join } from "node:path";
 import type { SshImportEntry, SshImportResult } from "@flightdeck/protocol";
+import { byCodeUnit } from "@flightdeck/protocol";
 import type { FlightdeckError } from "../errors.ts";
 import type { SshTargets } from "./targets.ts";
 
@@ -245,7 +246,7 @@ export class SshImporter {
       for await (const name of glob.scan({ cwd: dirname(absolute), onlyFiles: true })) {
         names.push(name);
       }
-      names.sort();
+      names.sort(byCodeUnit);
       files.push(...names.map((name) => join(dirname(absolute), name)));
     }
     return files;

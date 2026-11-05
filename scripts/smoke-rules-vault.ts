@@ -1,4 +1,6 @@
 #!/usr/bin/env bun
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 /**
  * Usage-rules smoke: a stand-in for Claude calls actions through the MCP of a `--runtime fake`
  * daemon whose secrets have rules. `deploy-staging` has an `allow` rule and runs without anyone
@@ -7,9 +9,7 @@
  * it runs; an automation is denied by the default. The audit shows each decision and the value of
  * no secret is in any file, log or reply.
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
+import { type Ack, byCodeUnit, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
@@ -404,7 +404,9 @@ async function run(work: string): Promise<void> {
         ruleId: string | null;
       }>;
     }>("vault.decisions", {});
-    const outcomes = decisions.map((d) => `${d.requester}:${d.secretId}:${d.outcome}`).sort();
+    const outcomes = decisions
+      .map((d) => `${d.requester}:${d.secretId}:${d.outcome}`)
+      .sort(byCodeUnit);
     const expected = [
       "automation:staging-token:refused",
       "claude:prod-token:approved",
