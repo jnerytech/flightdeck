@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { killTree, runBounded, SYSTEM_KILL } from "../lib/bounded-run.ts";
+import { realTempDir } from "./temp-dir.ts";
 
 const BUN = process.execPath;
 const alive = (pid: number) => {
@@ -32,7 +32,7 @@ describe("bounded-run", () => {
   });
 
   test("past the deadline the whole group dies, a grandchild that holds stderr too, and the call returns (#273)", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "bounded-run-"));
+    const dir = realTempDir("bounded-run-");
     const pidFile = join(dir, "grandchild.pid");
     // The child starts a grandchild that shares its stderr, writes its pid, then both hang.
     const child = [
@@ -81,7 +81,7 @@ describe("bounded-run", () => {
   });
 
   test("the system's runSync runs a program to its end (#273)", () => {
-    const dir = mkdtempSync(join(tmpdir(), "bounded-run-sync-"));
+    const dir = realTempDir("bounded-run-sync-");
     const mark = join(dir, "ran");
     SYSTEM_KILL.runSync(BUN, [
       "-e",
