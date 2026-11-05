@@ -36,10 +36,8 @@ export const CREDENTIAL_READS: readonly string[] = [
 /** The rules of both agents, and the top-level ones. */
 export function opencodeRules(): PermissionRule[] {
   return [
+    // Reads, globs and greps ask too: Flightdeck allows them by real path (review M8).
     { action: "*", resource: "*", effect: "ask" },
-    { action: "read", resource: "*", effect: "allow" },
-    { action: "glob", resource: "*", effect: "allow" },
-    { action: "grep", resource: "*", effect: "allow" },
     ...CREDENTIAL_READS.map((resource) => ({ action: "read", resource, effect: "ask" as const })),
     { action: "read", resource: "*.env.example", effect: "allow" },
     { action: "question", resource: "*", effect: "deny" },
