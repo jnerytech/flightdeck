@@ -14,6 +14,8 @@ export function SessionStatusLine(props: {
   /** The pickers of what the session lets change; the rest shows as text. */
   pickers: { model?: ReactNode; mode?: ReactNode };
   working: boolean;
+  /** The prompt cache countdown of an idle session, next to the model. */
+  cache?: ReactNode;
 }) {
   const { t } = props;
   return (

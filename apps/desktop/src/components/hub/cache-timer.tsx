@@ -12,7 +12,12 @@ const NEVER = () => () => {};
  * tone for its last minute, then only the icon (cold). It draws nothing when the setting is off,
  * and listens to the shared clock only while it draws.
  */
-export function CacheTimer(props: { store: AppStore; since: string | null | undefined }) {
+export function CacheTimer(props: {
+  store: AppStore;
+  since: string | null | undefined;
+  /** The icon alone, for where there is no room for the digits: the tooltip says the time. */
+  compact?: boolean;
+}) {
   const { store } = props;
   const { t } = store.i18n;
   const settings = store.cacheTimer;
