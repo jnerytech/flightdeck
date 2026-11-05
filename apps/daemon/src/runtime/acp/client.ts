@@ -213,6 +213,8 @@ export function spawnAcp(
     stdin: "pipe",
     stdout: "pipe",
     stderr: "ignore",
+    // Its own process group on POSIX, so a tree kill reaches what it started.
+    detached: process.platform !== "win32",
   });
   return {
     lines: linesOf(child.stdout),
