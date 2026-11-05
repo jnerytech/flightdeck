@@ -300,7 +300,9 @@ describe("board-multi-review: dropping a selection on a card (OpenCode review of
       fireEvent.drop(li("E"));
     });
     await settle(() => w.requests.length === 2);
-    const [first, second] = w.requests.map((r) => r[2] as { cardId: string; column: string; position: number });
+    const [first, second] = w.requests.map(
+      (r) => r[2] as { cardId: string; column: string; position: number },
+    );
     expect([first?.cardId, first?.column, second?.cardId, second?.column]).toEqual([
       "A",
       "done",
@@ -390,9 +392,7 @@ describe("board-multi-review: what a screen reader and a mouse get from the bar"
     await ready();
     expect(document.querySelector("[data-slot='selection-slot']")).not.toBeNull();
     await ctrl("A");
-    expect(
-      document.querySelector("[data-slot='selection-slot']")?.contains(bar()),
-    ).toBe(true);
+    expect(document.querySelector("[data-slot='selection-slot']")?.contains(bar())).toBe(true);
   });
 
   test("one live region says how many are selected and what a refusal left", async () => {
@@ -405,7 +405,9 @@ describe("board-multi-review: what a screen reader and a mouse get from the bar"
     expect(status().textContent).toContain("1 selected");
     await click(barButton("Discard…"));
     await click(
-      within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Discard 1 card" }),
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Discard 1 card",
+      }),
     );
     await settle(() => (status().textContent ?? "").includes("could not be discarded"));
   });
@@ -439,7 +441,11 @@ describe("board-multi-review: selecting by range and refusing two moves", () => 
     await ctrl("A");
     await ctrl("C");
     await act(async () => {
-      fireEvent.pointerDown(barButton("Move to…"), { button: 0, ctrlKey: false, pointerType: "mouse" });
+      fireEvent.pointerDown(barButton("Move to…"), {
+        button: 0,
+        ctrlKey: false,
+        pointerType: "mouse",
+      });
     });
     await click(await screen.findByRole("menuitem", { name: "Done" }));
     await settle(() => w.requests.length === 2);

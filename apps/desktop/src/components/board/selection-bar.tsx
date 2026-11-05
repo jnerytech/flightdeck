@@ -1,4 +1,5 @@
 import type { BoardColumn } from "@flightdeck/protocol";
+import type * as React from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -65,5 +66,14 @@ export function SelectionBar(props: {
         {t("board.clearSelection")}
       </Button>
     </fieldset>
+  );
+}
+
+/** The bar's place above the board, kept while nothing is selected so the first click moves no card. */
+export function SelectionSlot(props: { children: React.ReactNode }) {
+  return (
+    <div data-slot="selection-slot" className="min-h-12">
+      {props.children}
+    </div>
   );
 }

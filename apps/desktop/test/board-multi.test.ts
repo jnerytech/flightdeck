@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Card } from "@flightdeck/protocol";
+import { positionsBefore } from "../src/lib/board.ts";
 import {
   BoardWidth,
   COLUMN_WIDTH,
@@ -12,7 +13,6 @@ import {
   shownSelection,
   toggleSelection,
 } from "../src/lib/board-select.ts";
-import { positionsBefore } from "../src/lib/board.ts";
 import type { Platform } from "../src/platform/types.ts";
 
 describe("board-multi: the selection (issue #161)", () => {
@@ -81,7 +81,8 @@ describe("board-multi: the column width (issue #161)", () => {
   });
 
   test("what is stored is read with care: too small, zero, negative, empty, fractional", () => {
-    const read = (value: string) => new BoardWidth(memory({ [COLUMN_WIDTH_KEY]: value }).storage).value;
+    const read = (value: string) =>
+      new BoardWidth(memory({ [COLUMN_WIDTH_KEY]: value }).storage).value;
     expect([read("10"), read("0"), read("-5"), read(""), read("300.5")]).toEqual([
       220, 260, 260, 260, 301,
     ]);

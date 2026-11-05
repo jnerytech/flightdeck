@@ -3570,18 +3570,32 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 - **Bulk moves ask the host one card at a time, in the board's order**, through the quiet request (`hostRequest`), so a refusal is data
   and not a toast per card. The rules stay the host's: a card it refuses stays where it was, stays selected, and is named with the
   host's reason in a notice. Nothing in the app decides what a drag may do.
-- **Dragging a selected card moves the whole selection** to the column it is dropped on; it is appended there (a drop onto a card
-  does not place a group before it: `card.move` takes one position, and the group's order is kept by moving the cards in order).
-- **Bulk discard is one dialog** listing each card, with a note on those that have a worktree and a branch. Never-started cards are
-  deleted and started ones discarded, as the single Delete does. The issue's "unpushed warning" per card is not shown: the host does
-  not tell the app what is unpushed before a discard, only that confirming discards.
+- **Dragging a selected card moves the whole selection** to the column it is dropped on. Dropped on a card, the group lands before it
+  (`positionsBefore` gives each card its own position between the card above the target and the target, in the board's order);
+  dropped on the column, it goes to the bottom. (Changed after the review: the first version always appended.)
+- **Bulk discard is one dialog** listing each card with what goes with it: a worktree or branch loses uncommitted changes and unpushed
+  commits (the host removes the worktree with `--force` and deletes the branch with `-D`); a session-only card just has its session
+  closed; the dialog counts the cards with work started. Never-started cards are deleted and started ones discarded, as the single
+  Delete does. The issue's per-card "unpushed warning" is still not shown: the host does not say what is unpushed before a discard.
+- **A discard that fails is not "stayed where it was".** The host's discard is not atomic (sessions closed, worktree removed, then the
+  branch), so a refused card may be partly cleaned up. The notice says so, the card is not left selected for a retry that would fail
+  on what is gone, and a refusal is shown with the host's reason in the app's language (`reasonText`), moves included.
+- **A batch in flight is guarded** (`busy`): the bar, the drag and a second dialog are off while moves or discards run.
+- **Esc and focus.** Esc clears the selection from the board or the bar, not from a card's open menu. When the bar goes away the focus
+  goes to the board. One live region (`role=status`) speaks the selection count and what a refusal left; the bar keeps its place
+  (`selection-slot`) so the first Ctrl-click moves no card. The bar is a group, not a toolbar (it has no arrow-key roving).
+- **Arena variants are not on the board**, so a parent and its variant cannot both be selected: the review's "variant fails after the
+  parent was discarded" cannot happen from the board and is not handled.
 - **Column width is one value for every column** (default 260, 220 to 520, 20 px a step), with a handle on each column's right edge
-  (a separator that a mouse drags and the arrows move), kept per computer. Columns now have a fixed width and the board scrolls
+  (a separator that a mouse drags and the arrows, Home and End move), kept per computer. The drag shares the distance among the
+  columns to its left (the handle on column k follows the pointer), a cancelled touch ends it, the width is whole pixels and is written
+  when the drag ends, and a storage that refuses does not stop the width. The handles are one control, so only the last takes a tab stop. Columns now have a fixed width and the board scrolls
   inside itself; before, they shared the row with a 15 rem minimum.
 - **Counts** read `n / total` only while a filter is on and the column has cards; a column that never had one stays `0`, and a column
   the filter emptied says "No matches" instead of offering a new card. The status tints and count pills of #115 are on another
   branch: the count here is a small plain pill in the column header, to be merged with that work.
 - **New card at the bottom of a lane** creates the card, then moves it to the lane (`card.create` has no column). It is hidden until the
-  lane is hovered or focused where there is a pointer, and always shown where there is none.
+  lane is hovered or focused where there is a pointer, and always shown where there is none. The empty lane's own **Add card** now
+  creates in that lane too (it used to create in Backlog). Only a card just selected anchors the next Shift-click.
 - **Not built:** the marquee selection (the issue marks it optional, after the rest) and moving a selection with the keyboard other
   than through the bar.

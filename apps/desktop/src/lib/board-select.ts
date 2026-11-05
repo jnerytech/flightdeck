@@ -1,4 +1,5 @@
 import type { Card } from "@flightdeck/protocol";
+import type { T } from "../i18n/index.ts";
 import type { Platform } from "../platform/types.ts";
 
 /** Ctrl-click: adds the card to the selection, or takes it out when it is there. */
@@ -40,7 +41,7 @@ export const COLUMN_WIDTH_KEY = "flightdeck.boardColumnWidth";
 
 export function clampWidth(width: number): number {
   if (Number.isNaN(width)) return COLUMN_WIDTH.default;
-  return Math.min(COLUMN_WIDTH.max, Math.max(COLUMN_WIDTH.min, width));
+  return Math.min(COLUMN_WIDTH.max, Math.max(COLUMN_WIDTH.min, Math.round(width)));
 }
 
 /** The columns' width, kept across starts. */
@@ -58,10 +59,20 @@ export class BoardWidth {
     return () => this.listeners.delete(listener);
   };
 
-  set(width: number): void {
+  /** Sets the width; `persist: false` while a drag is going, then `persist()` when it ends. */
+  set(width: number, persist = true): void {
     this.value = clampWidth(width);
-    this.storage.setItem(COLUMN_WIDTH_KEY, String(this.value));
+    if (persist) this.persist();
     for (const listener of this.listeners) listener();
+  }
+
+  /** Keeps the width across starts; a storage that refuses (quota, private window) is not fatal. */
+  persist(): void {
+    try {
+      this.storage.setItem(COLUMN_WIDTH_KEY, String(this.value));
+    } catch {
+      // The width still holds for this run.
+    }
   }
 }
 
@@ -69,6 +80,12 @@ export class BoardWidth {
 export function columnCount(shown: number, total: number, filtering: boolean): string {
   // A column that never had a card is just 0: a ratio of nothing says nothing.
   return filtering && total > 0 ? `${shown} / ${total}` : String(shown);
+}
+
+/** The same count in words, for a screen reader: "3 cards", "1 of 3 cards". */
+export function countLabel(t: T, shown: number, total: number, filtering: boolean): string {
+  if (filtering && total > 0) return t("board.countOfMany", { shown, total });
+  return shown === 1 ? t("board.countOne") : t("board.countMany", { n: shown });
 }
 
 /** The outcome of moving many cards at once: the ones the host refused, with its reason. */
@@ -84,6 +101,7 @@ export interface BulkRefusal {
 export type MoveRequest = (
   cardId: string,
   column: Card["column"],
+  position?: number,
 ) => Promise<
   | { ok: true }
   | { ok: false; message: string; reason?: string; params?: Record<string, string | number> }
@@ -94,10 +112,12 @@ export async function moveMany(
   cards: Card[],
   column: Card["column"],
   request: MoveRequest,
+  /** One position per card, in order, when the group was dropped on a card. */
+  positions?: number[],
 ): Promise<BulkRefusal[]> {
   const refused: BulkRefusal[] = [];
-  for (const card of cards) {
-    const answer = await request(card.id, column);
+  for (const [index, card] of cards.entries()) {
+    const answer = await request(card.id, column, positions?.[index]);
     if (!answer.ok) refused.push({ card, ...answerOf(answer) });
   }
   return refused;

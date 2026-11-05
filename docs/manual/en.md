@@ -702,14 +702,15 @@ card moves by itself according to the session and the PR, and it can also be dra
   cards you can see, and the bar says how many are hidden.
 - **The selection bar** above the board shows "3 selected" with **Move to…** (a column),
   **Discard…** and **Clear selection**. Dragging a selected card drags the whole selection into the
-  column you drop it on, in the board's order.
+  column you drop it on, in the board's order; dropped on a card, they land before it.
 - **A card the host refuses to move** (for example, completing one that is still running) stays
   where it was, stays selected, and is named in a notice with the host's reason. The others move.
-- **Discard…** shows one dialog with every selected card, and says which ones have a worktree and
-  a branch that go with them. Cards that never started are deleted; started ones are discarded.
+- **Discard…** shows one dialog with every selected card, and says what goes with each: a
+  worktree or branch loses uncommitted changes and unpushed commits, a session is closed. If the
+  host cannot discard a card, the notice says it may be partly cleaned up. Cards that never started are deleted; started ones are discarded.
   Cancelling leaves everything as it was.
 - **Column width.** The handle at the right edge of a column (drag it, or Tab to it and press the
-  arrows, 20 px a step) sets one width for all the columns, between 220 and 520 px (260 by
+  arrows, 20 px a step, or Home and End; only the last column's handle takes a Tab stop) sets one width for all the columns, between 220 and 520 px (260 by
   default), and it is kept on this computer. The board scrolls inside itself, never the page.
 - **Counts.** Each column shows how many cards it has; with a filter on it reads `n / total`, and a
   column the filter emptied says "No matches" instead of offering a new card.

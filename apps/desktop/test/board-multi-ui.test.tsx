@@ -345,7 +345,7 @@ describe("board-multi-ui: resizable columns (issue #161)", () => {
   const handles = () => screen.getAllByRole("separator", { name: "Resize the columns" });
   const grid = () => document.querySelector("[data-slot='board-grid']") as HTMLElement;
 
-  test("a focusable handle on every column announces the width and its limits", async () => {
+  test("a handle on every column announces the width and its limits; the last one is the tab stop", async () => {
     setup();
     await ready();
     expect(handles()).toHaveLength(5);
@@ -355,14 +355,15 @@ describe("board-multi-ui: resizable columns (issue #161)", () => {
     expect(first.getAttribute("aria-valuemax")).toBe("520");
     expect(first.getAttribute("aria-valuenow")).toBe("260");
     expect(first.getAttribute("aria-valuetext")).toBe("260 px");
-    expect(first.tabIndex).toBe(0);
+    expect(first.tabIndex).toBe(-1);
+    expect((handles()[4] as HTMLElement).tabIndex).toBe(0);
     expect(grid().style.gridAutoColumns).toBe("260px");
   });
 
   test("the arrows change the width by 20 px, within the limits, for every column at once", async () => {
     const w = setup();
     await ready();
-    const first = handles()[0] as HTMLElement;
+    const first = handles()[4] as HTMLElement;
     await act(async () => {
       fireEvent.keyDown(first, { key: "ArrowRight" });
     });

@@ -2,11 +2,12 @@ import type { BoardColumn, Card, Project } from "@flightdeck/protocol";
 import { Columns3, ListTodo, Lock, MoreHorizontal, Plus } from "lucide-react";
 import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { BoardNotice } from "@/components/board/board-notice";
+import { BoardStatus } from "@/components/board/board-status";
 import { BoardSyncControl } from "@/components/board/board-sync";
 import { BulkDiscardDialog, hasStartedWork } from "@/components/board/bulk-discard-dialog";
 import { ColumnHandle } from "@/components/board/column-handle";
 import { ColumnHeader } from "@/components/board/column-header";
-import { SelectionBar } from "@/components/board/selection-bar";
+import { SelectionBar, SelectionSlot } from "@/components/board/selection-bar";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
@@ -34,11 +35,19 @@ import { cn } from "@/lib/utils";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
-import { boardTitle, COLUMNS, filterCards, positionBefore, projectCards } from "../lib/board.ts";
+import {
+  boardTitle,
+  COLUMNS,
+  filterCards,
+  positionBefore,
+  positionsBefore,
+  projectCards,
+} from "../lib/board.ts";
 import {
   answerOf,
   type BulkRefusal,
   columnCount,
+  countLabel,
   moveMany,
   pruneSelection,
   rangeSelection,
@@ -297,13 +306,31 @@ export const BoardView = memo(function BoardView(props: {
   const acting = shownSelection(selection, boardOrder);
   const actingCards = acting.flatMap((id) => all.find((card) => card.id === id) ?? []);
   /** Moves the shown selected cards, quietly; the host's refusals are named afterwards. */
-  const moveSelected = async (column: BoardColumn) => {
+  const moveSelected = async (column: BoardColumn, targetId?: string) => {
     if (busy) return;
     setBusy(true);
-    const refused = await moveMany(actingCards, column, async (cardId, to) => {
-      const answer = await store.hostRequest(hostId, "card.move", { cardId, column: to });
-      return answer.ok ? { ok: true } : { ok: false, ...answerOf(answer) };
-    });
+    // Dropped on a card, the group lands before it, in the board's order.
+    const positions =
+      targetId && !acting.includes(targetId)
+        ? positionsBefore(
+            columnOf(column).filter((card) => !acting.includes(card.id)),
+            targetId,
+            actingCards.length,
+          )
+        : undefined;
+    const refused = await moveMany(
+      actingCards,
+      column,
+      async (cardId, to, position) => {
+        const answer = await store.hostRequest(hostId, "card.move", {
+          cardId,
+          column: to,
+          ...(position !== undefined ? { position } : {}),
+        });
+        return answer.ok ? { ok: true } : { ok: false, ...answerOf(answer) };
+      },
+      positions,
+    );
     const stayed = refused.map((r) => r.card.id);
     setPicked((before) => before.filter((id) => stayed.includes(id) || !acting.includes(id)));
     setNotice(
@@ -354,7 +381,9 @@ export const BoardView = memo(function BoardView(props: {
     boardRef.current?.focus();
   };
   const select = (card: Card) => {
-    anchor.current = card.id;
+    // Only a card just selected anchors the next Shift-click.
+    if (!selection.includes(card.id)) anchor.current = card.id;
+    else if (anchor.current === card.id) anchor.current = null;
     setPicked(toggleSelection(selection, card.id));
   };
   const selectRange = (card: Card) => {
@@ -367,7 +396,8 @@ export const BoardView = memo(function BoardView(props: {
 
   /** The card to focus once a move has happened: where it was, to tell when it has moved. */
   const refocus = useRef<{ cardId: string; column: BoardColumn; index: number } | null>(null);
-  const columnOf = (column: BoardColumn) => all.filter((card) => card.column === column);
+  const columnOf = (column: BoardColumn) =>
+    all.filter((card) => card.column === column).sort((a, b) => a.position - b.position);
   const move = (cardId: string, column: BoardColumn, targetId?: string) => {
     const others = columnOf(column).filter((card) => card.id !== cardId);
     const position = targetId ? positionBefore(others, targetId) : undefined;
@@ -384,7 +414,7 @@ export const BoardView = memo(function BoardView(props: {
     // A card dragged out of a selection takes the whole selection with it.
     if (draggingMany.current) {
       draggingMany.current = null;
-      void moveSelected(column);
+      void moveSelected(column, targetId);
       return;
     }
     move(cardId, column, targetId);
@@ -509,17 +539,33 @@ export const BoardView = memo(function BoardView(props: {
             action={<Button onClick={() => setCreating(true)}>{t("states.newCard")}</Button>}
           />
         )}
-        {selection.length > 0 && (
-          <SelectionBar
-            t={t}
-            shown={acting.length}
-            hidden={selection.length - acting.length}
-            onMove={(column) => void moveSelected(column)}
-            onDiscard={() => setDiscardingMany(true)}
-            onClear={clearSelection}
-            busy={busy}
-            onEscape={clearSelection}
-          />
+        <BoardStatus
+          text={[
+            selection.length === 0
+              ? ""
+              : acting.length === 1
+                ? t("board.selectedOne")
+                : t("board.selectedCount", { n: acting.length }),
+            notice ?? "",
+          ]
+            .filter(Boolean)
+            .join(". ")}
+        />
+        {all.length > 0 && (
+          <SelectionSlot>
+            {selection.length > 0 && (
+              <SelectionBar
+                t={t}
+                shown={acting.length}
+                hidden={selection.length - acting.length}
+                onMove={(column) => void moveSelected(column)}
+                onDiscard={() => setDiscardingMany(true)}
+                onClear={clearSelection}
+                busy={busy}
+                onEscape={clearSelection}
+              />
+            )}
+          </SelectionSlot>
         )}
         {notice && (
           <BoardNotice
@@ -564,6 +610,12 @@ export const BoardView = memo(function BoardView(props: {
               <ColumnHeader
                 title={t(`kanban.columns.${id}` as Key)}
                 count={columnCount(
+                  shown.filter((card) => card.column === id).length,
+                  all.filter((card) => card.column === id).length,
+                  filtering,
+                )}
+                label={countLabel(
+                  t,
                   shown.filter((card) => card.column === id).length,
                   all.filter((card) => card.column === id).length,
                   filtering,
@@ -619,7 +671,13 @@ export const BoardView = memo(function BoardView(props: {
                   ))}
               </ul>
               {all.every((card) => card.column !== id) && (
-                <BoardColumnEmpty label={t("kanban.addCard")} onAdd={() => setCreating(true)} />
+                <BoardColumnEmpty
+                  label={t("kanban.addCard")}
+                  onAdd={() => {
+                    setQuickColumn(id);
+                    setCreating(true);
+                  }}
+                />
               )}
               {filtering &&
                 all.some((card) => card.column === id) &&
@@ -639,7 +697,14 @@ export const BoardView = memo(function BoardView(props: {
                 <Plus aria-hidden="true" />
                 {t("kanban.newCard")}
               </Button>
-              <ColumnHandle t={t} width={width} onChange={(next) => store.boardWidth.set(next)} />
+              <ColumnHandle
+                t={t}
+                width={width}
+                index={COLUMNS.findIndex((column) => column.id === id) + 1}
+                last={id === COLUMNS[COLUMNS.length - 1]?.id}
+                onChange={(next) => store.boardWidth.set(next, false)}
+                onCommit={() => store.boardWidth.persist()}
+              />
             </section>
           ))}
         </div>
