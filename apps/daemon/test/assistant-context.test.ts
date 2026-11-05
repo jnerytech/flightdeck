@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
 import { type ContextDeps, extractRules, repoContext } from "../src/assistant/context.ts";
@@ -8,6 +8,8 @@ import { credential, isCredentialPath } from "../src/permissions/risk.ts";
 import { REMOVED_LINE } from "../src/watch/trace.ts";
 import { git, gitRepo } from "./board-helpers.ts";
 import { tempDir } from "./helpers.ts";
+
+const POSIX = process.platform !== "win32";
 
 /** Deps over a real repository; a card is a branch of it against `main`. */
 function deps(repo: string): ContextDeps {
@@ -144,13 +146,13 @@ describe("assistant-context", () => {
     expect(Math.max(...perFile)).toBeLessThanOrEqual(6 * 1024 + 64);
   });
 
-  test("the repo's rules: the blocks of its own CLAUDE.md that are about commits, and nothing else", () => {
+  test("the repo's rules: the blocks of its own CLAUDE.md that are about commits, and nothing else", async () => {
     const repo = tempDir("fd-assistant-rules-");
     copyFileSync(
       join(import.meta.dir, "fixtures", "assistant", "CLAUDE.md"),
       join(repo, "CLAUDE.md"),
     );
-    const rules = extractRules(repo);
+    const rules = await extractRules(repo);
     expect(rules.startsWith("- `.claude/`: the shared Claude Code setup.")).toBe(true);
     expect(rules).toContain(
       "- Everything new written to the codebase is in English: code, identifiers, comments, commit",
@@ -177,7 +179,7 @@ describe("assistant-context", () => {
       "module.exports = { extends: ['@commitlint/config-conventional'] };\n",
     );
     writeFileSync(join(repo, ".gitmessage"), `${"g".repeat(2000)}\n`);
-    expect(extractRules(repo)).toBe(
+    expect(await extractRules(repo)).toBe(
       `Commit messages use the imperative.\n\nmodule.exports = { extends: ['@commitlint/config-conventional'] };\n\n${"g".repeat(1024)}`,
     );
     for (const subject of ["feat: one", "fix(x): two", "Update docs"]) {
@@ -194,5 +196,81 @@ describe("assistant-context", () => {
     writeFileSync(join(repo, "README.md"), "# again\n");
     const after = await repoContext({ kind: "worktree", cwd: repo }, deps(repo));
     expect(after.conventional).toBe(false);
+  });
+
+  // The security review of the daemon slice (2026-11-05): nothing outside the repository and no
+  // secret reaches the prompt. Each fake value below must not appear in the bundle.
+  test.skipIf(!POSIX)(
+    "an untracked link, directory, FIFO or huge file is listed but never read",
+    async () => {
+      const outside = tempDir("fd-assistant-outside-");
+      writeFileSync(join(outside, "secret.txt"), "TOPSECRET_OUTSIDE=fake-outside-value\n");
+      const { repo } = gitRepo();
+      symlinkSync(join(outside, "secret.txt"), join(repo, "innocent.txt"));
+      symlinkSync(outside, join(repo, "folder-link"));
+      Bun.spawnSync(["mkfifo", join(repo, "pipe")]);
+      writeFileSync(join(repo, "huge.txt"), "h".repeat(300 * 1024));
+      writeFileSync(join(repo, ".env"), "API=fake-env-value\n");
+      writeFileSync(join(repo, "keep.ts"), "keep\n");
+      const outcome = await repoContext({ kind: "worktree", cwd: repo }, deps(repo)).catch(
+        (error: unknown) => ({ failed: String(error) }),
+      );
+      expect("failed" in outcome ? outcome.failed : null).toBe(null);
+      const bundle = outcome as Awaited<ReturnType<typeof repoContext>>;
+      const all = JSON.stringify(bundle);
+      expect([
+        all.includes("fake-outside-value"),
+        all.includes("fake-env-value"),
+        all.includes("hhhhhhhh"),
+      ]).toEqual([false, false, false]);
+      expect(bundle.notShown).toEqual([".env", "folder-link", "huge.txt", "innocent.txt", "pipe"]);
+      expect(bundle.diff).toBe("--- keep.ts\n@@ -0,0 +1,1 @@\n+keep");
+    },
+  );
+
+  test.skipIf(!POSIX)(
+    "the rules read no link, directory or FIFO, and no more than their cap of a file",
+    async () => {
+      const outside = tempDir("fd-assistant-outside-");
+      writeFileSync(join(outside, "secret.txt"), "commit secret fake-rules-value\n");
+      const root = tempDir("fd-assistant-rules-");
+      symlinkSync(join(outside, "secret.txt"), join(root, ".gitmessage"));
+      symlinkSync(join(outside, "secret.txt"), join(root, "CLAUDE.md"));
+      mkdirSync(join(root, "AGENTS.md"));
+      const rules = (dir: string) =>
+        Promise.resolve()
+          .then(() => extractRules(dir))
+          .catch((error: unknown) => `failed: ${String(error)}`);
+      expect(await rules(root)).toBe("");
+      const fifo = tempDir("fd-assistant-rules-");
+      Bun.spawnSync(["mkfifo", join(fifo, "AGENTS.md")]);
+      writeFileSync(join(fifo, "commitlint.config.js"), `${"c".repeat(5000)}\n`);
+      expect(await rules(fifo)).toBe("c".repeat(1024));
+    },
+  );
+
+  test("named secrets, prefixed keys, auth headers and the whole of a private key are taken out of the diff", async () => {
+    const { repo } = gitRepo();
+    const lines = [
+      "DB_PASSWORD=fake-db-1111",
+      "aws_secret_access_key = fake-aws-2222",
+      "GITHUB_TOKEN=fake-gh-3333",
+      "STRIPE_SECRET=fake-stripe-4444",
+      "client_secret: fake-client-5555",
+      "//registry.npmjs.org/:_authToken=fake-npm-6666",
+      "Authorization: Basic ZmFrZS1iYXNpYy03Nzc3",
+      "-----BEGIN RSA PRIVATE KEY-----",
+      "fake-pem-body-8888",
+      "fake-pem-body-9999",
+      "-----END RSA PRIVATE KEY-----",
+      "plain line",
+    ];
+    writeFileSync(join(repo, "notes.txt"), `${lines.join("\n")}\n`);
+    const bundle = await repoContext({ kind: "worktree", cwd: repo }, deps(repo));
+    expect(bundle.diff.split("\n").filter((l) => l.startsWith("+"))).toEqual([
+      ...lines.slice(0, -1).map(() => `+${REMOVED_LINE}`),
+      "+plain line",
+    ]);
+    expect(bundle.redactedLines).toBe(11);
   });
 });
