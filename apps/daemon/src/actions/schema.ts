@@ -6,6 +6,7 @@
  */
 
 import type { RuleIssue } from "@flightdeck/protocol";
+import { byCodeUnit } from "@flightdeck/protocol";
 
 type ActionIssue = RuleIssue;
 
@@ -95,9 +96,7 @@ export function secretsOf(action: ActionDef): { values: string[]; files: string[
   const texts = [...action.run, ...(action.cwd ? [action.cwd] : []), ...Object.values(action.env)];
   const refs = texts.flatMap(referencesIn);
   const unique = (kind: Reference["kind"]) =>
-    [...new Set(refs.filter((r) => r.kind === kind).map((r) => r.name))].sort((a, b) =>
-      a.localeCompare(b, "en"),
-    );
+    [...new Set(refs.filter((r) => r.kind === kind).map((r) => r.name))].sort(byCodeUnit);
   return { values: unique("secret"), files: unique("secretFile") };
 }
 

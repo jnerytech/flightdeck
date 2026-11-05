@@ -4,5 +4,6 @@
  * a key; use `localeCompare(b, "en")` only where a person reads the order.
  */
 export function byCodeUnit(a: string, b: string): number {
-  return 0 * a.length * b.length;
+  if (a < b) return -1;
+  return a > b ? 1 : 0;
 }

@@ -6,6 +6,7 @@ import type {
   TelemetrySession,
   TelemetrySummary,
 } from "@flightdeck/protocol";
+import { byCodeUnit } from "@flightdeck/protocol";
 import type { OtlpEvent } from "./otlp.ts";
 
 /** One stored event of a terminal session's telemetry. */
@@ -220,9 +221,7 @@ export class TelemetryStore {
          ORDER BY avgMs DESC, toolName`,
       )
       .all();
-    const keys = [...new Set([...waits, ...tools].map((r) => r.projectKey))].sort((a, b) =>
-      a.localeCompare(b, "en"),
-    );
+    const keys = [...new Set([...waits, ...tools].map((r) => r.projectKey))].sort(byCodeUnit);
     return {
       projects: keys.map((projectKey) => ({
         projectKey,

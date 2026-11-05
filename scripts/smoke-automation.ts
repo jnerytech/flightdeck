@@ -1,4 +1,6 @@
 #!/usr/bin/env bun
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 /**
  * Automation smoke: a `--runtime fake` daemon, a temporary repository whose origin looks like a
  * GitHub one (pushes go to a local bare repository) and a fake `gh`. An automation `issue_label` →
@@ -8,9 +10,7 @@
  * `Read` (approved without AI) and `Write` (approved by the fake AI), with the automatic approval
  * on; an arena of two variants makes two worktrees and choosing `b` removes `a`.
  */
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
+import { type Ack, byCodeUnit, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
 import { installFakeClaude } from "../apps/daemon/test/fake-claude.ts";
 import {
   assertCheckGuardActive,
@@ -403,7 +403,7 @@ async function run(work: string): Promise<void> {
     }>("autoapprove.list", { projectId: project.id });
     const summary = decisions.decisions
       .map((d) => `${d.toolName}:${d.decision}:${d.by}`)
-      .sort((a, b) => a.localeCompare(b, "en"));
+      .sort(byCodeUnit);
     if (summary.join() !== "Bash:ask:rule,Read:allow:rule,Write:allow:ai") {
       throw new Error(`registro: ${summary}`);
     }

@@ -1,3 +1,4 @@
+import { byCodeUnit } from "@flightdeck/protocol";
 import { type Route, Router } from "./router.ts";
 
 export interface Tab {
@@ -25,10 +26,7 @@ interface Closed {
 
 /** The route as a string that does not depend on the order of its fields. */
 const routeKey = (route: Route): string =>
-  JSON.stringify(
-    route,
-    Object.keys(route).sort((a, b) => a.localeCompare(b, "en")),
-  );
+  JSON.stringify(route, Object.keys(route).sort(byCodeUnit));
 
 const START: Route = { name: "start" };
 
