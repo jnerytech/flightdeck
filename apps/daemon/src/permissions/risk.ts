@@ -88,7 +88,7 @@ const PREFIXES = new Set(["command", "nohup", "time", "exec", "builtin", "env", 
  * ~/.config/gh, ~/.claude/.credentials.json, ~/.claude.json, ~/.flightdeck/config.json, .env*,
  * *.pem, *.key and id_*. Compared without case, with either slash.
  */
-function credential(text: string): boolean {
+export function credential(text: string): boolean {
   const parts = text.toLowerCase().replaceAll("\\", "/").split("/");
   const name = parts.at(-1) as string;
   const after = (dir: string, next: string) =>
@@ -106,6 +106,12 @@ function credential(text: string): boolean {
     name.startsWith("id_")
   );
 }
+
+/**
+ * Phase 40: the same test under the name the assistant's repo context uses (fase-39 exports
+ * `credential` itself; both names stay, so the two phases merge without a conflict).
+ */
+export const isCredentialPath = credential;
 
 /** The words of a command, without quotes, split also where a path cannot go on. */
 const words = (command: string) => command.split(/[\s"'`;|&<>()=,]+/).filter((w) => w !== "");
