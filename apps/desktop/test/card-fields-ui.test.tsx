@@ -207,6 +207,11 @@ for (const [lang, t] of [
         "Fix the cart total ",
         "Round to cents.",
       ]);
+      // And the saves are not offered again while the host's update is on its way.
+      expect([
+        button(t.cardUi.saveTitle)?.disabled,
+        button(t.cardUi.saveDescription)?.disabled,
+      ]).toEqual([true, true]);
     });
 
     // OpenCode branch review m1: typing the card's text back is no edit any more.
