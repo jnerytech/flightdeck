@@ -80,7 +80,7 @@ describe("crumb-largura: a long path is cut with an ellipsis, the earlier steps 
     render(<Breadcrumb crumbs={crumbs.slice(0, 2)} label="Path" onGo={() => {}} />);
     const [earlier, current] = [...document.querySelectorAll("nav li")] as HTMLElement[];
     // The earlier steps may go low (a 760 px window has room for little), the current one keeps a floor.
-    expect(earlier?.className).toContain("min-w-[2rem]");
+    expect(earlier?.className).toContain("min-w-[1rem]");
     expect(current?.className).toContain("min-w-[4rem]");
     /** `shrink-[N]` is N; a bare `shrink` is 1. */
     const factor = (el: HTMLElement | undefined) => {
@@ -91,6 +91,20 @@ describe("crumb-largura: a long path is cut with an ellipsis, the earlier steps 
     // to under 1: a current step with a fraction would stay wide and run under the bell.
     expect(factor(current)).toBeGreaterThanOrEqual(1);
     expect(factor(earlier)).toBeGreaterThan(factor(current));
+  });
+
+  test("the floors of a path that is not folded fit the narrowest crumb slot, so nothing can reach the bell", () => {
+    // The slot is 40% of the narrowest window (720 px) = 288 px, less the back, forward and bell
+    // buttons (36 px each) and the gaps between the four (8 px each): 288 - 108 - 24 = 156 px.
+    const NAV_AT_720 = 156;
+    const CHEVRON = 14 + 2 * 4; // the icon and the gap on both sides
+    render(<Breadcrumb crumbs={crumbs.slice(0, 3)} label="Path" onGo={() => {}} />);
+    const items = [...document.querySelectorAll("nav li")] as HTMLElement[];
+    const floor = (el: HTMLElement) =>
+      Number(el.className.match(/min-w-\[([\d.]+)rem\]/)?.[1] ?? 0) * 16;
+    const total = items.reduce((sum, el) => sum + floor(el), 0) + (items.length - 1) * CHEVRON;
+    expect(items).toHaveLength(3);
+    expect(total).toBeLessThanOrEqual(NAV_AT_720);
   });
 
   test("a folded path reads first › menu › current, with a chevron before the menu too", () => {
