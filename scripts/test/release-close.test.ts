@@ -33,6 +33,8 @@ function fake(
     /** The milestone's state before the run (a second run finds it closed). */
     milestoneState?: "open" | "closed";
     fail?: RegExp;
+    /** Calls answered with exit 0 and text that is not JSON. */
+    garbage?: RegExp;
     board?: (n: number) => boolean;
     log?: string;
   } = {},
@@ -51,6 +53,7 @@ function fake(
     gh: async (args) => {
       const line = args.join(" ");
       calls.push(line);
+      if (opts.garbage?.test(line)) return { code: 0, stdout: "<html>rate limited</html>" };
       if (opts.fail?.test(line)) return { code: 1, stdout: "" };
       const path = args.find((a) => a.startsWith("repos/")) ?? "";
       const method = args.includes("-X") ? args[args.indexOf("-X") + 1] : "GET";
@@ -245,6 +248,43 @@ describe("release-close", () => {
     const f = fake({ 170: open("Card") }, { log: commit("fix(x): y (#170)") });
     expect(await releaseClose("v0.40.0", { apply: true }, f.deps)).toBe(0);
     expect(f.lines.join("\n")).toContain("no milestone named v0.40.0");
+  });
+
+  test("an answer that is not JSON is an issue that cannot be read", async () => {
+    const f = fake(
+      { 170: open("Card") },
+      { log: commit("fix(x): y (#170)"), garbage: /issues\/170$/ },
+    );
+    expect(await releaseClose("v0.36.4", { apply: false }, f.deps)).toBe(1);
+    expect(f.lines.join("\n")).toContain("#170: cannot be read");
+  });
+
+  test("a comment that fails leaves the issue open and off the board", async () => {
+    const issues = { 170: open("Card") };
+    const f = fake(issues, { log: commit("fix(x): y (#170)"), fail: /POST/ });
+    expect(await releaseClose("v0.36.4", { apply: true }, f.deps)).toBe(1);
+    expect(f.lines.join("\n")).toContain("#170: commenting failed");
+    expect(issues[170].state).toBe("open");
+    expect(f.boarded).toEqual([]);
+  });
+
+  test("the dry run counts the milestone's issues the tag does not ship", async () => {
+    const f = fake({ 170: open("Card") }, { log: commit("fix(x): y (#170)"), milestoneOpen: 4 });
+    await releaseClose("v0.36.4", { apply: false }, f.deps);
+    expect(f.lines.join("\n")).toContain("milestone v0.36.4: 3 open issue(s) left, not closed");
+  });
+
+  test("a milestone that cannot be closed is named and fails the run", async () => {
+    const f = fake(
+      { 170: open("Card") },
+      {
+        log: commit("fix(x): y (#170)"),
+        milestoneOpen: 1,
+        fail: /milestones\/9/,
+      },
+    );
+    expect(await releaseClose("v0.36.4", { apply: true }, f.deps)).toBe(1);
+    expect(f.lines.join("\n")).toContain("milestone v0.36.4: closing failed");
   });
 
   test("a milestone closed already is said so, in the dry run and with --apply", async () => {
