@@ -37,6 +37,17 @@ describe("opencode-models", () => {
     expect(failed.exitCode).toBe(3);
   });
 
+  test("on every OS a command past its deadline is ended and reports TIMED_OUT", async () => {
+    const started = Date.now();
+    const result = await runCommand([process.execPath, "-e", "setTimeout(() => {}, 30_000)"], {
+      cwd: realTempDir("fd-oc-run-"),
+      env: { PATH: process.env.PATH ?? "" },
+      timeoutMs: 300,
+    });
+    expect([result.exitCode, result.stdout]).toEqual([TIMED_OUT, ""]);
+    expect(Date.now() - started).toBeLessThan(10_000);
+  });
+
   test.skipIf(process.platform === "win32")(
     "a command past its deadline ends, with what it started, and reports TIMED_OUT",
     async () => {
