@@ -61,6 +61,8 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     runs on Ubuntu under the 100% coverage gate, and only Windows (and macOS) skip it. No other
     skip is allowed: `.skip`, `.only`, `test.todo` and a first-run snapshot stay forbidden, and a
     `skipIf` for a platform *capability* (no 8.3 names, no symlinks) is still fine without a note.
+    The hook knows the two spellings above, one line at a time, and does not look up the issue; the
+    ratchet (at most 5, each with its note) and review hold the rest.
     `unstable-skip-ratchet.test.ts` checks every such skip has the note, with an issue number and a
     reason, and that there are at most 5 in the repository (lower the number in that test when one
     is fixed; never raise it).

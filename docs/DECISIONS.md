@@ -4245,3 +4245,11 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   ended…" (counts polls in an 80 ms window). The fixes (counts instead of a ratio, an injected ticker
   and clock for the heartbeat, a longer hang limit for the two child processes) are parked on the
   branch `timing-fixes-288` for #288.
+- **Known limits (security-reviewer pass, nothing high):** the hook is a guard against slips, not a
+  boundary. It recognises `notLinux` and `process.platform !== "linux"` (also `'linux'`) on one line;
+  it does not see `!=`, a backtick string, an alias of `notLinux`, `skipIf(true)`, a skip in a helper
+  that is not a `*.test.ts`, or `scripts/test/not-linux.ts` changed to `true`, and it takes any
+  `// unstable: #<n> <word>` on the line (not a lookup of the issue, which needs the network). The
+  ratchet bounds the first kind: it is exactly saturated (at most 5 and the five files named), and
+  it runs in CI over the whole checkout. The hook matcher also covers only Edit, Write and Bash, as
+  before. All of it is how the guard already worked for `skipIf`, which it never blocked.
