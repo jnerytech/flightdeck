@@ -47,7 +47,7 @@ const snapshot = (over: Partial<ResourcesSnapshot> = {}): ResourcesSnapshot => (
       names: ["bash", "node"],
     },
   ],
-  orphans: [{ pid: 4242, name: "claude", rssBytes: 120 * MB, ageSec: 7200 }],
+  orphans: [{ pid: 4242, name: "claude", rssBytes: 120 * MB, ageSec: 7200, startTicks: 777 }],
   ...over,
 });
 
@@ -155,6 +155,26 @@ describe("recursos-ui: the Resources panel of a host (issue #154)", () => {
     expect(reads(w.asked).length).toBe(after);
   });
 
+  test("a read that is still going is not asked again by the next tick (F4)", async () => {
+    const w = setup();
+    let release: (value: ResourcesSnapshot) => void = () => {};
+    w.store.hostCommand = (async (_h: string, type: string) => {
+      w.asked.push([type, null]);
+      if (type !== "resources.get") return {};
+      return new Promise<ResourcesSnapshot>((resolve) => {
+        release = resolve;
+      });
+    }) as never;
+    render(w.view());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 120));
+    });
+    expect(reads(w.asked)).toHaveLength(1);
+    release(snapshot());
+    await settle(() => document.querySelector("[data-slot='resources-memory']") !== null);
+    await settle(() => reads(w.asked).length >= 2);
+  });
+
   test("a panel that is not on screen never asks", async () => {
     const w = setup({ active: false });
     render(w.view());
@@ -200,7 +220,7 @@ describe("recursos-ui: the Resources panel of a host (issue #154)", () => {
     });
     await settle(() => w.asked.some(([t]) => t === "resources.endOrphan"));
     expect(w.asked.filter(([t]) => t === "resources.endOrphan")).toEqual([
-      ["resources.endOrphan", { pid: 4242 }],
+      ["resources.endOrphan", { pid: 4242, startTicks: 777 }],
     ]);
   });
 

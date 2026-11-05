@@ -190,6 +190,7 @@ export class Resources {
         name: root.name,
         rssBytes: tree(root).reduce((sum, n) => sum + n.rssPages * proc.pageSize, 0),
         ageSec,
+        startTicks: 0,
       });
     }
 
@@ -200,7 +201,7 @@ export class Resources {
   }
 
   /** Ends one orphan after looking again: it must still be one, and the daemon's own child. */
-  async endOrphan(pid: number): Promise<void> {
+  async endOrphan(pid: number, _startTicks: number): Promise<void> {
     const { orphans } = await this.snapshot();
     if (!orphans.some((orphan) => orphan.pid === pid)) {
       throw new FlightdeckError(

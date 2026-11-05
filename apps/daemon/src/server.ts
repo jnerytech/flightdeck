@@ -71,7 +71,6 @@ import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Issues } from "./issues/issues.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
-import type { Resources } from "./resources/resources.ts";
 import type { ProjectMemory } from "./memory/memory.ts";
 import type { Idle } from "./messaging/idle.ts";
 import type { Messaging } from "./messaging/messages.ts";
@@ -88,6 +87,7 @@ import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
 import { localDay } from "./quota/usage.ts";
+import type { Resources } from "./resources/resources.ts";
 import type { Changes } from "./review/changes.ts";
 import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
@@ -1016,7 +1016,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "resources.get":
         return ok(command.type, await resources().snapshot());
       case "resources.endOrphan":
-        await resources().endOrphan(command.payload.pid);
+        await resources().endOrphan(command.payload.pid, command.payload.startTicks);
         return ok(command.type, { ended: true });
       case "maintenance.status":
         return ok(command.type, await maintenance().status());

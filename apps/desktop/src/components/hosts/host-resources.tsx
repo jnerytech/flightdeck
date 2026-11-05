@@ -208,9 +208,11 @@ export function HostResources(props: {
           destructive
           onCancel={() => setEnding(null)}
           onConfirm={() => {
-            const pid = ending.pid;
+            const { pid, startTicks } = ending;
             setEnding(null);
-            void store.hostCommand(host.id, "resources.endOrphan", { pid }).then(() => read());
+            void store
+              .hostCommand(host.id, "resources.endOrphan", { pid, startTicks })
+              .then(() => read());
           }}
         />
       )}

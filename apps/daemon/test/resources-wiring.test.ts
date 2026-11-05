@@ -102,7 +102,7 @@ describe("resources-wiring: the daemon's own resources (issue #154)", () => {
         terminals: () => [],
         kill: (pid, sig) => void signals.push([pid, sig]),
       }),
-    ).endOrphan(9);
+    ).endOrphan(9, 1);
     expect(signals).toEqual([[9, "SIGTERM"]]);
   });
 });
@@ -135,8 +135,55 @@ describe("resources-wiring: the machine's own defaults (issue #154)", () => {
     expect(snap.memory.totalBytes).toBeGreaterThan(0);
     expect(snap.disk?.totalBytes).toBeGreaterThan(0);
     expect(snap.loadPercent).not.toBeNull();
-    await resources.endOrphan(pid);
+    await resources.endOrphan(pid, 1);
     await child.exited;
     expect(child.signalCode).toBe("SIGTERM");
+  });
+});
+
+describe("resources-wiring: the machine's own page size and clock (F8)", () => {
+  test("the /proc reader uses the page size and ticks the machine says, not guesses", async () => {
+    const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const root = mkdtempSync(join(tmpdir(), "fd-proc-wiring-"));
+    try {
+      writeFileSync(join(root, "uptime"), "10000.00 0\n");
+      const add = (pid: number, ppid: number, name: string, rss: number, start: number) => {
+        mkdirSync(join(root, String(pid)));
+        writeFileSync(
+          join(root, String(pid), "stat"),
+          `${pid} (${name}) S ${ppid} 1 1 0 -1 0 0 0 0 0 0 0 0 0 20 0 1 0 ${start} 1 ${rss} 1`,
+        );
+      };
+      add(1, 0, "flightdeckd", 1, 0);
+      add(9, 1, "claude", 100, 1);
+      const asked: string[] = [];
+      const snap = await createResources({
+        dataDir: tmpdir(),
+        sessions: () => [],
+        terminals: () => [],
+        pidOf: () => null,
+        ownPid: 1,
+        platform: "linux",
+        procRoot: root,
+        sysconf: (name) => {
+          asked.push(name);
+          return name === "PAGESIZE" ? 16384 : 250;
+        },
+      }).snapshot();
+      expect(asked.sort()).toEqual(["CLK_TCK", "PAGESIZE"]);
+      // 100 pages of 16 KB, and a start of 1 tick at 250 per second in a 10 000 s uptime.
+      expect(snap.orphans[0]).toMatchObject({ pid: 9, rssBytes: 100 * 16384, ageSec: 9999 });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a machine that cannot say falls back to 4 KB and 100 ticks", async () => {
+    const { defaultSysconf } = await import("../src/resources/wiring.ts");
+    expect(defaultSysconf(() => null, "PAGESIZE")).toBe(4096);
+    expect(defaultSysconf(() => null, "CLK_TCK")).toBe(100);
+    expect(defaultSysconf((name) => (name === "PAGESIZE" ? 65536 : 128), "PAGESIZE")).toBe(65536);
+    expect(defaultSysconf(() => Number.NaN, "CLK_TCK")).toBe(100);
   });
 });

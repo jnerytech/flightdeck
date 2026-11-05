@@ -92,3 +92,47 @@ describe("resources-procfs: the Linux /proc reader (issue #154)", () => {
     expect(await reader.uptimeSec()).toBe(0);
   });
 });
+
+describe("resources-procfs: nothing that holds arguments or secrets is opened (F6)", () => {
+  test("a process with a readable command line and environment shows none of it in a snapshot", async () => {
+    const { root, add } = fakeRoot();
+    add(100, stat(100, "flightdeckd", 1, 0, 0, 0, 10));
+    add(200, stat(200, "claude", 100, 5, 5, 1, 50), "/work/x");
+    add(201, stat(201, "bash", 200, 1, 1, 2, 5));
+    const { Resources } = await import("../src/resources/resources.ts");
+    const resources = new Resources({
+      proc: procfsReader({ root, pageSize: 4096, ticksPerSecond: 100 }),
+      ownPid: 100,
+      sessions: () => [
+        { id: "s", name: "s", cwd: "/work/x", createdAt: "2026-11-05T10:00:00Z", active: true },
+      ],
+      terminals: () => [],
+      memory: () => ({ totalBytes: 1, freeBytes: 1 }),
+      disk: async () => null,
+      loadPercent: () => null,
+      kill: () => {},
+    });
+    const text = JSON.stringify(await resources.snapshot());
+    expect(text).toContain("claude");
+    expect(text).not.toContain("SECRET");
+    expect(text).not.toContain("api-key");
+    expect(text).not.toContain("TOKEN");
+  });
+
+  test("with the command line and environment unreadable (folders), stat and the folder still work", async () => {
+    const { root, add } = fakeRoot();
+    add(300, stat(300, "claude", 1, 1, 1, 1, 7), "/work/y");
+    for (const trap of ["cmdline", "environ"]) {
+      rmSync(join(root, "300", trap));
+      mkdirSync(join(root, "300", trap));
+    }
+    const reader = procfsReader({ root, pageSize: 4096, ticksPerSecond: 100 });
+    expect(await reader.stat(300)).toMatchObject({ name: "claude", rssPages: 7 });
+    expect(await reader.cwd(300)).toBe("/work/y");
+  });
+
+  test("a stat line with no usable pid is nothing", () => {
+    expect(parseStat(stat(0, "x", 1, 1, 1, 1, 1))).toBeNull();
+    expect(parseStat(" (x) S 1 1 1 0 -1 0 0 0 0 0 1 1 0 0 20 0 1 0 1 1 1 1")).toBeNull();
+  });
+});

@@ -2887,7 +2887,12 @@ export const Command = z.discriminatedUnion("type", [
   /** Issue #154: one snapshot of the host's memory, disk and what each session and terminal costs. */
   cmd("resources.get", z.object({}).strict()),
   /** Ends a process the snapshot lists as an orphan; the daemon checks again that it is one. */
-  cmd("resources.endOrphan", z.object({ pid: z.number().int().positive() }).strict()),
+  cmd(
+    "resources.endOrphan",
+    z
+      .object({ pid: z.number().int().positive(), startTicks: z.number().int().nonnegative() })
+      .strict(),
+  ),
   cmd("maintenance.status", z.object({}).strict()),
   cmd("maintenance.backup", z.object({}).strict()),
   /** Applies the retention policy now; `dryRun` only counts. */
@@ -4225,6 +4230,8 @@ export const ResourceOrphan = z.object({
   name: z.string(),
   rssBytes: z.number().nonnegative(),
   ageSec: z.number().nonnegative(),
+  /** When it started, in clock ticks after the boot: with the pid it names this very process. */
+  startTicks: z.number().int().nonnegative(),
 });
 export const ResourcesSnapshot = z.object({
   at: z.string(),

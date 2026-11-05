@@ -88,10 +88,13 @@ describe("resources-server: over the wire (issue #154)", () => {
 
   test("resources.endOrphan ends the orphan, and refuses a pid that is not one", async () => {
     const { client, killed } = await serve();
-    const refused = await client.request("resources.endOrphan", { pid: 1 });
+    const refused = await client.request("resources.endOrphan", { pid: 1, startTicks: 0 });
     expect(refused.ok).toBe(false);
     expect(killed).toEqual([]);
-    const done = await client.data<{ ended: boolean }>("resources.endOrphan", { pid: 500 });
+    const done = await client.data<{ ended: boolean }>("resources.endOrphan", {
+      pid: 500,
+      startTicks: 1,
+    });
     expect(done?.ended).toBe(true);
     expect(killed).toEqual([500]);
   });
@@ -100,5 +103,20 @@ describe("resources-server: over the wire (issue #154)", () => {
     const { client } = await serve(false);
     const answer = await client.request("resources.get", {});
     expect(answer.ok).toBe(false);
+  });
+
+  test("the request is checked: a pid that is not a positive whole number, a missing start or an extra key is refused", async () => {
+    const { client, killed } = await serve();
+    for (const payload of [
+      { pid: 0, startTicks: 1 },
+      { pid: -1, startTicks: 1 },
+      { pid: 1.5, startTicks: 1 },
+      { pid: 500 },
+      { pid: 500, startTicks: -1 },
+      { pid: 500, startTicks: 1, extra: true },
+    ]) {
+      expect((await client.request("resources.endOrphan", payload)).ok).toBe(false);
+    }
+    expect(killed).toEqual([]);
   });
 });

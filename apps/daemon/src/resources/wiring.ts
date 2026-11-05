@@ -30,6 +30,10 @@ export interface ResourcesDeps {
   kill?(pid: number, signal: NodeJS.Signals): void;
   /** The /proc reader; only used on Linux. */
   proc?: ProcReader;
+  /** Where /proc is (tests give a temp folder shaped like it). */
+  procRoot?: string;
+  /** What the machine says of itself: `PAGESIZE` and `CLK_TCK` (tests give their own). */
+  sysconf?(name: "PAGESIZE" | "CLK_TCK"): number | null;
 }
 
 /** Statuses of a session that has no process any more. */
@@ -91,4 +95,12 @@ export function createResources(given: ResourcesDeps): Resources {
     },
     kill: (pid) => deps.kill(pid, "SIGTERM"),
   });
+}
+
+/** Stub: the machine's value, or the usual one when it cannot say. */
+export function defaultSysconf(
+  _ask: (name: "PAGESIZE" | "CLK_TCK") => number | null,
+  _name: "PAGESIZE" | "CLK_TCK",
+): number {
+  return 0;
 }

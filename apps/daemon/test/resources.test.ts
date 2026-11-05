@@ -173,7 +173,15 @@ describe("resources: what the host's work costs it (issue #154)", () => {
       proc(501, DAEMON, "claude", 90, { cwd: "/new", startTicks: 1_000_000 - 1000 }),
     ];
     const snap = await make(procs).snapshot();
-    expect(snap.orphans).toEqual([{ pid: 500, name: "claude", rssBytes: 120 * MB, ageSec: 7200 }]);
+    expect(snap.orphans).toEqual([
+      {
+        pid: 500,
+        name: "claude",
+        rssBytes: 120 * MB,
+        ageSec: 7200,
+        startTicks: 1_000_000 - 720_000,
+      },
+    ]);
   });
 
   test("only the daemon's own processes are ever listed", async () => {
@@ -198,7 +206,7 @@ describe("resources: what the host's work costs it (issue #154)", () => {
       ],
       { killed },
     );
-    await resources.endOrphan(500);
+    await resources.endOrphan(500, 1);
     expect(killed).toEqual([500]);
   });
 
@@ -218,7 +226,7 @@ describe("resources: what the host's work costs it (issue #154)", () => {
       },
     );
     for (const pid of [200, 400, 600, DAEMON, 9999]) {
-      await expect(resources.endOrphan(pid)).rejects.toMatchObject({ reason: "not_orphan" });
+      await expect(resources.endOrphan(pid, 1)).rejects.toMatchObject({ reason: "not_orphan" });
     }
     expect(killed).toEqual([]);
   });
@@ -252,7 +260,7 @@ describe("resources: what the host's work costs it (issue #154)", () => {
     expect(snap.rows).toEqual([]);
     expect(snap.orphans).toEqual([]);
     expect(snap.memory.totalBytes).toBe(8000 * MB);
-    await expect(make([], { proc: null }).endOrphan(500)).rejects.toMatchObject({
+    await expect(make([], { proc: null }).endOrphan(500, 1)).rejects.toMatchObject({
       reason: "not_orphan",
     });
   });

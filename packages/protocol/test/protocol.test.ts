@@ -86,7 +86,7 @@ const validCommands: Record<CommandType, unknown> = {
   "session.meta.set": { claudeSessionId: "c", name: null, pinned: true, archived: false },
   "maintenance.status": {},
   "resources.get": {},
-  "resources.endOrphan": { pid: 1234 },
+  "resources.endOrphan": { pid: 1234, startTicks: 99 },
   "maintenance.backup": {},
   "maintenance.prune": { dryRun: true },
   "daemon.shutdown": {},
