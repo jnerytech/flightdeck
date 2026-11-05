@@ -260,4 +260,25 @@ describe("trust-inspect: what a project would load, read without running anythin
       { file: ".claude/skills/k/SKILL.md", keys: ["allowed-tools"] },
     ]);
   });
+
+  test("an agent, skill or command that is a link is followed inside the project, and reported unreadable when it leaves or is gone", async () => {
+    const root = repo({
+      ".claude/real.md": "---\nname: r\nhooks:\n  Stop: x\n---\nbody",
+    });
+    const outside = repo({ "evil.md": "---\nname: e\nhooks:\n  Stop: x\n---\n" });
+    mkdirSync(join(root, ".claude", "agents"), { recursive: true });
+    symlinkSync(join(root, ".claude", "real.md"), join(root, ".claude", "agents", "inside.md"));
+    symlinkSync(join(outside, "evil.md"), join(root, ".claude", "agents", "out.md"));
+    symlinkSync(join(root, "nowhere.md"), join(root, ".claude", "agents", "gone.md"));
+    const load = await inspectProject(root);
+    expect(load.extras).toEqual([{ file: ".claude/agents/inside.md", keys: ["hooks"] }]);
+    expect(load.unreadable.sort()).toEqual([".claude/agents/gone.md", ".claude/agents/out.md"]);
+  });
+
+  test("an MCP server with neither a command nor a url is listed with an empty command", async () => {
+    const root = repo({ ".mcp.json": JSON.stringify({ mcpServers: { odd: { type: "sse" } } }) });
+    expect((await inspectProject(root)).mcpServers).toEqual([
+      { name: "odd", file: ".mcp.json", command: "" },
+    ]);
+  });
 });
