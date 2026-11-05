@@ -65,14 +65,20 @@ describe("opencode-doctor", () => {
         path: "/bin/opencode",
         version: "2.2.5",
         reason: "opencode_unsafe_global",
+        findings: [
+          { kind: "plugins_entry", detail: "opencode-wakatime", path: "/h/opencode.json" },
+          { kind: "system_config", path: "/etc/opencode/opencode.json" },
+        ],
       },
       platform: "linux",
     });
+    // What the scan found is named: nothing else tells the person what to remove.
     expect(unsafe).toEqual({
       id: "opencode",
       name: "opencode",
       status: "warn",
-      detail: "OpenCode is turned on but not available: opencode_unsafe_global",
+      detail:
+        "OpenCode is turned on but not available: opencode_unsafe_global: plugins_entry opencode-wakatime (/h/opencode.json); system_config (/etc/opencode/opencode.json)",
       fix: "see the OpenCode section of the manual for this reason, then restart the daemon",
     });
   });
