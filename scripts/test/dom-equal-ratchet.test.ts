@@ -67,13 +67,14 @@ describe("dom-equal-ratchet: no DOM element inside a deep equality", () => {
     expect(domEqualCounts(join(dir, "test"), dir)).toEqual({ "test/ui/a.test.tsx": 1 });
   });
 
-  test("no test file holds more of them than the baseline allows (new ones: 0)", async () => {
+  test("no test file compares a DOM element itself (the baseline is empty)", async () => {
     const baseline = (await Bun.file(BASELINE).json()) as Record<string, number>;
     const counts = {
       ...domEqualCounts(resolve(ROOT, "apps/desktop/test"), ROOT),
       ...domEqualCounts(resolve(ROOT, "apps/daemon/test"), ROOT),
     };
     expect(overBaseline(counts, baseline)).toEqual([]);
-    expect(counts["apps/desktop/test/cota-ui.test.tsx"]).toBe(1);
+    // The baseline is empty: no test compares an element itself any more.
+    expect(baseline).toEqual({});
   });
 });
