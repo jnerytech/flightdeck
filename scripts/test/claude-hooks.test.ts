@@ -44,6 +44,34 @@ describe("claude-hooks", () => {
     }
   });
 
+  test("git stash is blocked except list and show: refs/stash is shared across worktrees", () => {
+    for (const command of [
+      "git stash",
+      "git stash -u",
+      "git stash push -m wip",
+      "git stash save wip",
+      "git stash pop",
+      "git stash apply stash@{0}",
+      "git stash drop",
+      "git stash clear",
+      "git stash branch tmp",
+      "cd ../flightdeck-rc0364 && git stash pop",
+      "git -C ../flightdeck-rc0364 stash pop",
+    ]) {
+      const reason = commandViolation(command) ?? "";
+      expect(`${command} -> ${reason.includes("is blocked")}`).toBe(`${command} -> true`);
+      expect(reason).toContain("refs/stash is shared across worktrees");
+      expect(reason).toContain("git apply, or a WIP commit on your branch");
+    }
+    for (const command of [
+      "git stash list",
+      "git stash show -p stash@{0}",
+      'git commit -m "no git stash here"',
+    ]) {
+      expect(commandViolation(command)).toBeNull();
+    }
+  });
+
   test("text inside quotes or a heredoc is not a command", () => {
     for (const command of [
       'git commit -m "docs: never use git add . here"',

@@ -43,12 +43,13 @@ async function many() {
 }
 
 describe("abas-muitas: with many tabs the strip stays readable", () => {
-  test("the tabs sit in a scroller and keep their width; a badge shrinks to a dot, still named", async () => {
+  test("the tabs sit in a scroller and keep their width; a badge is a glyph, still named", async () => {
     const { scroller } = await many();
     expect(scroller).not.toBeNull();
     expect(scroller.querySelectorAll(".tab-item")).toHaveLength(N);
     const badge = scroller.querySelector("[data-badge]") as HTMLElement;
-    expect(badge.getAttribute("data-compact")).toBe("true");
+    expect(badge.getAttribute("role")).toBe("img");
+    expect(badge.getAttribute("aria-label")).toBe("Precisa de você");
     expect(badge.getAttribute("title")).toBe("Precisa de você");
     expect(badge.textContent).toBe("");
   });
@@ -117,7 +118,7 @@ describe("abas-muitas: with many tabs the strip stays readable", () => {
     expect(store.tabs.activeId).toBe(store.tabs.tabs[5]?.id as string);
   });
 
-  test("with room to spare a working session shows its badge named, and it pulses", async () => {
+  test("a working session's badge is named and spins (only where motion is allowed)", async () => {
     const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
     render(<App store={store} />);
     await act(async () => {
@@ -134,8 +135,8 @@ describe("abas-muitas: with many tabs the strip stays readable", () => {
       });
     });
     const badge = document.querySelector("[data-badge='running']") as HTMLElement;
-    expect(badge.textContent).toBe("");
-    expect(badge.className).toContain("animate-pulse");
-    expect(badge.className).toContain("bg-muted");
+    expect(badge.getAttribute("aria-label")).toBe("Rodando");
+    expect(badge.className).toContain("motion-safe:animate-spin");
+    expect(badge.className).toContain("text-muted-foreground");
   });
 });

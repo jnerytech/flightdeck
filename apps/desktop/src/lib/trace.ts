@@ -13,7 +13,7 @@ export function toolNames(nodes: TraceNode[]): string[] {
         .filter((n) => n.kind === "tool")
         .map((n) => n.name),
     ),
-  ].sort();
+  ].sort((a, b) => a.localeCompare(b, "en"));
 }
 
 /**

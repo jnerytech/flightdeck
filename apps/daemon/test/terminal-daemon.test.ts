@@ -219,7 +219,7 @@ describe("terminal-daemon", () => {
     manager.detach(terminalId, b);
     for (const fill of ["a", "b", "c"]) pty?.emit(fill.repeat(MB));
     const kept = Buffer.from(manager.attach(terminalId, fakeSink()).scrollback, "base64");
-    expect(kept.length).toBe(2 * MB);
+    expect(kept).toHaveLength(2 * MB);
     expect([kept[0], kept[kept.length - 1]]).toEqual(["b".charCodeAt(0), "c".charCodeAt(0)]);
   });
 
@@ -271,7 +271,7 @@ describe("terminal-daemon", () => {
       time.advance(16);
     }
     expect(slow.frames).toEqual([{ type: "terminal.resync", terminalId }]);
-    expect(dataOf(fast.frames).length).toBe(15 * 100 * 1024);
+    expect(dataOf(fast.frames)).toHaveLength(15 * 100 * 1024);
     // Reading never stopped: what comes after is in the scrollback, and the slow one is quiet.
     pty?.emit("FIM\r\n");
     time.advance(16);

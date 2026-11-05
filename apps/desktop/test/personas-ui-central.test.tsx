@@ -10,6 +10,7 @@ import {
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { personasHost } from "./personas-ui-setup.ts";
+import { unfoldAll } from "./unfold.ts";
 import { settle } from "./wait.ts";
 
 registerDom();
@@ -75,6 +76,7 @@ describe("personas-ui: the central", () => {
     await poll(() => d.manager.get(sessionId).status === "idle");
     render(<App store={store} />);
     const item = () => screen.queryByRole("listitem", { name: "Com persona" });
+    await unfoldAll(act);
     await settle(() => item() !== null);
     expect(item()).not.toBeNull();
     expect(within(item() as HTMLElement).queryByText("QA / testes")).not.toBeNull();
@@ -95,6 +97,7 @@ describe("personas-ui: the central", () => {
     await poll(() => d.manager.get(plain.sessionId).status === "idle");
     render(<App store={store} />);
     const item = (name: string) => screen.queryByRole("listitem", { name });
+    await unfoldAll(act);
     await settle(() => item("Em QA") !== null && item("Sem papel") !== null);
     const trigger = screen.queryByRole("button", { name: /^Filtros/ });
     expect(trigger).not.toBeNull();

@@ -3,6 +3,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { unfoldAll } from "./unfold.ts";
 import { settle } from "./wait.ts";
 
 registerDom();
@@ -73,6 +74,7 @@ async function open(features: string[], personas: Record<string, string> = {}) {
   await act(async () => {
     store.router.push({ name: "hub" });
   });
+  await unfoldAll(act);
   await settle(() => group().length === 3);
   return { store, daemon };
 }

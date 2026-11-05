@@ -73,6 +73,13 @@ function hub(store: Store, state: ReturnType<Store["getState"]>) {
 }
 
 const newStore = () => new AppStore(memoryPlatform().platform, { baseDelayMs: 600_000 });
+/** History-only projects start folded (issue #111): a search matching every title opens them all. */
+async function openAll() {
+  await act(async () => {
+    fireEvent.change(screen.getByLabelText("Filtrar sessões"), { target: { value: "session" } });
+  });
+  await uiIdle();
+}
 const rowsDrawn = () => document.querySelectorAll("li[aria-label]").length;
 
 describe("hub-list: the sessions hub does its work once per change of its inputs", () => {
@@ -95,6 +102,7 @@ describe("hub-list: the sessions hub does its work once per change of its inputs
     const store = newStore();
     const { state } = bigState(store, 9090);
     render(hub(store, state));
+    await openAll();
     await settle(() => rowsDrawn() > 0);
     expect(rowsDrawn()).toBe(CAP);
     fireEvent.click(screen.getByRole("button", { name: /Mostrar mais/ }));
@@ -105,6 +113,7 @@ describe("hub-list: the sessions hub does its work once per change of its inputs
     const store = newStore();
     const { state } = bigState(store, 50);
     render(hub(store, state));
+    await openAll();
     await settle(() => rowsDrawn() > 0);
     expect(rowsDrawn()).toBe(50);
     expect(screen.queryByRole("button", { name: /Mostrar mais/ })).toBeNull();
@@ -116,7 +125,7 @@ describe("hub-list: the sessions hub does its work once per change of its inputs
       const { state } = bigState(store, n);
       const probe = renderProbe();
       render(probe.wrap(hub(store, state)));
-      await uiIdle();
+      await openAll();
       cleanup();
       return probe.stats.ms;
     };

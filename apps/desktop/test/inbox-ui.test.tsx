@@ -35,7 +35,7 @@ async function setup(entries: unknown[]) {
   const store = new AppStore(phone.platform, { baseDelayMs: 60_000 });
   stores.push(store);
   render(<App store={store} />);
-  await waitFor(() => expect(store.getState().inbox.length).toBe(entries.length));
+  await waitFor(() => expect(store.getState().inbox).toHaveLength(entries.length));
   return { store, phone };
 }
 
@@ -77,7 +77,7 @@ describe("inbox-ui", () => {
     expect(text).toContain("Hoje");
     expect(text.indexOf("Orçamento")).toBeLessThan(text.indexOf("Precisa de você"));
     expect(text.indexOf("Precisa de você")).toBeLessThan(text.indexOf("Sessão terminou"));
-    expect(within(panel).queryAllByRole("heading", { level: 3 }).length).toBe(2);
+    expect(within(panel).queryAllByRole("heading", { level: 3 })).toHaveLength(2);
   });
 
   test("a click on an entry marks it read and opens its screen", async () => {

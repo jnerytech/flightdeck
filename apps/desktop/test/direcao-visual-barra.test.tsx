@@ -297,7 +297,8 @@ describe("direcao-visual: lista e detalhe", () => {
 });
 
 describe("direcao-visual: Precisa de você", () => {
-  const rowName = "alfa · Gerenciada: Bash";
+  // The row is named by what it shows: host · session: tool and what it would do (issue #175).
+  const rowName = /^alfa · Gerenciada: Bash/;
 
   test("sem pedidos, o estado vazio tem um ícone grande, uma frase e uma ação", async () => {
     const { store } = await setup();

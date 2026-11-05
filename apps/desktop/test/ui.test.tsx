@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { unfoldAll } from "./unfold.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -215,6 +216,7 @@ describe("desktop: interface", () => {
     await sidebar.hostAction("Nova sessão", "meu pc");
     expect(screen.getByRole("button", { name: "Criar sessão" })).toBeTruthy();
     await sidebar.openHub();
+    await unfoldAll(act);
     fireEvent.click(screen.getByRole("button", { name: "minha sessão" }));
     expect(screen.getByRole("heading", { name: "minha sessão" })).toBeTruthy();
 

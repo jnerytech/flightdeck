@@ -6,7 +6,8 @@ import {
   type QueryFn,
   resolveClaudePath,
 } from "../src/runtime/claude-sdk-runtime.ts";
-import type { CanUseToolFn } from "../src/runtime/types.ts";
+import { describeCommands } from "../src/runtime/commands.ts";
+import type { CanUseToolFn, RuntimeEvent } from "../src/runtime/types.ts";
 
 // Synthetic SDK messages: only the fields the normalizer reads matter.
 const sdk = (msg: Record<string, unknown>) => msg as unknown as SDKMessage;
@@ -285,6 +286,32 @@ describe("ClaudeSdkRuntime", () => {
     expect(resolveClaudePath()).toBeUndefined();
   });
 
+  test("depois do session.init, as demais mensagens do SDK chegam como eventos, na ordem, e o stream termina", async () => {
+    const runtime = new ClaudeSdkRuntime({
+      query: () => ({
+        async *[Symbol.asyncIterator]() {
+          yield sdk({ type: "system", subtype: "init", session_id: "s9", model: "m", tools: [] });
+          yield sdk({
+            type: "assistant",
+            parent_tool_use_id: null,
+            message: { content: [{ type: "text", text: "feito" }] },
+          });
+        },
+        interrupt: async () => undefined,
+        close: () => {},
+      }),
+    });
+    const run = runtime.start({
+      cwd: "/p",
+      permissionMode: "default",
+      env: {},
+      canUseTool: async () => ({ behavior: "allow" }),
+    });
+    const types: string[] = [];
+    for await (const event of run.events) types.push(event.type);
+    expect(types).toEqual(["session.init", "message.assistant"]);
+  });
+
   test("falha do SDK propaga pelo stream de eventos; opções mínimas sem resume/model", async () => {
     let options: Options | undefined;
     const runtime = new ClaudeSdkRuntime({
@@ -384,5 +411,120 @@ describe("ClaudeSdkRuntime", () => {
     await run.toggleMcpServer?.("eco", false);
     expect(toggles).toEqual([["eco", false]]);
     await run.close();
+  });
+
+  test("the commands of the session carry a description and a kind: Claude Code's own, MCP prompts, the rest are skills", () => {
+    expect(
+      describeCommands([
+        {
+          name: "compact",
+          description: "Compact the conversation",
+          argumentHint: "",
+          builtin: true,
+        },
+        { name: "mcp__gh__issue", description: "Open an issue", argumentHint: "<title>" },
+        { name: "plug:brainstorm", description: "Explore an idea" },
+        { name: "deploy", description: "Deploy the app", argumentHint: "<env>" },
+      ]),
+    ).toEqual([
+      { name: "compact", description: "Compact the conversation", kind: "builtin" },
+      {
+        name: "mcp__gh__issue",
+        description: "Open an issue",
+        argumentHint: "<title>",
+        kind: "mcp",
+      },
+      { name: "plug:brainstorm", description: "Explore an idea", kind: "skill" },
+      { name: "deploy", description: "Deploy the app", argumentHint: "<env>", kind: "skill" },
+    ]);
+  });
+
+  describe("session.init and supportedCommands", () => {
+    const first = async (handle: Parameters<typeof makeQuery>[0]) => {
+      const runtime = new ClaudeSdkRuntime({ query: makeQuery(handle), claudePath: "/bin/claude" });
+      const run = runtime.start({
+        cwd: "/proj",
+        permissionMode: "default",
+        env: {},
+        canUseTool: async () => ({ behavior: "allow" }),
+      });
+      const event = (await run.events[Symbol.asyncIterator]().next()).value as RuntimeEvent;
+      await run.close?.();
+      return event;
+    };
+    const makeQuery =
+      (extra: Record<string, unknown>): QueryFn =>
+      () => {
+        let finish: () => void = () => {};
+        const done = new Promise<void>((resolve) => {
+          finish = resolve;
+        });
+        return {
+          async *[Symbol.asyncIterator]() {
+            yield sdk({
+              type: "system",
+              subtype: "init",
+              session_id: "s1",
+              model: "m",
+              tools: [],
+              slash_commands: ["compact", "deploy"],
+            });
+            await done;
+          },
+          interrupt: async () => {},
+          close: () => finish(),
+          ...extra,
+        } as ReturnType<QueryFn>;
+      };
+
+    test("the init event carries the commands the SDK describes, next to the names", async () => {
+      const event = await first({
+        supportedCommands: async () => [
+          { name: "compact", description: "Compact", argumentHint: "", builtin: true },
+          { name: "deploy", description: "Deploy", argumentHint: "" },
+        ],
+      });
+      expect(event).toMatchObject({
+        type: "session.init",
+        slashCommands: ["compact", "deploy"],
+        commands: [
+          { name: "compact", description: "Compact", kind: "builtin" },
+          { name: "deploy", description: "Deploy", kind: "skill" },
+        ],
+      });
+    });
+
+    test("a supportedCommands that never answers does not freeze the session: the init comes with the names, after the timeout (review of rc/0364, M2)", async () => {
+      const runtime = new ClaudeSdkRuntime({
+        query: makeQuery({ supportedCommands: () => new Promise(() => {}) }),
+        claudePath: "/bin/claude",
+        commandsTimeoutMs: 30,
+      });
+      const run = runtime.start({
+        cwd: "/proj",
+        permissionMode: "default",
+        env: {},
+        canUseTool: async () => ({ behavior: "allow" }),
+      });
+      const next = run.events[Symbol.asyncIterator]().next();
+      const got = await Promise.race([next, Bun.sleep(1500).then(() => "stalled" as const)]);
+      await run.close?.();
+      expect(got).not.toBe("stalled");
+      const event = (got as IteratorResult<RuntimeEvent>).value as RuntimeEvent;
+      expect(event).toMatchObject({ type: "session.init", slashCommands: ["compact", "deploy"] });
+      expect((event as { commands?: unknown }).commands).toBeUndefined();
+    });
+
+    test("when the SDK cannot say, or has no such call, the init keeps the names only", async () => {
+      const failing = await first({
+        supportedCommands: async () => {
+          throw new Error("no");
+        },
+      });
+      expect(failing).toMatchObject({ type: "session.init", slashCommands: ["compact", "deploy"] });
+      expect((failing as { commands?: unknown }).commands).toBeUndefined();
+      const without = await first({});
+      expect((without as { commands?: unknown }).commands).toBeUndefined();
+    });
   });
 });

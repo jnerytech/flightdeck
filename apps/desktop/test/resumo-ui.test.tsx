@@ -10,6 +10,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { RecapPanel } = await import("../src/ui/RecapPanel.tsx");
+const { SessionPane } = await import("../src/components/session/parts.tsx");
 const { ExternalView } = await import("../src/ui/ExternalView.tsx");
 const { App } = await import("../src/ui/App.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
@@ -214,6 +215,11 @@ describe("resumo-ui", () => {
           "O resumo aparece depois do primeiro turno da sessão e se atualiza sozinho.",
         ) !== null,
     );
+    expect(
+      screen.queryByText(
+        "O resumo aparece depois do primeiro turno da sessão e se atualiza sozinho.",
+      ),
+    ).not.toBeNull();
   });
 
   test("it asks again until the host has indexed the transcript, then shows the summary", async () => {
@@ -239,12 +245,14 @@ describe("resumo-ui", () => {
       )
       .run(later, file);
     await settle(() => screen.queryByText("Late prompt") !== null);
+    expect(screen.queryByText("Late prompt")).not.toBeNull();
   });
 
   test("a host without the feature shows nothing at all", async () => {
     const { store } = await online("en", { legacy: true });
     await show(store);
     await stays(() => screen.queryByRole("region") === null, 100);
+    expect(screen.queryByRole("region")).toBeNull();
   });
 
   test("a session that changed no file has no files row", async () => {
@@ -290,6 +298,7 @@ describe("resumo-ui", () => {
     });
     await settle(() => screen.queryByRole("region", { name: "Session summary" }) !== null);
     await settle(() => screen.queryByText("Managed prompt") !== null);
+    expect(screen.queryByText("Managed prompt")).not.toBeNull();
   });
 
   test("a terminal session with no name and no folder yet is titled New session, never its id", async () => {
@@ -313,5 +322,44 @@ describe("resumo-ui", () => {
       expect(heading.textContent).toBe("New session");
     }
     expect(document.body.textContent).not.toContain(raw);
+  });
+});
+
+// Issue #232: the summary opened in full the first time a session was seen, and in a short window
+// it took the room of the conversation. In a short area it starts folded; a click still opens it.
+describe("resumo-ui: the summary in a short area", () => {
+  const real = globalThis.ResizeObserver;
+  afterEach(() => {
+    globalThis.ResizeObserver = real;
+  });
+
+  test("a session seen for the first time in an area under 600 px high shows its summary folded", async () => {
+    const { store } = await online("en");
+    const hostId = store.getState().hosts[0]?.id as string;
+    const recap = await store.sessionRecap(hostId, SESSION, {});
+    store.sessionRecap = (async () => recap) as typeof store.sessionRecap;
+    globalThis.ResizeObserver = class {
+      constructor(private readonly callback: (entries: unknown[]) => void) {}
+      observe() {
+        this.callback([{ contentRect: { width: 664, height: 480 } }]);
+      }
+      disconnect() {}
+      unobserve() {}
+    } as unknown as typeof ResizeObserver;
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <SessionPane>
+          <RecapPanel store={store} hostId={hostId} claudeSessionId="never-seen-short-area" />
+        </SessionPane>
+      </TContext.Provider>,
+    );
+    await settle(() => screen.queryByRole("region", { name: "Session summary" }) !== null);
+    const toggle = () => screen.getByRole("button", { name: "Session summary" });
+    expect(toggle().getAttribute("aria-expanded")).toBe("false");
+    // Folded in a short area it is one thin line: about 38 px, not the 58 of a padded card.
+    const region = screen.getByRole("region", { name: "Session summary" });
+    expect(region.className.split(" ")).toContain("py-0.5");
+    await expand();
+    expect(toggle().getAttribute("aria-expanded")).toBe("true");
   });
 });

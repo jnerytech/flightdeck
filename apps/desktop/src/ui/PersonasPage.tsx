@@ -1,5 +1,5 @@
 import { Drama } from "lucide-react";
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Field, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
@@ -37,6 +37,29 @@ export const PersonasPage = memo(function PersonasPage(props: { store: AppStore 
   const [publishing, setPublishing] = useState<AppPersona | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [editing, setEditing] = useState<AppPersona | "new" | null>(null);
+  const list = useRef<HTMLUListElement>(null);
+  /** Where the person was when the editor opened: the scroll, and whose Edit button to come back to. */
+  const opener = useRef<{ id: string; top: number } | null>(null);
+  const keyOf = (p: AppPersona | "new") => (p === "new" ? "new" : `${p.scope}:${p.id}`);
+  const scroller = () =>
+    list.current?.closest<HTMLElement>("[data-slot='scroll-area-viewport']") ?? null;
+  const openEditor = (p: AppPersona | "new") => {
+    opener.current = { id: p === "new" ? "new" : p.id, top: scroller()?.scrollTop ?? 0 };
+    setEditing(p);
+  };
+  // Closing the editor (Cancel or Save) puts the scroll back and the focus on the Edit button. A
+  // saved pack persona changes scope, so its card is a new one: the button is looked for again
+  // each time the list changes, by the persona's id.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `personas` is how a saved list asks to be looked at again
+  useLayoutEffect(() => {
+    if (editing !== null || !opener.current) return;
+    const button = document.querySelector<HTMLElement>(`[data-edit="${opener.current.id}"]`);
+    if (!button) return;
+    const box = scroller();
+    if (box) box.scrollTop = opener.current.top;
+    opener.current = null;
+    button.focus();
+  }, [editing, personas]);
 
   useEffect(() => {
     if (hostId) void store.loadProjects(hostId);
@@ -104,17 +127,19 @@ export const PersonasPage = memo(function PersonasPage(props: { store: AppStore 
       actions={
         hostId &&
         editing === null && (
-          <Button onClick={() => setEditing("new")}>{t("personas.newPersona")}</Button>
+          <Button data-edit="new" onClick={() => openEditor("new")}>
+            {t("personas.newPersona")}
+          </Button>
         )
       }
     >
-      {hostId && editing !== null && (
+      {hostId && editing === "new" && (
         <PersonaEditor
-          key={editing === "new" ? "new" : `${editing.scope}:${editing.id}`}
+          key="new"
           store={store}
           hostId={hostId}
           project={project === APP ? "" : project}
-          persona={editing === "new" ? null : editing}
+          persona={null}
           onSaved={() => {
             setEditing(null);
             void reload();
@@ -145,73 +170,91 @@ export const PersonasPage = memo(function PersonasPage(props: { store: AppStore 
       {personas.length === 0 ? (
         <EmptyState icon={Drama} title={t("personas.empty")} />
       ) : (
-        <ul aria-label={t("personas.list")} className="flex flex-col gap-2">
+        <ul ref={list} aria-label={t("personas.list")} className="flex flex-col gap-2">
           {personas.map((p) => (
             <li key={`${p.scope}:${p.id}`} className="flex flex-col gap-2 rounded-lg border p-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span data-name className="font-medium">
-                  {p.name}
-                </span>
-                <span className="rounded bg-muted px-1.5 text-xs">
-                  {t(`personas.origin.${originKey(p)}`)}
-                </span>
-                {!p.trusted && (
-                  <span className="rounded bg-destructive/10 px-1.5 text-destructive text-xs">
-                    {t("personas.untrusted")}
-                  </span>
-                )}
-              </div>
-              <p className="text-muted-foreground text-sm">{p.description}</p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={t("personas.editFor", { name: p.name })}
-                  onClick={() => setEditing(p)}
-                >
-                  {t("personas.edit")}
-                </Button>
-                {!p.trusted && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    aria-label={t("personas.trustFor", { name: p.name })}
-                    onClick={() => void trust(p)}
-                  >
-                    {t("personas.trust")}
-                  </Button>
-                )}
-                {p.modified && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    aria-label={t("personas.resetFor", { name: p.name })}
-                    onClick={() => setResetting(p)}
-                  >
-                    {t("personas.reset")}
-                  </Button>
-                )}
-                {project && project !== APP && p.scope !== "app" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    aria-label={t("personas.publishFor", { name: p.name })}
-                    onClick={() => setPublishing(p)}
-                  >
-                    {t("personas.publishLabel")}
-                  </Button>
-                )}
-                {p.scope !== "pack" && !p.modified && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    aria-label={t("personas.removeFor", { name: p.name })}
-                    onClick={() => setRemoving(p)}
-                  >
-                    {t("personas.remove")}
-                  </Button>
-                )}
-              </div>
+              {hostId && editing !== null && editing !== "new" && keyOf(editing) === keyOf(p) ? (
+                <PersonaEditor
+                  store={store}
+                  hostId={hostId}
+                  project={project === APP ? "" : project}
+                  persona={p}
+                  inPlace
+                  onSaved={() => {
+                    setEditing(null);
+                    void reload();
+                  }}
+                  onClose={() => setEditing(null)}
+                />
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span data-name className="font-medium">
+                      {p.name}
+                    </span>
+                    <span className="rounded bg-muted px-1.5 text-xs">
+                      {t(`personas.origin.${originKey(p)}`)}
+                    </span>
+                    {!p.trusted && (
+                      <span className="rounded bg-destructive/10 px-1.5 text-destructive text-xs">
+                        {t("personas.untrusted")}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-muted-foreground text-sm">{p.description}</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      aria-label={t("personas.editFor", { name: p.name })}
+                      data-edit={p.id}
+                      onClick={() => openEditor(p)}
+                    >
+                      {t("personas.edit")}
+                    </Button>
+                    {!p.trusted && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        aria-label={t("personas.trustFor", { name: p.name })}
+                        onClick={() => void trust(p)}
+                      >
+                        {t("personas.trust")}
+                      </Button>
+                    )}
+                    {p.modified && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        aria-label={t("personas.resetFor", { name: p.name })}
+                        onClick={() => setResetting(p)}
+                      >
+                        {t("personas.reset")}
+                      </Button>
+                    )}
+                    {project && project !== APP && p.scope !== "app" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        aria-label={t("personas.publishFor", { name: p.name })}
+                        onClick={() => setPublishing(p)}
+                      >
+                        {t("personas.publishLabel")}
+                      </Button>
+                    )}
+                    {p.scope !== "pack" && !p.modified && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        aria-label={t("personas.removeFor", { name: p.name })}
+                        onClick={() => setRemoving(p)}
+                      >
+                        {t("personas.remove")}
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
             </li>
           ))}
         </ul>

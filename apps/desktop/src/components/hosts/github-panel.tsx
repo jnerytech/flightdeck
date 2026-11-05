@@ -62,7 +62,13 @@ export function GithubPanel(props: { store: AppStore; host: HostView }) {
             {t("github.notInstalled")}
           </p>
           <div>
-            <ActionButton variant="outline" size="sm" onClick={async () => void (await refresh())}>
+            <ActionButton
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                await refresh();
+              }}
+            >
               {t("github.recheck")}
             </ActionButton>
           </div>

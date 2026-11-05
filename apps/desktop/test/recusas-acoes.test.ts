@@ -10,7 +10,7 @@ const ptT = translator("pt-BR");
 
 describe("recusas-acoes: what is wrong in an action, said in the app's language", () => {
   test("every kind of issue has a text in both languages", () => {
-    expect(ACTION_ISSUE_CODES.length).toBe(25);
+    expect(ACTION_ISSUE_CODES).toHaveLength(25);
     for (const code of ACTION_ISSUE_CODES) {
       expect(typeof (en.actionIssue as Record<string, string>)[code]).toBe("string");
       expect(typeof (ptBR.actionIssue as Record<string, string>)[code]).toBe("string");

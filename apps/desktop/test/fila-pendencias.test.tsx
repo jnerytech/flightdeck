@@ -105,11 +105,9 @@ describe("fila-pendencias", () => {
   test("clicar no pedido da fila abre a sessão no card de aprovação", async () => {
     const { store, first, hostA } = await fleet();
     render(<App store={store} />);
-    await rtlWaitFor(() =>
-      expect(screen.queryByRole("button", { name: /^Precisa de você ?2$/ })).not.toBeNull(),
-    );
+    await settle(() => screen.queryByRole("button", { name: /^Precisa de você ?2$/ }) !== null);
     // The click shows the card in the queue; "Abrir sessão" opens the session.
-    await sidebar.queueItem("pc · s-a: Write");
+    await sidebar.queueItem(/^pc · s-a: Write/);
     const open = screen.queryByRole("button", { name: "Abrir sessão" });
     expect(open).not.toBeNull();
     await act(async () => {
@@ -128,11 +126,9 @@ describe("fila-pendencias", () => {
   test("permitir e negar direto na fila respondem no host de cada pedido", async () => {
     const { store, a, b, first, second, win } = await fleet();
     render(<App store={store} />);
-    await rtlWaitFor(() =>
-      expect(screen.queryByRole("button", { name: /^Precisa de você ?2$/ })).not.toBeNull(),
-    );
+    await settle(() => screen.queryByRole("button", { name: /^Precisa de você ?2$/ }) !== null);
     // Each request shows its card in the queue, where it is answered.
-    const inQueue = async (label: string, ...buttons: string[]) => {
+    const inQueue = async (label: string | RegExp, ...buttons: string[]) => {
       await sidebar.queueItem(label);
       const card = screen.queryByRole("group", { name: /^Pedido de/ }) as HTMLElement;
       expect(card).not.toBeNull();
@@ -144,11 +140,11 @@ describe("fila-pendencias", () => {
         });
       }
     };
-    await inQueue("pi · s-b: Write", "Aprovar");
+    await inQueue(/^pi · s-b: Write/, "Aprovar");
     await settle(() => b.manager.get(second.sessionId).status === "idle");
     expect(b.manager.get(second.sessionId).status).toBe("idle");
     expect(a.manager.get(first.sessionId).status).toBe("awaiting_permission");
-    await inQueue("pc · s-a: Write", "Negar", "Negar");
+    await inQueue(/^pc · s-a: Write/, "Negar", "Negar");
     await settle(() => needsYou(store.getState()).length === 0);
     expect(needsYou(store.getState())).toEqual([]);
     expect(win.document.title).toBe("Flightdeck");

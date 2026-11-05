@@ -189,7 +189,7 @@ describe("linha-do-tempo-ui", () => {
     const said = screen
       .queryAllByRole("status")
       .filter((el) => el.textContent?.includes("Volta desfeita."));
-    expect(said.length).toBe(1);
+    expect(said).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "Desfazer volta" })).toBeNull();
   });
 

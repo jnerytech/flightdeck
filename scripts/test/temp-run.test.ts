@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readdirSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { realTempDir } from "./temp-dir.ts";
 import { installTempRun, removeTempRun } from "./temp-run.ts";
@@ -24,6 +24,30 @@ describe("temp-run: each test run has a temp folder of its own, removed at the e
     expect(removeTempRun(run)).toBe(true);
     expect(readdirSync(base)).toEqual([]);
   });
+
+  test.skipIf(process.platform === "win32")(
+    "removing it never changes what a link inside points at: the link goes, the file outside keeps its mode (#232)",
+    () => {
+      // The PATH guard links every program of ~/.local/bin into the run's folder; a chmod that
+      // followed those links left the user's programs at 0666, not executable.
+      const outside = realTempDir("fd-temp-run-outside-");
+      const program = join(outside, "tool");
+      writeFileSync(program, "#!/bin/sh\n");
+      chmodSync(program, 0o755);
+      const base = realTempDir("fd-temp-run-base-");
+      const run = installTempRun({}, base);
+      mkdirSync(join(run.dir, "fd-path-guard-x"));
+      symlinkSync(program, join(run.dir, "fd-path-guard-x", "tool"));
+      symlinkSync(outside, join(run.dir, "linked-folder"));
+      const folderMode = statSync(outside).mode & 0o777;
+      expect(removeTempRun(run)).toBe(true);
+      expect(readdirSync(base)).toEqual([]);
+      // The folder first: a folder that lost its x bit hides what it holds.
+      expect(statSync(outside).mode & 0o777).toBe(folderMode);
+      expect(statSync(program).mode & 0o777).toBe(0o755);
+      expect(readdirSync(outside)).toEqual(["tool"]);
+    },
+  );
 
   test("a run sweeps the folders of earlier runs whose process is gone, and only those", () => {
     const base = realTempDir("fd-temp-run-base-");
@@ -86,5 +110,27 @@ describe("temp-run: each test run has a temp folder of its own, removed at the e
     // The pid file stays until the end, so the sweep still knows the folder is dead and takes it.
     installTempRun({}, base, () => false);
     expect(readdirSync(base).filter((name) => run.dir.endsWith(name))).toEqual([]);
+  });
+
+  test("the sweep never throws: a pid file it cannot read is skipped and the run goes on", () => {
+    const base = realTempDir("fd-temp-run-base-");
+    // A directory where the pid file should be: reading it fails (on Windows, a file held by a
+    // process that has just swept the same folder does the same).
+    mkdirSync(join(base, "fd-run-odd", "pid"), { recursive: true });
+    const run = installTempRun({}, base, () => false);
+    expect(run.dir.startsWith(join(base, "fd-run-"))).toBe(true);
+    expect(readdirSync(base)).toContain("fd-run-odd");
+  });
+
+  test("one process start sweeps at most one dead folder, so a crowd of starting processes does not pile up its budget", () => {
+    const base = realTempDir("fd-temp-run-base-");
+    for (const name of ["fd-run-dead-a", "fd-run-dead-b", "fd-run-dead-c"]) {
+      mkdirSync(join(base, name));
+      writeFileSync(join(base, name, "pid"), "999999");
+    }
+    const run = installTempRun({}, base, () => false);
+    const left = readdirSync(base).filter((name) => name.startsWith("fd-run-dead-"));
+    expect(left).toHaveLength(2);
+    expect(run.dir.startsWith(join(base, "fd-run-"))).toBe(true);
   });
 });
