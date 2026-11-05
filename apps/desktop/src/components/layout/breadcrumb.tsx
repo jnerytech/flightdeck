@@ -38,30 +38,36 @@ export function Breadcrumb(props: {
               {i > 0 && (
                 <>
                   {folded && i === 1 && (
-                    <li className="shrink-0">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            aria-label={props.moreLabel}
-                            title={props.moreLabel}
-                            className="inline-flex min-h-6 items-center rounded-sm px-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          >
-                            <Ellipsis aria-hidden="true" className="size-4" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                          {hidden.map((step) => (
-                            <DropdownMenuItem
-                              key={step.label}
-                              onSelect={() => step.route && props.onGo(step.route)}
+                    <>
+                      <ChevronRight
+                        aria-hidden="true"
+                        className="size-3.5 shrink-0 text-muted-foreground"
+                      />
+                      <li className="shrink-0">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              aria-label={props.moreLabel}
+                              title={props.moreLabel}
+                              className="inline-flex min-h-6 items-center rounded-sm px-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
-                              {step.label}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </li>
+                              <Ellipsis aria-hidden="true" className="size-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            {hidden.map((step) => (
+                              <DropdownMenuItem
+                                key={step.label}
+                                onSelect={() => step.route && props.onGo(step.route)}
+                              >
+                                {step.label}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </li>
+                    </>
                   )}
                   <ChevronRight
                     aria-hidden="true"
@@ -69,8 +75,8 @@ export function Breadcrumb(props: {
                   />
                 </>
               )}
-              {/* The earlier steps give way first (a factor 100 times larger), down to 4rem; then the current one. Factors under 1 in total would shrink only that share of the overflow. */}
-              <li className={isLast ? "min-w-0 shrink" : "min-w-[4rem] shrink-[100]"}>
+              {/* The earlier steps give way first (a factor 100 times larger), down to 2rem; then the current one, which keeps 4rem. Factors under 1 in total would shrink only that share of the overflow. */}
+              <li className={isLast ? "min-w-[4rem] shrink" : "min-w-[2rem] shrink-[100]"}>
                 {crumb.route ? (
                   <button
                     type="button"
