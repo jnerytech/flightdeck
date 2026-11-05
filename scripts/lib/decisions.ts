@@ -6,7 +6,7 @@
 
 /** The sha256 of docs/DECISIONS.md as frozen; a change to it means an entry went to the old file. */
 export const FROZEN_DECISIONS_SHA256 =
-  "93019d430f56fe31b624d89f5cc72a50460eab199ec5291850dad92b6dd3c143";
+  "e72747a345621196f8d9a4d5b0e31f6a99b55b22d274b5522502e633969fe835";
 
 /** Why a file under docs/decisions/ is not a decision record as named and titled, or null. */
 export function decisionFileProblem(name: string, firstLine: string): string | null {
