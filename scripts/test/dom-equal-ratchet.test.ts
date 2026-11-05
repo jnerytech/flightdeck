@@ -30,7 +30,8 @@ describe("dom-equal-ratchet: no DOM element inside a deep equality", () => {
     ).toBe(false);
     expect(holdsElement('el.closest("label")?.getAttribute("title")')).toBe(false);
     expect(holdsElement("document.activeElement?.id")).toBe(false);
-    expect(holdsElement('[name, "getByRole(", `${x}`]')).toBe(false);
+    // A query's name inside a string is text, not a call.
+    expect(holdsElement('[name, "getByRole(", `getByText(`]')).toBe(false);
     expect(holdsElement("rows.length")).toBe(false);
   });
 
