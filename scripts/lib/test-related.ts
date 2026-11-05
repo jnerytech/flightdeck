@@ -143,12 +143,15 @@ export function selectByPath(changed: string[], sources: Map<string, string>): R
   const tests = [...sources].filter(([path]) => TEST_FILE.test(path));
   const found = new Map<string, string>();
   for (const path of changed) {
-    // The file itself, then each folder up to the root's first level, most specific first.
+    // The path itself, then its folders, most specific first. A name with no slash (a root file,
+    // a top-level folder) is a word in a test, not a path; a baseline also counts by its own name.
     const names = [path];
+    if (path.endsWith("-baseline.json")) names.push(posix.basename(path));
     for (let dir = posix.dirname(path); dir !== "."; dir = posix.dirname(dir)) names.push(dir);
+    const paths = names.filter((n) => n.includes("/") || n.endsWith("-baseline.json"));
     for (const [test, source] of tests) {
       if (found.has(test)) continue;
-      const name = names.find((n) => new RegExp(`["'\`]${escapeRegExp(n)}["'\`]`).test(source));
+      const name = paths.find((n) => new RegExp(`["'\`]${escapeRegExp(n)}["'\`]`).test(source));
       if (name) found.set(test, `names ${name}`);
     }
   }
