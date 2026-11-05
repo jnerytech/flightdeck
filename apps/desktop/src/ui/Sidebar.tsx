@@ -5,6 +5,8 @@ import {
   ChevronRight,
   CircleAlert,
   CircleX,
+  ExternalLink,
+  EyeOff,
   Lock,
   type LucideProps,
   MoreHorizontal,
@@ -15,12 +17,13 @@ import {
   SunMoon,
   TriangleAlert,
 } from "lucide-react";
-import { Children, type ReactNode, useId, useState } from "react";
+import { Children, type ReactNode, useId, useMemo, useState, useSyncExternalStore } from "react";
 import { ClientSwitcher } from "@/components/clients/client-switcher";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
 import { AccountFooter } from "@/components/shell/account-footer";
 import { ShortcutKeys } from "@/components/shortcuts/keycap";
+import { ProgressRing } from "@/components/status/progress-ring";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,6 +46,7 @@ import { hubRows } from "../lib/hub.ts";
 import { activeNav } from "../lib/nav-active.ts";
 import { type NavBadgeKey, navBadge } from "../lib/nav-badges.ts";
 import type { Route } from "../lib/router.ts";
+import { setupProgress, setupSteps } from "../lib/setup-steps.ts";
 import type { SidebarGroup } from "../lib/sidebar-groups.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { watchAlerts } from "../lib/watch-alerts.ts";
@@ -278,6 +282,40 @@ export function Sidebar(
   // Who is signed in to GitHub is asked when the account menu opens, not on every render.
   const [githubHosts, setGithubHosts] = useState<GithubHost[]>([]);
   const [signingOut, setSigningOut] = useState<GithubHost | null>(null);
+  // The setup checklist: from the real state; it leaves when done or hidden.
+  const setupHidden = useSyncExternalStore(
+    props.store.setup.subscribe,
+    () => props.store.setup.hidden,
+  );
+  const setupNotified = useSyncExternalStore(
+    props.store.setup.subscribe,
+    () => props.store.setup.notified,
+  );
+  const setup = useMemo(
+    () =>
+      setupSteps({
+        hosts: state.hosts,
+        projects: state.projects,
+        cards: state.cards,
+        hub: state.hub,
+        budgets: state.budgets,
+        externals: state.externals,
+        probes: state.setupProbes,
+        notified: setupNotified,
+      }),
+    [
+      state.hosts,
+      state.projects,
+      state.cards,
+      state.hub,
+      state.budgets,
+      state.externals,
+      state.setupProbes,
+      setupNotified,
+    ],
+  );
+  const progress = setupProgress(setup);
+  const showSetup = !setupHidden && !progress.complete;
   const [pinnedOpen, setPinnedOpen] = useState(true);
   const [folded, setFolded] = useState<SidebarGroup[]>(() => props.store.sidebarFolded());
   const toggle = (group: SidebarGroup) => {
@@ -450,6 +488,34 @@ export function Sidebar(
           folded={folded.includes("work")}
           onToggle={() => toggle("work")}
         >
+          {showSetup && (
+            <div className="group/setup flex items-center">
+              <NavButton
+                collapsed={collapsed}
+                icon={<ProgressRing done={progress.done} total={progress.total} />}
+                active={here === "setup"}
+                label={t("setup.title")}
+                name={t("setup.row", { done: progress.done, total: progress.total })}
+                tail={
+                  <span className="shrink-0 text-sidebar-foreground/70 text-xs tabular-nums">
+                    {t("setup.count", { done: progress.done, total: progress.total })}
+                  </span>
+                }
+                onClick={() => go({ name: "setup" })}
+              />
+              {!collapsed && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6 shrink-0 opacity-0 focus-visible:opacity-100 group-hover/setup:opacity-100"
+                  aria-label={t("setup.hide")}
+                  onClick={() => props.store.setup.setHidden(true)}
+                >
+                  <EyeOff aria-hidden="true" />
+                </Button>
+              )}
+            </div>
+          )}
           <NavButton
             collapsed={collapsed}
             icon={<NavIcon name="overview" aria-hidden="true" className={icon} />}
