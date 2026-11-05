@@ -5,10 +5,11 @@ import type { ServerOptions } from "../src/server.ts";
 
 /**
  * The feature each gated option names when it is off, as the accessors of `startServer` threw it
- * before the split (issue #248). The app translates these names, so none may change; four differ
- * from their option.
+ * before the split (issue #248). The app translates these names, so none may change; seven differ
+ * from their option. `findProjects` names its command (`projects.scan`, `projects.clone`), so it
+ * stays a check of its own in those two handlers.
  */
-const BEFORE_THE_SPLIT: Record<GatedOption, string> = {
+const BEFORE_THE_SPLIT: Record<string, string> = {
   account: "account",
   actions: "actions",
   agentcfg: "agentcfg",
@@ -59,6 +60,16 @@ const BEFORE_THE_SPLIT: Record<GatedOption, string> = {
   vault: "vault",
   watch: "prWatch",
   webhook: "webhook",
+  // The gates written inline in a case before the split, each with a single name.
+  bypass: "bypass",
+  doctor: "doctor.run",
+  forker: "forker",
+  snapshots: "snapshots",
+  tasks: "tasks",
+  templates: "templates",
+  ui: "ui.mode",
+  updater: "updater",
+  updates: "updater",
 };
 
 /** What `need` answers for an option: the service, or the refusal's reason and feature. */
