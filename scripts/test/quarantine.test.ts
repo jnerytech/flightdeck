@@ -8,6 +8,7 @@ import {
   onlyArgs,
   onlyPattern,
   type QuarantineEntry,
+  shardArgs,
 } from "../lib/quarantine.ts";
 import { realTempDir } from "./temp-dir.ts";
 
@@ -110,4 +111,21 @@ describe("quarantine: the required jobs leave out the listed tests and a non-blo
     expect(only.log).toContain(" 1 fail");
     expect(only.code).not.toBe(0);
   }, 60_000);
+
+  test("a Windows shard runs with the area config, the timeout and its number, then leaves the listed tests out", () => {
+    expect(shardArgs("win32", 2, [])).toEqual([
+      "--config=bunfig.area.toml",
+      "test",
+      "--timeout=15000",
+      "--shard=2/3",
+    ]);
+    const entries = [entry("one")];
+    expect(shardArgs("win32", 1, entries)).toEqual([
+      "--config=bunfig.area.toml",
+      "test",
+      "--timeout=15000",
+      "--shard=1/3",
+      ...excludeArgs(entries),
+    ]);
+  });
 });

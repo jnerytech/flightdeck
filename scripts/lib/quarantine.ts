@@ -45,3 +45,12 @@ export function excludeArgs(_entries: readonly QuarantineEntry[]): string[] {
 export function onlyArgs(_entries: readonly QuarantineEntry[]): string[] {
   return [];
 }
+
+/** The `bun` arguments of one Windows shard: the area config, the timeout, the shard, the left-out tests. */
+export function shardArgs(
+  _platform: NodeJS.Platform,
+  _shard: number,
+  _entries: readonly QuarantineEntry[],
+): string[] {
+  return [];
+}

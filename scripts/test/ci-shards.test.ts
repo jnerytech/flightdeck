@@ -46,10 +46,24 @@ describe("ci-shards", () => {
     const shard = job("test-windows-shard");
     expect(shard["runs-on"]).toBe("windows-latest");
     expect(shard.strategy?.matrix?.shard).toEqual([1, 2, 3]);
+    // The script builds `bun --config=bunfig.area.toml test --timeout=15000 --shard=N/3` and leaves
+    // the quarantined tests out (scripts/lib/quarantine.ts, tested there).
     expect(runs("test-windows-shard")).toContain(
-      "bun --config=bunfig.area.toml test --timeout=15000 --shard=${{ matrix.shard }}/3",
+      "bun run scripts/run-shard.ts ${{ matrix.shard }}",
     );
     expect(runs("test-windows-shard")).not.toContain("bun run test");
+  });
+
+  test("the quarantine job runs the listed tests on both systems and never blocks a merge (issue #288)", () => {
+    const quarantine = job("quarantine") as Job & { "continue-on-error"?: boolean };
+    expect(quarantine["continue-on-error"]).toBe(true);
+    expect(quarantine.strategy?.matrix?.os).toEqual(["ubuntu-latest", "windows-latest"]);
+    expect(runs("quarantine")).toContain("bun run scripts/run-quarantine.ts");
+    expect(quarantine.name).toStartWith("quarantine (${{ matrix.os }}, non-blocking)");
+    // No aggregate waits for it, so no required check can.
+    for (const key of ["test", "test-windows", "screenshots"]) {
+      expect(job(key).needs ?? []).not.toContain("quarantine");
+    }
   });
 
   test("the area config the shards run with skips the same paths as the full suite's (the mods run under claude plugin test)", () => {
