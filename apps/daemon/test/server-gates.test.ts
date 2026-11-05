@@ -85,7 +85,7 @@ function outcome(opts: ServerOptions, key: GatedOption): unknown {
 
 describe("server-gates", () => {
   test("every gated option names the same feature as before the split", () => {
-    expect({ ...GATES }).toEqual(BEFORE_THE_SPLIT);
+    expect({ ...GATES } as Record<string, string>).toEqual(BEFORE_THE_SPLIT);
   });
 
   test("an option the host does not run is refused as feature_off with its feature; one it runs is returned", () => {
