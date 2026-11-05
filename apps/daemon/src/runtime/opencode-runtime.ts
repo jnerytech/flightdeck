@@ -4,10 +4,11 @@
  * model and effort, close and kill); the run owns the turns, the events and the idle reaper.
  */
 import { readFile, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import type { SessionImage } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { FlightdeckError } from "../errors.ts";
+import { isInside } from "../paths.ts";
 import {
   ACP_CLOSED,
   AcpClient,
@@ -24,6 +25,7 @@ import {
   type AcpUpdate,
   OpenCodeEvents,
 } from "./opencode-events.ts";
+import { maskResource } from "./opencode-preflight.ts";
 import type { ScopeResult } from "./opencode-scope.ts";
 import type { AgentRun, AgentRuntime, RuntimeEvent, StartOptions } from "./types.ts";
 
@@ -254,6 +256,13 @@ class OpenCodeRun implements AgentRun {
   private idle: unknown = null;
   private escalation: unknown = null;
   private turnActive = false;
+  private interrupted = false;
+  /** Tool calls that asked a person (or the bypass), for the tripwire. */
+  private readonly requested = new Set<string>();
+  /** The cards shown, by call id: the tripwire names the tool. */
+  private readonly tools = new Map<string, { name: string; input: unknown }>();
+  /** The global scope as it was at connect (ADR 39-3). */
+  private fingerprint = "";
   /** Whether the first prompt (and its AGENTS.md) went out. */
   private contextSent = false;
   private escalated = false;
@@ -287,6 +296,7 @@ class OpenCodeRun implements AgentRun {
   }
 
   async interrupt(): Promise<void> {
+    this.interrupted = true;
     for (const controller of this.asking.values()) controller.abort();
     const conn = this.conn;
     if (!this.turnActive || !conn) return;
@@ -324,6 +334,7 @@ class OpenCodeRun implements AgentRun {
 
   private async connect(): Promise<void> {
     const { configContent } = await this.runtime.preflight.check(this.opts.cwd);
+    this.fingerprint = (await this.runtime.scan()).fingerprint;
     const mcp = this.runtime.mcpServer;
     const session = this.opts.env.FLIGHTDECK_SESSION;
     const conn: Connection = new Connection({
@@ -342,7 +353,7 @@ class OpenCodeRun implements AgentRun {
         : [],
       timers: this.timers,
       onUpdate: (params) => {
-        if (params.update) this.push(this.normalizer.update(params.update));
+        if (params.update) this.onUpdate(params.update);
       },
       onPermission: (params) => this.permission(params.toolCall),
       onExit: (code) => {
@@ -383,6 +394,7 @@ class OpenCodeRun implements AgentRun {
     const started = performance.now();
     const elapsed = () => Math.round(performance.now() - started);
     this.turnActive = true;
+    this.interrupted = false;
     this.escalated = false;
     try {
       const result = await conn.prompt(blocks);
@@ -415,6 +427,7 @@ class OpenCodeRun implements AgentRun {
   private async permission(toolCall: AcpToolCall): Promise<unknown> {
     const { events, child, tool } = this.normalizer.permissionRequest(toolCall);
     if (child) return selected("reject");
+    this.requested.add(toolCall.toolCallId);
     this.push(events);
     await this.events.idle();
     if (this.permissionMode === "bypassPermissions" && this.opts.allowBypass)
@@ -462,7 +475,58 @@ class OpenCodeRun implements AgentRun {
   }
 
   private push(events: RuntimeEvent[]): void {
-    for (const event of events) this.events.push(event);
+    for (const event of events) {
+      if (event.type === "message.assistant") {
+        for (const block of event.blocks) {
+          if (block.type === "tool_use")
+            this.tools.set(block.id, { name: block.name, input: block.input });
+        }
+      }
+      this.events.push(event);
+      if (event.type === "tool.result" && !event.isError) this.afterTool(event.toolUseId);
+    }
+  }
+
+  /** ADR 39-3: OpenCode's mode must stay ours. */
+  private onUpdate(update: AcpUpdate): void {
+    if (update.sessionUpdate === "config_option_update") {
+      try {
+        checkMode((update.configOptions as ConfigOption[] | undefined) ?? [], this.mode);
+      } catch (error) {
+        this.violate(error);
+        return;
+      }
+    }
+    if (update.sessionUpdate === "current_mode_update" && update.currentModeId !== this.mode) {
+      this.violate(overridden(`mode ${String(update.currentModeId)}`));
+      return;
+    }
+    this.push(this.normalizer.update(update));
+  }
+
+  /** After a tool ran: the tripwire, then the global scope's fingerprint. */
+  private afterTool(id: string): void {
+    const tool = this.tools.get(id) as { name: string; input: Record<string, unknown> } | undefined;
+    const input = tool?.input ?? {};
+    const path = (input.file_path ?? input.path) as string | undefined;
+    const quietRead =
+      ["Read", "Glob", "Grep"].includes(tool?.name ?? "") &&
+      (!path || isInside(this.opts.cwd, resolve(this.opts.cwd, path)));
+    if (!this.requested.has(id) && !this.interrupted && !quietRead) {
+      const what = String(input.command ?? path ?? input.url ?? "");
+      this.violate(overridden(`${tool?.name ?? id} ${maskResource(what)} ran without a question`));
+      return;
+    }
+    void this.runtime.scan().then((scope) => {
+      if (scope.fingerprint !== this.fingerprint)
+        this.violate(overridden("global OpenCode config changed"));
+    });
+  }
+
+  /** Something outranked Flightdeck: stop the turn and the session. */
+  private violate(error: unknown): void {
+    this.conn?.cancel();
+    this.fatal(error);
   }
 
   private fatal(error: unknown): void {
