@@ -233,6 +233,23 @@ describe("opencode-preflight", () => {
     });
   });
 
+  test("a failed preflight is logged with the route and its exit code, never what OpenCode printed", async () => {
+    const logs: string[] = [];
+    const log = (message: string) => logs.push(message);
+    await refusal(setup({ fail: "/api/agent" }, { log }).preflight.check("/w"));
+    const notJson = setup(
+      {},
+      { log, run: async () => ({ exitCode: 0, stdout: "secret-looking text" }) },
+    );
+    await refusal(notJson.preflight.check("/w"));
+    await refusal(setup({ config: { not: "a list" } }, { log }).preflight.check("/w"));
+    expect(logs).toEqual([
+      "opencode preflight failed in /w: /api/agent exited 1",
+      "opencode preflight failed in /w: /api/config answered something that is not JSON",
+      "opencode preflight failed in /w: a check could not run, or its answer had an unexpected shape",
+    ]);
+  });
+
   test("a pass is cached per folder and scope fingerprint for 10 minutes; a refusal is not", async () => {
     const { preflight, calls, tick } = setup();
     await preflight.check("/w");
