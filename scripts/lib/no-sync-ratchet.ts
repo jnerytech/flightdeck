@@ -54,7 +54,7 @@ export function syncCallCount(source: string): number {
     .replace(IMPORTS, "")
     .split("\n")
     .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
-    .reduce((total, line) => total + (line.match(BLOCKING)?.length ?? 0), 0);
+    .reduce((total, line) => total + (line.match(BLOCKING)?.length ?? 0), 0); // NOSONAR: a global regex, exec would return one match at a time
 }
 
 /** Blocking uses per file under `apps/daemon/src` and `apps/desktop/src` of `root` (files with none left out). */

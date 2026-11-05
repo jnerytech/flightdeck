@@ -14,9 +14,9 @@ export function fixedPortUses(source: string): number {
     new RegExp(`${opener}\\(\\s*\\{[^}]{0,400}?\\bport:\\s*${REAL_PORT}\\b`, "gs");
   let uses = 0;
   for (const opener of ["startServer", "Bun\\.serve"]) {
-    uses += source.match(own(opener))?.length ?? 0;
+    uses += source.match(own(opener))?.length ?? 0; // NOSONAR: a global regex, exec would return one match at a time
   }
-  uses += source.match(new RegExp(`\\.listen\\(\\s*${REAL_PORT}\\b`, "g"))?.length ?? 0;
+  uses += source.match(new RegExp(`\\.listen\\(\\s*${REAL_PORT}\\b`, "g"))?.length ?? 0; // NOSONAR: a global regex, exec would return one match at a time
   // A config written to disk is a fixed port only where this file starts the daemon that reads it.
   // A config written to disk is a fixed port only where this file starts the daemon that reads it,
   // and a helper that spreads its callers' overrides (`...extra`) lets them ask for port 0.

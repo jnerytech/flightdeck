@@ -242,7 +242,7 @@ async function startHost(work: string, name: string): Promise<Host> {
   const url = await withTimeout(
     (async () => {
       for (;;) {
-        const found = out.join("").match(/listening on (ws:\/\/\S+)/)?.[1];
+        const found = /listening on (ws:\/\/\S+)/.exec(out.join(""))?.[1];
         if (found) return found;
         await Bun.sleep(20);
       }

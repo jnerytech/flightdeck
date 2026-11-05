@@ -3113,7 +3113,7 @@ export class AppStore {
       // and of an env set, one variable's value.
       for (const line of value.split(/\r?\n/)) {
         const assigned =
-          secret.type === "env" ? line.match(/^\s*[A-Za-z_][A-Za-z0-9_]*\s*=(.*)$/) : null;
+          secret.type === "env" ? /^\s*[A-Za-z_][A-Za-z0-9_]*\s*=(.*)$/.exec(line) : null;
         const piece = (assigned ? (assigned[1] as string) : line)
           .trim()
           .replace(/^(["'])(.*)\1$/, "$2");

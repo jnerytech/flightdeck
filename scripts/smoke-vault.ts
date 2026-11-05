@@ -112,7 +112,7 @@ async function drain(stream: ReadableStream<Uint8Array>, into: string[]): Promis
 }
 
 function listenUrl(output: string[]): string | null {
-  return output.join("").match(/listening on (ws:\/\/\S+)/)?.[1] ?? null;
+  return /listening on (ws:\/\/\S+)/.exec(output.join(""))?.[1] ?? null;
 }
 
 function filesOf(folder: string): Buffer[] {
