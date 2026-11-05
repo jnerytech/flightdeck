@@ -4,11 +4,13 @@
   "type": "module",
   "workspaces": [
     "packages/*",
+    "tools/*",
     "apps/*"
   ],
   "scripts": {
     "typecheck": "bun run scripts/lane.ts bun run scripts/typecheck.ts",
     "lint": "bun run scripts/lane.ts bun x biome check .",
+    "lint:sonar": "bun run tools/sonar-lint/run.ts",
     "format": "biome check --write .",
     "layout:ratchet": "bun run scripts/layout-ratchet.ts",
     "bundle:budget": "bun run scripts/bundle-budget.ts",

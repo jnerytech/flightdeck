@@ -3581,3 +3581,39 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   it would hold every project's program at once, the opposite of what the lane needs.
 - **The workspaces' own `typecheck` scripts stay** for a run inside one package; a test checks
   that `PROJECTS` lists every workspace that has one.
+
+## Sonar rules before a push (issue #194)
+
+- **Biome stays the linter; `lint:sonar` only mirrors SonarCloud.** `bun run lint:sonar` runs `eslint-plugin-sonarjs` (Sonar's
+  own JS/TS rules) with no other ESLint rule. The rule list is not hand-written: `scripts/lib/sonar-lint.ts` keeps the plugin
+  rules whose Sonar key (`S1234`, from the rule's documentation URL) is active in the project's SonarCloud profile, "Sonar way
+  comprehensive" for TypeScript, snapshotted in `scripts/sonar-profile.json`. Refresh it with
+  `curl 'https://sonarcloud.io/api/rules/search?organization=jnerytech&qprofile=<key>&activation=true&ps=500&repositories=typescript'`
+  when the profile changes (the API is public for a public project; no token).
+- **Coverage of the profile (2026-11-05).** 211 of its 418 TypeScript rules have an ESLint rule: 160 run on syntax alone and 51
+  need the TypeScript program (`--no-types` skips those). The other 207, and the `tssecurity` taint rules (47) and
+  `tsarchitecture` rules (7), have no local equivalent and are reported only by SonarCloud.
+- **New code only.** SonarCloud's gate judges new code, and `main` has far more old findings than a change can fix, so
+  `lint:sonar` keeps the findings on the lines the branch added or changed (`git diff -U0` against the merge-base). `--all` and
+  `--files` check whole files.
+- **NOSONAR works the same on both sides, with one addition.** A `NOSONAR` comment silences the findings of its line, as in
+  SonarCloud. Locally a `NOSONAR` with no reason after it is itself a finding (`nosonar-reason`): a suppression says why.
+- **A workspace of its own.** `typescript-eslint` refuses TypeScript 7 (`typescript-eslint does not support TS 7.0`, tracking issue
+  typescript-eslint#10940), which the repository uses. The linter lives in the `tools/sonar-lint` workspace with its own
+  `typescript@5.9.3`; the app and the daemon keep TypeScript 7. Drop the pin when typescript-eslint supports TS 7.
+- **Not chosen:** a local SonarQube server (too heavy for the Pi) and scanner runs from the machine (they need the token).
+- **CI.** A fast `lint:sonar` job runs on pull requests only, against the merge-base with the target branch.
+
+## Sonar reads the tests and the same coverage as the gate (issue #205)
+
+- **Tests are test code in Sonar.** `sonar.exclusions` no longer lists the tests; `sonar.test.inclusions` (`**/test/**`, `*.test.ts(x)`,
+  `scripts/e2e/**`) marks them, so Sonar runs its test-scope rules on them. In the SonarCloud TypeScript profile 381 rules are
+  main-scope and 37 test-scope; `lint:sonar` runs each set on its kind of file (`testRules` in `scripts/sonar-profile.json`).
+  The first local run found 120 test findings (116 generic assertions); they are fixed, and 4 profile rules still have no ESLint twin.
+- **One list for coverage.** Sonar read 99.4% while the gate says 100% because the two exclusion lists differed (the build config, type
+  declarations and `scripts/e2e` were counted by Sonar only). `scripts/test/sonar-coverage.test.ts` now checks every tracked file:
+  Sonar counts it for coverage exactly when `isCoverageSource` (the gate's rule) does, so the lists cannot drift. The properties file
+  cannot call code, so it keeps its own glob list and the test is what ties it to `scripts/lib/coverage-check.ts`.
+- **Not verified here:** the scanner itself needs the token, so the overlap of `sonar.sources` and `sonar.tests` (with
+  `sonar.test.inclusions` deciding) is proven by the next SonarCloud run on the PR, not locally.
+- **`explicit-test-skip`.** The two tests that returned early on Windows use `test.skipIf(...)`.

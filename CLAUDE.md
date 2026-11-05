@@ -40,9 +40,15 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
 - Which function a file is missing: `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` runs
   the tests that reach the files (or the ones named after --tests) and lists the functions no test
   called as `file:line`. Bun's coverage only counts them. It instruments in memory, never the sources.
-- Before hand-off from a session: `bun run typecheck`, `bun run lint`, `bun run tdd:audit`
-  and `bun run test:related`. The full suite (`bun run test`) runs at the orchestrator's version
-  gate and in CI, not in every session.
+- Sonar rules before a push: `bun run lint:sonar [--base <ref>] [--no-types] [--all]` runs Sonar's
+  own JS/TS rules (eslint-plugin-sonarjs, in `tools/sonar-lint`, aligned with our SonarCloud
+  profile in `scripts/sonar-profile.json`) on the lines changed since the merge-base with `main`,
+  which is the new code the SonarCloud gate judges. `--no-types` skips the rules that need the
+  TypeScript program (a minute faster); `// NOSONAR: <reason>` suppresses a reviewed false positive
+  on both sides, and a NOSONAR with no reason fails. Biome stays the linter.
+- Before hand-off from a session: `bun run typecheck`, `bun run lint`, `bun run lint:sonar`,
+  `bun run tdd:audit` and `bun run test:related`. The full suite (`bun run test`) runs at the
+  orchestrator's version gate and in CI, not in every session.
 - Format: `bun run format`. Smokes: `bun run smoke:<name>` (list in `package.json`; never
   `smoke:real` unless asked).
 - Audit: `bun run tdd:audit -- --since <tag or commit>`. Accepts any commit, for example

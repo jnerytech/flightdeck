@@ -77,7 +77,7 @@ describe("acoes-schema", () => {
       "argument",
     );
     expect(errorsOf(action({ run: ["{{secret.token}}"] })).join()).toContain("argument");
-    expect(errorsOf(action({ run: ["./fazer.sh", "--token={{secret.token}}"] })).length).toBe(1);
+    expect(errorsOf(action({ run: ["./fazer.sh", "--token={{secret.token}}"] }))).toHaveLength(1);
     expect(errorsOf(action({ cwd: "/srv/{{secret.token}}" })).join()).toContain("cwd");
     expect(errorsOf(action({ env: { TOKEN: "{{secret.token}}" } }))).toEqual([]);
     // The path of the temporary file is not the secret.

@@ -118,7 +118,7 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
     await waitFor(() => screen.getByText("summary.md"));
     await click("Open summary.md");
     await click("Show summary.md in its folder");
-    await waitFor(() => expect(opened.length).toBe(4));
+    await waitFor(() => expect(opened).toHaveLength(4));
 
     // A second task: Home lists both, newest first.
     await act(async () => {

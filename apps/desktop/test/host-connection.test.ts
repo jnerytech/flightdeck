@@ -201,7 +201,7 @@ describe("desktop: conexão com o host", () => {
     conn.wake();
     await waitFor(() => statuses.filter((s) => s === "connecting").length > before, "one retry");
     await Bun.sleep(100);
-    expect(statuses.filter((s) => s === "connecting").length).toBe(before + 1);
+    expect(statuses.filter((s) => s === "connecting")).toHaveLength(before + 1);
     const { listen } = daemon();
     const live = connect(listen().url, TOKEN, { wakeDebounceMs: 0 });
     await waitFor(() => live.conn.status === "online", "online");
