@@ -286,7 +286,10 @@ function shots(ids: DemoIds): Shot[] {
       name: "abas-divididas",
       route: { name: "hub" },
       prepare: async (page) => {
+        // In the sidebar only: the host page and the project headers have buttons of the same name.
         await page
+          .locator("aside")
+          .first()
           .getByRole("button", { name: /^(Abrir host alfa|Open host alfa)$/ })
           .click({ modifiers: ["Control"] });
         await page.getByRole("button", { name: /^(Dividir a tela|Split the screen)$/ }).click();
