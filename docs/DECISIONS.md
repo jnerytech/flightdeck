@@ -3599,3 +3599,62 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   reachable by keyboard and by touch, and the Setup screen has one too. Restore is in Settings, Window.
 - **Missing tools** are a quiet card on the Start screen (muted, an info icon, a link to the install page, Dismiss kept per tool and
   host). The host page already shows the full health list, so it gets no second card.
+
+## A refused address (issue #106, follow-up)
+
+- **The doctor names the cause; the app can only hint.** The origin filter answers 403 before any upgrade, and a browser
+  WebSocket reports only that it closed, so the app sees the same close as for a daemon that is down. Telling them apart in the
+  app would need either an HTTP probe (the webview's CSP allows no `http:` in `connect-src`, and widening it lets any injected
+  script talk out over plain HTTP) or an upgrade that closes with a code (it would end the guarantee, tested in `redes`, that a
+  refused address gets no handshake at all). Neither is worth it for a message, so the app shows a hint for a refused connection
+  to a non-loopback host: "or the daemon refused this machine's address ... allowedNetworks".
+- **The 403 now says the address** (`forbidden: <ip>`, the client's own address, which it already has), so `flightdeckd doctor`
+  reads it from `/health` and reports "the daemon refused this machine's address (<ip>)" as a failure, with the setup fix.
+
+## The rc/0362 gate: ui-contraste meets three older tests
+
+- **Dark lines (`cromo-calmo`).** Phase 10's rule said every line is at most 6% alpha. #98 replaced the dark ones with opaque colors
+  on purpose: a 6% line cannot be 3:1 against a surface (WCAG 1.4.11), and the dark theme's panels and dividers had disappeared. The
+  rule is now two: the light lines stay faint (6% alpha, #98 did not touch them), and the dark lines are opaque with a floor of 3:1
+  and a ceiling of 6:1 against the background, both surfaces and the sidebar. The floor is also in `theme-contrast`; the ceiling is
+  what keeps them from being harsh, since a brighter border would still pass the floor.
+- **Tokens that point at tokens (`abas-a11y`).** `--card` is `var(--surface-1)` now, so a test that reads a token has to follow the
+  reference; its `tokens()` helper resolves `var()` (the check is kept, not dropped).
+- **The summary card (`sessao-rolagem`).** #97 made the summary a one-line card, and the first version folded it every time. The
+  older rule stays: the card opens the first time a session is seen (it is still a bounded card in the header that pushes the
+  conversation down) and is one line after, with the preview. The e2e overlap check holds in both states.
+
+## A conversation opens on its latest message (issue #112)
+
+- **The end follows the layout, not only the messages.** Images, code blocks and the summary panel change the height after
+  the first paint, which fires no scroll event, so "scroll to the bottom when a message arrives" left the view short of the end.
+  A `ResizeObserver` on the scroller and its children re-pins the bottom while the reader is at the end (within 24 px); once
+  the reader scrolls up, nothing moves them. The same holds in the transcript reader.
+- **Jump to latest counts the new ones.** The view remembers the last message seen when the reader left the end, and the button
+  says how many came after it. Older messages loaded above never count.
+- **Position per tab.** SessionView takes a `scrollKey` (host/session, or card/step); the position, whether the reader was at
+  the end, and the last seen message are kept in memory (200 conversations, oldest dropped) and restored when the view comes
+  back. A reader who was at the end comes back to the end; nothing is saved across app restarts.
+- **Older pages do not move the view.** When messages are prepended while the reader is not at the end, the scroll offset grows by
+  the added height, so the same message stays under the eyes.
+- **The history reader opens on the latest page.** `history.get` takes `tail`: without a cursor it answers the last `limit`
+  readable messages, and every page now says its own `cursor`, so live appends read on from the right place. An older daemon
+  ignores `tail` and sends the first page; the reader then opens on the end of that page, which is the old behaviour at worst.
+  A search hit or a cursor still opens at its point.
+
+## CI on every pushed work branch (issue #217, part of #216)
+
+- **`push: branches: ["**"]`.** Every pushed branch runs the whole workflow: the suite on Linux
+  and Windows, SonarCloud, the prints, axe and e2e. Tags alone start nothing (no `tags:` key).
+  The existing concurrency group (`ci-<ref>-<event>`, cancel in progress) already makes a new
+  push cancel the branch's previous push run, and never a dispatched or pull-request run.
+- **The docs-only skip is narrow.** `paths-ignore` lists only `docs/manual/**` and
+  `docs/images/**`, the files no test reads. `README.md`, `CLAUDE.md`, `docs/TDD.md`,
+  `docs/DECISIONS.md` and some specs are read by tests, so a change to them still runs the CI.
+  `ci-branches.test.ts` fails if a test ever names a path the filter skips.
+- **Pull requests are never filtered.** A required check whose workflow is skipped by a path
+  filter stays pending and blocks the merge, so `pull_request` keeps no `paths` or `paths-ignore`.
+- **A branch with an open pull request runs twice** (its push and the pull request's merge ref).
+  That is accepted: CI minutes are free for this public repository, and the two runs check
+  different trees.
+- **Based on `rc/0363`,** which adds `workflow_dispatch` (#129) to the same `on:` block.

@@ -93,4 +93,40 @@ describe("lado-a-lado-pagina: tiles on the project page", () => {
     });
     expect(went).toEqual([{ name: "session", host: hostId, id }]);
   });
+
+  test("opened straight on the project page, with the hub never loaded, the tiles still show (issue #105)", async () => {
+    const d = makeDaemon(cleanups);
+    const server = d.listen();
+    const store = new AppStore(memoryPlatform(false, "en").platform, {
+      baseDelayMs: 10,
+      maxDelayMs: 20,
+    });
+    cleanups.push(() => store.dispose());
+    store.i18n.start();
+    const hostId = await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+    await waitFor(() => store.getState().hosts.find((h) => h.id === hostId)?.status === "online");
+    const id = (await store.createSession(hostId, {
+      cwd: d.project,
+      prompt: "oi",
+      name: "direta",
+    })) as string;
+    await waitFor(() => store.getState().sessions[sessionKey(hostId, id)]?.status === "idle");
+    store.select(hostId, null);
+    // No refreshHub here: a deep link or a demo opens the page before the Sessions screen ever did.
+    expect(hubRows(store.getState()).some((r) => r.sessionId === id)).toBe(false);
+    render(
+      <Page
+        store={store}
+        hostId={hostId}
+        projectKey={`github.com/acme/api-${Date.now()}`}
+        path={d.project}
+        go={() => undefined}
+      />,
+    );
+    await waitFor(
+      () => document.querySelector("[data-slot='session-tile']") !== null,
+      "a tile on the page",
+    );
+    expect(screen.getByRole("button", { name: "Open direta" })).toBeTruthy();
+  });
 });

@@ -68,6 +68,8 @@ export interface SessionState {
   persona?: SessionPersona;
   /** Claude Code's id, from `session.init`: "Abrir no terminal" resumes it. */
   claudeSessionId?: string;
+  /** The Claude session this one continues (a resume from History), from `session.created`. */
+  resumedFrom?: string;
   items: ChatItem[];
   /** Text of the turn being streamed (live `message.delta`, never replayed). */
   streaming: string;
@@ -115,6 +117,7 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
         ...next,
         cwd: event.cwd,
         permissionMode: event.permissionMode,
+        ...(event.resumedFrom ? { resumedFrom: event.resumedFrom } : {}),
         ...(event.persona ? { persona: event.persona } : {}),
       };
     case "session.status": {

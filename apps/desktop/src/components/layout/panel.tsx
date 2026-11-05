@@ -10,6 +10,8 @@ export function Panel(props: {
   size?: "md" | "sm";
   /** Names the block for assistive technology. */
   label?: string;
+  /** The block's `data-slot`, for tests and layout checks. */
+  slot?: string;
   children: ReactNode;
   className?: string;
 }) {
@@ -18,6 +20,7 @@ export function Panel(props: {
   return (
     <Tag
       aria-label={props.label}
+      data-slot={props.slot}
       className={cn(
         "flex flex-col rounded-lg border bg-card",
         small ? "gap-2 p-3" : "gap-3 p-4",
