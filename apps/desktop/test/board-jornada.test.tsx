@@ -138,6 +138,13 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
     await act(async () => {
       fireEvent.click(entry as HTMLElement);
     });
+    // Start opens a small dialog: the workflow, and the persona when the host has them.
+    const dialog = screen.queryByRole("dialog", { name: "Iniciar card" }) as HTMLElement;
+    expect(dialog).not.toBeNull();
+    expect(within(dialog).queryByLabelText("Workflow")).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Iniciar" }));
+    });
     await settle(() => toastText().includes("Card iniciado: Login"));
     // The created toast is still up, so there are two.
     expect(toastButtons("Abrir")).toHaveLength(2);
@@ -179,5 +186,29 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
       .columns.flatMap((c) => c.cards)[0]?.id;
     await settle(() => board.getCard(id ?? "").column === "done");
     expect(board.getCard(id ?? "").column).toBe("done");
+  });
+
+  test("the menu's Iniciar card is off, saying why, while the card is running", async () => {
+    const { repo, board } = await setup();
+    await openBoard(repo);
+    await createCard("Login");
+    await openCardMenu("Login");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "Iniciar card" }));
+    });
+    const dialog = screen.queryByRole("dialog", { name: "Iniciar card" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Iniciar" }));
+    });
+    const id = board
+      .getBoard(board.listProjects()[0]?.id ?? "")
+      .columns.flatMap((c) => c.cards)
+      .find((c) => c.title === "Login")?.id;
+    await settle(() => board.getCard(id ?? "").sessionStatus !== null);
+    await settle(() => screen.queryByRole("button", { name: "Ações de Login" }) !== null);
+    await openCardMenu("Login");
+    const entry = screen.queryByRole("menuitem", { name: /o card já está rodando/ });
+    expect(entry).not.toBeNull();
+    expect(entry?.getAttribute("aria-disabled")).toBe("true");
   });
 });
