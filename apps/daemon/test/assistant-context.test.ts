@@ -201,7 +201,7 @@ describe("assistant-context", () => {
   // The security review of the daemon slice (2026-11-05): nothing outside the repository and no
   // secret reaches the prompt. Each fake value below must not appear in the bundle.
   test.skipIf(!POSIX)(
-    "an untracked link, directory, FIFO or huge file is listed but never read",
+    "an untracked link or huge file is listed but never read, and a FIFO (which git skips) blocks nothing",
     async () => {
       const outside = tempDir("fd-assistant-outside-");
       writeFileSync(join(outside, "secret.txt"), "TOPSECRET_OUTSIDE=fake-outside-value\n");
@@ -223,7 +223,7 @@ describe("assistant-context", () => {
         all.includes("fake-env-value"),
         all.includes("hhhhhhhh"),
       ]).toEqual([false, false, false]);
-      expect(bundle.notShown).toEqual([".env", "folder-link", "huge.txt", "innocent.txt", "pipe"]);
+      expect(bundle.notShown).toEqual([".env", "folder-link", "huge.txt", "innocent.txt"]);
       expect(bundle.diff).toBe("--- keep.ts\n@@ -0,0 +1,1 @@\n+keep");
     },
   );
