@@ -85,6 +85,8 @@ export type Route =
   | { name: "clients" }
   /** The Claude Code plugins (phase 26). */
   | { name: "plugins" }
+  /** The setup checklist (issue #164). */
+  | { name: "setup" }
   /** Phase 21: the messages between sessions. */
   | { name: "conversations" }
   /** Phase 21: the teams of a host; `team` is the one an alert is about. */
@@ -182,6 +184,7 @@ const NAMES: Record<Route["name"], true> = {
   personas: true,
   clients: true,
   plugins: true,
+  setup: true,
   conversations: true,
   teams: true,
   vault: true,
