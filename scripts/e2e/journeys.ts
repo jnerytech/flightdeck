@@ -250,6 +250,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await open(c, { name: "hub" });
     // A Ctrl+click opens alfa's page in a second tab (Nova aba would open the palette over the bar).
     await c.page
+      .locator("aside")
+      .first()
       .getByRole("button", { name: c.t("sidebar.openHost", { host: "alfa" }) })
       .click({ modifiers: ["Control"] });
     await waitFor(async () => (await c.page.getByRole("tab").count()) === 2, "duas abas");
