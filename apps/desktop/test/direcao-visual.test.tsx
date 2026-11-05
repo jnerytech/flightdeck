@@ -118,7 +118,7 @@ describe("direcao-visual", () => {
     );
   });
 
-  test("o status é um pontinho de 8 px: azul com pulso, âmbar, cinza, esmaecido e vermelho", () => {
+  test("o status é um glifo num espaço de 12 px, com nome para leitores de tela (issue #146: forma e cor)", () => {
     const tones = ["running", "needs-you", "idle", "ended", "error"] as const;
     render(
       <div>
@@ -127,20 +127,11 @@ describe("direcao-visual", () => {
         ))}
       </div>,
     );
-    const dot = (tone: string) => screen.queryByRole("img", { name: `estado ${tone}` });
     for (const tone of tones) {
-      expect(dot(tone)?.className ?? "").toContain("size-2");
-      expect(dot(tone)?.className ?? "").toContain("rounded-full");
-      expect(dot(tone)?.className ?? "").toContain(`bg-status-${tone}`);
-      expect(dot(tone)?.getAttribute("title")).toBe(`estado ${tone}`);
+      const dot = screen.getByRole("img", { name: `estado ${tone}` });
+      expect(dot.className).toContain("size-3");
+      expect(dot.getAttribute("title")).toBeNull();
     }
-    // Only the running one pulses (and only when motion is allowed); the ended one fades.
-    expect(dot("running")?.className ?? "").toContain("motion-safe:animate-pulse");
-    for (const tone of ["needs-you", "idle", "ended", "error"]) {
-      expect(dot(tone)?.className ?? "").not.toContain("animate-pulse");
-    }
-    expect(dot("ended")?.className ?? "").toContain("opacity-50");
-    expect(dot("idle")?.className ?? "").not.toContain("opacity-50");
   });
 
   test("na lista, a linha tem o pontinho (sem pílula de estado) e a hora em números tabulares; só o rótulo é pílula", async () => {
@@ -159,7 +150,7 @@ describe("direcao-visual", () => {
     await settle(() => screen.queryByRole("listitem", { name: "Gerenciada" }) !== null);
     const row = screen.queryByRole("listitem", { name: "Gerenciada" }) as HTMLElement;
     const dot = within(row).queryByRole("img", { name: "ociosa" });
-    expect(dot?.className ?? "").toContain("bg-status-idle");
+    expect(dot?.innerHTML ?? "").toContain("bg-status-idle");
     // No pill carries the state any more.
     expect(
       [...row.querySelectorAll("[data-slot='badge']")].some(
