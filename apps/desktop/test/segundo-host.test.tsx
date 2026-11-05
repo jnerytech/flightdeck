@@ -74,8 +74,8 @@ describe("segundo-host: Add host is a palette command", () => {
     expect(found?.target).toEqual({ kind: "add-host" });
   });
 
-  test("searching 'host' finds it", () => {
-    const sections = paletteSections(state as never, "add host", {
+  test("searching host finds it", () => {
+    const sections = paletteSections(state as never, "host", {
       costs: false,
       t: translator("en"),
       waiting: false,

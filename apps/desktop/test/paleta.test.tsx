@@ -151,6 +151,7 @@ describe("paleta", () => {
       "Alternar tema",
       "Trocar idioma",
       "Ir para Configurações",
+      "Adicionar um host",
       "Mostrar os atalhos de teclado",
       "Gerenciar clientes",
     ]);

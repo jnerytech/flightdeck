@@ -922,6 +922,7 @@ export const ptBR = {
     snippetDetail: "{type} · {where}",
     connect: "Conectar",
     goSettings: "Ir para Configurações",
+    addHost: "Adicionar um host",
     sectionSessions: "Sessões ao vivo",
     sectionCards: "Cards",
     sectionProjects: "Projetos",

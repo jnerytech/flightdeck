@@ -53,6 +53,7 @@ describe("paleta", () => {
       "Trocar idioma | ação",
       "Ir para Custos | ação",
       "Ir para Configurações | ação",
+      "Adicionar um host | ação",
       "Mostrar os atalhos de teclado | ação",
       "Gerenciar clientes | ação",
     ]);
@@ -78,6 +79,7 @@ describe("paleta", () => {
       "Switch language | action",
       "Go to Costs | action",
       "Go to Settings | action",
+      "Add a host | action",
       "Show the keyboard shortcuts | action",
       "Manage clients | action",
     ]);

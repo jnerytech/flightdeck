@@ -76,6 +76,8 @@ function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route 
       return { name: "projects", host: target.hostId };
     case "settings":
       return { name: "settings" };
+    case "add-host":
+      return { name: "add-host" };
     case "costs":
       return { name: "costs" };
     case "go":

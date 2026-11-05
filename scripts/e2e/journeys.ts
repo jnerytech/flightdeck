@@ -475,6 +475,15 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByLabel(c.t("hostForm.link"), { exact: true }).fill("http://pc:7420?token=t");
     await c.page.getByText(c.t("hostForm.pairScheme"), { exact: true }).waitFor({ timeout: WAIT });
   },
+
+  // 17. A second host (issue #185): "Add a host" is a command of the palette and opens the form.
+  "segundo-host": async (c) => {
+    await open(c, { name: "hub" });
+    await c.page.keyboard.press("Control+K");
+    await c.page.getByLabel(c.t("searchUi.input"), { exact: true }).fill(c.t("palette.addHost"));
+    await c.page.getByText(c.t("palette.addHost"), { exact: true }).first().click();
+    await c.page.getByLabel(c.t("hostForm.link"), { exact: true }).waitFor({ timeout: WAIT });
+  },
 };
 
 /** What sticks out of the window sideways, outside a box that scrolls. */

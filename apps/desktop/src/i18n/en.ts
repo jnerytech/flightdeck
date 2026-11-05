@@ -925,6 +925,7 @@ export const en: Dictionary = {
     snippetDetail: "{type} · {where}",
     connect: "Connect",
     goSettings: "Go to Settings",
+    addHost: "Add a host",
     sectionSessions: "Live sessions",
     sectionCards: "Cards",
     sectionProjects: "Projects",

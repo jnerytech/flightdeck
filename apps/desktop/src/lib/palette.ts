@@ -24,6 +24,7 @@ export type PaletteTarget =
   /** A new embedded terminal (phase 14), in a new tab. */
   | { kind: "new-terminal"; hostId: string }
   | { kind: "settings" }
+  | { kind: "add-host" }
   | { kind: "toggle-theme" }
   | { kind: "switch-language" }
   | { kind: "start-card"; hostId: string; cardId: string }
@@ -293,6 +294,7 @@ export function paletteSections(
       ? [action("costs", t("palette.goCosts"), { kind: "costs" }, undefined, "go-costs")]
       : []),
     action("settings", t("palette.goSettings"), { kind: "settings" }, undefined, "go-settings"),
+    action("add-host", t("palette.addHost"), { kind: "add-host" }),
     action("shortcuts", t("palette.showShortcuts"), { kind: "shortcuts" }, undefined, "help"),
     action("clients", t("clients.manageShort"), { kind: "clients" }),
     ...((state.clientList ?? []).length === 0
