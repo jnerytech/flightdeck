@@ -140,7 +140,7 @@ export class OpenCodePreflight {
       this.get(cwd, "/api/permission/saved", content),
     ]);
     const unexpected = unexpectedSource(list(sources), globalConfigDir(this.deps.env));
-    if (unexpected) throw this.refuse("opencode_config_outranks", { source: unexpected });
+    if (unexpected) throw this.refuse("opencode_config_outranks", { what: unexpected });
     const rules = list<{ id: string; action: string; resource: string }>(saved);
     if (rules.length > 0) {
       throw this.refuse("opencode_saved_rules", {
@@ -157,7 +157,7 @@ export class OpenCodePreflight {
     content = JSON.stringify(opencodeConfig(extra));
     const still = this.extraAgents(list<AgentInfo>(await this.get(cwd, "/api/agent", content)));
     if (still.length > 0)
-      throw this.refuse("opencode_config_outranks", { agent: still[0] as string });
+      throw this.refuse("opencode_config_outranks", { what: still[0] as string });
     return content;
   }
 
@@ -170,7 +170,7 @@ export class OpenCodePreflight {
       const found = agents.find((agent) => agent.id === id);
       const ours = config.agents[id]?.permissions ?? [];
       if (!found || !oursLast(found.permissions ?? [], ours))
-        throw this.refuse("opencode_config_outranks", { agent: id });
+        throw this.refuse("opencode_config_outranks", { what: id });
     }
     return agents
       .map((agent) => agent.id)
