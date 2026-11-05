@@ -511,6 +511,7 @@ export function Sidebar(props: {
           <NavButton
             collapsed={collapsed}
             icon={<NavIcon name="history" aria-hidden="true" className={icon} />}
+            active={here === "history"}
             label={t("sidebar.history")}
             disabled={!navHost}
             onClick={needHost((host) => ({ name: "history", host }))}
@@ -528,6 +529,7 @@ export function Sidebar(props: {
             <NavButton
               collapsed={collapsed}
               icon={<NavIcon name="personas" aria-hidden="true" className={icon} />}
+              active={here === "personas"}
               label={t("sidebar.personas")}
               onClick={() => go({ name: "personas" })}
             />
@@ -537,6 +539,7 @@ export function Sidebar(props: {
             <NavButton
               collapsed={collapsed}
               icon={<NavIcon name="snippets" aria-hidden="true" className={icon} />}
+              active={here === "snippets"}
               label={t("sidebar.snippets")}
               onClick={() => go({ name: "snippets" })}
             />
@@ -546,6 +549,7 @@ export function Sidebar(props: {
             <NavButton
               collapsed={collapsed}
               icon={<NavIcon name="plugins" aria-hidden="true" className={icon} />}
+              active={here === "plugins"}
               label={t("sidebar.plugins")}
               onClick={() => go({ name: "plugins" })}
             />
@@ -553,6 +557,7 @@ export function Sidebar(props: {
           <NavButton
             collapsed={collapsed}
             icon={<NavIcon name="vault" aria-hidden="true" className={icon} />}
+            active={here === "vault"}
             label={t("sidebar.vault")}
             chevron
             onClick={() => go({ name: "vault" })}
@@ -585,6 +590,7 @@ export function Sidebar(props: {
             <NavButton
               collapsed={collapsed}
               icon={<NavIcon name="connections" aria-hidden="true" className={icon} />}
+              active={here === "connections"}
               label={t("sidebar.connections")}
               onClick={() => go({ name: "connections" })}
             />
