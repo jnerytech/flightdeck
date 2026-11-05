@@ -13,7 +13,17 @@ process.exit(
     {
       gh: (cmd) => spawnExec(["gh", ...cmd]),
       git: (cmd) => spawnExec(["git", ...cmd]),
-      run: (cmd) => spawnExec(cmd),
+      // The FLIGHTDECK_PR_OPENED hook (#273): two minutes at most, then it is killed.
+      run: async (cmd) => {
+        const proc = Bun.spawn(cmd, {
+          stdout: "pipe",
+          stderr: "ignore",
+          stdin: "ignore",
+          timeout: 120_000,
+        });
+        const [stdout, code] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+        return { code, stdout };
+      },
       env: process.env,
       log: (line) => console.log(line),
     },

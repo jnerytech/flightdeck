@@ -252,8 +252,14 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
 async function prOpenedHook(n: string, branch: string, base: string, deps: PrFlowDeps) {
   const hook = deps.env.FLIGHTDECK_PR_OPENED?.trim();
   if (!hook || !deps.run) return;
-  const { code } = await deps.run([...hook.split(/\s+/), n, branch, base]);
-  if (code !== 0) deps.log(`FLIGHTDECK_PR_OPENED hook failed (exit ${code}); #${n} is open`);
+  let failure: string | null;
+  try {
+    const { code } = await deps.run([...hook.split(/\s+/), n, branch, base]);
+    failure = code === 0 ? null : `exit ${code}`;
+  } catch (error) {
+    failure = error instanceof Error ? error.message : String(error);
+  }
+  if (failure) deps.log(`FLIGHTDECK_PR_OPENED hook failed (${failure}); #${n} is open`);
 }
 
 async function nextPrs(deps: PrFlowDeps): Promise<number> {

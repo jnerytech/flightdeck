@@ -22,20 +22,28 @@ export interface BranchCommit {
 export function addedLines(diff: string): Map<string, string[]> {
   const added = new Map<string, string[]>();
   let current: string[] | null = null;
+  // A header line comes only between `diff --git` and the first hunk: inside a hunk, an added
+  // line that reads "++ b/x" shows as "+++ b/x" and stays an added line.
+  let inHeader = false;
   for (const line of diff.split("\n")) {
-    if (line.startsWith("diff --git ")) current = null;
-    else if (line.startsWith("+++ ")) {
-      const path = line.slice(4);
+    if (line.startsWith("diff --git ")) {
+      current = null;
+      inHeader = true;
+    } else if (line.startsWith("@@")) inHeader = false;
+    else if (inHeader && line.startsWith("+++ ")) {
+      // git ends a name with a space with a tab.
+      const path = line.slice(4).replace(/\t$/, "");
       current = path.startsWith("b/") ? [] : null;
       if (current) added.set(path.slice(2), current);
-    } else if (current && line.startsWith("+")) current.push(line.slice(1));
+    } else if (!inHeader && current && line.startsWith("+")) current.push(line.slice(1));
   }
   return added;
 }
 
 /** A file the gate reads: code, never a test, a fixture or a document. */
 const SOURCE = /\.(?:ts|tsx|rs|sh|ps1)$/;
-const NOT_SOURCE = /(?:^|\/)(?:test|tests|fixtures|e2e)\/|\.(?:test|e2e)\.tsx?$/;
+const NOT_SOURCE =
+  /^(?:(?:apps|packages)\/[^/]+\/test|scripts\/(?:test|e2e))\/|\.(?:test|e2e)\.tsx?$/;
 
 /** The risk areas, in the order they are named, each by what an added line says. */
 const AREAS: [string, RegExp][] = [
@@ -49,6 +57,7 @@ const AREAS: [string, RegExp][] = [
   ],
   ["secret", /\b(?:token|secret|password|credential|api[_-]?key)s?\b/i],
   ["permission", /\bchmod(?:Sync)?\b|\bchown|\bpermission|\ballowedNetworks\b/i],
+  ["network", /\bBun\.(?:serve|listen|connect)\b|\bfetch\s*\(|\bnew WebSocket\b|\.listen\s*\(/],
 ];
 /** A path in the vault or the pairing code is risky whatever it adds. */
 const SENSITIVE_PATH = /(?:^|\/)[^/]*(?:vault|pairing)[^/]*(?:\/|$)/i;

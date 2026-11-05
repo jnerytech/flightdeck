@@ -44,11 +44,19 @@ function securityGate(): string {
     const proc = spawnSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 * 2 ** 20 }); // NOSONAR: git from the PATH of the developer running the script
     return proc.status === 0 ? proc.stdout : null;
   };
-  const ref = base ?? auditBase(run)?.trim();
+  // --base is resolved to a commit first: a value that starts with "-" never reaches git as an option.
+  const asked = base
+    ? run(["rev-parse", "--verify", "--end-of-options", `${base}^{commit}`])
+    : null;
+  const ref = (base ? asked : auditBase(run))?.trim();
   if (!ref) return "unknown";
-  const diff = run(["diff", "-U0", "--no-color", `${ref}...HEAD`]) ?? "";
+  // Names unquoted (core.quotepath), and a merge lists the files it edited itself (combined).
+  const quiet = ["-c", "core.quotepath=off"];
+  const diff = run([...quiet, "diff", "-U0", "--no-color", `${ref}...HEAD`]) ?? "";
   const log = run([
+    ...quiet,
     "log",
+    "--diff-merges=combined",
     "--format=%x1e%H%x1f%(trailers:key=Security-Reviewed,valueonly,separator=%x20)",
     "--name-only",
     `${ref}..HEAD`,
