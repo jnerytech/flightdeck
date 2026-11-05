@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DepResult } from "@flightdeck/protocol";
+import { installFakeCli } from "../../../scripts/test/fake-cli.ts";
 import type { DepsEnv } from "../src/deps/deps.ts";
 import { doctorExitCode, formatDeps } from "../src/deps/format.ts";
 import { type CliDeps, runCli } from "../src/main.ts";
@@ -182,5 +183,54 @@ describe("deps-doctor: the terminal prints the same grouping as the app", () => 
     expect(doctorExitCode(false, fine)).toBe(1);
     expect(doctorExitCode(true, lacking)).toBe(1);
     expect(doctorExitCode(true, { items: [dep("git", "required", "outdated")] })).toBe(1);
+  });
+
+  test("the terminal looks for claude at claude.executablePath like the daemon does, and a configured path that is gone is missing (HD-B1)", async () => {
+    const fake = installFakeCli("claude-doc", [
+      { args: ["--version"], stdout: "claude version 6.6.6" },
+    ]);
+    try {
+      const there = join(fake.dir, process.platform === "win32" ? "claude-doc.cmd" : "claude-doc");
+      const lines = async (executablePath: string) => {
+        const out: string[] = [];
+        const dir = tempDir("fd-doctor-claude-");
+        const file = join(dir, "config.json");
+        writeFileSync(
+          file,
+          JSON.stringify({
+            token: "t".repeat(32),
+            dataDir: dir,
+            port: 1,
+            allowedRoots: [dir],
+            claude: { executablePath },
+          }),
+        );
+        await runCli(["doctor", "--config", file], {
+          env: {},
+          log: { log: (m) => out.push(m), error: (m) => out.push(m) },
+          exit: () => {},
+          onSignal: () => {},
+          exec: async () => ({ code: 1, stdout: "" }),
+          serviceContext: (dryRun) => ({
+            platform: "linux",
+            home: "/h",
+            user: "u",
+            command: ["/h/flightdeckd"],
+            systemRoot: "",
+            tempDir: "/tmp",
+            dryRun,
+            exec: async () => ({ code: 1, stdout: "" }),
+            writeFile: () => {},
+            removeFile: () => {},
+            which: () => null,
+          }),
+        } as CliDeps);
+        return out.join("\n");
+      };
+      expect(await lines(there)).toMatch(/OK\s+claude\s+6\.6\.6/);
+      expect(await lines(join(fake.dir, "gone"))).toMatch(/MISSING\s+claude\s/);
+    } finally {
+      fake.restore();
+    }
   });
 });
