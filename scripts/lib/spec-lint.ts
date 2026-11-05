@@ -33,6 +33,8 @@ const TEST_FILE =
   /^(?:apps\/[\w-]+\/test|packages\/[\w-]+\/test|scripts\/test)\/([\w.-]+)\.test\.tsx?$/;
 const SMOKE = /^scripts\/smoke-[\w-]+\.ts$/;
 const FEATURE = /^scripts\/e2e\/bdd\/features\/[\w-]+\.feature$/;
+/** The Rust side: a module's own tests, or an integration test; Rust names files with `_`. */
+const RUST = /^apps\/desktop\/src-tauri\/(?:src|tests)\/[\w/]+\.rs$/;
 
 /** The lines of each `##` section outside fenced code, with the line number of each. */
 function sections(text: string): { name: string; lines: { line: string; n: number }[] }[] {
@@ -67,8 +69,8 @@ export function specAreas(text: string): SpecArea[] {
 function rowProblem({ area, testFile, line }: SpecArea): string | null {
   if (!AREA.test(area)) return `line ${line}: \`${area}\` is not kebab-case`;
   const test = TEST_FILE.exec(testFile);
-  if (!test && !SMOKE.test(testFile) && !FEATURE.test(testFile)) {
-    return `line ${line}: ${testFile} is not a test file (apps/*/test, packages/*/test, scripts/test, a smoke or a .feature)`;
+  if (!test && !SMOKE.test(testFile) && !FEATURE.test(testFile) && !RUST.test(testFile)) {
+    return `line ${line}: ${testFile} is not a test file (apps/*/test, packages/*/test, scripts/test, src-tauri, a smoke or a .feature)`;
   }
   if (test && test[1] !== area)
     return `line ${line}: the test file of \`${area}\` is ${area}.test.ts(x)`;
