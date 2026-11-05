@@ -3737,3 +3737,57 @@ and project config off; both sessions deleted afterwards.
   model): an `always` answer saved `shell echo *` for the folder's project, `/api/permission/saved --standalone` with the
   same environment listed it, and the same command in the next turn ran with no request. So the switch does not change
   how saved rules apply, and the preflight's check sees them. Rule and session deleted.
+
+### Phase 39: the code review (OpenCode, `flightdeck-handoff/opencode-review-fase39-code.md`, at 10d46fb)
+
+The review read the branch at 10d46fb, before the `opencode-commands`, `opencode-security` and `session-runtime` areas.
+
+- **B1 (no `/` neutralization):** fixed by 825070e (`opencode-commands`). `turn()` prefixes a zero-width space to a text
+  whose `trimStart()` starts with `/`. JavaScript's `trimStart` also removes tab, newline, NBSP, em space and BOM.
+- **B2 (no second line):** fixed by 9b32ac9 (`opencode-security`):
+  - `config_option_update` and `current_mode_update` are checked before normalizing;
+  - the global scope is fingerprinted at connect and again after each completed tool;
+  - the tripwire fires on a completed call with no request for its id.
+  
+  A probe showed that OpenCode sends neither update when Flightdeck sets the mode itself. The field name
+  `currentModeId` is ACP's and unverified on 2.2.5.
+
+Probes for this round (2026-11-05; no credential read; every probe session deleted):
+
+- `Bun.spawn({ detached: true })` puts the child in its own process group, and `process.kill(-pid)` reaches the group's
+  members.
+- A v1 `plugin` key in the global `opencode.json` is read: `/api/config` reports it migrated to `plugins`. Neither it nor a
+  file in the global `tool/` folder was imported by `/api/config` or `session/new`. Both are still treated as code.
+- `session/resume` answers `configOptions`. The `/api/config`, `/api/agent` and `/api/permission/saved` answers were
+  recorded as fixtures (`api-*.json`, `resume.jsonl`).
+- **A symlink inside the folder that points outside is read with no request.** OpenCode's inside-the-folder test is
+  lexical (review M8).
+- With project config off, a project `CLAUDE.md` did not reach the model.
+- With `OPENCODE_DISABLE_CLAUDE_CODE=1` and `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1`, `session/new` never answered (10 s);
+  without them it did at once.
+
+| Item | Decision |
+| --- | --- |
+| M1 leaks on a failed start or a close during start | Accept. No process before the first send. `connect()` checks for a stop after each await and closes a connection that opened late. `fatal()` always closes the connection and aborts the open questions. A failed start runs the preflight once. Tests pin each repro. |
+| M2 close can hang, no forced kill, no process group | Accept. On POSIX the agent leads its own process group (`detached`), and `treeKiller` sends the group SIGTERM, then SIGKILL; it falls back to the process when the group is gone. Windows keeps `taskkill /T /F`. `close()` kills after 3 s, forces 2 s later, and stops waiting 5 s after that. Whether a tool's child survives the stdin-EOF exit is the real check's "daemon stopped during `sleep`". |
+| M3 the read loop dies | Accept. A throwing handler and a message that is not an object are logged, with no text, and skipped. |
+| M4 a stale escalation timer | Accept. A second interrupt does not set a second timer. An escalation is tied to its turn's number and does nothing once that turn ended. |
+| M5 the reaper is not armed without a turn | Accept, by spawning lazily: no process exists until the first send. The manager already ran the preflight for its typed refusal. |
+| M6 the scope scan misses keys and folders | Accept. `plugin` (v1) counts like `plugins`. Both `mcp` forms are read. A `plugins`, `plugin` or `mcp` of an unexpected shape fails closed. `tool/` and `tools/` count as code folders. An allowlist of the global folder was rejected: OpenCode keeps other files there (`tui.json`, agents, commands). Commands are neutralized (ADR 39-2), and global agents are disabled by id. The stronger option, an empty `XDG_CONFIG_HOME` per child, stays open for the maintainer: it costs the person's global models and providers. |
+| M7 the canary's rule is weaker than the preflight's | Accept. The canary uses the preflight's `unexpectedSource`. Only 2.2.5 itself is `verified`. Discovery keeps the executable's size and time, and the preflight refuses `opencode_changed` when they differ: the daemon checks OpenCode again on restart or from the doctor. |
+| M8 lexical "inside the folder" | Accept (confirmed by the probe). `read`, `glob` and `grep` ask in OpenCode. The runtime allows them without a question only when the real path is inside the folder's real path and is not a credential path (`risk.ts`'s `credential`, now exported). A path that does not exist asks. |
+| M9 tests and fixtures | Accept. The recorded `/api/*` and resume answers are fixtures, and a test passes them through the preflight. The preload scrubs `OPENCODE_*` and the XDG config, data, state and cache folders. The events normalizer still returns nothing for `config_option_update`; the runtime checks it before normalizing (B2). |
+| m1 the `--version` env and timeout | Accept: the OpenCode env and 5 s. |
+| m2 prototype keys as tool names | Accept: `Object.hasOwn`. |
+| m3 the risk rule for the global folder is lexical | Reject for v1. A person answers every OpenCode request (ADR 39-3), so it is an extra signal only. The live scope fingerprint catches the write itself. |
+| m4 refusal text | Accept. An unknown plugin entry is named "(unknown entry)", never by its options. Masking also covers runs with `.`, `/`, `+` and `=` padding, and actions too. A saved rule whose id is not plain is left out of the commands. |
+| m5 permission edges | Accept. The question is registered before the card's barrier. A stopped run answers `cancelled` without asking. `close()` aborts the open questions. A request is asked with the fullest input seen for its id. |
+| m6 an interrupt before the turn starts | Accept. It ends the waiting turn as cancelled, with no prompt. On an idle run it changes nothing. |
+| m7 preflight bookkeeping | Accept: concurrent checks of one key share one run. Reject the env parameter: the daemon gives the runtime, the preflight and the scan the same base env (one place in `main.ts`). |
+| m8 Windows paths | Accept: `USERPROFILE` first on Windows. The system and managed folders on Windows and macOS stay "unverified on this OS" in the doctor and the manual. |
+| m9 the real `auth_required` shape | Reject for now. Recording it needs a provider without a login, and changing logins is out of bounds. The message match stays; `smoke:opencode-real` records it when it shows up. |
+| m10 `OPENCODE_API_KEY` stripped | Accept: it passes through (a provider credential, not a switch). |
+| m11 plan mode lets shell ask | Keep. A command still asks a person; the UI text says plan mode blocks edits only. |
+| m12 Claude Code compatibility switches | Reject: setting them made `session/new` hang. `CLAUDE.md` was not read with project config off anyway. |
+| m13 quadratic `linesOf` | Accept: it keeps its scan offset (refactor). |
+| ADR claims with no code | B1, B2 and the typed `session.error` (653014019) now have code. The `preparing` placeholder was not needed: the run's start is synchronous and its preflight runs inside it, so a second send queues on the live run (a test pins one start). The automatic approval gate, the messaging exclusion, `runtime.models`, the doctor row, the UI, the fake `opencode` and both smokes are the remaining areas. |
