@@ -12,6 +12,7 @@ import type {
   SessionEventOf,
   SessionImage,
   SessionPersona,
+  SessionRuntime,
   SessionStatus,
   SessionSummary,
   ToolInput,
@@ -62,7 +63,13 @@ export interface SessionManagerOptions {
   /** Plan quota readings of any session go to the host's quota (phase 7). */
   onQuota?: (readings: QuotaReading[]) => void;
   /** Every turn of a managed session, before it is stored (phase 7's usage). */
-  onTurn?: (sessionId: string, cwd: string, turn: SessionEventOf<"turn.result">) => void;
+  onTurn?: (
+    sessionId: string,
+    cwd: string,
+    turn: SessionEventOf<"turn.result">,
+    /** Phase 39: OpenCode turns spend no Claude plan, so the account is not told. */
+    runtime: SessionRuntime,
+  ) => void;
   /** Start and end of every turn (phase 12's snapshots); the first start waits for session.init. */
   onTurnEdge?: (edge: TurnEdge) => void;
   /** Phase 13: the risk of each permission request; built-in rules over allowedRoots when absent. */
@@ -135,11 +142,14 @@ export class SessionManager {
         this.plainOf(sessionId, toolName, input, risk.level),
       ...(opts.autoApprove
         ? {
+            // ADR 39-3: a person answers every question of an OpenCode session.
             autoDecide: (request: AutoApproveRequest) =>
-              (opts.autoApprove as Pick<AutoApprover, "decide">).decide({
-                ...request,
-                cwd: this.get(request.sessionKey).cwd,
-              }),
+              this.get(request.sessionKey).runtime === "opencode"
+                ? Promise.resolve(null)
+                : (opts.autoApprove as Pick<AutoApprover, "decide">).decide({
+                    ...request,
+                    cwd: this.get(request.sessionKey).cwd,
+                  }),
           }
         : {}),
     });
@@ -530,6 +540,18 @@ export class SessionManager {
 
   // -- internals ------------------------------------------------------------
 
+  /** Phase 39: refuses a Claude-only feature for an OpenCode session. */
+  private claudeOnly(sessionId: string, feature: string): void {
+    // An unknown session keeps its own refusal (the feature is not live).
+    if (this.store.getSession(sessionId)?.runtime !== "opencode") return;
+    throw new FlightdeckError(
+      "invalid_state",
+      `an OpenCode session does not offer ${feature}`,
+      "runtime_unsupported",
+      { feature },
+    );
+  }
+
   /** Phase 39: the runtime a stored session runs on. */
   private runtimeOf(session: SessionSummary): AgentRuntime {
     if (session.runtime !== "opencode") return this.opts.runtime;
@@ -652,7 +674,8 @@ export class SessionManager {
         return;
       case "turn.result": {
         // Before the event is stored: the usage reads the session's previous total.
-        this.opts.onTurn?.(sessionId, this.get(sessionId).cwd, event);
+        const session = this.get(sessionId);
+        this.opts.onTurn?.(sessionId, session.cwd, event, session.runtime ?? "claude");
         this.turnEdge(sessionId, "after");
         this.emit(sessionId, event);
         const next = live.queue.shift();
@@ -713,6 +736,7 @@ export class SessionManager {
 
   /** Phase 12: turns an MCP server of a live managed session on or off right away. */
   async toggleMcpServer(sessionId: string, name: string, enabled: boolean): Promise<void> {
+    this.claudeOnly(sessionId, "mcp");
     const run = this.live.get(sessionId)?.run;
     if (!run?.toggleMcpServer) {
       throw new FlightdeckError(
@@ -768,6 +792,7 @@ export class SessionManager {
 
   /** Phase 12: the live status of a managed session's MCP servers, as its runtime reports it. */
   async mcpStatus(sessionId: string): Promise<McpLiveStatus[]> {
+    this.claudeOnly(sessionId, "mcp");
     const run = this.live.get(sessionId)?.run;
     if (!run?.mcpServerStatus) {
       throw new FlightdeckError(

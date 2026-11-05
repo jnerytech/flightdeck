@@ -136,8 +136,9 @@ export class LocalEndpoints implements Endpoints {
     if (state === "idle") for (const listener of this.idleListeners) listener(id);
   }
 
+  /** Phase 39: OpenCode sessions stay out of messaging in version 1. */
   private managed(): SessionSummary[] {
-    return this.opts.manager.list();
+    return this.opts.manager.list().filter((s) => s.runtime !== "opencode");
   }
 
   list(): EndpointInfo[] {

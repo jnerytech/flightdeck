@@ -667,9 +667,10 @@ export async function startDaemon(
       quota.record(readings);
       quotaHistory.sample(readings);
     },
-    onTurn: (sessionId, cwd, turn) => {
+    onTurn: (sessionId, cwd, turn, runtime) => {
       usage.record(sessionId, cwd, turn);
-      account?.turnEnded();
+      // The account card reads the Claude plan; an OpenCode turn spends none of it.
+      if (runtime === "claude") account?.turnEnded();
     },
     onTurnEdge: (edge) =>
       snapshots.enqueue({
