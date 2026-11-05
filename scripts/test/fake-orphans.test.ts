@@ -1,6 +1,6 @@
 // Fake CLIs never outlive the run (issue #254): 83 orphaned fake gh calls once held 11.6 GB.
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type FakeRule, installFakeCli, reapFakes } from "./fake-cli.ts";
@@ -98,7 +98,19 @@ describe("fake-orphans", () => {
   test.skipIf(process.platform !== "linux")(
     "at the end of a run the leftover fakes are killed, and a reused pid is left alone",
     async () => {
-      const dir = fakeDir([WAITING]);
+      // A run folder of this test's own, so the sweep never reaches another test's fakes.
+      const run = mkdtempSync(join(tmpdir(), "fd-reap-"));
+      const before = process.env.TMPDIR;
+      process.env.TMPDIR = run;
+      let dir: string;
+      let staleDir: string;
+      try {
+        dir = fakeDir([WAITING]);
+        staleDir = fakeDir([]);
+      } finally {
+        process.env.TMPDIR = before;
+      }
+      expect(dir.startsWith(run)).toBe(true);
       const fake = Bun.spawn([process.execPath, MAIN, dir, "auth", "login"], {
         stdout: "ignore",
         stderr: "ignore",
@@ -111,10 +123,10 @@ describe("fake-orphans", () => {
         stderr: "ignore",
       });
       started.push(other.pid);
-      const stale = join(fakeDir([]), "pids");
+      const stale = join(staleDir, "pids");
       mkdirSync(stale, { recursive: true });
       writeFileSync(join(stale, String(other.pid)), "");
-      expect(reapFakes(tmpdir())).toEqual([fake.pid]);
+      expect(reapFakes(run)).toEqual([fake.pid]);
       expect(await within(1500, () => !pidAlive(fake.pid))).toBe(true);
       expect(pidAlive(other.pid)).toBe(true);
     },
