@@ -92,7 +92,12 @@ export function planRelated({ base, platform, git, readFile, coverageDir }: Plan
   const warnings = changed
     .filter((path) => GLOBAL_FILE.test(path))
     .map((path) => `warning: ${path} affects every test, run the full suite`);
-  const related = selectRelated(changed, sources);
+  const byImport = selectRelated(changed, sources);
+  const imported = new Set(byImport.map((r) => r.path));
+  const related = [
+    ...byImport,
+    ...selectByPath(changed, sources).filter((r) => !imported.has(r.path)),
+  ].sort((a, b) => (a.path < b.path ? -1 : 1));
   const targets = coverageDir
     ? coverageTargets(changed, (path) => (sources.has(path) ? (sources.get(path) ?? null) : null))
     : undefined;
@@ -128,4 +133,32 @@ export function planRelated({ base, platform, git, readFile, coverageDir }: Plan
     command: related.length > SLOT_ABOVE ? ["bun", "run", "slot", "--", ...run] : run,
     ...(targets ? { targets } : {}),
   };
+}
+
+/**
+ * The tests that name a changed file, or one of its folders, as a string literal: the data files,
+ * configs and spawned entries a test reads without importing them.
+ */
+export function selectByPath(changed: string[], sources: Map<string, string>): Related[] {
+  const tests = [...sources].filter(([path]) => TEST_FILE.test(path));
+  const found = new Map<string, string>();
+  for (const path of changed) {
+    // The path itself, then its folders, most specific first. A name with no slash (a root file,
+    // a top-level folder) is a word in a test, not a path; a baseline also counts by its own name.
+    const names = [path];
+    if (path.endsWith("-baseline.json")) names.push(posix.basename(path));
+    for (let dir = posix.dirname(path); dir !== "."; dir = posix.dirname(dir)) names.push(dir);
+    const paths = names.filter((n) => n.includes("/") || n.endsWith("-baseline.json"));
+    for (const [test, source] of tests) {
+      if (found.has(test)) continue;
+      const name = paths.find((n) => new RegExp(`["'\`]${escapeRegExp(n)}["'\`]`).test(source));
+      if (name) found.set(test, `names ${name}`);
+    }
+  }
+  // In the sources' order; planRelated sorts what it runs.
+  return [...found].map(([path, why]) => ({ path, why }));
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

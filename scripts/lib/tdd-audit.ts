@@ -3,6 +3,8 @@ export interface Commit {
   subject: string;
   type: string | null;
   scope: string | null;
+  /** The value of a `TDD-Waiver:` trailer: a feat/fix made without a test on purpose. */
+  waiver?: string;
 }
 
 export interface Violation {
@@ -14,18 +16,28 @@ export interface Violation {
 
 const CONVENTIONAL = /^(\w+)(?:\(([^)]+)\))?!?: /;
 const NEEDS_TEST = new Set(["feat", "fix"]);
-const MARKERS = [/\.only\(/, /\.skip\(/, /\btest\.todo\(/];
-const MARKER_TEXT = [".only(", ".skip(", "test.todo("];
+/** Focused, skipped and todo tests: never in committed test files (docs/TDD.md). */
+export const FORBIDDEN_MARKERS = [
+  { pattern: /\.only\(/g, text: ".only(" },
+  { pattern: /\.skip\(/g, text: ".skip(" },
+  { pattern: /\btest\.todo\(/g, text: "test.todo(" },
+];
 
-/** Parses `git log --format=%H%x1f%s` output into conventional-commit parts. */
+/** The log format `parseCommits` reads: hash, subject and the `TDD-Waiver` trailer's value. */
+export const LOG_FORMAT =
+  "--format=%H%x1f%s%x1f%(trailers:key=TDD-Waiver,valueonly,separator=%x20)";
+
+/** Parses `git log` output in `LOG_FORMAT` (or just `%H%x1f%s`) into conventional-commit parts. */
 export function parseCommits(log: string): Commit[] {
   return log
     .split("\n")
     .filter((line) => line.trim() !== "")
     .map((line) => {
-      const [hash = "", subject = ""] = line.split("\x1f");
+      const [hash = "", subject = "", waiver = ""] = line.split("\x1f");
       const match = CONVENTIONAL.exec(subject);
-      return { hash, subject, type: match?.[1] ?? null, scope: match?.[2] ?? null };
+      const commit: Commit = { hash, subject, type: match?.[1] ?? null, scope: match?.[2] ?? null };
+      if (waiver.trim()) commit.waiver = waiver.trim();
+      return commit;
     });
 }
 
@@ -54,15 +66,15 @@ export function findForbiddenMarkers(files: { path: string; content: string }[])
   const violations: Violation[] = [];
   for (const file of files) {
     file.content.split("\n").forEach((line, i) => {
-      MARKERS.forEach((marker, m) => {
-        if (marker.test(line)) {
+      for (const { pattern, text } of FORBIDDEN_MARKERS) {
+        if (line.match(pattern)) {
           violations.push({
             commit: `${file.path}:${i + 1}`,
             scope: "-",
-            reason: `uso proibido de ${MARKER_TEXT[m]}`,
+            reason: `uso proibido de ${text}`,
           });
         }
-      });
+      }
     });
   }
   return violations;
@@ -94,6 +106,25 @@ export function parseWaivers(text: string): Waiver[] {
   });
 }
 
+/**
+ * The commit `--since auto` audits from: the merge-base with `main` (`origin/main` first, then a
+ * local `main`) on any other branch, or the last release tag (`v*`, never a `fase-N` tag) when
+ * HEAD is on `main`, pushed or not. Null when neither can be found.
+ */
+export function auditBase(git: AuditDeps["git"]): string | null {
+  const head = git(["rev-parse", "HEAD"])?.trim();
+  if (!head) return null;
+  const lastRelease = () =>
+    git(["describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", "HEAD"])?.trim() || null;
+  if (git(["symbolic-ref", "--short", "HEAD"])?.trim() === "main") return lastRelease();
+  for (const main of ["origin/main", "main"]) {
+    const base = git(["merge-base", "HEAD", main])?.trim();
+    if (!base) continue;
+    return base === head ? lastRelease() : base;
+  }
+  return null;
+}
+
 export interface AuditDeps {
   since: string;
   /** Accepted exceptions; every one must still match a violation in the audited range. */
@@ -103,22 +134,29 @@ export interface AuditDeps {
   readFile: (path: string) => string;
 }
 
-export function runAudit({ since, git, readFile, waivers = [] }: AuditDeps): {
+export function runAudit({ since: asked, git, readFile, waivers = [] }: AuditDeps): {
   code: number;
   output: string;
 } {
+  const since = asked === "auto" ? auditBase(git) : asked;
+  if (since === null) {
+    return { code: 2, output: "since auto: no merge-base with main and no tag to audit from" };
+  }
+  const autoLine = asked === "auto" ? [`  since ${since} (auto)`] : [];
   if (git(["rev-parse", "--verify", `${since}^{commit}`]) === null) {
     return { code: 2, output: `tag ou commit desconhecido: ${since}` };
   }
-  const commits = parseCommits(
-    git(["log", "--reverse", "--format=%H%x1f%s", `${since}..HEAD`]) ?? "",
-  );
+  const commits = parseCommits(git(["log", "--reverse", LOG_FORMAT, `${since}..HEAD`]) ?? "");
   const files = (git(["ls-files", "*.test.ts", "*.test.tsx"]) ?? "")
     .split("\n")
     .filter(Boolean)
     .map((path) => ({ path, content: readFile(path) }));
   const found = auditCommits(commits);
-  const waived = waivers.filter((w) =>
+  // A TDD-Waiver trailer waives its own commit; one on a commit that needs no waiver is ignored.
+  const trailers: Waiver[] = commits.flatMap((c) =>
+    c.waiver && c.scope ? [{ hash: c.hash, scope: c.scope, reason: `trailer: ${c.waiver}` }] : [],
+  );
+  const waived = [...waivers, ...trailers].filter((w) =>
     found.some((v) => v.commit === w.hash && v.scope === w.scope),
   );
   const inRange = new Set(commits.map((c) => c.hash));
@@ -137,12 +175,13 @@ export function runAudit({ since, git, readFile, waivers = [] }: AuditDeps): {
   const waivedLines = waived.map((w) => `  waived  ${w.hash}  ${w.scope}  ${w.reason}`);
   if (violations.length === 0) {
     const head = waived.length === 0 ? "TDD AUDIT OK" : `TDD AUDIT OK (${waived.length} waived)`;
-    return { code: 0, output: [head, ...waivedLines, ...ignored].join("\n") };
+    return { code: 0, output: [head, ...autoLine, ...waivedLines, ...ignored].join("\n") };
   }
   return {
     code: 1,
     output: [
       `TDD AUDIT FAIL: ${violations.length} violação(ões)`,
+      ...autoLine,
       ...violations.map((v) => `  ${v.commit}  ${v.scope}  ${v.reason}`),
       ...(waived.length === 0 ? [] : [`${waived.length} waived:`, ...waivedLines]),
       ...ignored,

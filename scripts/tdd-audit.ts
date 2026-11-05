@@ -1,5 +1,8 @@
 #!/usr/bin/env bun
-/** `bun run tdd:audit -- --since <tag>`: checks that every feat/fix has an earlier test commit. */
+/**
+ * `bun run tdd:audit -- --since <tag|commit|auto>`: checks that every feat/fix has an earlier test
+ * commit. `auto` (the default) audits from the merge-base with main, or from the last tag on main.
+ */
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -8,9 +11,10 @@ import { parseWaivers, runAudit } from "./lib/tdd-audit.ts";
 const ROOT = resolve(import.meta.dir, "..");
 const args = process.argv.slice(2).filter((a) => a !== "--");
 const flag = args.indexOf("--since");
-const since = flag >= 0 ? args[flag + 1] : undefined;
+// Without --since, the audit runs from the merge-base with main (or the last tag on main).
+const since = flag >= 0 ? args[flag + 1] : "auto";
 if (!since) {
-  console.error("uso: bun run tdd:audit -- --since <tag>");
+  console.error("usage: bun run tdd:audit -- --since <tag|commit|auto>");
   process.exit(2);
 }
 

@@ -13,22 +13,24 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   decisions of each phase), `TDD.md` (the testing rules), `GLOSSARY.md`, `manual/` (en, pt-BR).
 - `.claude/`: the shared Claude Code setup. Skills `tdd-area` (one TDD area) and `new-phase`
   (open or close a phase); agents `spec-verifier` (checks a phase against its spec) and
-  `tauri-rust-reviewer` (for changes in `src-tauri`); hooks that block wide `git add` and edits of
-  generated files and run Biome after each edit, in the main checkout and its worktrees. The
-  hook rules live in `scripts/lib/claude-hooks.ts`. Personal settings go to
-  `.claude/settings.local.json` (ignored).
+  `tauri-rust-reviewer` (for changes in `src-tauri`); hooks that block wide `git add`, edits of
+  generated files, test edits that add `.only`/`.skip`/`test.todo`/`toMatchSnapshot`, commits
+  that break `type(scope): text` or the TDD order, and heavy runs outside the slot, and that run
+  Biome after each edit, in the main checkout and its worktrees. The hook rules live in `scripts/lib/claude-hooks.ts`;
+  `bun run harness:stats` shows how often each rule blocked and how long the hooks took. Personal
+  settings go to `.claude/settings.local.json` (ignored).
 
 ## Commands
 
 - Test a single file: `bun --config=bunfig.area.toml test <file>`. A plain `bun test <file>`
   exits with 1 even when it passes, because of the global coverage threshold.
-- Full suite (with the 100% line and function threshold): `bun run test`.
+- Full suite (with the 100% line and function threshold): `bun run slot -- bun run test`.
 - The heavy commands go through the slot: `bun run slot -- <command...>` (for example
   `bun run slot -- bun run test`). It is one exclusive lock for the whole machine, with a queue;
   `bun run slot -- --status` shows the holder (with a warning past `--max-age`, 90 min by
   default), `--nice` lowers the command's priority, `--cancel` stops your own waiters and run
   (matched by `FLIGHTDECK_SLOT_LABEL`, never another session's), so nobody needs `pkill -f`.
-  `--priority` (for the maintainer's full gate) also lowers the other `bun test` processes of the
+  `--priority` (for the maintainer's full gate) also lowers the other bun test processes of the
   user while it runs.
 - Tests for what you changed: `bun run test:related [--base <ref>]`. It takes the files changed
   since the merge-base with `main` (or `<ref>`), picks the changed test files plus every test
@@ -47,18 +49,19 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   TypeScript program (a minute faster); `// NOSONAR: <reason>` suppresses a reviewed false positive
   on both sides, and a NOSONAR with no reason fails. Biome stays the linter.
 - Before hand-off from a session: `bun run typecheck`, `bun run lint`, `bun run lint:sonar`,
-  `bun run tdd:audit` and `bun run test:related`. The full suite (`bun run test`) runs at the
+  `bun run tdd:audit` and `bun run test:related`. The full suite (`bun run slot -- bun run test`) runs at the
   orchestrator's version gate and in CI, not in every session.
-- Format: `bun run format`. Smokes: `bun run smoke:<name>` (list in `package.json`; never
-  `smoke:real` unless asked).
-- Audit: `bun run tdd:audit -- --since <tag or commit>`. Accepts any commit, for example
-  `$(git merge-base HEAD main)` on a phase branch.
+- Format: `bun run format`. Smokes: `bun run slot -- bun run smoke:<name>` (list in
+  `package.json`; never `smoke:real` unless asked).
+- Audit: `bun run tdd:audit` audits from the merge-base with `main` (or from the last tag on
+  `main`), the same as `-- --since auto`; `-- --since <tag or commit>` picks the start. CI runs it.
 - Screens: `bun run demo` (two fake hosts and the web entry at http://localhost:1420),
-  `bun run demo:shots` (prints in both themes and languages, plus axe), `bun run e2e` (the
+  `bun run slot -- bun run demo:shots` (prints in both themes and languages, plus axe),
+  `bun run slot -- bun run e2e` (the
   journeys, in both languages, with `@playwright/test`: `E2E_ONLY=a,b` picks journeys, and
-  `bun run e2e -- --repeat-each 5` hunts flakes; the HTML report is in `playwright-report/`).
-- Builds: `bun run build:daemon`, `bun run build:desktop`. `cargo check` (in
-  `apps/desktop/src-tauri`) requires `bun run build:desktop` first.
+  `bun run slot -- bun run e2e -- --repeat-each 5` hunts flakes; the HTML report is in `playwright-report/`).
+- Builds: `bun run slot -- bun run build:daemon`, `bun run slot -- bun run build:desktop`.
+  `cargo check` (in `apps/desktop/src-tauri`) requires the desktop build first.
 
 ## Non-negotiable rules
 
@@ -66,7 +69,9 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
 
 - Red → green per area: stub with real signatures and wrong values (never `throw`), red **by
   assertion**, commit the test alone (`test(<area>): ...`), minimal implementation, green, full
-  suite, commit `feat(<area>): ...`. Every `feat`/`fix` needs a prior `test` with the same scope.
+  suite, commit `feat(<area>): ...`. Every `feat`/`fix` needs a prior `test` with the same scope;
+  the commit hook enforces it. For a deliberate exception, end the message with a trailer line
+  `TDD-Waiver: <why>`; `tdd:audit` lists it as waived.
 - `git add` always with explicit paths, never `-A`, `-u` or `.`, and `git status --short` before
   the commit. No `git commit -a`.
 - Forbidden in committed code: `.only`, `.skip`, `test.todo`, `toMatchSnapshot` on the first
@@ -83,7 +88,7 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   maintainer integrates the phase into `main`, tags it and releases.
 
 - Full suite, `demo:shots`, `e2e`, the smokes and the builds run only through
-  `bun run slot --`, never bare: two of them at once overload the machine and make the
+  `bun run slot --`, never bare (the guard hook refuses them otherwise): two of them at once overload the machine and make the
   timing-sensitive tests flaky. Area tests, typecheck and lint do not need the slot.
   `bun run typecheck` and `bun run lint` go through the light lane by themselves
   (`scripts/lane.ts`): at most two run at once on the machine, since one tsc run takes up to
@@ -107,7 +112,7 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
 
 ## Gotchas
 
-- With `CLAUDECODE` set, `bun test` hides the `(pass)` lines. To see the list, use
-  `env -u CLAUDECODE bun test`.
+- With `CLAUDECODE` set, bun test hides the `(pass)` lines. To see the list, use
+  `env -u CLAUDECODE bun --config=bunfig.area.toml test <file>`.
 - In Git Bash, the `/TN` in `schtasks /TN ...` gets rewritten as a path. Use PowerShell.
 - In stdin mode, Biome's exit code does not reflect the diagnostics.
