@@ -63,7 +63,7 @@ export function HistoryList(
     openId: string | null;
     onOpen(claudeSessionId: string): void;
     /** Opened from a usage row: starts filtered by that folder and day (UTC). */
-    initial?: { cwd?: string; projectKey?: string; day?: string };
+    initial?: { cwd?: string; projectKey?: string; day?: string; from?: string; to?: string };
   }>,
 ) {
   const { store, hostId } = props;
