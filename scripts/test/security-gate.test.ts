@@ -33,6 +33,10 @@ const DIFF = [
   "+++ b/apps/daemon/test/run.test.ts",
   "@@ -1 +1 @@",
   '+Bun.spawn(["x"]);',
+  "diff --git a/scripts/pr-flow.ts b/scripts/pr-flow.ts",
+  "+++ b/scripts/pr-flow.ts",
+  "@@ -1 +1 @@",
+  "+run: (cmd) => spawnExec(cmd),",
   "diff --git a/apps/desktop/src/ui/confirm.ts b/apps/desktop/src/ui/confirm.ts",
   "+++ b/apps/desktop/src/ui/confirm.ts",
   "@@ -1 +1 @@",
@@ -70,6 +74,7 @@ describe("security-gate", () => {
       { path: "apps/daemon/src/run.ts", why: ["spawn"] },
       { path: "apps/daemon/src/vault/store.ts", why: ["vault or pairing"] },
       { path: "scripts/lib/clean.ts", why: ["delete"] },
+      { path: "scripts/pr-flow.ts", why: ["spawn"] },
     ]);
   });
 
