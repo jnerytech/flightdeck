@@ -4052,12 +4052,14 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
 - **Why.** On 2026-11-05 ratchets (Sonar, layout, no-sync, protocol surface) failed only after
   the 20-minute jobs. A count that went up now fails the run in minutes.
 - **The `quick` job** (`quick checks`, Linux, 10 minutes at most) runs typecheck, lint, the TDD
-  audit (full history), Sonar's per-rule ratchet on a PR (it was its own `lint:sonar (ratchet)`
-  job, now a step of that name) and `bun run scripts/ci-quick.ts`: every `*-ratchet.test.ts(x)` and
+  audit (full history) and `bun run scripts/ci-quick.ts`: every `*-ratchet.test.ts(x)` and
   `protocol-surface.test.ts`, by name (scripts/lib/ci-quick.ts), in seconds with no coverage. The
   Linux suite no longer runs typecheck, lint and the audit itself.
 - **Every heavy job needs it:** the Linux suite, the Windows shards and checks, the prints and the
   e2e shards.
+- **No local Sonar in it** (#283): the `lint:sonar (ratchet)` step it first carried failed once main
+  grew past the baseline, and the user chose SonarCloud's own check on the PR as the only Sonar
+  check. #283 removes the local Sonar from the repository.
 - **A failed quick job fails the required checks, never skips them.** GitHub counts a skipped
   required check as passed. So `test (ubuntu-latest)` runs on `!cancelled()` and its first step
   fails unless `changes` and `quick` succeeded. The two aggregates check `quick` before they pass a
