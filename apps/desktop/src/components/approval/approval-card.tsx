@@ -17,7 +17,7 @@ import { type AskPick, answeredInput, buildAnswers, parseQuestions } from "@/lib
 import { cn } from "@/lib/utils";
 import { AlwaysAllow } from "../../ui/AlwaysAllow.tsx";
 import { Markdown } from "../../ui/Markdown.tsx";
-import { HoldButton } from "./hold-button.tsx";
+import { ApprovalActions } from "./approval-actions.tsx";
 import { QuestionForm } from "./question-form.tsx";
 
 /** One open (or answered) permission request, from any kind of session. */
@@ -34,8 +34,8 @@ export interface ApprovalRequest {
   riskReason?: string | undefined;
 }
 
-/** How long the Aprovar of a high-risk request has to be held (phase 13). */
-export const HIGH_RISK_HOLD_MS = 2000;
+/** How long the Aprovar of a high-risk request has to be held (phase 13): ApprovalActions holds it. */
+export { HIGH_RISK_HOLD_MS } from "./approval-actions.tsx";
 
 /** Diff lines shown before the card cuts the preview. */
 const MAX_LINES = 40;
@@ -320,36 +320,39 @@ export function ApprovalCard(props: {
                   {t("approval.cancel")}
                 </Button>
               </>
-            ) : (
+            ) : questions ? (
               <>
-                {questions ? (
-                  <ActionButton
-                    pending={pending}
-                    disabled={!answers}
-                    onClick={() =>
-                      answers &&
-                      respond("allow", undefined, undefined, answeredInput(request.input, answers))
-                    }
-                  >
-                    {t("approval.question.send")}
-                  </ActionButton>
-                ) : high ? (
-                  <HoldButton
-                    label={t("approval.hold")}
-                    hint={t("approval.holdHint")}
-                    holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
-                    disabled={pending}
-                    onHeld={() => respond("allow")}
-                  />
-                ) : (
-                  <ActionButton pending={pending} onClick={() => respond("allow")}>
-                    {t(plan !== null ? "approval.plan.approve" : "approval.approve")}
-                  </ActionButton>
-                )}
+                <ActionButton
+                  pending={pending}
+                  disabled={!answers}
+                  onClick={() =>
+                    answers &&
+                    respond("allow", undefined, undefined, answeredInput(request.input, answers))
+                  }
+                >
+                  {t("approval.question.send")}
+                </ActionButton>
                 <Button variant="outline" disabled={pending} onClick={() => setDenying(true)}>
-                  {t(plan !== null ? "approval.plan.keep" : "approval.deny")}
+                  {t("approval.deny")}
                 </Button>
               </>
+            ) : (
+              // Issue #182: the same Approve (held when high risk) and Deny as every screen.
+              <ApprovalActions
+                risk={high ? "high" : undefined}
+                pending={pending}
+                {...(props.holdMs !== undefined ? { holdMs: props.holdMs } : {})}
+                {...(plan !== null
+                  ? {
+                      labels: {
+                        approve: t("approval.plan.approve"),
+                        deny: t("approval.plan.keep"),
+                      },
+                    }
+                  : {})}
+                onApprove={() => respond("allow")}
+                onDeny={() => setDenying(true)}
+              />
             )}
             {props.actions}
           </div>

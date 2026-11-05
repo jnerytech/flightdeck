@@ -1,6 +1,6 @@
 import type { StepRun, WorkflowRun } from "@flightdeck/protocol";
 import { useState } from "react";
-import { ActionButton } from "@/components/feedback/action-button";
+import { ApprovalActions } from "@/components/approval/approval-actions";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Meter } from "@/components/status/meter";
 import { Button } from "@/components/ui/button";
@@ -57,21 +57,13 @@ function GateCard(props: {
         onChange={(e) => setNote(e.target.value)}
       />
       <div className="flex gap-2">
-        <ActionButton
+        {/* Issue #182: a gate is answered with the same Approve and Deny as a request. */}
+        <ApprovalActions
           size="sm"
           pending={busy}
-          onClick={() => run(() => props.onRespond(step, "approve", note))}
-        >
-          {t("runUi.approve")}
-        </ActionButton>
-        <ActionButton
-          variant="outline"
-          size="sm"
-          pending={busy}
-          onClick={() => run(() => props.onRespond(step, "reject", note))}
-        >
-          {t("runUi.reject")}
-        </ActionButton>
+          onApprove={() => run(() => props.onRespond(step, "approve", note))}
+          onDeny={() => run(() => props.onRespond(step, "reject", note))}
+        />
       </div>
     </section>
   );
