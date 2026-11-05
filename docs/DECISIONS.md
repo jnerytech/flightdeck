@@ -3914,3 +3914,18 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   coordinator, or `spec-verifier`) runs `bun run handoff:check -- --verify` in the worktree, which
   refuses a missing stamp, one for another HEAD, or any check that was not 0.
 - **Never under the slot** (review S2-2): `test:related` takes the slot by itself above 60 files.
+
+## The hand-off needs a green CI run for HEAD (issue #221, part of #216)
+
+- **The heavy tier is part of the stamp.** `handoff:check` adds a `ci` check after the four local
+  ones: HEAD's `.github/workflows/ci.yml` must run on a push to any branch (#217; a branch made
+  before it has no push trigger, so a push runs no CI), and `gh run list --workflow ci.yml --commit
+  HEAD` must show a completed, successful run. Otherwise the stamp says `ci=no-trigger`, `none`,
+  `pending`, `failed` or `unknown`, the run exits 1, and `--verify` refuses the stamp. An rc is then
+  assembled only from branches whose stamp is green.
+- **`--no-ci`** checks the local tier alone, before the push; it writes `ci=skip`, which never
+  verifies.
+- **`--base <ref>`** goes to `tdd:audit` (`--since`) and `test:related` (`--base`), for a branch made
+  from an rc: measured against main it would pick every file the rc changes.
+- **`test:related` defaults to the audit base** (the merge-base with `origin/main`, the local `main`
+  only as a fallback), the same base as `tdd:audit`.

@@ -54,9 +54,11 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   on both sides, and a NOSONAR with no reason fails. Biome stays the linter.
   `bun run lint:sonar -- --ratchet` compares the open findings per rule over the whole repo with
   `sonar-baseline.json`, which only goes down (`--ratchet --write` lowers it after a fix).
-- Before hand-off from a session: `bun run handoff:check` runs `typecheck`, `lint`, `tdd:audit`
-  and `test:related` in order and prints a `HANDOFF <branch> <head> ...` stamp line; paste it in
-  the hand-off message. The receiver runs `bun run handoff:check -- --verify` in the worktree
+- Before hand-off from a session: push the branch, then `bun run handoff:check` runs `typecheck`,
+  `lint`, `tdd:audit` and `test:related` in order, checks that CI ran green for HEAD (the branch's
+  `ci.yml` must have the push trigger; merge `origin/main` if not), and prints a
+  `HANDOFF <branch> <head> ... ci=0 ...` stamp line; paste it in the hand-off message. A branch made
+  from an rc passes `-- --base <rc>`; `-- --no-ci` checks only the local tier (`ci=skip`). The receiver runs `bun run handoff:check -- --verify` in the worktree
   (refused when stale or not all 0). The full suite (`bun run slot -- bun run test`) runs at the
   orchestrator's version gate and in CI, not in every session. `bun run lint:sonar` is run
   next to it, before a push.
