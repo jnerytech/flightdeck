@@ -135,6 +135,11 @@ export interface Platform {
   setCloseToTray(enabled: boolean): Promise<void>;
   copyText(text: string): Promise<void>;
   /**
+   * The app's own log file on THIS machine (issue #255): lines are appended (already redacted), the
+   * last ones can be read back and the folder opened. Absent in a browser, which has no file system.
+   */
+  logs?: LogSink;
+  /**
    * The system's folder dialog, for a folder of THIS machine; null when the user cancels. Absent
    * in a browser. A folder it gives is only a suggestion: the host checks it against its roots.
    */
@@ -172,4 +177,11 @@ export interface Platform {
     register(accelerator: string, onPress: () => void): Promise<void>;
     unregister(accelerator: string): Promise<void>;
   };
+}
+
+/** Where the app's log lines go: the shell's log file. */
+export interface LogSink {
+  write(line: string): Promise<void>;
+  tail(lines: number): Promise<string[]>;
+  openFolder(): Promise<void>;
 }
