@@ -17,6 +17,10 @@ export interface HandoffDeps {
   branch: string;
   head: string;
   now: string;
+  /** `--base`: test:related compares with this ref (a branch stacked on another, #266). */
+  base?: string;
+  /** The CI of HEAD: "0" when the required checks are green, else why not (#266). */
+  ci?: () => Promise<string>;
 }
 
 /** Runs every step (all of them, so one run shows every failure) and builds the stamp line. */

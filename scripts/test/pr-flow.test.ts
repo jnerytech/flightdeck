@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   type CheckRun,
   checksVerdict,
+  headCi,
   issueOf,
   mergeOrder,
   type Pr,
@@ -35,10 +36,17 @@ function fake(
     pushed?: string[];
     fail?: RegExp;
     env?: Record<string, string>;
+    /** CI runs of a commit pushed to main, by SHA. */
+    mainRuns?: Record<string, { status: string; conclusion: string | null }[]>;
+    /** origin/main's HEAD and the commits on main. */
+    mainHead?: string;
+    onMain?: string[];
+    tags?: string[];
   } = {},
 ) {
   const prs = opts.prs ?? [];
   const writes: string[] = [];
+  const gitWrites: string[] = [];
   const lines: string[] = [];
   const ok = (stdout: string) => ({ code: 0, stdout });
   const deps: PrFlowDeps = {
@@ -112,9 +120,29 @@ function fake(
         const title = opts.issues?.[Number(m[1])];
         return title === undefined ? { code: 1, stdout: "" } : ok(`${title}\n`);
       }
+      m = /actions\/workflows\/ci\.yml\/runs\?head_sha=(\w+)&event=push&branch=main/.exec(path);
+      if (m) {
+        return ok(
+          (opts.mainRuns?.[m[1] ?? ""] ?? []).map((r) => `${JSON.stringify(r)}\n`).join(""),
+        );
+      }
       return { code: 1, stdout: "" };
     },
     git: async (args) => {
+      if (args[0] === "tag" || args[0] === "push") {
+        gitWrites.push(args.join(" "));
+        return opts.fail?.test(args.join(" ")) ? { code: 1, stdout: "" } : ok("");
+      }
+      if (args[0] === "merge-base") {
+        return { code: (opts.onMain ?? []).includes(args[2] ?? "") ? 0 : 1, stdout: "" };
+      }
+      if (args[0] === "rev-parse" && (args.at(-1) ?? "").startsWith("refs/tags/")) {
+        const tag = (args.at(-1) ?? "").slice("refs/tags/".length);
+        return { code: (opts.tags ?? []).includes(tag) ? 0 : 1, stdout: "" };
+      }
+      if (args[0] === "rev-parse" && args.at(-1) === "origin/main") {
+        return opts.mainHead ? ok(`${opts.mainHead}\n`) : { code: 1, stdout: "" };
+      }
       if (args[0] === "rev-parse") {
         const ref = args.at(-1) ?? "";
         return {
@@ -132,7 +160,7 @@ function fake(
     env: opts.env ?? {},
     log: (line) => lines.push(line),
   };
-  return { deps, writes, lines, out: () => lines.join("\n") };
+  return { deps, writes, gitWrites, lines, out: () => lines.join("\n") };
 }
 
 const pr = (number: number, head: string, extra: Partial<FakePr> = {}): FakePr => ({
@@ -378,5 +406,98 @@ describe("pr-flow: update and merge", () => {
       expect(await prFlow(argv, f.deps)).toBe(2);
       expect(f.out()).toContain("usage: bun run pr --");
     }
+  });
+});
+
+describe("pr-flow: the CI of a commit and the release tag (#266)", () => {
+  test("a commit's required checks read as 0, failed, pending or none", async () => {
+    const failing = green().map((r, i) => (i === 0 ? { ...r, conclusion: "failure" } : r));
+    const running = green().map((r, i) =>
+      i === 1 ? { ...r, status: "queued", conclusion: null } : r,
+    );
+    const f = fake({ runs: { ok1: green(), red1: failing, run1: running } });
+    expect(await headCi("ok1", f.deps)).toBe("0");
+    expect(await headCi("red1", f.deps)).toBe("failed");
+    expect(await headCi("run1", f.deps)).toBe("pending");
+    expect(await headCi("none1", f.deps)).toBe("none");
+    expect(await headCi("ok1", fake({ fail: /rules\/branches/ }).deps)).toBe("unknown");
+  });
+
+  const COORDINATOR = { FLIGHTDECK_COORDINATOR: "1" };
+  const released = { status: "completed", conclusion: "success" };
+
+  test("tag tags main's HEAD after a green full run of it on main, and pushes the tag alone", async () => {
+    const f = fake({
+      env: COORDINATOR,
+      mainHead: "abc123",
+      onMain: ["abc123"],
+      mainRuns: { abc123: [released] },
+    });
+    expect(await prFlow(["tag", "v0.36.5"], f.deps)).toBe(0);
+    expect(f.gitWrites).toEqual([
+      "tag -a v0.36.5 -m v0.36.5 abc123",
+      "push origin refs/tags/v0.36.5",
+    ]);
+    expect(f.out()).toContain("v0.36.5 tagged on abc123");
+  });
+
+  test("tag refuses, and writes nothing, without the coordinator, a green full run, or a free tag on main", async () => {
+    const base = { mainHead: "abc123", onMain: ["abc123"], mainRuns: { abc123: [released] } };
+    const cases: [Parameters<typeof fake>[0], string[], string][] = [
+      [{ ...base }, ["tag", "v0.36.5"], "FLIGHTDECK_COORDINATOR"],
+      [{ ...base, env: COORDINATOR }, ["tag", "0.36.5"], "usage: bun run pr --"],
+      [
+        { ...base, env: COORDINATOR, tags: ["v0.36.5"] },
+        ["tag", "v0.36.5"],
+        "v0.36.5 exists already",
+      ],
+      [
+        { ...base, env: COORDINATOR },
+        ["tag", "v0.36.5", "--commit", "feat9"],
+        "feat9 is not on main",
+      ],
+      [
+        { ...base, env: COORDINATOR, mainRuns: {} },
+        ["tag", "v0.36.5"],
+        "no CI run of abc123 on main",
+      ],
+      [
+        {
+          ...base,
+          env: COORDINATOR,
+          mainRuns: { abc123: [{ status: "in_progress", conclusion: null }] },
+        },
+        ["tag", "v0.36.5"],
+        "abc123's CI run on main is still running",
+      ],
+      [
+        {
+          ...base,
+          env: COORDINATOR,
+          mainRuns: { abc123: [{ status: "completed", conclusion: "failure" }] },
+        },
+        ["tag", "v0.36.5"],
+        "abc123's CI run on main did not pass",
+      ],
+      [{ env: COORDINATOR }, ["tag", "v0.36.5"], "origin/main cannot be read"],
+    ];
+    for (const [opts, argv, reason] of cases) {
+      const f = fake(opts);
+      expect(await prFlow(argv, f.deps)).toBe(2);
+      expect(f.gitWrites).toEqual([]);
+      expect(f.out()).toContain(reason);
+    }
+  });
+
+  test("a tag git refuses to make or push fails with exit 1", async () => {
+    const f = fake({
+      env: { FLIGHTDECK_COORDINATOR: "1" },
+      mainHead: "abc123",
+      onMain: ["abc123"],
+      mainRuns: { abc123: [released] },
+      fail: /^push/,
+    });
+    expect(await prFlow(["tag", "v0.36.5"], f.deps)).toBe(1);
+    expect(f.out()).toContain("the push of v0.36.5 failed");
   });
 });

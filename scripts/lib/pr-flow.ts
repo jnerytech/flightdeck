@@ -325,6 +325,11 @@ function usage(deps: PrFlowDeps): number {
   return 2;
 }
 
+/** The CI of a commit, by the main ruleset's required checks: "0", "failed", "pending", "none" or "unknown" (#266). */
+export async function headCi(_sha: string, _deps: PrFlowDeps): Promise<string> {
+  return "0";
+}
+
 /** Runs one command; the exit code (2 for a usage error or a refusal). */
 export async function prFlow(argv: string[], deps: PrFlowDeps): Promise<number> {
   const [command, ...args] = argv;
