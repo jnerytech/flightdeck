@@ -3952,3 +3952,21 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   on several hosts, the host's folder key when two folders of one host share a name), not the smallest project key among the rows
   present, which changed when a host went offline. `group.key` still names a real project for the client scope. A fold saved under the
   old key still counts until the person chooses again; no migration of storage.
+
+## `release:close` closes what a tag shipped (issue #252)
+
+- **What it reads.** The commits of `<previous v* tag>..<tag>` (`--since` names another start). An
+  issue counts when a subject names it (`(#170)`, the repository's habit) or a body line starts with
+  `Closes`, `Fixes` or `Resolves #N`. A number mentioned anywhere else in a body ("the overlay of
+  #233 is deferred") is listed and never touched, and a pull request's number is skipped.
+- **Dry run first.** Without `--apply` it only reads (the issue, its comments, the milestones) and
+  prints what it would do. With `--apply`, each open issue gets "Shipped in <tag>." (once: an
+  existing comment with that text is not repeated), is closed as completed, and goes to Done on the
+  board; an issue already closed only goes to Done. A second run changes nothing.
+- **The milestone** named after the tag is closed when it has no open issue left and no step of the
+  run failed, so a run that failed halfway leaves it open for the retry. One with issues the tag
+  did not ship stays open and says how many.
+- **REST only.** Every call is `gh api` with `-f` fields (no GraphQL), and the board goes through
+  `FLIGHTDECK_BOARD_CMD`, called as `<cmd> <issue> done ""`: the coordinator's `issue-note.sh`,
+  whose REST queue of #242 survives a rate limit. Without it the board is skipped, said once. The
+  coordinator tooling stays outside the repository; the script only knows the command's contract.
