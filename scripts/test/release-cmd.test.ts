@@ -43,6 +43,8 @@ interface Opts {
   tags?: string[];
   /** Tags on origin. */
   remoteTags?: string[];
+  /** Ref names on origin, as `git ls-remote` would list them (default: refs/tags/<remoteTags>). */
+  remoteRefs?: string[];
   openPr?: string;
   /** The version test passes before the version moves (it must be red). */
   notRed?: boolean;
@@ -79,8 +81,11 @@ function fake(opts: Opts = {}) {
         return ok(pkg(opts.main?.[path] ?? "0.36.4"));
       }
       if (args[0] === "ls-remote") {
-        const tag = (args.at(-1) ?? "").replace("refs/tags/", "");
-        return opts.remoteTags?.includes(tag) ? ok(`sha\trefs/tags/${tag}`) : bad;
+        // git matches the pattern as a suffix of the ref name, as the real command does
+        const pattern = args.at(-1) ?? "";
+        const refs = opts.remoteRefs ?? (opts.remoteTags ?? []).map((t) => `refs/tags/${t}`);
+        const hits = refs.filter((r) => r === pattern || r.endsWith(`/${pattern}`));
+        return ok(hits.map((r) => `sha\t${r}\n`).join(""));
       }
       if (args[0] === "rev-parse") {
         const tag = (args[3] ?? "").replace("refs/tags/", "");
@@ -365,6 +370,19 @@ describe("release: after the PR merged", () => {
     const { deps, calls } = fake({ ...merged, tags: ["v0.37.0"] });
     expect(await release(["v0.37.0"], deps)).toBe(0);
     expect(calls.some((c) => c.includes("pr -- tag v0.37.0"))).toBe(true);
+  });
+
+  test("a ref that only ends like the tag (x/refs/tags/v0.37.0) is not the tag (#287)", async () => {
+    const { deps, calls } = fake({ ...merged, remoteRefs: ["refs/tags/x/refs/tags/v0.37.0"] });
+    expect(await release(["v0.37.0"], deps)).toBe(0);
+    expect(calls.some((c) => c.includes("pr -- tag v0.37.0"))).toBe(true);
+  });
+
+  test("an origin that cannot be asked is an error: no tag is made and nothing is closed (#287)", async () => {
+    const { deps, calls, logs } = fake({ ...merged, fail: /ls-remote/ });
+    expect(await release(["v0.37.0"], deps)).toBe(1);
+    expect(calls.some((c) => c.includes("pr -- tag") || c.includes("release:close"))).toBe(false);
+    expect(logs.join("\n")).toContain("cannot ask origin");
   });
 
   test("a failed release:close is its exit code", async () => {
