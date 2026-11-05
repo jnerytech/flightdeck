@@ -334,7 +334,7 @@ export const CardDetail = memo(function CardDetail(props: {
         >
           <Field label={t("cardUi.title")}>
             {(control) => (
-              <div className="field-row">
+              <div className="field-with-action">
                 <Input
                   {...control}
                   className="flex-1"
@@ -370,7 +370,7 @@ export const CardDetail = memo(function CardDetail(props: {
           </Field>
           <Field label={t("cardUi.description")}>
             {(control) => (
-              <div className="field-row">
+              <div className="field-with-action">
                 <Textarea
                   {...control}
                   value={description}
@@ -577,7 +577,7 @@ export const CardDetail = memo(function CardDetail(props: {
             }
           />
         )}
-        <div className="field-row">
+        <div className="field-with-action">
           <Textarea
             aria-label={t("cardUi.adjustment")}
             placeholder={t("cardUi.adjustmentPlaceholder")}
