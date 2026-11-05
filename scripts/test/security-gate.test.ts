@@ -210,11 +210,13 @@ describe("security-gate", () => {
       ["apps/daemon/src/b.ts", [" * foo */ spawn(x)"]],
       ["apps/daemon/src/c.ts", ["#run = () => spawn(cmd);"]],
       ["scripts/d.sh", ["# rm -rf / in a comment"]],
+      ["apps/daemon/src/e.ts", ['const u = "http://x"; spawn(cmd);']],
     ]);
     expect(riskyFiles(added).map((r) => r.path)).toEqual([
       "apps/daemon/src/a.ts",
       "apps/daemon/src/b.ts",
       "apps/daemon/src/c.ts",
+      "apps/daemon/src/e.ts",
     ]);
   });
 
