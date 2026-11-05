@@ -19,6 +19,9 @@ paths:
   `settleMaybe`, `stays`, `uiIdle`. Never a `settle`, `waitFor` or `until` of your own (the wait
   ratchet), and never a guessed sleep (the lazy-wait ratchet), except an
   `act(() => Bun.sleep(…))` with a `// timing:` comment saying why the clock is under test.
+- Any fixed sleep (`Bun.sleep`, a promise on a timer, `sleep(`/`delay(`) is counted by the sleep ratchet
+  (`sleep-baseline.json`, only down); a `// timing:` comment above it allows one. The preload resets
+  timers, `Date`, `fetch`, env and the DOM state between files and names a file that leaked one.
 - A file that `mock.module`s a project module captures the real one first and restores it in
   `afterAll`: Bun's module mocks outlive their file.
 - Fixed ports are refused: a server in a test asks for port 0.

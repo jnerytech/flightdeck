@@ -31,6 +31,13 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     wait (the screen stopped changing). `lazy-wait-baseline.json` (a fixed wait before a one-shot
     query, or ending a helper) is empty, and an `act(() => Bun.sleep(…))` is allowed only with a
     `// timing:` comment on the line above saying why the clock is the thing under test.
+    Any other fixed sleep in a test file (`Bun.sleep`, `Bun.sleepSync`, a promise on a timer, a
+    `sleep(` or `delay(` helper) is counted by the sleep ratchet: `sleep-baseline.json` only goes
+    down, so a new test waits on the condition, and a `// timing:` comment on the line above allows
+    a sleep where the clock itself is under test.
+    The preload puts the timers, `Date`, `fetch`, the environment, the window size, the browser
+    storage and the page body back between two test files, and names on stderr the file that
+    left one changed (`isolation: <file> left … changed`): fix that file, the reset is a net.
    - Nada de `toMatchSnapshot` na primeira rodada: ele grava o resultado do stub. Use literais
      escritos à mão (`toBe`, `toMatchInlineSnapshot` com o texto).
    - `toContain` sobre algo que pode ser `undefined`: use `?? ""`.
