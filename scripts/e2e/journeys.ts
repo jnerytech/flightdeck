@@ -405,6 +405,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       tile(title).getByRole("button", { name: c.t("board.cardActions", { title }), exact: true });
     await actions(second).click();
     await c.page.getByRole("menuitem", { name: c.t("board.startCard"), exact: true }).click();
+    // The menu's Start asks for the workflow and persona first (issue #188).
+    await c.page
+      .getByRole("dialog", { name: c.t("board.startCard") })
+      .getByRole("button", { name: c.t("cardUi.start"), exact: true })
+      .click();
     await c.page
       .getByText(c.t("daemonRefusal.card_blocked", { blockers: first }), { exact: true })
       .waitFor({ timeout: WAIT });
