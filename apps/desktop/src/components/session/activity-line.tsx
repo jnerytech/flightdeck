@@ -23,6 +23,8 @@ export function ActivityLine(props: { activity: Activity; t: T }) {
     return () => clearInterval(timer);
   }, []);
   return (
+    // testid: the line is aria-hidden (the status line says the same for screen readers), so it
+    // has no role or name a test could find it by.
     <div data-testid="activity" className="activity-line" aria-hidden="true">
       <Loader2 aria-hidden="true" className="size-3.5 motion-safe:animate-spin" />
       <span>{activityText(props.activity, props.t)}</span>
