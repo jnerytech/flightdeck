@@ -311,8 +311,10 @@ describe("board-multi-ui: discarding many cards (issue #161)", () => {
     const dialog = await screen.findByRole("alertdialog");
     expect(within(dialog).getByText("Discard 2 cards?")).toBeTruthy();
     const items = within(dialog).getAllByRole("listitem");
-    expect(items.map((i) => i.textContent)).toEqual(["A", expect.stringContaining("B")]);
-    expect(items[1]?.textContent).toContain("its worktree and branch go with it");
+    expect(items.map((i) => i.textContent)).toEqual([
+      "A",
+      "B — its worktree and branch go with it; uncommitted changes and unpushed commits are lost",
+    ]);
     expect(items[0]?.textContent).not.toContain("worktree");
   });
 
@@ -322,6 +324,8 @@ describe("board-multi-ui: discarding many cards (issue #161)", () => {
       within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Cancel" }),
     );
     expect(w.commands.filter(([, type]) => /discard|delete/.test(type))).toEqual([]);
+    expect(w.requests).toEqual([]);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(selected()).toEqual(["A", "B"]);
   });
 
