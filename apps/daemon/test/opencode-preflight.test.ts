@@ -42,7 +42,12 @@ interface Answers {
 }
 
 function setup(answers: Answers = {}, over: Partial<PreflightDeps> = {}) {
-  const calls: Array<{ argv: string[]; cwd: string; env: Record<string, string> }> = [];
+  const calls: Array<{
+    argv: string[];
+    cwd: string;
+    env: Record<string, string>;
+    timeoutMs: number;
+  }> = [];
   let clock = 1000;
   const deps: PreflightDeps = {
     path: "/bin/opencode",
@@ -90,7 +95,7 @@ async function refusal(promise: Promise<unknown>) {
 }
 
 describe("opencode-preflight", () => {
-  test("a clean folder passes with our document; the three checks run in the folder, with project config off", async () => {
+  test("a clean folder passes with our document; the three checks run in the folder, with project config off, each for up to 30 s", async () => {
     const { preflight, calls } = setup();
     expect(await preflight.check("/w")).toEqual({
       configContent: JSON.stringify(opencodeConfig()),
@@ -101,11 +106,13 @@ describe("opencode-preflight", () => {
       "api GET /api/permission/saved --standalone",
     ]);
     for (const call of calls) {
-      expect([call.cwd, call.env.OPENCODE_DISABLE_PROJECT_CONFIG, call.env.OPENCODE_DB]).toEqual([
-        "/w",
-        "1",
-        undefined,
-      ]);
+      // Each check boots a private server: 8 to 15 s on a busy Raspberry Pi 5 (2026-11-05).
+      expect([
+        call.cwd,
+        call.env.OPENCODE_DISABLE_PROJECT_CONFIG,
+        call.env.OPENCODE_DB,
+        call.timeoutMs,
+      ]).toEqual(["/w", "1", undefined, 30_000]);
     }
   });
 

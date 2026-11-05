@@ -58,14 +58,19 @@ describe("opencode-models", () => {
 
   test("the models come from `models --standalone` in an empty folder of Flightdeck's, with the OpenCode env", async () => {
     const dataDir = realTempDir("fd-oc-data-");
-    const calls: Array<{ argv: string[]; cwd: string; env: Record<string, string> }> = [];
+    const calls: Array<{
+      argv: string[];
+      cwd: string;
+      env: Record<string, string>;
+      timeoutMs: number;
+    }> = [];
     const models = new OpenCodeModels({
       path: "/bin/opencode",
       env: { HOME: "/h", OPENCODE_CONFIG: "/evil" },
       dataDir,
       scan: async () => ({ findings: [], fingerprint: "f" }),
       run: async (argv, opts) => {
-        calls.push({ argv, cwd: opts.cwd, env: opts.env });
+        calls.push({ argv, cwd: opts.cwd, env: opts.env, timeoutMs: opts.timeoutMs });
         return {
           exitCode: 0,
           stdout: "anthropic/claude-sonnet-5-5\nopencode/crouton-alpha-free\n\n",
@@ -82,6 +87,7 @@ describe("opencode-models", () => {
         c.cwd,
         c.env.OPENCODE_DISABLE_PROJECT_CONFIG,
         c.env.OPENCODE_CONFIG,
+        c.timeoutMs,
       ]),
     ).toEqual([
       [
@@ -89,6 +95,7 @@ describe("opencode-models", () => {
         join(dataDir, "opencode-models"),
         "1",
         undefined,
+        30_000,
       ],
     ]);
   });

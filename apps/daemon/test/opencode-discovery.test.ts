@@ -108,6 +108,7 @@ describe("opencode-discovery", () => {
     expect(canary?.cwd).toBe(join(dataDir, "opencode-canary"));
     expect(canary?.env.OPENCODE_DISABLE_PROJECT_CONFIG).toBe("1");
     expect(canary?.env.OPENCODE_CONFIG).toBe(undefined);
+    expect(canary?.timeoutMs).toBe(30_000);
     const file = join(dataDir, "opencode-canary", "opencode.json");
     expect(existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null).toEqual({
       model: CANARY_MODEL,
