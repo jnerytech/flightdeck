@@ -73,6 +73,8 @@ describe("ci-quick", () => {
   test("the heavy jobs wait for the quick one, and the Linux suite no longer repeats its checks (#272)", () => {
     for (const key of [
       "test",
+      "test-suite",
+      "checks-linux",
       "test-windows-shard",
       "checks-windows",
       "screenshots-prints",
