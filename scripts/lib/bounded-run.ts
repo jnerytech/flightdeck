@@ -94,5 +94,7 @@ export function runBounded(
       if (child.pid !== undefined) deps.killTree(child.pid);
       finish({ code: null, stderr: "", timedOut: true });
     }, timeoutMs);
+    // A child that reported before the timer existed: the timer is not needed.
+    if (settled) deps.clearTimer(timer);
   });
 }

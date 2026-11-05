@@ -65,6 +65,25 @@ function readHeader(
   return lines;
 }
 
+/**
+ * The path a "diff --git a/<path> b/<path>" line names. When both halves are the same path (every
+ * change but a rename), it is read exactly, even with " b/" inside it; a rename's own lines name
+ * its paths, so the split after the last " b/" is only a fallback.
+ */
+function gitLinePath(line: string): string {
+  const rest = line.slice("diff --git ".length);
+  const half = (rest.length - 5) / 2;
+  const path = rest.slice(2, 2 + half);
+  if (
+    rest.startsWith("a/") &&
+    rest.slice(2 + half, 5 + half) === " b/" &&
+    rest.slice(5 + half) === path
+  ) {
+    return path;
+  }
+  return rest.slice(rest.lastIndexOf(" b/") + 3);
+}
+
 /** The added lines of each file in a `git diff -U0` output. */
 export function addedLines(diff: string): Map<string, string[]> {
   const added = new Map<string, string[]>();
@@ -78,7 +97,7 @@ export function addedLines(diff: string): Map<string, string[]> {
     if (line.startsWith("diff --git ")) {
       current = null;
       inHeader = true;
-      file = line.slice(line.lastIndexOf(" b/") + 3);
+      file = gitLinePath(line);
     } else if (line.startsWith("@@")) inHeader = false;
     else if (inHeader) current = readHeader(line, added, current, file);
     else if (current && line.startsWith("+")) current.push(line.slice(1));
@@ -197,12 +216,28 @@ export function removedLines(diff: string): Map<string, string[]> {
   let file = "";
   let inHeader = false;
   for (const line of diff.split("\n")) {
-    if (line.startsWith("diff --git ")) inHeader = true;
-    else if (line.startsWith("@@")) inHeader = false;
-    else if (inHeader) file = headerFile(line) ?? file;
-    else if (line.startsWith("-")) removed.set(file, [...(removed.get(file) ?? []), line.slice(1)]);
+    if (line.startsWith("diff --git ")) {
+      file = gitLinePath(line);
+      inHeader = true;
+    } else if (line.startsWith("@@")) inHeader = false;
+    // Keyed by the old path: a file renamed into a test folder still counts the checks it lost.
+    else if (inHeader && line.startsWith("--- a/")) file = headerFile(line) ?? file;
+    else if (!inHeader && line.startsWith("-")) {
+      removed.set(file, [...(removed.get(file) ?? []), line.slice(1)]);
+    }
   }
   return removed;
+}
+
+/** The renames of a diff, old path to new: the code that stays is read from the new one. */
+export function renamesOf(diff: string): Map<string, string> {
+  const renames = new Map<string, string>();
+  let from = "";
+  for (const line of diff.split("\n")) {
+    if (line.startsWith("rename from ")) from = line.slice("rename from ".length);
+    else if (line.startsWith("rename to ")) renames.set(from, line.slice("rename to ".length));
+  }
+  return renames;
 }
 
 /** The file a "--- a/" or "+++ b/" header names (the new path wins; a deletion keeps the old). */
@@ -235,7 +270,10 @@ export function riskyEdits(
   const edits: RiskyFile[] = [];
   for (const [path, lines] of removed) {
     if (known.has(path) || any(NOT_SOURCE, path) || !SOURCE.test(path)) continue;
-    const gone = areasOf(lines, path);
+    // Comments and blank lines taken out change nothing the code does.
+    const code = lines.filter((line) => line.trim() !== "" && !commentOnly(line, path));
+    if (code.length === 0) continue;
+    const gone = areasOf(code, path);
     const head = gone.length > 0 ? "" : read(path);
     let why: string[];
     if (gone.length > 0) why = gone.map((area) => `removes ${area}`);
@@ -340,11 +378,20 @@ export function securityVerdict(git: GitRun, base?: string): SecurityVerdict {
     `${ref}...HEAD`,
   ]);
   if (diff === null) return unknown("git diff failed");
+  // A name git still quotes (a quote, a backslash, a control character) defeats the parser: the
+  // gate cannot vouch for what it cannot read.
+  if (/^(?:diff --git "|--- "|\+\+\+ "|rename (?:from|to) ")/m.test(diff)) {
+    return unknown(
+      "a file name git quotes (a quote, a backslash or a control character) is in the diff",
+    );
+  }
   // Topological order, so "after" follows the history, not the dates; a merge lists the files it
   // edited itself (combined); a folded trailer is one line.
   const log = git([
     ...quiet,
     "log",
+    // Each side of a rename listed, so a review after a move away from a risky path vouches.
+    "--no-renames",
     "--no-show-signature",
     "--topo-order",
     "--diff-merges=combined",
@@ -356,8 +403,9 @@ export function securityVerdict(git: GitRun, base?: string): SecurityVerdict {
   // Removed lines count too: taking a check out in front of a spawn needs a review (#284).
   const added = riskyFiles(addedLines(diff));
   const deleted = deletedFiles(diff);
+  const renames = renamesOf(diff);
   const edits = riskyEdits(added, removedLines(diff), (path) =>
-    deleted.has(path) ? "" : git(["show", `HEAD:${path}`]),
+    deleted.has(path) ? "" : git(["show", `HEAD:${renames.get(path) ?? path}`]),
   );
   const risky = [...added, ...edits].sort((a, b) => (a.path < b.path ? -1 : 1));
   const problem = securityProblem(risky, parseBranchLog(log));
