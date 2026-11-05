@@ -34,7 +34,7 @@ export interface ScopeOptions {
   env: Record<string, string | undefined>;
   /** System config folders; `/etc/opencode` when absent. */
   systemDirs?: string[];
-  /** Folders holding managed preferences (macOS); none when absent. */
+  /** Folders holding managed preferences; macOS's (`defaultManagedDirs`) when absent. */
   managedDirs?: string[];
 }
 
@@ -46,6 +46,16 @@ const absent = (): null => null;
 
 /** Files under a plugin folder that the fingerprint reads at most (a plugin may bring node_modules). */
 const MAX_FILES = 2000;
+
+/** Where macOS keeps managed preferences (the machine's, then the user's); none elsewhere. */
+export function defaultManagedDirs(
+  platform: NodeJS.Platform,
+  env: Record<string, string | undefined>,
+): string[] {
+  if (platform !== "darwin") return [];
+  const root = "/Library/Managed Preferences";
+  return env.USER ? [root, join(root, env.USER)] : [root];
+}
 
 /** `$XDG_CONFIG_HOME/opencode`, else `<home>/.config/opencode`; "" with no home at all. */
 export function globalConfigDir(
@@ -150,14 +160,15 @@ export async function scanOpenCodeScope(opts: ScopeOptions): Promise<ScopeResult
     }
   }
 
+  // Anything in the system folder fails closed: it outranks the global config (OpenCode's config docs).
   for (const dir of opts.systemDirs ?? ["/etc/opencode"]) {
-    for (const name of CONFIG_FILES) {
+    for (const name of await entries(dir)) {
       const path = join(dir, name);
       await fingerprint(path);
-      if (await stat(path).catch(absent)) findings.push({ kind: "system_config", path });
+      findings.push({ kind: "system_config", path });
     }
   }
-  for (const dir of opts.managedDirs ?? []) {
+  for (const dir of opts.managedDirs ?? defaultManagedDirs(process.platform, opts.env)) {
     for (const name of await entries(dir)) {
       if (!name.toLowerCase().includes("opencode")) continue;
       const path = join(dir, name);
