@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import {
+  addedLines,
   applySuppressions,
   exclusionsOf,
   type Finding,
   formatFindings,
   lintTargets,
+  onlyNewCode,
   type PluginRule,
   sonarRules,
 } from "../lib/sonar-lint.ts";
@@ -159,5 +161,50 @@ describe("sonar-lint: the report", () => {
 
   test("no findings is said plainly", () => {
     expect(formatFindings([])).toBe("lint:sonar: no findings");
+  });
+});
+
+describe("sonar-lint: new code only", () => {
+  const diff = [
+    "diff --git a/a.ts b/a.ts",
+    "index 1..2 100644",
+    "--- a/a.ts",
+    "+++ b/a.ts",
+    "@@ -3,0 +4,2 @@ context",
+    "+x",
+    "+y",
+    "@@ -10 +12 @@",
+    "-old",
+    "+new",
+    "@@ -20,2 +21,0 @@",
+    "-gone",
+    "-gone",
+    "diff --git a/old.ts b/old.ts",
+    "deleted file mode 100644",
+    "--- a/old.ts",
+    "+++ /dev/null",
+    "@@ -1 +0,0 @@",
+    "-bye",
+  ].join("\n");
+
+  test("the added lines of each hunk are listed, a pure deletion adds none", () => {
+    const added = addedLines(diff);
+    expect([...(added.get("a.ts") ?? [])]).toEqual([4, 5, 12]);
+    expect(added.has("old.ts")).toBe(false);
+  });
+
+  test("a hunk header with no count adds one line", () => {
+    expect([...(addedLines("+++ b/b.ts\n@@ -1 +7 @@\n").get("b.ts") ?? [])]).toEqual([7]);
+  });
+
+  const at = (file: string, line: number): Finding => ({ file, line, rule: "r", message: "m" });
+
+  test("a finding on an old line of a changed file is left out", () => {
+    const added = new Map([["a.ts", new Set([4, 5])]]);
+    expect(onlyNewCode([at("a.ts", 4), at("a.ts", 9)], added)).toEqual([at("a.ts", 4)]);
+  });
+
+  test("a file with no diff entry (new or untracked) counts whole", () => {
+    expect(onlyNewCode([at("new.ts", 1)], new Map())).toEqual([at("new.ts", 1)]);
   });
 });
