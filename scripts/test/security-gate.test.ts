@@ -211,12 +211,16 @@ describe("security-gate", () => {
       ["apps/daemon/src/c.ts", ["#run = () => spawn(cmd);"]],
       ["scripts/d.sh", ["# rm -rf / in a comment"]],
       ["apps/daemon/src/e.ts", ['const u = "http://x"; spawn(cmd);']],
+      ["apps/daemon/src/f.ts", ['Bun.spawn(["rg", "-g", "**/*.ts"]);']],
+      ["apps/daemon/src/g.ts", ['x = "/*"; spawn(a); y = "*/";']],
     ]);
     expect(riskyFiles(added).map((r) => r.path)).toEqual([
       "apps/daemon/src/a.ts",
       "apps/daemon/src/b.ts",
       "apps/daemon/src/c.ts",
       "apps/daemon/src/e.ts",
+      "apps/daemon/src/f.ts",
+      "apps/daemon/src/g.ts",
     ]);
   });
 
@@ -227,13 +231,19 @@ describe("security-gate", () => {
         "scripts/lib/claude-hooks.ts",
         "scripts/handoff-check.ts",
         ".github/actions/setup/action.yml",
+        "scripts/lib/bounded-run.ts",
+        "scripts/pr-flow.ts",
+        ".claude/agents/security-reviewer.md",
       ].map((path) => [path, ["const x = 1;"]] as [string, string[]]),
     );
     expect(riskyFiles(added).map((r) => [r.path, r.why.join(",")])).toEqual([
+      [".claude/agents/security-reviewer.md", "guard"],
       [".github/actions/setup/action.yml", "guard"],
       ["scripts/handoff-check.ts", "guard"],
+      ["scripts/lib/bounded-run.ts", "guard"],
       ["scripts/lib/claude-hooks.ts", "guard"],
       ["scripts/lib/security-gate.ts", "guard"],
+      ["scripts/pr-flow.ts", "guard"],
     ]);
   });
 
