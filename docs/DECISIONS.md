@@ -4014,3 +4014,24 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   The hook is a guard against slips, not a security boundary.
 - **WIP limit.** At most 2 open branches per session, stated in CLAUDE.md and docs/TDD.md. It is
   not enforced in code.
+
+## Risky changes get a security review before the hand-off (issue #273)
+
+- **Why.** On 2026-11-05 six reviews found high findings after the hand-off (keep-awake,
+  worktrees, resources, logs, trust, assistant). The review now comes before it.
+- **The gate** (scripts/lib/security-gate.ts, run by `handoff:check`) reads the added lines of the
+  changed code files (never a test, a fixture or a document) since the audit base or `--base`. A
+  file is risky when they spawn or kill a process (any `spawn…(`, `exec…(`, `.kill(`), delete
+  (`rm(`, `unlink(`, `rm -rf`), name a secret (token, secret, password, credential, API key) or a
+  permission (`chmod`, `chown`, permission, `allowedNetworks`), or when its path is in the vault or
+  pairing code. Patterns, not a parser: they err toward asking for a review.
+- **The verdict is a commit trailer,** `Security-Reviewed: <summary>`, on a commit at or after the
+  last commit that touched a risky file (an empty `chore(security)` commit is enough). A later
+  risky commit needs a new review. A trailer lives with the branch, so `--verify` and any receiver
+  see it; a line in a message would not. The stamp says `security=0`, `unreviewed` or `unknown`
+  (no base), and only `0` vouches.
+- **The OpenCode review on `pr open`** is the coordinator's tooling: `open` runs the command in
+  `FLIGHTDECK_PR_OPENED` with the PR's number, branch and base. The command comes from the
+  session's own environment, never from the repository. A failed hook only prints a line: the PR
+  is open either way.
+
