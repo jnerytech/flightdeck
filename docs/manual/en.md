@@ -2466,7 +2466,7 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
   approves, **N** denies and **Esc** closes the detail. **Open session** takes you to the
   conversation.
 - **Host page layout:** the page opens on that host's **Sessions** (the ones that need you
-  first, then the latest; **See all sessions** opens the Sessions list already filtered by the host)
+  first, then the latest; **See all sessions** opens the Sessions list already filtered by the host, for that visit only: the filter you saved for the next time is not changed)
   and its **Projects** (the same cards as the Projects list; **See all projects** opens that list
   filtered by the host, with a chip that clears the filter). A host with none says so and offers
   **New session**. The rest is on three tabs: **Overview** (sessions, projects, the Claude account

@@ -2455,7 +2455,7 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
   lado: **A** aprova, **N** nega e **Esc** fecha o detalhe. **Abrir sessão** leva à conversa.
 - **Layout da página do host:** a página abre nas **Sessões** daquele host (as que precisam de você
   primeiro, depois as mais recentes; **Ver todas as sessões** abre a lista de Sessões já filtrada
-  pelo host) e nos **Projetos** dele (os mesmos cartões da lista de Projetos; **Ver todos os
+  pelo host, só nessa visita: o filtro que você salvou para a próxima vez não muda) e nos **Projetos** dele (os mesmos cartões da lista de Projetos; **Ver todos os
   projetos** abre essa lista filtrada pelo host, com um chip que limpa o filtro). Um host sem
   nada diz isso e oferece **Nova sessão**. O resto fica em três abas: **Visão geral** (sessões,
   projetos, a conta do Claude e as informações do host), **Consumo** (cota e a tabela de consumo)
