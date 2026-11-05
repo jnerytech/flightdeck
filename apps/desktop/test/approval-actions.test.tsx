@@ -51,4 +51,24 @@ describe("approval-actions: one way to answer a request", () => {
     expect(answers).toEqual([]);
     expect(screen.queryByRole("button", { name: en.approval.deny })).not.toBeNull();
   });
+
+  test("a tile's pending request carries its risk, so a high-risk one is held there too", async () => {
+    const { pendingOf } = await import("../src/lib/tiles.ts");
+    const { emptySession } = await import("../src/lib/session-state.ts");
+    const session = {
+      ...emptySession(),
+      pending: ["r1"],
+      items: [
+        {
+          kind: "permission" as const,
+          seq: 1,
+          requestId: "r1",
+          toolName: "Bash",
+          input: { command: "rm -rf build" },
+          risk: "high" as const,
+        },
+      ],
+    };
+    expect(pendingOf(session)).toEqual({ requestId: "r1", toolName: "Bash", risk: "high" });
+  });
 });
