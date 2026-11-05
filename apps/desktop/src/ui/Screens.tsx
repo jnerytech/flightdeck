@@ -702,6 +702,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           host={host}
           onRename={(name) => store.renameHost(host.id, name)}
           onReconnect={() => void store.reconnectHost(host.id)}
+          onPairAgain={(input) => store.pairAgain(host.id, input)}
           onOpenAutoApprovals={() => go({ name: "auto-approvals", host: host.id })}
           onOpenHistory={(f) => go({ name: "history", host: host.id, ...f })}
           onRemove={() => {

@@ -44,6 +44,7 @@ export function HostPage(props: {
   host: HostView;
   onRename(name: string): HostNameError | null;
   onReconnect(): void;
+  onPairAgain?(input: string): Promise<string | null>;
   onOpenAutoApprovals(): void;
   onOpenHistory(filter: UsageHistoryTarget): void;
   onRemove(): void;
@@ -93,7 +94,13 @@ export function HostPage(props: {
       }
     >
       <div className="flex max-w-3xl flex-col gap-5">
-        {offline && <HostOfflineBanner host={host} onReconnect={props.onReconnect} />}
+        {offline && (
+          <HostOfflineBanner
+            host={host}
+            onReconnect={props.onReconnect}
+            {...(props.onPairAgain ? { onPairAgain: props.onPairAgain } : {})}
+          />
+        )}
         {host.status === "incompatible" && (
           <InlineNotice>
             <span className="flex flex-col gap-1">

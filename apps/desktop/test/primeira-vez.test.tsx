@@ -162,11 +162,11 @@ describe("primeira-vez: a host that refused the token can be paired again (issue
     const { store, hostId, url } = await refused();
     const port = new URL(url.replace("ws://", "http://")).port;
     expect(await store.pairAgain(hostId, "still-wrong")).toBe(
-      translator("en")("hostForm.probeRefused"),
+      store.i18n.t("hostForm.probeRefused"),
     );
     expect(store.getState().hosts[0]?.status).toBe("unauthorized");
     expect(await store.pairAgain(hostId, "flightdeck://pc:1")).toBe(
-      translator("en")("hostForm.pairToken"),
+      store.i18n.t("hostForm.pairToken"),
     );
     expect(
       await store.pairAgain(hostId, `flightdeck://127.0.0.1:${port}?token=${TOKEN}&name=pc`),
@@ -195,11 +195,11 @@ describe("primeira-vez: a host that refused the token can be paired again (issue
         }}
       />,
     );
-    fireEvent.change(screen.getByLabelText("New pairing link or token"), {
+    fireEvent.change(screen.getByLabelText("Novo link de pareamento ou token"), {
       target: { value: "abc" },
     });
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Pair again" }));
+      fireEvent.click(screen.getByRole("button", { name: "Parear de novo" }));
     });
     expect(asked).toEqual(["abc"]);
     expect(screen.queryByText("token refused")).not.toBeNull();
@@ -223,7 +223,7 @@ describe("primeira-vez: a host that refused the token can be paired again (issue
         onPairAgain={async () => null}
       />,
     );
-    expect(screen.queryByLabelText("New pairing link or token")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Pair again" })).toBeNull();
+    expect(screen.queryByLabelText("Novo link de pareamento ou token")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Parear de novo" })).toBeNull();
   });
 });

@@ -53,7 +53,7 @@ import type {
   WatchSettings,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { EPHEMERAL_EVENTS } from "@flightdeck/protocol";
+import { EPHEMERAL_EVENTS, parsePairingLink } from "@flightdeck/protocol";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type {
@@ -104,6 +104,7 @@ import { addEntry, type InboxEntry, loadInbox, markAllRead, markRead, saveInbox 
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
 import { summaryNotifications } from "./notify.ts";
+import { pairingErrorText } from "./pairing-text.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
 import { isHot } from "./quota.ts";
@@ -1033,6 +1034,25 @@ export class AppStore {
     if (error) return error;
     this.updateHost(hostId, (h) => ({ ...h, name: name.trim() }));
     this.persistHosts();
+    return null;
+  }
+
+  /** A new token or pairing link for a host that refused the old one; the error text, or null. */
+  async pairAgain(hostId: string, input: string): Promise<string | null> {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    if (!host) return null;
+    const text = input.trim();
+    let token = text;
+    if (text.toLowerCase().startsWith("flightdeck://")) {
+      const parsed = parsePairingLink(text);
+      if (!parsed.ok) return pairingErrorText(this.i18n.t, parsed.error);
+      token = parsed.value.token;
+    }
+    if (!token) return this.i18n.t("hostForm.pairToken");
+    const probe = await probeHost(host.url, token, this.i18n.t);
+    if (!probe.ok) return probe.error;
+    await this.platform.secrets.set(hostId, token);
+    await this.reconnectHost(hostId);
     return null;
   }
 

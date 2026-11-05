@@ -3416,6 +3416,8 @@ export const en: Dictionary = {
     title: "Host offline",
     connecting: "Connecting…",
     unauthorized: "The host refused the token. Pair this host again.",
+    pairLabel: "New pairing link or token",
+    pairAgain: "Pair again",
     refused: "Nothing answered at {url}. The daemon is probably not running.",
     timeout: "The host did not answer in time. The network may be down or the daemon stuck.",
     lost: "The connection to the host dropped.",

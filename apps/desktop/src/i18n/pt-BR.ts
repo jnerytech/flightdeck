@@ -3417,6 +3417,8 @@ export const ptBR = {
     label: "Estado da conexão",
     title: "Host desconectado",
     connecting: "Conectando…",
+    pairLabel: "Novo link de pareamento ou token",
+    pairAgain: "Parear de novo",
     unauthorized: "O host recusou o token. Pareie este host de novo.",
     refused: "Nada respondeu em {url}. O daemon provavelmente não está rodando.",
     timeout: "O host não respondeu a tempo. A rede pode estar fora ou o daemon travado.",
