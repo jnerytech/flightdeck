@@ -72,7 +72,7 @@ describe("approval-safety: a vault grant needs what the person must see", () => 
     expect(item?.risk).toBe("high");
     expect(item?.vaultOnce).toBeUndefined();
     await store.approveVaultForSession(hostId, "r1");
-    await stays(() => types().includes("vault.approve"), 300);
+    await stays(() => !types().includes("vault.approve"), 300);
     expect(types()).not.toContain("vault.approve");
   });
 
@@ -114,7 +114,7 @@ describe("approval-safety: a vault grant needs what the person must see", () => 
     await settle(() => needsYou(store.getState()).length === 1);
     expect(trayMenu(needsYou(store.getState())).items[0]?.actions).toEqual(["open"]);
     fromTray({ key: `${hostId}/r1`, action: "approve" });
-    await stays(() => types().includes("vault.approve"), 300);
+    await stays(() => !types().includes("vault.approve"), 300);
     expect(types()).not.toContain("vault.approve");
     expect(opened).toEqual(["r1"]);
   });
