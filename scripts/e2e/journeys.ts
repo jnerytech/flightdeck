@@ -1,5 +1,5 @@
 /**
- * The e2e journeys (phase 10): fourteen in a real browser against the seeded demo, in both
+ * The e2e journeys (phase 10): sixteen in a real browser against the seeded demo, in both
  * languages, and a layout check of the main screens at 1280x800 and 800x600 (nothing sticks out
  * sideways, and the end of the long list shows after scrolling). The runner is `@playwright/test`
  * (scripts/e2e/journeys.e2e.ts); this file holds the journeys themselves.
@@ -462,6 +462,18 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await back.waitFor({ timeout: WAIT });
     await c.page.waitForTimeout(500);
     expect(Math.abs((await back.evaluate((el) => el.scrollTop)) - kept)).toBeLessThanOrEqual(2);
+  },
+
+  // 16. The first run (issue #184): a pasted link that is not a pairing link is answered in the
+  // app's language, from the catalog.
+  "primeira-vez": async (c) => {
+    await open(c, { name: "add-host" });
+    await c.page
+      .getByLabel(c.t("hostForm.link"), { exact: true })
+      .fill("flightdeck://pc:7420?name=x");
+    await c.page.getByText(c.t("hostForm.pairToken"), { exact: true }).waitFor({ timeout: WAIT });
+    await c.page.getByLabel(c.t("hostForm.link"), { exact: true }).fill("http://pc:7420?token=t");
+    await c.page.getByText(c.t("hostForm.pairScheme"), { exact: true }).waitFor({ timeout: WAIT });
   },
 };
 
