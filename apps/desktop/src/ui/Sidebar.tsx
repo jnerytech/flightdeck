@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "../lib/app-store.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
+import { requiredMissing } from "../lib/deps-summary.ts";
 import type { HostNameError } from "../lib/host-name.ts";
 import { hostDotView } from "../lib/host-status.ts";
 import { hubRows } from "../lib/hub.ts";
@@ -596,12 +597,6 @@ export function Sidebar(props: {
     </div>
   );
 }
-
-/** Whether a required dependency of the host is missing or outdated (what the sidebar warns about). */
-const requiredMissing = (deps: DepsResult | undefined) =>
-  deps?.items.some(
-    (item) => item.group === "required" && (item.state === "missing" || item.state === "outdated"),
-  ) === true;
 
 /** A host's connection state as a dot. */
 function HostDot(props: { host: HostView; t: T }) {

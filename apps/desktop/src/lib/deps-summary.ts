@@ -13,14 +13,13 @@ export type DepLook = {
 };
 
 export function depsSummary(items: DepResult[]): DepsSummary {
-  const lacking = (group: DepResult["group"]) =>
-    items.filter(
-      (item) => item.group === group && (item.state === "missing" || item.state === "outdated"),
-    ).length;
-  const required = lacking("required");
-  if (required > 0) return { kind: "required", n: required };
-  const optional = lacking("optional");
-  return optional > 0 ? { kind: "optional", n: optional } : { kind: "ok", n: 0 };
+  // Red is a required one missing; an outdated one (any group) and an optional one missing are amber.
+  const missing = items.filter((item) => item.group === "required" && item.state === "missing");
+  if (missing.length > 0) return { kind: "required", n: missing.length };
+  const amber = items.filter(
+    (item) => item.state === "outdated" || (item.group === "optional" && item.state === "missing"),
+  );
+  return amber.length > 0 ? { kind: "optional", n: amber.length } : { kind: "ok", n: 0 };
 }
 
 export function depLook(item: DepResult): DepLook {
@@ -43,6 +42,6 @@ export function fixPageFor(item: DepResult, os: string): string | null {
 }
 
 /** Whether a required dependency of the host is missing (what the sidebar marks red); outdated is amber. */
-export function requiredMissing(_deps: DepsResult | undefined): boolean {
-  return true;
+export function requiredMissing(deps: DepsResult | undefined): boolean {
+  return deps?.items.some((item) => item.group === "required" && item.state === "missing") === true;
 }
