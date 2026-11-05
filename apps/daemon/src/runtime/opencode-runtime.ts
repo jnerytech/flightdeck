@@ -34,14 +34,17 @@ export interface Timers {
   clear(handle: unknown): void;
 }
 
-/** Ends the agent's process and what it started. */
-export type Killer = (child: SpawnedAcp) => void;
+/** Ends the agent's process and what it started; `force` is the second, harder try. */
+export type Killer = (child: SpawnedAcp, force: boolean) => void;
 
 export const IDLE_CLOSE_MS = 15 * 60_000;
 export const INTERRUPT_ESCALATION_MS = 10_000;
 /** How long `session/close` may take before stdin is closed, and then the process before a kill. */
 const CLOSE_ANSWER_MS = 2_000;
 const KILL_AFTER_MS = 3_000;
+/** After the first kill, the forced one; after that, how long close() still waits for the exit. */
+const FORCE_AFTER_MS = 2_000;
+const GIVE_UP_MS = 5_000;
 /** Permission modes an OpenCode session does not offer (ADR 39-3). */
 const UNSUPPORTED_MODES = new Set(["acceptEdits", "dontAsk", "auto"]);
 const OUR_MODES = [FLIGHTDECK_AGENT, FLIGHTDECK_PLAN_AGENT];
@@ -84,10 +87,25 @@ export interface OpenCodeRuntimeOptions {
   idleMs?: number;
 }
 
-/** Windows: `taskkill /PID <pid> /T /F` takes the tree; elsewhere a kill of the process. */
-export function treeKiller(platform: NodeJS.Platform, run: (argv: string[]) => void): Killer {
-  return (child) =>
-    platform === "win32" ? run(["taskkill", "/PID", String(child.pid), "/T", "/F"]) : child.kill();
+/**
+ * Windows: `taskkill /PID <pid> /T /F` takes the tree. Elsewhere the child leads its own process
+ * group, so the group gets SIGTERM, then SIGKILL when forced; the process alone if the group is gone.
+ */
+export function treeKiller(
+  platform: NodeJS.Platform,
+  deps: { run: (argv: string[]) => void; killGroup: (pid: number, signal: NodeJS.Signals) => void },
+): Killer {
+  return (child, force) => {
+    if (platform === "win32") {
+      deps.run(["taskkill", "/PID", String(child.pid), "/T", "/F"]);
+      return;
+    }
+    try {
+      deps.killGroup(child.pid, force ? "SIGKILL" : "SIGTERM");
+    } catch {
+      child.kill();
+    }
+  };
 }
 
 interface ConfigOption {
@@ -231,9 +249,26 @@ class Connection {
         .request("session/close", { sessionId: this.sessionId }, { timeoutMs: CLOSE_ANSWER_MS })
         .catch(() => undefined);
       this.client.close();
-      const timer = this.deps.timers.set(() => this.deps.runtime.kill(this.proc), KILL_AFTER_MS);
-      await this.proc.exited;
-      this.deps.timers.clear(timer);
+      const { timers, runtime } = this.deps;
+      const handles: unknown[] = [];
+      let giveUp: () => void = () => {};
+      const gaveUp = new Promise<void>((resolve) => {
+        giveUp = resolve;
+      });
+      // A process that stays gets a kill, then a forced one; close() never waits forever.
+      handles.push(
+        timers.set(() => {
+          runtime.kill(this.proc, false);
+          handles.push(
+            timers.set(() => {
+              runtime.kill(this.proc, true);
+              handles.push(timers.set(giveUp, GIVE_UP_MS));
+            }, FORCE_AFTER_MS),
+          );
+        }, KILL_AFTER_MS),
+      );
+      await Promise.race([this.proc.exited, gaveUp]);
+      for (const handle of handles) timers.clear(handle);
     })();
     return this.closing;
   }
@@ -266,6 +301,12 @@ class OpenCodeRun implements AgentRun {
   /** Whether the first prompt (and its AGENTS.md) went out. */
   private contextSent = false;
   private escalated = false;
+  /** Turns started, so a late escalation knows whether its turn is still the current one. */
+  private turnNo = 0;
+  /** Sends waiting for their turn, and whether the next one was interrupted before it began. */
+  private queued = 0;
+  private starting = false;
+  private cancelNext = false;
   private stopped = false;
   private closing: Promise<void> | null = null;
 
@@ -280,28 +321,33 @@ class OpenCodeRun implements AgentRun {
     this.model = model || undefined;
     this.effort = variant || opts.effort;
     this.sessionId = opts.resume;
-    if (UNSUPPORTED_MODES.has(opts.permissionMode)) {
-      this.fatal(unsupported(opts.permissionMode));
-      return;
-    }
-    this.chain = this.connect().catch((error) => this.fatal(error));
+    // No process until the first send (an idle session costs nothing); the session manager ran
+    // the preflight already, for its typed refusal.
+    if (UNSUPPORTED_MODES.has(opts.permissionMode)) this.fatal(unsupported(opts.permissionMode));
   }
 
   send(text: string, _uuid?: string, images?: SessionImage[]): void {
     if (this.stopped) return;
     this.clearIdle();
+    this.queued++;
     this.chain = this.chain
       .then(() => this.turn(text, images ?? []))
       .catch((error) => this.fatal(error));
   }
 
   async interrupt(): Promise<void> {
-    this.interrupted = true;
     for (const controller of this.asking.values()) controller.abort();
     const conn = this.conn;
-    if (!this.turnActive || !conn) return;
+    if (!this.turnActive || !conn) {
+      // A turn still waiting for its start (or its process) is dropped when it begins.
+      if (this.queued > 0 || this.starting) this.cancelNext = true;
+      return;
+    }
+    this.interrupted = true;
+    if (this.escalation !== null) return;
+    const turn = this.turnNo;
     conn.cancel();
-    this.escalation = this.timers.set(() => this.escalate(conn), INTERRUPT_ESCALATION_MS);
+    this.escalation = this.timers.set(() => this.escalate(conn, turn), INTERRUPT_ESCALATION_MS);
   }
 
   async setPermissionMode(mode: StartOptions["permissionMode"]): Promise<void> {
@@ -334,7 +380,9 @@ class OpenCodeRun implements AgentRun {
 
   private async connect(): Promise<void> {
     const { configContent } = await this.runtime.preflight.check(this.opts.cwd);
+    if (this.stopped) return;
     this.fingerprint = (await this.runtime.scan()).fingerprint;
+    if (this.stopped) return;
     const mcp = this.runtime.mcpServer;
     const session = this.opts.env.FLIGHTDECK_SESSION;
     const conn: Connection = new Connection({
@@ -367,11 +415,24 @@ class OpenCodeRun implements AgentRun {
       ...(this.model ? { model: this.model } : {}),
       ...(this.effort ? { effort: this.effort } : {}),
     });
+    // Closed or failed while it opened: the process goes too.
+    if (this.stopped) {
+      await conn.close();
+      return;
+    }
     this.sessionId = conn.sessionId;
   }
 
   private async turn(text: string, images: SessionImage[]): Promise<void> {
-    if (!this.conn) await this.connect();
+    this.queued--;
+    if (this.stopped || this.dropInterrupted()) return;
+    if (!this.conn) {
+      this.starting = true;
+      await this.connect().finally(() => {
+        this.starting = false;
+      });
+      if (this.stopped || !this.conn || this.dropInterrupted()) return;
+    }
     const conn = this.conn as Connection;
     const context = this.contextSent
       ? null
@@ -394,6 +455,7 @@ class OpenCodeRun implements AgentRun {
     const started = performance.now();
     const elapsed = () => Math.round(performance.now() - started);
     this.turnActive = true;
+    this.turnNo++;
     this.interrupted = false;
     this.escalated = false;
     try {
@@ -450,9 +512,18 @@ class OpenCodeRun implements AgentRun {
     }
   }
 
+  /** An interrupt that came before the turn began: it ends as cancelled, with no prompt. */
+  private dropInterrupted(): boolean {
+    if (!this.cancelNext) return false;
+    this.cancelNext = false;
+    this.push(this.normalizer.promptEnded({ stopReason: "cancelled" }, 0));
+    return true;
+  }
+
   /** No answer to a cancel: the turn ends here and the process goes; the next send resumes. */
-  private escalate(conn: Connection): void {
+  private escalate(conn: Connection, turn: number): void {
     this.escalation = null;
+    if (turn !== this.turnNo || !this.turnActive) return;
     this.escalated = true;
     this.push(this.normalizer.promptEnded({ stopReason: "cancelled" }, INTERRUPT_ESCALATION_MS));
     if (this.conn === conn) this.conn = null;
@@ -530,12 +601,14 @@ class OpenCodeRun implements AgentRun {
   }
 
   private fatal(error: unknown): void {
-    if (this.stopped) return;
-    this.stopped = true;
-    this.clearIdle();
+    // Whatever happens, the process and the open questions go.
+    for (const controller of this.asking.values()) controller.abort();
     const conn = this.conn;
     this.conn = null;
     void conn?.close();
+    if (this.stopped) return;
+    this.stopped = true;
+    this.clearIdle();
     this.events.fail(error);
   }
 }
