@@ -102,6 +102,11 @@ for (const task of TASKS) {
         "Bash(bun run test:related*)",
         "Bash(bun run tdd:audit*)",
         "Bash(bun run typecheck*)",
+        // What CLAUDE.md tells a session to run: lint before a hand-off, and the CLAUDECODE
+        // gotcha that shows the (pass) lines. The first live run was denied all three.
+        "Bash(bun run lint*)",
+        "Bash(bun x biome *)",
+        "Bash(env -u CLAUDECODE bun --config=bunfig.area.toml test *)",
         "Bash(git status*)",
         "Bash(git add *)",
         "Bash(git commit *)",
