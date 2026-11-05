@@ -62,3 +62,8 @@ export function formatDeps(deps: DepsResult, os: string): string[] {
   }
   return lines;
 }
+
+/** The exit code of `flightdeckd doctor`: 1 when its checks failed or a required dependency is lacking. */
+export function doctorExitCode(_checksOk: boolean, _deps: DepsResult): number {
+  return 0;
+}

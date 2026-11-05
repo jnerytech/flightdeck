@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DepResult } from "@flightdeck/protocol";
 import type { DepsEnv } from "../src/deps/deps.ts";
-import { formatDeps } from "../src/deps/format.ts";
+import { doctorExitCode, formatDeps } from "../src/deps/format.ts";
 import { type CliDeps, runCli } from "../src/main.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -127,5 +127,60 @@ describe("deps-doctor: the terminal prints the same grouping as the app", () => 
     expect(text).toContain("Dependencies: 1 required missing");
     expect(text).toMatch(/MISSING\s+git/);
     expect(text.indexOf("project folders")).toBeLessThan(text.indexOf("Dependencies:"));
+  });
+
+  test("flightdeckd doctor exits 1 when a required dependency is missing, whatever its own checks say (HD-m5)", async () => {
+    const dir = tempDir("fd-doctor-exit-");
+    const project = join(dir, "project");
+    mkdirSync(project);
+    const file = join(dir, "config.json");
+    writeFileSync(
+      file,
+      JSON.stringify({ token: "t".repeat(32), dataDir: dir, port: 1, allowedRoots: [project] }),
+    );
+    const codes: number[] = [];
+    const run = async (missing: string | null) => {
+      await runCli(["doctor", "--config", file], {
+        env: {},
+        log: { log: () => {}, error: () => {} },
+        exit: (code) => void codes.push(code),
+        onSignal: () => {},
+        exec: async () => ({ code: 1, stdout: "" }),
+        depsEnv: {
+          platform: "linux",
+          which: (name) => (name === missing ? null : `/usr/bin/${name}`),
+          version: async () => "9.9.9",
+          allowedRoots: [project],
+          serviceInstalled: async () => true,
+          linger: async () => "on",
+          hooks: async () => "installed",
+          account: async () => "signed_in",
+        },
+        serviceContext: (dryRun) => ({
+          platform: "linux",
+          home: "/h",
+          user: "u",
+          command: ["/h/flightdeckd"],
+          systemRoot: "",
+          tempDir: "/tmp",
+          dryRun,
+          exec: async () => ({ code: 1, stdout: "" }),
+          writeFile: () => {},
+          removeFile: () => {},
+          which: () => null,
+        }),
+      } as CliDeps);
+      return codes.at(-1);
+    };
+    expect(await run("git")).toBe(1);
+  });
+
+  test("the exit code is 1 when the doctor's checks failed or a required dependency is lacking, and 0 otherwise (HD-m5)", () => {
+    const fine = { items: [dep("claude", "required", "ok"), dep("gh", "optional", "missing")] };
+    const lacking = { items: [dep("claude", "required", "ok"), dep("git", "required", "missing")] };
+    expect(doctorExitCode(true, fine)).toBe(0);
+    expect(doctorExitCode(false, fine)).toBe(1);
+    expect(doctorExitCode(true, lacking)).toBe(1);
+    expect(doctorExitCode(true, { items: [dep("git", "required", "outdated")] })).toBe(1);
   });
 });
