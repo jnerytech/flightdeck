@@ -36,10 +36,11 @@ const DISPATCH = "github.event_name != 'workflow_dispatch' || inputs.only != 'sc
 const SUFFIX = "${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}";
 
 describe("ci-shards", () => {
-  test("Linux runs the whole suite with the exact 100% gate and SonarCloud, on its own", () => {
-    expect(job("test").strategy?.matrix?.os).toEqual(["ubuntu-latest"]);
-    expect(runs("test")).toContain("bun run test");
-    expect(job("test").steps.some((s) => s.name === "SonarCloud")).toBe(true);
+  test("Linux runs the whole suite with the exact 100% gate in its own job, and SonarCloud in another (#293)", () => {
+    expect(job("test-suite")["runs-on"]).toBe("ubuntu-latest");
+    expect(runs("test-suite")).toContain("bun run test");
+    expect(job("test-suite").steps.some((s) => s.name === "SonarCloud")).toBe(false);
+    expect(job("sonar").steps.some((s) => s.name === "SonarCloud")).toBe(true);
   });
 
   test("Windows runs the tests in three shards, without coverage", () => {
@@ -84,7 +85,7 @@ describe("ci-shards", () => {
   test("test (windows-latest) is one aggregate that fails unless every shard and the checks succeeded", () => {
     const gate = job("test-windows");
     expect(gate.name).toBe(`test (windows-latest)${SUFFIX}`);
-    expect(gate.needs).toEqual(["changes", "test-windows-shard", "checks-windows"]);
+    expect(gate.needs).toEqual(["changes", "quick", "test-windows-shard", "checks-windows"]);
     expect(gate.if).toBe(`always() && (${DISPATCH})`);
     const check = runs("test-windows");
     expect(check).toContain('test "${{ needs.test-windows-shard.result }}" = success');
@@ -96,7 +97,7 @@ describe("ci-shards", () => {
     expect(runs("screenshots-e2e")).toContain("bun run e2e");
     const gate = job("screenshots");
     expect(gate.name).toBe("screenshots (prints, axe e e2e)");
-    expect(gate.needs).toEqual(["changes", "screenshots-prints", "screenshots-e2e"]);
+    expect(gate.needs).toEqual(["changes", "quick", "screenshots-prints", "screenshots-e2e"]);
     expect(gate.if).toBe("always()");
     expect(runs("screenshots")).toContain(
       'test "${{ needs.screenshots-prints.result }}" = success',
@@ -105,7 +106,7 @@ describe("ci-shards", () => {
   });
 
   test("every test job skips a screenshots-only dispatch, and dispatched names never take a required name", () => {
-    expect(job("test").if).toBe(DISPATCH);
+    expect(job("test").if).toBe(`!cancelled() && (${DISPATCH})`);
     // The Windows jobs also wait for the path plan (#264).
     for (const key of ["test-windows-shard", "checks-windows"]) {
       expect(`${key}: ${job(key).if}`).toBe(

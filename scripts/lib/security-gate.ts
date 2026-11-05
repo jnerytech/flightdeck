@@ -19,6 +19,9 @@ export interface BranchCommit {
   reviewed: string | null;
 }
 
+/** Marks a mode change among a file's added lines: no added line of a diff can start with NUL. */
+const MODE_CHANGE = "\u0000mode ";
+
 /**
  * Reads one file header line: a "+++" line starts the file's list of added lines (none for a
  * deleted file), and a "rename to" line (a pure rename has no hunk) registers the new path.
@@ -29,9 +32,23 @@ function readHeader(
   current: string[] | null,
   file: string,
 ): string[] | null {
-  // A mode change (chmod) has no hunk: it counts as a permission change of the file.
+  // A mode change (chmod) has no hunk: it counts as a permission change of the file, whatever it is.
   if (line.startsWith("new mode ")) {
-    added.set(file, [...(added.get(file) ?? []), `chmod ${line.slice("new mode ".length)}`]);
+    added.set(file, [
+      ...(added.get(file) ?? []),
+      `${MODE_CHANGE}${line.slice("new mode ".length)}`,
+    ]);
+    return current;
+  }
+  // A deleted file keeps its path, so the path rules (a guard, the vault) still see it.
+  if (line.startsWith("deleted file mode ")) {
+    if (!added.has(file)) added.set(file, []);
+    return current;
+  }
+  // A rename away from a risky path (out of the workflows, a guard moved) keeps the old path too.
+  if (line.startsWith("rename from ")) {
+    const path = line.slice("rename from ".length);
+    if (!added.has(path)) added.set(path, []);
     return current;
   }
   if (line.startsWith("rename to ")) {
@@ -48,6 +65,25 @@ function readHeader(
   return lines;
 }
 
+/**
+ * The path a "diff --git a/<path> b/<path>" line names. When both halves are the same path (every
+ * change but a rename), it is read exactly, even with " b/" inside it; a rename's own lines name
+ * its paths, so the split after the last " b/" is only a fallback.
+ */
+function gitLinePath(line: string): string {
+  const rest = line.slice("diff --git ".length);
+  const half = (rest.length - 5) / 2;
+  const path = rest.slice(2, 2 + half);
+  if (
+    rest.startsWith("a/") &&
+    rest.slice(2 + half, 5 + half) === " b/" &&
+    rest.slice(5 + half) === path
+  ) {
+    return path;
+  }
+  return rest.slice(rest.lastIndexOf(" b/") + 3);
+}
+
 /** The added lines of each file in a `git diff -U0` output. */
 export function addedLines(diff: string): Map<string, string[]> {
   const added = new Map<string, string[]>();
@@ -61,7 +97,7 @@ export function addedLines(diff: string): Map<string, string[]> {
     if (line.startsWith("diff --git ")) {
       current = null;
       inHeader = true;
-      file = line.slice(line.lastIndexOf(" b/") + 3);
+      file = gitLinePath(line);
     } else if (line.startsWith("@@")) inHeader = false;
     else if (inHeader) current = readHeader(line, added, current, file);
     else if (current && line.startsWith("+")) current.push(line.slice(1));
@@ -174,15 +210,111 @@ const SENSITIVE_PATHS: [string, RegExp[]][] = [
 /** Whether any of these patterns matches. */
 const any = (patterns: RegExp[], text: string) => patterns.some((pattern) => pattern.test(text));
 
+/** The removed lines of each file in a `git diff -U0` output (#284). */
+export function removedLines(diff: string): Map<string, string[]> {
+  const removed = new Map<string, string[]>();
+  let file = "";
+  let inHeader = false;
+  for (const line of diff.split("\n")) {
+    if (line.startsWith("diff --git ")) {
+      file = gitLinePath(line);
+      inHeader = true;
+    } else if (line.startsWith("@@")) inHeader = false;
+    // Keyed by the old path: a file renamed into a test folder still counts the checks it lost.
+    else if (inHeader && line.startsWith("--- a/")) file = headerFile(line) ?? file;
+    else if (!inHeader && line.startsWith("-")) {
+      removed.set(file, [...(removed.get(file) ?? []), line.slice(1)]);
+    }
+  }
+  return removed;
+}
+
+/** The renames of a diff, old path to new: the code that stays is read from the new one. */
+export function renamesOf(diff: string): Map<string, string> {
+  const renames = new Map<string, string>();
+  let from = "";
+  for (const line of diff.split("\n")) {
+    if (line.startsWith("rename from ")) from = line.slice("rename from ".length);
+    else if (line.startsWith("rename to ")) renames.set(from, line.slice("rename to ".length));
+  }
+  return renames;
+}
+
+/** The file a "--- a/" or "+++ b/" header names (the new path wins; a deletion keeps the old). */
+function headerFile(line: string): string | null {
+  const m = /^(?:--- a\/|\+\+\+ b\/)(.*?)\t?$/.exec(line);
+  return m ? (m[1] ?? null) : null;
+}
+
+/** The files a diff deletes ("+++ /dev/null"): they have no code at HEAD to read. */
+export function deletedFiles(diff: string): Set<string> {
+  const deleted = new Set<string>();
+  let file = "";
+  for (const line of diff.split("\n")) {
+    if (line.startsWith("--- a/")) file = headerFile(line) ?? "";
+    else if (line.startsWith("+++ /dev/null")) deleted.add(file);
+  }
+  return deleted;
+}
+
+/**
+ * The files the added lines did not make risky whose removed lines are risky, or whose code that
+ * stays (read from HEAD) is: removing a check in front of a spawn needs a review too (#284).
+ */
+export function riskyEdits(
+  risky: RiskyFile[],
+  removed: Map<string, string[]>,
+  read: (path: string) => string | null,
+): RiskyFile[] {
+  const known = new Set(risky.map((r) => r.path));
+  const edits: RiskyFile[] = [];
+  for (const [path, lines] of removed) {
+    if (known.has(path) || any(NOT_SOURCE, path) || !SOURCE.test(path)) continue;
+    // Comments and blank lines taken out change nothing the code does, except a "/*" that opened a
+    // block: without it, the lines after it run.
+    const code = lines.filter(
+      (line) => OPENS_BLOCK.test(line) || (line.trim() !== "" && !commentOnly(line, path)),
+    );
+    if (code.length === 0) continue;
+    const gone = areasOf(code, path);
+    const head = gone.length > 0 ? "" : read(path);
+    let why: string[];
+    if (gone.length > 0) why = gone.map((area) => `removes ${area}`);
+    // A read that failed is no proof the code is safe.
+    else if (head === null) why = ["unreadable at HEAD"];
+    else why = areasOf(head.split("\n"), path).map((area) => `edits ${area} code`);
+    if (why.length > 0) edits.push({ path, why });
+  }
+  return edits.sort((a, b) => (a.path < b.path ? -1 : 1));
+}
+
+/** A line that opens a block comment it does not close. */
+const OPENS_BLOCK = /^\s*\/\*(?!.*\*\/)/;
+
+/** Files a rename brings from a test folder into the code: their contents were never read as code. */
+export function movedFromTests(renames: Map<string, string>): RiskyFile[] {
+  return [...renames]
+    .filter(([from, to]) => any(NOT_SOURCE, from) && !any(NOT_SOURCE, to) && SOURCE.test(to))
+    .map(([, to]) => ({ path: to, why: ["moved from tests"] }));
+}
+
+/** The risk areas these lines of code touch, comments left out. */
+function areasOf(lines: string[], path: string): string[] {
+  const code = lines.filter((line) => !commentOnly(line, path));
+  return AREAS.filter(([, patterns]) => code.some((line) => any(patterns, line))).map(
+    ([name]) => name,
+  );
+}
+
 /** The changed source files (never a test) in a risk area, sorted by path. */
 export function riskyFiles(added: Map<string, string[]>): RiskyFile[] {
   const risky: RiskyFile[] = [];
   for (const [path, lines] of added) {
     if (any(NOT_SOURCE, path)) continue;
-    const code = SOURCE.test(path) ? lines.filter((line) => !commentOnly(line, path)) : [];
-    const why = AREAS.filter(([, patterns]) => code.some((line) => any(patterns, line))).map(
-      ([name]) => name,
-    );
+    const modeChanged = lines.some((line) => line.startsWith(MODE_CHANGE));
+    const added = lines.filter((line) => !line.startsWith(MODE_CHANGE));
+    const why = SOURCE.test(path) ? areasOf(added, path) : [];
+    if (modeChanged && !why.includes("permission")) why.push("permission");
     for (const [name, patterns] of SENSITIVE_PATHS) if (any(patterns, path)) why.push(name);
     if (why.length > 0) risky.push({ path, why });
   }
@@ -259,11 +391,20 @@ export function securityVerdict(git: GitRun, base?: string): SecurityVerdict {
     `${ref}...HEAD`,
   ]);
   if (diff === null) return unknown("git diff failed");
+  // A name git still quotes (a quote, a backslash, a control character) defeats the parser: the
+  // gate cannot vouch for what it cannot read.
+  if (/^(?:diff --git "|--- "|\+\+\+ "|rename (?:from|to) ")/m.test(diff)) {
+    return unknown(
+      "a file name git quotes (a quote, a backslash or a control character) is in the diff",
+    );
+  }
   // Topological order, so "after" follows the history, not the dates; a merge lists the files it
   // edited itself (combined); a folded trailer is one line.
   const log = git([
     ...quiet,
     "log",
+    // Each side of a rename listed, so a review after a move away from a risky path vouches.
+    "--no-renames",
     "--no-show-signature",
     "--topo-order",
     "--diff-merges=combined",
@@ -272,6 +413,15 @@ export function securityVerdict(git: GitRun, base?: string): SecurityVerdict {
     `${ref}..HEAD`,
   ]);
   if (log === null) return unknown("git log failed");
-  const problem = securityProblem(riskyFiles(addedLines(diff)), parseBranchLog(log));
+  // Removed lines count too: taking a check out in front of a spawn needs a review (#284).
+  const added = riskyFiles(addedLines(diff));
+  const deleted = deletedFiles(diff);
+  const renames = renamesOf(diff);
+  const edits = riskyEdits(added, removedLines(diff), (path) =>
+    deleted.has(path) ? "" : git(["show", `HEAD:${renames.get(path) ?? path}`]),
+  );
+  const moved = movedFromTests(renames).filter((m) => !added.some((a) => a.path === m.path));
+  const risky = [...added, ...edits, ...moved].sort((a, b) => (a.path < b.path ? -1 : 1));
+  const problem = securityProblem(risky, parseBranchLog(log));
   return problem ? { verdict: "unreviewed", message: problem } : { verdict: "0", message: null };
 }

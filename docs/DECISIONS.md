@@ -4047,6 +4047,29 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   red on every large diff for code smells and is not a required check, so its red X said nothing.
   The ratchet is green unless a rule's open count goes up. The changed-lines run stays local.
 
+## CI fails fast: a quick first job the heavy jobs need (issue #272)
+
+- **Why.** On 2026-11-05 ratchets (Sonar, layout, no-sync, protocol surface) failed only after
+  the 20-minute jobs. A count that went up now fails the run in minutes.
+- **The `quick` job** (`quick checks`, Linux, 10 minutes at most) runs typecheck, lint, the TDD
+  audit (full history) and `bun run scripts/ci-quick.ts`: every `*-ratchet.test.ts(x)` and
+  `protocol-surface.test.ts`, by name (scripts/lib/ci-quick.ts), in seconds with no coverage. The
+  Linux suite no longer runs typecheck, lint and the audit itself.
+- **Every heavy job needs it:** the Linux suite, the Windows shards and checks, the prints and the
+  e2e shards.
+- **No local Sonar in it** (#283): the `lint:sonar (ratchet)` step it first carried failed once main
+  grew past the baseline, and the user chose SonarCloud's own check on the PR as the only Sonar
+  check. #283 removes the local Sonar from the repository.
+- **A failed quick job fails the required checks, never skips them.** GitHub counts a skipped
+  required check as passed. So `test (ubuntu-latest)` runs on `!cancelled()` and its first step
+  fails unless `changes` and `quick` succeeded. The two aggregates check `quick` before they pass a
+  job group skipped by path. SonarCloud never reports when the suite did not run, so its required
+  check stays missing.
+- **The ruleset is unchanged:** `quick checks` is not a required check, and the four required
+  names stay as they were.
+- **Not in the quick job:** a guard checked inside a heavier test (`layout-guards.test.ts`) stays in
+  the suite. Only a file named `-ratchet` is quick, so a slow test never slips in by itself.
+
 ## The hand-off stamp vouches for CI, and a tag needs a green full run (issue #266)
 
 - **What survived of #221.** Its push-trigger requirement and the `gh run list --commit` check
@@ -4145,3 +4168,121 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   PATH with it, are the session's own. The number, branch and base come last, as positional
   arguments: a hook script must not read them as options.
 
+
+## DECISIONS.md merges with the union driver (issue #290)
+
+- **Why.** Every parallel PR appends a section at the end of this file, so two PRs added at the same
+  place and conflicted on it (#285 and others, 2026-11-05) although nothing was in dispute.
+  `.gitattributes` now says `docs/DECISIONS.md merge=union`: a merge keeps the lines of both sides.
+  `scripts/test/decisions-union.test.ts` proves it on a temporary repository (two branches that each
+  append a section merge cleanly with both kept; without the rule they conflict) and checks that the
+  rule is in the file.
+- **Only this file.** The recent edits of `docs/DECISIONS.md` all land in its last 130 lines. Those
+  of `docs/GLOSSARY.md` and of both manuals land all over the file (a table row, a feature's
+  section), where a union merge would keep two versions of one edited line side by side with no
+  warning. They keep the normal merge and its conflict.
+- **What union does not do.** Two PRs that edit the *same existing line* of DECISIONS.md both keep
+  their version of it, one after the other: read the merged section once before the hand-off. Add a
+  section, do not rewrite an old one.
+## SonarCloud on the PR is the only Sonar check (issue #283)
+
+- **Why.** The local copy (`bun run lint:sonar`, eslint-plugin-sonarjs in `tools/sonar-lint` with
+  `scripts/sonar-profile.json`, and the per-rule ratchet of `sonar-baseline.json`) missed rules
+  SonarCloud flags: its typed rules were skipped under `--no-types`, and several Sonar rules have
+  no ESLint version at all. Its ratchet also failed a PR once main grew past the baseline. The user
+  chose to remove it rather than strengthen it.
+- **What is gone:** `tools/sonar-lint` (and the `tools/*` workspace), `scripts/lib/sonar-lint.ts`,
+  the profile, the baseline, their tests, the `lint:sonar` script, and the CI steps (the quick
+  job's ratchet went in #278). The earlier entries above that describe them are history.
+- **What stays:** every `// NOSONAR: <reason>` comment, since SonarCloud honours them; and
+  `sonar-coverage.test.ts`, which guards SonarCloud's own configuration (its coverage is read on
+  exactly the files of the 100% gate, and every test file is analysed as test code). Its helpers
+  moved, unchanged, to `scripts/lib/sonar-project.ts`.
+- **For sessions:** no Sonar run before a push. A SonarCloud finding on a PR is fixed in that PR.
+
+## Security gate follow-ups (issue #284)
+
+- **Why.** OpenCode's second review of #279 found four mediums, with no high left.
+- **A deleted file keeps its path, and a rename keeps both.** Deleting a guard file (the hook rules,
+  the gate), or moving the CI out of `.github/workflows/`, is risky by path, like editing one.
+- **Removed lines count.** A removed line that touches a risk area makes its file risky ("removes
+  spawn"). A source file that loses any line and still holds risky code at HEAD (`git show
+  HEAD:<path>`) is risky too ("edits spawn code"): taking a check out in front of a spawn or a
+  delete needs a review as much as adding one. A removal of comments or blank lines only reads
+  nothing, except a lone `/*`: without it the lines after it run, so the file's code is read. A
+  file moved from a test folder into the code is risky ("moved from tests"), even unchanged. Known
+  limits, all needing a deliberate edit: an added lone `*/` can un-comment code that stays as
+  context; a content line that reads `-- "…"` or `++ "…"` looks like a quoted header and blocks the
+  gate (it never lets anything through); the trailer is the session's own word. Removed lines are keyed by the file's old path (`--- a/`), so a file renamed into a test
+  folder or to a non-code extension still counts the checks it lost; the code that stays is read at
+  its new path. A deleted file is not read at HEAD, and a file whose HEAD cannot be read (an error,
+  an output past the buffer) is risky, never taken as empty.
+- **Renames in the log** (the OpenCode review of #286): `git log` detects renames by itself and
+  lists only the new path, so a review after a move away from a risky path could never vouch. The
+  log runs with `--no-renames`, which lists both sides.
+- **Quoted names fail closed.** A name git still quotes with `core.quotepath=off` (a quote, a
+  backslash, a control character) defeats the header parsing, so the gate stamps `unknown`. A path
+  with " b/" inside it is read exactly from `diff --git a/<p> b/<p>` when both halves match (every
+  change but a rename, whose own lines name its paths).
+- **A mode change is a permission change on any file,** with or without a code extension (a script
+  in `bin/` made executable).
+- **runBounded takes its process, timers and kill as deps.** Its tests use a fake process and timer:
+  the deadline, the group kill, the exit before it and a child with no pid run with no real wait.
+  The real calls left (a program that exits, one that does not exist, the system's kill calls) start
+  and end at once.
+
+## The Linux leg in parallel jobs, the suite still whole (issue #293)
+
+- **Why.** `test (ubuntu-latest)` took 12-18 minutes: the coverage suite (8 minutes, one process),
+  then SonarCloud (4), then the smokes and cargo (3 on main), one after another in one job.
+- **The split.** `test-suite` runs `bun run test` (the exact 100% line and function gate) and uploads
+  `coverage/lcov.info`; `sonar` downloads it and runs the scan; `checks-linux` runs the smokes and
+  cargo in parallel with the suite, only when the path plan asks for them. The required check
+  `test (ubuntu-latest)` is an aggregate over the five (the plan, quick, the suite, SonarCloud, the
+  checks), so the ruleset is unchanged; it checks the plan and quick first, since GitHub counts a
+  skipped required check as passed. SonarCloud may be skipped (a dispatch); the checks only when the
+  plan needs no smoke and no cargo.
+- **Why the suite is not sharded** (measured 2026-11-05, three coverage shards on the Pi): lines
+  merge exactly (every file has the same lcov line set in each shard), but bun's lcov counts
+  functions per file without naming them, and even the count varies by process (it counts the
+  functions a process compiled: 271 files differed). 111 of 595 files could not be settled from the
+  counts. Sharding with the exact function gate needs named function data (#296, istanbul maps);
+  the merge logic for that stays on the ci-ubuntu-shards branch.
+
+## Unstable tests are skipped off Ubuntu, in the code (issue #288)
+
+- **The user's call (2026-11-05):** "pode skipar todos, exceto os testes do ubuntu", and "skip tests in
+  the code" when asked how. Windows failed on every PR and on main, and `test (windows-latest)` is a
+  required check, so five tests that bet on the machine blocked every merge. A first version put them
+  on a quarantine list that the required jobs left out by name, with a non-blocking job; it was
+  dropped before it merged, because the skip in the code is simpler (no list, no runner scripts, no
+  job, `ci.yml` unchanged) and keeps the test where its author reads it.
+- **The form:** `test.skipIf(notLinux)(…)` with `// unstable: #<issue> <reason>` on the line or the
+  line above (`scripts/lib/unstable-skip.ts`). The tests are untouched otherwise and still run on
+  Ubuntu under the 100% gate. A skip for a platform *capability* is a different thing and needs no
+  note.
+- **What `skipIf` was before:** the hook never blocked `skipIf` (its markers are `.only(`, `.skip(`,
+  `test.todo(` and `toMatchSnapshot(`), and ten capability skips exist. So nothing was loosened:
+  the new rule *adds* a check for the off-Linux form (an Edit or Write that adds one without the
+  note is blocked), and `.skip`, `.only`, `test.todo` and snapshots stay blocked whatever comment
+  is next to them.
+- **The ratchet** (`unstable-skip-ratchet.test.ts`): every skip off Linux has the note with an issue
+  number and a reason, and there are at most 5 (the five below), the number only lowered. Whether
+  the issue is still open is not checked (the tests touch no network): close #288 only when the
+  last skip is gone.
+- **The five:** hub-list "the render time at 9,090 rows is within 2x…" (a ratio of two wall-clock
+  render times); heartbeat "qualquer quadro do cliente conta como vivo…" (10 ms and 25 ms timers
+  against a 75 ms silence limit); platform "lint barra @tauri-apps/*…" (spawns biome; over 15 s on a
+  loaded Windows runner in three runs); proto-restore "two files that patch HTMLElement.prototype…"
+  (a child `bun test` with the whole preload; over 15 s on Windows); wait "it returns once the window
+  ended…" (counts polls in an 80 ms window). The fixes (counts instead of a ratio, an injected ticker
+  and clock for the heartbeat, a longer hang limit for the two child processes) are parked on the
+  branch `timing-fixes-288` for #288.
+- **Known limits (security-reviewer pass, nothing high):** the hook is a guard against slips, not a
+  boundary. It recognises `notLinux` and `process.platform !== "linux"` (also `'linux'`) on one line;
+  it does not see `!=`, a backtick string, an alias of `notLinux`, `skipIf(true)`, a skip in a helper
+  that is not a `*.test.ts`, or `scripts/test/not-linux.ts` changed to `true`, and it takes any
+  `// unstable: #<n> <word>` on the line (not a lookup of the issue, which needs the network). The
+  ratchet bounds the first kind: it is exactly saturated (at most 5 and the five files named), and
+  it runs in CI over the whole checkout. The hook matcher also covers only Edit, Write and Bash, as
+  before. All of it is how the guard already worked for `skipIf`, which it never blocked.

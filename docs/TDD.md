@@ -52,6 +52,20 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     controlada com código 1, não crash) e é commitado num `test(<área>)`.
 11. **Proibido:** implementação antes do teste, enfraquecer ou apagar asserção para passar,
     `.only`, `.skip` ou `test.todo` em código commitado.
+    **The one exception: an unstable test is skipped off Ubuntu** (decided 2026-11-05, issue #288).
+    A test that bets on the machine (wall-clock polls, a timer against a limit, a child process on
+    a loaded Windows runner) is written `test.skipIf(notLinux)(…)` (`notLinux` is in
+    `scripts/test/not-linux.ts`; `process.platform !== "linux"` also counts) with
+    `// unstable: #<issue> <reason>` on the same line or the line above. The issue is where the fix
+    goes: a skip is a promise to fix, not a place to leave the test. The test is intact, it still
+    runs on Ubuntu under the 100% coverage gate, and only Windows (and macOS) skip it. No other
+    skip is allowed: `.skip`, `.only`, `test.todo` and a first-run snapshot stay forbidden, and a
+    `skipIf` for a platform *capability* (no 8.3 names, no symlinks) is still fine without a note.
+    The hook knows the two spellings above, one line at a time, and does not look up the issue; the
+    ratchet (at most 5, each with its note) and review hold the rest.
+    `unstable-skip-ratchet.test.ts` checks every such skip has the note, with an issue number and a
+    reason, and that there are at most 5 in the repository (lower the number in that test when one
+    is fixed; never raise it).
 
 A auditoria `bun run tdd:audit -- --since <tag>` confere a ordem dos commits e a ausência de
 testes desligados. With `--spec docs/SPEC-fase-N.md` it also fails on an area of the spec's table
@@ -67,6 +81,9 @@ every push and pull request. The project's PreToolUse hook (`.claude/hooks/guard
   scope, and a `feat(x)`/`fix(x)` with no `test(x)` commit since that base;
 - it refuses an Edit or Write that adds `.only(`, `.skip(`, `test.todo(` or `toMatchSnapshot(` to
   a test file (one that keeps or removes them passes).
+- it refuses an Edit or Write that adds a `skipIf(notLinux)` (or `skipIf(process.platform !==
+  "linux")`) to a test file without `// unstable: #<issue> <reason>` on that line or the line above
+  (one that is already there, or a skip for a platform capability, passes).
 
 For a deliberate exception, end the commit message with a trailer line `TDD-Waiver: <why>` (or
 pass `--trailer "TDD-Waiver: <why>"`). The hook lets the commit through and `tdd:audit` lists it
@@ -198,6 +215,9 @@ em vez de depender de cuidado.
   stamp with no `security=` or no `ci=` vouches for nothing.
 - CI runs once per commit: on the PR (`pull_request`), on `main` (`push`), or by hand for a branch
   with no PR yet (`bun run ci:branch`).
+- CI starts with a quick job (#272): typecheck, lint, the TDD audit and every ratchet test, in
+  minutes. The heavy jobs need it. A new ratchet's test file ends in
+  `-ratchet.test.ts` (or `.tsx`), so the quick job picks it up by itself (scripts/lib/ci-quick.ts).
 - Right after `open`, the session turns on auto-merge: `bun run pr -- auto <n>` (#271). GitHub
   then merges the PR with a merge commit, never a squash, once the main ruleset's required checks
   are green on its HEAD and it is up to date (the ruleset is strict; auto-merge never updates the
