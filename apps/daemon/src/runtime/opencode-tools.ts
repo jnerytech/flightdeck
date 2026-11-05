@@ -33,7 +33,8 @@ const TOOLS: Record<string, { name: string; fields?: Record<string, string> }> =
 const FLIGHTDECK_MCP = "flightdeck_";
 
 export function mapOpenCodeTool(name: string, input: Record<string, unknown>): MappedTool {
-  const known = TOOLS[name];
+  // Own keys only: `constructor` or `__proto__` must not read the object's prototype.
+  const known = Object.hasOwn(TOOLS, name) ? TOOLS[name] : undefined;
   if (known) {
     const fields = known.fields ?? {};
     return {
