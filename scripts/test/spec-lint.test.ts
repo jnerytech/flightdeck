@@ -12,6 +12,8 @@ const TABLE = [
   "| `board-pull` | `apps/daemon/test/board-pull.test.ts` | a new item becomes a card |",
   "| board-sync-ui | `apps/desktop/test/board-sync-ui.test.tsx` | the control, both languages |",
   "| `board-sync-smoke` | `scripts/smoke-boardsync.ts` | prints SMOKE BOARDSYNC OK |",
+  "| `assistant-keys` | `apps/desktop/src-tauri/src/keys.rs` | set, status, delete (a Rust module's tests) |",
+  "| `assistant-guard` | `apps/desktop/src-tauri/tests/assistant_guard.rs` | limits (a Rust integration test) |",
 ].join("\n");
 
 /** A spec with every section; `body` replaces the text of the named sections. */
@@ -89,6 +91,8 @@ describe("spec-lint", () => {
       ["board-pull", "apps/daemon/test/board-pull.test.ts"],
       ["board-sync-ui", "apps/desktop/test/board-sync-ui.test.tsx"],
       ["board-sync-smoke", "scripts/smoke-boardsync.ts"],
+      ["assistant-keys", "apps/desktop/src-tauri/src/keys.rs"],
+      ["assistant-guard", "apps/desktop/src-tauri/tests/assistant_guard.rs"],
     ]);
     expect(specAreas(spec())[0]?.line).toBe(
       spec()
