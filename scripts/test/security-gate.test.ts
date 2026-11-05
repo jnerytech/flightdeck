@@ -247,6 +247,19 @@ describe("security-gate", () => {
     ]);
   });
 
+  test("the permission words count in any case (#273)", () => {
+    const added = new Map([
+      ["scripts/a.sh", ["CHMOD 777 x"]],
+      ["scripts/b.sh", ["Chown root x"]],
+      ["apps/daemon/src/c.ts", ["const allowednetworks = [];"]],
+    ]);
+    expect(riskyFiles(added).map((r) => [r.path, r.why.join(",")])).toEqual([
+      ["apps/daemon/src/c.ts", "permission"],
+      ["scripts/a.sh", "permission"],
+      ["scripts/b.sh", "permission"],
+    ]);
+  });
+
   test("Rust and Python spawns, deletes and listeners count too (#273)", () => {
     const added = new Map([
       ["apps/desktop/src-tauri/src/run.rs", ['let out = Command::new("git").output()?;']],
