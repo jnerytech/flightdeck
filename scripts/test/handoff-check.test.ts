@@ -77,6 +77,26 @@ describe("handoff-check", () => {
     expect(stampProblem((await stamp("skip")).stamp, HEAD)).toBe("failed: ci=skip");
   });
 
+  test("the stamp carries the security gate, and vouches only when it is 0 (#273)", async () => {
+    const stamp = async (security: string) =>
+      runHandoff({
+        run: async () => 0,
+        branch: "b",
+        head: HEAD,
+        now: "t",
+        security: async () => security,
+      });
+    const unreviewed = await stamp("unreviewed");
+    expect(unreviewed.stamp).toBe(
+      `HANDOFF b ${HEAD} typecheck=0 lint=0 audit=0 related=0 security=unreviewed t`,
+    );
+    expect(unreviewed.code).toBe(1);
+    expect(stampProblem(unreviewed.stamp, HEAD)).toBe("failed: security=unreviewed");
+    const reviewed = await stamp("0");
+    expect(reviewed.code).toBe(0);
+    expect(stampProblem(reviewed.stamp, HEAD)).toBeNull();
+  });
+
   test("a hostile stamp is refused in linear time (Sonar S5852) (#232)", () => {
     // A digit can end one pair or start the next: the old pattern backtracked 2^n times on a miss.
     const hostile = `HANDOFF b ${HEAD} ${"x=11".repeat(24)} a b`;

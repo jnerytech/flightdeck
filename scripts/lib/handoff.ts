@@ -21,6 +21,8 @@ export interface HandoffDeps {
   base?: string;
   /** The CI of HEAD: "0" when the required checks are green, else why not (#266). */
   ci?: () => Promise<string>;
+  /** The security gate (lib/security-gate.ts): "0", or "unreviewed" (#273). */
+  security?: () => Promise<string>;
 }
 
 /** Runs every step (all of them, so one run shows every failure) and builds the stamp line. */

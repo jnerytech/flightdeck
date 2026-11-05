@@ -268,6 +268,50 @@ describe("pr-flow: open", () => {
     expect(post).toContain("(#245)");
   });
 
+  test("a new PR runs the FLIGHTDECK_PR_OPENED hook with its number, branch and base; a failed hook leaves the PR open (#273)", async () => {
+    const setup = (hookCode: number) => {
+      const f = fake({
+        pushed: ["sec"],
+        subjects: { sec: ["feat(sec): x (#273)"] },
+        issues: { 273: "Reviews" },
+        env: { FLIGHTDECK_PR_OPENED: "bun run oc-queue.ts --review" },
+      });
+      const ran: string[][] = [];
+      const deps = {
+        ...f.deps,
+        run: async (command: string[]) => {
+          ran.push(command);
+          return { code: hookCode, stdout: "" };
+        },
+      };
+      return { f, ran, deps };
+    };
+    const ok = setup(0);
+    expect(await prFlow(["open", "sec", "--base", "ci-paths"], ok.deps)).toBe(0);
+    expect(ok.ran).toEqual([["bun", "run", "oc-queue.ts", "--review", "300", "sec", "ci-paths"]]);
+    const failed = setup(3);
+    expect(await prFlow(["open", "sec"], failed.deps)).toBe(0);
+    expect(failed.f.out()).toContain("FLIGHTDECK_PR_OPENED hook failed (exit 3); #300 is open");
+  });
+
+  test("without FLIGHTDECK_PR_OPENED no hook runs (#273)", async () => {
+    const f = fake({
+      pushed: ["sec"],
+      subjects: { sec: ["feat(sec): x (#273)"] },
+      issues: { 273: "Reviews" },
+    });
+    const ran: string[][] = [];
+    const deps = {
+      ...f.deps,
+      run: async (command: string[]) => {
+        ran.push(command);
+        return { code: 0, stdout: "" };
+      },
+    };
+    expect(await prFlow(["open", "sec"], deps)).toBe(0);
+    expect(ran).toEqual([]);
+  });
+
   test("a branch that already has an open PR gets no second one", async () => {
     const f = fake({ pushed: ["a"], prs: [pr(12, "a")], subjects: { a: ["fix(a): x (#1)"] } });
     expect(await prFlow(["open", "a"], f.deps)).toBe(0);
