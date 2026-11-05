@@ -55,6 +55,21 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
 A auditoria `bun run tdd:audit -- --since <tag>` confere a ordem dos commits e a ausência de
 testes desligados.
 
+**Checked at commit time and in CI.** Without `--since` (or with `--since auto`) the audit starts
+at the merge-base with `main`, or at the last tag when `HEAD` is on `main`; CI runs it that way on
+every push and pull request. The project's PreToolUse hook (`.claude/hooks/guard.ts`, rules in
+`scripts/lib/claude-hooks.ts`) checks the same things earlier:
+
+- it refuses a `git commit` whose subject is not `type(scope): text`, a `feat`/`fix` without a
+  scope, and a `feat(x)`/`fix(x)` with no `test(x)` commit since that base;
+- it refuses an Edit or Write that adds `.only(`, `.skip(`, `test.todo(` or `toMatchSnapshot(` to
+  a test file (one that keeps or removes them passes).
+
+For a deliberate exception, prefix the commit command with `FLIGHTDECK_TDD_WAIVER="<why>"` and
+add the commit to `scripts/tdd-audit-waivers.json` right after. A message the hook cannot read
+(from an editor or a file) passes; the audit still checks it. `bun run harness:stats` shows how
+often each rule blocked.
+
 **Antes de entregar uma sessão:** `bun run typecheck`, `bun run lint`, `bun run tdd:audit` e
 `bun run test:related`. O `test:related [--base <ref>]` roda só os testes que alcançam o que
 mudou desde o merge-base com `main` (os arquivos de teste alterados e os que importam, direta ou

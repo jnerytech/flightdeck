@@ -13,10 +13,12 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   decisions of each phase), `TDD.md` (the testing rules), `GLOSSARY.md`, `manual/` (en, pt-BR).
 - `.claude/`: the shared Claude Code setup. Skills `tdd-area` (one TDD area) and `new-phase`
   (open or close a phase); agents `spec-verifier` (checks a phase against its spec) and
-  `tauri-rust-reviewer` (for changes in `src-tauri`); hooks that block wide `git add` and edits of
-  generated files and run Biome after each edit, in the main checkout and its worktrees. The
-  hook rules live in `scripts/lib/claude-hooks.ts`. Personal settings go to
-  `.claude/settings.local.json` (ignored).
+  `tauri-rust-reviewer` (for changes in `src-tauri`); hooks that block wide `git add`, edits of
+  generated files, test edits that add `.only`/`.skip`/`test.todo`/`toMatchSnapshot`, and commits
+  that break `type(scope): text` or the TDD order, and that run Biome after each edit, in the main
+  checkout and its worktrees. The hook rules live in `scripts/lib/claude-hooks.ts`;
+  `bun run harness:stats` shows how often each rule blocked and how long the hooks took. Personal
+  settings go to `.claude/settings.local.json` (ignored).
 
 ## Commands
 
@@ -45,8 +47,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   gate and in CI, not in every session.
 - Format: `bun run format`. Smokes: `bun run smoke:<name>` (list in `package.json`; never
   `smoke:real` unless asked).
-- Audit: `bun run tdd:audit -- --since <tag or commit>`. Accepts any commit, for example
-  `$(git merge-base HEAD main)` on a phase branch.
+- Audit: `bun run tdd:audit` audits from the merge-base with `main` (or from the last tag on
+  `main`), the same as `-- --since auto`; `-- --since <tag or commit>` picks the start. CI runs it.
 - Screens: `bun run demo` (two fake hosts and the web entry at http://localhost:1420),
   `bun run demo:shots` (prints in both themes and languages, plus axe), `bun run e2e` (the
   journeys, in both languages, with `@playwright/test`: `E2E_ONLY=a,b` picks journeys, and
@@ -60,7 +62,9 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
 
 - Red → green per area: stub with real signatures and wrong values (never `throw`), red **by
   assertion**, commit the test alone (`test(<area>): ...`), minimal implementation, green, full
-  suite, commit `feat(<area>): ...`. Every `feat`/`fix` needs a prior `test` with the same scope.
+  suite, commit `feat(<area>): ...`. Every `feat`/`fix` needs a prior `test` with the same scope;
+  the commit hook enforces it. For a deliberate exception, prefix the commit command with
+  `FLIGHTDECK_TDD_WAIVER="<why>"` and add the commit to `scripts/tdd-audit-waivers.json`.
 - `git add` always with explicit paths, never `-A`, `-u` or `.`, and `git status --short` before
   the commit. No `git commit -a`.
 - Forbidden in committed code: `.only`, `.skip`, `test.todo`, `toMatchSnapshot` on the first

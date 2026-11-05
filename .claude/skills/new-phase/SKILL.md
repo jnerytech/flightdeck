@@ -43,7 +43,7 @@ base commit, so no tag is needed while the phase runs.
 
 Each item with its command and exit code visible:
 
-- [ ] TDD per area and the audit: `bun run tdd:audit -- --since $(git merge-base HEAD main)` →
+- [ ] TDD per area and the audit: `bun run tdd:audit -- --since auto` →
       `TDD AUDIT OK`.
 - [ ] 100% coverage: `bun run test`. Then `bun run typecheck` and `bun run lint`.
 - [ ] Every smoke in `package.json` except `smoke:real`, each with its `... OK`.

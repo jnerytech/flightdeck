@@ -3524,3 +3524,40 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 - **The summary card (`sessao-rolagem`).** #97 made the summary a one-line card, and the first version folded it every time. The
   older rule stays: the card opens the first time a session is seen (it is still a bounded card in the header that pushes the
   conversation down) and is one line after, with the preview. The e2e overlap check holds in both states.
+
+## Harness D1: the commit gate, the test-edit guard and the audit in CI (issue #169)
+
+- **A Claude Code hook, not a git `commit-msg` hook.** A git hook reads the message reliably, but it
+  needs `core.hooksPath`, which is unset; setting it would change all open worktrees and the
+  maintainer's commits at once. The PreToolUse guard is already versioned in `.claude/` and runs
+  in every checkout. It reads the subject from `-m`, `--message`, a `$(cat <<EOF)` heredoc or
+  `-F -` with a heredoc, and finds the commit's directory from each `cd` before it and from
+  `git -C`. Anything else (an editor, `-F file`, a quoted directory, git failing) passes, since
+  the audit and CI still check it.
+- **One base everywhere.** `auditBase` (the merge-base with `origin/main`, then `main`; the last
+  tag when `HEAD` is on `main`) is used by the hook, by `tdd:audit --since auto` and by CI. Without
+  `--since`, `tdd:audit` now means `auto`; before, the bare command that CLAUDE.md suggested
+  exited 2 with a usage line. In a pull request, CI's merge commit has no conventional type, so the
+  audit ignores it.
+- **The waiver is a prefix in the command.** A waiver in `scripts/tdd-audit-waivers.json` is keyed
+  by the full commit hash, which does not exist before the commit. `FLIGHTDECK_TDD_WAIVER="<why>"`
+  in the command lets the commit through, in plain sight in the transcript; the hash goes to the
+  waiver file right after, as before.
+- **Not enforced: "the test commit holds only the test".** docs/TDD.md says the stub stays out of
+  the test commit. In practice it goes in: 404 of the last 1,500 `test(...)` commits also change a
+  file under `apps/*/src`, `packages/*/src`, `scripts/lib` or `src-tauri/src` (for example
+  `test(setup-linger)` adds `linger.ts` answering `null`). Blocking it would refuse about one test
+  commit in four. The rule stays as written until the maintainer decides between the text and the
+  practice.
+- **`toMatchSnapshot(` only in the hook.** A new snapshot records its first run, which is the
+  stub's output. The audit does not scan for it, because a snapshot that already exists is allowed;
+  the hook only refuses one being added.
+- **Measured on the Orange Pi** (load around 6): the guard takes 0.04 to 0.1 s on a `git commit` (one
+  `rev-parse`, one `merge-base` and one `log`) and 0.01 to 0.03 s on anything else. `biome-on-edit`
+  takes about 1.9 s per edit, 1.7 s of it in the type-aware `noFloatingPromises` scan.
+- **The decision log** is `<common .git>/flightdeck-hooks.jsonl`: never tracked, one file for the
+  main checkout and its worktrees, rotated to `.jsonl.1` past 1 MB. `bun run harness:stats` gives
+  the calls, blocks and p50/p95 per hook, and the blocks per rule. The `biome-on-edit` numbers
+  decide whether `noFloatingPromises` moves out of the edit hook into the commit gate and CI.
+- **The hook files stay thin.** `.claude/hooks/*.ts` only read stdin, call `scripts/lib` and exit.
+  They are not under coverage; the rules they apply are, at 100%.
