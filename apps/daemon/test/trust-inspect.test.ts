@@ -281,4 +281,13 @@ describe("trust-inspect: what a project would load, read without running anythin
       { name: "odd", file: ".mcp.json", command: "" },
     ]);
   });
+
+  test("an agent file too big to read is reported unreadable instead of being scanned", async () => {
+    const root = repo({
+      ".claude/agents/big.md": `---\nhooks:\n  Stop: x\n---\n${"y".repeat(300_000)}`,
+    });
+    const load = await inspectProject(root);
+    expect(load.extras).toEqual([]);
+    expect(load.unreadable).toEqual([".claude/agents/big.md"]);
+  });
 });
