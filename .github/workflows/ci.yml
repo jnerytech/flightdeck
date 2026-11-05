@@ -350,8 +350,19 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit 1 }
           "CLAUDE_CODE_GIT_BASH_PATH=$bash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
+      # The shards are split by the seconds each test file took (scripts/test-timings.json, #292),
+      # not by file count. The JUnit report keeps this run's times: `bun run test:shards -- record`
+      # refreshes the timing file from the reports of the three shards.
       - name: Testes (shard ${{ matrix.shard }}/3)
-        run: bun --config=bunfig.area.toml test --timeout=15000 --shard=${{ matrix.shard }}/3
+        run: bun run test:shards -- run ${{ matrix.shard }}/3 --junit junit-${{ matrix.shard }}.xml
+
+      - name: Publicar os tempos dos testes
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-timings-windows-${{ matrix.shard }}
+          path: junit-${{ matrix.shard }}.xml
+          if-no-files-found: ignore
 
   # The rest of the Windows leg: the smokes, the Rust shell, the bundle budget and the
   # performance baseline.

@@ -129,9 +129,9 @@ const LOG = [
   "2026-11-05T23:29:23.9000000Z (skip) acoes-cli > not on this OS",
   "2026-11-05T23:29:24.0013322Z (fail) acoes-cli > a failing one: with [brackets] [137.5ms]",
   "2026-11-05T23:29:24.0100000Z ##[endgroup]",
+  "2026-11-05T23:29:24.0200000Z (pass) outside any file [5000.00ms]",
   "2026-11-05T23:29:24.3106001Z ##[group]scripts\\test\\only-skipped.test.ts:",
   "2026-11-05T23:29:24.3200000Z (skip) only-skipped > x",
-  "2026-11-05T23:29:25.0000000Z (pass) outside any file [5000.00ms]",
   "2026-11-05T23:29:25.8644945Z ##[group]packages/protocol/test/b.spec.tsx:",
   "2026-11-05T23:29:25.8700000Z (pass) b > one [10.5ms]",
   "2026-11-05T23:29:25.8800000Z (pass) b > two [20.25ms]",
@@ -141,7 +141,7 @@ const LOG = [
 describe("parseBunLog", () => {
   test("sums the (pass) and (fail) milliseconds under each file, with paths as git writes them", () => {
     expect(parseBunLog(LOG)).toEqual({
-      "apps/daemon/test/acoes-cli.test.ts": 1.2003,
+      "apps/daemon/test/acoes-cli.test.ts": 1.20105,
       "scripts/test/only-skipped.test.ts": 0,
       "packages/protocol/test/b.spec.tsx": 0.03075,
     });
@@ -266,7 +266,7 @@ describe("shards: record", () => {
     });
     expect(await shards(["record", "shard.log"], f.deps)).toBe(0);
     expect(f.written()).toEqual({
-      "apps/daemon/test/acoes-cli.test.ts": 1.2,
+      "apps/daemon/test/acoes-cli.test.ts": 1.201,
       "packages/protocol/test/b.spec.tsx": 0.031,
     });
   });
