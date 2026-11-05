@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   mergeTimings,
   parseJunit,
@@ -232,5 +234,21 @@ describe("shards: record", () => {
       "apps/daemon/test/b.test.ts": 7.5,
     });
     expect(f.logs.join("\n")).toContain("2 file(s) timed");
+  });
+});
+
+describe("scripts/test-timings.json", () => {
+  const path = join(import.meta.dir, "..", "test-timings.json");
+
+  test("is a map from a test file to the seconds it took, as `record` writes it", () => {
+    expect(existsSync(path)).toBe(true);
+    const timings = JSON.parse(readFileSync(path, "utf8")) as Timings;
+    const files = Object.keys(timings);
+    expect(files.length).toBeGreaterThan(100);
+    expect(files).toEqual(testFiles(files));
+    for (const seconds of Object.values(timings)) {
+      expect(Number.isFinite(seconds) && seconds >= 0).toBe(true);
+    }
+    expect(JSON.stringify(timings, null, 2) + "\n").toBe(readFileSync(path, "utf8"));
   });
 });
