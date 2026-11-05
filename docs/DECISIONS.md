@@ -4383,3 +4383,11 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   first one's state (`workers: 1`, `fullyParallel: false`). Balancing them means splitting the
   journeys into independent tests, which is #292, not a one-line change.
 
+- **Fixed.** Pair again: the host must still exist after the probe (no orphan secret), an unknown host is an error, one try at a time with a "Testing…" state, the token field is masked and emptied on success. The probe survives a timer that fires at once. A success toast with a button lasts 10 s like an error. Finish…: the merge button is off with the right reason (no work to merge, or the card has a pull request), and the text names the worktree and the branch. Start dialog: a second click sends nothing. Settings: typing in its search no longer pulls the view back to the section it opened on. The card menu's Start block is a function with its own cases (queued, running).
+- **Tests.** The probe tests use the default 8 s and a host that answers; "refused token changes nothing" reads the stored secret; the flaky "two toasts" and "running status" assertions are gone.
+- **Left for later.** The other low items: a pairing link for another address, the daemon's raw error text on the probe path, hidden untrusted workflows in the Start dialog, the e2e for adding a second host and for Finish…/Start, scoping the new e2e locators, `waitFor` vs `settle` in the new tests, and splitting #190/#191 out of the stack.
+
+## E2E for Finish… and the card menu's Start (issue #188, low items)
+
+- **Done.** The journey `finalizar-card` creates a card, opens the menu's Start dialog and cancels it, opens Finish… (three outcomes, the merge off with its reason), closes it with Esc, moves the card to Done and sees "already in Done". The palette click of `segundo-host` is scoped to the palette's dialog and option, the header button of `nova-sessao-host` to `<main>`, the second host's name is a constant, and the creation toast of `card-diff` is looked for before the tile (it is short-lived). Not run on the Pi: CI is the proof.
+- **Not done.** `segundo-host` still does not add a real second host (the demo has no third daemon to point the form at), and the real first run (empty window) has no e2e.
