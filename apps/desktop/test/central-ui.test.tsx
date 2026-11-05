@@ -214,10 +214,10 @@ describe("central-ui", () => {
       tool_input: { file_path: "a" },
     });
     await sidebar.openQueue();
-    await settle(() => screen.queryByRole("button", { name: "alfa · repo: Write" }) !== null);
+    await settle(() => screen.queryByRole("button", { name: /^alfa · repo: Write/ }) !== null);
     expect(notifications.map((n) => n.title)).toContain("Precisa de você");
     // The queue shows the request and its card answers it.
-    await sidebar.queueItem("alfa · repo: Write");
+    await sidebar.queueItem(/^alfa · repo: Write/);
     await click("Aprovar");
     expect(JSON.parse(await answer)).toEqual({
       hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "allow" } },
@@ -261,7 +261,7 @@ describe("central-ui", () => {
     void hook("PermissionRequest", { tool_name: "Read", tool_input: {} });
     await sidebar.openQueue();
     await settle(() => screen.queryByRole("button", { name: "alfa · repo: Read" }) !== null);
-    await sidebar.queueItem("alfa · repo: Read");
+    await sidebar.queueItem(/^alfa · repo: Read/);
     await click("Abrir sessão");
     await settle(() => screen.queryByRole("heading", { name: "repo" }) !== null);
     expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeNull();

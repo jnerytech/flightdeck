@@ -260,6 +260,12 @@
   html {
     color-scheme: light;
   }
+  /* The browser's style for a button lines its children up at the start (align-items:
+     flex-start), which the reset leaves: a button that stacks lines gave them no width, so a cut
+     line ran past it with no ellipsis (issue #175). A button that sets items-* keeps its own. */
+  button {
+    align-items: stretch;
+  }
   html:is(.dark) {
     color-scheme: dark;
   }

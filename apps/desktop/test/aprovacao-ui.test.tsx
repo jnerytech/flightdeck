@@ -320,7 +320,7 @@ describe("aprovacao-ui", () => {
     await act(async () => store.router.push({ name: "needs-you" }));
     const queue = screen.queryByRole("main");
     const item = queue
-      ? within(queue).queryByRole("button", { name: "alfa · Pedinte: Bash" })
+      ? within(queue).queryByRole("button", { name: /^alfa · Pedinte: Bash/ })
       : null;
     expect(item).not.toBeNull();
     expect(item?.getAttribute("aria-pressed")).toBe("false");

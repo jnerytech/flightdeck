@@ -805,6 +805,7 @@ export const ptBR = {
     back: "Voltar à lista",
     loopTitle: "Laço pausado",
     loopRow: "Laço pausado: {from} e {to}",
+    gateTool: "etapa “{step}” do workflow",
     gateRow: "A etapa “{step}” do workflow espera sua aprovação",
     release: "Soltar o par",
   },

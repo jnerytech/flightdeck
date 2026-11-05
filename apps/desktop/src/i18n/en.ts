@@ -808,6 +808,7 @@ export const en: Dictionary = {
     back: "Back to the list",
     loopTitle: "Loop paused",
     loopRow: "Loop paused: {from} and {to}",
+    gateTool: "workflow step “{step}”",
     gateRow: "Workflow step “{step}” waits for your approval",
     release: "Free the pair",
   },

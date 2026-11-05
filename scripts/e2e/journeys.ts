@@ -927,6 +927,16 @@ export async function layout(c: Context, problems: string[]) {
   } finally {
     await c.page.keyboard.press("Control+\\");
   }
+  // Issue #175: a Needs you row's detail line is cut inside the row (a button's own style left it
+  // no width, so it ran past the row with no ellipsis).
+  await c.page.setViewportSize({ width: 1280, height: 800 });
+  await open(c, { name: "needs-you" });
+  const wide = await c.page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>("main li > button")]
+      .filter((row) => [...row.children].some((line) => line.clientWidth > row.clientWidth + 1))
+      .map((row) => row.getAttribute("aria-label") ?? ""),
+  );
+  for (const row of wide) problems.push(`${c.lang} needs you: a line runs past its row (${row})`);
   // The smallest window the app allows (tauri.conf.json): where the menu and the dialog are tightest.
   await c.page.setViewportSize({ width: 720, height: 480 });
   await open(c, { name: "hub" });

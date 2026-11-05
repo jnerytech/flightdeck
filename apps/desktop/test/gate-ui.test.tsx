@@ -109,7 +109,8 @@ describe("gate-ui", () => {
       ...ctx,
       hostId: ctx.store.getState().hosts[0]?.id ?? "",
     }));
-    const label = "alfa · Somar: gate approve";
+    // A gate is named by its step (issue #175).
+    const label = "alfa · Somar: A etapa “approve” do workflow espera sua aprovação";
     await sidebar.openQueue();
     expect(screen.queryByRole("heading", { name: "Precisa de você" })).not.toBeNull();
     expect(needsYou(store.getState())[0]).toMatchObject({
@@ -123,7 +124,7 @@ describe("gate-ui", () => {
     await settle(() => screen.queryByRole("region", { name: "Gate approve" }) !== null);
     expect(screen.queryByRole("heading", { name: "Somar" })).not.toBeNull();
     await sidebar.queueItem(label);
-    const card = screen.queryByRole("group", { name: "Pedido de gate approve" });
+    const card = screen.queryByRole("group", { name: "Pedido de etapa “approve” do workflow" });
     expect(card).not.toBeNull();
     const approve = card ? within(card).queryByRole("button", { name: "Aprovar" }) : null;
     expect(approve).not.toBeNull();
@@ -139,7 +140,7 @@ describe("gate-ui", () => {
 
   test("recusar pela fila encerra a execução", async () => {
     const { run } = await atGate();
-    await sidebar.queueItem("alfa · Somar: gate approve");
+    await sidebar.queueItem("alfa · Somar: A etapa “approve” do workflow espera sua aprovação");
     await click("Negar");
     await click("Negar");
     await settle(() => run().status === "rejected");
