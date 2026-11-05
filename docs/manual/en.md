@@ -688,7 +688,8 @@ live; the list is the project's, so a session of another project never shows her
   History), **Library** (Personas, Snippets, Plugins, Vault) and **Machines** (the hosts, each with
   its state dot, health mark and menu, a **+** to add one, then **SSH**, the saved SSH destinations).
   The open page has a filled row and a bar at its left edge, items with sub-pages end in a chevron,
-  recent features carry a **Beta** or **New** badge, and **Manual** at the foot opens this manual in
+  recent features carry a **Beta** or **New** badge that goes away by itself from the version the
+  badge was set to end at (Teams' Beta ends at 0.39, Conversations' New at 0.38), and **Manual** at the foot opens this manual in
   the browser (its icon says it leaves the app). A group with nothing to offer is not drawn, the
   folded groups are remembered, and the narrow icon rail has no headings.
 - With one area, the tab strip sits in the top bar on the breadcrumb's row; with a split, each

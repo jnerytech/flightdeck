@@ -674,7 +674,8 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   **Máquinas** (os hosts, cada um com o pontinho de estado, a marca de saúde e o menu, um **+** para
   adicionar, e depois **SSH**, os destinos SSH salvos). A página aberta tem a linha preenchida e uma
   barra na borda esquerda, os itens com subpáginas terminam em uma seta, as novidades levam um selo
-  **Beta** ou **Novo**, e o **Manual** no pé abre este manual no navegador (o ícone diz que sai do
+  **Beta** ou **Novo** que some sozinho na versão em que foi marcado para acabar (o Beta de
+  Equipes acaba na 0.39, o Novo de Conversas na 0.38), e o **Manual** no pé abre este manual no navegador (o ícone diz que sai do
   app). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados, e o trilho
   estreito de ícones não tem títulos.
 - Com uma área, a barra de abas fica na barra do topo, na linha do caminho; com a tela dividida,
