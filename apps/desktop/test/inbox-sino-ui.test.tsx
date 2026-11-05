@@ -31,7 +31,7 @@ async function setup(entries: unknown[]) {
   const store = new AppStore(phone.platform, { baseDelayMs: 60_000 });
   stores.push(store);
   render(<App store={store} />);
-  await waitFor(() => expect(store.getState().inbox.length).toBe(entries.length));
+  await waitFor(() => expect(store.getState().inbox).toHaveLength(entries.length));
   return { store };
 }
 

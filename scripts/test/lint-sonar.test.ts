@@ -1,9 +1,13 @@
-import { afterAll, describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dir, "../..");
+
+// Every case starts bun and loads eslint with the sonarjs plugin: 3 to 11 s alone, and the Pi runs
+// several jobs at once, so the usual 15 s limit was hit under load.
+setDefaultTimeout(60_000);
 
 /** Runs `bun run lint:sonar` on fixture files, without type information to stay fast. */
 function lint(...fixtures: string[]) {
