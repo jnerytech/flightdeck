@@ -47,6 +47,14 @@ describe("dom-equal-ratchet: no DOM element inside a deep equality", () => {
     expect(domEqualities(source)).toBe(4);
   });
 
+  test("a comment inside the arguments is skipped, and a source cut short counts nothing", () => {
+    expect(
+      domEqualities(expectOf('getByRole("x", /* by name */ { name: "a" })', "toEqual", "null")),
+    ).toBe(1);
+    expect(domEqualities(`${"expect"}(getByRole("x" /* cut`)).toBe(0);
+    expect(domEqualities(`${"expect"}([getByRole("x")`)).toBe(0);
+  });
+
   test("the counts walk a folder of test sources and leave out files at zero", () => {
     const dir = realTempDir("fd-dom-equal-");
     mkdirSync(join(dir, "test", "ui"), { recursive: true });
