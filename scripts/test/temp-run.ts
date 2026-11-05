@@ -8,7 +8,15 @@
  * What a process still holds (a file open on Windows) can keep the folder from going; the run's pid
  * is written in it, and the next run sweeps the `fd-run-*` folders whose process is gone.
  */
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmdirSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -32,10 +40,42 @@ export function pidAlive(pid: number): boolean {
   }
 }
 
-/** Removes a folder and what it holds; true when it is gone. */
-function remove(dir: string): boolean {
+/** How long one removal may take: well under a hook's timeout, which a big tree on Windows overran. */
+const REMOVE_BUDGET_MS = 3000;
+
+/** Removes what `dir` holds, file by file, until the deadline; `keep` is left for the caller. */
+function empty(dir: string, deadline: number, now: () => number, keep?: string): boolean {
+  let clear = true;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === keep) continue;
+    if (now() >= deadline) return false;
+    const path = join(dir, entry.name);
+    try {
+      if (entry.isDirectory()) {
+        if (empty(path, deadline, now)) rmdirSync(path);
+        else clear = false;
+      } else {
+        unlinkSync(path);
+      }
+    } catch {
+      // Held (a file open on Windows): the next run's sweep tries again.
+      clear = false;
+    }
+  }
+  return clear;
+}
+
+/**
+ * Removes a folder and what it holds within the budget; true when it is gone. The pid file goes last,
+ * so a folder left half-removed is still known as a dead run's and the next sweep finishes it. Never
+ * throws.
+ */
+function remove(dir: string, budgetMs: number, now: () => number, keep?: string): boolean {
   try {
-    rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+    if (!existsSync(dir)) return true;
+    if (!empty(dir, now() + budgetMs, now, keep)) return false;
+    if (keep) unlinkSync(join(dir, keep));
+    rmdirSync(dir);
   } catch {
     // Reported by the caller through the folder still being there.
   }
@@ -50,7 +90,7 @@ function sweep(base: string, alive: (pid: number) => boolean): void {
     if (!existsSync(pidFile)) continue;
     const pid = Number(readFileSync(pidFile, "utf8").trim());
     if (Number.isInteger(pid) && pid > 0 && alive(pid)) continue;
-    remove(join(base, name));
+    remove(join(base, name), REMOVE_BUDGET_MS, Date.now, "pid");
   }
 }
 
@@ -69,7 +109,11 @@ export function installTempRun(
   return { base, dir };
 }
 
-/** Removes the run's folder; true when it is gone. */
-export function removeTempRun(run: TempRun, _budgetMs?: number, _now?: () => number): boolean {
-  return remove(run.dir);
+/** Removes the run's folder within the budget; true when it is gone, false when the sweep has to finish. */
+export function removeTempRun(
+  run: TempRun,
+  budgetMs: number = REMOVE_BUDGET_MS,
+  now: () => number = Date.now,
+): boolean {
+  return remove(run.dir, budgetMs, now, "pid");
 }
