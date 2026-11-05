@@ -138,7 +138,7 @@ describe("assistant-usage", () => {
       )
       .all()
       .find((c) => c.name === "provider");
-    expect(column).toEqual({ name: "provider", notnull: 0, dflt_value: null } as never);
+    expect([column?.name, column?.notnull, column?.dflt_value]).toEqual(["provider", 0, null]);
     expect(rows(db)).toEqual([
       { message_id: "old", origin: "terminal", provider: null, cost_usd: 0.5, project_key: "k" },
     ]);
