@@ -14,7 +14,9 @@ export function CardHours(props: { store: AppStore; hostId: string; card: Card }
     card.estimateHours === null ? "" : String(card.estimateHours),
   );
   const parsed = text.trim() === "" ? null : Number(text);
-  const valid = parsed === null || Number.isFinite(parsed);
+  // What the host takes: empty (no estimate) or a number of hours from 0 to 1000.
+  const valid = parsed === null || (Number.isFinite(parsed) && parsed >= 0 && parsed <= 1000);
+  const current = card.estimateHours === null ? "" : String(card.estimateHours);
   return (
     <Field label={t("roiUi.cardHours")}>
       {(control) => (
@@ -28,8 +30,9 @@ export function CardHours(props: { store: AppStore; hostId: string; card: Card }
           />
           <ActionButton
             variant="outline"
+            disabled={!valid || text === current}
+            {...(valid ? {} : { disabledReason: t("roiUi.cardHoursInvalid") })}
             onClick={async () => {
-              if (!valid) return;
               const sent = text;
               const done = await store.hostCommand(hostId, "card.update", {
                 cardId: card.id,

@@ -309,6 +309,7 @@ export const ptBR = {
     settings: "Horas e valor da hora",
     defaultHours: "Horas por card (padrão deste projeto)",
     saveHours: "Salvar horas",
+    cardHoursInvalid: "Digite um número de horas de 0 a 1000, ou deixe vazio.",
     cardHoursSave: "Salvar as horas do card",
     projectRate: "Valor da hora deste projeto",
     saveRate: "Salvar valor",
