@@ -95,6 +95,7 @@ import { type RoiSummarizer, roiPeriod } from "./roi/summary.ts";
 import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
+import { need } from "./server/gates.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 import type { HistoryImporter } from "./snippets/history.ts";
 import type { Snippets } from "./snippets/store.ts";
@@ -549,8 +550,7 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
 
   function history(): HistoryIndexer {
-    if (!opts.history) throw featureOff("history");
-    return opts.history;
+    return need(opts, "history");
   }
 
   /** The indexed folders whose project is `key`; with no way to ask, only a folder key matches. */
@@ -562,8 +562,7 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
 
   function central() {
-    if (!opts.central) throw featureOff("central");
-    return opts.central;
+    return need(opts, "central");
   }
 
   /**
@@ -587,18 +586,15 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
 
   function roi(): RoiSummarizer {
-    if (!opts.roi) throw featureOff("roi");
-    return opts.roi;
+    return need(opts, "roi");
   }
 
   function boardsync(): BoardSyncService {
-    if (!opts.boardsync) throw featureOff("boardsync");
-    return opts.boardsync;
+    return need(opts, "boardsync");
   }
 
   function github(): GithubService {
-    if (!opts.github) throw featureOff("github");
-    return opts.github;
+    return need(opts, "github");
   }
 
   /**
@@ -613,80 +609,65 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
 
   function vault(): Vault {
-    if (!opts.vault) throw featureOff("vault");
-    return opts.vault;
+    return need(opts, "vault");
   }
 
   function names(): Names {
-    if (!opts.names) throw featureOff("names");
-    return opts.names;
+    return need(opts, "names");
   }
 
   function watching(): PrWatch {
-    if (!opts.watch) throw featureOff("prWatch");
-    return opts.watch;
+    return need(opts, "watch");
   }
 
   function teams(): Teams {
-    if (!opts.teams) throw featureOff("teams");
-    return opts.teams;
+    return need(opts, "teams");
   }
 
   function messaging(): Messaging {
-    if (!opts.messaging) throw featureOff("messaging");
-    return opts.messaging;
+    return need(opts, "messaging");
   }
 
   function idle(): Idle {
-    if (!opts.idle) throw featureOff("idle");
-    return opts.idle;
+    return need(opts, "idle");
   }
 
   function actions(): Actions {
-    if (!opts.actions) throw featureOff("actions");
-    return opts.actions;
+    return need(opts, "actions");
   }
 
   function automations(): Automations {
-    if (!opts.automations) throw featureOff("automations");
-    return opts.automations;
+    return need(opts, "automations");
   }
 
   function issues(): Issues {
-    if (!opts.issues) throw featureOff("issues");
-    return opts.issues;
+    return need(opts, "issues");
   }
 
   function autoApprove(): AutoApprover {
-    if (!opts.autoApprove) throw featureOff("autoApprove");
-    return opts.autoApprove;
+    return need(opts, "autoApprove");
   }
 
   function agentcfg(): AgentConfig {
-    if (!opts.agentcfg) throw featureOff("agentcfg");
-    return opts.agentcfg;
+    return need(opts, "agentcfg");
   }
 
   function mcp(): McpConfig {
-    if (!opts.mcp) throw featureOff("mcp");
-    return opts.mcp;
+    return need(opts, "mcp");
   }
 
   const projectPath = (projectId: string) => board().getProject(projectId).path;
 
   function pluginsApi(): Plugins {
-    if (!opts.plugins) throw featureOff("plugins");
-    return opts.plugins;
+    return need(opts, "plugins");
   }
 
   function memory(): ProjectMemory {
-    if (!opts.memory) throw featureOff("memory");
-    return opts.memory;
+    return need(opts, "memory");
   }
 
   function rewinder(): Rewinder {
-    if (!opts.rewinder) throw featureOff("rewinder");
-    return opts.rewinder;
+    return need(opts, "rewinder");
   }
 
   /** `host.info.update` once the daemon has checked its manifest. */
@@ -721,142 +702,114 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
 
   function maintenance(): Maintenance {
-    if (!opts.maintenance) throw featureOff("maintenance");
-    return opts.maintenance;
+    return need(opts, "maintenance");
   }
 
   function usage(): UsageLedger {
-    if (!opts.usage) throw featureOff("usage");
-    return opts.usage;
+    return need(opts, "usage");
   }
 
   function account(): Account {
-    if (!opts.account) throw featureOff("account");
-    return opts.account;
+    return need(opts, "account");
   }
 
   function quota(): Quota {
-    if (!opts.quota) throw featureOff("quota");
-    return opts.quota;
+    return need(opts, "quota");
   }
 
   function costs(): Costs {
-    if (!opts.costs) throw featureOff("costs");
-    return opts.costs;
+    return need(opts, "costs");
   }
 
   function telemetry(): TelemetryStore {
-    if (!opts.telemetry) throw featureOff("telemetry");
-    return opts.telemetry;
+    return need(opts, "telemetry");
   }
 
   function bg(): BgService {
-    if (!opts.bg) throw featureOff("bg");
-    return opts.bg;
+    return need(opts, "bg");
   }
 
   function webhook(): WebhookSender {
-    if (!opts.webhook) throw featureOff("webhook");
-    return opts.webhook;
+    return need(opts, "webhook");
   }
   function summary(): SummaryService {
-    if (!opts.summary) throw featureOff("summary");
-    return opts.summary;
+    return need(opts, "summary");
   }
   function trace(): TraceService {
-    if (!opts.trace) throw featureOff("trace");
-    return opts.trace;
+    return need(opts, "trace");
   }
 
   function optIn(): TelemetryOptIn {
-    if (!opts.telemetryOptIn) throw featureOff("telemetry");
-    return opts.telemetryOptIn;
+    return need(opts, "telemetryOptIn");
   }
 
   function budgets(): Budgets {
-    if (!opts.budgets) throw featureOff("budgets");
-    return opts.budgets;
+    return need(opts, "budgets");
   }
 
   function quotaHistory(): QuotaHistory {
-    if (!opts.quotaHistory) throw featureOff("quotaHistory");
-    return opts.quotaHistory;
+    return need(opts, "quotaHistory");
   }
 
   function changes(): Changes {
-    if (!opts.changes) throw featureOff("changes");
-    return opts.changes;
+    return need(opts, "changes");
   }
 
   function ssh(): SshTargets {
-    if (!opts.ssh) throw featureOff("ssh");
-    return opts.ssh;
+    return need(opts, "ssh");
   }
 
   function snippets(): Snippets {
-    if (!opts.snippets) throw featureOff("snippets");
-    return opts.snippets;
+    return need(opts, "snippets");
   }
 
   function personaSessions(): OpenSessionPersonas {
-    if (!opts.personaSessions) throw featureOff("personaSessions");
-    return opts.personaSessions;
+    return need(opts, "personaSessions");
   }
 
   function personas(): Personas {
-    if (!opts.personas) throw featureOff("personas");
-    return opts.personas;
+    return need(opts, "personas");
   }
 
   function snippetUse(): SnippetUse {
-    if (!opts.snippetUse) throw featureOff("snippetUse");
-    return opts.snippetUse;
+    return need(opts, "snippetUse");
   }
 
   function snippetHistory(): HistoryImporter {
-    if (!opts.snippetHistory) throw featureOff("snippetHistory");
-    return opts.snippetHistory;
+    return need(opts, "snippetHistory");
   }
 
   function askpass(): AskpassBroker {
-    if (!opts.askpass) throw featureOff("askpass");
-    return opts.askpass;
+    return need(opts, "askpass");
   }
 
   function sshConnect(): SshConnector {
-    if (!opts.sshConnect) throw featureOff("sshConnect");
-    return opts.sshConnect;
+    return need(opts, "sshConnect");
   }
 
   function sshHostKeys(): HostKeys {
-    if (!opts.sshHostKeys) throw featureOff("sshHostKeys");
-    return opts.sshHostKeys;
+    return need(opts, "sshHostKeys");
   }
 
   function sshImport(): SshImporter {
-    if (!opts.sshImport) throw featureOff("sshImport");
-    return opts.sshImport;
+    return need(opts, "sshImport");
   }
 
   function review(): ReviewComments {
-    if (!opts.review) throw featureOff("review");
-    return opts.review;
+    return need(opts, "review");
   }
 
   function files(): ReviewFiles {
-    if (!opts.files) throw featureOff("files");
-    return opts.files;
+    return need(opts, "files");
   }
 
   /** A project's folder, with the root of its repository looked up first without waiting for git. */
   function sessionFiles(): SessionFiles {
-    if (!opts.sessionFiles) throw featureOff("sessionFiles");
-    return opts.sessionFiles;
+    return need(opts, "sessionFiles");
   }
 
   function terminals(): TerminalManager {
-    if (!opts.terminals) throw featureOff("terminals");
-    return opts.terminals;
+    return need(opts, "terminals");
   }
 
   /** The connection's end of its terminals: frames out, and how full its socket is. */
@@ -869,13 +822,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
 
   function runenv() {
-    if (!opts.runenv) throw featureOff("runEnv");
-    return opts.runenv;
+    return need(opts, "runenv");
   }
 
   function board(): Board {
-    if (!opts.board) throw featureOff("board");
-    return opts.board;
+    return need(opts, "board");
   }
 
   function subscribe(ws: Socket, sessionId: string, sinceSeq: number) {
