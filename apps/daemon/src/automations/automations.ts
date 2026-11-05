@@ -327,7 +327,9 @@ export class Automations {
         );
         return;
       }
-      for (const issue of issues) await this.fire({ type: "issue_label", projectId, issue });
+      await inSequence(issues, async (issue) => {
+        await this.fire({ type: "issue_label", projectId, issue });
+      });
     });
   }
 

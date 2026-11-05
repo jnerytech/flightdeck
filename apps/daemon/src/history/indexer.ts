@@ -625,14 +625,14 @@ export class HistoryIndexer {
   private async files(): Promise<string[]> {
     const files: string[] = [];
     await inSequence(this.opts.roots, async (root) => {
-      for (const dir of await entries(root)) {
-        if (!dir.isDirectory()) continue;
+      await inSequence(await entries(root), async (dir) => {
+        if (!dir.isDirectory()) return;
         for (const file of await entries(join(root, dir.name))) {
           if (file.isFile() && file.name.endsWith(".jsonl")) {
             files.push(join(root, dir.name, file.name));
           }
         }
-      }
+      });
     });
     return files;
   }

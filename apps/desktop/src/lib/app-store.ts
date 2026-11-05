@@ -3481,11 +3481,11 @@ export class AppStore {
       const own = this.rules.get(secret.id);
       const rules = this.effectiveVaultRules(secret, own);
       const text = JSON.stringify(rules);
-      for (const host of this.state.hosts) {
-        if (host.status !== "online" || !secret.allowedHosts.includes(host.id)) continue;
+      await inSequence(this.state.hosts, async (host) => {
+        if (host.status !== "online" || !secret.allowedHosts.includes(host.id)) return;
         const widened = await this.pushScopeTo(host, secret, rules, text);
         if (widened) changed.add(widened);
-      }
+      });
     });
     for (const name of changed) this.success(this.i18n.t("clients.scopeChanged", { name }));
   }

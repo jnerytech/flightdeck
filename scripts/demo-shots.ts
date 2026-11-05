@@ -737,7 +737,7 @@ export async function takeShots(
   const problems: string[] = [];
   try {
     await inSequence(["light", "dark"] as const, async (theme) => {
-      for (const lang of ["pt-BR", "en"] as const) {
+      await inSequence(["pt-BR", "en"] as const, async (lang) => {
         const dir = join(SHOTS_DIR, `${theme}-${lang}`);
         mkdirSync(dir, { recursive: true });
         // For the comparison: the same locale, zone and scale on every machine.
@@ -759,7 +759,7 @@ export async function takeShots(
         }
         await context.close();
         log(`prints ${theme} ${lang}`);
-      }
+      });
     });
   } finally {
     await browser.close();

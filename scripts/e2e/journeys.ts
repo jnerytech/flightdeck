@@ -710,7 +710,7 @@ export async function layout(c: Context, problems: string[]) {
   ];
   await inSequence(OVERFLOW_VIEWPORTS, async (viewport) => {
     await c.page.setViewportSize(viewport);
-    for (const [name, route] of crowded) {
+    await inSequence(crowded, async ([name, route]) => {
       await openCrowded(c, route);
       // A print of the crowded window on request (the hand-off of issue #103 shows it).
       if (process.env.E2E_PRINT_DIR && name === "sessao-longa" && viewport.width > 1500) {
@@ -727,7 +727,7 @@ export async function layout(c: Context, problems: string[]) {
           `${c.lang} ${viewport.width}x${viewport.height} ${name} (12 abas): ${sideways}`,
         );
       }
-    }
+    });
     // Equal widths with 12 tabs and with 2, and 12 never under 80px.
     await openCrowded(c, { name: "hub" });
     const crowdedTabs = await tabWidthsProblem(c.page, 80);
@@ -752,7 +752,7 @@ export async function layout(c: Context, problems: string[]) {
   }
   await inSequence(VIEWPORTS, async (viewport) => {
     await c.page.setViewportSize(viewport);
-    for (const [name, route] of screens) {
+    await inSequence(screens, async ([name, route]) => {
       await open(c, route);
       const where = `${c.lang} ${viewport.width}x${viewport.height} ${name}`;
       for (const issue of await overflow(c.page)) problems.push(`${where}: ${issue}`);
@@ -772,7 +772,7 @@ export async function layout(c: Context, problems: string[]) {
           if (flipped) problems.push(`${where}: ${flipped} (${await state()})`);
         }
       }
-    }
+    });
     for (const issue of await folderDialogProblems(c)) {
       problems.push(`${c.lang} ${viewport.width}x${viewport.height} pasta: ${issue}`);
     }

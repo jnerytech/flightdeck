@@ -72,12 +72,12 @@ export async function syncPeers(deps: RelayDeps): Promise<void> {
       host: string;
       sessions: unknown[];
     };
-    for (const other of online) {
-      if (other.id === host.id) continue;
+    await inSequence(online, async (other) => {
+      if (other.id === host.id) return;
       await deps.call(other.id, "messages.peers", {
         host: directory.host,
         sessions: directory.sessions,
       });
-    }
+    });
   });
 }

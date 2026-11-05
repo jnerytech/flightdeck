@@ -371,9 +371,9 @@ export class UsageIndexer {
   private async files(): Promise<TranscriptFile[]> {
     const files: TranscriptFile[] = [];
     await inSequence(this.opts.roots, async (root) => {
-      for (const dir of await entries(root)) {
+      await inSequence(await entries(root), async (dir) => {
         if (dir.isDirectory()) files.push(...(await projectFiles(join(root, dir.name))));
-      }
+      });
     });
     return files;
   }
