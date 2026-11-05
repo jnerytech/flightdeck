@@ -50,7 +50,7 @@ describe("isolation: the preload puts the globals back between two test files", 
     ]);
     const log = `${out}${err}`;
     expect(log).toContain("4 pass");
-    expect(log).not.toContain("fail");
+    expect(log).toContain(" 0 fail");
     expect(code).toBe(0);
   }, 60_000);
 });
