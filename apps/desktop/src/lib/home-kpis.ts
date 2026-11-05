@@ -13,7 +13,8 @@ export interface HomeInput {
 
 export interface HomeKpis {
   spend: {
-    totalUsd: number;
+    /** `null` when no host gave costs: unknown, not zero. */
+    totalUsd: number | null;
     series: number[];
     /** The month's host budgets together; `null` when none is set. */
     budget: { spentUsd: number; limitUsd: number } | null;
@@ -25,7 +26,7 @@ export interface HomeKpis {
     failed: number | null;
     series: number[];
   };
-  tokens: { total: number; cacheRead: number; series: number[] };
+  tokens: { total: number | null; cacheRead: number | null; series: number[] };
   average: {
     costPerTurnUsd: number | null;
     turnMs: number | null;
@@ -84,7 +85,12 @@ export function homeKpis(input: HomeInput): HomeKpis {
 
   const tokenKinds = input.costs.map((c) => c.totals.tokens);
   return {
-    spend: { totalUsd: sum(spendSeries), series: spendSeries, budget },
+    // No costs from any host is unknown, not a spend of nothing.
+    spend: {
+      totalUsd: input.costs.length === 0 ? null : sum(spendSeries),
+      series: spendSeries,
+      budget,
+    },
     turns: {
       total,
       ok: failed === null ? total : total - failed,
@@ -92,10 +98,15 @@ export function homeKpis(input: HomeInput): HomeKpis {
       series: turnSeries,
     },
     tokens: {
-      total: sum(
-        tokenKinds.map((t) => t.input + t.output + t.cacheRead + t.cacheWrite5m + t.cacheWrite1h),
-      ),
-      cacheRead: sum(tokenKinds.map((t) => t.cacheRead)),
+      total:
+        input.costs.length === 0
+          ? null
+          : sum(
+              tokenKinds.map(
+                (t) => t.input + t.output + t.cacheRead + t.cacheWrite5m + t.cacheWrite1h,
+              ),
+            ),
+      cacheRead: input.costs.length === 0 ? null : sum(tokenKinds.map((t) => t.cacheRead)),
       series: perDay(
         days,
         byDay.map((d) => [d.day, d.tokens]),
