@@ -8,7 +8,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { relative, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import {
   checkoutRoot,
   commandViolation,
@@ -42,6 +42,7 @@ if (typeof command === "string") {
         const proc = spawnSync("git", args, { cwd: dir, encoding: "utf8", timeout: 2000 });
         return proc.status === 0 ? proc.stdout : null;
       },
+      inProject: (dir) => checkoutRoot(join(dir, "x"), ROOT) !== null,
     }),
   );
 }

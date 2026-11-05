@@ -148,6 +148,8 @@ export function testEditViolation(
 export interface CommitGateDeps {
   /** Runs git with these arguments in `cwd`; null when git fails. */
   git: (args: string[], cwd: string) => string | null;
+  /** Whether `dir` is in this project's main checkout or one of its worktrees (default: yes). */
+  inProject?: (dir: string) => boolean;
 }
 
 /**
@@ -160,6 +162,7 @@ export interface CommitGateDeps {
 export function commitViolation(command: string, cwd: string, deps: CommitGateDeps): string | null {
   const commit = findCommit(command, cwd);
   if (!commit || commit.message === null) return null;
+  if (commit.dir !== null && deps.inProject && !deps.inProject(commit.dir)) return null;
   const subject =
     commit.message
       .split("\n")
