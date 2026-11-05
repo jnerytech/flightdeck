@@ -30,38 +30,163 @@ export interface PowerContext {
   hold(cmd: string[]): Holder | null;
 }
 
+/**
+ * The PowerShell that holds the system awake: ES_CONTINUOUS | ES_SYSTEM_REQUIRED stays set for as
+ * long as this process lives, and it ends when the daemon does. The screen may still turn off.
+ */
+const windowsScript = (pid: number) =>
+  [
+    "Add-Type -Namespace Fd -Name Power -MemberDefinition",
+    "'[DllImport(\"kernel32.dll\")] public static extern uint SetThreadExecutionState(uint flags);';",
+    "[void][Fd.Power]::SetThreadExecutionState(0x80000001);",
+    `while (Get-Process -Id ${pid} -ErrorAction SilentlyContinue) { Start-Sleep -Seconds 5 }`,
+  ].join(" ");
+
 /** The command that holds the computer awake on this system, or why there is none. */
 export function holderCommand(
-  _ctx: Pick<PowerContext, "platform" | "pid" | "which">,
+  ctx: Pick<PowerContext, "platform" | "pid" | "which">,
 ): { cmd: string[]; method: WakeMethod } | { reason: WakeReason } {
-  return { reason: "start-failed" };
+  if (ctx.platform === "linux") {
+    const inhibit = ctx.which("systemd-inhibit");
+    if (!inhibit) return { reason: "no-inhibitor" };
+    return {
+      method: "systemd-inhibit",
+      cmd: [
+        inhibit,
+        "--what=idle:sleep",
+        "--who=Flightdeck",
+        "--why=Sessions are running",
+        "--mode=block",
+        "tail",
+        `--pid=${ctx.pid}`,
+        "-f",
+        "/dev/null",
+      ],
+    };
+  }
+  if (ctx.platform === "darwin") {
+    const caffeinate = ctx.which("caffeinate");
+    if (!caffeinate) return { reason: "no-inhibitor" };
+    return { method: "caffeinate", cmd: [caffeinate, "-i", "-w", String(ctx.pid)] };
+  }
+  if (ctx.platform === "win32") {
+    const shell = ctx.which("pwsh") ?? ctx.which("powershell");
+    if (!shell) return { reason: "no-inhibitor" };
+    return {
+      method: "powershell",
+      cmd: [shell, "-NoProfile", "-NonInteractive", "-Command", windowsScript(ctx.pid)],
+    };
+  }
+  return { reason: "unsupported-platform" };
 }
 
+/**
+ * Holds the computer awake while at least one session runs or waits for a permission, if the
+ * setting is on. One holder for any number of sessions; a failure is a reason, never an error, and
+ * is not retried until the sessions stop and begin again.
+ */
 export class KeepAwake {
+  private active = 0;
+  private holder: Holder | null = null;
+  private method: WakeMethod | null = null;
+  private reason: WakeReason | null = null;
+  /** Something went wrong this round: wait for the sessions to stop before trying again. */
+  private latched = false;
+  private stopped = false;
+
   constructor(
     private readonly ctx: PowerContext,
-    enabled = true,
-  ) {
-    void this.ctx;
-    void enabled;
-  }
+    private enabled = true,
+  ) {}
 
   /** The number of sessions running or waiting for a permission changed. */
-  update(_active: number): void {}
+  update(active: number): void {
+    this.active = active;
+    if (active === 0) this.latched = false;
+    this.settle();
+  }
 
-  setEnabled(_enabled: boolean): void {}
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
+    if (!enabled) this.latched = false;
+    this.settle();
+  }
 
   status(): WakeStatus {
-    return { enabled: false, held: true, method: null, reason: null };
+    return {
+      enabled: this.enabled,
+      held: this.holder !== null,
+      method: this.holder ? this.method : null,
+      reason: this.reason,
+    };
   }
 
   /** Releases whatever is held (the daemon is stopping). */
-  stop(): void {}
+  stop(): void {
+    this.stopped = true;
+    this.release();
+  }
+
+  private settle(): void {
+    const wanted = this.enabled && this.active > 0 && !this.stopped;
+    if (!wanted) {
+      this.release();
+      this.reason = null;
+      return;
+    }
+    if (this.holder || this.latched) return;
+    this.acquire();
+  }
+
+  private acquire(): void {
+    const found = holderCommand(this.ctx);
+    if ("reason" in found) {
+      this.reason = found.reason;
+      this.latched = true;
+      return;
+    }
+    let holder: Holder | null = null;
+    try {
+      holder = this.ctx.hold(found.cmd);
+    } catch {
+      holder = null;
+    }
+    if (!holder) {
+      this.reason = "start-failed";
+      this.latched = true;
+      return;
+    }
+    this.holder = holder;
+    this.method = found.method;
+    this.reason = null;
+    void holder.exited.then(() => {
+      if (this.holder !== holder) return;
+      this.holder = null;
+      this.method = null;
+      this.reason = "ended";
+      this.latched = true;
+    });
+  }
+
+  private release(): void {
+    const holder = this.holder;
+    this.holder = null;
+    this.method = null;
+    holder?.kill();
+  }
 }
 
 /** A holder started as a child process of the daemon. */
-export function spawnHolder(_cmd: string[]): Holder | null {
-  return null;
+export function spawnHolder(cmd: string[]): Holder | null {
+  try {
+    const proc = Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore", stdin: "ignore" });
+    return {
+      kill: () => proc.kill(),
+      exited: proc.exited.then(() => undefined),
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function osPowerContext(): PowerContext {
