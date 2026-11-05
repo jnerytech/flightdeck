@@ -7,7 +7,7 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { Subprocess } from "bun";
 import { FlightdeckError } from "../errors.ts";
-import { opencodeConfig, opencodeEnv } from "./opencode-config.ts";
+import { OPENCODE_API_TIMEOUT_MS, opencodeConfig, opencodeEnv } from "./opencode-config.ts";
 import type { RunResult } from "./opencode-discovery.ts";
 import type { ScopeResult } from "./opencode-scope.ts";
 
@@ -89,7 +89,7 @@ export class OpenCodeModels {
     const result = await this.opts.run([this.opts.path, "models", "--standalone"], {
       cwd: folder,
       env: opencodeEnv(this.opts.env, JSON.stringify(opencodeConfig())),
-      timeoutMs: 15_000,
+      timeoutMs: OPENCODE_API_TIMEOUT_MS,
     });
     if (result.exitCode !== 0) throw unavailable(`exit ${result.exitCode}`);
     const models = result.stdout

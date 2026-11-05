@@ -10,6 +10,7 @@ import { FlightdeckError } from "../errors.ts";
 import {
   FLIGHTDECK_AGENT,
   FLIGHTDECK_PLAN_AGENT,
+  OPENCODE_API_TIMEOUT_MS,
   opencodeConfig,
   opencodeEnv,
   type PermissionRule,
@@ -36,7 +37,6 @@ export interface PreflightDeps {
 
 /** OpenCode's own internal agents, which stay visible as hidden ones. */
 const INTERNAL_AGENTS = new Set(["compaction", "title", "summary"]);
-const CHECK_TIMEOUT_MS = 15_000;
 
 /**
  * The first config source that is neither our inline document, the global folder nor one of its
@@ -183,7 +183,7 @@ export class OpenCodePreflight {
     const result = await this.deps.run([this.deps.path, "api", "GET", route, "--standalone"], {
       cwd,
       env: opencodeEnv(this.deps.env, content),
-      timeoutMs: CHECK_TIMEOUT_MS,
+      timeoutMs: OPENCODE_API_TIMEOUT_MS,
     });
     if (result.exitCode !== 0) throw new Error(`${route} failed`);
     return JSON.parse(result.stdout) as unknown;

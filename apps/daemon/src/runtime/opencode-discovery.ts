@@ -6,7 +6,12 @@
  */
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { opencodeConfig, opencodeEnv, VERIFIED_OPENCODE_VERSION } from "./opencode-config.ts";
+import {
+  OPENCODE_API_TIMEOUT_MS,
+  opencodeConfig,
+  opencodeEnv,
+  VERIFIED_OPENCODE_VERSION,
+} from "./opencode-config.ts";
 import { unexpectedSource } from "./opencode-preflight.ts";
 import { globalConfigDir, type ScopeFinding, type ScopeResult } from "./opencode-scope.ts";
 
@@ -116,7 +121,7 @@ async function canary(
   const result = await deps.run([path, "api", "GET", "/api/config", "--standalone"], {
     cwd: folder,
     env: opencodeEnv(deps.env, JSON.stringify(opencodeConfig())),
-    timeoutMs: 15_000,
+    timeoutMs: OPENCODE_API_TIMEOUT_MS,
   });
   if (result.exitCode !== 0) return null;
   try {

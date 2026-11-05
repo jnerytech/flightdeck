@@ -46,6 +46,12 @@ export function opencodeRules(): PermissionRule[] {
 }
 
 /** The document, with any extra agent (from the global scope) disabled by id. */
+/**
+ * How long one OpenCode call that boots its private server may take (`api ... --standalone`,
+ * `models --standalone`): each takes 8 to 15 s on a busy Raspberry Pi 5 (measured 2026-11-05).
+ */
+export const OPENCODE_API_TIMEOUT_MS = 30_000;
+
 export function opencodeConfig(disabledAgents: readonly string[] = []): Record<string, unknown> {
   const rules = opencodeRules();
   const agents: Record<string, unknown> = {
