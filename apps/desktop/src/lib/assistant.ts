@@ -15,8 +15,10 @@ import type { AssistantKeyProvider, AssistantPlatform } from "@/platform/types";
 import { RunGate } from "../components/assistant/wand-state.ts";
 import {
   type AssistantPrefs,
+  confirmHost,
   type HostChoice,
   modelFor,
+  needsHostConfirm,
   profileFor,
   type ResolvedProvider,
   readPrefs,
@@ -89,6 +91,7 @@ export class AssistantController {
   readonly gate = new RunGate();
   private current: AssistantPrefs;
   private saved = { anthropic: false, openrouter: false };
+  private setup = false;
   private readonly listeners = new Set<() => void>();
   private readonly scanner = new SecretScanner();
 
@@ -149,7 +152,7 @@ export class AssistantController {
       throw fail("assistant_too_long", { max: ASSISTANT_MAX_INPUT });
     }
     if (input.text.trim() === "" && !spec.generates) throw fail("assistant_empty_input");
-    const provider = this.resolve(input.fieldHostId);
+    const provider = input.provider ?? this.resolve(input.fieldHostId);
     if (!provider) throw fail("assistant_not_configured");
     const found = this.scanner.scan(input.text);
     if (found.length > 0) throw fail("assistant_secret_found", { labels: found.join(", ") });
@@ -192,23 +195,41 @@ export class AssistantController {
     return this.deps.api.models(provider);
   }
 
-  alternatives(_current: ResolvedProvider): ResolvedProvider[] {
-    return [{ provider: "host", hostId: "?" }];
+  /** The other providers that could run now: a click on one is the only way another provider is used. */
+  alternatives(current: ResolvedProvider): ResolvedProvider[] {
+    const out: ResolvedProvider[] = [];
+    const able = this.deps.hosts().find((host) => host.online && host.assistant);
+    if (current.provider !== "host" && able) out.push({ provider: "host", hostId: able.id });
+    if (this.deps.api.supported) {
+      for (const provider of KEY_PROVIDERS) {
+        if (provider !== current.provider && this.saved[provider]) out.push({ provider });
+      }
+    }
+    return out;
   }
 
-  needsHostConfirm(_on: ResolvedProvider): boolean {
-    return false;
+  needsHostConfirm(on: ResolvedProvider): boolean {
+    return on.provider === "host" && needsHostConfirm(this.current, on.hostId);
   }
 
-  confirmHost(_hostId: string): void {}
+  confirmHost(hostId: string): void {
+    this.setPrefs({ confirmedHosts: confirmHost(this.current, hostId).confirmedHosts });
+  }
 
+  /** True after a wand found no provider: Settings shows its notice and goes to the section. */
   wantsSetup(): boolean {
-    return true;
+    return this.setup;
   }
 
-  askForSetup(): void {}
+  askForSetup(): void {
+    this.setup = true;
+    this.emit();
+  }
 
-  setupShown(): void {}
+  setupShown(): void {
+    this.setup = false;
+    this.emit();
+  }
 
   async cancel(requestId: string, on: ResolvedProvider): Promise<void> {
     if (on.provider === "host") {
