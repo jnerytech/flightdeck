@@ -291,14 +291,15 @@ export const BoardView = memo(function BoardView(props: {
       ?.focus();
   });
 
-  const create = () => {
-    const made = store.hostCommand(hostId, "card.create", {
+  const create = async () => {
+    const made = await store.hostCommand(hostId, "card.create", {
       projectId,
       title: title.trim(),
       description,
     });
-    close();
-    return made;
+    // Issue #229: only a card that exists closes the dialog; a refused one keeps what was typed
+    // (the banner says why).
+    if (made) close();
   };
   /** Closes the dialog and forgets what was typed. */
   const close = () => {
