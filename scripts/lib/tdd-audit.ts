@@ -100,17 +100,19 @@ export function parseWaivers(text: string): Waiver[] {
 
 /**
  * The commit `--since auto` audits from: the merge-base with `main` (`origin/main` first, then a
- * local `main`) on any other branch, or the last tag when HEAD is on `main` itself. Null when
- * neither can be found.
+ * local `main`) on any other branch, or the last release tag (`v*`, never a `fase-N` tag) when
+ * HEAD is on `main`, pushed or not. Null when neither can be found.
  */
 export function auditBase(git: AuditDeps["git"]): string | null {
   const head = git(["rev-parse", "HEAD"])?.trim();
   if (!head) return null;
+  const lastRelease = () =>
+    git(["describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", "HEAD"])?.trim() || null;
+  if (git(["symbolic-ref", "--short", "HEAD"])?.trim() === "main") return lastRelease();
   for (const main of ["origin/main", "main"]) {
     const base = git(["merge-base", "HEAD", main])?.trim();
     if (!base) continue;
-    if (base !== head) return base;
-    return git(["describe", "--tags", "--abbrev=0", "HEAD"])?.trim() || null;
+    return base === head ? lastRelease() : base;
   }
   return null;
 }
