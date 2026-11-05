@@ -1,5 +1,6 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { writeFileAtomic } from "../atomic-write.ts";
 import { TELEMETRY_FILE } from "../central/wrapper.ts";
 import { type Config, generateToken, updateConfigFile } from "../config.ts";
 import { type OtlpEvent, startOtlpReceiver } from "./otlp.ts";
@@ -60,7 +61,7 @@ export async function startTelemetry(opts: TelemetryOptions): Promise<TelemetryS
     });
     await mkdir(config.dataDir, { recursive: true });
     const file = join(config.dataDir, TELEMETRY_FILE);
-    await writeFile(file, JSON.stringify({ url: receiver.url }));
+    await writeFileAtomic(file, JSON.stringify({ url: receiver.url }));
     // The retention runs only while the receiver does, so an idle daemon keeps no timer for it.
     opts.purge?.();
     const timer = opts.purge ? setInterval(opts.purge, opts.purgeEveryMs ?? HOUR_MS) : null;

@@ -58,7 +58,13 @@ export async function liveReceptor(dataDir: string, timeoutMs: number): Promise<
   const file = join(dataDir, RECEPTOR_FILE);
   const text = await readFile(file, "utf8").catch(() => null);
   if (text === null) return null;
-  const { url } = JSON.parse(text) as { url: string };
+  // A file the daemon is writing right now is no receptor yet.
+  let url: string;
+  try {
+    ({ url } = JSON.parse(text) as { url: string });
+  } catch {
+    return null;
+  }
   const healthy = await fetch(`${url}/health`, { signal: AbortSignal.timeout(timeoutMs) }).then(
     (response) => response.ok,
     () => false,

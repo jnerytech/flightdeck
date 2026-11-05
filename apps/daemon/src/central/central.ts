@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { HooksStatusResult } from "@flightdeck/protocol";
+import { writeFileAtomic } from "../atomic-write.ts";
 import { type SnapshotInput, snapshotForHook } from "../checkpoints/snapshots.ts";
 import { type Config, generateToken, updateConfigFile } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -169,7 +170,7 @@ export class Central {
   /** Writes the file `claude` reads to find the receptor; settled by the time `hooksInstall` returns. */
   private async publishReceptor(url: string): Promise<void> {
     await mkdir(this.opts.dataDir, { recursive: true });
-    await writeFile(join(this.opts.dataDir, RECEPTOR_FILE), JSON.stringify({ url }));
+    await writeFileAtomic(join(this.opts.dataDir, RECEPTOR_FILE), JSON.stringify({ url }));
   }
 
   private listen(): void {
