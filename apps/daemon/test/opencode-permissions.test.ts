@@ -9,7 +9,8 @@ import type {
   RuntimeEvent,
   StartOptions,
 } from "../src/runtime/types.ts";
-import { FakeAcpAgent, manualTimers, turns, until } from "./fake-acp-agent.ts";
+import { FakeAcpAgent, manualTimers, turns } from "./fake-acp-agent.ts";
+import { poll } from "./helpers.ts";
 
 function setup(canUseTool: CanUseToolFn, over: Partial<StartOptions> = {}) {
   const agents: FakeAcpAgent[] = [];
@@ -41,7 +42,7 @@ function setup(canUseTool: CanUseToolFn, over: Partial<StartOptions> = {}) {
 /** Starts a turn and answers once the prompt is open at the agent. */
 async function turn(run: AgentRun, agents: FakeAcpAgent[]): Promise<FakeAcpAgent> {
   run.send("go");
-  expect(await until(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+  expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
   return agents[0] as FakeAcpAgent;
 }
 
@@ -81,7 +82,7 @@ describe("opencode-permissions", () => {
     void (async () => {
       for await (const n of queue) seen.push(n);
     })();
-    expect(await until(() => idled)).toBe(true);
+    expect(await poll(() => idled)).toBe(true);
     expect(seen).toEqual([1, 2]);
     const ended = new AsyncQueue<number>();
     ended.end();
@@ -89,7 +90,7 @@ describe("opencode-permissions", () => {
     void ended.idle().then(() => {
       done = true;
     });
-    expect(await until(() => done)).toBe(true);
+    expect(await poll(() => done)).toBe(true);
   });
 
   test("a request asks with Claude's name and input after its card was handled; allow answers once", async () => {
@@ -145,7 +146,7 @@ describe("opencode-permissions", () => {
     const agent = await turn(ctx.run, ctx.agents);
     const first = agent.ask("session/request_permission", shellRequest("t1"));
     const second = agent.ask("session/request_permission", shellRequest("t2", "pwd"));
-    expect(await until(() => decisions.size === 2)).toBe(true);
+    expect(await poll(() => decisions.size === 2)).toBe(true);
     decisions.get("t1")?.({ behavior: "deny", message: "no" });
     expect(await first).toEqual(selected("reject"));
     expect(signals.get("t2")?.aborted).toBe(true);
@@ -193,7 +194,7 @@ describe("opencode-permissions", () => {
     );
     const agent = await turn(ctx.run, ctx.agents);
     const pending = agent.ask("session/request_permission", shellRequest("t1"));
-    expect(await until(() => ctx.out.events.length === 2)).toBe(true);
+    expect(await poll(() => ctx.out.events.length === 2)).toBe(true);
     await ctx.run.interrupt();
     expect(await pending).toEqual(cancelled);
     expect(agent.received.some((m) => m.method === "session/cancel")).toBe(true);

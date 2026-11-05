@@ -51,13 +51,6 @@ export function configOptions(
 
 type Handler = (params: Record<string, unknown>) => unknown;
 
-/**
- * How long a bounded wait lasts: the runtime awaits real file reads (AGENTS.md), which take an
- * unknown number of event loop turns, so a wait is bounded by time and fails an assertion when
- * the thing never happens.
- */
-const WAIT_MS = 2_000;
-
 export async function turns(count = 1): Promise<void> {
   for (let i = 0; i < count; i++) await new Promise<void>((resolve) => setImmediate(resolve));
 }
@@ -199,11 +192,6 @@ export class FakeAcpAgent {
   calls(method: string): Array<Record<string, unknown>> {
     return this.received.filter((m) => m.method === method).map((m) => m.params ?? {});
   }
-
-  /** Waits (bounded) until `check` holds; answers whether it did. */
-  until(check: () => boolean): Promise<boolean> {
-    return until(check);
-  }
 }
 
 /** Timers driven by hand: `advance(ms)` fires what is due, in order. */
@@ -237,11 +225,4 @@ export function manualTimers() {
       return pending.size;
     },
   };
-}
-
-/** Waits (bounded) until `check` holds; answers whether it did. */
-export async function until(check: () => boolean): Promise<boolean> {
-  const deadline = performance.now() + WAIT_MS;
-  while (!check() && performance.now() < deadline) await turns();
-  return check();
 }

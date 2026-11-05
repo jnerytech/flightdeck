@@ -9,7 +9,8 @@ import {
   treeKiller,
 } from "../src/runtime/opencode-runtime.ts";
 import type { AgentRun, RuntimeEvent, StartOptions } from "../src/runtime/types.ts";
-import { configOptions, FakeAcpAgent, manualTimers, until } from "./fake-acp-agent.ts";
+import { configOptions, FakeAcpAgent, manualTimers } from "./fake-acp-agent.ts";
+import { poll } from "./helpers.ts";
 
 const MCP = {
   name: "flightdeck",
@@ -85,7 +86,7 @@ describe("opencode-runtime", () => {
     const run = runtime.start(startOpts());
     const out = collect(run);
     run.send("hi");
-    expect(await until(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
     const agent = agents[0] as FakeAcpAgent;
     expect(agent.argv).toEqual(["/bin/opencode", "acp"]);
     expect(agent.opts.cwd).toBe("/w");
@@ -119,7 +120,7 @@ describe("opencode-runtime", () => {
       },
     ]);
     agent.endPrompt();
-    expect(await until(() => out.events.some((e) => e.type === "turn.result"))).toBe(true);
+    expect(await poll(() => out.events.some((e) => e.type === "turn.result"))).toBe(true);
   });
 
   test("model, #variant and effort go through set_config_option; plan mode is flightdeck-plan", async () => {
@@ -129,7 +130,7 @@ describe("opencode-runtime", () => {
     );
     collect(run);
     run.send("x");
-    expect(await until(() => (first.agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    expect(await poll(() => (first.agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
     expect(
       first.agents[0]?.calls("session/set_config_option").map((p) => [p.configId, p.value]),
     ).toEqual([
@@ -143,7 +144,7 @@ describe("opencode-runtime", () => {
     );
     collect(run2);
     run2.send("x");
-    expect(await until(() => (second.agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    expect(await poll(() => (second.agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
     expect(
       second.agents[0]?.calls("session/set_config_option").map((p) => [p.configId, p.value]),
     ).toEqual([
@@ -158,7 +159,7 @@ describe("opencode-runtime", () => {
     const run = runtime.start(startOpts({ resume: "ses_9" }));
     const out = collect(run);
     run.send("again");
-    expect(await until(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
     expect(agents[0]?.calls("session/resume")).toEqual([
       { sessionId: "ses_9", cwd: "/w", mcpServers: [MCP] },
     ]);
@@ -179,7 +180,7 @@ describe("opencode-runtime", () => {
     const run = extra.runtime.start(startOpts());
     const out = collect(run);
     run.send("x");
-    expect(await until(() => out.error !== null)).toBe(true);
+    expect(await poll(() => out.error !== null)).toBe(true);
     expect(reasonOf(out.error)).toBe("opencode_permissions_overridden");
     expect(extra.agents[0]?.calls("session/prompt")).toEqual([]);
     const stuck = setup((agent) => {
@@ -190,7 +191,7 @@ describe("opencode-runtime", () => {
     const run2 = stuck.runtime.start(startOpts());
     const out2 = collect(run2);
     run2.send("x");
-    expect(await until(() => out2.error !== null)).toBe(true);
+    expect(await poll(() => out2.error !== null)).toBe(true);
     expect(reasonOf(out2.error)).toBe("opencode_permissions_overridden");
   });
 
@@ -198,7 +199,7 @@ describe("opencode-runtime", () => {
     for (const permissionMode of ["acceptEdits", "dontAsk", "auto"] as const) {
       const { runtime, agents } = setup();
       const out = collect(runtime.start(startOpts({ permissionMode })));
-      expect(await until(() => out.error !== null)).toBe(true);
+      expect(await poll(() => out.error !== null)).toBe(true);
       expect(reasonOf(out.error)).toBe("runtime_unsupported");
       expect(agents.length).toBe(0);
     }
@@ -210,10 +211,10 @@ describe("opencode-runtime", () => {
     collect(run);
     const image = { mediaType: "image/png" as const, data: "AAA" };
     run.send("", undefined, [image]);
-    expect(await until(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
     agents[0]?.endPrompt();
     run.send("look", undefined, [image]);
-    expect(await until(() => (agents[0]?.calls("session/prompt").length ?? 0) === 2)).toBe(true);
+    expect(await poll(() => (agents[0]?.calls("session/prompt").length ?? 0) === 2)).toBe(true);
     expect(agents[0]?.calls("session/prompt").map((p) => p.prompt)).toEqual([
       [{ type: "image", mimeType: "image/png", data: "AAA" }],
       [
@@ -228,19 +229,19 @@ describe("opencode-runtime", () => {
     const run = runtime.start(startOpts());
     const out = collect(run);
     run.send("x");
-    expect(await until(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
     agents[0]?.failPrompt("auth_required");
-    expect(await until(() => out.events.some((e) => e.type === "session.error"))).toBe(true);
+    expect(await poll(() => out.events.some((e) => e.type === "session.error"))).toBe(true);
     const error = out.events.find((e) => e.type === "session.error") as
       | { code?: string; message?: string }
       | undefined;
     expect(error?.code).toBe("opencode_auth_required");
     expect(error?.message ?? "").toContain("opencode auth login");
     run.send("y");
-    expect(await until(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
     agents[0]?.failPrompt("boom");
     expect(
-      await until(() => out.events.filter((e) => e.type === "session.error").length === 2),
+      await poll(() => out.events.filter((e) => e.type === "session.error").length === 2),
     ).toBe(true);
     expect((out.events.at(-1) as { code?: string } | undefined)?.code).toBe("runtime");
   });
@@ -252,9 +253,9 @@ describe("opencode-runtime", () => {
     const run = runtime.start(startOpts());
     const out = collect(run);
     run.send("x");
-    expect(await until(() => methods(agents[0]).includes("initialize"))).toBe(true);
+    expect(await poll(() => methods(agents[0]).includes("initialize"))).toBe(true);
     timers.advance(30_000);
-    expect(await until(() => out.error !== null)).toBe(true);
+    expect(await poll(() => out.error !== null)).toBe(true);
   });
 
   test("interrupt cancels; with no answer in 10 s the process is closed and the turn ends in error; the next send resumes", async () => {
@@ -262,20 +263,20 @@ describe("opencode-runtime", () => {
     const run = runtime.start(startOpts());
     const out = collect(run);
     run.send("x");
-    expect(await until(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
     await run.interrupt();
     expect(
       agents[0]?.received.filter((m) => m.method === "session/cancel").map((m) => m.params),
     ).toEqual([{ sessionId: "ses_1" }]);
     timers.advance(INTERRUPT_ESCALATION_MS);
-    expect(await until(() => out.events.some((e) => e.type === "turn.result"))).toBe(true);
+    expect(await poll(() => out.events.some((e) => e.type === "turn.result"))).toBe(true);
     expect(out.events.find((e) => e.type === "turn.result")).toMatchObject({
       subtype: "error_during_execution",
       isError: true,
     });
     expect([methods(agents[0]).includes("session/close"), agents[0]?.alive]).toEqual([true, false]);
     run.send("again");
-    expect(await until(() => (agents[1]?.openPrompts ?? 0) === 1)).toBe(true);
+    expect(await poll(() => (agents[1]?.openPrompts ?? 0) === 1)).toBe(true);
     expect(agents[1]?.calls("session/resume")[0]?.sessionId).toBe("ses_1");
     expect(out.error).toBe(null);
   });
@@ -285,10 +286,10 @@ describe("opencode-runtime", () => {
     const run = runtime.start(startOpts());
     const out = collect(run);
     run.send("x");
-    expect(await until(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
     await run.interrupt();
     agents[0]?.endPrompt({ stopReason: "cancelled" });
-    expect(await until(() => out.events.some((e) => e.type === "turn.result"))).toBe(true);
+    expect(await poll(() => out.events.some((e) => e.type === "turn.result"))).toBe(true);
     timers.advance(INTERRUPT_ESCALATION_MS);
     expect(methods(agents[0]).includes("session/close")).toBe(false);
     expect(agents[0]?.alive).toBe(true);
@@ -302,18 +303,18 @@ describe("opencode-runtime", () => {
     const run = runtime.start(startOpts());
     const out = collect(run);
     run.send("x");
-    expect(await until(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
     agents[0]?.endPrompt();
     const closing = run.close();
     const again = run.close();
-    expect(await until(() => methods(agents[0]).includes("session/close"))).toBe(true);
+    expect(await poll(() => methods(agents[0]).includes("session/close"))).toBe(true);
     timers.advance(2_000);
-    expect(await until(() => agents[0]?.stdinClosed === true)).toBe(true);
+    expect(await poll(() => agents[0]?.stdinClosed === true)).toBe(true);
     timers.advance(3_000);
     await Promise.all([closing, again]);
     expect(killed).toEqual([4242]);
     expect(methods(agents[0]).filter((m) => m === "session/close").length).toBe(1);
-    expect(await until(() => out.ended)).toBe(true);
+    expect(await poll(() => out.ended)).toBe(true);
   });
 
   test("treeKiller: taskkill /T /F on Windows, a plain kill elsewhere", () => {
@@ -331,13 +332,13 @@ describe("opencode-runtime", () => {
     const run = runtime.start(startOpts());
     const out = collect(run);
     run.send("x");
-    expect(await until(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
     agents[0]?.endPrompt();
-    expect(await until(() => out.events.some((e) => e.type === "turn.result"))).toBe(true);
+    expect(await poll(() => out.events.some((e) => e.type === "turn.result"))).toBe(true);
     timers.advance(IDLE_CLOSE_MS);
-    expect(await until(() => agents[0]?.alive === false)).toBe(true);
+    expect(await poll(() => agents[0]?.alive === false)).toBe(true);
     run.send("later");
-    expect(await until(() => (agents[1]?.openPrompts ?? 0) === 1)).toBe(true);
+    expect(await poll(() => (agents[1]?.openPrompts ?? 0) === 1)).toBe(true);
     expect(checks).toEqual(["/w", "/w"]);
     expect(agents[1]?.calls("session/resume")[0]?.sessionId).toBe("ses_1");
     expect(out.events.filter((e) => e.type === "session.init").length).toBe(1);
@@ -349,9 +350,9 @@ describe("opencode-runtime", () => {
     const run = runtime.start(startOpts());
     const out = collect(run);
     run.send("x");
-    expect(await until(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
     agents[0]?.exit(1);
-    expect(await until(() => out.error !== null)).toBe(true);
+    expect(await poll(() => out.error !== null)).toBe(true);
     await runtime.preflight("/other");
     expect(checks).toEqual(["/w", "/other"]);
   });

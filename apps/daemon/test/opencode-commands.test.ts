@@ -5,7 +5,8 @@ import { SessionEvent } from "@flightdeck/protocol";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { OpenCodeRuntime } from "../src/runtime/opencode-runtime.ts";
 import type { AgentRun, RuntimeEvent, StartOptions } from "../src/runtime/types.ts";
-import { FakeAcpAgent, manualTimers, until } from "./fake-acp-agent.ts";
+import { FakeAcpAgent, manualTimers } from "./fake-acp-agent.ts";
+import { poll } from "./helpers.ts";
 
 const ZWSP = "​";
 
@@ -42,9 +43,7 @@ function setup(over: Partial<StartOptions> = {}) {
 async function prompts(run: AgentRun, agents: FakeAcpAgent[], texts: string[]): Promise<unknown[]> {
   for (const [i, text] of texts.entries()) {
     run.send(text);
-    expect(await until(() => (agents[0]?.calls("session/prompt").length ?? 0) === i + 1)).toBe(
-      true,
-    );
+    expect(await poll(() => (agents[0]?.calls("session/prompt").length ?? 0) === i + 1)).toBe(true);
     agents[0]?.endPrompt();
   }
   return agents[0]?.calls("session/prompt").map((p) => p.prompt) ?? [];
@@ -66,13 +65,13 @@ describe("opencode-commands", () => {
   test("session.init offers no slash commands, whatever OpenCode advertised", async () => {
     const { run, agents, events } = setup();
     run.send("x");
-    expect(await until(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
     agents[0]?.update({
       sessionUpdate: "available_commands_update",
       availableCommands: [{ name: "evil" }],
     });
     agents[0]?.endPrompt();
-    expect(await until(() => events.some((e) => e.type === "turn.result"))).toBe(true);
+    expect(await poll(() => events.some((e) => e.type === "turn.result"))).toBe(true);
     const init = events.find((e) => e.type === "session.init");
     expect(init !== undefined && "slashCommands" in init).toBe(false);
   });
