@@ -1738,6 +1738,10 @@ PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
   pelo projeto dele, ou pelo cliente; um alerta de time abre Times com esse time em primeiro e
   destacado. A entrada de um card (resultado de um PR vigiado, card desbloqueado) abre o PR no
   navegador quando o card não existe mais.
+- No Windows a contagem de não lidas também aparece no botão do app na barra de tarefas, como um
+  selo vermelho com o número (`9+` acima de nove). É a contagem do sino, linha por linha: cai
+  conforme você lê e some quando a lista está limpa; uma fonte silenciada não gera entrada e não
+  soma nada. Ela volta com a contagem na próxima vez que o app abre.
 - **Marcar todas como lidas** mantém a lista; **Limpar** esvazia. A lista fica neste computador
   (as 500 mais recentes) e sobrevive a um reinício. Esc fecha o painel.
 - As notificações do sistema não mudam. A central só guarda uma cópia: uma que nunca é enviada
