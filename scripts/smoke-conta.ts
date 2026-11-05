@@ -19,6 +19,9 @@ import { installFakeCli } from "./test/fake-cli.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
 import { realTempDir } from "./test/temp-dir.ts";
 
+/** Utilizations are floats read from JSON: compare within a tolerance, not exactly. */
+const near = (value: number, wanted: number) => Math.abs(value - wanted) < 1e-9;
+
 const home = installHomeGuard();
 const TOKEN = "smoke-conta-token-0123456789abcdef";
 const TIMEOUT_MS = 20_000;
@@ -130,13 +133,18 @@ async function run() {
     if (state.status !== "signed_in" || state.name !== "demo@example.com" || state.plan !== "max") {
       throw new Error(`unexpected account: ${JSON.stringify(state)}`);
     }
-    const five = state.windows.find((w) => w.window === "five_hour");
-    const seven = state.windows.find((w) => w.window === "seven_day");
-    if (five?.utilization !== 0.56 || seven?.utilization !== 0.53) {
+    const five = state.windows.find((w) => w.window === "five_hour")?.utilization;
+    const seven = state.windows.find((w) => w.window === "seven_day")?.utilization;
+    if (
+      typeof five !== "number" ||
+      typeof seven !== "number" ||
+      !near(five, 0.56) ||
+      !near(seven, 0.53)
+    ) {
       throw new Error(`unexpected windows: ${JSON.stringify(state.windows)}`);
     }
     log(
-      `signed in: ${state.plan}, 5 h ${Math.round(five.utilization * 100)}%, 7 d ${Math.round(seven.utilization * 100)}%`,
+      `signed in: ${state.plan}, 5 h ${Math.round(five * 100)}%, 7 d ${Math.round(seven * 100)}%`,
     );
     step = "the claude was asked nothing but auth status";
     const calls = signedIn.fake.calls();

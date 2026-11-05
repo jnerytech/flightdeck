@@ -24,11 +24,12 @@ const read = (path: string) => {
 export default async function globalSetup() {
   rmSync(STATE_DIR, { recursive: true, force: true });
   mkdirSync(STATE_DIR, { recursive: true });
-  const child = spawn("bun", [DEMO, "--serve"], {
+  const options = {
     env: { ...process.env, E2E_STATE_DIR: STATE_DIR },
     stdio: "inherit",
     detached: process.platform !== "win32",
-  });
+  } as const;
+  const child = spawn("bun", [DEMO, "--serve"], options); // NOSONAR: git and bun come from the PATH of the developer running the script
   let exited = false;
   child.on("exit", () => {
     exited = true;
