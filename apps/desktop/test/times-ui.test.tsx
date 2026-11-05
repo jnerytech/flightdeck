@@ -558,10 +558,10 @@ describe("times-ui: the teams of a host", () => {
     const item = row("links") as HTMLElement;
     await settle(
       () =>
-        within(item).queryByRole("button", { name: "Abrir a sessão de links · executora 1" }) !==
+        within(item).queryByRole("button", { name: "Abrir a sessão de links · coordenadora" }) !==
         null,
     );
-    await click("Abrir a sessão de links · executora 1", item);
+    await click("Abrir a sessão de links · coordenadora", item);
     expect(store.router.current).toMatchObject({ name: "session" });
     await act(async () => {
       store.router.push({ name: "teams" });

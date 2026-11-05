@@ -3580,3 +3580,8 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 
 - **Done.** Creating a card, and starting it from the card menu, show a toast with "Open" that leads to the card (a success toast can now carry one button). Stop is off, with its reason, until the card has a session or waits in the queue. The e2e journey `card-diff` checks the creation toast.
 - **Not done.** One "Finish…" menu that explains the three ways to Done (Move, Complete, Merge and archive), the persona and workflow choice in the menu's Start, and Start/Complete enabled by state: they need a product decision on what each outcome means, so they stay in the issue.
+
+## Teams, journey J6 (issue #189)
+
+- **Done.** The create button says "Create and start" (it also starts the coordinator and the workers; the daemon is unchanged). A member row links to its session and to its card (a worker whose card waits in the queue has no session link yet). The empty state "No connected host with teams" has an "Add a host" button. No e2e journey: the demo daemon has no teams host.
+- **Not done.** Pointing the empty state at the host's features (the old-daemon case needs an "update the daemon" path that does not exist yet).
