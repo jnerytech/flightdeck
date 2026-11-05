@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { CLOSE_HEARTBEAT } from "@flightdeck/protocol";
 import { HostConnection } from "../../desktop/src/lib/host-connection.ts";
-import { PING_INTERVAL_MS, type RunningServer, type ServerOptions, startServer } from "../src/server.ts";
+import {
+  PING_INTERVAL_MS,
+  type RunningServer,
+  type ServerOptions,
+  startServer,
+} from "../src/server.ts";
 import { newManager, poll } from "./helpers.ts";
 
 const TOKEN = "heartbeat-token-0123456789ab";
