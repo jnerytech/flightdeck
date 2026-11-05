@@ -128,7 +128,8 @@ session's environment and the injected config, so sessions never share a process
     block when the text is not empty. **Neutralizing (ADR 39-2):** a text whose `trimStart()` begins with `/` gets a
     zero-width space (U+200B) in front. On the first prompt of a new session (not a resume), the folder's own `AGENTS.md`,
     when present and under 64 KB, goes first as an embedded `resource` block (text only; project config is off, so
-    OpenCode does not read it). `uuid` is ignored.
+    OpenCode does not read it). Its `@` imports are not followed and nothing in it runs. The timeline shows it as one
+    line, "project instructions (AGENTS.md)", not its text. A larger file is skipped with a notice. `uuid` is ignored.
   - `interrupt`: the notification `session/cancel`. When the prompt has not answered 10 s later: `session/close`, kill,
     and a `turn.result` with `isError`.
   - `close`: idempotent; `session/close` with a 2 s timeout, stdin closed, kill 3 s later.
@@ -292,6 +293,12 @@ empty Flightdeck-owned folder with the same environment rules after the scope sc
 - The executable is `executablePath`, else `whichOnPath("opencode")`, else `<HOME>/.opencode/bin/opencode` (`.exe` on
   Windows) when it exists. `<opencode> --version` (2 s) must print `opencode v2.`; v1 is unsupported. The version
   verified by this phase is `2.2.5`: a newer one is used, and the doctor warns that it is not verified yet.
+- **The switch is proven at startup.** `OPENCODE_DISABLE_PROJECT_CONFIG` is undocumented, so at daemon start (and when
+  the doctor runs) Flightdeck writes a canary folder under its data dir with a harmless `opencode.json`
+  (`{ "model": "flightdeck-canary/none" }`, no plugin and no server), and runs `<opencode> api GET /api/config --standalone`
+  there with the OpenCode environment. If the canary is listed as a source, project config is not off on this version
+  and OpenCode is unavailable on the host (`opencode_project_config_not_disabled`, with the version). The per-session
+  `/api/config` check of the preflight repeats the proof for the session's folder.
 - With the `fake` runtime the host offers a fake OpenCode too, so `demo`, `demo:shots` and `e2e` show the picker.
 - `host.info` gains `runtimes: [{ kind, available, version?, path?, reason? }]` and the feature `opencode` when available.
 - `doctor.ts` gains an `opencode` check: `ok` with version and path; `warn` when missing, disabled, v1, newer than
@@ -311,7 +318,8 @@ spend in version 1 (Later).
 **Commands and refusals (protocol, additive).** `runtime.models { runtime: "opencode" }` answers
 `{ models: Array<{ id: string; name: string }> }`. Refusals: `runtime_unavailable`, `runtime_unsupported` (with the
 feature), `opencode_unsafe_global` (with what was found), `opencode_config_outranks` (with the agent or source),
-`opencode_saved_rules` (with the masked rules and commands), `opencode_preflight_failed`, `opencode_auth_required`,
+`opencode_saved_rules` (with the masked rules and commands), `opencode_preflight_failed`,
+`opencode_project_config_not_disabled`, `opencode_auth_required`,
 `opencode_permissions_overridden`; all with the OpenCode version where it applies, translated in both languages.
 `session.error` gains optional `reason` and `params`.
 
@@ -352,6 +360,7 @@ neutralized `/hello` does not run. Run at each OpenCode upgrade; its pure parts 
 - An app action that removes the saved rules a refusal lists (confirmed by the person).
 - OpenCode's own revert as the rewind of an OpenCode session.
 - Project `opencode.json` settings (models, providers) for people who rely on them, once a safe subset can be loaded.
+- Issue #196: Claude sessions load the project's hooks and MCP servers without a question (the same security model).
 
 ## Tests and criteria
 
@@ -364,11 +373,11 @@ neutralized `/hello` does not run. Run at each OpenCode upgrade; its pure parts 
 | `opencode-events` | each row of the events table, from the fixtures: deltas and kept text, a chunk without `messageId`, tool_use once and before the permission call, tool results with truncation, errors and the diff fallback, child-session updates and requests, thought and retry notices dropped, `turn.result` with and without `usage_update`, each `stopReason` |
 | `opencode-tools` | the name map and input renames per row; `flightdeck_<tool>` to `mcp__flightdeck__<tool>`; an unknown tool is `opencode:<name>`, rated `high` and network; writes naming the global folder are `high` |
 | `opencode-permissions` | a request goes to `canUseTool` with the mapped name and input; allow is `once`, deny is `reject` and cancels the session's other open requests, abort is `cancelled`, `always` never sent; `plan` sets `flightdeck-plan`; `bypassPermissions` only when allowed; `acceptEdits`, `dontAsk` and `auto` refused; no automatic approval; a child's request is rejected without the broker; `interrupt` with a pending request ends the turn |
-| `opencode-commands` | a text whose `trimStart()` starts with `/` reaches the fake with a zero-width space first, from the app, the queue and messaging; other text unchanged; `session.init` has no `slashCommands`; `AGENTS.md` as the first resource of a new session only, under 64 KB |
+| `opencode-commands` | a text whose `trimStart()` starts with `/` reaches the fake with a zero-width space first, from the app, the queue and messaging; other text unchanged; `session.init` has no `slashCommands`; `AGENTS.md` as the first resource of a new session only, under 64 KB (a larger one skipped with a notice), its `@` imports not followed, shown as "project instructions (AGENTS.md)" |
 | `opencode-security` | a `config_option_update` or `current_mode_update` off our modes fails the session; a scope fingerprint change after a `tool.result` fails it; the tripwire fires on a completed call without a request and never on `failed`, after `interrupt`, or for reads inside the folder |
 | `opencode-preflight` | runs only after the scope passed; the three commands in the folder with the session env, in parallel, with their timeouts; an unknown source, a foreign or extra agent (with the one retry), a saved rule (masked, with the commands) and a failure each refuse with their reason and the version; the cache by its key, refusals not cached; no output logged |
 | `opencode-runtime` | start: `initialize` with empty capabilities, new or resume with the Flightdeck MCP entry (exact JSON), mode checked before any prompt, model, variant and effort; `auth_required`; init timeouts; images and empty text; interrupt and its 10 s escalation; idempotent close with its timeouts; tree kill on POSIX and Windows through the injected killer; the idle reaper and the resume after it |
-| `opencode-discovery` | the executable from config, PATH, then `<HOME>/.opencode/bin`; the version probe; v1, missing, disabled and newer than verified |
+| `opencode-discovery` | the executable from config, PATH, then `<HOME>/.opencode/bin`; the version probe; v1, missing, disabled and newer than verified; the startup canary: listed means unavailable with `opencode_project_config_not_disabled`, absent passes, a failure is unavailable |
 | `opencode-models` | `runtime.models` parses `models --standalone`, run in the empty folder with the env rules after the scope passed; the cache; a failure answers `runtime_unavailable` |
 | `session-runtime` | the migration; create with `runtime: "opencode"`; resume and reattach use the stored runtime; the `preparing` placeholder (two sends during a preflight start one run); a failed preflight refuses create and resume with its reason, and a failed lazy reattach sets `error` with the reason and params; unavailable and persona refused; the summary carries the runtime; self-started sessions stay Claude |
 | `session-runtime-gates` | an OpenCode session skips the quota gate, `turnEnded`, `divergences()` and the automatic approval; MCP, fork and the other runtime-only features answer `runtime_unsupported`; the transcript features give their empty state; messaging leaves it out; its turns with a cost reach the usage ledger |
