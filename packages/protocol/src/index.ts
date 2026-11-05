@@ -1511,8 +1511,11 @@ export interface DepResult {
   /** The least version that works, when there is one. */
   minVersion?: string;
   breaks: DepFeature[];
-  /** How to install or upgrade it, one command per operating system. */
-  fix: Array<{ os: "linux" | "darwin" | "win32"; command: string }>;
+  /**
+   * How to install or upgrade it, per operating system: a package-manager command where one exists,
+   * and the official install page. Never a download piped into a shell.
+   */
+  fix: Array<{ os: "linux" | "darwin" | "win32"; command?: string; url?: string }>;
 }
 
 /** What `deps.check` answers. */

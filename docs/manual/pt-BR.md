@@ -289,7 +289,9 @@ Azure, SSH, Tailscale, PowerShell no Windows, os hooks); as conferências do pr�
 faltando, não se aplica), o que deixa de funcionar sem ela e um passo simples para consertar. Onde o
 app já tem a ação, a linha tem um botão: **Instalar hooks** (pergunta antes), **Atualizar o daemon
 para X** (pergunta antes) e **Adicionar pasta**. O que precisa de `sudo` ou de instalador só aparece
-para copiar: o app nunca o executa. As mesmas conferências rodam no terminal com `flightdeckd doctor`.
+para copiar: o app nunca o executa. Um programa que falta mostra a linha do gerenciador de pacotes
+quando há uma (apt, brew, winget) e um botão **Página de instalação** que abre a página oficial; o
+Flightdeck nunca oferece um download enviado direto para um shell. As mesmas conferências rodam no terminal com `flightdeckd doctor`.
 ### Sessões sem pedidos de permissão
 
 Por padrão nenhuma sessão de um host roda em **Ignorar permissões** (toda ferramenta roda sem

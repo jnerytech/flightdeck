@@ -3558,6 +3558,15 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 - **The sidebar's foot is the Claude account** (first host with an account name, else the first with any account) and a menu with Settings, Toggle theme and Manual; Search stays a button. About fifteen tests that clicked those buttons go through `chooseFromAccountMenu`.
 - **Home is the start screen of a fresh desktop window only**: `AppStoreOptions.startRoute` is the fallback of `Workspace.restore`, passed by `main.tsx`. A saved window keeps its tabs; the web demo entry and the tests keep Sessions.
 
+## No installer is a download piped into a shell (issue #121, review)
+
+- A fix is now `{ os, command?, url? }`: the package-manager line where one exists (apt, brew, winget, xcode-select) and the official
+  install page. The Azure CLI and Tailscale have no one-line package install on Linux, so there the row has only the page; the old
+  `curl ... | sudo bash` and `curl ... | sh` lines are gone.
+- A test walks every fix of every dependency on the three systems and fails on `| sudo`, `| bash`, `| sh` or `| zsh`. The row shows the
+  command to copy (when there is one) and an Install page button that opens the page in the browser; `flightdeckd doctor` prints
+  `page: <url>` under the command.
+
 ## The rc/0361 gate: three leaks of the machine into the tests
 
 - **The focus ring** (`abas-foco`): the crumb fix moved the tab's ring to the strip with `has-[[role=tab]:focus-visible]` so the outline

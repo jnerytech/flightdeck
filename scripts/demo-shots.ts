@@ -439,6 +439,12 @@ function shots(ids: DemoIds): Shot[] {
       prepare: showSection(/^(Allowed folders|Pastas permitidas)$/),
     },
     {
+      // The host's Health & dependencies section, scrolled into view so its colors can be judged.
+      name: "host-saude",
+      route: { name: "host", host: ALFA },
+      prepare: showSection(/^(Health & dependencies|Saúde e dependências)$/),
+    },
+    {
       name: "host-manutencao",
       route: { name: "host", host: ALFA },
       prepare: showSection(/^(Maintenance|Manutenção)$/),

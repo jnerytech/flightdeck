@@ -89,7 +89,7 @@ describe("deps-check: the dependencies of a host", () => {
     });
     for (const item of [find(items, "claude"), find(items, "gh")]) {
       expect(item.fix.map((f) => f.os).sort()).toEqual(["darwin", "linux", "win32"]);
-      for (const f of item.fix) expect(f.command.length).toBeGreaterThan(0);
+      for (const f of item.fix) expect((f.command ?? f.url ?? "").length).toBeGreaterThan(0);
     }
     expect(find(items, "gh").fix.find((f) => f.os === "win32")?.command).toContain("winget");
   });
@@ -234,5 +234,37 @@ describe("deps-check: over the protocol", () => {
     const ack = await client.request("deps.check", {});
     expect(ack.ok).toBe(false);
     client.close();
+  });
+
+  test("a probe that throws gives its own row without a version and the other rows still come back (HD-M1)", async () => {
+    const base = machine();
+    const { items } = await checkDeps({
+      ...base,
+      version: async (path) => {
+        if (path === TOOLS.git?.path) throw new Error("spawn ENOEXEC");
+        return base.version(path);
+      },
+    });
+    expect(items).toHaveLength(11);
+    expect(find(items, "git")).toMatchObject({ state: "ok", path: TOOLS.git?.path });
+    expect(find(items, "git").version).toBeUndefined();
+    expect(find(items, "claude")).toMatchObject({ state: "ok", version: "2.1.0" });
+  });
+
+  test("the programs are probed at the same time, so a slow one costs its own time only", async () => {
+    const base = machine();
+    let running = 0;
+    let most = 0;
+    await checkDeps({
+      ...base,
+      version: async (path) => {
+        running++;
+        most = Math.max(most, running);
+        await new Promise((r) => setTimeout(r, 20));
+        running--;
+        return base.version(path);
+      },
+    });
+    expect(most).toBeGreaterThanOrEqual(5);
   });
 });

@@ -300,7 +300,9 @@ sign-in, git, the service that starts the daemon at boot, an allowed folder) and
 applicable), what stops working without it and a plain step to fix it. Where the app already has the
 action, the row has a button: **Install hooks** (it asks first), **Update daemon to X** (it asks
 first) and **Add folder**. What needs `sudo` or an installer is only shown to copy: the app never
-runs it. The same checks run in a terminal with `flightdeckd doctor`.
+runs it. A missing program shows the package-manager line where one exists (apt, brew, winget) and
+an **Install page** button that opens the official page; Flightdeck never offers a download piped
+into a shell. The same checks run in a terminal with `flightdeckd doctor`.
 ### Sessions without permission prompts
 
 By default no session of a host can run in **Bypass permissions** (every tool runs without asking).
