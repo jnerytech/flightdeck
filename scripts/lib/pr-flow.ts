@@ -3,8 +3,8 @@
  * each merged on its own when its required checks are green on its HEAD. All of it through REST
  * (`gh api`): `open` titles the PR after the branch's issue and closes it, `next` lists the open PRs
  * in the order to merge them (a stacked PR after its parent) with what each still needs, `update`
- * brings a PR up to date with its base, and `merge` (the coordinator only) merges with a merge
- * commit, never a squash.
+ * brings a PR up to date with its base, `auto` (any session, #271) turns on GitHub's auto-merge,
+ * and `merge` (the coordinator only) merges with a merge commit, never a squash.
  */
 
 export interface GhResult {
@@ -33,7 +33,7 @@ export interface Pr {
 const REPO = "repos/{owner}/{repo}";
 const MAIN = "main";
 const USAGE =
-  "usage: bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n>] | next | update <n> | merge <n>";
+  "usage: bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n>] | next | update <n> | auto <n> | merge <n>";
 /** A required check passes as GitHub counts it: a success, or a run it skipped or left neutral. */
 const PASSED = new Set(["success", "skipped", "neutral"]);
 
@@ -155,6 +155,18 @@ async function checksProblem(
     .join("; ");
 }
 
+/** How many commits `head` has that `base` does not (0: base has all of it); null when unknown. */
+async function aheadBy(deps: PrFlowDeps, base: string, head: string): Promise<number | null> {
+  const { code, stdout } = await deps.gh([
+    "api",
+    `${REPO}/compare/${base}...${head}`,
+    "--jq",
+    ".ahead_by",
+  ]);
+  const ahead = Number.parseInt(stdout.trim(), 10);
+  return code === 0 && Number.isInteger(ahead) ? ahead : null;
+}
+
 /** How many commits of its base the PR's branch does not have. */
 async function behindBy(deps: PrFlowDeps, base: string, head: string): Promise<number> {
   const { stdout } = await deps.gh([
@@ -274,8 +286,62 @@ async function updatePr(n: number, deps: PrFlowDeps): Promise<number> {
 }
 
 /** Turns on GitHub's auto-merge for a PR onto main: it merges by itself once its checks are green. */
-async function autoPr(_n: number, _deps: PrFlowDeps): Promise<number> {
+async function autoPr(n: number, deps: PrFlowDeps): Promise<number> {
+  const read = await deps.gh(["api", `${REPO}/pulls/${n}`]);
+  if (read.code !== 0) {
+    deps.log(`#${n} cannot be read`);
+    return 1;
+  }
+  const pr = JSON.parse(read.stdout) as { node_id: string; draft: boolean; base: { ref: string } };
+  let reason: string | null = null;
+  if (pr.draft) reason = "a draft: mark it ready first";
+  else if (pr.base.ref !== MAIN) {
+    const ahead = await aheadBy(deps, MAIN, pr.base.ref);
+    if (ahead === null) reason = `GitHub cannot compare ${pr.base.ref} with ${MAIN}`;
+    else if (ahead > 0) {
+      reason = `onto ${pr.base.ref}, which ${MAIN} does not have yet: run it again once its parent merges`;
+    }
+  }
+  if (reason) {
+    deps.log(`#${n}: auto-merge not turned on: ${reason}`);
+    return 2;
+  }
+  // The parent merged and its branch stays (no delete on merge): the PR goes onto main itself.
+  if (pr.base.ref !== MAIN) {
+    const moved = await deps.gh(["api", "-X", "PATCH", `${REPO}/pulls/${n}`, "-f", `base=${MAIN}`]);
+    if (moved.code !== 0) {
+      deps.log(`GitHub refused to retarget #${n} onto ${MAIN}`);
+      return 1;
+    }
+    deps.log(`#${n} retargeted from ${pr.base.ref} onto ${MAIN}`);
+  }
+  const enabled = await deps.gh([
+    "api",
+    "-X",
+    "POST",
+    "graphql",
+    "-f",
+    "query=mutation($id: ID!) { enablePullRequestAutoMerge(input: { pullRequestId: $id, mergeMethod: MERGE }) { clientMutationId } }",
+    "-f",
+    `id=${pr.node_id}`,
+  ]);
+  if (enabled.code !== 0) {
+    deps.log(`GitHub refused auto-merge for #${n}${graphqlError(enabled.stdout)}`);
+    return 1;
+  }
+  deps.log(`#${n} merges by itself, with a merge commit, once its required checks are green`);
   return 0;
+}
+
+/** The first error GitHub's GraphQL gave, as ": <message>", or nothing. */
+function graphqlError(stdout: string): string {
+  try {
+    const message = (JSON.parse(stdout) as { errors?: { message?: string }[] }).errors?.[0]
+      ?.message;
+    return message ? `: ${message}` : "";
+  } catch {
+    return "";
+  }
 }
 
 async function mergePr(n: number, deps: PrFlowDeps): Promise<number> {

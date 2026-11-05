@@ -378,9 +378,33 @@ const HEAVY = /^(test|coverage|e2e|demo:shots|smoke(:[\w-]+)?|build:(daemon|desk
  * (`FLIGHTDECK_COORDINATOR=1` in the hook's own environment, not one set in the command).
  */
 export function prMergeViolation(
-  _command: string,
-  _env: Record<string, string | undefined>,
+  command: string,
+  env: Record<string, string | undefined>,
 ): string | null {
+  if (env.FLIGHTDECK_COORDINATOR) return null;
+  for (const segment of commandWords(command).split(/[;&|\n]+/)) {
+    const words = segment.trim().split(/\s+/);
+    const g = words.indexOf("gh");
+    const b = words.indexOf("bun");
+    let what: string | null = null;
+    if (g >= 0 && words[g + 1] === "pr" && words[g + 2] === "merge") what = "gh pr merge";
+    else if (
+      g >= 0 &&
+      words[g + 1] === "api" &&
+      words.some((w) => /\/pulls\/\d+\/merge$/.test(w))
+    ) {
+      what = "a REST merge";
+    } else if (b >= 0) {
+      const rest = words.slice(b + 1);
+      const at =
+        rest[0] === "run" && rest[1] === "pr" ? 2 : rest[0]?.endsWith("pr-flow.ts") ? 1 : -1;
+      const sub = at < 0 ? undefined : rest.slice(at).find((w) => w !== "--");
+      if (sub === "merge" || sub === "tag") what = `bun run pr -- ${sub}`;
+    }
+    if (what) {
+      return `${what} is the coordinator's: a session opens its PR and turns on auto-merge, \`bun run pr -- auto <n>\` (CLAUDE.md).`;
+    }
+  }
   return null;
 }
 
