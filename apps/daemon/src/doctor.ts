@@ -1,6 +1,7 @@
 import { loopbackOnly } from "./pairing.ts";
 import { VERIFIED_OPENCODE_VERSION } from "./runtime/opencode-config.ts";
 import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
+import type { ScopeFinding } from "./runtime/opencode-scope.ts";
 
 type HooksState = "installed" | "absent" | "outdated";
 
@@ -89,7 +90,7 @@ export function opencodeCheck(state: OpenCodeState): DoctorCheck {
       "opencode",
       "opencode",
       "warn",
-      `OpenCode is turned on but not available: ${info?.reason ?? "unknown"}`,
+      `OpenCode is turned on but not available: ${info?.reason ?? "unknown"}${scopeFindings(info?.findings)}`,
       "see the OpenCode section of the manual for this reason, then restart the daemon",
     );
   }
@@ -111,6 +112,12 @@ export function opencodeCheck(state: OpenCodeState): DoctorCheck {
         "warn",
         `${what}; its global and system config folders are unverified on this OS`,
       );
+}
+
+/** What the scope scan found, for the person to remove: `: kind detail (path); ...`. */
+function scopeFindings(findings: ScopeFinding[] | undefined): string {
+  if (!findings?.length) return "";
+  return `: ${findings.map((f) => `${f.kind}${f.detail ? ` ${f.detail}` : ""} (${f.path})`).join("; ")}`;
 }
 
 const minor = (version: string) => version.split(".").slice(0, 2).join(".");
