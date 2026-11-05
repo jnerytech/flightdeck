@@ -88,6 +88,25 @@ for (const [lang, t] of [
       );
     });
 
+    test("a save the host refuses keeps the edit in the field", async () => {
+      const { store } = await openByRoute(lang);
+      await settle(() => button(t.cardUi.saveDescription) !== null);
+      await act(async () => {
+        fireEvent.change(field(t.cardUi.description) as HTMLTextAreaElement, {
+          target: { value: "My long edit." },
+        });
+      });
+      // A refused command comes back as null (the store shows the reason in its banner).
+      const real = store.hostCommand.bind(store);
+      store.hostCommand = (async (hostId, type, payload) =>
+        type === "card.update" ? null : real(hostId, type, payload)) as typeof store.hostCommand;
+      await act(async () => {
+        fireEvent.click(button(t.cardUi.saveDescription) as HTMLButtonElement);
+      });
+      await act(async () => {});
+      expect(field(t.cardUi.description)?.value).toBe("My long edit.");
+    });
+
     test("a change made elsewhere shows in a field the person has not touched", async () => {
       const { store, hostId, card } = await openByRoute(lang);
       await settle(() => button(t.cardUi.saveDescription) !== null);
