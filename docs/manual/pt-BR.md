@@ -2450,6 +2450,17 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
 
 ### Precisa de você, página do host e notificações
 
+- **Atividade:** na barra lateral, depois de Custos (`g a`, ou **Ir para Atividade** na paleta).
+  Mostra todas as sessões ao vivo de todos os hosts em quatro colunas: **Precisa de você** (a
+  sessão está pedindo algo), **Trabalhando**, **Concluídas** (um turno terminou nas últimas 2 horas e
+  você ainda não abriu a sessão) e **Ociosas**, que fica escondida até você marcar **Mostrar sessões
+  ociosas** (a escolha é lembrada). Cada card tem o glifo de estado, a sessão, o projeto, o host e a
+  persona, o último pedido e há quanto tempo mudou; a mudança mais recente vem primeiro. Um card que
+  está pedindo mostra o pedido com **Aprovar** e **Negar** (um de risco alto se aprova segurando o
+  botão; uma pergunta para você só abre a sessão). Um clique abre a sessão; Ctrl+clique ou o botão do
+  meio a abre numa aba nova. A busca e as listas de Host, Projeto e Persona reduzem os cards, e a
+  contagem diz "n de m mostradas". Quando uma sessão muda de estado, o card desliza para a outra
+  coluna (não com movimento reduzido). O quadro rola dentro de si. O modo simples não tem esta tela.
 - **Precisa de você:** na barra lateral, com o contador de pedidos abertos em todos os hosts. A
   tela lista os pedidos, do mais antigo ao mais novo, e o cartão do pedido escolhido fica ao
   lado: **A** aprova, **N** nega e **Esc** fecha o detalhe. **Abrir sessão** leva à conversa.
@@ -2529,7 +2540,7 @@ Configurações) e, depois de Enter, **Histórico**.
 
 `?` (fora dos campos de texto) abre uma folha com todos os atalhos, por grupo. Os atalhos de ir
 para pressionam `g` e depois uma letra em até um segundo e meio: `g s` Sessões, `g n` Precisa de
-você, `g p` Projetos, `g c` Custos, `g ,` Configurações. Outros atalhos: `Ctrl+K` paleta,
+você, `g p` Projetos, `g c` Custos, `g a` Atividade, `g ,` Configurações. Outros atalhos: `Ctrl+K` paleta,
 `Alt+←`/`Alt+→` voltar e avançar, `Alt+Shift+C` próximo cliente, `Ctrl+T`/`W`/`Tab`/`1…9` abas,
 `j`/`k`/`Enter` nas listas e `A`/`N` em um pedido. Nenhum dispara enquanto você digita em um campo.
 

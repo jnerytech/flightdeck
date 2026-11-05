@@ -13,6 +13,8 @@ export type Route =
   | { name: "start" }
   /** The requests waiting for the user (phase 10). */
   | { name: "needs-you" }
+  /** Every session of every host by state (issue #151). */
+  | { name: "activity" }
   | { name: "session"; host: string; id: string; focus?: string }
   /** `prompt`: the first prompt, filled in (a snippet, phase 18). */
   | { name: "new-session"; host: string; prompt?: string; persona?: string }
@@ -134,6 +136,7 @@ const NAMES: Record<Route["name"], true> = {
   home: true,
   hub: true,
   "needs-you": true,
+  activity: true,
   session: true,
   "new-session": true,
   external: true,

@@ -553,6 +553,9 @@ export interface GateRef {
   cardId: string;
 }
 
+/** Where the Activity board keeps whether it shows its Idle column. */
+const ACTIVITY_IDLE_KEY = "flightdeck.activityIdle";
+
 /** The window kept by the last run; nothing (a fresh window) when it is missing or unreadable. */
 function storedWorkspace(storage: Platform["storage"]): unknown {
   try {
@@ -1207,10 +1210,12 @@ export class AppStore {
 
   /** Whether the Activity board shows its Idle column; kept across starts. */
   activityIdle(): boolean {
-    return false;
+    return this.platform.storage.getItem(ACTIVITY_IDLE_KEY) === "true";
   }
 
-  setActivityIdle(_on: boolean): void {}
+  setActivityIdle(on: boolean): void {
+    this.platform.storage.setItem(ACTIVITY_IDLE_KEY, String(on));
+  }
 
   /** Whether a file of the host can be opened here: the app can, and the host runs on this machine. */
   canOpenPaths(hostId: string): boolean {

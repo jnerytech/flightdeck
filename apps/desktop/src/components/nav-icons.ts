@@ -1,4 +1,5 @@
 import {
+  Activity,
   Briefcase,
   CircleAlert,
   Coins,
@@ -23,6 +24,7 @@ import {
 export type NavKey =
   | "sessions"
   | "needs-you"
+  | "activity"
   | "projects"
   | "board"
   | "workflows"
@@ -43,6 +45,7 @@ export type NavKey =
 export const NAV_ICONS: Record<NavKey, LucideIcon> = {
   sessions: Layers,
   "needs-you": CircleAlert,
+  activity: Activity,
   projects: FolderGit2,
   board: Columns3,
   workflows: Workflow,

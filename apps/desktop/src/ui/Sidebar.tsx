@@ -301,6 +301,13 @@ export function Sidebar(props: {
               onClick={() => go({ name: "costs" })}
             />
           )}
+          <NavButton
+            collapsed={collapsed}
+            icon={<NavIcon name="activity" aria-hidden="true" className={icon} />}
+            active={here === "activity"}
+            label={t("sidebar.activity")}
+            onClick={() => go({ name: "activity" })}
+          />
           {/* Hosts from phase 21 carry messages between sessions. */}
           {state.hosts.some((h) => hasFeature(h.hostInfo?.features, "messaging", false)) && (
             <NavButton

@@ -217,6 +217,7 @@ export function App({ store }: { store: AppStore }) {
       else if (step.action === "go-needs-you") router.push({ name: "needs-you" });
       else if (step.action === "go-projects") router.push({ name: "all-projects" });
       else if (step.action === "go-costs") router.push({ name: "costs" });
+      else if (step.action === "go-activity") router.push({ name: "activity" });
       else if (step.action === "go-settings") router.push({ name: "settings" });
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();

@@ -66,6 +66,8 @@ export function breadcrumb(route: Route, state: AppState, t: T): Crumb[] {
       return path(sessions, { label: t("sidebar.newSession") });
     case "needs-you":
       return path({ label: t("sidebar.needsYou") });
+    case "activity":
+      return path({ label: t("sidebar.activity") });
     case "history":
       return path({ label: t("sidebar.history") }, { label: hostName(route.host) });
     case "host":

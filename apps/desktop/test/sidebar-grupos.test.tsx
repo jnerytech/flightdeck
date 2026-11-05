@@ -66,7 +66,7 @@ describe("sidebar-grupos: the bar in groups", () => {
       (name) => screen.getByRole("group", { name }) as HTMLElement,
     );
     expect(groups.map((g) => names(g).slice(1))).toEqual([
-      ["Workflows", "Costs", "Conversations", "Teams"],
+      ["Workflows", "Costs", "Activity", "Conversations", "Teams"],
       ["Personas", "Snippets", "Plugins", "Vault"],
       ["Connections", "History"],
     ]);
@@ -79,7 +79,7 @@ describe("sidebar-grupos: the bar in groups", () => {
     const { view } = setup([]);
     render(view());
     const work = screen.getByRole("group", { name: "Work" }) as HTMLElement;
-    expect(names(work).slice(1)).toEqual(["Workflows"]);
+    expect(names(work).slice(1)).toEqual(["Workflows", "Activity"]);
     expect(screen.queryByRole("button", { name: "Teams" })).toBeNull();
   });
 

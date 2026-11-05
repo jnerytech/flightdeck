@@ -3559,3 +3559,29 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   That is accepted: CI minutes are free for this public repository, and the two runs check
   different trees.
 - **Based on `rc/0363`,** which adds `workflow_dispatch` (#129) to the same `on:` block.
+
+## The Activity board, step 1 (issue #151)
+
+- **What it is.** A screen (route `activity`, shortcut `g a`, palette "Go to Activity", sidebar item after Costs) that groups every
+  live session of every host into Needs you, Working, Done and Idle. It reads the hub's rows (`hubRows`) and the app's `unread`;
+  nothing new is asked of a host. Simple mode never sees it (it has its own shell).
+- **The columns.** Needs you and Working follow the row's state. **Done** is a finished turn nobody opened, in the last two hours:
+  `state.unread` (set when a managed session goes from running to idle while not on screen, cleared when it is shown) within
+  `DONE_WINDOW_MS`. **Idle** is every other idle session; it is hidden by default and the choice is kept (`flightdeck.activityIdle`).
+  Ended and archived sessions and the history are on no column. Newest change first inside a column.
+  Only managed sessions can be Done: a terminal session has no `unread` mark.
+- **Cards.** The state glyph (`StatusDot`, from #146), the session, project, host, persona, the hub's last-request line, the age.
+  Needs you and Done are tinted with the status tokens (never a new colour). Not in step 1: the cost of the turn (the board has no
+  cost data per turn; the hub's cost is per session) and the two-line "last answer".
+- **Approve and Deny on the card** answer the request through `respondTo`. A high-risk request is approved with the hold button;
+  a question (`AskUserQuestion`), a workflow gate or a vault request has no inline buttons, only the session to open.
+- **Moving cards.** The arrangement (which card in which column, in what order) is a signature; when it changes the new arrangement is
+  applied inside `document.startViewTransition` when the browser has it, and plainly otherwise or with reduced motion
+  (`useBoardTransition`). Each card has a `view-transition-name` from its key.
+- **Filters** are search (title, host, project, persona, last request), host, project and persona; they combine, and the line reads
+  "n of m shown" over the columns on show.
+- **Stacked on `state-glyphs` (#146)** for the glyph `StatusDot`; merge it after that branch. The grouped sidebar (`Observability`)
+  is on `sidebar-badges`, not on this base, so the item sits after Costs here and moves with its group once both are merged.
+- **Step 2, the pop-out window, is not built:** it is a separate issue (a Tauri window, Rust reviewed with `tauri-rust-reviewer`).
+- **Test anchors:** `activity-column`, `activity-card`, `activity-count` are the `data-slot` names the board owns (to be added to
+  `docs/DESIGN.md` when that page lands).

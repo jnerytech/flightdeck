@@ -22,7 +22,7 @@ afterEach(cleanup);
 
 type Specs = Parameters<typeof activityState>[0];
 
-function setup(specs: Specs, options: { language?: "en" | "pt-BR"; platform?: never } = {}) {
+function setup(_specs: Specs, options: { language?: "en" | "pt-BR"; platform?: never } = {}) {
   const mem = memoryPlatform(false, options.language ?? "en");
   const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
   store.i18n.start();
@@ -66,6 +66,11 @@ const SPECS: Specs = [
   { id: "fin", name: "Tidy up", status: "idle", agoMs: 10 * MIN, unread: true, host: "h2" },
   { id: "seen", name: "Old chat", status: "idle", agoMs: 40 * MIN },
 ];
+/** The names of the columns on the board, left to right (the page itself is a region too). */
+const columnNames = () =>
+  [...document.querySelectorAll("[data-slot='activity-column']")].map((el) =>
+    el.getAttribute("aria-label"),
+  );
 const column = (name: string) => screen.getByRole("region", { name });
 const cardsOf = (name: string) =>
   [...column(name).querySelectorAll("[data-slot='activity-card']")].map(
@@ -76,11 +81,7 @@ describe("atividade-ui: the Activity board (issue #151)", () => {
   test("three columns by default, in order, each with a count; Idle waits for its switch", async () => {
     const w = setup(SPECS);
     render(w.view(SPECS));
-    expect(screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual([
-      "Needs you",
-      "Working",
-      "Done",
-    ]);
+    expect(columnNames()).toEqual(["Needs you", "Working", "Done"]);
     expect(cardsOf("Needs you")).toEqual(["Fix login"]);
     expect(cardsOf("Working")).toEqual(["Write docs"]);
     expect(cardsOf("Done")).toEqual(["Tidy up"]);
@@ -210,11 +211,7 @@ describe("atividade-ui: the Activity board (issue #151)", () => {
   test("it reads in Portuguese", () => {
     const w = setup(SPECS, { language: "pt-BR" });
     render(w.view(SPECS));
-    expect(screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual([
-      "Precisa de você",
-      "Trabalhando",
-      "Concluídas",
-    ]);
+    expect(columnNames()).toEqual(["Precisa de você", "Trabalhando", "Concluídas"]);
   });
 });
 
@@ -270,7 +267,7 @@ describe("atividade-ui: cards move with a view transition when the browser has o
 });
 
 describe("atividade-ui: the screen is reachable (issue #151)", () => {
-  test("a route, a shortcut g a, a breadcrumb and a sidebar item under Observability", async () => {
+  test("a route, a shortcut g a, a breadcrumb and a sidebar item", async () => {
     expect(ROUTE_NAMES.has("activity")).toBe(true);
     expect(shortcutOf("go-activity" as never)?.keys).toEqual(["g", "a"]);
     const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
@@ -296,9 +293,9 @@ describe("atividade-ui: the screen is reachable (issue #151)", () => {
         onToggleTheme={() => {}}
       />,
     );
-    const group = screen.getByRole("group", { name: "Observability" });
+    // The grouped sidebar (Observability) is not on this base: the item sits after Costs.
     await act(async () => {
-      fireEvent.click(within(group).getByRole("button", { name: "Activity" }));
+      fireEvent.click(screen.getByRole("button", { name: "Activity" }));
     });
     expect(went).toEqual([{ name: "activity" }]);
   });

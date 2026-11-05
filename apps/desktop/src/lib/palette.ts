@@ -29,7 +29,7 @@ export type PaletteTarget =
   | { kind: "start-card"; hostId: string; cardId: string }
   | { kind: "costs" }
   /** A screen with no host: Sessions, Needs you or the Projects overview. */
-  | { kind: "go"; to: "hub" | "needs-you" | "all-projects" }
+  | { kind: "go"; to: "hub" | "needs-you" | "all-projects" | "activity" }
   /** The `?` sheet of shortcuts. */
   | { kind: "shortcuts" }
   /** Answers the oldest request waiting for the person (a high-risk one is opened instead). */
@@ -261,6 +261,13 @@ export function paletteSections(
       { kind: "go", to: "needs-you" },
       undefined,
       "go-needs-you",
+    ),
+    action(
+      "go:activity",
+      t("palette.goActivity"),
+      { kind: "go", to: "activity" },
+      undefined,
+      "go-activity",
     ),
     action(
       "go:all-projects",

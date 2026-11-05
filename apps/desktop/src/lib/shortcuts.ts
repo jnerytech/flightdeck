@@ -11,6 +11,7 @@ export type ShortcutAction =
   | "go-needs-you"
   | "go-projects"
   | "go-costs"
+  | "go-activity"
   | "go-settings";
 
 export type ShortcutGroup = "general" | "navigation" | "tabs" | "lists" | "approvals";
@@ -54,6 +55,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   def("go-needs-you", "navigation", ["g", "n"], "shortcuts.goNeedsYou", "go-needs-you", true),
   def("go-projects", "navigation", ["g", "p"], "shortcuts.goProjects", "go-projects", true),
   def("go-costs", "navigation", ["g", "c"], "shortcuts.goCosts", "go-costs", true),
+  def("go-activity", "navigation", ["g", "a"], "shortcuts.goActivity", "go-activity", true),
   def("go-settings", "navigation", ["g", ","], "shortcuts.goSettings", "go-settings", true),
   def("tab-new", "tabs", ["Mod", "T"], "shortcuts.tabNew"),
   def("tab-close", "tabs", ["Mod", "W"], "shortcuts.tabClose"),
