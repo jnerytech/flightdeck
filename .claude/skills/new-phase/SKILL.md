@@ -12,8 +12,9 @@ base commit, so no tag is needed while the phase runs.
 
 ## Open
 
-1. **Context.** Read the previous phase's spec and the end of `docs/DECISIONS.md`, so as not to
-   repeat what was already done and to respect the decisions.
+1. **Context.** Read the previous phase's spec and the latest records in `docs/decisions/` (and,
+   for older phases, `docs/DECISIONS.md`), so as not to repeat what was already done and to
+   respect the decisions.
 2. **Spec.** Copy `docs/templates/SPEC.md` to `docs/SPEC-fase-N.md` and fill it in English (see
    CLAUDE.md). Every `##` heading stays ("None." where a section does not apply); the template
    says what goes in each. The area table is `| Area | Test file | What must pass |`: areas in
@@ -46,8 +47,8 @@ Each item with its command and exit code visible:
       at release with the `test(versao)` cycle.
 - [ ] When the phase changes the screens: the prints and the axe check (`bun run slot -- bun run demo:shots`)
       and the end-to-end journeys (`bun run slot -- bun run e2e`), in both languages.
-- [ ] README (pt-BR and en), manual (`docs/manual/`) and `docs/DECISIONS.md` with the phase's
-      section.
+- [ ] README (pt-BR and en), manual (`docs/manual/`) and the phase's records in `docs/decisions/`
+      (`<yyyy-mm-dd>-<topic>.md`, first line `# <title> (phase N)`).
 - [ ] The `spec-verifier` agent's verdict is **accept**.
 - [ ] Hand over: push the branch (`git push -u origin fase-N`), wait for its CI to be green, and
       send the HEAD, the `HANDOFF` stamp of `bun run handoff:check`, the commands above with

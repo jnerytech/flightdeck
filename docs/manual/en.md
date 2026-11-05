@@ -4,7 +4,7 @@ English | [Português (Brasil)](pt-BR.md) · [Back to the README](../../README.m
 
 Complete Flightdeck reference, organized by topic. It applies to version 0.19.0. The roadmap is
 in [`docs/SPEC.md`](../SPEC.md), the deviations from the specs in
-[`docs/DECISIONS.md`](../DECISIONS.md) and the interface vocabulary in
+[`docs/decisions/`](../decisions/) (the older ones in [`docs/DECISIONS.md`](../DECISIONS.md)) and the interface vocabulary in
 [`docs/GLOSSARY.md`](../GLOSSARY.md). Those three documents, `docs/TDD.md` and the phase specs
 are written in Portuguese.
 
