@@ -595,6 +595,9 @@ export async function layout(c: Context, problems: string[]) {
   }
   // The smallest window the app allows (tauri.conf.json), where the longest labels are tightest.
   await c.page.setViewportSize({ width: 720, height: 480 });
+  await open(c, { name: "hub" });
+  const smallHosts = await hostsProblem(c.page);
+  if (smallHosts) problems.push(`${c.lang} 720x480: ${smallHosts}`);
   for (const issue of await folderDialogProblems(c)) {
     problems.push(`${c.lang} 720x480 pasta: ${issue}`);
   }

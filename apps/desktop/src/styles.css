@@ -801,8 +801,17 @@
 /* The sidebar's main block and its folding groups. */
 @utility sidebar-nav {
   display: flex;
+  min-height: 0;
   flex-direction: column;
+  flex-shrink: 1;
   gap: 0.125rem;
+  overflow-y: auto;
+}
+/* The hosts section: it keeps room for a heading and a row, so the nav above gives way and scrolls. */
+@utility sidebar-hosts {
+  min-height: 7rem;
+  flex: 1 1 0;
+  overflow-y: auto;
 }
 @utility sidebar-group {
   display: flex;

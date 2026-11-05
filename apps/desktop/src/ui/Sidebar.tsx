@@ -388,7 +388,7 @@ export function Sidebar(props: {
         </NavGroup>
       </nav>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div data-slot="sidebar-hosts" className="sidebar-hosts">
         {collapsed ? (
           <div className="flex flex-col items-center gap-1 pt-3">
             {state.hosts.map((host) => (
