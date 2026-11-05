@@ -12,13 +12,19 @@ import { type DepLook, depLook, depsSummary, fixFor, fixPageFor } from "../../li
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 const ICONS = { check: Check, warning: TriangleAlert, cross: X, dash: Minus } as const;
-// Whole class names, so Tailwind finds them.
-const TONES: Record<DepLook["tone"], string> = {
-  ok: "text-status-ok",
-  warn: "text-status-needs-you",
-  error: "text-status-error",
-  off: "text-status-ended",
-};
+/** The colour of a tone, as whole class names so Tailwind finds them. */
+function toneClass(tone: DepLook["tone"]): string {
+  switch (tone) {
+    case "ok":
+      return "text-status-ok";
+    case "warn":
+      return "text-status-needs-you";
+    case "error":
+      return "text-status-error";
+    default:
+      return "text-status-ended";
+  }
+}
 
 /** The dependency that already says what a doctor check says (the check is then shown once, as the dependency). */
 const COVERED_BY: Record<string, string> = {
@@ -187,10 +193,10 @@ export function HostHealth(props: {
             data-slot="dep-icon"
             data-icon={row.look.icon}
             aria-hidden="true"
-            className={TONES[row.look.tone]}
+            className={toneClass(row.look.tone)}
           />
           <strong>{row.name}</strong>
-          <span className={TONES[row.look.tone]}>{row.word}</span>
+          <span className={toneClass(row.look.tone)}>{row.word}</span>
         </span>
         {row.found.length > 0 && <span className="dep-found">{row.found.join(" · ")}</span>}
         {row.breaks && <span className="text-sm">{row.breaks}</span>}
@@ -246,7 +252,11 @@ export function HostHealth(props: {
   return (
     <Panel title={t("hostHealth.title")} label={t("hostHealth.title")}>
       <p role="status" className="dep-line">
-        <HeadIcon data-slot="dep-icon" aria-hidden="true" className={TONES[headlineLook.tone]} />
+        <HeadIcon
+          data-slot="dep-icon"
+          aria-hidden="true"
+          className={toneClass(headlineLook.tone)}
+        />
         <strong>{headline}</strong>
       </p>
       {/* Outside the live region: the age changes every minute and must not be announced each time. */}
