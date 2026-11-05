@@ -66,6 +66,7 @@ const DESTINATIONS: Array<[string, R]> = [
   ["Plugins", { name: "plugins" }],
   ["Vault", { name: "vault" } as R],
   ["SSH", { name: "connections" }],
+  ["Settings", { name: "settings" }],
 ];
 
 describe("sidebar-ativo: every destination of the bar is marked when its page is open (SG-M1)", () => {
