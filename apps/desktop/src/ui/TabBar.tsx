@@ -210,7 +210,10 @@ export function TabBar(props: {
                   {...(tab.preview ? { "aria-description": t("tabs.preview") } : {})}
                   data-tab-id={tab.id}
                   aria-keyshortcuts={`${tab.pinned ? "" : "Delete "}${MOVE_KEYS}`}
-                  {...(tab.pinned ? { "aria-label": label } : {})}
+                  // A pinned tab shows no title, so its name is set here, with the badge's words.
+                  {...(tab.pinned
+                    ? { "aria-label": badge ? `${label}, ${t(`tabs.badge.${badge}`)}` : label }
+                    : {})}
                   className="flex min-w-0 flex-1 items-center gap-1.5 rounded-t-md px-2 py-1.5 outline-none hover:bg-accent/60"
                   onClick={() => tabs.activate(tab.id)}
                   onDoubleClick={() => tabs.commit(tab.id)}
