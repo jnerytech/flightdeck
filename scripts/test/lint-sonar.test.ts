@@ -36,7 +36,7 @@ describe("lint:sonar", () => {
       "lint:sonar: no findings",
     ],
     ["a NOSONAR with no reason fails", "bare.ts", 1, "bare.ts:3  nosonar-reason"],
-    ["an await inside a loop fails (Sonar S9382)", "awaits.ts", 1, "awaits.ts:5  no-await-in-loop"],
+    ["an await inside a loop fails (Sonar S9382)", "awaits.ts", 1, "awaits.ts:8  no-await-in-loop"],
   ])("%s", (_title, fixture, code, line) => {
     const result = lint(fixture);
     expect(result.code).toBe(code);

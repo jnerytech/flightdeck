@@ -82,6 +82,8 @@ async function lint(files: string[], keys: string[]): Promise<Finding[]> {
   const set = sonarRules(pluginRules, keys);
   const rules: Linter.RulesRecord = {};
   for (const id of withTypes ? [...set.untyped, ...set.typed] : set.untyped) rules[id] = "error";
+  // Sonar S9382 has no sonarjs rule: ESLint's own is the same check, for the source files only.
+  if (keys === profile.rules) rules["no-await-in-loop"] = "error";
   ruleCount += Object.keys(rules).length;
   const eslint = new ESLint({
     cwd: ROOT,
