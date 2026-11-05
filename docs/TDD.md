@@ -198,6 +198,9 @@ em vez de depender de cuidado.
   stamp with no `security=` or no `ci=` vouches for nothing.
 - CI runs once per commit: on the PR (`pull_request`), on `main` (`push`), or by hand for a branch
   with no PR yet (`bun run ci:branch`).
+- CI starts with a quick job (#272): typecheck, lint, the TDD audit and every ratchet test, in
+  minutes. The heavy jobs need it. A new ratchet's test file ends in
+  `-ratchet.test.ts` (or `.tsx`), so the quick job picks it up by itself (scripts/lib/ci-quick.ts).
 - Right after `open`, the session turns on auto-merge: `bun run pr -- auto <n>` (#271). GitHub
   then merges the PR with a merge commit, never a squash, once the main ruleset's required checks
   are green on its HEAD and it is up to date (the ruleset is strict; auto-merge never updates the
