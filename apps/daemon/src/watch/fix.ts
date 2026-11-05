@@ -90,8 +90,9 @@ const clip = (text: string, limit: number) =>
   text.length > limit ? `${text.slice(0, limit)} […]` : text;
 
 function commentLine(comment: PrComment, i: number): string {
+  const line = comment.line === null ? "" : ":" + comment.line;
   const where = comment.path
-    ? `${comment.path}${comment.line === null ? "" : `:${comment.line}`} (${comment.author})`
+    ? `${comment.path}${line} (${comment.author})`
     : `review by ${comment.author}`;
   return `${i + 1}. ${where}:\n${clip(comment.body.trim(), COMMENT_CHARS)}`;
 }
@@ -219,7 +220,8 @@ export class PrFixer {
     const done = this.counted(cardId);
     if (done.length >= settings.maxRounds) {
       const list = done.map(
-        (r) => `round ${r.n}: ${r.status}${r.summary ? ` (${r.summary.split("\n")[0]})` : ""}`,
+        (r) =>
+          `round ${r.n}: ${r.status}` + (r.summary ? " (" + r.summary.split("\n")[0] + ")" : ""),
       );
       return `limit of ${settings.maxRounds} rounds reached — ${list.join("; ")}`;
     }

@@ -257,7 +257,8 @@ export function compare(current: RoiPeriod, previous: RoiPeriod): Comparison {
     };
   }
   const change = (current.cards - previous.cards) / previous.cards;
-  const verdict: Verdict = Math.abs(change) <= SAME ? "same" : change > 0 ? "more" : "fewer";
+  let verdict: Verdict = change > 0 ? "more" : "fewer";
+  if (Math.abs(change) <= SAME) verdict = "same";
   return {
     verdict,
     deltaPercent: Math.round(change * 100),

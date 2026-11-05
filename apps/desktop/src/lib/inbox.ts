@@ -28,6 +28,12 @@ export type InboxTarget =
   | { kind: "url"; url: string };
 
 /** Where a click on `entry` goes; `cardExists` says whether a card route still has its card. */
+/** A day as the list names it: today, yesterday, or the date. */
+function dayName(key: string, today: string, yesterday: string): string {
+  if (key === today) return "today";
+  return key === yesterday ? "yesterday" : key;
+}
+
 export function inboxTarget(
   entry: InboxEntry,
   cardExists: (route: Extract<Route, { name: "card" }>) => boolean,
@@ -78,7 +84,7 @@ export function groupByDay(
   const sorted = [...list].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
   for (const entry of sorted) {
     const key = dayKey(new Date(entry.at));
-    const day = key === today ? "today" : key === yesterday ? "yesterday" : key;
+    const day = dayName(key, today, yesterday);
     const last = groups.at(-1);
     if (last?.day === day) last.entries.push(entry);
     else groups.push({ day, entries: [entry] });

@@ -134,7 +134,7 @@ async function generic(event: NotifyEvent, options: FormatOptions): Promise<Form
   };
   if (options.signingSecret) {
     headers["X-Flightdeck-Signature"] =
-      `sha256=${await hmacHex(options.signingSecret, `${timestamp}.${body}`)}`;
+      "sha256=" + (await hmacHex(options.signingSecret, timestamp + "." + body));
   }
   return { headers, body };
 }

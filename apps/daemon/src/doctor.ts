@@ -155,7 +155,7 @@ async function templatesCheck(deps: DoctorDeps): Promise<DoctorCheck | null> {
     "templates",
     "templates",
     "warn",
-    `could not load: ${broken.map((p) => `${p.file} (${p.reason})`).join("; ")}`,
+    "could not load: " + broken.map((p) => p.file + " (" + p.reason + ")").join("; "),
     "fix or remove those files in the templates folder",
   );
 }

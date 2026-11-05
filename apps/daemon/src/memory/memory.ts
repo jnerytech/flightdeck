@@ -98,8 +98,10 @@ const notFound = (name: string) =>
 const NAME = /^[A-Za-z0-9][A-Za-z0-9 _.-]{0,98}\.md$/;
 const INDEX = "MEMORY.md";
 
-const lineCount = (text: string) =>
-  text === "" ? 0 : text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
+const lineCount = (text: string) => {
+  if (text === "") return 0;
+  return text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
+};
 
 /** The repository's own folder, from what `git rev-parse --git-common-dir` printed in `real`. */
 async function rootFrom(real: string, code: number, out: string): Promise<string> {

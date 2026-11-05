@@ -23,6 +23,15 @@ const DASH = "—";
 const money = (n: number | null) => (n === null ? DASH : usd(n));
 const REFRESH_MS = 30_000;
 
+/** The `aria-sort` of a column header: ascending or descending when it is the sorted one. */
+function ariaSort(
+  sort: { column: string; direction: "asc" | "desc" } | null | undefined,
+  column: string,
+): "ascending" | "descending" | undefined {
+  if (sort?.column !== column) return undefined;
+  return sort.direction === "asc" ? "ascending" : "descending";
+}
+
 /**
  * Phase 36: the project table of the Costs screen: what each project of the scope delivered for
  * what it cost. Sortable by every column; a figure that cannot be computed shows a dash, and the
@@ -103,13 +112,7 @@ export function RoiTable(props: {
                 <th
                   key={column}
                   scope="col"
-                  aria-sort={
-                    sort?.column === column
-                      ? sort.direction === "asc"
-                        ? "ascending"
-                        : "descending"
-                      : undefined
-                  }
+                  aria-sort={ariaSort(sort, column)}
                   className="py-1 pr-3 font-medium"
                 >
                   <Button

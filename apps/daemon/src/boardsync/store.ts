@@ -82,6 +82,11 @@ const toLink = (row: LinkRow): BoardLink => ({
   pausedUntil: row.paused_until,
 });
 
+/** A booleans is stored as 0 or 1; any other value as it is. */
+function sqlValue(value: unknown): string | number | null {
+  if (typeof value === "boolean") return value ? 1 : 0;
+  return value as string | null;
+}
 export class BoardSyncStore {
   constructor(private readonly db: Database) {}
 
@@ -175,7 +180,7 @@ export class BoardSyncStore {
       if (value === undefined) continue;
       this.db
         .query(`UPDATE cards SET ${columns[key]} = ? WHERE id = ?`)
-        .run(typeof value === "boolean" ? (value ? 1 : 0) : (value as string | null), cardId);
+        .run(sqlValue(value), cardId);
     }
   }
 

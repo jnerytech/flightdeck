@@ -792,11 +792,9 @@ export class Actions {
     waiting: Waiting,
     decided: { remembered: boolean; rememberedKey: string | null } | null,
   ): void {
-    const approver = decided?.remembered
-      ? "session"
-      : verdict.decision === "allow"
-        ? "rule"
-        : (waiting.approved?.by ?? null);
+    let approver: "app" | "rule" | "session" | "tray" | null = waiting.approved?.by ?? null;
+    if (verdict.decision === "allow") approver = "rule";
+    if (decided?.remembered) approver = "session";
     this.audit.finish(requestId, verdict.decision === "allow" ? "allowed" : "approved", approver);
     if (waiting.approved?.scope === "session" && decided?.rememberedKey) {
       this.approvedSessions.add(decided.rememberedKey);

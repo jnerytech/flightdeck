@@ -258,6 +258,15 @@ const script = (value: string | null | undefined) => value?.trim() || null;
  * Projects (git repositories of this host) and their boards. A card is a thin layer over what
  * already exists: a branch, a worktree, a session and a PR.
  */
+/** The notice for files the worktree copy left out because they passed the size limit. */
+function skippedNotice(left: number, limit: number): string {
+  const files =
+    left === 1
+      ? "1 arquivo do .worktreeinclude não copiado"
+      : left + " arquivos do .worktreeinclude não copiados";
+  return files + ": passou do limite de " + Math.round((limit / 1024 / 1024) * 100) / 100 + " MB";
+}
+
 /** The reason and params of a refusal; `null` for any other error. */
 export function refusalOf(
   error: unknown,
@@ -1297,10 +1306,7 @@ export class Board {
       const added = await addWorktree(project.path, card.title, from.ref, limit);
       worktree = added.path;
       const left = added.skipped.length;
-      const skipped =
-        left === 0
-          ? null
-          : `${left === 1 ? "1 arquivo do .worktreeinclude não copiado" : `${left} arquivos do .worktreeinclude não copiados`}: passou do limite de ${Math.round((limit / 1024 / 1024) * 100) / 100} MB`;
+      const skipped = left === 0 ? null : skippedNotice(left, limit);
       const notice = [from.notice, skipped].filter((part) => part !== null).join("; ") || null;
       this.db
         .query(

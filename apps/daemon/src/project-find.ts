@@ -136,11 +136,8 @@ const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 /** The folder name a URL implies: its last path segment without `.git`; null when it has none. */
 function nameOf(url: string): string | null {
-  const path = /^[\w.-]+@[\w.-]+:/.test(url)
-    ? url.slice(url.indexOf(":") + 1)
-    : URL.canParse(url)
-      ? new URL(url).pathname
-      : "";
+  let path = URL.canParse(url) ? new URL(url).pathname : "";
+  if (/^[\w.-]+@[\w.-]+:/.test(url)) path = url.slice(url.indexOf(":") + 1);
   const last = path.split("/").filter(Boolean).pop();
   return last ? last.replace(/\.git$/i, "") : null;
 }

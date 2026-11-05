@@ -28,6 +28,12 @@ const split = (text: string, separator: string): string[] =>
     .map((part) => part.trim())
     .filter(Boolean);
 
+/** The secret a target uses: the key file's path, the vault secret, or none for the agent. */
+function secretRefOf(auth: string, keyFile: string, secretId: string): string | null {
+  if (auth === "key-file") return keyFile.trim() || null;
+  return auth === "vault-key" || auth === "password" ? secretId || null : null;
+}
+
 const TARGETFORM_KEYS = ["secrets", "hosts"] as const;
 
 /** Creates or edits a ssh destino; only the reference to a secret is ever typed here. */
@@ -92,12 +98,7 @@ export const TargetForm = memo(function TargetForm(props: {
       user: user.trim(),
       viaHost: via === "" ? null : via,
       auth,
-      secretRef:
-        auth === "key-file"
-          ? keyFile.trim() || null
-          : auth === "vault-key" || auth === "password"
-            ? secretId || null
-            : null,
+      secretRef: secretRefOf(auth, keyFile, secretId),
       jump: jump === "" ? null : jump,
       options,
       tags: split(tags, ","),

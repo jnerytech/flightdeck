@@ -93,12 +93,15 @@ async function readHistory(path: string): Promise<string | null> {
   return text.replace(/^﻿/, "");
 }
 
+/** The character that ends a line that goes on in the next one, by shell. */
+const CONTINUATION: Partial<Record<Shell, string>> = { zsh: "\\", powershell: "`" };
+
 /**
  * The commands of a history, one entry each. `continuation` is the character that ends a line
  * that goes on in the next one: such an entry is more than one line and is left out.
  */
 function parseHistory(shell: Shell, text: string): string[] {
-  const continuation = shell === "zsh" ? "\\" : shell === "powershell" ? "`" : null;
+  const continuation = CONTINUATION[shell] ?? null;
   const commands: string[] = [];
   let skipping = false;
   for (const raw of text.split(/\r?\n/)) {

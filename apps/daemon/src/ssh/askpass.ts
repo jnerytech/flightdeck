@@ -153,7 +153,7 @@ export class AskpassBroker {
 }
 
 /** A word for `sh`: in single quotes, with the quotes inside closed and escaped. */
-const quoteForSh = (word: string) => `'${word.replaceAll("'", `'\\''`)}'`;
+const quoteForSh = (word: string) => "'" + word.replaceAll("'", "'\\''") + "'";
 
 /**
  * The program `SSH_ASKPASS` points to: ssh runs it with the prompt as its only argument, and it
@@ -174,7 +174,8 @@ export async function writeAskpassScript(opts: {
         "ssh_askpass_cmd_path",
       );
     }
-    text = `@echo off\r\n${opts.self.map((part) => `"${part}"`).join(" ")} askpass %*\r\n`;
+    const program = opts.self.map((part) => '"' + part + '"').join(" ");
+    text = `@echo off\r\n${program} askpass %*\r\n`;
   } else {
     text = `#!/bin/sh\nexec ${opts.self.map(quoteForSh).join(" ")} askpass "$@"\n`;
   }

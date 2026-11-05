@@ -8,5 +8,6 @@ export async function lingerState(
   const { code, stdout } = await ctx.exec(["loginctl", "show-user", ctx.user, "-p", "Linger"]);
   if (code !== 0) return null;
   const value = stdout.trim();
-  return value === "Linger=yes" ? "on" : value === "Linger=no" ? "off" : null;
+  if (value === "Linger=yes") return "on";
+  return value === "Linger=no" ? "off" : null;
 }

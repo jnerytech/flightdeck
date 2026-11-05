@@ -95,9 +95,8 @@ export function prMessage(comments: readonly PrComment[]): string {
   return [
     "Comentários do PR:",
     ...comments.map((c, i) => {
-      const where = c.path
-        ? `\`${c.path}\`${c.line === null ? "" : ` linha ${c.line}`} (${c.author})`
-        : `revisão de ${c.author}`;
+      const line = c.line === null ? "" : " linha " + c.line;
+      const where = c.path ? `\`${c.path}\`${line} (${c.author})` : `revisão de ${c.author}`;
       const body = c.body
         .replace(/\r?\n$/, "")
         .split(/\r?\n/)

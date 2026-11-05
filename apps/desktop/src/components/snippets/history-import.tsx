@@ -36,6 +36,22 @@ function freeName(command: string, taken: Set<string>): string {
   return name;
 }
 
+/** A history line that cannot be picked: its command in gray, or which kinds of secret hid it. */
+function HiddenLine(props: {
+  command: string | null;
+  kinds: string[];
+  t: ReturnType<typeof useT>;
+}) {
+  if (props.command !== null) {
+    return <span className="font-mono text-muted-foreground">{props.command}</span>;
+  }
+  return (
+    <span className="text-muted-foreground">
+      {props.t("snippets.history.hidden", { kinds: props.kinds.join(", ") })}
+    </span>
+  );
+}
+
 /**
  * Phase 18: the shell history of the host as candidates for snippets, read only. A line with a
  * secret, by the daemon's patterns or by a value of this app's vault, is hidden and locked; the
@@ -117,12 +133,8 @@ export function HistoryImport(props: { store: AppStore; hostId: string; onImport
                   />
                   {line.command}
                 </label>
-              ) : line.command !== null ? (
-                <span className="font-mono text-muted-foreground">{line.command}</span>
               ) : (
-                <span className="text-muted-foreground">
-                  {t("snippets.history.hidden", { kinds: line.kinds.join(", ") })}
-                </span>
+                <HiddenLine command={line.command} kinds={line.kinds} t={t} />
               )}
               <span className="text-muted-foreground text-xs">
                 {t("snippets.history.count", { n: line.count })}

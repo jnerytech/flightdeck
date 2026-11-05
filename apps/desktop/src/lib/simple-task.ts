@@ -18,7 +18,8 @@ export function taskState(session: SessionState): TaskState {
     case "ended":
       return failed ? "failed" : "stopped";
     case "idle":
-      return failed ? "failed" : result ? "done" : "working";
+      if (failed) return "failed";
+      return result ? "done" : "working";
     default:
       return "working";
   }

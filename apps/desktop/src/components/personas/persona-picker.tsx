@@ -17,7 +17,8 @@ export function useSuggestedPersona(
   idsOnly = false,
 ): string {
   const hosts = useStoreSlice(store, ["personas"]).personas[hostId];
-  return hosts?.some((p) => p.id === id) ? (idsOnly ? id : `host:${id}`) : "";
+  if (!hosts?.some((p) => p.id === id)) return "";
+  return idsOnly ? id : `host:${id}`;
 }
 
 /**

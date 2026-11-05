@@ -74,7 +74,8 @@ export function shortcutOf(action: ShortcutAction): ShortcutDef | undefined {
 
 /** How the keys read: `Ctrl+K`, `⌘K` on a Mac, `g p` for a chord. */
 export function keysLabel(shortcut: ShortcutDef, mac: boolean): string {
-  const keys = shortcut.keys.map((k) => (k === "Mod" ? (mac ? "⌘" : "Ctrl") : k));
+  const modifier = mac ? "⌘" : "Ctrl";
+  const keys = shortcut.keys.map((k) => (k === "Mod" ? modifier : k));
   if (shortcut.chord) return keys.join(" ");
   // On a Mac the modifier sits against its key (⌘K); elsewhere keys are joined with a plus.
   return mac && shortcut.keys[0] === "Mod" ? keys.join("") : keys.join("+");

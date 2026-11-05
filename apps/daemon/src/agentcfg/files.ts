@@ -205,20 +205,27 @@ export class AgentConfig {
     return this.opts.claudeDir ?? join(userHome(), ".claude");
   }
 
+  /** The files of one kind: every CLAUDE.md, the agents' .md files, or each skill's SKILL.md. */
+  private async pathsOf(
+    root: string,
+    kind: AgentCfgKind,
+    origin: Origin,
+    base: string,
+  ): Promise<string[]> {
+    if (kind === "claudemd") return origin === "project" ? await claudeMds(root) : ["CLAUDE.md"];
+    if (kind === "agent") {
+      return (await entries(join(root, base, "agents")))
+        .filter((e) => e.isFile() && e.name.endsWith(".md"))
+        .map((e) => `${base}agents/${e.name}`);
+    }
+    return (await entries(join(root, base, "skills"))).map(
+      (e) => `${base}skills/${e.name}/SKILL.md`,
+    );
+  }
+
   private async found(root: string, kind: AgentCfgKind, origin: Origin): Promise<AgentCfgItem[]> {
     const base = origin === "project" ? ".claude/" : "";
-    const paths =
-      kind === "claudemd"
-        ? origin === "project"
-          ? await claudeMds(root)
-          : ["CLAUDE.md"]
-        : kind === "agent"
-          ? (await entries(join(root, base, "agents")))
-              .filter((e) => e.isFile() && e.name.endsWith(".md"))
-              .map((e) => `${base}agents/${e.name}`)
-          : (await entries(join(root, base, "skills"))).map(
-              (e) => `${base}skills/${e.name}/SKILL.md`,
-            );
+    const paths = await this.pathsOf(root, kind, origin, base);
     const items: AgentCfgItem[] = [];
     for (const path of [...paths].sort(byCodeUnit)) {
       const bytes = await readFile(join(root, path)).catch(() => null);

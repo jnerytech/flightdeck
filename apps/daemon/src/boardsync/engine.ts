@@ -263,8 +263,8 @@ export class BoardSync {
     if (column === card.column) return false;
     const localAt = external.localMovedAt as string;
     const gap = Date.parse(item.updatedAt) - Date.parse(localAt);
-    const winner: "local" | "external" =
-      Math.abs(gap) <= TIE_MS ? (link.push ? "local" : "external") : gap > 0 ? "external" : "local";
+    let winner: "local" | "external" = gap > 0 ? "external" : "local";
+    if (Math.abs(gap) <= TIE_MS) winner = link.push ? "local" : "external";
     report.conflicts += 1;
     store.addLog(cardId, {
       at: this.iso(),

@@ -505,8 +505,10 @@ export class SshConnector {
     ];
     argv.push(...this.optionArgs(options), ...this.identityArgs(target, delivered));
     if (hops.length > 0) {
-      const hop = (h: SshTarget) =>
-        `${h.user}@${h.host.includes(":") ? `[${h.host}]` : h.host}:${h.port}`;
+      const hop = (h: SshTarget) => {
+        const host = h.host.includes(":") ? "[" + h.host + "]" : h.host;
+        return `${h.user}@${host}:${h.port}`;
+      };
       argv.push("-J", hops.map(hop).join(","));
     }
     if (mode !== "connect") argv.push("-o", "ConnectTimeout=10");

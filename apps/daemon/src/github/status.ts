@@ -17,11 +17,8 @@ export function parseAuthStatus(text: string): Omit<GithubStatus, "installed"> {
   const account = /Logged in to \S+ account (\S+) \(([^)]*)\)/.exec(text);
   if (!account) return { loggedIn: false, login: null, scopes: [], source: null };
   const where = account[2] ?? "";
-  const source = /^(GH|GITHUB)_TOKEN$|^GH_ENTERPRISE_TOKEN$/.test(where)
-    ? "env"
-    : where === "keyring"
-      ? "keyring"
-      : "file";
+  let source: "env" | "keyring" | "file" = where === "keyring" ? "keyring" : "file";
+  if (/^(GH|GITHUB)_TOKEN$|^GH_ENTERPRISE_TOKEN$/.test(where)) source = "env";
   const scopes = /Token scopes:\s*(.*)/.exec(text)?.[1] ?? "";
   return {
     loggedIn: true,

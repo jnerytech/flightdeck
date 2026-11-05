@@ -41,7 +41,7 @@ export function ImportPanel(props: {
                 {entry.alias}
               </label>
               <span className="font-mono text-muted-foreground">
-                {`${entry.user}@${entry.host}${entry.port === 22 ? "" : `:${entry.port}`}`}
+                {entry.user + "@" + entry.host + (entry.port === 22 ? "" : ":" + entry.port)}
               </span>
               {entry.exists && <span>{t("connections.import.exists")}</span>}
             </li>

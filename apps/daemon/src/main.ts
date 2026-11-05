@@ -532,7 +532,7 @@ export const EXIT_ALREADY_RUNNING = 3;
 
 export class AlreadyRunningError extends Error {
   constructor(dataDir: string, hint?: string) {
-    super(`já em execução (dataDir ${dataDir})${hint ? `; ${hint}` : ""}`);
+    super(`já em execução (dataDir ${dataDir})` + (hint ? "; " + hint : ""));
   }
 }
 
@@ -1745,9 +1745,13 @@ async function runTelemetry(args: CliArgs, deps: CliDeps): Promise<void> {
   const had = (await optIn.status()).status;
   const result =
     args.action === "uninstall" ? await optIn.uninstall(true) : await optIn.install(true);
+  const removed =
+    had === "installed" || had === "outdated"
+      ? `telemetry removed from ${result.settingsPath}`
+      : "no Flightdeck telemetry installed";
   deps.log.log(
     args.action === "uninstall"
-      ? `${had === "installed" || had === "outdated" ? `telemetry removed from ${result.settingsPath}` : "no Flightdeck telemetry installed"}; the receiver has a new token`
+      ? `${removed}; the receiver has a new token`
       : `telemetry installed in ${result.settingsPath} (previous copy in settings.json.flightdeck-telemetry-backup)`,
   );
 }

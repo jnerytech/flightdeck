@@ -128,7 +128,9 @@ export class SshImporter {
       };
     }
     const registered = this.opts.targets.list().find((t) => t.name === via);
-    const made = registered ? { id: registered.id } : chosen.has(via) ? make(via) : null;
+    let made: { id: string } | Skip | null = null;
+    if (registered) made = { id: registered.id };
+    else if (chosen.has(via)) made = make(via);
     if (!made) {
       return {
         reason: `ProxyJump ${via} is not a destination: import it first`,

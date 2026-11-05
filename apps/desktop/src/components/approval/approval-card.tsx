@@ -138,12 +138,10 @@ function savedAnswers(input: Record<string, unknown>): Record<string, string> | 
 
 /** "Aprovado automaticamente (regra): motivo": who decided, and why. */
 function autoLine(auto: AutoApproval, t: T): string {
-  const by =
-    auto.by === "ai"
-      ? auto.model
-        ? t("approval.autoBy.aiModel", { model: auto.model })
-        : t("approval.autoBy.ai")
-      : t("approval.autoBy.rule");
+  let by = t("approval.autoBy.rule");
+  if (auto.by === "ai") {
+    by = auto.model ? t("approval.autoBy.aiModel", { model: auto.model }) : t("approval.autoBy.ai");
+  }
   return t("approval.autoApproved", { by, reason: auto.reason });
 }
 
@@ -177,6 +175,14 @@ function keyAction(
   if (key === "a" && !card.high && !card.questions) return "allow";
   if (key === "n") return "deny";
   return e.key === "Escape" ? "leave" : null;
+}
+
+type ApproveKind = "answers" | "hold" | "plain";
+
+/** Which button approves: send the answers of a question, hold for a high risk, or a plain one. */
+function approveKind(asking: boolean, high: boolean): ApproveKind {
+  if (asking) return "answers";
+  return high ? "hold" : "plain";
 }
 
 /** Does what the key asked for (nothing for a key that means nothing). */
@@ -273,7 +279,7 @@ function CardFooter(props: {
 /** The row of buttons: the denial form, or approve and deny, then the caller's extra buttons. */
 function ButtonRow(props: {
   denying: boolean;
-  kind: "answers" | "hold" | "plain";
+  kind: ApproveKind;
   planning: boolean;
   pending: boolean;
   answerable: boolean;
@@ -359,7 +365,7 @@ function DenyReason(props: {
 
 /** The button that approves: send the answers of a question, hold for a high risk, or a plain approval. */
 function ApproveButton(props: {
-  kind: "answers" | "hold" | "plain";
+  kind: ApproveKind;
   planning: boolean;
   pending: boolean;
   answerable: boolean;
@@ -571,7 +577,7 @@ export function ApprovalCard(props: {
         <>
           <ButtonRow
             denying={denying}
-            kind={questions ? "answers" : high ? "hold" : "plain"}
+            kind={approveKind(questions !== null, high)}
             planning={plan !== null}
             pending={pending}
             answerable={Boolean(answers)}

@@ -20,6 +20,12 @@ const split = (text: string) =>
     .map((part) => part.trim())
     .filter(Boolean);
 
+/** Where a persona lives: the app, a project, or (the default) the host. */
+function placeOf(scope: string | undefined): Place {
+  if (scope === "app" || scope === "project") return scope;
+  return "host";
+}
+
 /**
  * Phase 20: creates or edits a persona, with a preview of what a session opened in it gets. A
  * pack persona edited here becomes the host's version of it; the id never changes.
@@ -46,9 +52,7 @@ export function PersonaEditor(props: {
   const [tools, setTools] = useState((persona?.tools ?? []).join(", "));
   const [mode, setMode] = useState<string>(persona?.permissionMode ?? "");
   const [body, setBody] = useState(persona?.body ?? "");
-  const initialPlace: Place =
-    persona?.scope === "app" ? "app" : persona?.scope === "project" ? "project" : "host";
-  const [place, setPlace] = useState<Place>(initialPlace);
+  const [place, setPlace] = useState<Place>(placeOf(persona?.scope));
   const [error, setError] = useState<string | null>(null);
 
   const input: PersonaInput = personaInput({

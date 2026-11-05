@@ -524,7 +524,8 @@ export class HostConnection {
     }
     const delay = backoffDelay(this.attempt++, this.opts.baseDelayMs, this.opts.maxDelayMs);
     // A browser socket only says that it closed: the story is told by what came before.
-    const kind = this.status === "online" ? "lost" : this.gaveUp ? "timeout" : "refused";
+    let kind: "lost" | "timeout" | "refused" = this.gaveUp ? "timeout" : "refused";
+    if (this.status === "online") kind = "lost";
     this.retry = { kind, lastTryAt: this.triedAt, nextRetryAt: Date.now() + delay };
     this.setStatus("offline");
     this.timer = setTimeout(() => this.connect(), delay);

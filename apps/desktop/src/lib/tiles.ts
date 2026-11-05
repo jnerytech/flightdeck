@@ -36,7 +36,8 @@ export function tileColumns(layout: TileLayout, shown: number): number {
   if (layout === "2" || layout === "2x2") return 2;
   if (layout === "3" || layout === "2x3") return 3;
   if (shown <= 3) return Math.max(1, shown);
-  return shown <= 4 ? 2 : shown <= 9 ? 3 : 4;
+  if (shown <= 4) return 2;
+  return shown <= 9 ? 3 : 4;
 }
 
 /** The project a page shows: its host and key, and its folder for sessions still keyed by it. */

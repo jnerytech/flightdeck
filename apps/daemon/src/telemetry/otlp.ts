@@ -128,6 +128,15 @@ function jsonAttrs(raw: unknown): Attrs {
 
 const nanosToMs = (nanos: bigint) => Number(nanos / 1_000_000n);
 
+/** A time in nanoseconds as the JSON writes it (a number or a string of digits). */
+function parseNanos(value: unknown): bigint {
+  try {
+    return BigInt(String(value));
+  } catch {
+    throw new OtlpDecodeError("a time that is not a number");
+  }
+}
+
 function decodeJson(text: string): OtlpEvent[] {
   let root: unknown;
   try {
@@ -141,12 +150,7 @@ function decodeJson(text: string): OtlpEvent[] {
     for (const sl of list(obj(rl).scopeLogs)) {
       for (const lr of list(obj(sl).logRecords)) {
         const rec = obj(lr);
-        let nanos = 0n;
-        try {
-          nanos = BigInt(String(rec.timeUnixNano ?? rec.observedTimeUnixNano ?? 0));
-        } catch {
-          throw new OtlpDecodeError("a time that is not a number");
-        }
+        const nanos = parseNanos(rec.timeUnixNano ?? rec.observedTimeUnixNano ?? 0);
         const event = toEvent(
           jsonAttrs(rec.attributes),
           resource,
@@ -271,7 +275,7 @@ function logRecordEvent(lr: Uint8Array, resource: ReturnType<typeof protoAttrs>)
   const time = fields.find((f) => f.num === 1 && typeof f.value === "bigint")?.value;
   const observed = fields.find((f) => f.num === 11 && typeof f.value === "bigint")?.value;
   const body = bytesOf(fields, 5)[0];
-  const stamp = typeof time === "bigint" ? time : typeof observed === "bigint" ? observed : 0n;
+  const stamp = [time, observed].find((value) => typeof value === "bigint") ?? 0n;
   return toEvent(
     protoAttrs(bytesOf(fields, 6)),
     resource,
