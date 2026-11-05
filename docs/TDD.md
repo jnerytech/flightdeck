@@ -190,10 +190,17 @@ em vez de depender de cuidado.
 - CI starts with a quick job (#272): typecheck, lint, the TDD audit, Sonar's ratchet and every
   ratchet test, in minutes. The heavy jobs need it. A new ratchet's test file ends in
   `-ratchet.test.ts` (or `.tsx`), so the quick job picks it up by itself (scripts/lib/ci-quick.ts).
+
+- Right after `open`, the session turns on auto-merge: `bun run pr -- auto <n>` (#271). GitHub
+  then merges the PR with a merge commit, never a squash, once the main ruleset's required checks
+  are green on its HEAD and it is up to date (the ruleset is strict; auto-merge never updates the
+  branch, so a PR behind `main` waits for `bun run pr -- update <n>`). It refuses a draft, and a stacked PR whose parent
+  `main` does not have yet; once the parent is in `main`, it retargets the PR onto `main` first.
+- A session keeps at most 2 branches open (pushed and not merged yet).
 - `bun run pr -- next` lists the open PRs in merge order with what each still needs.
   `bun run pr -- update <n>` brings one up to date with its base. `bun run pr -- merge <n>` (the
-  coordinator) merges with a merge commit, never a squash, and only when the main ruleset's
-  required checks are green on the PR's HEAD and it is up to date.
+  coordinator only; the guard hook refuses it in a session) merges by hand with a merge commit,
+  under the same conditions.
 - A PR runs only the jobs its paths need (#264, scripts/lib/ci-paths.ts): docs or scripts only run
   the Linux tests and lint; the daemon or a smoke adds Windows and the smokes; the app, the
   protocol, the dependencies or the workflow run everything; the Tauri shell adds cargo. A job

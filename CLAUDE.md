@@ -95,14 +95,18 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   without options.
 - Never read credentials, tokens, `~/.claude/.credentials.json`, SSH keys or shell history, not
   even in a test or a proof of concept (`.claude/settings.json` denies the obvious paths).
-- Delivery is GitHub Flow: one PR per branch to `main` (`bun run pr -- open <branch>`), merged
-  alone when its required checks are green on its HEAD and it is up to date (`bun run pr -- merge
-  <n>`, the coordinator only); a release is a tag on a green `main`.
-- Sessions push only their own work branches, so CI runs the heavy checks on them (#216); only
-  the coordinator pushes `main` and tags, merges the PRs and publishes releases. The guard hook
-  refuses the rest: main, `rc/*`, tags, `--tags`/`--all`/`--mirror`, a bare `--force`, and a
-  `--force-with-lease` to any branch but the one checked out (the coordinator's session runs with
-  `FLIGHTDECK_COORDINATOR=1`).
+- Delivery is GitHub Flow (#260, #271): one PR per branch to `main`. A session pushes its own
+  branch, opens its PR (`bun run pr -- open <branch>`) and turns on auto-merge
+  (`bun run pr -- auto <n>`): GitHub merges it with a merge commit once its required checks are
+  green on its HEAD and it is up to date (a PR behind `main` waits for `bun run pr -- update <n>`).
+  A stacked PR gets auto-merge once its parent is in
+  `main` (`pr auto` retargets it). A session keeps at most 2 branches open (pushed and not merged
+  yet): it finishes one before it starts a third. A release is a tag on a green `main`.
+- Only the coordinator pushes `main`, `rc/*` and tags, merges by hand (`bun run pr -- merge <n>`)
+  and publishes releases. The guard hook refuses the rest: pushes of main, `rc/*`, tags,
+  `--tags`/`--all`/`--mirror`, a bare `--force`, a `--force-with-lease` to any branch but the one
+  checked out, and a session's `bun run pr -- merge|tag`, `gh pr merge` or REST merge (the
+  coordinator's session runs with `FLIGHTDECK_COORDINATOR=1`).
 
 - Full suite, `demo:shots`, `e2e`, the smokes and the builds run only through
   `bun run slot --`, never bare (the guard hook refuses them otherwise): two of them at once overload the machine and make the

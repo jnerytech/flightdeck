@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 /**
  * `bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n>] | next | update <n> |
- * merge <n>` (issue #260, GitHub Flow). The logic is in lib/pr-flow.ts; merge needs
- * FLIGHTDECK_COORDINATOR=1.
+ * auto <n> | merge <n>` (issue #260, GitHub Flow; auto #271). The logic is in lib/pr-flow.ts;
+ * merge needs FLIGHTDECK_COORDINATOR=1.
  */
 import { spawnExec } from "../apps/daemon/src/exec.ts";
 import { prFlow } from "./lib/pr-flow.ts";

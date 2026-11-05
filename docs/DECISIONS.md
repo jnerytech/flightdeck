@@ -1762,7 +1762,6 @@ What the Phase 13 interface (`risco-ui`, `issues-ui`, `automacoes-ui`, `arena-ui
 - **Version:** 0.13.0 in the protocol, the daemon and the desktop (`tauri.conf.json` reads the desktop's `package.json`).
 - **`scripts/demo-seed.ts` is out of the coverage count:** the `demo-issue-risco` test is the first unit test to load the seed, which put its ping reply and its old-daemon stub (only used by `demo` and `demo:shots`) into the totals. The seed is demo scaffolding, covered by the e2e and the screenshots, so `bunfig.toml` ignores it like the vendored UI.
 
-
 # Phase 14 decisions: the daemon (embedded terminal)
 
 ## Terminal embutido (daemon)
@@ -2467,7 +2466,6 @@ The app side of phase 21: `conversas-ui`, `times-ui`, the relay between hosts, `
 
 - **`smoke:run`:** a real daemon over a real repository whose committed run.yaml runs an echo server that also starts a child that ignores SIGHUP and SIGTERM. Two cards run at once on different blocks, both answer over HTTP, and Stop leaves no server, child or answering port. Its block starts at a random base. Red on the base commit, where `runenv.config` does not exist.
 
-
 # Phase 28 decisions: performance and stack best practices
 
 ## Baseline
@@ -2882,8 +2880,6 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
 - Not done in part 1: the weight scale (vendored buttons), splitting hover motion into per-component
   enter animations. Both go to part 2.
 
-
-
 ## Phase 37: GitHub sign-in and start from a GitHub project
 
 - **The sign-in is the host's `gh`, not an OAuth client of ours.** Issue #16 asks for the device flow, the token in the OS
@@ -3054,7 +3050,6 @@ are out of scope. This supersedes item 4 of the blocking-call audit: the sync fa
   opens a new one; duplicates in an older snapshot fold into one.
 - `session.create` takes no first prompt: the session starts idle and the first message begins
   its first turn. The New session form has a Model select (default, opus, sonnet, haiku).
-
 
 ## Phase 38: board sync with external boards (GitHub Projects first)
 
@@ -3430,7 +3425,6 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   next sync; after five in a row a single `push_gave_up` entry is written and the card is left alone.
 - **Not verified here:** the stderr text of a missing scope and of a rate limit, and the `Status` field name on boards that
   renamed it, come from memory and the fakes; the proof of concept in the spec settles them.
-
 
 ## Team sessions get the flightdeck MCP (v0.36.1, issue #95)
 
@@ -4053,3 +4047,27 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
 - **Not in the quick job:** a guard checked inside a heavier test (`layout-guards.test.ts`) stays in
   the suite. Only a file named `-ratchet` is quick, so a slow test never slips in by itself.
 
+## Sessions open their own PRs and turn on auto-merge (issue #271)
+
+- **Why.** The owner decided (2026-11-05) that a session delivers its own work: it pushes its
+  branch, opens the PR and turns on auto-merge, so a green PR no longer waits for the coordinator.
+  The coordinator keeps main, hand merges, tags, releases and the repository settings.
+- **`bun run pr -- auto <n>`** calls GraphQL's `enablePullRequestAutoMerge` with `MERGE` (REST has
+  no auto-merge endpoint). The ruleset's required checks gate the merge, as for `pr merge`. It
+  refuses a draft (GitHub would too). The main ruleset is strict
+  (`strict_required_status_checks_policy`), so GitHub also waits until the PR is up to date, as
+  `pr merge` checks; auto-merge never updates the branch itself (`pr update <n>` does). GitHub
+  refuses auto-merge for a PR that can merge already ("clean status"); `auto` then says the
+  coordinator merges it, since a session does not merge by hand.
+- **Stacked PRs.** Auto-merge onto a branch with no ruleset would merge at once, into the parent.
+  So `auto` refuses a PR onto a branch that `main` does not have yet. The repository does not
+  delete a branch on merge, so GitHub never retargets the child by itself: once `main` has the
+  parent (`compare` says `ahead_by` 0), `auto` moves the PR onto `main` and turns auto-merge on.
+  A compare that fails refuses; it never counts as merged.
+- **The guard** (`prMergeViolation`) blocks `bun run pr -- merge|tag`, `gh pr merge` and a REST
+  `pulls/N/merge` in a session. It reads `FLIGHTDECK_COORDINATOR` from the hook's own environment,
+  so setting it in the command does not pass. `pr merge` refuses without the variable too. Like the
+  other command rules, it reads words outside quotes: a quoted `'…/pulls/12/merge'` path passes.
+  The hook is a guard against slips, not a security boundary.
+- **WIP limit.** At most 2 open branches per session, stated in CLAUDE.md and docs/TDD.md. It is
+  not enforced in code.
