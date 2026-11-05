@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { join } from "node:path";
+import { resolve } from "node:path";
 import { commitViolation } from "../lib/claude-hooks.ts";
 
 const CWD = "/repos/flightdeck";
@@ -104,7 +104,7 @@ describe("hook-commit-gate", () => {
   });
 
   test("the commit runs where the command points: cd, git -C, or the shell's directory", () => {
-    const wt = join(CWD, "..", "flightdeck-fase39");
+    const wt = resolve(CWD, "..", "flightdeck-fase39");
     // The worktree has no test(a): only a gate that asks git there sees it and blocks.
     expect(
       commitViolation(`cd ../flightdeck-fase39 && git commit -m "feat(a): x"`, CWD, repo([], wt)) ??
