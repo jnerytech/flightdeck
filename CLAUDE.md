@@ -73,8 +73,10 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   without options.
 - Never read credentials, tokens, `~/.claude/.credentials.json`, SSH keys or shell history, not
   even in a test or a proof of concept (`.claude/settings.json` denies the obvious paths).
-- Phase sessions never push, tag or publish releases. They hand the green HEAD over; the
-  maintainer integrates the phase into `main`, tags it and releases.
+- Delivery is GitHub Flow: one PR per branch to `main` (`bun run pr -- open <branch>`), merged
+  alone when its required checks are green on its HEAD and it is up to date (`bun run pr -- merge
+  <n>`, the coordinator only); a release is a tag on a green `main`. Phase sessions never push,
+  tag or publish releases: they hand the green HEAD over.
 
 - Full suite, `demo:shots`, `e2e`, the smokes and the builds run only through
   `bun run slot --`, never bare: two of them at once overload the machine and make the
