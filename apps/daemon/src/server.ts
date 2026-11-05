@@ -17,6 +17,7 @@ import {
   type ExternalSession,
   type ExternalStatus,
   type ExternalUpdated,
+  FEATURE_RESUME_OFFER,
   type HistoryChanged,
   type IdleFiredFrame,
   type MessagesRelayFrame,
@@ -436,7 +437,7 @@ export function startServer(opts: ServerOptions): RunningServer {
   /** What this daemon has, as `host.info` announces it; the app hides what is missing. */
   const features = [
     // The sessions a restart interrupted can be listed (`session.interrupted`, issue #150).
-    "resume-offer",
+    FEATURE_RESUME_OFFER,
     // The folder picker of the app browses the host's folders with `fs.dirs`.
     ...(opts.fsDirs ? ["fs.dirs", "fs.files"] : []),
     // A live managed session takes a new permission mode and model, and announces its slash commands.

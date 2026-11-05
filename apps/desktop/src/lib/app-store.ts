@@ -54,7 +54,7 @@ import type {
   WatchSettings,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { EPHEMERAL_EVENTS } from "@flightdeck/protocol";
+import { EPHEMERAL_EVENTS, FEATURE_RESUME_OFFER } from "@flightdeck/protocol";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type {
@@ -2449,7 +2449,8 @@ export class AppStore {
     }
     // Phase 19: the daemon decides a request with the rules the app hands it.
     if (hasFeature(hostInfo?.features, "actions", false)) this.sendVaultRules(hostId, conn);
-    if (hasFeature(hostInfo?.features, "resume-offer", false)) await this.offerResume(hostId, conn);
+    if (hasFeature(hostInfo?.features, FEATURE_RESUME_OFFER, false))
+      await this.offerResume(hostId, conn);
     if (hasFeature(hostInfo?.features, "costs", false)) {
       const list = await conn.request("budget.list", {}).catch(() => null);
       if (list) this.update({ budgets: { ...this.state.budgets, [hostId]: list.budgets } });

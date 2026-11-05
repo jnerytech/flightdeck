@@ -844,4 +844,8 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE projects ADD COLUMN roi_commits INTEGER NOT NULL DEFAULT 0;
   ALTER TABLE projects ADD COLUMN roi_issues INTEGER NOT NULL DEFAULT 0;
   `,
+  // Issue #150: the resume offer reads the sessions in `error` without scanning them all.
+  `
+  CREATE INDEX IF NOT EXISTS sessions_status ON sessions (status, updated_at);
+  `,
 ];

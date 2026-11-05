@@ -4078,6 +4078,9 @@ export const HostInfoResult = z.object({
 });
 export type HostInfoResult = z.infer<typeof HostInfoResult>;
 
+/** The host lists the sessions a restart interrupted (`session.interrupted`); the app gates on it. */
+export const FEATURE_RESUME_OFFER = "resume-offer";
+
 /** A session a daemon restart interrupted (issue #150): what the resume offer lists. */
 export const InterruptedSession = z.object({
   sessionId: z.string(),

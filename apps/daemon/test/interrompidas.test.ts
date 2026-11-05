@@ -93,6 +93,7 @@ describe("interrompidas: the sessions a daemon restart interrupted, for the resu
       permissionMode: "default",
       model: null,
     });
+    store.updateSession("old-1", { claudeSessionId: "claude-old-1" });
     store.appendEvent("old-1", {
       type: "session.status",
       status: "error",

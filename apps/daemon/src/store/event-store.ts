@@ -240,6 +240,14 @@ export class EventStore {
     return rows.map(toSummary);
   }
 
+  /** The sessions in one status, oldest first (the order they were started). */
+  listSessionsByStatus(status: SessionStatus): SessionSummary[] {
+    const rows = this.db
+      .query("SELECT * FROM sessions WHERE status = $status ORDER BY created_at ASC, id ASC")
+      .all({ status }) as SessionRow[];
+    return rows.map(toSummary);
+  }
+
   updateSession(
     id: string,
     patch: { status?: SessionStatus; claudeSessionId?: string; model?: string },

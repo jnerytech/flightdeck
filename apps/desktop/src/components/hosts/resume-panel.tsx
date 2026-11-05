@@ -1,3 +1,4 @@
+import { FEATURE_RESUME_OFFER } from "@flightdeck/protocol";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -11,7 +12,7 @@ export function ResumePanel(props: { store: AppStore; host: HostView }) {
   const { store, host } = props;
   const t = useT();
   const state = useStoreState(store);
-  if (!hasFeature(host.hostInfo?.features, "resume-offer", false)) return null;
+  if (!hasFeature(host.hostInfo?.features, FEATURE_RESUME_OFFER, false)) return null;
   const offer = state.resumeOffers[host.id];
   return (
     <Panel title={t("resumeOffer.title")}>
