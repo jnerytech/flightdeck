@@ -1889,6 +1889,11 @@ export class Board {
     this.changed(id);
   }
 
+  /** Whether a card's run uses this session (stub). */
+  hasRunSession(_sessionId: string): boolean {
+    return false;
+  }
+
   /** Tells the watchers about a card whose fields changed outside the board (the board sync's). */
   announce(id: string): void {
     this.changed(id);

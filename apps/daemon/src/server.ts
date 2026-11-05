@@ -144,6 +144,8 @@ export interface ServerOptions {
   allowedRoots: readonly string[];
   /** The host's switch for sessions without permission prompts: read for `host.info`, set by `host.bypass`. */
   bypass?: { allowed(): boolean; set(allow: boolean): void | Promise<void> };
+  /** Issue #157: how long an idle session may wait before it sleeps; read for `host.info`, set by `host.sleep`. */
+  sleep?: { minutes(): number; set(minutes: number): void | Promise<void> };
   /** Keeps the allowed folders in the config file after `roots.add`. */
   persistRoots?: (roots: readonly string[]) => void | Promise<void>;
   /** What decides the system folders `roots.add` refuses; the process's own when absent (tests give theirs). */
