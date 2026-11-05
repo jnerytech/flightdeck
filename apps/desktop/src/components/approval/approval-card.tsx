@@ -202,7 +202,8 @@ export function ApprovalCard(props: {
   const [picks, setPicks] = useState<Record<string, AskPick>>({});
   const answers = questions ? buildAnswers(questions, picks) : null;
   const asks = questions !== null || plan !== null;
-  const high = request.risk === "high" && !asks;
+  // A plan is held like any request (#245); a question approves no action, so it never is.
+  const high = request.risk === "high" && !questions;
   const age = request.createdAt ? formatAgo(props.nowMs - Date.parse(request.createdAt), t) : null;
   const deny = () => {
     const message = reason.trim();
