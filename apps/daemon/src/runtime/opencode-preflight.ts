@@ -33,7 +33,12 @@ export interface PreflightDeps {
   now?: () => number;
   /** The executable as discovery saw it, and how it is now. */
   exe?: { fingerprint: string; current: () => Promise<string | null> };
+  /** Why a preflight failed: the route and its exit code, never what OpenCode printed. */
+  log?: (message: string) => void;
 }
+
+/** A check that did not answer: its route and why, with nothing of what OpenCode printed. */
+class CheckFailed extends Error {}
 
 /** OpenCode's own internal agents, which stay visible as hidden ones. */
 const INTERNAL_AGENTS = new Set(["compaction", "title", "summary"]);
@@ -123,9 +128,13 @@ export class OpenCodePreflight {
         return { configContent };
       })
       .catch((error: unknown) => {
-        throw error instanceof FlightdeckError
-          ? error
-          : this.refuse("opencode_preflight_failed", {});
+        if (error instanceof FlightdeckError) throw error;
+        const why =
+          error instanceof CheckFailed
+            ? error.message
+            : "a check could not run, or its answer had an unexpected shape";
+        this.deps.log?.(`opencode preflight failed in ${cwd}: ${why}`);
+        throw this.refuse("opencode_preflight_failed", {});
       })
       .finally(() => this.running.delete(key));
     this.running.set(key, run);
@@ -185,8 +194,13 @@ export class OpenCodePreflight {
       env: opencodeEnv(this.deps.env, content),
       timeoutMs: OPENCODE_API_TIMEOUT_MS,
     });
-    if (result.exitCode !== 0) throw new Error(`${route} failed`);
-    return JSON.parse(result.stdout) as unknown;
+    if (result.exitCode !== 0) throw new CheckFailed(`${route} exited ${result.exitCode}`);
+    try {
+      return JSON.parse(result.stdout) as unknown;
+    } catch {
+      // The parser's message quotes the output, which is not for logs.
+      throw new CheckFailed(`${route} answered something that is not JSON`);
+    }
   }
 
   private refuse(reason: string, params: Record<string, string>): FlightdeckError {

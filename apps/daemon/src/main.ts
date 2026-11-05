@@ -624,6 +624,8 @@ async function createOpenCode(
   kind: RuntimeKind,
   env: Record<string, string | undefined>,
   mcpServer: FlightdeckMcpServer,
+  /** Why a preflight failed (the route and its exit code). */
+  log: (message: string) => void,
 ): Promise<CreatedOpenCode> {
   // The demo and the journeys show the picker with a fake OpenCode, which runs nothing.
   if (kind === "fake") return fakeOpenCode();
@@ -639,6 +641,7 @@ async function createOpenCode(
     env: childEnv,
     run: runCommand,
     scan,
+    log,
     ...(info.fingerprint
       ? { exe: { fingerprint: info.fingerprint, current: () => fileStamp(path) } }
       : {}),
@@ -716,7 +719,13 @@ export async function startDaemon(
     accountReaders: readers,
   } = await createRuntime(runtimeKind, claudePath, mcpServer);
   // Phase 39: OpenCode, when this host turned it on.
-  const opencode = await createOpenCode(config, runtimeKind, env, mcpServer);
+  const opencode = await createOpenCode(
+    config,
+    runtimeKind,
+    env,
+    mcpServer,
+    logger.log.bind(logger),
+  );
   // The plan quota is the host's: every managed session feeds it (phase 7).
   const quota = new Quota({ pauseAt: config.quota.pauseAt });
   const quotaHistory = new QuotaHistory({ db: store.db });
