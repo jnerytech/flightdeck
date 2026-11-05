@@ -7,6 +7,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { opencodeConfig, opencodeEnv, VERIFIED_OPENCODE_VERSION } from "./opencode-config.ts";
+import { unexpectedSource } from "./opencode-preflight.ts";
 import { globalConfigDir, type ScopeFinding, type ScopeResult } from "./opencode-scope.ts";
 
 export type OpenCodeUnavailable =
@@ -28,6 +29,8 @@ export interface OpenCodeInfo {
   reason?: OpenCodeUnavailable;
   /** What the global or system scope would load (with `opencode_unsafe_global`). */
   findings?: ScopeFinding[];
+  /** The executable's size and time, for the preflight to notice a replaced binary. */
+  fingerprint?: string;
 }
 
 export interface RunResult {
@@ -48,6 +51,8 @@ export interface DiscoveryDeps {
     opts: { cwd: string; env: Record<string, string>; timeoutMs: number },
   ) => Promise<RunResult>;
   scan: () => Promise<ScopeResult>;
+  /** `size:mtime` of a file; null when it is not there. */
+  statFile?: (path: string) => Promise<string | null>;
 }
 
 export const CANARY_MODEL = "flightdeck-canary/none";
@@ -107,9 +112,8 @@ async function canary(
     const sources = JSON.parse(result.stdout) as Array<{ type?: string; path?: string }>;
     if (!Array.isArray(sources)) return null;
     if (sources.some((source) => source.path === file)) return "listed";
-    const global = globalConfigDir(deps.env);
-    const other = sources.some((source) => source.type === "directory" && source.path !== global);
-    return other ? "mismatch" : "ok";
+    // The preflight's own rule: any other source (another spelling of the canary, another folder).
+    return unexpectedSource(sources, globalConfigDir(deps.env)) ? "mismatch" : "ok";
   } catch {
     return null;
   }
@@ -124,8 +128,9 @@ export async function discoverOpenCode(
   if (!path) return { available: false, reason: "opencode_missing" };
   const probe = await deps.run([path, "--version"], {
     cwd: deps.dataDir,
-    env: deps.env,
-    timeoutMs: 2_000,
+    env: opencodeEnv(deps.env, JSON.stringify(opencodeConfig())),
+    // A cold start on the Pi takes about 2 s.
+    timeoutMs: 5_000,
   });
   const version = probe.exitCode === 0 ? parseOpenCodeVersion(probe.stdout) : null;
   if (!version) return { available: false, path, reason: "opencode_version_failed" };
@@ -149,5 +154,13 @@ export async function discoverOpenCode(
   }
   if (proof === "mismatch")
     return { available: false, path, version, reason: "opencode_scope_mismatch" };
-  return { available: true, path, version, verified: !newer(version, VERIFIED_OPENCODE_VERSION) };
+  const fingerprint = (await deps.statFile?.(path)) ?? null;
+  return {
+    available: true,
+    path,
+    version,
+    // Only the version this phase checked; an older 2.x was never verified either.
+    verified: version === VERIFIED_OPENCODE_VERSION,
+    ...(fingerprint ? { fingerprint } : {}),
+  };
 }
