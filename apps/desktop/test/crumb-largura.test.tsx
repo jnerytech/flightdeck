@@ -76,11 +76,19 @@ describe("crumb-largura: a long path is cut with an ellipsis, the earlier steps 
     expect(first.getAttribute("title")).toContain("wsl - Ubuntu");
   });
 
-  test("the earlier steps shrink first, down to 4rem, and the current one last", () => {
+  test("the earlier steps shrink first, down to 4rem, and the current one last, with factors that add up to at least 1", () => {
     render(<Breadcrumb crumbs={crumbs.slice(0, 2)} label="Path" onGo={() => {}} />);
     const [earlier, current] = [...document.querySelectorAll("nav li")] as HTMLElement[];
     expect(earlier?.className).toContain("min-w-[4rem]");
-    expect(current?.className).toContain("shrink-[0.01]");
+    /** `shrink-[N]` is N; a bare `shrink` is 1. */
+    const factor = (el: HTMLElement | undefined) => {
+      const match = el?.className.match(/\bshrink-\[([\d.]+)\]/);
+      return match ? Number(match[1]) : /\bshrink\b/.test(el?.className ?? "") ? 1 : 0;
+    };
+    // Flex only shrinks by the share of the overflow that the factors add up to when they add up
+    // to under 1: a current step with a fraction would stay wide and run under the bell.
+    expect(factor(current)).toBeGreaterThanOrEqual(1);
+    expect(factor(earlier)).toBeGreaterThan(factor(current));
   });
 
   test("with many steps the middle ones collapse into a menu that goes to them", () => {
