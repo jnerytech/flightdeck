@@ -9,7 +9,29 @@ export interface UnstableSkip {
   documented: boolean;
 }
 
+/** A skip whose condition is "not Linux": `notLinux`, or the platform compared with "linux". */
+const OFF_LINUX =
+  /\b(?:test|it|describe)\.skipIf\(\s*(?:notLinux|process\.platform\s*!==\s*(?:"linux"|'linux'))\s*\)/;
+
+/** The note: an issue number and at least one word of reason. */
+const NOTE = /\/\/ unstable: #\d+ \S/;
+
+/** A line that is only the note, as the line above a skip. */
+const NOTE_LINE = /^\s*\/\/ unstable: #\d+ \S/;
+
 /** The unstable skips of a source, in order. */
-export function unstableSkips(_source: string): UnstableSkip[] {
-  return [];
+export function unstableSkips(source: string): UnstableSkip[] {
+  const lines = source.split("\n");
+  const skips: UnstableSkip[] = [];
+  lines.forEach((text, i) => {
+    if (!OFF_LINUX.test(text)) return;
+    const documented = NOTE.test(text) || NOTE_LINE.test(lines[i - 1] ?? "");
+    skips.push({ line: i + 1, documented });
+  });
+  return skips;
+}
+
+/** How many of the source's unstable skips have no complete note. */
+export function undocumentedSkips(source: string): number {
+  return unstableSkips(source).filter((skip) => !skip.documented).length;
 }
