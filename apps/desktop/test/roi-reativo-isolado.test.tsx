@@ -29,7 +29,10 @@ const RESULT: RoiSummaryResult = {
 
 /** A store whose hosts answer with one project; nothing re-renders the screens but the store. */
 function answering() {
-  const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+  const mem = memoryPlatform();
+  // The card opens folded (issue #178); these tests read its details, so it starts open.
+  mem.win.localStorage.setItem("flightdeck.roiOpen", "true");
+  const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   store.roiSummaries = async () => [{ hostId: "h1", result: RESULT }];
   return store;
 }
@@ -76,7 +79,10 @@ describe("roi-reativo-isolado: the figures follow the rate the person types, who
   });
 
   test("a card whose hosts answer nothing says no host answered", async () => {
-    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    const mem = memoryPlatform();
+    // The card opens folded (issue #178); these tests read its details, so it starts open.
+    mem.win.localStorage.setItem("flightdeck.roiOpen", "true");
+    const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
     store.roiSummaries = async () => [];
     const project = {
       id: "p1",

@@ -21,7 +21,8 @@ afterEach(async () => {
 const settle = waiter(10_000);
 
 /** A project's board on a host with return on cost, in a window whose storage `mem` keeps. */
-async function board(mem = memoryPlatform(false, "en")) {
+async function board() {
+  const mem = memoryPlatform(false, "en");
   const d = makeDaemon(cleanups, { roi: true });
   const repo = join(d.root, "shop");
   mkdirSync(repo, { recursive: true });
@@ -40,12 +41,19 @@ async function board(mem = memoryPlatform(false, "en")) {
   });
   await settle(() => screen.queryByRole("region", { name: en.roiUi.title }) !== null);
   await settle(() => card().querySelector("p") !== null);
-  return mem;
+  return { mem, store, hostId, projectId: project?.id ?? "" };
 }
 const card = () => screen.queryByRole("region", { name: en.roiUi.title }) as HTMLElement;
-const toggle = () =>
-  within(card()).queryByRole("button", { name: en.roiUi.details }) as HTMLButtonElement | null;
-const period = () => within(card()).queryByRole("group", { name: en.roiUi.period });
+const toggle = () => {
+  const region = card();
+  return region
+    ? (within(region).queryByRole("button", { name: en.roiUi.details }) as HTMLButtonElement | null)
+    : null;
+};
+const period = () => {
+  const region = card();
+  return region ? within(region).queryByRole("group", { name: en.roiUi.period }) : null;
+};
 
 // Issue #178: the return on cost card took the top of the board and pushed its columns below the
 // fold. It opens folded to its headline; the person's choice to open it is kept.
@@ -58,15 +66,17 @@ describe("roi-fold: the return on cost card opens folded to its headline", () =>
   });
 
   test("Show details opens it, and it opens that way again on the next start", async () => {
-    const mem = await board();
+    const { store } = await board();
     expect(toggle()).not.toBeNull();
     await act(async () => {
       fireEvent.click(toggle() as HTMLButtonElement);
     });
     expect(toggle()?.getAttribute("aria-expanded")).toBe("true");
     expect(period()).not.toBeNull();
+    // The next start: the app drawn again from the same storage.
     cleanup();
-    await board(mem);
+    render(<App store={store} />);
+    await settle(() => toggle() !== null);
     expect(toggle()?.getAttribute("aria-expanded")).toBe("true");
     expect(period()).not.toBeNull();
   });
