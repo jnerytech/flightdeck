@@ -110,6 +110,26 @@ describe("home-ui: four cards with the last seven days of every host", () => {
     expect(average.textContent).toContain("75% success rate");
   });
 
+  test("a screen reader hears each card's number and details: they are the button's description (HK-M3)", async () => {
+    const { view } = setup();
+    render(view);
+    const spend = await screen.findByRole("button", { name: "Open Spend" });
+    await waitFor(() => expect(spend.textContent).toContain("$2.25"));
+    const description = (button: HTMLElement) =>
+      (button.getAttribute("aria-describedby") ?? "")
+        .split(" ")
+        .filter(Boolean)
+        .map((id) => document.getElementById(id)?.textContent ?? "")
+        .join(" ");
+    expect(description(spend)).toContain("$2.25");
+    expect(description(spend)).toContain("$40.00 of $150.00 budget this month");
+    expect(description(screen.getByRole("button", { name: "Open Turns" }))).toContain("3 ok");
+    expect(description(screen.getByRole("button", { name: "Open Tokens" }))).toContain("2.2M");
+    expect(description(screen.getByRole("button", { name: "Open Avg cost / turn" }))).toContain(
+      "75% success rate",
+    );
+  });
+
   test("each card draws its seven days as a sparkline that says its values", async () => {
     const { view } = setup();
     render(view);
