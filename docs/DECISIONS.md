@@ -3968,3 +3968,26 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   - The "add an Anthropic key" scenario stays out of the e2e, which runs on the web build.
   The research behind the spec is `docs/research-fase-40.md`.
 - **Open questions.** The phase follows each default of the spec's list until the maintainer says otherwise.
+
+### Phase 40: the daemon slice, first part
+
+- **The refusal texts have their own namespace.** Every assistant refusal reason, whether the daemon or the Rust shell raises
+  it, is in `ASSISTANT_REASONS` (`packages/protocol/src/assistant.ts`). Its text lives in `assistantRefusal` in both
+  dictionaries, as the snippet model's reasons do, and not in `DAEMON_REASONS`, which stays the daemon's other refusals. The
+  protocol test reads the two dictionaries' `assistantRefusal` blocks as text, because importing the app's i18n would pull
+  the app into the protocol package's typecheck. Typecheck already keeps `en` and `pt-BR` on the same keys.
+- **The prompts are their own module** (`packages/protocol/src/assistant-prompts.ts`), beside the schemas, both exported
+  from the protocol. A refusal before any call is an `AssistantRefusal` (`reason`, `params`), which the daemon and the app
+  turn into their own errors.
+- **Commit notices are codes:** `subject_too_long`, `subject_trailing_period`, `subject_not_conventional` and
+  `body_needs_blank_line`. The app translates them; the message is shown with them, never discarded.
+- **`isCredentialPath` is an alias.** `risk.ts` exports `credential` exactly as fase-39 does (the same line), plus
+  `isCredentialPath = credential` on a line of its own, so the two phases merge without a conflict and fase-39's import keeps
+  working.
+- **Migration order with fase-39.** Both phases append one migration: fase-39 `sessions.runtime`, phase 40
+  `usage_entries.provider`. When both land, each keeps its own entry in `MIGRATIONS`. A database is never migrated by a
+  build of only one of them in a release, so the order the merge leaves is the order every released database gets.
+- **The usage helper of the tests names its columns.** `usage-helpers.ts` reads the columns from before this phase, so the
+  existing usage tests stay as they were, and only `assistant-usage` reads `provider`.
+- **A logged-out `claude`** answers `subtype: "success"` with `is_error: true` and the reason as its result. `complete`
+  maps that to `assistant_host_unavailable { detail }`, like a spawn failure. Proof of concept 3 confirms the shape.
