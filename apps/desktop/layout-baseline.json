@@ -12,7 +12,7 @@
   "src/ui/AutomationForm.tsx": 9,
   "src/ui/AutomationsPage.tsx": 21,
   "src/ui/BoardView.tsx": 26,
-  "src/ui/CardDetail.tsx": 21,
+  "src/ui/CardDetail.tsx": 16,
   "src/ui/CardReview.tsx": 10,
   "src/ui/ChangesPanel.tsx": 17,
   "src/ui/Checkpoints.tsx": 39,
