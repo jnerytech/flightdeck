@@ -137,7 +137,7 @@ describe("opencode-session-ui", () => {
     expect(options("Agente")).toEqual(["claude", "opencode"]);
   });
 
-  test("an OpenCode session leaves out Claude Code's panels: terminal, timeline, persona, recap", () => {
+  test("an OpenCode session leaves out Claude Code's panels (terminal, persona, recap) and keeps the timeline, whose git snapshots still work", () => {
     const actions = {
       send: async () => {},
       interrupt: async () => {},
@@ -165,7 +165,7 @@ describe("opencode-session-ui", () => {
     const utils = render(view("claude"));
     expect(shown()).toEqual(["terminal", "timeline", "persona", "recap"]);
     utils.rerender(view("opencode"));
-    expect(shown()).toEqual([]);
+    expect(shown()).toEqual(["timeline"]);
   });
 
   test("an OpenCode session says when a denial stopped the turn, and what went with the first message", () => {
