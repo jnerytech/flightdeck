@@ -130,3 +130,58 @@ describe("sessoes-projetos: the open or folded state is remembered per project (
     expect(loadHubOpen({ getItem: () => "[1,2]" })).toEqual({});
   });
 });
+
+describe("sessoes-projetos: one project on two hosts is one group (issue #111)", () => {
+  const alfa = (n: number, over: Partial<HubRow> = {}) =>
+    row(n, {
+      hostId: "a",
+      hostName: "alfa",
+      cwd: "/home/a/api-gateway",
+      projectKey: "host:alfa:/home/a/api-gateway",
+      ...over,
+    });
+  const beta = (n: number, over: Partial<HubRow> = {}) =>
+    row(n, {
+      hostId: "b",
+      hostName: "beta",
+      cwd: "/srv/b/api-gateway",
+      projectKey: "host:beta:/srv/b/api-gateway",
+      ...over,
+    });
+
+  test("folder-keyed projects with the same name join across hosts, rows keep their host", () => {
+    const groups = hubGroups(
+      [alfa(1), beta(2), alfa(3, { cwd: "/home/a/docs", projectKey: "host:alfa:/home/a/docs" })],
+      DEFAULT_HUB_FILTER,
+    );
+    expect(groups.map((g) => g.name).sort()).toEqual(["api-gateway", "docs"]);
+    const joined = groups.find((g) => g.name === "api-gateway");
+    expect(joined?.rows.map((r) => r.hostName).sort()).toEqual(["alfa", "beta"]);
+  });
+
+  test("the group key is the same whichever row is newest", () => {
+    const one = hubGroups([alfa(1), beta(2)], DEFAULT_HUB_FILTER)[0]?.key;
+    const other = hubGroups([alfa(2), beta(1)], DEFAULT_HUB_FILTER)[0]?.key;
+    expect(one).toBe(other);
+  });
+
+  test("keys the daemon resolved (a remote) already agree and stay as they are", () => {
+    const groups = hubGroups(
+      [
+        alfa(1, { projectKey: "github.com/acme/api" }),
+        beta(2, { projectKey: "github.com/acme/api" }),
+      ],
+      DEFAULT_HUB_FILTER,
+    );
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.key).toBe("github.com/acme/api");
+  });
+
+  test("a resolved remote and a folder of the same name stay apart", () => {
+    const groups = hubGroups(
+      [alfa(1, { projectKey: "github.com/acme/api-gateway" }), beta(2)],
+      DEFAULT_HUB_FILTER,
+    );
+    expect(groups).toHaveLength(2);
+  });
+});
