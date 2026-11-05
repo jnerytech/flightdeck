@@ -228,11 +228,18 @@ function modeSwitch(store: AppStore): "simple" | "full" | null {
 }
 
 /** The palette's line for the oldest waiting request, and whether it must be opened to be seen. */
-function oldestOf(items: PendingItem[], t: T): { oldest?: { text: string; opens: boolean } } {
+function oldestOf(
+  items: PendingItem[],
+  t: T,
+): { oldest?: { text: string; opens: boolean; key: string } } {
   const item = items[0];
   if (!item) return {};
   const opens = Boolean(item.gate || item.vault || item.risk === "high");
   return {
-    oldest: { text: `${item.hostName} · ${item.sessionName}: ${pendingText(item, t)}`, opens },
+    oldest: {
+      text: `${item.hostName} · ${item.sessionName}: ${pendingText(item, t)}`,
+      opens,
+      key: `${item.hostId}/${item.requestId}`,
+    },
   };
 }

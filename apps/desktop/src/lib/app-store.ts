@@ -1090,10 +1090,18 @@ export class AppStore {
     return true;
   }
 
-  /** Approves or denies the oldest waiting request; a high-risk one is opened, as in the tray. */
-  decideOldest(decision: "approve" | "deny"): void {
+  /**
+   * Approves or denies the oldest waiting request; a high-risk one is opened, as in the tray.
+   * `shown` is the `host/request` the command named: when that one has gone in between, the one
+   * now oldest is opened to be seen, never answered unseen (#245).
+   */
+  decideOldest(decision: "approve" | "deny", shown: string): void {
     const item = needsYou(this.state)[0];
     if (!item) return;
+    if (`${item.hostId}/${item.requestId}` !== shown) {
+      this.openRequest(item);
+      return;
+    }
     // A gate or a vault request is opened to be seen, never answered blind (issue #187); the
     // palette is not the tray, so a vault grant is never logged as the tray's.
     if (item.gate || item.vault) this.openRequest(item);
