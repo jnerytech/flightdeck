@@ -127,6 +127,11 @@ describe("gate-ui", () => {
     await sidebar.queueItem(label);
     const card = screen.queryByRole("group", { name: "Pedido de etapa “approve” do workflow" });
     expect(card).not.toBeNull();
+    // Issue #245 (M1): what is approved is in sight, the gate's question and what it shows.
+    expect(card?.textContent ?? "").toContain("Aprovar o plano?");
+    expect(card?.textContent ?? "").toContain("Echo: plano");
+    // A gate is never held: one plain Approve, no hold (M4).
+    expect(card ? within(card).queryByRole("button", { name: /Segurar/ }) : null).toBeNull();
     const approve = card ? within(card).queryByRole("button", { name: "Aprovar" }) : null;
     expect(approve).not.toBeNull();
     await act(async () => {
