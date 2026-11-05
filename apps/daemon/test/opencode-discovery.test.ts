@@ -1,11 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import {
   CANARY_MODEL,
   type DiscoveryDeps,
   discoverOpenCode,
+  fileExists,
+  fileStamp,
   parseOpenCodeVersion,
   resolveOpenCodePath,
 } from "../src/runtime/opencode-discovery.ts";
@@ -30,7 +32,7 @@ function deps(overrides: Partial<DiscoveryDeps> = {}, answers: Record<string, st
     platform: "linux",
     dataDir,
     which: (bin) => (bin === "opencode" ? "/bin/opencode" : null),
-    exists: () => false,
+    exists: async () => false,
     scan: async () => ({ findings: [], fingerprint: "f" }),
     run: async (argv, opts) => {
       calls.push({ argv, ...opts });
@@ -58,16 +60,26 @@ describe("opencode-discovery", () => {
     expect(parseOpenCodeVersion("hello")).toBe(null);
   });
 
-  test("the executable: config first, then PATH, then <HOME>/.opencode/bin (with .exe on Windows)", () => {
+  test("on the real file system: a file's size and mtime, and whether it is there; a missing one is null and false", async () => {
+    const file = join(realTempDir("fd-oc-stamp-"), "opencode");
+    writeFileSync(file, "12345");
+    const info = statSync(file);
+    expect(await fileStamp(file)).toBe(`5:${info.mtimeMs}`);
+    expect(await fileExists(file)).toBe(true);
+    expect(await fileStamp(`${file}-missing`)).toBe(null);
+    expect(await fileExists(`${file}-missing`)).toBe(false);
+  });
+
+  test("the executable: config first, then PATH, then <HOME>/.opencode/bin (with .exe on Windows)", async () => {
     const { deps: d } = deps();
-    expect(resolveOpenCodePath("/opt/oc", d)).toBe("/opt/oc");
-    expect(resolveOpenCodePath(undefined, d)).toBe("/bin/opencode");
+    expect(await resolveOpenCodePath("/opt/oc", d)).toBe("/opt/oc");
+    expect(await resolveOpenCodePath(undefined, d)).toBe("/bin/opencode");
     const home = {
       ...d,
       which: () => null,
-      exists: (p: string) => p === join("/home/u", ".opencode", "bin", "opencode"),
+      exists: async (p: string) => p === join("/home/u", ".opencode", "bin", "opencode"),
     };
-    expect(resolveOpenCodePath(undefined, home)).toBe(
+    expect(await resolveOpenCodePath(undefined, home)).toBe(
       join("/home/u", ".opencode", "bin", "opencode"),
     );
     const win = {
@@ -75,12 +87,12 @@ describe("opencode-discovery", () => {
       platform: "win32" as const,
       env: { USERPROFILE: "C:/Users/u" },
       which: () => null,
-      exists: (p: string) => p === join("C:/Users/u", ".opencode", "bin", "opencode.exe"),
+      exists: async (p: string) => p === join("C:/Users/u", ".opencode", "bin", "opencode.exe"),
     };
-    expect(resolveOpenCodePath(undefined, win)).toBe(
+    expect(await resolveOpenCodePath(undefined, win)).toBe(
       join("C:/Users/u", ".opencode", "bin", "opencode.exe"),
     );
-    expect(resolveOpenCodePath(undefined, { ...d, which: () => null })).toBe(null);
+    expect(await resolveOpenCodePath(undefined, { ...d, which: () => null })).toBe(null);
   });
 
   test("available: path, version, verified; the canary runs in Flightdeck's folder with project config off", async () => {
