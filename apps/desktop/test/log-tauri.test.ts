@@ -63,4 +63,30 @@ describe("log-tauri: the shell's log file (issue #255)", () => {
     expect(entry).toContain("installGlobalLog");
     expect(entry).toContain("store.appLog");
   });
+
+  test("the review's guards are in the Rust: one writer at a time, a failed rotation does not stop the log, a bad file is read lossily, a flood is cut before it is copied", () => {
+    // M1: appends take a lock, and a poisoned one cannot turn into a panic.
+    expect(rust).toMatch(/static LOG_LOCK: std::sync::Mutex<\(\)>/);
+    expect(rust).toContain("PoisonError::into_inner");
+    // L1: a rotation that fails still lets the line be written (up to a hard limit).
+    expect(rust).toContain("LOG_HARD_LIMIT");
+    // L2: at least one file.
+    expect(rust).toMatch(/let files = files\.max\(1\)/);
+    // L3: a file with invalid UTF-8 is read lossily, not skipped.
+    expect(rust).toContain("from_utf8_lossy");
+    // L4: the line is cut before the copy that flattens it.
+    const body = /fn append_line\([\s\S]*?\n\}\n/.exec(rust)?.[0] ?? "";
+    expect(body.indexOf("truncate")).toBeGreaterThan(-1);
+    expect(body.indexOf("truncate")).toBeLessThan(body.indexOf("replace(["));
+  });
+
+  test("the Rust tests cross a boundary that needs the loop, cross files, reach the cap and clean up", () => {
+    const tests = /mod log_tests[\s\S]*$/.exec(rust)?.[0] ?? "";
+    expect(tests).toContain('"€".repeat(');
+    expect(tests).toContain("tail_lines(&dir, 14, 4)");
+    expect(tests).toContain("LOG_MAX_TAIL);");
+    expect(tests).toMatch(/assert_eq!\(tail_lines\(&dir, 100_000, 4\)\.len\(\), LOG_MAX_TAIL\)/);
+    expect(tests).toContain("remove_dir_all");
+    expect(tests).toContain('append_line(&dir, "only", 10, 1)');
+  });
 });
