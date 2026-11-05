@@ -58,6 +58,8 @@ export interface AssistantRunInput {
   /** The host the field belongs to: the host provider prefers it. */
   fieldHostId?: string;
   cwd?: string;
+  /** Use this provider for this one call, whatever the preference says (the person clicked "Try with …"). */
+  provider?: ResolvedProvider;
 }
 
 const KEY_PROVIDERS = ["anthropic", "openrouter"] as const;
@@ -189,6 +191,24 @@ export class AssistantController {
   models(provider: AssistantKeyProvider): Promise<ModelOption[]> {
     return this.deps.api.models(provider);
   }
+
+  alternatives(_current: ResolvedProvider): ResolvedProvider[] {
+    return [{ provider: "host", hostId: "?" }];
+  }
+
+  needsHostConfirm(_on: ResolvedProvider): boolean {
+    return false;
+  }
+
+  confirmHost(_hostId: string): void {}
+
+  wantsSetup(): boolean {
+    return true;
+  }
+
+  askForSetup(): void {}
+
+  setupShown(): void {}
 
   async cancel(requestId: string, on: ResolvedProvider): Promise<void> {
     if (on.provider === "host") {

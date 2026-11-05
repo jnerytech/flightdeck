@@ -310,3 +310,63 @@ describe("assistant-run: the key calls the Settings screen makes", () => {
     ]);
   });
 });
+
+describe("assistant-run: another provider is a click, never a fallback", () => {
+  test("a run can be forced onto a provider the person picked for this one try", async () => {
+    const { controller, sent, fake } = setup({
+      prefs: { provider: "host" },
+      hosts: [{ id: "h1", online: true, assistant: true }],
+      api: { run: () => ({ ...RESULT, provider: "anthropic" }) },
+    });
+    await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
+    await controller.refreshKeys();
+    const result = await controller.run({ ...input(), provider: { provider: "anthropic" } });
+    expect(result.provider).toBe("anthropic");
+    expect(sent).toEqual([]);
+    // The preference did not change.
+    expect(controller.prefs().provider).toBe("host");
+  });
+
+  test("the alternatives are the other providers that could run now", async () => {
+    const { controller, fake } = setup({
+      prefs: { provider: "host" },
+      hosts: [
+        { id: "h1", online: true, assistant: true },
+        { id: "h2", online: false, assistant: true },
+      ],
+    });
+    expect(controller.alternatives({ provider: "host", hostId: "h1" })).toEqual([]);
+    await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
+    await fake.assistant.setKey("openrouter", "sk-or-ccccdddd");
+    await controller.refreshKeys();
+    expect(controller.alternatives({ provider: "host", hostId: "h1" })).toEqual([
+      { provider: "anthropic" },
+      { provider: "openrouter" },
+    ]);
+    expect(controller.alternatives({ provider: "anthropic" })).toEqual([
+      { provider: "host", hostId: "h1" },
+      { provider: "openrouter" },
+    ]);
+  });
+
+  test("the host provider asks once per host, before the first text leaves", () => {
+    const { controller } = setup();
+    expect(controller.needsHostConfirm({ provider: "host", hostId: "h1" })).toBe(true);
+    expect(controller.needsHostConfirm({ provider: "anthropic" })).toBe(false);
+    controller.confirmHost("h1");
+    expect(controller.needsHostConfirm({ provider: "host", hostId: "h1" })).toBe(false);
+    expect(controller.prefs().confirmedHosts).toEqual(["h1"]);
+  });
+
+  test("a wand without a provider leaves a note for Settings, which takes it once", () => {
+    const { controller } = setup();
+    const seen: boolean[] = [];
+    controller.subscribe(() => void seen.push(controller.wantsSetup()));
+    expect(controller.wantsSetup()).toBe(false);
+    controller.askForSetup();
+    expect(controller.wantsSetup()).toBe(true);
+    controller.setupShown();
+    expect(controller.wantsSetup()).toBe(false);
+    expect(seen).toEqual([true, false]);
+  });
+});
