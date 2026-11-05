@@ -4046,9 +4046,20 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   (`rm(`, `unlink(`, `rm -rf`), name a secret (token, secret, password, credential, API key) or a
   permission (`chmod`, `chown`, permission, `allowedNetworks`), or when its path is in the vault or
   pairing code, or when they open a listener or an outbound call (`Bun.serve`, `fetch(`, a
-  WebSocket, `.listen(`). Patterns, not a parser: they err toward asking for a review. The diff's
-  file headers are read only before a file's first hunk (an added line can look like one), names
-  come unquoted, and a merge counts by the files it edited itself. It is a guard against slips,
+  WebSocket, `.listen(`). A spawn is also `cp.exec(`, `child_process`, `Bun.$`, `fork(`, `execa(`
+  or `new Worker`. Comment-only lines do not count. Code is `.[cm]?[jt]sx?`, `.rs`, `.sh`, `.ps1`
+  and `.py`. Some paths are risky whatever they add: the vault and pairing code, the Tauri shell's
+  capabilities and `tauri*.conf.json` (CSP, scopes), and `.github/workflows/`; a pure rename into
+  one counts too. Patterns, not a parser: they err toward asking for a review.
+- **It fails closed** (the OpenCode review on #279): a `git diff` or `git log` that fails (an error,
+  an output past 64 MB), or a `--base` that is not a commit, stamps `security=unknown`, never `0`.
+  The diff forces `--src-prefix=a/ --dst-prefix=b/` (a user's `diff.noprefix` or
+  `diff.mnemonicPrefix` would change the headers) with no external diff or text conversion. The
+  diff's file headers are read only before a file's first hunk (an added line can look like one),
+  names come unquoted, and a merge counts by the files it edited itself. The log is in topological
+  order, so "after" follows the history, not the dates, and a folded trailer reads as one line.
+  Risky files that no commit of the log touches need a review all the same. `--verify` refuses a
+  stamp with no `security=` or no `ci=`, so a stamp from before the gate does not pass. It is a guard against slips,
   not a security boundary: the trailer is the session's own word that the review ran. A name git
   still quotes (one with a quote, a backslash or a control character) is skipped.
 - **The verdict is a commit trailer,** `Security-Reviewed: <summary>`, on a commit at or after the
@@ -4058,9 +4069,12 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   (no base), and only `0` vouches.
 - **The OpenCode review on `pr open`** is the coordinator's tooling: `open` runs the command in
   `FLIGHTDECK_PR_OPENED` with the PR's number, branch and base. The command comes from the
-  session's own environment, never from the repository, and is split on spaces with no shell. A
-  hook that fails, cannot start or runs past two minutes only prints a line: the PR is open either
-  way. Its program is found by Bun's own PATH lookup, not `whichOnPath`: the environment, and the
+  session's own environment, never from the repository: words split on spaces, or a JSON array of
+  strings for a path with spaces (Windows), with no shell. It runs bounded
+  (scripts/lib/bounded-run.ts): stdout ignored, the last 500 characters of stderr kept for the
+  failure line, and past two minutes its whole process group killed (its tree, with `taskkill /T`,
+  on Windows), so a grandchild that holds a pipe cannot keep `open` waiting. A hook that fails,
+  cannot start or times out only prints a line: the PR is open either way. Its program is found by Bun's own PATH lookup, not `whichOnPath`: the environment, and the
   PATH with it, are the session's own. The number, branch and base come last, as positional
   arguments: a hook script must not read them as options.
 
