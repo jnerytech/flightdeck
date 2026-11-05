@@ -1672,6 +1672,38 @@ export const ptBR = {
     session_maybe_active:
       "A sessão pode estar em uso em outro lugar: retome mesmo assim só se tiver certeza de que não está.",
   },
+  assistantRefusal: {
+    assistant_not_configured: "Escolha antes um provedor de IA em Configurações, Assistente.",
+    assistant_empty_input: "Escreva algo primeiro.",
+    assistant_too_long: "O texto é longo demais para o assistente (no máximo {max} caracteres).",
+    assistant_secret_found:
+      "Nada foi enviado: o texto parece conter um segredo ({labels}). Remova-o e tente de novo.",
+    assistant_vault_value:
+      "Nada foi enviado: o texto contém o valor de um segredo do cofre ({names}). Remova-o e tente de novo.",
+    assistant_quota_blocked:
+      "O plano do Claude no host está no limite até {until}. Tente depois disso, ou escolha outro provedor.",
+    assistant_host_unavailable: "O Claude Code no host não consegue responder: {detail}",
+    assistant_auth: "O provedor recusou a chave. Confira em Configurações, Assistente.",
+    assistant_credits: "O provedor diz que não há mais crédito nesta chave.",
+    assistant_rate_limited: "Pedidos demais agora. Espere um pouco e tente de novo.",
+    assistant_overloaded: "O provedor está sobrecarregado. Tente de novo em instantes.",
+    assistant_routing_unavailable:
+      "Nenhum provedor deste modelo no OpenRouter aceita o pedido sem coletar dados. Desligue a opção de dados em Configurações, ou escolha outro modelo.",
+    assistant_model_unavailable:
+      "O provedor não oferece este modelo. Escolha outro em Configurações.",
+    assistant_truncated:
+      "A resposta foi cortada antes do fim. Tente de novo, ou use um texto mais curto.",
+    assistant_refused: "O modelo se recusou a responder a este texto.",
+    assistant_bad_output: "O modelo deu uma resposta que não dá para usar. Tente de novo.",
+    assistant_placeholders_changed:
+      "A sugestão mudou as variáveis do snippet, então não é oferecida. Tente de novo.",
+    assistant_timeout: "O provedor demorou demais para responder.",
+    assistant_cancelled: "Cancelado.",
+    assistant_offline: "Não foi possível alcançar o provedor. Confira a conexão.",
+    assistant_no_changes: "Não há alterações para descrever.",
+    assistant_not_a_repo: "Esta pasta não é um repositório git.",
+    assistant_request_id: "Id do pedido: {id}",
+  },
   snippetRefusal: {
     name_invalid: "Nome de 1 a 64 caracteres: letras, números, espaço, . _ -",
     needs_run: "Um comando precisa de algo para rodar.",

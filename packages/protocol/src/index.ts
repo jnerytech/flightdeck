@@ -1,4 +1,12 @@
 import { z } from "zod";
+import {
+  AssistantCancelPayload,
+  type AssistantContextBundle,
+  AssistantContextPayload,
+  AssistantRecordPayload,
+  type AssistantResult,
+  AssistantRunPayload,
+} from "./assistant.ts";
 import { type RunConfigInfo, RunState } from "./run.ts";
 
 export const PROTOCOL_VERSION = 1;
@@ -1973,6 +1981,8 @@ export const UsageOrigin = z.enum([
   "workflow",
   "subagent",
   "auto-approve",
+  /** Phase 40: a call of the AI assistant. */
+  "assistant",
 ]);
 export type UsageOrigin = z.infer<typeof UsageOrigin>;
 
@@ -2856,11 +2866,26 @@ export const Command = z.discriminatedUnion("type", [
   cmd("card.get", CardIdPayload),
   cmd("card.stop", CardIdPayload),
   cmd("card.diff", CardIdPayload),
+  /** Phase 40: the AI assistant (feature `assistant`). */
+  cmd("assistant.run", AssistantRunPayload),
+  cmd("assistant.cancel", AssistantCancelPayload),
+  cmd("assistant.context", AssistantContextPayload),
+  cmd("assistant.record", AssistantRecordPayload),
   cmd("card.message", z.object({ cardId: z.string(), text: z.string().min(1) })),
   /** With `description`: the text the person confirmed for the PR, instead of the card's own. */
   cmd(
     "card.pr.create",
-    z.object({ cardId: z.string(), description: z.string().max(8000).optional() }),
+    z.object({
+      cardId: z.string(),
+      description: z.string().max(8000).optional(),
+      /** Phase 40: the title the person confirmed, instead of the card's own. */
+      title: z
+        .string()
+        .min(1)
+        .max(256)
+        .regex(/^[^\r\n]*$/)
+        .optional(),
+    }),
   ),
   /**
    * A session managing the cards of its own project through the flightdeck MCP server. The daemon
@@ -3948,6 +3973,13 @@ export const Command = z.discriminatedUnion("type", [
       cardId: z.string(),
       mode: z.enum(["merge", "squash"]).default("merge"),
       confirm: z.boolean().optional(),
+      /** Phase 40: the message the person confirmed, instead of the default one. */
+      message: z
+        .string()
+        .min(1)
+        .max(5000)
+        .regex(/^[^\0]*$/)
+        .optional(),
     }),
   ),
   /** `changes.updated` after each change on disk (500 ms debounce), until `changes.unwatch`. */
@@ -4254,6 +4286,10 @@ export interface CommandResults {
   "card.start": Card;
   "card.stop": Card;
   "card.diff": CardDiff;
+  "assistant.run": AssistantResult;
+  "assistant.cancel": undefined;
+  "assistant.context": AssistantContextBundle;
+  "assistant.record": undefined;
   "card.message": SessionSendResult;
   "card.pr.create": Card;
   "card.manage": Card;
@@ -4879,6 +4915,7 @@ export function parseServerMessage(raw: string): ServerMessage {
 }
 
 export * from "./activity.ts";
+export * from "./assistant.ts";
 export * from "./compare.ts";
 export * from "./pairing.ts";
 export * from "./personas.ts";
