@@ -45,7 +45,9 @@ const shared = (host: string, n: number) => ({
 });
 
 /** Two online hosts: `api` has one live terminal session and three old ones; `docs` only old ones. */
-function setup(options: { open?: Record<string, boolean>; needsYou?: boolean } = {}) {
+function setup(
+  options: { open?: Record<string, boolean>; needsYou?: boolean; twins?: boolean } = {},
+) {
   const mem = memoryPlatform();
   if (options.open)
     mem.platform.storage.setItem("flightdeck.hubOpen", JSON.stringify(options.open));
@@ -88,6 +90,16 @@ function setup(options: { open?: Record<string, boolean>; needsYou?: boolean } =
           ...[1, 2, 3].map((n) => history("alfa", n, "api")),
           shared("alfa", 1),
           history("alfa", 1, "solo"),
+          ...(options.twins
+            ? [
+                {
+                  ...history("alfa", 7, "api"),
+                  cwd: "/play/api",
+                  projectKey: "host:alfa:/play/api",
+                  claudeSessionId: "alfa-twin",
+                },
+              ]
+            : []),
         ],
       },
       beta: {
@@ -256,5 +268,24 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
     await click(screen.getByRole("button", { name: "Mostrar ou esconder solo" }));
     expect(screen.getByRole("button", { name: "1 sessão anterior" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "1 sessões anteriores" })).toBeNull();
+  });
+});
+
+describe("sessoes-projetos-ui: folders that share a name say where they are (issue #111)", () => {
+  test("two api folders on one host are two sections, each with its path hint in the name", async () => {
+    setup({ twins: true });
+    await settle(() => screen.queryAllByRole("heading", { name: "api" }).length > 0);
+    expect(screen.getAllByRole("heading", { name: "api" })).toHaveLength(2);
+    expect(screen.getByRole("region", { name: "Projeto api (work)" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Projeto api (play)" })).toBeTruthy();
+    expect(screen.getByText("play")).toBeTruthy();
+    expect(screen.getByText("work")).toBeTruthy();
+  });
+
+  test("a name that is alone has no hint", async () => {
+    setup();
+    await settle(() => screen.queryByRole("heading", { name: "api" }) !== null);
+    expect(screen.getByRole("region", { name: "Projeto api" })).toBeTruthy();
+    expect(screen.queryByText("work")).toBeNull();
   });
 });
