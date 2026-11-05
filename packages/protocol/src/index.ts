@@ -517,6 +517,8 @@ export const HistoryListPayload = z.object({
 export const HistoryGetPayload = z.object({
   claudeSessionId: z.string().min(1),
   cursor: Cursor.optional(),
+  /** Without a cursor: the last `limit` messages instead of the first (a transcript opens on its latest). */
+  tail: z.boolean().optional(),
   limit: z.number().int().min(1).max(500).optional(),
 });
 
@@ -4165,6 +4167,8 @@ export const HistoryGetResult = z.object({
   /** The session's folder is still on the host (said only for a folder the history already shows). */
   cwdExists: z.boolean().optional(),
   messages: z.array(HistoryMessage),
+  /** The cursor this page starts at (a tail page's own, so what is appended later can be read from it). */
+  cursor: z.string().optional(),
   nextCursor: z.string().nullable(),
   prevCursor: z.string().nullable(),
 });

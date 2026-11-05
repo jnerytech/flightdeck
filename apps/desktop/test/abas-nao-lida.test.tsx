@@ -21,7 +21,9 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 const waitFor = <T,>(fn: () => T) => rtlWaitFor(fn, { timeout: 3000 });
-const unread = () => screen.queryByText("Não lida", { selector: "[role=tab] [data-badge]" });
+/** The unread dot of a tab: a small dot with the word as its name, so the title keeps its room. */
+const unread = () =>
+  document.querySelector('[role=tab] [data-badge][aria-label="Não lida"]') as HTMLElement | null;
 
 describe("abas: não lida", () => {
   test("a reply in a session whose tab is in the background marks it unread until it is shown", async () => {
