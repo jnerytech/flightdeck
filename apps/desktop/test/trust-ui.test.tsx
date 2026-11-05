@@ -196,6 +196,25 @@ describe("trust-ui: the project page says what a project would load and lets the
     });
   });
 
+  test("Cancel in the question closes it and trusts nothing", async () => {
+    const { view, sent } = setup();
+    render(view);
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Trust this project" })).not.toBeNull(),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Trust this project" }));
+    });
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("alertdialog")).getByRole("button", { name: /^Cancel/ }),
+      );
+    });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(sent.some(([type]) => type === "project.trust.set")).toBe(false);
+    expect(screen.queryByRole("button", { name: "Trust this project" })).not.toBeNull();
+  });
+
   test("a project trusted through a parent folder says so, and revoking goes through that folder without asking", async () => {
     const { view, sent } = setup({ state: { path: "/work/api", trusted: true, via: "/work" } });
     render(view);

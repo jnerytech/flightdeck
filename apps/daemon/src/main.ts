@@ -1065,12 +1065,9 @@ export async function startDaemon(
   await central.ready();
   // A session that was open before the restart may be sent a message before anything else looks
   // at its folder: read the git boundaries of every folder first, so the lazy reattach finds them.
+  // `prepare` answers every filesystem error itself (a folder it cannot read is a boundary).
   await Promise.all(
-    [...new Set(manager.list().map((s) => s.cwd))].map((cwd) =>
-      projectTrust
-        .prepare(cwd)
-        .catch((error) => logger.log(`trust: could not read ${cwd}: ${error}`)),
-    ),
+    [...new Set(manager.list().map((s) => s.cwd))].map((cwd) => projectTrust.prepare(cwd)),
   );
   const server = startServer({
     manager,
