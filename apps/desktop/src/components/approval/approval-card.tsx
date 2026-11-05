@@ -147,6 +147,252 @@ function autoLine(auto: AutoApproval, t: T): string {
   return t("approval.autoApproved", { by, reason: auto.reason });
 }
 
+/** The denial form: whether it is open, the reason typed, and the answer it sends (focus goes to the reason). */
+function useDenyForm(respond: (decision: "deny", message?: string) => unknown) {
+  const [denying, setDenying] = useState(false);
+  const [reason, setReason] = useState("");
+  const reasonRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (denying) reasonRef.current?.focus();
+  }, [denying]);
+  const deny = () => {
+    const message = reason.trim();
+    if (message) respond("deny", message);
+    else respond("deny");
+  };
+  return { denying, setDenying, reason, setReason, reasonRef, deny };
+}
+
+/**
+ * What a key typed on the card means: A approves, N denies (the reason opens), Esc leaves. Keys
+ * typed in the reason (or any other field of the card) are text, not shortcuts; a card already
+ * answered or busy takes none; a high-risk request is approved by holding the button, never by a key.
+ */
+function keyAction(
+  e: KeyboardEvent<HTMLElement>,
+  card: { settled: boolean; high: boolean; questions: boolean },
+): "allow" | "deny" | "leave" | null {
+  if (e.target !== e.currentTarget || card.settled) return null;
+  const key = e.key.toLowerCase();
+  if (key === "a" && !card.high && !card.questions) return "allow";
+  if (key === "n") return "deny";
+  return e.key === "Escape" ? "leave" : null;
+}
+
+/** The plan an ExitPlanMode request carries; null for any other request. */
+function planOf(request: ApprovalRequest): string | null {
+  const plan = request.input.plan;
+  return request.toolName === "ExitPlanMode" && typeof plan === "string" ? plan : null;
+}
+
+/** How long ago the request was made, in words; null when it carries no time. */
+function ageOf(request: ApprovalRequest, nowMs: number, t: T): string | null {
+  return request.createdAt ? formatAgo(nowMs - Date.parse(request.createdAt), t) : null;
+}
+
+/** The plan as Markdown, or what the tool will do. */
+function PlanOrBody(props: {
+  plan: string | null;
+  view: ReturnType<typeof approvalView>;
+  t: T;
+  onCopyPath: ((path: string) => void) | undefined;
+}) {
+  if (props.plan !== null) return <Markdown text={props.plan} />;
+  return <Body view={props.view} t={props.t} onCopyPath={props.onCopyPath} />;
+}
+
+/** The top of the card: what asks, how risky it is, how long ago, and why a high risk is high. */
+function CardHeader(props: {
+  request: ApprovalRequest;
+  asking: boolean;
+  planning: boolean;
+  high: boolean;
+  age: string | null;
+  t: T;
+}) {
+  const { request, t, age } = props;
+  return (
+    <>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <CardTitle asking={props.asking} planning={props.planning} tool={request.toolName} t={t} />
+        <span className="flex items-baseline gap-2">
+          {request.risk && !props.asking && !props.planning && (
+            <RiskSeal risk={request.risk} reason={request.riskReason} t={t} />
+          )}
+          {age && <span className="text-muted-foreground text-xs">{age}</span>}
+        </span>
+      </div>
+      {props.high && request.riskReason && (
+        <p className="text-sm text-status-error">{request.riskReason}</p>
+      )}
+    </>
+  );
+}
+
+/** Under the buttons: "always allow" when offered, and the keys hint. */
+function CardFooter(props: {
+  show: boolean;
+  high: boolean;
+  request: ApprovalRequest;
+  pending: boolean;
+  t: T;
+  onAllow(updates: PermissionUpdate[]): void;
+}) {
+  const { request, t } = props;
+  return (
+    <>
+      {props.show && (
+        <AlwaysAllow
+          toolName={request.toolName}
+          input={request.input}
+          suggestions={request.suggestions}
+          disabled={props.pending}
+          onAllow={props.onAllow}
+        />
+      )}
+      <p className="text-muted-foreground text-xs">
+        {t(props.high ? "approval.keysHigh" : "approval.keys")}
+      </p>
+    </>
+  );
+}
+
+/** The reason a denial can carry, with the button that denies and the one that backs out. */
+function DenyReason(props: {
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  reason: string;
+  pending: boolean;
+  t: T;
+  onReason(value: string): void;
+  onDeny(): void;
+  onCancel(): void;
+}) {
+  const { t } = props;
+  return (
+    <>
+      <Input
+        ref={props.inputRef}
+        aria-label={t("approval.reason")}
+        placeholder={t("approval.reason")}
+        value={props.reason}
+        onChange={(e) => props.onReason(e.target.value)}
+        className="w-56"
+      />
+      <ActionButton variant="destructive" pending={props.pending} onClick={props.onDeny}>
+        {t("approval.deny")}
+      </ActionButton>
+      <Button variant="ghost" disabled={props.pending} onClick={props.onCancel}>
+        {t("approval.cancel")}
+      </Button>
+    </>
+  );
+}
+
+/** The button that approves: send the answers of a question, hold for a high risk, or a plain approval. */
+function ApproveButton(props: {
+  kind: "answers" | "hold" | "plain";
+  planning: boolean;
+  pending: boolean;
+  answerable: boolean;
+  holdMs: number;
+  t: T;
+  onApprove(): void;
+  onSend(): void;
+}) {
+  const { t } = props;
+  if (props.kind === "answers") {
+    return (
+      <ActionButton pending={props.pending} disabled={!props.answerable} onClick={props.onSend}>
+        {t("approval.question.send")}
+      </ActionButton>
+    );
+  }
+  if (props.kind === "hold") {
+    return (
+      <HoldButton
+        label={t("approval.hold")}
+        hint={t("approval.holdHint")}
+        holdMs={props.holdMs}
+        disabled={props.pending}
+        onHeld={props.onApprove}
+      />
+    );
+  }
+  return (
+    <ActionButton pending={props.pending} onClick={props.onApprove}>
+      {t(props.planning ? "approval.plan.approve" : "approval.approve")}
+    </ActionButton>
+  );
+}
+
+/** A question card that was answered: one line with the answers, and the full list when opened. */
+function AnsweredQuestions(props: {
+  questions: NonNullable<ReturnType<typeof parseQuestions>>;
+  resolution: NonNullable<Parameters<typeof ApprovalCard>[0]["resolution"]>;
+  answers: Record<string, string> | null;
+  request: ApprovalRequest;
+  t: T;
+}) {
+  const { questions, resolution, answers, request, t } = props;
+  const given = resolution.answers ?? answers ?? savedAnswers(request.input);
+  const outcome = t(`approval.resolved.${resolution.decision}` as Key);
+  return (
+    <details
+      data-answered
+      data-request-id={request.requestId}
+      className="rounded-lg border border-border bg-card px-4 py-2 text-card-foreground text-sm"
+    >
+      <summary className="cursor-pointer">
+        {questions
+          .map((q) => `${q.header || q.question}: ${given?.[q.question] ?? outcome}`)
+          .join(" · ")}
+      </summary>
+      <dl className="mt-2 flex flex-col gap-1">
+        {questions.map((q) => (
+          <div key={q.question}>
+            <dt className="text-muted-foreground text-xs">{q.question}</dt>
+            <dd>{given?.[q.question] ?? outcome}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
+  );
+}
+
+/** The title of the card: a question, a plan, or the tool that asks. */
+function CardTitle(props: { asking: boolean; planning: boolean; tool: string; t: T }) {
+  const { t } = props;
+  if (props.asking)
+    return (
+      <span>
+        <strong>{t("approval.askTitle")}</strong>
+      </span>
+    );
+  if (props.planning)
+    return (
+      <span>
+        <strong>{t("approval.planTitle")}</strong>
+      </span>
+    );
+  return (
+    <span>
+      {t("approval.title")} <strong>{props.tool}</strong>
+    </span>
+  );
+}
+
+/** What the card says once it was answered: the reason of a denial, the auto-approval or the decision. */
+function resolutionText(
+  resolution: NonNullable<Parameters<typeof ApprovalCard>[0]["resolution"]>,
+  t: T,
+): string {
+  if (resolution.decision === "deny" && resolution.message) {
+    return t("approval.deniedWith", { message: resolution.message });
+  }
+  if (resolution.auto) return autoLine(resolution.auto, t);
+  return t(`approval.resolved.${resolution.decision}` as Key);
+}
+
 /**
  * The approval card of every session (managed, terminal, card) and of the sidebar's queue: what
  * the tool will do, readable, with Aprovar and Negar together. With the card focused, A approves,
@@ -181,66 +427,39 @@ export function ApprovalCard(props: {
   onCopyPath?(path: string): void;
 }) {
   const { request, t, resolution } = props;
-  const [denying, setDenying] = useState(false);
-  const [reason, setReason] = useState("");
   /** An answer is on its way: the card is busy and takes no other. */
   const { busy: pending, run } = useBusy();
   const respond = (...args: Parameters<typeof props.onRespond>) =>
     run(() => props.onRespond(...args));
-  const reasonRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (denying) reasonRef.current?.focus();
-  }, [denying]);
+  const { denying, setDenying, reason, setReason, reasonRef, deny } = useDenyForm(respond);
   const view = approvalView(request.toolName, request.input, request.cwd);
   const questions = request.toolName === "AskUserQuestion" ? parseQuestions(request.input) : null;
-  const plan =
-    request.toolName === "ExitPlanMode" && typeof request.input.plan === "string"
-      ? request.input.plan
-      : null;
+  const plan = planOf(request);
   const [picks, setPicks] = useState<Record<string, AskPick>>({});
   const answers = questions ? buildAnswers(questions, picks) : null;
   const asks = questions !== null || plan !== null;
   const high = request.risk === "high" && !asks;
-  const age = request.createdAt ? formatAgo(props.nowMs - Date.parse(request.createdAt), t) : null;
-  const deny = () => {
-    const message = reason.trim();
-    if (message) respond("deny", message);
-    else respond("deny");
-  };
-
+  const age = ageOf(request, props.nowMs, t);
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
-    // Keys typed in the reason (or any other field of the card) are text, not shortcuts.
-    if (e.target !== e.currentTarget || resolution || pending) return;
-    const key = e.key.toLowerCase();
-    // A high-risk request is approved by holding the button, never by a key.
-    if (key === "a" && !high && !questions) respond("allow");
-    else if (key === "n") setDenying(true);
-    else if (e.key === "Escape") e.currentTarget.blur();
+    const action = keyAction(e, {
+      settled: Boolean(resolution) || pending,
+      high,
+      questions: Boolean(questions),
+    });
+    if (action === "allow") respond("allow");
+    else if (action === "deny") setDenying(true);
+    else if (action === "leave") e.currentTarget.blur();
   };
 
   if (questions && resolution) {
-    const given = resolution.answers ?? answers ?? savedAnswers(request.input);
-    const outcome = t(`approval.resolved.${resolution.decision}` as Key);
     return (
-      <details
-        data-answered
-        data-request-id={request.requestId}
-        className="rounded-lg border border-border bg-card px-4 py-2 text-card-foreground text-sm"
-      >
-        <summary className="cursor-pointer">
-          {questions
-            .map((q) => `${q.header || q.question}: ${given?.[q.question] ?? outcome}`)
-            .join(" · ")}
-        </summary>
-        <dl className="mt-2 flex flex-col gap-1">
-          {questions.map((q) => (
-            <div key={q.question}>
-              <dt className="text-muted-foreground text-xs">{q.question}</dt>
-              <dd>{given?.[q.question] ?? outcome}</dd>
-            </div>
-          ))}
-        </dl>
-      </details>
+      <AnsweredQuestions
+        questions={questions}
+        resolution={resolution}
+        answers={answers}
+        request={request}
+        t={t}
+      />
     );
   }
 
@@ -256,28 +475,14 @@ export function ApprovalCard(props: {
         resolution ? "border-border" : "border-status-needs-you/50",
       )}
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span>
-          {questions ? (
-            <strong>{t("approval.askTitle")}</strong>
-          ) : plan !== null ? (
-            <strong>{t("approval.planTitle")}</strong>
-          ) : (
-            <>
-              {t("approval.title")} <strong>{request.toolName}</strong>
-            </>
-          )}
-        </span>
-        <span className="flex items-baseline gap-2">
-          {request.risk && !asks && (
-            <RiskSeal risk={request.risk} reason={request.riskReason} t={t} />
-          )}
-          {age && <span className="text-muted-foreground text-xs">{age}</span>}
-        </span>
-      </div>
-      {high && request.riskReason && (
-        <p className="text-sm text-status-error">{request.riskReason}</p>
-      )}
+      <CardHeader
+        request={request}
+        asking={questions !== null}
+        planning={plan !== null}
+        high={high}
+        age={age}
+        t={t}
+      />
       {questions ? (
         <QuestionForm
           questions={questions}
@@ -286,65 +491,39 @@ export function ApprovalCard(props: {
           disabled={Boolean(resolution) || pending}
           onChange={(question, pick) => setPicks((all) => ({ ...all, [question]: pick }))}
         />
-      ) : plan !== null ? (
-        <Markdown text={plan} />
       ) : (
-        <Body view={view} t={t} onCopyPath={props.onCopyPath} />
+        <PlanOrBody plan={plan} view={view} t={t} onCopyPath={props.onCopyPath} />
       )}
       {resolution ? (
-        <p className="text-muted-foreground text-sm">
-          {resolution.decision === "deny" && resolution.message
-            ? t("approval.deniedWith", { message: resolution.message })
-            : resolution.auto
-              ? autoLine(resolution.auto, t)
-              : t(`approval.resolved.${resolution.decision}` as Key)}
-        </p>
+        <p className="text-muted-foreground text-sm">{resolutionText(resolution, t)}</p>
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2">
             {denying ? (
-              <>
-                <Input
-                  ref={reasonRef}
-                  aria-label={t("approval.reason")}
-                  placeholder={t("approval.reason")}
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  className="w-56"
-                />
-                <ActionButton variant="destructive" pending={pending} onClick={deny}>
-                  {t("approval.deny")}
-                </ActionButton>
-                <Button variant="ghost" disabled={pending} onClick={() => setDenying(false)}>
-                  {t("approval.cancel")}
-                </Button>
-              </>
+              <DenyReason
+                inputRef={reasonRef}
+                reason={reason}
+                pending={pending}
+                t={t}
+                onReason={setReason}
+                onDeny={deny}
+                onCancel={() => setDenying(false)}
+              />
             ) : (
               <>
-                {questions ? (
-                  <ActionButton
-                    pending={pending}
-                    disabled={!answers}
-                    onClick={() =>
-                      answers &&
-                      respond("allow", undefined, undefined, answeredInput(request.input, answers))
-                    }
-                  >
-                    {t("approval.question.send")}
-                  </ActionButton>
-                ) : high ? (
-                  <HoldButton
-                    label={t("approval.hold")}
-                    hint={t("approval.holdHint")}
-                    holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
-                    disabled={pending}
-                    onHeld={() => respond("allow")}
-                  />
-                ) : (
-                  <ActionButton pending={pending} onClick={() => respond("allow")}>
-                    {t(plan !== null ? "approval.plan.approve" : "approval.approve")}
-                  </ActionButton>
-                )}
+                <ApproveButton
+                  kind={questions ? "answers" : high ? "hold" : "plain"}
+                  planning={plan !== null}
+                  pending={pending}
+                  answerable={Boolean(answers)}
+                  holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
+                  t={t}
+                  onApprove={() => respond("allow")}
+                  onSend={() =>
+                    answers &&
+                    respond("allow", undefined, undefined, answeredInput(request.input, answers))
+                  }
+                />
                 <Button variant="outline" disabled={pending} onClick={() => setDenying(true)}>
                   {t(plan !== null ? "approval.plan.keep" : "approval.deny")}
                 </Button>
@@ -352,18 +531,14 @@ export function ApprovalCard(props: {
             )}
             {props.actions}
           </div>
-          {props.alwaysAllow && !high && !questions && plan === null && (
-            <AlwaysAllow
-              toolName={request.toolName}
-              input={request.input}
-              suggestions={request.suggestions}
-              disabled={pending}
-              onAllow={(updates) => respond("allow", undefined, updates)}
-            />
-          )}
-          <p className="text-muted-foreground text-xs">
-            {t(high ? "approval.keysHigh" : "approval.keys")}
-          </p>
+          <CardFooter
+            show={Boolean(props.alwaysAllow) && !high && !questions && plan === null}
+            high={high}
+            request={request}
+            pending={pending}
+            t={t}
+            onAllow={(updates) => respond("allow", undefined, updates)}
+          />
         </>
       )}
     </fieldset>
