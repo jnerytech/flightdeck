@@ -289,6 +289,7 @@ export class SessionManager {
     this.emit(id, { type: "session.status", status: "starting" });
     this.emitSummary(id);
     if (payload.effort) this.efforts.set(id, payload.effort);
+    await this.opts.prepareTrust?.(cwd);
     this.startRun(id);
     if (payload.prompt === undefined) this.setStatus(id, "idle", "no first prompt");
     else this.deliver(id, payload.prompt);
@@ -328,6 +329,7 @@ export class SessionManager {
       resumedFrom: opts.claudeSessionId,
     });
     this.emit(id, { type: "session.status", status: "starting" });
+    await this.opts.prepareTrust?.(cwd);
     this.startRun(id, opts.claudeSessionId);
     this.setStatus(id, "idle", "retomada do histórico");
     return { sessionId: id };
@@ -379,7 +381,7 @@ export class SessionManager {
   }
 
   /** Reopens an `ended` or `error` session with the stored Claude session id. */
-  resume(sessionId: string): Promise<void> {
+  async resume(sessionId: string): Promise<void> {
     const session = this.get(sessionId);
     if (session.status !== "ended" && session.status !== "error") {
       throw new FlightdeckError(
@@ -388,9 +390,9 @@ export class SessionManager {
         "session_not_ended",
       );
     }
+    await this.opts.prepareTrust?.(session.cwd);
     this.startRun(sessionId, session.claudeSessionId ?? undefined);
     this.setStatus(sessionId, "idle", "retomada");
-    return Promise.resolve();
   }
 
   /** Accepted `updatedPermissions` also go to these listeners (the board's project rules). */

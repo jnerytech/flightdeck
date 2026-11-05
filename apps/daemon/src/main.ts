@@ -658,6 +658,7 @@ export async function startDaemon(
   // where the person trusted it (or already worked in it before this existed). A card's worktree is
   // read from its project's main checkout.
   const projectTrust = new ProjectTrust(store.db, {
+    roots: () => config.allowedRoots,
     configRootOf: (cwd) => {
       const found = board.projectForCwd(cwd);
       return found?.card ? found.project.path : null;
@@ -669,6 +670,7 @@ export async function startDaemon(
     runtime,
     risk,
     trust: (cwd) => projectTrust.sessionTrust(cwd),
+    prepareTrust: (cwd) => projectTrust.prepare(cwd),
     autoApprove,
     allowedRoots: config.allowedRoots,
     defaultPermissionMode: config.defaultPermissionMode,
