@@ -5,6 +5,9 @@ import { Panel } from "@/components/layout/panel";
 import type { AppStore } from "@/lib/app-store";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 
+/** Past this many characters a listed command is shown in a block of its own. */
+const LONG_LINE = 300;
+
 type Loaded = { state: ProjectTrustState; load: ProjectLoad } | "failed" | null;
 
 /**
@@ -64,7 +67,12 @@ export function TrustPanel(props: {
       t("projectPage.trust.mcp"),
       [...load.mcpServers.map((s) => `${s.name}: ${s.command}`), ...more(load.omitted.mcpServers)],
     ],
+    [t("projectPage.trust.programs"), load.executables.map((e) => `${e.key}: ${e.command}`)],
     [t("projectPage.trust.env"), [...load.envKeys, ...more(load.omitted.envKeys)]],
+    [t("projectPage.trust.redirects"), load.redirects.map((r) => `${r.key} = ${r.value}`)],
+    [t("projectPage.trust.plugins"), load.plugins],
+    [t("projectPage.trust.otherKeys"), load.otherKeys],
+    [t("projectPage.trust.extras"), load.extras.map((x) => `${x.file}: ${x.keys.join(", ")}`)],
     [t("projectPage.trust.allow"), [...load.allowRules, ...more(load.omitted.allowRules)]],
     [t("projectPage.trust.agents"), load.agents],
     [t("projectPage.trust.skills"), load.skills],
@@ -73,6 +81,10 @@ export function TrustPanel(props: {
     [t("projectPage.trust.unreadable"), load.unreadable],
   ];
   const shown = groups.filter(([, items]) => items.length > 0);
+  // A command with several lines, or one that does not fit a short line, is shown in a block of
+  // its own, whole; a short one stays a line. Either way all of it runs once trusted.
+  const isLong = (item: string) => item.includes("\n") || item.length > LONG_LINE;
+  const anyLong = shown.some(([, items]) => items.some(isLong));
   return (
     <Panel title={t("projectPage.trust.title")} label={t("projectPage.trust.title")}>
       <p className="text-muted-foreground text-xs">{t("projectPage.trust.hint")}</p>
@@ -85,6 +97,7 @@ export function TrustPanel(props: {
       </p>
       {!state.trusted && <p className="text-sm">{t("projectPage.trust.cost")}</p>}
       <h3 className="font-medium text-sm">{t("projectPage.trust.listing")}</h3>
+      {anyLong && <p className="text-sm">{t("projectPage.trust.longWarning")}</p>}
       {shown.length === 0 ? (
         <p className="text-sm">{t("projectPage.trust.nothing")}</p>
       ) : (
@@ -96,7 +109,17 @@ export function TrustPanel(props: {
                 <ul>
                   {items.map((item) => (
                     <li key={item} className="font-mono text-xs">
-                      {item}
+                      {isLong(item) ? (
+                        <pre
+                          className="max-h-48 overflow-auto whitespace-pre-wrap break-all"
+                          // biome-ignore lint/a11y/noNoninteractiveTabindex: a long command scrolls, and focus lets the keyboard do it
+                          tabIndex={0}
+                        >
+                          {item}
+                        </pre>
+                      ) : (
+                        item
+                      )}
                     </li>
                   ))}
                 </ul>

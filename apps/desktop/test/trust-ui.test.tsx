@@ -105,7 +105,7 @@ describe("trust-ui: the project page says what a project would load and lets the
     await waitFor(() => expect(screen.queryByText("What this project would load")).not.toBeNull());
     const panel = screen.getByRole("region", { name: "Project configuration" });
     const blocks = [...panel.querySelectorAll("pre")].map((pre) => pre.textContent);
-    expect(blocks).toContain(SCRIPT);
+    expect(blocks).toContain(`SessionStart: ${SCRIPT}`);
     expect(
       within(panel).queryByText(
         "Some commands are long or have several lines. Read each one to the end: all of it runs once you trust the project.",

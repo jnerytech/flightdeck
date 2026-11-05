@@ -3180,6 +3180,13 @@ export const ptBR = {
       commands: "Comandos",
       claudeMd: "CLAUDE.md",
       unreadable: "Arquivos que não puderam ser lidos ou seguidos",
+      programs: "Programas que as configurações executam",
+      redirects: "Variáveis de ambiente que mandam tráfego ou código para outro lugar",
+      plugins: "Plugins e marketplaces",
+      otherKeys: "Outras configurações presentes",
+      extras: "Agentes, skills e comandos com hooks, servidores ou permissões de ferramentas",
+      longWarning:
+        "Alguns comandos são longos ou têm várias linhas. Leia cada um até o fim: tudo roda quando você confia no projeto.",
       nothing: "Nada: este projeto não traz configuração própria.",
       omitted: "+{n} a mais, não mostrados",
       action: "Confiar neste projeto",

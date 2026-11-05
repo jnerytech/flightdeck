@@ -3177,6 +3177,13 @@ export const en: Dictionary = {
       commands: "Commands",
       claudeMd: "CLAUDE.md",
       unreadable: "Files that could not be read or followed",
+      programs: "Programs the settings run",
+      redirects: "Environment variables that send traffic or code elsewhere",
+      plugins: "Plugins and marketplaces",
+      otherKeys: "Other settings present",
+      extras: "Agents, skills and commands with hooks, servers or tool grants",
+      longWarning:
+        "Some commands are long or have several lines. Read each one to the end: all of it runs once you trust the project.",
       nothing: "Nothing: this project brings no configuration of its own.",
       omitted: "+{n} more not shown",
       action: "Trust this project",
