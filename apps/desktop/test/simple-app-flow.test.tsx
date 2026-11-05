@@ -189,11 +189,8 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
     expect(store.router.current.name).toBe("session");
   });
 
-  test("Given Settings, When the theme, a folder, notifications and Show everything are used, Then each reaches the app and the host", async () => {
-    const mem = memoryPlatform(false, "en");
-    const extra = join(realTempFolder(), "more");
-    mkdirSync(extra, { recursive: true });
-    mem.platform.pickFolder = async () => extra;
+  /** Simple mode on a fresh host, with Settings open. */
+  async function openSettings(mem = memoryPlatform(false, "en")) {
     const d = makeDaemon(cleanups, { simple: true, ui: { mode: "simple", locked: false } });
     const server = d.listen();
     const store = new AppStore(mem.platform, { baseDelayMs: 10, maxDelayMs: 20 });
@@ -204,22 +201,30 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
     await act(async () => {
       fireEvent.click(within(nav()).getByRole("button", { name: "Settings" }));
     });
+    return { store, hostId };
+  }
 
+  test("Given Settings, When the theme is changed and the nav's Full app is cancelled, Then the theme is kept and Simple mode stays", async () => {
+    const { store, hostId } = await openSettings();
     await act(async () => {
       fireEvent.change(await waitFor(() => screen.getByRole("combobox", { name: "Theme" }), WAIT), {
         target: { value: "dark" },
       });
     });
     expect(store.theme.mode).toBe("dark");
-
-    // The nav's Full app asks first too; Cancel stays in Simple mode.
     await act(async () => {
       fireEvent.click(within(nav()).getByRole("button", { name: "Full app" }));
     });
     await click("Cancel");
     expect(store.uiMode(hostId).mode).toBe("simple");
+  });
 
-    // Choose a folder, then add it: the host lists it among the folders tasks may use.
+  test("Given Settings, When a folder is chosen and added, Then the host lists it among the folders tasks may use", async () => {
+    const mem = memoryPlatform(false, "en");
+    const extra = join(realTempFolder(), "more");
+    mkdirSync(extra, { recursive: true });
+    mem.platform.pickFolder = async () => extra;
+    await openSettings(mem);
     await click("Choose folder…");
     await waitFor(
       () =>
@@ -230,14 +235,18 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
     );
     await click("Add folder");
     await waitFor(() => expect(document.body.textContent?.includes(extra)).toBe(true), WAIT);
+  });
 
-    const tell = screen.getByRole("checkbox", { name: /Tell me when a task needs my answer/ });
+  test("Given Settings, When notifications are switched off and Show everything is cancelled then confirmed, Then the app and the mode follow", async () => {
+    const { store, hostId } = await openSettings();
+    const tell = await waitFor(
+      () => screen.getByRole("checkbox", { name: /Tell me when a task needs my answer/ }),
+      WAIT,
+    );
     await act(async () => {
       fireEvent.click(tell);
     });
     await waitFor(() => expect(store.getState().settings.notifyUpdates).toBe(false));
-
-    // Show everything asks first; Cancel keeps Simple mode, the second time it leaves.
     await click("Show everything");
     await click("Cancel");
     expect(store.uiMode(hostId).mode).toBe("simple");
