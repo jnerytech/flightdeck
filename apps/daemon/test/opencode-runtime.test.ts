@@ -317,6 +317,21 @@ describe("opencode-runtime", () => {
     expect(await poll(() => out.ended)).toBe(true);
   });
 
+  test("closed while it opens: the connection that just opened is closed too, and nothing is prompted", async () => {
+    const opened = Promise.withResolvers<unknown>();
+    const { runtime, agents } = setup((agent) => {
+      agent.handlers["session/new"] = () => opened.promise;
+    });
+    const run = runtime.start(startOpts());
+    run.send("x");
+    expect(await poll(() => methods(agents[0]).includes("session/new"))).toBe(true);
+    const closing = run.close();
+    opened.resolve({ sessionId: "ses_1", configOptions: configOptions() });
+    await closing;
+    expect(await poll(() => methods(agents[0]).includes("session/close"))).toBe(true);
+    expect(methods(agents[0]).includes("session/prompt")).toBe(false);
+  });
+
   test("treeKiller: taskkill /T /F on Windows; elsewhere the process group, TERM then KILL, and the process if the group is gone", () => {
     const runs: string[][] = [];
     const groups: Array<[number, string]> = [];
