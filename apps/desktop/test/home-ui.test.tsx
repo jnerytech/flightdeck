@@ -230,7 +230,7 @@ describe("home-ui: Home is a screen of the app", () => {
     const { view, store } = setup({ hosts: 2, refuse: "h2:usage.summary" });
     render(view);
     const spend = await screen.findByRole("button", { name: "Open Spend" });
-    await waitFor(() => expect(spend.textContent).toContain("$2.25"));
+    await waitFor(() => expect(spend.textContent).toContain("$4.50"));
     expect(screen.getByText("Some hosts did not answer: host2.")).toBeTruthy();
     expect(store.getState().notices).toHaveLength(0);
   });
