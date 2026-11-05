@@ -47,14 +47,20 @@ describe("ci-ubuntu-split (#293)", () => {
     }
     const upload = suite.steps.find((s) => (s.uses ?? "").startsWith("actions/upload-artifact@"));
     expect(upload?.uses ?? "").toMatch(PINNED);
-    expect(upload?.with).toEqual({ name: "coverage-lcov", path: "coverage/lcov.info" });
+    // Paths and line counts only, read once by the sonar job: kept a day, not the default 90.
+    expect(upload?.with).toEqual({
+      name: "coverage-lcov",
+      path: "coverage/lcov.info",
+      "retention-days": 1,
+    });
   });
 
   test("SonarCloud is its own job, reading the suite's lcov, with the history it blames", () => {
     const sonar = job("sonar");
     expect(sonar.needs).toEqual(["test-suite"]);
     expect(sonar.if ?? "").toContain("github.event_name != 'workflow_dispatch'");
-    expect(sonar.steps[0]?.with?.["fetch-depth"]).toBe(0);
+    // Full history for the blame; no GITHUB_TOKEN left in .git/config for the third-party scan.
+    expect(sonar.steps[0]?.with).toEqual({ "fetch-depth": 0, "persist-credentials": false });
     const download = sonar.steps.findIndex((s) =>
       (s.uses ?? "").startsWith("actions/download-artifact@"),
     );
@@ -62,6 +68,9 @@ describe("ci-ubuntu-split (#293)", () => {
     expect(download >= 0 && download < scan).toBe(true);
     expect(sonar.steps[download]?.uses ?? "").toMatch(PINNED);
     expect(sonar.steps[download]?.with).toEqual({ name: "coverage-lcov", path: "coverage" });
+    // The version comes from a file the branch controls: only a plain version reaches $GITHUB_ENV.
+    const version = sonar.steps.find((s) => s.name === "Versão para o SonarCloud")?.run ?? "";
+    expect(version).toContain('[[ "$version" =~ ^[0-9A-Za-z.+-]+$ ]]');
   });
 
   test("the smokes and cargo run in a Linux checks job, in parallel with the suite", () => {
