@@ -829,6 +829,10 @@
   flex-shrink: 1;
   gap: 0.125rem;
   overflow-y: auto;
+  /* The items keep their size (24 px targets, issue #232): the nav scrolls instead of squeezing them. */
+  & > * {
+    flex-shrink: 0;
+  }
 }
 /* The hosts section: it keeps room for a heading and a row, so the nav above gives way and scrolls. */
 @utility sidebar-hosts {
