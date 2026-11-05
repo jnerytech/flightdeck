@@ -126,7 +126,8 @@ function ManagedSession(props: {
   }, [store, state.selected, hostId, sessionId]);
   const summary = host?.sessions.find((s) => s.id === sessionId);
   const session = useSessionState(store, sessionKey(hostId, sessionId));
-  const openCodeModels = useOpenCodeModels(store, hostId, summary?.runtime === "opencode");
+  const opencode = summary?.runtime === "opencode";
+  const openCodeModels = useOpenCodeModels(store, hostId, opencode);
   // Estimated cost of the session, once its claudeSessionId is known (phase 8): from its own
   // events, else from the Sessões list.
   const claudeId =
@@ -176,10 +177,13 @@ function ManagedSession(props: {
       store={store}
       hostId={hostId}
       claudeSessionId={claudeId}
-      enabled={hasFeature(host?.hostInfo?.features, "review", false)}
-      messagingId={hasFeature(host?.hostInfo?.features, "messaging", false) ? sessionId : null}
-      telemetry={hasFeature(host?.hostInfo?.features, "telemetry", false)}
-      trace={hasFeature(host?.hostInfo?.features, "trace", false)}
+      // Phase 39: these tabs read Claude Code's transcript, and OpenCode sessions stay out of messaging.
+      enabled={!opencode && hasFeature(host?.hostInfo?.features, "review", false)}
+      messagingId={
+        !opencode && hasFeature(host?.hostInfo?.features, "messaging", false) ? sessionId : null
+      }
+      telemetry={!opencode && hasFeature(host?.hostInfo?.features, "telemetry", false)}
+      trace={!opencode && hasFeature(host?.hostInfo?.features, "trace", false)}
     >
       <SessionView
         t={store.i18n.t}
