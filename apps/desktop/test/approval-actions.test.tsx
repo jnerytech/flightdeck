@@ -69,6 +69,12 @@ describe("approval-actions: one way to answer a request", () => {
         },
       ],
     };
-    expect(pendingOf(session)).toEqual({ requestId: "r1", toolName: "Bash", risk: "high" });
+    // And what it would do, so the tile holds over what it shows (#245, M5).
+    expect(pendingOf(session)).toEqual({
+      requestId: "r1",
+      toolName: "Bash",
+      risk: "high",
+      input: { command: "rm -rf build" },
+    });
   });
 });
