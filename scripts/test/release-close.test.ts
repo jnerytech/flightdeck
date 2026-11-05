@@ -30,6 +30,8 @@ function fake(
   issues: Record<number, Issue>,
   opts: {
     milestoneOpen?: number;
+    /** The milestone's state before the run (a second run finds it closed). */
+    milestoneState?: "open" | "closed";
     fail?: RegExp;
     board?: (n: number) => boolean;
     log?: string;
@@ -38,7 +40,11 @@ function fake(
   const calls: string[] = [];
   const lines: string[] = [];
   const boarded: number[] = [];
-  const milestone = { ...V364, state: "open", open_issues: opts.milestoneOpen ?? 0 };
+  const milestone = {
+    ...V364,
+    state: opts.milestoneState ?? "open",
+    open_issues: opts.milestoneOpen ?? 0,
+  };
   const field = (args: string[], name: string) =>
     args.find((a) => a.startsWith(`${name}=`))?.slice(name.length + 1);
   const deps: ReleaseCloseDeps = {
@@ -184,7 +190,8 @@ describe("release-close", () => {
     const issues = {
       170: { ...open("Card"), state: "closed" as const, comments: ["Shipped in v0.36.4."] },
     };
-    const f = fake(issues, { log: commit("fix(x): y (#170)") });
+    // The first run closed the issue and the milestone.
+    const f = fake(issues, { log: commit("fix(x): y (#170)"), milestoneState: "closed" });
     expect(await releaseClose("v0.36.4", { apply: true }, f.deps)).toBe(0);
     expect(f.writes()).toEqual([]);
     expect(f.boarded).toEqual([170]);
@@ -192,8 +199,9 @@ describe("release-close", () => {
 
   test("an open issue already commented is closed without a second comment", async () => {
     const issues = { 170: { ...open("Card"), comments: ["Shipped in v0.36.4."] } };
-    const f = fake(issues, { log: commit("fix(x): y (#170)") });
+    const f = fake(issues, { log: commit("fix(x): y (#170)"), milestoneOpen: 2 });
     await releaseClose("v0.36.4", { apply: true }, f.deps);
+    // One open issue is left in the milestone, so the only write is the close.
     expect(f.writes()).toEqual([
       `api -X PATCH ${R}/issues/170 -f state=closed -f state_reason=completed`,
     ]);
