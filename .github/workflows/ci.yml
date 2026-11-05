@@ -56,6 +56,8 @@ jobs:
       - name: lint:sonar --ratchet
         run: bun run lint:sonar -- --ratchet
 
+  # Linux runs the whole suite in one job: the exact 100% line and function gate (bun's lcov has
+  # no per-function records, so shards could not be merged without weakening it) and SonarCloud.
   test:
     # A dispatched run's jobs have names of their own: a skipped copy of `test (ubuntu-latest)` next to
     # the real check must never stand in for the one the branch rules require.
@@ -64,11 +66,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
-    # bash everywhere (Git Bash on Windows): stops at the first failing command of a step, which
-    # pwsh does not do for native programs.
+    # bash everywhere: stops at the first failing command of a step.
     defaults:
       run:
         shell: bash
@@ -91,17 +92,6 @@ jobs:
           git config --global user.name "flightdeck-ci"
           git config --global user.email "ci@flightdeck.invalid"
 
-      # Claude Code runs command hooks through Git Bash on Windows; `bash` on PATH may be the WSL
-      # launcher in System32, so the hook tests get Git Bash explicitly, as Claude Code does.
-      - name: Git Bash para os hooks
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $bash = "C:\Program Files\Git\bin\bash.exe"
-          & $bash -c 'echo "git bash: $BASH_VERSION"'
-          if ($LASTEXITCODE -ne 0) { exit 1 }
-          "CLAUDE_CODE_GIT_BASH_PATH=$bash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-
       - name: Typecheck
         run: bun run typecheck
 
@@ -112,18 +102,17 @@ jobs:
       # counted from the merge-base with main (a pull request) or from the last tag (a push to
       # main). It needs the full history the checkout above already fetches.
       - name: TDD audit
-        if: runner.os == 'Linux'
         run: bun run tdd:audit -- --since auto
 
       - name: Testes (cobertura 100%)
         run: bun run test
 
-      # SonarCloud, on the Linux leg only, with the lcov report the tests just wrote. The product
-      # version marks the new-code period ("previous version"). Skipped where the secret is not
-      # available (pull requests from forks).
+      # SonarCloud, with the lcov report the tests just wrote. The product version marks the
+      # new-code period ("previous version"). Skipped where the secret is not available (pull
+      # requests from forks).
       - name: Versão para o SonarCloud
         id: sonar
-        if: runner.os == 'Linux' && github.event_name != 'workflow_dispatch'
+        if: github.event_name != 'workflow_dispatch'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
@@ -174,7 +163,6 @@ jobs:
           bun run smoke:roi
 
       - name: System libraries of the Tauri shell (Linux)
-        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y pkg-config libwebkit2gtk-4.1-dev libgtk-3-dev \
@@ -189,20 +177,146 @@ jobs:
           # the disk checks differ (links on Linux, 8.3 names and junctions on Windows).
           cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 
+  # Windows, the slowest leg (#220: 33 minutes, 25 of them tests), runs the suite in three shards
+  # with no coverage: the 100% gate is Linux's. The required check `test (windows-latest)` is the
+  # aggregate below.
+  test-windows-shard:
+    name: test shard ${{ matrix.shard }}/3 (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # Full history: SonarCloud uses the blame to tell new code from old.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      # Tests create repositories and commit in them.
+      - name: Identidade do git
+        run: |
+          git config --global user.name "flightdeck-ci"
+          git config --global user.email "ci@flightdeck.invalid"
+
+      # Claude Code runs command hooks through Git Bash on Windows; `bash` on PATH may be the WSL
+      # launcher in System32, so the hook tests get Git Bash explicitly, as Claude Code does.
+      - name: Git Bash para os hooks
+        shell: pwsh
+        run: |
+          $bash = "C:\Program Files\Git\bin\bash.exe"
+          & $bash -c 'echo "git bash: $BASH_VERSION"'
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          "CLAUDE_CODE_GIT_BASH_PATH=$bash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Testes (shard ${{ matrix.shard }}/3)
+        run: bun --config=bunfig.area.toml test --timeout=15000 --shard=${{ matrix.shard }}/3
+
+  # The rest of the Windows leg: the smokes, the Rust shell, the bundle budget and the
+  # performance baseline.
+  checks-windows:
+    name: checks (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # Full history: SonarCloud uses the blame to tell new code from old.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      # Tests create repositories and commit in them.
+      - name: Identidade do git
+        run: |
+          git config --global user.name "flightdeck-ci"
+          git config --global user.email "ci@flightdeck.invalid"
+
+      # Claude Code runs command hooks through Git Bash on Windows; `bash` on PATH may be the WSL
+      # launcher in System32, so the hook tests get Git Bash explicitly, as Claude Code does.
+      - name: Git Bash para os hooks
+        shell: pwsh
+        run: |
+          $bash = "C:\Program Files\Git\bin\bash.exe"
+          & $bash -c 'echo "git bash: $BASH_VERSION"'
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          "CLAUDE_CODE_GIT_BASH_PATH=$bash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Smokes
+        run: |
+          bun run smoke
+          bun run smoke:multi
+          bun run smoke:history
+          bun run smoke:board
+          bun run smoke:deps
+          bun run smoke:central
+          bun run smoke:workflow
+          bun run smoke:ops
+          bun run smoke:limits
+          bun run smoke:update
+          bun run smoke:costs
+          bun run smoke:review
+          bun run smoke:checkpoints
+          bun run smoke:automation
+          bun run smoke:terminal
+          bun run smoke:run
+          bun run smoke:ssh
+          bun run smoke:vault
+          bun run smoke:actions
+          bun run smoke:snippets
+          bun run smoke:rules-vault
+          bun run smoke:personas
+          bun run smoke:watch
+          bun run smoke:teams
+          bun run smoke:perf
+          bun run smoke:otel
+          bun run smoke:webhook
+          bun run smoke:conta
+          bun run smoke:simple
+          bun run smoke:github
+          bun run smoke:boardsync
+          bun run smoke:roi
+
+      # The Tauri context needs the built frontend (frontendDist) to exist.
+      - name: cargo check do app
+        run: |
+          bun run build:desktop
+          cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
+          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
+
       # Phase 28: the entry chunk of the build above stays under its gzip budget (bundle-lazy).
       - name: Bundle budget
-        if: runner.os == 'Windows'
         run: bun run bundle:budget
 
       # Phase 28: the numbers of the performance baseline on this runner, kept as an artifact. It
       # is not a gate: a measure that cannot run says why in its row, and the step never fails the job.
       - name: Performance baseline
-        if: runner.os == 'Windows'
         continue-on-error: true
         run: bun run perf:baseline --out perf-baseline
 
       - name: Performance baseline (artifact)
-        if: runner.os == 'Windows' && always()
+        if: always()
         continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -210,10 +324,25 @@ jobs:
           path: perf-baseline
           if-no-files-found: ignore
 
-  # The prints of every screen in both themes and languages, the axe check on them and the five
-  # end-to-end journeys, all against the seeded demo (fake runtime: no real Claude, no network).
-  screenshots:
-    name: screenshots (prints, axe e e2e)
+  # The check the main ruleset requires: it passes only when every shard and the checks passed.
+  # always(), so a failed or cancelled shard makes it fail rather than skip.
+  test-windows:
+    name: test (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    needs: [test-windows-shard, checks-windows]
+    if: always() && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every Windows shard and check passed
+        run: |
+          echo "shards: ${{ needs.test-windows-shard.result }}, checks: ${{ needs.checks-windows.result }}"
+          test "${{ needs.test-windows-shard.result }}" = success
+          test "${{ needs.checks-windows.result }}" = success
+
+  # The prints of every screen in both themes and languages and the axe check on them, against
+  # the seeded demo (fake runtime: no real Claude, no network). #220 runs them apart from e2e.
+  screenshots-prints:
+    name: prints and axe
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -247,8 +376,45 @@ jobs:
           VISUAL: record
         run: bun run demo:shots
 
+      - name: Publicar os prints
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: prints
+          path: apps/desktop/screenshots
+          if-no-files-found: ignore
+
+  # The end-to-end journeys, in both languages, against the same seeded demo.
+  screenshots-e2e:
+    name: e2e journeys
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      # The demo seeds repositories and commits in them.
+      - name: Identidade do git
+        run: |
+          git config --global user.name "flightdeck-ci"
+          git config --global user.email "ci@flightdeck.invalid"
+
+      # The runner already has Chrome; the prints drive it through playwright-core and the e2e
+      # journeys through @playwright/test (no browser is downloaded).
+      - name: Chrome do runner
+        run: google-chrome --version
+
       - name: Jornadas e2e (2 idiomas)
-        # A failed journey leaves its trace, print and the text of the terminal in the prints
+        # A failed journey leaves its trace, print and the text of the terminal in the e2e-failures
         # artifact (E2E_FAILURES); the HTML report is its own artifact. CI retries a failure once.
         env:
           E2E_FAILURES: apps/desktop/screenshots/e2e-failures
@@ -263,10 +429,24 @@ jobs:
           path: playwright-report
           if-no-files-found: ignore
 
-      - name: Publicar os prints
+      - name: Publicar as falhas e2e
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: prints
-          path: apps/desktop/screenshots
+          name: e2e-failures
+          path: apps/desktop/screenshots/e2e-failures
           if-no-files-found: ignore
+
+  # The check the main ruleset requires: it passes only when the prints and the journeys passed.
+  screenshots:
+    name: screenshots (prints, axe e e2e)
+    needs: [screenshots-prints, screenshots-e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: The prints and the e2e journeys passed
+        run: |
+          echo "prints: ${{ needs.screenshots-prints.result }}, e2e: ${{ needs.screenshots-e2e.result }}"
+          test "${{ needs.screenshots-prints.result }}" = success
+          test "${{ needs.screenshots-e2e.result }}" = success
