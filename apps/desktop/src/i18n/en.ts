@@ -3183,6 +3183,9 @@ export const en: Dictionary = {
       confirm:
         "Trust {project} on {host}? Its hooks run commands and its MCP servers start programs on that computer, without asking you, whenever a session starts there. Only do this for code you wrote or have read.",
       failed: "Could not read this project's configuration.",
+      sessionNotice:
+        "This folder is not trusted: its own hooks, MCP servers, settings, CLAUDE.md, agents and skills did not load, and neither did your own MCP servers and plugins.",
+      review: "Review and trust",
     },
     sessionsHint: "The sessions of every project",
     boardHint: "Cards by column, from backlog to done",

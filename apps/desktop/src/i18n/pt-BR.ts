@@ -3186,6 +3186,9 @@ export const ptBR = {
       confirm:
         "Confiar em {project} em {host}? Os hooks dele rodam comandos e os servidores MCP dele iniciam programas naquele computador, sem perguntar a você, sempre que uma sessão começa ali. Só faça isso para código que você escreveu ou leu.",
       failed: "Não foi possível ler a configuração deste projeto.",
+      sessionNotice:
+        "Esta pasta não tem confiança: os hooks, servidores MCP, configurações, CLAUDE.md, agentes e skills dela não carregaram, e os seus próprios servidores MCP e plugins também não.",
+      review: "Revisar e confiar",
     },
     notHere: "Este projeto não está neste host.",
     sessionsHint: "As sessões de todos os projetos",
