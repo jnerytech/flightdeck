@@ -30,11 +30,32 @@ export interface PreflightDeps {
   ) => Promise<RunResult>;
   scan: () => Promise<ScopeResult>;
   now?: () => number;
+  /** The executable as discovery saw it, and how it is now. */
+  exe?: { fingerprint: string; current: () => Promise<string | null> };
 }
 
 /** OpenCode's own internal agents, which stay visible as hidden ones. */
 const INTERNAL_AGENTS = new Set(["compaction", "title", "summary"]);
 const CHECK_TIMEOUT_MS = 15_000;
+
+/**
+ * The first config source that is neither our inline document, the global folder nor one of its
+ * config files (the scope scan read those already); null when there is none.
+ */
+export function unexpectedSource(
+  sources: Array<{ type?: string; path?: string }>,
+  global: string,
+): string | null {
+  for (const source of sources) {
+    const ours = source.type === "document" && source.path === undefined;
+    const theirs =
+      (source.type === "directory" && source.path === global) ||
+      (source.type === "document" &&
+        CONFIG_FILES.some((name) => source.path === join(global, name)));
+    if (!ours && !theirs) return source.path ?? String(source.type);
+  }
+  return null;
+}
 
 /** At most 40 characters of a saved rule's resource, with token-like runs hidden. */
 export function maskResource(resource: string): string {
@@ -89,6 +110,10 @@ export class OpenCodePreflight {
     const cached = this.passed.get(key);
     if (cached && now - cached.at < PREFLIGHT_CACHE_MS)
       return { configContent: cached.configContent };
+    // A binary replaced since discovery checked it (an upgrade) is not trusted until checked again.
+    if (this.deps.exe && (await this.deps.exe.current()) !== this.deps.exe.fingerprint) {
+      throw this.refuse("opencode_changed", {});
+    }
     // Two sessions of one folder starting together share one run of the three commands.
     const running = this.running.get(key);
     if (running) return running;
@@ -114,19 +139,8 @@ export class OpenCodePreflight {
       this.get(cwd, "/api/agent", content),
       this.get(cwd, "/api/permission/saved", content),
     ]);
-    const global = globalConfigDir(this.deps.env);
-    for (const source of list<{ type?: string; path?: string }>(sources)) {
-      const ours = source.type === "document" && source.path === undefined;
-      // The global folder, and its config files (the scope scan read them already).
-      const theirs =
-        (source.type === "directory" && source.path === global) ||
-        (source.type === "document" &&
-          CONFIG_FILES.some((name) => source.path === join(global, name)));
-      if (!ours && !theirs)
-        throw this.refuse("opencode_config_outranks", {
-          source: source.path ?? String(source.type),
-        });
-    }
+    const unexpected = unexpectedSource(list(sources), globalConfigDir(this.deps.env));
+    if (unexpected) throw this.refuse("opencode_config_outranks", { source: unexpected });
     const rules = list<{ id: string; action: string; resource: string }>(saved);
     if (rules.length > 0) {
       throw this.refuse("opencode_saved_rules", {
