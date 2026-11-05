@@ -3,5 +3,11 @@
  * still a case of the switch in `server.ts`; at the end this is the whole `Handlers` record.
  */
 import type { Handlers } from "../dispatch.ts";
+import { securityHandlers } from "./security.ts";
 
-export const HANDLERS: Partial<Handlers> = {};
+/** The domains, by name; no command may sit in two of them (a spread would let the last win). */
+export const DOMAINS: Record<string, Partial<Handlers>> = {
+  security: securityHandlers,
+};
+
+export const HANDLERS: Partial<Handlers> = Object.assign({}, ...Object.values(DOMAINS));

@@ -481,10 +481,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     await Promise.all([...new Set(cwds)].map((cwd) => warm(cwd)));
   }
 
-  function vault(): Vault {
-    return need(opts, "vault");
-  }
-
   function names(): Names {
     return need(opts, "names");
   }
@@ -505,20 +501,12 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "idle");
   }
 
-  function actions(): Actions {
-    return need(opts, "actions");
-  }
-
   function automations(): Automations {
     return need(opts, "automations");
   }
 
   function issues(): Issues {
     return need(opts, "issues");
-  }
-
-  function autoApprove(): AutoApprover {
-    return need(opts, "autoApprove");
   }
 
   function agentcfg(): AgentConfig {
@@ -628,10 +616,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "changes");
   }
 
-  function ssh(): SshTargets {
-    return need(opts, "ssh");
-  }
-
   function snippets(): Snippets {
     return need(opts, "snippets");
   }
@@ -650,22 +634,6 @@ export function startServer(opts: ServerOptions): RunningServer {
 
   function snippetHistory(): HistoryImporter {
     return need(opts, "snippetHistory");
-  }
-
-  function askpass(): AskpassBroker {
-    return need(opts, "askpass");
-  }
-
-  function sshConnect(): SshConnector {
-    return need(opts, "sshConnect");
-  }
-
-  function sshHostKeys(): HostKeys {
-    return need(opts, "sshHostKeys");
-  }
-
-  function sshImport(): SshImporter {
-    return need(opts, "sshImport");
   }
 
   function review(): ReviewComments {
@@ -888,52 +856,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { cardId, variantId, confirm } = command.payload;
         return ok(command.type, await board().chooseVariant(cardId, variantId, confirm === true));
       }
-      case "vault.deliver":
-        // A request of the daemon that asks has to be approved before its secret is accepted.
-        opts.actions?.gate(command.payload.purpose);
-        return ok(command.type, vault().deliver(command.payload, ws.data.origin));
-      case "vault.use": {
-        const { secretId, purpose, action } = command.payload;
-        const used = vault().use(secretId, purpose, action);
-        // For the app's usage log: who, for what, when; never the value.
-        send(ws, {
-          type: "vault.used",
-          secretId,
-          purpose,
-          requester: used.requester,
-          action,
-          at: new Date().toISOString(),
-        });
-        return ok(command.type, { result: used.result });
-      }
-      case "actions.list":
-        return ok(command.type, await actions().list(command.payload.projectId));
-      case "actions.save":
-        return ok(command.type, await actions().save(command.payload));
-      case "actions.remove":
-        return ok(
-          command.type,
-          await actions().remove(command.payload.projectId, command.payload.name),
-        );
-      case "actions.trust": {
-        const { projectId, name, hash } = command.payload;
-        return ok(command.type, await actions().trust(projectId, name, hash));
-      }
-      case "actions.run":
-        return ok(command.type, await actions().run(command.payload));
-      case "actions.runFree":
-        return ok(command.type, await actions().runFree(command.payload));
-      case "actions.runs":
-        return ok(command.type, { runs: actions().runs(command.payload) });
-      case "vault.watch": {
-        const service = actions();
-        ws.data.unwatchVault?.();
-        ws.data.unwatchVault = service.watch((frame) => send(ws, frame));
-        return ok(command.type);
-      }
-      case "vault.deny":
-        actions().deny(command.payload.requestId);
-        return ok(command.type);
       case "teams.list":
         return ok(command.type, { teams: teams().list(command.payload.projectId) });
       case "teams.create":
@@ -1038,25 +960,6 @@ export function startServer(opts: ServerOptions): RunningServer {
           paused: set.paused,
         });
       }
-      case "vault.rules.set": {
-        const { secretId, tags, rules } = command.payload;
-        return ok(command.type, { rules: actions().setRules(secretId, tags ?? [], rules) });
-      }
-      case "vault.rules.get": {
-        const { secretId } = command.payload;
-        return ok(command.type, { secretId, ...actions().getRules(secretId) });
-      }
-      case "vault.rules.preview":
-        return ok(command.type, actions().preview(command.payload));
-      case "vault.approve": {
-        const { requestId, ...approval } = command.payload;
-        actions().approve(requestId, approval);
-        return ok(command.type);
-      }
-      case "vault.decisions":
-        return ok(command.type, { decisions: actions().decisions(command.payload) });
-      case "vault.report":
-        return ok(command.type, actions().report(command.payload));
       case "automation.list":
         return ok(command.type, { automations: automations().list(command.payload.projectId) });
       case "automation.save":
@@ -1084,28 +987,6 @@ export function startServer(opts: ServerOptions): RunningServer {
           command.type,
           await issues().createCard(command.payload.projectId, command.payload.issueRef),
         );
-      case "autoapprove.list": {
-        const { projectId, sessionKey, limit } = command.payload;
-        return ok(command.type, {
-          decisions: autoApprove().list({
-            ...(projectId ? { projectId } : {}),
-            ...(sessionKey ? { sessionKey } : {}),
-            ...(limit ? { limit } : {}),
-          }),
-          suspended: autoApprove().suspended(),
-        });
-      }
-      case "autoapprove.resume": {
-        if (command.payload.confirm !== true) {
-          throw new FlightdeckError(
-            "invalid_state",
-            "reativar a aprovação automática pede confirm: true",
-            "autoapprove_resume_confirm",
-          );
-        }
-        autoApprove().resume(command.payload.sessionKey);
-        return ok(command.type, { suspended: autoApprove().suspended() });
-      }
       case "agentcfg.list": {
         const { projectId, kind } = command.payload;
         return ok(command.type, { items: await agentcfg().list(projectPath(projectId), kind) });
@@ -1439,14 +1320,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         board().workflows.respond(runId, stepId, attempt, decision, note);
         return ok(command.type, board().workflows.getRun(runId));
       }
-      case "rules.list":
-        return ok(command.type, { rules: await board().listRules(command.payload.projectId) });
-      case "rules.remove": {
-        const { projectId, rule, confirm } = command.payload;
-        return ok(command.type, {
-          rules: await board().removeRule(projectId, rule, confirm === true),
-        });
-      }
       case "costs.status":
         return ok(command.type, costs().status());
       case "costs.reprice":
@@ -1735,13 +1608,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.changeWatchers.get(command.payload.target)?.();
         ws.data.changeWatchers.delete(command.payload.target);
         return ok(command.type);
-      case "ssh.list":
-        return ok(command.type, { targets: ssh().list() });
-      case "ssh.save":
-        return ok(command.type, ssh().save(command.payload));
-      case "ssh.remove":
-        ssh().remove(command.payload.id, command.payload.confirm);
-        return ok(command.type);
       case "snippets.list":
         return ok(command.type, await snippets().list(command.payload));
       case "snippets.save":
@@ -1838,45 +1704,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await snippetUse().render(command.payload));
       case "snippets.use":
         return ok(command.type, await snippetUse().use(command.payload));
-      case "askpass.watch":
-        ws.data.unwatchAskpass?.();
-        ws.data.unwatchAskpass = askpass().watch((frame) => send(ws, frame));
-        return ok(command.type);
-      case "askpass.ask":
-        return ok(command.type, {
-          secret: await askpass().ask(command.payload.ticket, command.payload.prompt),
-        });
-      case "askpass.answer":
-        askpass().answer(command.payload.requestId, command.payload.secret);
-        return ok(command.type);
-      case "ssh.connect": {
-        const { targetId, cols, rows, privateKey } = command.payload;
-        // A key from the vault travels only where the vault delivers: loopback and Tailscale.
-        if (privateKey) requireVaultTransport(ws.data.origin, "ssh.connect com chave", opts.log);
-        const request = { targetId, cols, rows, ...(privateKey ? { privateKey } : {}) };
-        return ok(command.type, await sshConnect().connect(request));
-      }
-      case "ssh.test": {
-        const { targetId, privateKey } = command.payload;
-        if (privateKey) requireVaultTransport(ws.data.origin, "ssh.test com chave", opts.log);
-        return ok(
-          command.type,
-          await sshConnect().test({ targetId, ...(privateKey ? { privateKey } : {}) }),
-        );
-      }
-      case "ssh.hostkey.check":
-        return ok(command.type, await sshHostKeys().check(command.payload.targetId));
-      case "ssh.hostkey.confirm":
-        return ok(
-          command.type,
-          sshHostKeys().confirm(command.payload.targetId, command.payload.fingerprint),
-        );
-      case "ssh.hostkey.forget":
-        return ok(command.type, sshHostKeys().forget(command.payload.targetId));
-      case "ssh.import.preview":
-        return ok(command.type, await sshImport().preview());
-      case "ssh.import.apply":
-        return ok(command.type, await sshImport().apply(command.payload.aliases));
       case "review.list":
         return ok(command.type, { comments: await review().list(command.payload.target) });
       case "review.add":
