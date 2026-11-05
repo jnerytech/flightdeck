@@ -26,6 +26,8 @@ export interface ProjectTrustOptions {
   roots?: () => readonly string[];
   now?: () => Date;
   log?: (line: string) => void;
+  /** Reads a `.git` file (a test seam: a file that cannot be read is a boundary, not a crash). */
+  readText?: (path: string) => Promise<string>;
 }
 
 interface Row {
@@ -128,7 +130,9 @@ export class ProjectTrust {
         this.boundaries.set(here, { main: null });
         return;
       }
-      const text = await readFile(git, "utf8").catch(() => "");
+      const text = await (this.opts.readText ?? ((path) => readFile(path, "utf8")))(git).catch(
+        () => "",
+      );
       const gitdir = /^gitdir:\s*(.+)$/m.exec(text)?.[1]?.trim();
       const main = gitdir ? this.mainOfGitdir(gitdir, dir) : null;
       this.boundaries.set(here, { main });

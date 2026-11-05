@@ -202,4 +202,19 @@ describe("project-trust: trust never reaches a folder the person did not mean (s
     await trust.prepare(nested);
     expect(trust.sessionTrust(nested)).toEqual({ trusted: true });
   });
+
+  test("a .git file that cannot be read closes the folder: it is its own boundary and not trusted", async () => {
+    const main = tempDir("fd-trust-");
+    const odd = join(main, "odd");
+    mkdirSync(odd, { recursive: true });
+    writeFileSync(join(odd, ".git"), "gitdir: ../.git/worktrees/odd\n");
+    const { trust } = fresh({
+      readText: async () => {
+        throw new Error("EACCES");
+      },
+    });
+    trust.trust(main);
+    await trust.prepare(odd);
+    expect(trust.sessionTrust(odd)).toEqual({ trusted: false });
+  });
 });
