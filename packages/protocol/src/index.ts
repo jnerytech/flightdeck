@@ -2884,6 +2884,10 @@ export const Command = z.discriminatedUnion("type", [
       archived: z.boolean().optional(),
     }),
   ),
+  /** Issue #154: one snapshot of the host's memory, disk and what each session and terminal costs. */
+  cmd("resources.get", z.object({}).strict()),
+  /** Ends a process the snapshot lists as an orphan; the daemon checks again that it is one. */
+  cmd("resources.endOrphan", z.object({ pid: z.number().int().positive() }).strict()),
   cmd("maintenance.status", z.object({}).strict()),
   cmd("maintenance.backup", z.object({}).strict()),
   /** Applies the retention policy now; `dryRun` only counts. */
@@ -4193,6 +4197,50 @@ export type BackupInfo = z.infer<typeof BackupInfo>;
 
 /** Rows removed (or that would be, with `dryRun`) per table. */
 export const PruneCounts = z.record(z.string(), z.number());
+
+/**
+ * Issue #154: what the host's work costs it. Executable names only: never a command line or an
+ * environment, which can hold secrets.
+ */
+export const ResourceBytes = z.object({
+  totalBytes: z.number().nonnegative(),
+  freeBytes: z.number().nonnegative(),
+});
+export const ResourceRow = z.object({
+  kind: z.enum(["session", "terminal"]),
+  /** The session's or the terminal's id. */
+  id: z.string(),
+  name: z.string().nullable(),
+  cwd: z.string().nullable(),
+  /** Resident memory of the process tree, in bytes. */
+  rssBytes: z.number().nonnegative(),
+  /** CPU of the tree since the last snapshot, in % of one core; null on the first reading. */
+  cpuPercent: z.number().nonnegative().nullable(),
+  processes: z.number().int().nonnegative(),
+  /** Executable names, once each. */
+  names: z.array(z.string()),
+});
+export const ResourceOrphan = z.object({
+  pid: z.number().int().positive(),
+  name: z.string(),
+  rssBytes: z.number().nonnegative(),
+  ageSec: z.number().nonnegative(),
+});
+export const ResourcesSnapshot = z.object({
+  at: z.string(),
+  memory: ResourceBytes,
+  disk: ResourceBytes.nullable(),
+  /** One-minute load average divided by the number of cores, in %; null where there is none. */
+  loadPercent: z.number().nonnegative().nullable(),
+  /** Whether the processes were measured; false says why in `reason`. */
+  measured: z.boolean(),
+  reason: z.enum(["platform"]).nullable(),
+  rows: z.array(ResourceRow),
+  orphans: z.array(ResourceOrphan),
+});
+export type ResourcesSnapshot = z.infer<typeof ResourcesSnapshot>;
+export type ResourceRow = z.infer<typeof ResourceRow>;
+export type ResourceOrphan = z.infer<typeof ResourceOrphan>;
 export type PruneCounts = z.infer<typeof PruneCounts>;
 
 export const MaintenanceStatus = z.object({
@@ -4251,6 +4299,8 @@ export interface CommandResults {
   "external.watch": undefined;
   "external.message": undefined;
   "session.meta.set": SessionMeta & { claudeSessionId: string };
+  "resources.get": ResourcesSnapshot;
+  "resources.endOrphan": { ended: true };
   "maintenance.status": MaintenanceStatus;
   "maintenance.backup": BackupInfo;
   "maintenance.prune": PruneCounts;
