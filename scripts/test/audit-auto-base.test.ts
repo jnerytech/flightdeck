@@ -70,15 +70,16 @@ describe("audit-auto-base", () => {
       if (key === "rev-parse HEAD") return `${HEAD}\n`;
       if (key === "merge-base HEAD origin/main") return `${BASE}\n`;
       if (key === `rev-parse --verify ${BASE}^{commit}`) return `${BASE}\n`;
-      if (key === `log --reverse --format=%H%x1f%s ${BASE}..HEAD`) {
-        return `1\x1ftest(a): t\n2\x1ffeat(a): f`;
+      if (args[0] === "log" && args.at(-1) === `${BASE}..HEAD`) {
+        return `1\x1ftest(a): t\n2\x1ffeat(b): f`;
       }
       if (args[0] === "ls-files") return "";
       return null;
     };
+    // feat(b) has no test(b): the failure proves the commits came from BASE..HEAD.
     expect(runAudit({ since: "auto", git, readFile: () => "" })).toEqual({
-      code: 0,
-      output: `TDD AUDIT OK\n  since ${BASE} (auto)`,
+      code: 1,
+      output: `TDD AUDIT FAIL: 1 violação(ões)\n  since ${BASE} (auto)\n  2  b  feat sem commit test(b) anterior`,
     });
   });
 
