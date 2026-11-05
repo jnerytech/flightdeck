@@ -484,6 +484,22 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByText(c.t("palette.addHost"), { exact: true }).first().click();
     await c.page.getByLabel(c.t("hostForm.link"), { exact: true }).waitFor({ timeout: WAIT });
   },
+
+  // 18. New session (issue #186): the Sessions list starts one, and the form lets the host be chosen.
+  "nova-sessao-host": async (c) => {
+    await open(c, { name: "hub" });
+    await c.page
+      .locator('[data-slot="page-actions"]')
+      .first()
+      .getByRole("button", { name: c.t("sidebar.newSession"), exact: true })
+      .click();
+    const host = c.page.getByLabel(c.t("newSession.host"), { exact: true });
+    await host.waitFor({ timeout: WAIT });
+    await host.selectOption({ label: "beta" });
+    await c.page
+      .getByRole("heading", { name: c.t("newSession.title", { host: "beta" }) })
+      .waitFor({ timeout: WAIT });
+  },
 };
 
 /** What sticks out of the window sideways, outside a box that scrolls. */

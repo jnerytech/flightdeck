@@ -43,6 +43,7 @@ import {
   sharedMeta,
 } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
+import { newSessionHost } from "../lib/new-session-host.ts";
 import { hasFeature } from "../lib/version.ts";
 
 /** How often the hub asks the hosts about their background sessions. */
@@ -268,6 +269,7 @@ export function SessionsHub(props: {
     filter.pinnedOnly,
     filter.showArchived,
   ].filter(Boolean).length;
+  const starter = newSessionHost(state.hosts, state.selected);
   const toolbar = (
     <Toolbar label={t("hub.filters")}>
       <ViewToggle
@@ -376,7 +378,23 @@ export function SessionsHub(props: {
   );
 
   return (
-    <Page title={t("sidebar.sessions")} toolbar={toolbar}>
+    <Page
+      title={t("sidebar.sessions")}
+      toolbar={toolbar}
+      actions={
+        starter && (
+          <Button
+            size="sm"
+            onClick={() => {
+              store.select(starter.id, null);
+              store.router.push({ name: "new-session", host: starter.id });
+            }}
+          >
+            {t("sidebar.newSession")}
+          </Button>
+        )
+      }
+    >
       <div className="flex flex-col gap-4">
         <HostsBanner hosts={state.hosts} t={store.i18n.t} />
         {only && (

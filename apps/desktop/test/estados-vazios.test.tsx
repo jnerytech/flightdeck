@@ -52,7 +52,11 @@ describe("estados-vazios", () => {
     await settle(
       () => within(main).queryByText("Escolha uma sessão para ver a conversa.") !== null,
     );
-    const button = within(main).queryByRole("button", { name: "Nova sessão" });
+    // The list header has its own New session button; this one is the empty pane's.
+    const button =
+      within(main)
+        .queryAllByRole("button", { name: "Nova sessão" })
+        .find((b) => !b.closest('[data-slot="page-actions"]')) ?? null;
     expect(button).not.toBeNull();
     await act(async () => {
       fireEvent.click(button as HTMLElement);

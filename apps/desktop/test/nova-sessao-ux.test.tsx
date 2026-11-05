@@ -179,9 +179,7 @@ describe("nova-sessao-ux: the form says what it needs", () => {
       (screen.queryByRole("button", { name: "Create session" }) as HTMLButtonElement | null)
         ?.disabled,
     ).toBe(true);
-    expect(
-      screen.queryByText("This host has no allowed folder: add one in its settings"),
-    ).not.toBeNull();
+    expect(screen.queryByText("This host has no allowed folder.")).not.toBeNull();
   });
 
   test("every field of the form has the same width, and the button sits at the fields' left edge", async () => {
@@ -225,9 +223,7 @@ describe("nova-sessao-ux: the form says what it needs", () => {
       name: "Create session",
     }) as HTMLButtonElement | null;
     expect(button?.disabled).toBe(false);
-    expect(
-      screen.queryByText("This host has no allowed folder: add one in its settings"),
-    ).toBeNull();
+    expect(screen.queryByText("This host has no allowed folder.")).toBeNull();
     await press("Create session");
     expect(created).toEqual([{ cwd: "/work", prompt: "faça isto", permissionMode: "default" }]);
   });
