@@ -4155,7 +4155,10 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   HEAD:<path>`) is risky too ("edits spawn code"): taking a check out in front of a spawn or a
   delete needs a review as much as adding one. A removal of comments or blank lines only reads
   nothing, except a lone `/*`: without it the lines after it run, so the file's code is read. A
-  file moved from a test folder into the code is risky ("moved from tests"), even unchanged. Removed lines are keyed by the file's old path (`--- a/`), so a file renamed into a test
+  file moved from a test folder into the code is risky ("moved from tests"), even unchanged. Known
+  limits, all needing a deliberate edit: an added lone `*/` can un-comment code that stays as
+  context; a content line that reads `-- "…"` or `++ "…"` looks like a quoted header and blocks the
+  gate (it never lets anything through); the trailer is the session's own word. Removed lines are keyed by the file's old path (`--- a/`), so a file renamed into a test
   folder or to a non-code extension still counts the checks it lost; the code that stays is read at
   its new path. A deleted file is not read at HEAD, and a file whose HEAD cannot be read (an error,
   an output past the buffer) is risky, never taken as empty.
