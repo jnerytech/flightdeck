@@ -58,7 +58,14 @@ export interface EntryRow {
 
 /** Every usage entry, by message id. */
 export function usageEntries(db: Database): EntryRow[] {
-  return db.query("SELECT * FROM usage_entries ORDER BY message_id").all() as EntryRow[];
+  // The columns before phase 40: the provider column is read by its own tests (assistant-usage).
+  return db
+    .query(
+      `SELECT message_id, claude_session_id, at, day, project_key, model, origin, speed, input,
+         output, cache_read, cache_write_5m, cache_write_1h, cost_usd
+       FROM usage_entries ORDER BY message_id`,
+    )
+    .all() as EntryRow[];
 }
 
 /** A managed session row (the columns the usage cares about). */
