@@ -4009,3 +4009,21 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   no new crate enters the lock. The spec's "no new dev-dependency" is read as no HTTP mocking crate: the fake server is
   `std::net::TcpListener` on loopback.
 - **TLS** mirrors the updater: `reqwest` with `rustls-no-provider`, and the ring `CryptoProvider` installed when none is.
+
+### Phase 40: the privacy review of the daemon slice
+
+OpenCode's review found three highs, fixed before the Rust slice:
+
+- **A link is never followed.** An untracked file is read through `readRegular` (`apps/daemon/src/read-regular.ts`):
+  `lstat`, a regular file only, opened with `O_NOFOLLOW | O_NONBLOCK` (where they exist), checked again with `fstat`, and
+  read up to a cap. A link, a pipe or an untracked file over 256 KB is listed like a binary file, without content. The rule
+  is in `untrackedFile`, so the Changes panel takes it too: a link to a file outside the worktree no longer shows its
+  target there either, and a pipe can no longer hang it. Git itself never lists an untracked pipe; the guard is for a file
+  swapped between the listing and the read.
+- **The rules are read the same way.** `extractRules` is async and reads 64 KB of `CLAUDE.md` and `AGENTS.md` and 1 KB of
+  the commitlint config and `.gitmessage`, each only when it is a regular file.
+- **One scanner.** The secret patterns are app-logs' (`0e2331fd2`: named secrets such as `DB_PASSWORD=` or
+  `clientSecret:`, option and curl passwords, auth headers, cookies, Basic credentials, JWTs, service keys, webhooks,
+  signed URLs, and a private key's whole block), ported as the same text so the two branches merge cleanly. The diff is
+  scanned line by line, so it also takes out every line from a `BEGIN ... PRIVATE KEY` line to its `END` line. The two
+  history and trace-export tests take app-logs' updated expectations too.
