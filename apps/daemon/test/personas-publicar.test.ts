@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { AgentConfig } from "../src/agentcfg/files.ts";
 import { agentPublisher } from "../src/personas/publish.ts";
 
@@ -16,8 +16,8 @@ const request = (projectPath: string, prompt = "Revise como segurança.") => ({
 
 describe("personas-subagente: published through the project's agent editor (phase 12)", () => {
   test("the persona becomes .claude/agents/persona-<id>.md, which the agent editor lists", async () => {
-    const project = mkdtempSync(join(tmpdir(), "fd-pub-"));
-    const agents = new AgentConfig({ claudeDir: mkdtempSync(join(tmpdir(), "fd-claude-")) });
+    const project = realTempDir("fd-pub-");
+    const agents = new AgentConfig({ claudeDir: realTempDir("fd-claude-") });
     const result = await agentPublisher(agents).publish(request(project));
     expect(result.path).toBe(".claude/agents/persona-seguranca.md");
     const listed = (await agents.list(project, "agent")).filter(
@@ -37,8 +37,8 @@ describe("personas-subagente: published through the project's agent editor (phas
   });
 
   test("publishing again replaces the agent with the persona's current text", async () => {
-    const project = mkdtempSync(join(tmpdir(), "fd-pub-"));
-    const agents = new AgentConfig({ claudeDir: mkdtempSync(join(tmpdir(), "fd-claude-")) });
+    const project = realTempDir("fd-pub-");
+    const agents = new AgentConfig({ claudeDir: realTempDir("fd-claude-") });
     const publisher = agentPublisher(agents);
     await publisher.publish(request(project));
     await publisher.publish(request(project, "Texto novo."));
