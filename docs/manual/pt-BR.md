@@ -2374,14 +2374,19 @@ Toda tela abre numa aba, como num navegador. Cada aba tem o próprio histórico 
   | `Ctrl+T` | aba nova, na paleta |
   | `Ctrl+W` | fecha a aba |
   | `Ctrl+Shift+T` | reabre a última fechada (guarda as últimas 20) |
-  | `Ctrl+Tab` / `Ctrl+Shift+Tab` | próxima e anterior |
+  | `Ctrl+Tab` (segure `Ctrl` e aperte `Tab` de novo para descer) / `Ctrl+Shift+Tab` (subir) | abre o seletor com as abas mais recentes da área com o foco, na anterior; solte o `Ctrl` para ir à selecionada, `Esc` ou sair da janela cancela. Um toque rápido vai à aba anterior, e outro toque volta |
   | `Ctrl+1`…`Ctrl+9` | vai para aquela aba (`Ctrl+9` é a última) |
   | `Ctrl+Shift+PageUp` / `PageDown` | move a aba ativa para a esquerda ou a direita |
   | `Ctrl+Shift+←` / `→` (numa aba com o foco) | move essa aba para a esquerda ou a direita; o leitor de tela ouve a nova posição |
   | `Ctrl+\` | divide a tela ou junta as áreas |
 
-  Na entrada web do demo, o Chromium fica com `Ctrl+T`, `Ctrl+W` e `Ctrl+Shift+T`: lá, use os
-  botões.
+  Em Configurações, Aparência, **Ordem do Ctrl+Tab** escolhe **Mais recente primeiro** (o padrão)
+  ou **Ordem das abas**, em que `Ctrl+Tab` e `Ctrl+Shift+Tab` vão para a próxima e a anterior como
+  antes. O seletor é uma lista para leitores de tela (a aba selecionada é anunciada); a lista não é
+  guardada entre execuções.
+
+  Na entrada web do demo, o Chromium fica com `Ctrl+T`, `Ctrl+W`, `Ctrl+Shift+T` e `Ctrl+Tab`:
+  lá, use os botões.
 - **Guardadas entre aberturas:** as abas, quais estão fixas, a aba ativa, a divisão e o divisor
   voltam quando o app abre de novo. Cada aba volta na sua tela, sem o histórico. O formulário de
   host nunca é guardado, porque pode ter um token. A aba de um host que ainda não conectou mostra
