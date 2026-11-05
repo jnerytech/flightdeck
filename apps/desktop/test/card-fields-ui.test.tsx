@@ -181,6 +181,34 @@ for (const [lang, t] of [
       expect(field(t.cardUi.title)?.value).toBe("Fix it, theirs");
     });
 
+    // #249 (follow-up of #170): between a save and the host's card.updated the field used to show the
+    // old text again for a moment. A save the host took keeps what was sent until the card moves.
+    test("after a save, the field keeps the saved text until the host's update arrives", async () => {
+      const { store } = await openByRoute(lang);
+      await settle(() => field(t.cardUi.title)?.value === "Fix the total");
+      // The host takes both saves, but its card.updated has not come yet.
+      const real = store.hostCommand.bind(store);
+      store.hostCommand = (async (hostId, type, payload) =>
+        type === "card.update" ? {} : real(hostId, type, payload)) as typeof store.hostCommand;
+      await act(async () => {
+        fireEvent.change(field(t.cardUi.title) as HTMLInputElement, {
+          target: { value: "Fix the cart total " },
+        });
+        fireEvent.change(field(t.cardUi.description) as HTMLTextAreaElement, {
+          target: { value: "Round to cents." },
+        });
+      });
+      await act(async () => {
+        fireEvent.click(button(t.cardUi.saveTitle) as HTMLButtonElement);
+        fireEvent.click(button(t.cardUi.saveDescription) as HTMLButtonElement);
+      });
+      await act(async () => {});
+      expect([field(t.cardUi.title)?.value, field(t.cardUi.description)?.value]).toEqual([
+        "Fix the cart total ",
+        "Round to cents.",
+      ]);
+    });
+
     // OpenCode branch review m1: typing the card's text back is no edit any more.
     test("typing the card's own text back lets the field follow the card again", async () => {
       const { store, hostId, card } = await openByRoute(lang);
