@@ -7,7 +7,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { opencodeConfig, opencodeEnv, VERIFIED_OPENCODE_VERSION } from "./opencode-config.ts";
-import type { ScopeFinding, ScopeResult } from "./opencode-scope.ts";
+import { globalConfigDir, type ScopeFinding, type ScopeResult } from "./opencode-scope.ts";
 
 export type OpenCodeUnavailable =
   | "opencode_disabled"
@@ -16,7 +16,8 @@ export type OpenCodeUnavailable =
   | "opencode_v1"
   | "opencode_unsafe_global"
   | "opencode_project_config_not_disabled"
-  | "opencode_canary_failed";
+  | "opencode_canary_failed"
+  | "opencode_scope_mismatch";
 
 export interface OpenCodeInfo {
   available: boolean;
@@ -84,8 +85,14 @@ function newer(a: string, b: string): boolean {
   return false;
 }
 
-/** Runs the canary: true when the canary's own `opencode.json` is not a config source. */
-async function canaryPasses(path: string, deps: DiscoveryDeps): Promise<boolean | null> {
+/**
+ * Runs the canary: `ok` when the canary's own `opencode.json` is not a config source and the global
+ * folder OpenCode reports is the one the scope scan read; `null` when it could not run.
+ */
+async function canary(
+  path: string,
+  deps: DiscoveryDeps,
+): Promise<"ok" | "listed" | "mismatch" | null> {
   const folder = join(deps.dataDir, "opencode-canary");
   const file = join(folder, "opencode.json");
   await mkdir(folder, { recursive: true });
@@ -97,8 +104,12 @@ async function canaryPasses(path: string, deps: DiscoveryDeps): Promise<boolean 
   });
   if (result.exitCode !== 0) return null;
   try {
-    const sources = JSON.parse(result.stdout) as Array<{ path?: string }>;
-    return Array.isArray(sources) ? !sources.some((source) => source.path === file) : null;
+    const sources = JSON.parse(result.stdout) as Array<{ type?: string; path?: string }>;
+    if (!Array.isArray(sources)) return null;
+    if (sources.some((source) => source.path === file)) return "listed";
+    const global = globalConfigDir(deps.env);
+    const other = sources.some((source) => source.type === "directory" && source.path !== global);
+    return other ? "mismatch" : "ok";
   } catch {
     return null;
   }
@@ -131,9 +142,12 @@ export async function discoverOpenCode(
       findings: scope.findings,
     };
   }
-  const canary = await canaryPasses(path, deps);
-  if (canary === null) return { available: false, path, version, reason: "opencode_canary_failed" };
-  if (!canary)
+  const proof = await canary(path, deps);
+  if (proof === null) return { available: false, path, version, reason: "opencode_canary_failed" };
+  if (proof === "listed") {
     return { available: false, path, version, reason: "opencode_project_config_not_disabled" };
+  }
+  if (proof === "mismatch")
+    return { available: false, path, version, reason: "opencode_scope_mismatch" };
   return { available: true, path, version, verified: !newer(version, VERIFIED_OPENCODE_VERSION) };
 }
