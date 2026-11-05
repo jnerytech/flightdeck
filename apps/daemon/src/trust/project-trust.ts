@@ -21,6 +21,8 @@ export interface SessionTrust {
 export interface ProjectTrustOptions {
   /** The main checkout a worktree belongs to, or null when `cwd` is not a worktree. */
   configRootOf?: (cwd: string) => string | null;
+  /** The roots the host allows: a trust record on a root, or above one, grants nothing by prefix. */
+  roots?: () => readonly string[];
   now?: () => Date;
   log?: (line: string) => void;
 }
@@ -79,6 +81,9 @@ export class ProjectTrust {
    * What a session in `cwd` may load. A worktree is read from its main checkout and is trusted only
    * if that is: a branch, trusted or not, never brings its own hooks.
    */
+  /** Looks at the folder's git boundaries once, so `sessionTrust` can stay synchronous. */
+  async prepare(_cwd: string): Promise<void> {}
+
   sessionTrust(cwd: string): SessionTrust {
     const main = this.opts.configRootOf?.(cwd) ?? null;
     if (main) return { trusted: this.isTrusted(main), configRoot: main };
