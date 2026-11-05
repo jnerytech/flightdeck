@@ -191,9 +191,23 @@ em vez de depender de cuidado.
 ## Delivery (GitHub Flow, #260)
 
 - Every branch reaches `main` through its own PR: `bun run pr -- open <branch>` titles it after the
-  branch's issue and closes it. A branch stacked on another opens with `--base <parent>`.
+  branch's issue and closes it. A branch stacked on another opens with `--base <parent>`. When
+  `FLIGHTDECK_PR_OPENED` is set (words split on spaces, or a JSON array of strings for a path with
+  spaces), `open` runs it with the new PR's number, branch and base (the coordinator's tooling
+  queues an OpenCode review there, #273). A hook that fails, or runs past two minutes, leaves the
+  PR open; only its exit code is printed, never its output.
+- A change in a risk area (a spawn or kill, a delete, a secret, a permission, the vault or pairing,
+  read from the added lines of the changed code) needs a security review before the hand-off
+  (#273). Run the `security-reviewer` agent, fix what it finds, and commit its verdict after the
+  last risky commit: `git commit --allow-empty -m "chore(security): security-reviewer verdict (#N)"
+  -m "Security-Reviewed: <its one-line summary>"`. Until then `handoff:check` stamps
+  `security=unreviewed`, which `--verify` refuses; a git that fails stamps `security=unknown`, and a
+  stamp with no `security=` or no `ci=` vouches for nothing.
 - CI runs once per commit: on the PR (`pull_request`), on `main` (`push`), or by hand for a branch
   with no PR yet (`bun run ci:branch`).
+- CI starts with a quick job (#272): typecheck, lint, the TDD audit and every ratchet test, in
+  minutes. The heavy jobs need it. A new ratchet's test file ends in
+  `-ratchet.test.ts` (or `.tsx`), so the quick job picks it up by itself (scripts/lib/ci-quick.ts).
 - Right after `open`, the session turns on auto-merge: `bun run pr -- auto <n>` (#271). GitHub
   then merges the PR with a merge commit, never a squash, once the main ruleset's required checks
   are green on its HEAD and it is up to date (the ruleset is strict; auto-merge never updates the
@@ -204,9 +218,13 @@ em vez de depender de cuidado.
   `bun run pr -- update <n>` brings one up to date with its base. `bun run pr -- merge <n>` (the
   coordinator only; the guard hook refuses it in a session) merges by hand with a merge commit,
   under the same conditions.
-- A release is a tag on a green `main`; there is no rc branch to assemble. `bun run pr -- tag vX`
-  (the coordinator) tags main's HEAD only after its full CI run on main passed, and pushes the tag
-  alone as `refs/tags/vX`.
+- A PR runs only the jobs its paths need (#264, scripts/lib/ci-paths.ts): docs or scripts only run
+  the Linux tests and lint; the daemon or a smoke adds Windows and the smokes; the app, the
+  protocol, the dependencies or the workflow run everything; the Tauri shell adds cargo. A job
+  skipped by path still reports under the ruleset's name. Every push to `main` runs everything.
+- A release is a tag on a green `main`, and on a commit whose full run (its push to `main`) is
+  green; there is no rc branch to assemble. `bun run pr -- tag vX` (the coordinator) tags main's
+  HEAD only after that run passed, and pushes the tag alone as `refs/tags/vX`.
 
 ## Evidência para o /goal
 

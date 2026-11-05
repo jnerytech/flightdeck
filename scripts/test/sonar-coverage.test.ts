@@ -8,7 +8,7 @@ import {
   isTestFile,
   matchesGlob,
   testInclusionsOf,
-} from "../lib/sonar-lint.ts";
+} from "../lib/sonar-project.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
 const properties = readFileSync(resolve(ROOT, "sonar-project.properties"), "utf8");

@@ -21,10 +21,20 @@ export interface HandoffDeps {
   base?: string;
   /** The CI of HEAD: "0" when the required checks are green, else why not (#266). */
   ci?: () => Promise<string>;
+  /** The security gate (lib/security-gate.ts): "0", or "unreviewed" (#273). */
+  security?: () => Promise<string>;
 }
 
 /** Runs every step (all of them, so one run shows every failure) and builds the stamp line. */
-export async function runHandoff({ run, branch, head, now, base, ci }: HandoffDeps): Promise<{
+export async function runHandoff({
+  run,
+  branch,
+  head,
+  now,
+  base,
+  ci,
+  security,
+}: HandoffDeps): Promise<{
   code: number;
   stamp: string;
 }> {
@@ -34,6 +44,11 @@ export async function runHandoff({ run, branch, head, now, base, ci }: HandoffDe
     const code = await run(name === "related" && base ? [...command, "--base", base] : command);
     failed ||= code !== 0;
     codes.push(`${name}=${code}`);
+  }
+  if (security) {
+    const verdict = await security();
+    failed ||= verdict !== "0";
+    codes.push(`security=${verdict}`);
   }
   if (ci) {
     const verdict = await ci();
@@ -55,5 +70,11 @@ export function stampProblem(stamp: string | null, head: string): string | null 
   if (!m) return `not a stamp: ${stamp.trim().slice(0, 80)}`;
   if (m[2] !== head) return `stale: the stamp is for ${m[2]}, HEAD is ${head}`;
   const failed = (m[3] ?? "").split(" ").filter((pair) => pair && !pair.endsWith("=0"));
-  return failed.length === 0 ? null : `failed: ${failed.join(" ")}`;
+  if (failed.length > 0) return `failed: ${failed.join(" ")}`;
+  // A stamp from before the gate (or one with a field dropped) vouches for nothing (#273).
+  const keys = new Set((m[3] ?? "").split(" ").map((pair) => pair.split("=")[0]));
+  for (const key of ["security", "ci"]) {
+    if (!keys.has(key)) return `incomplete: no ${key}= in the stamp`;
+  }
+  return null;
 }
