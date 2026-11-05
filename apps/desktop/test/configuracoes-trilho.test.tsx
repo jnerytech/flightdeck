@@ -51,6 +51,7 @@ describe("configuracoes-trilho: the rail and the search", () => {
       "Janela",
       "Atualizações",
       "Atalho global",
+      "Assistente de IA",
       "Webhooks",
     ]);
   });

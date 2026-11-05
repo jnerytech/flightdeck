@@ -722,3 +722,25 @@ export function fakeAssistant(
   };
   return { assistant, calls };
 }
+
+/**
+ * Hosts in the store's state, as a connected app would hold them: online (or not) and announcing
+ * the given features. The state is private to the store; a test that needs hosts it did not
+ * connect puts them there.
+ */
+export function seedHosts(
+  store: object,
+  hosts: Array<{ id: string; name: string; online?: boolean; features?: string[] }>,
+): void {
+  const hidden = store as { state: Record<string, unknown>; getState(): Record<string, unknown> };
+  hidden.state = {
+    ...hidden.getState(),
+    hosts: hosts.map((host) => ({
+      id: host.id,
+      name: host.name,
+      status: host.online === false ? "offline" : "online",
+      hostInfo: { daemonVersion: "x", features: host.features ?? [] },
+      sessions: [],
+    })),
+  };
+}
