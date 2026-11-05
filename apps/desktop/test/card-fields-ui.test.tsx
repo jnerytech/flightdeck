@@ -165,6 +165,22 @@ for (const [lang, t] of [
       );
     });
 
+    test("the title stops a plain Save the same way, and Use theirs shows the title made elsewhere", async () => {
+      const { store, hostId, card } = await openByRoute(lang);
+      await settle(() => field(t.cardUi.title)?.value === "Fix the total");
+      await act(async () => {
+        fireEvent.change(field(t.cardUi.title) as HTMLInputElement, {
+          target: { value: "Fix the total, mine" },
+        });
+      });
+      await store.hostCommand(hostId, "card.update", { cardId: card.id, title: "Fix it, theirs" });
+      await settle(() => button(t.cardUi.saveTitle)?.disabled === true);
+      await act(async () => {
+        fireEvent.click(button(t.cardUi.useTheirs) as HTMLButtonElement);
+      });
+      expect(field(t.cardUi.title)?.value).toBe("Fix it, theirs");
+    });
+
     // OpenCode branch review m1: typing the card's text back is no edit any more.
     test("typing the card's own text back lets the field follow the card again", async () => {
       const { store, hostId, card } = await openByRoute(lang);
