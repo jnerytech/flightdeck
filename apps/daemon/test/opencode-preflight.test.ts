@@ -9,8 +9,10 @@ import {
   PREFLIGHT_CACHE_MS,
   type PreflightDeps,
 } from "../src/runtime/opencode-preflight.ts";
+import { globalConfigDir } from "../src/runtime/opencode-scope.ts";
 
-const GLOBAL = "/home/u/.config/opencode";
+// The global folder as the code computes it here (backslashes on Windows).
+const GLOBAL = globalConfigDir({ HOME: "/home/u" });
 const RULES = opencodeRules();
 const PLAN = [...RULES, { action: "edit", resource: "*", effect: "deny" }];
 const SUFFIX = [
@@ -132,15 +134,15 @@ describe("opencode-preflight", () => {
   test("the global folder's own config files are allowed as documents; another file in it is not", async () => {
     for (const name of ["opencode.json", "opencode.jsonc", "config.json"]) {
       const config = [
-        { type: "document", path: `${GLOBAL}/${name}`, info: { model: "a/b" } },
+        { type: "document", path: join(GLOBAL, name), info: { model: "a/b" } },
         ...goodConfig(),
       ];
       expect(await refusal(setup({ config }).preflight.check("/w"))).toBe(null);
     }
-    const other = [{ type: "document", path: `${GLOBAL}/extra.json` }, ...goodConfig()];
+    const other = [{ type: "document", path: join(GLOBAL, "extra.json") }, ...goodConfig()];
     expect((await refusal(setup({ config: other }).preflight.check("/w")))?.params).toEqual({
       version: "2.2.5",
-      what: `${GLOBAL}/extra.json`,
+      what: join(GLOBAL, "extra.json"),
     });
   });
 
@@ -260,7 +262,10 @@ describe("opencode-preflight", () => {
         calls.push(route);
         const stdout =
           route === "/api/config"
-            ? fixture("api-config.json")
+            ? fixture("api-config.json").replace(
+                '"/home/u/.config/opencode"',
+                JSON.stringify(GLOBAL),
+              )
             : route === "/api/agent"
               ? fixture("api-agent.json")
               : JSON.stringify({ data: [] });
