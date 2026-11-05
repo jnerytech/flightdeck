@@ -16,6 +16,7 @@ function setup(
   features: string[] = ALL,
   platform = memoryPlatform(false, "en").platform,
   route?: import("../src/lib/router.ts").Route,
+  appVersion?: string,
 ) {
   const store = new AppStore(platform, { baseDelayMs: 600_000 });
   store.i18n.start();
@@ -39,6 +40,7 @@ function setup(
       t={store.i18n.t}
       go={() => {}}
       {...(route ? { route } : {})}
+      {...(appVersion ? { appVersion } : {})}
       onOpenProjectScreen={() => {}}
       onNewSession={() => {}}
       onRemoveHost={() => {}}
@@ -211,6 +213,18 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
     expect(slot("Teams", "nav-badge")?.textContent).toBe("Beta");
     expect(slot("Conversations", "nav-badge")?.textContent).toBe("New");
     expect(slot("Board", "nav-badge")).toBeNull();
+  });
+
+  test("the badges expire with the version: Beta and New are gone once the app reaches their version", () => {
+    const slot = (name: string) =>
+      screen.getByRole("button", { name }).querySelector("[data-slot='nav-badge']");
+    // Past New's version, still before Beta's.
+    render(setup(ALL, undefined, undefined, "0.38.2").view());
+    expect(slot("Conversations")).toBeNull();
+    expect(slot("Teams")?.textContent).toBe("Beta");
+    cleanup();
+    render(setup(ALL, undefined, undefined, "0.40.0").view());
+    expect(slot("Teams")).toBeNull();
   });
 
   test("the manual is an external link, with its icon, and it opens the manual of the app's language", async () => {

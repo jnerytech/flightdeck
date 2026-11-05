@@ -218,6 +218,8 @@ export function Sidebar(props: {
   go(route: Route): void;
   /** Where the user is, to mark the sidebar item of that screen. */
   route?: Route;
+  /** The app's version, to know which badges are still due (the app's own unless told). */
+  appVersion?: string;
   /** Board or Workflows of a host: its only project opens directly, several ask which. */
   onOpenProjectScreen(hostId: string, kind: "board" | "workflows"): void;
   onNewSession(hostId: string): void;
