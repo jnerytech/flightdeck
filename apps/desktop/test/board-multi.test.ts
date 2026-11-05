@@ -98,6 +98,7 @@ describe("board-multi: the counts (issue #161)", () => {
     expect(columnCount(0, 4, true)).toBe("0 / 4");
     expect(columnCount(3, 3, true)).toBe("3 / 3");
     expect(columnCount(0, 0, false)).toBe("0");
+    expect(columnCount(0, 0, true)).toBe("0");
   });
 });
 

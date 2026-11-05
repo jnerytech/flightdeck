@@ -231,6 +231,7 @@ describe("board-ui", () => {
     await openCardMenu("A");
     expect(menuEntries().map((m) => m.textContent)).toEqual([
       "Iniciar card",
+      "Selecionar card",
       "Mover para Em andamento",
       "Mover para Esperando você",
       "Mover para Em revisão",

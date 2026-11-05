@@ -693,6 +693,29 @@ Each project (a git repository on the host) has a board with five columns: Backl
 Needs you, In review and Done. A card becomes a branch `fd/<slug>`, a worktree and a session; the
 card moves by itself according to the session and the PR, and it can also be dragged by hand.
 
+### Working with many cards
+
+- **Select.** `Ctrl`-click (`⌘`-click on a Mac) a card to select it or unselect it; `Shift`-click
+  selects the range from the last card you picked, within its column. A card's menu has **Select
+  card** for the keyboard, and a selected card says "selected" to a screen reader. `Esc` clears the
+  selection. A filter hides cards but keeps them selected; what you do then applies only to the
+  cards you can see, and the bar says how many are hidden.
+- **The selection bar** above the board shows "3 selected" with **Move to…** (a column),
+  **Discard…** and **Clear selection**. Dragging a selected card drags the whole selection into the
+  column you drop it on, in the board's order.
+- **A card the host refuses to move** (for example, completing one that is still running) stays
+  where it was, stays selected, and is named in a notice with the host's reason. The others move.
+- **Discard…** shows one dialog with every selected card, and says which ones have a worktree and
+  a branch that go with them. Cards that never started are deleted; started ones are discarded.
+  Cancelling leaves everything as it was.
+- **Column width.** The handle at the right edge of a column (drag it, or Tab to it and press the
+  arrows, 20 px a step) sets one width for all the columns, between 220 and 520 px (260 by
+  default), and it is kept on this computer. The board scrolls inside itself, never the page.
+- **Counts.** Each column shows how many cards it has; with a filter on it reads `n / total`, and a
+  column the filter emptied says "No matches" instead of offering a new card.
+- **New card in a column.** The **New card** button at the bottom of a column creates the card
+  there (it appears on hover and on focus, and always on a screen without a pointer).
+
 ### Choosing a folder
 
 **New session** and the project form have a **Browse…** button next to the folder. It opens a

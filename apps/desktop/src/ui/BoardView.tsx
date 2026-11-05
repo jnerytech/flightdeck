@@ -1,7 +1,10 @@
 import type { BoardColumn, Card, Project } from "@flightdeck/protocol";
 import { Columns3, ListTodo, Lock, MoreHorizontal, Plus } from "lucide-react";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { BoardSyncControl } from "@/components/board/board-sync";
+import { BulkDiscardDialog, hasStartedWork } from "@/components/board/bulk-discard-dialog";
+import { ColumnHandle } from "@/components/board/column-handle";
+import { SelectionBar } from "@/components/board/selection-bar";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
@@ -30,6 +33,14 @@ import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { boardTitle, COLUMNS, filterCards, positionBefore, projectCards } from "../lib/board.ts";
+import {
+  columnCount,
+  moveMany,
+  pruneSelection,
+  rangeSelection,
+  shownSelection,
+  toggleSelection,
+} from "../lib/board-select.ts";
 import { issueNumber } from "../lib/issues.ts";
 import { statusTone } from "../lib/status.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -42,7 +53,15 @@ function CardTile(props: {
   /** The name of the workflow the card is running, when known. */
   workflow?: string;
   formatTime(iso: string): string;
-  labels: { actions: string; start: string; edit: string; delete: string };
+  labels: {
+    actions: string;
+    start: string;
+    edit: string;
+    delete: string;
+    select: string;
+    deselect: string;
+    selected: string;
+  };
   /** Phase 31: the titles of the cards it waits for and of those it holds up. */
   deps: { waiting: string; holding: string };
   /** The ways to move the card without dragging it, in menu order. */
@@ -56,17 +75,31 @@ function CardTile(props: {
   onDelete(): void;
   onDragStart(): void;
   onDropOn(): void;
+  /** Whether the card is in the selection (issue #161). */
+  selected: boolean;
+  /** Ctrl-click and the menu: adds or takes out. Shift-click: the range from the anchor. */
+  onToggleSelect(): void;
+  onRangeSelect(): void;
 }) {
   const t = useT();
   const { card } = props;
   /** The workflow (when its run is known) and the branch, when there are any. */
   const meta = [props.workflow, card.branch].filter(Boolean).join(" · ");
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Ctrl/Shift-click is the mouse's way to select; the card's menu has Select card for the keyboard
     <li
       draggable
       data-card={card.id}
+      data-selected={props.selected ? "true" : undefined}
       aria-label={t("kanban.card", { title: card.title })}
-      className="flex cursor-grab flex-col gap-2 rounded-md border bg-card p-2 text-sm hover:bg-accent"
+      className={cn(
+        "flex cursor-grab flex-col gap-2 rounded-md border bg-card p-2 text-sm hover:bg-accent",
+        props.selected && "bg-accent ring-1 ring-ring",
+      )}
+      onClick={(e) => {
+        if (e.ctrlKey || e.metaKey) props.onToggleSelect();
+        else if (e.shiftKey) props.onRangeSelect();
+      }}
       onDragStart={props.onDragStart}
       onDrop={(e) => {
         e.stopPropagation();
@@ -86,10 +119,14 @@ function CardTile(props: {
             type="button"
             data-card-open
             className="min-w-0 text-left font-medium"
-            onClick={props.onOpen}
+            onClick={(e) => {
+              // A modified click selects (the tile handles it); only a plain one opens.
+              if (!e.ctrlKey && !e.metaKey && !e.shiftKey) props.onOpen();
+            }}
           >
             {card.title}
           </button>
+          {props.selected && <span className="sr-only">{props.labels.selected}</span>}
         </span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -104,6 +141,9 @@ function CardTile(props: {
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem onSelect={props.onStart}>{props.labels.start}</DropdownMenuItem>
+            <DropdownMenuItem onSelect={props.onToggleSelect}>
+              {props.selected ? props.labels.deselect : props.labels.select}
+            </DropdownMenuItem>
             {props.moves.map((move) => (
               <DropdownMenuItem key={move.key} disabled={move.disabled} onSelect={move.onSelect}>
                 {move.label}
@@ -163,7 +203,7 @@ const BOARDVIEW_KEYS = ["runs", "hosts", "cards"] as const;
 
 /** A project's board: five columns, drag and drop between and within them, text filter. */
 /** A card that has a worktree, a branch or a session has work to clean up: it is discarded, not deleted. */
-const hasStarted = (card: Card) => Boolean(card.worktreePath || card.branch || card.sessionId);
+const hasStarted = hasStartedWork;
 
 export const BoardView = memo(function BoardView(props: {
   store: AppStore;
@@ -195,6 +235,16 @@ export const BoardView = memo(function BoardView(props: {
   const [over, setOver] = useState<string | null>(null);
   /** The issues panel (phase 13), on a daemon that announces issues. */
   const [issuesOpen, setIssuesOpen] = useState(false);
+  /** The selected cards (Ctrl-click), the last one picked (the anchor of a Shift range) and what a bulk action left to say. */
+  const [picked, setPicked] = useState<string[]>([]);
+  const anchor = useRef<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [discardingMany, setDiscardingMany] = useState(false);
+  /** The column a card is being created in from the bottom of a lane. */
+  const [quickColumn, setQuickColumn] = useState<BoardColumn | null>(null);
+  /** The cards dragged together when the dragged one is part of a selection. */
+  const draggingMany = useRef<string[] | null>(null);
+  const width = useSyncExternalStore(store.boardWidth.subscribe, () => store.boardWidth.value);
   const withDeps = hasFeature(
     state.hosts.find((h) => h.id === hostId)?.hostInfo?.features,
     "deps",
@@ -227,6 +277,65 @@ export const BoardView = memo(function BoardView(props: {
   const shown = filterCards(all, filter).filter(
     (card) => !onlyBlocked || card.waitingOn.length > 0,
   );
+  const filtering = filter.trim() !== "" || onlyBlocked;
+  // The board's order: column by column, top to bottom, among the cards a filter leaves.
+  const boardOrder = COLUMNS.flatMap(({ id }) =>
+    shown.filter((card) => card.column === id).map((card) => card.id),
+  );
+  const selection = pruneSelection(
+    picked,
+    all.map((card) => card.id),
+  );
+  const acting = shownSelection(selection, boardOrder);
+  const actingCards = acting.flatMap((id) => all.find((card) => card.id === id) ?? []);
+  /** Moves the shown selected cards, quietly; the host's refusals are named afterwards. */
+  const moveSelected = async (column: BoardColumn) => {
+    const refused = await moveMany(actingCards, column, async (cardId, to) => {
+      const answer = await store.hostRequest(hostId, "card.move", { cardId, column: to });
+      return answer.ok ? { ok: true } : { ok: false, message: answer.message };
+    });
+    const stayed = refused.map((r) => r.card.id);
+    setPicked((before) => before.filter((id) => stayed.includes(id) || !acting.includes(id)));
+    setNotice(
+      refused.length === 0
+        ? null
+        : refused.length === 1
+          ? t("board.stayedOne", { names: nameRefusals(refused) })
+          : t("board.stayed", { count: refused.length, names: nameRefusals(refused) }),
+    );
+  };
+  const nameRefusals = (refused: Array<{ card: Card; message: string }>) =>
+    refused.map((r) => `${r.card.title} (${r.message})`).join(", ");
+  /** Discards the started cards and deletes the others, one after the other. */
+  const discardSelected = async () => {
+    const cards = actingCards;
+    setDiscardingMany(false);
+    const failed: Array<{ card: Card; message: string }> = [];
+    for (const card of cards) {
+      const answer = await store.hostRequest(
+        hostId,
+        hasStartedWork(card) ? "card.discard" : "card.delete",
+        { cardId: card.id, confirm: true },
+      );
+      if (!answer.ok) failed.push({ card, message: answer.message });
+    }
+    const stayed = failed.map((f) => f.card.id);
+    setPicked((before) => before.filter((id) => stayed.includes(id) || !acting.includes(id)));
+    setNotice(
+      failed.length === 0
+        ? null
+        : t("board.stayed", { count: failed.length, names: nameRefusals(failed) }),
+    );
+  };
+  const select = (card: Card) => {
+    anchor.current = card.id;
+    setPicked(toggleSelection(selection, card.id));
+  };
+  const selectRange = (card: Card) => {
+    const order = shown.filter((other) => other.column === card.column).map((other) => other.id);
+    setPicked(rangeSelection(order, anchor.current, card.id, selection));
+    anchor.current = card.id;
+  };
   const titlesOf = (ids: string[]) =>
     ids.map((id) => all.find((card) => card.id === id)?.title ?? id).join(", ");
 
@@ -246,6 +355,12 @@ export const BoardView = memo(function BoardView(props: {
     const cardId = dragging.current;
     if (!cardId) return;
     dragging.current = null;
+    // A card dragged out of a selection takes the whole selection with it.
+    if (draggingMany.current) {
+      draggingMany.current = null;
+      void moveSelected(column);
+      return;
+    }
     move(cardId, column, targetId);
   };
   /** The menu's moves for a card: to each other column, and up or down within its own. */
@@ -292,17 +407,25 @@ export const BoardView = memo(function BoardView(props: {
   });
 
   const create = () => {
+    const column = quickColumn;
     const made = store.hostCommand(hostId, "card.create", {
       projectId,
       title: title.trim(),
       description,
     });
     close();
+    // Made from the bottom of a lane, the card goes to that lane.
+    if (column && column !== "backlog") {
+      void made.then((card) => {
+        if (card) void store.hostCommand(hostId, "card.move", { cardId: card.id, column });
+      });
+    }
     return made;
   };
   /** Closes the dialog and forgets what was typed. */
   const close = () => {
     setCreating(false);
+    setQuickColumn(null);
     setTitle("");
     setDescription("");
   };
@@ -360,18 +483,45 @@ export const BoardView = memo(function BoardView(props: {
             action={<Button onClick={() => setCreating(true)}>{t("states.newCard")}</Button>}
           />
         )}
+        {selection.length > 0 && (
+          <SelectionBar
+            t={t}
+            shown={acting.length}
+            hidden={selection.length - acting.length}
+            onMove={(column) => void moveSelected(column)}
+            onDiscard={() => setDiscardingMany(true)}
+            onClear={() => setPicked([])}
+          />
+        )}
+        {notice && (
+          <div
+            role="status"
+            className="flex items-center justify-between gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-sm"
+          >
+            <span>{notice}</span>
+            <Button size="sm" variant="ghost" onClick={() => setNotice(null)}>
+              {t("board.dismiss")}
+            </Button>
+          </div>
+        )}
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: Esc clears the selection from any card inside the board */}
         <div
           ref={boardRef}
+          data-slot="board-grid"
           // biome-ignore lint/a11y/noNoninteractiveTabindex: the columns scroll sideways; focus lets the keyboard do it
           tabIndex={0}
-          className="grid auto-cols-[minmax(15rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2"
+          style={{ gridAutoColumns: `${width}px` }}
+          className="grid grid-flow-col gap-3 overflow-x-auto pb-2"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setPicked([]);
+          }}
         >
           {COLUMNS.map(({ id }) => (
             <section
               key={id}
               aria-label={t(`kanban.columns.${id}` as Key)}
               className={cn(
-                "flex min-h-32 flex-col gap-2 rounded-lg bg-secondary/50 p-2",
+                "group/lane relative flex min-h-32 flex-col gap-2 rounded-lg bg-secondary/50 p-2",
                 over === id && "drop-over",
               )}
               onDragOver={(e) => e.preventDefault()}
@@ -384,9 +534,21 @@ export const BoardView = memo(function BoardView(props: {
                 drop(id);
               }}
             >
-              <h3 className="px-1 font-medium text-muted-foreground text-xs">
-                {t(`kanban.columns.${id}` as Key)}
-              </h3>
+              <div className="flex items-center justify-between gap-2 px-1">
+                <h3 className="font-medium text-muted-foreground text-xs">
+                  {t(`kanban.columns.${id}` as Key)}
+                </h3>
+                <span
+                  data-slot="column-count"
+                  className="rounded-full bg-muted px-1.5 text-muted-foreground text-xs tabular-nums"
+                >
+                  {columnCount(
+                    shown.filter((card) => card.column === id).length,
+                    all.filter((card) => card.column === id).length,
+                    filtering,
+                  )}
+                </span>
+              </div>
               <ul className="flex flex-col gap-2">
                 {shown
                   .filter((card) => card.column === id)
@@ -405,6 +567,9 @@ export const BoardView = memo(function BoardView(props: {
                         start: store.i18n.t("board.startCard"),
                         edit: store.i18n.t("board.edit"),
                         delete: store.i18n.t("board.delete"),
+                        select: t("board.selectCard"),
+                        deselect: t("board.deselectCard"),
+                        selected: t("board.selectedCard"),
                       }}
                       deps={{
                         waiting: titlesOf(card.waitingOn),
@@ -417,8 +582,13 @@ export const BoardView = memo(function BoardView(props: {
                       onStart={() =>
                         void store.hostCommand(hostId, "card.start", { cardId: card.id })
                       }
+                      selected={selection.includes(card.id)}
+                      onToggleSelect={() => select(card)}
+                      onRangeSelect={() => selectRange(card)}
                       onDragStart={() => {
                         dragging.current = card.id;
+                        draggingMany.current =
+                          acting.includes(card.id) && acting.length > 1 ? acting : null;
                       }}
                       onDropOn={() => {
                         setOver(null);
@@ -430,6 +600,25 @@ export const BoardView = memo(function BoardView(props: {
               {all.every((card) => card.column !== id) && (
                 <BoardColumnEmpty label={t("kanban.addCard")} onAdd={() => setCreating(true)} />
               )}
+              {filtering &&
+                all.some((card) => card.column === id) &&
+                shown.every((card) => card.column !== id) && (
+                  <p className="px-1 text-muted-foreground text-xs">{t("board.noMatches")}</p>
+                )}
+              <Button
+                variant="secondary"
+                size="sm"
+                aria-label={t("board.quickAdd", { column: t(`kanban.columns.${id}` as Key) })}
+                className="w-full focus-visible:opacity-100 group-hover/lane:opacity-100 [@media(hover:hover)]:opacity-0"
+                onClick={() => {
+                  setQuickColumn(id);
+                  setCreating(true);
+                }}
+              >
+                <Plus aria-hidden="true" />
+                {t("kanban.newCard")}
+              </Button>
+              <ColumnHandle t={t} width={width} onChange={(next) => store.boardWidth.set(next)} />
             </section>
           ))}
         </div>
@@ -453,6 +642,14 @@ export const BoardView = memo(function BoardView(props: {
               confirm: true,
             });
           }}
+        />
+      )}
+      {discardingMany && (
+        <BulkDiscardDialog
+          cards={actingCards}
+          t={t}
+          onCancel={() => setDiscardingMany(false)}
+          onConfirm={() => void discardSelected()}
         />
       )}
       {issuesOpen && project && (

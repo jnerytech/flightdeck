@@ -3,9 +3,7 @@ import type { Platform } from "../platform/types.ts";
 
 /** Ctrl-click: adds the card to the selection, or takes it out when it is there. */
 export function toggleSelection(selected: string[], id: string): string[] {
-  void selected;
-  void id;
-  return [];
+  return selected.includes(id) ? selected.filter((other) => other !== id) : [...selected, id];
 }
 
 /**
@@ -18,23 +16,22 @@ export function rangeSelection(
   target: string,
   selected: string[],
 ): string[] {
-  void order;
-  void anchor;
-  void target;
-  void selected;
-  return [];
+  const from = anchor === null ? -1 : order.indexOf(anchor);
+  const to = order.indexOf(target);
+  const range =
+    from < 0 || to < 0 ? [target] : order.slice(Math.min(from, to), Math.max(from, to) + 1);
+  return [...selected, ...range.filter((id) => !selected.includes(id))];
 }
 
 /** The selection without the cards that are gone. */
 export function pruneSelection(selected: string[], existing: Iterable<string>): string[] {
-  void existing;
-  return selected;
+  const alive = new Set(existing);
+  return selected.filter((id) => alive.has(id));
 }
 
 /** What gestures and actions use: the selected cards that are shown, in the board's order. */
 export function shownSelection(selected: string[], shown: string[]): string[] {
-  void selected;
-  return shown;
+  return shown.filter((id) => selected.includes(id));
 }
 
 /** One width for every column, in px (issue #161). */
@@ -42,16 +39,18 @@ export const COLUMN_WIDTH = { default: 260, min: 220, max: 520, step: 20 } as co
 export const COLUMN_WIDTH_KEY = "flightdeck.boardColumnWidth";
 
 export function clampWidth(width: number): number {
-  return width;
+  if (Number.isNaN(width)) return COLUMN_WIDTH.default;
+  return Math.min(COLUMN_WIDTH.max, Math.max(COLUMN_WIDTH.min, width));
 }
 
 /** The columns' width, kept across starts. */
 export class BoardWidth {
-  value: number = COLUMN_WIDTH.default;
+  value: number;
   private readonly listeners = new Set<() => void>();
 
   constructor(private readonly storage: Platform["storage"]) {
-    void this.storage;
+    const stored = Number(storage.getItem(COLUMN_WIDTH_KEY));
+    this.value = Number.isFinite(stored) && stored > 0 ? clampWidth(stored) : COLUMN_WIDTH.default;
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -60,16 +59,16 @@ export class BoardWidth {
   };
 
   set(width: number): void {
-    void width;
+    this.value = clampWidth(width);
+    this.storage.setItem(COLUMN_WIDTH_KEY, String(this.value));
+    for (const listener of this.listeners) listener();
   }
 }
 
 /** A column's count: `3`, or `2 / 5` while a filter hides some. */
 export function columnCount(shown: number, total: number, filtering: boolean): string {
-  void shown;
-  void total;
-  void filtering;
-  return "";
+  // A column that never had a card is just 0: a ratio of nothing says nothing.
+  return filtering && total > 0 ? `${shown} / ${total}` : String(shown);
 }
 
 /** The outcome of moving many cards at once: the ones the host refused, with its reason. */
@@ -90,8 +89,10 @@ export async function moveMany(
   column: Card["column"],
   request: MoveRequest,
 ): Promise<BulkRefusal[]> {
-  void cards;
-  void column;
-  void request;
-  return [{ card: {} as Card, message: "?" }];
+  const refused: BulkRefusal[] = [];
+  for (const card of cards) {
+    const answer = await request(card.id, column);
+    if (!answer.ok) refused.push({ card, message: answer.message });
+  }
+  return refused;
 }
