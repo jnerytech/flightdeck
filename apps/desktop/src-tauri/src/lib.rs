@@ -678,9 +678,9 @@ fn set_unread_badge(app: tauri::AppHandle, rgba: Vec<u8>) -> Result<(), String> 
     if !badge_image_ok(rgba.len()) {
         return Err("the badge must be 32 x 32 RGBA".into());
     }
-    let Some(window) = app.get_webview_window("main") else {
-        return Ok(());
-    };
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "no main window".to_string())?;
     #[cfg(windows)]
     {
         let icon = if rgba.is_empty() {

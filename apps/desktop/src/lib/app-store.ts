@@ -1170,6 +1170,11 @@ export class AppStore {
     void Promise.resolve(this.platform.setBadge?.(count)).catch(() => {});
   }
 
+  private resendBadge(): void {
+    if (this.badgeShown > 0)
+      void Promise.resolve(this.platform.setBadge?.(this.badgeShown)).catch(() => {});
+  }
+
   /** What the taskbar badge shows now, so it is only told when the count changes. */
   private badgeShown = 0;
 
@@ -2119,6 +2124,8 @@ export class AppStore {
     if (typeof target.addEventListener !== "function") return;
     const wake = () => {
       for (const conn of this.connections.values()) conn.wake();
+      // Hiding the window to the tray can drop its taskbar badge: say it again.
+      this.resendBadge();
     };
     const visible = () => {
       if (typeof document === "undefined" || document.visibilityState !== "hidden") wake();
