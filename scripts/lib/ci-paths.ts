@@ -18,11 +18,21 @@ export interface CiPlan {
 
 export const FULL: CiPlan = { windows: true, smokes: true, screenshots: true, cargo: true };
 
-export function ciPlan(_event: string, _changed: string[] | null): CiPlan {
-  return { windows: false, smokes: false, screenshots: false, cargo: false };
+/** What every job reads: the app, the protocol, the dependencies, the configs and CI itself. */
+const EVERYTHING =
+  /^(?:apps\/desktop\/|packages\/|\.github\/workflows\/)|^(?:package\.json|bun\.lock|bunfig[^/]*\.toml|tsconfig[^/]*\.json)$/;
+const DAEMON = /^apps\/daemon\/|^scripts\/smoke-[^/]+\.ts$/;
+const TAURI = /^apps\/desktop\/src-tauri\//;
+
+export function ciPlan(event: string, changed: string[] | null): CiPlan {
+  if (event !== "pull_request" || changed === null) return { ...FULL };
+  const any = (re: RegExp) => changed.some((path) => re.test(path));
+  const everything = any(EVERYTHING);
+  const daemon = everything || any(DAEMON);
+  return { windows: daemon, smokes: daemon, screenshots: everything, cargo: any(TAURI) };
 }
 
 /** The plan as GitHub step outputs, one `name=value` per line. */
-export function planOutputs(_plan: CiPlan): string {
-  return "";
+export function planOutputs(plan: CiPlan): string {
+  return (Object.keys(FULL) as (keyof CiPlan)[]).map((key) => `${key}=${plan[key]}\n`).join("");
 }

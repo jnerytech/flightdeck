@@ -28,15 +28,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Sonar's own JS/TS rules on the lines a pull request changes, the "new code" the SonarCloud
-  # gate judges, so a finding shows up here in a minute instead of after the full test run.
-  sonar-lint:
-    name: lint:sonar (changed lines)
-    if: github.event_name == 'pull_request'
+  # Which job groups this run needs (#264): on a pull request, from the paths it changes
+  # (scripts/lib/ci-paths.ts); a push to main and a run by hand need everything. A job skipped by
+  # path still reports under the ruleset's name through its aggregate.
+  changes:
+    name: changes
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
+    outputs:
+      windows: ${{ steps.plan.outputs.windows }}
+      smokes: ${{ steps.plan.outputs.smokes }}
+      screenshots: ${{ steps.plan.outputs.screenshots }}
+      cargo: ${{ steps.plan.outputs.cargo }}
     steps:
-      # Full history: the changed lines are taken against the merge-base with the target branch.
+      # Full history: the changed paths are taken against the merge-base with the target branch.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
@@ -45,13 +50,28 @@ jobs:
         with:
           bun-version: 1.4.4
 
+      - name: The jobs this run needs
+        id: plan
+        run: bun run scripts/ci-paths.ts
+
+  # Sonar's per-rule open count over the whole repository, which only goes down
+  # (sonar-baseline.json): green unless a rule went up, so a red X always means something (#264).
+  # The changed-lines run stays local (bun run lint:sonar), where its smells are a hint.
+  sonar-lint:
+    name: lint:sonar (ratchet)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
       - name: Instalar dependências
         run: bun install --frozen-lockfile
 
-      - name: lint:sonar
-        run: bun run lint:sonar -- --base "$(git merge-base HEAD origin/${{ github.base_ref }})"
-
-      # The open count per rule over the whole repository only goes down (sonar-baseline.json).
       - name: lint:sonar --ratchet
         run: bun run lint:sonar -- --ratchet
 
@@ -61,6 +81,7 @@ jobs:
     # A dispatched run's jobs have names of their own: a skipped copy of `test (ubuntu-latest)` next to
     # the real check must never stand in for the one the branch rules require.
     name: test (${{ matrix.os }})${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    needs: changes
     if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
     strategy:
       fail-fast: false
@@ -126,7 +147,9 @@ jobs:
         with:
           args: -Dsonar.projectVersion=${{ env.FD_VERSION }}
 
+      # Only when the daemon, a smoke or what everything reads changed (#264).
       - name: Smokes
+        if: needs.changes.outputs.smokes == 'true'
         run: |
           bun run smoke
           bun run smoke:multi
@@ -161,14 +184,23 @@ jobs:
           bun run smoke:boardsync
           bun run smoke:roi
 
+      # The Tauri shell only when it changed, or on main (#264).
       - name: System libraries of the Tauri shell (Linux)
+        if: needs.changes.outputs.cargo == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y pkg-config libwebkit2gtk-4.1-dev libgtk-3-dev \
             libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev
 
+      - name: Rust cache
+        if: needs.changes.outputs.cargo == 'true'
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: apps/desktop/src-tauri
+
       # The Tauri context needs the built frontend (frontendDist) to exist.
       - name: cargo check do app
+        if: needs.changes.outputs.cargo == 'true'
         run: |
           bun run build:desktop
           cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
@@ -181,7 +213,8 @@ jobs:
   # aggregate below.
   test-windows-shard:
     name: test shard ${{ matrix.shard }}/3 (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
-    if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
+    needs: changes
+    if: (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots') && needs.changes.outputs.windows == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -227,7 +260,8 @@ jobs:
   # performance baseline.
   checks-windows:
     name: checks (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
-    if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
+    needs: changes
+    if: (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots') && needs.changes.outputs.windows == 'true'
     runs-on: windows-latest
     timeout-minutes: 30
     defaults:
@@ -297,15 +331,27 @@ jobs:
           bun run smoke:boardsync
           bun run smoke:roi
 
-      # The Tauri context needs the built frontend (frontendDist) to exist.
+      # The built frontend: the bundle budget reads it, and the Tauri context needs it (frontendDist).
+      # Only when the app or the shell changed, or on main (#264).
+      - name: Build do app
+        if: needs.changes.outputs.screenshots == 'true' || needs.changes.outputs.cargo == 'true'
+        run: bun run build:desktop
+
+      - name: Rust cache
+        if: needs.changes.outputs.cargo == 'true'
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: apps/desktop/src-tauri
+
       - name: cargo check do app
+        if: needs.changes.outputs.cargo == 'true'
         run: |
-          bun run build:desktop
           cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
           cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 
       # Phase 28: the entry chunk of the build above stays under its gzip budget (bundle-lazy).
       - name: Bundle budget
+        if: needs.changes.outputs.screenshots == 'true' || needs.changes.outputs.cargo == 'true'
         run: bun run bundle:budget
 
       # Phase 28: the numbers of the performance baseline on this runner, kept as an artifact. It
@@ -327,13 +373,18 @@ jobs:
   # always(), so a failed or cancelled shard makes it fail rather than skip.
   test-windows:
     name: test (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
-    needs: [test-windows-shard, checks-windows]
+    needs: [changes, test-windows-shard, checks-windows]
     if: always() && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # A pull request whose paths need no Windows run passes here, so the check still reports.
       - name: Every Windows shard and check passed
         run: |
+          test "${{ needs.changes.result }}" = success
+          if [ "${{ needs.changes.outputs.windows }}" != true ]; then
+            echo "Windows skipped by path (scripts/lib/ci-paths.ts)"; exit 0
+          fi
           echo "shards: ${{ needs.test-windows-shard.result }}, checks: ${{ needs.checks-windows.result }}"
           test "${{ needs.test-windows-shard.result }}" = success
           test "${{ needs.checks-windows.result }}" = success
@@ -342,6 +393,8 @@ jobs:
   # the seeded demo (fake runtime: no real Claude, no network). #220 runs them apart from e2e.
   screenshots-prints:
     name: prints and axe
+    needs: changes
+    if: needs.changes.outputs.screenshots == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -384,8 +437,15 @@ jobs:
           if-no-files-found: ignore
 
   # The end-to-end journeys, in both languages, against the same seeded demo.
+  # In three Playwright shards (#264): each runs a third of the journeys, in both languages.
   screenshots-e2e:
-    name: e2e journeys
+    name: e2e journeys ${{ matrix.shard }}/3
+    needs: changes
+    if: needs.changes.outputs.screenshots == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -417,14 +477,14 @@ jobs:
         # artifact (E2E_FAILURES); the HTML report is its own artifact. CI retries a failure once.
         env:
           E2E_FAILURES: apps/desktop/screenshots/e2e-failures
-        run: bun run e2e
+        run: bun run e2e -- --shard=${{ matrix.shard }}/3
 
       # A journey that failed and passed on its retry shows as flaky in the report, never hidden.
       - name: Publicar o relatório e2e
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: relatorio-e2e
+          name: relatorio-e2e-${{ matrix.shard }}
           path: playwright-report
           if-no-files-found: ignore
 
@@ -432,20 +492,26 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: e2e-failures
+          name: e2e-failures-${{ matrix.shard }}
           path: apps/desktop/screenshots/e2e-failures
           if-no-files-found: ignore
 
   # The check the main ruleset requires: it passes only when the prints and the journeys passed.
   screenshots:
     name: screenshots (prints, axe e e2e)
-    needs: [screenshots-prints, screenshots-e2e]
+    needs: [changes, screenshots-prints, screenshots-e2e]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # A pull request whose paths need no screen run passes here, so the check still reports. The
+      # e2e result is every shard's: one failed shard fails it.
       - name: The prints and the e2e journeys passed
         run: |
+          test "${{ needs.changes.result }}" = success
+          if [ "${{ needs.changes.outputs.screenshots }}" != true ]; then
+            echo "Screens skipped by path (scripts/lib/ci-paths.ts)"; exit 0
+          fi
           echo "prints: ${{ needs.screenshots-prints.result }}, e2e: ${{ needs.screenshots-e2e.result }}"
           test "${{ needs.screenshots-prints.result }}" = success
           test "${{ needs.screenshots-e2e.result }}" = success
