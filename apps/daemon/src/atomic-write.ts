@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { rename, rm, writeFile } from "node:fs/promises";
+import { chmod, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 
 /** The two steps of an atomic write, apart so a test can stop between them. */
 export interface AtomicIo {
@@ -13,23 +13,43 @@ export interface AtomicIo {
 const BUSY = new Set(["EPERM", "EBUSY", "EACCES"]);
 const ATTEMPTS = 6;
 
+/** Where the file really is (the file a link points to) and the mode it has, or nothing when it does not exist yet. */
+async function existing(path: string): Promise<{ real: string; mode: number } | null> {
+  try {
+    const real = await realpath(path);
+    return { real, mode: (await stat(real)).mode & 0o7777 };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Writes a file so a reader sees the old content or the new one, never half of it: the data goes
- * to a file of its own beside it, and a rename puts it in place.
+ * to a file of its own beside it, and a rename puts it in place. A link is followed (the file it
+ * points to is the one replaced, the link stays) and the file keeps the mode it had.
  */
 export async function writeFileAtomic(
   path: string,
   data: string,
   io: Partial<AtomicIo> = {},
 ): Promise<void> {
-  const write = io.write ?? ((to, text) => writeFile(to, text, io.mode ? { mode: io.mode } : {}));
+  const found = await existing(path);
+  const target = found?.real ?? path;
+  const mode = io.mode ?? found?.mode;
+  const write =
+    io.write ??
+    (async (to, text) => {
+      await writeFile(to, text, mode ? { mode } : {});
+      // The mode of writeFile is cut by the umask: the file keeps exactly what it had.
+      if (mode) await chmod(to, mode);
+    });
   const move = io.rename ?? rename;
-  const tmp = `${path}.${process.pid}.${randomUUID().slice(0, 8)}.tmp`;
+  const tmp = `${target}.${process.pid}.${randomUUID().slice(0, 8)}.tmp`;
   try {
     await write(tmp, data);
     for (let attempt = 1; ; attempt++) {
       try {
-        await move(tmp, path);
+        await move(tmp, target);
         return;
       } catch (error) {
         const code = (error as NodeJS.ErrnoException).code ?? "";

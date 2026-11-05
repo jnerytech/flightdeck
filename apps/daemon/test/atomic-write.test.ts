@@ -1,5 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { appendFile, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { writeFileAtomic } from "../src/atomic-write.ts";
@@ -36,4 +46,50 @@ describe("atomic-write: the reader of receptor.json is not caught by a half file
     expect(existsSync(join(dir, "receptor.json"))).toBe(true);
     expect(await liveReceptor(dir, 200)).toBeNull();
   });
+});
+
+describe("atomic-write: a link and the mode of the file it replaces are kept (review of rc/0364, M1)", () => {
+  test.skipIf(process.platform === "win32")(
+    "a symlinked target stays a link and the file it points to gets the new content",
+    async () => {
+      const dir = tempDir();
+      const real = join(dir, "dotfiles", "settings.json");
+      const link = join(dir, "settings.json");
+      mkdirSync(join(dir, "dotfiles"));
+      writeFileSync(real, '{"old":true}');
+      symlinkSync(real, link);
+      await writeFileAtomic(link, '{"new":true}');
+      expect(lstatSync(link).isSymbolicLink()).toBe(true);
+      expect(readFileSync(real, "utf8")).toBe('{"new":true}');
+      expect(readdirSync(join(dir, "dotfiles"))).toEqual(["settings.json"]);
+    },
+  );
+
+  test.skipIf(process.platform === "win32")(
+    "a file with mode 0600 is still 0600 after the write, and a new file follows the umask",
+    async () => {
+      const dir = tempDir();
+      const file = join(dir, "settings.json");
+      writeFileSync(file, "{}");
+      chmodSync(file, 0o600);
+      await writeFileAtomic(file, '{"a":1}');
+      expect(statSync(file).mode & 0o777).toBe(0o600);
+      expect(readFileSync(file, "utf8")).toBe('{"a":1}');
+      const fresh = join(dir, "fresh.json");
+      await writeFileAtomic(fresh, "{}");
+      expect(existsSync(fresh)).toBe(true);
+    },
+  );
+
+  test.skipIf(process.platform === "win32")(
+    "an explicit mode wins over the existing one",
+    async () => {
+      const dir = tempDir();
+      const file = join(dir, "secret");
+      writeFileSync(file, "x");
+      chmodSync(file, 0o644);
+      await writeFileAtomic(file, "y", { mode: 0o600 });
+      expect(statSync(file).mode & 0o777).toBe(0o600);
+    },
+  );
 });

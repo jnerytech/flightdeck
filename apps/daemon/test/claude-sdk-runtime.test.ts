@@ -468,6 +468,27 @@ describe("ClaudeSdkRuntime", () => {
       });
     });
 
+    test("a supportedCommands that never answers does not freeze the session: the init comes with the names, after the timeout (review of rc/0364, M2)", async () => {
+      const runtime = new ClaudeSdkRuntime({
+        query: makeQuery({ supportedCommands: () => new Promise(() => {}) }),
+        claudePath: "/bin/claude",
+        commandsTimeoutMs: 30,
+      });
+      const run = runtime.start({
+        cwd: "/proj",
+        permissionMode: "default",
+        env: {},
+        canUseTool: async () => ({ behavior: "allow" }),
+      });
+      const next = run.events[Symbol.asyncIterator]().next();
+      const got = await Promise.race([next, Bun.sleep(1500).then(() => "stalled" as const)]);
+      await run.close?.();
+      expect(got).not.toBe("stalled");
+      const event = (got as IteratorResult<RuntimeEvent>).value as RuntimeEvent;
+      expect(event).toMatchObject({ type: "session.init", slashCommands: ["compact", "deploy"] });
+      expect((event as { commands?: unknown }).commands).toBeUndefined();
+    });
+
     test("when the SDK cannot say, or has no such call, the init keeps the names only", async () => {
       const failing = await first({
         supportedCommands: async () => {
