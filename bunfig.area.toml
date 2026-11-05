@@ -3,3 +3,5 @@
 [test]
 preload = ["./scripts/test/preload.ts"]
 coverage = false
+# The mods run under `claude plugin test`, not under bun (the same as bunfig.toml).
+pathIgnorePatterns = ["mods/**"]
