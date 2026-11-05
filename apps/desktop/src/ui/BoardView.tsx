@@ -34,6 +34,8 @@ import type { Key } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { boardTitle, COLUMNS, filterCards, positionBefore, projectCards } from "../lib/board.ts";
 import {
+  answerOf,
+  type BulkRefusal,
   columnCount,
   moveMany,
   pruneSelection,
@@ -74,6 +76,8 @@ function CardTile(props: {
   /** Asks to delete the card (a card that already started is offered Discard instead). */
   onDelete(): void;
   onDragStart(): void;
+  /** A batch is running: the card cannot be dragged. */
+  locked: boolean;
   onDropOn(): void;
   /** Whether the card is in the selection (issue #161). */
   selected: boolean;
@@ -88,7 +92,7 @@ function CardTile(props: {
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: Ctrl/Shift-click is the mouse's way to select; the card's menu has Select card for the keyboard
     <li
-      draggable
+      draggable={!props.locked}
       data-card={card.id}
       data-selected={props.selected ? "true" : undefined}
       aria-label={t("kanban.card", { title: card.title })}
@@ -240,6 +244,8 @@ export const BoardView = memo(function BoardView(props: {
   const anchor = useRef<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [discardingMany, setDiscardingMany] = useState(false);
+  // A batch of moves or discards is running: nothing else may start.
+  const [busy, setBusy] = useState(false);
   /** The column a card is being created in from the bottom of a lane. */
   const [quickColumn, setQuickColumn] = useState<BoardColumn | null>(null);
   /** The cards dragged together when the dragged one is part of a selection. */
@@ -290,9 +296,11 @@ export const BoardView = memo(function BoardView(props: {
   const actingCards = acting.flatMap((id) => all.find((card) => card.id === id) ?? []);
   /** Moves the shown selected cards, quietly; the host's refusals are named afterwards. */
   const moveSelected = async (column: BoardColumn) => {
+    if (busy) return;
+    setBusy(true);
     const refused = await moveMany(actingCards, column, async (cardId, to) => {
       const answer = await store.hostRequest(hostId, "card.move", { cardId, column: to });
-      return answer.ok ? { ok: true } : { ok: false, message: answer.message };
+      return answer.ok ? { ok: true } : { ok: false, ...answerOf(answer) };
     });
     const stayed = refused.map((r) => r.card.id);
     setPicked((before) => before.filter((id) => stayed.includes(id) || !acting.includes(id)));
@@ -303,29 +311,45 @@ export const BoardView = memo(function BoardView(props: {
           ? t("board.stayedOne", { names: nameRefusals(refused) })
           : t("board.stayed", { count: refused.length, names: nameRefusals(refused) }),
     );
+    setBusy(false);
+    boardRef.current?.focus();
   };
-  const nameRefusals = (refused: Array<{ card: Card; message: string }>) =>
-    refused.map((r) => `${r.card.title} (${r.message})`).join(", ");
+  const nameRefusals = (refused: BulkRefusal[]) =>
+    refused
+      .map((r) => `${r.card.title} (${reasonText(t, r.message, r.reason, r.params)})`)
+      .join(", ");
   /** Discards the started cards and deletes the others, one after the other. */
   const discardSelected = async () => {
+    if (busy) return;
     const cards = actingCards;
     setDiscardingMany(false);
-    const failed: Array<{ card: Card; message: string }> = [];
+    setBusy(true);
+    const failed: BulkRefusal[] = [];
     for (const card of cards) {
       const answer = await store.hostRequest(
         hostId,
         hasStartedWork(card) ? "card.discard" : "card.delete",
         { cardId: card.id, confirm: true },
       );
-      if (!answer.ok) failed.push({ card, message: answer.message });
+      if (!answer.ok) failed.push({ card, ...answerOf(answer) });
     }
-    const stayed = failed.map((f) => f.card.id);
-    setPicked((before) => before.filter((id) => stayed.includes(id) || !acting.includes(id)));
+    // A discard is not atomic on the host: a card it refused may be partly cleaned up, so it is
+    // not left selected for a second try that would fail on what is already gone.
+    setPicked((before) => before.filter((id) => !acting.includes(id)));
     setNotice(
       failed.length === 0
         ? null
-        : t("board.stayed", { count: failed.length, names: nameRefusals(failed) }),
+        : failed.length === 1
+          ? t("board.discardFailedOne", { names: nameRefusals(failed) })
+          : t("board.discardFailed", { count: failed.length, names: nameRefusals(failed) }),
     );
+    setBusy(false);
+    boardRef.current?.focus();
+  };
+  /** Clears the selection and keeps the focus on the board: the bar that had it goes away. */
+  const clearSelection = () => {
+    setPicked([]);
+    boardRef.current?.focus();
   };
   const select = (card: Card) => {
     anchor.current = card.id;
@@ -353,7 +377,7 @@ export const BoardView = memo(function BoardView(props: {
   };
   const drop = (column: BoardColumn, targetId?: string) => {
     const cardId = dragging.current;
-    if (!cardId) return;
+    if (!cardId || busy) return;
     dragging.current = null;
     // A card dragged out of a selection takes the whole selection with it.
     if (draggingMany.current) {
@@ -490,7 +514,9 @@ export const BoardView = memo(function BoardView(props: {
             hidden={selection.length - acting.length}
             onMove={(column) => void moveSelected(column)}
             onDiscard={() => setDiscardingMany(true)}
-            onClear={() => setPicked([])}
+            onClear={clearSelection}
+            busy={busy}
+            onEscape={clearSelection}
           />
         )}
         {notice && (
@@ -513,7 +539,10 @@ export const BoardView = memo(function BoardView(props: {
           style={{ gridAutoColumns: `${width}px` }}
           className="grid grid-flow-col gap-3 overflow-x-auto pb-2"
           onKeyDown={(e) => {
-            if (e.key === "Escape") setPicked([]);
+            // Only the board's own Esc: one that closes a card's menu is the menu's.
+            if (e.key !== "Escape" || e.defaultPrevented) return;
+            if (!e.currentTarget.contains(e.target as Node)) return;
+            if (selection.length > 0) clearSelection();
           }}
         >
           {COLUMNS.map(({ id }) => (
@@ -582,6 +611,7 @@ export const BoardView = memo(function BoardView(props: {
                       onStart={() =>
                         void store.hostCommand(hostId, "card.start", { cardId: card.id })
                       }
+                      locked={busy}
                       selected={selection.includes(card.id)}
                       onToggleSelect={() => select(card)}
                       onRangeSelect={() => selectRange(card)}

@@ -75,13 +75,19 @@ export function columnCount(shown: number, total: number, filtering: boolean): s
 export interface BulkRefusal {
   card: Card;
   message: string;
+  /** The host's code and values for the message, to say it in the app's language. */
+  reason?: string;
+  params?: Record<string, string | number>;
 }
 
 /** What asks the host to move a card without raising a toast of its own. */
 export type MoveRequest = (
   cardId: string,
   column: Card["column"],
-) => Promise<{ ok: true } | { ok: false; message: string }>;
+) => Promise<
+  | { ok: true }
+  | { ok: false; message: string; reason?: string; params?: Record<string, string | number> }
+>;
 
 /** Moves each card to `column`, in order, one after the other; the refused ones come back named. */
 export async function moveMany(
@@ -92,7 +98,21 @@ export async function moveMany(
   const refused: BulkRefusal[] = [];
   for (const card of cards) {
     const answer = await request(card.id, column);
-    if (!answer.ok) refused.push({ card, message: answer.message });
+    if (!answer.ok) refused.push({ card, ...answerOf(answer) });
   }
   return refused;
+}
+
+/** The refusal's text and, when the host gave one, its code and values. */
+export function answerOf(answer: {
+  message: string;
+  reason?: string | undefined;
+  params?: Record<string, string | number> | undefined;
+}): Pick<BulkRefusal, "message" | "reason" | "params"> {
+  return {
+    message: answer.message,
+    ...(answer.reason
+      ? { reason: answer.reason, ...(answer.params ? { params: answer.params } : {}) }
+      : {}),
+  };
 }

@@ -750,7 +750,14 @@ export const ptBR = {
     discardManyTitle: "Descartar {n} cards?",
     discardOneConfirm: "Descartar 1 card",
     discardManyConfirm: "Descartar {n} cards",
-    discardStarted: "o worktree e o branch dele vão junto",
+    discardStarted:
+      "o worktree e a branch dele vão junto; mudanças não commitadas e commits não enviados são perdidos",
+    discardSession: "a sessão dele é encerrada",
+    discardStartedCount: "{n} destes cards têm trabalho iniciado.",
+    discardFailedOne:
+      "1 card não pôde ser descartado e pode ter ficado parcialmente limpo: {names}",
+    discardFailed:
+      "{count} cards não puderam ser descartados e podem ter ficado parcialmente limpos: {names}",
     resize: "Redimensionar as colunas",
     resizeValue: "{n} px",
     noMatches: "Nenhuma correspondência",

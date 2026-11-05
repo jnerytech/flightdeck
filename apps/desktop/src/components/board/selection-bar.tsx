@@ -18,13 +18,18 @@ export function SelectionBar(props: {
   onMove(column: BoardColumn): void;
   onDiscard(): void;
   onClear(): void;
+  /** A batch is running: nothing else can start. */
+  busy: boolean;
+  onEscape(): void;
 }) {
   const { t } = props;
   return (
-    <div
-      role="toolbar"
+    <fieldset
       aria-label={t("board.selection")}
-      className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-sm"
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && !e.defaultPrevented) props.onEscape();
+      }}
+      className="m-0 flex min-w-0 flex-wrap items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-sm"
     >
       <span>
         {props.shown === 1 ? t("board.selectedOne") : t("board.selectedCount", { n: props.shown })}
@@ -36,7 +41,7 @@ export function SelectionBar(props: {
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size="sm" variant="outline" disabled={props.shown === 0}>
+          <Button size="sm" variant="outline" disabled={props.shown === 0 || props.busy}>
             {t("board.moveSelected")}
           </Button>
         </DropdownMenuTrigger>
@@ -48,12 +53,17 @@ export function SelectionBar(props: {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-      <Button size="sm" variant="outline" disabled={props.shown === 0} onClick={props.onDiscard}>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={props.shown === 0 || props.busy}
+        onClick={props.onDiscard}
+      >
         {t("board.discardSelected")}
       </Button>
       <Button size="sm" variant="ghost" onClick={props.onClear}>
         {t("board.clearSelection")}
       </Button>
-    </div>
+    </fieldset>
   );
 }

@@ -102,7 +102,7 @@ const click = (el: Element, init: object = {}) =>
     fireEvent.click(el, init);
   });
 const ctrl = (title: string) => click(li(title), { ctrlKey: true });
-const bar = () => screen.queryByRole("toolbar", { name: "Selection" });
+const bar = () => screen.queryByRole("group", { name: "Selection" });
 const barButton = (name: string) =>
   within(bar() as HTMLElement).getByRole("button", { name }) as HTMLElement;
 const ready = () => settle(() => screen.queryByRole("heading", { name: "Board of api" }) !== null);
@@ -488,7 +488,7 @@ describe("board-multi-ui: it reads in Portuguese too", () => {
     await act(async () => {
       fireEvent.click(screen.getByLabelText("Card A"), { ctrlKey: true });
     });
-    const bar = screen.getByRole("toolbar", { name: "Seleção" });
+    const bar = screen.getByRole("group", { name: "Seleção" });
     expect(within(bar).getByText("1 selecionado")).toBeTruthy();
     expect(within(bar).getByRole("button", { name: "Descartar…" })).toBeTruthy();
     expect(screen.getAllByRole("separator", { name: "Redimensionar as colunas" })).toHaveLength(5);

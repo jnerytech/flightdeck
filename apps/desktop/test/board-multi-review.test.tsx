@@ -95,7 +95,6 @@ function setup(
 }
 
 const li = (title: string) => screen.getByLabelText(`Card ${title}`);
-const lane = (name: string) => screen.getByRole("region", { name });
 const selected = () =>
   [...document.querySelectorAll("li[data-selected='true']")].map((el) =>
     (el.getAttribute("aria-label") ?? "").replace(/^Card /, ""),
@@ -155,7 +154,13 @@ describe("board-multi-review: a discard that fails says so (OpenCode review of #
     await settle(() => grid() !== null);
     await click(screen.getByLabelText("Card A"), { ctrlKey: true });
     const group = screen.getByRole("group", { name: "Seleção" });
-    await click(within(group).getByRole("button", { name: "Mover para…" }));
+    await act(async () => {
+      fireEvent.pointerDown(within(group).getByRole("button", { name: "Mover para…" }), {
+        button: 0,
+        ctrlKey: false,
+        pointerType: "mouse",
+      });
+    });
     await click(await screen.findByRole("menuitem", { name: "Concluído" }));
     await settle(() => w.requests.length === 1);
     const notice = await screen.findByRole("status");
@@ -216,9 +221,10 @@ describe("board-multi-review: Esc clears the selection only from where it belong
     await ctrl("A");
     const trigger = within(li("B")).getByRole("button", { name: "Actions for B" });
     await act(async () => {
-      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
+      fireEvent.click(trigger);
     });
-    const item = await screen.findByRole("menuitem", { name: /Move to/ });
+    const item = (await screen.findAllByRole("menuitem", { name: /Move to/ }))[0] as HTMLElement;
     await act(async () => {
       fireEvent.keyDown(item, { key: "Escape" });
     });

@@ -754,7 +754,12 @@ export const en: Dictionary = {
     discardManyTitle: "Discard {n} cards?",
     discardOneConfirm: "Discard 1 card",
     discardManyConfirm: "Discard {n} cards",
-    discardStarted: "its worktree and branch go with it",
+    discardStarted:
+      "its worktree and branch go with it; uncommitted changes and unpushed commits are lost",
+    discardSession: "its session is closed",
+    discardStartedCount: "{n} of these cards have work started.",
+    discardFailedOne: "1 card could not be discarded and may be partly cleaned up: {names}",
+    discardFailed: "{count} cards could not be discarded and may be partly cleaned up: {names}",
     resize: "Resize the columns",
     resizeValue: "{n} px",
     noMatches: "No matches",

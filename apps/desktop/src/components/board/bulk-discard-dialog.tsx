@@ -15,6 +15,12 @@ import type { T } from "../../i18n/index.ts";
 export const hasStartedWork = (card: Card) =>
   Boolean(card.worktreePath || card.branch || card.sessionId);
 
+/** What goes with the card: a worktree or branch loses uncommitted work; a session just closes. */
+function goesWith(card: Card, t: T): string | null {
+  if (card.worktreePath || card.branch) return t("board.discardStarted");
+  return card.sessionId ? t("board.discardSession") : null;
+}
+
 /** One confirmation for discarding many cards: each is listed, with what goes with it. */
 export function BulkDiscardDialog(props: {
   cards: Card[];
@@ -24,6 +30,7 @@ export function BulkDiscardDialog(props: {
 }) {
   const { t, cards } = props;
   const n = cards.length;
+  const started = cards.filter(hasStartedWork).length;
   return (
     <AlertDialog open onOpenChange={(open) => !open && props.onCancel()}>
       <AlertDialogContent>
@@ -32,16 +39,19 @@ export function BulkDiscardDialog(props: {
             {n === 1 ? t("board.discardOneTitle") : t("board.discardManyTitle", { n })}
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
-            <ul className="flex max-h-60 flex-col gap-1 overflow-y-auto text-left">
-              {cards.map((card) => (
-                <li key={card.id}>
-                  {card.title}
-                  {hasStartedWork(card) && (
-                    <span className="text-muted-foreground">{` — ${t("board.discardStarted")}`}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <div className="flex flex-col gap-2 text-left">
+              {started > 0 && <p>{t("board.discardStartedCount", { n: started })}</p>}
+              <ul className="flex max-h-60 flex-col gap-1 overflow-y-auto text-left">
+                {cards.map((card) => (
+                  <li key={card.id}>
+                    {card.title}
+                    {goesWith(card, t) && (
+                      <span className="text-muted-foreground">{` — ${goesWith(card, t)}`}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
