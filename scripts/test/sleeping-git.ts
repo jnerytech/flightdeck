@@ -4,10 +4,10 @@
  * then run the real git. A call that was not made is how a test shows that a path no longer asks
  * git, and how long the call took shows whether the daemon waited for it.
  */
-import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import { whichOnPath } from "../../apps/daemon/src/which.ts";
+import { realTempDir } from "./temp-dir.ts";
 
 export interface SleepingGit {
   dir: string;
@@ -25,7 +25,7 @@ export function installSleepingGit(
 ): SleepingGit {
   const realGit = whichOnPath("git");
   if (!realGit) throw new Error("no git on PATH to wrap");
-  const dir = mkdtempSync(join(tmpdir(), "fd-sleeping-git-"));
+  const dir = realTempDir("fd-sleeping-git-");
   const bun = process.execPath;
   writeFileSync(join(dir, "git"), `#!/bin/sh\nexec "${bun}" "${MAIN}" "${dir}" "$@"\n`);
   chmodSync(join(dir, "git"), 0o755);

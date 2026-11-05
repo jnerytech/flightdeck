@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { chmodSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type FakeCli, type FakeRule, installFakeCli } from "../../../scripts/test/fake-cli.ts";
+import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { runGh } from "../src/github/gh.ts";
 import { Github } from "../src/github/github.ts";
 
@@ -136,7 +136,7 @@ describe("github-gh: the real runner", () => {
   });
 
   test("a gh that cannot be started for another reason than missing is not hidden", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "fd-badgh-"));
+    const dir = realTempDir("fd-badgh-");
     cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
     // A file the system cannot run: a text file named gh.exe on Windows, a bad shebang elsewhere.
     const name = process.platform === "win32" ? "gh.exe" : "gh";
