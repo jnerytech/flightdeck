@@ -95,6 +95,56 @@ describe("opencode-scope", () => {
     ]);
   });
 
+  test("the v1 key plugin counts like plugins; an entry of unknown shape is named without its options", async () => {
+    const s = scope();
+    writeFileSync(
+      join(s.global, "opencode.json"),
+      JSON.stringify({ plugin: ["old-plugin"], plugins: [42] }),
+    );
+    expect(await kinds(s.opts)).toEqual([
+      ["plugins_entry", "(unknown entry)"],
+      ["plugins_entry", "old-plugin"],
+    ]);
+  });
+
+  test("plugins or mcp of a shape nobody expects fail closed; v1 server names next to servers are read too", async () => {
+    const s = scope();
+    writeFileSync(join(s.global, "opencode.json"), JSON.stringify({ plugins: "x", mcp: "y" }));
+    expect(await kinds(s.opts)).toEqual([
+      ["unreadable_config", "plugins"],
+      ["unreadable_config", "mcp"],
+    ]);
+    writeFileSync(
+      join(s.global, "opencode.json"),
+      JSON.stringify({ mcp: { servers: { a: { type: "local" } }, b: { type: "local" } } }),
+    );
+    expect(await kinds(s.opts)).toEqual([
+      ["mcp_server", "a"],
+      ["mcp_server", "b"],
+    ]);
+  });
+
+  test("files in tool/ or tools/ are code too", async () => {
+    const s = scope();
+    mkdirSync(join(s.global, "tool"));
+    writeFileSync(join(s.global, "tool", "t.ts"), "");
+    mkdirSync(join(s.global, "tools"));
+    writeFileSync(join(s.global, "tools", "u.ts"), "");
+    expect((await kinds(s.opts)).sort()).toEqual([
+      ["plugin_file", "t.ts"],
+      ["plugin_file", "u.ts"],
+    ]);
+  });
+
+  test("on Windows the global folder follows USERPROFILE, as OpenCode's home does", () => {
+    expect(globalConfigDir({ HOME: "/h", USERPROFILE: "C:/Users/a" }, "win32")).toBe(
+      join("C:/Users/a", ".config", "opencode"),
+    );
+    expect(globalConfigDir({ HOME: "/h", USERPROFILE: "C:/Users/a" }, "linux")).toBe(
+      join("/h", ".config", "opencode"),
+    );
+  });
+
   test("a config that does not parse fails closed", async () => {
     const s = scope();
     writeFileSync(join(s.global, "opencode.json"), "{ not json");
