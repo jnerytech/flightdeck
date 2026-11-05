@@ -144,3 +144,24 @@ describe("theme-contrast: fields use the field token (issue #176)", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe("theme-contrast: the chart's series colours (issue #179)", () => {
+  const light = tokensOf(css, ":root");
+  const dark = new Map([...light, ...tokensOf(css, ".dark")]);
+  test("each series colour keeps 3:1 against the card in both themes, and the five differ", () => {
+    for (const [theme, vars] of [
+      ["light", light],
+      ["dark", dark],
+    ] as const) {
+      const card = colorOf(vars.get("--card"), vars);
+      const seen = new Set<string>();
+      for (const n of [1, 2, 3, 4, 5]) {
+        const color = colorOf(vars.get(`--chart-${n}`), vars);
+        const ok = color !== null && card !== null && contrast(color, card) >= 3;
+        expect([theme, n, ok]).toEqual([theme, n, true]);
+        seen.add(String(color));
+      }
+      expect([theme, seen.size]).toEqual([theme, 5]);
+    }
+  });
+});
