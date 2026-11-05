@@ -79,6 +79,7 @@ control, and 8 px between buttons.
 | A select | `NativeSelect` | Sized like an `Input`, with `border-input`. |
 | Several choices | A `fieldset` + `legend` with one labelled checkbox each (`hit-control`) | Never `<select multiple>`: a plain click drops the other choices (#237). |
 | A button whose work takes time, or that can be disabled | `ActionButton` (`feedback/action-button.tsx`) | Busy at once while the promise it returns is pending. `disabledReason` says why it is off, next to it, and links it with `aria-describedby`. |
+| Answering a request | `ApprovalActions` (`approval/approval-actions.tsx`, #182) | Approve first, then Deny, the same verbs on every screen (card, tile, run's gate). `risk` is a required prop (`RiskLevel \| undefined`): a high risk shows `HoldButton`, held for `HIGH_RISK_HOLD_MS` (`lib/hold.ts`), never a click or a key. `onApprove(held)` hands the proof of the hold to the store, which refuses an unheld high-risk allow (#245, from v0.36.5). `pending` keeps both off while an answer is on its way. A plan says "Approve the plan" / "Keep planning" through `labels`. |
 | An icon-only action | `IconActionButton`, or `IconTip` for an icon-only control | It has a name and a tooltip; never a native `title` for text a person needs. |
 | A status | `StatusDot`, `StatusText` (`components/status/`) | A shape plus a label for each state, not colour alone. |
 | A tab's badge | `TabBadgeGlyph` (in `ui/TabBar.tsx`) | A glyph named in words (`role="img"`), never a text pill. It becomes `StatusDot` once #146 lands. |
@@ -132,7 +133,10 @@ The policy is in `docs/TDD.md`, under "Test anchors". These are the `data-slot` 
 - `page`, `page-actions`, `section`;
 - `card-details`, `card-run`;
 - `timeline`, `composer-card`, `recap`, `session-controls`, `session-extra`, `session-status`;
-- `session-tile`, `session-card`, `sidebar-hosts`, `native-select`, `task-chip`, `unread-dot`.
+- `session-tile`, `session-card`, `sidebar-hosts`, `native-select`, `task-chip`, `unread-dot`;
+- `approval-card`;
+- `activity-column`, `activity-card` (with `data-column`) and `activity-count`, on the Activity board
+  (#151, once merged).
 
 A request card carries `data-request-id`. The names from the vendored `components/ui` (`button`,
 `dialog-*`, `tabs-*`, `scroll-area-viewport`, …) are shadcn's: a guard may show them, but no test
