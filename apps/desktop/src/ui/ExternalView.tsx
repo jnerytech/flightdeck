@@ -116,12 +116,14 @@ export function ExternalView(props: {
         }
       />
       <BgPanel store={store} hostId={hostId} claudeSessionId={id} />
-      <RecapPanel
-        store={store}
-        hostId={hostId}
-        claudeSessionId={id}
-        {...(session?.lastEventAt ? { stamp: session.lastEventAt } : {})}
-      />
+      <div className="recap-slot">
+        <RecapPanel
+          store={store}
+          hostId={hostId}
+          claudeSessionId={id}
+          {...(session?.lastEventAt ? { stamp: session.lastEventAt } : {})}
+        />
+      </div>
       {requests.length > 0 && (
         <div className="flex flex-col gap-3 border-b p-3">
           {requests.map((request) => (

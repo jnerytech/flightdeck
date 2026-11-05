@@ -232,6 +232,10 @@
   flex-shrink: 0;
   padding-inline: 1rem;
   padding-top: 0.75rem;
+  /* No summary to show (an older daemon, a session with none): no empty band either. */
+  &:empty {
+    display: none;
+  }
 }
 
 /* The summary's folded line: the toggle, then a one-line preview that is cut, never wrapped. */
