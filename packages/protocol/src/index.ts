@@ -4189,6 +4189,13 @@ export const ProjectLoad = z.object({
   commands: z.array(z.string()),
   claudeMd: z.boolean(),
   unreadable: z.array(z.string()),
+  /** How many entries of each list were left out because the list is capped: the screen must say so. */
+  omitted: z.object({
+    hooks: z.number().int().min(0),
+    mcpServers: z.number().int().min(0),
+    allowRules: z.number().int().min(0),
+    envKeys: z.number().int().min(0),
+  }),
 });
 export type ProjectLoad = z.infer<typeof ProjectLoad>;
 

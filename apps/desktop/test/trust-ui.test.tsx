@@ -25,6 +25,7 @@ const LOAD: ProjectLoad = {
   commands: ["ship"],
   claudeMd: true,
   unreadable: [".claude/settings.local.json"],
+  omitted: { hooks: 0, mcpServers: 0, allowRules: 0, envKeys: 0 },
 };
 
 function setup(
@@ -149,6 +150,17 @@ describe("trust-ui: the project page says what a project would load and lets the
       path: "/work",
       trusted: false,
     });
+  });
+
+  test("a list the daemon capped says how many entries are not shown, so the person never trusts on a partial list", async () => {
+    render(
+      setup({
+        load: { ...LOAD, omitted: { hooks: 30, mcpServers: 50, allowRules: 0, envKeys: 0 } },
+      }).view,
+    );
+    await waitFor(() => expect(screen.queryByText("+30 more not shown")).not.toBeNull());
+    expect(screen.queryByText("+50 more not shown")).not.toBeNull();
+    expect(screen.queryByText("+0 more not shown")).toBeNull();
   });
 
   test("a project with nothing of its own says so", async () => {

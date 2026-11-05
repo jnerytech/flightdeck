@@ -21,6 +21,8 @@ export interface ProjectLoad {
   claudeMd: boolean;
   /** Files that exist and could not be read as JSON, or are not what they seem. */
   unreadable: string[];
+  /** How many entries of each list were left out because the list is capped. */
+  omitted: { hooks: number; mcpServers: number; allowRules: number; envKeys: number };
 }
 
 const MAX_FILE = 256 * 1024;
@@ -105,6 +107,7 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
     commands: [],
     claudeMd: false,
     unreadable,
+    omitted: { hooks: 0, mcpServers: 0, allowRules: 0, envKeys: 0 },
   };
   for (const file of [".claude/settings.json", ".claude/settings.local.json"]) {
     const settings = await readJson(root, file, unreadable);
