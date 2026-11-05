@@ -871,6 +871,39 @@
 }
 
 /* The top bar: the breadcrumb, then the tab strip on the same row (one area), or the strip in the area. */
+/* The collapsed rail's host: its initial, with the status dot at the corner (issue #183). */
+@utility rail-host {
+  position: relative;
+  display: flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  &:hover {
+    background: var(--color-sidebar-accent);
+  }
+}
+@utility rail-host-initial {
+  display: flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  background: var(--color-sidebar-accent);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+@utility rail-host-status {
+  position: absolute;
+  right: 0.125rem;
+  bottom: 0.125rem;
+  border-radius: 9999px;
+  background: var(--color-sidebar);
+  padding: 0.125rem;
+}
+
 @utility header-crumbs {
   display: flex;
   min-width: 0;
