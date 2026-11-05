@@ -128,7 +128,7 @@ const AREAS: [string, RegExp[]][] = [
     ],
   ],
   ["secret", [/\b(?:token|secret|password|credential|api[_-]?key)s?\b/i]],
-  ["permission", [/\bchmod(?:Sync)?\b|\bchown/, /\bpermission/i, /\ballowedNetworks\b/]],
+  ["permission", [/\bchmod(?:Sync)?\b|\bchown/i, /\bpermission/i, /\ballowedNetworks\b/i]],
   [
     "network",
     [
