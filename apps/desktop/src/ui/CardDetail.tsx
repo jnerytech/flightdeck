@@ -1,38 +1,26 @@
 import type { StepRun, WorkflowInfo } from "@flightdeck/protocol";
 import { memo, useEffect, useState } from "react";
 import { CardSyncLog } from "@/components/board/board-sync";
+import { CardAdjustment, CardRuns } from "@/components/card/card-adjustment";
 import { CardArena } from "@/components/card/card-arena";
 import { CardFields } from "@/components/card/card-fields";
 import { CardRunForm } from "@/components/card/card-run-form";
-import { ActionButton } from "@/components/feedback/action-button";
+import { CardHeaderActions, type CardTab, CardWork } from "@/components/card/card-work";
 import { InlineNotice } from "@/components/feedback/inline-notice";
-import { Field } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { PrWatchPanel } from "@/components/watch/pr-watch-panel";
 import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
-import type { Key } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { projectCards } from "../lib/board.ts";
 import { usd } from "../lib/costs.ts";
-import { issueLabel, issueUrl } from "../lib/issues.ts";
 import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { CardDeps } from "./CardDeps.tsx";
-import { CardReview } from "./CardReview.tsx";
-import { ChangesPanel } from "./ChangesPanel.tsx";
-import { ExternalSeal } from "./IssuesPanel.tsx";
-import { PrComments } from "./PrComments.tsx";
 import { RunPanel } from "./RunPanel.tsx";
 import { RunTimeline } from "./RunTimeline.tsx";
-import { SessionView } from "./SessionView.tsx";
-import { StatusBadge } from "./StatusBadge.tsx";
-import { TerminalButton } from "./TerminalButton.tsx";
 
 const CARDDETAIL_KEYS = ["runs", "personas", "hosts", "cards"] as const;
 
@@ -49,19 +37,19 @@ export const CardDetail = memo(function CardDetail(props: {
   const { store, hostId, cardId } = props;
   const state = useStoreSlice(store, CARDDETAIL_KEYS);
   const card = state.cards[sessionKey(hostId, cardId)];
-  const [adjustment, setAdjustment] = useState("");
-  const [tab, setTab] = useState<"conversation" | "diff">("conversation");
+  const [tab, setTab] = useState<CardTab>("conversation");
   const sessionId = card?.sessionId ?? null;
   const host = state.hosts.find((h) => h.id === hostId);
-  const alwaysAllow = hasFeature(host?.hostInfo?.features, "rules", false);
-  const withCosts = hasFeature(host?.hostInfo?.features, "costs", false);
-  const withReview = hasFeature(host?.hostInfo?.features, "review", false);
-  const withArena = hasFeature(host?.hostInfo?.features, "arena", false);
-  const withDeps = hasFeature(host?.hostInfo?.features, "deps", false);
-  const withSync = hasFeature(host?.hostInfo?.features, "boardsync", false);
-  const withRoi = hasFeature(host?.hostInfo?.features, "roi", false);
-  const withPersonas = hasFeature(host?.hostInfo?.features, "personas", false);
-  const withWatch = hasFeature(host?.hostInfo?.features, "watch", false);
+  const has = (feature: string) => hasFeature(host?.hostInfo?.features, feature, false);
+  const alwaysAllow = has("rules");
+  const withCosts = has("costs");
+  const withReview = has("review");
+  const withArena = has("arena");
+  const withDeps = has("deps");
+  const withSync = has("boardsync");
+  const withRoi = has("roi");
+  const withPersonas = has("personas");
+  const withWatch = has("watch");
   /** Estimated cost of every session of the card, and of the open run's (phase 8). */
   const [cardCost, setCardCost] = useState<number | null>(null);
   const [runCost, setRunCost] = useState<number | null>(null);
@@ -120,12 +108,6 @@ export const CardDetail = memo(function CardDetail(props: {
 
   if (!card) return <p className="p-6 text-muted-foreground text-sm">{t("cardUi.notFound")}</p>;
 
-  const sendAdjustment = () => {
-    if (!adjustment.trim()) return;
-    void store.hostCommand(hostId, "card.message", { cardId, text: adjustment.trim() });
-    setAdjustment("");
-  };
-
   const openStep = (step: StepRun) => {
     setTab("conversation");
     setOpened({ stepId: step.stepId, attempt: step.attempt });
@@ -152,50 +134,14 @@ export const CardDetail = memo(function CardDetail(props: {
         ) : undefined
       }
       actions={
-        <>
-          <Button variant="outline" size="sm" onClick={props.onBack}>
-            {t("cardUi.back")}
-          </Button>
-          {card.sessionStatus && <StatusBadge status={card.sessionStatus} />}
-          {card.queued && <Badge variant="outline">{t("kanban.queued")}</Badge>}
-          {card.issueRef && (
-            <ActionButton
-              variant="outline"
-              size="sm"
-              disabled={!issueUrl(card.issueRef)}
-              disabledReason={t("cardUi.noIssueLink")}
-              aria-label={t("issuesUi.openIssue", { issue: issueLabel(card.issueRef) })}
-              onClick={() => store.openLink(issueUrl(card.issueRef as string) ?? "")}
-            >
-              {issueLabel(card.issueRef)}
-            </ActionButton>
-          )}
-          {card.issueExternal && <ExternalSeal t={t} />}
-          {withSync && card.externalUrl && (
-            <ActionButton
-              variant="outline"
-              size="sm"
-              onClick={() => store.openLink(card.externalUrl ?? "")}
-            >
-              {t("boardSyncUi.openItem")}
-            </ActionButton>
-          )}
-          {withSync && card.externalGone && (
-            <Badge variant="outline">{t("boardSyncUi.gone")}</Badge>
-          )}
-          {card.prState && <Badge variant="outline">{t(`pr.${card.prState}` as Key)}</Badge>}
-          {card.checksState && (
-            <Badge variant="outline">{t(`checks.${card.checksState}` as Key)}</Badge>
-          )}
-          {/* The worktree, resuming the card's session once Claude Code named it. */}
-          {card.worktreePath && (!session || session.claudeSessionId) && (
-            <TerminalButton
-              store={store}
-              hostId={hostId}
-              target={{ cwd: card.worktreePath, claudeSessionId: session?.claudeSessionId ?? null }}
-            />
-          )}
-        </>
+        <CardHeaderActions
+          store={store}
+          hostId={hostId}
+          card={card}
+          session={session}
+          withSync={withSync}
+          onBack={props.onBack}
+        />
       }
     >
       <div className={cn("flex flex-col gap-5", chatShown ? "pane-fill" : "max-w-4xl")}>
@@ -243,7 +189,7 @@ export const CardDetail = memo(function CardDetail(props: {
                 workflows={workflows}
                 features={{
                   personas: withPersonas,
-                  bg: hasFeature(host?.hostInfo?.features, "bg", false),
+                  bg: has("bg"),
                   watch: withWatch,
                 }}
                 arenaStart={arena.start}
@@ -252,50 +198,15 @@ export const CardDetail = memo(function CardDetail(props: {
               {withWatch && card.prUrl && (
                 <PrWatchPanel store={store} hostId={hostId} cardId={cardId} />
               )}
-              {card.worktreePath && hasFeature(host?.hostInfo?.features, "runenv", false) && (
+              {card.worktreePath && has("runenv") && (
                 <RunPanel store={store} hostId={hostId} card={card} />
               )}
               {arena.view}
             </>
           )}
         </CardArena>
-        <Field label={t("cardUi.adjustment")}>
-          {(control) => (
-            <div className="field-with-action">
-              <Textarea
-                {...control}
-                placeholder={t("cardUi.adjustmentPlaceholder")}
-                value={adjustment}
-                className="min-h-16 flex-1"
-                onChange={(e) => setAdjustment(e.target.value)}
-              />
-              <Button variant="outline" onClick={sendAdjustment}>
-                {t("cardUi.askAdjustment")}
-              </Button>
-            </div>
-          )}
-        </Field>
-        <section className="flex flex-col gap-2">
-          <h3 className="font-semibold text-sm">{t("cardUi.runs")}</h3>
-          <ul
-            aria-label={t("cardUi.runs")}
-            className="flex flex-col gap-1 text-muted-foreground text-xs"
-          >
-            {card.runs.map((run, i) => (
-              <li key={run.queuedAt} className="tabular-nums">
-                {[
-                  `#${i + 1}`,
-                  store.formatDateTime(run.queuedAt),
-                  run.endedAt
-                    ? t("cardUi.runEnded")
-                    : run.startedAt
-                      ? t("cardUi.runActive")
-                      : t("cardUi.runQueued"),
-                ].join(" · ")}
-              </li>
-            ))}
-          </ul>
-        </section>
+        <CardAdjustment store={store} hostId={hostId} cardId={cardId} />
+        <CardRuns runs={card.runs} formatDateTime={(iso) => store.formatDateTime(iso)} />
         {run && (
           <RunTimeline
             run={run}
@@ -310,93 +221,18 @@ export const CardDetail = memo(function CardDetail(props: {
         {withSync && card.externalUrl && (
           <CardSyncLog store={store} hostId={hostId} cardId={cardId} />
         )}
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            aria-pressed={tab === "conversation"}
-            className="aria-pressed:bg-accent"
-            onClick={() => setTab("conversation")}
-          >
-            {t("cardUi.conversation")}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            aria-pressed={tab === "diff"}
-            className="aria-pressed:bg-accent"
-            onClick={() => setTab("diff")}
-          >
-            {t("cardUi.diff")}
-          </Button>
-        </div>
-        {tab === "diff" ? (
-          <div className="flex flex-col gap-5">
-            {card.prUrl && withReview && (
-              <PrComments
-                store={store}
-                hostId={hostId}
-                cardId={cardId}
-                moment={`${card.updatedAt}/${card.prState}`}
-              />
-            )}
-            <ChangesPanel
-              store={store}
-              hostId={hostId}
-              target={`card:${cardId}`}
-              extra={(changes, refresh) => (
-                <CardReview
-                  store={store}
-                  hostId={hostId}
-                  card={card}
-                  changes={changes}
-                  refresh={refresh}
-                />
-              )}
-            />
-          </div>
-        ) : openedStep?.type === "check" ? (
-          <div className="flex flex-col gap-2">
-            <p className="text-muted-foreground text-xs">
-              {t("cardUi.exitCode", { code: openedStep.exitCode ?? "" })}
-            </p>
-            <section aria-label={t("cardUi.checkOutput", { step: openedStep.stepId })}>
-              <pre className="overflow-x-auto rounded-md border bg-muted p-3 font-mono text-xs">
-                {openedStep.output}
-              </pre>
-            </section>
-          </div>
-        ) : openedStep && stepSession ? (
-          <div
-            role="log"
-            aria-label={t("cardUi.stepConversation", { step: openedStep.stepId })}
-            className="card-chat"
-          >
-            <SessionView
-              title={`${card.title} · ${openedStep.stepId}`}
-              session={stepSession}
-              actions={store}
-              t={store.i18n.t}
-              nowMs={store.now()}
-              focusRequestId={null}
-              alwaysAllow={alwaysAllow}
-            />
-          </div>
-        ) : session && sessionId ? (
-          <div role="log" aria-label={t("cardUi.cardConversation")} className="card-chat">
-            <SessionView
-              title={card.title}
-              session={session}
-              actions={store}
-              t={store.i18n.t}
-              nowMs={store.now()}
-              focusRequestId={null}
-              alwaysAllow={alwaysAllow}
-            />
-          </div>
-        ) : (
-          <p className="text-muted-foreground text-sm">{t("cardUi.noSession")}</p>
-        )}
+        <CardWork
+          store={store}
+          hostId={hostId}
+          card={card}
+          tab={tab}
+          onTab={setTab}
+          openedStep={openedStep}
+          stepSession={stepSession}
+          session={session}
+          alwaysAllow={alwaysAllow}
+          withReview={withReview}
+        />
       </div>
     </Page>
   );
