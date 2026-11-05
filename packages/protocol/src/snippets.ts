@@ -131,6 +131,11 @@ export class SecretScanner {
     }
     return found;
   }
+
+  /** The text with every secret it holds replaced by `[redacted]` (stub: returns it as it is). */
+  redact(text: string): string {
+    return text;
+  }
 }
 
 // -- the model -------------------------------------------------------------------------------
