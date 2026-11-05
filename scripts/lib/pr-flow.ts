@@ -326,7 +326,12 @@ async function autoPr(n: number, deps: PrFlowDeps): Promise<number> {
     `id=${pr.node_id}`,
   ]);
   if (enabled.code !== 0) {
-    deps.log(`GitHub refused auto-merge for #${n}${graphqlError(enabled.stdout)}`);
+    const error = graphqlError(enabled.stdout);
+    deps.log(`GitHub refused auto-merge for #${n}${error}`);
+    // GitHub turns auto-merge on only for a PR that has to wait; a session never merges by hand.
+    if (/clean status/i.test(error)) {
+      deps.log(`#${n} is already mergeable: the coordinator merges it (bun run pr -- merge ${n})`);
+    }
     return 1;
   }
   deps.log(`#${n} merges by itself, with a merge commit, once its required checks are green`);
