@@ -251,6 +251,25 @@ describe("acp-client", () => {
     await client.closed;
   });
 
+  test.skipIf(process.platform === "win32")(
+    "on POSIX the agent leads its own process group, so a tree kill reaches what it starts",
+    async () => {
+      const agent = spawnAcp(["sh", "-c", 'echo "$$ $(ps -o pgid= -p $$)"; read _'], {
+        cwd: realTempDir("fd-acp-group-"),
+        env: { PATH: process.env.PATH ?? "" },
+      });
+      let line = "";
+      for await (const text of agent.lines) {
+        line = text;
+        break;
+      }
+      const [pid, pgid] = line.trim().split(/\s+/);
+      agent.close();
+      await agent.exited;
+      expect(pgid).toBe(pid);
+    },
+  );
+
   test("kill ends an agent that does not stop on its own", async () => {
     const agent = spawnAcp([process.execPath, "-e", "setInterval(() => {}, 1000)"], {
       cwd: realTempDir("fd-acp-kill-"),
