@@ -73,7 +73,9 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   the commit hook enforces it. For a deliberate exception, end the message with a trailer line
   `TDD-Waiver: <why>`; `tdd:audit` lists it as waived.
 - `git add` always with explicit paths, never `-A`, `-u` or `.`, and `git status --short` before
-  the commit. No `git commit -a`.
+  the commit. No `git commit -a`. No `git stash` (only `list` and `show`): `refs/stash` is shared
+  by every worktree, so a pop can apply another session's changes. Keep work aside with
+  `git diff > /tmp/<name>.patch` and `git apply`, or a WIP commit on your branch.
 - Forbidden in committed code: `.only`, `.skip`, `test.todo`, `toMatchSnapshot` on the first
   run, weakening an assertion.
 - Tests touch nothing real. The preload replaces `claude` on the PATH with a sentinel and
