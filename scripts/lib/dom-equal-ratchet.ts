@@ -5,18 +5,108 @@
  * output, so the test sources are checked instead: compare what is read from an element
  * (`textContent`, `getAttribute`, `!== null`), never the element itself.
  */
+import { readdirSync, readFileSync } from "node:fs";
+import { relative, resolve } from "node:path";
 
-/** How many deep-equality assertions of a test source put a DOM element itself into the comparison. */
-export function domEqualities(_source: string): number {
-  return 0;
+/** Index just past the bracket that closes the one at `open`, skipping strings and comments. */
+function closing(src: string, open: number): number {
+  let depth = 0;
+  for (let i = open; i < src.length; i++) {
+    const c = src[i];
+    if (c === '"' || c === "'" || c === "`") {
+      for (i++; i < src.length && src[i] !== c; i++) if (src[i] === "\\") i++;
+    } else if (c === "/" && src[i + 1] === "/") {
+      const end = src.indexOf("\n", i);
+      if (end < 0) return src.length;
+      i = end;
+    } else if (c === "/" && src[i + 1] === "*") {
+      const end = src.indexOf("*/", i + 2);
+      if (end < 0) return src.length;
+      i = end + 1;
+    } else if (c === "(" || c === "[" || c === "{") depth++;
+    else if (c === ")" || c === "]" || c === "}") {
+      depth--;
+      if (depth === 0) return i + 1;
+    }
+  }
+  return src.length;
+}
+
+/** The code with every string's contents blanked, so a query's name inside text is not a call. */
+function blanked(code: string): string {
+  return code.replace(
+    /(["'`])((?:\\.|(?!\1)[^\\])*)\1/g,
+    (_, quote: string, body: string) => `${quote}${" ".repeat(body.length)}${quote}`,
+  );
+}
+
+/** A Testing Library or DOM query, or one of the document's own elements. */
+const QUERY =
+  /\b(?:(?:get|query|find)(?:All)?By[A-Z]\w*|querySelector(?:All)?|getElementById|closest)\s*\(|\bdocument\.(?:activeElement|body|documentElement)\b/g;
+/** What may follow a query and still leave the element itself: `!`, an index, `?? null`, `)`. */
+const STILL_ELEMENT = /^(?:\s*(?:!(?!=)|\[\d+\]|\?\?\s*null|\)))*\s*$/;
+
+/** The top-level parts of a literal (`[a, b]`; `{ k: v }` gives v), each split again; else the code. */
+function parts(code: string): string[] {
+  const text = code.trim();
+  const literal =
+    (text.startsWith("[") || text.startsWith("{")) && closing(text, 0) === text.length;
+  if (!literal) return [text.replace(/^\.\.\./, "")];
+  const out: string[] = [];
+  let start = 1;
+  for (let i = 1; i < text.length - 1; i++) {
+    const c = text[i] as string;
+    if ("([{".includes(c)) i = closing(text, i) - 1;
+    else if (c === ",") {
+      out.push(text.slice(start, i));
+      start = i + 1;
+    }
+  }
+  out.push(text.slice(start, text.length - 1));
+  return out
+    .map((part) => (text.startsWith("{") ? part.replace(/^\s*[\w$"' []+\]?\s*:/, "") : part))
+    .filter((part) => part.trim() !== "")
+    .flatMap(parts);
 }
 
 /** Whether a value (an argument of `expect` or of the matcher) holds a DOM element itself. */
-export function holdsElement(_code: string): boolean {
-  return false;
+export function holdsElement(code: string): boolean {
+  return parts(blanked(code)).some((part) => {
+    let end = -1;
+    for (const m of part.matchAll(QUERY)) {
+      end = m[0].endsWith("(") ? closing(part, m.index + m[0].length - 1) : m.index + m[0].length;
+    }
+    return end >= 0 && STILL_ELEMENT.test(part.slice(end));
+  });
+}
+
+const DEEP_MATCHER = /\s*(?:\.\s*not\s*)?\.\s*(?:toEqual|toStrictEqual|toMatchObject)\s*\(/y;
+
+/** How many deep-equality assertions of a test source put a DOM element itself into the comparison. */
+export function domEqualities(source: string): number {
+  let count = 0;
+  for (const m of source.matchAll(/\bexpect\s*\(/g)) {
+    const open = m.index + m[0].length - 1;
+    const end = closing(source, open);
+    DEEP_MATCHER.lastIndex = end;
+    const matcher = DEEP_MATCHER.exec(source);
+    if (!matcher) continue;
+    const argOpen = end + matcher[0].length - 1;
+    const actual = source.slice(open + 1, end - 1);
+    const expected = source.slice(argOpen + 1, closing(source, argOpen) - 1);
+    if (holdsElement(actual) || holdsElement(expected)) count++;
+  }
+  return count;
 }
 
 /** Every test source under `dir` with its count (files at zero left out), keyed under `root`. */
-export function domEqualCounts(_dir: string, _root: string): Record<string, number> {
-  return {};
+export function domEqualCounts(dir: string, root: string): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const entry of readdirSync(dir, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile() || !/\.tsx?$/.test(entry.name)) continue;
+    const path = resolve(entry.parentPath, entry.name);
+    const n = domEqualities(readFileSync(path, "utf8"));
+    if (n > 0) counts[relative(root, path).replaceAll("\\", "/")] = n;
+  }
+  return counts;
 }
