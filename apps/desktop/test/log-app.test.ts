@@ -179,3 +179,21 @@ describe("log-segredos-app: the app's log knows the app's own secrets (issue #25
     expect(written[0]).not.toContain("hunter2");
   });
 });
+
+describe("log-privacidade-app: the user's name is not in the app's log (issue #255)", () => {
+  test("a home folder is ~ in the file, in the memory and in the diagnostics", () => {
+    const { s, written } = sink();
+    const log = new AppLog({ sink: s, now: () => NOW });
+    log.log("error", "update", "cannot write C:\\Users\\Ana\\AppData\\x and /Users/Ana/y");
+    expect(written[0]).toContain("cannot write ~\\AppData\\x and ~/y");
+    expect(log.recent(1).join("")).not.toContain("Ana");
+    const text = diagnosticsText({
+      appVersion: "1",
+      os: "Windows (C:\\Users\\Ana\\x)",
+      hosts: [{ name: "/home/ana/box", version: null, features: [], status: "online" }],
+      lines: ["2026 INFO from /home/ana/z"],
+    });
+    expect(text).not.toContain("ana");
+    expect(text).not.toContain("Ana");
+  });
+});

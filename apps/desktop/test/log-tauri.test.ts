@@ -89,4 +89,12 @@ describe("log-tauri: the shell's log file (issue #255)", () => {
     expect(tests).toContain("remove_dir_all");
     expect(tests).toContain('append_line(&dir, "only", 10, 1)');
   });
+
+  test("the folder is made 0700, the file 0600, a symlink is refused, and the tail reads a bounded window", () => {
+    expect(rust).toContain("0o700");
+    expect(rust).toContain("0o600");
+    expect(rust).toContain("symlink_metadata");
+    expect(rust).toMatch(/const LOG_TAIL_BYTES: u64 = 256 \* 1024;/);
+    expect(rust).toContain("SeekFrom::Start");
+  });
 });

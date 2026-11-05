@@ -130,3 +130,62 @@ describe("log-arquivo: the daemon's own log file (issue #255)", () => {
     expect((await log.tail(5)).join("\n")).toContain("just written");
   });
 });
+
+describe("log-privacidade: where the log lives and what it says about the user (issue #255)", () => {
+  test("the user's home folder is ~ in the file and in the tail, even for a line planted in the file", async () => {
+    const { dir, log } = make({ home: "/srv/people/ana" });
+    log.write("error", "cannot open /srv/people/ana/.ssh/id_x and /home/bob/repo");
+    await log.flush();
+    expect(live(dir)).toContain("cannot open ~/.ssh/id_x and ~/repo");
+    expect(live(dir)).not.toContain("ana");
+    appendFileSync(join(dir, "flightdeckd.log"), "2026 INFO planted /Users/Carl/x\n");
+    expect((await log.tail(5)).join("\n")).toContain("planted ~/x");
+    expect((await log.tail(5)).join("\n")).not.toContain("Carl");
+  });
+
+  test("the folder is 0700 and the files are 0600", async () => {
+    if (process.platform === "win32") return;
+    const { dir, log } = make({ maxBytes: 100, files: 3 });
+    for (let i = 0; i < 8; i++) log.write("info", `message number ${i} with some padding to fill`);
+    await log.flush();
+    expect(statSync(dir).mode & 0o777).toBe(0o700);
+    for (const name of readdirSync(dir)) expect(statSync(join(dir, name)).mode & 0o777).toBe(0o600);
+  });
+
+  test("a symlink where the log file should be is never written through or read", async () => {
+    if (process.platform === "win32") return;
+    const { dir, log } = make();
+    const outside = join(tempDir("fd-outside-"), "victim.txt");
+    writeFileSync(outside, "do not touch\n");
+    mkdirSync(dir, { recursive: true });
+    symlinkSync(outside, join(dir, "flightdeckd.log"));
+    log.write("info", "this must not land in the victim");
+    await log.flush();
+    expect(readFileSync(outside, "utf8")).toBe("do not touch\n");
+    // The link is not read either, and nothing breaks.
+    expect(await log.tail(5)).toEqual([]);
+    rmSync(join(dir, "flightdeckd.log"));
+    symlinkSync(outside, join(dir, "flightdeckd.log.1"));
+    log.write("info", "fresh");
+    await log.flush();
+    expect((await log.tail(5)).join("\n")).not.toContain("do not touch");
+    expect((await log.tail(5)).join("\n")).toContain("fresh");
+  });
+
+  test("tail reads at most the last 256 KiB of each file", async () => {
+    const { dir, log } = make();
+    mkdirSync(dir, { recursive: true });
+    const line = (n: number) => `2026 INFO ${String(n).padStart(6, "0")} ${"x".repeat(1000)}\n`;
+    writeFileSync(
+      join(dir, "flightdeckd.log"),
+      Array.from({ length: 2000 }, (_, i) => line(i)).join(""),
+    );
+    const got = await log.tail(500);
+    // 256 KiB of 1 KB lines is about 256 lines, not the 500 asked for.
+    expect(got.length).toBeGreaterThan(200);
+    expect(got.length).toBeLessThan(300);
+    expect(got.at(-1)).toContain("001999");
+    // A line cut by the window is not handed out in pieces.
+    expect(got.every((l) => l.startsWith("2026 INFO "))).toBe(true);
+  });
+});

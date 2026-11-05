@@ -571,6 +571,50 @@ mod log_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn the_folder_is_private_and_the_files_are_owner_only() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = scratch("modes").join("logs");
+        for i in 0..8 {
+            append_line(&dir, &format!("message number {i} with some padding"), 100, 3).unwrap();
+        }
+        let mode = |p: &std::path::Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(&dir), 0o700);
+        assert_eq!(mode(&log_path(&dir, 0)), 0o600);
+        assert_eq!(mode(&log_path(&dir, 1)), 0o600);
+        let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlink_where_the_log_is_never_written_through_or_read() {
+        let dir = scratch("link");
+        std::fs::create_dir_all(&dir).unwrap();
+        let victim = dir.join("victim.txt");
+        std::fs::write(&victim, "do not touch\n").unwrap();
+        std::os::unix::fs::symlink(&victim, log_path(&dir, 0)).unwrap();
+        assert!(append_line(&dir, "must not land in the victim", 1024, 3).is_err());
+        assert_eq!(std::fs::read_to_string(&victim).unwrap(), "do not touch\n");
+        assert!(tail_lines(&dir, 5, 3).is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_tail_reads_only_the_last_window_of_a_file() {
+        let dir = scratch("window");
+        std::fs::create_dir_all(&dir).unwrap();
+        let filler = "x".repeat(1000);
+        let body: String = (0..2000).map(|i| format!("{i:06} {filler}\n")).collect();
+        std::fs::write(log_path(&dir, 0), body).unwrap();
+        let lines = tail_lines(&dir, LOG_MAX_TAIL, 1);
+        // 256 KiB of 1 KB lines is about 256 lines, not the 500 asked for, and none is cut.
+        assert!(lines.len() > 200 && lines.len() < 300);
+        assert!(lines.last().unwrap().starts_with("001999"));
+        assert!(lines.iter().all(|l| l.len() == 1007));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     #[test]
     fn a_file_with_a_broken_character_is_still_read() {
         let dir = scratch("lossy");
