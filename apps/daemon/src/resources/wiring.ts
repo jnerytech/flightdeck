@@ -1,5 +1,4 @@
-import type { ProcReader } from "./resources.ts";
-import { Resources } from "./resources.ts";
+import { type ProcReader, Resources } from "./resources.ts";
 
 export interface ResourcesDeps {
   platform: NodeJS.Platform;
@@ -12,7 +11,12 @@ export interface ResourcesDeps {
     status: string;
     createdAt: string;
   }>;
-  terminals(): Array<{ terminalId: string; cwd: string; command: string; exitCode: number | null }>;
+  terminals(): Array<{
+    terminalId: string;
+    cwd: string;
+    command: string;
+    exitCode: number | null;
+  }>;
   pidOf(terminalId: string): number | null;
   totalmem(): number;
   freemem(): number;
@@ -24,15 +28,51 @@ export interface ResourcesDeps {
   proc: ProcReader | undefined;
 }
 
-export function createResources(_deps: ResourcesDeps): Resources {
+/** Statuses of a session that has no process any more. */
+const GONE = new Set(["ended", "error"]);
+
+/**
+ * The host's resources over what the daemon already has: its sessions and terminals, and the OS
+ * for the host's numbers. Processes are measured through `/proc`, so only on Linux; macOS and
+ * Windows get the host's memory, disk and (where there is one) load, and say the rest is not measured.
+ */
+export function createResources(deps: ResourcesDeps): Resources {
   return new Resources({
-    proc: null,
-    ownPid: 0,
-    sessions: () => [],
-    terminals: () => [],
-    memory: () => ({ totalBytes: 0, freeBytes: 0 }),
-    disk: async () => null,
-    loadPercent: () => null,
-    kill: () => {},
+    proc: deps.platform === "linux" && deps.proc ? deps.proc : null,
+    ownPid: deps.ownPid,
+    sessions: () =>
+      deps.sessions().map((s) => ({
+        id: s.id,
+        name: s.name,
+        cwd: s.cwd,
+        createdAt: s.createdAt,
+        active: !GONE.has(s.status),
+      })),
+    terminals: () =>
+      deps
+        .terminals()
+        .filter((t) => t.exitCode === null)
+        .map((t) => ({
+          id: t.terminalId,
+          name: t.command,
+          cwd: t.cwd,
+          pid: deps.pidOf(t.terminalId),
+        })),
+    memory: () => ({ totalBytes: deps.totalmem(), freeBytes: deps.freemem() }),
+    disk: async () => {
+      try {
+        const { blocks, bsize, bavail } = await deps.statfs(deps.dataDir);
+        return { totalBytes: blocks * bsize, freeBytes: bavail * bsize };
+      } catch {
+        return null;
+      }
+    },
+    loadPercent: () => {
+      const cores = deps.cpus();
+      // Windows has no load average: it reads 0 there.
+      if (cores <= 0 || deps.platform === "win32") return null;
+      return Math.round(((deps.loadavg()[0] ?? 0) / cores) * 100);
+    },
+    kill: (pid) => deps.kill(pid, "SIGTERM"),
   });
 }
