@@ -134,7 +134,7 @@ describe("abas-muitas: with many tabs the strip stays readable", () => {
       });
     });
     const badge = document.querySelector("[data-badge='running']") as HTMLElement;
-    expect(badge.textContent).not.toBe("");
+    expect(badge.textContent).toBe("");
     expect(badge.className).toContain("animate-pulse");
     expect(badge.className).toContain("bg-muted");
   });
