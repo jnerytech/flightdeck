@@ -3543,6 +3543,12 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   command to copy (when there is one) and an Install page button that opens the page in the browser; `flightdeckd doctor` prints
   `page: <url>` under the command.
 
+## Install advice that is true for the system it is shown for (issue #214, from review item HD-m3)
+
+- **gh has a minimum version, 2.32.0**, the first with `gh project` (generally available in July 2023), which board sync needs. The number comes from the date of that announcement and my memory of the release, not from a changelog I read: if a gh between 2.30 and 2.31 turns out to have the command, lower `GH_MIN` in `deps.ts`. A gh below it is `outdated`, as git is. On Linux the row no longer offers `sudo apt install gh` (an LTS package can be older than the minimum) and points to the install page; macOS and Windows keep brew and winget.
+- **A fix can carry a `note`**, a code the app words in both languages: `elevated` (OpenSSH on Windows: `Add-WindowsCapability` needs an elevated PowerShell) and `noSystemd` (a Linux without `systemctl` has no service to install, so the service row offers no command and says to start the daemon at login with the system's own tools). Free text from a host is not shown: only a code the app knows, in the same spirit as the fix allowlist.
+- **Left as it is**: `xcode-select --install` for ssh on macOS. ssh ships with the system there, so a missing ssh is rare, and the line is what macOS prints when the tools are missing.
+
 ## The rc/0361 gate: three leaks of the machine into the tests
 
 - **The focus ring** (`abas-foco`): the crumb fix moved the tab's ring to the strip with `has-[[role=tab]:focus-visible]` so the outline
