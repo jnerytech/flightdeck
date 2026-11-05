@@ -894,6 +894,18 @@ export const ptBR = {
     densities: { compact: "Compacta", comfortable: "Confortável" },
     themes: { system: "Sistema", light: "Claro", dark: "Escuro" },
     terminalFont: "Tamanho da fonte do terminal",
+    cacheTimer: "Contador do cache do prompt",
+    cacheTtl: "Duração do cache",
+    cacheTtls: { fiveMinutes: "5 minutos", oneHour: "1 hora" },
+  },
+  cacheTimer: {
+    expires: "Cache do prompt expira em {time}",
+    cold: "Cache do prompt frio",
+    coldTip: "A próxima mensagem vai reenviar todo o contexto como tokens sem cache",
+    minutes: "{n} minutos",
+    minutesOne: "1 minuto",
+    seconds: "{n} segundos",
+    secondsOne: "1 segundo",
   },
   languages: { "pt-BR": "Português (Brasil)", en: "English" },
   palette: {

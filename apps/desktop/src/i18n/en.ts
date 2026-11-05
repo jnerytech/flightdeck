@@ -897,6 +897,18 @@ export const en: Dictionary = {
     densities: { compact: "Compact", comfortable: "Comfortable" },
     themes: { system: "System", light: "Light", dark: "Dark" },
     terminalFont: "Terminal font size",
+    cacheTimer: "Prompt cache timer",
+    cacheTtl: "Cache lifetime",
+    cacheTtls: { fiveMinutes: "5 minutes", oneHour: "1 hour" },
+  },
+  cacheTimer: {
+    expires: "Prompt cache expires in {time}",
+    cold: "Prompt cache is cold",
+    coldTip: "The next message will re-send the full context as uncached tokens",
+    minutes: "{n} minutes",
+    minutesOne: "1 minute",
+    seconds: "{n} seconds",
+    secondsOne: "1 second",
   },
   languages: { "pt-BR": "Português (Brasil)", en: "English" },
   palette: {

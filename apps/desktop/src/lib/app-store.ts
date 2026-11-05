@@ -67,6 +67,7 @@ import type {
 } from "../platform/types.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { budgetLabel } from "./budgets.ts";
+import { CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import {
   CLIENT_BUDGET_ALERTS_KEY,
   type ClientBudgetState,
@@ -138,7 +139,6 @@ import {
   terminalLaunch,
 } from "./terminal.ts";
 import type { TerminalHost } from "./terminal-session.ts";
-import { CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
 import { loadTileLayout, saveTileLayout, type TileLayout } from "./tiles.ts";

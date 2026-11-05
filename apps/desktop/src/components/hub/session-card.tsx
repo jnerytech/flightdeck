@@ -18,6 +18,8 @@ export function SessionCard(props: {
   cost?: string;
   costLabel: string;
   persona?: string | null;
+  /** The prompt cache countdown of an idle session, when it is on. */
+  cache?: ReactNode;
   /** The session open on the right. */
   current?: boolean;
   /** The row the keyboard is on. */
@@ -53,6 +55,7 @@ export function SessionCard(props: {
         {props.persona && (
           <span className="shrink-0 rounded bg-muted px-1 text-foreground">{props.persona}</span>
         )}
+        {props.cache}
         {props.cost !== undefined && (
           <output aria-label={props.costLabel} className="ml-auto shrink-0 tabular-nums">
             {props.cost}
