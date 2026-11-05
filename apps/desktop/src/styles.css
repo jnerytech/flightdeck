@@ -102,6 +102,9 @@
   --card: var(--surface-1);
   --card-foreground: oklch(0.2 0.01 270);
   --popover: oklch(1 0 0);
+  /* The palette's keyboard row: a surface, and a ring that keeps 3:1 against the unselected rows. */
+  --palette-selection: oklch(0.92 0.004 270);
+  --palette-selection-ring: oklch(0.6 0.01 270);
   --popover-foreground: oklch(0.2 0.01 270);
   /* The single accent: the primary button, the focus ring and the active item. */
   --brand: oklch(0.55 0.2 275);
@@ -152,6 +155,8 @@
   --card: var(--surface-1);
   --card-foreground: oklch(0.95 0.005 270);
   --popover: oklch(0.355 0.006 270);
+  --palette-selection: oklch(0.385 0.006 270);
+  --palette-selection-ring: oklch(0.68 0.006 270);
   --popover-foreground: oklch(0.95 0.005 270);
   --brand: oklch(0.68 0.17 275);
   --primary: var(--brand);
@@ -232,6 +237,20 @@
   align-items: center;
   gap: 0.5rem;
   min-width: 0;
+}
+
+/* The palette's rows: the one the keyboard is on is a surface with an inset ring (issue #147). */
+@utility palette-row {
+  &[aria-selected="true"] {
+    background: var(--palette-selection);
+    box-shadow: inset 0 0 0 1px var(--palette-selection-ring);
+  }
+  &:hover {
+    background: var(--accent);
+  }
+  &[aria-selected="true"]:hover {
+    background: var(--palette-selection);
+  }
 }
 
 /* A short list that scrolls inside its panel instead of pushing the screen. */

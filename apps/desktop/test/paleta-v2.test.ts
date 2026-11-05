@@ -95,12 +95,12 @@ describe("paleta-v2: recents", () => {
     );
   });
 
-  test("an id that is gone is dropped, and at most five show", () => {
+  test("an id that is gone is dropped, and at most six show (issue #147 raised it from five)", () => {
     const s = state();
     const all = items(s).map((i) => i.id);
     const out = sections(s, "", ["gone:1", ...all.slice(0, 8)]);
-    expect(out[0]?.items).toHaveLength(5);
-    expect(out[0]?.items.map((i) => i.id)).toEqual(all.slice(0, 5));
+    expect(out[0]?.items).toHaveLength(6);
+    expect(out[0]?.items.map((i) => i.id)).toEqual(all.slice(0, 6));
   });
 
   test("once something is typed, or with no recents, there is no Recent section", () => {

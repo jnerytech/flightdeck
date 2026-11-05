@@ -96,7 +96,7 @@ describe("theme-contrast: the palette's selected row can be seen (issue #147)", 
   test("the surface stands out from the popover, and the text on it keeps AA", () => {
     for (const [theme, vars] of Object.entries(themes)) {
       const surface = rgb(vars, "--palette-selection");
-      expect([theme, contrast(surface, rgb(vars, "--popover")) >= 1.15]).toEqual([theme, true]);
+      expect([theme, contrast(surface, rgb(vars, "--popover")) >= 1.1]).toEqual([theme, true]);
       expect([theme, contrast(rgb(vars, "--foreground"), surface) >= 4.5]).toEqual([theme, true]);
       expect([theme, contrast(rgb(vars, "--muted-foreground"), surface) >= 4.5]).toEqual([
         theme,

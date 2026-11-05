@@ -152,8 +152,9 @@ describe("paleta", () => {
       "Trocar idioma",
       "Ir para Configurações",
       "Mostrar os atalhos de teclado",
-      "Gerenciar clientes",
     ]);
+    // A section shows eight rows (issue #147): the ninth action is behind "mais 1".
+    expect(screen.queryByRole("button", { name: "mais 1" })).not.toBeNull();
     // No screen for it on this host: no "Ir para Custos".
     expect(options()).not.toContain("Ir para Custos");
 
@@ -180,13 +181,14 @@ describe("paleta", () => {
 
     await openPalette();
     await type("flamingo");
-    expect(options()).toEqual(["flamingo"]);
+    // Text that matches no card offers one, last (issue #147).
+    expect(options()).toEqual(["flamingo", "Criar card “flamingo” em flamingo"]);
     await press("Enter");
     await settle(() => resultTexts().length === 1);
     expect(store.getState().search?.query).toBe("flamingo");
     expect(resultTexts()[0]).toContain("o flamingo de setembro");
-    expect(sections()).toEqual(["Projetos"]);
-    expect(options()).toEqual(["flamingo"]);
+    expect(sections()).toEqual(["Projetos", "Criar"]);
+    expect(options()).toEqual(["flamingo", "Criar card “flamingo” em flamingo"]);
   });
 
   test("a lista que muda sob o cursor não troca o item escolhido", async () => {
@@ -300,7 +302,7 @@ describe("paleta", () => {
     expect(options()).toEqual(["Abrir", "Abrir no terminal"]);
     await press("Escape");
     expect(dialog()).not.toBeNull();
-    expect(options()).toEqual(["Gerenciada"]);
+    expect(options()).toEqual(["Gerenciada", "Criar card “Gerenciada” em flamingo"]);
   });
 
   test("Ir para Custos só com a tela de Custos e um host que anuncia costs", async () => {
@@ -333,5 +335,68 @@ describe("paleta", () => {
     await press("ArrowDown");
     await press("Enter");
     expect(went).toEqual([{ kind: "costs" }]);
+  });
+});
+
+describe("paleta: criar card a partir do texto (issue #147)", () => {
+  /** Opens the palette on the board's project, types `text` and takes the create row. */
+  async function create(text: string) {
+    await openPalette();
+    await settle(() => sections().includes("Ações"));
+    await type(text);
+    await settle(() => sections().includes("Criar"));
+    await press("ArrowDown");
+    await press("Enter");
+  }
+
+  test("o texto sem card vira um card do projeto, e o board abre com ele", async () => {
+    await setup();
+    await create("tarefa nova do palette");
+    await settle(() => screen.queryByRole("heading", { name: "Board de flamingo" }) !== null);
+    await settle(() => screen.queryByText("tarefa nova do palette") !== null);
+    expect(dialog()).toBeNull();
+  });
+
+  test("#7 busca a issue pelo número e cria o card dela; o link usa a referência inteira", async () => {
+    const { store } = await setup();
+    const calls: Array<[string, unknown]> = [];
+    const real = store.hostCommand.bind(store);
+    store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {
+      if (type === "issues.get") {
+        calls.push([type, payload]);
+        return { ref: "github:o/r#7" };
+      }
+      if (type === "issues.createCard") {
+        calls.push([type, payload]);
+        return { id: "novo" };
+      }
+      return real(hostId, type as never, payload as never);
+    }) as never;
+    await act(async () => {
+      await store.loadPalette();
+    });
+    const [host] = store.getState().hosts;
+    const [project] = store.getState().projects[host?.id ?? ""] ?? [];
+    await act(async () => {
+      (store as unknown as { update(patch: object): void }).update({
+        projects: { [host?.id ?? ""]: [{ ...project, issues: { provider: "github" } }] },
+        // The test daemon has no issue provider: the host says it has one.
+        hosts: store.getState().hosts.map((h) => ({
+          ...h,
+          hostInfo: h.hostInfo && {
+            ...h.hostInfo,
+            features: [...(h.hostInfo.features ?? []), "issues"],
+          },
+        })),
+      });
+    });
+    // The palette reloads the projects when it opens: keep the ones that have Issues connected.
+    store.loadPalette = (async () => {}) as never;
+    await create("#7");
+    await settle(() => calls.length === 2);
+    expect(calls.map(([type]) => type)).toEqual(["issues.get", "issues.createCard"]);
+    expect(calls[1]?.[1]).toMatchObject({ issueRef: "github:o/r#7" });
+    cleanup();
+    calls.length = 0;
   });
 });

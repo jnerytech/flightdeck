@@ -88,6 +88,29 @@ function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route 
   }
 }
 
+/** A card from an issue the palette named: by its full reference, else by its number in the project. */
+async function createFromIssue(
+  store: AppStore,
+  target: Extract<PaletteTarget, { kind: "create-card-issue" }>,
+) {
+  const issueRef =
+    target.ref ??
+    (target.id
+      ? (
+          await store.hostCommand(target.hostId, "issues.get", {
+            projectId: target.projectId,
+            id: target.id,
+          })
+        )?.ref
+      : undefined);
+  return issueRef
+    ? store.hostCommand(target.hostId, "issues.createCard", {
+        projectId: target.projectId,
+        issueRef,
+      })
+    : null;
+}
+
 /**
  * The tab shortcuts (Ctrl+T/W/Shift+T, Ctrl+Tab, Ctrl+1…9, Ctrl+Shift+PageUp/Down): true when the
  * key was one of them and has been handled.
@@ -317,6 +340,20 @@ export function App({ store }: { store: AppStore }) {
     } else if (target.kind === "pull-link") {
       void store.openPrLink(target.url).then((route) => {
         if (route) go(route);
+      });
+    } else if (target.kind === "create-card") {
+      void store
+        .hostCommand(target.hostId, "card.create", {
+          projectId: target.projectId,
+          title: target.title,
+          description: "",
+        })
+        .then((card) => {
+          if (card) go({ name: "board", host: target.hostId, projectId: target.projectId });
+        });
+    } else if (target.kind === "create-card-issue") {
+      void createFromIssue(store, target).then((card) => {
+        if (card) go({ name: "board", host: target.hostId, projectId: target.projectId });
       });
     } else if (target.kind === "start-card") {
       void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });

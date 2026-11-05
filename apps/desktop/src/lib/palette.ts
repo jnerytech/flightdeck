@@ -4,7 +4,7 @@ import { ALL_CLIENTS, selectedClient, tagsFirst } from "./client-scope.ts";
 import { UNASSIGNED } from "./clients.ts";
 import type { AppSnippet } from "./global-snippets.ts";
 import { hostStatusView } from "./host-status.ts";
-import { basename } from "./paths.ts";
+import { basename, isInside } from "./paths.ts";
 import type { Route } from "./router.ts";
 import { keysLabel, type ShortcutAction, shortcutOf } from "./shortcuts.ts";
 import type { TerminalTarget } from "./terminal.ts";
@@ -88,18 +88,45 @@ export interface PaletteScope {
 
 /** The scope the palette opens with: where the person is (a board or card: its project; else its host). */
 export function paletteScope(route: Route, state: AppState): PaletteScope {
-  void route;
-  void state;
-  return { hostId: null, projectId: null };
+  if (route.name === "board" || route.name === "card") {
+    return { hostId: route.host, projectId: route.projectId };
+  }
+  const hostId = "host" in route && typeof route.host === "string" ? route.host : null;
+  return { hostId: state.hosts.some((h) => h.id === hostId) ? hostId : null, projectId: null };
 }
 
 /** A PR link of Azure DevOps (`/pullrequest/<n>`) or GitHub (`/pull/<n>`). */
 const PR_LINK = /^https?:\/\/\S+\/(?:pullrequest|pull)\/\d+(?:[/?#]\S*)?$/;
 
 /** How many recent entries the palette shows. */
-const RECENTS_SHOWN = 5;
+const RECENTS_SHOWN = 6;
 
 const LIVE: ReadonlySet<string> = new Set(["starting", "running", "awaiting_permission", "idle"]);
+
+/** The state a session's status shows as, for its glyph: Idle covers whatever is not running or waiting. */
+const stateOf = (status: string): NonNullable<PaletteItem["stateKey"]> =>
+  status === "awaiting_permission"
+    ? "needs_you"
+    : status === "running" || status === "starting"
+      ? "running"
+      : "idle";
+
+/** How soon a recent entry is wanted: what waits for you, then what runs, then the rest. */
+const RANK = { needs_you: 0, running: 1, idle: 2 } as const;
+
+const GITHUB_ISSUE = /^https?:\/\/github\.com\/([^/\s]+)\/([^/\s]+)\/issues\/(\d+)(?:[/?#]\S*)?$/;
+
+/** Where "Create card" puts the card: the scope's project, else the only project there is. */
+function createPlace(state: AppState, scope: PaletteScope | undefined) {
+  const online = state.hosts.filter((h) => h.status === "online");
+  const hosts = scope?.hostId ? online.filter((h) => h.id === scope.hostId) : online;
+  const places = hosts.flatMap((host) =>
+    (state.projects[host.id] ?? [])
+      .filter((project) => !scope?.projectId || project.id === scope.projectId)
+      .map((project) => ({ host, project })),
+  );
+  return places.length === 1 ? (places[0] ?? null) : null;
+}
 
 /**
  * The palette's local sections, in order, filtered by `query` (on the label): live sessions,
@@ -129,6 +156,8 @@ export function paletteSections(
     target: { kind: "terminal", hostId, target },
   });
 
+  const projectOf = (hostId: string, cwd: string | null | undefined) =>
+    cwd ? (state.projects[hostId] ?? []).find((p) => isInside(cwd, p.path))?.id : undefined;
   const sessions = online.flatMap((host) => {
     // Phase 21: the standard names of the host; an alias addresses its session here too.
     const names = new Map((state.names?.[host.id] ?? []).map((n) => [n.sessionId, n]));
@@ -146,6 +175,9 @@ export function paletteSections(
             label: s.name ?? names.get(s.id)?.display ?? basename(s.cwd),
             detail: `${host.name} · ${s.cwd}`,
             target,
+            stateKey: stateOf(s.status),
+            hostId: host.id,
+            projectId: projectOf(host.id, s.cwd),
             ...(names.has(s.id) ? { keywords: keywords(s.id) } : {}),
             actions: [
               { label: t("palette.open"), target },
@@ -163,6 +195,9 @@ export function paletteSections(
             label: state.meta[key]?.name ?? names.get(id)?.display ?? basename(s.cwd ?? id),
             detail: `${host.name} · ${t("palette.terminalDetail")}`,
             target,
+            stateKey: stateOf(s.status),
+            hostId: host.id,
+            projectId: projectOf(host.id, s.cwd),
             ...(names.has(id) ? { keywords: keywords(id) } : {}),
             actions: [
               { label: t("palette.open"), target },
@@ -189,6 +224,8 @@ export function paletteSections(
           label: card.title,
           detail: `${host.name} · ${t("palette.cardDetail")}`,
           target,
+          hostId: host.id,
+          projectId: card.projectId,
           actions: [
             { label: t("palette.open"), target },
             {
@@ -208,6 +245,8 @@ export function paletteSections(
         label: project.name,
         detail: `${host.name} · ${project.path}`,
         target: board,
+        hostId: host.id,
+        projectId: project.id,
         actions: [
           { label: t("palette.openBoard"), target: board },
           {
@@ -234,6 +273,7 @@ export function paletteSections(
         label: host.name,
         detail: hostStatusView(host.status, t).label,
         target: page,
+        hostId: host.id,
         actions: [
           { label: t("palette.openHost"), target: page },
           { label: t("palette.newSession"), target: { kind: "new-session", hostId: host.id } },
@@ -352,6 +392,7 @@ export function paletteSections(
         label: t("palette.connectTo", { name: target.name }),
         detail: `${target.user}@${target.host} · ${host.name}`,
         target: connect,
+        hostId: host.id,
         actions: [{ label: t("palette.connect"), target: connect }],
       };
     }),
@@ -396,6 +437,11 @@ export function paletteSections(
     PR_LINK.test(link) && online.some((h) => hasFeature(h.hostInfo?.features, "watch", false))
       ? [action(`pr-link:${link}`, t("palette.openPrLink"), { kind: "pull-link", url: link }, link)]
       : [];
+  const scope = options.scope;
+  /** What is not tied to a host or a project (the actions) stays whatever the scope. */
+  const inScope = (item: PaletteItem) =>
+    (!scope?.hostId || item.hostId === undefined || item.hostId === scope.hostId) &&
+    (!scope?.projectId || !("projectId" in item) || item.projectId === scope.projectId);
   const filtered = [
     { title: t("palette.sectionSessions"), items: sessions },
     { title: t("palette.sectionCards"), items: cards },
@@ -404,19 +450,66 @@ export function paletteSections(
     { title: t("palette.sectionConnections"), items: connections },
     { title: t("palette.sectionSnippets"), items: snippets },
     { title: t("palette.sectionActions"), items: actions },
-  ].map((section) => ({ ...section, items: section.items.filter(matches) }));
+  ].map((section) => ({ ...section, items: section.items.filter(inScope).filter(matches) }));
   // With nothing typed, what was used lately comes first (an entry that is gone is dropped).
   const everything = filtered.flatMap((section) => section.items);
-  const recent =
+  const used =
     needle === ""
-      ? (options.recents ?? [])
-          .flatMap((id) => everything.find((item) => item.id === id) ?? [])
-          .slice(0, RECENTS_SHOWN)
+      ? (options.recents ?? []).flatMap((id) => everything.find((item) => item.id === id) ?? [])
       : [];
+  // What waits for you comes first, then what runs; the palette freezes the order once it is open.
+  const ranked = options.keepRecentOrder
+    ? used
+    : used
+        .map((item, i) => ({ item, i }))
+        .sort(
+          (a, b) => RANK[a.item.stateKey ?? "idle"] - RANK[b.item.stateKey ?? "idle"] || a.i - b.i,
+        )
+        .map(({ item }) => item);
+  const recent = ranked.slice(0, RECENTS_SHOWN);
+  // Text that matches no card can become one (or an issue's card); it is the last thing offered.
+  const create = (): PaletteItem[] => {
+    const text = query.trim();
+    const place = createPlace(state, scope);
+    if (text === "" || !place || filtered[1]?.items.length) return [];
+    const { host, project } = place;
+    const where = { hostId: host.id, projectId: project.id };
+    const issues =
+      project.issues !== null &&
+      project.issues !== undefined &&
+      hasFeature(host.hostInfo?.features, "issues", false);
+    const url = GITHUB_ISSUE.exec(text);
+    const number = /^#(\d+)$/.exec(text);
+    const fromIssue = (issue: string, target: Partial<PaletteTarget>): PaletteItem => ({
+      id: "create:issue",
+      label: t("palette.createCardIssue", { issue, project: project.name }),
+      detail: t("palette.createDetail"),
+      target: { kind: "create-card-issue", ...where, ...target } as PaletteTarget,
+      actions: [],
+      ...where,
+    });
+    if (issues && url) {
+      return [
+        fromIssue(`${url[1]}/${url[2]}#${url[3]}`, { ref: `github:${url[1]}/${url[2]}#${url[3]}` }),
+      ];
+    }
+    if (issues && number) return [fromIssue(text, { id: number[1] as string })];
+    return [
+      {
+        id: "create:card",
+        label: t("palette.createCard", { title: text, project: project.name }),
+        detail: t("palette.createDetail"),
+        target: { kind: "create-card", ...where, title: text },
+        actions: [],
+        ...where,
+      },
+    ];
+  };
   // The link is the query itself, so it is not filtered by it.
   return [
     { title: t("palette.sectionLink"), items: prLink },
-    { title: t("palette.sectionRecent"), items: recent },
+    { title: t("palette.sectionRecent"), items: recent, recent: true as const },
     ...filtered,
+    { title: t("palette.sectionCreate"), items: create() },
   ].filter((section) => section.items.length > 0);
 }
