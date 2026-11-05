@@ -91,6 +91,29 @@ describe("hook-log", () => {
     );
   });
 
+  test("waived commits are counted apart from blocks, per rule", () => {
+    const waived: HookLogEntry = { ...entry("guard", 40), rule: "commit", decision: "waived" };
+    const text = [entry("guard", 30), waived, waived].map((e) => JSON.stringify(e)).join("\n");
+    expect(summarizeHookLog(text)).toBe(
+      [
+        "hook   calls  blocks  p50 ms  p95 ms",
+        "guard      3       0      40      40",
+        "",
+        "waivers by rule:",
+        "  commit  2",
+      ].join("\n"),
+    );
+  });
+
+  test("commitWaived tells a commit that carries a TDD-Waiver trailer", () => {
+    expect(commitWaived('git commit -m "fix(a): x" -m "TDD-Waiver: made in the rc merge"')).toBe(
+      true,
+    );
+    expect(commitWaived('git commit -m "fix(a): x" --trailer "TDD-Waiver: why"')).toBe(true);
+    expect(commitWaived('git commit -m "fix(a): x"')).toBe(false);
+    expect(commitWaived('echo "TDD-Waiver: x"')).toBe(false);
+  });
+
   test("an empty log says so", () => {
     expect(summarizeHookLog("")).toBe("no hook calls logged yet");
   });
