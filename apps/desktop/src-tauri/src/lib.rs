@@ -344,6 +344,20 @@ async fn open_result(app: tauri::AppHandle, path: String, reveal: bool) -> Resul
 }
 
 #[cfg(test)]
+mod badge_tests {
+    use super::*;
+
+    #[test]
+    fn the_badge_is_nothing_or_exactly_32_by_32_rgba() {
+        assert!(badge_image_ok(0));
+        assert!(badge_image_ok(32 * 32 * 4));
+        assert!(!badge_image_ok(1));
+        assert!(!badge_image_ok(32 * 32 * 3));
+        assert!(!badge_image_ok(32 * 32 * 4 + 1));
+    }
+}
+
+#[cfg(test)]
 mod open_result_tests {
     use super::*;
 
@@ -648,6 +662,41 @@ fn tray_set_status(
     Ok(())
 }
 
+/// The overlay the app draws on its taskbar button: 32 x 32 pixels of RGBA.
+const BADGE_BYTES: usize = 32 * 32 * 4;
+
+/// Whether `len` bytes are a picture the overlay can show: none (clear it) or exactly 32 x 32 RGBA.
+fn badge_image_ok(len: usize) -> bool {
+    len == 0 || len == BADGE_BYTES
+}
+
+/// Shows the unread count on the taskbar button of the main window (Windows). The webview draws the
+/// picture; this only checks its size and hands it over, so the webview has no window permission of
+/// its own for the overlay. An empty picture clears the badge. Other systems have no such badge.
+#[tauri::command]
+fn set_unread_badge(app: tauri::AppHandle, rgba: Vec<u8>) -> Result<(), String> {
+    if !badge_image_ok(rgba.len()) {
+        return Err("the badge must be 32 x 32 RGBA".into());
+    }
+    let Some(window) = app.get_webview_window("main") else {
+        return Ok(());
+    };
+    #[cfg(windows)]
+    {
+        let icon = if rgba.is_empty() {
+            None
+        } else {
+            Some(tauri::image::Image::new_owned(rgba, 32, 32))
+        };
+        window.set_overlay_icon(icon).map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (window, rgba);
+    }
+    Ok(())
+}
+
 /// Brings the window to the front for the global shortcut (the window may be hidden in the tray).
 #[tauri::command]
 fn focus_main(app: tauri::AppHandle) {
@@ -836,6 +885,7 @@ pub fn run() {
             vault_remove_file,
             tray_set_status,
             tray_set_menu,
+            set_unread_badge,
             set_close_to_tray,
             focus_main,
             terminal_probe,
