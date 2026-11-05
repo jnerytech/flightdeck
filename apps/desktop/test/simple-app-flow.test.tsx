@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, waitFor as pollFor, TOKEN } from "./fixtures.ts";
 
@@ -19,7 +19,6 @@ afterEach(async () => {
 });
 
 const WAIT = { timeout: 20_000 };
-const realTempFolder = () => join(tmpdir(), `fd-simple-${crypto.randomUUID()}`);
 /** The control may take a moment: the host answers, then the screen draws. */
 const click = async (name: string | RegExp) => {
   const button = await waitFor(() => screen.getByRole("button", { name }), WAIT);
@@ -221,8 +220,11 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
 
   test("Given Settings, When a folder is chosen and added, Then the host lists it among the folders tasks may use", async () => {
     const mem = memoryPlatform(false, "en");
-    const extra = join(realTempFolder(), "more");
+    // By its real path: the host lists the folder as `realpathSync.native` gives it, and on a
+    // Windows runner a plain `tmpdir()` is the 8.3 short form (`RUNNER~1`) of that.
+    const extra = join(realTempDir("fd-simple-"), "more");
     mkdirSync(extra, { recursive: true });
+    expect(realpathSync.native(extra)).toBe(extra);
     mem.platform.pickFolder = async () => extra;
     await openSettings(mem);
     await click("Choose folder…");
