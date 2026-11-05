@@ -286,6 +286,32 @@ describe("ClaudeSdkRuntime", () => {
     expect(resolveClaudePath()).toBeUndefined();
   });
 
+  test("depois do session.init, as demais mensagens do SDK chegam como eventos, na ordem, e o stream termina", async () => {
+    const runtime = new ClaudeSdkRuntime({
+      query: () => ({
+        async *[Symbol.asyncIterator]() {
+          yield sdk({ type: "system", subtype: "init", session_id: "s9", model: "m", tools: [] });
+          yield sdk({
+            type: "assistant",
+            parent_tool_use_id: null,
+            message: { content: [{ type: "text", text: "feito" }] },
+          });
+        },
+        interrupt: async () => undefined,
+        close: () => {},
+      }),
+    });
+    const run = runtime.start({
+      cwd: "/p",
+      permissionMode: "default",
+      env: {},
+      canUseTool: async () => ({ behavior: "allow" }),
+    });
+    const types: string[] = [];
+    for await (const event of run.events) types.push(event.type);
+    expect(types).toEqual(["session.init", "message.assistant"]);
+  });
+
   test("falha do SDK propaga pelo stream de eventos; opções mínimas sem resume/model", async () => {
     let options: Options | undefined;
     const runtime = new ClaudeSdkRuntime({
