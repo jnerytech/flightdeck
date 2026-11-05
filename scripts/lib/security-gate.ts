@@ -45,6 +45,12 @@ function readHeader(
     if (!added.has(file)) added.set(file, []);
     return current;
   }
+  // A rename away from a risky path (out of the workflows, a guard moved) keeps the old path too.
+  if (line.startsWith("rename from ")) {
+    const path = line.slice("rename from ".length);
+    if (!added.has(path)) added.set(path, []);
+    return current;
+  }
   if (line.startsWith("rename to ")) {
     const path = line.slice("rename to ".length);
     if (!added.has(path)) added.set(path, []);
@@ -191,15 +197,29 @@ export function removedLines(diff: string): Map<string, string[]> {
   let file = "";
   let inHeader = false;
   for (const line of diff.split("\n")) {
-    if (line.startsWith("diff --git ")) {
-      file = line.slice(line.lastIndexOf(" b/") + 3);
-      inHeader = true;
-    } else if (line.startsWith("@@")) inHeader = false;
-    else if (!inHeader && line.startsWith("-")) {
-      removed.set(file, [...(removed.get(file) ?? []), line.slice(1)]);
-    }
+    if (line.startsWith("diff --git ")) inHeader = true;
+    else if (line.startsWith("@@")) inHeader = false;
+    else if (inHeader) file = headerFile(line) ?? file;
+    else if (line.startsWith("-")) removed.set(file, [...(removed.get(file) ?? []), line.slice(1)]);
   }
   return removed;
+}
+
+/** The file a "--- a/" or "+++ b/" header names (the new path wins; a deletion keeps the old). */
+function headerFile(line: string): string | null {
+  const m = /^(?:--- a\/|\+\+\+ b\/)(.*?)\t?$/.exec(line);
+  return m ? (m[1] ?? null) : null;
+}
+
+/** The files a diff deletes ("+++ /dev/null"): they have no code at HEAD to read. */
+export function deletedFiles(diff: string): Set<string> {
+  const deleted = new Set<string>();
+  let file = "";
+  for (const line of diff.split("\n")) {
+    if (line.startsWith("--- a/")) file = headerFile(line) ?? "";
+    else if (line.startsWith("+++ /dev/null")) deleted.add(file);
+  }
+  return deleted;
 }
 
 /**
@@ -216,10 +236,12 @@ export function riskyEdits(
   for (const [path, lines] of removed) {
     if (known.has(path) || any(NOT_SOURCE, path) || !SOURCE.test(path)) continue;
     const gone = areasOf(lines, path);
-    const why =
-      gone.length > 0
-        ? gone.map((area) => `removes ${area}`)
-        : areasOf((read(path) ?? "").split("\n"), path).map((area) => `edits ${area} code`);
+    const head = gone.length > 0 ? "" : read(path);
+    let why: string[];
+    if (gone.length > 0) why = gone.map((area) => `removes ${area}`);
+    // A read that failed is no proof the code is safe.
+    else if (head === null) why = ["unreadable at HEAD"];
+    else why = areasOf(head.split("\n"), path).map((area) => `edits ${area} code`);
     if (why.length > 0) edits.push({ path, why });
   }
   return edits.sort((a, b) => (a.path < b.path ? -1 : 1));
@@ -333,7 +355,10 @@ export function securityVerdict(git: GitRun, base?: string): SecurityVerdict {
   if (log === null) return unknown("git log failed");
   // Removed lines count too: taking a check out in front of a spawn needs a review (#284).
   const added = riskyFiles(addedLines(diff));
-  const edits = riskyEdits(added, removedLines(diff), (path) => git(["show", `HEAD:${path}`]));
+  const deleted = deletedFiles(diff);
+  const edits = riskyEdits(added, removedLines(diff), (path) =>
+    deleted.has(path) ? "" : git(["show", `HEAD:${path}`]),
+  );
   const risky = [...added, ...edits].sort((a, b) => (a.path < b.path ? -1 : 1));
   const problem = securityProblem(risky, parseBranchLog(log));
   return problem ? { verdict: "unreviewed", message: problem } : { verdict: "0", message: null };
