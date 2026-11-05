@@ -385,4 +385,62 @@ describe("ClaudeSdkRuntime", () => {
     expect(toggles).toEqual([["eco", false]]);
     await run.close();
   });
+
+  describe("a repo's own configuration loads only in a trusted folder (issue #196)", () => {
+    const optionsFor = (trust?: { trusted: boolean; configRoot?: string }) => {
+      let captured: Options | undefined;
+      const queryFn: QueryFn = (params) => {
+        captured = (params as { options: Options }).options;
+        return {
+          async *[Symbol.asyncIterator]() {},
+          interrupt: async () => {},
+          close: () => {},
+        } as unknown as ReturnType<QueryFn>;
+      };
+      const runtime = new ClaudeSdkRuntime({
+        query: queryFn,
+        claudePath: "/bin/claude",
+        mcpServer: { command: "/bin/fd", args: ["mcp"] },
+      });
+      runtime.start({
+        cwd: "/proj",
+        permissionMode: "default",
+        env: {},
+        canUseTool: async () => ({ behavior: "allow" }),
+        ...(trust ? { trust } : {}),
+      });
+      return captured as Options;
+    };
+
+    test("an untrusted folder loads the user's settings only, and only the MCP servers Flightdeck passes", () => {
+      const options = optionsFor({ trusted: false });
+      expect(options.settingSources).toEqual(["user"]);
+      expect(options.strictMcpConfig).toBe(true);
+      expect(Object.keys(options.mcpServers ?? {})).toEqual(["flightdeck"]);
+      expect(options.projectConfigRoot).toBeUndefined();
+    });
+
+    test("a trusted folder loads everything, as before", () => {
+      const options = optionsFor({ trusted: true });
+      expect(options.settingSources).toEqual(["user", "project", "local"]);
+      expect(options.strictMcpConfig).toBeUndefined();
+      expect(options.projectConfigRoot).toBeUndefined();
+    });
+
+    test("a worktree reads its project configuration from the main checkout, trusted or not", () => {
+      const trusted = optionsFor({ trusted: true, configRoot: "/main" });
+      expect(trusted.projectConfigRoot).toBe("/main");
+      expect(trusted.settingSources).toEqual(["user", "project", "local"]);
+      const untrusted = optionsFor({ trusted: false, configRoot: "/main" });
+      expect(untrusted.projectConfigRoot).toBe("/main");
+      expect(untrusted.settingSources).toEqual(["user"]);
+      expect(untrusted.strictMcpConfig).toBe(true);
+    });
+
+    test("a session started without a trust decision keeps loading everything", () => {
+      const options = optionsFor();
+      expect(options.settingSources).toEqual(["user", "project", "local"]);
+      expect(options.strictMcpConfig).toBeUndefined();
+    });
+  });
 });
