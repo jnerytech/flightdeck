@@ -86,4 +86,25 @@ describe("sidebar-ativo: every destination of the bar is marked when its page is
       unmount();
     }
   });
+
+  test("an item with a Beta or New badge says it in its description, and the group names read in pt-BR (SG-m2, SG-m9)", () => {
+    const en = setup();
+    const { unmount } = render(en.view());
+    const described = (name: string) => {
+      const button = screen.getByRole("button", { name });
+      const ids = (button.getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean);
+      return ids.map((id) => document.getElementById(id)?.textContent).join(" ");
+    };
+    expect(described("Teams")).toBe("Beta");
+    expect(described("Conversations")).toBe("New");
+    expect(
+      screen.getByRole("button", { name: "Board" }).getAttribute("aria-describedby"),
+    ).toBeNull();
+    unmount();
+    const pt = setup(ALL, memoryPlatform(false, "pt-BR").platform);
+    render(pt.view());
+    for (const name of ["Trabalho", "Automação", "Observabilidade", "Biblioteca", "Máquinas"]) {
+      expect(screen.getByRole("group", { name })).toBeTruthy();
+    }
+  });
 });
