@@ -3609,5 +3609,13 @@ Findings F1 to F8 of `opencode-resources-review.md`, all fixed test-first (`reso
   (pid 0, -1, 1.5, a missing start, an extra key), and a snapshot taken through the real `/proc` reader over a readable command line and
   environment that must not appear.
 - **F7.** A daemon that is pid 1 lists no orphans. A process name is cleaned of control characters and cut to 32.
+- **N1/N2 (re-review): an orphan needs positive evidence.** "No active session in that folder" also fitted the daemon's other `claude`
+  children (a plugin install of 60 to 120 s, the account idle query, an action that runs `claude`) and a live session whose folder was
+  moved. Now a `claude` is an orphan only when its folder equals the folder of a session that is over (`ended` or `error`) and it started
+  between that session's creation and its last update, with 10 s of slack each side (the process start comes from `/proc` ticks and the
+  uptime, the session's times from the store). Not done: recording the pid of the `claude` the manager starts (the SDK's
+  `spawnClaudeCodeProcess` would give exact ownership, but replaces how every session is spawned); a leftover whose session was renamed or
+  touched long after it ended can match a later one-shot in the same window, which the 60 s age and the 10 s slack make rare. N3 (a
+  cached check before `endOrphan`'s fresh read) and the weak tests (N4) are left as they are.
 - **F8.** The page size and clock ticks come from `getconf PAGESIZE` and `CLK_TCK` (4096 and 100 when it cannot say); `parseStat` refuses a
   pid that is not positive.

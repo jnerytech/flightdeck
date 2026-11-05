@@ -303,7 +303,11 @@ describe("resources-security: a bounded read (F4)", () => {
       proc(200, DAEMON, "claude", { cwd: "/work/api", cpuTicks: 1000 }),
       proc(500, DAEMON, "claude", { cwd: "/gone", startTicks: 4242 }),
     ];
-    const r = make(procs, { sessions: [session("s", "/work/api")], clock, killed: [] });
+    const r = make(procs, {
+      sessions: [session("s", "/work/api"), ended("/gone")],
+      clock,
+      killed: [],
+    });
     await r.snapshot();
     // 5 s later something ends an orphan; it must not become the new "previous reading".
     clock.now += 5000;

@@ -60,6 +60,12 @@ const ORPHAN_MIN_AGE_SEC = 60;
 /** The programs the daemon starts for a session; only these are ever called orphans. */
 const SESSION_PROGRAMS = new Set(["claude"]);
 
+/**
+ * A process counts as a session's when it started this long before the session was created or after
+ * it was last touched: clocks of the two readings are not the same one.
+ */
+const SESSION_SLACK_MS = 10_000;
+
 /** A snapshot is shared for this long, which also steadies the CPU window between readers. */
 const CACHE_MS = 1500;
 
@@ -231,6 +237,13 @@ export class Resources {
 
     const uptime = await proc.uptimeSec();
     const orphans: ResourceOrphan[] = [];
+    // Positive evidence only: the sessions that are over, by folder. A claude is a leftover when it
+    // started during the life of one of them in its folder; a plugin, account or action `claude`,
+    // or a live session's process whose folder moved, matches none.
+    const overByCwd = new Map<string, ResourceSession[]>();
+    for (const session of this.opts.sessions().filter((s) => !s.active)) {
+      overByCwd.set(session.cwd, [...(overByCwd.get(session.cwd) ?? []), session]);
+    }
     // A daemon that is pid 1 (a container) has every stray as a child: it lists none.
     if (this.opts.ownPid !== 1) {
       for (const [folder, candidates] of byCwd) {
@@ -239,6 +252,13 @@ export class Resources {
         for (const root of candidates) {
           const ageSec = Math.max(0, Math.round(uptime - root.startTicks / proc.ticksPerSecond));
           if (ageSec < ORPHAN_MIN_AGE_SEC) continue;
+          const startedAt = at - ageSec * 1000;
+          const lived = (overByCwd.get(folder) ?? []).some(
+            (s) =>
+              startedAt >= Date.parse(s.createdAt) - SESSION_SLACK_MS &&
+              startedAt <= Date.parse(s.updatedAt) + SESSION_SLACK_MS,
+          );
+          if (!lived) continue;
           orphans.push({
             pid: root.pid,
             name: cleanName(root.name),

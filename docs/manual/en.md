@@ -2472,8 +2472,10 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
   disk as bars, its load, and a table of its sessions and terminals with the biggest memory first:
   project, memory, CPU and the programs running (names only; never a command line or an
   environment). Memory or disk at 80% reads **High** and at 90% **Critical**, in words as well as
-  colour. **Leftover processes** lists a `claude` that the host's daemon started and no session
-  owns (older than a minute), with its pid, age and memory; **End** asks first and ends only that
+  colour. **Leftover processes** lists a `claude` that the host's daemon started for a session that is
+  over (older than a minute, in that session's folder, started while that session lived), with its
+  pid, age and memory; a `claude` the daemon starts for something else (a plugin install, the account
+  query, an action) or a live session's process whose folder was moved is never listed; **End** asks first and ends only that
   process (the daemon checks again, right before the signal, that it is the same process, by pid and
   start time, still its own child and still without an owner). A `claude` whose folder cannot be read,
   or that runs in a folder where a live session is, is never listed: which one is whose cannot be told.

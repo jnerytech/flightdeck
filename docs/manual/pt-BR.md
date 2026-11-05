@@ -2460,8 +2460,10 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
   disco do host em barras, a carga, e uma tabela das sessões e terminais com a maior memória
   primeiro: projeto, memória, CPU e os programas rodando (só os nomes; nunca uma linha de comando
   nem o ambiente). Memória ou disco a 80% diz **Alta** e a 90% **Crítica**, em palavras e em cor.
-  **Processos que sobraram** lista um `claude` que o daemon do host iniciou e que nenhuma sessão
-  possui (com mais de um minuto), com pid, idade e memória; **Encerrar** pergunta antes e encerra só
+  **Processos que sobraram** lista um `claude` que o daemon do host iniciou para uma sessão que
+  já acabou (com mais de um minuto, na pasta dessa sessão, iniciado enquanto ela vivia), com pid,
+  idade e memória; um `claude` que o daemon inicia para outra coisa (instalação de plugin, consulta
+  da conta, uma ação) ou o processo de uma sessão viva cuja pasta foi movida nunca é listado; **Encerrar** pergunta antes e encerra só
   esse processo (o daemon confere de novo, logo antes do sinal, que é o mesmo processo, por pid e
   hora de início, ainda filho dele e sem dono). Um `claude` cuja pasta não pode ser lida, ou que roda
   numa pasta onde há uma sessão viva, nunca é listado: não dá para saber de quem é cada um. Um daemon
