@@ -2789,6 +2789,8 @@ export const Command = z.discriminatedUnion("type", [
   ),
   cmd("session.close", SessionIdPayload),
   cmd("session.resume", SessionIdPayload),
+  /** The sessions a daemon restart interrupted in the last 24 hours, for the resume offer (issue #150). */
+  cmd("session.interrupted", z.object({}).strict()),
   cmd("session.subscribe", SessionSubscribePayload),
   cmd("session.unsubscribe", SessionIdPayload),
   cmd("permission.respond", PermissionRespondPayload),
@@ -4076,6 +4078,23 @@ export const HostInfoResult = z.object({
 });
 export type HostInfoResult = z.infer<typeof HostInfoResult>;
 
+/** A session a daemon restart interrupted (issue #150): what the resume offer lists. */
+export const InterruptedSession = z.object({
+  sessionId: z.string(),
+  name: z.string().nullable(),
+  cwd: z.string(),
+  /** The persona it was opened with, by name. */
+  persona: z.string().nullable(),
+  /** When the restart marked it, and how long it had run before. */
+  interruptedAt: z.string(),
+  ranMs: z.number().int().nonnegative(),
+  /** The last thing the person asked it, cut short; null when it was never asked. */
+  lastRequest: z.string().nullable(),
+});
+export type InterruptedSession = z.infer<typeof InterruptedSession>;
+export const SessionInterruptedResult = z.object({ sessions: z.array(InterruptedSession) });
+export type SessionInterruptedResult = z.infer<typeof SessionInterruptedResult>;
+
 export const SessionListResult = z.object({ sessions: z.array(SessionSummary) });
 export type SessionListResult = z.infer<typeof SessionListResult>;
 
@@ -4216,6 +4235,7 @@ export interface CommandResults {
   "session.setModel": undefined;
   "session.close": undefined;
   "session.resume": undefined;
+  "session.interrupted": SessionInterruptedResult;
   "session.subscribe": SessionSubscribeResult;
   "session.unsubscribe": undefined;
   "permission.respond": undefined;

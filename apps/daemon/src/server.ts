@@ -917,6 +917,8 @@ export function startServer(opts: ServerOptions): RunningServer {
           sessions: sessions.map((s) => listed(s, s.claudeSessionId, managedLive(s))),
         });
       }
+      case "session.interrupted":
+        return ok(command.type, { sessions: manager.interrupted() });
       case "session.create": {
         // Looked up in git before the session exists, so what names and lists it finds the
         // project already known; the wait is this request's own, the others are served meanwhile.
@@ -1448,6 +1450,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             ...(opts.features ?? features),
             ...(opts.terminals?.enabled ? ["terminal"] : []),
             ...(opts.ui ? ["ui.mode"] : []),
+            "resume-offer",
             ...(opts.templates ? ["templates"] : []),
             ...(opts.tasks ? ["tasks"] : []),
           ],

@@ -25,6 +25,7 @@ const validCommands: Record<CommandType, unknown> = {
   "session.interrupt": { sessionId: "s" },
   "session.close": { sessionId: "s" },
   "session.resume": { sessionId: "s" },
+  "session.interrupted": {},
   "session.subscribe": { sessionId: "s", sinceSeq: 3 },
   "session.unsubscribe": { sessionId: "s" },
   "permission.respond": { requestId: "r", decision: "allow", updatedInput: { a: 1 } },

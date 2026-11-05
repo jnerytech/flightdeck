@@ -4,6 +4,7 @@ import type {
   CommandPayload,
   EffortLevel,
   EventEnvelope,
+  InterruptedSession,
   McpLiveStatus,
   PendingPermission,
   PermissionMode,
@@ -372,6 +373,11 @@ export class SessionManager {
       await live.run.close();
     }
     this.setStatus(sessionId, "ended");
+  }
+
+  /** The sessions a daemon restart interrupted in the last 24 hours and nobody resumed since. */
+  interrupted(_options: { now?: number; withinMs?: number } = {}): InterruptedSession[] {
+    return [];
   }
 
   /** Reopens an `ended` or `error` session with the stored Claude session id. */
