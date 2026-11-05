@@ -57,7 +57,10 @@ function parseList(out: string): Array<{ path: string; branch: string | null }> 
       const lines = block.split("\n");
       const path = lines.find((l) => l.startsWith("worktree "))?.slice("worktree ".length);
       const ref = lines.find((l) => l.startsWith("branch "))?.slice("branch ".length);
-      return path ? { path, branch: ref ? ref.replace(/^refs\/heads\//, "") : null } : null;
+      // Git writes `C:/x/y` on Windows: the path is the system's own spelling from here on.
+      return path
+        ? { path: resolve(path), branch: ref ? ref.replace(/^refs\/heads\//, "") : null }
+        : null;
     })
     .filter((entry): entry is { path: string; branch: string | null } => entry !== null);
 }
