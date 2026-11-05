@@ -1,6 +1,6 @@
 import type { Dirent } from "node:fs";
 import { access, readdir, readFile, realpath, stat } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { isInside } from "../paths.ts";
 
 /** What a project's own files would load into a Claude Code session, read without running anything (issue #196). */
@@ -32,19 +32,63 @@ export interface ProjectLoad {
 
 const MAX_FILE = 256 * 1024;
 const MAX_ITEMS = 100;
-const MAX_COMMAND = 300;
+/** A command is shown whole up to this many characters; past it the cut says how much is left. */
+const MAX_COMMAND = 4096;
 
 /**
- * The first line of a command, cut, with a visible count of the lines left out: the rest of a script
- * still runs once the project is trusted, so the listing never presents a longer command as one line.
+ * A command as written, every line: what runs once the project is trusted is what the person read.
+ * Past the bound the text is cut with a count of the characters left out, never silently.
  */
-function firstLine(text: string): string {
-  const lines = text.split(/\r?\n|\r/);
-  const first = lines[0] ?? "";
-  const cut = first.length > MAX_COMMAND ? `${first.slice(0, MAX_COMMAND)}…` : first;
-  const more = lines.length - 1;
-  return more > 0 ? `${cut} [+${more} ${more === 1 ? "line" : "lines"}]` : cut;
+function show(text: string): string {
+  if (text.length <= MAX_COMMAND) return text;
+  return `${text.slice(0, MAX_COMMAND)}\n[+${text.length - MAX_COMMAND} more characters]`;
 }
+
+/** Settings whose value is a program to run. */
+const PROGRAM_KEYS = new Set([
+  "apiKeyHelper",
+  "awsAuthRefresh",
+  "awsCredentialExport",
+  "gcpAuthRefresh",
+  "otelHeadersHelper",
+]);
+/** Settings whose value is an object with a `command`. */
+const PROGRAM_OBJECT_KEYS = new Set(["statusLine", "fileSuggestion"]);
+/** Settings this listing explains elsewhere. */
+const EXPLAINED_KEYS = new Set([
+  "hooks",
+  "env",
+  "permissions",
+  "enabledPlugins",
+  "extraKnownMarketplaces",
+  ...PROGRAM_KEYS,
+  ...PROGRAM_OBJECT_KEYS,
+]);
+/** Environment variables that send traffic or code somewhere else: their value is shown. */
+const REDIRECT_ENV = new Set(
+  [
+    "ANTHROPIC_BASE_URL",
+    "ANTHROPIC_BEDROCK_BASE_URL",
+    "ANTHROPIC_VERTEX_BASE_URL",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "ALL_PROXY",
+    "NODE_OPTIONS",
+    "NODE_EXTRA_CA_CERTS",
+    "SSL_CERT_FILE",
+    "BASH_ENV",
+    "ENV",
+    "LD_PRELOAD",
+    "LD_LIBRARY_PATH",
+    "DYLD_INSERT_LIBRARIES",
+    "PATH",
+    "PYTHONPATH",
+    "PYTHONSTARTUP",
+    "GIT_SSH_COMMAND",
+  ].map((name) => name.toLowerCase()),
+);
+/** Header keys of an agent, skill or command that carry code or grants. */
+const HEADER_KEYS = new Set(["hooks", "mcpServers", "allowed-tools", "allowedTools", "tools"]);
 
 const exists = (file: string) =>
   access(file).then(
@@ -102,6 +146,57 @@ async function names(root: string, dir: string, folders: boolean): Promise<strin
   return out;
 }
 
+/**
+ * The agent, skill and command files whose header (the `---` block) has hooks, servers or tool
+ * grants, with those keys. Only the head of each file is read, and a link out of the project is not.
+ */
+async function headers(
+  root: string,
+  dir: string,
+  skills: boolean,
+): Promise<Array<{ file: string; keys: string[] }>> {
+  const files: string[] = [];
+  const walk = async (at: string, depth: number): Promise<void> => {
+    let entries: Dirent[];
+    try {
+      entries = await readdir(at, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (files.length >= MAX_ITEMS) return;
+      const full = join(at, entry.name);
+      if (entry.isDirectory()) {
+        if (depth < 3) await walk(full, depth + 1);
+      } else if (
+        entry.isFile() &&
+        (skills ? entry.name === "SKILL.md" : entry.name.endsWith(".md"))
+      ) {
+        files.push(full);
+      }
+    }
+  };
+  await walk(join(root, dir), 0);
+  const out: Array<{ file: string; keys: string[] }> = [];
+  for (const full of files) {
+    try {
+      const real = await realpath(full);
+      if (!isInside(root, real)) continue;
+      const info = await stat(real);
+      if (!info.isFile() || info.size > MAX_FILE) continue;
+      const text = await readFile(real, "utf8");
+      const head = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)?.[1] ?? "";
+      const keys = [...head.matchAll(/^([A-Za-z][\w-]*)\s*:/gm)]
+        .map((m) => m[1] as string)
+        .filter((key) => HEADER_KEYS.has(key));
+      if (keys.length > 0) out.push({ file: relative(root, full).split(sep).join("/"), keys });
+    } catch {
+      // A file that cannot be read says nothing here; the names list still shows it.
+    }
+  }
+  return out;
+}
+
 /** What the project's own files would bring into a session: read, never run. */
 export async function inspectProject(path: string): Promise<ProjectLoad> {
   const root = await realpath(resolve(path)).catch(() => resolve(path));
@@ -126,6 +221,7 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
     omitted: { hooks: 0, mcpServers: 0, allowRules: 0, envKeys: 0 },
   };
   const shown = { hooks: 0 };
+  const otherKeys = new Set<string>();
   for (const file of [".claude/settings.json", ".claude/settings.local.json"]) {
     const settings = await readJson(root, file, unreadable);
     if (!settings) continue;
@@ -134,7 +230,7 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
         const commands = (Array.isArray(groups) ? groups : [])
           .flatMap((group) => (isObject(group) && Array.isArray(group.hooks) ? group.hooks : []))
           .flatMap((hook) =>
-            isObject(hook) && typeof hook.command === "string" ? [firstLine(hook.command)] : [],
+            isObject(hook) && typeof hook.command === "string" ? [show(hook.command)] : [],
           );
         const kept = commands.slice(0, Math.max(0, MAX_ITEMS - shown.hooks));
         load.omitted.hooks += commands.length - kept.length;
@@ -142,13 +238,31 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
         if (kept.length > 0) load.hooks.push({ event, file, commands: kept });
       }
     }
-    if (isObject(settings.env)) load.envKeys.push(...Object.keys(settings.env));
+    for (const [key, value] of Object.entries(settings)) {
+      const command = PROGRAM_KEYS.has(key)
+        ? value
+        : PROGRAM_OBJECT_KEYS.has(key) && isObject(value)
+          ? value.command
+          : undefined;
+      if (typeof command === "string") load.executables.push({ key, file, command: show(command) });
+      if (!EXPLAINED_KEYS.has(key)) otherKeys.add(key);
+    }
+    for (const key of ["enabledPlugins", "extraKnownMarketplaces"]) {
+      const value = settings[key];
+      if (isObject(value)) load.plugins.push(...Object.keys(value));
+    }
+    if (isObject(settings.env)) {
+      load.envKeys.push(...Object.keys(settings.env));
+      for (const [key, value] of Object.entries(settings.env)) {
+        if (REDIRECT_ENV.has(key.toLowerCase()) && typeof value === "string") {
+          load.redirects.push({ key, file, value: show(value) });
+        }
+      }
+    }
     if (isObject(settings.permissions)) {
       const { allow, defaultMode } = settings.permissions;
       if (Array.isArray(allow)) {
-        load.allowRules.push(
-          ...allow.filter((r): r is string => typeof r === "string").map(firstLine),
-        );
+        load.allowRules.push(...allow.filter((r): r is string => typeof r === "string").map(show));
       }
       if (typeof defaultMode === "string") load.defaultMode = defaultMode;
     }
@@ -167,7 +281,7 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
           : typeof server.url === "string"
             ? server.url
             : "";
-      load.mcpServers.push({ name, file: ".mcp.json", command: firstLine(command) });
+      load.mcpServers.push({ name, file: ".mcp.json", command: show(command) });
     }
   }
   const keys = [...new Set(load.envKeys)].sort();
@@ -175,6 +289,12 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
   load.envKeys = keys.slice(0, MAX_ITEMS);
   load.omitted.allowRules = Math.max(0, load.allowRules.length - MAX_ITEMS);
   load.allowRules = load.allowRules.slice(0, MAX_ITEMS);
+  load.otherKeys = [...otherKeys].sort();
+  load.extras = [
+    ...(await headers(root, ".claude/agents", false)),
+    ...(await headers(root, ".claude/skills", true)),
+    ...(await headers(root, ".claude/commands", false)),
+  ].slice(0, MAX_ITEMS);
   load.agents = await names(root, ".claude/agents", false);
   load.skills = await names(root, ".claude/skills", true);
   load.commands = await names(root, ".claude/commands", false);
