@@ -37,4 +37,18 @@ describe("lint:sonar", () => {
     expect(code).toBe(1);
     expect(out).toContain("bare.ts:3  nosonar-reason");
   });
+
+  test("test code gets the test rules: a skipped test fails", () => {
+    const { code, out } = lint("test/skipped.fixture.ts");
+    expect(code).toBe(1);
+    expect(out).toContain("skipped.fixture.ts:4  sonarjs/no-skipped-tests");
+  });
+
+  test("test code with a suppressed finding passes", () => {
+    expect(lint("test/suppressed.fixture.ts").code).toBe(0);
+  });
+
+  test("source code does not get the test rules", () => {
+    expect(lint("flagged.ts").out).not.toContain("no-skipped-tests");
+  });
 });

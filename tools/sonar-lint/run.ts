@@ -16,9 +16,11 @@ import {
   exclusionsOf,
   type Finding,
   formatFindings,
+  isTestFile,
   lintTargets,
   onlyNewCode,
   sonarRules,
+  testInclusionsOf,
 } from "../../scripts/lib/sonar-lint.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
@@ -49,7 +51,9 @@ else {
   paths = [...new Set([...changed, ...untracked])];
   added = addedLines((git(["diff", "-U0", "--diff-filter=ACMR", base]) ?? []).join("\n"));
 }
-const exclusions = exclusionsOf(readFileSync(resolve(ROOT, "sonar-project.properties"), "utf8"));
+const properties = readFileSync(resolve(ROOT, "sonar-project.properties"), "utf8");
+const exclusions = exclusionsOf(properties);
+const testInclusions = testInclusionsOf(properties);
 const targets = filesAt >= 0 ? paths : lintTargets(paths, exclusions);
 if (targets.length === 0) {
   console.log("lint:sonar: no source file to check");
@@ -57,48 +61,60 @@ if (targets.length === 0) {
 }
 
 const profile = JSON.parse(readFileSync(resolve(ROOT, "scripts/sonar-profile.json"), "utf8"));
-const set = sonarRules(
-  Object.entries(sonarjs.rules).map(([name, rule]) => ({
-    name,
-    url: rule.meta?.docs?.url ?? "",
-    typed: Boolean(rule.meta?.docs?.requiresTypeChecking),
-  })),
-  profile.rules,
-);
+const pluginRules = Object.entries(sonarjs.rules).map(([name, rule]) => ({
+  name,
+  url: rule.meta?.docs?.url ?? "",
+  typed: Boolean(rule.meta?.docs?.requiresTypeChecking),
+}));
 const withTypes = !args.includes("--no-types");
-const rules: Linter.RulesRecord = {};
-for (const id of withTypes ? [...set.untyped, ...set.typed] : set.untyped) rules[id] = "error";
 
-const eslint = new ESLint({
-  cwd: ROOT,
-  overrideConfigFile: true,
-  overrideConfig: [
-    {
-      files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.mjs", "**/*.cjs"],
-      languageOptions: {
-        parser,
-        parserOptions: withTypes ? { projectService: true, tsconfigRootDir: ROOT } : {},
+/** Lints some files with the rules Sonar runs on that kind of file (main or test code). */
+async function lint(files: string[], keys: string[]): Promise<Finding[]> {
+  if (files.length === 0) return [];
+  const set = sonarRules(pluginRules, keys);
+  const rules: Linter.RulesRecord = {};
+  for (const id of withTypes ? [...set.untyped, ...set.typed] : set.untyped) rules[id] = "error";
+  ruleCount += Object.keys(rules).length;
+  const eslint = new ESLint({
+    cwd: ROOT,
+    overrideConfigFile: true,
+    overrideConfig: [
+      {
+        files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.mjs", "**/*.cjs"],
+        languageOptions: {
+          parser,
+          parserOptions: withTypes ? { projectService: true, tsconfigRootDir: ROOT } : {},
+        },
+        plugins: { sonarjs },
+        rules,
       },
-      plugins: { sonarjs },
-      rules,
-    },
-  ],
-});
-const results = await eslint.lintFiles(targets);
-const findings: Finding[] = results.flatMap((result) =>
-  result.messages.map((m) => ({
-    file: resolve(result.filePath).slice(ROOT.length + 1),
-    line: m.line,
-    rule: m.ruleId ?? "parse-error",
-    message: m.message,
-  })),
-);
+    ],
+  });
+  const results = await eslint.lintFiles(files);
+  return results.flatMap((result) =>
+    result.messages.map((m) => ({
+      file: resolve(result.filePath).slice(ROOT.length + 1),
+      line: m.line,
+      rule: m.ruleId ?? "parse-error",
+      message: m.message,
+    })),
+  );
+}
+let ruleCount = 0;
+const tests = targets.filter((path) => isTestFile(path, testInclusions));
+const findings = [
+  ...(await lint(
+    targets.filter((path) => !tests.includes(path)),
+    profile.rules,
+  )),
+  ...(await lint(tests, profile.testRules)),
+];
 const cache = new Map<string, string[]>();
 const linesOf = (file: string) => {
   if (!cache.has(file)) cache.set(file, readFileSync(resolve(ROOT, file), "utf8").split("\n"));
   return cache.get(file) as string[];
 };
 const left = onlyNewCode(applySuppressions(findings, linesOf), added);
-console.log(`lint:sonar: ${targets.length} file(s), ${Object.keys(rules).length} rule(s)`);
+console.log(`lint:sonar: ${targets.length} file(s) (${tests.length} test), ${ruleCount} rule(s)`);
 console.log(formatFindings(left));
 process.exit(left.length > 0 ? 1 : 0);

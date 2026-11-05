@@ -42,10 +42,15 @@ export function sonarRules(rules: PluginRule[], profile: string[]): RuleSet {
   return set;
 }
 
+/** The comma-separated globs of one property of a sonar-project.properties file. */
+function listOf(properties: string, key: string): string[] {
+  const line = properties.split(/\r?\n/).find((l) => l.startsWith(`${key}=`));
+  return line ? line.slice(key.length + 1).split(",") : [];
+}
+
 /** The `sonar.exclusions` globs of a sonar-project.properties file. */
 export function exclusionsOf(properties: string): string[] {
-  const line = properties.split(/\r?\n/).find((l) => l.startsWith("sonar.exclusions="));
-  return line ? line.slice("sonar.exclusions=".length).split(",") : [];
+  return listOf(properties, "sonar.exclusions");
 }
 
 /** `**` crosses folders, `*` stays inside one. */
@@ -138,16 +143,19 @@ export function matchesGlob(glob: string, path: string): boolean {
 }
 
 /** The `sonar.test.inclusions` globs of a sonar-project.properties file. */
-export function testInclusionsOf(_properties: string): string[] {
-  return [];
+export function testInclusionsOf(properties: string): string[] {
+  return listOf(properties, "sonar.test.inclusions");
 }
 
 /** Whether SonarCloud treats this file as test code. */
-export function isTestFile(_path: string, _inclusions: string[]): boolean {
-  return false;
+export function isTestFile(path: string, inclusions: string[]): boolean {
+  return inclusions.some((glob) => matchesGlob(glob, path));
 }
 
 /** Whether SonarCloud reads this file's coverage: analysed, not a test, not coverage-excluded. */
-export function countsForCoverage(_path: string, _properties: string): boolean {
-  return true;
+export function countsForCoverage(path: string, properties: string): boolean {
+  const any = (key: string) => listOf(properties, key).some((glob) => matchesGlob(glob, path));
+  return (
+    !any("sonar.exclusions") && !any("sonar.test.inclusions") && !any("sonar.coverage.exclusions")
+  );
 }
