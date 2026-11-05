@@ -25,6 +25,8 @@ export interface LaneDeps {
   log(line: string): void;
   /** Starts the command, marked as a lane holder so its own lane calls run at once. */
   spawn(command: string[]): SlotChild;
+  /** Makes this process, and so the command it starts, the OOM killer's first choice (#247). */
+  protect?(): void;
   /** How many places are open now, at most `locks.length`; asked on every try (default: all). */
   places?: () => number;
 }
