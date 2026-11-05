@@ -676,6 +676,16 @@ async function recapOverlap(page: Page): Promise<string | null> {
   });
 }
 
+/** The sidebar's hosts section keeps at least a heading and one row on screen (#171). */
+async function hostsProblem(page: Page): Promise<string | null> {
+  const box = await page.locator("[data-slot='sidebar-hosts']").first().boundingBox();
+  const MIN = 96;
+  if (!box || box.height < MIN) {
+    return `a seção Hosts da barra lateral tem ${Math.round(box?.height ?? 0)} px (mínimo ${MIN})`;
+  }
+  return null;
+}
+
 export async function layout(c: Context, problems: string[]) {
   const screens: Array<[string, Route]> = [
     ["hub", { name: "hub" }],
@@ -743,6 +753,8 @@ export async function layout(c: Context, problems: string[]) {
       await open(c, route);
       const where = `${c.lang} ${viewport.width}x${viewport.height} ${name}`;
       for (const issue of await overflow(c.page)) problems.push(`${where}: ${issue}`);
+      const hosts = await hostsProblem(c.page);
+      if (hosts) problems.push(`${where}: ${hosts}`);
       if (name === "sessao") {
         // Both states of the card (the first time a session is seen it starts open): the summary
         // never overlaps the conversation, as found and after flipping it.
@@ -773,6 +785,9 @@ export async function layout(c: Context, problems: string[]) {
   }
   // The smallest window the app allows (tauri.conf.json), where the longest labels are tightest.
   await c.page.setViewportSize({ width: 720, height: 480 });
+  await open(c, { name: "hub" });
+  const smallHosts = await hostsProblem(c.page);
+  if (smallHosts) problems.push(`${c.lang} 720x480: ${smallHosts}`);
   for (const issue of await folderDialogProblems(c)) {
     problems.push(`${c.lang} 720x480 pasta: ${issue}`);
   }
