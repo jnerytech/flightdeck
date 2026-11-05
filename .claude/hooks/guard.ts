@@ -15,11 +15,13 @@ import {
   generatedViolation,
   testEditViolation,
 } from "../../scripts/lib/claude-hooks.ts";
+import { logHook } from "./log.ts";
 
 const ROOT = resolve(process.env.CLAUDE_PROJECT_DIR ?? resolve(import.meta.dir, "../.."));
 
-function block(reason: string | null) {
+function block(rule: string, reason: string | null) {
   if (!reason) return;
+  logHook("guard", rule);
   console.error(reason);
   process.exit(2);
 }
@@ -27,9 +29,10 @@ function block(reason: string | null) {
 const input = await Bun.stdin.json().catch(() => null);
 const { command, file_path: filePath } = input?.tool_input ?? {};
 if (typeof command === "string") {
-  block(commandViolation(command));
+  block("command", commandViolation(command));
   const cwd = typeof input.cwd === "string" ? input.cwd : ROOT;
   block(
+    "commit",
     commitViolation(command, cwd, {
       git: (args, dir) => {
         const proc = spawnSync("git", args, { cwd: dir, encoding: "utf8", timeout: 5000 });
@@ -40,8 +43,9 @@ if (typeof command === "string") {
 }
 if (typeof filePath === "string") {
   const root = checkoutRoot(filePath, ROOT);
-  if (root) block(generatedViolation(relative(root, resolve(ROOT, filePath))));
+  if (root) block("generated", generatedViolation(relative(root, resolve(ROOT, filePath))));
   block(
+    "test-marker",
     testEditViolation(String(input?.tool_name), input.tool_input, (path) => {
       try {
         return readFileSync(resolve(ROOT, path), "utf8");
@@ -51,4 +55,5 @@ if (typeof filePath === "string") {
     }),
   );
 }
+logHook("guard", null);
 process.exit(0);

@@ -86,14 +86,23 @@ export function generatedViolation(relPath: string): string | null {
 
 const norm = (path: string) => resolve(path).replaceAll("\\", "/").toLowerCase();
 
-/** The shared `.git` directory of the checkout at `dir`, or null if `dir` is not a checkout. */
-function commonGitDir(dir: string): string | null {
+/**
+ * The shared `.git` directory of the checkout at `dir`, spelled as the filesystem has it, or null
+ * if `dir` is not a checkout.
+ */
+export function gitCommonDir(dir: string): string | null {
   const dotGit = join(dir, ".git");
   if (!existsSync(dotGit)) return null;
-  if (statSync(dotGit).isDirectory()) return norm(dotGit);
+  if (statSync(dotGit).isDirectory()) return dotGit;
   const gitDir = /^gitdir:\s*(.+)$/m.exec(readFileSync(dotGit, "utf8"))?.[1];
   // A linked worktree's gitdir is <common .git>/worktrees/<name>.
-  return gitDir ? norm(resolve(dir, gitDir.trim(), "..", "..")) : null;
+  return gitDir ? resolve(dir, gitDir.trim(), "..", "..") : null;
+}
+
+/** The same directory, normalized for comparison. */
+function commonGitDir(dir: string): string | null {
+  const common = gitCommonDir(dir);
+  return common ? norm(common) : null;
 }
 
 /**
