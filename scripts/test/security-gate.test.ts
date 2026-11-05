@@ -530,13 +530,14 @@ describe("security-gate: end to end", () => {
     const show = { "apps/daemon/src/a.ts": "rmSync(dir);" };
     const verdict = securityVerdict(fakeGit({ diff, log: "", show }).git);
     const message = verdict.message ?? "";
+    expect(message).toContain("apps/daemon/src/a.ts (edits delete code)");
+    expect(message).toContain("apps/daemon/src/z.ts (spawn)");
     expect(message.indexOf("apps/daemon/src/a.ts (edits delete code)")).toBeLessThan(
       message.indexOf("apps/daemon/src/z.ts (spawn)"),
     );
-    expect(message.indexOf("apps/daemon/src/a.ts")).toBeGreaterThan(-1);
   });
 
-  test("a deleted file is read as empty at HEAD, so only its removed lines count (#284)", () => {
+  test("a deleted file is not read at HEAD, so only its removed lines count (#284)", () => {
     const diff = [
       "diff --git a/apps/daemon/src/gone.ts b/apps/daemon/src/gone.ts",
       "deleted file mode 100644",
@@ -548,5 +549,85 @@ describe("security-gate: end to end", () => {
     const { git, calls } = fakeGit({ diff, log: "" });
     expect(securityVerdict(git)).toEqual({ verdict: "0", message: null });
     expect(calls.some((c) => c.includes("show"))).toBe(false);
+  });
+
+  test("a rename away from a risky path, reviewed after, vouches: the log lists both paths (#284)", () => {
+    const diff = [
+      "diff --git a/.github/workflows/ci.yml b/docs/ci.yml",
+      "similarity index 100%",
+      "rename from .github/workflows/ci.yml",
+      "rename to docs/ci.yml",
+    ].join("\n");
+    const log = [
+      "\x1er2\x1fno finding\n\n",
+      "\x1er1\x1f\n\n.github/workflows/ci.yml\ndocs/ci.yml\n",
+    ].join("");
+    const { git, calls } = fakeGit({ diff, log });
+    expect(securityVerdict(git)).toEqual({ verdict: "0", message: null });
+    expect(calls.find((c) => c.includes("log"))).toContain("--no-renames");
+  });
+
+  test("a file renamed into a test folder still counts the checks it lost, read from its new path (#284)", () => {
+    const diff = [
+      "diff --git a/apps/daemon/src/run.ts b/apps/daemon/test/run.ts",
+      "similarity index 90%",
+      "rename from apps/daemon/src/run.ts",
+      "rename to apps/daemon/test/run.ts",
+      "--- a/apps/daemon/src/run.ts",
+      "+++ b/apps/daemon/test/run.ts",
+      "@@ -3 +2,0 @@",
+      '-if (!allowed(path)) throw new Error("refused");',
+    ].join("\n");
+    const log = "\x1ea1\x1f\n\napps/daemon/src/run.ts\napps/daemon/test/run.ts\n";
+    const show = { "apps/daemon/test/run.ts": 'Bun.spawn(["git", path]);' };
+    const { git, calls } = fakeGit({ diff, log, show });
+    const verdict = securityVerdict(git);
+    expect(verdict.message ?? "").toContain("apps/daemon/src/run.ts (edits spawn code)");
+    expect(calls.find((c) => c.includes("show"))).toEqual(["show", "HEAD:apps/daemon/test/run.ts"]);
+  });
+
+  test("a file name git quotes makes the gate unknown, never 0 (#284)", () => {
+    const diff = [
+      'diff --git "a/apps/daemon/src/q\\"x.ts" "b/apps/daemon/src/q\\"x.ts"',
+      '+++ "b/apps/daemon/src/q\\"x.ts"',
+      "@@ -1 +1 @@",
+      '+Bun.spawn(["git"]);',
+    ].join("\n");
+    const verdict = securityVerdict(fakeGit({ diff, log: "" }).git);
+    expect(verdict.verdict).toBe("unknown");
+    expect(verdict.message ?? "").toContain("a file name git quotes");
+  });
+
+  test("a removal of comments or blank lines only does not read HEAD (#284)", () => {
+    const diff = [
+      "diff --git a/apps/daemon/src/run.ts b/apps/daemon/src/run.ts",
+      "+++ b/apps/daemon/src/run.ts",
+      "@@ -3,2 +2,0 @@",
+      "-// an old note",
+      "-",
+    ].join("\n");
+    const { git, calls } = fakeGit({
+      diff,
+      log: "",
+      show: { "apps/daemon/src/run.ts": "spawn(x);" },
+    });
+    expect(securityVerdict(git)).toEqual({ verdict: "0", message: null });
+    expect(calls.some((c) => c.includes("show"))).toBe(false);
+  });
+
+  test('a mode change or a deletion in a folder named with " b/" keeps its exact path (#284)', () => {
+    const diff = [
+      "diff --git a/.claude/hooks b/x.ts b/.claude/hooks b/x.ts",
+      "old mode 100644",
+      "new mode 100755",
+      "diff --git a/scripts/lib/a b/claude-hooks.ts b/scripts/lib/a b/claude-hooks.ts",
+      "deleted file mode 100644",
+      "--- a/scripts/lib/a b/claude-hooks.ts",
+      "+++ /dev/null",
+    ].join("\n");
+    expect([...addedLines(diff).keys()].sort()).toEqual([
+      ".claude/hooks b/x.ts",
+      "scripts/lib/a b/claude-hooks.ts",
+    ]);
   });
 });

@@ -2,7 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { EventEmitter } from "node:events";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { killTree, type RunDeps, runBounded, SYSTEM_KILL, SYSTEM_RUN } from "../lib/bounded-run.ts";
+import {
+  type ChildLike,
+  killTree,
+  type RunDeps,
+  runBounded,
+  SYSTEM_KILL,
+  SYSTEM_RUN,
+} from "../lib/bounded-run.ts";
 import { realTempDir } from "./temp-dir.ts";
 
 const BUN = process.execPath;
@@ -74,6 +81,28 @@ describe("bounded-run", () => {
     expect(run.killed).toEqual([]);
   });
 
+  test("a timer armed after a child already reported is cleared at once (#284)", async () => {
+    const run = fakeRun("linux");
+    run.deps.spawn = (program, args, options) => {
+      run.spawned.push([program, args, options]);
+      // A child that reports its exit while it is being wired, before the timer exists.
+      const reportsAtOnce = {
+        pid: 7,
+        on: (event: string, listener: (value: number) => void) => {
+          if (event === "exit") listener(0);
+          return undefined;
+        },
+      };
+      return reportsAtOnce as unknown as ChildLike;
+    };
+    expect(await runBounded(["hook"], 1_500, run.deps)).toEqual({
+      code: 0,
+      stderr: "",
+      timedOut: false,
+    });
+    expect(run.cleared).toEqual([undefined, "timer"]);
+  });
+
   test("a child that never got a pid is not killed at the deadline (#284)", async () => {
     const run = fakeRun("linux", null);
     const pending = runBounded(["hook"], 1_500, run.deps);
@@ -123,9 +152,8 @@ describe("bounded-run", () => {
     expect(await child.exited).not.toBe(0);
   });
 
-  test("the system's tree kill of a process that already ended is no error (#284)", async () => {
-    const child = Bun.spawn([BUN, "-e", "0"], { stdio: ["ignore", "ignore", "ignore"] });
-    await child.exited;
-    expect(() => SYSTEM_RUN.killTree(child.pid)).not.toThrow();
+  test("the system's tree kill of a pid no process has is no error (#284)", () => {
+    // The largest pid: no process holds it, so no real group can be hit by a recycled number.
+    expect(() => SYSTEM_RUN.killTree(2_147_483_647)).not.toThrow();
   });
 });
