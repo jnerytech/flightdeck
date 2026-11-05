@@ -111,6 +111,11 @@ export class Tabs {
     return tabs;
   }
 
+  /** The tabs, the most recently active first (the rest follow in strip order). */
+  recent(): Tab[] {
+    return [...this.tabs];
+  }
+
   get active(): Tab {
     return this.tabs.find((tab) => tab.id === this.activeId) as Tab;
   }
