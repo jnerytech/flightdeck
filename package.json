@@ -69,6 +69,7 @@
     "ci:branch": "bun run scripts/ci-branch.ts",
     "pr": "bun run scripts/pr-flow.ts",
     "release": "bun run scripts/release-cmd.ts",
+    "release:close": "bun run scripts/release-close.ts",
     "release:version": "bun run scripts/release-version.ts",
     "release:assets": "bun run scripts/release-assets.ts",
     "release:tauri-config": "bun run scripts/release-tauri-config.ts",
