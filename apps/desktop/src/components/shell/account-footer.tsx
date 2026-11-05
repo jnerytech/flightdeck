@@ -1,5 +1,5 @@
 import type { AccountState } from "@flightdeck/protocol";
-import { BookOpen, ChevronsUpDown, ExternalLink, Settings, SunMoon } from "lucide-react";
+import { BookOpen, ChevronsUpDown, ExternalLink, LogOut, Settings, SunMoon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,6 +23,11 @@ export function AccountFooter(props: {
   go(route: Route): void;
   onToggleTheme(): void;
   onOpenManual(): void;
+  /** The menu opened: the caller looks up who is signed in to GitHub. */
+  onOpen(): void;
+  /** Hosts signed in to GitHub that the app can sign out. */
+  githubHosts: Array<{ id: string; name: string }>;
+  onSignOutGithub(hostId: string): void;
 }) {
   const { t, account } = props;
   const name = account?.name ?? t("sidebarAccount.none");
@@ -31,7 +36,7 @@ export function AccountFooter(props: {
     : t("sidebarAccount.unread");
   const label = t("sidebarAccount.menu", { name });
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={(open) => open && props.onOpen()}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -73,6 +78,14 @@ export function AccountFooter(props: {
           {t("sidebar.manual")}
           <ExternalLink data-slot="nav-external" aria-hidden="true" className="ml-auto size-3.5" />
         </DropdownMenuItem>
+        {props.githubHosts.map((host) => (
+          <DropdownMenuItem key={host.id} onSelect={() => props.onSignOutGithub(host.id)}>
+            <LogOut aria-hidden="true" />
+            {props.githubHosts.length > 1
+              ? t("sidebarAccount.signOutGithubHost", { host: host.name })
+              : t("sidebarAccount.signOutGithub")}
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );

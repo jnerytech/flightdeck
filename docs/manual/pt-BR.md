@@ -674,9 +674,12 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   **Máquinas** (os hosts, cada um com o pontinho de estado, a marca de saúde e o menu, um **+** para
   adicionar, e depois **SSH**, os destinos SSH salvos). A página aberta tem a linha preenchida e uma
   barra na borda esquerda, os itens com subpáginas terminam em uma seta, as novidades levam um selo
-  **Beta** ou **Novo**. No pé da barra, a conta do Claude (e-mail e plano, lidos do cartão da conta
-  do host; o trilho mostra só a inicial) abre um menu com **Configurações**, **Alternar tema** e
-  **Manual**, que abre este manual no navegador (o ícone diz que sai do app). Na página de um host,
+  **Beta** ou **Novo**. No pé da barra, **Configurações** é um item visível (marcado enquanto as
+  Configurações estão abertas), e a conta do Claude (e-mail e plano, lidos do cartão da conta do
+  host; o trilho mostra só a inicial) abre um menu com **Configurações**, **Alternar tema**,
+  **Manual** e, para cada host cujo `gh` está conectado ao GitHub com um login que o app pode
+  remover, **Sair do GitHub** (após uma confirmação; um login que vem do ambiente do daemon é
+  removido lá). O **Manual** abre este manual no navegador (o ícone diz que sai do app). Na página de um host,
   a linha dele em Máquinas também fica marcada. Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados, e o trilho
   estreito de ícones não tem títulos.
 - O **Início** (primeiro em Trabalho) é uma faixa de quatro cartões com os últimos sete dias de todos

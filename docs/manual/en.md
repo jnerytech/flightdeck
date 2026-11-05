@@ -688,9 +688,12 @@ live; the list is the project's, so a session of another project never shows her
   History), **Library** (Personas, Snippets, Plugins, Vault) and **Machines** (the hosts, each with
   its state dot, health mark and menu, a **+** to add one, then **SSH**, the saved SSH destinations).
   The open page has a filled row and a bar at its left edge, items with sub-pages end in a chevron,
-  recent features carry a **Beta** or **New** badge. At the foot of the bar, the Claude account (its
-  email and plan, read from the host's account card; the rail shows only its initial) opens a menu
-  with **Settings**, **Toggle theme** and **Manual**, which opens this manual in the browser (its
+  recent features carry a **Beta** or **New** badge. At the foot of the bar, **Settings** is a visible
+  item (marked while Settings is open), and the Claude account (its email and plan, read from the
+  host's account card; the rail shows only its initial) opens a menu with **Settings**, **Toggle
+  theme**, **Manual** and, for each host whose `gh` is signed in to GitHub with a login the app can
+  remove, **Sign out of GitHub** (after a confirmation; a login that comes from the daemon's
+  environment is removed there). The manual item which opens this manual in the browser (its
   icon says it leaves the app). On a host's page, the host's row under Machines is marked too. A group with nothing to offer is not drawn, the
   folded groups are remembered, and the narrow icon rail has no headings.
 - **Home** (first in Work) is a strip of four cards over the last seven days of every online host,
