@@ -79,7 +79,9 @@ describe("crumb-largura: a long path is cut with an ellipsis, the earlier steps 
   test("the earlier steps shrink first, down to 4rem, and the current one last, with factors that add up to at least 1", () => {
     render(<Breadcrumb crumbs={crumbs.slice(0, 2)} label="Path" onGo={() => {}} />);
     const [earlier, current] = [...document.querySelectorAll("nav li")] as HTMLElement[];
-    expect(earlier?.className).toContain("min-w-[4rem]");
+    // The earlier steps may go low (a 760 px window has room for little), the current one keeps a floor.
+    expect(earlier?.className).toContain("min-w-[2rem]");
+    expect(current?.className).toContain("min-w-[4rem]");
     /** `shrink-[N]` is N; a bare `shrink` is 1. */
     const factor = (el: HTMLElement | undefined) => {
       const match = el?.className.match(/\bshrink-\[([\d.]+)\]/);
@@ -89,6 +91,14 @@ describe("crumb-largura: a long path is cut with an ellipsis, the earlier steps 
     // to under 1: a current step with a fraction would stay wide and run under the bell.
     expect(factor(current)).toBeGreaterThanOrEqual(1);
     expect(factor(earlier)).toBeGreaterThan(factor(current));
+  });
+
+  test("a folded path reads first › menu › current, with a chevron before the menu too", () => {
+    render(<Breadcrumb crumbs={crumbs} label="Path" moreLabel="More" onGo={() => {}} />);
+    const parts = [...(document.querySelector("nav ol")?.children ?? [])].map((el) =>
+      el.tagName.toLowerCase(),
+    );
+    expect(parts).toEqual(["li", "svg", "li", "svg", "li"]);
   });
 
   test("with many steps the middle ones collapse into a menu that goes to them", () => {

@@ -518,6 +518,11 @@ async function crumbsProblem(page: Page): Promise<string | null> {
     const bell = slot?.lastElementChild as HTMLElement | null;
     if (!slot || !nav || !bell || bell === nav) return "no breadcrumb";
     const limit = bell.getBoundingClientRect().left + 1;
+    // Where the person is must stay readable: the current step never shrinks to nothing.
+    const current = nav.querySelector<HTMLElement>("[aria-current='page']");
+    if (current && current.getBoundingClientRect().width < 48) {
+      return `the current crumb (${current.textContent}) is ${Math.round(current.getBoundingClientRect().width)}px wide`;
+    }
     for (const el of nav.querySelectorAll<HTMLElement>("li > *")) {
       const box = el.getBoundingClientRect();
       if (box.right > limit)
