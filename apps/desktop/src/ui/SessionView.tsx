@@ -264,6 +264,8 @@ interface SessionViewProps {
   images?: boolean;
   /** The host announces `session.settings` and the session is a managed one. */
   settings?: boolean;
+  /** Opens the host's page, where the bypass switch is (the mode menu links to it). */
+  onOpenHostSettings?: () => void;
   /** The host lets the session switch to bypassPermissions: its name, for the confirmation. */
   bypass?: { host: string };
   /** Pins or unpins the session; its button sits in each assistant message's action row. */
