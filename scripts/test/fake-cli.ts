@@ -3,7 +3,14 @@
  * and a `name.cmd` (Windows), both forwarding to fake-cli-main.ts. Every call is recorded; the
  * answers come from rules that can be swapped while the fake is installed (to simulate a merge).
  */
-import { appendFileSync, chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  chmodSync,
+  existsSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { delimiter, join } from "node:path";
 import { realTempDir } from "./temp-dir.ts";
 
@@ -93,8 +100,35 @@ export function answerFake(
  * hit. Linux only (it reads /proc); elsewhere the fakes' own parent watch and deadline end them.
  * Returns the pids it killed.
  */
-export function reapFakes(_runDir: string): number[] {
-  return [];
+export function reapFakes(runDir: string): number[] {
+  if (process.platform !== "linux") return [];
+  const killed: number[] = [];
+  const entries = (dir: string) => {
+    try {
+      return readdirSync(dir);
+    } catch {
+      return [];
+    }
+  };
+  for (const fake of entries(runDir).filter((name) => name.startsWith("fd-fake-"))) {
+    for (const name of entries(join(runDir, fake, "pids"))) {
+      const pid = Number(name);
+      let cmdline = "";
+      try {
+        cmdline = readFileSync(`/proc/${pid}/cmdline`, "utf8");
+      } catch {
+        continue; // Gone already.
+      }
+      if (!cmdline.includes("fake-cli-main")) continue;
+      try {
+        process.kill(pid, "SIGKILL");
+        killed.push(pid);
+      } catch {
+        // Ended between the check and the kill.
+      }
+    }
+  }
+  return killed;
 }
 
 export interface FakeCliOptions {
@@ -114,7 +148,11 @@ export function installFakeCli(
 ): FakeCli {
   const dir = realTempDir(`fd-fake-${name}-`);
   const bun = process.execPath;
-  writeFileSync(join(dir, name), `#!/bin/sh\nexec "${bun}" "${MAIN}" "${dir}" "$@"\n`);
+  // The shim hands over its caller, so a fake started after the caller died still knows whom to watch.
+  writeFileSync(
+    join(dir, name),
+    `#!/bin/sh\nFLIGHTDECK_FAKE_CALLER=$PPID exec "${bun}" "${MAIN}" "${dir}" "$@"\n`,
+  );
   chmodSync(join(dir, name), 0o755);
   writeFileSync(
     join(dir, `${name}.cmd`),
