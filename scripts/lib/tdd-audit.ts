@@ -14,8 +14,12 @@ export interface Violation {
 
 const CONVENTIONAL = /^(\w+)(?:\(([^)]+)\))?!?: /;
 const NEEDS_TEST = new Set(["feat", "fix"]);
-const MARKERS = [/\.only\(/, /\.skip\(/, /\btest\.todo\(/];
-const MARKER_TEXT = [".only(", ".skip(", "test.todo("];
+/** Focused, skipped and todo tests: never in committed test files (docs/TDD.md). */
+export const FORBIDDEN_MARKERS = [
+  { pattern: /\.only\(/g, text: ".only(" },
+  { pattern: /\.skip\(/g, text: ".skip(" },
+  { pattern: /\btest\.todo\(/g, text: "test.todo(" },
+];
 
 /** Parses `git log --format=%H%x1f%s` output into conventional-commit parts. */
 export function parseCommits(log: string): Commit[] {
@@ -54,15 +58,15 @@ export function findForbiddenMarkers(files: { path: string; content: string }[])
   const violations: Violation[] = [];
   for (const file of files) {
     file.content.split("\n").forEach((line, i) => {
-      MARKERS.forEach((marker, m) => {
-        if (marker.test(line)) {
+      for (const { pattern, text } of FORBIDDEN_MARKERS) {
+        if (line.match(pattern)) {
           violations.push({
             commit: `${file.path}:${i + 1}`,
             scope: "-",
-            reason: `uso proibido de ${MARKER_TEXT[m]}`,
+            reason: `uso proibido de ${text}`,
           });
         }
-      });
+      }
     });
   }
   return violations;

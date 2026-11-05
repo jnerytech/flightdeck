@@ -4,6 +4,7 @@
  */
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { FORBIDDEN_MARKERS } from "./tdd-audit.ts";
 
 /** git options that take their value as the next word (`git -C <dir> add`). */
 const GIT_OPTIONS_WITH_VALUE = new Set(["-C", "-c", "--git-dir", "--work-tree", "--namespace"]);
@@ -18,6 +19,14 @@ const GENERATED = [
   "apps/desktop/dist/",
   "apps/desktop/src-tauri/gen/",
   "apps/desktop/src-tauri/target/",
+];
+
+const TEST_FILE = /\.test\.tsx?$/;
+
+/** The audit's markers plus a snapshot, which on its first run records whatever the stub returns. */
+const TEST_MARKERS = [
+  ...FORBIDDEN_MARKERS,
+  { pattern: /\.toMatchSnapshot\(/g, text: "toMatchSnapshot(" },
 ];
 
 /** The command without heredoc bodies and quoted text, which are data, not commands. */
@@ -103,4 +112,26 @@ export function checkoutRoot(filePath: string, projectDir: string): string | nul
     if (parent === dir) return null;
     dir = parent;
   }
+}
+
+/**
+ * Why an Edit or Write of a test file is blocked: it adds a focused, skipped or todo test, or a
+ * snapshot that would record the first run (docs/TDD.md). `readFile` gives the current content
+ * of the file a Write replaces (null when it does not exist).
+ */
+export function testEditViolation(
+  tool: string,
+  input: Record<string, unknown>,
+  readFile: (path: string) => string | null,
+): string | null {
+  const file = input.file_path;
+  if (typeof file !== "string" || !TEST_FILE.test(file)) return null;
+  const [before, after] =
+    tool === "Write" ? [readFile(file) ?? "", input.content] : [input.old_string, input.new_string];
+  if (typeof before !== "string" || typeof after !== "string") return null;
+  const added = TEST_MARKERS.find(
+    ({ pattern }) => (after.match(pattern)?.length ?? 0) > (before.match(pattern)?.length ?? 0),
+  );
+  if (!added) return null;
+  return `Adding ${added.text} to ${file} is blocked: committed tests have no .only, .skip, test.todo or first-run toMatchSnapshot (docs/TDD.md). Write the assertion with a hand-written literal.`;
 }
