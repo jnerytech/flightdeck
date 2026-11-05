@@ -212,6 +212,13 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
     });
     expect(store.theme.mode).toBe("dark");
 
+    // The nav's Full app asks first too; Cancel stays in Simple mode.
+    await act(async () => {
+      fireEvent.click(within(nav()).getByRole("button", { name: "Full app" }));
+    });
+    await click("Cancel");
+    expect(store.uiMode(hostId).mode).toBe("simple");
+
     // Choose a folder, then add it: the host lists it among the folders tasks may use.
     await click("Choose folder…");
     await waitFor(
