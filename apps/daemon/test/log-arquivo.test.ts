@@ -198,4 +198,23 @@ describe("log-privacidade: where the log lives and what it says about the user (
     // A line cut by the window is not handed out in pieces.
     expect(got.every((l) => l.startsWith("2026 INFO "))).toBe(true);
   });
+
+  test("a scanner that throws drops that line and never breaks the daemon", async () => {
+    const { dir, log } = make({
+      scanner: {
+        redact: () => {
+          throw new Error("scanner broke");
+        },
+      },
+    });
+    expect(() => log.write("info", "anything")).not.toThrow();
+    await log.flush();
+    expect(existsSync(join(dir, "flightdeckd.log"))).toBe(false);
+  });
+
+  test("a log file that is a folder, or is missing, reads as nothing", async () => {
+    const { dir, log } = make();
+    mkdirSync(join(dir, "flightdeckd.log"), { recursive: true });
+    expect(await log.tail(5)).toEqual([]);
+  });
 });

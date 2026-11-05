@@ -197,3 +197,33 @@ describe("log-privacidade-app: the user's name is not in the app's log (issue #2
     expect(text).not.toContain("Ana");
   });
 });
+
+describe("log-cobertura-app: failures that never reach the caller (issue #255)", () => {
+  test("a sink that throws at once is as harmless as one that fails later", () => {
+    const log = new AppLog({
+      sink: {
+        write: () => {
+          throw new Error("sink broke");
+        },
+        tail: async () => [],
+        openFolder: async () => {},
+      },
+      now: () => NOW,
+    });
+    expect(() => log.log("error", "x", "still here")).not.toThrow();
+    expect(log.recent(1).join("")).toContain("still here");
+  });
+
+  test("a console call with an object that cannot be turned into JSON is still logged", () => {
+    const { s, written } = sink();
+    const log = new AppLog({ sink: s, now: () => NOW });
+    const t = { addEventListener: () => {}, removeEventListener: () => {} };
+    const fakeConsole = { error: () => {}, warn: () => {} };
+    const off = installGlobalLog(t, log, fakeConsole);
+    const circular: Record<string, unknown> = { name: "loop" };
+    circular.self = circular;
+    fakeConsole.error(circular);
+    off();
+    expect(written.at(-1)).toContain("ERROR console [object Object]");
+  });
+});

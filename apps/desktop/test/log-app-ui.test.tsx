@@ -247,3 +247,42 @@ describe("log-segredos-app: the store feeds the log the host tokens and the vaul
     expect(w.copied[0]).not.toContain(HOST_TOKEN);
   });
 });
+
+describe("log-cobertura-app: the host's log path, the vault cache and the Settings section (issue #255)", () => {
+  test("a host that tells where its log is says so under the button", async () => {
+    const w = setup();
+    const host = {
+      id: "h1",
+      name: "pc",
+      status: "online",
+      hostInfo: {
+        daemonVersion: "x",
+        features: ["logs"],
+        logPath: "/srv/fd/.flightdeck/logs/flightdeckd.log",
+      },
+      sessions: [],
+    } as never;
+    render(view(w.store, <HostLogs store={w.store} host={host} />));
+    expect(document.body.textContent).toContain(
+      "The host keeps its own log in /srv/fd/.flightdeck/logs/flightdeckd.log.",
+    );
+  });
+
+  test("a vault that cannot be read leaves the log running with what it had", async () => {
+    const w = setup();
+    const store = w.store as unknown as {
+      vaultValuesForScan(): Promise<string[]>;
+      addSecret(input: { name: string; type: string; value: string }): Promise<unknown>;
+      scanValues(): string[];
+    };
+    await store.addSecret({ name: "a", type: "token", value: "Vx9fakevaultvalue0123456789" });
+    await Bun.sleep(30);
+    expect(store.scanValues()).toContain("Vx9fakevaultvalue0123456789");
+    store.vaultValuesForScan = async () => {
+      throw new Error("keychain locked");
+    };
+    await store.addSecret({ name: "b", type: "token", value: "another-value-123456" });
+    await Bun.sleep(30);
+    expect(store.scanValues()).toContain("Vx9fakevaultvalue0123456789");
+  });
+});
