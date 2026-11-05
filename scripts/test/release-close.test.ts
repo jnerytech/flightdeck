@@ -246,4 +246,14 @@ describe("release-close", () => {
     expect(await releaseClose("v0.40.0", { apply: true }, f.deps)).toBe(0);
     expect(f.lines.join("\n")).toContain("no milestone named v0.40.0");
   });
+
+  test("a milestone closed already is said so, in the dry run and with --apply", async () => {
+    const closed = { log: commit("fix(x): y (#170)"), milestoneState: "closed" as const };
+    const dry = fake({ 170: open("Card") }, closed);
+    await releaseClose("v0.36.4", { apply: false }, dry.deps);
+    expect(dry.lines.join("\n")).toContain("milestone v0.36.4: already closed");
+    const applied = fake({ 170: open("Card") }, closed);
+    await releaseClose("v0.36.4", { apply: true }, applied.deps);
+    expect(applied.lines.join("\n")).toContain("milestone v0.36.4: already closed");
+  });
 });
