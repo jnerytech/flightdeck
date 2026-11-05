@@ -12,6 +12,7 @@ import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./cli-g
 import { installGitEnvGuard } from "./git-env.ts";
 import { assertHomeGuard, installHomeGuard } from "./home-guard.ts";
 import { assertNoNetwork, installNetworkGuard } from "./network-guard.ts";
+import { scrubOpenCodeEnv } from "./opencode-env-guard.ts";
 import { assertPathUntouched, assertRepoUntouched, installRepoGuard } from "./repo-guard.ts";
 import { assertNoTauriCalls, installTauriGuard } from "./tauri-guard.ts";
 import { defaultTestTimeoutMs } from "./timeout.ts";
@@ -25,6 +26,8 @@ setDefaultTimeout(defaultTestTimeoutMs(process.platform));
 // CLAUDE_CODE_ENABLE_TELEMETRY and OTEL_*, which would leak into what tests launch. Before every
 // guard, so they see a clean env.
 installGitEnvGuard();
+// Phase 39: no OpenCode switch, and no XDG folder that would lead OpenCode to a real config.
+scrubOpenCodeEnv(process.env);
 
 // CLI sentinels first, so the claude one ends up first on PATH (tests rely on that).
 const clis = installCliGuard();
