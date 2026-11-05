@@ -33,8 +33,11 @@ const TEST_FILE =
   /^(?:apps\/[\w-]+\/test|packages\/[\w-]+\/test|scripts\/test)\/([\w.-]+)\.test\.tsx?$/;
 const SMOKE = /^scripts\/smoke-[\w-]+\.ts$/;
 const FEATURE = /^scripts\/e2e\/bdd\/features\/[\w-]+\.feature$/;
-/** The Rust side: a module's own tests, or an integration test; Rust names files with `_`. */
-const RUST = /^apps\/desktop\/src-tauri\/(?:src|tests)\/[\w/]+\.rs$/;
+/**
+ * The Rust side: a module's own tests, or an integration test, of the shell or of a crate one level
+ * inside it (phase 40's `assistant`); Rust names files with `_`.
+ */
+const RUST = /^apps\/desktop\/src-tauri\/(?:[\w-]+\/)?(?:src|tests)\/[\w/]+\.rs$/;
 
 /** The lines of each `##` section outside fenced code, with the line number of each. */
 function sections(text: string): { name: string; lines: { line: string; n: number }[] }[] {
