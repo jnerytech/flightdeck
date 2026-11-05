@@ -65,6 +65,7 @@ import type {
   WebhookRequest,
   WebhookResponse,
 } from "../platform/types.ts";
+import { AppLog } from "./app-log.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { budgetLabel } from "./budgets.ts";
 import {
@@ -765,6 +766,7 @@ export class AppStore {
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
     this.i18n = new I18n(platform);
+    this.appLog = new AppLog();
     this.i18n.subscribe(() => this.onLanguage());
     this.state = {
       hosts: [],
@@ -830,6 +832,8 @@ export class AppStore {
   readonly terminalFont: TerminalFontController;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
+  /** The app's log: what happens to hosts, refusals and updates goes through it (issue #255). */
+  readonly appLog: AppLog;
   /** The screen in use and its history (phase 10). */
   readonly workspace: Workspace;
   readonly router: Navigation;
