@@ -3524,3 +3524,37 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 - **The summary card (`sessao-rolagem`).** #97 made the summary a one-line card, and the first version folded it every time. The
   older rule stays: the card opens the first time a session is seen (it is still a bounded card in the header that pushes the
   conversation down) and is one line after, with the preview. The e2e overlap check holds in both states.
+
+## Phase 39: OpenCode as a second runtime (proof of concept)
+
+Probes on the Pi on 2026-11-04 against `opencode v2.2.5`, with the free default model (`opencode/crouton-alpha-free`), in
+scratch folders; every probe session was deleted afterwards with `opencode session delete`. No credential or auth file was
+read; the service's state file was not opened.
+
+- **ACP over stdio, not the HTTP API.** Every route of the service answers 401 (`{"_tag":"UnauthorizedError"}`) without a
+  token, and the token comes from the pairing flow or the service's own state, which Flightdeck must not read.
+  `opencode acp` needs neither: per the v2 docs (cli/acp) it runs a private server with no network port.
+  `opencode run --format json` streams `step_start`, `text`, `tool_use` and `step_finish` (with `cost` and
+  `tokens { input, output, reasoning, cache { read, write } }`) but cannot answer a permission request.
+- **What `initialize` announces:** `loadSession`, `promptCapabilities { image, embeddedContext }`,
+  `sessionCapabilities { close, delete, fork, list, resume, additionalDirectories }`, `mcpCapabilities { http }`.
+  `session/new` answers the session id and `configOptions` `model` (30 models here), `effort` (`minimal`, `low`, `medium`,
+  `high`, `xhigh`, `max`, `default`) and `mode` (`build`, `plan`).
+- **The tools run in the ACP process**, with its environment: a variable set on `opencode acp` was printed by a shell
+  command of the session.
+- **Permissions.** Without injected rules, `build` allows everything but `.env` reads, so a shell command ran with no
+  request. With `OPENCODE_CONFIG_CONTENT` (not in the v2 docs) holding `*: ask`, either as the v2 `permissions` rule list
+  or the v1 `permission` object, `shell` asked through `session/request_permission` with options `once`, `always`,
+  `reject` (kinds `allow_once`, `allow_always`, `reject_once`), even with a project `opencode.json` allowing `*`.
+- **Tool input arrives late.** `tool_call` (status `pending`) carries `rawInput { cwd }` only; the command is in the next
+  `tool_call_update` (`in_progress`) and in the permission request's `toolCall`.
+- **Turn end and cost.** The `session/prompt` answer is `{ stopReason, usage { inputTokens, outputTokens, totalTokens } }`,
+  after a `usage_update { used, size, cost { amount, currency } }`. The docs say `cost` is the session total; the free model
+  reports 0, so this is checked on a paid model at the real check.
+- **Resume, load, fork, config.** `session/resume` reattached with no replay; `session/load` replayed the conversation;
+  `session/fork { sessionId, cwd, mcpServers }` answered a new id; `session/set_config_option { sessionId, configId, value }`
+  changed `model` and `mode` and answered the new `configOptions`; `session/list { cwd }` answered
+  `{ sessions: [{ sessionId, cwd, title, updatedAt }], nextCursor }`.
+- **`opencode models --standalone`** prints one `provider/model` per line without the background service (about 2 s here).
+- **The id keeps its name.** `claudeSessionId` holds OpenCode's session id for OpenCode sessions; renaming the field would
+  not be additive.
