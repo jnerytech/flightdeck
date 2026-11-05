@@ -1196,6 +1196,9 @@ export class AppStore {
     };
   }
 
+  /** Puts an idle session to sleep now and says what came of it (stub). */
+  async sleepSession(_hostId: string, _sessionId: string): Promise<void> {}
+
   /** The sidebar groups the user folded; kept across starts. */
   sidebarFolded(): SidebarGroup[] {
     return loadFolded(this.platform.storage);

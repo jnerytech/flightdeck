@@ -37,6 +37,8 @@ export interface HubRow {
   persona: SessionPersona | null;
   /** Phase 21: `project · persona · number`, on a host with names; null elsewhere. */
   standardName?: string | null;
+  /** Issue #157: idle with no process: a message wakes it (stub: always false). */
+  asleep?: boolean;
 }
 
 export interface HubFilter {
