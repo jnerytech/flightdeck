@@ -540,26 +540,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "maintenance");
   }
 
-  function usage(): UsageLedger {
-    return need(opts, "usage");
-  }
-
-  function account(): Account {
-    return need(opts, "account");
-  }
-
-  function quota(): Quota {
-    return need(opts, "quota");
-  }
-
-  function costs(): Costs {
-    return need(opts, "costs");
-  }
-
-  function telemetry(): TelemetryStore {
-    return need(opts, "telemetry");
-  }
-
   function webhook(): WebhookSender {
     return need(opts, "webhook");
   }
@@ -568,18 +548,6 @@ export function startServer(opts: ServerOptions): RunningServer {
   }
   function trace(): TraceService {
     return need(opts, "trace");
-  }
-
-  function optIn(): TelemetryOptIn {
-    return need(opts, "telemetryOptIn");
-  }
-
-  function budgets(): Budgets {
-    return need(opts, "budgets");
-  }
-
-  function quotaHistory(): QuotaHistory {
-    return need(opts, "quotaHistory");
   }
 
   function changes(): Changes {
@@ -1074,14 +1042,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         board().workflows.respond(runId, stepId, attempt, decision, note);
         return ok(command.type, board().workflows.getRun(runId));
       }
-      case "costs.status":
-        return ok(command.type, costs().status());
-      case "costs.reprice":
-        return ok(command.type, await costs().reprice());
-      case "costs.summary":
-        return ok(command.type, costs().summary(command.payload));
-      case "telemetry.session":
-        return ok(command.type, telemetry().timeline(command.payload.claudeSessionId));
       case "webhook.send":
         return ok(command.type, await webhook().send(command.payload, ws.data.origin));
       case "session.summary": {
@@ -1093,39 +1053,6 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "trace.export": {
         const { claudeSessionId, includeContent } = command.payload;
         return ok(command.type, await trace().export(claudeSessionId, includeContent === true));
-      }
-      case "telemetry.status":
-        return ok(command.type, await optIn().status());
-      case "telemetry.install":
-        return ok(command.type, await optIn().install(command.payload.confirm === true));
-      case "telemetry.uninstall":
-        return ok(command.type, await optIn().uninstall(command.payload.confirm === true));
-      case "telemetry.summary":
-        return ok(command.type, telemetry().summary());
-      case "costs.session":
-        return ok(command.type, costs().session(command.payload.claudeSessionId));
-      case "costs.sessions":
-        return ok(command.type, { costs: costs().sessions(command.payload.claudeSessionIds) });
-      case "costs.card":
-        return ok(command.type, { costUsd: costs().card(command.payload.cardId) });
-      case "costs.run":
-        return ok(command.type, { costUsd: costs().run(command.payload.runId) });
-      case "costs.export":
-        return ok(command.type, costs().export(command.payload));
-      case "budget.list":
-        return ok(command.type, { budgets: budgets().list() });
-      case "budget.set":
-        return ok(command.type, budgets().set(command.payload));
-      case "budget.remove":
-        budgets().remove(command.payload.id);
-        return ok(command.type);
-      case "budget.watch": {
-        const host = budgets();
-        ws.data.unwatchBudgets?.();
-        ws.data.unwatchBudgets = host.watch((update) =>
-          send(ws, { type: "budget.updated", ...update }),
-        );
-        return ok(command.type);
       }
       case "files.sessions":
         return ok(command.type, { sessions: sessionFiles().sessionsOf(command.payload.path) });
@@ -1333,38 +1260,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { target, path, text, expectedHash } = command.payload;
         return ok(command.type, await files().write(target, path, text, expectedHash));
       }
-      case "quota.history":
-        return ok(
-          command.type,
-          quotaHistory().history(command.payload.window, command.payload.hours),
-        );
-      case "usage.summary":
-        return ok(command.type, usage().summary(command.payload.days));
-      case "quota.get":
-        return ok(command.type, quota().state());
-      case "quota.watch": {
-        const host = quota();
-        ws.data.unwatchQuota?.();
-        ws.data.unwatchQuota = host.watch((state) => send(ws, { type: "quota.updated", ...state }));
-        return ok(command.type);
-      }
-      case "account.get":
-        return ok(command.type, await account().get());
-      case "account.watch": {
-        const host = account();
-        ws.data.unwatchAccount?.();
-        ws.data.unwatchAccount = host.watch((state) =>
-          send(ws, { type: "account.updated", ...state }),
-        );
-        return ok(command.type);
-      }
-      case "account.unwatch":
-        account();
-        ws.data.unwatchAccount?.();
-        ws.data.unwatchAccount = undefined;
-        return ok(command.type);
-      case "account.refresh":
-        return ok(command.type, await account().refresh());
       case "runenv.config":
         return ok(
           command.type,
