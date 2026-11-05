@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { resolve } from "node:path";
 import { pushViolation } from "../lib/claude-hooks.ts";
 
 const CWD = "/repos/flightdeck-fix";
@@ -82,13 +83,11 @@ describe("push-guard", () => {
   });
 
   test("the push runs where the command points (cd, git -C)", () => {
-    const wt = checkout("rc/0363", [], "/repos/flightdeck-rc0363");
-    expect(pushViolation("cd /repos/flightdeck-rc0363 && git push", CWD, wt) ?? "").toContain(
-      "is blocked",
-    );
-    expect(pushViolation("git -C /repos/flightdeck-rc0363 push", CWD, wt) ?? "").toContain(
-      "is blocked",
-    );
+    // Resolved as the guard resolves it, so the case holds on Windows too.
+    const rc = resolve("/repos/flightdeck-rc0363");
+    const wt = checkout("rc/0363", [], rc);
+    expect(pushViolation(`cd ${rc} && git push`, CWD, wt) ?? "").toContain("is blocked");
+    expect(pushViolation(`git -C ${rc} push`, CWD, wt) ?? "").toContain("is blocked");
   });
 
   test("the coordinator, another repository and commands that push nothing pass", () => {
