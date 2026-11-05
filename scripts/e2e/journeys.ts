@@ -914,6 +914,17 @@ export async function layout(c: Context, problems: string[]) {
       );
     }
   }
+  // Issue #225: in a split, each area's tab bar keeps its height (it grew to half the area).
+  await c.page.setViewportSize({ width: 1280, height: 800 });
+  await open(c, { name: "hub" });
+  await c.page.keyboard.press("Control+\\");
+  await waitFor(async () => (await c.page.getByRole("tablist").count()) === 2, "the split window");
+  for (const height of await c.page
+    .locator(".tab-bar")
+    .evaluateAll((bars) => bars.map((bar) => Math.round(bar.getBoundingClientRect().height)))) {
+    if (height > 40) problems.push(`${c.lang} split: a tab bar is ${height} px tall`);
+  }
+  await c.page.keyboard.press("Control+\\");
   // The smallest window the app allows (tauri.conf.json): where the menu and the dialog are tightest.
   await c.page.setViewportSize({ width: 720, height: 480 });
   await open(c, { name: "hub" });
