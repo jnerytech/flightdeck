@@ -1263,6 +1263,11 @@ export class AppStore {
     return true;
   }
 
+  /** Whether this app resumes the sessions a restart interrupted on this host by itself (issue #150). */
+  autoResume(_hostId: string): boolean {
+    return false;
+  }
+
   /** The layout of the tiles on the project page; kept across starts (issue #94). */
   tileLayout(): TileLayout {
     return loadTileLayout(this.platform.storage);
