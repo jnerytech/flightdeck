@@ -1,6 +1,7 @@
 import type { CommandPayload } from "@flightdeck/protocol";
 import { BookOpen, MessagesSquare } from "lucide-react";
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
+import { CacheTimer } from "@/components/hub/cache-timer";
 import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
@@ -189,6 +190,9 @@ function ManagedSession(props: {
         title={summary?.name ?? basename(summary?.cwd ?? session.cwd ?? sessionId)}
         session={session}
         actions={store}
+        cache={
+          <CacheTimer store={store} since={summary?.status === "idle" ? summary.updatedAt : null} />
+        }
         {...(pin ? { pin } : {})}
         {...(fork ? { fork } : {})}
         settings={hasFeature(host?.hostInfo?.features, "session.settings", false)}

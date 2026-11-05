@@ -54,8 +54,10 @@ export function CacheTimer(props: {
               view.phase === "warning" ? "text-status-needs-you" : "text-muted-foreground",
             )}
           >
-            <Timer aria-hidden="true" className="size-2.5" />
-            {!cold && <span className="inline-block min-w-[4ch] text-left">{view.text}</span>}
+            <Timer aria-hidden="true" className={props.compact ? "size-2" : "size-2.5"} />
+            {!cold && !props.compact && (
+              <span className="inline-block min-w-[4ch] text-left">{view.text}</span>
+            )}
           </span>
         </TooltipTrigger>
         <TooltipContent>

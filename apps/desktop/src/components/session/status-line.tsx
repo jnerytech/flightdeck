@@ -26,6 +26,7 @@ export function SessionStatusLine(props: {
     >
       {props.pickers.model ?? <span>{props.model ?? t("session.modelDefault")}</span>}
       {props.pickers.mode ?? <span>{t(`modes.${props.mode}.name`)}</span>}
+      {props.cache}
       {props.working && (
         <Loader2
           data-slot="session-spinner"

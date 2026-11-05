@@ -19,9 +19,11 @@ export function tabBadge(route: Route, state: AppState): TabBadge {
 
 /** Since when the session of a tab has been idle (its prompt cache runs from then), else null. */
 export function tabIdleSince(route: Route, state: AppState): string | null {
-  void route;
-  void state;
-  return null;
+  if (route.name !== "session") return null;
+  const session = state.hosts
+    .find((host) => host.id === route.host)
+    ?.sessions.find((candidate) => candidate.id === route.id);
+  return session?.status === "idle" ? session.updatedAt : null;
 }
 
 /** Whether the badge pulses: a session that is working moves, so a glance at the tabs shows it. */

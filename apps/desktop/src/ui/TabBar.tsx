@@ -25,6 +25,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { CacheTimer } from "@/components/hub/cache-timer";
 import { NAV_ICONS } from "@/components/nav-icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,7 +39,7 @@ import type { AppState, AppStore } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import type { Route } from "../lib/router.ts";
 import { isProd } from "../lib/ssh.ts";
-import { badgePulses, type TabKind, tabBadge, tabKind } from "../lib/tab-badge.ts";
+import { badgePulses, type TabKind, tabBadge, tabIdleSince, tabKind } from "../lib/tab-badge.ts";
 import type { Tab, Tabs } from "../lib/tabs.ts";
 
 const ICONS: Record<TabKind, LucideIcon> = {
@@ -179,6 +180,7 @@ export function TabBar(props: {
             const Icon = ICONS[kind];
             const selected = tab.id === tabs.activeId;
             const badge = tabBadge(tab.router.current, state);
+            const cacheSince = tabIdleSince(tab.router.current, state);
             const ssh = sshOf(tab, store);
             // A production server is easy to mistake for another: its tab gets a red border.
             const prod = ssh ? isProd(ssh.tags) : undefined;
@@ -190,7 +192,7 @@ export function TabBar(props: {
                 {...(prod === undefined ? {} : { "data-prod": String(prod) })}
                 {...(dropOn?.id === tab.id ? { "data-drop": dropOn.side } : {})}
                 className={cn(
-                  "tab-item group flex items-center rounded-t-md border border-b-0 text-sm has-[[role=tab]:focus-visible]:ring-2 has-[[role=tab]:focus-visible]:ring-ring",
+                  "tab-item group relative flex items-center rounded-t-md border border-b-0 text-sm has-[[role=tab]:focus-visible]:ring-2 has-[[role=tab]:focus-visible]:ring-ring",
                   selected ? "bg-background" : "bg-muted/40 text-muted-foreground",
                   prod && "border-2 border-destructive",
                   dropOn?.id === tab.id &&
@@ -293,6 +295,11 @@ export function TabBar(props: {
                     </span>
                   )}
                 </button>
+                {cacheSince && (
+                  <span className="absolute top-0.5 left-0.5">
+                    <CacheTimer store={store} since={cacheSince} compact />
+                  </span>
+                )}
                 {!tab.pinned && (
                   <button
                     type="button"

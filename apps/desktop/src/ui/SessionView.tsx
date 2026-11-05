@@ -253,6 +253,8 @@ interface SessionViewProps {
   bypass?: { host: string };
   /** Pins or unpins the session; its button sits in each assistant message's action row. */
   pin?: { pinned: boolean; toggle(): void };
+  /** The prompt cache countdown of an idle session, shown next to the model. */
+  cache?: ReactNode;
   /** Forks the conversation at its latest message; offered on that message only. */
   fork?: () => void;
   /** Renders a picker for a folder; `done` gets the path chosen, or null when it was closed. */
@@ -745,6 +747,7 @@ export function SessionView(props: SessionViewProps) {
           mode={session.permissionMode ?? "default"}
           pickers={pickers}
           working={working}
+          {...(props.cache ? { cache: props.cache } : {})}
         />
       </ComposerDock>
       {picking &&
