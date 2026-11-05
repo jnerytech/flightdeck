@@ -4124,12 +4124,16 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
 ## Security gate follow-ups (issue #284)
 
 - **Why.** OpenCode's second review of #279 found four mediums, with no high left.
-- **A deleted file keeps its path.** Deleting a guard file (the hook rules, the gate) is risky by
-  path, like editing one.
+- **A deleted file keeps its path, and a rename keeps both.** Deleting a guard file (the hook rules,
+  the gate), or moving the CI out of `.github/workflows/`, is risky by path, like editing one.
 - **Removed lines count.** A removed line that touches a risk area makes its file risky ("removes
   spawn"). A source file that loses any line and still holds risky code at HEAD (`git show
   HEAD:<path>`) is risky too ("edits spawn code"): taking a check out in front of a spawn or a
-  delete needs a review as much as adding one. Removed comments do not count.
+  delete needs a review as much as adding one. Removed comments do not count. Removed lines take
+  their file from the `--- a/` and `+++ b/` headers; a deleted file is not read at HEAD, and a file
+  whose HEAD cannot be read (an error, an output past the buffer) is risky, never taken as empty.
+  Left as a known limit: a file renamed into a test folder or to a non-code extension hides the
+  risky lines it lost, since the new path decides what is code.
 - **A mode change is a permission change on any file,** with or without a code extension (a script
   in `bin/` made executable).
 - **runBounded takes its process, timers and kill as deps.** Its tests use a fake process and timer:
