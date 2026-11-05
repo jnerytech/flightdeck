@@ -106,6 +106,25 @@ git, readFile })` and the daemon's service contexts do; the entry file or the co
 only wires the real ones. The tests then pass fakes instead of `mock.module`, which leaks across
 files. This is a rule, not a style rewrite: React components and Bun idioms stay as they are.
 
+## Test anchors
+
+How a UI test finds what it checks, in this order (issue #168, owner decision). The design rules
+page (`docs/DESIGN.md`) lists the anchors the app owns.
+
+1. **Role and accessible name first**: `getByRole("button", { name })`, `queryByLabelText`. This
+   tests what a person and a screen reader get, and it fails when accessibility breaks.
+2. **`data-slot` for structure that has no role**: regions, cards, panels, and the rows the layout
+   guards measure (`[data-slot=recap]`, `[data-slot=session-tile]`).
+   - The names are stable and listed in `docs/DESIGN.md`.
+   - `Page` and `Section` emit `page` and `section`, so a layout finding always names a region.
+   - The vendored `components/ui` slots (`button`, `dialog-*`) are shadcn's: do not rely on them.
+3. **`data-testid` only as a last resort**, for an element with no role and no slot of its own (an
+   `aria-hidden` line, for example). The line above it carries a `// testid:` comment that says why.
+   - `apps/desktop/testid-baseline.json` holds their count.
+   - `apps/desktop/test/test-anchors.test.tsx` fails on a `data-testid` with no `testid:` comment,
+     and on more of them than the baseline.
+   - The count only goes down: lower the baseline when one goes away.
+
 ## Travas
 
 Os testes provam o comportamento sem tocar em nada real. As travas tornam isso verificável,
