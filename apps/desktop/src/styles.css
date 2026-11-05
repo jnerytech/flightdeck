@@ -240,6 +240,13 @@
   overflow-y: auto;
 }
 
+/* A field and its own button on one line, never wrapped: the field takes the width, the button keeps its size. */
+@utility field-with-action {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
 /* A toggle that sits at the start of a column, not stretched across it. */
 @utility toggle-start {
   align-self: flex-start;
