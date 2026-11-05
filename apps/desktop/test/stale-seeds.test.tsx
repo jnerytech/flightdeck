@@ -18,7 +18,7 @@ afterEach(cleanup);
 
 // Issue #226: a field seeded once from a prop kept the old value when the prop changed.
 describe("stale-seeds: a field follows its source until the person edits it", () => {
-  test("useDraft shows the source, keeps an edit over a later source, and follows again after a reset", async () => {
+  test("useDraft shows the source and keeps an edit over a later source", async () => {
     const { result, rerender } = renderHook(({ source }) => useDraft(source), {
       initialProps: { source: "a" },
     });
@@ -27,8 +27,31 @@ describe("stale-seeds: a field follows its source until the person edits it", ()
     await act(async () => result.current[1]("typed"));
     rerender({ source: "c" });
     expect(result.current[0]).toBe("typed");
-    await act(async () => result.current[2]());
-    expect(result.current[0]).toBe("c");
+  });
+
+  test("after a save the field keeps what was sent until the source moves, then follows it again", async () => {
+    const { result, rerender } = renderHook(({ source }) => useDraft(source), {
+      initialProps: { source: "a" },
+    });
+    await act(async () => result.current[1]("typed"));
+    await act(async () => result.current[2]("typed"));
+    // The host's update has not arrived: no flash of the old value.
+    expect(result.current[0]).toBe("typed");
+    rerender({ source: "typed" });
+    expect(result.current[0]).toBe("typed");
+    rerender({ source: "d" });
+    expect(result.current[0]).toBe("d");
+  });
+
+  test("a save does not hand back a newer edit typed while it was on its way", async () => {
+    const { result, rerender } = renderHook(({ source }) => useDraft(source), {
+      initialProps: { source: "a" },
+    });
+    await act(async () => result.current[1]("first"));
+    await act(async () => result.current[1]("second"));
+    await act(async () => result.current[2]("first"));
+    rerender({ source: "first" });
+    expect(result.current[0]).toBe("second");
   });
 
   test("a card's hours field shows a new estimate made elsewhere", () => {
