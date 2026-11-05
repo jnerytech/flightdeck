@@ -1,15 +1,21 @@
 import { describe, expect, test } from "bun:test";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   type AssistantContextBundle,
   type AssistantRunPayload,
   SecretScanner,
 } from "@flightdeck/protocol";
+import { assistantService } from "../src/assistant/factory.ts";
 import { assistantDir } from "../src/assistant/paths.ts";
 import { AssistantService } from "../src/assistant/service.ts";
 import { FlightdeckError } from "../src/errors.ts";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import type { CompleteOptions, CompleteResult } from "../src/runtime/types.ts";
+import { startServer } from "../src/server.ts";
+import { git, gitRepo } from "./board-helpers.ts";
+import { newManager } from "./helpers.ts";
+import { FrameClient } from "./history-helpers.ts";
 
 /** A clock the test moves by hand. */
 function clock() {
@@ -299,5 +305,121 @@ describe("assistant-service", () => {
       bundle,
     );
     expect(contexts).toEqual([{ kind: "worktree", cwd: "/w" }]);
+  });
+});
+
+describe("assistant-service: the factory and the server", () => {
+  const factoryDeps = (over: object = {}) => ({
+    runtime: new FakeRuntime(),
+    usage: { record: () => {} },
+    scanner: new SecretScanner(),
+    dataDir: "/data",
+    allowApiKey: false,
+    allowedRoots: [] as string[],
+    ...over,
+  });
+
+  test("the factory reads a card's branch from the board and a folder inside the allowed roots", async () => {
+    const { root, repo } = gitRepo();
+    git(repo, "checkout", "-q", "-b", "feature");
+    writeFileSync(join(repo, "a.ts"), "export const a = 1;\n");
+    const board = {
+      getCard: (id: string) => ({ id, worktreePath: id === "c1" ? repo : null, projectId: "p1" }),
+      getProject: () => ({ baseBranch: "main" }),
+    };
+    const svc = assistantService(factoryDeps({ board, allowedRoots: [root] })) as AssistantService;
+    const card = await svc.context({ kind: "commit", source: { kind: "card", cardId: "c1" } });
+    expect(card.stat).toBe(" a.ts | 1 +");
+    expect(
+      (await svc.context({ kind: "commit", source: { kind: "worktree", cwd: repo } })).stat,
+    ).toBe(" a.ts | 1 +");
+    expect(
+      await reason(svc.context({ kind: "commit", source: { kind: "card", cardId: "c2" } })),
+    ).toEqual(["card_no_worktree", {}]);
+    expect(
+      await reason(
+        svc.context({ kind: "commit", source: { kind: "worktree", cwd: "/elsewhere" } }),
+      ),
+    ).toEqual(["cwd_outside_roots", { cwd: "/elsewhere" }]);
+    const boardless = assistantService(factoryDeps()) as AssistantService;
+    expect(
+      await reason(boardless.context({ kind: "commit", source: { kind: "card", cardId: "c1" } })),
+    ).toEqual(["feature_off", { feature: "board" }]);
+  });
+
+  test("a runtime that cannot complete gives no assistant", () => {
+    const { complete: _ignored, ...plain } = { complete: 1, start: () => {} };
+    expect(assistantService(factoryDeps({ runtime: plain }))).toBe(undefined);
+  });
+
+  test("the server announces the assistant and answers its commands; without it they are off", async () => {
+    const { manager } = newManager();
+    const svc = assistantService(factoryDeps()) as AssistantService;
+    const server = startServer({
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: "t".repeat(24),
+      allowedRoots: [],
+      assistant: svc,
+    });
+    const off = startServer({
+      manager,
+      hostName: "h",
+      bind: "127.0.0.1",
+      port: 0,
+      token: "t".repeat(24),
+      allowedRoots: [],
+    });
+    const client = new FrameClient(server.url);
+    const bare = new FrameClient(off.url);
+    try {
+      for (const c of [client, bare])
+        await c.request("hello", { token: "t".repeat(24), client: "test" });
+      const features = async (c: FrameClient) =>
+        (await c.data<{ features?: string[] }>("host.info", {}))?.features ?? [];
+      expect([
+        (await features(client)).includes("assistant"),
+        (await features(bare)).includes("assistant"),
+      ]).toEqual([true, false]);
+      const answer = await client.data<{ text: string }>("assistant.run", {
+        requestId: "r1",
+        kind: "card.title",
+        text: "fix the login bug",
+        language: "en",
+        profile: "quick",
+      });
+      expect(answer?.text).toBe("improved: fix the login bug");
+      expect((await client.request("assistant.cancel", { requestId: "r1" })).ok).toBe(true);
+      const record = {
+        id: "x",
+        at: "2026-11-05T10:00:00.000Z",
+        provider: "anthropic",
+        model: "claude-haiku-5-5",
+        tokens: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 },
+      };
+      expect((await client.request("assistant.record", record)).ok).toBe(true);
+      const context = await client.request("assistant.context", {
+        kind: "commit",
+        source: { kind: "staged", cwd: "/nowhere" },
+      });
+      expect((context.error as { reason?: string } | undefined)?.reason).toBe("cwd_outside_roots");
+      const refused = await bare.request("assistant.run", {
+        requestId: "r2",
+        kind: "card.title",
+        text: "x",
+        language: "en",
+        profile: "quick",
+      });
+      expect((refused.error as { reason?: string; params?: unknown } | undefined)?.params).toEqual({
+        feature: "assistant",
+      });
+    } finally {
+      client.close();
+      bare.close();
+      await server.stop();
+      await off.stop();
+    }
   });
 });
