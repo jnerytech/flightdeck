@@ -11,6 +11,10 @@ export interface ShotVariant {
 }
 
 /** The pairs to print; empty when a filter names no known theme or language. */
-export function shotVariants(_env: Record<string, string | undefined>): ShotVariant[] {
-  return [];
+export function shotVariants(env: Record<string, string | undefined>): ShotVariant[] {
+  const theme = env.SHOTS_THEME || undefined;
+  const lang = env.SHOTS_LANG || undefined;
+  return THEMES.flatMap((t) => LANGS.map((l) => ({ theme: t, lang: l }))).filter(
+    (v) => (theme === undefined || v.theme === theme) && (lang === undefined || v.lang === lang),
+  );
 }
