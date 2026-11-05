@@ -455,3 +455,32 @@ describe("board-multi-review: selecting by range and refusing two moves", () => 
     expect(selected()).toEqual(["A", "C"]);
   });
 });
+
+describe("board-multi-review: small gaps the coverage gate found", () => {
+  test("a key the handle does not use is left alone", async () => {
+    setup();
+    await ready();
+    const last = handles()[4] as HTMLElement;
+    const before = widthOf();
+    const prevented = !fireEvent.keyDown(last, { key: "a" });
+    expect(prevented).toBe(false);
+    expect(widthOf()).toBe(before);
+  });
+
+  test("the notice goes away when it is dismissed", async () => {
+    const w = setup({ refuse: { A: { message: "no" } } });
+    await ready();
+    await ctrl("A");
+    await act(async () => {
+      fireEvent.pointerDown(barButton("Move to…"), {
+        button: 0,
+        ctrlKey: false,
+        pointerType: "mouse",
+      });
+    });
+    await click(await screen.findByRole("menuitem", { name: "Done" }));
+    await settle(() => w.requests.length === 1);
+    await click(await screen.findByRole("button", { name: "Dismiss" }));
+    await settle(() => !(document.body.textContent ?? "").includes("stayed where it was"));
+  });
+});
