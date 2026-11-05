@@ -1889,13 +1889,23 @@ export class Board {
     this.changed(id);
   }
 
-  /** Every card of the project that has a worktree, arena variants included (stub). */
-  worktreeCards(_projectId: string): Card[] {
-    return [];
+  /** Every card of the project that has a worktree, arena variants included. */
+  worktreeCards(projectId: string): Card[] {
+    return this.db
+      .query<{ id: string }, [string]>(
+        "SELECT id FROM cards WHERE project_id = ? AND worktree_path IS NOT NULL",
+      )
+      .all(projectId)
+      .map(({ id }) => this.getCard(id));
   }
 
-  /** The card no longer has its worktree (stub). */
-  releaseWorktree(_id: string): void {}
+  /** The card no longer has its worktree (a panel removed it); the watchers hear of it. */
+  releaseWorktree(id: string): void {
+    this.db
+      .query("UPDATE cards SET worktree_path = NULL, notice = NULL, updated_at = ? WHERE id = ?")
+      .run(new Date().toISOString(), id);
+    this.changed(id);
+  }
 
   /** Tells the watchers about a card whose fields changed outside the board (the board sync's). */
   announce(id: string): void {
