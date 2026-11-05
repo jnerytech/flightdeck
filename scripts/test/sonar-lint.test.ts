@@ -2,13 +2,16 @@ import { describe, expect, test } from "bun:test";
 import {
   addedLines,
   applySuppressions,
+  countsForCoverage,
   exclusionsOf,
   type Finding,
   formatFindings,
+  isTestFile,
   lintTargets,
   onlyNewCode,
   type PluginRule,
   sonarRules,
+  testInclusionsOf,
 } from "../lib/sonar-lint.ts";
 
 const rule = (name: string, key: string, typed = false): PluginRule => ({
@@ -206,5 +209,36 @@ describe("sonar-lint: new code only", () => {
 
   test("a file with no diff entry (new or untracked) counts whole", () => {
     expect(onlyNewCode([at("new.ts", 1)], new Map())).toEqual([at("new.ts", 1)]);
+  });
+});
+
+describe("sonar-lint: test code and coverage", () => {
+  const properties = [
+    "sonar.test.inclusions=**/test/**,**/*.test.ts,scripts/e2e/**",
+    "sonar.exclusions=**/dist/**,apps/desktop/src/components/ui/**",
+    "sonar.coverage.exclusions=scripts/*.ts,**/*.d.ts",
+  ].join("\n");
+
+  test("the test inclusions come from sonar-project.properties", () => {
+    expect(testInclusionsOf(properties)).toEqual(["**/test/**", "**/*.test.ts", "scripts/e2e/**"]);
+    expect(testInclusionsOf("sonar.sources=apps")).toEqual([]);
+  });
+
+  test("a file matching an inclusion is test code, the rest is source", () => {
+    const inclusions = testInclusionsOf(properties);
+    expect(isTestFile("apps/daemon/test/board.test.ts", inclusions)).toBe(true);
+    expect(isTestFile("apps/daemon/test/helper.ts", inclusions)).toBe(true);
+    expect(isTestFile("scripts/e2e/journeys.ts", inclusions)).toBe(true);
+    expect(isTestFile("apps/daemon/src/board/board.ts", inclusions)).toBe(false);
+  });
+
+  test("coverage counts analysed source files only", () => {
+    expect(countsForCoverage("apps/daemon/src/board/board.ts", properties)).toBe(true);
+    expect(countsForCoverage("scripts/lib/slot.ts", properties)).toBe(true);
+    expect(countsForCoverage("scripts/slot.ts", properties)).toBe(false);
+    expect(countsForCoverage("apps/daemon/src/text-modules.d.ts", properties)).toBe(false);
+    expect(countsForCoverage("apps/daemon/test/board.test.ts", properties)).toBe(false);
+    expect(countsForCoverage("apps/desktop/src/components/ui/button.tsx", properties)).toBe(false);
+    expect(countsForCoverage("packages/protocol/dist/index.ts", properties)).toBe(false);
   });
 });

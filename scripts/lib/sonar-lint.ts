@@ -131,3 +131,23 @@ export function addedLines(diff: string): Map<string, Set<number>> {
 export function onlyNewCode(findings: Finding[], added: Map<string, Set<number>>): Finding[] {
   return findings.filter((f) => !added.has(f.file) || added.get(f.file)?.has(f.line));
 }
+
+/** Whether a Sonar glob (`**` crosses folders, `*` stays in one) matches a repository path. */
+export function matchesGlob(glob: string, path: string): boolean {
+  return globToRegExp(glob).test(path);
+}
+
+/** The `sonar.test.inclusions` globs of a sonar-project.properties file. */
+export function testInclusionsOf(_properties: string): string[] {
+  return [];
+}
+
+/** Whether SonarCloud treats this file as test code. */
+export function isTestFile(_path: string, _inclusions: string[]): boolean {
+  return false;
+}
+
+/** Whether SonarCloud reads this file's coverage: analysed, not a test, not coverage-excluded. */
+export function countsForCoverage(_path: string, _properties: string): boolean {
+  return true;
+}
