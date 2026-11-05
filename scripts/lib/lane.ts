@@ -67,6 +67,8 @@ function tryPlaces(deps: LaneDeps, text: string): PlaceTry {
 
 /** Runs the command once a place in the lane is free, and gives the place back after. */
 export async function runInLane(command: string[], deps: LaneDeps): Promise<number> {
+  // Before anything is spawned, so the command and all it starts inherit the score.
+  deps.protect?.();
   if (deps.nested) return await deps.spawn(command).wait();
   const text = command.join(" ");
   let named = false;

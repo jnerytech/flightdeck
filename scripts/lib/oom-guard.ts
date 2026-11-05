@@ -14,6 +14,13 @@ export interface OomDeps {
 }
 
 /** Raises this process's OOM score on Linux; elsewhere, or when /proc refuses, it does nothing. */
-export function offerToOomKiller(_deps: OomDeps): boolean {
-  return false;
+export function offerToOomKiller(deps: OomDeps): boolean {
+  if (deps.platform !== "linux") return false;
+  try {
+    deps.write("/proc/self/oom_score_adj", String(OOM_SCORE_ADJ));
+    return true;
+  } catch {
+    // A /proc that refuses (read-only, a container) must not stop the command.
+    return false;
+  }
 }

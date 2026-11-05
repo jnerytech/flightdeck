@@ -485,6 +485,8 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
     for (const line of status(env, args.maxAgeMs).split("\n")) env.log(line);
     return 0;
   }
+  // Before anything is spawned, so the command and all it starts inherit the score.
+  env.protect?.();
   const state: { signal: number | null; child: SlotChild | null } = { signal: null, child: null };
   const stopListening = env.onSignal((code) => {
     state.signal = code;
