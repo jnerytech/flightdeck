@@ -84,3 +84,8 @@ export function formatNumber(value: number, lang: Lang): string {
 export function formatUsd(value: number, lang: Lang): string {
   return plain(new Intl.NumberFormat(lang, { style: "currency", currency: "USD" }).format(value));
 }
+
+/** A size in bytes as KB, MB or GB with the language's separators. (Stub.) */
+export function formatBytes(_bytes: number, _lang: Lang): string {
+  return "";
+}
