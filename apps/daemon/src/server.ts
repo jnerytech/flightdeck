@@ -19,6 +19,7 @@ import {
   type ExternalUpdated,
   type HistoryChanged,
   type IdleFiredFrame,
+  type KeepAwakeStatus,
   type MessagesRelayFrame,
   type MessagesUpdatedFrame,
   type MessagingAlertFrame,
@@ -144,6 +145,8 @@ export interface ServerOptions {
   allowedRoots: readonly string[];
   /** The host's switch for sessions without permission prompts: read for `host.info`, set by `host.bypass`. */
   bypass?: { allowed(): boolean; set(allow: boolean): void | Promise<void> };
+  /** Keeps the computer awake while sessions run (issue #163): its status for `host.info`, and the switch for `host.keepAwake`. */
+  keepAwake?: { status(): KeepAwakeStatus; set(enabled: boolean): void | Promise<void> };
   /** Keeps the allowed folders in the config file after `roots.add`. */
   persistRoots?: (roots: readonly string[]) => void | Promise<void>;
   /** What decides the system folders `roots.add` refuses; the process's own when absent (tests give theirs). */
@@ -442,6 +445,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     // A message may carry images (`session.send` with `images`).
     "session.images",
     ...(opts.doctor ? ["doctor.run"] : []),
+    ...(opts.keepAwake ? ["keepAwake"] : []),
     ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
     ...(opts.github ? ["github"] : []),
     ...(opts.boardsync ? ["boardsync"] : []),
@@ -1454,6 +1458,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
           ...(opts.ui ? { ui: { ...opts.ui } } : {}),
           ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
+          ...(opts.keepAwake ? { keepAwake: opts.keepAwake.status() } : {}),
           ...updateStatus(),
           ...(opts.terminal ?? {}),
         });
@@ -1564,6 +1569,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         }
         await opts.bypass.set(allow);
         return ok(command.type, { allowBypassPermissions: allow });
+      }
+      case "host.keepAwake": {
+        if (!opts.keepAwake) throw featureOff("keepAwake");
+        await opts.keepAwake.set(command.payload.enabled);
+        return ok(command.type, opts.keepAwake.status());
       }
       case "board.settings": {
         const { maxParallelRuns } = command.payload;

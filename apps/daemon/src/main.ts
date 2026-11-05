@@ -655,10 +655,13 @@ export async function startDaemon(
     pack: packPersonas,
     publisher: agentPublisher(agentcfg),
   });
+  // Holds the computer awake while a session runs or waits for a permission (issue #163).
+  const keepAwake = new KeepAwake(options.powerContext ?? osPowerContext(), config.keepAwake);
   const manager = new SessionManager({
     store,
     runtime,
     risk,
+    onActivity: (active) => keepAwake.update(active),
     autoApprove,
     allowedRoots: config.allowedRoots,
     defaultPermissionMode: config.defaultPermissionMode,
@@ -1064,6 +1067,14 @@ export async function startDaemon(
         await updateConfigFile(configFile, (raw) => ({ ...raw, allowBypassPermissions: allow }));
       },
     },
+    keepAwake: {
+      status: () => keepAwake.status(),
+      set: async (enabled) => {
+        config.keepAwake = enabled;
+        keepAwake.setEnabled(enabled);
+        await updateConfigFile(configFile, (raw) => ({ ...raw, keepAwake: enabled }));
+      },
+    },
     persistRoots: (roots) =>
       updateConfigFile(configFile, (raw) => ({ ...raw, allowedRoots: [...roots] })),
     fsDirs: true,
@@ -1278,6 +1289,7 @@ export async function startDaemon(
       stopped ??= (async () => {
         unwatchFile(configFile, onConfigChange);
         await wsl?.stop();
+        keepAwake.stop();
         automations.stop();
         clearInterval(messagingSweep);
         stopNames();
