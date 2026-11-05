@@ -3,12 +3,14 @@ import {
   Command,
   type CommandType,
   EventEnvelope,
+  FEATURE_RESUME_OFFER,
   Project,
   SESSION_IMAGE_MAX_BYTES,
   SESSION_IMAGE_MAX_COUNT,
   SESSION_IMAGE_TYPES,
   ServerMessage,
   SessionEvent,
+  SessionInterruptedResult,
 } from "../src/index.ts";
 
 const validCommands: Record<CommandType, unknown> = {
@@ -656,5 +658,40 @@ describe("images in a message", () => {
       text: "x",
       images: 2,
     });
+  });
+});
+
+describe("session.interrupted (issue #150)", () => {
+  const listed = {
+    sessionId: "s",
+    name: null,
+    cwd: "/p",
+    persona: null,
+    interruptedAt: "2026-11-05T10:00:00.000Z",
+    ranMs: 0,
+    lastRequest: null,
+  };
+
+  test("the command takes no payload: an extra key is refused", () => {
+    expect(Command.safeParse({ id: "1", type: "session.interrupted", payload: {} }).success).toBe(
+      true,
+    );
+    expect(
+      Command.safeParse({ id: "1", type: "session.interrupted", payload: { within: 1 } }).success,
+    ).toBe(false);
+  });
+
+  test("the result is a list of sessions, and a negative run time is refused", () => {
+    expect(SessionInterruptedResult.safeParse({ sessions: [listed] }).success).toBe(true);
+    expect(SessionInterruptedResult.safeParse({ sessions: [{ ...listed, ranMs: -1 }] }).success).toBe(
+      false,
+    );
+    expect(SessionInterruptedResult.safeParse({ sessions: [{ sessionId: "s" }] }).success).toBe(
+      false,
+    );
+  });
+
+  test("the feature a host announces is named resume-offer", () => {
+    expect(FEATURE_RESUME_OFFER).toBe("resume-offer");
   });
 });
