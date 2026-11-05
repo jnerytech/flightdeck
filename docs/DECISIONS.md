@@ -4150,6 +4150,14 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   `FLIGHTDECK_BOARD_CMD`, called as `<cmd> <issue> done ""`: the coordinator's `issue-note.sh`,
   whose REST queue of #242 survives a rate limit. Without it the board is skipped, said once. The
   coordinator tooling stays outside the repository; the script only knows the command's contract.
+- **Hardening (issue #287, from the security review of #275).** The tag and `--since` must be
+  `vX.Y.Z` (exit 2 otherwise), so neither can reach git as an option or a range. An issue title is
+  printed with its control characters turned into spaces (no escape sequence in a dry run). A
+  session's `bun run release:close ... --apply` (or `bun scripts/release-close.ts ... --apply`) is
+  blocked by the hook guard like `bun run release`: it closes issues on GitHub, so it is the
+  coordinator's; the dry run stays open. `bun run release` takes a tag as already made only when
+  `git ls-remote` finds it on origin (a local tag is anyone's; `pr tag` is what gates a tag), and
+  it reads a version from main only when it is `x.y.z`.
 
 ## Risky changes get a security review before the hand-off (issue #273)
 
