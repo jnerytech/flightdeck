@@ -428,6 +428,9 @@ describe("pr-flow: update and merge", () => {
     const refused = fake({ prs: [pr(12, "a")], graphqlError: "Pull request is in clean status" });
     expect(await prFlow(["auto", "12"], refused.deps)).toBe(1);
     expect(refused.out()).toContain("Pull request is in clean status");
+    expect(refused.out()).toContain(
+      "already mergeable: the coordinator merges it (bun run pr -- merge 12)",
+    );
     const silent = fake({ prs: [pr(12, "a")], fail: /graphql/ });
     expect(await prFlow(["auto", "12"], silent.deps)).toBe(1);
     expect(silent.out()).toContain("GitHub refused auto-merge for #12");
