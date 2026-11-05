@@ -1,5 +1,7 @@
 /** Which projects may bring their own hooks, MCP servers and settings into a managed session (issue #196). */
 import type { Database } from "bun:sqlite";
+import { resolve } from "node:path";
+import { isInside } from "../paths.ts";
 
 export type TrustSource = "person" | "migration";
 
@@ -23,28 +25,61 @@ export interface ProjectTrustOptions {
   log?: (line: string) => void;
 }
 
+interface Row {
+  path: string;
+  trusted_at: string;
+  source: TrustSource;
+}
+
+/** The person's decision, per folder, kept by the daemon: off until they say so. */
 export class ProjectTrust {
   constructor(
     private readonly db: Database,
     private readonly opts: ProjectTrustOptions = {},
-  ) {
-    void this.db;
-    void this.opts;
+  ) {}
+
+  /** Whether `cwd` is a trusted folder or lies inside one. */
+  isTrusted(cwd: string): boolean {
+    const here = resolve(cwd);
+    return this.rows().some((row) => isInside(row.path, here));
   }
 
-  isTrusted(_cwd: string): boolean {
-    return true;
+  /** Trusts a folder and everything inside it; a repeat changes nothing. */
+  trust(path: string, source: TrustSource = "person"): void {
+    const at = resolve(path);
+    const done = this.db
+      .query("INSERT OR IGNORE INTO project_trust (path, trusted_at, source) VALUES (?, ?, ?)")
+      .run(at, (this.opts.now?.() ?? new Date()).toISOString(), source);
+    if (done.changes > 0) this.opts.log?.(`project trust: trusted ${at} (${source})`);
   }
 
-  trust(_path: string, _source: TrustSource = "person"): void {}
-
-  revoke(_path: string): void {}
+  revoke(path: string): void {
+    const at = resolve(path);
+    const done = this.db.query("DELETE FROM project_trust WHERE path = ?").run(at);
+    if (done.changes > 0) this.opts.log?.(`project trust: revoked ${at}`);
+  }
 
   list(): TrustRecord[] {
-    return [];
+    return this.rows().map((row) => ({
+      path: row.path,
+      trustedAt: row.trusted_at,
+      source: row.source,
+    }));
   }
 
-  sessionTrust(_cwd: string): SessionTrust {
-    return { trusted: true };
+  /**
+   * What a session in `cwd` may load. A worktree is read from its main checkout and is trusted only
+   * if that is: a branch, trusted or not, never brings its own hooks.
+   */
+  sessionTrust(cwd: string): SessionTrust {
+    const main = this.opts.configRootOf?.(cwd) ?? null;
+    if (main) return { trusted: this.isTrusted(main), configRoot: main };
+    return { trusted: this.isTrusted(cwd) };
+  }
+
+  private rows(): Row[] {
+    return this.db
+      .query<Row, []>("SELECT path, trusted_at, source FROM project_trust ORDER BY path")
+      .all();
   }
 }

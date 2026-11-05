@@ -851,5 +851,11 @@ export const MIGRATIONS: readonly string[] = [
     trusted_at TEXT NOT NULL,
     source     TEXT NOT NULL
   );
+  -- What the person already works in keeps loading its own configuration: the projects of the board
+  -- and the folders of earlier sessions. A root that is merely allowed is not, nor what is cloned later.
+  INSERT OR IGNORE INTO project_trust (path, trusted_at, source)
+    SELECT path, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'migration' FROM projects;
+  INSERT OR IGNORE INTO project_trust (path, trusted_at, source)
+    SELECT DISTINCT cwd, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'migration' FROM sessions;
   `,
 ];
