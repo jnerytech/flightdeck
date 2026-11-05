@@ -99,7 +99,14 @@ export function HostPage(props: {
           <InlineNotice>
             <span className="flex flex-col gap-1">
               <span>{t("hostPage.incompatible")}</span>
-              <span>{host.incompatibility}</span>
+              {/* Issue #181: a sentence of the catalog first; the daemon's own words stay under Details. */}
+              <span>{t("errors.protocol_incompatible")}</span>
+              {host.incompatibility && (
+                <details>
+                  <summary>{t("toast.details")}</summary>
+                  {host.incompatibility}
+                </details>
+              )}
               <span>
                 {t("hostPage.incompatibleFix", { version: APP_VERSION })}{" "}
                 <code className="rounded bg-muted px-1 font-mono text-xs">
