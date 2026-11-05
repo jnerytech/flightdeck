@@ -27,16 +27,17 @@ export function installCliGuard(
 ): CliGuard {
   const dir = mkdtempSync(join(tmpdir(), "fd-cli-guard-"));
   const log = join(dir, "calls.log");
+  const versions = join(dir, "versions.log");
   for (const name of names) {
-    // `--version` is answered without a record (see claude-guard.ts): the dependency probe asks it.
+    // `--version` is answered and logged apart, in versions.log (see claude-guard.ts): the dependency probe asks it.
     writeFileSync(
       join(dir, name),
-      `#!/bin/sh\n[ "$1" = "--version" ] && { echo "${name} 0.0.0 (sentinel)"; exit 0; }\necho "${name} $*" >> "${log}"\nexit 99\n`,
+      `#!/bin/sh\n[ "$1" = "--version" ] && { echo "${name} --version" >> "${versions}"; echo "${name} 0.0.0 (sentinel)"; exit 0; }\necho "${name} $*" >> "${log}"\nexit 99\n`,
     );
     chmodSync(join(dir, name), 0o755);
     writeFileSync(
       join(dir, `${name}.cmd`),
-      `@echo off\r\nif "%1"=="--version" (echo ${name} 0.0.0 ^(sentinel^) & exit /b 0)\r\necho ${name} %* >> "${log}"\r\nexit /b 99\r\n`,
+      `@echo off\r\nif "%1"=="--version" (echo ${name} --version>> "${versions}" & echo ${name} 0.0.0 ^(sentinel^) & exit /b 0)\r\necho ${name} %* >> "${log}"\r\nexit /b 99\r\n`,
     );
   }
   // Windows spells it "Path"; rewrite every casing so children inherit the guarded value.
