@@ -17,13 +17,31 @@ export interface BoundedResult {
 /** How much of the stderr is kept. */
 const TAIL = 500;
 
+export interface KillDeps {
+  platform: NodeJS.Platform;
+  /** Runs a program to its end (taskkill on Windows). */
+  runSync: (program: string, args: string[]) => void;
+  /** Sends a signal; a negative pid is a process group. */
+  kill: (pid: number, signal: NodeJS.Signals) => void;
+  systemRoot?: string;
+}
+
+const KILL: KillDeps = {
+  platform: process.platform,
+  runSync: (program, args) => {
+    spawnSync(program, args, { stdio: "ignore" });
+  },
+  kill: (pid, signal) => process.kill(pid, signal),
+  systemRoot: process.env.SystemRoot,
+};
+
 /** Kills a process and everything it started: its group on POSIX, its tree on Windows. */
-function killTree(pid: number): void {
+export function killTree(pid: number, deps: KillDeps = KILL): void {
   try {
-    if (process.platform === "win32") {
-      const taskkill = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "taskkill.exe");
-      spawnSync(taskkill, ["/T", "/F", "/PID", String(pid)], { stdio: "ignore" });
-    } else process.kill(-pid, "SIGKILL");
+    if (deps.platform === "win32") {
+      const taskkill = join(deps.systemRoot ?? "C:\\Windows", "System32", "taskkill.exe");
+      deps.runSync(taskkill, ["/T", "/F", "/PID", String(pid)]);
+    } else deps.kill(-pid, "SIGKILL");
   } catch {
     // Already gone.
   }
