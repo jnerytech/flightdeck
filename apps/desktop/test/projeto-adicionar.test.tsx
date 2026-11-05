@@ -221,6 +221,7 @@ describe("projeto-adicionar: where it is offered", () => {
     );
     await settle(() => screen.queryByRole("button", { name: /Open the board of/ }) !== null);
     await settle(() => screen.queryByRole("button", { name: "Add project" }) !== null);
+    expect(screen.queryByRole("button", { name: "Add project" })).not.toBeNull();
   });
 
   test("a board with projects has a visible Add project button", async () => {
@@ -236,6 +237,7 @@ describe("projeto-adicionar: where it is offered", () => {
       ),
     );
     await settle(() => screen.queryByRole("button", { name: "Add project" }) !== null);
+    expect(screen.queryByRole("button", { name: "Add project" })).not.toBeNull();
   });
 
   test("Cancel and Escape close the dialog without adding anything", async () => {

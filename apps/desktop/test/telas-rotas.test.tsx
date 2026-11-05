@@ -49,6 +49,9 @@ describe("telas-rotas: routes that open a screen", () => {
       const route = store.router.current;
       return route.name === "session" && route.id !== sessionId;
     });
+    const route = store.router.current;
+    expect(route.name).toBe("session");
+    expect(route).not.toMatchObject({ id: sessionId });
   });
 
   test("a project route shows the project page, which says when the host lacks the project", async () => {
@@ -57,6 +60,7 @@ describe("telas-rotas: routes that open a screen", () => {
       store.router.push({ name: "project", host: hostId, projectId: "nope" });
     });
     await settle(() => screen.queryByText("Este projeto não está neste host.") !== null);
+    expect(screen.queryByText("Este projeto não está neste host.")).not.toBeNull();
   });
 
   test("the pin button of an open session pins it and flips to the pressed state", async () => {
@@ -89,6 +93,7 @@ describe("telas-rotas: routes that open a screen", () => {
     await settle(
       () => (screen.queryByLabelText("Pasta") as HTMLInputElement | null)?.value === project,
     );
+    expect((screen.queryByLabelText("Pasta") as HTMLInputElement | null)?.value).toBe(project);
   });
 
   test("a screen whose chunk is not loaded yet shows the loading label until it arrives", async () => {
