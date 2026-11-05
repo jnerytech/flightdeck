@@ -66,6 +66,7 @@ import type {
   WebhookResponse,
 } from "../platform/types.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
+import { BoardWidth } from "./board-select.ts";
 import { budgetLabel } from "./budgets.ts";
 import {
   CLIENT_BUDGET_ALERTS_KEY,
@@ -763,6 +764,7 @@ export class AppStore {
     this.theme = new ThemeController(platform);
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
+    this.boardWidth = new BoardWidth(platform.storage);
     this.i18n = new I18n(platform);
     this.i18n.subscribe(() => this.onLanguage());
     this.state = {
@@ -827,6 +829,8 @@ export class AppStore {
   readonly theme: ThemeController;
   readonly density: DensityController;
   readonly terminalFont: TerminalFontController;
+  /** The board columns' width, one for all, kept across starts (issue #161). */
+  readonly boardWidth: BoardWidth;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** The screen in use and its history (phase 10). */
