@@ -1,5 +1,4 @@
 import type { Card } from "@flightdeck/protocol";
-import { useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Field } from "@/components/layout/form";
 import { Panel } from "@/components/layout/panel";
@@ -9,27 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
-
-/** An edit of a card field and the card text it started from (issue #170). */
-interface Draft {
-  text: string;
-  base: string;
-}
-
-/**
- * The draft once `sent` was saved as `stored`: gone if it is what was sent; a newer edit typed
- * meanwhile stays, now starting from what was saved.
- */
-function settled(draft: Draft | null, sent: string, stored: string): Draft | null {
-  if (draft === null || draft.text === sent) return null;
-  return { text: draft.text, base: stored };
-}
+import { useDraft } from "@/lib/use-draft";
 
 /**
  * One text field of a card and its Save (issue #170). A draft exists only while the person edits;
  * until then the field shows the card as it is now, so a card that arrives after the screen opens
  * (or changes elsewhere) fills it. A draft keeps the card text it started from: a change made
- * elsewhere meanwhile stops a plain Save, says why and offers Use theirs.
+ * elsewhere meanwhile stops a plain Save, says why and offers Use theirs. After a save the field keeps
+ * what was sent until the host's update arrives (#249).
  */
 function CardTextField(props: {
   label: string;
@@ -47,12 +33,9 @@ function CardTextField(props: {
 }) {
   const t = useT();
   const { source } = props;
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const value = draft?.text ?? source;
-  const stale = draft !== null && draft.base !== source;
+  const [value, setValue, saved, { stale, drop }] = useDraft(source);
   // Typing the card's own text back is no edit any more: the field follows the card again.
-  const edit = (text: string) =>
-    setDraft(text === source ? null : { text, base: draft?.base ?? source });
+  const edit = (text: string) => (text === source ? drop() : setValue(text));
   return (
     <Field label={props.label}>
       {(control) => (
@@ -80,16 +63,15 @@ function CardTextField(props: {
             onClick={async () => {
               const sent = value;
               const stored = props.stored(sent);
-              const saved = await props.save(stored);
               // A refused save keeps the edit (the banner says why), and so does a newer edit
               // typed while this one was on its way (it now starts from what was saved).
-              if (saved) setDraft((current) => settled(current, sent, stored));
+              if (await props.save(stored)) saved(sent, stored);
             }}
           >
             {props.saveLabel}
           </ActionButton>
           {stale && (
-            <Button variant="ghost" size="sm" onClick={() => setDraft(null)}>
+            <Button variant="ghost" size="sm" onClick={drop}>
               {t("cardUi.useTheirs")}
             </Button>
           )}
