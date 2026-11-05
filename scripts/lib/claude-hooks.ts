@@ -295,3 +295,32 @@ function findCommit(command: string, cwd: string): FoundCommit | undefined {
   }
   return undefined;
 }
+
+/**
+ * Why a heavy run (the full suite, e2e, the prints, the smokes, the builds) is blocked outside
+ * `bun run slot --` (CLAUDE.md: two at once make the timing tests flaky). `env` is the hook's own
+ * environment: under a slot holder (`FLIGHTDECK_SLOT_HOLDER`) the run is already in the slot.
+ */
+export function slotViolation(
+  command: string,
+  env: Record<string, string | undefined>,
+): string | null {
+  if (env.FLIGHTDECK_SLOT_HOLDER) return null;
+  for (const segment of commandWords(command).split(/[;&|\n]+/)) {
+    const words = segment.trim().split(/\s+/);
+    const i = words.indexOf("bun");
+    if (i < 0) continue;
+    const run = words[i + 1] === "run" ? words[i + 2] : undefined;
+    if (run === "slot") continue;
+    // `bun test` with no file is the whole suite.
+    const wholeSuite =
+      words[i + 1] === "test" && words.slice(i + 2).every((w) => w.startsWith("-"));
+    if (!wholeSuite && !(run && HEAVY.test(run))) continue;
+    const heavy = words.slice(i).join(" ");
+    return `${heavy} is heavy: run it through the slot, \`bun run slot -- ${heavy}\` (CLAUDE.md: two heavy runs at once make the timing tests flaky).`;
+  }
+  return null;
+}
+
+/** The package scripts that run only through the slot (CLAUDE.md). */
+const HEAVY = /^(test|coverage|e2e|demo:shots|smoke(:[\w-]+)?|build:(daemon|desktop))$/;

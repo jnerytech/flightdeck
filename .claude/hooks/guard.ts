@@ -1,9 +1,10 @@
 #!/usr/bin/env bun
 /**
- * PreToolUse (Bash|Edit|Write): blocks staging everything at once (docs/TDD.md), hand edits of
- * generated files, test edits that add .only/.skip/test.todo/toMatchSnapshot, and commits whose
- * subject breaks the format or the TDD order, in the main checkout and in its worktrees. Exit 2 blocks the call and shows
- * the reason to Claude. The rules live in scripts/lib/claude-hooks.ts, with their tests.
+ * PreToolUse (Bash|Edit|Write), in the main checkout and in its worktrees. It blocks staging
+ * everything at once (docs/TDD.md), hand edits of generated files, test edits that add
+ * .only/.skip/test.todo/toMatchSnapshot, commits whose subject breaks the format or the TDD
+ * order, and heavy runs outside `bun run slot --`. Exit 2 blocks the call and shows the reason to
+ * Claude. The rules live in scripts/lib/claude-hooks.ts, with their tests.
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -14,6 +15,7 @@ import {
   commitViolation,
   commitWaived,
   generatedViolation,
+  slotViolation,
   testEditViolation,
 } from "../../scripts/lib/claude-hooks.ts";
 import { logHook } from "./log.ts";
@@ -31,6 +33,7 @@ const input = await Bun.stdin.json().catch(() => null);
 const { command, file_path: filePath } = input?.tool_input ?? {};
 if (typeof command === "string") {
   block("command", commandViolation(command));
+  block("slot", slotViolation(command, process.env));
   const cwd = typeof input.cwd === "string" ? input.cwd : ROOT;
   block(
     "commit",
