@@ -19,14 +19,17 @@ const reasonOf = (promise: Promise<unknown>) =>
 describe("opencode-models", () => {
   test("runCommand gives the output and the exit code, in the folder and environment given", async () => {
     const cwd = realTempDir("fd-oc-run-");
-    const ok = await runCommand(["sh", "-c", 'echo "$FD_X"; pwd'], {
-      cwd,
-      env: { PATH: process.env.PATH ?? "", FD_X: "x1" },
-      timeoutMs: 5_000,
-    });
+    const ok = await runCommand(
+      [process.execPath, "-e", "console.log(process.env.FD_X); console.log(process.cwd())"],
+      {
+        cwd,
+        env: { PATH: process.env.PATH ?? "", FD_X: "x1" },
+        timeoutMs: 5_000,
+      },
+    );
     expect(ok.exitCode).toBe(0);
     expect(ok.stdout.split("\n").slice(0, 2)).toEqual(["x1", cwd]);
-    const failed = await runCommand(["sh", "-c", "exit 3"], {
+    const failed = await runCommand([process.execPath, "-e", "process.exit(3)"], {
       cwd,
       env: { PATH: process.env.PATH ?? "" },
       timeoutMs: 5_000,
