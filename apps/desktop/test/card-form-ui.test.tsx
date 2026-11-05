@@ -22,7 +22,7 @@ afterEach(async () => {
 const settle = waiter(10_000);
 
 /** A card with a sibling it could wait for, open on a host with costs per card (roi). */
-async function openCard(lang: "en" | "pt-BR") {
+async function openCard(lang: "en" | "pt-BR", options: { alone?: boolean } = {}) {
   const d = makeDaemon(cleanups, { roi: true });
   const repo = join(d.root, "shop");
   mkdirSync(repo, { recursive: true });
@@ -36,7 +36,7 @@ async function openCard(lang: "en" | "pt-BR") {
   await settle(() => store.getState().hosts[0]?.status === "online");
   const hostId = store.getState().hosts[0]?.id ?? "";
   const project = await store.hostCommand(hostId, "project.add", { path: repo });
-  d.board.createCard(project?.id ?? "", { title: "Cart API", description: "" });
+  if (!options.alone) d.board.createCard(project?.id ?? "", { title: "Cart API", description: "" });
   const card = d.board.createCard(project?.id ?? "", { title: "Cart screen", description: "" });
   await act(async () => {
     store.router.push({
@@ -110,6 +110,58 @@ for (const [lang, t] of [
       expect(details?.contains(screen.queryByLabelText(t.roiUi.cardHours))).toBe(true);
       expect(run?.contains(screen.queryByLabelText(t.cardUi.workflow))).toBe(true);
       expect(run?.contains(screen.queryByRole("button", { name: t.cardUi.start }))).toBe(true);
+    });
+
+    // OpenCode branch review M1: after one blocker was added the picker showed its placeholder but
+    // Add stayed on, and a click did nothing.
+    test("after a blocker is added, the picker is back on its placeholder and Add is off again", async () => {
+      await openCard(lang);
+      await settle(() => screen.queryByLabelText(t.deps.addLabel) !== null);
+      const deps = screen.queryByRole("region", { name: t.deps.title }) as HTMLElement;
+      const add = () =>
+        within(deps).queryByRole("button", { name: t.deps.add }) as HTMLButtonElement | null;
+      const picker = screen.queryByLabelText(t.deps.addLabel) as HTMLSelectElement;
+      await act(async () => {
+        fireEvent.change(picker, { target: { value: picker.options[1]?.value ?? "" } });
+      });
+      await act(async () => {
+        fireEvent.click(add() as HTMLButtonElement);
+      });
+      // The chain lists it (the select's option has the same text, so wait for its remove button).
+      const remove = t.deps.remove.replace("{title}", "Cart API");
+      await settle(() => within(deps).queryByRole("button", { name: remove }) !== null);
+      expect((screen.queryByLabelText(t.deps.addLabel) as HTMLSelectElement).value).toBe("");
+      expect(add()?.disabled).toBe(true);
+    });
+
+    // OpenCode branch review m1: with no other card to wait for, the reason sent the person to
+    // pick something that does not exist.
+    test("with no other card to wait for, the picker is off and says so", async () => {
+      await openCard(lang, { alone: true });
+      await settle(() => screen.queryByLabelText(t.deps.addLabel) !== null);
+      const picker = screen.queryByLabelText(t.deps.addLabel) as HTMLSelectElement;
+      expect(picker.disabled).toBe(true);
+      expect(document.body.textContent ?? "").toContain(t.deps.noneToPick);
+    });
+
+    // OpenCode branch review M2: the adjust box and the workflow fields had only an aria-label,
+    // and the blockers sat above the Details panel.
+    test("every field on the card screen has a visible label, and the panels read Details, Blocked by, Run", async () => {
+      await openCard(lang);
+      await settle(() => screen.queryByLabelText(t.cardUi.description) !== null);
+      const unlabelled = [
+        ...document.querySelectorAll<HTMLElement>("main input, main select, main textarea"),
+      ]
+        .filter((el) => (el as HTMLInputElement).type !== "checkbox" || !el.closest("label"))
+        .filter((el) => !el.id || !document.querySelector(`label[for="${el.id}"]`))
+        .map((el) => el.getAttribute("aria-label") ?? el.getAttribute("placeholder") ?? el.tagName);
+      expect(unlabelled).toEqual([]);
+      const order = [...document.querySelectorAll("main section[aria-label]")]
+        .map((el) => el.getAttribute("aria-label"))
+        .filter((name) =>
+          [t.cardUi.detailsTitle, t.deps.title, t.cardUi.runTitle].includes(name ?? ""),
+        );
+      expect(order).toEqual([t.cardUi.detailsTitle, t.deps.title, t.cardUi.runTitle]);
     });
   });
 }
