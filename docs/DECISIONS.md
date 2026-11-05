@@ -3546,3 +3546,9 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   it would hold every project's program at once, the opposite of what the lane needs.
 - **The workspaces' own `typecheck` scripts stay** for a run inside one package; a test checks
   that `PROJECTS` lists every workspace that has one.
+- **The capacity follows the memory (#216 follow-up).** With 8 Claude sessions (about 3.4 GB)
+  and the bun tests, two tsc runs still pushed the Pi to 1.5 GB free and a memory pressure of
+  14%. The lane now opens one place per 2.5 GB of `MemAvailable`, between 1 and 2, read from
+  `/proc/meminfo` on every try (`lanePlaces`); off Linux it keeps 2, and
+  `FLIGHTDECK_LANE_PLACES` overrides the count. A run already in a place the lane no longer opens
+  finishes normally; only new runs see the smaller lane.
