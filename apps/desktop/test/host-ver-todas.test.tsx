@@ -91,3 +91,16 @@ describe("host-ver-todas: See all sessions looks at one host without rewriting t
     expect(store.hubFilter()).toMatchObject({ host: "", pinnedOnly: true });
   });
 });
+
+describe("host-ver-todas: a project on the host page opens (issue #207)", () => {
+  test("clicking a project's card on the host page opens that project's page", async () => {
+    const { store, hostId } = await setup();
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /^Abrir (o projeto )?repo/ })).not.toBeNull(),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^Abrir (o projeto )?repo/ }));
+    });
+    expect(store.router.current).toMatchObject({ name: "project", host: hostId });
+  });
+});
