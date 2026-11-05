@@ -8,7 +8,7 @@ import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { waiter } from "./wait.ts";
 
 registerDom();
-const { act, cleanup, render, within } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
@@ -82,6 +82,23 @@ for (const [lang, t] of [
       await settle(() => screen.queryByLabelText(t.deps.addLabel) !== null);
       const picker = screen.queryByLabelText(t.deps.addLabel) as HTMLSelectElement | null;
       expect(picker?.options[0]?.textContent).toBe(t.deps.pick);
+    });
+
+    // OpenCode review R10: Add with nothing picked did nothing, silently.
+    test("Add a blocker is off with a reason until a card is picked", async () => {
+      await openCard(lang);
+      await settle(() => screen.queryByLabelText(t.deps.addLabel) !== null);
+      const deps = screen.queryByRole("region", { name: t.deps.title }) as HTMLElement;
+      const add = () =>
+        within(deps).queryByRole("button", { name: t.deps.add }) as HTMLButtonElement | null;
+      expect(add()?.disabled).toBe(true);
+      const reason = add()?.getAttribute("aria-describedby") ?? "";
+      expect(document.getElementById(reason)?.textContent).toBe(t.deps.pickFirst);
+      const picker = screen.queryByLabelText(t.deps.addLabel) as HTMLSelectElement;
+      await act(async () => {
+        fireEvent.change(picker, { target: { value: picker.options[1]?.value ?? "" } });
+      });
+      expect(add()?.disabled).toBe(false);
     });
 
     test("the fields sit in a Details section and the start controls in a Run section", async () => {
