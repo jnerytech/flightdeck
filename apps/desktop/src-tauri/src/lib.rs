@@ -206,7 +206,7 @@ async fn vault_pick_file(
         let path = picked.into_path().map_err(|e| e.to_string())?;
         // Bounded while reading, so a file that grows (or a device) cannot get past the cap.
         let mut text = String::new();
-        std::fs::File::open(&path)
+        std::fs::File::open(&path) // NOSONAR: runs inside spawn_blocking_result, on the blocking pool
             .map_err(|e| e.to_string())?
             .take(PICKED_FILE_MAX_BYTES + 1)
             .read_to_string(&mut text)
@@ -506,8 +506,11 @@ async fn vault_remove_file(path: String, state: State<'_, PickedFile>) -> Result
         picked.take()
     };
     if let Some(stored) = stored {
-        spawn_blocking_result(move || std::fs::remove_file(&stored).map_err(|e| e.to_string()))
-            .await?;
+        spawn_blocking_result(move || {
+            std::fs::remove_file(&stored) // NOSONAR: inside spawn_blocking_result, on the blocking pool
+                .map_err(|e| e.to_string())
+        })
+        .await?;
     }
     Ok(())
 }
