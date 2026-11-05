@@ -35,6 +35,8 @@ function fake(
     pushed?: string[];
     fail?: RegExp;
     env?: Record<string, string>;
+    /** The message GitHub's GraphQL answers with when it refuses. */
+    graphqlError?: string;
   } = {},
 ) {
   const prs = opts.prs ?? [];
@@ -87,6 +89,7 @@ function fake(
         return ok(
           JSON.stringify({
             number: pr.number,
+            node_id: `PR_node${pr.number}`,
             title: pr.title,
             state: pr.state,
             draft: pr.draft,
@@ -94,6 +97,11 @@ function fake(
             base: { ref: pr.base },
           }),
         );
+      }
+      if (args.includes("graphql")) {
+        if (opts.graphqlError)
+          return { code: 1, stdout: JSON.stringify({ errors: [{ message: opts.graphqlError }] }) };
+        return ok(`{"data":{"enablePullRequestAutoMerge":{"clientMutationId":null}}}`);
       }
       m = /commits\/(\w+)\/check-runs/.exec(path);
       if (m) {
@@ -372,8 +380,65 @@ describe("pr-flow: update and merge", () => {
     expect(noRules.writes).toEqual([]);
   });
 
+  test("auto turns on GitHub's auto-merge with a merge commit, by the PR's node id, for any session (#271)", async () => {
+    const f = fake({ prs: [pr(12, "a")] });
+    expect(await prFlow(["auto", "12"], f.deps)).toBe(0);
+    expect(f.writes).toHaveLength(1);
+    expect(f.writes[0]).toContain("api -X POST graphql");
+    expect(f.writes[0]).toContain("enablePullRequestAutoMerge");
+    expect(f.writes[0]).toContain("mergeMethod: MERGE");
+    expect(f.writes[0]).toContain("-f id=PR_node12");
+    expect(f.out()).toContain("#12 merges by itself");
+  });
+
+  test("auto refuses a draft or a stacked PR, and writes nothing (#271)", async () => {
+    for (const [p, reason] of [
+      [pr(16, "wip", { draft: true }), "a draft"],
+      [pr(20, "b", { base: "a" }), "onto a, which main does not have yet"],
+    ] as const) {
+      const f = fake({ prs: [p], behind: { "main...a": 2 } });
+      expect(await prFlow(["auto", String(p.number)], f.deps)).toBe(2);
+      expect(f.writes).toEqual([]);
+      expect(f.out()).toContain(reason);
+    }
+  });
+
+  test("auto retargets to main a stacked PR whose parent main already has, then turns it on (#271)", async () => {
+    const f = fake({ prs: [pr(20, "b", { base: "a" })], behind: { "main...a": 0 } });
+    expect(await prFlow(["auto", "20"], f.deps)).toBe(0);
+    expect(f.writes[0]).toBe(`api -X PATCH ${R}/pulls/20 -f base=main`);
+    expect(f.writes[1]).toContain("enablePullRequestAutoMerge");
+    const refused = fake({
+      prs: [pr(20, "b", { base: "a" })],
+      behind: { "main...a": 0 },
+      fail: /PATCH/,
+    });
+    expect(await prFlow(["auto", "20"], refused.deps)).toBe(1);
+    expect(refused.writes.filter((w) => w.includes("graphql"))).toEqual([]);
+  });
+
+  test("auto never retargets a stacked PR when GitHub cannot compare its parent with main (#271)", async () => {
+    const f = fake({ prs: [pr(20, "b", { base: "a" })], fail: /compare/ });
+    expect(await prFlow(["auto", "20"], f.deps)).toBe(2);
+    expect(f.writes).toEqual([]);
+    expect(f.out()).toContain("cannot compare a with main");
+  });
+
+  test("auto that GitHub refuses fails with its reason; an unreadable PR fails too (#271)", async () => {
+    const refused = fake({ prs: [pr(12, "a")], graphqlError: "Pull request is in clean status" });
+    expect(await prFlow(["auto", "12"], refused.deps)).toBe(1);
+    expect(refused.out()).toContain("Pull request is in clean status");
+    expect(refused.out()).toContain(
+      "already mergeable: the coordinator merges it (bun run pr -- merge 12)",
+    );
+    const silent = fake({ prs: [pr(12, "a")], fail: /graphql/ });
+    expect(await prFlow(["auto", "12"], silent.deps)).toBe(1);
+    expect(silent.out()).toContain("GitHub refused auto-merge for #12");
+    expect(await prFlow(["auto", "99"], fake().deps)).toBe(1);
+  });
+
   test("an unknown command or a missing argument is the usage, exit 2", async () => {
-    for (const argv of [[], ["nope"], ["open"], ["update"], ["merge", "x"]]) {
+    for (const argv of [[], ["nope"], ["open"], ["update"], ["merge", "x"], ["auto"]]) {
       const f = fake();
       expect(await prFlow(argv, f.deps)).toBe(2);
       expect(f.out()).toContain("usage: bun run pr --");
