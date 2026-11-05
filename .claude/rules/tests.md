@@ -10,7 +10,10 @@ paths:
 - Red by assertion: a stub with the real signatures returns wrong values (`""`, `[]`, `false`,
   `null`), never `throw`. Run one file with `bun --config=bunfig.area.toml test <file>`.
 - No `.only`, `.skip`, `test.todo`, and no `toMatchSnapshot` on the first run (the guard hook
-  refuses adding them). `test.skipIf(<platform capability>)` is fine. `toContain` on something that
+  refuses adding them). `test.skipIf(<platform capability>)` is fine. A test that is unstable off
+  Ubuntu is `test.skipIf(notLinux)` (`scripts/test/not-linux.ts`) with `// unstable: #<issue> <reason>`
+  on its line or the line above, the fix goes to that issue, and the hook and the unstable-skip
+  ratchet (at most 5) check it. `toContain` on something that
   may be `undefined` takes `?? ""`.
 - Nothing real: the preload puts a sentinel `claude` first on the PATH and points `HOME` at a
   temporary folder. Other CLIs (`gh`, `az`, `ssh`) are fakes on the test PATH, with a `.cmd` twin
