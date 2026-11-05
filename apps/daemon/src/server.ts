@@ -489,14 +489,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "watch");
   }
 
-  function teams(): Teams {
-    return need(opts, "teams");
-  }
-
-  function messaging(): Messaging {
-    return need(opts, "messaging");
-  }
-
   function idle(): Idle {
     return need(opts, "idle");
   }
@@ -795,28 +787,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { cardId, variantId, confirm } = command.payload;
         return ok(command.type, await board().chooseVariant(cardId, variantId, confirm === true));
       }
-      case "teams.list":
-        return ok(command.type, { teams: teams().list(command.payload.projectId) });
-      case "teams.create":
-        return ok(command.type, await teams().create(command.payload));
-      case "teams.update":
-        return ok(command.type, await teams().update(command.payload));
-      case "teams.pause":
-        return ok(command.type, teams().pause(command.payload.team));
-      case "teams.resume":
-        return ok(command.type, teams().resume(command.payload.team));
-      case "teams.close":
-        return ok(
-          command.type,
-          teams().close(command.payload.team, command.payload.confirm === true),
-        );
-      case "teams.message":
-        return ok(command.type, teams().message(command.payload.team, command.payload.text));
-      case "teams.status": {
-        const { team, as } = command.payload;
-        const asker = as ? messaging().whoIs(as).id : undefined;
-        return ok(command.type, teams().status(team, asker));
-      }
       case "watch.settings":
         return ok(
           command.type,
@@ -838,67 +808,14 @@ export function startServer(opts: ServerOptions): RunningServer {
         ws.data.unwatchPrs = service.watch((frame) => send(ws, frame));
         return ok(command.type);
       }
-      case "teams.watch": {
-        const service = teams();
-        ws.data.unwatchTeams?.();
-        ws.data.unwatchTeams = service.watch((frame) => send(ws, frame));
-        return ok(command.type);
-      }
-      case "messages.send":
-        return ok(command.type, messaging().send(command.payload));
-      case "messages.list":
-        return ok(command.type, { messages: messaging().list(command.payload) });
-      case "messages.sessions":
-        return ok(command.type, { sessions: messaging().sessions(command.payload.as) });
-      case "messages.read": {
-        const { as, session, last } = command.payload;
-        return ok(command.type, await messaging().read(as, session, last));
-      }
-      case "messages.relay":
-        return ok(command.type, messaging().relay(command.payload.message));
-      case "messages.relayed": {
-        const { id, ...result } = command.payload;
-        messaging().relayed(id, result);
-        return ok(command.type);
-      }
-      case "messages.directory":
-        return ok(command.type, { host: opts.hostName, sessions: messaging().directory() });
       case "names.list":
         return ok(command.type, {
           names: names()
             .list()
             .map(({ id, ...name }) => ({ sessionId: id, ...name })),
         });
-      case "messages.peers":
-        messaging().setPeers(command.payload.host, command.payload.sessions);
-        return ok(command.type);
-      case "messages.watch": {
-        const service = messaging();
-        const watched = idle();
-        ws.data.unwatchMessages?.();
-        const stopMessages = service.watch((frame) => send(ws, frame));
-        const stopIdle = watched.watch((frame) => send(ws, frame));
-        ws.data.unwatchMessages = () => {
-          stopMessages();
-          stopIdle();
-        };
-        return ok(command.type);
-      }
       case "idle.subscribe":
         return ok(command.type, idle().subscribe(command.payload));
-      case "messaging.rules.get":
-        return ok(command.type, {
-          policy: messaging().getPolicy() as unknown as Record<string, unknown>,
-          paused: messaging().pausedPairs(),
-        });
-      case "messaging.rules.set": {
-        const { policy, unpause } = command.payload;
-        const set = messaging().setPolicy(policy, unpause);
-        return ok(command.type, {
-          policy: set.policy as unknown as Record<string, unknown>,
-          paused: set.paused,
-        });
-      }
       case "automation.list":
         return ok(command.type, { automations: automations().list(command.payload.projectId) });
       case "automation.save":
