@@ -9,6 +9,7 @@
  * is written in it, and the next run sweeps the `fd-run-*` folders whose process is gone.
  */
 import {
+  chmodSync,
   existsSync,
   mkdtempSync,
   readdirSync,
@@ -55,6 +56,12 @@ function empty(dir: string, deadline: number, now: () => number, keep?: string):
         if (empty(path, deadline, now)) rmdirSync(path);
         else clear = false;
       } else {
+        // A read-only file (git's objects) is not removable on Windows until it is writable.
+        try {
+          chmodSync(path, 0o666);
+        } catch {
+          // Not ours to change: the removal below says whether it matters.
+        }
         unlinkSync(path);
       }
     } catch {
@@ -84,13 +91,25 @@ function remove(dir: string, budgetMs: number, now: () => number, keep?: string)
 
 /** The `fd-run-*` folders in `base` whose run left its pid and is gone. A folder with no pid yet is starting. */
 function sweep(base: string, alive: (pid: number) => boolean): void {
-  for (const name of readdirSync(base)) {
-    if (!name.startsWith(PREFIX)) continue;
-    const pidFile = join(base, name, "pid");
-    if (!existsSync(pidFile)) continue;
-    const pid = Number(readFileSync(pidFile, "utf8").trim());
-    if (Number.isInteger(pid) && pid > 0 && alive(pid)) continue;
-    remove(join(base, name), REMOVE_BUDGET_MS, Date.now, "pid");
+  // Never throws: starting processes sweep the same folders at once, so a pid file can vanish or be
+  // held between one look and the next (EPERM or EBUSY on Windows), and the preload must not die.
+  // One dead folder per start: the budget is spent once, and the next start takes the next.
+  try {
+    for (const name of readdirSync(base)) {
+      if (!name.startsWith(PREFIX)) continue;
+      const pidFile = join(base, name, "pid");
+      let pid: number;
+      try {
+        pid = Number(readFileSync(pidFile, "utf8").trim());
+      } catch {
+        continue;
+      }
+      if (Number.isInteger(pid) && pid > 0 && alive(pid)) continue;
+      remove(join(base, name), REMOVE_BUDGET_MS, Date.now, "pid");
+      return;
+    }
+  } catch {
+    // The temp folder could not be listed: nothing to sweep.
   }
 }
 

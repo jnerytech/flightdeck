@@ -3559,3 +3559,9 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   That is accepted: CI minutes are free for this public repository, and the two runs check
   different trees.
 - **Based on `rc/0363`,** which adds `workflow_dispatch` (#129) to the same `on:` block.
+
+## v0.36.3 review minors (#222): test infrastructure
+
+- **m4, temp-run.** The sweep never throws (the whole of it is guarded, and each pid file is read on its own), sweeps at most one dead folder per process start (the 3 s budget is spent once, and the next start takes the next folder), and clears the read-only attribute before it removes a file (git's objects on Windows). Not done: a CI step that counts the `fd-run-*` folders left after the Windows run (it needs a Windows runner to check), and the `pidAlive` fix for containers that share a TEMP across PID namespaces (the test runs here are not containerised with a shared TEMP; revisit if one appears).
+- **m8, slot.** The nested test starts `process.execPath -e` instead of `echo`, a child under the slot is told `FLIGHTDECK_SLOT_LOCK` (it would otherwise derive another lock from its own temp folder and queue behind its own parent), and the log line is cut to one line instead of carrying a `NOSONAR`.
+- **m10, PR runner: rejected, already covered.** `apps/daemon/test/pr.test.ts` still drives `new GithubCli()` and `new AzureDevOpsCli()` through the default `runCommand` and the fakes' real `.cmd` shim in the status and create tests (the other flow tests use the in-process `fake.run` on purpose, for speed on Windows). The `input` argument is not used by any PR call of the two providers today, so passing it through `run` would test nothing.
