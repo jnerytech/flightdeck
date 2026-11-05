@@ -4028,7 +4028,8 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   WebSocket, `.listen(`). Patterns, not a parser: they err toward asking for a review. The diff's
   file headers are read only before a file's first hunk (an added line can look like one), names
   come unquoted, and a merge counts by the files it edited itself. It is a guard against slips,
-  not a security boundary: the trailer is the session's own word that the review ran.
+  not a security boundary: the trailer is the session's own word that the review ran. A name git
+  still quotes (one with a quote, a backslash or a control character) is skipped.
 - **The verdict is a commit trailer,** `Security-Reviewed: <summary>`, on a commit at or after the
   last commit that touched a risky file (an empty `chore(security)` commit is enough). A later
   risky commit needs a new review. A trailer lives with the branch, so `--verify` and any receiver
@@ -4039,5 +4040,6 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   session's own environment, never from the repository, and is split on spaces with no shell. A
   hook that fails, cannot start or runs past two minutes only prints a line: the PR is open either
   way. Its program is found by Bun's own PATH lookup, not `whichOnPath`: the environment, and the
-  PATH with it, are the session's own.
+  PATH with it, are the session's own. The number, branch and base come last, as positional
+  arguments: a hook script must not read them as options.
 
