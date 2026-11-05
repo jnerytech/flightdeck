@@ -1617,68 +1617,82 @@ export class AppStore {
     await Promise.all(
       this.state.hosts
         .filter((host) => host.status === "online")
-        .map(async (host) => {
-          const conn = this.connections.get(host.id) as HostConnection;
-          const named = hasFeature(host.hostInfo?.features, "names", false);
-          const withBackground = hasFeature(host.hostInfo?.features, "bg", false);
-          const [managed, history, external, standard, background] = await Promise.all([
-            quiet(conn.request("session.list", {})),
-            quiet(conn.request("history.list", { limit: HISTORY_LIST_LIMIT })),
-            quiet(conn.request("external.list", {})),
-            named ? quiet(conn.request("names.list", {})) : null,
-            withBackground ? quiet(conn.request("bg.list", {})) : null,
-          ]);
-          // Only what differs from what the state holds is replaced, so a refresh that finds the
-          // same lists tells nobody (the screens compare by reference).
-          const meta = { ...this.state.meta };
-          const externals = { ...this.state.externals };
-          let metaChanged = false;
-          let externalsChanged = false;
-          const putMeta = (key: string, value: SessionMeta) => {
-            if (sameJson(meta[key], value)) return;
-            meta[key] = value;
-            metaChanged = true;
-          };
-          for (const s of [...(managed?.sessions ?? []), ...(history?.sessions ?? [])]) {
-            if (s.claudeSessionId && s.meta)
-              putMeta(sessionKey(host.id, s.claudeSessionId), s.meta);
-          }
-          for (const s of external?.sessions ?? []) {
-            const key = sessionKey(host.id, s.claudeSessionId);
-            // A list read before a hook but answered after its frame is older than what the
-            // frame put in the state: it must not undo it.
-            const held = externals[key];
-            const older =
-              held !== undefined && Date.parse(s.lastEventAt) < Date.parse(held.lastEventAt);
-            if (!older && !sameJson(held, s)) {
-              externals[key] = s;
-              externalsChanged = true;
-            }
-            if (s.meta) putMeta(key, s.meta);
-          }
-          // A request that failed (`null`: a busy host, a timeout) says nothing about the list, so
-          // the one the state holds stays; an empty answer is the only way a list empties.
-          const before = this.state.hub[host.id];
-          const lists = {
-            managed: managed ? managed.sessions : (before?.managed ?? []),
-            history: history ? history.sessions : (before?.history ?? []),
-          };
-          const standardNames = standard ? standard.names : (this.state.names[host.id] ?? []);
-          const patch: Partial<AppState> = {};
-          if (!sameJson(this.state.hub[host.id], lists)) {
-            patch.hub = { ...this.state.hub, [host.id]: lists };
-          }
-          if (!sameJson(this.state.names[host.id], standardNames)) {
-            patch.names = { ...this.state.names, [host.id]: standardNames };
-          }
-          if (background && !sameJson(this.state.background[host.id], background)) {
-            patch.background = { ...this.state.background, [host.id]: background };
-          }
-          if (metaChanged) patch.meta = meta;
-          if (externalsChanged) patch.externals = externals;
-          if (Object.keys(patch).length > 0) this.update(patch);
-        }),
+        .map((host) => this.refreshHost(host)),
     );
+  }
+
+  /** The session lists of one online host, read and folded into the state when they changed. */
+  private async refreshHost(host: HostView): Promise<void> {
+    const conn = this.connections.get(host.id) as HostConnection;
+    const named = hasFeature(host.hostInfo?.features, "names", false);
+    const withBackground = hasFeature(host.hostInfo?.features, "bg", false);
+    const [managed, history, external, standard, background] = await Promise.all([
+      quiet(conn.request("session.list", {})),
+      quiet(conn.request("history.list", { limit: HISTORY_LIST_LIMIT })),
+      quiet(conn.request("external.list", {})),
+      named ? quiet(conn.request("names.list", {})) : null,
+      withBackground ? quiet(conn.request("bg.list", {})) : null,
+    ]);
+    const patch: Partial<AppState> = this.changedMeta(host.id, managed, history, external);
+    // A request that failed (`null`: a busy host, a timeout) says nothing about the list, so
+    // the one the state holds stays; an empty answer is the only way a list empties.
+    const before = this.state.hub[host.id];
+    const lists = {
+      managed: managed ? managed.sessions : (before?.managed ?? []),
+      history: history ? history.sessions : (before?.history ?? []),
+    };
+    const standardNames = standard ? standard.names : (this.state.names[host.id] ?? []);
+    if (!sameJson(this.state.hub[host.id], lists)) {
+      patch.hub = { ...this.state.hub, [host.id]: lists };
+    }
+    if (!sameJson(this.state.names[host.id], standardNames)) {
+      patch.names = { ...this.state.names, [host.id]: standardNames };
+    }
+    if (background && !sameJson(this.state.background[host.id], background)) {
+      patch.background = { ...this.state.background, [host.id]: background };
+    }
+    if (Object.keys(patch).length > 0) this.update(patch);
+  }
+
+  /**
+   * The `meta` and `externals` of the state with what the lists say, each only when it differs from
+   * what the state holds, so a refresh that finds the same lists tells nobody (the screens compare
+   * by reference).
+   */
+  private changedMeta(
+    hostId: string,
+    managed: { sessions: Array<{ claudeSessionId: string | null; meta?: SessionMeta }> } | null,
+    history: { sessions: Array<{ claudeSessionId: string | null; meta?: SessionMeta }> } | null,
+    external: { sessions: ExternalSession[] } | null,
+  ): Partial<AppState> {
+    const meta = { ...this.state.meta };
+    const externals = { ...this.state.externals };
+    let metaChanged = false;
+    let externalsChanged = false;
+    const putMeta = (key: string, value: SessionMeta) => {
+      if (sameJson(meta[key], value)) return;
+      meta[key] = value;
+      metaChanged = true;
+    };
+    for (const s of [...(managed?.sessions ?? []), ...(history?.sessions ?? [])]) {
+      if (s.claudeSessionId && s.meta) putMeta(sessionKey(hostId, s.claudeSessionId), s.meta);
+    }
+    for (const s of external?.sessions ?? []) {
+      const key = sessionKey(hostId, s.claudeSessionId);
+      // A list read before a hook but answered after its frame is older than what the
+      // frame put in the state: it must not undo it.
+      const held = externals[key];
+      const older = held !== undefined && Date.parse(s.lastEventAt) < Date.parse(held.lastEventAt);
+      if (!older && !sameJson(held, s)) {
+        externals[key] = s;
+        externalsChanged = true;
+      }
+      if (s.meta) putMeta(key, s.meta);
+    }
+    return {
+      ...(metaChanged ? { meta } : {}),
+      ...(externalsChanged ? { externals } : {}),
+    };
   }
 
   /** Renames, pins or archives a session (managed or external) of a host. */
@@ -2254,20 +2268,24 @@ export class AppStore {
         () => {},
       );
     }
-    if (status !== "online") {
-      for (const [key, listeners] of this.terminalListeners) {
-        if (key.startsWith(`${hostId}|`)) for (const listener of listeners) listener.offline();
-      }
+    if (status !== "online") this.tellTerminalsOffline(hostId);
+    if (status === "connecting") this.dropPartialText(hostId);
+  }
+
+  /** The terminals of the host are told it is gone. */
+  private tellTerminalsOffline(hostId: string): void {
+    for (const [key, listeners] of this.terminalListeners) {
+      if (key.startsWith(`${hostId}|`)) for (const listener of listeners) listener.offline();
     }
-    if (status === "connecting") {
-      // Partial text from before the drop will never be completed by a delta; drop it.
-      const sessions = { ...this.state.sessions };
-      for (const key of Object.keys(sessions)) {
-        if (key.startsWith(`${hostId}/`))
-          sessions[key] = endStreaming(sessions[key] as SessionState);
-      }
-      this.update({ sessions });
+  }
+
+  /** Partial text from before the drop will never be completed by a delta; drop it. */
+  private dropPartialText(hostId: string): void {
+    const sessions = { ...this.state.sessions };
+    for (const key of Object.keys(sessions)) {
+      if (key.startsWith(`${hostId}/`)) sessions[key] = endStreaming(sessions[key] as SessionState);
     }
+    this.update({ sessions });
   }
 
   /**
@@ -3413,6 +3431,46 @@ export class AppStore {
   }
 
   /**
+   * Sends one host the rules of one secret when the scope changed what it holds. Returns the name of
+   * the client whose projects changed while it stays scoped (so a widening is said), else null.
+   */
+  private async pushScopeTo(
+    host: HostView,
+    secret: SecretMeta,
+    rules: unknown[],
+    text: string,
+  ): Promise<string | null> {
+    const key = `${host.id}/${secret.id}`;
+    const before = this.vaultScopeSent.get(key);
+    const scoped = text.includes(SCOPE_RULE_PREFIX);
+    // Nothing of this secret was sent by the scope, and none is now: leave it alone.
+    if (before === undefined ? !scoped : before === text) return null;
+    const result = await this.hostRequest(host.id, "vault.rules.set", {
+      secretId: secret.id,
+      tags: secret.tags,
+      rules,
+    });
+    if (!result.ok) {
+      // Not held in its client on that host: said, not left to be found out.
+      const client = scopingClient(secret, this.state.clientList);
+      this.fail(
+        new Error(result.code),
+        this.i18n.t("clients.scopeRefused", {
+          host: host.name,
+          name: client?.name ?? "",
+          secret: secret.name,
+          message: result.message,
+        }),
+      );
+      return null;
+    }
+    this.vaultScopeSent.set(key, text);
+    if (!scoped || !before?.includes(SCOPE_RULE_PREFIX)) return null;
+    const client = this.state.clientList.find((c) => text.includes(`${SCOPE_RULE_PREFIX}${c.id}:`));
+    return client?.name ?? null;
+  }
+
+  /**
    * Sends the hosts what changed in the rules of scoped secrets: a client's projects came or went,
    * or scope was turned on or off (the own rules go back). A change in the projects of a client
    * that stays scoped says so, so a widening is never silent.
@@ -3425,37 +3483,8 @@ export class AppStore {
       const text = JSON.stringify(rules);
       for (const host of this.state.hosts) {
         if (host.status !== "online" || !secret.allowedHosts.includes(host.id)) continue;
-        const key = `${host.id}/${secret.id}`;
-        const before = this.vaultScopeSent.get(key);
-        const scoped = text.includes(SCOPE_RULE_PREFIX);
-        // Nothing of this secret was sent by the scope, and none is now: leave it alone.
-        if (before === undefined ? !scoped : before === text) continue;
-        const result = await this.hostRequest(host.id, "vault.rules.set", {
-          secretId: secret.id,
-          tags: secret.tags,
-          rules,
-        });
-        if (!result.ok) {
-          // Not held in its client on that host: said, not left to be found out.
-          const client = scopingClient(secret, this.state.clientList);
-          this.fail(
-            new Error(result.code),
-            this.i18n.t("clients.scopeRefused", {
-              host: host.name,
-              name: client?.name ?? "",
-              secret: secret.name,
-              message: result.message,
-            }),
-          );
-          continue;
-        }
-        this.vaultScopeSent.set(key, text);
-        if (scoped && before?.includes(SCOPE_RULE_PREFIX)) {
-          const client = this.state.clientList.find((c) =>
-            text.includes(`${SCOPE_RULE_PREFIX}${c.id}:`),
-          );
-          if (client) changed.add(client.name);
-        }
+        const widened = await this.pushScopeTo(host, secret, rules, text);
+        if (widened) changed.add(widened);
       }
     }
     for (const name of changed) this.success(this.i18n.t("clients.scopeChanged", { name }));
