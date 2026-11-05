@@ -206,7 +206,7 @@ export async function runAction(
 
     let proc: ReturnType<typeof Bun.spawn>;
     try {
-      proc = Bun.spawn(argv, {
+      proc = (opts.spawn ?? Bun.spawn)(argv, {
         cwd: action.cwd ? resolve(opts.base, fill(action.cwd)) : opts.base,
         env: { ...buildChildEnv(opts.baseEnv ?? process.env, false), ...env },
         stdin: "ignore",
@@ -220,7 +220,8 @@ export async function runAction(
       });
     }
     let timedOut = false;
-    const timer = setTimeout(() => {
+    const clock = opts.timer ?? { set: setTimeout, clear: clearTimeout as (h: unknown) => void };
+    const timer = clock.set(() => {
       timedOut = true;
       proc.kill();
     }, timeoutMs);
@@ -229,7 +230,7 @@ export async function runAction(
       capture(proc.stderr as ReadableStream<Uint8Array>),
       proc.exited,
     ]);
-    clearTimeout(timer);
+    clock.clear(timer);
     return {
       exitCode: code,
       durationMs: Math.round(performance.now() - started),

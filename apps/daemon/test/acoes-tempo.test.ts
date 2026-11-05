@@ -49,6 +49,11 @@ function fakes() {
   return { spawn, spawned, killed, timers, cleared, timer, finish: () => end(0), release };
 }
 
+/** Yields until the action has started its program (it prepares a folder first). */
+const started = async (f: { spawned: string[][] }) => {
+  while (f.spawned.length === 0) await Bun.sleep(0);
+};
+
 const make = () => {
   const { action, errors } = validateAction({
     name: "demorada",
@@ -74,7 +79,7 @@ describe("acoes-tempo: the time limit is a timer the test moves, not wall-clock 
       },
     );
     // Nothing has been killed while the timer has not fired.
-    await Promise.resolve();
+    await started(f);
     expect(f.spawned).toHaveLength(1);
     expect(f.killed).toEqual([]);
     f.timers[0]?.();
@@ -97,7 +102,7 @@ describe("acoes-tempo: the time limit is a timer the test moves, not wall-clock 
         timer: f.timer,
       },
     );
-    await Promise.resolve();
+    await started(f);
     f.release();
     f.finish();
     const result = await run;
