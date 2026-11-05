@@ -1515,7 +1515,13 @@ export interface DepResult {
    * How to install or upgrade it, per operating system: a package-manager command where one exists,
    * and the official install page. Never a download piped into a shell.
    */
-  fix: Array<{ os: "linux" | "darwin" | "win32"; command?: string; url?: string }>;
+  fix: Array<{
+    os: "linux" | "darwin" | "win32";
+    command?: string;
+    url?: string;
+    /** What to know before running it: the app words each code in both languages. */
+    note?: "elevated" | "noSystemd";
+  }>;
 }
 
 /** What `deps.check` answers. */

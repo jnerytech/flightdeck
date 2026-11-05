@@ -58,9 +58,12 @@ function setup(
     checkedAt?: number | null;
     deps?: DepsResult | null;
     error?: string | null;
+    lang?: "en" | "pt-BR";
   } = {},
 ) {
-  const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
+  const store = new AppStore(memoryPlatform(false, options.lang ?? "en").platform, {
+    baseDelayMs: 600_000,
+  });
   store.i18n.start();
   store.now = () => NOW;
   const calls: string[] = [];
@@ -230,5 +233,36 @@ describe("host-health-ui: one section for the dependencies and the doctor", () =
       async () => void fireEvent.click(screen.getByRole("button", { name: "Check again" })),
     );
     expect(fixture.checks()).toBe(1);
+  });
+
+  test("a fix with a note says it under the command, in both languages (#214)", () => {
+    const withNotes: DepsResult = {
+      items: [
+        dep("claude", "required", "ok"),
+        dep("service", "required", "missing", {
+          fix: [{ os: "linux", note: "noSystemd" }],
+        }),
+        dep("ssh", "optional", "missing", {
+          fix: [{ os: "linux", command: "sudo apt install openssh-client", note: "elevated" }],
+        }),
+      ],
+    };
+    render(setup({ deps: withNotes }).view);
+    expect(row("Start at boot (service)").textContent).toContain(
+      "This computer has no systemd, so flightdeckd cannot be installed as a service here. Start it at login with your system's own tools.",
+    );
+    expect(row("SSH").textContent).toContain(
+      "Run it in an elevated PowerShell (Run as administrator).",
+    );
+    cleanup();
+    render(setup({ deps: withNotes, lang: "pt-BR" }).view);
+    const text = within(screen.getByRole("region", { name: "Saúde e dependências" })).getByRole(
+      "list",
+      { name: "Obrigatórias" },
+    ).textContent;
+    expect(text).toContain("Este computador não tem systemd");
+    expect(screen.getByRole("region", { name: "Saúde e dependências" }).textContent).toContain(
+      "Execute em um PowerShell elevado (Executar como administrador).",
+    );
   });
 });
