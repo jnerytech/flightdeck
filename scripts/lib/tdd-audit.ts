@@ -132,9 +132,11 @@ export interface AuditDeps {
   /** Runs git with the given arguments; `null` when git fails. */
   git: (args: string[]) => string | null;
   readFile: (path: string) => string;
+  /** The areas of the phase's spec (`--spec`): each needs a test(<area>) commit in the range. */
+  areas?: string[];
 }
 
-export function runAudit({ since: asked, git, readFile, waivers = [] }: AuditDeps): {
+export function runAudit({ since: asked, git, readFile, waivers = [], areas = [] }: AuditDeps): {
   code: number;
   output: string;
 } {
@@ -171,7 +173,15 @@ export function runAudit({ since: asked, git, readFile, waivers = [] }: AuditDep
     .filter((w) => !inRange.has(w.hash))
     .map((w) => `  ignored  ${w.hash}  ${w.scope}  outside the audited range`);
   const open = found.filter((v) => !waived.some((w) => w.hash === v.commit && w.scope === v.scope));
-  const violations = [...open, ...stale, ...findForbiddenMarkers(files)];
+  const tested = new Set(commits.filter((c) => c.type === "test").map((c) => c.scope));
+  const untested: Violation[] = areas
+    .filter((area) => !tested.has(area))
+    .map((area) => ({
+      commit: "-",
+      scope: area,
+      reason: `area of the spec with no test(${area}) commit`,
+    }));
+  const violations = [...open, ...stale, ...untested, ...findForbiddenMarkers(files)];
   const waivedLines = waived.map((w) => `  waived  ${w.hash}  ${w.scope}  ${w.reason}`);
   if (violations.length === 0) {
     const head = waived.length === 0 ? "TDD AUDIT OK" : `TDD AUDIT OK (${waived.length} waived)`;
