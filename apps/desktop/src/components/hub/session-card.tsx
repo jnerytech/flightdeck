@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { RuntimeBadge } from "@/components/session/runtime-badge";
 import { type StateTone, StatusDot } from "@/components/status/status-dot";
 import { cn } from "@/lib/utils";
 
@@ -55,11 +56,7 @@ export function SessionCard(props: {
         {props.persona && (
           <span className="shrink-0 rounded bg-muted px-1 text-foreground">{props.persona}</span>
         )}
-        {props.runtime && (
-          <span data-slot="runtime-badge" className="shrink-0 rounded border px-1 text-foreground">
-            {props.runtime}
-          </span>
-        )}
+        {props.runtime && <RuntimeBadge label={props.runtime} />}
         {props.cost !== undefined && (
           <output aria-label={props.costLabel} className="ml-auto shrink-0 tabular-nums">
             {props.cost}

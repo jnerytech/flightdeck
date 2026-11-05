@@ -23,6 +23,7 @@ import {
   SessionPane,
   Timeline,
 } from "@/components/session/parts";
+import { RuntimeBadge } from "@/components/session/runtime-badge";
 import { SessionStatusLine } from "@/components/session/status-line";
 import { WorkingRow } from "@/components/session/working-row";
 import { PromptMenu, type PromptSnippets } from "@/components/snippets/prompt-menu";
@@ -550,9 +551,7 @@ export function SessionView(props: SessionViewProps) {
         controls={
           <>
             {opencode && (
-              <span className="rounded-md border px-1.5 py-0.5 text-muted-foreground text-xs">
-                {t("session.runtimeOpenCode")}
-              </span>
+              <RuntimeBadge label={t("session.runtimeOpenCode")} slot="session-runtime" />
             )}
             {session.status && <StatusBadge status={session.status} />}
             {session.statusReason && (

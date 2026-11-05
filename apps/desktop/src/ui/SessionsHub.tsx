@@ -10,6 +10,7 @@ import { ViewToggle } from "@/components/hub/view-toggle";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
+import { RuntimeBadge } from "@/components/session/runtime-badge";
 import type { StateTone } from "@/components/status/status-dot";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
@@ -523,14 +524,7 @@ export function SessionsHub(props: {
                             {row.persona.name}
                           </span>
                         )}
-                        {row.runtime && (
-                          <span
-                            data-slot="runtime-badge"
-                            className="shrink-0 rounded border px-1 text-xs"
-                          >
-                            {t("session.runtimeOpenCode")}
-                          </span>
-                        )}
+                        {row.runtime && <RuntimeBadge label={t("session.runtimeOpenCode")} />}
                         {row.controllable && (
                           <>
                             <Radio
