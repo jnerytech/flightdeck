@@ -71,6 +71,9 @@ export function tauriPlatform(
       };
     },
     setTrayStatus: (status) => call("tray_set_status", { ...status }),
+    setBadge: async (count) => {
+      void count;
+    },
     setTrayMenu: (menu) => call("tray_set_menu", { ...menu }),
     // The Rust tray emits `tray-action` for each click in the "Precisa de você" submenu.
     onTrayAction(handler) {

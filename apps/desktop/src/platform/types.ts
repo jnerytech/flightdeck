@@ -122,6 +122,11 @@ export interface Platform {
   /** Delivers `flightdeck://` links, including the one the app was opened with. */
   onDeepLink(handler: (url: string) => void): () => void;
   setTrayStatus(status: TrayStatus): Promise<void>;
+  /**
+   * The count of unread notifications as a badge on the app's taskbar button (Windows); 0 clears it.
+   * Absent where the platform has no such badge (a browser).
+   */
+  setBadge?(count: number): Promise<void>;
   /** Rebuilds the "Precisa de você" submenu (phase 8). */
   setTrayMenu(menu: TrayMenu): Promise<void>;
   /** Clicks in that submenu: approve and deny answer without opening the window. */

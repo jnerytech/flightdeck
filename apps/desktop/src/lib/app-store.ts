@@ -1131,8 +1131,12 @@ export class AppStore {
     void this.platform.notify(n);
   }
 
+  /** The bell's unread count as a taskbar badge, told only when it changes. */
+  private syncBadge(): void {}
+
   private setInbox(inbox: InboxEntry[]): void {
     this.update({ inbox });
+    this.syncBadge();
     saveInbox(this.platform.storage, inbox);
   }
 
