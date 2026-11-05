@@ -217,14 +217,17 @@ export const CardDetail = memo(function CardDetail(props: {
     if (step.sessionId) store.select(hostId, step.sessionId);
   };
 
-  /** The conversation is on show: the page fills the pane and the conversation takes what is left. */
+  /**
+   * The conversation is on show: it takes what is left of the pane. The page always fills (#249):
+   * a page that switched to fill mounted its body again, and lost what was typed in it.
+   */
   const chatShown =
     tab === "conversation" &&
     openedStep?.type !== "check" &&
     Boolean((openedStep && stepSession) || (session && sessionId));
   return (
     <Page
-      fill={chatShown}
+      fill
       title={card.title}
       subtitle={
         cardCost !== null ? (
