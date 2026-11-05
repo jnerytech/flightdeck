@@ -466,6 +466,8 @@ export function SessionsHub(props: {
           const shared = sharedMeta(group.rows);
           const clientChip = scope.chipOf(group.key);
           const groupView = viewOf(group.key);
+          // Two projects with one name tell themselves apart by where they are.
+          const label = group.hint ? `${group.name} (${group.hint})` : group.name;
           const liveCount = groupView?.live.length ?? 0;
           // The hosts the project's sessions run on, each one a link to the host page.
           const hostChips = [
@@ -474,13 +476,13 @@ export function SessionsHub(props: {
           return (
             <section
               key={group.key}
-              aria-label={t("hub.project", { name: group.name })}
+              aria-label={t("hub.project", { name: label })}
               className="flex flex-col gap-1"
             >
               <ProjectHeader
                 name={group.name}
                 expanded={groupView?.expanded ?? true}
-                toggleLabel={t("hub.toggleProject", { name: group.name })}
+                toggleLabel={t("hub.toggleProject", { name: label })}
                 onToggle={() => setOpen({ ...open, [group.key]: !(groupView?.expanded ?? false) })}
               >
                 {clientChip && state.clientSelection === ALL_CLIENTS && (
@@ -493,6 +495,11 @@ export function SessionsHub(props: {
                     projectKey={group.key}
                     name={group.name}
                   />
+                )}
+                {group.hint && (
+                  <span data-slot="group-hint" className="min-w-0 truncate text-muted-foreground">
+                    {group.hint}
+                  </span>
                 )}
                 <CountChip
                   live={liveCount}
