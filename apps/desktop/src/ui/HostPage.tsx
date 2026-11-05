@@ -6,6 +6,7 @@ import { AllowedFolders } from "@/components/hosts/allowed-folders";
 import { BypassSwitch } from "@/components/hosts/bypass-switch";
 import { GithubPanel } from "@/components/hosts/github-panel";
 import { HostDoctor } from "@/components/hosts/host-doctor";
+import { hostDownReason } from "@/components/hosts/host-down-reason";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
 import { Field, FieldRow } from "@/components/layout/form";
@@ -98,8 +99,7 @@ export function HostPage(props: {
         {host.status === "incompatible" && (
           <InlineNotice>
             <span className="flex flex-col gap-1">
-              <span>{t("hostPage.incompatible")}</span>
-              {/* Issue #181: a sentence of the catalog first; the daemon's own words stay under Details. */}
+              {/* Issue #181: one sentence of the catalog; the daemon's own words stay under Details. */}
               <span>{t("errors.protocol_incompatible")}</span>
               {host.incompatibility && (
                 <details>
@@ -176,7 +176,7 @@ export function HostPage(props: {
                   variant="outline"
                   size="sm"
                   disabled={offline}
-                  disabledReason={t("hostPage.needsOnline", { host: host.name })}
+                  disabledReason={hostDownReason(host.status, host.name, t)}
                   onClick={() => setConfirming("install")}
                 >
                   {t("hostPage.install")}
@@ -185,7 +185,7 @@ export function HostPage(props: {
                   variant="outline"
                   size="sm"
                   disabled={offline}
-                  disabledReason={t("hostPage.needsOnline", { host: host.name })}
+                  disabledReason={hostDownReason(host.status, host.name, t)}
                   onClick={() => setConfirming("uninstall")}
                 >
                   {t("hostPage.uninstall")}
