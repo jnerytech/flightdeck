@@ -33,7 +33,9 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
 - Tests for what you changed: `bun run test:related [--base <ref>]`. It takes the files changed
   since the merge-base with `main` (or `<ref>`), picks the changed test files plus every test
   that imports a changed file (transitively), prints each with the reason, and runs them in one
-  call (through the slot above 60 files). A change to `package.json`, a `bunfig` or the preload
+  call (through the slot above 60 files). The run also collects coverage and fails unless every
+  changed source file is at 100% lines and functions, listing the uncovered `file:line` and the
+  uncalled functions (`bunfig.related.toml`; the same exclusions as the full suite). A change to `package.json`, a `bunfig` or the preload
   prints a warning: run the full suite then.
 - Which function a file is missing: `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` runs
   the tests that reach the files (or the ones named after --tests) and lists the functions no test

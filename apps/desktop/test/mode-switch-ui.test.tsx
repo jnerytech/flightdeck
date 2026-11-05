@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, waitFor as pollFor, TOKEN } from "./fixtures.ts";
+import { settle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
@@ -31,6 +32,8 @@ async function open(
 }
 
 const nav = () => screen.getByRole("navigation", { name: "Simple mode" });
+const folderBox = () =>
+  screen.queryByRole("textbox", { name: "Folder to add" }) as HTMLInputElement | null;
 
 describe("mode-switch-ui: the app opens in the host's mode", () => {
   test("Given a host set to simple, Then the app shows Home with templates and a narrow menu of three, and none of the full app's screens", async () => {
@@ -103,10 +106,37 @@ describe("mode-switch-ui: the app opens in the host's mode", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
     });
-    await waitFor(() =>
-      expect(
-        (screen.getByRole("textbox", { name: "Folder to add" }) as HTMLInputElement).value,
-      ).toBe(""),
+    // The box clears when the host answers roots.add: the project's wait, not Testing Library's 1 s.
+    await settle(
+      () => folderBox()?.value === "",
+      undefined,
+      "the folder box cleared after Add folder",
+    );
+  });
+
+  test("Given a host slow to add a folder, When Add folder is pressed in simple Settings, Then the box clears once the host answers", async () => {
+    const { store, d } = await open({ mode: "simple", locked: false });
+    const real = store.allowRoot.bind(store);
+    store.allowRoot = async (...args: Parameters<typeof real>) => {
+      // timing: the host answers roots.add after 1.5 s, past a 1 s wait, as a loaded Windows runner did.
+      await Bun.sleep(1500);
+      return await real(...args);
+    };
+    await act(async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Settings" }));
+    });
+    await waitFor(() => screen.getByRole("heading", { name: "Language" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Folder to add" }), {
+      target: { value: d.root },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
+    });
+    // The box clears when the host answers roots.add: the project's wait, not Testing Library's 1 s.
+    await settle(
+      () => folderBox()?.value === "",
+      undefined,
+      "the folder box cleared after Add folder",
     );
   });
 
