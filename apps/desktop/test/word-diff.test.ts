@@ -50,4 +50,14 @@ describe("word-diff: what changed between two texts, word by word", () => {
     expect(join(parts.filter((p) => p.kind !== "add"))).toBe(a);
     expect(join(parts.filter((p) => p.kind !== "del"))).toBe(b);
   });
+
+  test("when the comparison gives up, the old text is removed whole and the new one added whole", () => {
+    const gaveUp = (() => undefined) as unknown as Parameters<typeof wordDiff>[2];
+    expect(wordDiff("old", "new", gaveUp)).toEqual([
+      { kind: "del", text: "old" },
+      { kind: "add", text: "new" },
+    ]);
+    expect(wordDiff("", "new", gaveUp)).toEqual([{ kind: "add", text: "new" }]);
+    expect(wordDiff("old", "", gaveUp)).toEqual([{ kind: "del", text: "old" }]);
+  });
 });
