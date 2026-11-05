@@ -87,7 +87,6 @@ import type { Teams } from "./teams/teams.ts";
 import type { TelemetryOptIn } from "./telemetry/optin.ts";
 import type { TelemetryStore } from "./telemetry/store.ts";
 import type { LoadedTemplates } from "./templates/files.ts";
-import { startTemplate } from "./templates/start.ts";
 import type { TaskTracker } from "./templates/tasks.ts";
 import type { TerminalManager } from "./terminal/terminal-manager.ts";
 import { tokenMatches } from "./token.ts";
@@ -493,10 +492,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "idle");
   }
 
-  function automations(): Automations {
-    return need(opts, "automations");
-  }
-
   function issues(): Issues {
     return need(opts, "issues");
   }
@@ -540,9 +535,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "maintenance");
   }
 
-  function webhook(): WebhookSender {
-    return need(opts, "webhook");
-  }
   function summary(): SummaryService {
     return need(opts, "summary");
   }
@@ -569,10 +561,6 @@ export function startServer(opts: ServerOptions): RunningServer {
   /** A project's folder, with the root of its repository looked up first without waiting for git. */
   function sessionFiles(): SessionFiles {
     return need(opts, "sessionFiles");
-  }
-
-  function runenv() {
-    return need(opts, "runenv");
   }
 
   function board(): Board {
@@ -767,22 +755,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         });
       case "idle.subscribe":
         return ok(command.type, idle().subscribe(command.payload));
-      case "automation.list":
-        return ok(command.type, { automations: automations().list(command.payload.projectId) });
-      case "automation.save":
-        return ok(command.type, automations().save(command.payload));
-      case "automation.remove":
-        return ok(command.type, {
-          automations: automations().remove(command.payload.id, command.payload.confirm === true),
-        });
-      case "automation.toggle": {
-        const { id, enabled, confirm } = command.payload;
-        return ok(command.type, automations().toggle(id, enabled, confirm === true));
-      }
-      case "automation.runs":
-        return ok(command.type, {
-          runs: automations().runs(command.payload.id, command.payload.limit),
-        });
       case "issues.list": {
         const { projectId, query } = command.payload;
         return ok(command.type, { issues: await issues().list(projectId, query) });
@@ -1023,27 +995,11 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "card.get":
         return ok(command.type, board().getCard(command.payload.cardId));
-      case "workflow.list":
-        return ok(command.type, {
-          workflows: await board().listWorkflows(command.payload.projectId),
-        });
-      case "workflow.validate": {
-        const { projectId, name } = command.payload;
-        return ok(command.type, await board().validateWorkflow(projectId, name));
-      }
-      case "workflow.trust": {
-        const { projectId, name, hash } = command.payload;
-        return ok(command.type, await board().trustWorkflow(projectId, name, hash));
-      }
-      case "run.get":
-        return ok(command.type, board().workflows.getRun(command.payload.runId));
       case "gate.respond": {
         const { runId, stepId, attempt, decision, note } = command.payload;
         board().workflows.respond(runId, stepId, attempt, decision, note);
         return ok(command.type, board().workflows.getRun(runId));
       }
-      case "webhook.send":
-        return ok(command.type, await webhook().send(command.payload, ws.data.origin));
       case "session.summary": {
         const { claudeSessionId, question, state } = command.payload;
         return ok(command.type, await summary().get(claudeSessionId, { question, state }));
@@ -1138,48 +1094,6 @@ export function startServer(opts: ServerOptions): RunningServer {
           }),
         );
       }
-      case "template.list": {
-        if (!opts.templates) throw featureOff("templates");
-        return ok(command.type, await opts.templates());
-      }
-      case "template.start": {
-        if (!opts.templates) throw featureOff("templates");
-        const { templateId, language, values, name } = command.payload;
-        const template = (await opts.templates()).templates.find((t) => t.id === templateId);
-        if (!template) {
-          throw new FlightdeckError(
-            "not_found",
-            `there is no template ${templateId}`,
-            "template_unknown",
-            { id: templateId },
-          );
-        }
-        return ok(
-          command.type,
-          await startTemplate(
-            template,
-            language,
-            values,
-            {
-              allowedRoots: opts.allowedRoots,
-              create: (payload) => manager.create(payload),
-              ...(opts.tasks ? { tasks: opts.tasks } : {}),
-            },
-            name,
-          ),
-        );
-      }
-      case "task.preview": {
-        if (!opts.tasks) throw featureOff("tasks");
-        return ok(
-          command.type,
-          await opts.tasks.preview(command.payload.sessionId, command.payload.path),
-        );
-      }
-      case "task.results": {
-        if (!opts.tasks) throw featureOff("tasks");
-        return ok(command.type, await opts.tasks.results(command.payload.sessionId));
-      }
       case "ui.set": {
         if (!opts.ui) throw featureOff("ui.mode");
         const { mode, locked, confirm } = command.payload;
@@ -1259,41 +1173,6 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "file.write": {
         const { target, path, text, expectedHash } = command.payload;
         return ok(command.type, await files().write(target, path, text, expectedHash));
-      }
-      case "runenv.config":
-        return ok(
-          command.type,
-          await runenv().configs.info(board().getProject(command.payload.projectId)),
-        );
-      case "runenv.trust": {
-        const { projectId, hash } = command.payload;
-        return ok(command.type, await runenv().configs.trust(board().getProject(projectId), hash));
-      }
-      case "runenv.start":
-        return ok(command.type, await runenv().manager.start(command.payload.cardId));
-      case "runenv.stop":
-        return ok(command.type, await runenv().manager.stop(command.payload.cardId));
-      case "runenv.get":
-        return ok(command.type, runenv().manager.state(command.payload.cardId));
-      case "runenv.watch": {
-        // Ack, the runs going now, then every change.
-        const { manager } = runenv();
-        ws.data.unwatchRunEnv?.();
-        ws.data.unwatchRunEnv = manager.watch((state) =>
-          send(ws, { type: "runenv.updated", state }),
-        );
-        ok(command.type);
-        for (const state of manager.live()) send(ws, { type: "runenv.updated", state });
-        return;
-      }
-      case "run.watch": {
-        // Ack, the runs still going, then every change: the app sees open gates right away.
-        const runs = board().workflows;
-        ws.data.unwatchRuns?.();
-        ws.data.unwatchRuns = runs.watch((run) => send(ws, { type: "run.updated", run }));
-        ok(command.type);
-        for (const run of runs.activeRuns()) send(ws, { type: "run.updated", run });
-        return;
       }
       case "card.start": {
         const { cardId, workflow, inputs, persona } = command.payload;
