@@ -3628,7 +3628,7 @@ landed, so a late rebase only meets cases that have not moved yet. Until then th
 as a fallback for the cases not moved, and it is gone by the end.
 
 **Each step.** One `refactor(server-split)` commit per domain. Each step runs typecheck, the test
-files that name that domain's commands, and a fixed set (`host-info`, `protocol`, `servidor`).
+files that name that domain's commands, and a fixed set (`host-info`, `server`, `protocolo-compat`).
 The whole set that reaches `server.ts` runs once at the end, through the slot. No helper is left
 uncalled: `need`, `afterAck` and the registry are each covered by a test.
 
