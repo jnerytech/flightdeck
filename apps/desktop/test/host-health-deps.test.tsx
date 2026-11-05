@@ -204,13 +204,13 @@ describe("deps-ui: on the host page and the sidebar", () => {
       () => (section.textContent ?? "").includes("Obrigatórias faltando: 1") || undefined,
       "the headline",
     );
-    expect(screen.queryByLabelText("pc: uma dependência obrigatória falta")).not.toBeNull();
+    expect(screen.queryByLabelText("pc: está faltando uma dependência obrigatória")).not.toBeNull();
     current = depsOf("ok", "ok");
     await act(
       async () =>
         void fireEvent.click(within(section).getByRole("button", { name: "Verificar de novo" })),
     );
     await pollFor(() => (section.textContent ?? "").includes("Tudo certo") || undefined, "all set");
-    expect(screen.queryByLabelText("pc: uma dependência obrigatória falta")).toBeNull();
+    expect(screen.queryByLabelText("pc: está faltando uma dependência obrigatória")).toBeNull();
   });
 });

@@ -53,7 +53,12 @@ const DOCTOR: DoctorResult = {
 };
 
 function setup(
-  options: { update?: string; checkedAt?: number | null; deps?: DepsResult | null } = {},
+  options: {
+    update?: string;
+    checkedAt?: number | null;
+    deps?: DepsResult | null;
+    error?: string | null;
+  } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
   store.i18n.start();
@@ -90,6 +95,7 @@ function setup(
         deps={options.deps === undefined ? DEPS : options.deps}
         doctor={options.deps === null ? null : DOCTOR}
         checkedAt={options.checkedAt === undefined ? NOW - 3 * 60_000 : options.checkedAt}
+        error={options.error ?? null}
         onCheck={async () => void checks++}
         onAddFolder={() => added.push("x")}
       />
@@ -200,5 +206,29 @@ describe("host-health-ui: one section for the dependencies and the doctor", () =
     cleanup();
     render(setup({ checkedAt: null, deps: null }).view);
     expect(section().textContent).toContain("Checking…");
+  });
+
+  test("a daemon newer than the app can report an id or a feature the app has no text for, and the section still renders (HD-M2)", () => {
+    const future = {
+      items: [
+        dep("claude", "required", "ok"),
+        dep("future" as never, "optional", "missing", { breaks: ["teleport" as never] }),
+      ],
+    } as DepsResult;
+    render(setup({ deps: future }).view);
+    // The row shows the raw id and the feature; nothing throws.
+    expect(row("future").textContent).toContain("teleport");
+    expect(row("Claude Code")).not.toBeNull();
+  });
+
+  test("a read that failed says why and offers Check again, instead of staying on Checking… (HD-M3)", async () => {
+    const fixture = setup({ deps: null, checkedAt: null, error: "host busy" });
+    render(fixture.view);
+    expect(section().textContent).toContain("Could not read the health: host busy");
+    expect(section().textContent).not.toContain("Checking…");
+    await act(
+      async () => void fireEvent.click(screen.getByRole("button", { name: "Check again" })),
+    );
+    expect(fixture.checks()).toBe(1);
   });
 });
