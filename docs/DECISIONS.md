@@ -4114,6 +4114,43 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
 - **WIP limit.** At most 2 open branches per session, stated in CLAUDE.md and docs/TDD.md. It is
   not enforced in code.
 
+## One command per release (issue #275)
+
+- **`bun run release vX.Y.Z`** (the coordinator's, `FLIGHTDECK_COORDINATOR=1`; it refuses without
+  it and touches nothing) is a state machine over `origin/main`, so running it again carries on.
+  Main behind the tag: a branch `release-vX` gets `test(versao)` (the version test moves first and
+  must be red), `chore(versao)` (the three packages and `bun.lock`; the test must be green), the
+  protocol-surface check (a lost baseline line stops the release) and, when `--write` changes the
+  baseline, `chore(release)`; then the branch is pushed, a PR is opened (not through `pr open`,
+  which would close the issue of its first commit) and `pr auto` turns on auto-merge. Main at the
+  version: the surface check, `pr tag vX` (so the CI gate of #264 still decides) and
+  `release:close -- vX --apply`. A tag that exists is not made again; the close still runs.
+- **Why a state machine, not one blocking run.** The PR merges when its checks are green, which
+  takes longer than a session should wait; the second run is the "after merge" half of the
+  issue. Logic in `scripts/lib/release-cmd.ts`, effects injected, no test pushes or tags.
+- **The hook guard knows `bun run release`** (#275, from the security review): the command pushes and
+  tags through child processes the hook never sees, and its own check is the same environment flag,
+  which a command can set inline. `prMergeViolation` now blocks `bun run release` and
+  `bun scripts/release-cmd.ts` in a session, like `pr tag`.
+
+## `release:close` closes what a tag shipped (issue #252)
+
+- **What it reads.** The commits of `<previous v* tag>..<tag>` (`--since` names another start). An
+  issue counts when a subject names it (`(#170)`, the repository's habit) or a body line starts with
+  `Closes`, `Fixes` or `Resolves #N`. A number mentioned anywhere else in a body ("the overlay of
+  #233 is deferred") is listed and never touched, and a pull request's number is skipped.
+- **Dry run first.** Without `--apply` it only reads (the issue, its comments, the milestones) and
+  prints what it would do. With `--apply`, each open issue gets "Shipped in <tag>." (once: an
+  existing comment with that text is not repeated), is closed as completed, and goes to Done on the
+  board; an issue already closed only goes to Done. A second run changes nothing.
+- **The milestone** named after the tag is closed when it has no open issue left and no step of the
+  run failed, so a run that failed halfway leaves it open for the retry. One with issues the tag
+  did not ship stays open and says how many.
+- **REST only.** Every call is `gh api` with `-f` fields (no GraphQL), and the board goes through
+  `FLIGHTDECK_BOARD_CMD`, called as `<cmd> <issue> done ""`: the coordinator's `issue-note.sh`,
+  whose REST queue of #242 survives a rate limit. Without it the board is skipped, said once. The
+  coordinator tooling stays outside the repository; the script only knows the command's contract.
+
 ## Risky changes get a security review before the hand-off (issue #273)
 
 - **Why.** On 2026-11-05 six reviews found high findings after the hand-off (keep-awake,
