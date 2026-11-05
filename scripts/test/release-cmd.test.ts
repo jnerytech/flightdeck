@@ -39,7 +39,12 @@ interface Opts {
   dirty?: boolean;
   /** The version on origin/main, per package (default: all 0.36.4). */
   main?: Record<string, string>;
+  /** Tags in the local repository only. */
   tags?: string[];
+  /** Tags on origin. */
+  remoteTags?: string[];
+  /** Ref names on origin, as `git ls-remote` would list them (default: refs/tags/<remoteTags>). */
+  remoteRefs?: string[];
   openPr?: string;
   /** The version test passes before the version moves (it must be red). */
   notRed?: boolean;
@@ -74,6 +79,13 @@ function fake(opts: Opts = {}) {
       if (args[0] === "show") {
         const path = (args[1] ?? "").replace("origin/main:", "").replace("/package.json", "");
         return ok(pkg(opts.main?.[path] ?? "0.36.4"));
+      }
+      if (args[0] === "ls-remote") {
+        // git matches the pattern as a suffix of the ref name, as the real command does
+        const pattern = args.at(-1) ?? "";
+        const refs = opts.remoteRefs ?? (opts.remoteTags ?? []).map((t) => `refs/tags/${t}`);
+        const hits = refs.filter((r) => r === pattern || r.endsWith(`/${pattern}`));
+        return ok(hits.map((r) => `sha\t${r}\n`).join(""));
       }
       if (args[0] === "rev-parse") {
         const tag = (args[3] ?? "").replace("refs/tags/", "");
@@ -179,6 +191,19 @@ describe("release: who and what", () => {
     expect(await release(["v0.37.0"], deps)).toBe(2);
     expect(calls.some((c) => c.startsWith("write"))).toBe(false);
     expect(logs.join("\n")).toContain("apps/daemon");
+  });
+
+  test("a version on main that is not x.y.z is refused before anything is written (#287)", async () => {
+    const { deps, calls, logs } = fake({
+      main: {
+        "apps/daemon": "0.36.4-x",
+        "apps/desktop": "0.36.4-x",
+        "packages/protocol": "0.36.4-x",
+      },
+    });
+    expect(await release(["v0.37.0"], deps)).toBe(1);
+    expect(calls.some((c) => c.startsWith("write") || c.startsWith("git push"))).toBe(false);
+    expect(logs.join("\n")).toContain("cannot be read");
   });
 
   test("a version that is not newer than main's is refused", async () => {
@@ -334,11 +359,30 @@ describe("release: after the PR merged", () => {
     expect(logs.join("\n")).toContain("not tagged");
   });
 
-  test("a tag that exists is not made again, and the issues are still closed", async () => {
-    const { deps, calls } = fake({ ...merged, tags: ["v0.37.0"] });
+  test("a tag that is on origin is not made again, and the issues are still closed", async () => {
+    const { deps, calls } = fake({ ...merged, remoteTags: ["v0.37.0"] });
     expect(await release(["v0.37.0"], deps)).toBe(0);
     expect(calls.some((c) => c.includes("pr -- tag"))).toBe(false);
     expect(calls.some((c) => c.includes("release:close -- v0.37.0 --apply"))).toBe(true);
+  });
+
+  test("a tag only in the local repository does not count: it is not on origin, so pr tag still runs (#287)", async () => {
+    const { deps, calls } = fake({ ...merged, tags: ["v0.37.0"] });
+    expect(await release(["v0.37.0"], deps)).toBe(0);
+    expect(calls.some((c) => c.includes("pr -- tag v0.37.0"))).toBe(true);
+  });
+
+  test("a ref that only ends like the tag (x/refs/tags/v0.37.0) is not the tag (#287)", async () => {
+    const { deps, calls } = fake({ ...merged, remoteRefs: ["refs/tags/x/refs/tags/v0.37.0"] });
+    expect(await release(["v0.37.0"], deps)).toBe(0);
+    expect(calls.some((c) => c.includes("pr -- tag v0.37.0"))).toBe(true);
+  });
+
+  test("an origin that cannot be asked is an error: no tag is made and nothing is closed (#287)", async () => {
+    const { deps, calls, logs } = fake({ ...merged, fail: /ls-remote/ });
+    expect(await release(["v0.37.0"], deps)).toBe(1);
+    expect(calls.some((c) => c.includes("pr -- tag") || c.includes("release:close"))).toBe(false);
+    expect(logs.join("\n")).toContain("cannot ask origin");
   });
 
   test("a failed release:close is its exit code", async () => {

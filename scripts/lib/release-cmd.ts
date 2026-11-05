@@ -35,6 +35,7 @@ const VERSAO_TEST = "apps/daemon/test/versao.test.ts";
 const LOCK = "bun.lock";
 const BASELINE = "packages/protocol/surface-baseline.txt";
 const SURFACE = ["run", "scripts/protocol-surface.ts"];
+const VERSION = /^\d+\.\d+\.\d+$/;
 const TAG = /^v(\d+\.\d+\.\d+)$/;
 
 const reEscape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -84,7 +85,9 @@ async function mainVersions(deps: ReleaseDeps): Promise<Record<string, string> |
   for (const pkg of PACKAGES) {
     const shown = await deps.git(["show", `origin/${MAIN}:${pkg}/package.json`]);
     if (shown.code !== 0) return null;
-    out[pkg] = (JSON.parse(shown.stdout) as { version: string }).version;
+    const version = (JSON.parse(shown.stdout) as { version?: unknown }).version;
+    if (typeof version !== "string" || !VERSION.test(version)) return null;
+    out[pkg] = version;
   }
   return out;
 }
@@ -189,8 +192,15 @@ async function prepare(run: Run, from: string): Promise<number> {
 async function finish(run: Run): Promise<number> {
   const { deps, tag } = run;
   if (!(await surfaceKept(run))) return 1;
-  const exists = await deps.git(["rev-parse", "-q", "--verify", `refs/tags/${tag}`]);
-  if (exists.code !== 0) {
+  // On origin, not in this repository: a local tag is anyone's, and `pr tag` is what gates it.
+  // ls-remote matches its pattern as a suffix (x/refs/tags/v1.2.3 too), so the ref is compared whole.
+  const listed = await deps.git(["ls-remote", "--tags", "origin", `refs/tags/${tag}`]);
+  if (listed.code !== 0) {
+    say(run, "cannot ask origin for its tags: no tag made, nothing closed");
+    return 1;
+  }
+  const refs = listed.stdout.split("\n").map((line) => line.split(/\s+/)[1]);
+  if (!refs.includes(`refs/tags/${tag}`)) {
     const tagged = await deps.bun(["run", "pr", "--", "tag", tag]);
     if (tagged.code !== 0) {
       say(run, `not tagged (bun run pr -- tag exited ${tagged.code})`);
