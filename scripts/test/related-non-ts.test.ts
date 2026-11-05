@@ -8,6 +8,8 @@ const SOURCES = new Map([
   ],
   ["scripts/test/wait-ratchet.test.ts", "const baseline = read('wait-baseline.json');"],
   ["scripts/test/other.test.ts", 'expect(x).toBe("docsy")'],
+  ["apps/daemon/test/memoria.test.ts", 'write(join(home, ".claude"), "CLAUDE.md", "docs")'],
+  ["apps/desktop/test/layout-ratchet.test.ts", 'resolve(DESKTOP, "layout-baseline.json")'],
   ["scripts/lib/reader.ts", 'readFileSync(".claude/settings.json")'],
 ]);
 
@@ -30,6 +32,15 @@ describe("related-non-ts", () => {
   test("a partial name, a source that is not a test, or no mention selects nothing", () => {
     expect(selectByPath(["docs/TDD.md"], SOURCES)).toEqual([]);
     expect(selectByPath(["README.md"], SOURCES)).toEqual([]);
+  });
+
+  test("a top-level folder or a root file is a word, not a path: only a baseline's own name counts", () => {
+    expect(
+      selectByPath(["CLAUDE.md", ".claude/rules/ui.md", "docs/manual/en.md"], SOURCES),
+    ).toEqual([]);
+    expect(selectByPath(["apps/desktop/layout-baseline.json"], SOURCES)).toEqual([
+      { path: "apps/desktop/test/layout-ratchet.test.ts", why: "names layout-baseline.json" },
+    ]);
   });
 
   test("test:related runs the tests that name a changed data file", () => {
