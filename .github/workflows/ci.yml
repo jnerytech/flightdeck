@@ -54,8 +54,8 @@ jobs:
         id: plan
         run: bun run scripts/ci-paths.ts
 
-  # The checks that take minutes, first (#272): typecheck, Biome, the TDD order, Sonar's per-rule
-  # ratchet and every ratchet test. The heavy jobs need it, so a count that went up fails the run
+  # The checks that take minutes, first (#272): typecheck, Biome, the TDD order and every ratchet
+  # test. Sonar is SonarCloud's own check on the PR only (#283). The heavy jobs need it, so a count that went up fails the run
   # in minutes instead of after the 20-minute suites.
   quick:
     name: quick checks
@@ -90,13 +90,6 @@ jobs:
       # main).
       - name: TDD audit
         run: bun run tdd:audit -- --since auto
-
-      # Sonar's per-rule open count over the whole repository, which only goes down
-      # (sonar-baseline.json): green unless a rule went up, so a red X always means something (#264).
-      # The changed-lines run stays local (bun run lint:sonar), where its smells are a hint.
-      - name: lint:sonar (ratchet)
-        if: github.event_name == 'pull_request'
-        run: bun run lint:sonar -- --ratchet
 
       # Every *-ratchet.test.ts and the protocol surface (scripts/lib/ci-quick.ts), in seconds.
       - name: Ratchets
