@@ -1,10 +1,4 @@
 import {
-  type AccountUpdated,
-  type Ack,
-  type AskpassRequest,
-  type BudgetUpdated,
-  type CardUpdated,
-  type ChangesUpdated,
   CLOSE_HEARTBEAT,
   CLOSE_UNAUTHORIZED,
   Command,
@@ -12,38 +6,17 @@ import {
   type CommandResults,
   type CommandType,
   type DoctorResult,
-  type EventEnvelope,
-  type ExternalPermissionFrame,
   type ExternalSession,
   type ExternalStatus,
-  type ExternalUpdated,
-  type HistoryChanged,
-  type IdleFiredFrame,
-  type MessagesRelayFrame,
-  type MessagesUpdatedFrame,
-  type MessagingAlertFrame,
   MIN_PROTOCOL_VERSION,
-  type Ping,
   Pong,
   PROTOCOL_VERSION,
-  type QuotaUpdated,
-  type RunEnvUpdated,
-  type RunUpdated,
   type SessionLine,
   type SessionStatus,
   type SessionSummary,
-  type TeamsUpdatedFrame,
-  type TerminalData,
-  type TerminalExited,
-  type TerminalResync,
   type UiSettings,
-  type VaultAlertFrame,
-  type VaultRequestFrame,
-  type VaultUsed,
-  type WatchUpdatedFrame,
   WS_PATH,
 } from "@flightdeck/protocol";
-import type { ServerWebSocket } from "bun";
 import { z } from "zod";
 import pkg from "../package.json" with { type: "json" };
 import type { Account } from "./account/account.ts";
@@ -63,7 +36,7 @@ import { withTurnUuids } from "./checkpoints/turn-uuid.ts";
 import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
 import { statuslineData } from "./costs/statusline.ts";
-import { coalesceDeltas, type DeltaCoalescer, drainAll } from "./delta-coalescer.ts";
+import { coalesceDeltas, drainAll } from "./delta-coalescer.ts";
 import { FlightdeckError, featureOff } from "./errors.ts";
 import { listDirs, listFiles } from "./fs-dirs.ts";
 import type { GithubService } from "./github/service.ts";
@@ -96,6 +69,7 @@ import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
 import { need } from "./server/gates.ts";
+import { ackError, type Connection, decode, type Socket, send } from "./server/transport.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 import type { HistoryImporter } from "./snippets/history.ts";
 import type { Snippets } from "./snippets/store.ts";
@@ -120,7 +94,6 @@ import type { UpdateChecker } from "./updates/check.ts";
 import { requireVaultTransport, type Vault } from "./vault/vault.ts";
 import type { PrWatch } from "./watch/service.ts";
 import type { WebhookSender } from "./webhook/sender.ts";
-import { sendFrame } from "./ws-send.ts";
 
 export const DAEMON_VERSION: string = pkg.version;
 
@@ -301,113 +274,7 @@ export interface RunningServer {
   stop(): Promise<void>;
 }
 
-interface Connection {
-  authed: boolean;
-  /** Where the connection came from (the address the origin filter looked at). */
-  origin: string;
-  subscriptions: Map<string, () => void>;
-  /** One per subscription: the text that waits for its window or for the socket to drain. */
-  coalescers: Set<DeltaCoalescer>;
-  /** A frame was dropped: the client was cut off and gets nothing more (`sendFrame`). */
-  dropped?: boolean;
-  /** Pings sent and not yet answered, by id → send time. */
-  pendingPings: Map<string, number>;
-  /** When the last frame of any kind arrived from this client (`performance.now()`). */
-  lastFrameAt: number;
-  /** Stops the `sessions.watch` stream, when active. */
-  unwatch?: () => void;
-  /** Stops the `history.watch` stream, when active. */
-  unwatchHistory?: () => void;
-  /** Stops the `board.watch` stream, when active. */
-  unwatchBoard?: () => void;
-  /** Stops the `external.watch` stream, when active. */
-  unwatchExternal?: () => void;
-  /** Stops the `run.watch` stream, when active. */
-  unwatchRuns?: () => void;
-  unwatchRunEnv?: () => void;
-  /** Stops the `quota.watch` stream, when active. */
-  unwatchQuota?: () => void;
-  /** Stops the `account.watch` stream, when active. */
-  unwatchAccount?: () => void;
-  /** Stops the `askpass.watch` stream, when active. */
-  unwatchAskpass?: () => void;
-  /** Stops the `budget.watch` stream, when active. */
-  unwatchBudgets?: () => void;
-  /** Stops each `changes.watch`, by target. */
-  changeWatchers: Map<string, () => void>;
-  /** This connection's end of the terminals it is attached to. */
-  terminalSink?: TerminalSink;
-  /** Stops the `vault.watch` stream, when active. */
-  unwatchVault?: () => void;
-  /** Stops the `messages.watch` stream, when active. */
-  unwatchMessages?: () => void;
-  /** Stops the `teams.watch` stream, when active. */
-  unwatchTeams?: () => void;
-  /** Stops the `watch.watch` stream, when active. */
-  unwatchPrs?: () => void;
-  lastRttMs?: number;
-}
-
 export { tokenMatches };
-
-type Socket = ServerWebSocket<Connection>;
-
-type Outgoing =
-  | Ack
-  | EventEnvelope
-  | Ping
-  | HistoryChanged
-  | CardUpdated
-  | ExternalUpdated
-  | ExternalPermissionFrame
-  | RunUpdated
-  | AccountUpdated
-  | RunEnvUpdated
-  | QuotaUpdated
-  | BudgetUpdated
-  | ChangesUpdated
-  | TerminalData
-  | TerminalExited
-  | TerminalResync
-  | AskpassRequest
-  | VaultUsed
-  | VaultRequestFrame
-  | VaultAlertFrame
-  | MessagesUpdatedFrame
-  | MessagesRelayFrame
-  | MessagingAlertFrame
-  | IdleFiredFrame
-  | TeamsUpdatedFrame
-  | WatchUpdatedFrame;
-
-function send(ws: Socket, message: Outgoing): void {
-  sendFrame(ws, message);
-}
-
-function ackError(
-  ws: Socket,
-  id: string,
-  code: string,
-  message: string,
-  why: Pick<FlightdeckError, "reason" | "params" | "items"> = {},
-): void {
-  const { reason, params, items } = why;
-  send(ws, {
-    type: "ack",
-    id,
-    ok: false,
-    error: {
-      code,
-      message,
-      ...(reason ? { reason, params: params ?? {} } : {}),
-      ...(items ? { items: [...items] } : {}),
-    },
-  });
-}
-
-function decode(raw: string | Buffer): unknown {
-  return JSON.parse(typeof raw === "string" ? raw : raw.toString("utf8"));
-}
 
 /** Phase 8: the state of a session's line, from its live status. */
 const MANAGED_LINE: Record<SessionStatus, SessionLine["state"]> = {
