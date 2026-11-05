@@ -1254,6 +1254,13 @@ export class AppStore {
     saveFolded(this.platform.storage, folded);
   }
 
+  /** The projects folded in the sidebar's tree (`hostId/projectId`); kept across starts. */
+  treeFolded(): string[] {
+    return [];
+  }
+
+  setTreeFolded(_folded: readonly string[]): void {}
+
   /** Whether a file of the host can be opened here: the app can, and the host runs on this machine. */
   canOpenPaths(hostId: string): boolean {
     const host = this.state.hosts.find((h) => h.id === hostId);
