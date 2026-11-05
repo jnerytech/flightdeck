@@ -3399,6 +3399,11 @@ export const en: Dictionary = {
   hostDeps: {
     installPage: "Install page",
     installPageFor: "Open the install page for {name}",
+    fixNote: {
+      elevated: "Run it in an elevated PowerShell (Run as administrator).",
+      noSystemd:
+        "This computer has no systemd, so flightdeckd cannot be installed as a service here. Start it at login with your system's own tools.",
+    },
     check: "Check again",
     checking: "Checking…",
     readFailed: "Could not read the health: {reason}",

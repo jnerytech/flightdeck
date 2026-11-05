@@ -8,7 +8,14 @@ import { Button } from "@/components/ui/button";
 import { formatAgo } from "../../i18n/format.ts";
 import type { Key } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
-import { type DepLook, depLook, depsSummary, fixFor, fixPageFor } from "../../lib/deps-summary.ts";
+import {
+  type DepLook,
+  depLook,
+  depsSummary,
+  fixFor,
+  fixNoteFor,
+  fixPageFor,
+} from "../../lib/deps-summary.ts";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 const ICONS = { check: Check, warning: TriangleAlert, cross: X, dash: Minus } as const;
@@ -106,7 +113,10 @@ export function HostHealth(props: {
           : null,
       copy: lacking ? fixFor(item, os) : null,
       page: lacking ? fixPageFor(item, os) : null,
-      step: null,
+      step:
+        lacking && fixNoteFor(item, os)
+          ? t(`hostDeps.fixNote.${fixNoteFor(item, os)}` as Key)
+          : null,
       action,
     };
   };

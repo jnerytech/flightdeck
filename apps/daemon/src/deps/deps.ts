@@ -21,7 +21,7 @@ export interface DepsEnv {
 type Os = "linux" | "darwin" | "win32";
 type Fix = DepResult["fix"];
 
-type OsFix = { command?: string; url?: string };
+type OsFix = { command?: string; url?: string; note?: "elevated" | "noSystemd" };
 
 /** The fix per operating system: a package-manager command where one exists, and the install page. */
 const fixes = (linux: OsFix, darwin: OsFix, win32: OsFix): Fix => [
@@ -34,6 +34,9 @@ const CLAUDE_INSTALL = {
   command: "npm install -g @anthropic-ai/claude-code",
   url: "https://docs.anthropic.com/en/docs/claude-code/setup",
 };
+
+/** The least gh that has `gh project`, which board sync stands on (it went generally available in July 2023). */
+const GH_MIN = "2.32.0";
 
 /** The least git that has `git worktree`: what every card, project and diff stands on. */
 const GIT_MIN = "2.5.0";
@@ -68,11 +71,13 @@ const TOOLS: Record<
   gh: {
     group: "optional",
     breaks: ["github", "pullRequests", "boardSync"],
+    // The apt package of an LTS can be older than the gh that has `gh project`: Linux gets the page.
     fix: fixes(
-      { command: "sudo apt install gh", url: GH_PAGE },
+      { url: GH_PAGE },
       { command: "brew install gh", url: GH_PAGE },
       { command: "winget install --id GitHub.cli", url: GH_PAGE },
     ),
+    min: GH_MIN,
   },
   az: {
     group: "optional",
@@ -93,6 +98,7 @@ const TOOLS: Record<
       {
         command: "Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0",
         url: SSH_PAGE,
+        note: "elevated",
       },
     ),
   },
@@ -150,10 +156,14 @@ async function service(env: DepsEnv): Promise<DepResult> {
   const path = await env.which("systemctl");
   const linger = await env.linger();
   const ok = path !== null && installed && linger !== "off";
+  // Without systemd there is no service to install: say so instead of offering a command that fails.
+  if (path === null) {
+    return { ...base, state: "missing", fix: [{ os: "linux", note: "noSystemd" }] };
+  }
   return {
     ...base,
     state: ok ? "ok" : "missing",
-    ...(path ? { path } : {}),
+    path,
     fix: [
       {
         os: "linux",

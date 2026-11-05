@@ -48,3 +48,8 @@ export function fixPageFor(item: DepResult, os: string): string | null {
 export function requiredMissing(deps: DepsResult | undefined): boolean {
   return deps?.items.some((item) => item.group === "required" && item.state === "missing") === true;
 }
+
+/** What to know before running the fix on the host's own OS (the code the app words), or null. */
+export function fixNoteFor(item: DepResult, os: string): "elevated" | "noSystemd" | null {
+  return item.fix.find((fix) => fix.os === os)?.note ?? null;
+}

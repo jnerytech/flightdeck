@@ -3401,6 +3401,11 @@ export const ptBR = {
   hostDeps: {
     installPage: "Página de instalação",
     installPageFor: "Abrir a página de instalação de {name}",
+    fixNote: {
+      elevated: "Execute em um PowerShell elevado (Executar como administrador).",
+      noSystemd:
+        "Este computador não tem systemd, então o flightdeckd não pode ser instalado como serviço aqui. Inicie-o no login com as ferramentas do seu sistema.",
+    },
     check: "Verificar de novo",
     checking: "Verificando…",
     readFailed: "Não foi possível ler a saúde: {reason}",
