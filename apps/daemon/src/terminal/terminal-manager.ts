@@ -86,6 +86,8 @@ export interface TerminalManagerOptions {
   which?: (name: string) => string | null;
   timers?: Timers;
   now?: () => number;
+  /** Folders being removed (issue #152): no terminal opens in one. */
+  folderLocks?: { isHeld(cwd: string): boolean };
   /** Open, attach and end, never the content. */
   log?: (message: string) => void;
 }

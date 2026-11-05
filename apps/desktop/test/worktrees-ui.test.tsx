@@ -195,6 +195,7 @@ describe("worktrees-ui: the Worktrees panel (issue #152)", () => {
         { projectId: "p1", path: "/work/api/.flightdeck/worktrees/merged" },
         { projectId: "p1", path: "/work/api/.flightdeck/worktrees/fresh" },
       ],
+      confirm: true,
     });
     await settle(() =>
       (screen.getByRole("region", { name: "Worktrees" }).textContent ?? "").includes(

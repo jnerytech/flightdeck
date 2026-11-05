@@ -2891,6 +2891,8 @@ export const Command = z.discriminatedUnion("type", [
     "worktree.remove",
     z.object({
       items: z.array(z.object({ projectId: z.string(), path: z.string() }).strict()).min(1),
+      /** Like Discard and Delete: the host asks for the person's yes in the request itself. */
+      confirm: z.literal(true),
     }),
   ),
   cmd("maintenance.status", z.object({}).strict()),
@@ -4210,6 +4212,12 @@ export const WorktreeBlocker = z.enum([
   "dirty",
   "unpushed",
   "unknown_base",
+  /** git could not say (a command failed or answered nonsense): nothing is removed. */
+  "unknown_state",
+  /** The worktree is on a branch that is not one of Flightdeck's `fd/*`. */
+  "other_branch",
+  /** It holds files git ignores that are not rebuildable (not `node_modules`, build output…). */
+  "ignored_files",
 ]);
 export type WorktreeBlocker = z.infer<typeof WorktreeBlocker>;
 export const WorktreeItem = z.object({
@@ -4246,7 +4254,14 @@ export const WorktreesResult = z.object({
 });
 export type WorktreesResult = z.infer<typeof WorktreesResult>;
 export const WorktreeRemoveResult = z.object({
-  removed: z.array(z.object({ path: z.string(), freedBytes: z.number().nonnegative().nullable() })),
+  removed: z.array(
+    z.object({
+      path: z.string(),
+      freedBytes: z.number().nonnegative().nullable(),
+      /** The folder went but its branch was kept: it had moved, or git refused to delete it. */
+      branchKept: z.boolean().optional(),
+    }),
+  ),
   kept: z.array(
     z.object({
       path: z.string(),

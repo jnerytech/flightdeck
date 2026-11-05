@@ -144,6 +144,7 @@ export function HostWorktrees(props: { store: AppStore; host: HostView }) {
   const remove = async () => {
     const result = await store.hostCommand(host.id, "worktree.remove", {
       items: chosen.map((item) => ({ projectId: item.projectId, path: item.path })),
+      confirm: true,
     });
     setPicked([]);
     if (result) {

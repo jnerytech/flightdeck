@@ -49,6 +49,8 @@ export interface SessionManagerOptions {
   allowApiKey: boolean;
   /** Whether a session may start in `bypassPermissions` (the host switch); refused when absent. */
   allowBypass?: () => boolean;
+  /** Folders being removed (issue #152): no session starts in one. */
+  folderLocks?: { isHeld(cwd: string): boolean };
   baseEnv: Record<string, string | undefined>;
   /** Plan quota readings of any session go to the host's quota (phase 7). */
   onQuota?: (readings: QuotaReading[]) => void;

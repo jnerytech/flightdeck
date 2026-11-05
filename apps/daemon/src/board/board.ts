@@ -88,6 +88,8 @@ export interface BoardOptions {
   /** Reads the personas for a session about to open; none when absent. */
   preparePersonas?: Prepare;
   allowedRoots: readonly string[];
+  /** Folders being removed (issue #152): no card starts in one. */
+  folderLocks?: { isHeld(cwd: string): boolean };
   /** 2 when absent. */
   maxParallelRuns?: number;
   prPollIntervalMs?: number;
@@ -1899,8 +1901,13 @@ export class Board {
       .map(({ id }) => this.getCard(id));
   }
 
+  /** Whether a card's run is going or waiting (stub). */
+  isActive(_cardId: string): boolean {
+    return false;
+  }
+
   /** The card no longer has its worktree (a panel removed it); the watchers hear of it. */
-  releaseWorktree(id: string): void {
+  releaseWorktree(id: string, _path?: string, _clearBranch?: boolean): void {
     this.db
       .query("UPDATE cards SET worktree_path = NULL, notice = NULL, updated_at = ? WHERE id = ?")
       .run(new Date().toISOString(), id);

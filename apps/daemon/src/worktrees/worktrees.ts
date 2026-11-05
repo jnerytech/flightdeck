@@ -10,6 +10,7 @@ import type {
 } from "@flightdeck/protocol";
 import type { CommandResult } from "../board/command.ts";
 import { samePath } from "../paths.ts";
+import type { FolderLocks } from "./locks.ts";
 
 export interface WorktreeProject {
   id: string;
@@ -39,6 +40,8 @@ export interface WorktreesOptions {
   size(path: string): Promise<number | null>;
   disk(path: string): Promise<{ totalBytes: number; freeBytes: number } | null>;
   now(): number;
+  /** Folders being removed: nothing may start in one. */
+  locks?: FolderLocks;
 }
 
 const DAY_MS = 86_400_000;
