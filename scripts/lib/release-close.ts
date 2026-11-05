@@ -25,6 +25,11 @@ const REPO = "repos/{owner}/{repo}";
 /** A body line that closes: `Closes #12`, `fixes #12`, `Resolves #12`. */
 const CLOSING_LINE = /^\s*(?:closes|fixes|resolves)\s+#(\d+)/i;
 
+/** A release tag, and so a `--since`: a word that is never an option or a range for git. */
+const TAG = /^v\d+\.\d+\.\d+$/;
+/** An issue title as one line of text: a control character (an escape sequence, a newline) is a space. */
+const plain = (text: string) => text.replace(/\p{Cc}/gu, " ");
+
 const numbers = (text: string) => [...text.matchAll(/#(\d+)\b/g)].map((m) => Number(m[1]));
 const sorted = (set: Set<number>) => [...set].sort((a, b) => a - b);
 
@@ -145,6 +150,10 @@ export async function releaseClose(
   opts: { apply: boolean; since?: string },
   deps: ReleaseCloseDeps,
 ): Promise<number> {
+  if (!TAG.test(tag) || (opts.since !== undefined && !TAG.test(opts.since))) {
+    deps.log("usage: release:close -- vX.Y.Z [--apply] [--since vX.Y.Z]");
+    return 2;
+  }
   if ((await deps.git(["rev-parse", "--verify", "--quiet", `${tag}^{commit}`])).code !== 0) {
     deps.log(`release:close: no tag ${tag} here (fetch the tags first)`);
     return 2;
@@ -172,7 +181,7 @@ export async function releaseClose(
       planned.push(item);
       const steps = item.open ? [...(item.commented ? [] : ["comment"]), "close"] : [];
       deps.log(
-        `#${issue} ${item.open ? "open" : "closed"}: ${item.title} → ${[...steps, "board Done"].join(", ")}`,
+        `#${issue} ${item.open ? "open" : "closed"}: ${plain(item.title)} → ${[...steps, "board Done"].join(", ")}`,
       );
     }
   }
