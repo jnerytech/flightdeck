@@ -142,6 +142,12 @@
   --client-violet: oklch(0.6 0.16 305);
   --client-teal: oklch(0.6 0.1 190);
   --client-orange: oklch(0.68 0.16 50);
+  /* The cost chart's series (issue #179): five hues, each 3:1 or more on the card. */
+  --chart-1: oklch(0.52 0.17 275);
+  --chart-2: oklch(0.52 0.12 160);
+  --chart-3: oklch(0.52 0.15 50);
+  --chart-4: oklch(0.52 0.17 10);
+  --chart-5: oklch(0.52 0.06 220);
 }
 
 .dark {
@@ -181,6 +187,11 @@
   --status-ended: oklch(0.66 0 0);
   --status-error: oklch(0.72 0.17 25);
   --status-risk: oklch(0.74 0.17 330);
+  --chart-1: oklch(0.74 0.17 275);
+  --chart-2: oklch(0.74 0.12 160);
+  --chart-3: oklch(0.74 0.15 50);
+  --chart-4: oklch(0.74 0.17 10);
+  --chart-5: oklch(0.74 0.06 220);
 }
 
 /*
@@ -246,6 +257,52 @@
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
+}
+
+/*
+ * The cost chart's series (issue #179): a hue each, and a pattern from the second on, so a series
+ * reads without its colour. The pattern is the card's colour over the series' own.
+ */
+@utility chart-series-1 {
+  background-color: var(--chart-1);
+}
+@utility chart-series-2 {
+  background-color: var(--chart-2);
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0 3px,
+    color-mix(in oklch, var(--card) 55%, transparent) 3px 5px
+  );
+}
+@utility chart-series-3 {
+  background-color: var(--chart-3);
+  background-image: radial-gradient(
+    color-mix(in oklch, var(--card) 60%, transparent) 1px,
+    transparent 1.5px
+  );
+  background-size: 5px 5px;
+}
+@utility chart-series-4 {
+  background-color: var(--chart-4);
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0 3px,
+    color-mix(in oklch, var(--card) 55%, transparent) 3px 5px
+  );
+}
+@utility chart-series-5 {
+  background-color: var(--chart-5);
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent 0 3px,
+      color-mix(in oklch, var(--card) 50%, transparent) 3px 4px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent 0 3px,
+      color-mix(in oklch, var(--card) 50%, transparent) 3px 4px
+    );
 }
 
 /* A toggle that sits at the start of a column, not stretched across it. */

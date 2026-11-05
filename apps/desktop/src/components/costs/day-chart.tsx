@@ -4,17 +4,26 @@ import { cn } from "@/lib/utils";
 import { formatDay } from "../../i18n/format.ts";
 import { usd } from "../../lib/costs.ts";
 
-/** A tint of the accent per project in a day's bar, so the stack reads. */
-const SEGMENTS = ["bg-brand", "bg-brand/70", "bg-brand/50", "bg-brand/35"];
+/**
+ * A series style per project in a day's bar (issue #179): its own hue and, from the second on, a
+ * pattern, so the stack reads without colour. The last one is "other projects".
+ */
+const SEGMENTS = [
+  "chart-series-1",
+  "chart-series-2",
+  "chart-series-3",
+  "chart-series-4",
+  "chart-series-5",
+];
 
 /** Days that fit a label each; over it only every few-th day gets one. */
 const LABELLED = 7;
 
 /**
  * The cost per day as bars stacked by project: the day under each bar, the total of a day as
- * the bar's text, the highest day and a legend of the projects. A project keeps its tint on
- * every day and in the legend; with more projects than tints the biggest spenders get one each
- * and the rest share the last, which the legend calls "other projects".
+ * the bar's text, the highest day and a legend of the projects. A project keeps its series style
+ * on every day and in the legend; with more projects than styles the biggest spenders get one
+ * each and the rest share the last, which the legend calls "other projects".
  */
 export function DayChart(props: {
   days: string[];
