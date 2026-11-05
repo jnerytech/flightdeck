@@ -2,8 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { lanePlaces, runInLane } from "../lib/lane.ts";
 import type { SlotEnv } from "../lib/slot.ts";
 
+// /proc/meminfo gives whole kB.
 const meminfo = (kb: number) =>
-  `MemTotal:       16334848 kB\nMemFree:          400000 kB\nMemAvailable:   ${kb} kB\n`;
+  `MemTotal:       16334848 kB\nMemFree:          400000 kB\nMemAvailable:   ${Math.round(kb)} kB\n`;
 const GB = 1024 * 1024;
 
 describe("lane-places", () => {
