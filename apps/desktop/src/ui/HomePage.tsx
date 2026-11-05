@@ -95,109 +95,122 @@ export function HomePage(props: {
   const unknown = t("home.unknown");
   const series = (card: string, values: number[], format: (v: number) => string) =>
     t("home.chart", { card, values: values.map(format).join(", ") });
+  // At start the hosts are still connecting: that is not "no host".
+  const connecting = !state.hostsLoaded || state.hosts.some((host) => host.status === "connecting");
+  const busy = online.length === 0 ? connecting : !kpis;
+  const message =
+    online.length === 0
+      ? connecting
+        ? t("home.connecting")
+        : t("home.noHosts")
+      : !kpis
+        ? t("home.loading")
+        : t("home.ready");
   const openCosts = () => go({ name: "costs" });
   const firstHost = online[0]?.id;
 
   return (
     <Page title={t("home.title")} subtitle={t("home.range")}>
-      {online.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{t("home.noHosts")}</p>
-      ) : !kpis ? (
-        <p aria-busy="true" className="text-muted-foreground text-sm">
-          {t("home.loading")}
-        </p>
-      ) : (
-        kpis && (
-          <Stack gap={4}>
-            {silent.length > 0 && (
-              <p role="status" className="text-sm">
-                {t("home.partial", { hosts: silent.join(", ") })}
-              </p>
-            )}
-            {kpis.turns.failed === null && (
-              <p className="text-muted-foreground text-sm">{t("home.olderDaemon")}</p>
-            )}
-            <Grid cols={{ base: 1, sm: 2, xl: 4 }} gap={4}>
-              <KpiCard
-                title={t("home.spend")}
-                openLabel={t("home.openCard", { card: t("home.spend") })}
-                value={usdOf(kpis.spend.totalUsd)}
-                details={
-                  kpis.spend.budget
-                    ? t("home.ofBudget", {
-                        spent: usdOf(kpis.spend.budget.spentUsd),
-                        limit: usdOf(kpis.spend.budget.limitUsd),
-                      })
-                    : t("home.noBudget")
-                }
-                series={kpis.spend.series}
-                seriesLabel={series(t("home.spend"), kpis.spend.series, usdOf)}
-                onOpen={openCosts}
-              />
-              <KpiCard
-                title={t("home.turns")}
-                openLabel={t("home.openCard", { card: t("home.turns") })}
-                value={formatNumber(kpis.turns.total, lang)}
-                details={
-                  <>
-                    <span>{t("home.turnsOk", { n: formatNumber(kpis.turns.ok, lang) })}</span>
-                    {kpis.turns.failed !== null && (
+      {/* One live region from the first word to the numbers: its change is what is announced. */}
+      <p
+        role="status"
+        aria-busy={busy ? true : undefined}
+        className={kpis && online.length > 0 ? "sr-only" : "text-muted-foreground text-sm"}
+      >
+        {message}
+      </p>
+      {online.length === 0 || !kpis
+        ? null
+        : kpis && (
+            <Stack gap={4}>
+              {silent.length > 0 && (
+                <p aria-live="polite" className="text-sm">
+                  {t("home.partial", { hosts: silent.join(", ") })}
+                </p>
+              )}
+              {kpis.turns.failed === null && (
+                <p className="text-muted-foreground text-sm">{t("home.olderDaemon")}</p>
+              )}
+              <Grid cols={{ base: 1, sm: 2, xl: 4 }} gap={4}>
+                <KpiCard
+                  title={t("home.spend")}
+                  openLabel={t("home.openCard", { card: t("home.spend") })}
+                  value={usdOf(kpis.spend.totalUsd)}
+                  details={
+                    kpis.spend.budget
+                      ? t("home.ofBudget", {
+                          spent: usdOf(kpis.spend.budget.spentUsd),
+                          limit: usdOf(kpis.spend.budget.limitUsd),
+                        })
+                      : t("home.noBudget")
+                  }
+                  series={kpis.spend.series}
+                  seriesLabel={series(t("home.spend"), kpis.spend.series, usdOf)}
+                  onOpen={openCosts}
+                />
+                <KpiCard
+                  title={t("home.turns")}
+                  openLabel={t("home.openCard", { card: t("home.turns") })}
+                  value={formatNumber(kpis.turns.total, lang)}
+                  details={
+                    <>
+                      <span>{t("home.turnsOk", { n: formatNumber(kpis.turns.ok, lang) })}</span>
+                      {kpis.turns.failed !== null && (
+                        <span>
+                          {t("home.turnsFailed", { n: formatNumber(kpis.turns.failed, lang) })}
+                        </span>
+                      )}
+                    </>
+                  }
+                  series={kpis.turns.series}
+                  seriesLabel={series(t("home.turns"), kpis.turns.series, (v) =>
+                    formatNumber(v, lang),
+                  )}
+                  onOpen={() => (firstHost ? go({ name: "history", host: firstHost }) : undefined)}
+                />
+                <KpiCard
+                  title={t("home.tokens")}
+                  openLabel={t("home.openCard", { card: t("home.tokens") })}
+                  value={formatCompact(kpis.tokens.total, lang)}
+                  details={t("home.cacheRead", { n: formatCompact(kpis.tokens.cacheRead, lang) })}
+                  series={kpis.tokens.series}
+                  seriesLabel={series(t("home.tokens"), kpis.tokens.series, (v) =>
+                    formatCompact(v, lang),
+                  )}
+                  onOpen={openCosts}
+                />
+                <KpiCard
+                  title={t("home.average")}
+                  openLabel={t("home.openCard", { card: t("home.average") })}
+                  value={
+                    kpis.average.costPerTurnUsd === null
+                      ? unknown
+                      : usdOf(kpis.average.costPerTurnUsd)
+                  }
+                  details={
+                    <>
                       <span>
-                        {t("home.turnsFailed", { n: formatNumber(kpis.turns.failed, lang) })}
+                        {t("home.avgTime")}:{" "}
+                        {kpis.average.turnMs === null
+                          ? unknown
+                          : formatSeconds(kpis.average.turnMs, lang, t)}
                       </span>
-                    )}
-                  </>
-                }
-                series={kpis.turns.series}
-                seriesLabel={series(t("home.turns"), kpis.turns.series, (v) =>
-                  formatNumber(v, lang),
-                )}
-                onOpen={() => (firstHost ? go({ name: "history", host: firstHost }) : undefined)}
-              />
-              <KpiCard
-                title={t("home.tokens")}
-                openLabel={t("home.openCard", { card: t("home.tokens") })}
-                value={formatCompact(kpis.tokens.total, lang)}
-                details={t("home.cacheRead", { n: formatCompact(kpis.tokens.cacheRead, lang) })}
-                series={kpis.tokens.series}
-                seriesLabel={series(t("home.tokens"), kpis.tokens.series, (v) =>
-                  formatCompact(v, lang),
-                )}
-                onOpen={openCosts}
-              />
-              <KpiCard
-                title={t("home.average")}
-                openLabel={t("home.openCard", { card: t("home.average") })}
-                value={
-                  kpis.average.costPerTurnUsd === null
-                    ? unknown
-                    : usdOf(kpis.average.costPerTurnUsd)
-                }
-                details={
-                  <>
-                    <span>
-                      {t("home.avgTime")}:{" "}
-                      {kpis.average.turnMs === null
-                        ? unknown
-                        : formatSeconds(kpis.average.turnMs, lang, t)}
-                    </span>
-                    <span>
-                      {kpis.average.successRate === null
-                        ? unknown
-                        : t("home.successRate", {
-                            rate: `${formatNumber(Math.round(kpis.average.successRate * 1000) / 10, lang)}%`,
-                          })}
-                    </span>
-                  </>
-                }
-                series={kpis.average.series}
-                seriesLabel={series(t("home.average"), kpis.average.series, usdOf)}
-                onOpen={openCosts}
-              />
-            </Grid>
-          </Stack>
-        )
-      )}
+                      <span>
+                        {kpis.average.successRate === null
+                          ? unknown
+                          : t("home.successRate", {
+                              rate: `${formatNumber(Math.round(kpis.average.successRate * 1000) / 10, lang)}%`,
+                            })}
+                      </span>
+                    </>
+                  }
+                  series={kpis.average.series}
+                  seriesLabel={series(t("home.average"), kpis.average.series, usdOf)}
+                  onOpen={openCosts}
+                />
+              </Grid>
+            </Stack>
+          )}
     </Page>
   );
 }
