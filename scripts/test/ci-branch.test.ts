@@ -299,7 +299,8 @@ describe("ci.yml: any pushed branch can run the full CI by hand", () => {
         .filter((step) => step.uses?.startsWith("actions/upload-artifact@"))
         .map((step) => [step.with?.name, step.with?.path, step.if]);
     expect(uploads("screenshots-prints")).toEqual([
-      ["prints", "apps/desktop/screenshots", "always()"],
+      // One per theme and language (#291).
+      ["prints-${{ matrix.theme }}-${{ matrix.lang }}", "apps/desktop/screenshots", "always()"],
     ]);
     expect(uploads("screenshots-e2e")).toEqual([
       // One of each per e2e shard (#264).
