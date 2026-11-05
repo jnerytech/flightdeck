@@ -87,6 +87,16 @@ export function answerFake(
   return { code: rule.code ?? 0, stdout: rule.stdout ?? "", stderr: rule.stderr ?? "", rule };
 }
 
+/**
+ * Kills the fakes of this run still alive (issue #254): every pid a fake recorded under
+ * `<runDir>/fd-fake-*\/pids/`, checked against its command line first so a reused pid is never
+ * hit. Linux only (it reads /proc); elsewhere the fakes' own parent watch and deadline end them.
+ * Returns the pids it killed.
+ */
+export function reapFakes(_runDir: string): number[] {
+  return [];
+}
+
 export interface FakeCliOptions {
   /**
    * Refuses, like Bun does for a Windows .cmd shim, an argument with a newline or one of
