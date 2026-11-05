@@ -174,10 +174,17 @@ describe("personas-ui: choosing a persona when a session opens", () => {
         />
       </TContext.Provider>,
     );
+    // Issue #177 (B10): the persona is asked for when the terminal is opened, not shown in the
+    // header as a select that reads like an action.
+    expect(
+      screen.queryByRole("combobox", { name: "Nova sessão no terminal com persona" }),
+    ).toBeNull();
+    await click("Abrir Claude aqui (terminal)");
+    expect(d.ptys.spawned).toHaveLength(0);
     await settle(() => options("Nova sessão no terminal com persona").length > 1);
     expect(options("Nova sessão no terminal com persona")).not.toContain("Minha persona");
     await fill("Nova sessão no terminal com persona", "qa");
-    await click("Abrir Claude aqui (terminal)");
+    await click("Abrir o terminal");
     await poll(() => d.ptys.spawned.length === 1);
     expect(d.ptys.spawned[0]?.argv.slice(-2)).toEqual(["--persona", "qa"]);
   });

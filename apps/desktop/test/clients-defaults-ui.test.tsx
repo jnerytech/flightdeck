@@ -40,6 +40,13 @@ function addClient(
 }
 
 const select = (label: string) => screen.queryByLabelText(label) as HTMLSelectElement | null;
+const click = async (name: string) => {
+  const button = screen.queryByRole("button", { name });
+  expect(button).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(button as HTMLElement);
+  });
+};
 const options = (label: string) => [...(select(label)?.options ?? [])].map((o) => o.value);
 const choose = async (label: string, value: string) => {
   const field = select(label);
@@ -113,6 +120,8 @@ describe("clients-defaults: the persona of Claude here", () => {
         />
       </TContext.Provider>,
     );
+    // The persona is asked for when the terminal is opened (issue #177).
+    await click("Abrir Claude aqui (terminal)");
     await settle(() => options("Nova sessão no terminal com persona").length > 1);
     return { store, ...h };
   }
