@@ -286,11 +286,12 @@ describe("pr-flow: next", () => {
       "  #12 a",
       "  #17 done",
       "not ready:",
+      // In merge order: a stacked PR right after the PR it sits on.
+      "  #20 b: waits for #12 (a)",
       "  #13 behind: 3 commit(s) behind main (bun run pr -- update 13)",
       "  #14 red: failing: test (ubuntu-latest)",
       "  #15 running: running: test (windows-latest)",
       "  #16 wip: a draft",
-      "  #20 b: waits for #12 (a)",
     ]);
   });
 
@@ -366,6 +367,9 @@ describe("pr-flow: update and merge", () => {
     });
     expect(await prFlow(["merge", "12"], refused.deps)).toBe(1);
     expect(await prFlow(["merge", "99"], fake({ env: COORDINATOR }).deps)).toBe(1);
+    const noRules = fake({ prs: [pr(12, "a")], env: COORDINATOR, fail: /rules\/branches/ });
+    expect(await prFlow(["merge", "12"], noRules.deps)).toBe(1);
+    expect(noRules.writes).toEqual([]);
   });
 
   test("an unknown command or a missing argument is the usage, exit 2", async () => {
