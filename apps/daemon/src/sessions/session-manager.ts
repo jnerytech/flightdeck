@@ -381,8 +381,10 @@ export class SessionManager {
   }
 
   /** Reopens an `ended` or `error` session with the stored Claude session id. */
-  async resume(sessionId: string): Promise<void> {
+  resume(sessionId: string): Promise<void> {
     const session = this.get(sessionId);
+    // The refusal is thrown at once (callers and tests read it without awaiting), the rest waits
+    // for the folder's git boundaries.
     if (session.status !== "ended" && session.status !== "error") {
       throw new FlightdeckError(
         "invalid_state",
@@ -390,8 +392,16 @@ export class SessionManager {
         "session_not_ended",
       );
     }
-    await this.opts.prepareTrust?.(session.cwd);
-    this.startRun(sessionId, session.claudeSessionId ?? undefined);
+    return this.reattach(sessionId, session.cwd, session.claudeSessionId ?? undefined);
+  }
+
+  private async reattach(
+    sessionId: string,
+    cwd: string,
+    claudeSessionId: string | undefined,
+  ): Promise<void> {
+    await this.opts.prepareTrust?.(cwd);
+    this.startRun(sessionId, claudeSessionId);
     this.setStatus(sessionId, "idle", "retomada");
   }
 
