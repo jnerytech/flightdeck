@@ -1,4 +1,4 @@
-import type { DepResult, DepsResult } from "@flightdeck/protocol";
+import { type DepResult, type DepsResult, safeFixCommand, safeFixUrl } from "@flightdeck/protocol";
 
 /** The section's headline: everything in place, optional ones missing, or required ones missing. */
 export interface DepsSummary {
@@ -33,12 +33,15 @@ export function depLook(item: DepResult): DepLook {
 
 /** The command that installs or upgrades the dependency on the host's own OS, or null. */
 export function fixFor(item: DepResult, os: string): string | null {
-  return item.fix.find((fix) => fix.os === os)?.command ?? null;
+  const command = item.fix.find((fix) => fix.os === os)?.command;
+  // The host chooses this line and the person pastes it into a shell: only the known ones are shown.
+  return command !== undefined && safeFixCommand(command) ? command : null;
 }
 
 /** The official install page for the dependency on the host's own OS, or null. */
 export function fixPageFor(item: DepResult, os: string): string | null {
-  return item.fix.find((fix) => fix.os === os)?.url ?? null;
+  const url = item.fix.find((fix) => fix.os === os)?.url;
+  return url !== undefined && safeFixUrl(url) ? url : null;
 }
 
 /** Whether a required dependency of the host is missing (what the sidebar marks red); outdated is amber. */

