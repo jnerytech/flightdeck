@@ -39,7 +39,7 @@ describe("handoff-check", () => {
   });
 
   test("a stamp vouches only for the HEAD it names, with every check at 0", () => {
-    const good = `HANDOFF fix-x ${HEAD} typecheck=0 lint=0 audit=0 related=0 t`;
+    const good = `HANDOFF fix-x ${HEAD} typecheck=0 lint=0 audit=0 related=0 security=0 ci=0 t`;
     expect(stampProblem(good, HEAD)).toBeNull();
     expect(stampProblem(good, "f".repeat(40)) ?? "").toContain("stale");
     expect(stampProblem(good.replace("audit=0", "audit=1"), HEAD) ?? "").toContain("audit=1");
@@ -95,6 +95,12 @@ describe("handoff-check", () => {
     const reviewed = await stamp("0");
     expect(reviewed.code).toBe(0);
     expect(stampProblem(reviewed.stamp, HEAD)).toBeNull();
+  });
+
+  test("a stamp with no security gate or no CI field vouches for nothing (#273)", () => {
+    const base = `HANDOFF b ${HEAD} typecheck=0 lint=0 audit=0 related=0`;
+    expect(stampProblem(`${base} ci=0 t`, HEAD)).toBe("incomplete: no security= in the stamp");
+    expect(stampProblem(`${base} security=0 t`, HEAD)).toBe("incomplete: no ci= in the stamp");
   });
 
   test("a hostile stamp is refused in linear time (Sonar S5852) (#232)", () => {

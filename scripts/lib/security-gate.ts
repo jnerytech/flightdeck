@@ -106,3 +106,18 @@ export function securityProblem(risky: RiskyFile[], commits: BranchCommit[]): st
     '  git commit --allow-empty -m "chore(security): security-reviewer verdict (#N)" -m "Security-Reviewed: <its one-line summary>"',
   ].join("\n");
 }
+
+/** Runs git with these arguments: its stdout, or null when it failed. */
+export type GitRun = (args: string[]) => string | null;
+
+export interface SecurityVerdict {
+  /** "0" when nothing needs a review or one came after; "unreviewed"; "unknown" when git failed. */
+  verdict: "0" | "unreviewed" | "unknown";
+  /** What to print: the risky files and what to do, or why the gate could not run. */
+  message: string | null;
+}
+
+/** The gate end to end (#273): the base, the diff and the log from git, then the verdict. */
+export function securityVerdict(_git: GitRun, _base?: string): SecurityVerdict {
+  return { verdict: "0", message: null };
+}

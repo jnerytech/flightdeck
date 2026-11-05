@@ -313,6 +313,46 @@ describe("pr-flow: open", () => {
     );
   });
 
+  test("a JSON array names a hook with spaces in its path; a failure shows the tail of its stderr (#273)", async () => {
+    const f = fake({
+      pushed: ["sec"],
+      subjects: { sec: ["feat(sec): x (#273)"] },
+      issues: { 273: "Reviews" },
+      env: { FLIGHTDECK_PR_OPENED: '["C:\\\\Program Files\\\\oc.exe", "--review"]' },
+    });
+    const ran: string[][] = [];
+    const deps = {
+      ...f.deps,
+      run: async (command: string[]) => {
+        ran.push(command);
+        return { code: 2, stdout: "", stderr: "queue full\nretry later" };
+      },
+    };
+    expect(await prFlow(["open", "sec"], deps)).toBe(0);
+    expect(ran).toEqual([["C:\\Program Files\\oc.exe", "--review", "300", "sec", "main"]]);
+    expect(f.out()).toContain("hook failed (exit 2: queue full retry later); #300 is open");
+  });
+
+  test("a hook value that starts like JSON but is not an array of strings runs nothing and says so (#273)", async () => {
+    const f = fake({
+      pushed: ["sec"],
+      subjects: { sec: ["feat(sec): x (#273)"] },
+      issues: { 273: "Reviews" },
+      env: { FLIGHTDECK_PR_OPENED: '["oc", 3]' },
+    });
+    const ran: string[][] = [];
+    const deps = {
+      ...f.deps,
+      run: async (command: string[]) => {
+        ran.push(command);
+        return { code: 0, stdout: "" };
+      },
+    };
+    expect(await prFlow(["open", "sec"], deps)).toBe(0);
+    expect(ran).toEqual([]);
+    expect(f.out()).toContain("FLIGHTDECK_PR_OPENED is not a JSON array of strings; #300 is open");
+  });
+
   test("without FLIGHTDECK_PR_OPENED no hook runs (#273)", async () => {
     const f = fake({
       pushed: ["sec"],

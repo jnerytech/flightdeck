@@ -5,6 +5,7 @@ import {
   parseBranchLog,
   riskyFiles,
   securityProblem,
+  securityVerdict,
 } from "../lib/security-gate.ts";
 
 const DIFF = [
@@ -147,5 +148,126 @@ describe("security-gate", () => {
         commit("b", ["apps/daemon/src/run.ts"]),
       ]),
     ).toContain("apps/daemon/src/run.ts (spawn)");
+  });
+
+  test("more ways to start a process count as a spawn; a comment that names a secret does not (#273)", () => {
+    const lines = (path: string, ...added: string[]) => [path, added] as [string, string[]];
+    const added = new Map([
+      lines("apps/daemon/src/a.ts", "cp.exec(command);"),
+      lines("apps/daemon/src/b.ts", "await Bun.$`git status`;"),
+      lines("apps/daemon/src/c.ts", 'import { fork } from "node:child_process";'),
+      lines("apps/daemon/src/d.ts", "const w = new Worker(url);"),
+      lines("apps/daemon/src/e.mjs", "await execa('git', ['status']);"),
+      lines("apps/daemon/src/f.ts", "// the token comes from the vault", "const x = re.exec(s);"),
+    ]);
+    expect(riskyFiles(added)).toEqual([
+      { path: "apps/daemon/src/a.ts", why: ["spawn"] },
+      { path: "apps/daemon/src/b.ts", why: ["spawn"] },
+      { path: "apps/daemon/src/c.ts", why: ["spawn"] },
+      { path: "apps/daemon/src/d.ts", why: ["spawn"] },
+      { path: "apps/daemon/src/e.mjs", why: ["spawn"] },
+    ]);
+  });
+
+  test("the Tauri capabilities and config, the workflows and a pure rename into the vault are risky by path (#273)", () => {
+    const rename = [
+      "diff --git a/apps/daemon/src/x.ts b/apps/daemon/src/vault/x.ts",
+      "similarity index 100%",
+      "rename from apps/daemon/src/x.ts",
+      "rename to apps/daemon/src/vault/x.ts",
+    ].join("\n");
+    const added = addedLines(rename);
+    added.set("apps/desktop/src-tauri/capabilities/default.json", ['"fs:allow-read"']);
+    added.set("apps/desktop/src-tauri/tauri.conf.json", ['"csp": null']);
+    added.set(".github/workflows/ci.yml", ["run: bun run test"]);
+    added.set("docs/manual/en.md", ["the vault keeps tokens"]);
+    expect(riskyFiles(added).map((r) => r.path)).toEqual([
+      ".github/workflows/ci.yml",
+      "apps/daemon/src/vault/x.ts",
+      "apps/desktop/src-tauri/capabilities/default.json",
+      "apps/desktop/src-tauri/tauri.conf.json",
+    ]);
+  });
+
+  test("risky files that no commit of the log touches need a review all the same (#273)", () => {
+    const risky = [{ path: "apps/daemon/src/run.ts", why: ["spawn"] }];
+    expect(securityProblem(risky, [commit("c", ["docs/x.md"], "an old review")]) ?? "").toContain(
+      "apps/daemon/src/run.ts (spawn)",
+    );
+  });
+});
+
+/** A fake git for the gate: each command's answer, by its subcommand. */
+function fakeGit(answers: { diff?: string | null; log?: string | null; base?: string | null }) {
+  const calls: string[][] = [];
+  const git = (args: string[]): string | null => {
+    calls.push(args);
+    const sub = args.find((a) => !a.startsWith("-") && !a.includes("=")) ?? "";
+    if (sub === "rev-parse" && args.includes("--end-of-options")) {
+      return answers.base === undefined ? "base0\n" : answers.base;
+    }
+    if (sub === "rev-parse") return "head0\n";
+    if (sub === "symbolic-ref") return "feature\n";
+    if (sub === "merge-base") return "base0\n";
+    if (sub === "diff") return answers.diff === undefined ? "" : answers.diff;
+    if (sub === "log") return answers.log === undefined ? "" : answers.log;
+    return null;
+  };
+  return { git, calls };
+}
+
+const RISKY_DIFF = [
+  "diff --git a/apps/daemon/src/run.ts b/apps/daemon/src/run.ts",
+  "+++ b/apps/daemon/src/run.ts",
+  "@@ -1 +1 @@",
+  '+Bun.spawn(["git"]);',
+].join("\n");
+
+describe("security-gate: end to end", () => {
+  test("a git that fails, or a base that does not resolve, gives unknown, never 0 (#273)", () => {
+    for (const [answers, base, why] of [
+      [{ diff: null }, undefined, "git diff failed"],
+      [{ diff: RISKY_DIFF, log: null }, undefined, "git log failed"],
+      [{ base: null }, "-x", "-x is not a commit"],
+    ] as const) {
+      const verdict = securityVerdict(fakeGit(answers).git, base);
+      expect(verdict.verdict).toBe("unknown");
+      expect(verdict.message ?? "").toContain(why);
+    }
+  });
+
+  test("the diff forces its own prefixes and no external diff; the log is in topological order with unfolded trailers (#273)", () => {
+    const { git, calls } = fakeGit({ diff: "" });
+    expect(securityVerdict(git).verdict).toBe("0");
+    const diff = calls.find((c) => c.includes("diff")) ?? [];
+    for (const flag of ["--src-prefix=a/", "--dst-prefix=b/", "--no-ext-diff", "--no-textconv"]) {
+      expect(diff).toContain(flag);
+    }
+    expect(diff.at(-1)).toBe("base0...HEAD");
+    const log = calls.find((c) => c.includes("log")) ?? [];
+    expect(log).toContain("--topo-order");
+    expect(log.join(" ")).toContain("unfold");
+    expect(log.at(-1)).toBe("base0..HEAD");
+  });
+
+  test("--base is resolved first, and only the commit it names reaches the diff (#273)", () => {
+    const { git, calls } = fakeGit({ base: "abc123\n", diff: "" });
+    securityVerdict(git, "origin/ci-paths");
+    expect(calls[0]).toEqual([
+      "rev-parse",
+      "--verify",
+      "--end-of-options",
+      "origin/ci-paths^{commit}",
+    ]);
+    expect((calls.find((c) => c.includes("diff")) ?? []).at(-1)).toBe("abc123...HEAD");
+  });
+
+  test("a risky diff is unreviewed until a trailer comes after it (#273)", () => {
+    const log = (trailer: string) => `\x1ea1\x1f${trailer}\n\napps/daemon/src/run.ts\n`;
+    const unreviewed = securityVerdict(fakeGit({ diff: RISKY_DIFF, log: log("") }).git);
+    expect(unreviewed.verdict).toBe("unreviewed");
+    expect(unreviewed.message ?? "").toContain("apps/daemon/src/run.ts (spawn)");
+    const reviewed = securityVerdict(fakeGit({ diff: RISKY_DIFF, log: log("no finding") }).git);
+    expect(reviewed).toEqual({ verdict: "0", message: null });
   });
 });

@@ -17,8 +17,8 @@ export interface PrFlowDeps {
   gh(args: string[]): Promise<GhResult>;
   /** Runs `git <args>` in the repository. */
   git(args: string[]): Promise<GhResult>;
-  /** Runs a command (the FLIGHTDECK_PR_OPENED hook, #273). */
-  run?(command: string[]): Promise<GhResult>;
+  /** Runs a command (the FLIGHTDECK_PR_OPENED hook, #273); `stderr` is the tail of its errors. */
+  run?(command: string[]): Promise<GhResult & { stderr?: string }>;
   env: Record<string, string | undefined>;
   log(line: string): void;
 }
