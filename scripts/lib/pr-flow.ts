@@ -33,7 +33,7 @@ export interface Pr {
 const REPO = "repos/{owner}/{repo}";
 const MAIN = "main";
 const USAGE =
-  "usage: bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n>] | next | update <n> | auto <n> | merge <n>";
+  "usage: bun run pr -- open <branch> [--base <branch>] [--draft] [--issue <n>] | next | update <n> | auto <n> | merge <n> | tag <vX.Y.Z> [--commit <sha>]";
 /** A required check passes as GitHub counts it: a success, or a run it skipped or left neutral. */
 const PASSED = new Set(["success", "skipped", "neutral"]);
 
@@ -126,11 +126,8 @@ async function requiredChecks(deps: PrFlowDeps): Promise<string[] | null> {
 }
 
 /** What the PR's checks still need ("failing: …; running: …"), or null when they are green. */
-async function checksProblem(
-  deps: PrFlowDeps,
-  sha: string,
-  required: string[],
-): Promise<string | null> {
+/** The verdict of a commit's required checks, from its check runs and commit statuses. */
+async function verdictOf(deps: PrFlowDeps, sha: string, required: string[]) {
   const runs = await deps.gh([
     "api",
     "--paginate",
@@ -144,7 +141,15 @@ async function checksProblem(
     "--jq",
     ".statuses[] | {context, state}",
   ]);
-  const v = checksVerdict(required, jsonLines(runs.stdout), jsonLines(statuses.stdout));
+  return checksVerdict(required, jsonLines(runs.stdout), jsonLines(statuses.stdout));
+}
+
+async function checksProblem(
+  deps: PrFlowDeps,
+  sha: string,
+  required: string[],
+): Promise<string | null> {
+  const v = await verdictOf(deps, sha, required);
   if (v.green) return null;
   return [
     v.failing.length > 0 ? `failing: ${v.failing.join(", ")}` : "",
@@ -401,6 +406,71 @@ function usage(deps: PrFlowDeps): number {
   return 2;
 }
 
+/** The CI of a commit, by the main ruleset's required checks: "0", "failed", "pending", "none" or "unknown" (#266). */
+export async function headCi(sha: string, deps: PrFlowDeps): Promise<string> {
+  const required = await requiredChecks(deps);
+  if (!required) return "unknown";
+  const v = await verdictOf(deps, sha, required);
+  if (v.green) return "0";
+  if (v.failing.length > 0) return "failed";
+  // Nothing reported yet for any required check: the commit was never run (not pushed, or no PR).
+  return v.missing.length === required.length ? "none" : "pending";
+}
+
+const TAG = /^v\d+\.\d+\.\d+(?:-[\w.]+)?$/;
+
+/**
+ * Tags a commit of main (main's HEAD by default) as a release, only after a green full CI run of it
+ * on main (its push), and pushes the tag alone as refs/tags/<tag>: a push of several tags starts no
+ * workflow. The coordinator's only.
+ */
+async function tagRelease(args: string[], deps: PrFlowDeps): Promise<number> {
+  const tag = args[0] ?? "";
+  if (!TAG.test(tag)) return usage(deps);
+  if (deps.env.FLIGHTDECK_COORDINATOR !== "1") {
+    deps.log("tagging a release is the coordinator's (FLIGHTDECK_COORDINATOR=1)");
+    return 2;
+  }
+  const refuse = (reason: string) => {
+    deps.log(`${tag} not tagged: ${reason}`);
+    return 2;
+  };
+  const head = await deps.git(["rev-parse", `origin/${MAIN}`]);
+  const sha = args.includes("--commit")
+    ? (args[args.indexOf("--commit") + 1] ?? "")
+    : head.stdout.trim();
+  if (head.code !== 0 || !sha) return refuse(`origin/${MAIN} cannot be read (git fetch first)`);
+  if ((await deps.git(["rev-parse", "-q", "--verify", `refs/tags/${tag}`])).code === 0) {
+    return refuse(`${tag} exists already`);
+  }
+  if ((await deps.git(["merge-base", "--is-ancestor", sha, `origin/${MAIN}`])).code !== 0) {
+    return refuse(`${sha} is not on ${MAIN}`);
+  }
+  const listed = await deps.gh([
+    "api",
+    `${REPO}/actions/workflows/ci.yml/runs?head_sha=${sha}&event=push&branch=${MAIN}`,
+    "--jq",
+    ".workflow_runs[] | {status, conclusion}",
+  ]);
+  const runs = jsonLines<{ status: string; conclusion: string | null }>(listed.stdout);
+  if (runs.length === 0) return refuse(`no CI run of ${sha} on ${MAIN} (a full run is its push)`);
+  if (!runs.some((r) => r.status === "completed" && r.conclusion === "success")) {
+    if (runs.some((r) => r.status !== "completed"))
+      return refuse(`${sha}'s CI run on ${MAIN} is still running`);
+    return refuse(`${sha}'s CI run on ${MAIN} did not pass`);
+  }
+  if ((await deps.git(["tag", "-a", tag, "-m", tag, sha])).code !== 0) {
+    deps.log(`git refused to make ${tag}`);
+    return 1;
+  }
+  if ((await deps.git(["push", "origin", `refs/tags/${tag}`])).code !== 0) {
+    deps.log(`the push of ${tag} failed: the tag is local only (git push origin refs/tags/${tag})`);
+    return 1;
+  }
+  deps.log(`${tag} tagged on ${sha} and pushed alone`);
+  return 0;
+}
+
 /** Runs one command; the exit code (2 for a usage error or a refusal). */
 export async function prFlow(argv: string[], deps: PrFlowDeps): Promise<number> {
   const [command, ...args] = argv;
@@ -410,5 +480,6 @@ export async function prFlow(argv: string[], deps: PrFlowDeps): Promise<number> 
   if (command === "update" && Number.isInteger(n) && n > 0) return await updatePr(n, deps);
   if (command === "merge" && Number.isInteger(n) && n > 0) return await mergePr(n, deps);
   if (command === "auto" && Number.isInteger(n) && n > 0) return await autoPr(n, deps);
+  if (command === "tag") return await tagRelease(args, deps);
   return usage(deps);
 }
