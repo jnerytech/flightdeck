@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 /**
- * `bun run test:related [--base <ref>] [--fast]`: runs only the tests that reach the files changed
- * since the base (`--fast`: only the tests that import them directly), and checks their coverage.
+ * `bun run test:related [--base <ref>] [--fast] [--tier unit,component]`: runs only the tests that
+ * reach the files changed since the base (`--fast`: only the tests that import them directly;
+ * `--tier`: only those tiers of test-tiers.json, without the coverage gate), and checks their coverage.
  */
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -15,11 +16,18 @@ const args = process.argv.slice(2).filter((a) => a !== "--");
 const flag = args.indexOf("--base");
 // --fast: the changed tests and the tests that import a changed file directly (#219).
 const fast = args.includes("--fast");
+// --tier: only the tests of these tiers (#261), for a session on a small machine; CI runs them all.
+const tierFlag = args.indexOf("--tier");
+const tiers = tierFlag >= 0 ? (args[tierFlag + 1] ?? "").split(",").filter(Boolean) : undefined;
+const manifest: Record<string, string> = tiers
+  ? JSON.parse(readFileSync(join(ROOT, "test-tiers.json"), "utf8"))
+  : {};
 
 const coverageDir = mkdtempSync(join(tmpdir(), "test-related-"));
 const plan = planRelated({
   coverageDir,
   fast,
+  ...(tiers ? { tiers, tierOf: (path: string) => manifest[path] } : {}),
   base: flag >= 0 ? args[flag + 1] : undefined,
   platform: process.platform,
   git: (gitArgs) => {

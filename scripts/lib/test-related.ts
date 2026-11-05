@@ -99,7 +99,18 @@ export interface Plan {
   targets?: string[];
 }
 
-export function planRelated({ base, platform, git, readFile, coverageDir, fast }: PlanDeps): Plan {
+export function planRelated({
+  base,
+  platform,
+  git,
+  readFile,
+  coverageDir: asked,
+  fast,
+  tiers,
+  tierOf = () => undefined,
+}: PlanDeps): Plan {
+  // A run of some tiers covers only part of a file: the 100% gate is the full run's (CI).
+  const coverageDir = tiers ? undefined : asked;
   const ref = base ?? git(["merge-base", "HEAD", "main"])?.trim();
   if (!ref) return { code: 2, output: "test:related: no base to compare with", command: null };
   const label = base ?? ref.slice(0, 7);
@@ -111,10 +122,27 @@ export function planRelated({ base, platform, git, readFile, coverageDir, fast }
     .map((path) => `warning: ${path} affects every test, run the full suite`);
   const byImport = selectRelated(changed, sources, { direct: fast });
   const imported = new Set(byImport.map((r) => r.path));
-  const related = [
+  const selected = [
     ...byImport,
     ...selectByPath(changed, sources).filter((r) => !imported.has(r.path)),
   ].sort((a, b) => (a.path < b.path ? -1 : 1));
+  // --tier: a test the manifest does not list (a new file) still runs.
+  const kept = (path: string) => {
+    const tier = tierOf(path);
+    return !tiers || tier === undefined || tiers.includes(tier);
+  };
+  const related = selected.filter((r) => kept(r.path));
+  const out = new Map<string, number>();
+  for (const r of selected.filter((r) => !kept(r.path))) {
+    const tier = tierOf(r.path) as string;
+    out.set(tier, (out.get(tier) ?? 0) + 1);
+  }
+  if (tiers && out.size > 0) {
+    const counts = [...out].map(([tier, n]) => `${tier} ${n}`).join(", ");
+    warnings.push(
+      `--tier ${tiers.join(",")}: ${selected.length - related.length} test file(s) left out (${counts}); CI runs every tier and the coverage gate`,
+    );
+  }
   const targets = coverageDir
     ? coverageTargets(changed, (path) => (sources.has(path) ? (sources.get(path) ?? null) : null))
     : undefined;
