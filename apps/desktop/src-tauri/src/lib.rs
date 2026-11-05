@@ -343,6 +343,190 @@ async fn open_result(app: tauri::AppHandle, path: String, reveal: bool) -> Resul
     .await
 }
 
+// -- the app's own log file (issue #255) -------------------------------------------------------
+
+/// A log file rotates past this size.
+const LOG_MAX_BYTES: u64 = 5 * 1024 * 1024;
+/// How many files the log keeps, the live one included.
+const LOG_FILES: usize = 5;
+/// A line is cut here, in bytes of text. The webview has already cut it and removed its secrets.
+const LOG_MAX_LINE: usize = 4000;
+/// The most lines `read_log_tail` hands back.
+const LOG_MAX_TAIL: usize = 500;
+const LOG_NAME: &str = "flightdeck.log";
+
+/// File `n` of the log: 0 is the live one, 1 the one before it, and so on.
+fn log_path(dir: &std::path::Path, n: usize) -> std::path::PathBuf {
+    if n == 0 {
+        dir.join(LOG_NAME)
+    } else {
+        dir.join(format!("{LOG_NAME}.{n}"))
+    }
+}
+
+/// Shifts the files one place up: the live one becomes `.1`, the oldest is dropped.
+fn rotate_logs(dir: &std::path::Path, files: usize) -> std::io::Result<()> {
+    let oldest = log_path(dir, files - 1);
+    if oldest.exists() {
+        std::fs::remove_file(&oldest)?;
+    }
+    for n in (0..files - 1).rev() {
+        let from = log_path(dir, n);
+        if from.exists() {
+            std::fs::rename(&from, log_path(dir, n + 1))?;
+        }
+    }
+    Ok(())
+}
+
+/// Appends one line, flattened and cut, rotating first when the live file would pass the limit.
+fn append_line(
+    dir: &std::path::Path,
+    line: &str,
+    max_bytes: u64,
+    files: usize,
+) -> std::io::Result<()> {
+    use std::io::Write;
+    std::fs::create_dir_all(dir)?;
+    let mut text = line.replace(['\r', '\n'], " ");
+    if text.len() > LOG_MAX_LINE {
+        let mut end = LOG_MAX_LINE;
+        while !text.is_char_boundary(end) {
+            end -= 1;
+        }
+        text.truncate(end);
+    }
+    text.push('\n');
+    let live = log_path(dir, 0);
+    let size = std::fs::metadata(&live).map(|m| m.len()).unwrap_or(0);
+    if size > 0 && size + text.len() as u64 > max_bytes {
+        rotate_logs(dir, files)?;
+    }
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&live)?;
+    file.write_all(text.as_bytes())
+}
+
+/// The last `wanted` lines (at most `LOG_MAX_TAIL`) across the files, oldest first.
+fn tail_lines(dir: &std::path::Path, wanted: usize, files: usize) -> Vec<String> {
+    let wanted = wanted.min(LOG_MAX_TAIL);
+    let mut out: Vec<String> = Vec::new();
+    for n in 0..files {
+        if out.len() >= wanted {
+            break;
+        }
+        let Ok(text) = std::fs::read_to_string(log_path(dir, n)) else {
+            continue;
+        };
+        let lines: Vec<&str> = text.lines().filter(|l| !l.is_empty()).collect();
+        let take = (wanted - out.len()).min(lines.len());
+        let mut chunk: Vec<String> = lines[lines.len() - take..]
+            .iter()
+            .map(|l| l.to_string())
+            .collect();
+        chunk.append(&mut out);
+        out = chunk;
+    }
+    out
+}
+
+/// The folder of the app's logs, the OS's own for this app (no path comes from the webview).
+fn app_logs(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    app.path().app_log_dir().map_err(|e| e.to_string())
+}
+
+/// Appends a line of the app's log. The webview redacts it with the protocol's scanner first.
+#[tauri::command]
+async fn append_log(app: tauri::AppHandle, line: String) -> Result<(), String> {
+    let dir = app_logs(&app)?;
+    spawn_blocking_result(move || {
+        append_line(&dir, &line, LOG_MAX_BYTES, LOG_FILES).map_err(|e| e.to_string())
+    })
+    .await
+}
+
+/// The last lines of the app's log, for "Copy diagnostics".
+#[tauri::command]
+async fn read_log_tail(app: tauri::AppHandle, lines: usize) -> Result<Vec<String>, String> {
+    let dir = app_logs(&app)?;
+    spawn_blocking_result(move || Ok(tail_lines(&dir, lines, LOG_FILES))).await
+}
+
+/// Opens the app's log folder in the system's file manager.
+#[tauri::command]
+async fn open_logs_dir(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    let dir = app_logs(&app)?;
+    spawn_blocking_result(move || {
+        std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        let plain = dunce::simplified(&dir);
+        app.opener()
+            .open_path(plain.to_string_lossy().to_string(), None::<String>)
+            .map_err(|e| e.to_string())
+    })
+    .await
+}
+
+#[cfg(test)]
+mod log_tests {
+    use super::*;
+
+    fn scratch(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("fd-log-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        dir
+    }
+
+    #[test]
+    fn a_line_is_appended_as_one_line() {
+        let dir = scratch("one");
+        append_line(&dir, "first\nsecond\r\nthird", 1024, 3).unwrap();
+        append_line(&dir, "next", 1024, 3).unwrap();
+        let text = std::fs::read_to_string(log_path(&dir, 0)).unwrap();
+        assert_eq!(text, "first second  third\nnext\n");
+    }
+
+    #[test]
+    fn a_long_line_is_cut_on_a_character_boundary() {
+        let dir = scratch("long");
+        let line = "é".repeat(LOG_MAX_LINE);
+        append_line(&dir, &line, 1 << 20, 3).unwrap();
+        let text = std::fs::read_to_string(log_path(&dir, 0)).unwrap();
+        assert!(text.trim_end().len() <= LOG_MAX_LINE);
+        assert!(text.ends_with('\n'));
+    }
+
+    #[test]
+    fn the_files_rotate_and_the_oldest_is_dropped() {
+        let dir = scratch("rotate");
+        for i in 0..40 {
+            append_line(&dir, &format!("message number {i} with some padding"), 200, 3).unwrap();
+        }
+        assert!(log_path(&dir, 0).exists());
+        assert!(log_path(&dir, 1).exists());
+        assert!(log_path(&dir, 2).exists());
+        assert!(!log_path(&dir, 3).exists());
+        let live = std::fs::read_to_string(log_path(&dir, 0)).unwrap();
+        assert!(live.contains("message number 39"));
+    }
+
+    #[test]
+    fn the_tail_runs_across_the_files_and_is_bounded() {
+        let dir = scratch("tail");
+        for i in 0..30 {
+            append_line(&dir, &format!("n{i}"), 40, 4).unwrap();
+        }
+        let last = tail_lines(&dir, 5, 4);
+        assert_eq!(last.len(), 5);
+        assert_eq!(last.last().map(String::as_str), Some("n29"));
+        assert_eq!(tail_lines(&dir, 0, 4).len(), 0);
+        assert!(tail_lines(&dir, 100_000, 4).len() <= LOG_MAX_TAIL);
+        assert!(tail_lines(&scratch("missing"), 5, 4).is_empty());
+    }
+}
+
 #[cfg(test)]
 mod open_result_tests {
     use super::*;
@@ -830,6 +1014,9 @@ pub fn run() {
             vault_pick_file,
             pick_folder,
             open_result,
+            append_log,
+            read_log_tail,
+            open_logs_dir,
             vault_remove_file,
             tray_set_status,
             tray_set_menu,
