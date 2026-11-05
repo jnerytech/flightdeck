@@ -267,4 +267,20 @@ describe("deps-check: over the protocol", () => {
     });
     expect(most).toBeGreaterThanOrEqual(5);
   });
+
+  test("on a platform without a service manager the service row is not applicable and the manager is never asked (HD-M5)", async () => {
+    let asked = 0;
+    const { items } = await checkDeps(
+      machine({
+        platform: "darwin",
+        serviceInstalled: async () => {
+          asked++;
+          throw new Error("instalação como serviço não suportado em darwin");
+        },
+      }),
+    );
+    expect(find(items, "service")).toMatchObject({ state: "na" });
+    expect(asked).toBe(0);
+    expect(items).toHaveLength(11);
+  });
 });

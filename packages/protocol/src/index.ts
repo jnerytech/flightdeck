@@ -4931,6 +4931,7 @@ export function parseServerMessage(raw: string): ServerMessage {
 }
 
 export * from "./activity.ts";
+export * from "./fix-safe.ts";
 export * from "./pairing.ts";
 export * from "./personas.ts";
 export * from "./question.ts";

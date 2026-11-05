@@ -7,6 +7,8 @@ export const en: Dictionary = {
     menu: "Account menu for {name}",
     none: "Claude account",
     unread: "Not read yet",
+    many: "{n} accounts",
+    manyHint: "One per host",
     plan: "{plan} plan",
     signOutGithub: "Sign out of GitHub",
     signOutGithubHost: "Sign out of GitHub ({host})",
@@ -33,6 +35,7 @@ export const en: Dictionary = {
     noHosts: "No host is connected yet.",
     partial: "Some hosts did not answer: {hosts}.",
     olderDaemon: "Failed turns and turn time need a daemon with the Home counters.",
+    loading: "Reading the hosts…",
   },
   hosts: {
     status: {
@@ -3445,13 +3448,12 @@ export const en: Dictionary = {
   hostDeps: {
     installPage: "Install page",
     installPageFor: "Open the install page for {name}",
-    title: "Dependencies",
     check: "Check again",
     checking: "Checking…",
+    readFailed: "Could not read the health: {reason}",
     allSet: "All set",
     optionalMissing: "{n} optional missing",
     requiredMissing: "{n} required missing",
-    groups: { required: "Required", optional: "Optional" },
     state: { ok: "OK", outdated: "Outdated", missing: "Missing", na: "Not applicable" },
     names: {
       claude: "Claude Code",

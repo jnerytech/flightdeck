@@ -14,7 +14,7 @@ import {
   SunMoon,
   TriangleAlert,
 } from "lucide-react";
-import { Children, type ReactNode, useState } from "react";
+import { Children, type ReactNode, useId, useState } from "react";
 import { ClientSwitcher } from "@/components/clients/client-switcher";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
 import { AccountFooter } from "@/components/shell/account-footer";
@@ -31,6 +31,8 @@ import { cn } from "@/lib/utils";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "../lib/app-store.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
+import { requiredMissing } from "../lib/deps-summary.ts";
+import { footAccount } from "../lib/foot-account.ts";
 import { type GithubHost, githubSignedIn } from "../lib/github-session.ts";
 import type { HostNameError } from "../lib/host-name.ts";
 import { hostDotView } from "../lib/host-status.ts";
@@ -82,10 +84,12 @@ function NavButton(props: {
   external?: boolean;
 }) {
   const railName = props.hint ? `${props.label} (${props.hint})` : props.label;
+  const badgeId = useId();
   return (
     <button
       type="button"
       aria-current={props.active ? "page" : undefined}
+      aria-describedby={props.badge ? badgeId : undefined}
       aria-keyshortcuts={props.keys}
       className={cn(
         ITEM,
@@ -115,6 +119,7 @@ function NavButton(props: {
       {!props.collapsed && <span className="min-w-0 flex-1 truncate">{props.label}</span>}
       {!props.collapsed && props.badge && (
         <span
+          id={badgeId}
           data-slot="nav-badge"
           className="rounded bg-sidebar-accent px-1 font-medium text-[10px] text-sidebar-foreground/80 uppercase"
         >
@@ -171,7 +176,6 @@ function SectionTitle(props: {
  * a run of icons, since a heading has no room there.
  */
 function NavGroup(props: {
-  id: string;
   label: string;
   collapsed: boolean;
   folded: boolean;
@@ -247,7 +251,6 @@ export function Sidebar(props: {
   // Who is signed in to GitHub is asked when the account menu opens, not on every render.
   const [githubHosts, setGithubHosts] = useState<GithubHost[]>([]);
   const [signingOut, setSigningOut] = useState<GithubHost | null>(null);
-  const [hostsOpen, setHostsOpen] = useState(true);
   const [pinnedOpen, setPinnedOpen] = useState(true);
   const [folded, setFolded] = useState<SidebarGroup[]>(() => props.store.sidebarFolded());
   const toggle = (group: SidebarGroup) => {
@@ -264,10 +267,7 @@ export function Sidebar(props: {
   };
 
   /** The hosts of the Machines group: a dot each in the rail, a list with a menu each otherwise. */
-  const account =
-    state.hosts.map((host) => state.account[host.id]).find((a) => a?.name) ??
-    state.hosts.map((host) => state.account[host.id]).find((a) => a) ??
-    null;
+  const foot = footAccount(state, props.route);
   const hereHost = props.route?.name === "host" ? props.route.host : null;
   const hostsList = collapsed ? (
     <div className="rail-hosts">
@@ -403,7 +403,6 @@ export function Sidebar(props: {
       />
       <nav aria-label={t("sidebarGroups.main")} className="sidebar-nav">
         <NavGroup
-          id="work"
           label={t("sidebarGroups.work")}
           collapsed={collapsed}
           folded={folded.includes("work")}
@@ -458,7 +457,6 @@ export function Sidebar(props: {
           />
         </NavGroup>
         <NavGroup
-          id="automation"
           label={t("sidebarGroups.automation")}
           collapsed={collapsed}
           folded={folded.includes("automation")}
@@ -495,7 +493,6 @@ export function Sidebar(props: {
           )}
         </NavGroup>
         <NavGroup
-          id="observability"
           label={t("sidebarGroups.observability")}
           collapsed={collapsed}
           folded={folded.includes("observability")}
@@ -514,13 +511,13 @@ export function Sidebar(props: {
           <NavButton
             collapsed={collapsed}
             icon={<NavIcon name="history" aria-hidden="true" className={icon} />}
+            active={here === "history"}
             label={t("sidebar.history")}
             disabled={!navHost}
             onClick={needHost((host) => ({ name: "history", host }))}
           />
         </NavGroup>
         <NavGroup
-          id="library"
           label={t("sidebarGroups.library")}
           collapsed={collapsed}
           folded={folded.includes("library")}
@@ -531,6 +528,7 @@ export function Sidebar(props: {
             <NavButton
               collapsed={collapsed}
               icon={<NavIcon name="personas" aria-hidden="true" className={icon} />}
+              active={here === "personas"}
               label={t("sidebar.personas")}
               onClick={() => go({ name: "personas" })}
             />
@@ -540,6 +538,7 @@ export function Sidebar(props: {
             <NavButton
               collapsed={collapsed}
               icon={<NavIcon name="snippets" aria-hidden="true" className={icon} />}
+              active={here === "snippets"}
               label={t("sidebar.snippets")}
               onClick={() => go({ name: "snippets" })}
             />
@@ -549,6 +548,7 @@ export function Sidebar(props: {
             <NavButton
               collapsed={collapsed}
               icon={<NavIcon name="plugins" aria-hidden="true" className={icon} />}
+              active={here === "plugins"}
               label={t("sidebar.plugins")}
               onClick={() => go({ name: "plugins" })}
             />
@@ -556,6 +556,7 @@ export function Sidebar(props: {
           <NavButton
             collapsed={collapsed}
             icon={<NavIcon name="vault" aria-hidden="true" className={icon} />}
+            active={here === "vault"}
             label={t("sidebar.vault")}
             chevron
             onClick={() => go({ name: "vault" })}
@@ -565,7 +566,6 @@ export function Sidebar(props: {
 
       <div data-slot="sidebar-hosts" className="sidebar-hosts">
         <NavGroup
-          id="machines"
           label={t("sidebarGroups.machines")}
           collapsed={collapsed}
           folded={folded.includes("machines")}
@@ -588,6 +588,7 @@ export function Sidebar(props: {
             <NavButton
               collapsed={collapsed}
               icon={<NavIcon name="connections" aria-hidden="true" className={icon} />}
+              active={here === "connections"}
               label={t("sidebar.connections")}
               onClick={() => go({ name: "connections" })}
             />
@@ -650,7 +651,8 @@ export function Sidebar(props: {
           onClick={() => go({ name: "settings" })}
         />
         <AccountFooter
-          account={account}
+          account={foot.account}
+          many={foot.many}
           githubHosts={githubHosts}
           onOpen={() => void githubSignedIn(props.store, state.hosts).then(setGithubHosts)}
           onSignOutGithub={(hostId) =>
@@ -703,12 +705,6 @@ export function Sidebar(props: {
     </div>
   );
 }
-
-/** Whether a required dependency of the host is missing or outdated (what the sidebar warns about). */
-const requiredMissing = (deps: DepsResult | undefined) =>
-  deps?.items.some(
-    (item) => item.group === "required" && (item.state === "missing" || item.state === "outdated"),
-  ) === true;
 
 /** A host's connection state as a dot. */
 function HostDot(props: { host: HostView; t: T }) {

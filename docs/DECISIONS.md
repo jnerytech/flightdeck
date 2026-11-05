@@ -3551,12 +3551,20 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 ## Home, the account foot and the start screen (issues #123, #127)
 
 - **Home is a new route, `overview`.** The old `home` route stays the Sessions list (its tests and the demo rely on it). The sidebar's first item of Work is Home; the page asks every online host for `costs.summary` (when it announces `costs`) and `usage.summary` over seven days and adds them up in `lib/home-kpis.ts`. No new command.
-- **Turns that failed and turn time were not recorded anywhere.** `usage_daily` gains `failed_turns` and `duration_ms` (migration, default 0), filled by the ledger from `turn.result`; the usage rows carry `failedTurns` and `durationMs`, optional so an older daemon still parses. One host without them makes the app's failed turns and success rate unknown ("—"), not zero. Days stored before the columns read as 0 and 0; a test upgrades a 0.36.1 database in place.
+- **Turns that failed and turn time were not recorded anywhere.** `usage_daily` gains `failed_turns` and `duration_ms` (migration, default 0), filled by the ledger from `turn.result`; the usage rows carry `failedTurns` and `durationMs`, optional so an older daemon still parses. One host without them makes the app's failed turns and success rate unknown ("—"), not zero. Days stored before the columns are NULL and come back without the two fields (unknown, not zero; review HK-M1): the averages use only the days that know, and a test upgrades a 0.36.1 database in place.
 - **The spend card compares with the month's host budgets** (sum of spent over sum of limit of host-scope monthly budgets) while its number is the last seven days: the two periods differ on purpose, and the line says "this month". Day and project budgets do not count.
 - **Cards open Costs or History without filters**: the Costs route has no period or filter to carry, and History needs a host, so Turns opens the first online host's. Sparklines are one accent with no axes, and each says its seven values to a screen reader.
 - **Average cost per turn uses the usage ledger's cost** (managed sessions, what the SDK reports) over its turns, so the numerator and denominator come from the same sessions; the Spend card uses the transcripts' estimate for all sessions.
-- **The sidebar's foot is the Claude account** (first host with an account name, else the first with any account) and a menu with Settings, Toggle theme and Manual; Search stays a button. About fifteen tests that clicked those buttons go through `chooseFromAccountMenu`.
+- **The sidebar's foot is the Claude account** (of the host that is open; with none open, the one account the online hosts share, or "N accounts" when they differ; offline hosts are ignored; review HK-M4) and a menu with Settings, Toggle theme and Manual; Search stays a button. About fifteen tests that clicked those buttons go through `chooseFromAccountMenu`.
 - **Home is the start screen of a fresh desktop window only**: `AppStoreOptions.startRoute` is the fallback of `Workspace.restore`, passed by `main.tsx`. A saved window keeps its tabs; the web demo entry and the tests keep Sessions.
+
+- **Review of v0.37 (OpenCode), what was decided.**
+  - Home reads silently and again (HK-M2), the card's number is its description (HK-M3), a day later than the window's last belongs to the last day (HK-m1).
+  - HK-M5: the `feat(sidebar-conta)` commit rewrote and removed assertions of existing tests without a prior `test(...)` commit. It is in pushed history and is not rewritten; this is a process miss. The chevron assertion it removed no longer applies after #213. A waiver for it goes into the audit if CI flags it.
+  - HK-m6 (pin `durationMs` in `uso.test.ts`) is rejected: the fake runtime measures wall-clock time, so the exact value cannot be pinned there; `home-uso.test.ts` pins the exact durations with an injected clock.
+  - HK-m8: the demo fixtures already use `demo@example.com` for the account; nothing real reaches `demo:shots`.
+  - HK-m7 (renaming the `overview` route): rejected, a rename would touch every persisted workspace.
+  - Cards for the rest (HK-m2, HK-m3, HK-m4, HK-m5, SG-m1, SG-m4, SG-m5, SG-m7, HD-m3, HD-m7, HD-m8) are on the board; the chevron on Vault and Settings (SG-m1) stays a hint that the item leads to a page with sections.
 
 ## No installer is a download piped into a shell (issue #121, review)
 

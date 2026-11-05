@@ -72,12 +72,12 @@ function setup(deps: DepsResult | null) {
   return { view, copied, store, checks: () => checks };
 }
 
-describe("deps-ui: the dependencies of a host", () => {
+describe("host-health-deps: the dependencies of a host", () => {
   test("a headline, a Required and an Optional group, each row with an icon and its state in words", () => {
     const { view } = setup(MISSING_REQUIRED);
     render(view);
     const section = screen.getByRole("region", { name: "Health & dependencies" });
-    expect(within(section).getByText("2 required missing")).not.toBeNull();
+    expect(within(section).getByText("1 required missing")).not.toBeNull();
     const required = within(section).getByRole("list", { name: "Required" });
     expect(within(required).getAllByRole("listitem")).toHaveLength(3);
     const optional = within(section).getByRole("list", { name: "Optional" });
@@ -204,13 +204,13 @@ describe("deps-ui: on the host page and the sidebar", () => {
       () => (section.textContent ?? "").includes("Obrigatórias faltando: 1") || undefined,
       "the headline",
     );
-    expect(screen.queryByLabelText("pc: uma dependência obrigatória falta")).not.toBeNull();
+    expect(screen.queryByLabelText("pc: está faltando uma dependência obrigatória")).not.toBeNull();
     current = depsOf("ok", "ok");
     await act(
       async () =>
         void fireEvent.click(within(section).getByRole("button", { name: "Verificar de novo" })),
     );
     await pollFor(() => (section.textContent ?? "").includes("Tudo certo") || undefined, "all set");
-    expect(screen.queryByLabelText("pc: uma dependência obrigatória falta")).toBeNull();
+    expect(screen.queryByLabelText("pc: está faltando uma dependência obrigatória")).toBeNull();
   });
 });

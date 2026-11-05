@@ -115,7 +115,8 @@ describe("home-kpis: the four cards of Home from what the hosts already count", 
     });
     const kpis = homeKpis(input({ usage: [usage(row("2026-10-10", { turns: 1 })), old] }));
     expect(kpis.turns).toMatchObject({ total: 5, failed: null });
-    expect(kpis.average.successRate).toBeNull();
+    // The rate is over the one turn whose outcome is known, not over the 4 unknown ones (HK-M1).
+    expect(kpis.average.successRate).toBe(1);
   });
 
   test("tokens are all the kinds together, with what came from the cache", () => {
@@ -159,5 +160,43 @@ describe("home-kpis: the four cards of Home from what the hosts already count", 
     const kpis = homeKpis(input({ usage: [usage()] }));
     expect(kpis.turns).toMatchObject({ total: 0, ok: 0, failed: 0 });
     expect(kpis.average).toMatchObject({ costPerTurnUsd: null, turnMs: null, successRate: null });
+  });
+
+  test("days from before the host counted failures and time are unknown: the averages use the days that know, and the failed turns stay unknown (HK-M1)", () => {
+    const legacy = { ...row("2026-10-09", { turns: 10, costUsd: 1 }) } as UsageRow;
+    delete legacy.failedTurns;
+    delete legacy.durationMs;
+    const kpis = homeKpis(
+      input({
+        usage: [
+          usage(
+            legacy,
+            row("2026-10-10", { turns: 4, failedTurns: 1, durationMs: 4000, costUsd: 1 }),
+          ),
+        ],
+      }),
+    );
+    expect(kpis.turns).toMatchObject({ total: 14, failed: null, ok: 14 });
+    // 4 s over the 4 turns that were timed; 3 of those 4 succeeded: never 4 s over 14 turns.
+    expect(kpis.average.turnMs).toBe(1000);
+    expect(kpis.average.successRate).toBe(0.75);
+  });
+
+  test("a host whose day is already the next one counts into the last day of the window, not nowhere (HK-m1)", () => {
+    const kpis = homeKpis(
+      input({
+        costs: [costs([["2026-10-11", 3, 300]])],
+        usage: [
+          usage(row("2026-10-11", { turns: 2, costUsd: 3, failedTurns: 0, durationMs: 100 })),
+        ],
+      }),
+    );
+    expect(kpis.spend.series.at(-1)).toBe(3);
+    expect(kpis.turns.total).toBe(2);
+    expect(kpis.turns.series.at(-1)).toBe(2);
+    expect(kpis.tokens.series.at(-1)).toBe(300);
+    // And a day before the window is still left out.
+    const old = homeKpis(input({ usage: [usage(row("2026-10-01", { turns: 9 }))] }));
+    expect(old.turns.total).toBe(0);
   });
 });

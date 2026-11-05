@@ -9,6 +9,8 @@ export const ptBR = {
     menu: "Menu da conta de {name}",
     none: "Conta Claude",
     unread: "Ainda não lida",
+    many: "{n} contas",
+    manyHint: "Uma por host",
     plan: "Plano {plan}",
     signOutGithub: "Sair do GitHub",
     signOutGithubHost: "Sair do GitHub ({host})",
@@ -35,6 +37,7 @@ export const ptBR = {
     noHosts: "Nenhum host conectado ainda.",
     partial: "Alguns hosts não responderam: {hosts}.",
     olderDaemon: "Turnos com falha e tempo do turno pedem um daemon com os contadores do Início.",
+    loading: "Lendo os hosts…",
   },
   hosts: {
     status: {
@@ -3447,14 +3450,13 @@ export const ptBR = {
   hostDeps: {
     installPage: "Página de instalação",
     installPageFor: "Abrir a página de instalação de {name}",
-    title: "Dependências",
     check: "Verificar de novo",
     checking: "Verificando…",
+    readFailed: "Não foi possível ler a saúde: {reason}",
     allSet: "Tudo certo",
     optionalMissing: "Opcionais faltando: {n}",
     requiredMissing: "Obrigatórias faltando: {n}",
-    groups: { required: "Obrigatórias", optional: "Opcionais" },
-    state: { ok: "OK", outdated: "Desatualizada", missing: "Faltando", na: "Não se aplica" },
+    state: { ok: "OK", outdated: "Desatualizado", missing: "Faltando", na: "Não se aplica" },
     names: {
       claude: "Claude Code",
       git: "Git",
@@ -3485,11 +3487,11 @@ export const ptBR = {
       windowsSetup: "os auxiliares de instalação do Windows",
       liveStatus: "o estado ao vivo das sessões",
     },
-    without: "Sem ela: {features}",
+    without: "Sem isso: {features}",
     version: "versão {version}",
     minVersion: "no mínimo {version}",
     copy: "Copiar o comando de {name}",
-    badge: "{host}: uma dependência obrigatória falta",
+    badge: "{host}: está faltando uma dependência obrigatória",
   },
   hostHome: {
     tabs: "Seções do host",

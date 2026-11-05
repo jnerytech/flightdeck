@@ -53,7 +53,7 @@ import { resolvePricing } from "./costs/pricing.ts";
 import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
 import { checkDeps, type DepsEnv } from "./deps/deps.ts";
-import { formatDeps } from "./deps/format.ts";
+import { doctorExitCode, formatDeps } from "./deps/format.ts";
 import { probeVersion } from "./deps/probe.ts";
 import { runDoctor } from "./doctor.ts";
 import { type Exec, spawnExec } from "./exec.ts";
@@ -1133,8 +1133,11 @@ export async function startDaemon(
         allowedRoots: config.allowedRoots,
         serviceInstalled:
           options.serviceInstalled ??
-          (async () => (await serviceCommand(osServiceContext(false))) !== null),
-        linger: options.linger ?? (() => lingerState(osServiceContext(false))),
+          (async () =>
+            (await serviceCommand((options.serviceContext ?? osServiceContext)(false))) !== null),
+        linger:
+          options.linger ??
+          (() => lingerState((options.serviceContext ?? osServiceContext)(false))),
         account: async () => (await account?.get())?.status ?? null,
         hooks: () =>
           hooksStatus(
@@ -1434,11 +1437,15 @@ async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
   const found = await checkDeps(
     deps.depsEnv ?? {
       platform: process.platform,
-      which: (name) => whichOnPath(name),
-      version: async (path) => {
-        const { code, stdout } = await (deps.exec ?? spawnExec)([path, "--version"]);
-        return code === 0 ? (stdout.split("\n")[0] ?? null) : null;
+      // Like the running daemon: the claude that `flightdeckd setup` wrote into the config wins.
+      which: async (name) => {
+        const cfg = await load();
+        const configured =
+          name === "claude" ? (cfg.claude?.executablePath ?? cfg.claudePath) : undefined;
+        if (!configured) return whichOnPath(name);
+        return (await Bun.file(configured).exists()) ? configured : null;
       },
+      version: (path) => probeVersion([path, "--version"]),
       allowedRoots: (await load()).allowedRoots,
       serviceInstalled: async () => (await serviceCommand(ctx)) !== null,
       linger: () => lingerState(ctx),
@@ -1448,7 +1455,7 @@ async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
     },
   );
   for (const line of formatDeps(found, process.platform)) deps.log.log(line);
-  return report.ok ? 0 : 1;
+  return doctorExitCode(report.ok, found);
 }
 
 /** `flightdeckd setup`: the guided first run (folders, service started now, pair link). */

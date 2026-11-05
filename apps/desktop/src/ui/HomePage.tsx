@@ -15,11 +15,20 @@ interface HostData {
   usage: UsageSummary | null;
 }
 
+/** Read again every minute while the page is open, and when the window gets focus back. */
+const REFRESH_MS = 60_000;
+
 /**
  * Home: the last seven days of every online host in four cards (spend, turns, tokens, the average
  * turn), from the hosts' own costs and usage; no command of its own.
  */
-export function HomePage(props: { store: AppStore; state: AppState; go(route: Route): void }) {
+export function HomePage(props: {
+  store: AppStore;
+  state: AppState;
+  go(route: Route): void;
+  /** How often the numbers are read again, in milliseconds (a minute). */
+  refreshMs?: number;
+}) {
   const { store, state, go } = props;
   const { t, lang } = store.i18n;
   const online = state.hosts.filter((host) => host.status === "online");
@@ -27,27 +36,49 @@ export function HomePage(props: { store: AppStore; state: AppState; go(route: Ro
   const range = periodRange("7d", store.today());
   const days = useMemo(() => daysBetween(range.from, range.to), [range.from, range.to]);
   const [data, setData] = useState<Record<string, HostData> | null>(null);
+  /** Hosts that refused or did not answer the last read. */
+  const [silent, setSilent] = useState<string[]>([]);
+  const [tick, setTick] = useState(0);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: asked again when the hosts or the day change
+  // The numbers move with every turn: read again on a timer and when the window comes back.
+  useEffect(() => {
+    const again = () => setTick((n) => n + 1);
+    const timer = setInterval(again, props.refreshMs ?? REFRESH_MS);
+    window.addEventListener("focus", again);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", again);
+    };
+  }, [props.refreshMs]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: asked again when the hosts, the day or the tick change
   useEffect(() => {
     let current = true;
     void Promise.all(
       online.map(async (host) => {
         const [costs, usage] = await Promise.all([
           hasFeature(host.hostInfo?.features, "costs", false)
-            ? store.hostCommand(host.id, "costs.summary", range)
+            ? store.hostRequest(host.id, "costs.summary", range)
             : null,
-          store.hostCommand(host.id, "usage.summary", { days: 7 }),
+          store.hostRequest(host.id, "usage.summary", { days: 7 }),
         ]);
-        return [host.id, { costs, usage }] as const;
+        const entry: HostData = {
+          costs: costs?.ok ? costs.data : null,
+          usage: usage.ok ? usage.data : null,
+        };
+        // A host that has costs but did not give them, or did not give its usage, did not answer.
+        const answered = (costs === null || costs.ok) && usage.ok;
+        return { id: host.id, name: host.name, entry, answered };
       }),
     ).then((entries) => {
-      if (current) setData(Object.fromEntries(entries));
+      if (!current) return;
+      setData(Object.fromEntries(entries.map((e) => [e.id, e.entry])));
+      setSilent(entries.filter((e) => !e.answered).map((e) => e.name));
     });
     return () => {
       current = false;
     };
-  }, [store, key, range.from, range.to]);
+  }, [store, key, range.from, range.to, tick]);
 
   const kpis: HomeKpis | null = useMemo(() => {
     if (!data) return null;
@@ -71,9 +102,21 @@ export function HomePage(props: { store: AppStore; state: AppState; go(route: Ro
     <Page title={t("home.title")} subtitle={t("home.range")}>
       {online.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("home.noHosts")}</p>
+      ) : !kpis ? (
+        <p aria-busy="true" className="text-muted-foreground text-sm">
+          {t("home.loading")}
+        </p>
       ) : (
         kpis && (
           <Stack gap={4}>
+            {silent.length > 0 && (
+              <p role="status" className="text-sm">
+                {t("home.partial", { hosts: silent.join(", ") })}
+              </p>
+            )}
+            {kpis.turns.failed === null && (
+              <p className="text-muted-foreground text-sm">{t("home.olderDaemon")}</p>
+            )}
             <Grid cols={{ base: 1, sm: 2, xl: 4 }} gap={4}>
               <KpiCard
                 title={t("home.spend")}
