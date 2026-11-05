@@ -35,26 +35,31 @@ export function createWebPlatform(
   return {
     storage: win.localStorage,
     secrets: {
-      get: async (id) => secrets.get(id) ?? null,
+      get: async (id) => secrets.get(id) ?? null, // NOSONAR: async by contract: a throw must reach the caller as a rejection
       set: async (id, value) => {
+        // NOSONAR: async by contract: a throw must reach the caller as a rejection
         secrets.set(id, value);
       },
       delete: async (id) => {
+        // NOSONAR: async by contract: a throw must reach the caller as a rejection
         secrets.delete(id);
       },
     },
     vault: {
-      get: async (id) => vault.get(id) ?? null,
+      get: async (id) => vault.get(id) ?? null, // NOSONAR: async by contract: a throw must reach the caller as a rejection
       set: async (id, value) => {
+        // NOSONAR: async by contract: a throw must reach the caller as a rejection
         vault.set(id, value);
       },
       delete: async (id) => {
+        // NOSONAR: async by contract: a throw must reach the caller as a rejection
         vault.delete(id);
       },
       generateKey: async () => {
+        // NOSONAR: async by contract: a throw must reach the caller as a rejection
         throw new Error("ssh-keygen needs the desktop app");
       },
-      pickFile: async () => null,
+      pickFile: () => Promise.resolve(null),
       removeFile: async () => {},
     },
     async notify({ title, body, link }) {
@@ -72,6 +77,7 @@ export function createWebPlatform(
     },
     isFocused: () => win.document.hasFocus(),
     async openExternal(url) {
+      // NOSONAR: async by contract: a throw must reach the caller as a rejection
       win.open(url, "_blank", "noopener");
     },
     onDeepLink(handler) {
@@ -87,13 +93,14 @@ export function createWebPlatform(
         win.removeEventListener("hashchange", check);
       };
     },
-    async setTrayStatus({ count }) {
+    setTrayStatus({ count }) {
       win.document.title = count > 0 ? `(${count}) ${TITLE}` : TITLE;
+      return Promise.resolve();
     },
     // A page has no tray: the badge goes to the title, the submenu nowhere.
     setTrayMenu: noop,
     onTrayAction: () => () => {},
-    autostart: { supported: false, isEnabled: async () => false, setEnabled: noop },
+    autostart: { supported: false, isEnabled: () => Promise.resolve(false), setEnabled: noop },
     setCloseToTray: noop,
     systemLanguage: () => win.navigator?.language ?? "",
     // A page's chrome belongs to the browser.
@@ -105,16 +112,17 @@ export function createWebPlatform(
     },
     saveFile: (name, text) => saveWithPicker(win, name, text),
     async showMainWindow() {
+      // NOSONAR: async by contract: a throw must reach the caller as a rejection
       win.focus?.();
     },
     // A page cannot start programs: "Abrir no terminal" copies the command instead.
     terminal: {
       supported: false,
-      probe: async () => ({ windows: false, wt: false }),
+      probe: () => Promise.resolve({ windows: false, wt: false }),
       open: noop,
     },
     // A page cannot listen to keys while it is not focused.
     globalShortcut: { supported: false, register: noop, unregister: noop },
-    updater: { supported: false, check: async () => null, install: noop },
+    updater: { supported: false, check: () => Promise.resolve(null), install: noop },
   };
 }

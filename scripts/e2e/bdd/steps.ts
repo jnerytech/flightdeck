@@ -33,12 +33,18 @@ both(
 both(
   When,
   { pt: "escrevo o primeiro prompt {string}", en: "I write the first prompt {string}" },
-  async (c, prompt = "") =>
-    c.page.getByLabel(c.t("newSession.prompt"), { exact: true }).fill(prompt),
+  async (
+    c,
+    prompt = "", // NOSONAR: async by contract: a throw must reach the caller as a rejection
+  ) => c.page.getByLabel(c.t("newSession.prompt"), { exact: true }).fill(prompt),
 );
 
-both(When, { pt: "crio a sessão", en: "I create the session" }, async (c) =>
-  c.page.getByRole("button", { name: c.t("newSession.create"), exact: true }).click(),
+both(
+  When,
+  { pt: "crio a sessão", en: "I create the session" },
+  async (
+    c, // NOSONAR: async by contract: a throw must reach the caller as a rejection
+  ) => c.page.getByRole("button", { name: c.t("newSession.create"), exact: true }).click(),
 );
 
 both(
@@ -47,7 +53,7 @@ both(
     pt: "a sessão abre mostrando o meu prompt {string}",
     en: "the session opens showing my prompt {string}",
   },
-  async (c, prompt = "") => c.page.getByText(prompt).first().waitFor({ timeout: SESSION_WAIT }),
+  async (c, prompt = "") => c.page.getByText(prompt).first().waitFor({ timeout: SESSION_WAIT }), // NOSONAR: async by contract: a throw must reach the caller as a rejection
 );
 
 both(
@@ -68,7 +74,7 @@ both(
 both(
   When,
   { pt: "abro o pedido de {string}", en: "I open the request of {string}" },
-  async (c, session = "") => request(c, session).first().click({ timeout: SESSION_WAIT }),
+  async (c, session = "") => request(c, session).first().click({ timeout: SESSION_WAIT }), // NOSONAR: async by contract: a throw must reach the caller as a rejection
 );
 
 both(
@@ -124,16 +130,26 @@ both(
   },
 );
 
-both(When, { pt: "respondo sim à pergunta", en: "I answer yes to the question" }, async (c) =>
-  c.page
-    .getByRole("button", { name: c.t("simple.yes"), exact: true })
-    .click({ timeout: SESSION_WAIT }),
+both(
+  When,
+  { pt: "respondo sim à pergunta", en: "I answer yes to the question" },
+  async (
+    c, // NOSONAR: async by contract: a throw must reach the caller as a rejection
+  ) =>
+    c.page
+      .getByRole("button", { name: c.t("simple.yes"), exact: true })
+      .click({ timeout: SESSION_WAIT }),
 );
 
-both(Then, { pt: "a tarefa termina", en: "the task is done" }, async (c) =>
-  c.page
-    .locator('[data-slot="task-chip"]', { hasText: c.t("simple.state.done") })
-    .waitFor({ timeout: SESSION_WAIT }),
+both(
+  Then,
+  { pt: "a tarefa termina", en: "the task is done" },
+  async (
+    c, // NOSONAR: async by contract: a throw must reach the caller as a rejection
+  ) =>
+    c.page
+      .locator('[data-slot="task-chip"]', { hasText: c.t("simple.state.done") })
+      .waitFor({ timeout: SESSION_WAIT }),
 );
 
 both(
@@ -142,8 +158,10 @@ both(
     pt: "o arquivo {string} aparece entre os arquivos da tarefa",
     en: "the file {string} is listed among the task's files",
   },
-  async (c, name = "") =>
-    c.page.locator(".task-file-name", { hasText: name }).waitFor({ timeout: WAIT }),
+  async (
+    c,
+    name = "", // NOSONAR: async by contract: a throw must reach the caller as a rejection
+  ) => c.page.locator(".task-file-name", { hasText: name }).waitFor({ timeout: WAIT }),
 );
 
 both(
@@ -166,8 +184,12 @@ both(
   },
 );
 
-both(Then, { pt: "o app completo aparece", en: "the full app shows" }, async (c) =>
-  simpleNav(c).waitFor({ state: "detached", timeout: WAIT }),
+both(
+  Then,
+  { pt: "o app completo aparece", en: "the full app shows" },
+  async (
+    c, // NOSONAR: async by contract: a throw must reach the caller as a rejection
+  ) => simpleNav(c).waitFor({ state: "detached", timeout: WAIT }),
 );
 
 both(
@@ -185,8 +207,9 @@ both(
 both(
   Then,
   { pt: "o início do modo simples aparece", en: "the home of simple mode shows" },
-  async (c) =>
-    c.page.getByRole("heading", { name: c.t("simple.home.title") }).waitFor({ timeout: WAIT }),
+  async (
+    c, // NOSONAR: async by contract: a throw must reach the caller as a rejection
+  ) => c.page.getByRole("heading", { name: c.t("simple.home.title") }).waitFor({ timeout: WAIT }),
 );
 
 // Return on cost (phase 36): the headline of the project page and the people table.

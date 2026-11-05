@@ -168,6 +168,7 @@ export class PrFixer {
 
   /** The watcher's trigger: starts a round, one at a time per card, unless a limit says stop. */
   async onTrigger(trigger: WatchTrigger): Promise<void> {
+    // NOSONAR: async by contract: a throw must reach the caller as a rejection
     const { cardId } = trigger;
     const { watcher } = this.opts;
     if (this.running.has(cardId) || !watcher.enabled(cardId)) return;

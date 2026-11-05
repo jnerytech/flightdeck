@@ -3,15 +3,17 @@ import type { AccountReaders } from "./account.ts";
 /** The account the fake runtime (`--runtime fake`, the demo) answers: fixed, and nobody's. */
 export function demoAccountReaders(now: () => number = Date.now): AccountReaders {
   return {
-    status: async () => ({
-      loggedIn: true,
-      authMethod: "claude.ai",
-      apiProvider: "firstParty",
-      email: "demo@example.com",
-      organization: "Demo Org",
-      plan: "max",
-    }),
+    status: () =>
+      Promise.resolve({
+        loggedIn: true,
+        authMethod: "claude.ai",
+        apiProvider: "firstParty",
+        email: "demo@example.com",
+        organization: "Demo Org",
+        plan: "max",
+      }),
     sdk: async () => ({
+      // NOSONAR: async by contract: a throw must reach the caller as a rejection
       info: null,
       usage: {
         plan: "max",

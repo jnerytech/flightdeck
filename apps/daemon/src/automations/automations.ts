@@ -463,7 +463,7 @@ export class Automations {
     if (action.type === "create_card") {
       // Saved only with an issue_label trigger (see `check`), so this event always has an issue.
       const { issue } = event as Extract<AutomationEvent, { type: "issue_label" }>;
-      return this.cardFromIssue(auto, issue, async (card) => `card ${card}`);
+      return this.cardFromIssue(auto, issue, (card) => Promise.resolve(`card ${card}`));
     }
     if (action.type === "start_workflow") {
       const inputs = action.inputs;

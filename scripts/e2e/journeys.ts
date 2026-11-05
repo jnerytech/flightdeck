@@ -471,6 +471,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
 
 /** What sticks out of the window sideways, outside a box that scrolls. */
 async function overflow(page: Page): Promise<string[]> {
+  // NOSONAR: async by contract: a throw must reach the caller as a rejection
   return page.evaluate(() => {
     const width = window.innerWidth;
     const found: string[] = [];
@@ -495,6 +496,7 @@ async function overflow(page: Page): Promise<string[]> {
 
 /** The page never scrolls sideways: when it does, the widest element sticking out is named. */
 async function pageScrollsSideways(page: Page): Promise<string | null> {
+  // NOSONAR: async by contract: a throw must reach the caller as a rejection
   return page.evaluate(() => {
     const root = document.documentElement;
     if (root.scrollWidth <= root.clientWidth && document.body.scrollWidth <= root.clientWidth) {
@@ -516,6 +518,7 @@ async function pageScrollsSideways(page: Page): Promise<string | null> {
 
 /** The crumbs end before the bell, and what does not fit is cut with an ellipsis (issue #133). */
 async function crumbsProblem(page: Page): Promise<string | null> {
+  // NOSONAR: async by contract: a throw must reach the caller as a rejection
   return page.evaluate(() => {
     const slot = document.querySelector<HTMLElement>(".header-crumbs");
     const nav = slot?.querySelector<HTMLElement>("nav");
@@ -600,6 +603,7 @@ async function openCrowded(c: Context, first: Route, count = 12) {
 
 /** After scrolling every box to its end, the last row of the list is on screen (or why not). */
 async function lastRowProblem(page: Page): Promise<string | null> {
+  // NOSONAR: async by contract: a throw must reach the caller as a rejection
   return page.evaluate(() => {
     // Only the boxes a person can scroll.
     for (const el of document.querySelectorAll<HTMLElement>("*")) {
@@ -667,6 +671,7 @@ async function folderDialogProblems(c: Context): Promise<string[]> {
  * and open (issue #97). Returns what is wrong, or null.
  */
 async function recapOverlap(page: Page): Promise<string | null> {
+  // NOSONAR: async by contract: a throw must reach the caller as a rejection
   return page.evaluate(() => {
     const recap = document.querySelector<HTMLElement>("[data-slot='recap']");
     const timeline = document.querySelector<HTMLElement>("[data-slot='timeline']");

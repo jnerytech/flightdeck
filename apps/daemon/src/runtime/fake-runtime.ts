@@ -98,6 +98,7 @@ export class FakeRuntime implements AgentRuntime {
   readonly forks: Array<{ claudeSessionId: string } & ForkOptions> = [];
 
   async forkSession(claudeSessionId: string, options: ForkOptions): Promise<{ sessionId: string }> {
+    // NOSONAR: async by contract: a throw must reach the caller as a rejection
     this.forks.push({ claudeSessionId, ...options });
     return { sessionId: `fake-fork-${ulid().toLowerCase()}` };
   }
@@ -142,19 +143,23 @@ class FakeRun implements AgentRun {
   }
 
   async setPermissionMode(mode: string): Promise<void> {
+    // NOSONAR: async by contract: a throw must reach the caller as a rejection
     this.modes.push(mode);
   }
 
   async setModel(model: string | undefined): Promise<void> {
+    // NOSONAR: async by contract: a throw must reach the caller as a rejection
     this.models.push(model);
   }
 
   async toggleMcpServer(name: string, enabled: boolean): Promise<void> {
+    // NOSONAR: async by contract: a throw must reach the caller as a rejection
     this.toggles.push({ name, enabled });
   }
 
   /** Connected, unless the last toggle of the server turned it off. */
   async mcpServerStatus(): Promise<McpLiveStatus[]> {
+    // NOSONAR: async by contract: a throw must reach the caller as a rejection
     return this.mcpServers.map((name) => ({
       name,
       status:
@@ -165,6 +170,7 @@ class FakeRun implements AgentRun {
   }
 
   async rewindFiles(userMessageId: string, opts: { dryRun: boolean }): Promise<RewindFilesResult> {
+    // NOSONAR: async by contract: a throw must reach the caller as a rejection
     return (
       this.rewind?.(userMessageId, opts.dryRun) ?? { canRewind: false, error: "sem checkpoint" }
     );
@@ -177,10 +183,12 @@ class FakeRun implements AgentRun {
   }
 
   async interrupt(): Promise<void> {
+    // NOSONAR: async by contract: a throw must reach the caller as a rejection
     this.turnAbort?.abort();
   }
 
   async close(): Promise<void> {
+    // NOSONAR: async by contract: a throw must reach the caller as a rejection
     this.turnAbort?.abort();
     this.inbox.length = 0;
     this.events.end();

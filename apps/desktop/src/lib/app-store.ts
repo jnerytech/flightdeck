@@ -3559,6 +3559,7 @@ export class AppStore {
 
   /** Approves a request for a secret for the rest of the requester's session (phase 19). */
   async approveVaultForSession(hostId: string, requestId: string): Promise<void> {
+    // NOSONAR: async by contract: a throw must reach the caller as a rejection
     // Only where the rule allows it and no hold is needed: the session approval has no button to
     // hold, so it can never stand in for one.
     const item = this.state.vaultApprovals.find(

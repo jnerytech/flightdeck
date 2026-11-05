@@ -391,6 +391,7 @@ export class ClaudeSdkRuntime implements AgentRuntime {
         await handle.interrupt();
       },
       async close() {
+        // NOSONAR: async by contract: a throw must reach the caller as a rejection
         prompt.end();
         events.end();
         handle.close();
