@@ -44,6 +44,8 @@ export function QuestionCard(props: {
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    // Ctrl+A or Cmd+A is select-all, and a held key repeats: only a plain press answers (#244).
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
     if (e.key === "a" && !plain.hold) props.onAnswer("allow");
     else if (e.key === "n" || e.key === "Escape") props.onAnswer("deny");
   };

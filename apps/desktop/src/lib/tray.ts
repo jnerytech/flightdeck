@@ -22,7 +22,9 @@ export function trayMenu(items: PendingItem[], t: T = PT): TrayMenu {
         key: `${item.hostId}/${item.requestId}`,
         label: `${item.hostName} · ${item.sessionName} · ${pendingText(item, t)}`,
         // A gate is answered in the app, and a high-risk request is approved by holding a button.
-        actions: item.gate || item.risk === "high" ? ["open"] : ["approve", "deny", "open"],
+        // A vault grant only opens (#244): this line cannot show the secret and parameters.
+        actions:
+          item.gate || item.vault || item.risk === "high" ? ["open"] : ["approve", "deny", "open"],
       };
     }),
     more,

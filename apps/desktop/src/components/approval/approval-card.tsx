@@ -211,6 +211,8 @@ export function ApprovalCard(props: {
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
     // Keys typed in the reason (or any other field of the card) are text, not shortcuts.
     if (e.target !== e.currentTarget || resolution || pending) return;
+    // Ctrl+A or Cmd+A is select-all, and a held key repeats: only a plain press answers (#244).
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
     const key = e.key.toLowerCase();
     // A high-risk request is approved by holding the button, never by a key.
     if (key === "a" && !high && !questions) respond("allow");

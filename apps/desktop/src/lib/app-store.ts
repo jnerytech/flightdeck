@@ -1130,13 +1130,14 @@ export class AppStore {
     if (!item) return;
     // The tray never approves a high-risk request: that takes holding the button in the app. A
     // workflow gate is answered on its card, never as a permission (the host refuses its id).
-    if (action === "open" || item.gate || (action === "approve" && item.risk === "high"))
+    // A vault grant is opened too (#244): the tray's line cannot show the secret and parameters.
+    if (
+      action === "open" ||
+      item.gate ||
+      (action === "approve" && (item.risk === "high" || item.vault))
+    )
       this.openRequest(item);
-    else if (item.vault && action === "approve") {
-      // The daemon records that it was the tray that approved it.
-      this.vaultQuestions.get(item.requestId)?.({ scope: "once", via: "tray" });
-    } else
-      void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
+    else void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
   }
 
   /** Sends an OS notification and keeps it in the notification center. */
@@ -3616,7 +3617,8 @@ export class AppStore {
     const item = this.state.vaultApprovals.find(
       (i) => i.hostId === hostId && i.requestId === requestId,
     );
-    if (!item?.vaultOnce) return;
+    // A high-risk request (a free command, a rule that needs the hold) never gets it (#244).
+    if (!item?.vaultOnce || item.risk === "high") return;
     this.vaultQuestions.get(requestId)?.({ scope: "session", via: "app" });
   }
 
@@ -3685,7 +3687,8 @@ export class AppStore {
         : {}),
       vault: true,
       // A request that needs holding is approved only by the held button, one use at a time.
-      ...(request.once && !request.needsHold ? { vaultOnce: true as const } : {}),
+      // Not a free command either: it is high risk, and a session approval has no hold (#244).
+      ...(request.once && !request.needsHold && !free ? { vaultOnce: true as const } : {}),
       vaultRule: {
         secretId: request.secretId,
         match: {
