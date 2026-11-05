@@ -60,8 +60,9 @@ describe("demo-prints: axe e CI", () => {
 
   test("o CI tem o job screenshots no ubuntu: prints, axe, e2e e o artefato", () => {
     const ci = read(".github/workflows/ci.yml");
-    expect(ci).toContain("  screenshots:");
-    const job = ci.slice(ci.indexOf("  screenshots:"));
+    expect(ci).toContain("  screenshots-prints:");
+    // The prints and the e2e journeys are two jobs (#220), under the one screenshots check.
+    const job = ci.slice(ci.indexOf("  screenshots-prints:"));
     expect(job).toContain("runs-on: ubuntu-latest");
     expect(job).toContain("bun run demo:shots");
     expect(job).toContain("bun run e2e");
@@ -73,7 +74,7 @@ describe("demo-prints: axe e CI", () => {
     const ci = read(".github/workflows/ci.yml");
     const step = ci.slice(
       ci.indexOf("- name: Jornadas e2e"),
-      ci.indexOf("- name: Publicar os prints"),
+      ci.indexOf("- name: Publicar o relatório e2e"),
     );
     expect(step).toContain("bun run e2e");
     expect(step).toContain("E2E_FAILURES: apps/desktop/screenshots/e2e-failures");

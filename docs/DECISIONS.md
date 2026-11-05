@@ -3992,6 +3992,61 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
 - **Not changed here:** handoff-ci (#221) checks for a push trigger on the branch; with this, a
   branch with a PR proves itself on its PR run instead, and handoff-ci has to read that run.
 
+## CI in shards, with the required names kept (issue #220, part of #216)
+
+- **Measured first.** On a green run (41960871352) `test (windows-latest)` took 33 minutes (25 of
+  tests, 5 of cargo), `screenshots` 24 and `test (ubuntu-latest)` 15.
+- **Linux stays whole.** Bun's lcov has per-line records but only a per-file function total, so
+  shards cannot be merged for the 100% function gate without weakening it (an inline callback that
+  never runs) or failing hub files every shard imports. `test (ubuntu-latest)` keeps the whole
+  suite, the exact gate and SonarCloud.
+- **Windows in three shards, without its own coverage gate** (the coordinator's choice). Each
+  shard runs `bun test --shard=i/3`; the smokes, cargo, the bundle budget and the performance
+  baseline run in `checks-windows`; Windows no longer repeats typecheck and lint, which are the
+  same code on both systems. What is given up is only Windows' own guarantee that every line runs
+  there (code behind a `skipIf(win32)`); Linux still requires 100%.
+- **The ruleset's names are aggregates.** The main ruleset requires `test (ubuntu-latest)`,
+  `test (windows-latest)`, `screenshots (prints, axe e e2e)` and `SonarCloud Code Analysis`. The
+  Windows and screenshots checks are now small jobs with exactly those names that need their parts
+  and fail unless each succeeded (`if: always()`, so a failed or cancelled part fails them rather
+  than leaving them skipped).
+- **Prints and e2e apart.** `screenshots-prints` and `screenshots-e2e` run side by side; a failed
+  journey's trace and print are now their own `e2e-failures` artifact.
+- **No timings file yet.** `bun test --timings` balances shards by duration, but a committed
+  timings file would be one more file every branch touches; the shard count is tuned from the
+  first runs instead.
+- **`build:desktop` on Windows, found by `checks (windows-latest)`.** `vite.config.ts` imported
+  `entryHtml` from `demo/boot.ts`, whose imports reach `lib/tabs.ts`, which imports the protocol
+  since #198. On Windows Vite does not bundle that workspace package into the config (bun links it
+  through a junction), so Node imports `packages/protocol/src` itself, and its type stripping stops
+  at the parameter property of `PersonaModelError`. `entryHtml` moved to `demo/entry-html.ts`,
+  which imports nothing, and a test keeps every workspace package out of what the config reaches.
+  The `smoke:limits` failure of the first run did not come back on the rerun.
+
+## CI by changed paths (issue #264)
+
+- **Why.** Every PR ran the whole matrix (Windows in three shards, prints, e2e, cargo), so a
+  docs or scripts change waited half an hour for checks that read none of it.
+- **The plan** (scripts/lib/ci-paths.ts, run by the `changes` job against the merge-base with the
+  PR's target): docs and scripts alone run the Linux job (the whole suite with the 100% gate,
+  typecheck, lint, the audit, SonarCloud); `apps/daemon/**` or a smoke adds the Windows shards, the
+  Windows checks and the smokes; `apps/desktop/**`, `packages/**`, `package.json`, `bun.lock`, a
+  bunfig, a tsconfig or `.github/workflows/**` add the prints and e2e; `apps/desktop/src-tauri/**`
+  adds cargo. A push to main, a run by hand, or a diff the job cannot read plans everything, so
+  every commit on main has a full run, and a tag goes only on a commit whose full run is green.
+- **The required names still report.** `test (windows-latest)` and `screenshots (prints, axe e
+  e2e)` are aggregates: they pass when their jobs were skipped by path, but only after checking
+  that the `changes` job itself succeeded, since a failed plan has no outputs and would otherwise
+  read as "skipped".
+- **cargo** (check and test of the shell) runs only when the plan says so, after
+  `Swatinem/rust-cache` (pinned to the v2.9.3 commit). On Windows the app build and the bundle
+  budget run whenever the app or the shell changed, apart from cargo.
+- **e2e in three Playwright shards** (`bun run e2e -- --shard=i/3`), each with its own report and
+  failures artifact; the aggregate fails if any shard failed.
+- **lint:sonar on a PR is the ratchet only** (`lint:sonar (ratchet)`): the changed-lines run was
+  red on every large diff for code smells and is not a required check, so its red X said nothing.
+  The ratchet is green unless a rule's open count goes up. The changed-lines run stays local.
+
 ## The hand-off stamp vouches for CI, and a tag needs a green full run (issue #266)
 
 - **What survived of #221.** Its push-trigger requirement and the `gh run list --commit` check
@@ -4068,3 +4123,58 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   `FLIGHTDECK_BOARD_CMD`, called as `<cmd> <issue> done ""`: the coordinator's `issue-note.sh`,
   whose REST queue of #242 survives a rate limit. Without it the board is skipped, said once. The
   coordinator tooling stays outside the repository; the script only knows the command's contract.
+
+## Risky changes get a security review before the hand-off (issue #273)
+
+- **Why.** On 2026-11-05 six reviews found high findings after the hand-off (keep-awake,
+  worktrees, resources, logs, trust, assistant). The review now comes before it.
+- **The gate** (scripts/lib/security-gate.ts, run by `handoff:check`) reads the added lines of the
+  changed code files (never a test, a fixture or a document) since the audit base or `--base`. A
+  file is risky when they spawn or kill a process (any `spawn…(`, `exec…(`, `.kill(`), delete
+  (`rm(`, `unlink(`, `rm -rf`), name a secret (token, secret, password, credential, API key) or a
+  permission (`chmod`, `chown`, permission, `allowedNetworks`), or when its path is in the vault or
+  pairing code, or when they open a listener or an outbound call (`Bun.serve`, `fetch(`, a
+  WebSocket, `.listen(`). A spawn is also `cp.exec(`, `child_process`, `Bun.$`, `fork(`, `execa(`
+  or `new Worker`, and in Rust and Python `Command::new`, `std::process`, `subprocess.`,
+  `os.system`; deletes and listeners have their Rust and Python forms too. A line that is only a
+  comment and nothing else does not count; a line is never cut, so one with any code is read whole
+  (a glob's `*/` or comment marks in a string cannot hide what it does; `#` is a comment only in
+  `.sh`, `.py` and `.ps1`, since in TypeScript it is a private field). Code is `.[cm]?[jt]sx?`,
+  `.rs`, `.sh`, `.ps1` and `.py`. A mode change counts as a permission change. Some paths are risky
+  whatever they add: the vault and pairing code, the Tauri shell's capabilities and
+  `tauri*.conf.json` (CSP, scopes), `.github/workflows/`, and the files whose contents run as code
+  (`package.json`, `Cargo.toml`, `build.rs`, `bunfig*.toml`, `.claude/settings*.json`,
+  `.claude/hooks/`), and the guards themselves (the gate, the hook rules, the TDD audit, the
+  hand-off check, the hook runner, `bun run pr`, the security-reviewer agent, `.github/actions/`); a pure rename into one counts too. Left as known limits: a
+  risky file moved by rename from a test folder is read by its edited lines only, a mode change on
+  a file with no code extension is not seen, and every `package.json` change asks for a review. Patterns, not a parser: they err toward asking for a review.
+- **It fails closed** (the OpenCode review on #279): a `git diff` or `git log` that fails (an error,
+  an output past 64 MB), or a `--base` that is not a commit, stamps `security=unknown`, never `0`.
+  The diff forces `--src-prefix=a/ --dst-prefix=b/` (a user's `diff.noprefix` or
+  `diff.mnemonicPrefix` would change the headers) with no external diff or text conversion. The
+  diff's file headers are read only before a file's first hunk (an added line can look like one),
+  names come unquoted, and a merge counts by the files it edited itself. The log is in topological
+  order, so "after" follows the history, not the dates, a folded trailer reads as one line, and a
+  user's `log.showSignature` adds nothing to it (`--no-show-signature`).
+  Risky files that no commit of the log touches need a review all the same. `--verify` refuses a
+  stamp with no `security=` or no `ci=`, so a stamp from before the gate does not pass. It is a guard against slips,
+  not a security boundary: the trailer is the session's own word that the review ran. A name git
+  still quotes (one with a quote, a backslash or a control character) is skipped.
+- **The verdict is a commit trailer,** `Security-Reviewed: <summary>`, on a commit at or after the
+  last commit that touched a risky file (an empty `chore(security)` commit is enough). A later
+  risky commit needs a new review. A trailer lives with the branch, so `--verify` and any receiver
+  see it; a line in a message would not. The stamp says `security=0`, `unreviewed` or `unknown`
+  (no base), and only `0` vouches.
+- **The OpenCode review on `pr open`** is the coordinator's tooling: `open` runs the command in
+  `FLIGHTDECK_PR_OPENED` with the PR's number, branch and base. The command comes from the
+  session's own environment, never from the repository: words split on spaces, or a JSON array of
+  strings for a path with spaces (Windows), with no shell. It runs bounded
+  (scripts/lib/bounded-run.ts): its output ignored, since it inherits the environment and what it
+  prints may hold a token, so the failure line says only the exit code (124 past the deadline, 127
+  when it could not start). Past two minutes its whole process group is killed (its tree, with
+  `taskkill /T`, on Windows; an orphan whose parent already died escapes that walk). A hook that
+  fails, cannot start or times out only prints that line: the PR is open either way. On Windows a
+  bare program name may resolve in the current folder first: give the hook an absolute path. Its program is found by Bun's own PATH lookup, not `whichOnPath`: the environment, and the
+  PATH with it, are the session's own. The number, branch and base come last, as positional
+  arguments: a hook script must not read them as options.
+

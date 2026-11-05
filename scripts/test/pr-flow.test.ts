@@ -268,6 +268,114 @@ describe("pr-flow: open", () => {
     expect(post).toContain("(#245)");
   });
 
+  test("a new PR runs the FLIGHTDECK_PR_OPENED hook with its number, branch and base; a failed hook leaves the PR open (#273)", async () => {
+    const setup = (hookCode: number) => {
+      const f = fake({
+        pushed: ["sec"],
+        subjects: { sec: ["feat(sec): x (#273)"] },
+        issues: { 273: "Reviews" },
+        env: { FLIGHTDECK_PR_OPENED: "bun run oc-queue.ts --review" },
+      });
+      const ran: string[][] = [];
+      const deps = {
+        ...f.deps,
+        run: async (command: string[]) => {
+          ran.push(command);
+          return { code: hookCode, stdout: "" };
+        },
+      };
+      return { f, ran, deps };
+    };
+    const ok = setup(0);
+    expect(await prFlow(["open", "sec", "--base", "ci-paths"], ok.deps)).toBe(0);
+    expect(ok.ran).toEqual([["bun", "run", "oc-queue.ts", "--review", "300", "sec", "ci-paths"]]);
+    const failed = setup(3);
+    expect(await prFlow(["open", "sec"], failed.deps)).toBe(0);
+    expect(failed.f.out()).toContain("FLIGHTDECK_PR_OPENED hook failed (exit 3); #300 is open");
+  });
+
+  test("a hook that cannot even start leaves the PR open too (#273)", async () => {
+    const f = fake({
+      pushed: ["sec"],
+      subjects: { sec: ["feat(sec): x (#273)"] },
+      issues: { 273: "Reviews" },
+      env: { FLIGHTDECK_PR_OPENED: "no-such-program" },
+    });
+    const deps = {
+      ...f.deps,
+      run: async (): Promise<{ code: number; stdout: string }> => {
+        throw new Error("ENOENT: no-such-program");
+      },
+    };
+    expect(await prFlow(["open", "sec"], deps)).toBe(0);
+    expect(f.out()).toContain(
+      "FLIGHTDECK_PR_OPENED hook failed (ENOENT: no-such-program); #300 is open",
+    );
+  });
+
+  test("a JSON array names a hook with spaces in its path; a failure never shows what it printed (#273)", async () => {
+    const f = fake({
+      pushed: ["sec"],
+      subjects: { sec: ["feat(sec): x (#273)"] },
+      issues: { 273: "Reviews" },
+      env: { FLIGHTDECK_PR_OPENED: '["C:\\\\Program Files\\\\oc.exe", "--review"]' },
+    });
+    const ran: string[][] = [];
+    const deps = {
+      ...f.deps,
+      run: async (command: string[]) => {
+        ran.push(command);
+        return { code: 2, stdout: "", stderr: "token ghp_secret" };
+      },
+    };
+    expect(await prFlow(["open", "sec"], deps)).toBe(0);
+    expect(ran).toEqual([["C:\\Program Files\\oc.exe", "--review", "300", "sec", "main"]]);
+    expect(f.out()).toContain("FLIGHTDECK_PR_OPENED hook failed (exit 2); #300 is open");
+    expect(f.out()).not.toContain("ghp_secret");
+  });
+
+  test("a hook value that starts like JSON but is not an array of strings runs nothing and says so (#273)", async () => {
+    for (const value of ['["oc", 3]', '["oc"', "[]"]) {
+      const f = fake({
+        pushed: ["sec"],
+        subjects: { sec: ["feat(sec): x (#273)"] },
+        issues: { 273: "Reviews" },
+        env: { FLIGHTDECK_PR_OPENED: value },
+      });
+      const ran: string[][] = [];
+      const deps = {
+        ...f.deps,
+        run: async (command: string[]) => {
+          ran.push(command);
+          return { code: 0, stdout: "" };
+        },
+      };
+      expect(await prFlow(["open", "sec"], deps)).toBe(0);
+      expect(ran).toEqual([]);
+      expect(f.out()).toContain(
+        "FLIGHTDECK_PR_OPENED is not a JSON array of strings; #300 is open",
+      );
+    }
+  });
+
+  test("without FLIGHTDECK_PR_OPENED no hook runs (#273)", async () => {
+    const f = fake({
+      pushed: ["sec"],
+      subjects: { sec: ["feat(sec): x (#273)"] },
+      issues: { 273: "Reviews" },
+    });
+    const ran: string[][] = [];
+    const deps = {
+      ...f.deps,
+      run: async (command: string[]) => {
+        ran.push(command);
+        return { code: 0, stdout: "" };
+      },
+    };
+    expect(await prFlow(["open", "sec"], deps)).toBe(0);
+    expect(ran).toEqual([]);
+  });
+
   test("a branch that already has an open PR gets no second one", async () => {
     const f = fake({ pushed: ["a"], prs: [pr(12, "a")], subjects: { a: ["fix(a): x (#1)"] } });
     expect(await prFlow(["open", "a"], f.deps)).toBe(0);
