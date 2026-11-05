@@ -1063,6 +1063,15 @@ export async function startDaemon(
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
   // The wrapper finds the receptor through this file: nothing is served before it is there.
   await central.ready();
+  // A session that was open before the restart may be sent a message before anything else looks
+  // at its folder: read the git boundaries of every folder first, so the lazy reattach finds them.
+  await Promise.all(
+    [...new Set(manager.list().map((s) => s.cwd))].map((cwd) =>
+      projectTrust
+        .prepare(cwd)
+        .catch((error) => logger.log(`trust: could not read ${cwd}: ${error}`)),
+    ),
+  );
   const server = startServer({
     manager,
     warmProjectKey: (cwd) => keys.resolve(cwd),
