@@ -78,8 +78,12 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   without options.
 - Never read credentials, tokens, `~/.claude/.credentials.json`, SSH keys or shell history, not
   even in a test or a proof of concept (`.claude/settings.json` denies the obvious paths).
-- Phase sessions never push, tag or publish releases. They hand the green HEAD over; the
-  maintainer integrates the phase into `main`, tags it and releases.
+- Sessions push only their own work branches, so CI runs the heavy checks on them (#216); only
+  the coordinator pushes `main`, `rc/*` and tags, and publishes releases. The guard hook refuses
+  the rest: main, `rc/*`, tags, `--tags`/`--all`/`--mirror`, a bare `--force`, and a
+  `--force-with-lease` to any branch but the one checked out (the coordinator's session runs with
+  `FLIGHTDECK_COORDINATOR=1`). Sessions hand the green HEAD over; the coordinator integrates it
+  into `main`, tags it and releases.
 
 - Full suite, `demo:shots`, `e2e`, the smokes and the builds run only through
   `bun run slot --`, never bare (the guard hook refuses them otherwise): two of them at once overload the machine and make the
