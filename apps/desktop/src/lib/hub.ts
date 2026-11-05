@@ -329,6 +329,13 @@ const matches = (row: HubRow, filter: HubFilter) =>
 const groupName = (key: string) => basename(key.replace(/^host:[^:]*:/, ""));
 
 /**
+ * What makes two rows one project. A key the daemon resolved (a remote) is shared by the hosts
+ * already; a folder key (`host:<name>:<path>`) is per host, so the same folder name on two hosts
+ * joins as one project.
+ */
+const mergeKey = (key: string) => (key.startsWith("host:") ? `folder:${groupName(key)}` : key);
+
+/**
  * Filtered rows by project; the ones that need you first, then pinned, then the standard names
  * in order (phase 21: only hosts with names give them), then latest activity; groups by latest
  * activity.
@@ -336,9 +343,10 @@ const groupName = (key: string) => basename(key.replace(/^host:[^:]*:/, ""));
 export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
   const byKey = new Map<string, HubRow[]>();
   for (const row of rows.filter((r) => matches(r, filter))) {
-    const list = byKey.get(row.projectKey);
+    const merged = mergeKey(row.projectKey);
+    const list = byKey.get(merged);
     if (list) list.push(row);
-    else byKey.set(row.projectKey, [row]);
+    else byKey.set(merged, [row]);
   }
   const order = (a: HubRow, b: HubRow) =>
     Number(b.state === "needs_you") - Number(a.state === "needs_you") ||
@@ -347,7 +355,11 @@ export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
     (a.standardName ?? "").localeCompare(b.standardName ?? "", undefined, { numeric: true }) ||
     b.lastActivity.localeCompare(a.lastActivity);
   return [...byKey.entries()]
-    .map(([key, list]) => ({ key, name: groupName(key), rows: [...list].sort(order) }))
+    .map(([, list]) => {
+      // A stable key whichever row is newest: the smallest project key among the rows.
+      const key = list.map((r) => r.projectKey).reduce((x, y) => (y < x ? y : x));
+      return { key, name: groupName(key), rows: [...list].sort(order) };
+    })
     .sort((a, b) => (b.rows[0]?.lastActivity ?? "").localeCompare(a.rows[0]?.lastActivity ?? ""));
 }
 
