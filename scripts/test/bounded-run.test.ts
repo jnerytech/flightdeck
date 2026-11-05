@@ -8,8 +8,8 @@ import { realTempDir } from "./temp-dir.ts";
 const BUN = process.execPath;
 
 /** A fake process, timer and tree kill for runBounded: nothing real starts or waits. */
-function fakeRun(platform: NodeJS.Platform, pid: number | undefined = 4242) {
-  const child = Object.assign(new EventEmitter(), { pid });
+function fakeRun(platform: NodeJS.Platform, pid: number | null = 4242) {
+  const child = Object.assign(new EventEmitter(), { pid: pid ?? undefined });
   const spawned: [string, string[], { detached: boolean }][] = [];
   const timers: number[] = [];
   const cleared: unknown[] = [];
@@ -75,7 +75,7 @@ describe("bounded-run", () => {
   });
 
   test("a child that never got a pid is not killed at the deadline (#284)", async () => {
-    const run = fakeRun("linux", undefined);
+    const run = fakeRun("linux", null);
     const pending = runBounded(["hook"], 1_500, run.deps);
     run.fire();
     expect((await pending).timedOut).toBe(true);
