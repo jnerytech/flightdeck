@@ -22,8 +22,8 @@ export interface ReleaseCloseDeps {
 
 /** `gh api` fills in the current repository. */
 const REPO = "repos/{owner}/{repo}";
-/** A body line that closes: `Closes #12`, `fixes #12`, `Resolves #12`. */
-const CLOSING_LINE = /^\s*(?:closes|fixes|resolves)\s+#(\d+)/i;
+/** A body line that names the issue: `Closes #12`, `fixes #12`, `Resolves #12`, `Refs: #12` (#253). */
+const CLOSING_LINE = /^\s*(?:closes|fixes|resolves|refs):?\s+#(\d+)/i;
 
 const numbers = (text: string) => [...text.matchAll(/#(\d+)\b/g)].map((m) => Number(m[1]));
 const sorted = (set: Set<number>) => [...set].sort((a, b) => a - b);

@@ -195,6 +195,10 @@ export function commitViolation(command: string, cwd: string, deps: CommitGateDe
   if (!scope) {
     return `${type} needs a scope: ${type}(<area>): text, the same scope as its earlier test(<area>) commit (docs/TDD.md).`;
   }
+  const lines = [commit.message, ...commit.trailers].join("\n");
+  if (!ISSUE_IN_SUBJECT.test(subject) && !ISSUE_LINE.test(lines)) {
+    return `${type}(${scope}) needs an issue: end the subject with (#N), or add a line "Refs: #N" (or "Closes #N") to the message, so release:close can close it (docs/TDD.md).`;
+  }
   if (commit.waived || commit.dir === null) return null;
   const dir = commit.dir;
   const git = (args: string[]) => deps.git(args, dir);
@@ -227,6 +231,10 @@ const COMMIT_TYPES = [
 const SUBJECT = new RegExp(`^(${COMMIT_TYPES.join("|")})(?:\\(([^)]+)\\))?!?: \\S`);
 const HEREDOC = /<<-?\s*(['"]?)(\w+)\1[^\n]*\n([\s\S]*?)\n\s*\2[ \t]*(?=\n|\)|$)/g;
 const WAIVER = /^TDD-Waiver:[ \t]*\S/m;
+/** An issue in the subject's parentheses: `(#12)`, `(#12, #13)`, `(review of rc/0364, #237)`. */
+const ISSUE_IN_SUBJECT = /\([^()]*#\d+[^()]*\)/;
+/** A message line that names an issue: `Refs: #12`, `Closes #12`, `Fixes #12`, `Resolves #12`. */
+const ISSUE_LINE = /^[ \t]*(?:refs|closes|fixes|resolves):?[ \t]+#\d+/im;
 
 /**
  * The command with heredoc bodies and the inside of quoted strings blanked to spaces, so every
@@ -313,6 +321,8 @@ interface FoundCommit {
   dir: string | null;
   /** The whole message, or null when the command gives none it can read. */
   message: string | null;
+  /** The values of `--trailer`, which git appends to the message. */
+  trailers: string[];
   waived: boolean;
 }
 
@@ -321,6 +331,7 @@ function findCommit(command: string, cwd: string): FoundCommit | undefined {
   const call = gitCalls(command, cwd).find((c) => c.sub === "commit");
   if (!call) return undefined;
   const parts: string[] = [];
+  const trailers: string[] = [];
   let waived = false;
   let fromStdin = false;
   call.args.forEach(({ word: w, at: pos }, j) => {
@@ -330,8 +341,10 @@ function findCommit(command: string, cwd: string): FoundCommit | undefined {
     if (valueAt === undefined) return;
     const value = optionValue(command, valueAt);
     if (flag[1] === "-F" || flag[1] === "--file") fromStdin ||= value === "-";
-    else if (flag[1] === "--trailer") waived ||= WAIVER.test(value ?? "");
-    else if (value !== null) parts.push(value);
+    else if (flag[1] === "--trailer") {
+      waived ||= WAIVER.test(value ?? "");
+      if (value !== null) trailers.push(value);
+    } else if (value !== null) parts.push(value);
   });
   if (parts.length === 0 && fromStdin) {
     HEREDOC.lastIndex = call.start;
@@ -340,7 +353,7 @@ function findCommit(command: string, cwd: string): FoundCommit | undefined {
   }
   const message = parts.length > 0 ? parts.join("\n\n") : null;
   const body = message?.split("\n").slice(1).join("\n") ?? "";
-  return { dir: call.dir, message, waived: waived || WAIVER.test(body) };
+  return { dir: call.dir, message, trailers, waived: waived || WAIVER.test(body) };
 }
 
 /**
