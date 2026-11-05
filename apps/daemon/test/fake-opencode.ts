@@ -27,28 +27,32 @@ export interface FakeOpenCode {
 export function installFakeOpenCode(): FakeOpenCode {
   const dir = realTempDir("fd-fake-opencode-");
   const log = join(dir, "calls.jsonl");
+  const acpLog = join(dir, "acp.jsonl");
   const main = join(import.meta.dir, "fake-opencode-main.ts");
   const bun = process.execPath;
   writeFileSync(
     join(dir, "opencode"),
-    `#!/bin/sh\nFAKE_OPENCODE_LOG="${log}" exec "${bun}" "${main}" "$@"\n`,
+    `#!/bin/sh\nFAKE_OPENCODE_LOG="${log}" FAKE_OPENCODE_ACP_LOG="${acpLog}" exec "${bun}" "${main}" "$@"\n`,
   );
   chmodSync(join(dir, "opencode"), 0o755);
   writeFileSync(
     join(dir, "opencode.cmd"),
-    `@echo off\r\nset "FAKE_OPENCODE_LOG=${log}"\r\n"${bun}" "${main}" %*\r\n`,
+    `@echo off\r\nset "FAKE_OPENCODE_LOG=${log}"\r\nset "FAKE_OPENCODE_ACP_LOG=${acpLog}"\r\n"${bun}" "${main}" %*\r\n`,
   );
   return {
-    acp: () => [],
+    acp: () => readLines(acpLog),
     dir,
     path: join(dir, process.platform === "win32" ? "opencode.cmd" : "opencode"),
-    calls: () =>
-      existsSync(log)
-        ? readFileSync(log, "utf8")
-            .trim()
-            .split(/\r?\n/)
-            .filter(Boolean)
-            .map((line) => JSON.parse(line))
-        : [],
+    calls: () => readLines(log),
   };
+}
+
+/** The JSON lines of a log the fake writes; none before it ran. */
+function readLines<T>(file: string): T[] {
+  if (!existsSync(file)) return [];
+  return readFileSync(file, "utf8")
+    .trim()
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as T);
 }

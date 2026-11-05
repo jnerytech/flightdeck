@@ -2,7 +2,8 @@
  * Phase 39: the fake `opencode` (see fake-opencode.ts). It answers what Flightdeck runs: `--version`,
  * `models --standalone`, the three `api GET ... --standalone` routes, and `acp`, a small ACP peer
  * whose prompt `run: <command>` asks to run a shell command first. Each run is logged as one JSON
- * line (its arguments and the OpenCode variables it got) to the file in FAKE_OPENCODE_LOG.
+ * line (its arguments and the OpenCode variables it got) to the file in FAKE_OPENCODE_LOG, and
+ * each ACP request (its method, and a prompt's text) to the file in FAKE_OPENCODE_ACP_LOG.
  */
 import { appendFileSync } from "node:fs";
 import { join } from "node:path";
@@ -194,6 +195,15 @@ async function acp(): Promise<void> {
       continue;
     }
     const params = message.params ?? {};
+    const acpLog = process.env.FAKE_OPENCODE_ACP_LOG;
+    if (acpLog && message.method) {
+      const blocks = (params.prompt as Array<{ type: string; text?: string }> | undefined) ?? [];
+      const text = blocks.find((b) => b.type === "text")?.text;
+      appendFileSync(
+        acpLog,
+        `${JSON.stringify({ method: message.method, ...(text === undefined ? {} : { text }) })}\n`,
+      );
+    }
     const sessionId = String(params.sessionId ?? "ses_fake");
     switch (message.method) {
       case "initialize":
