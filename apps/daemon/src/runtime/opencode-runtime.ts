@@ -97,6 +97,8 @@ export interface OpenCodeRuntimeOptions {
   timers?: Timers;
   mcpServer?: FlightdeckMcpServer;
   idleMs?: number;
+  /** The ledger of the process groups started, reaped at the next start (issue #250). */
+  ledger?: { add(pid: number): void; release(pid: number): void };
 }
 
 /** The real kill of a process tree: a detached run and a signal to a process group. */

@@ -512,4 +512,38 @@ describe("opencode-runtime", () => {
     await runtime.preflight("/other");
     expect(checks).toEqual(["/w", "/other"]);
   });
+
+  test("the process group is written to the ledger when OpenCode starts and released when it ends, by itself or closed (issue #250)", async () => {
+    const events: string[] = [];
+    const ledger = {
+      add: (pid: number) => events.push(`add ${pid}`),
+      release: (pid: number) => events.push(`release ${pid}`),
+    };
+    const { runtime, agents } = setup(undefined, { ledger });
+    const run = runtime.start(startOpts());
+    const out = collect(run);
+    run.send("x");
+    expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    expect(events).toEqual(["add 4242"]);
+    agents[0]?.exit(1);
+    expect(await poll(() => out.error !== null)).toBe(true);
+    expect(await poll(() => events.includes("release 4242"))).toBe(true);
+    expect(events).toEqual(["add 4242", "release 4242"]);
+  });
+
+  test("a closed session releases its group once its process is gone", async () => {
+    const events: string[] = [];
+    const ledger = {
+      add: (pid: number) => events.push(`add ${pid}`),
+      release: (pid: number) => events.push(`release ${pid}`),
+    };
+    const { runtime, agents } = setup(undefined, { ledger });
+    const run = runtime.start(startOpts());
+    collect(run);
+    run.send("x");
+    expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    await run.close();
+    expect(await poll(() => events.includes("release 4242"))).toBe(true);
+    expect(events).toEqual(["add 4242", "release 4242"]);
+  });
 });

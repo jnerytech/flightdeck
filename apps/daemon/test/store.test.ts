@@ -1,7 +1,9 @@
+import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { EventStore } from "../src/store/event-store.ts";
+import { MIGRATIONS } from "../src/store/migrations.ts";
 import { tempDir } from "./helpers.ts";
 
 function newStore() {
@@ -60,5 +62,47 @@ describe("store", () => {
     expect(store.resolvePermission("p1", "allowed")).toBe(true);
     expect(store.resolvePermission("p1", "denied")).toBe(false);
     expect(store.getPermission("p1")?.status).toBe("allowed");
+  });
+
+  test("a database from before the runtime column gets it on open: its sessions are Claude's, and a new one can be OpenCode's (issue #250)", () => {
+    const file = join(tempDir("fd-store-"), "flightdeck.db");
+    const index = MIGRATIONS.findIndex((m) => m.includes("ADD COLUMN runtime"));
+    expect(index).toBeGreaterThan(0);
+    const older = new Database(file);
+    for (const migration of MIGRATIONS.slice(0, index)) older.exec(migration);
+    older.exec(`PRAGMA user_version = ${index}`);
+    older
+      .query(
+        `INSERT INTO sessions (id, name, cwd, status, permission_mode, model, last_seq, created_at, updated_at)
+         VALUES ('old', 'velha', '/x', 'idle', 'default', NULL, 0, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`,
+      )
+      .run();
+    expect(
+      older
+        .query("PRAGMA table_info(sessions)")
+        .all()
+        .map((c) => (c as { name: string }).name),
+    ).not.toContain("runtime");
+    older.close();
+    const store = new EventStore(file);
+    try {
+      expect(store.getSession("old")?.runtime).toBe("claude");
+      store.createSession({
+        id: "new",
+        name: null,
+        cwd: "/y",
+        status: "idle",
+        permissionMode: "default",
+        model: null,
+        runtime: "opencode",
+      });
+      expect(store.getSession("new")?.runtime).toBe("opencode");
+      expect(store.getSession("old")?.runtime).toBe("claude");
+      expect(store.db.query("PRAGMA user_version").get()).toEqual({
+        user_version: MIGRATIONS.length,
+      });
+    } finally {
+      store.close();
+    }
   });
 });
