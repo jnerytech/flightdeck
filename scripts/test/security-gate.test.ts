@@ -204,6 +204,37 @@ describe("security-gate", () => {
     ]);
   });
 
+  test("code between comments, after a doc line's close, or a TS private field still counts (#273)", () => {
+    const added = new Map([
+      ["apps/daemon/src/a.ts", ["/* a */ execSync(x); /* b */"]],
+      ["apps/daemon/src/b.ts", [" * foo */ spawn(x)"]],
+      ["apps/daemon/src/c.ts", ["#run = () => spawn(cmd);"]],
+      ["scripts/d.sh", ["# rm -rf / in a comment"]],
+    ]);
+    expect(riskyFiles(added).map((r) => r.path)).toEqual([
+      "apps/daemon/src/a.ts",
+      "apps/daemon/src/b.ts",
+      "apps/daemon/src/c.ts",
+    ]);
+  });
+
+  test("the guards themselves are risky by path: a change that weakens a check needs a review (#273)", () => {
+    const added = new Map(
+      [
+        "scripts/lib/security-gate.ts",
+        "scripts/lib/claude-hooks.ts",
+        "scripts/handoff-check.ts",
+        ".github/actions/setup/action.yml",
+      ].map((path) => [path, ["const x = 1;"]] as [string, string[]]),
+    );
+    expect(riskyFiles(added).map((r) => [r.path, r.why.join(",")])).toEqual([
+      [".github/actions/setup/action.yml", "guard"],
+      ["scripts/handoff-check.ts", "guard"],
+      ["scripts/lib/claude-hooks.ts", "guard"],
+      ["scripts/lib/security-gate.ts", "guard"],
+    ]);
+  });
+
   test("Rust and Python spawns, deletes and listeners count too (#273)", () => {
     const added = new Map([
       ["apps/desktop/src-tauri/src/run.rs", ['let out = Command::new("git").output()?;']],
