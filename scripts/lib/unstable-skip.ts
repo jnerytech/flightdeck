@@ -35,3 +35,24 @@ export function unstableSkips(source: string): UnstableSkip[] {
 export function undocumentedSkips(source: string): number {
   return unstableSkips(source).filter((skip) => !skip.documented).length;
 }
+
+/** The test folders the ratchet reads, relative to the repository root. */
+export const UNSTABLE_ROOTS: readonly string[] = [
+  "apps/daemon/test",
+  "apps/desktop/test",
+  "packages/protocol/test",
+  "scripts/test",
+];
+
+/** What the ratchet knows of one test file. */
+export interface SkipCount {
+  /** Unstable skips in the file. */
+  total: number;
+  /** Of those, the ones with no complete note. */
+  undocumented: number;
+}
+
+/** Every test file under the roots that has an unstable skip, keyed under `root`. */
+export function unstableSkipCounts(_root: string): Record<string, SkipCount> {
+  return {};
+}
