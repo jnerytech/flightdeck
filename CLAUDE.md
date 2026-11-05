@@ -43,11 +43,10 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   changed source file is at 100% lines and functions, listing the uncovered `file:line` and the
   uncalled functions (`bunfig.related.toml`; the same exclusions as the full suite). A change to `package.json`, a `bunfig` or the preload
   prints a warning: run the full suite then.
-- Tests by tier (#261, `test-tiers.json`, by content): `unit`, `component` (the DOM), `integration`
+- Tests by tier (#261, computed from each test's content): `unit`, `component` (the DOM), `integration`
   (processes, a server, real git) and `e2e` (journeys, smokes). On the Pi, a session runs
   `bun run test:related -- --fast --tier unit,component` (a fifth of the suite's time, no coverage
-  gate); CI runs every tier and the one combined 100% gate. `bun run test:tiers` checks the manifest
-  (`-- --write` regenerates it after adding a test file).
+  gate); CI runs every tier and the one combined 100% gate. `bun run test:tiers` prints the counts.
 - Which function a file is missing: `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` runs
   the tests that reach the files (or the ones named after --tests) and lists the functions no test
   called as `file:line`. Bun's coverage only counts them. It instruments in memory, never the sources.
