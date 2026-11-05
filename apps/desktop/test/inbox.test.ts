@@ -110,6 +110,14 @@ describe("inbox: where a click goes", () => {
     expect(inboxTarget(e, there)).toEqual({ kind: "link", link: "flightdeck://r/1" });
   });
 
+  // Issue #187 (J4): an answered request's entry only raised the window.
+  test("a request already answered opens the route kept with it: its session, at that request", () => {
+    const session = { name: "session", host: "h", id: "s", focus: "r1" } as const;
+    const e: InboxEntry = { ...base, link: "flightdeck://r/1", route: session };
+    expect(inboxTarget(e, there, () => false)).toEqual({ kind: "route", route: session });
+    expect(inboxTarget(e, there, () => true)).toEqual({ kind: "link", link: "flightdeck://r/1" });
+  });
+
   test("a route opens as it is, with its params", () => {
     const e: InboxEntry = { ...base, route: { name: "costs", host: "h", projectKey: "/a" } };
     expect(inboxTarget(e, there)).toEqual({
