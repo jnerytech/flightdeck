@@ -1,5 +1,5 @@
 {
-  "sonarjs/cognitive-complexity": 15,
+  "sonarjs/cognitive-complexity": 5,
   "sonarjs/max-switch-cases": 1,
   "sonarjs/no-dead-store": 1,
   "sonarjs/no-hardcoded-ip": 5,
