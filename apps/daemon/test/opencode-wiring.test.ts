@@ -4,6 +4,7 @@ import { delimiter, join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { startDaemon } from "../src/main.ts";
 import { REAL_KILL_DEPS } from "../src/runtime/opencode-runtime.ts";
+import { OPENCODE_LEDGER_FILE, procSource } from "../src/runtime/process-ledger.ts";
 import { installFakeOpenCode } from "./fake-opencode.ts";
 import { poll, tempDir } from "./helpers.ts";
 
@@ -38,7 +39,7 @@ async function client(url: string) {
   return { ask, events };
 }
 
-async function daemon(opencode: object | null) {
+async function daemon(opencode: object | null, prepare?: (dataDir: string) => void) {
   const fake = installFakeOpenCode();
   const dir = tempDir("fd-oc-wiring-");
   const root = join(dir, "root");
@@ -55,6 +56,7 @@ async function daemon(opencode: object | null) {
       ...(opencode ? { opencode } : {}),
     }),
   );
+  prepare?.(join(dir, "data"));
   const env = { ...process.env, PATH: `${fake.dir}${delimiter}${process.env.PATH ?? ""}` };
   const running = await startDaemon(
     { command: "start", config: file, runtime: "claude" },
@@ -136,4 +138,37 @@ describe("opencode-wiring", () => {
     expect(() => REAL_KILL_DEPS.killGroup(2 ** 22 + 12345, "SIGTERM")).toThrow();
     expect(() => REAL_KILL_DEPS.run([process.execPath, "-e", ""])).not.toThrow();
   });
+
+  test.skipIf(process.platform !== "linux")(
+    "at start, a process group an earlier daemon left behind is reaped, even with OpenCode off (issue #250)",
+    async () => {
+      const orphan = Bun.spawn(["sleep", "300"], {
+        detached: true,
+        stdout: "ignore",
+        stderr: "ignore",
+      });
+      try {
+        const real = procSource("linux");
+        const until = Date.now() + 5000;
+        while (real.identity(orphan.pid)?.cmdline !== "sleep 300" && Date.now() < until) {
+          await Bun.sleep(10);
+        }
+        const identity = real.identity(orphan.pid);
+        await daemon(null, (dataDir) => {
+          mkdirSync(dataDir, { recursive: true });
+          writeFileSync(
+            join(dataDir, OPENCODE_LEDGER_FILE),
+            JSON.stringify([
+              { pid: orphan.pid, startTicks: identity?.startTicks, cmdline: identity?.cmdline },
+            ]),
+          );
+        });
+        expect(await Promise.race([orphan.exited, Bun.sleep(5000).then(() => "alive")])).not.toBe(
+          "alive",
+        );
+      } finally {
+        orphan.kill("SIGKILL");
+      }
+    },
+  );
 });

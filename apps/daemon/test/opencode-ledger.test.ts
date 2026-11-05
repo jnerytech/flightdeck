@@ -199,6 +199,11 @@ describe("opencode-ledger: what /proc says", () => {
       });
       const kills: number[] = [];
       try {
+        // Just after the spawn the child may still show its parent's command: wait for the exec.
+        const until = Date.now() + 5000;
+        while (real.identity(child.pid)?.cmdline !== "sleep 60" && Date.now() < until) {
+          await Bun.sleep(10);
+        }
         const identity = real.identity(child.pid);
         expect(identity?.pgrp).toBe(child.pid);
         expect(identity?.cmdline).toBe("sleep 60");
