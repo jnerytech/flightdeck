@@ -24,7 +24,7 @@ const card = (id: string, branch: string, worktreePath: string, sessionStatus: s
     createdAt: "2026-11-01T10:00:00Z",
   }) as unknown as Card;
 
-function setup(filter: unknown = null) {
+function setup(filter: unknown = null, route?: object, real = false) {
   const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   const state = {
@@ -47,12 +47,13 @@ function setup(filter: unknown = null) {
   } as never as ReturnType<typeof store.getState>;
   const went: unknown[] = [];
   const picked: unknown[] = [];
-  store.setWorktreeFilter = ((f: unknown) => void picked.push(f)) as never;
+  if (!real) store.setWorktreeFilter = ((f: unknown) => void picked.push(f)) as never;
   render(
     <Sidebar
       store={store}
       state={state}
       collapsed={false}
+      route={route as never}
       t={store.i18n.t}
       go={(route) => void went.push(route)}
       onOpenProjectScreen={() => {}}
@@ -64,7 +65,7 @@ function setup(filter: unknown = null) {
       onToggleTheme={() => {}}
     />,
   );
-  return { went, picked };
+  return { went, picked, store };
 }
 
 const tree = () => screen.getByRole("list", { name: "Branches of api" });
@@ -112,5 +113,49 @@ describe("arvore-projetos-ui: the project tree in the sidebar (issue #116)", () 
       fireEvent.click(node);
     });
     expect(again.picked).toEqual([null]);
+  });
+});
+
+describe("arvore-projetos-ui: stay where you are, say what a node is (issue #116 review)", () => {
+  test("picking from the Sessions list narrows it in place instead of opening the board", async () => {
+    const { went, picked } = setup(null, { name: "hub" });
+    await act(async () => {
+      fireEvent.click(within(tree()).getByRole("button", { name: "api: fd/login" }));
+    });
+    expect(picked).toHaveLength(1);
+    expect(went).toEqual([]);
+  });
+
+  test("the real store keeps the pick, and picking it again clears it", async () => {
+    const { store } = setup(null, undefined, true);
+    const node = () => within(tree()).getByRole("button", { name: "api: fd/login" });
+    await act(async () => {
+      fireEvent.click(node());
+    });
+    expect(store.getState().worktreeFilter).toMatchObject({ path: "/wt/login", kind: "worktree" });
+  });
+
+  test("a node's description carries what its short name drops: primary and base branch", () => {
+    setup();
+    const describedBy = (name: string) => {
+      const button = within(tree()).getByRole("button", { name });
+      return (button.getAttribute("aria-describedby") ?? "")
+        .split(" ")
+        .map((id) => document.getElementById(id)?.textContent)
+        .join(" ");
+    };
+    expect(describedBy("api: develop")).toContain("primary");
+    expect(describedBy("api: develop")).toContain("base develop");
+    expect(describedBy("api: fd/login")).toBe("base develop");
+  });
+
+  test("every node is a real button in the tab order, with a focus ring in the stylesheet", async () => {
+    setup();
+    for (const button of within(tree()).getAllByRole("button")) {
+      expect(button.tagName).toBe("BUTTON");
+      expect(button.tabIndex).toBe(0);
+    }
+    const css = await Bun.file(new URL("../src/styles.css", import.meta.url)).text();
+    expect(css).toMatch(/@utility project-tree-node \{[^}]*focus-visible/s);
   });
 });

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { Card, Project } from "@flightdeck/protocol";
 import type { HubRow } from "../src/lib/hub.ts";
 import {
+  activeWorktreeFilter,
   cardInFilter,
   projectTree,
   rowInFilter,
@@ -114,5 +115,67 @@ describe("arvore-projetos: what a node keeps (issue #116)", () => {
     expect(rowInFilter(row({ cwd: "/work/api/.wt/b/x" }), primary, p, wts)).toBe(false);
     expect(rowInFilter(row({ cwd: "/work/other" }), primary, p, wts)).toBe(false);
     expect(rowInFilter(row({ hostId: "h2", cwd: "/work/api" }), primary, p, wts)).toBe(false);
+  });
+});
+
+describe("arvore-projetos: a stored filter that points at nothing is not active (issue #116 review)", () => {
+  const worktree = (path = "/wt/login"): WorktreeFilter => ({
+    hostId: "h1",
+    projectId: "p-api",
+    kind: "worktree",
+    path,
+    branch: "fd/login",
+  });
+  const withLogin = () => state([card("c1", { branch: "fd/login", worktreePath: "/wt/login" })]);
+  const view = (over: object, base: object = withLogin()) =>
+    ({ ...(base as object), ...over }) as never;
+
+  test("a node that is still there keeps its filter, and no filter stays none", () => {
+    expect(activeWorktreeFilter(view({ worktreeFilter: worktree() }))).toEqual(worktree());
+    expect(activeWorktreeFilter(view({ worktreeFilter: null }))).toBeNull();
+  });
+
+  test("the main checkout stays active while its project is there", () => {
+    const primary = { ...worktree("/work/api"), kind: "primary" as const };
+    expect(activeWorktreeFilter(view({ worktreeFilter: primary }))).toEqual(primary);
+  });
+
+  test("a worktree whose card is gone is not active", () => {
+    expect(activeWorktreeFilter(view({ worktreeFilter: worktree("/wt/other") }))).toBeNull();
+  });
+
+  test("a project that is gone is not active", () => {
+    expect(
+      activeWorktreeFilter(view({ worktreeFilter: worktree(), projects: { h1: [] } })),
+    ).toBeNull();
+  });
+
+  test("a host that is offline or gone is not active", () => {
+    const offline = [{ id: "h1", name: "alfa", status: "offline" }];
+    expect(activeWorktreeFilter(view({ worktreeFilter: worktree(), hosts: offline }))).toBeNull();
+    expect(activeWorktreeFilter(view({ worktreeFilter: worktree(), hosts: [] }))).toBeNull();
+  });
+});
+
+describe("arvore-projetos: paths on Windows and nodes without a branch (issue #116 review)", () => {
+  test("a worktree filter matches a session whose folder is spelled with another case and slashes", () => {
+    const filter: WorktreeFilter = {
+      hostId: "h1",
+      projectId: "p-api",
+      kind: "worktree",
+      path: "C:\\wt\\Login",
+      branch: "fd/login",
+    };
+    const api = project("p-api", "api");
+    expect(rowInFilter(row({ cwd: "c:/wt/login/src" }), filter, api, [])).toBe(true);
+    expect(rowInFilter(row({ cwd: "c:/wt/login-two" }), filter, api, [])).toBe(false);
+  });
+
+  test("a card with a worktree but no branch shows its folder name, never its title", () => {
+    const [api] = projectTree(
+      state([card("c1", { title: "Fix the login flow", worktreePath: "/wt/fd-login" })]),
+      [],
+    );
+    expect(api?.nodes[1]?.branch).toBe("fd-login");
   });
 });

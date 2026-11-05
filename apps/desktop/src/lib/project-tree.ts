@@ -127,3 +127,10 @@ export function rowInFilter(
   if (filter.kind === "worktree") return isInside(row.cwd, filter.path);
   return isInside(row.cwd, project.path) && !worktrees.some((path) => isInside(row.cwd, path));
 }
+
+/** The stored filter when it still points at a checkout that is there; else none. */
+export function activeWorktreeFilter(
+  state: Pick<AppState, "hosts" | "projects" | "cards" | "worktreeFilter">,
+): WorktreeFilter | null {
+  return state.worktreeFilter;
+}

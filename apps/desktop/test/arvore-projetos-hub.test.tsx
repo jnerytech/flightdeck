@@ -23,7 +23,7 @@ const external = (id: string, cwd: string) => ({
   persona: null,
 });
 
-function setup(filter: unknown) {
+function setup(filter: unknown, over: object = {}) {
   const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 600_000 });
   const cleared: unknown[] = [];
   store.setWorktreeFilter = ((f: unknown) => void cleared.push(f)) as never;
@@ -53,6 +53,7 @@ function setup(filter: unknown) {
       "alfa/other": external("other", "/work/other"),
     },
     worktreeFilter: filter,
+    ...over,
   };
   render(
     <TooltipProvider>
@@ -100,5 +101,33 @@ describe("arvore-projetos-hub: the Sessions list narrows to a picked branch (iss
     await settle(() => titles().length > 0);
     expect(titles()).toHaveLength(3);
     expect(screen.queryByText(/^Branch:/)).toBeNull();
+  });
+});
+
+describe("arvore-projetos-hub: a filter that points at nothing is ignored, chip and list alike (issue #116 review)", () => {
+  const login = { ...base, kind: "worktree", path: "/wt/login", branch: "fd/login" };
+
+  test("the worktree's card is gone: every session is listed and there is no chip", async () => {
+    setup(login, { cards: {} });
+    await settle(() => titles().length > 0);
+    expect(titles()).toHaveLength(3);
+    expect(screen.queryByText(/^Branch:/)).toBeNull();
+  });
+
+  test("the project is gone: the same", async () => {
+    setup(login, { projects: { alfa: [] } });
+    await settle(() => titles().length > 0);
+    expect(titles()).toHaveLength(3);
+    expect(screen.queryByText(/^Branch:/)).toBeNull();
+  });
+});
+
+describe("arvore-projetos-hub: the chip's clear button meets the 24 px target (issue #116 review)", () => {
+  test("it is size-6, not size-5", async () => {
+    setup({ ...base, kind: "worktree", path: "/wt/login", branch: "fd/login" });
+    await settle(() => titles().length > 0);
+    const clear = screen.getByRole("button", { name: "Limpar o filtro de branch" });
+    expect(clear.className).toContain("size-6");
+    expect(clear.className).not.toContain("size-5");
   });
 });
