@@ -107,6 +107,28 @@ for (const [lang, t] of [
       expect(field(t.cardUi.description)?.value).toBe("My long edit.");
     });
 
+    test("Save title saves the edited title, and a refused one keeps the edit", async () => {
+      const { d, store, card } = await openByRoute(lang);
+      await settle(() => field(t.cardUi.title)?.value === "Fix the total");
+      expect(button(t.cardUi.saveTitle)?.disabled).toBe(true);
+      const type = async (value: string) => {
+        await act(async () => {
+          fireEvent.change(field(t.cardUi.title) as HTMLInputElement, { target: { value } });
+        });
+        await act(async () => {
+          fireEvent.click(button(t.cardUi.saveTitle) as HTMLButtonElement);
+        });
+      };
+      await type("Fix the cart total");
+      await settle(() => d.board.getCard(card.id).title === "Fix the cart total");
+      const real = store.hostCommand.bind(store);
+      store.hostCommand = (async (hostId, type, payload) =>
+        type === "card.update" ? null : real(hostId, type, payload)) as typeof store.hostCommand;
+      await type("Fix the cart total and round");
+      await act(async () => {});
+      expect(field(t.cardUi.title)?.value).toBe("Fix the cart total and round");
+    });
+
     test("a change made elsewhere shows in a field the person has not touched", async () => {
       const { store, hostId, card } = await openByRoute(lang);
       await settle(() => button(t.cardUi.saveDescription) !== null);
