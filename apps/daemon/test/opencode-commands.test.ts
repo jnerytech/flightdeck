@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { SessionEvent } from "@flightdeck/protocol";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
@@ -120,6 +120,44 @@ describe("opencode-commands", () => {
       | undefined;
     expect(init?.contextSkipped).toEqual(["AGENTS.md"]);
   });
+
+  // A file symlink needs special rights on Windows; a cloned repo carries one on POSIX.
+  test.skipIf(process.platform === "win32")(
+    "an AGENTS.md that links out of the folder, or to a credential, is skipped; a link inside is sent",
+    async () => {
+      const outside = join(realTempDir("fd-oc-outside-"), "secrets.txt");
+      writeFileSync(outside, "token=abc");
+      const cwd = realTempDir("fd-oc-agents-");
+      symlinkSync(outside, join(cwd, "AGENTS.md"));
+      const out = setup({ cwd });
+      expect(await prompts(out.run, out.agents, ["first"])).toEqual([
+        [{ type: "text", text: "first" }],
+      ]);
+      const init = out.events.find((e) => e.type === "session.init") as
+        | { contextSkipped?: string[] }
+        | undefined;
+      expect(init?.contextSkipped).toEqual(["AGENTS.md"]);
+
+      const linked = realTempDir("fd-oc-agents-");
+      mkdirSync(join(linked, ".aws"));
+      writeFileSync(join(linked, ".aws", "credentials"), "key");
+      symlinkSync(join(linked, ".aws", "credentials"), join(linked, "AGENTS.md"));
+      const cred = setup({ cwd: linked });
+      expect(await prompts(cred.run, cred.agents, ["first"])).toEqual([
+        [{ type: "text", text: "first" }],
+      ]);
+
+      const inside = realTempDir("fd-oc-agents-");
+      mkdirSync(join(inside, "docs"));
+      writeFileSync(join(inside, "docs", "agents.md"), "Use tabs.");
+      symlinkSync(join(inside, "docs", "agents.md"), join(inside, "AGENTS.md"));
+      const ok = setup({ cwd: inside });
+      const sent = await prompts(ok.run, ok.agents, ["first"]);
+      expect((sent[0]?.[0] as { resource?: { text?: string } } | undefined)?.resource?.text).toBe(
+        "Use tabs.",
+      );
+    },
+  );
 
   test("the protocol carries contextFiles and contextSkipped on session.init", () => {
     const event = {
