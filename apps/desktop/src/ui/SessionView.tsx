@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { translateError } from "../i18n/errors.ts";
 import type { T } from "../i18n/index.ts";
 import { usd } from "../lib/costs.ts";
 import { activityOf } from "../lib/session-activity.ts";
@@ -229,10 +230,18 @@ const TimelineItem = memo(function TimelineItem(props: {
       return <div className="text-muted-foreground text-xs">{props.t("session.historyGap")}</div>;
     case "error":
       return (
-        <div className="rounded-md border border-status-error/40 p-3 text-sm text-status-error">{`${item.code}: ${item.message}`}</div>
+        <div className="rounded-md border border-status-error/40 p-3 text-sm text-status-error">
+          {errorText(item, props.t)}
+        </div>
       );
   }
 });
+
+/** Phase 39: a session error, as the app's own sentence when it carries a reason the app knows. */
+export function errorText(item: Extract<ChatItem, { kind: "error" }>, t: T): string {
+  const { title, detail } = translateError(item.code, item.message, t, item);
+  return item.reason && !detail ? title : `${item.code}: ${item.message}`;
+}
 
 interface SessionViewProps {
   title: string;
@@ -270,6 +279,8 @@ interface SessionViewProps {
   pin?: { pinned: boolean; toggle(): void };
   /** Forks the conversation at its latest message; offered on that message only. */
   fork?: () => void;
+  /** Phase 39: the agent; an OpenCode session says so and offers no model switch or fork. */
+  runtime?: "claude" | "opencode";
   /** Renders a picker for a folder; `done` gets the path chosen, or null when it was closed. */
   pickPath?: (done: (path: string | null) => void) => ReactNode;
 }
@@ -354,7 +365,11 @@ export function SessionView(props: SessionViewProps) {
   const at = MODES.indexOf(start as (typeof MODES)[number]);
   const limit = at < 0 ? MODES.length : at + 1;
   // A host that allows bypass lets the person pick any mode, looser than the start included.
-  const offeredModes = props.bypass ? ALL_MODES : MODES.slice(0, limit);
+  const opencode = props.runtime === "opencode";
+  const offeredModes = (props.bypass ? ALL_MODES : MODES.slice(0, limit)).filter(
+    (m) => !opencode || m !== "acceptEdits",
+  );
+  const fork = opencode ? undefined : props.fork;
   const [bypassAsk, setBypassAsk] = useState(false);
   const [model, setModel] = useState("");
   const slash = session.slashCommands;
@@ -450,7 +465,7 @@ export function SessionView(props: SessionViewProps) {
   };
 
   const pickers = {
-    ...(props.settings && actions.setModel
+    ...(props.settings && actions.setModel && !opencode
       ? {
           model: (
             <NativeSelect
@@ -519,12 +534,17 @@ export function SessionView(props: SessionViewProps) {
         }
         controls={
           <>
+            {opencode && (
+              <span className="rounded-md border px-1.5 py-0.5 text-muted-foreground text-xs">
+                {t("session.runtimeOpenCode")}
+              </span>
+            )}
             {session.status && <StatusBadge status={session.status} />}
             {session.statusReason && (
               <span className="text-muted-foreground text-xs">{session.statusReason}</span>
             )}
-            {props.timeline}
-            {props.terminal}
+            {!opencode && props.timeline}
+            {!opencode && props.terminal}
             {closed ? (
               <ActionButton variant="outline" size="sm" onClick={() => actions.resume()}>
                 {t("session.resume")}
@@ -556,9 +576,9 @@ export function SessionView(props: SessionViewProps) {
             )}
           </>
         }
-        extra={props.persona}
+        extra={opencode ? undefined : props.persona}
       />
-      {props.recap}
+      {!opencode && props.recap}
       <div className="pane-fill">
         <Timeline
           ref={timeline}
@@ -590,7 +610,7 @@ export function SessionView(props: SessionViewProps) {
               t={t}
               nowMs={item.kind === "permission" ? (props.nowMs ?? Date.now()) : 0}
               pin={props.pin}
-              fork={item.seq === latestAssistant ? props.fork : undefined}
+              fork={item.seq === latestAssistant ? fork : undefined}
             />
           ))}
           {session.streaming && (

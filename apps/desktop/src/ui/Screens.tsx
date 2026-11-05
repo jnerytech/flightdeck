@@ -192,6 +192,7 @@ function ManagedSession(props: {
         actions={store}
         {...(pin ? { pin } : {})}
         {...(fork ? { fork } : {})}
+        {...(summary?.runtime ? { runtime: summary.runtime } : {})}
         settings={hasFeature(host?.hostInfo?.features, "session.settings", false)}
         {...(host?.hostInfo?.allowBypassPermissions === true
           ? { bypass: { host: host.name } }
@@ -915,6 +916,7 @@ function NewSession(props: {
       }
       // The created session opens by itself (AppStore.createSession).
       onCreate={(payload) => {
+        if (payload.runtime === "opencode") return props.store.createSession(host.id, payload);
         if (background) return startInBackground(props.store, host.id, payload, persona);
         const ref = props.store.personaRef(persona);
         return props.store.createSession(host.id, { ...payload, ...(ref ? { persona: ref } : {}) });

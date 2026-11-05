@@ -515,6 +515,7 @@ export class SessionManager {
       status: session.status,
       pendingPermissions: this.pendingPermissions(sessionId),
       updatedAt: session.updatedAt,
+      ...(session.runtime === "opencode" ? { runtime: "opencode" as const } : {}),
     });
   }
 

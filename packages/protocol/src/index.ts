@@ -410,6 +410,8 @@ export const SessionEvent = z.discriminatedUnion("type", [
     /** Open requests, oldest first; the count is its length. */
     pendingPermissions: z.array(PendingPermission),
     updatedAt: z.string(),
+    /** Phase 39: set for an OpenCode session only. */
+    runtime: SessionRuntime.optional(),
   }),
 ]);
 export type SessionEvent = z.infer<typeof SessionEvent>;

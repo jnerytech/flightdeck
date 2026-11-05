@@ -47,7 +47,15 @@ export type ChatItem =
       durationMs: number;
       costUsd?: number;
     }
-  | { kind: "error"; seq: number; code: string; message: string }
+  | {
+      kind: "error";
+      seq: number;
+      code: string;
+      message: string;
+      /** Phase 39: why, when the daemon says it, for the app's own sentence. */
+      reason?: string;
+      params?: Record<string, string | number>;
+    }
   /** A persona applied to the session or left (phase 20). */
   | { kind: "persona"; seq: number; applied: boolean; name: string };
 
@@ -223,6 +231,13 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
       return event.type === "persona.applied" ? { ...rest, persona: event.persona } : rest;
     }
     default:
-      return push({ kind: "error", seq, code: event.code, message: event.message });
+      return push({
+        kind: "error",
+        seq,
+        code: event.code,
+        message: event.message,
+        ...(event.reason ? { reason: event.reason } : {}),
+        ...(event.params ? { params: event.params } : {}),
+      });
   }
 }
