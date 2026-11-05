@@ -1,4 +1,5 @@
 import { Check } from "lucide-react";
+import { useId } from "react";
 import { Button } from "@/components/ui/button";
 import { PopoverContent } from "@/components/ui/popover";
 import { formatTime } from "../../i18n/format.ts";
@@ -96,10 +97,17 @@ export function NotificationCenter(props: {
 }) {
   const { t, unread } = props;
   const groups = inboxRows(props.entries, new Date());
+  const titleId = useId();
   return (
-    <PopoverContent align="end" className="inbox-panel w-[min(26rem,90vw)]">
+    <PopoverContent
+      align="end"
+      aria-labelledby={titleId}
+      className="inbox-panel w-[min(26rem,90vw)]"
+    >
       <div className="inbox-head">
-        <h2 className="font-semibold text-sm">{t("inbox.title")}</h2>
+        <h2 id={titleId} className="font-semibold text-sm">
+          {t("inbox.title")}
+        </h2>
         <div className="inbox-head-actions">
           <Button variant="ghost" size="sm" disabled={unread === 0} onClick={props.onMarkAll}>
             {t("inbox.markAll")}

@@ -117,6 +117,21 @@ describe("ask-question-ui", () => {
     });
   });
 
+  test("a question can be declined with a reason, and Cancel brings the answers back", async () => {
+    const calls = card("AskUserQuestion", { questions: [QUESTIONS.questions[0]] });
+    await click(screen.queryByRole("button", { name: "Deny" }));
+    expect(screen.queryByRole("button", { name: "Send answers" })).toBeNull();
+    await click(screen.queryByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("button", { name: "Send answers" })).not.toBeNull();
+    await click(screen.queryByRole("button", { name: "Deny" }));
+    const reason = screen.queryByRole("textbox", { name: "Reason (optional)" }) as HTMLElement;
+    await act(async () => {
+      fireEvent.change(reason, { target: { value: "not now" } });
+    });
+    await click(screen.queryAllByRole("button", { name: "Deny" }).at(-1) ?? null);
+    expect(calls).toEqual([["deny", "not now"]]);
+  });
+
   test("ExitPlanMode shows the plan as markdown, with Approve plan and Keep planning", async () => {
     const calls = card("ExitPlanMode", { plan: "# The plan\n\n- step one\n- step two" });
     await waitFor(() => expect(screen.queryByRole("heading", { name: "The plan" })).not.toBeNull());

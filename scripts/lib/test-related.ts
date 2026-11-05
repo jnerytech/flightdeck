@@ -31,13 +31,8 @@ export function resolveImport(from: string, spec: string, known: Set<string>): s
   return candidates.find((path) => known.has(path)) ?? null;
 }
 
-/** The test files to run for these changed files: themselves, plus every test that reaches one. */
-export function selectRelated(
-  changed: string[],
-  sources: Map<string, string>,
-  { direct = false }: { direct?: boolean } = {},
-): Related[] {
-  const known = new Set(sources.keys());
+/** For each tracked file, the files that import it. */
+function importersOf(sources: Map<string, string>, known: Set<string>): Map<string, string[]> {
   const importers = new Map<string, string[]>();
   for (const [path, source] of sources) {
     for (const spec of importsOf(source)) {
@@ -45,6 +40,17 @@ export function selectRelated(
       if (target) importers.set(target, [...(importers.get(target) ?? []), path]);
     }
   }
+  return importers;
+}
+
+/** The test files to run for these changed files: themselves, plus every test that reaches one. */
+export function selectRelated(
+  changed: string[],
+  sources: Map<string, string>,
+  { direct = false }: { direct?: boolean } = {},
+): Related[] {
+  const known = new Set(sources.keys());
+  const importers = importersOf(sources, known);
   // Walks the reverse graph from every changed file, remembering which one led to each file.
   const origin = new Map<string, string>();
   const queue: string[] = [];

@@ -31,7 +31,7 @@ async function setup(entries: unknown[]) {
   const store = new AppStore(phone.platform, { baseDelayMs: 60_000 });
   stores.push(store);
   render(<App store={store} />);
-  await waitFor(() => expect(store.getState().inbox.length).toBe(entries.length));
+  await waitFor(() => expect(store.getState().inbox).toHaveLength(entries.length));
   return { store };
 }
 
@@ -71,6 +71,12 @@ describe("inbox-sino-ui: which notification is unread, and what each one is abou
     expect(second.querySelector("[data-slot='row-title']")?.className).not.toContain(
       "font-semibold",
     );
+  });
+
+  test("the panel is a dialog named by its title, so a screen reader says what opened (axe aria-dialog-name)", async () => {
+    await setup([ASK("a", 10)]);
+    const panel = await open();
+    expect(screen.getByRole("dialog", { name: "Notificações" })).toBe(panel);
   });
 
   test("opening the panel marks nothing as read", async () => {

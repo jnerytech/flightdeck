@@ -1,17 +1,16 @@
 name: CI
 
 on:
-  # Every pushed branch runs the whole CI (#216): the full suite on both systems, the prints, e2e
-  # and SonarCloud leave the machine's single test slot, and a session hands off on a green run
-  # (scripts/ci-branch.sh reads it). A new push cancels the branch's previous run (concurrency).
-  # A push that only changes files no test reads starts no run; ci-branches.test.ts keeps that
-  # list honest. Pull requests are never filtered, so their required checks always report.
+  # GitHub Flow (#260): one trigger per kind of branch, so no commit runs twice. A branch with an
+  # open PR runs on `pull_request` (never filtered, so its required checks always report); main
+  # runs on `push`, which is what a release tags; a branch with no PR yet runs by hand
+  # (`workflow_dispatch`, sent by bun run ci:branch). A new push cancels the previous run
+  # (concurrency). A push to main that only changes images starts no run; ci-branches.test.ts keeps
+  # that list honest.
   push:
-    branches: ["**"]
-    paths-ignore: ["docs/manual/**", "docs/images/**"]
+    branches: [main]
+    paths-ignore: ["docs/images/**"]
   pull_request:
-  # Any pushed branch can run the whole CI by hand (scripts/ci-branch.sh): the prints, e2e and the
-  # Windows suite then leave the machine's single test slot.
   workflow_dispatch:
     inputs:
       only:

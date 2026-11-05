@@ -46,4 +46,12 @@ describe("handoff-check", () => {
     expect(stampProblem(null, HEAD) ?? "").toContain("no stamp");
     expect(stampProblem("garbage", HEAD) ?? "").toContain("not a stamp");
   });
+
+  test("a hostile stamp is refused in linear time (Sonar S5852) (#232)", () => {
+    // A digit can end one pair or start the next: the old pattern backtracked 2^n times on a miss.
+    const hostile = `HANDOFF b ${HEAD} ${"x=11".repeat(24)} a b`;
+    const started = performance.now();
+    expect(stampProblem(hostile, HEAD) ?? "").toContain("not a stamp");
+    expect(performance.now() - started).toBeLessThan(200);
+  });
 });

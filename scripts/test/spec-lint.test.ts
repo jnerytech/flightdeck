@@ -70,7 +70,7 @@ describe("spec-lint", () => {
       "| `board-sync-ui` | `apps/daemon/test/board-sync-ui.test.ts` | x |",
     ].join("\n");
     const problems = lintSpec(spec({ "Tests and criteria": rows }));
-    expect(problems.length).toBe(4);
+    expect(problems).toHaveLength(4);
     expect(problems[0]).toContain("`BoardPull` is not kebab-case");
     expect(problems[1]).toContain("apps/daemon/src/board-map.ts is not a test file");
     expect(problems[2]).toContain("the test file of `board-graph` is board-graph.test.ts(x)");

@@ -190,8 +190,11 @@ describe("versoes-ui", () => {
       const { store } = await connect(daemon.url, "online");
       await openHost();
       await act(async () => store.i18n.setLang("en"));
-      await waitFor(() => expect(text()).toContain("This host's usage may be going to API credit"));
-      expect(text()).toContain("absent");
+      // The notice comes with the host's info and the hooks status with its own answer: wait for both.
+      await waitFor(() => {
+        expect(text()).toContain("This host's usage may be going to API credit");
+        expect(text()).toContain("absent");
+      });
       expect(text()).not.toContain("ausentes");
       expect(text()).not.toContain("crédito de API");
     });

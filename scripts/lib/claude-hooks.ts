@@ -55,27 +55,40 @@ function hasShortFlag(arg: string, letters: string): boolean {
   return /^-[a-zA-Z]+$/.test(arg) && [...arg.slice(1)].some((letter) => letters.includes(letter));
 }
 
+/** `git add` of everything at once (`.`, `*`, `--all`, `-A`...). */
+function addViolation(args: string[]): string | null {
+  const wide = args.find(
+    (a) => [".", "*", ":/", "--all", "--update"].includes(a) || hasShortFlag(a, "Au"),
+  );
+  if (!wide) return null;
+  return `git add ${wide} is blocked: stage files by explicit path and check git status --short first (docs/TDD.md).`;
+}
+
+/** `git stash` in any form but `list` and `show`: the stash is shared across worktrees. */
+function stashViolation(args: string[]): string | null {
+  if (["list", "show"].includes(args[0] ?? "")) return null;
+  const what = args[0] && !args[0].startsWith("-") ? `git stash ${args[0]}` : "git stash";
+  return `${what} is blocked: refs/stash is shared across worktrees; use git diff > /tmp/<name>.patch + git apply, or a WIP commit on your branch.`;
+}
+
+/** `git commit -a` / `--all`. */
+function commitAllViolation(args: string[]): string | null {
+  const all = args.find((a) => a === "--all" || hasShortFlag(a, "a"));
+  if (!all) return null;
+  return `git commit ${all} is blocked: stage files by explicit path with git add <files> (docs/TDD.md).`;
+}
+
+const GIT_RULES: Record<string, (args: string[]) => string | null> = {
+  add: addViolation,
+  stash: stashViolation,
+  commit: commitAllViolation,
+};
+
 /** Why a shell command is blocked (docs/TDD.md: stage by explicit path), or null. */
 export function commandViolation(command: string): string | null {
   for (const { sub, args } of gitInvocations(command)) {
-    if (sub === "add") {
-      const wide = args.find(
-        (a) => [".", "*", ":/", "--all", "--update"].includes(a) || hasShortFlag(a, "Au"),
-      );
-      if (wide) {
-        return `git add ${wide} is blocked: stage files by explicit path and check git status --short first (docs/TDD.md).`;
-      }
-    }
-    if (sub === "stash" && !["list", "show"].includes(args[0] ?? "")) {
-      const what = args[0] && !args[0].startsWith("-") ? `git stash ${args[0]}` : "git stash";
-      return `${what} is blocked: refs/stash is shared across worktrees; use git diff > /tmp/<name>.patch + git apply, or a WIP commit on your branch.`;
-    }
-    if (sub === "commit") {
-      const all = args.find((a) => a === "--all" || hasShortFlag(a, "a"));
-      if (all) {
-        return `git commit ${all} is blocked: stage files by explicit path with git add <files> (docs/TDD.md).`;
-      }
-    }
+    const violation = Object.hasOwn(GIT_RULES, sub) ? GIT_RULES[sub]?.(args) : null;
+    if (violation) return violation;
   }
   return null;
 }
@@ -258,6 +271,11 @@ interface GitCall {
   end: number;
 }
 
+/** The folder a `cd` or `git -C` goes to; null when it cannot be told (nowhere known, nothing or a quoted word). */
+function enter(dir: string | null, target: string): string | null {
+  return dir === null || !target || target.includes('"') ? null : resolve(dir, target);
+}
+
 /** Each git invocation in the command, with its directory (each `cd` before it, `git -C`). */
 function gitCalls(command: string, cwd: string): GitCall[] {
   const calls: GitCall[] = [];
@@ -269,16 +287,15 @@ function gitCalls(command: string, cwd: string): GitCall[] {
     }));
     const word = (i: number) => tokens[i]?.word ?? "";
     if (word(0) === "cd") {
-      dir = dir === null || !word(1) || word(1).includes('"') ? null : resolve(dir, word(1));
+      dir = enter(dir, word(1));
       continue;
     }
-    let i = tokens.findIndex((t) => t.word === "git");
-    if (i < 0) continue;
+    const found = tokens.findIndex((t) => t.word === "git");
+    if (found < 0) continue;
     let at = dir;
-    for (i++; word(i).startsWith("-"); i += GIT_OPTIONS_WITH_VALUE.has(word(i)) ? 2 : 1) {
-      if (word(i) !== "-C") continue;
-      at =
-        at === null || !word(i + 1) || word(i + 1).includes('"') ? null : resolve(at, word(i + 1));
+    let i = found + 1;
+    for (; word(i).startsWith("-"); i += GIT_OPTIONS_WITH_VALUE.has(word(i)) ? 2 : 1) {
+      if (word(i) === "-C") at = enter(at, word(i + 1));
     }
     calls.push({
       sub: word(i),
@@ -392,56 +409,91 @@ const PUSH_OPTIONS_WITH_VALUE = new Set([
   "--exec",
 ]);
 
-/** The rules of `pushViolation` for one `git push` with these words after `push`. */
-function pushRuleViolation(args: string[], git: (args: string[]) => string | null): string | null {
-  const positional: string[] = [];
-  let bareForce = false;
-  let lease = false;
-  let deleting = false;
+interface PushWords {
+  /** The refusal for a flag that is blocked outright (`--tags`, `--mirror`...). */
+  blocked: string | null;
+  positional: string[];
+  bareForce: boolean;
+  lease: boolean;
+  deleting: boolean;
+}
+
+/** The words after `git push`, sorted into the remote and refspecs, and the flags the rules look at. */
+function readPushWords(args: string[]): PushWords {
+  const words: PushWords = {
+    blocked: null,
+    positional: [],
+    bareForce: false,
+    lease: false,
+    deleting: false,
+  };
   for (let i = 0; i < args.length; i++) {
     const a = args[i] ?? "";
     if (a.includes('"') || a.includes("'")) continue;
     if (["--tags", "--all", "--mirror", "--follow-tags"].includes(a)) {
-      return `git push ${a} is blocked: ${OWN_BRANCHES}`;
+      return { ...words, blocked: `git push ${a} is blocked: ${OWN_BRANCHES}` };
     }
-    if (a === "-f" || a === "--force") bareForce = true;
-    else if (a.startsWith("--force-with-lease") || a === "--force-if-includes") lease = true;
-    else if (a === "-d" || a === "--delete") deleting = true;
+    if (a === "-f" || a === "--force") words.bareForce = true;
+    else if (a.startsWith("--force-with-lease") || a === "--force-if-includes") words.lease = true;
+    else if (a === "-d" || a === "--delete") words.deleting = true;
     else if (PUSH_OPTIONS_WITH_VALUE.has(a)) i++;
-    else if (!a.startsWith("-")) positional.push(a);
+    else if (!a.startsWith("-")) words.positional.push(a);
   }
+  return words;
+}
+
+type PushTarget = { dst: string | null; tag: boolean; plus: boolean };
+
+/** Where one refspec pushes to: the branch (or tag) it names, and whether it forces with a `+`. */
+function pushTarget(
+  spec: string,
+  deleting: boolean,
+  current: string | null,
+  git: (args: string[]) => string | null,
+): PushTarget {
+  const plus = spec.startsWith("+");
+  const bare = plus ? spec.slice(1) : spec;
+  const colon = bare.indexOf(":");
+  const src = colon < 0 ? bare : bare.slice(0, colon);
+  let dst = deleting || colon < 0 ? bare : bare.slice(colon + 1);
+  if (dst.startsWith("refs/tags/")) return { dst, tag: true, plus };
+  dst = dst.replace(/^refs\/heads\//, "");
+  if (dst === "HEAD") return { dst: current, tag: false, plus };
+  const tag =
+    colon < 0 && !deleting && git(["show-ref", "--verify", "--quiet", `refs/tags/${src}`]) !== null;
+  return { dst, tag, plus };
+}
+
+/** Why one push target is refused (a tag, main or an rc branch, a force, a lease elsewhere), or null. */
+function targetViolation(target: PushTarget, words: PushWords, current: string | null) {
+  const { dst, tag, plus } = target;
+  if (tag) return `git push of the tag ${dst} is blocked: ${OWN_BRANCHES}`;
+  if (dst === null) return null;
+  if (dst === "main" || dst.startsWith("rc/")) {
+    return `git push to ${dst} is blocked: ${OWN_BRANCHES}`;
+  }
+  if (words.bareForce || plus) {
+    return `git push --force is blocked: use --force-with-lease, and only on the branch checked out here (${current ?? "none"}).`;
+  }
+  if (words.lease && dst !== current) {
+    return `git push --force-with-lease to ${dst} is blocked: force only the branch checked out here (${current ?? "none"}); ${OWN_BRANCHES}`;
+  }
+  return null;
+}
+
+/** The rules of `pushViolation` for one `git push` with these words after `push`. */
+function pushRuleViolation(args: string[], git: (args: string[]) => string | null): string | null {
+  const words = readPushWords(args);
+  if (words.blocked) return words.blocked;
   const current = git(["symbolic-ref", "--short", "HEAD"])?.trim() || null;
-  const refspecs = positional.slice(1);
-  const targets: { dst: string | null; tag: boolean; plus: boolean }[] =
+  const refspecs = words.positional.slice(1);
+  const targets: PushTarget[] =
     refspecs.length === 0
       ? [{ dst: current, tag: false, plus: false }]
-      : refspecs.map((spec) => {
-          const plus = spec.startsWith("+");
-          const bare = plus ? spec.slice(1) : spec;
-          const colon = bare.indexOf(":");
-          const src = colon < 0 ? bare : bare.slice(0, colon);
-          let dst = deleting || colon < 0 ? bare : bare.slice(colon + 1);
-          if (dst.startsWith("refs/tags/")) return { dst, tag: true, plus };
-          dst = dst.replace(/^refs\/heads\//, "");
-          if (dst === "HEAD") return { dst: current, tag: false, plus };
-          const tag =
-            colon < 0 &&
-            !deleting &&
-            git(["show-ref", "--verify", "--quiet", `refs/tags/${src}`]) !== null;
-          return { dst, tag, plus };
-        });
-  for (const { dst, tag, plus } of targets) {
-    if (tag) return `git push of the tag ${dst} is blocked: ${OWN_BRANCHES}`;
-    if (dst === null) continue;
-    if (dst === "main" || dst.startsWith("rc/")) {
-      return `git push to ${dst} is blocked: ${OWN_BRANCHES}`;
-    }
-    if (bareForce || plus) {
-      return `git push --force is blocked: use --force-with-lease, and only on the branch checked out here (${current ?? "none"}).`;
-    }
-    if (lease && dst !== current) {
-      return `git push --force-with-lease to ${dst} is blocked: force only the branch checked out here (${current ?? "none"}); ${OWN_BRANCHES}`;
-    }
+      : refspecs.map((spec) => pushTarget(spec, words.deleting, current, git));
+  for (const target of targets) {
+    const violation = targetViolation(target, words, current);
+    if (violation) return violation;
   }
   return null;
 }

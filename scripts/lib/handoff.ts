@@ -34,7 +34,9 @@ export async function runHandoff({ run, branch, head, now }: HandoffDeps): Promi
   return { code: failed ? 1 : 0, stamp: `HANDOFF ${branch} ${head} ${codes.join(" ")} ${now}` };
 }
 
-const STAMP = /^HANDOFF (\S+) ([0-9a-f]{7,40}) ((?:\w+=-?\d+ ?)+) (\S+)$/;
+// Pairs are separated by exactly one space: with an optional one, a digit could end a pair or start
+// the next, and a stamp that does not match backtracked 2^n times (Sonar S5852).
+const STAMP = /^HANDOFF (\S+) ([0-9a-f]{7,40}) (\w+=-?\d+(?: \w+=-?\d+)*) (\S+)$/;
 
 /** Why a stamp does not vouch for this HEAD, or null when it does. */
 export function stampProblem(stamp: string | null, head: string): string | null {

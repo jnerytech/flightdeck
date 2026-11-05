@@ -182,6 +182,15 @@ describe("ci-branch: when gh itself fails", () => {
     expect(f.logs.join("\n")).toContain("HTTP 502");
   });
 
+  test("a list of the earlier runs that is not JSON stops with exit 2 and dispatches nothing, saying what gh answered", async () => {
+    const f = scripted((args) =>
+      args[1] === "list" ? { code: 0, stdout: "<html>rate limited</html>" } : undefined,
+    );
+    expect(await ciBranch("fix-x", f.deps, FAST)).toBe(2);
+    expect(f.calls.some((c) => c[0] === "workflow")).toBe(false);
+    expect(f.logs.join("\n")).toContain("did not answer JSON: <html>rate limited</html>");
+  });
+
   test("a refused dispatch shows what gh said on stderr, where gh writes its errors", async () => {
     const f = scripted((args) =>
       args[0] === "workflow" ? { code: 1, stdout: "", stderr: "HTTP 422: no ref" } : undefined,

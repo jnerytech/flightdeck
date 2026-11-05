@@ -107,6 +107,43 @@ for (const [lang, t] of [
       expect(field(t.cardUi.description)?.value).toBe("My long edit.");
     });
 
+    test("a newer edit typed while the save is on its way stays, and can be saved on its own", async () => {
+      const { d, store, card } = await openByRoute(lang);
+      await settle(() => button(t.cardUi.saveDescription) !== null);
+      const edit = async (value: string) =>
+        act(async () => {
+          fireEvent.change(field(t.cardUi.description) as HTMLTextAreaElement, {
+            target: { value },
+          });
+        });
+      await edit("First edit.");
+      const real = store.hostCommand.bind(store);
+      let release: () => void = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      store.hostCommand = (async (hostId, type, payload) => {
+        const answer = await real(hostId, type, payload);
+        if (type === "card.update") await held;
+        return answer;
+      }) as typeof store.hostCommand;
+      await act(async () => {
+        fireEvent.click(button(t.cardUi.saveDescription) as HTMLButtonElement);
+      });
+      await settle(() => d.board.getCard(card.id).description === "First edit.");
+      await edit("First edit. And more.");
+      await act(async () => {
+        release();
+      });
+      await settle(() => button(t.cardUi.saveDescription)?.disabled === false);
+      expect(field(t.cardUi.description)?.value).toBe("First edit. And more.");
+      store.hostCommand = real;
+      await act(async () => {
+        fireEvent.click(button(t.cardUi.saveDescription) as HTMLButtonElement);
+      });
+      await settle(() => d.board.getCard(card.id).description === "First edit. And more.");
+    });
+
     test("Save title saves the edited title, and a refused one keeps the edit", async () => {
       const { d, store, card } = await openByRoute(lang);
       await settle(() => field(t.cardUi.title)?.value === "Fix the total");
