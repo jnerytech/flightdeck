@@ -57,7 +57,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   def("go-settings", "navigation", ["g", ","], "shortcuts.goSettings", "go-settings", true),
   def("tab-new", "tabs", ["Mod", "T"], "shortcuts.tabNew"),
   def("tab-close", "tabs", ["Mod", "W"], "shortcuts.tabClose"),
-  def("tab-next", "tabs", ["Mod", "Tab"], "shortcuts.tabNext"),
+  def("tab-recent", "tabs", ["Mod", "Tab"], "shortcuts.tabRecent"),
   def("tab-number", "tabs", ["Mod", "1…9"], "shortcuts.tabNumber"),
   def("list-next", "lists", ["j"], "shortcuts.listNext"),
   def("list-previous", "lists", ["k"], "shortcuts.listPrevious"),

@@ -111,8 +111,10 @@ describe("abas: a barra de abas", () => {
     expect(tabs()).toHaveLength(2);
   });
 
-  test("Ctrl+Tab and Ctrl+Shift+Tab walk the tabs, Ctrl+N goes to the Nth", async () => {
+  test("with the Tab order setting, Ctrl+Tab and Ctrl+Shift+Tab walk the tabs in strip order, Ctrl+N goes to the Nth", async () => {
     const store = setup();
+    // Most recently used is the default (issue #148); this is the order the setting restores.
+    store.tabOrder.set("sequential");
     await act(async () => {
       store.tabs.open({ name: "needs-you" });
       store.tabs.open({ name: "costs" });

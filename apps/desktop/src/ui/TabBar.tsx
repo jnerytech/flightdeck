@@ -73,6 +73,9 @@ const title = (tab: Tab, state: AppState, store: AppStore) => {
   return breadcrumb(tab.router.current, state, store.i18n.t).at(-1)?.label ?? "";
 };
 
+// The Ctrl+Tab switcher draws the same icon and title as the strip.
+export { ICONS as TAB_ICONS, title as tabTitle };
+
 /** The tabs of the window: icon and title, pin and close. The shortcuts live in `App`. */
 export function TabBar(props: {
   store: AppStore;
