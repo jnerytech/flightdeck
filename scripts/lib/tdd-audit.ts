@@ -94,6 +94,23 @@ export function parseWaivers(text: string): Waiver[] {
   });
 }
 
+/**
+ * The commit `--since auto` audits from: the merge-base with `main` (`origin/main` first, then a
+ * local `main`) on any other branch, or the last tag when HEAD is on `main` itself. Null when
+ * neither can be found.
+ */
+export function auditBase(git: AuditDeps["git"]): string | null {
+  const head = git(["rev-parse", "HEAD"])?.trim();
+  if (!head) return null;
+  for (const main of ["origin/main", "main"]) {
+    const base = git(["merge-base", "HEAD", main])?.trim();
+    if (!base) continue;
+    if (base !== head) return base;
+    return git(["describe", "--tags", "--abbrev=0", "HEAD"])?.trim() || null;
+  }
+  return null;
+}
+
 export interface AuditDeps {
   since: string;
   /** Accepted exceptions; every one must still match a violation in the audited range. */
@@ -103,10 +120,15 @@ export interface AuditDeps {
   readFile: (path: string) => string;
 }
 
-export function runAudit({ since, git, readFile, waivers = [] }: AuditDeps): {
+export function runAudit({ since: asked, git, readFile, waivers = [] }: AuditDeps): {
   code: number;
   output: string;
 } {
+  const since = asked === "auto" ? auditBase(git) : asked;
+  if (since === null) {
+    return { code: 2, output: "since auto: no merge-base with main and no tag to audit from" };
+  }
+  const autoLine = asked === "auto" ? [`  since ${since} (auto)`] : [];
   if (git(["rev-parse", "--verify", `${since}^{commit}`]) === null) {
     return { code: 2, output: `tag ou commit desconhecido: ${since}` };
   }
@@ -137,12 +159,13 @@ export function runAudit({ since, git, readFile, waivers = [] }: AuditDeps): {
   const waivedLines = waived.map((w) => `  waived  ${w.hash}  ${w.scope}  ${w.reason}`);
   if (violations.length === 0) {
     const head = waived.length === 0 ? "TDD AUDIT OK" : `TDD AUDIT OK (${waived.length} waived)`;
-    return { code: 0, output: [head, ...waivedLines, ...ignored].join("\n") };
+    return { code: 0, output: [head, ...autoLine, ...waivedLines, ...ignored].join("\n") };
   }
   return {
     code: 1,
     output: [
       `TDD AUDIT FAIL: ${violations.length} violação(ões)`,
+      ...autoLine,
       ...violations.map((v) => `  ${v.commit}  ${v.scope}  ${v.reason}`),
       ...(waived.length === 0 ? [] : [`${waived.length} waived:`, ...waivedLines]),
       ...ignored,

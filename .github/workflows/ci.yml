@@ -62,6 +62,13 @@ jobs:
       - name: Lint
         run: bun run lint
 
+      # The TDD order (docs/TDD.md): every feat/fix has an earlier test commit with the same scope,
+      # counted from the merge-base with main (a pull request) or from the last tag (a push to
+      # main). It needs the full history the checkout above already fetches.
+      - name: TDD audit
+        if: runner.os == 'Linux'
+        run: bun run tdd:audit -- --since auto
+
       - name: Testes (cobertura 100%)
         run: bun run test
 
