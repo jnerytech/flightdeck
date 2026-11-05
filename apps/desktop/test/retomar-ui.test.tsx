@@ -180,4 +180,21 @@ describe("retomar-ui: the sessions a restart interrupted are offered in one dial
         ) !== null,
     );
   });
+
+  test("a host whose daemon does not announce the offer shows nothing, even with sessions in error", async () => {
+    const { d } = await restarted();
+    const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({
+        name: "alfa",
+        url: d.listen(0, undefined, ["terminal"]).url,
+        token: TOKEN,
+      });
+    });
+    await settle(() => store.getState().hosts[0]?.hostInfo !== null);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(dialog()).toBeNull();
+    expect(store.getState().resumeOffers).toEqual({});
+  });
 });

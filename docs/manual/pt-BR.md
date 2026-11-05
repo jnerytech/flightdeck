@@ -2672,6 +2672,23 @@ binário novo.
 - **Linux remoto (VPS, Orange Pi):** `scp dist/flightdeckd-linux-arm64 <host>:~/` e, no host,
   `~/.flightdeck/bin/flightdeckd update --from ~/flightdeckd-linux-arm64`.
 
+### Sessões que um reinício interrompeu
+
+Quando o daemon de um host reinicia (uma atualização, um boot, um reinício do serviço), as sessões que
+estavam rodando ficam em `error` com o motivo *o daemon reiniciou*. Quando o app reconecta a um daemon
+que oferece isso, um diálogo, **Retomar as sessões interrompidas**, lista as das últimas 24 horas,
+agrupadas pela pasta do projeto, cada uma com a persona, quanto tempo rodou e o último pedido. Todas
+vêm marcadas. O diálogo diz o que retomar faz: reconecta cada sessão e envia *Continue where you left
+off.*; o pedido original nunca é enviado de novo. **Retomar as escolhidas** retoma as marcadas (cada
+linha termina como *Retomada*, ou como *Não foi possível retomar: <motivo>* com um botão **Tentar de
+novo**, e as outras não são afetadas); **Agora não** fecha o diálogo e ele só volta num próximo
+reinício (a página do host guarda um botão *Retomar as sessões interrompidas (N)* para reabrir);
+**Dispensar todas** descarta a oferta de vez. A página do host também tem uma chave, **Retomar sozinho
+depois de um reinício**, desligada por padrão: ligada, nenhum diálogo aparece, as sessões são retomadas
+na hora e um aviso as lista. Ainda não: um estado *na fila* quando o limite paralelo é atingido, o
+coordenador de um time retomado antes dos seus workers e uma entrada na barra de status para reabrir a
+oferta.
+
 ### Atualização automática assinada
 
 Cada release traz os instaladores e os daemons assinados com a chave do projeto (minisign, gerada

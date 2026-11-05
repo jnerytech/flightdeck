@@ -6,6 +6,7 @@ import { BypassSwitch } from "@/components/hosts/bypass-switch";
 import { GithubPanel } from "@/components/hosts/github-panel";
 import { HostDoctor } from "@/components/hosts/host-doctor";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
+import { ResumePanel } from "@/components/hosts/resume-panel";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
 import { Field } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -144,6 +145,7 @@ export function HostPage(props: {
         <AllowedFolders store={store} host={host} />
         <BypassSwitch store={store} host={host} />
         <SimpleModePanel store={store} host={host} />
+        <ResumePanel store={store} host={host} />
         {host.status === "online" && hasFeature(info?.features, "doctor.run", false) && (
           <HostDoctor store={store} host={host} />
         )}

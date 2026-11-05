@@ -384,7 +384,11 @@ export class SessionManager {
     const now = options.now ?? Date.now();
     const within = options.withinMs ?? OFFER_WINDOW_MS;
     const found: InterruptedSession[] = [];
-    for (const session of this.store.listSessions()) {
+    // In the order they were started: a team's coordinator comes before its workers.
+    const started = [...this.store.listSessions()].sort((a, b) =>
+      a.createdAt.localeCompare(b.createdAt),
+    );
+    for (const session of started) {
       // Only what is still `error` from a restart: a resumed or ended session left the offer.
       if (session.status !== "error") continue;
       const events = this.store.eventsSince(session.id);

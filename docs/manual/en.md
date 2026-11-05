@@ -2691,6 +2691,22 @@ the new binary itself.
 - **Remote Linux (VPS, Orange Pi):** `scp dist/flightdeckd-linux-arm64 <host>:~/` and, on the
   host, `~/.flightdeck/bin/flightdeckd update --from ~/flightdeckd-linux-arm64`.
 
+### Sessions a restart interrupted
+
+When a host's daemon restarts (an update, a reboot, a service restart), the sessions that were
+running are left in `error` with the reason *the daemon restarted*. When the app reconnects to a
+daemon that offers it, one dialog, **Resume interrupted sessions**, lists the ones from the last 24
+hours, grouped by project folder, each with its persona, how long it ran and its last request. All are
+ticked. The dialog says what resume does: it reattaches each session and sends *Continue where you
+left off.*; the original request is never sent again. **Resume selected** resumes the ticked ones
+(each row ends as *Resumed*, or as *Could not resume: <reason>* with a **Retry** button, and the
+others are not affected); **Not now** closes the dialog and does not bring it back until another
+restart (the host's page keeps a *Resume interrupted sessions (N)* button to reopen it); **Dismiss
+all** drops the offer for good. The host's page also has a switch, **Resume automatically after a
+restart**, off by default: with it on no dialog appears, the sessions are resumed at once and a
+notice lists them. Not yet: a *queued* state when the parallel limit is reached, a team's coordinator
+resumed before its workers, and a status-bar entry to reopen the offer.
+
 ### Signed automatic update
 
 Each release ships the installers and the daemons signed with the project's key (minisign,

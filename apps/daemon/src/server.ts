@@ -435,6 +435,8 @@ export function startServer(opts: ServerOptions): RunningServer {
   const startedAt = Date.now();
   /** What this daemon has, as `host.info` announces it; the app hides what is missing. */
   const features = [
+    // The sessions a restart interrupted can be listed (`session.interrupted`, issue #150).
+    "resume-offer",
     // The folder picker of the app browses the host's folders with `fs.dirs`.
     ...(opts.fsDirs ? ["fs.dirs", "fs.files"] : []),
     // A live managed session takes a new permission mode and model, and announces its slash commands.
@@ -1450,7 +1452,6 @@ export function startServer(opts: ServerOptions): RunningServer {
             ...(opts.features ?? features),
             ...(opts.terminals?.enabled ? ["terminal"] : []),
             ...(opts.ui ? ["ui.mode"] : []),
-            "resume-offer",
             ...(opts.templates ? ["templates"] : []),
             ...(opts.tasks ? ["tasks"] : []),
           ],
