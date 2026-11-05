@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   mergeTimings,
+  parseBunLog,
   parseJunit,
   parseShard,
   type ShardDeps,
@@ -117,6 +118,41 @@ describe("parseJunit", () => {
   });
 });
 
+/** A GitHub Actions log of `bun test` on Windows: timestamps, CRLF, backslash paths, skips and a failure. */
+const LOG = [
+  "2026-11-05T23:29:21.3869441Z bun test v1.4.4 (38afee6c8)",
+  "2026-11-05T23:29:21.4012445Z --shard=1/3: running 2/869 test files",
+  "2026-11-05T23:29:21.4015606Z ",
+  "2026-11-05T23:29:21.4016734Z ##[group]apps\\daemon\\test\\acoes-cli.test.ts:",
+  "2026-11-05T23:29:22.7972809Z (pass) acoes-cli > parses [0.79ms]",
+  "2026-11-05T23:29:23.8601444Z (pass) acoes-cli > lists the actions [1062.76ms]",
+  "2026-11-05T23:29:23.9000000Z (skip) acoes-cli > not on this OS",
+  "2026-11-05T23:29:24.0013322Z (fail) acoes-cli > a failing one: with [brackets] [137.5ms]",
+  "2026-11-05T23:29:24.0100000Z ##[endgroup]",
+  "2026-11-05T23:29:24.3106001Z ##[group]scripts\\test\\only-skipped.test.ts:",
+  "2026-11-05T23:29:24.3200000Z (skip) only-skipped > x",
+  "2026-11-05T23:29:25.0000000Z (pass) outside any file [5000.00ms]",
+  "2026-11-05T23:29:25.8644945Z ##[group]packages/protocol/test/b.spec.tsx:",
+  "2026-11-05T23:29:25.8700000Z (pass) b > one [10.5ms]",
+  "2026-11-05T23:29:25.8800000Z (pass) b > two [20.25ms]",
+  "",
+].join("\r\n");
+
+describe("parseBunLog", () => {
+  test("sums the (pass) and (fail) milliseconds under each file, with paths as git writes them", () => {
+    expect(parseBunLog(LOG)).toEqual({
+      "apps/daemon/test/acoes-cli.test.ts": 1.2003,
+      "scripts/test/only-skipped.test.ts": 0,
+      "packages/protocol/test/b.spec.tsx": 0.03075,
+    });
+  });
+
+  test("a log with no test files has no times", () => {
+    expect(parseBunLog("")).toEqual({});
+    expect(parseBunLog("2026-11-05T23:29:21Z nothing here")).toEqual({});
+  });
+});
+
 describe("mergeTimings", () => {
   test("the new times replace the old, a file that is gone drops out, a file never timed stays out", () => {
     const merged = mergeTimings({ a: 1, b: 2, c: 3 }, { b: 5.12345, d: 4 }, ["e", "d", "b", "a"]);
@@ -220,6 +256,19 @@ describe("shards: record", () => {
     // none of the JUnit's files is tracked in this fake repository, so the old times stay
     expect(f.written()).toEqual({ "a.test.ts": 9, "b.test.ts": 5, "c.test.ts": 4 });
     expect(f.logs.join("\n")).toContain("0 file(s) timed");
+  });
+
+  test("a CI log is read too: record takes JUnit files and bun test logs alike", async () => {
+    const f = fake({
+      tracked: ["apps/daemon/test/acoes-cli.test.ts", "packages/protocol/test/b.spec.tsx"],
+      timings: {},
+      junit: { "shard.log": LOG },
+    });
+    expect(await shards(["record", "shard.log"], f.deps)).toBe(0);
+    expect(f.written()).toEqual({
+      "apps/daemon/test/acoes-cli.test.ts": 1.2,
+      "packages/protocol/test/b.spec.tsx": 0.031,
+    });
   });
 
   test("a JUnit file of tracked tests moves their times", async () => {

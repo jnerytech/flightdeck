@@ -39,6 +39,11 @@ export function parseJunit(xml: string): Timings {
   return xml ? {} : {};
 }
 
+/** The seconds of each test file in the log of a `bun test` run on CI (the `(pass)` lines under a `##[group]` file). */
+export function parseBunLog(log: string): Timings {
+  return log ? {} : {};
+}
+
 /** The timings after a run: its files replace the old ones, the files that are gone drop out. */
 export function mergeTimings(old: Timings, fresh: Timings, files: string[]): Timings {
   return old && fresh && files ? {} : {};
