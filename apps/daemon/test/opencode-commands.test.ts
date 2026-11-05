@@ -153,9 +153,8 @@ describe("opencode-commands", () => {
       symlinkSync(join(inside, "docs", "agents.md"), join(inside, "AGENTS.md"));
       const ok = setup({ cwd: inside });
       const sent = await prompts(ok.run, ok.agents, ["first"]);
-      expect((sent[0]?.[0] as { resource?: { text?: string } } | undefined)?.resource?.text).toBe(
-        "Use tabs.",
-      );
+      const first = (sent as unknown[][])[0]?.[0] as { resource?: { text?: string } } | undefined;
+      expect(first?.resource?.text).toBe("Use tabs.");
     },
   );
 
