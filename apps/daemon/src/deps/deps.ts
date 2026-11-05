@@ -35,8 +35,8 @@ const CLAUDE_INSTALL = {
   url: "https://docs.anthropic.com/en/docs/claude-code/setup",
 };
 
-/** The least gh that has `gh project`, which board sync stands on (it went generally available in July 2023). */
-const GH_MIN = "2.32.0";
+/** The least gh that has `gh project`, which board sync stands on (v2.31.0, "a new suite of project commands"). */
+const GH_MIN = "2.31.0";
 
 /** The least git that has `git worktree`: what every card, project and diff stands on. */
 const GIT_MIN = "2.5.0";

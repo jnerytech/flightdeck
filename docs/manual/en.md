@@ -303,7 +303,7 @@ first) and **Add folder**. What needs `sudo` or an installer is only shown to co
 runs it. A missing program shows the package-manager line where one exists (apt, brew, winget) and
 an **Install page** button that opens the official page; Flightdeck never offers a download piped
 into a shell. The advice is true for the system it is shown for: **GitHub** counts as outdated below
-gh 2.32 (the first with `gh project`, which board sync needs), and on Linux it points to the install
+gh 2.31 (the first with `gh project`, which board sync needs), and on Linux it points to the install
 page because the apt package of an LTS can be older than that; **OpenSSH** on Windows says to run its
 `Add-WindowsCapability` line in an elevated PowerShell (Run as administrator); on a Linux without
 systemd the **service** row says there is no service to install here and to start `flightdeckd` at

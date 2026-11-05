@@ -292,7 +292,7 @@ para X** (pergunta antes) e **Adicionar pasta**. O que precisa de `sudo` ou de i
 para copiar: o app nunca o executa. Um programa que falta mostra a linha do gerenciador de pacotes
 quando há uma (apt, brew, winget) e um botão **Página de instalação** que abre a página oficial; o
 Flightdeck nunca oferece um download enviado direto para um shell. O conselho vale para o sistema em
-que aparece: o **GitHub** conta como desatualizado abaixo do gh 2.32 (o primeiro com `gh project`, de que
+que aparece: o **GitHub** conta como desatualizado abaixo do gh 2.31 (o primeiro com `gh project`, de que
 a sincronização do quadro precisa), e no Linux aponta para a página de instalação, porque o pacote apt
 de uma LTS pode ser mais antigo; o **OpenSSH** no Windows diz para rodar a linha do
 `Add-WindowsCapability` em um PowerShell elevado (Executar como administrador); em um Linux sem
