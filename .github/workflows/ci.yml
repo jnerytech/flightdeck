@@ -8,7 +8,7 @@ on:
   # list honest. Pull requests are never filtered, so their required checks always report.
   push:
     branches: ["**"]
-    paths-ignore: ["docs/manual/**", "docs/images/**"]
+    paths-ignore: ["docs/images/**"]
   pull_request:
   # Any pushed branch can run the whole CI by hand (scripts/ci-branch.sh): the prints, e2e and the
   # Windows suite then leave the machine's single test slot.
