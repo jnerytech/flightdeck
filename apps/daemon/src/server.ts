@@ -454,6 +454,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     // Phase 24: the run.yaml of a card and its processes.
     ...(opts.runenv && opts.board ? ["runenv"] : []),
     ...(opts.maintenance ? ["maintenance"] : []),
+    ...(opts.fileLog ? ["logs"] : []),
     ...(opts.quota ? ["quota"] : []),
     ...(opts.account ? ["account"] : []),
     // Project rules live in the board's projects.
@@ -726,6 +727,11 @@ export function startServer(opts: ServerOptions): RunningServer {
   function maintenance(): Maintenance {
     if (!opts.maintenance) throw featureOff("maintenance");
     return opts.maintenance;
+  }
+
+  function fileLog(): FileLog {
+    if (!opts.fileLog) throw featureOff("logs");
+    return opts.fileLog;
   }
 
   function usage(): UsageLedger {
@@ -1007,6 +1013,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         }
         return ok(command.type, { claudeSessionId, ...meta });
       }
+      case "logs.tail":
+        return ok(command.type, {
+          lines: await fileLog().tail(command.payload.lines ?? 100),
+          path: fileLog().path(),
+        });
       case "maintenance.status":
         return ok(command.type, await maintenance().status());
       case "maintenance.backup":
@@ -1457,6 +1468,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
           ...(opts.ui ? { ui: { ...opts.ui } } : {}),
           ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
+          ...(opts.fileLog ? { logPath: opts.fileLog.path() } : {}),
           ...updateStatus(),
           ...(opts.terminal ?? {}),
         });

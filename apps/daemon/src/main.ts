@@ -60,6 +60,7 @@ import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
 import { lingerState } from "./linger.ts";
 import { acquireLock, readLockPid } from "./lock.ts";
+import { FileLog } from "./logs/file-log.ts";
 import { restoreBackup } from "./maintenance/backup.ts";
 import { Maintenance } from "./maintenance/maintenance.ts";
 import { daemonUrl, identityOf, startMcp } from "./mcp.ts";
@@ -569,9 +570,11 @@ async function terminalInfo(env: Record<string, string | undefined>) {
 export async function startDaemon(
   args: CliArgs,
   env: Record<string, string | undefined>,
-  logger: Logger,
+  console_: Logger,
   options: {
     configWatchMs?: number;
+    /** Where the daemon writes its log; `~/.flightdeck/logs` when absent (tests give a temp folder). */
+    logDir?: string;
     /** What decides the system folders `roots.add` refuses (tests give their own). */
     rootsPlatform?: PlatformInfo;
     wslCommand?: (item: WslItem) => string[];
@@ -593,6 +596,21 @@ export async function startDaemon(
 ): Promise<Daemon> {
   const configFile = configPath(args);
   const config = await loadConfig(configFile);
+  // Everything the daemon says goes to the console and, redacted, to a rotated file.
+  const fileLog = new FileLog({
+    dir: options.logDir ?? join(userHome(env), ".flightdeck", "logs"),
+    scanner: new SecretScanner(),
+  });
+  const logger: Logger = {
+    log: (message) => {
+      console_.log(message);
+      fileLog.write("info", message);
+    },
+    error: (message) => {
+      console_.error(message);
+      fileLog.write("error", message);
+    },
+  };
   const runtimeKind = args.runtime ?? config.runtime;
   // Before SQLite and the port: a second daemon must not touch either.
   const lock = await acquireLock(config.dataDir);
@@ -1212,6 +1230,7 @@ export async function startDaemon(
     }),
     central,
     maintenance,
+    fileLog,
     ...(updates ? { updates } : {}),
     snapshots,
     rewinder,
