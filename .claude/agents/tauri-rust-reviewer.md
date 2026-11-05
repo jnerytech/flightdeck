@@ -1,6 +1,6 @@
 ---
 name: tauri-rust-reviewer
-description: Reviews the Rust side and the Tauri configuration of Flightdeck (apps/desktop/src-tauri): exposed commands, deep links, capabilities, CSP, updater and signing. Use when a change touches src-tauri, tauri.conf.json, capabilities or Cargo.toml.
+description: "Reviews the Rust side and the Tauri configuration of Flightdeck (apps/desktop/src-tauri): exposed commands, deep links, capabilities, CSP, updater and signing. Use when a change touches src-tauri, tauri.conf.json, capabilities or Cargo.toml."
 tools: Read, Grep, Glob, Bash, LSP
 ---
 

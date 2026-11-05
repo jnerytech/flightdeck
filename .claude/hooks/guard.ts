@@ -39,7 +39,7 @@ if (typeof command === "string") {
     "commit",
     commitViolation(command, cwd, {
       git: (args, dir) => {
-        const proc = spawnSync("git", args, { cwd: dir, encoding: "utf8", timeout: 5000 });
+        const proc = spawnSync("git", args, { cwd: dir, encoding: "utf8", timeout: 2000 });
         return proc.status === 0 ? proc.stdout : null;
       },
     }),

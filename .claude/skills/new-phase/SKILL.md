@@ -1,6 +1,6 @@
 ---
 name: new-phase
-description: Opens a new Flightdeck phase (writes docs/SPEC-fase-N.md in the format of the earlier ones, prepares the worktree and the branch) or closes a phase (the "usual" checklist). Use when planning, starting or wrapping up a phase. Argument: the phase number.
+description: "Opens a new Flightdeck phase (writes docs/SPEC-fase-N.md in the format of the earlier ones, prepares the worktree and the branch) or closes a phase (the \"usual\" checklist). Use when planning, starting or wrapping up a phase. Argument: the phase number."
 ---
 
 # Open or close a phase
