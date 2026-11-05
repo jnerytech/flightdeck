@@ -844,4 +844,8 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE projects ADD COLUMN roi_commits INTEGER NOT NULL DEFAULT 0;
   ALTER TABLE projects ADD COLUMN roi_issues INTEGER NOT NULL DEFAULT 0;
   `,
+  // Phase 40: which provider answered an assistant call; NULL for every other row.
+  `
+  ALTER TABLE usage_entries ADD COLUMN provider TEXT;
+  `,
 ];

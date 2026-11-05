@@ -4,8 +4,10 @@
  * hand the request to you (a "no" from it is a question, never a denial). A session that got
  * third-party content is suspended until you resume it. Every decision is recorded.
  */
+
 import type { Database } from "bun:sqlite";
 import { join } from "node:path";
+import { assistantDir } from "../assistant/paths.ts";
 import { summarizeInput } from "../central/external-permissions.ts";
 import type { UsageTokens } from "../costs/usage-indexer.ts";
 import type { AgentRuntime } from "../runtime/types.ts";
@@ -83,7 +85,11 @@ export function historyExcludes(config: {
   dataDir: string;
   history: { excludeCwds: readonly string[] };
 }): string[] {
-  return [...config.history.excludeCwds, autoApproveDir(config.dataDir)];
+  return [
+    ...config.history.excludeCwds,
+    autoApproveDir(config.dataDir),
+    assistantDir(config.dataDir),
+  ];
 }
 
 const POLICY =
