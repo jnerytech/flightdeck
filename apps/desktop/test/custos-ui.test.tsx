@@ -213,7 +213,8 @@ describe("custos-ui", () => {
     expect(items.map((li) => li.textContent)).toEqual(["kA", "kB"]);
   });
 
-  test("a cor de um projeto é a mesma em todos os dias e na legenda; com mais de quatro projetos, do quarto em diante vão para Outros projetos", async () => {
+  // Issue #179: five series styles (a hue and a pattern each), four for the biggest spenders.
+  test("a project keeps its series style on every day and in the legend; past four projects, the rest go to Outros projetos", async () => {
     const { d } = await online();
     for (const key of ["kC", "kD", "kE", "kF"]) {
       spend(d, { day: "2026-10-14", key, cost: 0.1 });
@@ -222,11 +223,11 @@ describe("custos-ui", () => {
     await settle(() => text("Custo estimado") === "US$ 4.40");
     const chart = region("Custo por dia") as HTMLElement;
     const tint = (el: Element | null) =>
-      (el?.className ?? "").split(" ").find((c) => c.startsWith("bg-brand")) ?? "";
+      (el?.className ?? "").split(" ").find((c) => c.startsWith("chart-series-")) ?? "";
     const legend = [...chart.querySelectorAll("[aria-label='Projetos no gráfico'] li")];
-    expect(legend.map((li) => li.textContent)).toEqual(["kA", "kB", "kC", "Outros projetos"]);
+    expect(legend.map((li) => li.textContent)).toEqual(["kA", "kB", "kC", "kD", "Outros projetos"]);
     const swatches = legend.map((li) => tint(li.querySelector("[data-swatch]")));
-    expect(new Set(swatches).size).toBe(4);
+    expect(new Set(swatches).size).toBe(5);
     const segment = (project: string, day: string) =>
       chart.querySelector(`[data-day='${day}'] [data-project='${project}']`);
     expect(tint(segment("kA", "2026-10-14"))).toBe(swatches[0] as string);
@@ -234,8 +235,8 @@ describe("custos-ui", () => {
     expect(tint(segment("kB", "2026-10-15"))).toBe(swatches[1] as string);
     expect(tint(segment("kC", "2026-10-14"))).toBe(swatches[2] as string);
     expect(tint(segment("kD", "2026-10-14"))).toBe(swatches[3] as string);
-    expect(tint(segment("kE", "2026-10-14"))).toBe(swatches[3] as string);
-    expect(tint(segment("kF", "2026-10-14"))).toBe(swatches[3] as string);
+    expect(tint(segment("kE", "2026-10-14"))).toBe(swatches[4] as string);
+    expect(tint(segment("kF", "2026-10-14"))).toBe(swatches[4] as string);
   });
 
   test("a route with host and project opens Costs already filtered by that project", async () => {
