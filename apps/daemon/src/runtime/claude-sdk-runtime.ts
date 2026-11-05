@@ -52,6 +52,8 @@ export interface ClaudeSdkRuntimeOptions {
   forkSession?: (id: string, options: ForkOptions) => Promise<{ sessionId: string }>;
   /** The Flightdeck MCP server every session gets; none when absent. */
   mcpServer?: FlightdeckMcpServer;
+  /** How long the init event waits for the SDK to describe the slash commands (3 s). */
+  commandsTimeoutMs?: number;
 }
 
 const MAX_TOOL_RESULT = 4000;
