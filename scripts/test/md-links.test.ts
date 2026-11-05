@@ -66,8 +66,11 @@ describe("md-links", () => {
   test("the repository's own docs have no broken link, and the code names no missing doc", () => {
     const exists = (path: string) => existsSync(join(ROOT, path));
     expect(brokenLinks(read(tracked("*.md")), exists)).toEqual([]);
-    expect(
-      missingDocRefs(read(tracked("*.ts", "*.tsx", "*.rs", "*.yml", "*.json")), exists),
-    ).toEqual([]);
+    // Tests name docs paths as fixtures in temporary repositories; one that reads a real doc
+    // fails by itself when the doc moves. The other code must name docs that exist.
+    const code = tracked("*.ts", "*.tsx", "*.rs", "*.yml", "*.json").filter(
+      (path) => !/(^|\/)test\//.test(path) && !/\.test\.tsx?$/.test(path),
+    );
+    expect(missingDocRefs(read(code), exists)).toEqual([]);
   });
 });
