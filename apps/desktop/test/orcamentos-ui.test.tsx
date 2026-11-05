@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { Budgets } from "../../daemon/src/costs/budgets.ts";
+import { git } from "../../daemon/test/board-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { legacyDaemon } from "./legacy-daemon.ts";
@@ -329,7 +332,7 @@ describe("orcamentos-ui", () => {
   });
 
   test("limiar cruzado notifica e aparece em Precisa de você; o alerta abre os orçamentos", async () => {
-    const { mem, spend, budgets } = await online();
+    const { store, mem, spend, budgets } = await online();
     await act(async () => {
       budgets.set({ scope: "host", period: "day", limitUsd: 10, action: "notify" });
     });
@@ -348,6 +351,55 @@ describe("orcamentos-ui", () => {
     await sidebar.queueItem("alfa · orçamento do host (dia): 90% de US$ 10.00");
     await settle(() => section() !== null);
     expect(section()).not.toBeNull();
+    // The alert opens Settings on the budgets, not at the top (issue #190, J7).
+    expect(store.router.current).toEqual({ name: "settings", section: "budgets" });
+    await settle(() => document.activeElement?.id === "settings-budgets");
+    expect(document.activeElement?.id).toBe("settings-budgets");
+  });
+
+  test("the project page's Custos tile keeps the project: Custos opens filtered on it", async () => {
+    const { d, store } = await online();
+    const repo = join(d.root, "repo");
+    mkdirSync(repo);
+    git(repo, "init", "-q", "-b", "main");
+    git(repo, "config", "commit.gpgsign", "false");
+    writeFileSync(join(repo, "README.md"), "# repo\n");
+    git(repo, "add", ".");
+    git(repo, "commit", "-q", "-m", "inicial");
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    const project = await store.hostCommand(hostId, "project.add", { path: repo });
+    await store.loadProjects(hostId);
+    await act(async () => {
+      store.router.push({ name: "project", host: hostId, projectId: project?.id ?? "" });
+    });
+    const tile = () => within(screen.getByRole("main")).queryByRole("button", { name: /^Custos/ });
+    await settle(() => tile() !== null);
+    await act(async () => {
+      fireEvent.click(tile() as HTMLElement);
+    });
+    const route = store.router.current;
+    expect(route).toMatchObject({ name: "costs", host: hostId });
+    const key = store.projectKeyOf(hostId, store.getState().projects[hostId]?.[0] as never);
+    expect(route.name === "costs" ? route.projectKey : "").toBe(key);
+  });
+
+  test("Settings takes a section and opens on it", async () => {
+    const { store } = await online();
+    await act(async () => {
+      store.router.push({ name: "settings", section: "budgets" });
+    });
+    await settle(() => document.activeElement?.id === "settings-budgets");
+    expect(document.activeElement?.id).toBe("settings-budgets");
+  });
+
+  test("Custos offers to set a budget, and the link opens the budgets", async () => {
+    const { store } = await online();
+    await act(async () => {
+      store.router.push({ name: "costs" });
+    });
+    await settle(() => screen.queryByRole("button", { name: "Definir um orçamento" }) !== null);
+    await click("Definir um orçamento");
+    expect(store.router.current).toEqual({ name: "settings", section: "budgets" });
   });
 
   test("a notificação de um orçamento de projeto diz o nome do projeto, não a chave", async () => {
