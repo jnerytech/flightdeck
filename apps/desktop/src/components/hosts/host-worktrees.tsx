@@ -126,7 +126,9 @@ export function HostWorktrees(props: { store: AppStore; host: HostView }) {
   const chosen = removable.filter((item) => picked.includes(item.path));
   const toggle = (path: string) =>
     setPicked((now) => (now.includes(path) ? now.filter((p) => p !== path) : [...now, path]));
-  const low = (data?.disks ?? []).find((d) => d.totalBytes > 0 && d.freeBytes / d.totalBytes < LOW_DISK);
+  const low = (data?.disks ?? []).find(
+    (d) => d.totalBytes > 0 && d.freeBytes / d.totalBytes < LOW_DISK,
+  );
   const count = all.length;
   const removeLabel =
     chosen.length === 0
@@ -218,9 +220,7 @@ export function HostWorktrees(props: { store: AppStore; host: HostView }) {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() =>
-                    setPicked(removable.filter((i) => i.suggested).map((i) => i.path))
-                  }
+                  onClick={() => setPicked(removable.filter((i) => i.suggested).map((i) => i.path))}
                 >
                   {t("worktrees.selectSuggested")}
                 </Button>
@@ -259,11 +259,11 @@ export function HostWorktrees(props: { store: AppStore; host: HostView }) {
         </>
       )}
       {notice.length > 0 && (
-        <ul role="status" className="flex flex-col gap-1 text-sm">
+        <output className="flex flex-col gap-1 text-sm">
           {notice.map((line) => (
-            <li key={line}>{line}</li>
+            <span key={line}>{line}</span>
           ))}
-        </ul>
+        </output>
       )}
       {confirming && (
         <ConfirmDialog
