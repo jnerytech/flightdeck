@@ -374,6 +374,14 @@ export class SessionManager {
     this.setStatus(sessionId, "ended");
   }
 
+  /** Ends an idle session's process without ending the session (stub). */
+  async sleep(
+    _sessionId: string,
+    _options: { manual?: boolean } = {},
+  ): Promise<"slept" | "already" | "not_idle" | "queued" | "subscribed" | "kept_awake"> {
+    return "not_idle";
+  }
+
   /** Reopens an `ended` or `error` session with the stored Claude session id. */
   resume(sessionId: string): Promise<void> {
     const session = this.get(sessionId);

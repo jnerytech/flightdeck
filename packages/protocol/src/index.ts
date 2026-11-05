@@ -145,6 +145,8 @@ const ListExtras = {
   projectKey: z.string().nullable().optional(),
   meta: SessionMeta.optional(),
   summary: SessionLine.optional(),
+  /** Issue #157: idle with no process: the daemon put it to sleep (or restarted); a message wakes it. */
+  asleep: z.boolean().optional(),
 };
 
 export const SessionSummary = z.object({
@@ -2788,6 +2790,10 @@ export const Command = z.discriminatedUnion("type", [
     z.object({ sessionId: z.string(), model: z.string().nullable() }).strict(),
   ),
   cmd("session.close", SessionIdPayload),
+  /** Issue #157: ends the process of an idle session now; the next message wakes it. */
+  cmd("session.sleep", SessionIdPayload),
+  /** Issue #157: how many minutes idle before a session sleeps; 0 is off. */
+  cmd("host.sleep", z.object({ minutes: z.number().int().min(0).max(1440) })),
   cmd("session.resume", SessionIdPayload),
   cmd("session.subscribe", SessionSubscribePayload),
   cmd("session.unsubscribe", SessionIdPayload),
@@ -4073,6 +4079,8 @@ export const HostInfoResult = z.object({
   ui: UiSettings.optional(),
   /** Whether a session may start in `bypassPermissions`; absent on a daemon that predates the switch. */
   allowBypassPermissions: z.boolean().optional(),
+  /** Issue #157: minutes idle before a session sleeps; 0 is off; absent on a daemon without it. */
+  sleepAfterMinutes: z.number().int().nonnegative().optional(),
 });
 export type HostInfoResult = z.infer<typeof HostInfoResult>;
 
@@ -4157,6 +4165,12 @@ export type HistorySearchResult = z.infer<typeof HistorySearchResult>;
 export const RootsResult = z.object({ allowedRoots: z.array(z.string()) });
 
 /** Whether this host lets a session start in `bypassPermissions` (off until a person turns it on). */
+export const SleepResult = z.object({
+  /** What came of it: `slept`, `already` (nothing was alive), or why it was not allowed. */
+  result: z.enum(["slept", "already", "not_idle", "queued", "subscribed", "kept_awake"]),
+});
+export type SleepResult = z.infer<typeof SleepResult>;
+
 export const BypassResult = z.object({ allowBypassPermissions: z.boolean() });
 export type BypassResult = z.infer<typeof BypassResult>;
 export type RootsResult = z.infer<typeof RootsResult>;
@@ -4215,6 +4229,8 @@ export interface CommandResults {
   "session.setMode": undefined;
   "session.setModel": undefined;
   "session.close": undefined;
+  "session.sleep": SleepResult;
+  "host.sleep": { sleepAfterMinutes: number };
   "session.resume": undefined;
   "session.subscribe": SessionSubscribeResult;
   "session.unsubscribe": undefined;
