@@ -41,6 +41,9 @@ export function StartScreen(props: {
               {t("sidebar.newSession")}
             </Button>
           )}
+          {hosts.length === 0 && (
+            <Button onClick={() => go({ name: "add-host" })}>{t("start.addHost")}</Button>
+          )}
           <Button variant="outline" onClick={() => go({ name: "hub" })}>
             {t("sidebar.sessions")}
           </Button>

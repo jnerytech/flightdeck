@@ -57,7 +57,7 @@ describe("primeira-vez: the first run reads in the app's language (issue #184, J
     });
     await rtlWaitFor(() =>
       expect(screen.queryByRole("alert")?.textContent ?? "").toContain(
-        "Pairing link refused: the link's port is not valid.",
+        "Pairing link refused. The link's port is not valid.",
       ),
     );
   });

@@ -5,6 +5,7 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions } from "@/components/layout/form";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
+import { pairingErrorText } from "../lib/pairing-text.ts";
 
 export interface HostDraft {
   name: string;
@@ -77,7 +78,7 @@ export function HostForm(props: {
             onChange={(e) => {
               setLink(e.target.value);
               const parsed = parsePairingLink(e.target.value);
-              setLinkError(parsed.ok || !e.target.value ? null : parsed.error);
+              setLinkError(parsed.ok || !e.target.value ? null : pairingErrorText(t, parsed.error));
               if (parsed.ok) {
                 setDraft(draftFromLink(parsed.value.url, parsed.value.name, parsed.value.token));
               }

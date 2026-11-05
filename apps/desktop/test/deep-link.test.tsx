@@ -97,7 +97,7 @@ describe("deep-link", () => {
     });
     await waitFor(() =>
       expect(screen.queryByRole("alert")?.textContent ?? "").toContain(
-        "Link de pareamento recusado: porta inválida",
+        "Link de pareamento recusado. A porta do link não é válida.",
       ),
     );
     expect(value("Nome")).toBe("");
@@ -109,6 +109,6 @@ describe("deep-link", () => {
     const link = screen.getByLabelText("Link de pareamento");
     fireEvent.change(link, { target: { value: "flightdeck://pc:1" } });
     expect(value("Endereço")).toBe("");
-    expect(screen.queryByText("token ausente")).not.toBeNull();
+    expect(screen.queryByText("O link não traz o token.")).not.toBeNull();
   });
 });

@@ -12,6 +12,7 @@ import { TContext } from "@/i18n/context";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import { typing } from "../lib/keys.ts";
+import { pairingErrorText } from "../lib/pairing-text.ts";
 import type { PaletteTarget } from "../lib/palette.ts";
 import type { Route } from "../lib/router.ts";
 import { type ChordState, chordStep, isMac, NO_CHORD } from "../lib/shortcuts.ts";
@@ -174,7 +175,10 @@ export function App({ store }: { store: AppStore }) {
         if (store.openRequestLink(url)) return;
         const parsed = parsePairingLink(url);
         if (!parsed.ok) {
-          store.reportError(`Link de pareamento recusado: ${parsed.error}`);
+          const { t } = store.i18n;
+          store.reportError(
+            t("hostForm.pairRefused", { reason: pairingErrorText(t, parsed.error) }),
+          );
           return;
         }
         const { url: wsUrl, name, token } = parsed.value;

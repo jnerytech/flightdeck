@@ -742,6 +742,7 @@ export const ptBR = {
   },
   start: {
     title: "Nada aberto",
+    addHost: "Adicionar um host",
     subtitle: "Escolha uma tela na barra lateral ou comece por aqui.",
     recent: "Sessões recentes",
     shortcuts: "Atalhos",
@@ -3401,6 +3402,13 @@ export const ptBR = {
     submit: "Testar e adicionar",
     missing: "preencha nome, endereço, porta e token",
     badPort: "porta inválida",
+    pairScheme: "Isso não é um link flightdeck://.",
+    pairAddress: "O link não traz o endereço do host.",
+    pairPort: "A porta do link não é válida.",
+    pairToken: "O link não traz o token.",
+    pairRefused: "Link de pareamento recusado. {reason}",
+    probeTimeout:
+      "O host não respondeu a tempo: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor",
     probeRefused: "token recusado: rode flightdeckd pair no host e cole o link novo",
     probeUnreachable:
       "não foi possível conectar: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor",

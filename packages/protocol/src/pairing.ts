@@ -16,7 +16,10 @@ export interface PairingValue {
   token: string;
 }
 
-export type PairingParse = { ok: true; value: PairingValue } | { ok: false; error: string };
+/** Why a pairing link was refused: a code, so each app words it in its own language. */
+export type PairingError = "scheme" | "address" | "port" | "token";
+
+export type PairingParse = { ok: true; value: PairingValue } | { ok: false; error: PairingError };
 
 const bracket = (address: string) => (address.includes(":") ? `[${address}]` : address);
 
@@ -31,18 +34,18 @@ const LINK = /^flightdeck:\/\/(\[[0-9a-fA-F:.]+\]|[^/:?#[\]\s]+)(?::([^/?#]*))?\
 export function parsePairingLink(link: string): PairingParse {
   const text = link.trim();
   if (!text.toLowerCase().startsWith(PAIRING_SCHEME)) {
-    return { ok: false, error: "esquema inválido" };
+    return { ok: false, error: "scheme" };
   }
   const match = LINK.exec(PAIRING_SCHEME + text.slice(PAIRING_SCHEME.length));
-  if (!match) return { ok: false, error: "endereço inválido" };
+  if (!match) return { ok: false, error: "address" };
   const [, host = "", portText = "", query = ""] = match;
   const port = Number(portText);
   if (!/^\d{1,5}$/.test(portText) || port < 1 || port > 65535) {
-    return { ok: false, error: "porta inválida" };
+    return { ok: false, error: "port" };
   }
   const params = new URLSearchParams(query);
   const token = params.get("token");
-  if (!token) return { ok: false, error: "token ausente" };
+  if (!token) return { ok: false, error: "token" };
   const name = params.get("name") || host.replace(/^\[|\]$/g, "");
   return { ok: true, value: { name, url: `ws://${host}:${port}/v1/ws`, token } };
 }
