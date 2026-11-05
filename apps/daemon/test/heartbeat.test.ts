@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { CLOSE_HEARTBEAT } from "@flightdeck/protocol";
+import { notLinux } from "../../../scripts/test/not-linux.ts";
 import { HostConnection } from "../../desktop/src/lib/host-connection.ts";
 import { PING_INTERVAL_MS, type RunningServer, startServer } from "../src/server.ts";
 import { newManager, poll } from "./helpers.ts";
@@ -87,23 +88,27 @@ describe("heartbeat", () => {
     expect(c.pings.length - answered).toBe(4);
   });
 
-  test("qualquer quadro do cliente conta como vivo: quem fala sem dar pong não é desconectado, e quem se cala é", async () => {
-    const c = client(serve(25).url);
-    await poll(() => c.pings.length >= 2, 2000);
-    c.state.answer = false;
-    // Commands keep arriving, as a busy page's do, but its pongs are late.
-    const talk = setInterval(
-      () => c.ws.send(JSON.stringify({ id: "q", type: "session.list", payload: {} })),
-      10,
-    );
-    cleanups.push(() => clearInterval(talk));
-    const before = c.pings.length;
-    await poll(() => c.pings.length - before >= 10, 3000);
-    expect(c.state.closed).toBeNull();
-    clearInterval(talk);
-    await poll(() => c.state.closed !== null, 2000);
-    expect(c.state.closed).toBe(4408);
-  });
+  // unstable: #288 real 10 ms and 25 ms timers against a 75 ms silence limit close a talking client on a loaded runner
+  test.skipIf(notLinux)(
+    "qualquer quadro do cliente conta como vivo: quem fala sem dar pong não é desconectado, e quem se cala é",
+    async () => {
+      const c = client(serve(25).url);
+      await poll(() => c.pings.length >= 2, 2000);
+      c.state.answer = false;
+      // Commands keep arriving, as a busy page's do, but its pongs are late.
+      const talk = setInterval(
+        () => c.ws.send(JSON.stringify({ id: "q", type: "session.list", payload: {} })),
+        10,
+      );
+      cleanups.push(() => clearInterval(talk));
+      const before = c.pings.length;
+      await poll(() => c.pings.length - before >= 10, 3000);
+      expect(c.state.closed).toBeNull();
+      clearInterval(talk);
+      await poll(() => c.state.closed !== null, 2000);
+      expect(c.state.closed).toBe(4408);
+    },
+  );
 
   test("sem hello não há ping; pong antes do hello fecha com 4401", async () => {
     const idle = client(serve(25).url, { hello: false });
