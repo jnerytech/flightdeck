@@ -38,6 +38,8 @@ export const ptBR = {
     partial: "Alguns hosts não responderam: {hosts}.",
     olderDaemon: "Turnos com falha e tempo do turno pedem um daemon com os contadores do Início.",
     loading: "Lendo os hosts…",
+    connecting: "Conectando aos seus hosts…",
+    ready: "O Início está pronto.",
   },
   hosts: {
     status: {

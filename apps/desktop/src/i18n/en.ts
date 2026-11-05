@@ -36,6 +36,8 @@ export const en: Dictionary = {
     partial: "Some hosts did not answer: {hosts}.",
     olderDaemon: "Failed turns and turn time need a daemon with the Home counters.",
     loading: "Reading the hosts…",
+    connecting: "Connecting to your hosts…",
+    ready: "Home is ready.",
   },
   hosts: {
     status: {

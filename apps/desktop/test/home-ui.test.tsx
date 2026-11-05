@@ -90,6 +90,8 @@ function setup(
   const state = {
     ...store.getState(),
     hosts,
+    // The list of hosts was read: with none in it there really is no host.
+    hostsLoaded: true,
     budgets: { h1: [budget] },
   } as never as ReturnType<typeof store.getState>;
   const routes: unknown[] = [];
