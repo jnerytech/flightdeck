@@ -33,6 +33,19 @@ export function createWebPlatform(
   /** Deep-link handlers, also reached by a click on a notification that carries a link. */
   const linkHandlers = new Set<(url: string) => void>();
   return {
+    assistant: {
+      supported: true,
+      keyStatus: async () => ({ saved: true }),
+      setKey: async () => ({ last4: "" }),
+      deleteKey: async () => {},
+      test: async () => ({ ok: true }),
+      models: async () => [],
+      run: async () => {
+        throw { reason: "assistant_cancelled" };
+      },
+      cancel: async () => {},
+      vaultHits: async () => [],
+    },
     storage: win.localStorage,
     secrets: {
       get: async (id) => secrets.get(id) ?? null,

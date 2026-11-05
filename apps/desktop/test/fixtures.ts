@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { AssistantRequest, AssistantResult, ModelOption } from "@flightdeck/protocol";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import type { Account } from "../../daemon/src/account/account.ts";
 import { Actions } from "../../daemon/src/actions/actions.ts";
@@ -66,6 +67,7 @@ import { FakeProvider } from "../../daemon/test/boardsync-fake.ts";
 import { testRootsPlatform } from "../../daemon/test/helpers.ts";
 import { fakePtys } from "../../daemon/test/pty-helpers.ts";
 import { fakeRunHost } from "../../daemon/test/run-helpers.ts";
+import type { AssistantPlatform } from "../src/platform/types.ts";
 import { createWebPlatform, type WebWindow } from "../src/platform/web/index.ts";
 
 export const TOKEN = "desktop-test-token-0123456789";
@@ -657,3 +659,66 @@ export function memoryPlatform(focused = false, language = "pt-BR") {
 
 /** A folder every host refuses to allow, on whatever platform the tests run. */
 export const SYSTEM_FOLDER = process.platform === "win32" ? "C:\\Windows" : "/etc";
+
+type AssistantCall = [string, ...unknown[]];
+
+/**
+ * A fake `Platform.assistant`: it logs every call, keeps only the last four characters of a key and
+ * answers what the test scripts. Install it with `platform.assistant = fake.assistant`.
+ */
+export function fakeAssistant(
+  script: {
+    supported?: boolean;
+    run?: (
+      request: AssistantRequest,
+      vaultIds: string[],
+    ) => AssistantResult | Promise<AssistantResult>;
+    test?: (provider: "anthropic" | "openrouter") => ReturnType<AssistantPlatform["test"]>;
+    models?: (provider: "anthropic" | "openrouter") => ModelOption[];
+    vaultHits?: (text: string, ids: string[]) => string[];
+    setKey?: (provider: "anthropic" | "openrouter") => void;
+  } = {},
+) {
+  const calls: AssistantCall[] = [];
+  const keys = new Map<string, string>();
+  const refuse = (reason: string) => Promise.reject({ reason });
+  const assistant: AssistantPlatform = {
+    supported: script.supported ?? true,
+    keyStatus: async (provider) => {
+      calls.push(["keyStatus", provider]);
+      const last4 = keys.get(provider);
+      return last4 ? { saved: true, last4 } : { saved: false };
+    },
+    setKey: async (provider, key) => {
+      // The key itself is not logged: a test that prints the calls never prints it.
+      calls.push(["setKey", provider]);
+      script.setKey?.(provider);
+      keys.set(provider, key.slice(-4));
+      return { last4: key.slice(-4) };
+    },
+    deleteKey: async (provider) => {
+      calls.push(["deleteKey", provider]);
+      keys.delete(provider);
+    },
+    test: async (provider) => {
+      calls.push(["test", provider]);
+      return script.test ? script.test(provider) : { ok: true };
+    },
+    models: async (provider) => {
+      calls.push(["models", provider]);
+      return script.models ? script.models(provider) : [];
+    },
+    run: async (request, vaultIds) => {
+      calls.push(["run", request, vaultIds]);
+      return script.run ? script.run(request, vaultIds) : refuse("assistant_not_configured");
+    },
+    cancel: async (requestId) => {
+      calls.push(["cancel", requestId]);
+    },
+    vaultHits: async (text, ids) => {
+      calls.push(["vaultHits", ids]);
+      return script.vaultHits ? script.vaultHits(text, ids) : [];
+    },
+  };
+  return { assistant, calls };
+}

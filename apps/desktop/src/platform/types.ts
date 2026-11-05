@@ -1,3 +1,5 @@
+import type { AssistantRequest, AssistantResult, ModelOption } from "@flightdeck/protocol";
+
 /**
  * Everything the app needs from its host environment. Two implementations: `tauri/` (desktop) and
  * `web/` (UI tests now, the PWA later). Nothing outside `platform/tauri` may import `@tauri-apps/*`;
@@ -88,7 +90,35 @@ export interface PickedFile {
   text: string;
 }
 
+/** A provider that needs a key kept by the shell (the host's own Claude Code needs none). */
+export type AssistantKeyProvider = "anthropic" | "openrouter";
+
+/**
+ * Phase 40: the API providers of the AI assistant, which run in the Rust shell. A key goes in once
+ * (`setKey`) and is never read back: there is no getter, only its last four characters.
+ */
+export interface AssistantPlatform {
+  /** False in the web build: no credential store and no shell to call a provider. */
+  supported: boolean;
+  keyStatus(provider: AssistantKeyProvider): Promise<{ saved: boolean; last4?: string }>;
+  setKey(provider: AssistantKeyProvider, key: string): Promise<{ last4: string }>;
+  deleteKey(provider: AssistantKeyProvider): Promise<void>;
+  test(provider: AssistantKeyProvider): Promise<{
+    ok: boolean;
+    detail?: string;
+    limitRemaining?: number;
+    isFreeTier?: boolean;
+  }>;
+  models(provider: AssistantKeyProvider): Promise<ModelOption[]>;
+  run(request: AssistantRequest, vaultIds: string[]): Promise<AssistantResult>;
+  cancel(requestId: string): Promise<void>;
+  /** The ids of the vault values found in `text`, read in the shell: never a value. */
+  vaultHits(text: string, ids: string[]): Promise<string[]>;
+}
+
 export interface Platform {
+  /** Phase 40: the AI assistant's API providers. */
+  assistant: AssistantPlatform;
   /** Non-secret settings (host names and URLs, preferences). */
   storage: { getItem(key: string): string | null; setItem(key: string, value: string): void };
   /** Host tokens; never stored in `storage`. */

@@ -33,6 +33,19 @@ export function tauriPlatform(
   /** The update found by the last check, installed by `updater.install`. */
   let pending: Update | null = null;
   return {
+    assistant: {
+      supported: false,
+      keyStatus: async () => ({ saved: false }),
+      setKey: async () => ({ last4: "" }),
+      deleteKey: async () => {},
+      test: async () => ({ ok: false }),
+      models: async () => [],
+      run: async () => {
+        throw { reason: "assistant_cancelled" };
+      },
+      cancel: async () => {},
+      vaultHits: async () => [],
+    },
     storage: win.localStorage,
     secrets: {
       get: (hostId) => call<string | null>("token_get", { hostId }),
