@@ -89,6 +89,15 @@ describe("opencode-tools", () => {
     expect(mapOpenCodeTool("context7_resolve", {}).name).toBe("opencode:context7_resolve");
   });
 
+  test("names that are keys of every object stay OpenCode's own", () => {
+    for (const name of ["constructor", "toString", "__proto__", "hasOwnProperty"]) {
+      expect(mapOpenCodeTool(name, { x: 1 })).toEqual({
+        name: `opencode:${name}`,
+        input: { x: 1 },
+      });
+    }
+  });
+
   test("the risk rules: opencode:* is high and network; writes or commands naming the global OpenCode folder are high", () => {
     const risk = new RiskClassifier({ allowedRoots: [], home: "/home/u" });
     expect(risk.classify("opencode:execute", { code: "1" }, "/w")).toEqual({
