@@ -34,7 +34,7 @@ describe("estado-glifos: a state has a shape as well as a colour (issue #146)", 
     const shapes = TONES.map((tone) => shape(dot(tone)));
     expect(shapes).toEqual([
       "spinner",
-      "lucide-message-circle-question",
+      "lucide-message-circle-question-mark",
       "dot",
       "ring",
       "lucide-circle-alert",
@@ -154,5 +154,33 @@ describe("estado-glifos: an off-screen spinner stops turning (issue #146)", () =
     expect(screen.getByRole("img", { name: "rodando" }).innerHTML).toContain(
       "motion-safe:animate-spin",
     );
+  });
+});
+
+describe("estado-glifos: a host's connection stays a plain dot (issue #146)", () => {
+  test("`dot` keeps the 8 px dot: hollow draws a ring, pulse breathes, nothing leaks into the DOM", () => {
+    render(
+      <div>
+        <StatusDot dot tone="running" label="online" />
+        <StatusDot dot hollow tone="idle" label="offline" />
+        <StatusDot dot pulse tone="needs-you" label="conectando" />
+      </div>,
+    );
+    const online = screen.getByRole("img", { name: "online" });
+    expect(online.className).toContain("size-2");
+    expect(online.className).toContain("rounded-full");
+    expect(online.className).toContain("bg-status-running");
+    expect(online.className).not.toContain("animate-");
+    expect(online.querySelector("svg, [data-glyph]")).toBeNull();
+    const offline = screen.getByRole("img", { name: "offline" });
+    expect(offline.className).toContain("border-status-idle");
+    expect(offline.className).toContain("bg-transparent");
+    expect(screen.getByRole("img", { name: "conectando" }).className).toContain(
+      "motion-safe:animate-pulse",
+    );
+    for (const el of [online, offline]) {
+      expect(el.hasAttribute("hollow")).toBe(false);
+      expect(el.hasAttribute("pulse")).toBe(false);
+    }
   });
 });
