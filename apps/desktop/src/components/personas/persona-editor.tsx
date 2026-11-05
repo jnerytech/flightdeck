@@ -1,5 +1,5 @@
 import { type PersonaInput, PersonaModelError } from "@flightdeck/protocol";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Form, FormActions } from "@/components/layout/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,6 +7,7 @@ import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { type AppPersona, personaInput } from "@/lib/global-personas";
+import { MODELS } from "./model-select";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
 const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
@@ -14,11 +15,31 @@ const MODES = ["default", "acceptEdits", "plan", "dontAsk", "auto"] as const;
 
 type Place = "host" | "app" | "project";
 
-const split = (text: string) =>
-  text
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean);
+/** The models the select offers: the aliases and the ids the pack's personas use. */
+const KNOWN_MODELS: readonly string[] = [
+  ...MODELS,
+  "claude-opus-5-5",
+  "claude-sonnet-5-5",
+  "claude-haiku-5-5",
+  "claude-fable-5-1",
+];
+const OTHER = "__other__";
+
+/** The tools the checkboxes offer; a persona's own extra ones are kept among them too. */
+const KNOWN_TOOLS: readonly string[] = [
+  "Read",
+  "Grep",
+  "Glob",
+  "Bash",
+  "Edit",
+  "Write",
+  "NotebookEdit",
+  "WebFetch",
+  "WebSearch",
+  "Task",
+  "TodoWrite",
+  "mcp__flightdeck",
+];
 
 /**
  * Phase 20: creates or edits a persona, with a preview of what a session opened in it gets. A
@@ -30,6 +51,8 @@ export function PersonaEditor(props: {
   /** The chosen project's path; "" for none. */
   project: string;
   persona: AppPersona | null;
+  /** Shown inside the persona's own card, not above the list. */
+  inPlace?: boolean;
   onSaved(): void;
   onClose(): void;
 }) {
@@ -42,8 +65,12 @@ export function PersonaEditor(props: {
   const [description, setDescription] = useState(persona?.description ?? "");
   const [icon, setIcon] = useState(persona?.icon ?? "");
   const [model, setModel] = useState(persona?.model ?? "");
+  // A model the list does not know opens on "Other…" with it typed.
+  const [other, setOther] = useState(
+    Boolean(persona?.model) && !KNOWN_MODELS.includes(persona?.model ?? ""),
+  );
   const [effort, setEffort] = useState<string>(persona?.effort ?? "");
-  const [tools, setTools] = useState((persona?.tools ?? []).join(", "));
+  const [tools, setTools] = useState<string[]>(persona?.tools ?? []);
   const [mode, setMode] = useState<string>(persona?.permissionMode ?? "");
   const [body, setBody] = useState(persona?.body ?? "");
   const initialPlace: Place =
@@ -58,7 +85,7 @@ export function PersonaEditor(props: {
     icon: icon.trim() || null,
     model: model.trim() || null,
     effort: (effort || null) as AppPersona["effort"],
-    tools: split(tools).length > 0 ? split(tools) : null,
+    tools: tools.length > 0 ? tools : null,
     permissionMode: (mode || null) as AppPersona["permissionMode"],
     body,
   });
@@ -94,12 +121,20 @@ export function PersonaEditor(props: {
       {control(`${id}-${key}`)}
     </div>
   );
-  const toolList = split(tools);
+  const toolList = tools;
+  const toolChoices = [...KNOWN_TOOLS, ...tools.filter((tool) => !KNOWN_TOOLS.includes(tool))];
+  // The form opens where the person is: its first field takes the focus and it scrolls into view.
+  const first = persona === null ? "id" : "name";
+  useEffect(() => {
+    const field = document.getElementById(`${id}-${first}`);
+    field?.focus();
+    field?.closest("form")?.scrollIntoView?.({ block: "nearest" });
+  }, [id, first]);
 
   return (
     <Form
       variant="panel"
-      className="mb-4"
+      className={props.inPlace ? undefined : "mb-4"}
       onSubmit={() => {
         if (ready) saving.run(save);
       }}
@@ -122,8 +157,29 @@ export function PersonaEditor(props: {
         <Input id={fid} value={icon} onChange={(e) => setIcon(e.target.value)} />
       ))}
       {field("model", t("personas.editor.model"), (fid) => (
-        <Input id={fid} value={model} onChange={(e) => setModel(e.target.value)} />
+        <select
+          id={fid}
+          className={SELECT}
+          value={other ? OTHER : model}
+          onChange={(e) => {
+            const choice = e.target.value;
+            setOther(choice === OTHER);
+            setModel(choice === OTHER ? "" : choice);
+          }}
+        >
+          <option value="">{t("personas.editor.none")}</option>
+          {KNOWN_MODELS.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+          <option value={OTHER}>{t("personas.editor.otherModel")}</option>
+        </select>
       ))}
+      {other &&
+        field("model-other", t("personas.editor.otherModelLabel"), (fid) => (
+          <Input id={fid} value={model} onChange={(e) => setModel(e.target.value)} />
+        ))}
       {field("effort", t("personas.editor.effort"), (fid) => (
         <select
           id={fid}
@@ -139,9 +195,30 @@ export function PersonaEditor(props: {
           ))}
         </select>
       ))}
-      {field("tools", t("personas.editor.tools"), (fid) => (
-        <Input id={fid} value={tools} onChange={(e) => setTools(e.target.value)} />
-      ))}
+      {/* Issue #237: one checkbox per tool, so each click adds or removes that tool only (a
+          native multi-select dropped the others on a plain click). */}
+      <fieldset className="flex flex-col gap-1 text-sm">
+        <legend>{t("personas.editor.tools")}</legend>
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {toolChoices.map((tool) => (
+            <label key={tool} className="hit-inline gap-2">
+              <input
+                type="checkbox"
+                className="hit-control"
+                checked={tools.includes(tool)}
+                onChange={(e) =>
+                  setTools(
+                    toolChoices.filter((choice) =>
+                      choice === tool ? e.target.checked : tools.includes(choice),
+                    ),
+                  )
+                }
+              />
+              {tool}
+            </label>
+          ))}
+        </div>
+      </fieldset>
       {field("mode", t("personas.editor.mode"), (fid) => (
         <select id={fid} className={SELECT} value={mode} onChange={(e) => setMode(e.target.value)}>
           <option value="">{t("personas.editor.none")}</option>

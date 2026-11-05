@@ -178,7 +178,9 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
     void connect(wanted);
   }, [targets, props.connect]);
 
-  const tags = [...new Set(targets.flatMap((target) => target.tags))].sort();
+  const tags = [...new Set(targets.flatMap((target) => target.tags))].sort((a, b) =>
+    a.localeCompare(b, "en"),
+  );
   const vias = [...new Set(targets.flatMap((target) => (target.viaHost ? [target.viaHost] : [])))];
   const viaName = (id: string) => state.hosts.find((h) => h.id === id)?.name ?? id;
   const shown = targets.filter(

@@ -89,6 +89,7 @@ for (const [lang, t] of [
     test("a host without roi shows no hours field", async () => {
       await openCard(lang, {});
       await settle(() => screen.queryByLabelText(t.cardUi.description) !== null);
+      expect(screen.queryByLabelText(t.cardUi.description)).not.toBeNull();
       expect(screen.queryByLabelText(t.roiUi.cardHours)).toBeNull();
     });
   });

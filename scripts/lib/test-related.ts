@@ -31,9 +31,8 @@ export function resolveImport(from: string, spec: string, known: Set<string>): s
   return candidates.find((path) => known.has(path)) ?? null;
 }
 
-/** The test files to run for these changed files: themselves, plus every test that reaches one. */
-export function selectRelated(changed: string[], sources: Map<string, string>): Related[] {
-  const known = new Set(sources.keys());
+/** For each tracked file, the files that import it. */
+function importersOf(sources: Map<string, string>, known: Set<string>): Map<string, string[]> {
   const importers = new Map<string, string[]>();
   for (const [path, source] of sources) {
     for (const spec of importsOf(source)) {
@@ -41,6 +40,17 @@ export function selectRelated(changed: string[], sources: Map<string, string>): 
       if (target) importers.set(target, [...(importers.get(target) ?? []), path]);
     }
   }
+  return importers;
+}
+
+/** The test files to run for these changed files: themselves, plus every test that reaches one. */
+export function selectRelated(
+  changed: string[],
+  sources: Map<string, string>,
+  { direct = false }: { direct?: boolean } = {},
+): Related[] {
+  const known = new Set(sources.keys());
+  const importers = importersOf(sources, known);
   // Walks the reverse graph from every changed file, remembering which one led to each file.
   const origin = new Map<string, string>();
   const queue: string[] = [];
@@ -52,7 +62,8 @@ export function selectRelated(changed: string[], sources: Map<string, string>): 
     for (const importer of importers.get(path) ?? []) {
       if (origin.has(importer)) continue;
       origin.set(importer, origin.get(path) as string);
-      queue.push(importer);
+      // `direct` stops at the files that import a changed file themselves.
+      if (!direct) queue.push(importer);
     }
   }
   const changedSet = new Set(changed);
@@ -71,6 +82,8 @@ export interface PlanDeps {
   readFile: (path: string) => string;
   /** Collect coverage of the run into this folder, and name the changed files it must cover. */
   coverageDir?: string;
+  /** `--fast`: only the tests that import a changed file directly (the transitive set runs in CI). */
+  fast?: boolean;
 }
 
 export interface Plan {
@@ -82,7 +95,7 @@ export interface Plan {
   targets?: string[];
 }
 
-export function planRelated({ base, platform, git, readFile, coverageDir }: PlanDeps): Plan {
+export function planRelated({ base, platform, git, readFile, coverageDir, fast }: PlanDeps): Plan {
   const ref = base ?? git(["merge-base", "HEAD", "main"])?.trim();
   if (!ref) return { code: 2, output: "test:related: no base to compare with", command: null };
   const label = base ?? ref.slice(0, 7);
@@ -92,7 +105,12 @@ export function planRelated({ base, platform, git, readFile, coverageDir }: Plan
   const warnings = changed
     .filter((path) => GLOBAL_FILE.test(path))
     .map((path) => `warning: ${path} affects every test, run the full suite`);
-  const related = selectRelated(changed, sources);
+  const byImport = selectRelated(changed, sources, { direct: fast });
+  const imported = new Set(byImport.map((r) => r.path));
+  const related = [
+    ...byImport,
+    ...selectByPath(changed, sources).filter((r) => !imported.has(r.path)),
+  ].sort((a, b) => (a.path < b.path ? -1 : 1));
   const targets = coverageDir
     ? coverageTargets(changed, (path) => (sources.has(path) ? (sources.get(path) ?? null) : null))
     : undefined;
@@ -109,7 +127,9 @@ export function planRelated({ base, platform, git, readFile, coverageDir }: Plan
     return { code: 0, output: [none, ...warnings].join("\n"), command: null };
   }
   const output = [
-    `test:related: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label}`,
+    fast
+      ? `test:related --fast: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label} (direct importers only; CI runs the rest)`
+      : `test:related: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label}`,
     ...warnings,
     ...related.map((r) => `  ${r.path}  ${r.why}`),
   ].join("\n");
@@ -128,4 +148,32 @@ export function planRelated({ base, platform, git, readFile, coverageDir }: Plan
     command: related.length > SLOT_ABOVE ? ["bun", "run", "slot", "--", ...run] : run,
     ...(targets ? { targets } : {}),
   };
+}
+
+/**
+ * The tests that name a changed file, or one of its folders, as a string literal: the data files,
+ * configs and spawned entries a test reads without importing them.
+ */
+export function selectByPath(changed: string[], sources: Map<string, string>): Related[] {
+  const tests = [...sources].filter(([path]) => TEST_FILE.test(path));
+  const found = new Map<string, string>();
+  for (const path of changed) {
+    // The path itself, then its folders, most specific first. A name with no slash (a root file,
+    // a top-level folder) is a word in a test, not a path; a baseline also counts by its own name.
+    const names = [path];
+    if (path.endsWith("-baseline.json")) names.push(posix.basename(path));
+    for (let dir = posix.dirname(path); dir !== "."; dir = posix.dirname(dir)) names.push(dir);
+    const paths = names.filter((n) => n.includes("/") || n.endsWith("-baseline.json"));
+    for (const [test, source] of tests) {
+      if (found.has(test)) continue;
+      const name = paths.find((n) => new RegExp(`["'\`]${escapeRegExp(n)}["'\`]`).test(source));
+      if (name) found.set(test, `names ${name}`);
+    }
+  }
+  // In the sources' order; planRelated sorts what it runs.
+  return [...found].map(([path, why]) => ({ path, why }));
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

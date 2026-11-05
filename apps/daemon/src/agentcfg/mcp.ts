@@ -9,6 +9,7 @@ import { dirname, join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { writeFileAtomic } from "../atomic-write.ts";
 import { userHome } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
 import { samePath } from "../paths.ts";
@@ -48,7 +49,7 @@ async function readJson(path: string): Promise<Json> {
 
 async function writeJson(path: string, value: Json): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify(value, null, 2)}\n`);
+  await writeFileAtomic(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
 const servers = (value: unknown) => (value ?? {}) as Record<string, McpServerConfig>;

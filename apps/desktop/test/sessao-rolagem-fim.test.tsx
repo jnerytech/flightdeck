@@ -9,8 +9,11 @@ const { emptySession } = await import("../src/lib/session-state.ts");
 /** A ResizeObserver the test drives: `grow()` is a layout change (an image, a code block, a panel). */
 const observers: Array<() => void> = [];
 class FakeResizeObserver {
-  constructor(private readonly callback: () => void) {
-    observers.push(() => this.callback());
+  constructor(private readonly callback: (entries: unknown[]) => void) {
+    // The app's other observers (the width of a region) read the entry's size: give them one.
+    observers.push(() =>
+      this.callback([{ contentRect: { width: 1000, height: 800 }, target: document.body }]),
+    );
   }
   observe() {}
   unobserve() {}

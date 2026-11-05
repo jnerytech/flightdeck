@@ -86,4 +86,14 @@ describe("barra-recolhida: the rail holds icons and nothing that overflows it", 
     expect(needs?.getAttribute("title")).toBe("Needs you (1)");
     expect(needs?.querySelector("[data-attention]")).not.toBeNull();
   });
+
+  test("collapsed, each host is its initial with its status dot, and the tooltip names it", async () => {
+    await setup();
+    await collapse();
+    const host = inAside().getByRole("button", { name: "Open host alfa" });
+    expect(host.getAttribute("title")).toBe("alfa");
+    expect(host.querySelector("[data-slot='host-initial']")?.textContent).toBe("A");
+    // The status stays a named dot beside the initial: the letter alone says nothing of the state.
+    expect(within(host).getByRole("img", { name: /alfa: online/ })).not.toBeNull();
+  });
 });

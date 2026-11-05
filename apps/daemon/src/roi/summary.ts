@@ -148,7 +148,7 @@ export class RoiSummarizer {
     }
     const keys = [...byKey.keys()]
       .filter((key) => filter.projectKey === undefined || key === filter.projectKey)
-      .sort();
+      .sort((a, b) => a.localeCompare(b, "en"));
     return {
       from: filter.from,
       to: filter.to,

@@ -1,8 +1,9 @@
 import type { SessionRecap } from "@flightdeck/protocol";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
+import { ShortArea } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
@@ -83,14 +84,25 @@ export function RecapPanel(props: {
   // Open the first time a session is seen, one line after: it is a card of the header, and the
   // conversation comes first.
   const seenKey = `${hostId}/${claudeSessionId}`;
-  const [open, setOpen] = useState(() => !SEEN.has(seenKey));
+  const [firstSeen] = useState(() => !SEEN.has(seenKey));
+  // In a short area (a 720x480 window) it starts folded even then: the conversation needs the
+  // room (#232). Once the person opens or folds it, their choice holds.
+  const short = useContext(ShortArea);
+  const [chosen, setOpen] = useState<boolean | null>(null);
+  const open = chosen ?? (firstSeen && !short);
   useEffect(() => {
     SEEN.add(seenKey);
   }, [seenKey]);
   if (!supported || recap === undefined) return null;
   const lines = recap ? rows(recap, question, t) : [];
   return (
-    <Panel size="sm" label={t("recap.region")} className="shrink-0" slot="recap">
+    <Panel
+      // Folded in a short area it is one thin line, about 38 px (#232).
+      size={short && !open ? "line" : "sm"}
+      label={t("recap.region")}
+      className="shrink-0"
+      slot="recap"
+    >
       <div className="recap-head">
         <Button
           variant="ghost"

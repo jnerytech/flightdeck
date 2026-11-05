@@ -558,6 +558,6 @@ describe("mensagens-entrega: casos de borda", () => {
     const before = frames.length;
     endpoints.userMessage("s2", endpoints.sent[0]?.text ?? "");
     expect(messaging.list({})[0]?.status).toBe("queued");
-    expect(frames.length).toBe(before);
+    expect(frames).toHaveLength(before);
   });
 });

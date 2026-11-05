@@ -3,8 +3,9 @@ import { memo, useEffect, useState } from "react";
 import { CardSyncLog } from "@/components/board/board-sync";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
-import { NativeSelect } from "@/components/layout/form";
+import { Field, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
+import { Panel } from "@/components/layout/panel";
 import { Inline } from "@/components/layout/stack";
 import { PersonaPicker, useSuggestedPersona } from "@/components/personas/persona-picker";
 import { CardHours } from "@/components/roi/card-hours";
@@ -47,6 +48,21 @@ interface Confirming {
 const CARDDETAIL_KEYS = ["runs", "personas", "hosts", "cards"] as const;
 
 /** One card: description, runs, the active run's conversation, its diff and the actions. */
+/** An edit of a card field and the card text it started from (issue #170). */
+interface Draft {
+  text: string;
+  base: string;
+}
+
+/**
+ * The draft once `sent` was saved as `stored`: gone if it is what was sent; a newer edit typed
+ * meanwhile stays, now starting from what was saved.
+ */
+function settled(draft: Draft | null, sent: string, stored: string): Draft | null {
+  if (draft === null || draft.text === sent) return null;
+  return { text: draft.text, base: stored };
+}
+
 export const CardDetail = memo(function CardDetail(props: {
   store: AppStore;
   hostId: string;
@@ -59,8 +75,11 @@ export const CardDetail = memo(function CardDetail(props: {
   const { store, hostId, cardId } = props;
   const state = useStoreSlice(store, CARDDETAIL_KEYS);
   const card = state.cards[sessionKey(hostId, cardId)];
-  const [description, setDescription] = useState(card?.description ?? "");
-  const [title, setTitle] = useState(card?.title ?? "");
+  // Issue #170: a draft exists only while the person edits; until then the fields show the card as
+  // it is now, so a card that arrives after the screen opens (or changes elsewhere) fills them. A
+  // draft keeps the card text it started from: a change made elsewhere meanwhile stops a plain Save.
+  const [descriptionDraft, setDescriptionDraft] = useState<Draft | null>(null);
+  const [titleDraft, setTitleDraft] = useState<Draft | null>(null);
   const [adjustment, setAdjustment] = useState("");
   const [tab, setTab] = useState<"conversation" | "diff">("conversation");
   const [confirming, setConfirming] = useState<Confirming | null>(null);
@@ -156,6 +175,17 @@ export const CardDetail = memo(function CardDetail(props: {
   }, [store, hostId, cardId, missing]);
 
   if (!card) return <p className="p-6 text-muted-foreground text-sm">{t("cardUi.notFound")}</p>;
+  const title = titleDraft?.text ?? card.title;
+  const description = descriptionDraft?.text ?? card.description;
+  const titleStale = titleDraft !== null && titleDraft.base !== card.title;
+  const descriptionStale = descriptionDraft !== null && descriptionDraft.base !== card.description;
+  // Typing the card's own text back is no edit any more: the field follows the card again.
+  const editTitle = (text: string) =>
+    setTitleDraft(text === card.title ? null : { text, base: titleDraft?.base ?? card.title });
+  const editDescription = (text: string) =>
+    setDescriptionDraft(
+      text === card.description ? null : { text, base: descriptionDraft?.base ?? card.description },
+    );
 
   const askDiscard = async () => {
     const current = card.worktreePath
@@ -288,6 +318,82 @@ export const CardDetail = memo(function CardDetail(props: {
             {reasonText(t, card.notice, card.noticeReason, card.noticeParams)}
           </InlineNotice>
         )}
+        <Panel
+          title={t("cardUi.detailsTitle")}
+          label={t("cardUi.detailsTitle")}
+          slot="card-details"
+        >
+          <Field label={t("cardUi.title")}>
+            {(control) => (
+              <div className="field-with-action">
+                <Input
+                  {...control}
+                  className="flex-1"
+                  value={title}
+                  // The menu's Edit… opens the card to change it: the title is where the cursor goes.
+                  autoFocus={props.edit === true}
+                  onChange={(e) => editTitle(e.target.value)}
+                />
+                <ActionButton
+                  variant="outline"
+                  disabled={title.trim() === "" || title.trim() === card.title || titleStale}
+                  {...(titleStale ? { disabledReason: t("cardUi.changedElsewhere") } : {})}
+                  onClick={async () => {
+                    const sent = title;
+                    const saved = await store.hostCommand(hostId, "card.update", {
+                      cardId,
+                      title: sent.trim(),
+                    });
+                    // A refused save keeps the edit (the banner says why), and so does a newer edit
+                    // typed while this one was on its way (it now starts from what was saved).
+                    if (saved) setTitleDraft((draft) => settled(draft, sent, sent.trim()));
+                  }}
+                >
+                  {t("cardUi.saveTitle")}
+                </ActionButton>
+                {titleStale && (
+                  <Button variant="ghost" size="sm" onClick={() => setTitleDraft(null)}>
+                    {t("cardUi.useTheirs")}
+                  </Button>
+                )}
+              </div>
+            )}
+          </Field>
+          <Field label={t("cardUi.description")}>
+            {(control) => (
+              <div className="field-with-action">
+                <Textarea
+                  {...control}
+                  value={description}
+                  className="min-h-20 flex-1"
+                  onChange={(e) => editDescription(e.target.value)}
+                />
+                <ActionButton
+                  variant="outline"
+                  disabled={description === card.description || descriptionStale}
+                  {...(descriptionStale ? { disabledReason: t("cardUi.changedElsewhere") } : {})}
+                  onClick={async () => {
+                    const sent = description;
+                    const saved = await store.hostCommand(hostId, "card.update", {
+                      cardId,
+                      description: sent,
+                    });
+                    if (saved) setDescriptionDraft((draft) => settled(draft, sent, sent));
+                  }}
+                >
+                  {t("cardUi.saveDescription")}
+                </ActionButton>
+                {descriptionStale && (
+                  <Button variant="ghost" size="sm" onClick={() => setDescriptionDraft(null)}>
+                    {t("cardUi.useTheirs")}
+                  </Button>
+                )}
+              </div>
+            )}
+          </Field>
+          {withRoi && <CardHours store={store} hostId={hostId} card={card} />}
+        </Panel>
+        {/* Details, then what the card waits for, then how it runs (issue #174). */}
         {withDeps && (
           <CardDeps
             store={store}
@@ -297,137 +403,113 @@ export const CardDetail = memo(function CardDetail(props: {
             workflows={workflows}
           />
         )}
-        <Inline gap={2}>
-          <Input
-            aria-label={t("cardUi.title")}
-            value={title}
-            // The menu's Edit… opens the card to change it: the title is where the cursor goes.
-            autoFocus={props.edit === true}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <ActionButton
-            variant="outline"
-            disabled={title.trim() === "" || title.trim() === card.title}
-            onClick={() =>
-              store.hostCommand(hostId, "card.update", { cardId, title: title.trim() })
-            }
-          >
-            {t("cardUi.saveTitle")}
-          </ActionButton>
-        </Inline>
-        <div className="flex items-start gap-2">
-          <Textarea
-            aria-label={t("cardUi.description")}
-            value={description}
-            className="min-h-20 flex-1"
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <ActionButton
-            variant="outline"
-            onClick={() => store.hostCommand(hostId, "card.update", { cardId, description })}
-          >
-            {t("cardUi.saveDescription")}
-          </ActionButton>
-        </div>
-        {withRoi && <CardHours store={store} hostId={hostId} card={card} />}
-        <div className="flex flex-wrap items-center gap-2">
-          <NativeSelect
-            inline
-            aria-label={t("cardUi.workflow")}
-            value={workflow}
-            onChange={(e) => {
-              setWorkflow(e.target.value);
-              setInputs({});
-            }}
-          >
-            <option value="">{t("cardUi.noWorkflow")}</option>
-            {workflows.map((w) => (
-              <option key={w.name} value={w.name}>
-                {w.name}
-              </option>
+        <Panel title={t("cardUi.runTitle")} label={t("cardUi.runTitle")} slot="card-run">
+          <div className="flex flex-wrap items-end gap-2">
+            <Field label={t("cardUi.workflow")}>
+              {(control) => (
+                <NativeSelect
+                  {...control}
+                  inline
+                  value={workflow}
+                  onChange={(e) => {
+                    setWorkflow(e.target.value);
+                    setInputs({});
+                  }}
+                >
+                  <option value="">{t("cardUi.noWorkflow")}</option>
+                  {workflows.map((w) => (
+                    <option key={w.name} value={w.name}>
+                      {w.name}
+                    </option>
+                  ))}
+                </NativeSelect>
+              )}
+            </Field>
+            {chosen?.inputs.map((name) => (
+              <Field key={name} label={t("cardUi.input", { name })}>
+                {(control) => (
+                  <Input
+                    {...control}
+                    placeholder={name}
+                    className="w-48"
+                    value={inputs[name] ?? ""}
+                    onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
+                  />
+                )}
+              </Field>
             ))}
-          </NativeSelect>
-          {chosen?.inputs.map((name) => (
-            <Input
-              key={name}
-              aria-label={t("cardUi.input", { name })}
-              placeholder={name}
-              className="w-48"
-              value={inputs[name] ?? ""}
-              onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
-            />
-          ))}
-        </div>
-        <div className="flex flex-wrap items-end gap-2">
-          {hasFeature(host?.hostInfo?.features, "personas", false) && (
-            <PersonaPicker
-              store={store}
-              hostId={hostId}
-              label={t("personas.picker.card")}
-              value={persona}
-              onChange={setPersona}
-            />
-          )}
-          <ActionButton
-            onClick={() => {
-              const ref = store.personaRef(persona);
-              return store.hostCommand(hostId, "card.start", {
-                cardId,
-                ...(chosen ? { workflow: chosen.name, inputs } : {}),
-                ...(ref ? { persona: ref } : {}),
-              });
-            }}
-          >
-            {t("cardUi.start")}
-          </ActionButton>
-          {hasFeature(host?.hostInfo?.features, "bg", false) && !card.sessionId && (
+          </div>
+          <div className="flex flex-wrap items-end gap-2">
+            {hasFeature(host?.hostInfo?.features, "personas", false) && (
+              <PersonaPicker
+                store={store}
+                hostId={hostId}
+                label={t("personas.picker.card")}
+                value={persona}
+                onChange={setPersona}
+              />
+            )}
             <ActionButton
-              variant="outline"
-              onClick={async () => {
-                const started = await store.startBackground(hostId, {
+              onClick={() => {
+                const ref = store.personaRef(persona);
+                return store.hostCommand(hostId, "card.start", {
                   cardId,
-                  ...(persona.startsWith("host:") ? { persona: persona.slice(5) } : {}),
+                  ...(chosen ? { workflow: chosen.name, inputs } : {}),
+                  ...(ref ? { persona: ref } : {}),
                 });
-                if (started) store.router.push({ name: "hub" });
               }}
             >
-              {t("bg.start")}
+              {t("cardUi.start")}
             </ActionButton>
-          )}
-          <ActionButton
-            variant="outline"
-            onClick={() => store.hostCommand(hostId, "card.stop", { cardId })}
-          >
-            {t("cardUi.stop")}
-          </ActionButton>
-          <ActionButton
-            variant="outline"
-            disabled={!card.worktreePath || Boolean(card.prUrl)}
-            disabledReason={t(card.prUrl ? "cardUi.prAlreadyOpen" : "cardUi.needWorktree")}
-            onClick={() => openPr()}
-          >
-            {t("cardUi.openPr")}
-          </ActionButton>
-          <Button
-            variant="outline"
-            onClick={() => setConfirming({ kind: "complete", warning: null })}
-          >
-            {t("cardUi.complete")}
-          </Button>
-          {withArena &&
-            variants === 0 &&
-            !card.arenaOf &&
-            !card.worktreePath &&
-            !card.queued &&
-            !arena && (
-              <Button variant="outline" onClick={() => setArenaForm(true)}>
-                {t("arenaUi.start")}
-              </Button>
+            {hasFeature(host?.hostInfo?.features, "bg", false) && !card.sessionId && (
+              <ActionButton
+                variant="outline"
+                onClick={async () => {
+                  const started = await store.startBackground(hostId, {
+                    cardId,
+                    ...(persona.startsWith("host:") ? { persona: persona.slice(5) } : {}),
+                  });
+                  if (started) store.router.push({ name: "hub" });
+                }}
+              >
+                {t("bg.start")}
+              </ActionButton>
             )}
-          <Button variant="destructive" onClick={() => void askDiscard()}>
-            {t("cardUi.discard")}
-          </Button>
-        </div>
+            <ActionButton
+              variant="outline"
+              onClick={() => store.hostCommand(hostId, "card.stop", { cardId })}
+            >
+              {t("cardUi.stop")}
+            </ActionButton>
+            <ActionButton
+              variant="outline"
+              disabled={!card.worktreePath || Boolean(card.prUrl)}
+              disabledReason={t(card.prUrl ? "cardUi.prAlreadyOpen" : "cardUi.needWorktree")}
+              onClick={() => openPr()}
+            >
+              {t("cardUi.openPr")}
+            </ActionButton>
+            <Button
+              variant="outline"
+              onClick={() => setConfirming({ kind: "complete", warning: null })}
+            >
+              {t("cardUi.complete")}
+            </Button>
+            {withArena &&
+              variants === 0 &&
+              !card.arenaOf &&
+              !card.worktreePath &&
+              !card.queued &&
+              !arena && (
+                <Button variant="outline" onClick={() => setArenaForm(true)}>
+                  {t("arenaUi.start")}
+                </Button>
+              )}
+            <Button variant="destructive" onClick={() => void askDiscard()}>
+              {t("cardUi.discard")}
+            </Button>
+          </div>
+        </Panel>
         {withWatch && card.prUrl && <PrWatchPanel store={store} hostId={hostId} cardId={cardId} />}
         {draft && (
           <PrDescriptionDialog
@@ -499,18 +581,22 @@ export const CardDetail = memo(function CardDetail(props: {
             }
           />
         )}
-        <div className="flex items-start gap-2">
-          <Textarea
-            aria-label={t("cardUi.adjustment")}
-            placeholder={t("cardUi.adjustmentPlaceholder")}
-            value={adjustment}
-            className="min-h-16 flex-1"
-            onChange={(e) => setAdjustment(e.target.value)}
-          />
-          <Button variant="outline" onClick={sendAdjustment}>
-            {t("cardUi.askAdjustment")}
-          </Button>
-        </div>
+        <Field label={t("cardUi.adjustment")}>
+          {(control) => (
+            <div className="field-with-action">
+              <Textarea
+                {...control}
+                placeholder={t("cardUi.adjustmentPlaceholder")}
+                value={adjustment}
+                className="min-h-16 flex-1"
+                onChange={(e) => setAdjustment(e.target.value)}
+              />
+              <Button variant="outline" onClick={sendAdjustment}>
+                {t("cardUi.askAdjustment")}
+              </Button>
+            </div>
+          )}
+        </Field>
         <section className="flex flex-col gap-2">
           <h3 className="font-semibold text-sm">{t("cardUi.runs")}</h3>
           <ul
@@ -610,7 +696,6 @@ export const CardDetail = memo(function CardDetail(props: {
           >
             <SessionView
               title={`${card.title} · ${openedStep.stepId}`}
-              scrollKey={`${sessionKey(hostId, cardId)}/${openedStep.stepId}`}
               session={stepSession}
               actions={store}
               t={store.i18n.t}
@@ -623,7 +708,6 @@ export const CardDetail = memo(function CardDetail(props: {
           <div role="log" aria-label={t("cardUi.cardConversation")} className="card-chat">
             <SessionView
               title={card.title}
-              scrollKey={sessionKey(hostId, sessionId)}
               session={session}
               actions={store}
               t={store.i18n.t}

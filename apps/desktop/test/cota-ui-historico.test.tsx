@@ -5,6 +5,7 @@ import type { QuotaReading } from "../../daemon/src/runtime/types.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { unfoldAll } from "./unfold.ts";
 import { waiter } from "./wait.ts";
 import { workflowDaemon } from "./workflow-fixtures.ts";
 
@@ -168,6 +169,7 @@ describe("cota-ui-historico", () => {
     });
     await settle(() => store.getState().hosts[0]?.hostInfo !== null);
     await click("Abrir Sessões");
+    await unfoldAll(act);
     const cost = (label: string) => screen.queryByLabelText(label)?.textContent ?? "";
     await settle(() => cost("Custo de p") !== "");
     expect(cost("Custo de p")).toBe("US$ 1.25");
