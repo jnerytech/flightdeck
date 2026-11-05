@@ -24,7 +24,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}-${{ github.event_name }}
+  # The job choice is in the key: a screenshots-only dispatch must not cancel a full one.
+  group: ci-${{ github.ref }}-${{ github.event_name }}-${{ inputs.only }}
   cancel-in-progress: true
 
 jobs:
@@ -52,7 +53,9 @@ jobs:
         run: bun run lint:sonar -- --base "$(git merge-base HEAD origin/${{ github.base_ref }})"
 
   test:
-    name: test (${{ matrix.os }})
+    # A dispatched run's jobs have names of their own: a skipped copy of `test (ubuntu-latest)` next to
+    # the real check must never stand in for the one the branch rules require.
+    name: test (${{ matrix.os }})${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
     if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
     strategy:
       fail-fast: false

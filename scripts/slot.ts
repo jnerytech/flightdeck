@@ -79,8 +79,8 @@ const env: SlotEnv = {
   },
   now: () => Date.now(),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-  // NOSONAR: the slot logs its own queue status (holder label, pid, wait time), never secrets.
-  log: (line) => console.error(line), // NOSONAR
+  // The line names the holder's command: one line, whatever the command held.
+  log: (line) => console.error(line.replace(/[\r\n]+/g, " ")),
   terminate: (pid) => {
     try {
       process.kill(pid, "SIGTERM");
@@ -93,7 +93,16 @@ const env: SlotEnv = {
     // What runs under the lock is told whose it is, so a slot call inside it runs at once.
     const child = Bun.spawn(command, {
       stdio: ["inherit", "inherit", "inherit"],
-      ...(asHolder ? { env: { ...process.env, FLIGHTDECK_SLOT_HOLDER: String(process.pid) } } : {}),
+      // The lock too: a child with another temp folder would otherwise look for another file.
+      ...(asHolder
+        ? {
+            env: {
+              ...process.env,
+              FLIGHTDECK_SLOT_HOLDER: String(process.pid),
+              FLIGHTDECK_SLOT_LOCK: LOCK,
+            },
+          }
+        : {}),
     });
     if (nice) {
       try {
