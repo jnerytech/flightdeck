@@ -1732,8 +1732,33 @@ unblocked. A badge on the bell counts the unread ones.
   result, an unblocked card) opens the PR in your browser when the card is gone.
 - **Mark all as read** keeps the list; **Clear** empties it. The list is kept on this computer
   (the newest 500) and survives a restart. Esc closes the panel.
-- The OS notifications are unchanged. The center only keeps a copy, so one that is never sent
-  (the window had focus) is not in it either.
+- A read row has **Mark as unread** (hover or focus it) to come back to it later.
+- The OS notifications are sent as before unless you tune them (below). The center only keeps a
+  copy, so one that is never sent (the window had focus) is not in it either.
+
+### Tuning notifications
+
+**Settings, Notifications** (kept on this computer, honoured after a restart):
+
+- **Show notifications** is the master switch for the system notifications and the sound; the
+  bell keeps its entries. Below it, one switch per event: **Needs you** (a permission or a
+  question), **Turn finished**, **Session failed** (a turn that ends in an error), **PR watch**
+  and **Budget and quota**. An event that is off sends nothing, not even a bell entry.
+- **Mute** a host, a project, or one session (the menu of a row on the Sessions list: **Mute
+  notifications**, or **Snooze notifications for 1 hour**). A muted source sends no system
+  notification, no sound and no bell entry. It still shows in **Needs you** and in the sidebar's
+  count: a blocked permission is state, not an interruption. The muted sessions are listed there
+  with a button to unmute them; a snooze ends by itself.
+- **Fold a team's finished workers into one message** (on by default): workers of a team that
+  finish within ten seconds send one notification, "Team Alpha: 3 workers finished". A worker's
+  permission request still notifies at once, since someone has to answer it; the coordinator
+  notifies like any session.
+- **Sound**: off, the system default (a short tone made by the app) or a file you choose (MP3,
+  WAV, OGG, M4A, AAC or FLAC, up to about 400 KB), with a volume. It plays from the app, never from
+  a host.
+- **Send test notification** shows one and says **Delivered** or **Not displayed**; when the system
+  did not show it, it names the Windows setting (Settings, System, Notifications, Flightdeck).
+- Simple mode keeps its single switch and none of these controls.
 
 ## Snippets
 

@@ -3508,3 +3508,25 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 - **A session's repeated requests collapse** into one row with a count when they share a `group` and the same read state on the same side of midnight; reading one never hides an unread one, and clicking a collapsed row reads every entry it stands for. Today and Earlier replace Today, Yesterday and dates.
 - **A target that is gone** (a card with no pull request to fall back on, or a request no longer open) says so in its row and offers Dismiss, which removes the entries of the row; clicking the row only marks it read.
 
+
+## Notification preferences (issue #149)
+
+- **One place decides.** `lib/notify-policy.ts` holds `decide(prefs, source, now)`: who is told, on which of the OS, the bell and the
+  sound, for each notification. Every `notifyUser` call carries its source (the event, the host, the project, the session); a call
+  without one is the event "other" (a security warning, a loop alert), which only the master switch can silence.
+- **Muting is silence, not hiding.** A muted source sends nothing and leaves no bell entry, but a blocked permission is state: it
+  stays in Needs you and in the sidebar count, which are built from the sessions themselves, not from the notifications.
+- **The master switch off keeps the bell.** It turns off the system notifications and the sound; the bell is the app's own record.
+  An event switched off turns off all three, because the person said they do not want to hear of it at all.
+- **Team folding** waits ten seconds from the first worker's finished turn, then sends one message for two or more, or the worker's own
+  for one. It needs to know which sessions are workers: the app reads `teams.list` when a host connects and follows `teams.updated`.
+  A team closed on the host stops folding. A worker's permission request is never folded.
+- **A session that failed** is a new notification (the issue lists the switch; nothing sent one before): a turn that ends with the
+  status `error`.
+- **The sound** is made in the app (a tone from Web Audio, or the chosen file as a data URL kept in the app's own storage, about
+  400 KB at most). It is never played by a host. A browser may refuse to play before the person has touched the page; that is silent.
+- **`platform.notify` now says whether the system showed it** (true/false). The test notification uses it for "Delivered" or "Not
+  displayed". The hint names the Windows setting but has no button to open it: opening `ms-settings:` would need a capability the
+  shell does not grant.
+- **Not built:** the Windows taskbar overlay with the unread count (a Rust change, to review with `tauri-rust-reviewer`) and the
+  e2e journey update; the existing bell journey is unchanged by this work.
