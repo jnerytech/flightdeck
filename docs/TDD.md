@@ -91,6 +91,13 @@ em vez de depender de cuidado.
   resolução de `~` lê a variável de ambiente atual. Processos filhos (daemon dos smokes,
   CLIs falsos) recebem esse ambiente explicitamente, nunca o da partida do processo. Nada
   lê nem grava o `~/.claude` real.
+- **A temp folder per run.** Before anything else, the preload points `TEMP`, `TMP` and `TMPDIR`
+  at a fresh `fd-run-*` folder inside the temp folder it found (`scripts/test/temp-run.ts`), so
+  every folder a test, a guard or a child process makes lands there, and removes it at the end,
+  even when a test or a guard fails. A file still held open on Windows can keep it: the run's pid
+  is written in it, and the next run sweeps the `fd-run-*` folders whose process is gone. Before
+  this, the suite left everything in TEMP, and a child bun started under a TEMP of hundreds of
+  thousands of entries took about 150 ms more to start.
 - **Outros executáveis falsos** (`gh`, `az`, comandos de `check`): entram no PATH de teste e
   são resolvidos com `whichOnPath`. No Windows, precisam de versão `.cmd`.
 - **Serviços e sistema.** Instalação de serviço, `systemctl`, `schtasks` e afins passam por um
