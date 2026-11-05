@@ -242,19 +242,23 @@ function optionValue(command: string, at: number): string | null {
   return m[1] !== undefined ? m[1].replace(/\\(.)/g, "$1") : (m[2] ?? m[3] ?? null);
 }
 
-interface FoundCommit {
+interface GitCall {
+  /** The subcommand (`commit`, `push`, ...). */
+  sub: string;
   /** Where it runs; null when a directory is quoted (its words are hidden from the parse). */
   dir: string | null;
-  /** The whole message, or null when the command gives none it can read. */
-  message: string | null;
-  waived: boolean;
+  /** The words after the subcommand, from the masked command, with their offsets. */
+  args: { word: string; at: number }[];
+  /** The masked segment's start and end in the command. */
+  start: number;
+  end: number;
 }
 
-/** The command's `git commit`: its directory (each `cd` before it, `git -C`) and its message. */
-function findCommit(command: string, cwd: string): FoundCommit | undefined {
-  const masked = maskCommand(command);
+/** Each git invocation in the command, with its directory (each `cd` before it, `git -C`). */
+function gitCalls(command: string, cwd: string): GitCall[] {
+  const calls: GitCall[] = [];
   let dir: string | null = cwd;
-  for (const segment of masked.matchAll(/[^;&|\n]+/g)) {
+  for (const segment of maskCommand(command).matchAll(/[^;&|\n]+/g)) {
     const tokens = [...segment[0].matchAll(/\S+/g)].map((t) => ({
       word: t[0],
       at: segment.index + t.index,
@@ -272,31 +276,50 @@ function findCommit(command: string, cwd: string): FoundCommit | undefined {
       at =
         at === null || !word(i + 1) || word(i + 1).includes('"') ? null : resolve(at, word(i + 1));
     }
-    if (word(i) !== "commit") continue;
-    const parts: string[] = [];
-    let waived = false;
-    let fromStdin = false;
-    for (let j = i + 1; j < tokens.length; j++) {
-      const { word: w, at: pos } = tokens[j] as { word: string; at: number };
-      const flag = /^(-m|--message|--trailer|-F|--file)(=)?/.exec(w);
-      if (!flag) continue;
-      const valueAt = flag[2] ? pos + flag[0].length : tokens[j + 1]?.at;
-      if (valueAt === undefined) continue;
-      const value = optionValue(command, valueAt);
-      if (flag[1] === "-F" || flag[1] === "--file") fromStdin ||= value === "-";
-      else if (flag[1] === "--trailer") waived ||= WAIVER.test(value ?? "");
-      else if (value !== null) parts.push(value);
-    }
-    if (parts.length === 0 && fromStdin) {
-      HEREDOC.lastIndex = segment.index;
-      const doc = HEREDOC.exec(command);
-      if (doc && doc.index < segment.index + segment[0].length) parts.push(doc[3] ?? "");
-    }
-    const message = parts.length > 0 ? parts.join("\n\n") : null;
-    const body = message?.split("\n").slice(1).join("\n") ?? "";
-    return { dir: at, message, waived: waived || WAIVER.test(body) };
+    calls.push({
+      sub: word(i),
+      dir: at,
+      args: tokens.slice(i + 1),
+      start: segment.index,
+      end: segment.index + segment[0].length,
+    });
   }
-  return undefined;
+  return calls;
+}
+
+interface FoundCommit {
+  /** Where it runs; null when a directory is quoted. */
+  dir: string | null;
+  /** The whole message, or null when the command gives none it can read. */
+  message: string | null;
+  waived: boolean;
+}
+
+/** The command's `git commit`: its directory and its message. */
+function findCommit(command: string, cwd: string): FoundCommit | undefined {
+  const call = gitCalls(command, cwd).find((c) => c.sub === "commit");
+  if (!call) return undefined;
+  const parts: string[] = [];
+  let waived = false;
+  let fromStdin = false;
+  call.args.forEach(({ word: w, at: pos }, j) => {
+    const flag = /^(-m|--message|--trailer|-F|--file)(=)?/.exec(w);
+    if (!flag) return;
+    const valueAt = flag[2] ? pos + flag[0].length : call.args[j + 1]?.at;
+    if (valueAt === undefined) return;
+    const value = optionValue(command, valueAt);
+    if (flag[1] === "-F" || flag[1] === "--file") fromStdin ||= value === "-";
+    else if (flag[1] === "--trailer") waived ||= WAIVER.test(value ?? "");
+    else if (value !== null) parts.push(value);
+  });
+  if (parts.length === 0 && fromStdin) {
+    HEREDOC.lastIndex = call.start;
+    const doc = HEREDOC.exec(command);
+    if (doc && doc.index < call.end) parts.push(doc[3] ?? "");
+  }
+  const message = parts.length > 0 ? parts.join("\n\n") : null;
+  const body = message?.split("\n").slice(1).join("\n") ?? "";
+  return { dir: call.dir, message, waived: waived || WAIVER.test(body) };
 }
 
 /**
@@ -327,3 +350,94 @@ export function slotViolation(
 
 /** The package scripts that run only through the slot (CLAUDE.md). */
 const HEAVY = /^(test|coverage|e2e|demo:shots|smoke(:[\w-]+)?|build:(daemon|desktop))$/;
+
+export interface PushGuardDeps extends CommitGateDeps {
+  /** The hook's own environment: `FLIGHTDECK_COORDINATOR=1` marks the session that may push all. */
+  env: Record<string, string | undefined>;
+}
+
+/**
+ * Why a `git push` is blocked (#218): sessions push only their own work branches. Pushing main,
+ * an rc/* branch or a tag, `--tags`/`--all`/`--mirror`, a bare `--force` or a `+` refspec, and a
+ * `--force-with-lease` to any branch but the one checked out are blocked. The coordinator
+ * (`FLIGHTDECK_COORDINATOR=1` in the hook's environment) and other repositories pass.
+ */
+export function pushViolation(command: string, cwd: string, deps: PushGuardDeps): string | null {
+  if (deps.env.FLIGHTDECK_COORDINATOR) return null;
+  for (const call of gitCalls(command, cwd)) {
+    if (call.sub !== "push" || call.dir === null) continue;
+    if (deps.inProject && !deps.inProject(call.dir)) continue;
+    const dir = call.dir;
+    const reason = pushRuleViolation(
+      call.args.map((a) => a.word),
+      (args) => deps.git(args, dir),
+    );
+    if (reason) return reason;
+  }
+  return null;
+}
+
+const OWN_BRANCHES =
+  "sessions push only their own work branches; the coordinator pushes main, rc/* and tags (CLAUDE.md).";
+/** `git push` options that take their value as the next word. */
+const PUSH_OPTIONS_WITH_VALUE = new Set([
+  "-o",
+  "--push-option",
+  "--repo",
+  "--receive-pack",
+  "--exec",
+]);
+
+/** The rules of `pushViolation` for one `git push` with these words after `push`. */
+function pushRuleViolation(args: string[], git: (args: string[]) => string | null): string | null {
+  const positional: string[] = [];
+  let bareForce = false;
+  let lease = false;
+  let deleting = false;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i] ?? "";
+    if (a.includes('"') || a.includes("'")) continue;
+    if (["--tags", "--all", "--mirror", "--follow-tags"].includes(a)) {
+      return `git push ${a} is blocked: ${OWN_BRANCHES}`;
+    }
+    if (a === "-f" || a === "--force") bareForce = true;
+    else if (a.startsWith("--force-with-lease") || a === "--force-if-includes") lease = true;
+    else if (a === "-d" || a === "--delete") deleting = true;
+    else if (PUSH_OPTIONS_WITH_VALUE.has(a)) i++;
+    else if (!a.startsWith("-")) positional.push(a);
+  }
+  const current = git(["symbolic-ref", "--short", "HEAD"])?.trim() || null;
+  const refspecs = positional.slice(1);
+  const targets: { dst: string | null; tag: boolean; plus: boolean }[] =
+    refspecs.length === 0
+      ? [{ dst: current, tag: false, plus: false }]
+      : refspecs.map((spec) => {
+          const plus = spec.startsWith("+");
+          const bare = plus ? spec.slice(1) : spec;
+          const colon = bare.indexOf(":");
+          const src = colon < 0 ? bare : bare.slice(0, colon);
+          let dst = deleting || colon < 0 ? bare : bare.slice(colon + 1);
+          if (dst.startsWith("refs/tags/")) return { dst, tag: true, plus };
+          dst = dst.replace(/^refs\/heads\//, "");
+          if (dst === "HEAD") return { dst: current, tag: false, plus };
+          const tag =
+            colon < 0 &&
+            !deleting &&
+            git(["show-ref", "--verify", "--quiet", `refs/tags/${src}`]) !== null;
+          return { dst, tag, plus };
+        });
+  for (const { dst, tag, plus } of targets) {
+    if (tag) return `git push of the tag ${dst} is blocked: ${OWN_BRANCHES}`;
+    if (dst === null) continue;
+    if (dst === "main" || dst.startsWith("rc/")) {
+      return `git push to ${dst} is blocked: ${OWN_BRANCHES}`;
+    }
+    if (bareForce || plus) {
+      return `git push --force is blocked: use --force-with-lease, and only on the branch checked out here (${current ?? "none"}).`;
+    }
+    if (lease && dst !== current) {
+      return `git push --force-with-lease to ${dst} is blocked: force only the branch checked out here (${current ?? "none"}); ${OWN_BRANCHES}`;
+    }
+  }
+  return null;
+}

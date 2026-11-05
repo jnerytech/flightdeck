@@ -5,8 +5,9 @@ description: "Opens a new Flightdeck phase (writes docs/SPEC-fase-N.md in the fo
 
 # Open or close a phase
 
-The argument is the phase number (`N`). Phase sessions never push, tag or release: they hand
-the green HEAD to the maintainer, who integrates it into `main`. The audit uses the branch's
+The argument is the phase number (`N`). Phase sessions push only their own branch (`fase-N`),
+never `main`, `rc/*` or tags, and never release: they hand the green HEAD to the coordinator,
+who integrates it into `main`. The audit uses the branch's
 base commit, so no tag is needed while the phase runs.
 
 ## Open
@@ -55,7 +56,8 @@ Each item with its command and exit code visible:
 - [ ] README (pt-BR and en), manual (`docs/manual/`) and `docs/DECISIONS.md` with the phase's
       section.
 - [ ] The `spec-verifier` agent's verdict is **accept**.
-- [ ] Hand over: the HEAD, the commands above with their exit codes and the verifier's table. The
-      maintainer pushes, waits for CI, tags and releases.
+- [ ] Hand over: push the branch (`git push -u origin fase-N`), wait for its CI to be green, and
+      send the HEAD, the commands above with their exit codes, the CI run and the verifier's
+      table. The coordinator integrates, tags and releases.
 - [ ] The spec's specific items, such as a check with the real claude. Use Sonnet and a short
       prompt, to save quota.
