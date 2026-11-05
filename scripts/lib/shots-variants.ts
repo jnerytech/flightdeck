@@ -30,12 +30,12 @@ export function pickVariants(env: Record<string, string | undefined>): ShotVaria
   return variants;
 }
 
-/** Whether this run prints every screen of every pair: only then is a baseline with no print missing. */
+/** Whether this run prints every screen (no `DEMO_SHOTS`): only then is a baseline with no print missing. */
 export function isCompleteRun(env: Record<string, string | undefined>): boolean {
-  return !env.DEMO_SHOTS && !env.SHOTS_THEME && !env.SHOTS_LANG;
+  return !env.DEMO_SHOTS;
 }
 
 /** The `<theme>-<lang>` folders this run prints into. */
-export function printedPairs(_env: Record<string, string | undefined>): string[] {
-  return [];
+export function printedPairs(env: Record<string, string | undefined>): string[] {
+  return shotVariants(env).map(({ theme, lang }) => `${theme}-${lang}`);
 }

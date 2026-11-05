@@ -135,7 +135,10 @@ export function checkShots(check: VisualCheck): {
   }
   if (check.complete) {
     const printed = new Set(shots);
-    for (const rel of io.list(baselineDir).filter((r) => !printed.has(r))) {
+    // A run that printed some pairs (a CI leg, #291) looks for missing baselines in those only.
+    const inScope = (rel: string) =>
+      check.pairs === undefined || check.pairs.some((pair) => rel.startsWith(`${pair}/`));
+    for (const rel of io.list(baselineDir).filter((r) => !printed.has(r) && inScope(r))) {
       problems.push(
         `${rel}: a baseline with no print (a screen that went away? run with --update)`,
       );
