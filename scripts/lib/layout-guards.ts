@@ -278,7 +278,20 @@ export interface Settled {
  * It replaces the fixed waits that guards used to take a layout that settles late (issue #192).
  */
 export async function waitForStable(
-  _options: { frames?: number; maxMs?: number } = {},
+  options: { frames?: number; maxMs?: number } = {},
 ): Promise<Settled> {
-  return { stable: true, frames: 0 };
+  const wanted = options.frames ?? 3;
+  const until = Date.now() + (options.maxMs ?? 5000);
+  await document.fonts?.ready;
+  const height = () => document.documentElement.scrollHeight + document.body.scrollHeight;
+  let last = height();
+  let still = 0;
+  while (Date.now() < until) {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const now = height();
+    still = now === last ? still + 1 : 0;
+    last = now;
+    if (still >= wanted) return { stable: true, frames: still };
+  }
+  return { stable: false, frames: still };
 }

@@ -21,6 +21,7 @@ import {
   KEY_REGIONS,
   layoutFindings,
   loadBaseline,
+  waitForStable,
 } from "../lib/layout-guards.ts";
 
 const ALFA = "demo-alfa";
@@ -49,13 +50,20 @@ export async function open(c: Context, route: Route, prefs = true) {
   // connection to heal in seconds.
   query.set("reconnect", "fast");
   await c.page.goto(`${c.url}?${query}`);
-  await c.page.waitForTimeout(1500);
+  // Not a guess: the sidebar's host dots are drawn (the screens with one), the hosts answer, and
+  // then the layout holds still. A screen without a sidebar (simple mode) has no dots to wait for.
+  await c.page
+    .getByRole("img", { name: /^(alfa|beta): / })
+    .first()
+    .waitFor({ timeout: 5000 })
+    .catch(() => undefined);
   await ensureOnline({
     online: () => demoHostsOnline(c),
     reload: async () => void (await c.page.reload()),
     sleep: (ms) => c.page.waitForTimeout(ms),
     now: () => Date.now(),
   });
+  await c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000 });
 }
 
 /** The sidebar's dots of the demo hosts a journey uses: none of them reads offline or connecting. */
@@ -565,7 +573,12 @@ async function openCrowded(c: Context, first: Route, count = 12) {
   );
   const query = new URLSearchParams({ lang: c.lang, theme: "light", reconnect: "fast" });
   await c.page.goto(`${c.url}?${query}`);
-  await c.page.waitForTimeout(1500);
+  await c.page
+    .getByRole("img", { name: /^(alfa|beta): / })
+    .first()
+    .waitFor({ timeout: 5000 })
+    .catch(() => undefined);
+  await c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000 });
 }
 
 /** After scrolling every box to its end, the last row of the list is on screen (or why not). */
