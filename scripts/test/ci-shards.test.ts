@@ -36,10 +36,11 @@ const DISPATCH = "github.event_name != 'workflow_dispatch' || inputs.only != 'sc
 const SUFFIX = "${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}";
 
 describe("ci-shards", () => {
-  test("Linux runs the whole suite with the exact 100% gate and SonarCloud, on its own", () => {
-    expect(job("test").strategy?.matrix?.os).toEqual(["ubuntu-latest"]);
-    expect(runs("test")).toContain("bun run test");
-    expect(job("test").steps.some((s) => s.name === "SonarCloud")).toBe(true);
+  test("Linux runs the whole suite with the exact 100% gate in its own job, and SonarCloud in another (#293)", () => {
+    expect(job("test-suite")["runs-on"]).toBe("ubuntu-latest");
+    expect(runs("test-suite")).toContain("bun run test");
+    expect(job("test-suite").steps.some((s) => s.name === "SonarCloud")).toBe(false);
+    expect(job("sonar").steps.some((s) => s.name === "SonarCloud")).toBe(true);
   });
 
   test("Windows runs the tests in three shards, without coverage", () => {

@@ -102,12 +102,12 @@ describe("ci-paths: the workflow", () => {
       expect(job(key).needs).toContain("changes");
       expect(job(key).if ?? "").toContain(gate("screenshots"));
     }
-    expect(step("test", "Smokes")?.if).toBe(gate("smokes"));
+    expect(step("checks-linux", "Smokes")?.if).toBe(gate("smokes"));
   });
 
   test("the Tauri system libraries step has its own deadline and retries once, with a fresh apt-get update", () => {
     // A slow mirror once took 29 minutes here and the job hit its 45-minute limit.
-    const apt = step("test", "System libraries of the Tauri shell (Linux)");
+    const apt = step("checks-linux", "System libraries of the Tauri shell (Linux)");
     expect(apt?.["timeout-minutes"]).toBe(10);
     const script = apt?.run ?? "";
     // Each attempt has its own limit, so a hung first one still leaves time for the retry.
@@ -117,7 +117,7 @@ describe("ci-paths: the workflow", () => {
   });
 
   test("cargo runs only when the plan says so, after rust-cache", () => {
-    for (const key of ["test", "checks-windows"]) {
+    for (const key of ["checks-linux", "checks-windows"]) {
       const steps = job(key).steps;
       const cache = steps.findIndex((s) => (s.uses ?? "").startsWith("Swatinem/rust-cache@"));
       const cargo = steps.findIndex((s) => (s.run ?? "").includes("cargo check"));
