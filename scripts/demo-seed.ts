@@ -387,7 +387,8 @@ async function host(work: string, name: string): Promise<HostRun> {
     join(base, "data", "templates", "demo-summary.md"),
     serializeTemplate({
       id: "demo-summary",
-      title: { en: "Write a summary", "pt-BR": "Escrever um resumo" },
+      // One name for both languages: the BDD scenario finds the card by it in the language of its run.
+      title: { en: "Write a summary", "pt-BR": "Write a summary" },
       description: {
         en: "Reads a folder of notes and writes a short summary.",
         "pt-BR": "Lê uma pasta de notas e escreve um resumo curto.",

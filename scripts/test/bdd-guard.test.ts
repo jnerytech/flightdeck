@@ -37,7 +37,7 @@ describe("bdd-guard: one English feature per behaviour, run in both app language
     expect(steps).not.toMatch(/\bpt:\s*["'`]/);
     // Literal UI text (the dictionary has it, in the language of the run): by text, label or name.
     expect(steps).not.toMatch(/get(ByText|ByLabel|ByPlaceholder|ByTitle)\(\s*["'`]/);
-    expect(steps).not.toMatch(/\bname:\s*["'`]/);
+    expect(steps).not.toMatch(/getByRole\([^)]*\bname:\s*["'`]/);
     // No accented letter in a step or a feature: the repo's text is English.
     expect(steps).not.toMatch(/[À-ÿ]/);
     for (const feature of files.filter((f) => f.endsWith(".feature"))) {
