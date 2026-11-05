@@ -177,6 +177,8 @@ export function ApprovalCard(props: {
   ): unknown;
   /** More buttons next to Aprovar and Negar (the queue's "Abrir sessão"). */
   actions?: ReactNode;
+  /** What is approved, when it is not a tool's input (a workflow gate's question, #245). */
+  body?: ReactNode;
   /** Copies the session's folder (the whole path) when the user asks. */
   onCopyPath?(path: string): void;
 }) {
@@ -292,7 +294,7 @@ export function ApprovalCard(props: {
       ) : plan !== null ? (
         <Markdown text={plan} />
       ) : (
-        <Body view={view} t={t} onCopyPath={props.onCopyPath} />
+        (props.body ?? <Body view={view} t={t} onCopyPath={props.onCopyPath} />)
       )}
       {resolution ? (
         <p className="text-muted-foreground text-sm">

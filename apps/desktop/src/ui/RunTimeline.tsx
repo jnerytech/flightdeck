@@ -1,6 +1,7 @@
 import type { StepRun, WorkflowRun } from "@flightdeck/protocol";
 import { useState } from "react";
 import { ApprovalActions } from "@/components/approval/approval-actions";
+import { GateText } from "@/components/approval/gate-text";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Meter } from "@/components/status/meter";
 import { Button } from "@/components/ui/button";
@@ -44,12 +45,7 @@ function GateCard(props: {
       aria-label={t("runUi.gate", { step: step.stepId })}
       className="mt-2 flex flex-col gap-2 rounded-lg border border-status-needs-you/50 p-3 text-sm"
     >
-      <p>{step.message}</p>
-      {step.output && (
-        <pre className="overflow-x-auto rounded-md bg-muted p-2 font-mono text-xs">
-          {step.output}
-        </pre>
-      )}
+      <GateText message={step.message ?? ""} output={step.output} />
       <Textarea
         aria-label={t("runUi.gateNote")}
         placeholder={t("runUi.notePlaceholder")}

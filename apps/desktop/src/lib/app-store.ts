@@ -545,6 +545,8 @@ export interface PendingItem {
   cwd?: string | null;
   /** An open gate of a workflow run (`sessionId` is the card), answered with `gate.respond`. */
   gate?: GateRef;
+  /** What the gate asks and shows, so it is approved in sight of it (issue #245). */
+  gateText?: { message: string; output?: string };
   /** Phase 13: the risk the daemon judged for the request; an older daemon sends none. */
   risk?: RiskLevel;
   riskReason?: string;
@@ -631,6 +633,10 @@ export function needsYou(state: AppState): PendingItem[] {
               stepId: step.stepId,
               attempt: step.attempt,
               cardId: run.cardId,
+            },
+            gateText: {
+              message: step.message ?? "",
+              ...(step.output ? { output: step.output } : {}),
             },
           })),
       ),

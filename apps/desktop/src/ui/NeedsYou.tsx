@@ -1,6 +1,7 @@
 import { CheckCheck, MousePointerClick } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
+import { GateText } from "@/components/approval/gate-text";
 import { ClientChip } from "@/components/clients/client-chip";
 import { ActionButton } from "@/components/feedback/action-button";
 import { SplitView } from "@/components/layout/split-view";
@@ -302,6 +303,7 @@ export function NeedsYou(props: {
           t={t}
           nowMs={store.now()}
           onCopyPath={(text) => void store.copyText(text)}
+          {...(item.gateText ? { body: <GateText {...item.gateText} /> } : {})}
           onRespond={(decision, message, _updates, updatedInput) =>
             item.gate
               ? store.respondGate(
