@@ -12,8 +12,9 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
 - `docs/`: `SPEC.md` and `SPEC-fase-N.md` (one per phase), `DECISIONS.md` (divergences and
   decisions of each phase), `TDD.md` (the testing rules), `GLOSSARY.md`, `manual/` (en, pt-BR).
 - `.claude/`: the shared Claude Code setup. Skills `tdd-area` (one TDD area) and `new-phase`
-  (open or close a phase); agents `spec-verifier` (checks a phase against its spec) and
-  `tauri-rust-reviewer` (for changes in `src-tauri`); hooks that block wide `git add`, edits of
+  (open or close a phase); agents `spec-verifier` (checks a phase against its spec),
+  `tauri-rust-reviewer` (for changes in `src-tauri`), `test-quality-reviewer` (tests that cannot
+  fail) and `security-reviewer` (spawns, paths, secrets, pairing), all read-only; hooks that block wide `git add`, edits of
   generated files, test edits that add `.only`/`.skip`/`test.todo`/`toMatchSnapshot`, commits
   that break `type(scope): text` or the TDD order, and heavy runs outside the slot, and that run
   Biome after each edit, in the main checkout and its worktrees. The hook rules live in `scripts/lib/claude-hooks.ts`;

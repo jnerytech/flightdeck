@@ -3860,3 +3860,27 @@ delivery, or rejected:
 ## BDD: one English feature per behaviour (issue #131)
 
 The `*.pt.feature` twins are gone. Each behaviour has one English `.feature` (the repo's text is English), and `playwright.config.ts` runs the same features in two projects, `bdd-en` and `bdd-pt` (the app in pt-BR), so a report names the language of each run. The steps are registered once, in English, and look for elements by role and by dictionary key in the language of the run (`c.t(key)`, or the dictionary object); `scripts/test/bdd-guard.test.ts` fails on a new Portuguese twin, a language in a feature's name, a step registered per language, literal UI text in a step (`getByText`, `getByLabel`, `getByRole(..., { name: "…" })`) or an accented letter in a step or feature. Seed data a scenario names uses one name for both languages: the demo's `Write a summary` template has the same title in en and pt-BR, and the approval scenario's session is "BDD approval". The scenarios under `scripts/e2e/bdd/roi/` (parsed only, outside the glob) lost their pt twins too; their parser test still reads Portuguese gherkin, as a parser check. Checked before deleting: each pt feature had the same scenarios and the same step kinds as its English file.
+
+## Harness D6: the reviewer agents and the protocol-surface ratchet (issue #169)
+
+- **Protocol compatibility is a check, not an agent.** `scripts/lib/protocol-surface.ts` reads
+  every exported schema of `packages/protocol` through its JSON Schema (`toJSONSchema`, input
+  side) into one line per command, field (`?` when optional), constant and enum value;
+  discriminated unions are named by their `type`, so reordering members changes nothing. A line of
+  `packages/protocol/surface-baseline.txt` that the code lost fails `protocol-surface.test.ts`: a
+  removed command or field, an optional field made required, a dropped enum value. Additions are
+  free. Checked: making `HelloPayload.protocolVersion` required is reported.
+- **The baseline moves at release only.** It holds main's surface (7,533 lines). The coordinator
+  refreshes it with `bun run scripts/protocol-surface.ts --write` when cutting a release, so a
+  branch that adds to the protocol never touches the file, and a removal between two releases is
+  caught against what the last release shipped.
+- **Two read-only agents, static.** `test-quality-reviewer` reads each `test(x)` and `feat(x)`
+  pair, the red evidence in the message and the stub's tree through `git show`, and looks for tests
+  that cannot fail (passing on the stub, red by error, weakened in the implementation commit,
+  mock-only, hidden waits, vacuous loops); it runs only area tests and never checks out a commit
+  (review S2-7: a fresh worktree has no dependencies). `security-reviewer` follows inputs from
+  their protocol schema to spawns, paths, logs, refusals and the network, and complements the
+  built-in `/security-review`. Both list `Read, Bash` (listing Bash drops Grep and Glob on Linux)
+  and run on sonnet; `harness-config.test.ts` checks it.
+- **No UX reviewer.** `demo:shots` already runs axe in both themes and languages, and the UX
+  sessions read the prints.

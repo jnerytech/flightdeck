@@ -143,4 +143,16 @@ describe("harness-config", () => {
       }
     }
   });
+
+  test("the reviewer agents exist, are read-only, name their model and say how they report", () => {
+    for (const name of ["test-quality-reviewer", "security-reviewer"]) {
+      const file = join(ROOT, ".claude/agents", `${name}.md`);
+      const meta = existsSync(file) ? frontmatter(file) : "missing";
+      const tools = typeof meta === "string" ? [] : String(meta.tools ?? "").split(/,\s*/);
+      const model = typeof meta === "string" ? meta : String(meta.model);
+      // Listing Bash drops Grep and Glob on Linux (tools reference), so they search with Bash.
+      expect(`${name}: ${tools.join(",")} ${model}`).toBe(`${name}: Read,Bash sonnet`);
+      expect(existsSync(file) && readFileSync(file, "utf8").includes("\n## Output\n")).toBe(true);
+    }
+  });
 });
