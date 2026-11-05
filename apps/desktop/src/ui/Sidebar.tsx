@@ -32,7 +32,6 @@ import {
 import { cn } from "@/lib/utils";
 import type { Key, T } from "../i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "../lib/app-store.ts";
-import { setupProgress, setupSteps } from "../lib/setup-steps.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
 import { requiredMissing } from "../lib/deps-summary.ts";
 import { footAccount } from "../lib/foot-account.ts";
@@ -42,6 +41,7 @@ import { hostDotView } from "../lib/host-status.ts";
 import { hubRows } from "../lib/hub.ts";
 import { activeNav } from "../lib/nav-active.ts";
 import type { Route } from "../lib/router.ts";
+import { setupProgress, setupSteps } from "../lib/setup-steps.ts";
 import type { SidebarGroup } from "../lib/sidebar-groups.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { watchAlerts } from "../lib/watch-alerts.ts";
