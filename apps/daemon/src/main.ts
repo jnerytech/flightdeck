@@ -58,6 +58,7 @@ import { runGh } from "./github/gh.ts";
 import { GithubService } from "./github/service.ts";
 import { HistoryIndexer } from "./history/indexer.ts";
 import { Issues } from "./issues/issues.ts";
+import { linesOf } from "./lines.ts";
 import { lingerState } from "./linger.ts";
 import { acquireLock, readLockPid } from "./lock.ts";
 import { restoreBackup } from "./maintenance/backup.ts";
@@ -1341,20 +1342,6 @@ async function runPair(args: CliArgs, deps: CliDeps): Promise<void> {
       `the daemon listens only on ${config.bind}: another machine cannot use the link above. To pair over Tailscale (${tailscale}), run "flightdeckd setup" and accept the Tailscale question.`,
     );
   }
-}
-
-/** Lines of `stream`, as a `createPrompt` input. */
-async function* linesOf(stream: ReadableStream<Uint8Array>): AsyncGenerator<string> {
-  let pending = "";
-  const decoder = new TextDecoder();
-  for await (const chunk of stream) {
-    pending += decoder.decode(chunk, { stream: true });
-    for (let end = pending.indexOf("\n"); end >= 0; end = pending.indexOf("\n")) {
-      yield pending.slice(0, end).replace(/\r$/, "");
-      pending = pending.slice(end + 1);
-    }
-  }
-  if (pending) yield pending;
 }
 
 /** The command managed sessions run for the Flightdeck MCP server, and whether its program is still there. */
