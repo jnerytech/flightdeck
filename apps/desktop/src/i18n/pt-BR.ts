@@ -1673,6 +1673,14 @@ export const ptBR = {
     session_maybe_active:
       "A sessão pode estar em uso em outro lugar: retome mesmo assim só se tiver certeza de que não está.",
   },
+  modelPicker: {
+    search: "Buscar modelos",
+    loading: "Carregando os modelos…",
+    failed: "Não foi possível carregar os modelos.",
+    retry: "Tentar de novo",
+    none: "Nenhum modelo corresponde.",
+    perMillion: "{prompt} de entrada / {completion} de saída por milhão de tokens",
+  },
   assistantRefusal: {
     assistant_not_configured: "Escolha antes um provedor de IA em Configurações, Assistente.",
     assistant_empty_input: "Escreva algo primeiro.",

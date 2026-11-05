@@ -1677,6 +1677,14 @@ export const en: Dictionary = {
     session_maybe_active:
       "The session may be in use elsewhere: resume it anyway only if you are sure it is not.",
   },
+  modelPicker: {
+    search: "Search models",
+    loading: "Loading models…",
+    failed: "Could not load the models.",
+    retry: "Try again",
+    none: "No model matches.",
+    perMillion: "{prompt} in / {completion} out per million tokens",
+  },
   assistantRefusal: {
     assistant_not_configured: "Choose an AI provider in Settings, Assistant, first.",
     assistant_empty_input: "Write something first.",
