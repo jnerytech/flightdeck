@@ -132,9 +132,20 @@ export class SecretScanner {
     return found;
   }
 
-  /** The text with every secret it holds replaced by `[redacted]` (stub: returns it as it is). */
+  /**
+   * The text with every secret it holds replaced by `[redacted]`: what a log line goes through so
+   * that no token, key, link or vault value is ever written. A `{{variable}}` stays: it is a place
+   * for a value, not a value.
+   */
   redact(text: string): string {
-    return text;
+    let clean = text;
+    for (const [, pattern] of SECRET_PATTERNS) {
+      clean = clean.replace(pattern, (hit) => (hit.includes("{{") ? hit : "[redacted]"));
+    }
+    for (const value of this.vaultValues()) {
+      if (value.length >= MIN_VAULT_VALUE) clean = clean.split(value).join("[redacted]");
+    }
+    return clean;
   }
 }
 
