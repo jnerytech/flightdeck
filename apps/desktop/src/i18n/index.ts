@@ -43,11 +43,17 @@ export function languageFor(system: string): Lang {
 
 const DICTIONARIES: Record<Lang, Dictionary> = { "pt-BR": ptBR, en };
 
-/** The entry at a dotted key (a string or a plural). */
+/**
+ * The entry at a dotted key (a string or a plural). A key the dictionary lacks (a daemon newer than
+ * the app reports an id with no text yet) gives its last part, so a screen shows the raw id and never throws.
+ */
 function entry(dictionary: Dictionary, key: Key): string | Plural {
   let node: unknown = dictionary;
-  for (const part of key.split(".")) node = (node as Record<string, unknown>)[part];
-  return node as string | Plural;
+  const parts = key.split(".");
+  for (const part of parts) node = (node as Record<string, unknown> | undefined)?.[part];
+  const known =
+    typeof node === "string" || (typeof node === "object" && node !== null && "other" in node);
+  return known ? (node as string | Plural) : (parts.at(-1) as string);
 }
 
 /**
