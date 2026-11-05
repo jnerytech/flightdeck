@@ -161,7 +161,7 @@ describe("session-runtime", () => {
     try {
       second.manager.send(sessionId, "one");
     } catch (error) {
-      reason = error instanceof FlightdeckError ? error.reason : String(error);
+      reason = error instanceof FlightdeckError ? (error.reason ?? null) : String(error);
     }
     expect(reason).toBe("runtime_unavailable");
   });
