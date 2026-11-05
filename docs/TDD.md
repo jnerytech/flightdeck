@@ -184,7 +184,18 @@ em vez de depender de cuidado.
 ## Delivery (GitHub Flow, #260)
 
 - Every branch reaches `main` through its own PR: `bun run pr -- open <branch>` titles it after the
-  branch's issue and closes it. A branch stacked on another opens with `--base <parent>`.
+  branch's issue and closes it. A branch stacked on another opens with `--base <parent>`. When
+  `FLIGHTDECK_PR_OPENED` is set (words split on spaces, or a JSON array of strings for a path with
+  spaces), `open` runs it with the new PR's number, branch and base (the coordinator's tooling
+  queues an OpenCode review there, #273). A hook that fails, or runs past two minutes, leaves the
+  PR open; only its exit code is printed, never its output.
+- A change in a risk area (a spawn or kill, a delete, a secret, a permission, the vault or pairing,
+  read from the added lines of the changed code) needs a security review before the hand-off
+  (#273). Run the `security-reviewer` agent, fix what it finds, and commit its verdict after the
+  last risky commit: `git commit --allow-empty -m "chore(security): security-reviewer verdict (#N)"
+  -m "Security-Reviewed: <its one-line summary>"`. Until then `handoff:check` stamps
+  `security=unreviewed`, which `--verify` refuses; a git that fails stamps `security=unknown`, and a
+  stamp with no `security=` or no `ci=` vouches for nothing.
 - CI runs once per commit: on the PR (`pull_request`), on `main` (`push`), or by hand for a branch
   with no PR yet (`bun run ci:branch`).
 - Right after `open`, the session turns on auto-merge: `bun run pr -- auto <n>` (#271). GitHub

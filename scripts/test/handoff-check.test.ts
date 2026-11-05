@@ -39,7 +39,7 @@ describe("handoff-check", () => {
   });
 
   test("a stamp vouches only for the HEAD it names, with every check at 0", () => {
-    const good = `HANDOFF fix-x ${HEAD} typecheck=0 lint=0 audit=0 related=0 t`;
+    const good = `HANDOFF fix-x ${HEAD} typecheck=0 lint=0 audit=0 related=0 security=0 ci=0 t`;
     expect(stampProblem(good, HEAD)).toBeNull();
     expect(stampProblem(good, "f".repeat(40)) ?? "").toContain("stale");
     expect(stampProblem(good.replace("audit=0", "audit=1"), HEAD) ?? "").toContain("audit=1");
@@ -64,10 +64,17 @@ describe("handoff-check", () => {
 
   test("the stamp carries the CI of HEAD, and vouches only when it is green too (#266)", async () => {
     const stamp = async (ci: string) =>
-      runHandoff({ run: async () => 0, branch: "b", head: HEAD, now: "t", ci: async () => ci });
+      runHandoff({
+        run: async () => 0,
+        branch: "b",
+        head: HEAD,
+        now: "t",
+        ci: async () => ci,
+        security: async () => "0",
+      });
     const pending = await stamp("pending");
     expect(pending.stamp).toBe(
-      `HANDOFF b ${HEAD} typecheck=0 lint=0 audit=0 related=0 ci=pending t`,
+      `HANDOFF b ${HEAD} typecheck=0 lint=0 audit=0 related=0 security=0 ci=pending t`,
     );
     expect(pending.code).toBe(1);
     expect(stampProblem(pending.stamp, HEAD)).toBe("failed: ci=pending");
@@ -75,6 +82,33 @@ describe("handoff-check", () => {
     expect(green.code).toBe(0);
     expect(stampProblem(green.stamp, HEAD)).toBeNull();
     expect(stampProblem((await stamp("skip")).stamp, HEAD)).toBe("failed: ci=skip");
+  });
+
+  test("the stamp carries the security gate, and vouches only when it is 0 (#273)", async () => {
+    const stamp = async (security: string) =>
+      runHandoff({
+        run: async () => 0,
+        branch: "b",
+        head: HEAD,
+        now: "t",
+        security: async () => security,
+        ci: async () => "0",
+      });
+    const unreviewed = await stamp("unreviewed");
+    expect(unreviewed.stamp).toBe(
+      `HANDOFF b ${HEAD} typecheck=0 lint=0 audit=0 related=0 security=unreviewed ci=0 t`,
+    );
+    expect(unreviewed.code).toBe(1);
+    expect(stampProblem(unreviewed.stamp, HEAD)).toBe("failed: security=unreviewed");
+    const reviewed = await stamp("0");
+    expect(reviewed.code).toBe(0);
+    expect(stampProblem(reviewed.stamp, HEAD)).toBeNull();
+  });
+
+  test("a stamp with no security gate or no CI field vouches for nothing (#273)", () => {
+    const base = `HANDOFF b ${HEAD} typecheck=0 lint=0 audit=0 related=0`;
+    expect(stampProblem(`${base} ci=0 t`, HEAD)).toBe("incomplete: no security= in the stamp");
+    expect(stampProblem(`${base} security=0 t`, HEAD)).toBe("incomplete: no ci= in the stamp");
   });
 
   test("a hostile stamp is refused in linear time (Sonar S5852) (#232)", () => {

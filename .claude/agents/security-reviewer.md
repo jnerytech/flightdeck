@@ -38,3 +38,8 @@ Follow each input from its protocol schema (`packages/protocol/src`) to where it
 The findings, most severe first (`critical`, `high`, `medium`, `low`), each with `file:line`, the
 concrete scenario (which input leads to which effect) and the fix. With none, say so in one line
 and list what you followed.
+
+End with one line the session commits as a trailer once your findings are fixed (#273):
+`Security-Reviewed: <what you followed and your verdict, in one line>`, for example
+`Security-Reviewed: spawn of the PR hook and the git calls of handoff-check; no high or medium`.
+`handoff:check` refuses a risky change with no such trailer after its last commit.
