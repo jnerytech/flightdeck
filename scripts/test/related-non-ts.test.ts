@@ -35,9 +35,9 @@ describe("related-non-ts", () => {
   });
 
   test("a top-level folder or a root file is a word, not a path: only a baseline's own name counts", () => {
-    expect(
-      selectByPath(["CLAUDE.md", ".claude/rules/ui.md", "docs/manual/en.md"], SOURCES),
-    ).toEqual([]);
+    expect(selectByPath(["CLAUDE.md", ".claude/rules/ui.md", "docs/GLOSSARY.md"], SOURCES)).toEqual(
+      [],
+    );
     expect(selectByPath(["apps/desktop/layout-baseline.json"], SOURCES)).toEqual([
       { path: "apps/desktop/test/layout-ratchet.test.ts", why: "names layout-baseline.json" },
     ]);
