@@ -32,7 +32,7 @@ async function open(lang: "en" | "pt-BR", opencode: boolean) {
   cleanups.push(() => store.dispose());
   const hostId = await store.addHost({ name: "pi", url: d.listen().url, token: TOKEN });
   render(<App store={store} />);
-  await settle(() => store.getState().hosts[0]?.hostInfo !== undefined);
+  await settle(() => Boolean(store.getState().hosts[0]?.hostInfo));
   await act(async () => {
     store.router.push({ name: "new-session", host: hostId });
   });
