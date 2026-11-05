@@ -1148,6 +1148,7 @@ export const ptBR = {
       "Liberar uma tag prod pede uma janela de dias e horas, e não vale fora dela: use ask.",
   },
   daemonFeature: {
+    assistant: "o assistente de IA",
     github: "o login do GitHub",
     boardsync: "a sincronização do quadro",
     roi: "a visão de retorno",

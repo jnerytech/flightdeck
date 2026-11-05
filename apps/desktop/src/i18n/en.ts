@@ -1153,6 +1153,7 @@ export const en: Dictionary = {
       "Allowing a prod tag needs a window of days and hours, and does not apply outside it: use ask.",
   },
   daemonFeature: {
+    assistant: "the AI assistant",
     github: "sign-in with GitHub",
     boardsync: "board sync",
     roi: "the ROI view",

@@ -1,6 +1,7 @@
 import {
   type AccountUpdated,
   type Ack,
+  ASSISTANT_FEATURE,
   type AskpassRequest,
   type BudgetUpdated,
   type CardUpdated,
@@ -50,6 +51,7 @@ import type { Account } from "./account/account.ts";
 import type { Actions } from "./actions/actions.ts";
 import type { AgentConfig } from "./agentcfg/files.ts";
 import type { McpConfig } from "./agentcfg/mcp.ts";
+import type { AssistantService } from "./assistant/service.ts";
 import type { Automations } from "./automations/automations.ts";
 import type { BgService } from "./bg/service.ts";
 import type { Board } from "./board/board.ts";
@@ -171,6 +173,8 @@ export interface ServerOptions {
   history?: HistoryIndexer;
   /** Projects and cards behind the `project.*`, `board.*` and `card.*` commands. */
   board?: Board;
+  /** Phase 40: the AI assistant on this host's `claude`; announced in `host.info` when present. */
+  assistant?: AssistantService;
   /** The run environment of the cards: the run.yaml and the processes (phase 24). */
   runenv?: { configs: RunConfigs; manager: RunManager };
   /** External sessions and their permission requests (phase 5). */
@@ -878,6 +882,11 @@ export function startServer(opts: ServerOptions): RunningServer {
     return opts.board;
   }
 
+  function assistant(): AssistantService {
+    if (!opts.assistant) throw featureOff("assistant");
+    return opts.assistant;
+  }
+
   function subscribe(ws: Socket, sessionId: string, sinceSeq: number) {
     ws.data.subscriptions.get(sessionId)?.();
     // The text of a stream goes out a few frames at a time; every other event flushes it first.
@@ -1450,6 +1459,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             ...(opts.ui ? ["ui.mode"] : []),
             ...(opts.templates ? ["templates"] : []),
             ...(opts.tasks ? ["tasks"] : []),
+            ...(opts.assistant ? [ASSISTANT_FEATURE] : []),
           ],
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
           ...(opts.ui ? { ui: { ...opts.ui } } : {}),
@@ -2147,6 +2157,16 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "card.stop":
         return ok(command.type, await board().stopCard(command.payload.cardId));
+      case "assistant.run":
+        return ok(command.type, await assistant().run(command.payload));
+      case "assistant.cancel":
+        assistant().cancel(command.payload.requestId);
+        return ok(command.type);
+      case "assistant.context":
+        return ok(command.type, await assistant().context(command.payload));
+      case "assistant.record":
+        assistant().record(command.payload);
+        return ok(command.type);
       case "card.diff":
         return ok(command.type, await board().diff(command.payload.cardId));
       case "card.message":
