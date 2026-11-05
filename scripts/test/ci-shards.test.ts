@@ -84,7 +84,7 @@ describe("ci-shards", () => {
   test("test (windows-latest) is one aggregate that fails unless every shard and the checks succeeded", () => {
     const gate = job("test-windows");
     expect(gate.name).toBe(`test (windows-latest)${SUFFIX}`);
-    expect(gate.needs).toEqual(["test-windows-shard", "checks-windows"]);
+    expect(gate.needs).toEqual(["changes", "test-windows-shard", "checks-windows"]);
     expect(gate.if).toBe(`always() && (${DISPATCH})`);
     const check = runs("test-windows");
     expect(check).toContain('test "${{ needs.test-windows-shard.result }}" = success');
@@ -96,7 +96,7 @@ describe("ci-shards", () => {
     expect(runs("screenshots-e2e")).toContain("bun run e2e");
     const gate = job("screenshots");
     expect(gate.name).toBe("screenshots (prints, axe e e2e)");
-    expect(gate.needs).toEqual(["screenshots-prints", "screenshots-e2e"]);
+    expect(gate.needs).toEqual(["changes", "screenshots-prints", "screenshots-e2e"]);
     expect(gate.if).toBe("always()");
     expect(runs("screenshots")).toContain(
       'test "${{ needs.screenshots-prints.result }}" = success',
@@ -105,8 +105,12 @@ describe("ci-shards", () => {
   });
 
   test("every test job skips a screenshots-only dispatch, and dispatched names never take a required name", () => {
-    for (const key of ["test", "test-windows-shard", "checks-windows"]) {
-      expect(`${key}: ${job(key).if}`).toBe(`${key}: ${DISPATCH}`);
+    expect(job("test").if).toBe(DISPATCH);
+    // The Windows jobs also wait for the path plan (#264).
+    for (const key of ["test-windows-shard", "checks-windows"]) {
+      expect(`${key}: ${job(key).if}`).toBe(
+        `${key}: (${DISPATCH}) && needs.changes.outputs.windows == 'true'`,
+      );
     }
     for (const key of ["test-windows-shard", "checks-windows"]) {
       expect(job(key).name ?? "").toEndWith(SUFFIX);
