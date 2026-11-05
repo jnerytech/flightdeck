@@ -63,7 +63,9 @@ describe("abas: selos e botão de aba nova", () => {
     expect(store.getState().searchOpen).toBe(true);
   });
 
-  test("a tab with a badge says so, in words", async () => {
+  // Issue #172: a text pill took the tab's width and left "T…" of the title. The badge is a glyph
+  // (a shape besides its color) named in words for screen readers and in its tooltip.
+  test("a tab's badge is a named glyph with no text, so the title keeps the width", async () => {
     const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
     render(<App store={store} />);
     await act(async () => {
@@ -72,9 +74,12 @@ describe("abas: selos e botão de aba nova", () => {
         hosts: [{ id: "h", name: "pc", status: "online", sessions: [session("idle", 1)] }] as never,
       });
     });
-    const dot = document.querySelector("[role=tab] [data-badge]") as HTMLElement;
-    expect(dot.getAttribute("aria-label")).toBe("Precisa de você");
-    expect(dot.textContent).toBe("");
+    const glyph = document.querySelector("[role=tab] [data-badge='needs-you']");
+    expect(glyph?.getAttribute("role")).toBe("img");
+    expect(glyph?.getAttribute("aria-label")).toBe("Precisa de você");
+    expect(glyph?.getAttribute("title")).toBe("Precisa de você");
+    expect(glyph?.textContent).toBe("");
+    expect(glyph?.querySelector("svg")).not.toBeNull();
   });
 
   test("each kind of screen has its icon: session, card (and its diff), terminal, reader, Custos, agent", () => {
