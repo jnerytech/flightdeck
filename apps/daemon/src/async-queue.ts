@@ -7,6 +7,7 @@ export class AsyncQueue<T> implements AsyncIterable<T> {
   }> = [];
   private ended = false;
   private failure: { error: unknown } | null = null;
+  private idlers: Array<() => void> = [];
 
   push(item: T): void {
     if (this.ended) return;
@@ -18,14 +19,30 @@ export class AsyncQueue<T> implements AsyncIterable<T> {
   end(): void {
     if (this.ended) return;
     this.ended = true;
+    this.wakeIdlers();
     for (const w of this.waiters.splice(0)) w.resolve({ value: undefined, done: true });
   }
 
   fail(error: unknown): void {
     if (this.ended) return;
     this.ended = true;
+    this.wakeIdlers();
     this.failure = { error };
     for (const w of this.waiters.splice(0)) w.reject(error);
+  }
+
+  /**
+   * Phase 39: resolves once the consumer has taken every pushed item and waits for the next one
+   * (or the queue ended), so what was pushed has been handled before the caller goes on.
+   */
+  idle(): Promise<void> {
+    if (this.ended || (this.items.length === 0 && this.waiters.length > 0))
+      return Promise.resolve();
+    return new Promise((resolve) => this.idlers.push(resolve));
+  }
+
+  private wakeIdlers(): void {
+    for (const resolve of this.idlers.splice(0)) resolve();
   }
 
   get isEnded(): boolean {
@@ -39,7 +56,11 @@ export class AsyncQueue<T> implements AsyncIterable<T> {
         if (item !== undefined) return Promise.resolve({ value: item, done: false });
         if (this.failure) return Promise.reject(this.failure.error);
         if (this.ended) return Promise.resolve({ value: undefined, done: true });
-        return new Promise((resolve, reject) => this.waiters.push({ resolve, reject }));
+        const waiting = new Promise<IteratorResult<T>>((resolve, reject) =>
+          this.waiters.push({ resolve, reject }),
+        );
+        this.wakeIdlers();
+        return waiting;
       },
       return: () => {
         this.end();

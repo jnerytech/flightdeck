@@ -16,7 +16,12 @@ import {
 } from "./acp/client.ts";
 import type { FlightdeckMcpServer } from "./flightdeck-mcp.ts";
 import { FLIGHTDECK_AGENT, FLIGHTDECK_PLAN_AGENT, opencodeEnv } from "./opencode-config.ts";
-import { type AcpPromptResult, type AcpUpdate, OpenCodeEvents } from "./opencode-events.ts";
+import {
+  type AcpPromptResult,
+  type AcpToolCall,
+  type AcpUpdate,
+  OpenCodeEvents,
+} from "./opencode-events.ts";
 import type { ScopeResult } from "./opencode-scope.ts";
 import type { AgentRun, AgentRuntime, RuntimeEvent, StartOptions } from "./types.ts";
 
@@ -62,6 +67,17 @@ interface ConfigOption {
   options?: Array<{ value: string }>;
 }
 
+function unsupported(mode: string): FlightdeckError {
+  return new FlightdeckError(
+    "invalid_state",
+    `an OpenCode session does not offer ${mode}`,
+    "runtime_unsupported",
+    { feature: mode },
+  );
+}
+
+const selected = (optionId: "once" | "reject") => ({ outcome: { outcome: "selected", optionId } });
+
 function overridden(detail: string): FlightdeckError {
   return new FlightdeckError(
     "invalid_state",
@@ -87,6 +103,7 @@ interface ConnectionDeps {
   mcpServers: unknown[];
   timers: Timers;
   onUpdate: (params: { update?: AcpUpdate }) => void;
+  onPermission: (params: { toolCall: AcpToolCall }) => Promise<unknown>;
   onExit: (code: number) => void;
 }
 
@@ -104,6 +121,10 @@ class Connection {
       env: deps.env,
     });
     this.client = new AcpClient(this.proc, {
+      requests: {
+        "session/request_permission": (params) =>
+          deps.onPermission(params as { toolCall: AcpToolCall }),
+      },
       onNotification: (method, params) => {
         if (method === "session/update") deps.onUpdate(params as { update?: AcpUpdate });
       },
@@ -194,9 +215,12 @@ class OpenCodeRun implements AgentRun {
   readonly events = new AsyncQueue<RuntimeEvent>();
   private readonly normalizer = new OpenCodeEvents();
   private readonly timers: Timers;
-  private readonly mode: string;
-  private readonly model: string | undefined;
-  private readonly effort: string | undefined;
+  private mode: string;
+  private model: string | undefined;
+  private effort: string | undefined;
+  private permissionMode: StartOptions["permissionMode"];
+  /** The open permission questions, by tool call id. */
+  private readonly asking = new Map<string, AbortController>();
   private conn: Connection | null = null;
   private sessionId: string | undefined;
   private chain: Promise<void> = Promise.resolve();
@@ -212,20 +236,14 @@ class OpenCodeRun implements AgentRun {
     private readonly opts: StartOptions,
   ) {
     this.timers = runtime.timers ?? REAL_TIMERS;
+    this.permissionMode = opts.permissionMode;
     this.mode = opts.permissionMode === "plan" ? FLIGHTDECK_PLAN_AGENT : FLIGHTDECK_AGENT;
     const [model, variant] = (opts.model ?? "").split("#");
     this.model = model || undefined;
     this.effort = variant || opts.effort;
     this.sessionId = opts.resume;
     if (UNSUPPORTED_MODES.has(opts.permissionMode)) {
-      this.fatal(
-        new FlightdeckError(
-          "invalid_state",
-          `an OpenCode session does not offer ${opts.permissionMode}`,
-          "runtime_unsupported",
-          { feature: opts.permissionMode },
-        ),
-      );
+      this.fatal(unsupported(opts.permissionMode));
       return;
     }
     this.chain = this.connect().catch((error) => this.fatal(error));
@@ -240,10 +258,26 @@ class OpenCodeRun implements AgentRun {
   }
 
   async interrupt(): Promise<void> {
+    for (const controller of this.asking.values()) controller.abort();
     const conn = this.conn;
     if (!this.turnActive || !conn) return;
     conn.cancel();
     this.escalation = this.timers.set(() => this.escalate(conn), INTERRUPT_ESCALATION_MS);
+  }
+
+  async setPermissionMode(mode: StartOptions["permissionMode"]): Promise<void> {
+    if (UNSUPPORTED_MODES.has(mode)) throw unsupported(mode);
+    this.permissionMode = mode;
+    this.mode = mode === "plan" ? FLIGHTDECK_PLAN_AGENT : FLIGHTDECK_AGENT;
+    await this.conn?.set("mode", this.mode, this.mode);
+  }
+
+  async setModel(model: string | undefined): Promise<void> {
+    const [name, variant] = (model ?? this.opts.model ?? "").split("#");
+    this.model = name || undefined;
+    this.effort = variant || this.opts.effort;
+    if (this.model) await this.conn?.set("model", this.model, this.mode);
+    if (variant) await this.conn?.set("effort", variant, this.mode);
   }
 
   close(): Promise<void> {
@@ -281,6 +315,7 @@ class OpenCodeRun implements AgentRun {
       onUpdate: (params) => {
         if (params.update) this.push(this.normalizer.update(params.update));
       },
+      onPermission: (params) => this.permission(params.toolCall),
       onExit: (code) => {
         if (conn === this.conn) this.fatal(new Error(`OpenCode exited with code ${code}`));
       },
@@ -328,6 +363,35 @@ class OpenCodeRun implements AgentRun {
       if (this.escalation !== null) this.timers.clear(this.escalation);
       this.escalation = null;
       if (!this.stopped && this.conn === conn) this.armIdle();
+    }
+  }
+
+  /**
+   * A permission question: its card first (handled by the consumer before the question is stored),
+   * then the broker. `always` is never answered: a saved rule would beat Flightdeck's `ask`.
+   */
+  private async permission(toolCall: AcpToolCall): Promise<unknown> {
+    const { events, child, tool } = this.normalizer.permissionRequest(toolCall);
+    if (child) return selected("reject");
+    this.push(events);
+    await this.events.idle();
+    if (this.permissionMode === "bypassPermissions" && this.opts.allowBypass)
+      return selected("once");
+    const id = toolCall.toolCallId;
+    const controller = new AbortController();
+    this.asking.set(id, controller);
+    try {
+      const decision = await this.opts.canUseTool(tool.name, tool.input, {
+        signal: controller.signal,
+        toolUseId: id,
+      });
+      if (controller.signal.aborted) return { outcome: { outcome: "cancelled" } };
+      if (decision.behavior === "allow") return selected("once");
+      // OpenCode rejects every other pending request of the session with this one.
+      for (const [other, sibling] of this.asking) if (other !== id) sibling.abort();
+      return selected("reject");
+    } finally {
+      this.asking.delete(id);
     }
   }
 
