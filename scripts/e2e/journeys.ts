@@ -907,17 +907,26 @@ export async function layout(c: Context, problems: string[]) {
       );
     }
   }
-  // Issue #225: in a split, each area's tab bar keeps its height (it grew to half the area).
+  // Issue #225: in a split, each area's tab bar keeps its height (it grew to half the area). Only
+  // the bars' tablists are counted (a screen may have tabs of its own), and the split is always
+  // closed again, so the next language starts with one area.
   await c.page.setViewportSize({ width: 1280, height: 800 });
   await open(c, { name: "hub" });
   await c.page.keyboard.press("Control+\\");
-  await waitFor(async () => (await c.page.getByRole("tablist").count()) === 2, "the split window");
-  for (const height of await c.page
-    .locator(".tab-bar")
-    .evaluateAll((bars) => bars.map((bar) => Math.round(bar.getBoundingClientRect().height)))) {
-    if (height > 40) problems.push(`${c.lang} split: a tab bar is ${height} px tall`);
+  try {
+    await waitFor(
+      async () => (await c.page.locator(".tab-bar [role=tablist]").count()) === 2,
+      "the split window",
+    );
+    const heights = await c.page
+      .locator(".tab-bar")
+      .evaluateAll((bars) => bars.map((bar) => Math.round(bar.getBoundingClientRect().height)));
+    for (const height of heights) {
+      if (height > 40) problems.push(`${c.lang} split: a tab bar is ${height} px tall`);
+    }
+  } finally {
+    await c.page.keyboard.press("Control+\\");
   }
-  await c.page.keyboard.press("Control+\\");
   // The smallest window the app allows (tauri.conf.json): where the menu and the dialog are tightest.
   await c.page.setViewportSize({ width: 720, height: 480 });
   await open(c, { name: "hub" });
