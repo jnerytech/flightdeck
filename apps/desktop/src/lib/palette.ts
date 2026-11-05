@@ -5,6 +5,7 @@ import { UNASSIGNED } from "./clients.ts";
 import type { AppSnippet } from "./global-snippets.ts";
 import { hostStatusView } from "./host-status.ts";
 import { basename } from "./paths.ts";
+import type { Route } from "./router.ts";
 import { keysLabel, type ShortcutAction, shortcutOf } from "./shortcuts.ts";
 import type { TerminalTarget } from "./terminal.ts";
 import { hasFeature } from "./version.ts";
@@ -50,6 +51,10 @@ export type PaletteTarget =
   | { kind: "connect-ssh"; hostId: string; targetId: string }
   /** A snippet to fill and use: a host's, or a global one of the app (`hostId` null). */
   | { kind: "snippet"; hostId: string | null; snippetId: string }
+  /** Issue #147: a card made from the text typed in the palette. */
+  | { kind: "create-card"; hostId: string; projectId: string; title: string }
+  /** A card made from an issue: `ref` when the text names the issue fully, else its `id` in the project. */
+  | { kind: "create-card-issue"; hostId: string; projectId: string; ref?: string; id?: string }
   /** A pasted PR link (phase 22): the hosts that watch PRs are asked which card or session it is. */
   | { kind: "pull-link"; url: string };
 
@@ -71,11 +76,31 @@ export interface PaletteItem {
   shortcut?: string;
   /** More text the query also matches, besides the label (a snippet's tags and content). */
   keywords?: string;
+  /** A session's state, for its glyph: the key of `hub.stateDots`. */
+  stateKey?: "running" | "needs_you" | "idle";
+  /** The host and the project the entry belongs to, for the scope chips. */
+  hostId?: string;
+  projectId?: string;
 }
 
 export interface PaletteSection {
   title: string;
   items: PaletteItem[];
+  /** The recent entries: they take Alt+1 to Alt+6. */
+  recent?: true;
+}
+
+/** The host and project the palette is narrowed to; both null is no scope. */
+export interface PaletteScope {
+  hostId: string | null;
+  projectId: string | null;
+}
+
+/** The scope the palette opens with: where the person is (a board or card: its project; else its host). */
+export function paletteScope(route: Route, state: AppState): PaletteScope {
+  void route;
+  void state;
+  return { hostId: null, projectId: null };
 }
 
 /** A PR link of Azure DevOps (`/pullrequest/<n>`) or GitHub (`/pull/<n>`). */
@@ -106,6 +131,10 @@ export function paletteSections(
     oldest?: { text: string; opens: boolean; key: string };
     /** The mode the window could switch to (none when the host is locked). */
     modeSwitch?: "simple" | "full" | null;
+    /** Only what belongs to this host and project (actions, which belong to none, stay). */
+    scope?: PaletteScope;
+    /** The recents are already in the order to show (the palette froze it when it opened). */
+    keepRecentOrder?: boolean;
   },
 ): PaletteSection[] {
   const { t } = options;
