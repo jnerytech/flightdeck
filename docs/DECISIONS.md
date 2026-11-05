@@ -3991,3 +3991,21 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   existing usage tests stay as they were, and only `assistant-usage` reads `provider`.
 - **A logged-out `claude`** answers `subtype: "success"` with `is_error: true` and the reason as its result. `complete`
   maps that to `assistant_host_unavailable { detail }`, like a spawn failure. Proof of concept 3 confirms the shape.
+
+### Phase 40: ADR 40-3, the Rust logic in a crate of its own
+
+- **Decision.** The assistant's Rust logic (the key store, the two providers' request builders and response mappers, the
+  guards: caps, token bucket, in-flight limit, cancel) lives in the crate `flightdeck-assistant`
+  (`apps/desktop/src-tauri/assistant/`), which does not depend on Tauri. `src-tauri/src/assistant.rs` keeps only the
+  `#[tauri::command]` wrappers and the shared `spawn_blocking_result`. `src-tauri` becomes a workspace with members
+  `.` and `assistant`, both in `default-members`, so CI's `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml`
+  runs the crate's tests too.
+- **Why.** The Tauri crate does not build on the development host without the webkit and GTK dev packages (a `sudo`
+  install); the crate does, so its tests run there and in CI. The spec's integration test already reached only `pub`
+  items, and the providers' logic is mostly pure (a request built from inputs, a result mapped from status and body).
+- **The spec follows it.** The areas table names `assistant/src/{keys,anthropic,openrouter}.rs` and
+  `assistant/tests/guard.rs`; `spec-lint` accepts a crate one level inside `src-tauri`.
+- **tokio as a dev-dependency** at the version already in the lock (through Tauri): the async tests need a runtime, and
+  no new crate enters the lock. The spec's "no new dev-dependency" is read as no HTTP mocking crate: the fake server is
+  `std::net::TcpListener` on loopback.
+- **TLS** mirrors the updater: `reqwest` with `rustls-no-provider`, and the ring `CryptoProvider` installed when none is.
