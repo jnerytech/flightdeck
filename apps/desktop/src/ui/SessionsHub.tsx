@@ -48,6 +48,7 @@ import {
   hubGroups,
   hubRows,
   hubView,
+  isSearching,
   sessionLineText,
   sharedMeta,
 } from "../lib/hub.ts";
@@ -163,13 +164,7 @@ export function SessionsHub(props: {
   };
   const [earlierOpen, setEarlierOpen] = useState<Record<string, boolean | undefined>>({});
   // Any filter narrows the list on purpose: what it keeps is shown, not folded away.
-  const searching =
-    filter.text.trim() !== "" ||
-    filter.host !== "" ||
-    filter.origin !== "" ||
-    filter.state !== "" ||
-    filter.persona !== "" ||
-    filter.pinnedOnly;
+  const searching = isSearching(filter);
   const views = useMemo(
     () => hubView(allGroups, open, earlierOpen, searching),
     [allGroups, open, earlierOpen, searching],
@@ -419,8 +414,8 @@ export function SessionsHub(props: {
         <FoldAll
           expandLabel={t("hub.expandAll")}
           collapseLabel={t("hub.collapseAll")}
-          onExpand={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.key, true])))}
-          onCollapse={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.key, false])))}
+          onExpand={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, true])))}
+          onCollapse={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, false])))}
         />
         {state.hosts.length > 1 && (
           <HostFilterRow
@@ -483,7 +478,9 @@ export function SessionsHub(props: {
                 name={group.name}
                 expanded={groupView?.expanded ?? true}
                 toggleLabel={t("hub.toggleProject", { name: label })}
-                onToggle={() => setOpen({ ...open, [group.key]: !(groupView?.expanded ?? false) })}
+                onToggle={() =>
+                  setOpen({ ...open, [group.foldKey]: !(groupView?.expanded ?? false) })
+                }
               >
                 {clientChip && state.clientSelection === ALL_CLIENTS && (
                   <ClientChip name={clientChip.name} color={clientChip.color} />
@@ -658,7 +655,7 @@ export function SessionsHub(props: {
                   className="self-start text-muted-foreground text-xs"
                   aria-expanded={groupView.earlierShown}
                   onClick={() =>
-                    setEarlierOpen({ ...earlierOpen, [group.key]: !groupView.earlierShown })
+                    setEarlierOpen({ ...earlierOpen, [group.foldKey]: !groupView.earlierShown })
                   }
                 >
                   {groupView.earlier.length === 1
