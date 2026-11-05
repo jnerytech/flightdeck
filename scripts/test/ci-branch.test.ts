@@ -268,9 +268,14 @@ describe("ci.yml: any pushed branch can run the full CI by hand", () => {
     expect(workflow.jobs.test?.if).toBe(
       "github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'",
     );
-    // The prints and the e2e journeys run on every dispatch (#220 split them into two jobs).
-    expect(workflow.jobs["screenshots-prints"]?.if).toBeUndefined();
-    expect(workflow.jobs["screenshots-e2e"]?.if).toBeUndefined();
+    // The prints and the e2e journeys follow the path plan only (#264), and a dispatch plans
+    // everything, so they still run on every dispatch (#220 split them into two jobs).
+    expect(workflow.jobs["screenshots-prints"]?.if).toBe(
+      "needs.changes.outputs.screenshots == 'true'",
+    );
+    expect(workflow.jobs["screenshots-e2e"]?.if).toBe(
+      "needs.changes.outputs.screenshots == 'true'",
+    );
   });
 
   test("a dispatched run never cancels the branch's push or pull request run, and skips SonarCloud", () => {
@@ -302,8 +307,9 @@ describe("ci.yml: any pushed branch can run the full CI by hand", () => {
       ["prints", "apps/desktop/screenshots", "always()"],
     ]);
     expect(uploads("screenshots-e2e")).toEqual([
-      ["relatorio-e2e", "playwright-report", "always()"],
-      ["e2e-failures", "apps/desktop/screenshots/e2e-failures", "always()"],
+      // One of each per e2e shard (#264).
+      ["relatorio-e2e-${{ matrix.shard }}", "playwright-report", "always()"],
+      ["e2e-failures-${{ matrix.shard }}", "apps/desktop/screenshots/e2e-failures", "always()"],
     ]);
   });
 
