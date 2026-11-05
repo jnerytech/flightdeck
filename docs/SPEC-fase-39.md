@@ -41,6 +41,10 @@ What the docs do not say and the installed binary does (all checked by the probe
   docs list the method, not its parameters.
 - The v2 docs have no `server`, `sessions` or `cli/run` page (404).
 
+What the docs say and was not checked against the binary: `session/set_mode`, `$/cancel_request` and `authenticate`
+(documented on cli/acp, not called by the probes). The `api` page was read word for word up to about 79k of its 283k
+characters; the rest only through a summary, so a route or field there may be missing from this spec.
+
 ## Proof of concept first
 
 Settled by the probes (recorded in DECISIONS, phase 39), with the free default model:
@@ -64,7 +68,14 @@ Still open, answered at the start of the `opencode-events` area by recording rea
 8. Whether `usage_update.cost` is the session total on a paid model too (the free model always reports 0): one short
    Sonnet turn twice, at the end-of-phase real check, not in a test.
 9. Whether a system or managed config (`/etc/opencode/`) outranks `OPENCODE_CONFIG_CONTENT`. Not probed (it needs root);
-   the tripwire below covers it.
+   the tripwire below detects it.
+10. Agent rules come after global ones and the last match wins (permissions page), so an agent's own rules beat the
+    injected ones: `explore` allows `shell`, `read`, `grep`, `glob`, `webfetch`, and `build` and `plan` allow `question`.
+    The probes only showed `shell` asking on `build`, which has no `shell` rule of its own. To confirm with one free-model
+    probe: `subagent: deny` holds on `build`, and `question: deny` does not (so declining `elicitation/create` is the
+    defense).
+11. Whether a saved `always` rule (from OpenCode's own TUI, project-scoped) beats the injected `ask`. The docs say it never
+    overrides a configured `deny`, which implies it does override `ask`. Same probe as 10.
 
 ## Design
 
@@ -105,7 +116,7 @@ session's environment and the injected config, so sessions never share a process
 | `usage_update` | kept: `cost.amount` is the session's running total |
 | the `session/prompt` answer | `turn.result { subtype, isError, durationMs, costUsd: <last session total>, usage: { inputTokens, outputTokens, cacheReadInputTokens?, cacheCreationInputTokens? } }` |
 | `agent_thought_chunk`, `plan`, `current_mode_update`, `config_option_update` | nothing (the Claude runtime leaves thinking out too) |
-| any update whose `sessionId` is not the session's (a child session) | nothing |
+| any update whose `sessionId` is not the session's (a child session) | nothing; a child's `session/request_permission` is answered `reject` (subagents are denied, so it should not come) |
 
 - `stopReason` to `subtype`: `end_turn` is `success`; `cancelled` is what the Claude runtime reports for an interrupt;
   `max_tokens`, `max_turn_requests` and `refusal` are errors with their own name. A JSON-RPC error on the prompt is a
@@ -119,7 +130,7 @@ unknown tool). The table is filled from the recorded fixtures (question 6):
 
 | OpenCode | Flightdeck | Input |
 | --- | --- | --- |
-| `shell` | `Bash` | `command`, `description` when present (`cwd` dropped) |
+| `shell` | `Bash` | `command`, `description` when present, `cwd` kept (a command outside the folder must look like one) |
 | `read` | `Read` | path field to `file_path` |
 | `edit` | `Edit` | path to `file_path`, old and new text to `old_string`, `new_string` |
 | `write` | `Write` | path to `file_path`, `content` |
@@ -139,13 +150,16 @@ unknown tool). The table is filled from the recorded fixtures (question 6):
   { "action": "read", "resource": "*.env.example", "effect": "allow" },
   { "action": "glob", "resource": "*", "effect": "allow" },
   { "action": "grep", "resource": "*", "effect": "allow" },
-  { "action": "question", "resource": "*", "effect": "deny" }
+  { "action": "question", "resource": "*", "effect": "deny" },
+  { "action": "subagent", "resource": "*", "effect": "deny" }
 ]
 ```
 
 - So everything but reads inside the folder asks (a read outside it is OpenCode's `external_directory`, which asks).
   `question` (OpenCode's ask-the-user tool, `elicitation/create`) is denied in version 1, so a session never waits on a
-  form the app cannot show; an `elicitation/create` that still arrives is declined.
+  form the app cannot show. `build` and `plan` allow `question` in their own rules, which win (question 10), so the real
+  defense is that every `elicitation/create` is declined. `subagent` is denied: `explore`'s own rules allow `shell` and
+  `webfetch` without asking, which would bypass Flightdeck (subagents are Later).
 - `session/request_permission` goes to `canUseTool` with the mapped name and input, so the broker, the risk rules, the
   persona tool check and the automatic approval work unchanged. Allow answers `once`; deny answers `reject`; an aborted
   signal answers `cancelled`. `always` is never sent: it would save a rule in OpenCode's own store, outside Flightdeck.
@@ -156,10 +170,15 @@ unknown tool). The table is filled from the recorded fixtures (question 6):
   the broker; `bypassPermissions` allows everything, only when the host's switch allows bypass (the session manager
   already refuses it otherwise). `dontAsk` and `auto` are refused for OpenCode sessions with `runtime_unsupported`.
 - `--auto` is never passed. A session whose ruleset cannot be built is not started.
-- **Tripwire.** The ruleset always asks, whatever the mode (the runtime answers for `acceptEdits` and `bypassPermissions`
-  itself), so a `Bash`, `Edit`, `Write` or `opencode:*` tool call that completes without a permission request means some
-  config outranked Flightdeck's (question 9). The runtime cancels the turn and
-  fails the session with `session.error { code: "opencode_permissions_overridden" }`.
+- **Tripwire (detection, not prevention).** The ruleset always asks, whatever the mode (the runtime answers for
+  `acceptEdits` and `bypassPermissions` itself), so a call of a tool whose action the ruleset sets to `ask` (`Bash`,
+  `Edit`, `Write`, `WebFetch`, and any other the recorded fixtures show asking) that completes without a permission
+  request means some config outranked Flightdeck's (questions 9 to 11). The command has already run by then; the runtime
+  cancels the turn and fails the session with `session.error { code: "opencode_permissions_overridden" }`, so it does not
+  go on unattended. Unmapped tools (`opencode:*`) never trip it: some internal ones may not go through permissions.
+- **Known limit.** A project-scoped `always` rule saved from OpenCode's own TUI, or a system or managed config, may beat
+  the injected `ask` (questions 9 and 11). The manual says so, and the tripwire stops the session the first time it
+  happens.
 
 **Models.** The session's `model` holds OpenCode's selector `provider/model`, optionally `#variant`. The runtime splits
 it: `provider/model` goes to the `model` option and a variant that is one of the session's `effort` options goes to
@@ -218,12 +237,16 @@ feature), both translated in both languages.
 
 **Test guard.** The preload puts an `opencode` sentinel on the test PATH, the way it does for `claude`: it fails the suite
 if run, and the preload aborts if a lookup of `opencode` does not land on it. `HOME` is already a temp folder, so the
-`~/.opencode/bin` fallback cannot reach the real one. Tests use `apps/daemon/test/fake-opencode.ts`: a folder with
+`~/.opencode/bin` fallback cannot reach the real one. Discovery (the `--version` probe) and the doctor's probe are
+injected, so a test decides what they answer; a daemon with the `fake` runtime runs no discovery; a test or smoke that
+starts a daemon with the `claude` runtime sets `opencode.enabled: false` or an `executablePath` that does not exist, the
+way it points `claude.executablePath` at one. Tests use `apps/daemon/test/fake-opencode.ts`: a folder with
 `opencode` and `opencode.cmd` that forward to `fake-opencode-main.ts`, an ACP peer that plays a script built from the
 recorded fixtures and logs what it received.
 
 **Later (phase 40 or issues, for the maintainer to cut):**
 
+- Subagents of OpenCode sessions (`subagent` is denied in version 1; their agents' own rules skip Flightdeck's approval).
 - Personas and team workers on OpenCode (the persona body has no system prompt slot in ACP; it would go as an OpenCode
   agent in the config content or as the first message, and its tool list through the name map).
 - Board cards and arena variants on OpenCode.
@@ -237,11 +260,11 @@ recorded fixtures and logs what it received.
 
 | Area | What must pass |
 | --- | --- |
-| `opencode-guard` | the preload's `opencode` sentinel is first on the test PATH; running it fails the suite; a lookup that misses it aborts; the `~/.opencode/bin` fallback resolves under the temp HOME only |
+| `opencode-guard` | the preload's `opencode` sentinel is first on the test PATH; running it fails the suite; a lookup that misses it aborts; the `~/.opencode/bin` fallback resolves under the temp HOME only; a `claude`-runtime daemon test with the default config never runs the sentinel |
 | `acp-client` | requests and responses by id; notifications; a request from the agent goes to the handler and its answer goes back; `fs/*` and unknown requests get a JSON-RPC error; a timeout; the process exit fails every pending request; no message text in a log |
 | `opencode-events` | each row of the events table, from the recorded fixtures: deltas and the kept text per message, tool_use only with the complete input and once, tool results with truncation and errors, child-session updates dropped, thought chunks dropped, `turn.result` with the session total and the token fields, each `stopReason` |
 | `opencode-tools` | the name map and the input renames for each row; an unknown tool keeps `opencode:<name>`; the risk rules see `Bash` with its command |
-| `opencode-permissions` | the ruleset is exactly the JSON above and always injected; a request goes to `canUseTool` with the mapped name and input; allow is `once`, deny is `reject`, abort is `cancelled`, `always` is never sent; `acceptEdits` allows edits inside the folder only; `plan` sets the plan mode; `bypassPermissions` only when allowed; `dontAsk` and `auto` refused; the tripwire fails the session; `elicitation/create` is declined |
+| `opencode-permissions` | the ruleset is exactly the JSON above and always injected; a request goes to `canUseTool` with the mapped name and input; allow is `once`, deny is `reject`, abort is `cancelled`, `always` is never sent; `acceptEdits` allows edits inside the folder only; `plan` sets the plan mode; `bypassPermissions` only when allowed; `dontAsk` and `auto` refused; the tripwire fails the session for an asking tool and never for `opencode:*`; `elicitation/create` is declined; a child session's request is rejected |
 | `opencode-runtime` | start runs `<opencode> acp` with the session env and the config content; `session/new` with the Flightdeck MCP; resume uses `session/resume`; model, `#variant` and effort through `set_config_option`; images as image blocks; interrupt cancels; close closes and the process ends; fork whole and `upToMessageId` refused |
 | `opencode-discovery` | the executable from config, then PATH, then `<HOME>/.opencode/bin`; the version probe; v1 and missing reported with their reason; `enabled: false` |
 | `opencode-models` | `runtime.models` parses `models --standalone`; the cache; a failure answers `runtime_unavailable` |
@@ -253,7 +276,7 @@ recorded fixtures and logs what it received.
 | `opencode-session-ui` | the runtime choice only when available; the OpenCode model list and effort; the four modes; persona hidden; the badge; the Claude-only panels hidden; both languages; axe clean |
 | `opencode-smoke` | `smoke:opencode` starts a daemon with the fake `opencode` on PATH, opens an OpenCode session, sends a prompt, approves a permission over the socket, sees the tool result and a `turn.result` with cost, interrupts, restarts the daemon and resumes with `session/resume`, and prints `SMOKE OPENCODE OK` |
 
-**Acceptance criteria:** the usual ones, the proof of concept answers 6 to 9 recorded in DECISIONS (8 at the real
+**Acceptance criteria:** the usual ones, the proof of concept answers 6 to 11 recorded in DECISIONS (8 at the real
 check), both manuals (a section on OpenCode sessions: install, what works, what is Claude-only), and the spec-verifier's
 verdict. The real check at the end of the phase (by hand, not in a test): one OpenCode session on the Pi with
 `anthropic/claude-sonnet-5-5`, a two-turn prompt with one shell command approved from the app, the cost shown, then
