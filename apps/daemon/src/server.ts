@@ -32,7 +32,6 @@ import { type Central, messageExternal } from "./central/central.ts";
 import type { Forker } from "./checkpoints/fork.ts";
 import type { Rewinder } from "./checkpoints/rewind.ts";
 import type { Snapshots } from "./checkpoints/snapshots.ts";
-import { withTurnUuids } from "./checkpoints/turn-uuid.ts";
 import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
 import { statuslineData } from "./costs/statusline.ts";
@@ -496,10 +495,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "issues");
   }
 
-  function rewinder(): Rewinder {
-    return need(opts, "rewinder");
-  }
-
   /** `host.info.update` once the daemon has checked its manifest. */
   function updateStatus() {
     const update = opts.updates?.status();
@@ -538,20 +533,9 @@ export function startServer(opts: ServerOptions): RunningServer {
   function summary(): SummaryService {
     return need(opts, "summary");
   }
-  function trace(): TraceService {
-    return need(opts, "trace");
-  }
-
-  function changes(): Changes {
-    return need(opts, "changes");
-  }
 
   function personaSessions(): OpenSessionPersonas {
     return need(opts, "personaSessions");
-  }
-
-  function review(): ReviewComments {
-    return need(opts, "review");
   }
 
   function files(): ReviewFiles {
@@ -703,19 +687,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, await maintenance().backupNow());
       case "maintenance.prune":
         return ok(command.type, await maintenance().prune(command.payload.dryRun === true));
-      case "snapshots.list":
-        return ok(command.type, {
-          // A terminal turn's uuid is found in the indexed transcript, when it can be told.
-          snapshots: withTurnUuids(
-            opts.snapshots?.list(command.payload.claudeSessionId) ?? [],
-            opts.history?.userPrompts(command.payload.claudeSessionId) ?? [],
-          ),
-        });
-      case "snapshots.files": {
-        if (!opts.snapshots) throw featureOff("snapshots");
-        const { claudeSessionId, n } = command.payload;
-        return ok(command.type, await opts.snapshots.files(claudeSessionId, n));
-      }
       case "card.startArena": {
         const { cardId, ...input } = command.payload;
         return ok(command.type, await board().startArena(cardId, input));
@@ -769,18 +740,6 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "session.fork": {
         if (!opts.forker) throw featureOff("forker");
         return ok(command.type, await opts.forker.fork(command.payload));
-      }
-      case "rewind.preview": {
-        const { claudeSessionId, turn } = command.payload;
-        return ok(command.type, await rewinder().preview(claudeSessionId, turn));
-      }
-      case "rewind.apply": {
-        const { claudeSessionId, turn, confirm } = command.payload;
-        return ok(command.type, await rewinder().apply(claudeSessionId, turn, confirm === true));
-      }
-      case "rewind.undo": {
-        const { claudeSessionId, confirm } = command.payload;
-        return ok(command.type, await rewinder().undo(claudeSessionId, confirm === true));
       }
       case "daemon.update.apply": {
         if (!opts.updater) throw featureOff("updater");
@@ -872,56 +831,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         );
         return ok(command.type, { ...page, sessions });
       }
-      case "history.get": {
-        const { claudeSessionId, cursor, limit, tail } = command.payload;
-        return ok(command.type, await history().get(claudeSessionId, cursor, limit, tail));
-      }
-      case "history.search": {
-        const index = history();
-        const hits = index.search(command.payload).map((hit) => ({
-          ...hit,
-          cursor: index.cursorFor(hit.claudeSessionId, hit.uuid),
-        }));
-        return ok(command.type, { hits });
-      }
-      case "history.resume": {
-        const { claudeSessionId, force, name, permissionMode } = command.payload;
-        const session = history().session(claudeSessionId);
-        if (!session) {
-          throw new FlightdeckError(
-            "not_found",
-            `transcript ${claudeSessionId} not indexed`,
-            "transcript_not_indexed",
-            { id: claudeSessionId },
-          );
-        }
-        if (session.maybeActive && !force) {
-          throw new FlightdeckError(
-            "invalid_state",
-            "session possibly in use elsewhere; send force: true to resume anyway",
-            "session_maybe_active",
-          );
-        }
-        const { agents } = await preparePersonas(opts.personas, undefined, session.cwd);
-        return ok(
-          command.type,
-          await manager.createResumed({
-            cwd: session.cwd,
-            claudeSessionId,
-            agents,
-            name: name ?? session.title,
-            ...(permissionMode ? { permissionMode } : {}),
-          }),
-        );
-      }
-      case "history.watch": {
-        const index = history();
-        ws.data.unwatchHistory?.();
-        ws.data.unwatchHistory = index.onChange((change) =>
-          send(ws, { type: "history.changed", ...change }),
-        );
-        return ok(command.type);
-      }
       case "project.list":
         return ok(command.type, {
           projects: await Promise.all(
@@ -1003,12 +912,6 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "session.summary": {
         const { claudeSessionId, question, state } = command.payload;
         return ok(command.type, await summary().get(claudeSessionId, { question, state }));
-      }
-      case "trace.get":
-        return ok(command.type, await trace().get(command.payload.claudeSessionId));
-      case "trace.export": {
-        const { claudeSessionId, includeContent } = command.payload;
-        return ok(command.type, await trace().export(claudeSessionId, includeContent === true));
       }
       case "files.sessions":
         return ok(command.type, { sessions: sessionFiles().sessionsOf(command.payload.path) });
@@ -1125,21 +1028,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { cardId, mode, confirm } = command.payload;
         return ok(command.type, await board().mergeLocal(cardId, mode, confirm === true));
       }
-      case "changes.get":
-        return ok(command.type, await changes().get(command.payload.target));
-      case "changes.watch": {
-        const { target } = command.payload;
-        const stop = await changes().watch(target, (result) =>
-          send(ws, { type: "changes.updated", ...result }),
-        );
-        ws.data.changeWatchers.get(target)?.();
-        ws.data.changeWatchers.set(target, stop);
-        return ok(command.type);
-      }
-      case "changes.unwatch":
-        ws.data.changeWatchers.get(command.payload.target)?.();
-        ws.data.changeWatchers.delete(command.payload.target);
-        return ok(command.type);
       case "session.applyPersona": {
         const { sessionId, claudeSessionId, persona } = command.payload;
         return ok(
@@ -1149,25 +1037,6 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "session.clearPersona":
         return ok(command.type, await personaSessions().clear(command.payload));
-      case "review.list":
-        return ok(command.type, { comments: await review().list(command.payload.target) });
-      case "review.add":
-        return ok(command.type, await review().add(command.payload));
-      case "review.update":
-        return ok(command.type, await review().update(command.payload.id, command.payload.body));
-      case "review.remove":
-        review().remove(command.payload.id);
-        return ok(command.type);
-      case "review.send":
-        return ok(command.type, await review().send(command.payload.target));
-      case "changes.revert": {
-        const { target, path, confirm } = command.payload;
-        return ok(command.type, await files().revert(target, path, confirm === true));
-      }
-      case "changes.undoRevert": {
-        const { target, path, confirm } = command.payload;
-        return ok(command.type, await files().undoRevert(target, path, confirm === true));
-      }
       case "file.read":
         return ok(command.type, await files().read(command.payload.target, command.payload.path));
       case "file.write": {
