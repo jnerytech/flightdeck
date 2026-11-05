@@ -436,11 +436,8 @@ class OpenCodeRun implements AgentRun {
       ...(this.model ? { model: this.model } : {}),
       ...(this.effort ? { effort: this.effort } : {}),
     });
-    // Closed or failed while it opened: the process goes too.
-    if (this.stopped) {
-      await conn.close();
-      return;
-    }
+    // A close() while it opened already closed this connection (it is `this.conn` from the start),
+    // and the turn that waits on it sees `stopped`.
     this.sessionId = conn.sessionId;
   }
 
