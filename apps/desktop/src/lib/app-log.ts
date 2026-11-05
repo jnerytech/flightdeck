@@ -5,6 +5,8 @@ export type LogLevel = "info" | "warn" | "error";
 
 export interface AppLogOptions {
   sink?: LogSink | undefined;
+  /** Values that must never be written: vault values, host tokens (read at each line). */
+  values?: () => string[];
   now?: () => number;
 }
 

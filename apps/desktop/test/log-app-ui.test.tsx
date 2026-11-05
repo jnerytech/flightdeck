@@ -194,3 +194,20 @@ describe("log-app-ui: the host's own log lines", () => {
     expect(b.container.textContent).toBe("");
   });
 });
+
+describe("log-segredos-app: the store feeds the log the host tokens and the vault values (issue #255)", () => {
+  const HOST_TOKEN = "Zk3fakehosttoken0123456789abcdefghijklmnop";
+  const VAULT_VALUE = "Vx9fakevaultvalue0123456789";
+
+  test("a host's token and a vault value never reach the memory or the file, even typed into a message", async () => {
+    const { store, written } = setup();
+    await store.addHost({ name: "alfa", url: "ws://127.0.0.1:1", token: HOST_TOKEN });
+    await store.addSecret({ name: "deploy", type: "token", value: VAULT_VALUE });
+    await Bun.sleep(30);
+    store.appLog.log("error", "host", `refused ${HOST_TOKEN} and ${VAULT_VALUE}`);
+    const everything = `${written.join("\n")}\n${store.appLog.recent(50).join("\n")}`;
+    expect(everything).not.toContain(HOST_TOKEN);
+    expect(everything).not.toContain(VAULT_VALUE);
+    expect(everything).toContain("refused [redacted] and [redacted]");
+  });
+});

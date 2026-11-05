@@ -155,3 +155,27 @@ describe("log-app: the diagnostics a person pastes", () => {
     expect(text).not.toContain("line 29 ");
   });
 });
+
+describe("log-segredos-app: the app's log knows the app's own secrets (issue #255)", () => {
+  const HOST_TOKEN = "Zk3fakehosttoken0123456789abcdefghijklmnop";
+  const VAULT_VALUE = "Vx9fakevaultvalue0123456789";
+
+  test("values given to the log are removed, read at each line", () => {
+    const { s, written } = sink();
+    let values: string[] = [];
+    const log = new AppLog({ sink: s, now: () => NOW, values: () => values });
+    log.log("error", "host", `refused ${HOST_TOKEN}`);
+    expect(written[0]).toContain(HOST_TOKEN);
+    values = [HOST_TOKEN];
+    log.log("error", "host", `refused ${HOST_TOKEN}`);
+    expect(written[1]).toBe("2026-11-05T12:00:00.000Z ERROR host refused [redacted]");
+    expect(log.recent(5).join("\n").split(HOST_TOKEN)).toHaveLength(2);
+  });
+
+  test("a log line never keeps a secret because it holds {{ }}", () => {
+    const { s, written } = sink();
+    const log = new AppLog({ sink: s, now: () => NOW });
+    log.log("error", "x", "password=hunter2hunter2{{x}}");
+    expect(written[0]).not.toContain("hunter2");
+  });
+});

@@ -518,6 +518,8 @@ export interface Daemon {
   url: string;
   runtime: AgentRuntime;
   stop(): Promise<void>;
+  /** What the daemon says: the console and, redacted, the log file. */
+  logger: Logger;
 }
 
 interface CreatedRuntime {
@@ -1290,6 +1292,7 @@ export async function startDaemon(
   return {
     url: server.url,
     runtime,
+    logger,
     stop: () => {
       stopped ??= (async () => {
         unwatchFile(configFile, onConfigChange);

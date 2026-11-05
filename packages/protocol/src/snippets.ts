@@ -137,7 +137,7 @@ export class SecretScanner {
    * that no token, key, link or vault value is ever written. A `{{variable}}` stays: it is a place
    * for a value, not a value.
    */
-  redact(text: string): string {
+  redact(text: string, _keepPlaceholders = true): string {
     let clean = text;
     for (const [, pattern] of SECRET_PATTERNS) {
       clean = clean.replace(pattern, (hit) => (hit.includes("{{") ? hit : "[redacted]"));

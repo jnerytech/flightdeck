@@ -83,6 +83,11 @@ export class Vault {
 
   constructor(private readonly opts: VaultOptions = {}) {}
 
+  /** Every value held right now: what a log scanner must never let through (stub). */
+  heldValues(): string[] {
+    return [];
+  }
+
   /** Keeps the value in memory until it is used or its deadline; answers the effective deadline. */
   deliver(input: VaultDelivery, origin: string): { expiresAt: number } {
     const now = this.now();
