@@ -74,27 +74,46 @@ export const DEFAULT_MAX_AGE_MS = 90 * 60_000;
 export const USAGE =
   "usage: bun run slot -- [--nice] [--priority] <command...> | bun run slot -- --status | bun run slot -- --cancel";
 
-export function parseArgs(argv: string[]): SlotArgs {
-  let rest = argv[0] === "--" ? argv.slice(1) : argv;
-  let nice = false;
-  let priority = false;
-  let asStatus = false;
-  let asCancel = false;
-  let maxAgeMs = DEFAULT_MAX_AGE_MS;
+interface SlotFlags {
+  nice: boolean;
+  priority: boolean;
+  asStatus: boolean;
+  asCancel: boolean;
+  maxAgeMs: number;
+  rest: string[];
+}
+
+/** The leading `--flags` of the command line and what follows them; null when `--max-age` is bad. */
+function readFlags(argv: string[]): SlotFlags | null {
+  const flags: SlotFlags = {
+    nice: false,
+    priority: false,
+    asStatus: false,
+    asCancel: false,
+    maxAgeMs: DEFAULT_MAX_AGE_MS,
+    rest: argv[0] === "--" ? argv.slice(1) : argv,
+  };
   for (;;) {
-    const flag = rest[0];
-    if (flag === "--nice") nice = true;
-    else if (flag === "--priority") priority = true;
-    else if (flag === "--status") asStatus = true;
-    else if (flag === "--cancel") asCancel = true;
+    const flag = flags.rest[0];
+    if (flag === "--nice") flags.nice = true;
+    else if (flag === "--priority") flags.priority = true;
+    else if (flag === "--status") flags.asStatus = true;
+    else if (flag === "--cancel") flags.asCancel = true;
     else if (flag === "--max-age") {
-      const minutes = Number(rest[1]);
-      if (!rest[1] || !(minutes > 0)) return { kind: "usage" };
-      maxAgeMs = minutes * 60_000;
-      rest = rest.slice(1);
+      const minutes = Number(flags.rest[1]);
+      if (!flags.rest[1] || !(minutes > 0)) return null;
+      flags.maxAgeMs = minutes * 60_000;
+      flags.rest = flags.rest.slice(1);
     } else break;
-    rest = rest.slice(1);
+    flags.rest = flags.rest.slice(1);
   }
+  return flags;
+}
+
+export function parseArgs(argv: string[]): SlotArgs {
+  const flags = readFlags(argv);
+  if (!flags) return { kind: "usage" };
+  const { nice, priority, asStatus, asCancel, maxAgeMs, rest } = flags;
   if (asCancel)
     return rest.length === 0 && !asStatus && !nice ? { kind: "cancel" } : { kind: "usage" };
   if (asStatus) return rest.length === 0 ? { kind: "status", maxAgeMs } : { kind: "usage" };

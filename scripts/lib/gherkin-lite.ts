@@ -31,11 +31,24 @@ const WORDS = {
   },
 } as const;
 
+type Words = (typeof WORDS)[Feature["language"]];
+
+/** The step a line writes (`And`/`But` repeat the kind before), null for a line that is no step. */
+function stepOf(line: string, words: Words, scenario: Scenario | undefined): Step | null {
+  const kinds: Record<string, StepKind> = words.kinds;
+  const [word = "", ...rest] = line.split(/\s+/);
+  const isAnd = (words.and as readonly string[]).includes(word);
+  if (!(word in kinds) && !isAnd) return null;
+  if (!scenario) throw new Error(`a step outside a scenario: ${line}`);
+  const kind = isAnd ? scenario.steps.at(-1)?.kind : kinds[word];
+  if (!kind) throw new Error(`"${word}" with nothing before it: ${line}`);
+  return { kind, text: rest.join(" ") };
+}
+
 /** Reads a `.feature` text: its language, its scenarios and their steps. Throws on a step out of place. */
 export function parseFeature(text: string): Feature {
   const language = /^#\s*language:\s*pt\b/m.test(text) ? "pt" : "en";
   const words = WORDS[language];
-  const kinds: Record<string, StepKind> = words.kinds;
   let title = "";
   const scenarios: Scenario[] = [];
   for (const raw of text.split("\n")) {
@@ -45,15 +58,8 @@ export function parseFeature(text: string): Feature {
     } else if (line.startsWith(words.scenario)) {
       scenarios.push({ title: line.slice(words.scenario.length).trim(), steps: [] });
     } else {
-      const [word = "", ...rest] = line.split(/\s+/);
-      const body = rest.join(" ");
-      const scenario = scenarios.at(-1);
-      const isAnd = (words.and as readonly string[]).includes(word);
-      if (!(word in kinds) && !isAnd) continue;
-      if (!scenario) throw new Error(`a step outside a scenario: ${line}`);
-      const kind = isAnd ? scenario.steps.at(-1)?.kind : kinds[word];
-      if (!kind) throw new Error(`"${word}" with nothing before it: ${line}`);
-      scenario.steps.push({ kind, text: body });
+      const step = stepOf(line, words, scenarios.at(-1));
+      if (step) scenarios.at(-1)?.steps.push(step);
     }
   }
   return { language, title, scenarios };

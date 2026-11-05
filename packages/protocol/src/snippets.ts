@@ -144,21 +144,8 @@ function template(def: SnippetDef): string {
   return (def.type === "command" ? def.run : def.text) as string;
 }
 
-/**
- * Checks a snippet and returns it in its normal form. A command is one line without control
- * characters, so pasting it cannot run what the person did not see. A snippet with a secret is
- * refused with `snippet_secret`: the app then offers to turn it into an action (phase 17).
- */
-export function normalizeSnippet(input: SnippetInput, scanner: SecretScanner): SnippetDef {
-  const name = input.name.trim();
-  refuseSecrets(scanner, [name, ...(input.tags ?? [])], "the name or the tags have a secret");
-  if (!NAME.test(name)) {
-    throw badRequest(
-      "name_invalid",
-      "name must be 1 to 64 characters: letters, numbers, space, . _ -",
-    );
-  }
-  const isCommand = input.type === "command";
+/** The command or the text of a snippet, once it is the right one, short enough and clean. */
+function checkedBody(input: SnippetInput, isCommand: boolean): string {
   const body = isCommand ? input.run : input.text;
   if (body === undefined || body === "") {
     throw isCommand
@@ -178,8 +165,11 @@ export function normalizeSnippet(input: SnippetInput, scanner: SecretScanner): S
       ? badRequest("control_command", "a command is one line, without control characters")
       : badRequest("control_prompt", "control characters in the text");
   }
-  const vars = input.vars ?? {};
-  const used = placeholders(body);
+  return body;
+}
+
+/** Every variable has a valid name, is not a special one, is used in the body and has a valid spec. */
+function checkVars(vars: NonNullable<SnippetInput["vars"]>, used: string[]): void {
   for (const [key, spec] of Object.entries(vars)) {
     if (!VAR_NAME.test(key)) {
       throw badRequest("var_name", `invalid variable name: ${key}`, { name: key });
@@ -194,9 +184,11 @@ export function normalizeSnippet(input: SnippetInput, scanner: SecretScanner): S
     }
     checkVar(key, spec);
   }
-  const tags = [
-    ...new Set((input.tags ?? []).map((tag) => tag.trim()).filter((tag) => tag !== "")),
-  ];
+}
+
+/** The tags trimmed and without repeats, refused when there are too many or one is not valid. */
+function checkedTags(raw: string[]): string[] {
+  const tags = [...new Set(raw.map((tag) => tag.trim()).filter((tag) => tag !== ""))];
   if (tags.length > MAX_TAGS) {
     throw badRequest("too_many_tags", `at most ${MAX_TAGS} tags`, { max: MAX_TAGS });
   }
@@ -205,6 +197,28 @@ export function normalizeSnippet(input: SnippetInput, scanner: SecretScanner): S
       throw badRequest("tag_invalid", "invalid tag");
     }
   }
+  return tags;
+}
+
+/**
+ * Checks a snippet and returns it in its normal form. A command is one line without control
+ * characters, so pasting it cannot run what the person did not see. A snippet with a secret is
+ * refused with `snippet_secret`: the app then offers to turn it into an action (phase 17).
+ */
+export function normalizeSnippet(input: SnippetInput, scanner: SecretScanner): SnippetDef {
+  const name = input.name.trim();
+  refuseSecrets(scanner, [name, ...(input.tags ?? [])], "the name or the tags have a secret");
+  if (!NAME.test(name)) {
+    throw badRequest(
+      "name_invalid",
+      "name must be 1 to 64 characters: letters, numbers, space, . _ -",
+    );
+  }
+  const isCommand = input.type === "command";
+  const body = checkedBody(input, isCommand);
+  const vars = input.vars ?? {};
+  checkVars(vars, placeholders(body));
+  const tags = checkedTags(input.tags ?? []);
   const def: SnippetDef = {
     name,
     type: input.type,

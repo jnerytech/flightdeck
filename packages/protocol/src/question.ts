@@ -154,12 +154,10 @@ function fromCommand(command: string, words: Words): PlainQuestion | null {
   return null;
 }
 
-/** The question for a permission request: a sentence and its consequence, never a tool or a command. */
-export function plainQuestion(request: QuestionRequest, language: QuestionLanguage): PlainQuestion {
-  const words = WORDS[language];
-  const { toolName, input } = request;
-  const file = text(input, "file_path") || text(input, "notebook_path");
-  if (toolName === "Write" && file) {
+/** Writing, replacing or editing a file the request names. */
+function fileQuestion(request: QuestionRequest, words: Words, file: string): PlainQuestion | null {
+  if (!file) return null;
+  if (request.toolName === "Write") {
     return request.fileExists
       ? {
           kind: "replace",
@@ -174,7 +172,7 @@ export function plainQuestion(request: QuestionRequest, language: QuestionLangua
           reversible: true,
         };
   }
-  if (["Edit", "MultiEdit", "NotebookEdit"].includes(toolName) && file) {
+  if (["Edit", "MultiEdit", "NotebookEdit"].includes(request.toolName)) {
     return {
       kind: "change",
       sentence: words.change(baseName(file)),
@@ -182,10 +180,11 @@ export function plainQuestion(request: QuestionRequest, language: QuestionLangua
       reversible: false,
     };
   }
-  if (toolName === "Bash") {
-    const made = fromCommand(text(input, "command"), words);
-    if (made) return made;
-  }
+  return null;
+}
+
+/** Reading, the web and helper agents: tools whose question depends on the tool alone. */
+function toolQuestion(toolName: string, words: Words, file: string): PlainQuestion | null {
   if (["Read", "Glob", "Grep", "LS"].includes(toolName)) {
     return {
       kind: "read",
@@ -205,6 +204,19 @@ export function plainQuestion(request: QuestionRequest, language: QuestionLangua
       reversible: true,
     };
   }
+  return null;
+}
+
+/** The question for a permission request: a sentence and its consequence, never a tool or a command. */
+export function plainQuestion(request: QuestionRequest, language: QuestionLanguage): PlainQuestion {
+  const words = WORDS[language];
+  const { toolName, input } = request;
+  const file = text(input, "file_path") || text(input, "notebook_path");
+  const made =
+    fileQuestion(request, words, file) ??
+    (toolName === "Bash" ? fromCommand(text(input, "command"), words) : null) ??
+    toolQuestion(toolName, words, file);
+  if (made) return made;
   const risk = request.risk ?? "medium";
   return {
     kind: "run",
