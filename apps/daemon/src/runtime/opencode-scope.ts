@@ -39,7 +39,8 @@ export interface ScopeOptions {
 }
 
 export const CONFIG_FILES = ["opencode.json", "opencode.jsonc", "config.json"];
-const PLUGIN_DIRS = ["plugins", "plugin"];
+/** Folders whose files OpenCode imports as code (v2 and v1 names). */
+const PLUGIN_DIRS = ["plugins", "plugin", "tools", "tool"];
 /** A file that is not there (or went away while the scan ran) reads as `null`. */
 const absent = (): null => null;
 
@@ -47,9 +48,13 @@ const absent = (): null => null;
 const MAX_FILES = 2000;
 
 /** `$XDG_CONFIG_HOME/opencode`, else `<home>/.config/opencode`; "" with no home at all. */
-export function globalConfigDir(env: Record<string, string | undefined>): string {
+export function globalConfigDir(
+  env: Record<string, string | undefined>,
+  platform: NodeJS.Platform = process.platform,
+): string {
   if (env.XDG_CONFIG_HOME) return join(env.XDG_CONFIG_HOME, "opencode");
-  const home = env.HOME || env.USERPROFILE;
+  // OpenCode's home is the system's: USERPROFILE on Windows, even when a shell set HOME.
+  const home = platform === "win32" ? env.USERPROFILE || env.HOME : env.HOME || env.USERPROFILE;
   return home ? join(home, ".config", "opencode") : "";
 }
 
@@ -72,39 +77,50 @@ async function walk(dir: string, out: string[], root = dir): Promise<void> {
 function pluginId(entry: unknown): string | null {
   if (typeof entry === "string") return entry.startsWith("-") ? null : entry;
   const pkg = (entry as { package?: unknown } | null)?.package;
-  return typeof pkg === "string" ? pkg : JSON.stringify(entry);
+  // Never the entry itself: its options may hold a key.
+  return typeof pkg === "string" ? pkg : "(unknown entry)";
 }
 
-/** The MCP servers a config turns on: v2 `mcp.servers`, or names directly under `mcp`. */
-function mcpServers(mcp: unknown): string[] {
-  if (!mcp || typeof mcp !== "object") return [];
-  const record = mcp as Record<string, unknown>;
-  const servers = (
-    record.servers && typeof record.servers === "object" ? record.servers : record
-  ) as Record<string, unknown>;
-  return Object.entries(servers)
-    .filter(
-      ([name, server]) =>
-        name !== "servers" && (server as { disabled?: unknown })?.disabled !== true,
-    )
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+/** The MCP servers a config turns on: v2 `mcp.servers`, and v1 names directly under `mcp`. */
+function mcpServers(mcp: Record<string, unknown>): string[] {
+  const servers = isObject(mcp.servers) ? Object.entries(mcp.servers) : [];
+  const v1 = Object.entries(mcp).filter(([name]) => name !== "servers");
+  return [...servers, ...v1]
+    .filter(([, server]) => isObject(server) && server.disabled !== true)
     .map(([name]) => name);
 }
 
 function findingsOf(path: string, text: string): ScopeFinding[] {
-  let config: { plugins?: unknown; mcp?: unknown };
+  let config: Record<string, unknown>;
   try {
-    config = (Bun.JSONC.parse(text) ?? {}) as typeof config;
+    config = (Bun.JSONC.parse(text) ?? {}) as Record<string, unknown>;
   } catch {
     return [{ kind: "unreadable_config", path }];
   }
-  const plugins = Array.isArray(config.plugins) ? config.plugins : [];
-  return [
-    ...plugins.flatMap((entry) => {
+  const findings: ScopeFinding[] = [];
+  // v2 `plugins`, and the v1 `plugin` OpenCode still reads; a shape nobody expects fails closed.
+  for (const key of ["plugins", "plugin"]) {
+    const list = config[key];
+    if (list === undefined) continue;
+    if (!Array.isArray(list)) {
+      findings.push({ kind: "unreadable_config", path, detail: key });
+      continue;
+    }
+    for (const entry of list) {
       const id = pluginId(entry);
-      return id ? [{ kind: "plugins_entry" as const, path, detail: id }] : [];
-    }),
-    ...mcpServers(config.mcp).map((name) => ({ kind: "mcp_server" as const, path, detail: name })),
-  ];
+      if (id) findings.push({ kind: "plugins_entry", path, detail: id });
+    }
+  }
+  if (config.mcp !== undefined) {
+    if (!isObject(config.mcp)) findings.push({ kind: "unreadable_config", path, detail: "mcp" });
+    else
+      for (const name of mcpServers(config.mcp))
+        findings.push({ kind: "mcp_server", path, detail: name });
+  }
+  return findings;
 }
 
 export async function scanOpenCodeScope(opts: ScopeOptions): Promise<ScopeResult> {
