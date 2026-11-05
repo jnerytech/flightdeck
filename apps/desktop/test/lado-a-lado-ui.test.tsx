@@ -8,6 +8,7 @@ const { AppStore, sessionKey } = await import("../src/lib/app-store.ts");
 const { hubRows } = await import("../src/lib/hub.ts");
 const { useStoreState } = await import("../src/lib/use-store.ts");
 const { SessionTiles } = await import("../src/components/projects/session-tiles.tsx");
+const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
@@ -24,14 +25,17 @@ function Live(props: {
   onOpen(row: { sessionId: string | null }): void;
 }) {
   const state = useStoreState(props.store);
+  // The app's language, as App provides it to every screen.
   return (
-    <SessionTiles
-      store={props.store}
-      state={state}
-      hostId={props.hostId}
-      projectKey={props.projectKey}
-      onOpen={props.onOpen as never}
-    />
+    <TContext.Provider value={props.store.i18n.t}>
+      <SessionTiles
+        store={props.store}
+        state={state}
+        hostId={props.hostId}
+        projectKey={props.projectKey}
+        onOpen={props.onOpen as never}
+      />
+    </TContext.Provider>
   );
 }
 
