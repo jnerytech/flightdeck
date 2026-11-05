@@ -26,6 +26,7 @@ export function AllowedFolders(props: { store: AppStore; host: HostView }) {
       <FieldRow>
         <Input
           aria-label={t("hostPage.rootsInput")}
+          data-folder-field
           placeholder={t("hostPage.rootsPlaceholder")}
           className="w-80"
           value={folder}

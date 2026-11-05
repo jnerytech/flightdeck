@@ -101,6 +101,17 @@ export function HostPage(props: {
     if (host.status !== "online") return;
     void store.hostCommand(host.id, "hooks.status", {}).then(setHooks);
   }, [store, host.id, host.status]);
+  // The Health section can install the hooks too: the status shown in Settings is read again.
+  const refreshHooks = () => void store.hostCommand(host.id, "hooks.status", {}).then(setHooks);
+  // "Add folder" in the Health section opens Settings: once that panel shows, the field takes focus.
+  const [folderAsk, setFolderAsk] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new ask moves the focus
+  useEffect(() => {
+    if (folderAsk === 0 || tab !== "settings") return;
+    const field = document.querySelector<HTMLElement>("[data-folder-field]");
+    field?.focus();
+    field?.scrollIntoView?.({ block: "center" });
+  }, [folderAsk]);
   // A daemon older than the app may not have looked for its update since the release: ask it once
   // (the store keeps this to once per 10 minutes per host).
   const checkable = host.status === "online" && info?.update !== undefined;
@@ -178,7 +189,11 @@ export function HostPage(props: {
                   checkedAt={overviewState.healthAt[host.id] ?? null}
                   error={overviewState.healthError[host.id] ?? null}
                   onCheck={() => store.checkHealth(host.id)}
-                  onAddFolder={() => setTab("settings")}
+                  onAddFolder={() => {
+                    setTab("settings");
+                    setFolderAsk((n) => n + 1);
+                  }}
+                  onHooksChanged={refreshHooks}
                 />
               )}
               {hasFeature(info?.features, "account", false) && (

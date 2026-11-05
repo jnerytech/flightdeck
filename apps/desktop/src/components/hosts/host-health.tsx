@@ -64,6 +64,8 @@ export function HostHealth(props: {
   onCheck(): Promise<void>;
   /** "Add folder": the app takes the person to the allowed folders. */
   onAddFolder(): void;
+  /** The hooks were installed from here: whoever shows their status asks again. */
+  onHooksChanged(): void;
 }) {
   const { store, host } = props;
   const { t } = store.i18n;
@@ -270,9 +272,10 @@ export function HostHealth(props: {
           onCancel={() => setConfirming(null)}
           onConfirm={() => {
             setConfirming(null);
-            void store
-              .hostCommand(host.id, "hooks.install", { confirm: true })
-              .then(() => props.onCheck());
+            void store.hostCommand(host.id, "hooks.install", { confirm: true }).then(() => {
+              props.onHooksChanged();
+              return props.onCheck();
+            });
           }}
         />
       )}

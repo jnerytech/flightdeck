@@ -98,6 +98,7 @@ function setup(
         error={options.error ?? null}
         onCheck={async () => void checks++}
         onAddFolder={() => added.push("x")}
+        onHooksChanged={() => {}}
       />
     </TooltipProvider>
   );
