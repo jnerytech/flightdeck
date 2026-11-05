@@ -606,6 +606,7 @@ export async function startDaemon(
   let heldValues: () => string[] = () => [];
   const fileLog = new FileLog({
     dir: options.logDir ?? join(userHome(env), ".flightdeck", "logs"),
+    home: userHome(env),
     scanner: createLogScanner({
       tokens: () => [config.token, currentToken, config.hooks.token ?? ""].filter(Boolean),
       vaultValues: () => heldValues(),

@@ -2630,8 +2630,11 @@ pairing link's token become `[redacted]`. Besides the patterns, the host never w
 tokens (the protocol's, even after a rotation, and the hooks') or any value the vault holds at
 that moment, and the app never writes a host's token or a vault value of 6 characters or more.
 It is a pattern list, not a guarantee: a secret wrapped in base64, split over two log lines, or a
-short vault value (under 6 characters) is not caught, and paths keep the user name. Read the lines
-before you post them in public.
+short vault value (under 6 characters) is not caught. Your home folder (`/home/<name>`,
+`/Users/<name>`, `C:\Users\<name>`) is written as `~`. The log folder is private to you (0700, files
+0600) and a link planted in it is never followed. A host gives its log (`logs.tail`) and its path only
+to connections from loopback or Tailscale, like the vault, and never more than the last 256 KiB of
+each file. Read the lines before you post them in public.
 
 ### Performance
 

@@ -182,11 +182,24 @@ export class SecretScanner {
   }
 }
 
+/** `/home/<name>`, `/Users/<name>` and `C:\\Users\\<name>` (also with the backslashes doubled, as in JSON). */
+const HOME_FOLDER = /(?:\/(?:home|Users)\/|[A-Za-z]:\\{1,2}Users\\{1,2})[^/\\\s"']+/gi;
+
 /**
- * Replaces the user's home folder with `~` (stub).
+ * The text with the user's home folder as `~`: a log is pasted in public issues, and the user's
+ * name is in every path under it. `home`, when known, is replaced whatever it looks like (a name
+ * with spaces, a folder that is not under /home); the usual folders of Linux, macOS and Windows
+ * are replaced either way.
  */
-export function scrubHome(text: string, _home?: string): string {
-  return text;
+export function scrubHome(text: string, home?: string): string {
+  let clean = text;
+  const known = home?.replace(/[/\\]+$/, "") ?? "";
+  if (known.length >= 3) {
+    for (const spelling of new Set([known, known.replaceAll("\\", "\\\\")])) {
+      clean = clean.split(spelling).join("~");
+    }
+  }
+  return clean.replace(HOME_FOLDER, "~");
 }
 
 // -- the model -------------------------------------------------------------------------------

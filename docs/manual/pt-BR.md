@@ -2614,7 +2614,10 @@ nunca grava os próprios tokens (o do protocolo, mesmo depois de um rodízio, e 
 qualquer valor que o cofre guarda naquele momento, e o app nunca grava o token de um host nem um
 valor do cofre com 6 caracteres ou mais. É uma lista de padrões, não uma garantia: um segredo
 embrulhado em base64, partido em duas linhas de log, ou um valor curto do cofre (menos de 6
-caracteres) não é pego, e os caminhos mantêm o nome do usuário. Leia as linhas antes de postá-las
+caracteres) não é pego. A sua pasta pessoal (`/home/<nome>`, `/Users/<nome>`, `C:\Users\<nome>`) é
+gravada como `~`. A pasta de logs é só sua (0700, arquivos 0600) e um link plantado nela nunca é
+seguido. Um host entrega o log (`logs.tail`) e o caminho dele só a conexões de loopback ou Tailscale,
+como o cofre, e nunca mais que os últimos 256 KiB de cada arquivo. Leia as linhas antes de postá-las
 em público.
 
 ### Desempenho

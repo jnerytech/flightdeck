@@ -222,7 +222,7 @@ describe("log-segredos-app: the store feeds the log the host tokens and the vaul
   test("the host's lines are redacted again before they reach the clipboard, a hostile host included", async () => {
     const w = setup();
     w.store.hostCommand = (async () => ({
-      lines: [`2026 INFO leaked ${HOST_TOKEN} and {"password":"hunter2hunter2"}`],
+      lines: [`2026 INFO leaked ${HOST_TOKEN} and {"password":"hunter2hunter2"} in /home/ana/x`],
       path: "/x",
     })) as never;
     await w.store.addHost({ name: "alfa", url: "ws://127.0.0.1:1", token: HOST_TOKEN });
@@ -231,6 +231,7 @@ describe("log-segredos-app: the store feeds the log the host tokens and the vaul
     await settle(() => w.copied.length === 1);
     expect(w.copied[0]).not.toContain(HOST_TOKEN);
     expect(w.copied[0]).not.toContain("hunter2hunter2");
+    expect(w.copied[0]).toContain("in ~/x");
   });
 
   test("Copy diagnostics redacts the whole text: a host named like a secret is not copied", async () => {

@@ -353,6 +353,8 @@ const LOG_FILES: usize = 5;
 const LOG_MAX_LINE: usize = 4000;
 /// The most lines `read_log_tail` hands back.
 const LOG_MAX_TAIL: usize = 500;
+/// `read_log_tail` reads this much of the end of each file at most.
+const LOG_TAIL_BYTES: u64 = 256 * 1024;
 const LOG_NAME: &str = "flightdeck.log";
 /// If a rotation keeps failing (a viewer holds the file open on Windows), the live file may grow to
 /// this much before a line is refused: logging is not lost at the first hiccup, and stays bounded.
@@ -386,6 +388,41 @@ fn rotate_logs(dir: &std::path::Path, files: usize) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Makes the log folder, private to the user where the system has such a thing.
+fn make_log_dir(dir: &std::path::Path) -> std::io::Result<()> {
+    let mut builder = std::fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    builder.create(dir)
+}
+
+/// Whether `path` is a link of any kind: the link itself is looked at, never what it points to.
+fn is_link(path: &std::path::Path) -> bool {
+    std::fs::symlink_metadata(path)
+        .map(|m| m.file_type().is_symlink())
+        .unwrap_or(false)
+}
+
+/// Opens the live file for appending, owner-only on creation, and never through a link: a link
+/// planted where the log goes would make the log write somewhere else.
+fn open_live_log(path: &std::path::Path) -> std::io::Result<std::fs::File> {
+    if is_link(path) {
+        return Err(std::io::Error::other("the log file is a link"));
+    }
+    let mut options = std::fs::OpenOptions::new();
+    options.create(true).append(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    options.open(path)
+}
+
 /// Appends one line, flattened and cut, rotating first when the live file would pass the limit.
 fn append_line(
     dir: &std::path::Path,
@@ -397,7 +434,7 @@ fn append_line(
     let _one_writer = LOG_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    std::fs::create_dir_all(dir)?;
+    make_log_dir(dir)?;
     // Cut first, on a character boundary, so a flood is never copied whole.
     let mut cut = line;
     if cut.len() > LOG_MAX_LINE {
@@ -417,11 +454,36 @@ fn append_line(
             return Err(std::io::Error::other("the log is full and cannot rotate"));
         }
     }
-    let mut file = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&live)?;
+    let mut file = open_live_log(&live)?;
     file.write_all(text.as_bytes())
+}
+
+/// The end of a regular file (at most `LOG_TAIL_BYTES`), from the start of a whole line. A file
+/// that is missing, a link or not a regular file reads as nothing.
+fn read_log_end(path: &std::path::Path) -> Option<String> {
+    use std::io::{Read, Seek, SeekFrom};
+    if is_link(path) {
+        return None;
+    }
+    let mut file = std::fs::File::open(path).ok()?;
+    let meta = file.metadata().ok()?;
+    if !meta.is_file() {
+        return None;
+    }
+    let start = meta.len().saturating_sub(LOG_TAIL_BYTES);
+    file.seek(SeekFrom::Start(start)).ok()?;
+    let mut bytes = Vec::new();
+    file.take(LOG_TAIL_BYTES).read_to_end(&mut bytes).ok()?;
+    // Lossy: a file with a broken character (a crash mid-write) is still read.
+    let text = String::from_utf8_lossy(&bytes).into_owned();
+    if start == 0 {
+        return Some(text);
+    }
+    // The window starts in the middle of a line: the piece is not handed out.
+    Some(match text.find('\n') {
+        Some(at) => text[at + 1..].to_string(),
+        None => String::new(),
+    })
 }
 
 /// The last `wanted` lines (at most `LOG_MAX_TAIL`) across the files, oldest first.
@@ -432,11 +494,9 @@ fn tail_lines(dir: &std::path::Path, wanted: usize, files: usize) -> Vec<String>
         if out.len() >= wanted {
             break;
         }
-        // Lossy: a file with a broken character (a crash mid-write) is still read.
-        let Ok(bytes) = std::fs::read(log_path(dir, n)) else {
+        let Some(text) = read_log_end(&log_path(dir, n)) else {
             continue;
         };
-        let text = String::from_utf8_lossy(&bytes).into_owned();
         let lines: Vec<&str> = text.lines().filter(|l| !l.is_empty()).collect();
         let take = (wanted - out.len()).min(lines.len());
         let mut chunk: Vec<String> = lines[lines.len() - take..]

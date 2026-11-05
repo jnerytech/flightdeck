@@ -1,4 +1,4 @@
-import { SecretScanner } from "@flightdeck/protocol";
+import { SecretScanner, scrubHome } from "@flightdeck/protocol";
 import type { LogSink } from "../platform/types.ts";
 
 export type LogLevel = "info" | "warn" | "error";
@@ -34,8 +34,7 @@ export class AppLog {
   }
 
   log(level: LogLevel, source: string, message: string): void {
-    const text = this.scanner
-      .redact(message, false)
+    const text = scrubHome(this.scanner.redact(message, false))
       .replace(/[\r\n]+/g, " ")
       .slice(0, MAX_MESSAGE);
     const line = `${new Date(this.now()).toISOString()} ${level.toUpperCase()} ${source} ${text}`;
@@ -132,5 +131,5 @@ export function diagnosticsText(input: DiagnosticsInput): string {
     "Last log lines:",
     ...input.lines.slice(-DIAGNOSTIC_LINES).map((line) => `  ${line}`),
   ].join("\n");
-  return scanner.redact(text, false);
+  return scrubHome(scanner.redact(text, false));
 }

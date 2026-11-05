@@ -3603,7 +3603,15 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 - **The file writes stopped blocking the daemon.** The first push failed the no-sync ratchet and the features list (`logs` was missing from
   `DAEMON_FEATURES` and had no name in the dictionaries). `FileLog` now queues each redacted line on one async chain (ordered, never
   rejects); `tail` and `stop` flush the queue first, so a reader or a shutdown sees every line written.
-- **Not done in this round (from the same review, for a follow-up):** home-directory scrubbing in lines and `logPath`; `logs.tail` limited
-  to loopback/Tailscale like the vault; 0700/0600 permissions and refusing symlinks (daemon and Rust); byte-bounded tail reads; a rate
-  limit and a batched or single-writer sink in the app; a re-entrancy guard and idempotent install of the console overrides; Rust tests
-  for the new behaviours.
+- **Privacy round 2 (the coordinator asked for the cheap ones).** `scrubHome` (protocol) turns the daemon user's home (`userHome(env)`, even
+  with spaces or outside /home) and the usual `/home/<n>`, `/Users/<n>`, `C:\Users\<n>` (also with doubled backslashes) into `~` in every
+  daemon line (write and tail), every app line, Copy diagnostics and the host lines copied; `logPath` is not scrubbed (it is for the owner to
+  open, and now only loopback/Tailscale connections get it). `logs.tail` and `host.info.logPath` go through `requireVaultTransport` (like
+  `roots.add`) in `logs/serve.ts`, so the rule is unit-tested with real origins; the `logs` feature is still listed to every client, a
+  remote one just gets `transport_refused`. The daemon creates the folder 0700 and the file 0600, opens with `O_NOFOLLOW` (and an `lstat`
+  where a system lacks the flag), and `tail` reads only the last 256 KiB of each regular file (a window that starts mid-line drops the
+  piece), so an `id_rsa` behind a link or a 10 MB file costs nothing. The Rust side does the same (`DirBuilderExt::mode(0o700)`,
+  `OpenOptionsExt::mode(0o600)`, `symlink_metadata` refusal, a seek to the last 256 KiB); there is no `O_NOFOLLOW` there because `libc` is
+  not a dependency, so the check is `lstat` then open (a race the owner of the folder can win; the folder is 0700).
+- **Not done (issue #259, later):** a rate limit and a batched or single-writer sink in the app, a re-entrancy guard and idempotent install of
+  the console overrides, and Rust tests for flood and rotation behaviour.
