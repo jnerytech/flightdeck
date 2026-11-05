@@ -9,7 +9,7 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { applyEnvelope, emptySession } = await import("../src/lib/session-state.ts");
-const { errorText } = await import("../src/ui/SessionView.tsx");
+const { errorText, SessionView } = await import("../src/ui/SessionView.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 
 setDefaultTimeout(30_000);
@@ -98,6 +98,37 @@ describe("opencode-session-ui", () => {
     cleanup();
     await open("pt-BR", true);
     expect(options("Agente")).toEqual(["claude", "opencode"]);
+  });
+
+  test("an OpenCode session leaves out Claude Code's panels: terminal, timeline, persona, recap", () => {
+    const actions = {
+      send: async () => {},
+      interrupt: async () => {},
+      close: async () => {},
+      resume: async () => {},
+      respond: async () => {},
+    };
+    const panel = (name: string) => <button type="button">{name}</button>;
+    const view = (runtime: "claude" | "opencode") => (
+      <SessionView
+        title="s"
+        session={{ ...emptySession(), status: "idle", claudeSessionId: "ses_1" }}
+        actions={actions}
+        runtime={runtime}
+        terminal={panel("terminal")}
+        timeline={panel("timeline")}
+        persona={panel("persona")}
+        recap={panel("recap")}
+      />
+    );
+    const shown = () =>
+      ["terminal", "timeline", "persona", "recap"].filter(
+        (name) => screen.queryByRole("button", { name }) !== null,
+      );
+    const utils = render(view("claude"));
+    expect(shown()).toEqual(["terminal", "timeline", "persona", "recap"]);
+    utils.rerender(view("opencode"));
+    expect(shown()).toEqual([]);
   });
 
   test("a session error with a reason reads as the app's sentence, in its language", () => {
