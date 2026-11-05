@@ -34,6 +34,9 @@ export interface RunOptions {
   /** Milliseconds; the action's `timeoutS` when absent (tests make it short). */
   timeoutMs?: number;
   ssh?: SshExecutor;
+  /** How a program starts and how its time limit is kept: real ones when absent (tests inject fakes). */
+  spawn?: typeof Bun.spawn;
+  timer?: { set(fn: () => void, ms: number): unknown; clear(handle: unknown): void };
   /** The ssh destino's key from the vault: handed to the executor, and masked like a secret. */
   sshKey?: { id: string; value: string };
 }
