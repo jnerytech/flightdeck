@@ -187,6 +187,9 @@ em vez de depender de cuidado.
   branch's issue and closes it. A branch stacked on another opens with `--base <parent>`.
 - CI runs once per commit: on the PR (`pull_request`), on `main` (`push`), or by hand for a branch
   with no PR yet (`bun run ci:branch`).
+- CI starts with a quick job (#272): typecheck, lint, the TDD audit, Sonar's ratchet and every
+  ratchet test, in minutes. The heavy jobs need it. A new ratchet's test file ends in
+  `-ratchet.test.ts` (or `.tsx`), so the quick job picks it up by itself (scripts/lib/ci-quick.ts).
 - `bun run pr -- next` lists the open PRs in merge order with what each still needs.
   `bun run pr -- update <n>` brings one up to date with its base. `bun run pr -- merge <n>` (the
   coordinator) merges with a merge commit, never a squash, and only when the main ruleset's
