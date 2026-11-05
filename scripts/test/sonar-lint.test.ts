@@ -10,6 +10,7 @@ import {
   lintTargets,
   onlyNewCode,
   type PluginRule,
+  ruleCounts,
   sonarRules,
   testInclusionsOf,
 } from "../lib/sonar-lint.ts";
@@ -240,5 +241,24 @@ describe("sonar-lint: test code and coverage", () => {
     expect(countsForCoverage("apps/daemon/test/board.test.ts", properties)).toBe(false);
     expect(countsForCoverage("apps/desktop/src/components/ui/button.tsx", properties)).toBe(false);
     expect(countsForCoverage("packages/protocol/dist/index.ts", properties)).toBe(false);
+  });
+});
+
+describe("sonar-lint: the per-rule count", () => {
+  const at = (rule: string, line: number): Finding => ({ file: "a.ts", line, rule, message: "m" });
+
+  test("counts the findings of each rule, sorted by rule", () => {
+    const counts = ruleCounts([
+      at("sonarjs/b", 1),
+      at("sonarjs/a", 2),
+      at("sonarjs/b", 3),
+      at("sonarjs/b", 4),
+    ]);
+    expect(counts).toEqual({ "sonarjs/a": 1, "sonarjs/b": 3 });
+    expect(Object.keys(counts)).toEqual(["sonarjs/a", "sonarjs/b"]);
+  });
+
+  test("no findings is an empty record", () => {
+    expect(ruleCounts([])).toEqual({});
   });
 });

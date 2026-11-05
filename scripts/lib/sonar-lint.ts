@@ -159,3 +159,8 @@ export function countsForCoverage(path: string, properties: string): boolean {
     !any("sonar.exclusions") && !any("sonar.test.inclusions") && !any("sonar.coverage.exclusions")
   );
 }
+
+/** How many findings each rule has, for the per-rule ratchet. */
+export function ruleCounts(_findings: Finding[]): Record<string, number> {
+  return {};
+}
