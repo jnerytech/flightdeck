@@ -202,7 +202,13 @@ describe("snippets-historico: varredura de segredos", () => {
     const { candidates } = await importer.preview({});
     const flagged = candidates.filter((c) => c.hidden);
     expect(flagged.map((c) => c.flagged.join(" + ")).sort()).toEqual(
-      ["chave da AWS", "chave sk-", "senha na linha", "token Bearer", "token do GitHub"].sort(),
+      [
+        "chave da AWS",
+        "chave sk- + senha na linha",
+        "senha na linha",
+        "token Bearer + cabeçalho de autorização",
+        "token do GitHub + senha na linha",
+      ].sort(),
     );
     for (const candidate of flagged) {
       expect(candidate).toMatchObject({ command: null, selectable: false });
