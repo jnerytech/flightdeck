@@ -161,6 +161,43 @@ describe("personas-ui: choosing a persona when a session opens", () => {
     });
   });
 
+  test("the board menu's Iniciar card shows the picker with the suggestion, and the persona chosen reaches card.start", async () => {
+    const { store, hostId, projectId, d } = await open();
+    d.board.createCard(projectId, { title: "Do menu", description: "faça" });
+    const asked: Array<{ type: string; payload: unknown }> = [];
+    const command = store.hostCommand.bind(store);
+    store.hostCommand = (async (id: string, type: never, payload: never) => {
+      asked.push({ type, payload });
+      return command(id, type, payload);
+    }) as typeof store.hostCommand;
+    await act(async () => {
+      store.router.push({ name: "board", host: hostId, projectId });
+    });
+    await settle(() => screen.queryByRole("button", { name: "Ações de Do menu" }) !== null);
+    await act(async () => {
+      const trigger = screen.getByRole("button", { name: "Ações de Do menu" });
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
+      fireEvent.click(trigger);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "Iniciar card" }));
+    });
+    const dialog = screen.getByRole("dialog", { name: "Iniciar card" });
+    const picker = () => within(dialog).queryByLabelText("Persona do card") as HTMLSelectElement;
+    await settle(() => (picker()?.options.length ?? 0) > 1);
+    await settle(() => picker().value === "host:dev");
+    await act(async () => {
+      fireEvent.change(picker(), { target: { value: "host:qa" } });
+    });
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Iniciar" }));
+    });
+    await uiIdle();
+    expect(asked.find((a) => a.type === "card.start")?.payload).toMatchObject({
+      persona: { id: "qa", language: "pt-BR" },
+    });
+  });
+
   test("Claude aqui runs flightdeckd claude --persona with the persona chosen; the app's own are not offered there", async () => {
     const { store, hostId, d, repo } = await open(false);
     const { TerminalButton } = await import("../src/ui/TerminalButton.tsx");
