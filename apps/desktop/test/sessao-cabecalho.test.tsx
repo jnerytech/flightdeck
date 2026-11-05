@@ -4,7 +4,7 @@ import { liveScreen, registerDom } from "./dom.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { SessionHeader } = await import("../src/components/session/parts.tsx");
+const { SessionHeader, SessionPane } = await import("../src/components/session/parts.tsx");
 
 /** Reports a width to every box that is observed, as a real layout would. */
 const real = globalThis.ResizeObserver;
@@ -13,6 +13,17 @@ function layoutWidth(width: number) {
     constructor(private readonly callback: (entries: unknown[]) => void) {}
     observe() {
       this.callback([{ contentRect: { width } }]);
+    }
+    disconnect() {}
+    unobserve() {}
+  } as unknown as typeof ResizeObserver;
+}
+/** Reports a width and a height to every box that is observed (the header and its area). */
+function layoutBox(width: number, height: number) {
+  globalThis.ResizeObserver = class {
+    constructor(private readonly callback: (entries: unknown[]) => void) {}
+    observe() {
+      this.callback([{ contentRect: { width, height } }]);
     }
     disconnect() {}
     unobserve() {}
@@ -68,5 +79,25 @@ describe("sessao-cabecalho: the session header at narrow widths", () => {
     await act(async () => void fireEvent.click(more() as HTMLElement));
     expect(screen.queryByRole("button", { name: "End" })).not.toBeNull();
     expect(screen.queryByText("persona controls")).not.toBeNull();
+  });
+});
+
+// Issue #232: at 720x480 the header was wide enough for its full layout, and it left the
+// conversation 116 px. A short area takes the one-line header, whatever its width.
+describe("sessao-cabecalho: the session header in a short area", () => {
+  test("in an area under 600 px high the header is one line even when it is wide", async () => {
+    layoutBox(664, 480);
+    render(<SessionPane>{header()}</SessionPane>);
+    await act(async () => {});
+    expect(more()).not.toBeNull();
+    expect(screen.queryByText("/tmp/alfa/projects/flightdeck-web")).toBeNull();
+  });
+
+  test("a tall area keeps the full header at the same width", async () => {
+    layoutBox(664, 800);
+    render(<SessionPane>{header()}</SessionPane>);
+    await act(async () => {});
+    expect(more()).toBeNull();
+    expect(screen.queryByText("/tmp/alfa/projects/flightdeck-web")).not.toBeNull();
   });
 });
