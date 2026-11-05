@@ -558,7 +558,7 @@ export function SessionView(props: SessionViewProps) {
             {session.statusReason && (
               <span className="text-muted-foreground text-xs">{session.statusReason}</span>
             )}
-            {!opencode && props.timeline}
+            {props.timeline}
             {!opencode && props.terminal}
             {closed ? (
               <ActionButton variant="outline" size="sm" onClick={() => actions.resume()}>
