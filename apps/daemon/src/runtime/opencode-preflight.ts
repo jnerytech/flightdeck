@@ -38,7 +38,8 @@ const CHECK_TIMEOUT_MS = 15_000;
 
 /** At most 40 characters of a saved rule's resource, with token-like runs hidden. */
 export function maskResource(resource: string): string {
-  const masked = resource.replace(/[A-Za-z0-9_-]{16,}/g, "•••");
+  // Keys, JWTs and base64 carry dots, slashes and pluses, and may end in `=` padding.
+  const masked = resource.replace(/[A-Za-z0-9_\-+/.]{16,}={0,2}/g, "•••");
   return masked.length > 40 ? `${masked.slice(0, 40)}…` : masked;
 }
 
@@ -69,6 +70,7 @@ function list<T>(body: unknown): T[] {
 
 export class OpenCodePreflight {
   private readonly passed = new Map<string, { at: number; configContent: string }>();
+  private readonly running = new Map<string, Promise<{ configContent: string }>>();
 
   constructor(private readonly deps: PreflightDeps) {}
 
@@ -87,14 +89,22 @@ export class OpenCodePreflight {
     const cached = this.passed.get(key);
     if (cached && now - cached.at < PREFLIGHT_CACHE_MS)
       return { configContent: cached.configContent };
-    try {
-      const configContent = await this.checks(cwd);
-      this.passed.set(key, { at: now, configContent });
-      return { configContent };
-    } catch (error) {
-      if (error instanceof FlightdeckError) throw error;
-      throw this.refuse("opencode_preflight_failed", {});
-    }
+    // Two sessions of one folder starting together share one run of the three commands.
+    const running = this.running.get(key);
+    if (running) return running;
+    const run = this.checks(cwd)
+      .then((configContent) => {
+        this.passed.set(key, { at: now, configContent });
+        return { configContent };
+      })
+      .catch((error: unknown) => {
+        throw error instanceof FlightdeckError
+          ? error
+          : this.refuse("opencode_preflight_failed", {});
+      })
+      .finally(() => this.running.delete(key));
+    this.running.set(key, run);
+    return run;
   }
 
   private async checks(cwd: string): Promise<string> {
@@ -120,8 +130,12 @@ export class OpenCodePreflight {
     const rules = list<{ id: string; action: string; resource: string }>(saved);
     if (rules.length > 0) {
       throw this.refuse("opencode_saved_rules", {
-        rules: rules.map((r) => `${r.action} ${maskResource(r.resource)}`).join("\n"),
-        commands: rules.map((r) => `opencode api DELETE /api/permission/saved/${r.id}`).join("\n"),
+        rules: rules.map((r) => `${maskResource(r.action)} ${maskResource(r.resource)}`).join("\n"),
+        // Only a plain id goes into a command the person may paste.
+        commands: rules
+          .filter((r) => /^[\w-]+$/.test(r.id))
+          .map((r) => `opencode api DELETE /api/permission/saved/${r.id}`)
+          .join("\n"),
       });
     }
     const extra = this.extraAgents(list<AgentInfo>(agents));
