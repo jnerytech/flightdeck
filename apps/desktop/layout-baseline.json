@@ -47,7 +47,7 @@
   "src/ui/Screens.tsx": 9,
   "src/ui/SessionFiles.tsx": 6,
   "src/ui/SessionMessages.tsx": 14,
-  "src/ui/SessionsHub.tsx": 28,
+  "src/ui/SessionsHub.tsx": 25,
   "src/ui/SessionTabs.tsx": 9,
   "src/ui/SessionView.tsx": 3,
   "src/ui/Settings.tsx": 9,
