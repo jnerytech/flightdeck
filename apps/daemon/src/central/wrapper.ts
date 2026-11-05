@@ -54,7 +54,7 @@ async function telemetryTarget(config: Config): Promise<TelemetryTarget | null> 
 }
 
 /** The local daemon's receptor URL, if it answers within `timeoutMs`. */
-async function liveReceptor(dataDir: string, timeoutMs: number): Promise<string | null> {
+export async function liveReceptor(dataDir: string, timeoutMs: number): Promise<string | null> {
   const file = join(dataDir, RECEPTOR_FILE);
   const text = await readFile(file, "utf8").catch(() => null);
   if (text === null) return null;
