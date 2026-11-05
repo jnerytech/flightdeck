@@ -24,23 +24,29 @@ export interface HandoffDeps {
 }
 
 /** Runs every step (all of them, so one run shows every failure) and builds the stamp line. */
-export async function runHandoff({ run, branch, head, now }: HandoffDeps): Promise<{
+export async function runHandoff({ run, branch, head, now, base, ci }: HandoffDeps): Promise<{
   code: number;
   stamp: string;
 }> {
   const codes: string[] = [];
   let failed = false;
   for (const [name, command] of STEPS) {
-    const code = await run(command);
+    const code = await run(name === "related" && base ? [...command, "--base", base] : command);
     failed ||= code !== 0;
     codes.push(`${name}=${code}`);
+  }
+  if (ci) {
+    const verdict = await ci();
+    failed ||= verdict !== "0";
+    codes.push(`ci=${verdict}`);
   }
   return { code: failed ? 1 : 0, stamp: `HANDOFF ${branch} ${head} ${codes.join(" ")} ${now}` };
 }
 
 // Pairs are separated by exactly one space: with an optional one, a digit could end a pair or start
 // the next, and a stamp that does not match backtracked 2^n times (Sonar S5852).
-const STAMP = /^HANDOFF (\S+) ([0-9a-f]{7,40}) (\w+=-?\d+(?: \w+=-?\d+)*) (\S+)$/;
+// A value is a word (ci=pending), never a space, so the pairs still split one way only.
+const STAMP = /^HANDOFF (\S+) ([0-9a-f]{7,40}) (\w+=[\w-]+(?: \w+=[\w-]+)*) (\S+)$/;
 
 /** Why a stamp does not vouch for this HEAD, or null when it does. */
 export function stampProblem(stamp: string | null, head: string): string | null {
