@@ -152,4 +152,32 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
     expect(stop()?.disabled).toBe(true);
     expect(screen.queryByText("O card não está rodando")).not.toBeNull();
   });
+
+  test("Finalizar… explains the three ways to Done; Mover para Concluído only moves the card", async () => {
+    const { repo, board } = await setup();
+    await openBoard(repo);
+    await createCard("Login");
+    await openCard("Login");
+    await click("Finalizar…");
+    const dialog = screen.queryByRole("dialog") as HTMLElement;
+    expect(dialog).not.toBeNull();
+    const text = dialog.textContent ?? "";
+    expect(text).toContain("Só move o card para Concluído");
+    expect(text).toContain("remove a worktree");
+    expect(text).toContain("Mesclar e arquivar");
+    // No worktree yet: reviewing and merging is off, and says why.
+    const review = within(dialog).queryByRole("button", {
+      name: "Revisar e mesclar",
+    }) as HTMLButtonElement | null;
+    expect(review?.disabled).toBe(true);
+    expect(text).toContain("Inicie o card antes de abrir o PR");
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Mover para Concluído" }));
+    });
+    const id = board
+      .getBoard(board.listProjects()[0]?.id ?? "")
+      .columns.flatMap((c) => c.cards)[0]?.id;
+    await settle(() => board.getCard(id ?? "").column === "done");
+    expect(board.getCard(id ?? "").column).toBe("done");
+  });
 });
