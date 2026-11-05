@@ -192,13 +192,13 @@ describe("github-app: the sign-in poll", () => {
   test("the panel starts its poll through the store's ticker, and stops it when the sign-in ends", async () => {
     fakeGh([SIGNED_OUT, LOGIN]);
     const page = await hostPage("en");
-    await settle(() => screen.queryByText(t.github.signedOut) !== null);
+    await settle(() => screen.queryByText(en.github.signedOut) !== null);
     expect(page.ticks).toHaveLength(0);
-    await click(t.github.signIn);
+    await click(en.github.signIn);
     await settle(() => screen.queryByText(CODE) !== null);
     expect(page.ticks).toHaveLength(1);
-    await click(t.github.cancel);
-    await settle(() => screen.queryByRole("button", { name: t.github.signIn }) !== null);
+    await click(en.github.cancel);
+    await settle(() => screen.queryByRole("button", { name: en.github.signIn }) !== null);
     expect(page.ticks).toHaveLength(0);
   });
 

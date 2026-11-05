@@ -463,6 +463,8 @@ export interface AppStoreOptions {
   wakeDebounceMs?: number;
   /** How long the global search waits for each host. */
   searchTimeoutMs?: number;
+  /** Starts the poll of the GitHub sign-in (calls `tick` now and then, returns its stop); tests drive it by hand. */
+  githubTicker?: (tick: () => void) => () => void;
   /** Milliseconds now: the age of quota readings. */
   now?: () => number;
   /** HH:MM of an instant (quota resets); the host machine's time zone when absent. */
@@ -1034,6 +1036,13 @@ export class AppStore {
     this.updateHost(hostId, (h) => ({ ...h, name: name.trim() }));
     this.persistHosts();
     return null;
+  }
+
+  /** Starts the poll the GitHub panel runs while a sign-in waits; the returned function stops it. */
+  githubTicker(tick: () => void): () => void {
+    if (this.options.githubTicker) return this.options.githubTicker(tick);
+    const timer = setInterval(tick, 1500);
+    return () => clearInterval(timer);
   }
 
   /** Drops the connection and opens a new one right away. */
