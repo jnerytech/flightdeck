@@ -1,3 +1,4 @@
+import type { Dirent } from "node:fs";
 import { access, readdir, readFile, realpath, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { isInside } from "../paths.ts";
@@ -67,7 +68,7 @@ async function readJson(
 async function names(root: string, dir: string, folders: boolean): Promise<string[]> {
   const out: string[] = [];
   const walk = async (at: string, prefix: string, depth: number): Promise<void> => {
-    let entries: Awaited<ReturnType<typeof readdir>>;
+    let entries: Dirent[];
     try {
       entries = await readdir(at, { withFileTypes: true });
     } catch {
