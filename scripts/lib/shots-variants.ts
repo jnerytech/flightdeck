@@ -34,3 +34,8 @@ export function pickVariants(env: Record<string, string | undefined>): ShotVaria
 export function isCompleteRun(env: Record<string, string | undefined>): boolean {
   return !env.DEMO_SHOTS && !env.SHOTS_THEME && !env.SHOTS_LANG;
 }
+
+/** The `<theme>-<lang>` folders this run prints into. */
+export function printedPairs(_env: Record<string, string | undefined>): string[] {
+  return [];
+}

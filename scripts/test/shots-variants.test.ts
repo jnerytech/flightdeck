@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isCompleteRun, pickVariants, shotVariants } from "../lib/shots-variants.ts";
+import { isCompleteRun, pickVariants, printedPairs, shotVariants } from "../lib/shots-variants.ts";
 
 describe("shots-variants (#291)", () => {
   test("with no filter, all four pairs, light first and pt-BR before en, as the prints always ran", () => {
@@ -36,11 +36,15 @@ describe("shots-variants (#291)", () => {
     ]);
   });
 
-  test("a run is complete only with no filter: a CI leg prints one pair, so the other baselines are not missing", () => {
+  test("a run is complete unless DEMO_SHOTS left screens out; a pair filter keeps it complete for its own pairs (#291)", () => {
     expect(isCompleteRun({})).toBe(true);
-    expect(isCompleteRun({ SHOTS_THEME: "", SHOTS_LANG: "", DEMO_SHOTS: "" })).toBe(true);
-    expect(isCompleteRun({ SHOTS_THEME: "dark" })).toBe(false);
-    expect(isCompleteRun({ SHOTS_LANG: "en" })).toBe(false);
+    expect(isCompleteRun({ SHOTS_THEME: "dark", SHOTS_LANG: "en" })).toBe(true);
     expect(isCompleteRun({ DEMO_SHOTS: "Board" })).toBe(false);
+    expect(isCompleteRun({ DEMO_SHOTS: "" })).toBe(true);
+  });
+
+  test("the printed pairs name the folders the missing-baseline check looks in", () => {
+    expect(printedPairs({ SHOTS_THEME: "dark", SHOTS_LANG: "en" })).toEqual(["dark-en"]);
+    expect(printedPairs({})).toEqual(["light-pt-BR", "light-en", "dark-pt-BR", "dark-en"]);
   });
 });

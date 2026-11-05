@@ -71,6 +71,8 @@ export interface VisualCheck {
   io: VisualIO;
   /** Every screen was printed (no `DEMO_SHOTS` filter): a baseline with no print is a problem. */
   complete: boolean;
+  /** The `<theme>-<lang>` folders the run printed (#291); the missing-baseline check stays inside them. */
+  pairs?: readonly string[];
   options?: CompareOptions;
 }
 

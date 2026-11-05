@@ -48,5 +48,6 @@ describe("ci-prints (#291)", () => {
     expect(picked).toBeLessThan(shots.indexOf("launchFirst("));
     const visual = readFileSync(join(ROOT, "scripts/demo-visual.ts"), "utf8");
     expect(visual).toContain("complete: isCompleteRun(process.env)");
+    expect(visual).toContain("pairs: printedPairs(process.env)");
   });
 });
