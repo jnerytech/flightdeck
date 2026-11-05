@@ -12,6 +12,7 @@ import type { Route } from "../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "./demo-seed.ts";
 import { AXE_RUN_OPTIONS, type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
 import { launchFirst } from "./lib/browser.ts";
+import { type Finding, KEY_REGIONS, layoutFindings } from "./lib/layout-guards.ts";
 import { type Rgb, themeProblem } from "./lib/print-theme.ts";
 import { PENDING_SELECTOR } from "./lib/shots-loaded.ts";
 import { type VisualMode, VOLATILE_RULES } from "./lib/visual.ts";
@@ -784,23 +785,16 @@ export async function takeShots(
             await page.evaluate(pageBackground),
           );
           if (mismatch) problems.push(mismatch);
-          // The window never scrolls sideways (issue #103): the widest element is named.
-          const sideways = await page.evaluate(() => {
-            const root = document.documentElement;
-            if (root.scrollWidth <= root.clientWidth) return null;
-            let widest = { name: "?", right: 0 };
-            for (const el of document.querySelectorAll<HTMLElement>("body *")) {
-              const box = el.getBoundingClientRect();
-              if (box.width > 0 && box.right > widest.right) {
-                widest = {
-                  name: `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 60)}`,
-                  right: box.right,
-                };
-              }
+          // The window never scrolls sideways (issue #103) and the key regions have room (#192): the
+          // shared guards name the culprit by its data-slot path.
+          const layout: Finding[] = await page.evaluate(layoutFindings, { regions: KEY_REGIONS });
+          for (const finding of layout) {
+            if (finding.rule === "sideways" || finding.rule.startsWith("region-")) {
+              problems.push(
+                `${theme} ${lang} ${shot.name}: ${finding.rule} ${finding.path} (${finding.detail})`,
+              );
             }
-            return `scrollWidth ${root.scrollWidth} > ${root.clientWidth}; widest ${widest.name} ends at ${Math.round(widest.right)}`;
-          });
-          if (sideways) problems.push(`${theme} ${lang} ${shot.name}: ${sideways}`);
+          }
           // The same screen, checked for accessibility: serious and critical violations fail.
           await page.addScriptTag({ path: AXE });
           const found = await page.evaluate(

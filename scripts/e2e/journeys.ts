@@ -4,12 +4,25 @@
  * sideways, and the end of the long list shows after scrolling). The runner is `@playwright/test`
  * (scripts/e2e/journeys.e2e.ts); this file holds the journeys themselves.
  */
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { expect, type Page } from "@playwright/test";
 import type { Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../demo-seed.ts";
 import { acoesAction, DANGER_SESSION, OVERFLOW_VIEWPORTS, VIEWPORTS } from "../lib/e2e-journeys.ts";
 import { ensureOnline } from "../lib/e2e-online.ts";
+import {
+  BARS,
+  type Finding,
+  findingKey,
+  GUARD_SIZES,
+  judge,
+  KEY_REGIONS,
+  layoutFindings,
+  loadBaseline,
+  waitForStable,
+} from "../lib/layout-guards.ts";
 
 const ALFA = "demo-alfa";
 export const WAIT = 15_000;
@@ -37,7 +50,13 @@ export async function open(c: Context, route: Route, prefs = true) {
   // connection to heal in seconds.
   query.set("reconnect", "fast");
   await c.page.goto(`${c.url}?${query}`);
-  await c.page.waitForTimeout(1500);
+  // Not a guess: the sidebar's host dots are drawn (the screens with one), the hosts answer, and
+  // then the layout holds still. A screen without a sidebar (simple mode) has no dots to wait for.
+  await c.page
+    .getByRole("img", { name: /^(alfa|beta): / })
+    .first()
+    .waitFor({ timeout: 5000 })
+    .catch(() => undefined);
   await ensureOnline({
     online: () => demoHostsOnline(c),
     reload: async () => {
@@ -46,6 +65,7 @@ export async function open(c: Context, route: Route, prefs = true) {
     sleep: (ms) => c.page.waitForTimeout(ms),
     now: () => Date.now(),
   });
+  await c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000 });
 }
 
 /** The sidebar's dots of the demo hosts a journey uses: none of them reads offline or connecting. */
@@ -467,49 +487,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
   },
 };
 
-/** What sticks out of the window sideways, outside a box that scrolls. */
-async function overflow(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
-    const width = window.innerWidth;
-    const found: string[] = [];
-    if (document.documentElement.scrollWidth > width) found.push("a página rola para o lado");
-    for (const el of document.querySelectorAll<HTMLElement>("body *")) {
-      const box = el.getBoundingClientRect();
-      if (box.width === 0 || box.height === 0 || box.right <= width + 1) continue;
-      let scrolls = false;
-      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
-        const x = getComputedStyle(p).overflowX;
-        if (x === "auto" || x === "scroll" || x === "hidden" || x === "clip") scrolls = true;
-      }
-      const visibility = getComputedStyle(el);
-      if (!scrolls && visibility.display !== "none" && visibility.visibility !== "hidden") {
-        found.push(`${el.tagName.toLowerCase()} ${String(el.className).slice(0, 50)}`);
-      }
-      if (found.length >= 5) break;
-    }
-    return found;
-  });
-}
-
-/** The page never scrolls sideways: when it does, the widest element sticking out is named. */
+/** The page never scrolls sideways: when it does, the guards name the widest element. */
 async function pageScrollsSideways(page: Page): Promise<string | null> {
-  return page.evaluate(() => {
-    const root = document.documentElement;
-    if (root.scrollWidth <= root.clientWidth && document.body.scrollWidth <= root.clientWidth) {
-      return null;
-    }
-    let widest = { name: "?", right: 0 };
-    for (const el of document.querySelectorAll<HTMLElement>("body *")) {
-      const box = el.getBoundingClientRect();
-      if (box.width > 0 && box.right > widest.right) {
-        widest = {
-          name: `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 60)}`,
-          right: box.right,
-        };
-      }
-    }
-    return `scrollWidth ${root.scrollWidth} > ${root.clientWidth}; widest ${widest.name} ends at ${Math.round(widest.right)}`;
-  });
+  const found: Finding[] = await page.evaluate(layoutFindings, {});
+  const sideways = found.find((finding) => finding.rule === "sideways");
+  return sideways ? `${sideways.path}: ${sideways.detail}` : null;
 }
 
 /** The crumbs end before the bell, and what does not fit is cut with an ellipsis (issue #133). */
@@ -593,7 +575,12 @@ async function openCrowded(c: Context, first: Route, count = 12) {
   );
   const query = new URLSearchParams({ lang: c.lang, theme: "light", reconnect: "fast" });
   await c.page.goto(`${c.url}?${query}`);
-  await c.page.waitForTimeout(1500);
+  await c.page
+    .getByRole("img", { name: /^(alfa|beta): / })
+    .first()
+    .waitFor({ timeout: 5000 })
+    .catch(() => undefined);
+  await c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000 });
 }
 
 /** After scrolling every box to its end, the last row of the list is on screen (or why not). */
@@ -872,12 +859,16 @@ export async function layout(c: Context, problems: string[]) {
   if (new Set(lefts).size > 1) {
     problems.push(`${c.lang}: o início das abas muda com o título (${lefts.join(" ≠ ")})`);
   }
+  // The geometry guards (issue #192), at three window sizes, on the longest labels (pt-BR). What
+  // they find is named by data-slot path; the heuristic rules fail only when new against the baseline.
+  if (c.lang === "pt-BR") await geometryGuards(c, screens, problems);
   for (const viewport of VIEWPORTS) {
     await c.page.setViewportSize(viewport);
     for (const [name, route] of screens) {
       await open(c, route);
       const where = `${c.lang} ${viewport.width}x${viewport.height} ${name}`;
-      for (const issue of await overflow(c.page)) problems.push(`${where}: ${issue}`);
+      const sideways = await pageScrollsSideways(c.page);
+      if (sideways) problems.push(`${where}: ${sideways}`);
       const hosts = await hostsProblem(c.page);
       if (hosts) problems.push(`${where}: ${hosts}`);
       if (name === "sessao") {
@@ -942,4 +933,40 @@ export async function layout(c: Context, problems: string[]) {
     problems.push(`${c.lang} 720x480 pasta: ${issue}`);
   }
   problems.push(...(await bellPanelProblems(c)));
+}
+
+const BASELINE_FILE = join(import.meta.dirname, "../layout-findings-baseline.json");
+const FINDINGS_FILE = join(process.cwd(), "playwright-report", "layout-findings.json");
+
+/** Every screen at every guard size: findings by data-slot path, judged against the baseline. */
+async function geometryGuards(c: Context, screens: Array<[string, Route]>, problems: string[]) {
+  const baseline = loadBaseline(() =>
+    existsSync(BASELINE_FILE) ? readFileSync(BASELINE_FILE, "utf8") : null,
+  );
+  const seen: Record<string, string> = {};
+  const fixed: string[] = [];
+  for (const size of GUARD_SIZES) {
+    await c.page.setViewportSize(size);
+    for (const [name, route] of screens) {
+      await open(c, route);
+      const screen = `${name}@${size.width}`;
+      const found: Finding[] = await c.page.evaluate(layoutFindings, {
+        // The key regions are a contract at the usual window: the smallest one is #135's business.
+        regions: size.width >= 1280 ? KEY_REGIONS : [],
+        bars: BARS,
+      });
+      for (const finding of found) seen[findingKey(screen, finding)] = finding.detail;
+      const verdict = judge(screen, found, baseline);
+      problems.push(...verdict.failures);
+      fixed.push(...verdict.fixed);
+    }
+  }
+  // What the run saw, for the baseline file (the report folder is an artifact of the CI run).
+  mkdirSync(dirname(FINDINGS_FILE), { recursive: true });
+  writeFileSync(FINDINGS_FILE, JSON.stringify(seen, null, 2));
+  if (fixed.length > 0) {
+    problems.push(
+      `layout-findings-baseline.json holds findings that are gone: remove\n${fixed.join("\n")}`,
+    );
+  }
 }

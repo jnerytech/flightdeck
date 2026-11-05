@@ -247,6 +247,7 @@ export function ApprovalCard(props: {
   return (
     <fieldset
       aria-label={t("approval.label", { tool: request.toolName })}
+      data-slot="approval-card"
       data-request-id={request.requestId}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: the card takes focus for its A/N/Esc keys
       tabIndex={0}
