@@ -1,13 +1,5 @@
 {
   "sonarjs/cognitive-complexity": 5,
   "sonarjs/max-switch-cases": 1,
-  "sonarjs/no-dead-store": 1,
-  "sonarjs/no-hardcoded-ip": 5,
-  "sonarjs/no-invariant-returns": 1,
-  "sonarjs/no-inverted-boolean-check": 5,
-  "sonarjs/no-nested-conditional": 63,
-  "sonarjs/no-nested-template-literals": 32,
-  "sonarjs/no-os-command-from-path": 2,
-  "sonarjs/prefer-specific-assertions": 5,
-  "sonarjs/use-type-alias": 1
+  "sonarjs/no-nested-conditional": 4
 }
