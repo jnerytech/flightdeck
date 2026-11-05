@@ -156,6 +156,39 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
     expect(store.getState().sessions[sessionKey(hostId, ids[0] as string)]?.pending).toEqual([]);
   });
 
+  // Issue #244 (M4): the tile must pass the request's risk on; without it a high-risk request is
+  // approved there with one click.
+  test("a high-risk request on a tile is approved only by holding: no Approve, and a click answers nothing", async () => {
+    const { store, hostId, ids } = await setup(["pede", "quieta"]);
+    await needsYouFirst();
+    const tile = tiles()[0] as HTMLElement;
+    await waitFor(() => within(tile).queryByRole("group", { name: "Request" }), "request");
+    const key = sessionKey(hostId, ids[0] as string);
+    await act(async () => {
+      const state = store.getState();
+      const session = state.sessions[key];
+      if (!session) return;
+      (store as unknown as { update(patch: object): void }).update({
+        sessions: {
+          ...state.sessions,
+          [key]: {
+            ...session,
+            items: session.items.map((item) =>
+              item.kind === "permission" ? { ...item, risk: "high" } : item,
+            ),
+          },
+        },
+      });
+    });
+    expect(within(tile).queryByRole("button", { name: "Approve" })).toBeNull();
+    const hold = within(tile).queryByRole("button", { name: "Hold to approve" });
+    expect(hold).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(hold as HTMLElement);
+    });
+    expect(store.getState().sessions[key]?.pending.length).toBe(1);
+  });
+
   test("Deny answers the request of that tile too, and the request goes away", async () => {
     const { store, hostId, ids } = await setup(["pede", "quieta"]);
     await needsYouFirst();
