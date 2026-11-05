@@ -147,6 +147,25 @@ describe("session-runtime", () => {
     expect(restarted.starts.map((s) => s.resume)).toEqual(["ses_oc"]);
   });
 
+  test("after a restart on a host where OpenCode is off, sending to an OpenCode session is refused as runtime_unavailable", async () => {
+    const store = new EventStore(":memory:");
+    const first = newManager({ store, opencode: new StubOpenCode() });
+    const { sessionId } = await first.start({
+      cwd: first.project,
+      prompt: "hi",
+      runtime: "opencode",
+    });
+    expect(await poll(() => first.manager.get(sessionId).status === "idle")).toBe(true);
+    const second = newManager({ store, allowedRoots: [first.root] });
+    let reason: string | null = null;
+    try {
+      second.manager.send(sessionId, "one");
+    } catch (error) {
+      reason = error instanceof FlightdeckError ? error.reason : String(error);
+    }
+    expect(reason).toBe("runtime_unavailable");
+  });
+
   test("a run that fails with a typed refusal leaves a typed session.error and the session in error", async () => {
     const { manager, start, project, opencode } = setup();
     opencode.failRun = new FlightdeckError(
