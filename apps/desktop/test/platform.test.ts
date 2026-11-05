@@ -360,5 +360,7 @@ describe("platform", () => {
     expect(result.flagged(ui)).toBe(true);
     expect(result.flagged(lib)).toBe(true);
     expect(result.flagged(platform)).toBe(false);
-  });
+    // A child process: its start is what takes time on a loaded Windows runner (15 s was not enough
+    // in three runs in a row). The limit only bounds a hang; nothing here asserts speed.
+  }, 90_000);
 });

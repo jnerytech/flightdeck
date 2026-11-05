@@ -24,5 +24,7 @@ describe("proto-restore: DOM prototypes patched by a test file are put back afte
       code: 0,
       summary: ["2 pass", "0 fail"],
     });
-  });
+    // A child `bun test` with the whole preload: its start is what takes time on a loaded Windows
+    // runner (15 s was not enough). The limit only bounds a hang; nothing here asserts speed.
+  }, 90_000);
 });
