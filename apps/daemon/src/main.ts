@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { unwatchFile, watchFile } from "node:fs";
+import { existsSync, statSync, unwatchFile, watchFile } from "node:fs";
 import { stat } from "node:fs/promises";
 import { homedir, tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
@@ -53,6 +53,7 @@ import { resolvePricing } from "./costs/pricing.ts";
 import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
 import { runDoctor } from "./doctor.ts";
+import { buildChildEnv } from "./env.ts";
 import { type Exec, spawnExec } from "./exec.ts";
 import { runGh } from "./github/gh.ts";
 import { GithubService } from "./github/service.ts";
@@ -97,6 +98,11 @@ import { RunManager } from "./runenv/manager.ts";
 import { CardPorts } from "./runenv/ports.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
+import { discoverOpenCode, type OpenCodeInfo } from "./runtime/opencode-discovery.ts";
+import { OpenCodePreflight } from "./runtime/opencode-preflight.ts";
+import { OpenCodeModels, runCommand } from "./runtime/opencode-process.ts";
+import { OpenCodeRuntime, REAL_KILL_DEPS, treeKiller } from "./runtime/opencode-runtime.ts";
+import { scanOpenCodeScope } from "./runtime/opencode-scope.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { DAEMON_VERSION, startServer } from "./server.ts";
 import {
@@ -552,6 +558,71 @@ async function createRuntime(
   };
 }
 
+/** Phase 39: what the host offers of OpenCode: whether it runs here, its runtime and its models. */
+interface CreatedOpenCode {
+  info: OpenCodeInfo;
+  runtime?: AgentRuntime;
+  models?: () => Promise<Array<{ id: string; name: string }>>;
+}
+
+/** `size:mtime` of a file, so a replaced OpenCode binary is noticed; null when it is not there. */
+function fileStamp(path: string): Promise<string | null> {
+  const info = statSync(path, { throwIfNoEntry: false });
+  return Promise.resolve(info ? `${info.size}:${info.mtimeMs}` : null);
+}
+
+/**
+ * Phase 39: finds and checks OpenCode when the host turned it on (it runs the binary), then builds
+ * its preflight, its runtime and its model list.
+ */
+async function createOpenCode(
+  config: Config,
+  env: Record<string, string | undefined>,
+  mcpServer: FlightdeckMcpServer,
+): Promise<CreatedOpenCode> {
+  if (!config.opencode.enabled) return { info: { available: false, reason: "opencode_disabled" } };
+  const childEnv = buildChildEnv(env, config.allowApiKey);
+  const scan = () => scanOpenCodeScope({ env: childEnv });
+  const info = await discoverOpenCode(config.opencode, {
+    env: childEnv,
+    platform: process.platform,
+    dataDir: config.dataDir,
+    which: (bin) => Bun.which(bin, { PATH: childEnv.PATH ?? "" }),
+    exists: existsSync,
+    run: runCommand,
+    scan,
+    statFile: fileStamp,
+  });
+  const { path, version } = info;
+  if (!info.available || !path || !version) return { info };
+  const preflight = new OpenCodePreflight({
+    path,
+    version,
+    env: childEnv,
+    run: runCommand,
+    scan,
+    ...(info.fingerprint
+      ? { exe: { fingerprint: info.fingerprint, current: () => fileStamp(path) } }
+      : {}),
+  });
+  const runtime = new OpenCodeRuntime({
+    path,
+    version,
+    preflight,
+    scan,
+    kill: treeKiller(process.platform, REAL_KILL_DEPS),
+    mcpServer,
+  });
+  const models = new OpenCodeModels({
+    path,
+    env: childEnv,
+    dataDir: config.dataDir,
+    run: runCommand,
+    scan,
+  });
+  return { info, runtime, models: () => models.list() };
+}
+
 /** What "Abrir no terminal" needs (phase 8): the stable binary when installed, the WSL distro. */
 async function terminalInfo(env: Record<string, string | undefined>) {
   const stable = stableBinPath(userHome(env), process.platform);
@@ -600,15 +671,14 @@ export async function startDaemon(
   if (!lock) throw new AlreadyRunningError(config.dataDir);
   const store = await EventStore.open(join(config.dataDir, "flightdeck.db"));
   const claudePath = config.claude?.executablePath ?? config.claudePath;
+  const mcpServer = flightdeckMcpServer(daemonCommand(process.execPath, Bun.main), configFile);
   const {
     runtime,
     claude,
     accountReaders: readers,
-  } = await createRuntime(
-    runtimeKind,
-    claudePath,
-    flightdeckMcpServer(daemonCommand(process.execPath, Bun.main), configFile),
-  );
+  } = await createRuntime(runtimeKind, claudePath, mcpServer);
+  // Phase 39: OpenCode, when this host turned it on.
+  const opencode = await createOpenCode(config, env, mcpServer);
   // The plan quota is the host's: every managed session feeds it (phase 7).
   const quota = new Quota({ pauseAt: config.quota.pauseAt });
   const quotaHistory = new QuotaHistory({ db: store.db });
@@ -663,6 +733,7 @@ export async function startDaemon(
     allowApiKey: config.allowApiKey,
     allowBypass: () => config.allowBypassPermissions,
     baseEnv: env,
+    ...(opencode.runtime ? { opencode: opencode.runtime } : {}),
     onQuota: (readings) => {
       quota.record(readings);
       quotaHistory.sample(readings);
@@ -1052,6 +1123,10 @@ export async function startDaemon(
   await central.ready();
   const server = startServer({
     manager,
+    opencode: {
+      info: () => opencode.info,
+      models: () => (opencode.models as NonNullable<CreatedOpenCode["models"]>)(),
+    },
     warmProjectKey: (cwd) => keys.resolve(cwd),
     projectKeyOf: (cwd) => keys.resolve(cwd),
     // `roots.add` pushes into this same array, so every service sees the new folder at once.
