@@ -4286,3 +4286,11 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   ratchet bounds the first kind: it is exactly saturated (at most 5 and the five files named), and
   it runs in CI over the whole checkout. The hook matcher also covers only Edit, Write and Bash, as
   before. All of it is how the guard already worked for `skipIf`, which it never blocked.
+- **Four of the five are fixed (issue #288, 2026-11-05).** The hub-list ratio failed on Ubuntu CI too
+  (249 ms against 229), so the skip off Linux did not save it. Now: hub-list compares counts (rows
+  drawn, React commits, reads of the history) at 690 and at 9,090 rows, with no clock; wait-stays
+  asserts at least two looks and that it returned no earlier than its window (`Date.now()` is what
+  `stays` itself loops on); platform lint and proto-restore keep a 90 s limit that only bounds a hang.
+  They lost their skip and note, and the ratchet maximum went from 5 to 1. Only the heartbeat test is
+  still skipped: its fix needs a ticker and a clock injected into `startServer`
+  (`performance.now()` and `setInterval` for the ping), so #288 stays open for it.
