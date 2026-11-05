@@ -167,6 +167,14 @@ describe("hook-commit-gate", () => {
     expect(quoted.calls).toEqual([]);
   });
 
+  test("a commit in a repository that is not this project's is never checked", () => {
+    const foreign = { ...repo([]), inProject: (dir: string) => dir !== "/tmp/poc" };
+    expect(commitViolation('cd /tmp/poc && git commit -m "init"', CWD, foreign)).toBeNull();
+    expect(commitViolation('git -C /tmp/poc commit -m "feat(a): x"', CWD, foreign)).toBeNull();
+    expect(foreign.calls).toEqual([]);
+    expect(commitViolation('git commit -m "init"', CWD, foreign) ?? "").toContain("is blocked");
+  });
+
   test("a command that commits nothing never calls git", () => {
     const quiet = repo([]);
     expect(commitViolation("bun run test && git add a.ts", CWD, quiet)).toBeNull();
