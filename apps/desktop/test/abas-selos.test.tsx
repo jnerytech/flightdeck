@@ -82,6 +82,25 @@ describe("abas: selos e botão de aba nova", () => {
     expect(glyph?.querySelector("svg")).not.toBeNull();
   });
 
+  // OpenCode branch review M1 (#172): a pinned tab's aria-label replaced its content, so the
+  // badge's words never reached its name.
+  test("a tab's name carries its badge's words, pinned or not", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    render(<App store={store} />);
+    await act(async () => {
+      store.tabs.open({ name: "needs-you" });
+      (store as unknown as { update(patch: Partial<AppState>): void }).update({
+        hosts: [{ id: "h", name: "pc", status: "online", sessions: [session("idle", 1)] }] as never,
+      });
+    });
+    expect(screen.queryByRole("tab", { name: /Precisa de você.*Precisa de você/ })).not.toBeNull();
+    await act(async () => {
+      const tab = store.tabs.tabs.find((each) => each.router.current.name === "needs-you");
+      if (tab) store.tabs.pin(tab.id, true);
+    });
+    expect(screen.queryByRole("tab", { name: "Precisa de você, Precisa de você" })).not.toBeNull();
+  });
+
   test("each kind of screen has its icon: session, card (and its diff), terminal, reader, Custos, agent", () => {
     expect(tabKind({ name: "session", host: "h", id: "s" })).toBe("session");
     expect(tabKind({ name: "external", host: "h", claudeSessionId: "c" })).toBe("session");
