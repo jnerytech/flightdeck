@@ -69,7 +69,7 @@ describe("home-uso: the ledger counts failed turns and the time they took", () =
     ]);
   });
 
-  test("a store that already had days before the columns keeps them, counted as no failures and no time", () => {
+  test("a store that already had days before the columns keeps them, with the failures and the time unknown (HK-M1)", () => {
     const ctx = newManager();
     ctx.store.db
       .query(
@@ -77,7 +77,15 @@ describe("home-uso: the ledger counts failed turns and the time they took", () =
       )
       .run();
     const l = new UsageLedger({ db: ctx.store.db, projectKey: (c) => c, now: () => NOW, day: utc });
-    expect(l.summary(1).rows[0]).toMatchObject({ turns: 4, failedTurns: 0, durationMs: 0 });
+    const old = l.summary(1).rows[0] as Record<string, unknown>;
+    expect(old).toMatchObject({ turns: 4 });
+    expect("failedTurns" in old).toBe(false);
+    expect("durationMs" in old).toBe(false);
+    // A turn recorded on that day cannot make the old turns known: the day stays unknown.
+    l.record("s1", "old", turn(true, 900));
+    const same = l.summary(1).rows[0] as Record<string, unknown>;
+    expect(same).toMatchObject({ turns: 5 });
+    expect("failedTurns" in same).toBe(false);
   });
 
   test("a database from before the columns (0.36.1) is upgraded in place: its days survive, and new turns add to them", () => {
@@ -111,16 +119,17 @@ describe("home-uso: the ledger counts failed turns and the time they took", () =
         inputTokens: 20,
         outputTokens: 30,
         turns: 6,
-        failedTurns: 0,
-        durationMs: 0,
       },
     ]);
     l.record("s1", "/a", turn(true, 2500, 0.5));
-    expect(l.summary(1).rows[0]).toMatchObject({
-      turns: 7,
-      failedTurns: 1,
-      durationMs: 2500,
+    // The same day and project: the old turns are still of unknown outcome and time.
+    expect(l.summary(1).rows[0]).toEqual({
+      day: "2026-10-10",
+      projectKey: "p:old",
       costUsd: 2,
+      inputTokens: 20,
+      outputTokens: 30,
+      turns: 7,
     });
     // Opening it again changes nothing: the migration ran once.
     store.close();

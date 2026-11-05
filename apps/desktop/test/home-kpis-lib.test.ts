@@ -160,4 +160,24 @@ describe("home-kpis: the four cards of Home from what the hosts already count", 
     expect(kpis.turns).toMatchObject({ total: 0, ok: 0, failed: 0 });
     expect(kpis.average).toMatchObject({ costPerTurnUsd: null, turnMs: null, successRate: null });
   });
+
+  test("days from before the host counted failures and time are unknown: the averages use the days that know, and the failed turns stay unknown (HK-M1)", () => {
+    const legacy = { ...row("2026-10-09", { turns: 10, costUsd: 1 }) } as UsageRow;
+    delete legacy.failedTurns;
+    delete legacy.durationMs;
+    const kpis = homeKpis(
+      input({
+        usage: [
+          usage(
+            legacy,
+            row("2026-10-10", { turns: 4, failedTurns: 1, durationMs: 4000, costUsd: 1 }),
+          ),
+        ],
+      }),
+    );
+    expect(kpis.turns).toMatchObject({ total: 14, failed: null, ok: 14 });
+    // 4 s over the 4 turns that were timed; 3 of those 4 succeeded: never 4 s over 14 turns.
+    expect(kpis.average.turnMs).toBe(1000);
+    expect(kpis.average.successRate).toBe(0.75);
+  });
 });
