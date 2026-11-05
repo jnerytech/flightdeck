@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { realTempDir } from "./temp-dir.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
 
@@ -61,7 +61,7 @@ describe("lint:sonar", () => {
   });
 
   describe("--ratchet", () => {
-    const dir = mkdtempSync(join(tmpdir(), "lint-sonar-"));
+    const dir = realTempDir("lint-sonar-");
     const baseline = join(dir, "baseline.json");
     afterAll(() => rmSync(dir, { recursive: true, force: true }));
     const ratchet = (fixture: string, ...extra: string[]) => {

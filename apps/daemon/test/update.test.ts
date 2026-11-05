@@ -408,7 +408,7 @@ describe("update", () => {
 
     // Paths compared after links are resolved (a package manager may install bun behind one).
     const own = await processPath(process.pid);
-    expect(realpathSync(own ?? "")).toBe(realpathSync(process.execPath));
+    expect(realpathSync.native(own ?? "")).toBe(realpathSync.native(process.execPath));
     const child = Bun.spawn([process.execPath, "-e", "setInterval(() => {}, 1000)"], {
       env: process.env,
     });
