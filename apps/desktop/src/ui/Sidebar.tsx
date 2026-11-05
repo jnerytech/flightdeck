@@ -32,6 +32,7 @@ import type { Key, T } from "../i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "../lib/app-store.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
 import { requiredMissing } from "../lib/deps-summary.ts";
+import { footAccount } from "../lib/foot-account.ts";
 import { type GithubHost, githubSignedIn } from "../lib/github-session.ts";
 import type { HostNameError } from "../lib/host-name.ts";
 import { hostDotView } from "../lib/host-status.ts";
@@ -266,10 +267,7 @@ export function Sidebar(props: {
   };
 
   /** The hosts of the Machines group: a dot each in the rail, a list with a menu each otherwise. */
-  const account =
-    state.hosts.map((host) => state.account[host.id]).find((a) => a?.name) ??
-    state.hosts.map((host) => state.account[host.id]).find((a) => a) ??
-    null;
+  const foot = footAccount(state, props.route);
   const hereHost = props.route?.name === "host" ? props.route.host : null;
   const hostsList = collapsed ? (
     <div className="rail-hosts">
@@ -653,7 +651,8 @@ export function Sidebar(props: {
           onClick={() => go({ name: "settings" })}
         />
         <AccountFooter
-          account={account}
+          account={foot.account}
+          many={foot.many}
           githubHosts={githubHosts}
           onOpen={() => void githubSignedIn(props.store, state.hosts).then(setGithubHosts)}
           onSignOutGithub={(hostId) =>
