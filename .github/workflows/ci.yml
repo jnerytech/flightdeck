@@ -535,7 +535,9 @@ jobs:
           if-no-files-found: ignore
 
   # The end-to-end journeys, in both languages, against the same seeded demo.
-  # In three Playwright shards (#264): each runs a third of the journeys, in both languages.
+  # In three Playwright shards (#264). Playwright keeps a file's tests together on a shard, so each
+  # language's journeys are a file of their own (#292): shard 1 gets one language, shard 2 the other
+  # and shard 3 the BDD scenarios, instead of every journey on shard 1.
   screenshots-e2e:
     name: e2e journeys ${{ matrix.shard }}/3
     needs: [changes, quick]
