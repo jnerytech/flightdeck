@@ -316,6 +316,7 @@ earlier sessions) are trusted; a repository you clone later, or a folder you add
   asks nothing. Trusting covers the folders inside the project, not the ones around it.
 - A card's worktree always reads its project configuration from the project's main folder, so a
   branch never brings hooks of its own, trusted or not.
+- Trusting works only from the host's own computer or over Tailscale (like allowing a folder or sessions without prompts); revoking works from anywhere.
 - The decision lives on the host (`project_trust` in its database), per host, and is logged. A
   host that does not announce `projectTrust` loads everything, as before.
 

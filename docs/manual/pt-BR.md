@@ -306,6 +306,7 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
   confiança** não pergunta. Confiar vale para as pastas dentro do projeto, não para as ao redor.
 - O worktree de um card sempre lê a configuração do projeto da pasta principal dele, então uma
   branch nunca traz hooks próprios, com confiança ou sem.
+- Confiar só funciona a partir do próprio computador do host ou pela Tailscale (como liberar uma pasta ou sessões sem pedidos); revogar funciona de qualquer lugar.
 - A decisão fica no host (`project_trust` no banco dele), por host, e é registrada no log. Um host
   que não anuncia `projectTrust` carrega tudo, como antes.
 

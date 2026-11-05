@@ -1579,6 +1579,11 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "project.trust.set": {
         if (!opts.projectTrust) throw featureOff("projectTrust");
+        // Trusting lets the project's own hooks and MCP servers run without a prompt: only from a near
+        // connection, like roots.add and host.bypass. Revoking only lowers risk.
+        if (command.payload.trusted) {
+          requireVaultTransport(ws.data.origin, "project.trust.set", opts.log);
+        }
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
         return ok(command.type, opts.projectTrust.set(path, command.payload.trusted));
       }
@@ -2262,7 +2267,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     port: opts.port,
     fetch(req, srv) {
       // Origin filter before anything else, on every route, before any upgrade.
-      const origin = srv.requestIP(req)?.address ?? "";
+      const origin = opts.peerOf ? opts.peerOf(req, srv) : (srv.requestIP(req)?.address ?? "");
       if (!ipInNetworks(origin, opts.allowedNetworks ?? DEFAULT_ALLOWED_NETWORKS)) {
         // Its own address, so a person told "refused" can add the right network (the doctor reads it).
         return new Response(`forbidden: ${origin}`, { status: 403 });
