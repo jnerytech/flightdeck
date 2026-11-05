@@ -145,34 +145,56 @@ describe("ci-branch: the full CI on a pushed branch, from the script", () => {
   });
 });
 
+/** The workflow read as data, not as text: a rename of a key or a reflow of the file keeps these true. */
+interface Step {
+  name?: string;
+  id?: string;
+  if?: string;
+  uses?: string;
+  with?: { name?: string; path?: string };
+}
+interface Workflow {
+  on: { workflow_dispatch: { inputs: { only: { options: string[]; default: string } } } };
+  concurrency: { group: string };
+  jobs: Record<string, { if?: string; steps: Step[] }>;
+}
+
 describe("ci.yml: any pushed branch can run the full CI by hand", () => {
   const ci = read(".github/workflows/ci.yml");
+  const workflow = Bun.YAML.parse(ci) as Workflow;
 
   test("declares workflow_dispatch with an input that picks only the screenshots job", () => {
-    expect(ci).toMatch(/\n {2}workflow_dispatch:/);
-    expect(ci).toMatch(/\n {6}only:/);
-    expect(ci).toContain("screenshots");
+    const only = workflow.on.workflow_dispatch.inputs.only;
+    expect(only.options).toEqual(["all", "screenshots"]);
+    expect(only.default).toBe("all");
   });
 
-  test("the test job is skipped when only the screenshots were asked for", () => {
-    const test = ci.slice(ci.indexOf("  test:"), ci.indexOf("  screenshots:"));
-    expect(test).toContain("inputs.only != 'screenshots'");
+  test("the test job is skipped when only the screenshots were asked for, and not otherwise", () => {
+    expect(workflow.jobs.test?.if).toBe(
+      "github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'",
+    );
+    expect(workflow.jobs.screenshots?.if).toBeUndefined();
   });
 
   test("a dispatched run never cancels the branch's push or pull request run, and skips SonarCloud", () => {
-    expect(ci).toMatch(/group: ci-\$\{\{ github\.ref \}\}-\$\{\{ github\.event_name \}\}/);
-    const sonar = ci.slice(
-      ci.indexOf("- name: Versão para o SonarCloud"),
-      ci.indexOf("- name: SonarCloud"),
+    expect(workflow.concurrency.group).toBe("ci-${{ github.ref }}-${{ github.event_name }}");
+    const sonar = workflow.jobs.test?.steps.filter((step) =>
+      step.if?.includes("workflow_dispatch"),
     );
-    expect(sonar).toContain("github.event_name != 'workflow_dispatch'");
+    expect(sonar?.length).toBeGreaterThan(0);
+    for (const step of sonar ?? []) {
+      expect(step.if).toContain("github.event_name != 'workflow_dispatch'");
+    }
   });
 
   test("the screenshots job uploads the prints and the Playwright report, even when a step failed", () => {
-    const job = ci.slice(ci.indexOf("  screenshots:"));
-    expect(job).toMatch(/name: prints\n\s+path: apps\/desktop\/screenshots/);
-    expect(job).toMatch(/name: relatorio-e2e\n\s+path: playwright-report/);
-    expect(job.match(/if: always\(\)/g)?.length).toBe(2);
+    const uploads = (workflow.jobs.screenshots?.steps ?? []).filter((step) =>
+      step.uses?.startsWith("actions/upload-artifact@"),
+    );
+    expect(uploads.map((step) => [step.with?.name, step.with?.path, step.if])).toEqual([
+      ["relatorio-e2e", "playwright-report", "always()"],
+      ["prints", "apps/desktop/screenshots", "always()"],
+    ]);
   });
 
   test("ci-branch.sh is a thin wrapper over the script and the package has the command", () => {

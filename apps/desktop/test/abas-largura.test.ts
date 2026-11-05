@@ -6,7 +6,12 @@ const read = (file: string) => readFileSync(join(import.meta.dir, "../src", file
 const block = (css: string, name: string) =>
   css.match(new RegExp(`@utility ${name} \\{([^}]*)\\}`))?.[1] ?? "";
 
-describe("abas-largura: tabs share the width like a browser's (issue #103)", () => {
+/**
+ * Cheap guards, not proofs: these read the class names and the CSS text, so they only say the
+ * rules were not removed. The layout itself (widths, ellipsis, no sideways scroll) is measured in
+ * a real browser by the e2e `layout` journey (scripts/e2e/journeys.ts); happy-dom has no layout.
+ */
+describe("guard: abas-largura: tabs share the width like a browser's (issue #103)", () => {
   const css = read("styles.css");
 
   test("every tab has the same basis and shrinks with the rest, down to a minimum", () => {

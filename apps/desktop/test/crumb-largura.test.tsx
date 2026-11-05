@@ -13,7 +13,12 @@ afterEach(cleanup);
 const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
 const block = (name: string) => css.match(new RegExp(`@utility ${name} \\{([^}]*)\\}`))?.[1] ?? "";
 
-describe("crumb-largura: the tab strip starts at the same place on every screen", () => {
+/**
+ * Cheap guards, not proofs: these read the class names and the CSS text, so they only say the
+ * rules were not removed. The layout itself (widths, ellipsis, no sideways scroll) is measured in
+ * a real browser by the e2e `layout` journey (scripts/e2e/journeys.ts); happy-dom has no layout.
+ */
+describe("guard: crumb-largura: the tab strip starts at the same place on every screen", () => {
   test("the crumb slot has a width of its own that neither the crumbs nor the window's slack change", () => {
     const slot = block("header-crumbs");
     expect(slot).toMatch(/flex:\s*0 0 24rem/);
@@ -60,7 +65,7 @@ describe("crumb-largura: the tab strip starts at the same place on every screen"
   });
 });
 
-describe("crumb-largura: a long path is cut with an ellipsis, the earlier steps first (issue #133)", () => {
+describe("guard: crumb-largura: a long path is cut with an ellipsis, the earlier steps first (issue #133)", () => {
   const crumbs = [
     { label: "wsl - Ubuntu 24.04 on a long machine name", route: { name: "hub" as const } },
     { label: "Projects", route: { name: "hub" as const } },
