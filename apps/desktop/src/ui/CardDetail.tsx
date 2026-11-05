@@ -5,7 +5,7 @@ import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
-import { Inline } from "@/components/layout/stack";
+import { Inline, Stack } from "@/components/layout/stack";
 import { PersonaPicker, useSuggestedPersona } from "@/components/personas/persona-picker";
 import { CardHours } from "@/components/roi/card-hours";
 import { Badge } from "@/components/ui/badge";
@@ -451,50 +451,56 @@ export const CardDetail = memo(function CardDetail(props: {
               <DialogHeader>
                 <DialogTitle>{t("cardUi.finishTitle")}</DialogTitle>
               </DialogHeader>
-              <ul className="flex flex-col gap-4 text-sm">
-                <li className="flex flex-col gap-1">
-                  <span>{t("cardUi.finishMove")}</span>
-                  <ActionButton
-                    variant="outline"
-                    disabled={card.column === "done"}
-                    disabledReason={t("cardUi.alreadyDone")}
-                    onClick={async () => {
-                      setFinishing(false);
-                      await store.hostCommand(hostId, "card.move", { cardId, column: "done" });
-                    }}
-                  >
-                    {t("cardUi.finishMoveButton")}
-                  </ActionButton>
+              <Stack as="ul" gap={4} label={t("cardUi.finishTitle")}>
+                <li>
+                  <Stack gap={1}>
+                    <span>{t("cardUi.finishMove")}</span>
+                    <ActionButton
+                      variant="outline"
+                      disabled={card.column === "done"}
+                      disabledReason={t("cardUi.alreadyDone")}
+                      onClick={async () => {
+                        setFinishing(false);
+                        await store.hostCommand(hostId, "card.move", { cardId, column: "done" });
+                      }}
+                    >
+                      {t("cardUi.finishMoveButton")}
+                    </ActionButton>
+                  </Stack>
                 </li>
-                <li className="flex flex-col gap-1">
-                  <span>{t("cardUi.finishComplete")}</span>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setFinishing(false);
-                      setConfirming({ kind: "complete", warning: null });
-                    }}
-                  >
-                    {t("cardUi.complete")}
-                  </Button>
+                <li>
+                  <Stack gap={1}>
+                    <span>{t("cardUi.finishComplete")}</span>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setFinishing(false);
+                        setConfirming({ kind: "complete", warning: null });
+                      }}
+                    >
+                      {t("cardUi.complete")}
+                    </Button>
+                  </Stack>
                 </li>
-                <li className="flex flex-col gap-1">
-                  <span>{t("cardUi.finishMerge")}</span>
-                  <ActionButton
-                    variant="outline"
-                    disabled={!card.worktreePath || Boolean(card.prUrl)}
-                    disabledReason={t(
-                      card.prUrl ? "cardUi.finishHasPr" : "cardUi.finishNeedWorktree",
-                    )}
-                    onClick={() => {
-                      setFinishing(false);
-                      setTab("diff");
-                    }}
-                  >
-                    {t("cardUi.finishMergeButton")}
-                  </ActionButton>
+                <li>
+                  <Stack gap={1}>
+                    <span>{t("cardUi.finishMerge")}</span>
+                    <ActionButton
+                      variant="outline"
+                      disabled={!card.worktreePath || Boolean(card.prUrl)}
+                      disabledReason={t(
+                        card.prUrl ? "cardUi.finishHasPr" : "cardUi.finishNeedWorktree",
+                      )}
+                      onClick={() => {
+                        setFinishing(false);
+                        setTab("diff");
+                      }}
+                    >
+                      {t("cardUi.finishMergeButton")}
+                    </ActionButton>
+                  </Stack>
                 </li>
-              </ul>
+              </Stack>
             </AppDialogContent>
           </Dialog>
         )}

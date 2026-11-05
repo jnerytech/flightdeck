@@ -198,7 +198,6 @@ function Member(props: {
           <Button
             variant="link"
             size="sm"
-            className="h-auto p-0 text-xs"
             aria-label={t("teamsUi.openSessionOf", { name: member.name })}
             onClick={() =>
               store.router.push({ name: "session", host: props.hostId, id: member.sessionId ?? "" })
@@ -211,7 +210,6 @@ function Member(props: {
           <Button
             variant="link"
             size="sm"
-            className="h-auto p-0 text-xs"
             aria-label={t("teamsUi.openCardOf", { name: member.name })}
             onClick={() =>
               store.router.push({

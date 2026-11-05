@@ -241,12 +241,7 @@ export function NewSessionForm(props: {
           <span>
             {t("newSession.needFolder")}{" "}
             {props.onAddFolder && (
-              <Button
-                type="button"
-                variant="link"
-                className="h-auto p-0"
-                onClick={props.onAddFolder}
-              >
+              <Button type="button" variant="link" onClick={props.onAddFolder}>
                 {t("newSession.addFolder", { host: props.host.name })}
               </Button>
             )}
