@@ -1753,6 +1753,10 @@ unblocked. A badge on the bell counts the unread ones.
   opens the host). A budget alert opens Costs already filtered by its host and project, or by
   its client; a team alert opens Teams with that team first and marked. A card's entry (a PR watch
   result, an unblocked card) opens the PR in your browser when the card is gone.
+- On Windows the unread count also shows on the app's taskbar button, as a red badge with the number
+  (`9+` past nine). It is the bell's count, row for row, so it falls as you read and goes when the
+  list is clear; a source you muted sends no entry and so adds nothing. It comes back with the
+  count the next time the app starts.
 - **Mark all as read** keeps the list; **Clear** empties it. The list is kept on this computer
   (the newest 500) and survives a restart. Esc closes the panel.
 - The OS notifications are unchanged. The center only keeps a copy, so one that is never sent
