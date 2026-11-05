@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { tmpdir } from "node:os";
 import { createResources } from "../src/resources/wiring.ts";
 
 const MB = 1024 * 1024;
@@ -103,5 +104,39 @@ describe("resources-wiring: the daemon's own resources (issue #154)", () => {
       }),
     ).endOrphan(9);
     expect(signals).toEqual([[9, "SIGTERM"]]);
+  });
+});
+
+describe("resources-wiring: the machine's own defaults (issue #154)", () => {
+  test("with nothing given it reads the OS memory and the data disk, and ends an orphan with a real SIGTERM", async () => {
+    const child = Bun.spawn(["sleep", "30"]);
+    const pid = child.pid;
+    const proc = {
+      pageSize: 4096,
+      ticksPerSecond: 100,
+      pids: async () => [1, pid],
+      stat: async (p: number) =>
+        p === 1
+          ? { pid: 1, ppid: 0, name: "flightdeckd", cpuTicks: 0, startTicks: 0, rssPages: 1 }
+          : { pid: p, ppid: 1, name: "claude", cpuTicks: 0, startTicks: 1, rssPages: 1 },
+      cwd: async () => "/gone",
+      uptimeSec: async () => 10_000,
+    };
+    const resources = createResources({
+      dataDir: tmpdir(),
+      sessions: () => [],
+      terminals: () => [],
+      pidOf: () => null,
+      ownPid: 1,
+      platform: "linux",
+      proc,
+    });
+    const snap = await resources.snapshot();
+    expect(snap.memory.totalBytes).toBeGreaterThan(0);
+    expect(snap.disk?.totalBytes).toBeGreaterThan(0);
+    expect(snap.loadPercent).not.toBeNull();
+    await resources.endOrphan(pid);
+    await child.exited;
+    expect(child.signalCode).toBe("SIGTERM");
   });
 });
