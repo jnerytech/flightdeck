@@ -1,4 +1,6 @@
 import { loopbackOnly } from "./pairing.ts";
+import { VERIFIED_OPENCODE_VERSION } from "./runtime/opencode-config.ts";
+import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
 
 type HooksState = "installed" | "absent" | "outdated";
 
@@ -21,6 +23,8 @@ export interface DoctorDeps {
   linger?(): Promise<"on" | "off" | null>;
   /** Template files the host could not load (phase 33); absent when it has no templates. */
   templateProblems?(): Promise<Array<{ file: string; reason: string }>>;
+  /** Phase 39: OpenCode on this host: turned on or not, where it is, what discovery said. */
+  opencode?(): Promise<OpenCodeState>;
   /** The running daemon's version and, when the app told it, the app's: only a running daemon has them. */
   version?: { daemon: string; app?: string };
 }
@@ -37,7 +41,8 @@ export type DoctorCheckId =
   | "version"
   | "templates"
   | "mcp"
-  | "linger";
+  | "linger"
+  | "opencode";
 
 export interface DoctorCheck {
   id: DoctorCheckId;
@@ -55,6 +60,58 @@ const check = (
   detail: string,
   fix?: string,
 ): DoctorCheck => ({ id, name, status, detail, ...(fix ? { fix } : {}) });
+
+export interface OpenCodeState {
+  enabled: boolean;
+  /** The executable on PATH, looked up without running it. */
+  found: string | null;
+  /** What discovery said, when OpenCode is turned on. */
+  info: OpenCodeInfo | null;
+  platform: NodeJS.Platform;
+}
+
+/** Phase 39: the OpenCode row; never a failure (OpenCode is optional). */
+export function opencodeCheck(state: OpenCodeState): DoctorCheck {
+  const { enabled, found, info, platform } = state;
+  if (!enabled) {
+    return found
+      ? check(
+          "opencode",
+          "opencode",
+          "warn",
+          `OpenCode is installed (${found}) but turned off on this host`,
+          'set "opencode": { "enabled": true } in the host config, then restart the daemon',
+        )
+      : check("opencode", "opencode", "ok", "OpenCode is not installed (optional)");
+  }
+  if (!info?.available) {
+    return check(
+      "opencode",
+      "opencode",
+      "warn",
+      `OpenCode is turned on but not available: ${info?.reason ?? "unknown"}`,
+      "see the OpenCode section of the manual for this reason, then restart the daemon",
+    );
+  }
+  const what = `OpenCode ${info.version} (${info.path})`;
+  if (!info.verified) {
+    return check(
+      "opencode",
+      "opencode",
+      "warn",
+      `${what} is not the version Flightdeck verified (${VERIFIED_OPENCODE_VERSION})`,
+    );
+  }
+  // ADR 39-1: the scope scan's folders on Windows and macOS were not checked against OpenCode.
+  return platform === "linux"
+    ? check("opencode", "opencode", "ok", what)
+    : check(
+        "opencode",
+        "opencode",
+        "warn",
+        `${what}; its global and system config folders are unverified on this OS`,
+      );
+}
 
 const minor = (version: string) => version.split(".").slice(0, 2).join(".");
 
@@ -152,6 +209,9 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
           "install Claude Code, then run: flightdeckd service install",
         ),
   );
+
+  const opencode = await deps.opencode?.();
+  if (opencode) checks.push(opencodeCheck(opencode));
 
   const brokenTemplates = (await deps.templateProblems?.()) ?? [];
   if (brokenTemplates.length > 0) {

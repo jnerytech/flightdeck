@@ -48,6 +48,7 @@ export const ptBR = {
       mcp: "Ferramentas do time",
 
       linger: "Iniciar no boot",
+      opencode: "OpenCode",
     },
     steps: {
       config: "Rode flightdeckd setup no host para refazer a configuração.",
@@ -64,6 +65,8 @@ export const ptBR = {
 
       linger:
         "No host, rode sudo loginctl enable-linger $USER (no WSL, ligue também o systemd em /etc/wsl.conf).",
+      opencode:
+        'O OpenCode é opcional. Para usar, ponha "opencode": { "enabled": true } na configuração do host e reinicie o daemon; a seção OpenCode do manual explica cada motivo.',
     },
   },
   findProjects: {

@@ -46,6 +46,7 @@ export const en: Dictionary = {
       mcp: "Team tools",
 
       linger: "Start at boot",
+      opencode: "OpenCode",
     },
     steps: {
       config: "Run flightdeckd setup on the host to redo the configuration.",
@@ -62,6 +63,8 @@ export const en: Dictionary = {
 
       linger:
         "On the host, run sudo loginctl enable-linger $USER (on WSL also turn on systemd in /etc/wsl.conf).",
+      opencode:
+        'OpenCode is optional. To use it, set "opencode": { "enabled": true } in the host config and restart the daemon; the manual\'s OpenCode section explains each reason.',
     },
   },
   findProjects: {

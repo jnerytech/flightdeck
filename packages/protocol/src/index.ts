@@ -1469,6 +1469,8 @@ export const DOCTOR_CHECK_IDS = [
   "templates",
   "mcp",
   "linger",
+  /** Phase 39. */
+  "opencode",
 ] as const;
 
 /** One thing `doctor.run` checked; `fix` is what to run, absent when the check passed. */

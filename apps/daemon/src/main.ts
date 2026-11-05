@@ -52,7 +52,7 @@ import { Costs } from "./costs/costs.ts";
 import { resolvePricing } from "./costs/pricing.ts";
 import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
-import { runDoctor } from "./doctor.ts";
+import { type OpenCodeState, runDoctor } from "./doctor.ts";
 import { buildChildEnv } from "./env.ts";
 import { type Exec, spawnExec } from "./exec.ts";
 import { runGh } from "./github/gh.ts";
@@ -580,6 +580,36 @@ function fakeOpenCode(): CreatedOpenCode {
   };
 }
 
+/** Phase 39: OpenCode as discovery finds it on this host (it runs the binary: only when turned on). */
+function discoverHost(config: Config, childEnv: Record<string, string>): Promise<OpenCodeInfo> {
+  return discoverOpenCode(config.opencode, {
+    env: childEnv,
+    platform: process.platform,
+    dataDir: config.dataDir,
+    which: (bin) => Bun.which(bin, { PATH: childEnv.PATH ?? "" }),
+    exists: existsSync,
+    run: runCommand,
+    scan: () => scanOpenCodeScope({ env: childEnv }),
+    statFile: fileStamp,
+  });
+}
+
+/** Phase 39: the doctor's OpenCode row: looked up without running it, discovered only when on. */
+async function openCodeState(
+  config: Config,
+  env: Record<string, string | undefined>,
+  known?: OpenCodeInfo,
+): Promise<OpenCodeState> {
+  const childEnv = buildChildEnv(env, config.allowApiKey);
+  const enabled = config.opencode.enabled;
+  return {
+    enabled,
+    found: Bun.which("opencode", { PATH: childEnv.PATH ?? "" }),
+    info: enabled ? (known ?? (await discoverHost(config, childEnv))) : null,
+    platform: process.platform,
+  };
+}
+
 /** `size:mtime` of a file, so a replaced OpenCode binary is noticed; null when it is not there. */
 function fileStamp(path: string): Promise<string | null> {
   const info = statSync(path, { throwIfNoEntry: false });
@@ -601,16 +631,7 @@ async function createOpenCode(
   if (!config.opencode.enabled) return { info: { available: false, reason: "opencode_disabled" } };
   const childEnv = buildChildEnv(env, config.allowApiKey);
   const scan = () => scanOpenCodeScope({ env: childEnv });
-  const info = await discoverOpenCode(config.opencode, {
-    env: childEnv,
-    platform: process.platform,
-    dataDir: config.dataDir,
-    which: (bin) => Bun.which(bin, { PATH: childEnv.PATH ?? "" }),
-    exists: existsSync,
-    run: runCommand,
-    scan,
-    statFile: fileStamp,
-  });
+  const info = await discoverHost(config, childEnv);
   const { path, version } = info;
   if (!info.available || !path || !version) return { info };
   const preflight = new OpenCodePreflight({
@@ -1191,6 +1212,7 @@ export async function startDaemon(
             (await serviceCommand((options.serviceContext ?? osServiceContext)(false))) !== null),
         healthy: async () => true,
         mcp: () => mcpReachable(daemonCommand(process.execPath, Bun.main)),
+        opencode: () => openCodeState(config, env, opencode.info),
 
         linger:
           options.linger ??
@@ -1471,6 +1493,7 @@ async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
     hooks: async () => hooksStatus(settings, hookTarget(await load(), self)),
     claudePath: () => whichOnPath("claude"),
     mcp: () => mcpReachable(self),
+    opencode: async () => openCodeState(await load(), process.env),
 
     linger: () => lingerState(ctx),
     templateProblems: async () =>
