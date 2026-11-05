@@ -174,6 +174,8 @@ export function ApprovalCard(props: {
     updatedPermissions?: PermissionUpdate[],
     /** The tool's input as the user changed it (the answers of AskUserQuestion). */
     updatedInput?: Record<string, unknown>,
+    /** The Approve was held its full time: a high-risk request needs it (#245). */
+    held?: true,
   ): unknown;
   /** More buttons next to Aprovar and Negar (the queue's "Abrir sessão"). */
   actions?: ReactNode;
@@ -355,7 +357,9 @@ export function ApprovalCard(props: {
                       },
                     }
                   : {})}
-                onApprove={() => respond("allow")}
+                onApprove={(held) =>
+                  held ? respond("allow", undefined, undefined, undefined, true) : respond("allow")
+                }
                 onDeny={() => setDenying(true)}
               />
             )}

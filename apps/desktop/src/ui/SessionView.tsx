@@ -150,11 +150,12 @@ function PermissionItem(props: {
       {...(actions.copyText ? { onCopyPath: (path: string) => void actions.copyText?.(path) } : {})}
       alwaysAllow={props.alwaysAllow}
       {...(item.resolution ? { resolution: item.resolution } : {})}
-      onRespond={(decision, message, updates, updatedInput) =>
+      onRespond={(decision, message, updates, updatedInput, held) =>
         actions.respond(item.requestId, decision, {
           message,
           updatedPermissions: updates,
           updatedInput,
+          held,
         })
       }
     />

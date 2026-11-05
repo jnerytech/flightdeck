@@ -23,7 +23,8 @@ export function ApprovalActions(props: {
   /** A plan to approve says so ("Approve the plan" / "Keep planning"). */
   labels?: { approve: string; deny: string };
   holdMs?: number;
-  onApprove(): unknown;
+  /** `held`: the Approve was held its full time, the proof the store asks of a high risk (#245). */
+  onApprove(held: boolean): unknown;
   onDeny(): unknown;
 }) {
   const t = useT();
@@ -37,10 +38,10 @@ export function ApprovalActions(props: {
           hint={t("approval.holdHint")}
           holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
           disabled={pending}
-          onHeld={() => void props.onApprove()}
+          onHeld={() => void props.onApprove(true)}
         />
       ) : (
-        <ActionButton {...size} pending={pending} onClick={() => props.onApprove()}>
+        <ActionButton {...size} pending={pending} onClick={() => props.onApprove(false)}>
           {props.labels?.approve ?? t("approval.approve")}
         </ActionButton>
       )}

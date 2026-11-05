@@ -11,7 +11,8 @@ export function QuestionCard(props: {
   t: T;
   /** The host is locked to simple: no way to full mode. */
   locked: boolean;
-  onAnswer(decision: "allow" | "deny"): void;
+  /** `held`: the yes was held its full time, the proof a high risk needs (#245). */
+  onAnswer(decision: "allow" | "deny", held?: boolean): void;
   onOpenFull(): void;
   onCopy(text: string): void;
   /** How long the yes of a high-risk question is held; two seconds. */
@@ -60,7 +61,7 @@ export function QuestionCard(props: {
             label={t("simple.yes")}
             hint={t("simple.holdHint")}
             holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
-            onHeld={() => props.onAnswer("allow")}
+            onHeld={() => props.onAnswer("allow", true)}
           />
         ) : (
           <Button type="button" onClick={() => props.onAnswer("allow")}>

@@ -63,7 +63,9 @@ function TileRequest(props: {
           size="sm"
           risk={pending.risk}
           pending={busy}
-          onApprove={() => run(() => store.respondTo(hostId, pending.requestId, "allow"))}
+          onApprove={(held) =>
+            run(() => store.respondTo(hostId, pending.requestId, "allow", { held }))
+          }
           onDeny={() => run(() => store.respondTo(hostId, pending.requestId, "deny"))}
         />
       )}

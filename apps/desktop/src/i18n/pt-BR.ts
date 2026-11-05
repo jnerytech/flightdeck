@@ -702,6 +702,7 @@ export const ptBR = {
     risk: { low: "Risco baixo", medium: "Risco médio", high: "Risco alto" },
     hold: "Segurar para aprovar",
     holdHint: "Risco alto: segure o botão por 2 segundos para aprovar",
+    holdRequired: "Um pedido de risco alto só é aprovado segurando o botão.",
     keysHigh: "Segure o botão para aprovar · N nega · Esc sai",
     autoApproved: "Aprovado automaticamente ({by}): {reason}",
     autoBy: { rule: "regra", ai: "IA", aiModel: "IA, {model}" },

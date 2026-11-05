@@ -653,6 +653,11 @@ export interface Answer {
   message?: string | undefined;
   /** The tool's input as the person changed it (the answers of AskUserQuestion). */
   updatedInput?: Record<string, unknown> | undefined;
+  /**
+   * The Approve was held its full time (#245): a high-risk request is approved only with it, so a
+   * screen that forgets the risk cannot approve one with a click.
+   */
+  held?: boolean | undefined;
 }
 
 /** Filters of the per-host history list. */
@@ -2060,6 +2065,33 @@ export class AppStore {
     return this.onSelected((conn, sessionId) => conn.request("session.resume", { sessionId }));
   }
 
+  /** The daemon's risk of a waiting request: its queue entry, else the session item it is. */
+  private riskOf(hostId: string, requestId: string): RiskLevel | undefined {
+    const queued = needsYou(this.state).find(
+      (item) => item.hostId === hostId && item.requestId === requestId,
+    );
+    if (queued?.risk) return queued.risk;
+    for (const [key, session] of Object.entries(this.state.sessions)) {
+      if (!key.startsWith(`${hostId}/`)) continue;
+      const item = session.items.find((i) => i.kind === "permission" && i.requestId === requestId);
+      if (item?.kind === "permission" && item.risk) return item.risk;
+    }
+    return undefined;
+  }
+
+  /**
+   * An allow of a high-risk request that was not held is refused here, below every screen, and
+   * the person is told why (#245). Deny never needs a hold.
+   */
+  private unheld(hostId: string, requestId: string, decision: "allow" | "deny", answer: Answer) {
+    if (decision !== "allow" || answer.held || this.riskOf(hostId, requestId) !== "high") {
+      return false;
+    }
+    const text = this.i18n.t("approval.holdRequired");
+    this.fail(new Error(text), text);
+    return true;
+  }
+
   /** Answers a request from the "Precisa de você" queue, on whichever host it lives. */
   async respondTo(
     hostId: string,
@@ -2068,6 +2100,7 @@ export class AppStore {
     answer: Answer = {},
   ): Promise<void> {
     const { updatedPermissions, message, updatedInput } = answer;
+    if (this.unheld(hostId, requestId, decision, answer)) return;
     if (decision === "allow") startMeasure("approve");
     const question = this.vaultQuestions.get(requestId);
     if (question) {
@@ -2107,6 +2140,8 @@ export class AppStore {
 
   respond(requestId: string, decision: "allow" | "deny", answer: Answer = {}): Promise<void> {
     const { updatedPermissions, message, updatedInput } = answer;
+    const hostId = this.state.selected?.hostId;
+    if (hostId && this.unheld(hostId, requestId, decision, answer)) return Promise.resolve();
     return this.onSelected((conn) =>
       conn.request("permission.respond", {
         requestId,

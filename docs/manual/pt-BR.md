@@ -1413,7 +1413,7 @@ podem ser rebaixados.
 
 - Um pedido de **Risco alto** fica vermelho e **Aprovar** vira **Segurar para aprovar**: segure o botão por
   2 segundos. A tecla A não o aprova; N continua negando.
-- A bandeja nunca aprova um pedido de risco alto: só oferece **Abrir**.
+- A bandeja nunca aprova um pedido de risco alto: oferece **Negar** e **Abrir**.
 - Com a aprovação automática ligada, o que ninguém aprovou à mão aparece na linha do tempo da sessão como
   "Aprovado automaticamente", com quem decidiu e o motivo. Um pedido de risco alto ou que acessa a rede
   sempre vem para você.
@@ -1666,8 +1666,8 @@ aparece em **Precisa de você** com uma notificação: quem pediu, a ação e os
 comando, os segredos e o host). **Aprovar** entrega o segredo só para aquela execução; **Negar**
 faz a execução falhar na hora. Uma ação com `approval: never` roda sem pergunta, `first-per-session`
 pergunta uma vez e fica lembrada até o app reiniciar, e `always` pergunta todas as vezes. Um
-`run_with_secret` é de risco alto: segure o botão por 2 segundos para aprovar, e a bandeja só o
-abre.
+`run_with_secret` é de risco alto: segure o botão por 2 segundos para aprovar; a bandeja só
+oferece Negar e Abrir.
 
 ### Regras de uso por segredo
 
@@ -2513,7 +2513,8 @@ pedidos abertos, de sessões gerenciadas e do terminal, do mais antigo ao mais n
 
 - Cada pedido abre um submenu com **Aprovar**, **Negar** e **Abrir**. Aprovar e Negar respondem no
   host do pedido, sem abrir a janela; Abrir traz o app na sessão, com o card de aprovação.
-- Gates de workflow aparecem só com **Abrir**: eles pedem leitura, e a resposta fica no card.
+- Gates de workflow aparecem só com **Abrir**: eles pedem leitura, e a resposta fica no card. Um
+  pedido de risco alto e um pedido de segredo têm **Negar** e **Abrir**: aprovar pede a janela.
 - Acima de 10, a última linha é **e mais N…**, que abre o app.
 - O submenu é refeito meio segundo depois de a lista parar de mudar.
 - **Notificação de pedido:** leva o link `flightdeck://request?host=…&request=…`, que abre o app

@@ -704,6 +704,7 @@ export const en: Dictionary = {
     risk: { low: "Low risk", medium: "Medium risk", high: "High risk" },
     hold: "Hold to approve",
     holdHint: "High risk: hold the button for 2 seconds to approve",
+    holdRequired: "A high-risk request is approved only by holding the button.",
     keysHigh: "Hold the button to approve · N denies · Esc leaves",
     autoApproved: "Approved automatically ({by}): {reason}",
     autoBy: { rule: "rule", ai: "AI", aiModel: "AI, {model}" },
