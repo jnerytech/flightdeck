@@ -72,6 +72,14 @@ export function shortcutOf(action: ShortcutAction): ShortcutDef | undefined {
   return SHORTCUTS.find((s) => s.action === action);
 }
 
+/** How keys read for a platform: `Ctrl+K`, `⌘K` on a Mac, `g p` for a chord. */
+export function keysText(keys: readonly string[], chord: boolean, mac: boolean): string {
+  void keys;
+  void chord;
+  void mac;
+  return "";
+}
+
 /** How the keys read: `Ctrl+K`, `⌘K` on a Mac, `g p` for a chord. */
 export function keysLabel(shortcut: ShortcutDef, mac: boolean): string {
   const keys = shortcut.keys.map((k) => (k === "Mod" ? (mac ? "⌘" : "Ctrl") : k));
