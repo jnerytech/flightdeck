@@ -45,13 +45,13 @@ Each item with its command and exit code visible:
 
 - [ ] TDD per area and the audit: `bun run tdd:audit -- --since auto` →
       `TDD AUDIT OK`.
-- [ ] 100% coverage: `bun run test`. Then `bun run typecheck` and `bun run lint`.
+- [ ] 100% coverage: `bun run slot -- bun run test`. Then `bun run typecheck` and `bun run lint`.
 - [ ] Every smoke in `package.json` except `smoke:real`, each with its `... OK`.
-- [ ] Builds: `bun run build:daemon` and `bun run build:desktop`.
+- [ ] Builds: `bun run slot -- bun run build:daemon` and `bun run slot -- bun run build:desktop`.
 - [ ] The version is left as it is on `main`: phase branches do not bump it, the maintainer sets it
       at release with the `test(versao)` cycle.
-- [ ] When the phase changes the screens: the prints and the axe check (`bun run demo:shots`)
-      and the end-to-end journeys (`bun run e2e`), in both languages.
+- [ ] When the phase changes the screens: the prints and the axe check (`bun run slot -- bun run demo:shots`)
+      and the end-to-end journeys (`bun run slot -- bun run e2e`), in both languages.
 - [ ] README (pt-BR and en), manual (`docs/manual/`) and `docs/DECISIONS.md` with the phase's
       section.
 - [ ] The `spec-verifier` agent's verdict is **accept**.

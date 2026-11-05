@@ -36,8 +36,9 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
    - `toContain` sobre algo que pode ser `undefined`: use `?? ""`.
 5. **Commit só do teste**, com caminhos explícitos (`git add <arquivo>`, nunca `git add -A`), e
    confira `git status --short` antes: `test(<área>): <comportamento>`.
-6. **Implementação mínima**, mesmo comando verde, depois a suíte inteira (`bun run test`, que
-   inclui o limite de 100% e o verificador de arquivos-fonte), `bun run typecheck` e
+6. **Implementação mínima**, mesmo comando verde, depois a suíte inteira
+   (`bun run slot -- bun run test`, que inclui o limite de 100% e o verificador de arquivos-fonte),
+   ou `bun run test:related` numa sessão (a suíte inteira roda na barreira), `bun run typecheck` e
    `bun run lint`, encadeados (`&&` ou `set -o pipefail`) para o commit não acontecer depois de
    uma falha. Commit `feat(<área>): ...`.
 7. **Cobertura revela ramo sem teste?** Remova o ramo, escreva o teste, mostre o vermelho e só
@@ -77,9 +78,10 @@ many commits were waived.
 `bun run test:related`. O `test:related [--base <ref>]` roda só os testes que alcançam o que
 mudou desde o merge-base com `main` (os arquivos de teste alterados e os que importam, direta ou
 indiretamente, um arquivo alterado), e imprime cada um com o motivo. A suíte completa
-(`bun run test`, com o limiar de 100%) roda na barreira de versão do orquestrador e no CI.
+(`bun run slot -- bun run test`, com o limiar de 100%) roda na barreira de versão do orquestrador
+e no CI.
 
-**Which function is not covered.** Bun's coverage (`bun run test`) counts functions per file but
+**Which function is not covered.** Bun's coverage (the full suite) counts functions per file but
 does not name them, so a file at 94% function coverage does not say which function is missing.
 `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` does: it runs the tests that reach the
 files (the same selection as `test:related`; `--tests` names them by hand, which a hub file that
@@ -119,7 +121,7 @@ em vez de depender de cuidado.
   never bare: two heavy runs at once overload the machine and make the timing-sensitive tests
   flaky. Area tests, typecheck and lint do not need the slot. A full gate that must not be
   disturbed by the sessions' area tests runs with `--priority` (`bun run slot -- --priority bun run
-  test`): while it runs, the slot raises the niceness of the other `bun test` processes of the
+  test`): while it runs, the slot raises the niceness of the other bun test processes of the
   same user to 15 every few seconds. It only raises (never lowers a niceness), skips its own
   process tree, restores nothing (those processes finish niced) and does nothing on Windows.
 - **No floating promises.** Biome's `noFloatingPromises` (nursery, type-aware) is an error for
@@ -133,18 +135,18 @@ em vez de depender de cuidado.
   session, board, the simple mode of phase 33) are Gherkin scenarios in `pt-BR` and `en`
   (`scripts/e2e/bdd/features/`, run by `playwright-bdd`, pinned exactly), written to create their
   own state. Layout, terminal and keyboard journeys stay plain TypeScript
-  (`scripts/e2e/journeys.ts`), and unit tests stay plain `bun test` with behavior titles. The
+  (`scripts/e2e/journeys.ts`), and unit tests stay plain bun tests with behavior titles. The
   pilot's measurements are in `docs/DECISIONS.md` ("BDD pilot").
 
 ## Armadilhas conhecidas
 
-- `bun test` esconde as linhas `(pass)` quando `CLAUDECODE` está definida: para mostrar a lista,
-  rode `env -u CLAUDECODE bun test`.
+- O bun test esconde as linhas `(pass)` quando `CLAUDECODE` está definida: para mostrar a lista,
+  rode `env -u CLAUDECODE bun --config=bunfig.area.toml test <arquivo>`.
 - Testes de UI: o happy-dom é registrado uma vez por processo (`registerDom`), React e Testing
   Library são importados com `import()` depois disso, e `liveScreen` consulta o documento atual.
 - Biome: no modo stdin, o código de saída não reflete diagnósticos. Para testar uma regra, grave
   um arquivo real e apague depois. Padrões de import precisam de `**` (`@tauri-apps/**`).
-- `cargo check` exige `apps/desktop/dist`: rode `bun run build:desktop` antes. Plugins do Tauri
+- `cargo check` exige `apps/desktop/dist`: rode `bun run slot -- bun run build:desktop` antes. Plugins do Tauri
   ficam no major 2.
 - No Git Bash, `schtasks /TN ...` tem o `/TN` reescrito como caminho; use PowerShell.
 - UI tests that wait on a daemon: inside `waitFor`, never `expect(element).toBeNull()` or
@@ -162,5 +164,5 @@ em vez de depender de cuidado.
 - Cada comando de critério mostra o próprio código de saída (`echo $?` logo depois, ou
   `${PIPESTATUS[0]}` quando há pipe). Checagens de estado do sistema vão em chamadas separadas,
   para não misturar códigos de saída.
-- "Nenhum teste usou o Claude real" se prova pela trava: as rodadas finais de `bun test` e dos
+- "Nenhum teste usou o Claude real" se prova pela trava: as rodadas finais do bun test e dos
   smokes passam com ela ativa.

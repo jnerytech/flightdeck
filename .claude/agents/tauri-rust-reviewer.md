@@ -39,7 +39,7 @@ start with it. Otherwise, review the current state.
 ## Checks
 
 ```bash
-bun run build:desktop        # cargo check needs apps/desktop/dist
+bun run slot -- bun run build:desktop   # cargo check needs apps/desktop/dist
 cd apps/desktop/src-tauri && cargo check && cargo clippy -- -D warnings; echo $?
 ```
 

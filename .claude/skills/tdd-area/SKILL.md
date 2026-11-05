@@ -28,7 +28,7 @@ when in doubt. The steps below are the route; they do not replace the file.
    ```
 5. **Green.** Minimal implementation, the same command green, then:
    ```bash
-   bun run test && bun run typecheck && bun run lint && git add <paths> && git commit -m "feat(<area>): ..."
+   bun run test:related && bun run typecheck && bun run lint && git add <paths> && git commit -m "feat(<area>): ..."
    ```
 6. **Coverage points at an untested branch?** Remove the branch, write the test, show the red and
    only then restore it.
