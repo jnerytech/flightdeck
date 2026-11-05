@@ -191,7 +191,12 @@ em vez de depender de cuidado.
   `bun run pr -- update <n>` brings one up to date with its base. `bun run pr -- merge <n>` (the
   coordinator) merges with a merge commit, never a squash, and only when the main ruleset's
   required checks are green on the PR's HEAD and it is up to date.
-- A release is a tag on a green `main`; there is no rc branch to assemble.
+- A PR runs only the jobs its paths need (#264, scripts/lib/ci-paths.ts): docs or scripts only run
+  the Linux tests and lint; the daemon or a smoke adds Windows and the smokes; the app, the
+  protocol, the dependencies or the workflow run everything; the Tauri shell adds cargo. A job
+  skipped by path still reports under the ruleset's name. Every push to `main` runs everything.
+- A release is a tag on a green `main`, and on a commit whose full run (its push to `main`) is
+  green; there is no rc branch to assemble.
 
 ## Evidência para o /goal
 
