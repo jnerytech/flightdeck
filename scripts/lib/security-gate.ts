@@ -73,8 +73,22 @@ export function addedLines(diff: string): Map<string, string[]> {
 const SOURCE = /\.(?:[cm]?[jt]sx?|rs|sh|ps1|py)$/;
 const NOT_SOURCE =
   /^(?:(?:apps|packages)\/[^/]+\/test|scripts\/(?:test|e2e))\/|\.(?:test|e2e)\.[cm]?[jt]sx?$/;
-/** A line that is only a comment says nothing the code does. */
-const COMMENT = /^\s*(?:\/\/.*|\/\*.*\*\/\s*|\/\*(?!.*\*\/).*|\*(?!\/).*|#(?!!).*)$/;
+/** Files where `#` starts a comment (in TypeScript it is a private field). */
+const HASH_COMMENTS = /\.(?:sh|py|ps1)$/;
+
+/** The code of one added line, its comments taken out: empty when it is only a comment. */
+function codeOf(line: string, path: string): string {
+  let code = line.replace(/\/\*.*?\*\//g, " ");
+  // The end of a block comment that opened on an earlier line: the code is what follows it.
+  const close = code.lastIndexOf("*/");
+  if (close >= 0) code = code.slice(close + 2);
+  else if (/^\s*\*/.test(code)) return "";
+  // Only a line that starts with "//" or an unclosed "/*" is a comment: a "//" further on may sit
+  // in a string ("http://"), and cutting there could hide code after it.
+  if (/^\s*(?:\/\/|\/\*)/.test(code)) return "";
+  if (HASH_COMMENTS.test(path)) code = code.replace(/^\s*#(?!!).*$/, "");
+  return code.trim();
+}
 
 /** The risk areas, in the order they are named, each by what an added line says. */
 const AREAS: [string, RegExp][] = [
@@ -101,6 +115,11 @@ const SENSITIVE_PATHS: [string, RegExp][] = [
   ["workflow", /^\.github\/workflows\//],
   // Files whose contents run as code: package scripts, the Rust build, bun's config, Claude's
   // settings and hooks.
+  // The gate and the checks it stands with: a change that weakens one needs a review too.
+  [
+    "guard",
+    /^scripts\/(?:lib\/(?:security-gate|claude-hooks|tdd-audit|handoff)\.ts|handoff-check\.ts)$|^\.github\/actions\//,
+  ],
   [
     "runs code",
     /(?:^|\/)(?:package\.json|Cargo\.toml|build\.rs)$|^bunfig[\w.]*\.toml$|^\.claude\/(?:settings[\w.-]*\.json$|hooks\/)/,
@@ -112,7 +131,7 @@ export function riskyFiles(added: Map<string, string[]>): RiskyFile[] {
   const risky: RiskyFile[] = [];
   for (const [path, lines] of added) {
     if (NOT_SOURCE.test(path)) continue;
-    const code = SOURCE.test(path) ? lines.filter((line) => !COMMENT.test(line)) : [];
+    const code = SOURCE.test(path) ? lines.map((line) => codeOf(line, path)).filter(Boolean) : [];
     const why = AREAS.filter(([, pattern]) => code.some((line) => pattern.test(line))).map(
       ([name]) => name,
     );
