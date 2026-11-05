@@ -142,7 +142,11 @@ export function ExternalView(props: {
               onCopyPath={(path) => void store.copyText(path)}
               alwaysAllow={alwaysAllow}
               onRespond={(decision, message, updates, updatedInput) =>
-                store.respondTo(hostId, request.requestId, decision, updates, message, updatedInput)
+                store.respondTo(hostId, request.requestId, decision, {
+                  updatedPermissions: updates,
+                  message,
+                  updatedInput,
+                })
               }
             />
           ))}

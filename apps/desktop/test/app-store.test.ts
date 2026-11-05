@@ -67,7 +67,7 @@ describe("desktop: estado do app", () => {
       () => store.getState().sessions[key]?.pending[0],
       "segundo pedido",
     );
-    await store.respond(second, "deny", "não");
+    await store.respond(second, "deny", { message: "não" });
     await waitFor(() => store.getState().sessions[key]?.status === "idle");
     const results = Object.values(store.getState().sessions[key]?.toolResults ?? {});
     expect(results.some((r) => r.isError && r.content === "não")).toBe(true);

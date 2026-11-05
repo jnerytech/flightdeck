@@ -1,6 +1,5 @@
 import {
   type PermissionMode,
-  type PermissionUpdate,
   SESSION_IMAGE_MAX_BYTES,
   SESSION_IMAGE_MAX_COUNT,
   type SessionImage,
@@ -31,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import type { T } from "../i18n/index.ts";
+import type { Answer } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
 import type { MenuGroup, MenuItem } from "../lib/prompt-menu.ts";
 import { activityOf } from "../lib/session-activity.ts";
@@ -78,13 +78,7 @@ export interface SessionActions {
   interrupt(): Promise<void>;
   close(): Promise<void>;
   resume(): Promise<void>;
-  respond(
-    requestId: string,
-    decision: "allow" | "deny",
-    message?: string,
-    updatedPermissions?: PermissionUpdate[],
-    updatedInput?: Record<string, unknown>,
-  ): Promise<void>;
+  respond(requestId: string, decision: "allow" | "deny", answer?: Answer): Promise<void>;
 }
 
 type Item<K extends ChatItem["kind"]> = Extract<ChatItem, { kind: K }>;
@@ -157,7 +151,11 @@ function PermissionItem(props: {
       alwaysAllow={props.alwaysAllow}
       {...(item.resolution ? { resolution: item.resolution } : {})}
       onRespond={(decision, message, updates, updatedInput) =>
-        actions.respond(item.requestId, decision, message, updates, updatedInput)
+        actions.respond(item.requestId, decision, {
+          message,
+          updatedPermissions: updates,
+          updatedInput,
+        })
       }
     />
   );

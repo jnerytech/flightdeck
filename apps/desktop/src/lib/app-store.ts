@@ -645,6 +645,16 @@ export function needsYou(state: AppState): PendingItem[] {
   return [...requests, ...known].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
+/** What goes with an answer to a request, besides allow or deny. */
+export interface Answer {
+  /** "Allow in this session" and "always in this project" (phase 7). */
+  updatedPermissions?: PermissionUpdate[] | undefined;
+  /** Why it was denied (phase 10: the card's reason). */
+  message?: string | undefined;
+  /** The tool's input as the person changed it (the answers of AskUserQuestion). */
+  updatedInput?: Record<string, unknown> | undefined;
+}
+
 /** Filters of the per-host history list. */
 export type HistoryFilter = Omit<CommandPayload<"history.list">, "cursor" | "limit">;
 
@@ -2055,11 +2065,9 @@ export class AppStore {
     hostId: string,
     requestId: string,
     decision: "allow" | "deny",
-    updatedPermissions?: PermissionUpdate[],
-    /** Why it was denied (phase 10: the card's reason). */
-    message?: string,
-    updatedInput?: Record<string, unknown>,
+    answer: Answer = {},
   ): Promise<void> {
+    const { updatedPermissions, message, updatedInput } = answer;
     if (decision === "allow") startMeasure("approve");
     const question = this.vaultQuestions.get(requestId);
     if (question) {
@@ -2097,13 +2105,8 @@ export class AppStore {
     });
   }
 
-  respond(
-    requestId: string,
-    decision: "allow" | "deny",
-    message?: string,
-    updatedPermissions?: PermissionUpdate[],
-    updatedInput?: Record<string, unknown>,
-  ): Promise<void> {
+  respond(requestId: string, decision: "allow" | "deny", answer: Answer = {}): Promise<void> {
+    const { updatedPermissions, message, updatedInput } = answer;
     return this.onSelected((conn) =>
       conn.request("permission.respond", {
         requestId,

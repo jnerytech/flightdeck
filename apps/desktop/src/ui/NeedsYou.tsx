@@ -312,14 +312,7 @@ export function NeedsYou(props: {
                   decision === "allow" ? "approve" : "reject",
                   message,
                 )
-              : store.respondTo(
-                  item.hostId,
-                  item.requestId,
-                  decision,
-                  undefined,
-                  message,
-                  updatedInput,
-                )
+              : store.respondTo(item.hostId, item.requestId, decision, { message, updatedInput })
           }
           actions={
             // A request for a secret belongs to no session: the card is all there is to open.
