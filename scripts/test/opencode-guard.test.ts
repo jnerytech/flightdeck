@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, delimiter, dirname, join } from "node:path";
 import { cliCalls, GUARDED_CLIS, installCliGuard } from "./cli-guard.ts";
+import { scrubOpenCodeEnv } from "./opencode-env-guard.ts";
 import { realTempDir } from "./temp-dir.ts";
 
 // Phase 39: no test may run the real `opencode` (its server, its sessions, its credentials).
@@ -38,5 +39,24 @@ describe("opencode-guard", () => {
     const cmd = join(guard.dir, "opencode.cmd");
     expect(existsSync(cmd)).toBe(true);
     expect(existsSync(cmd) ? readFileSync(cmd, "utf8") : "").toContain("exit /b 99");
+  });
+
+  test("the OPENCODE_* variables and the XDG folders are scrubbed, and none is left in this run", () => {
+    const env: Record<string, string | undefined> = {
+      PATH: "/bin",
+      OPENCODE_CONFIG: "/x",
+      opencode_db: "/y",
+      XDG_CONFIG_HOME: "/c",
+      XDG_DATA_HOME: "/d",
+      XDG_STATE_HOME: "/s",
+      XDG_CACHE_HOME: "/k",
+      XDG_RUNTIME_DIR: "/run/user/1",
+    };
+    scrubOpenCodeEnv(env);
+    expect(env).toEqual({ PATH: "/bin", XDG_RUNTIME_DIR: "/run/user/1" });
+    const left = Object.keys(process.env).filter(
+      (key) => /^OPENCODE_/i.test(key) || /^XDG_(CONFIG|DATA|STATE|CACHE)_HOME$/.test(key),
+    );
+    expect(left).toEqual([]);
   });
 });
