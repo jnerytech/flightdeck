@@ -136,6 +136,7 @@ import { terminalEnabled } from "./terminal/policy.ts";
 import { bunPty, type PtyFactory } from "./terminal/pty.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
 import { TraceService } from "./trace/service.ts";
+import { inspectProject } from "./trust/inspect.ts";
 import { ProjectTrust } from "./trust/project-trust.ts";
 import {
   binaryVersion,
@@ -1071,6 +1072,20 @@ export async function startDaemon(
       set: async (allow) => {
         config.allowBypassPermissions = allow;
         await updateConfigFile(configFile, (raw) => ({ ...raw, allowBypassPermissions: allow }));
+      },
+    },
+    projectTrust: {
+      state: (paths) =>
+        paths.map((path) => {
+          const via = projectTrust.via(path);
+          return { path, trusted: via !== null, via };
+        }),
+      inspect: (path) => inspectProject(path),
+      set: (path, trusted) => {
+        if (trusted) projectTrust.trust(path);
+        else projectTrust.revoke(path);
+        const via = projectTrust.via(path);
+        return { path, trusted: via !== null, via };
       },
     },
     persistRoots: (roots) =>

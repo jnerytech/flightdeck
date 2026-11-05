@@ -26,6 +26,8 @@ import {
   type Ping,
   Pong,
   PROTOCOL_VERSION,
+  type ProjectLoad,
+  type ProjectTrustState,
   type QuotaUpdated,
   type RunEnvUpdated,
   type RunUpdated,
@@ -144,6 +146,12 @@ export interface ServerOptions {
   allowedRoots: readonly string[];
   /** The host's switch for sessions without permission prompts: read for `host.info`, set by `host.bypass`. */
   bypass?: { allowed(): boolean; set(allow: boolean): void | Promise<void> };
+  /** Issue #196: the trust of folders and what a project would load; absent, the commands are refused and not announced. */
+  projectTrust?: {
+    state(paths: string[]): ProjectTrustState[];
+    inspect(path: string): Promise<ProjectLoad>;
+    set(path: string, trusted: boolean): ProjectTrustState;
+  };
   /** Keeps the allowed folders in the config file after `roots.add`. */
   persistRoots?: (roots: readonly string[]) => void | Promise<void>;
   /** What decides the system folders `roots.add` refuses; the process's own when absent (tests give theirs). */
@@ -442,6 +450,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     // A message may carry images (`session.send` with `images`).
     "session.images",
     ...(opts.doctor ? ["doctor.run"] : []),
+    ...(opts.projectTrust ? ["projectTrust"] : []),
     ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
     ...(opts.github ? ["github"] : []),
     ...(opts.boardsync ? ["boardsync"] : []),
@@ -1550,6 +1559,23 @@ export function startServer(opts: ServerOptions): RunningServer {
             opts.rootsPlatform,
           ),
         });
+      }
+      case "project.trust.state": {
+        if (!opts.projectTrust) throw featureOff("projectTrust");
+        const paths = await Promise.all(
+          command.payload.paths.map((p) => resolveAllowedCwd(p, opts.allowedRoots)),
+        );
+        return ok(command.type, { items: opts.projectTrust.state(paths) });
+      }
+      case "project.trust.inspect": {
+        if (!opts.projectTrust) throw featureOff("projectTrust");
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, await opts.projectTrust.inspect(path));
+      }
+      case "project.trust.set": {
+        if (!opts.projectTrust) throw featureOff("projectTrust");
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, opts.projectTrust.set(path, command.payload.trusted));
       }
       case "host.bypass": {
         requireVaultTransport(ws.data.origin, "host.bypass", opts.log);

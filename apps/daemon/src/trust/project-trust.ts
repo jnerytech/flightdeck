@@ -40,8 +40,16 @@ export class ProjectTrust {
 
   /** Whether `cwd` is a trusted folder or lies inside one. */
   isTrusted(cwd: string): boolean {
+    return this.via(cwd) !== null;
+  }
+
+  /** The record that makes `cwd` trusted (its own folder or the nearest one above), or null. */
+  via(cwd: string): string | null {
     const here = resolve(cwd);
-    return this.rows().some((row) => isInside(row.path, here));
+    const granting = this.rows()
+      .filter((row) => isInside(row.path, here))
+      .sort((a, b) => b.path.length - a.path.length);
+    return granting[0]?.path ?? null;
   }
 
   /** Trusts a folder and everything inside it; a repeat changes nothing. */
