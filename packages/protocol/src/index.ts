@@ -147,6 +147,10 @@ const ListExtras = {
   summary: SessionLine.optional(),
 };
 
+/** Phase 39: the agent a session runs on. */
+export const SessionRuntime = z.enum(["claude", "opencode"]);
+export type SessionRuntime = z.infer<typeof SessionRuntime>;
+
 export const SessionSummary = z.object({
   id: z.string(),
   name: z.string().nullable(),
@@ -160,6 +164,8 @@ export const SessionSummary = z.object({
   updatedAt: z.string(),
   /** The persona the session was opened with (phase 20). */
   persona: SessionPersona.nullable().optional(),
+  /** Phase 39: `claude` when absent. */
+  runtime: SessionRuntime.optional(),
   ...ListExtras,
 });
 export type SessionSummary = z.infer<typeof SessionSummary>;
@@ -387,7 +393,14 @@ export const SessionEvent = z.discriminatedUnion("type", [
     costUsd: z.number().nonnegative().optional(),
     usage: Usage.optional(),
   }),
-  z.object({ type: z.literal("session.error"), code: z.string(), message: z.string() }),
+  /** `reason` and `params` (phase 39): a typed refusal the app translates, like a command's. */
+  z.object({
+    type: z.literal("session.error"),
+    code: z.string(),
+    message: z.string(),
+    reason: z.string().optional(),
+    params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  }),
   z.object({
     type: z.literal("session.summary"),
     sessionId: z.string(),
@@ -437,6 +450,8 @@ export const SessionCreatePayload = z.object({
   effort: EffortLevel.optional(),
   /** Opens the session in a persona's role (phase 20). */
   persona: PersonaRef.optional(),
+  /** Phase 39: the agent to run; `claude` when absent. */
+  runtime: SessionRuntime.optional(),
 });
 
 /** What a message may carry as images: the types the API reads, five of them, 5 MB each. */

@@ -41,9 +41,18 @@ import { ulid } from "../ulid.ts";
 
 export const RESTART_REASON = "daemon reiniciado";
 
+/** Phase 39 (ADR 39-3): permission modes an OpenCode session does not offer. */
+const OPENCODE_UNSUPPORTED_MODES: ReadonlySet<PermissionMode> = new Set([
+  "acceptEdits",
+  "dontAsk",
+  "auto",
+]);
+
 export interface SessionManagerOptions {
   store: EventStore;
   runtime: AgentRuntime;
+  /** Phase 39: OpenCode sessions run here; none when the host has no OpenCode. */
+  opencode?: AgentRuntime;
   allowedRoots: readonly string[];
   defaultPermissionMode: PermissionMode;
   allowApiKey: boolean;
@@ -241,6 +250,33 @@ export class SessionManager {
     extra: { unattended?: boolean; prepared?: PreparedPersonas } = {},
   ): Promise<{ sessionId: string }> {
     const cwd = await resolveAllowedCwd(payload.cwd, this.opts.allowedRoots);
+    const runtime = payload.runtime ?? "claude";
+    if (runtime === "opencode") {
+      // Phase 39: refused before anything is created, so a refusal leaves no session.
+      const opencode = this.opts.opencode;
+      if (!opencode) {
+        throw new FlightdeckError(
+          "invalid_state",
+          "OpenCode is not available on this host",
+          "runtime_unavailable",
+        );
+      }
+      const mode = payload.permissionMode ?? this.opts.defaultPermissionMode;
+      const unsupported = payload.persona
+        ? "persona"
+        : OPENCODE_UNSUPPORTED_MODES.has(mode)
+          ? mode
+          : null;
+      if (unsupported) {
+        throw new FlightdeckError(
+          "invalid_state",
+          `an OpenCode session does not offer ${unsupported}`,
+          "runtime_unsupported",
+          { feature: unsupported },
+        );
+      }
+      await opencode.preflight?.(cwd);
+    }
     const id = ulid();
     // Resolved by the caller before anything is created, so a missing, untrusted or invalid
     // persona leaves no session. The manager reads no persona file itself.
@@ -273,6 +309,7 @@ export class SessionManager {
       permissionMode,
       model: payload.model ?? persona?.model ?? null,
       persona,
+      runtime,
       ...(extra.prepared ? { agents: extra.prepared.agents } : {}),
     });
     this.emit(id, {
@@ -384,8 +421,15 @@ export class SessionManager {
         "session_not_ended",
       );
     }
-    this.startRun(sessionId, session.claudeSessionId ?? undefined);
-    this.setStatus(sessionId, "idle", "retomada");
+    const reopen = () => {
+      this.startRun(sessionId, session.claudeSessionId ?? undefined);
+      this.setStatus(sessionId, "idle", "retomada");
+    };
+    // Phase 39: an OpenCode session is checked again before it reopens; a refusal leaves it ended.
+    const preflight =
+      session.runtime === "opencode" ? this.runtimeOf(session).preflight : undefined;
+    if (preflight) return preflight.call(this.runtimeOf(session), session.cwd).then(reopen);
+    reopen();
     return Promise.resolve();
   }
 
@@ -486,6 +530,19 @@ export class SessionManager {
 
   // -- internals ------------------------------------------------------------
 
+  /** Phase 39: the runtime a stored session runs on. */
+  private runtimeOf(session: SessionSummary): AgentRuntime {
+    if (session.runtime !== "opencode") return this.opts.runtime;
+    if (!this.opts.opencode) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "OpenCode is not available on this host",
+        "runtime_unavailable",
+      );
+    }
+    return this.opts.opencode;
+  }
+
   /** The persona applied to the open session, if any. */
   appliedPersona(sessionId: string): SessionPersona | null {
     this.get(sessionId);
@@ -508,7 +565,7 @@ export class SessionManager {
     const persona = this.store.sessionPersona(sessionId);
     // What the session opened with: a later run reads no persona file.
     const agents = this.store.sessionAgents(sessionId);
-    const run = this.opts.runtime.start({
+    const run = this.runtimeOf(session).start({
       cwd: session.cwd,
       permissionMode: session.permissionMode,
       allowBypass: this.bypassAllowed(),
@@ -560,11 +617,17 @@ export class SessionManager {
         this.fail(sessionId, live, "runtime_exit", "o runtime encerrou inesperadamente");
     } catch (error) {
       if (!live.closing) {
+        // Phase 39: a typed refusal from the runtime keeps its reason for the app to translate.
+        const typed =
+          error instanceof FlightdeckError && error.reason
+            ? { reason: error.reason, ...(error.params ? { params: error.params } : {}) }
+            : undefined;
         this.fail(
           sessionId,
           live,
-          "runtime",
+          typed?.reason ?? "runtime",
           error instanceof Error ? error.message : String(error),
+          typed,
         );
       }
     }
@@ -732,11 +795,17 @@ export class SessionManager {
     return run?.rewindFiles ? run.rewindFiles(userMessageId, { dryRun }) : null;
   }
 
-  private fail(sessionId: string, live: LiveSession, code: string, message: string): void {
+  private fail(
+    sessionId: string,
+    live: LiveSession,
+    code: string,
+    message: string,
+    typed?: { reason: string; params?: Record<string, string | number> },
+  ): void {
     if (this.live.get(sessionId) === live) this.live.delete(sessionId);
     live.closing = true;
     this.broker.cancelSession(sessionId);
-    this.emit(sessionId, { type: "session.error", code, message });
+    this.emit(sessionId, { type: "session.error", code, message, ...typed });
     this.setStatus(sessionId, "error", message);
     void live.run.close();
   }
