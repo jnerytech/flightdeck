@@ -68,7 +68,9 @@ export function homeKpis(input: HomeInput): HomeKpis {
   // One host that does not count failures makes the failed turns unknown for all of them.
   const counted = rows.every((r) => r.failedTurns !== undefined);
   const failed = counted ? sum(rows.map((r) => r.failedTurns ?? 0)) : null;
-  const timed = rows.every((r) => r.durationMs !== undefined);
+  // The averages use the days that know their failures and time: old days are unknown, not zero.
+  const known = rows.filter((r) => r.failedTurns !== undefined && r.durationMs !== undefined);
+  const knownTurns = sum(known.map((r) => r.turns));
   const costPerDay = perDay(
     days,
     rows.map((r) => [r.day, r.costUsd]),
@@ -95,8 +97,11 @@ export function homeKpis(input: HomeInput): HomeKpis {
     },
     average: {
       costPerTurnUsd: total === 0 ? null : sum(costPerDay) / total,
-      turnMs: total === 0 || !timed ? null : sum(rows.map((r) => r.durationMs ?? 0)) / total,
-      successRate: total === 0 || failed === null ? null : (total - failed) / total,
+      turnMs: knownTurns === 0 ? null : sum(known.map((r) => r.durationMs ?? 0)) / knownTurns,
+      successRate:
+        knownTurns === 0
+          ? null
+          : (knownTurns - sum(known.map((r) => r.failedTurns ?? 0))) / knownTurns,
       series: costPerDay.map((cost, i) =>
         (turnSeries[i] ?? 0) === 0 ? 0 : cost / (turnSeries[i] as number),
       ),

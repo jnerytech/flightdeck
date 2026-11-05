@@ -30,8 +30,8 @@ interface Row {
   input_tokens: number;
   output_tokens: number;
   turns: number;
-  failed_turns: number;
-  duration_ms: number;
+  failed_turns: number | null;
+  duration_ms: number | null;
 }
 
 /** Cost, tokens and turns of the managed sessions, by day and project. */
@@ -115,8 +115,9 @@ export class UsageLedger {
           inputTokens: row.input_tokens,
           outputTokens: row.output_tokens,
           turns: row.turns,
-          failedTurns: row.failed_turns,
-          durationMs: row.duration_ms,
+          // NULL: a day from before the columns, whose failures and time nobody counted.
+          ...(row.failed_turns !== null ? { failedTurns: row.failed_turns } : {}),
+          ...(row.duration_ms !== null ? { durationMs: row.duration_ms } : {}),
         }),
       );
     return { days, rows };
