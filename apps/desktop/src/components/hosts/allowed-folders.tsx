@@ -15,6 +15,12 @@ export function AllowedFolders(props: { store: AppStore; host: HostView }) {
   const [folder, setFolder] = useState("");
   const [asking, setAsking] = useState(false);
   const roots = host.info?.allowedRoots ?? [];
+  // Issue #181: an offline host cannot take a folder; the row says so instead of "type the folder".
+  const online = host.status === "online";
+  const offlineReason = t(
+    host.status === "incompatible" ? "hostPage.needsUpdate" : "hostPage.needsOnline",
+    { host: host.name },
+  );
   return (
     <Panel title={t("hostPage.rootsTitle")}>
       <p className="text-muted-foreground text-xs">{t("hostPage.rootsHint")}</p>
@@ -28,6 +34,7 @@ export function AllowedFolders(props: { store: AppStore; host: HostView }) {
           aria-label={t("hostPage.rootsInput")}
           placeholder={t("hostPage.rootsPlaceholder")}
           className="w-80"
+          disabled={!online}
           value={folder}
           onChange={(e) => setFolder(e.target.value)}
         />
@@ -35,6 +42,8 @@ export function AllowedFolders(props: { store: AppStore; host: HostView }) {
         {store.canPickFolder() && isLocalUrl(host.url) && (
           <ActionButton
             variant="outline"
+            disabled={!online}
+            disabledReason={offlineReason}
             onClick={async () => {
               const picked = await store.pickFolder();
               if (picked) setFolder(picked);
@@ -45,8 +54,8 @@ export function AllowedFolders(props: { store: AppStore; host: HostView }) {
         )}
         <ActionButton
           variant="outline"
-          disabled={!folder.trim() || host.status !== "online"}
-          disabledReason={t("hostPage.rootsNeeded")}
+          disabled={!online || !folder.trim()}
+          disabledReason={online ? t("hostPage.rootsNeeded") : offlineReason}
           onClick={() => setAsking(true)}
         >
           {t("toast.allowRoot")}

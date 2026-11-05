@@ -3512,6 +3512,8 @@ export const en: Dictionary = {
     rootsInput: "Folder to allow",
     rootsPlaceholder: "D:\\repos\\...",
     rootsChoose: "Choose folder…",
+    needsOnline: "{host} is offline: reconnect it to change this.",
+    needsUpdate: "Update the daemon on {host} to change this.",
     rootsNeeded: "Type the folder to allow.",
     bypassTitle: "Sessions without permission prompts",
     bypassHint:
