@@ -115,7 +115,8 @@ describe("home-kpis: the four cards of Home from what the hosts already count", 
     });
     const kpis = homeKpis(input({ usage: [usage(row("2026-10-10", { turns: 1 })), old] }));
     expect(kpis.turns).toMatchObject({ total: 5, failed: null });
-    expect(kpis.average.successRate).toBeNull();
+    // The rate is over the one turn whose outcome is known, not over the 4 unknown ones (HK-M1).
+    expect(kpis.average.successRate).toBe(1);
   });
 
   test("tokens are all the kinds together, with what came from the cache", () => {

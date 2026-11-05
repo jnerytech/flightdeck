@@ -127,8 +127,8 @@ describe("home-uso: the ledger counts failed turns and the time they took", () =
       day: "2026-10-10",
       projectKey: "p:old",
       costUsd: 2,
-      inputTokens: 20,
-      outputTokens: 30,
+      inputTokens: 30,
+      outputTokens: 35,
       turns: 7,
     });
     // Opening it again changes nothing: the migration ran once.
