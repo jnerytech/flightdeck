@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { translator } from "../src/i18n/index.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
@@ -173,7 +173,8 @@ describe("text the screen cuts is revealed by a real tooltip, never a native tit
         />
       </TContext.Provider>,
     );
-    const root = d.root.split("/").pop() as string;
+    // The folder's own name, whatever the separator of the system.
+    const root = basename(d.root);
     const inDialog = () => within(screen.getByRole("dialog"));
     const press = async (name: string | RegExp) => {
       await settle(() => inDialog().queryByRole("button", { name }) !== null, 3000, `${name}`);
@@ -181,7 +182,7 @@ describe("text the screen cuts is revealed by a real tooltip, never a native tit
         fireEvent.click(inDialog().getByRole("button", { name }));
       });
     };
-    await press(new RegExp(`^${root}`));
+    await press(new RegExp(`^${root.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
     await press(/a-folder-with-a-rather-long-name/);
     await press(root);
     const dir = inDialog().getByRole("button", { name: /a-folder-with-a-rather-long-name/ });
