@@ -18,6 +18,17 @@ import type { AppStore, HostView } from "../lib/app-store.ts";
 import { breadcrumbSteps, isInside } from "../lib/paths.ts";
 import { isLocalUrl } from "../lib/terminal.ts";
 
+/** Arrow keys move through the folder buttons, Enter opens the focused one; false for any other key. */
+function moveByKey(event: React.KeyboardEvent<HTMLUListElement>): boolean {
+  const entries = [...event.currentTarget.querySelectorAll<HTMLElement>("button")];
+  const at = entries.indexOf(document.activeElement as HTMLElement);
+  if (event.key === "ArrowDown") entries[Math.min(at + 1, entries.length - 1)]?.focus();
+  else if (event.key === "ArrowUp") entries[Math.max(at - 1, 0)]?.focus();
+  else if (event.key === "Enter") entries[at]?.click();
+  else return false;
+  return true;
+}
+
 /**
  * A folder of a host, chosen by browsing the folders it allows (`fs.dirs`): the roots, then
  * subfolders, a breadcrumb, the arrow keys. On this machine the system dialog is offered too; what
@@ -52,6 +63,15 @@ export function FolderPicker(props: {
   const describe = (code: string, message: string) =>
     code === "forbidden_cwd" ? t("folderPicker.outside", { roots: allowed.join(", ") }) : message;
 
+  /** The files of a folder, or none when the host cannot list them. */
+  const filesOf = async (path: string) => {
+    const found = await store.hostRequest(host.id, "fs.files", {
+      path,
+      ...(hiddenNow.current ? { hidden: true } : {}),
+    });
+    return found.ok && found.data ? (found.data as FsFilesResult).files : [];
+  };
+
   const opening = useRef(0);
   const rootCount = allowed.length;
 
@@ -69,12 +89,8 @@ export function FolderPicker(props: {
     shown.current = result.data.path ?? undefined;
     setListing(result.data);
     if (props.files && result.data.path) {
-      const found = await store.hostRequest(host.id, "fs.files", {
-        path: result.data.path,
-        ...(hiddenNow.current ? { hidden: true } : {}),
-      });
-      if (ticket === opening.current)
-        setFiles(found.ok && found.data ? (found.data as FsFilesResult).files : []);
+      const list = await filesOf(result.data.path);
+      if (ticket === opening.current) setFiles(list);
     } else setFiles([]);
     if (path === undefined) setRoots(result.data.dirs.map((dir) => dir.path));
   };
@@ -103,13 +119,9 @@ export function FolderPicker(props: {
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLUListElement>) => {
-    const entries = [...event.currentTarget.querySelectorAll<HTMLElement>("button")];
-    const at = entries.indexOf(document.activeElement as HTMLElement);
-    if (event.key === "ArrowDown") entries[Math.min(at + 1, entries.length - 1)]?.focus();
-    else if (event.key === "ArrowUp") entries[Math.max(at - 1, 0)]?.focus();
-    else if (event.key === "Enter") entries[at]?.click();
-    else if (event.key === "Backspace") void open(listing?.parent ?? undefined);
-    else return;
+    const moved = moveByKey(event);
+    if (!moved && event.key !== "Backspace") return;
+    if (!moved) void open(listing?.parent ?? undefined);
     event.preventDefault();
   };
 

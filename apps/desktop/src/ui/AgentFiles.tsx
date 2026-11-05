@@ -40,6 +40,63 @@ function newPath(kind: Kind, typed: string): string | null {
 const template = (kind: Kind, typed: string) =>
   kind === "claudemd" ? "# CLAUDE.md\n" : `---\nname: ${typed.trim()}\n---\n`;
 
+/** One file of the list: its name, its path when that differs, and where it comes from. */
+function FileRow(props: {
+  item: AgentCfgItem;
+  current: boolean;
+  originLabel: string;
+  t: AppStore["i18n"]["t"];
+  onOpen(): void;
+}) {
+  const { item, current, t } = props;
+  const name = item.name ?? item.path;
+  return (
+    <li>
+      <button
+        type="button"
+        aria-current={current ? "true" : undefined}
+        aria-label={t("agent.files.open", { name, origin: props.originLabel })}
+        onClick={props.onOpen}
+        className={cn(
+          "flex w-full flex-col items-start gap-1 rounded-md border px-3 py-2 text-left text-sm hover:bg-accent",
+          current && "bg-accent",
+        )}
+      >
+        <span className="font-medium">{name}</span>
+        {item.path !== name && (
+          <span className="break-all text-muted-foreground text-xs">{item.path}</span>
+        )}
+        <span className="flex flex-wrap gap-1">
+          <Badge variant="secondary">{props.originLabel}</Badge>
+          {item.readOnly && <Badge variant="outline">{t("agent.readOnly")}</Badge>}
+        </span>
+      </button>
+    </li>
+  );
+}
+
+/** The open file's path and origin, and the button that flips between editing and previewing. */
+function FileHeader(props: {
+  opened: Opened;
+  originLabel: string;
+  preview: boolean;
+  t: AppStore["i18n"]["t"];
+  onTogglePreview(): void;
+}) {
+  const { opened, preview, t } = props;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <code className="break-all text-sm">{opened.path}</code>
+      <Badge variant="secondary">{props.originLabel}</Badge>
+      {opened.readOnly && <Badge variant="outline">{t("agent.readOnly")}</Badge>}
+      <span className="flex-1" />
+      <Button variant="ghost" size="sm" onClick={props.onTogglePreview}>
+        {preview ? t("agent.files.edit") : t("agent.files.preview")}
+      </Button>
+    </div>
+  );
+}
+
 /**
  * One kind of file of the agent: the project's CLAUDE.md, agents or skills (editable, with a hash
  * check) and the user's (read-only). An agent or a skill has a form for its frontmatter.
@@ -206,33 +263,16 @@ export function AgentFiles(props: {
         )}
         {items.length === 0 && <EmptyState title={labels.empty} />}
         <ul aria-label={t("agent.files.list")} className="flex flex-col gap-1">
-          {items.map((item) => {
-            const name = item.name ?? item.path;
-            const current = opened?.path === item.path && opened.origin === item.origin;
-            return (
-              <li key={`${item.origin}/${item.path}`}>
-                <button
-                  type="button"
-                  aria-current={current ? "true" : undefined}
-                  aria-label={t("agent.files.open", { name, origin: originLabel(item.origin) })}
-                  onClick={() => void open(item)}
-                  className={cn(
-                    "flex w-full flex-col items-start gap-1 rounded-md border px-3 py-2 text-left text-sm hover:bg-accent",
-                    current && "bg-accent",
-                  )}
-                >
-                  <span className="font-medium">{name}</span>
-                  {item.path !== name && (
-                    <span className="break-all text-muted-foreground text-xs">{item.path}</span>
-                  )}
-                  <span className="flex flex-wrap gap-1">
-                    <Badge variant="secondary">{originLabel(item.origin)}</Badge>
-                    {item.readOnly && <Badge variant="outline">{t("agent.readOnly")}</Badge>}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
+          {items.map((item) => (
+            <FileRow
+              key={`${item.origin}/${item.path}`}
+              item={item}
+              current={opened?.path === item.path && opened.origin === item.origin}
+              originLabel={originLabel(item.origin)}
+              t={t}
+              onOpen={() => void open(item)}
+            />
+          ))}
         </ul>
       </div>
 
@@ -240,15 +280,13 @@ export function AgentFiles(props: {
         {!opened && <p className="text-muted-foreground text-sm">{t("agent.files.pick")}</p>}
         {opened && (
           <>
-            <div className="flex flex-wrap items-center gap-2">
-              <code className="break-all text-sm">{opened.path}</code>
-              <Badge variant="secondary">{originLabel(opened.origin)}</Badge>
-              {opened.readOnly && <Badge variant="outline">{t("agent.readOnly")}</Badge>}
-              <span className="flex-1" />
-              <Button variant="ghost" size="sm" onClick={() => setPreview((on) => !on)}>
-                {preview ? t("agent.files.edit") : t("agent.files.preview")}
-              </Button>
-            </div>
+            <FileHeader
+              opened={opened}
+              originLabel={originLabel(opened.origin)}
+              preview={preview}
+              t={t}
+              onTogglePreview={() => setPreview((on) => !on)}
+            />
             {versioned && <InlineNotice>{versioned}</InlineNotice>}
             {stale && (
               <InlineNotice>

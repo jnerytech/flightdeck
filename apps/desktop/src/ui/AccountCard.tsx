@@ -41,6 +41,61 @@ const PERCENT_COLOR: Partial<Record<QuotaWindow["status"], string>> = {
 
 const PLANS = ["free", "pro", "max", "team", "enterprise"];
 
+type Reading = Extract<
+  NonNullable<AccountCardProps["state"]>,
+  { windows: unknown }
+>["windows"][number];
+
+/** One window of the plan: its name, the percent used and, when known, when it resets. */
+function WindowMeter(props: {
+  reading: Reading;
+  hostName: string;
+  now: number;
+  formatTime: AccountCardProps["formatTime"];
+}) {
+  const t = useT();
+  const { reading, hostName, now, formatTime } = props;
+  const label = t(`account.windows.${reading.window}` as Key);
+  const value = reading.utilization ?? 0;
+  const percent = Math.round(value * 100);
+  const left = reading.resetsAt ? Date.parse(reading.resetsAt) - now : null;
+  const reset = left === null ? null : t("account.resetsIn", { d: formatDuration(left, t) });
+  return (
+    <div data-window={reading.window} data-status={reading.status} className="meter-line">
+      <div className="row-baseline-spread">
+        <span className="text-sm">{label}</span>
+        <span className={cn("font-medium text-sm", PERCENT_COLOR[reading.status])}>
+          {`${percent}%`}
+        </span>
+      </div>
+      <meter
+        aria-label={t("account.meter", { window: label, host: hostName })}
+        aria-valuetext={
+          reset === null
+            ? t("account.meterTextNoReset", { percent })
+            : t("account.meterText", { percent, reset })
+        }
+        min={0}
+        max={1}
+        value={value}
+        className={cn(METER, METER_COLOR[reading.status])}
+      />
+      {reset !== null && reading.resetsAt && (
+        <span
+          className="text-muted-foreground text-xs"
+          title={t("quota.resets", { time: formatTime(reading.resetsAt) })}
+        >
+          {reset}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Nothing was read from the host yet, and nothing went wrong either. */
+const notReadYet = (state: NonNullable<AccountCardProps["state"]>) =>
+  state.status === "unknown" && state.readAt === null && !state.error;
+
 /**
  * The Claude account a host's own `claude` is signed in to: who, the plan and its windows. It
  * shows what the host reports and never asks for a login, a code or a token.
@@ -66,10 +121,7 @@ export function AccountCard(props: AccountCardProps) {
     body = (
       <p className="text-muted-foreground text-sm">{t("account.offline", { host: hostName })}</p>
     );
-  } else if (
-    state === undefined ||
-    (state.status === "unknown" && state.readAt === null && !state.error)
-  ) {
+  } else if (state === undefined || notReadYet(state)) {
     body = <p className="text-muted-foreground text-sm">{t("account.loading")}</p>;
   } else if (state.status === "signed_out") {
     body = (
@@ -123,49 +175,15 @@ export function AccountCard(props: AccountCardProps) {
         {shown.length === 0 && (
           <p className="text-muted-foreground text-sm">{t("account.noWindows")}</p>
         )}
-        {shown.map((reading) => {
-          const label = t(`account.windows.${reading.window}` as Key);
-          const value = reading.utilization ?? 0;
-          const percent = Math.round(value * 100);
-          const left = reading.resetsAt ? Date.parse(reading.resetsAt) - now : null;
-          const reset =
-            left === null ? null : t("account.resetsIn", { d: formatDuration(left, t) });
-          return (
-            <div
-              key={reading.window}
-              data-window={reading.window}
-              data-status={reading.status}
-              className="meter-line"
-            >
-              <div className="row-baseline-spread">
-                <span className="text-sm">{label}</span>
-                <span className={cn("font-medium text-sm", PERCENT_COLOR[reading.status])}>
-                  {`${percent}%`}
-                </span>
-              </div>
-              <meter
-                aria-label={t("account.meter", { window: label, host: hostName })}
-                aria-valuetext={
-                  reset === null
-                    ? t("account.meterTextNoReset", { percent })
-                    : t("account.meterText", { percent, reset })
-                }
-                min={0}
-                max={1}
-                value={value}
-                className={cn(METER, METER_COLOR[reading.status])}
-              />
-              {reset !== null && reading.resetsAt && (
-                <span
-                  className="text-muted-foreground text-xs"
-                  title={t("quota.resets", { time: formatTime(reading.resetsAt) })}
-                >
-                  {reset}
-                </span>
-              )}
-            </div>
-          );
-        })}
+        {shown.map((reading) => (
+          <WindowMeter
+            key={reading.window}
+            reading={reading}
+            hostName={hostName}
+            now={now}
+            formatTime={formatTime}
+          />
+        ))}
         {state.stale && <p className="text-sm text-status-needs-you">{t("account.stale")}</p>}
         <div className="row-wrap-loose text-muted-foreground text-xs">
           {state.readAt && (

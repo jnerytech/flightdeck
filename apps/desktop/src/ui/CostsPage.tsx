@@ -89,6 +89,14 @@ const COSTSPAGE_KEYS = [
   "clientOverrides",
 ] as const;
 
+/** Which host(s) the screen reads: all of them, the one picked, or the first that has costs. */
+function hostScope(chosen: string, hosts: Array<{ id: string }>) {
+  const acrossHosts = chosen === ALL_HOSTS && hosts.length > 1;
+  if (acrossHosts) return { acrossHosts, hostId: ALL_HOSTS, hostIds: hosts.map((h) => h.id) };
+  const hostId = hosts.some((h) => h.id === chosen) ? chosen : (hosts[0]?.id ?? "");
+  return { acrossHosts, hostId, hostIds: hostId ? [hostId] : [] };
+}
+
 /**
  * Estimated cost of every session of a host (terminal, app, cards and workflows), from the
  * transcripts, in API prices: totals, a daily chart stacked by project, breakdowns, the most
@@ -111,13 +119,7 @@ export const CostsPage = memo(function CostsPage(props: {
   );
   /** The host the user picked; until then (or if it left), the first one that announces costs. */
   const [chosen, setChosen] = useState(props.host ?? "");
-  const acrossHosts = chosen === ALL_HOSTS && hosts.length > 1;
-  const hostId = acrossHosts
-    ? ALL_HOSTS
-    : hosts.some((h) => h.id === chosen)
-      ? chosen
-      : (hosts[0]?.id ?? "");
-  const hostIds = acrossHosts ? hosts.map((h) => h.id) : hostId ? [hostId] : [];
+  const { acrossHosts, hostId, hostIds } = hostScope(chosen, hosts);
   const personaHosts = hosts.filter(
     (h) => hostIds.includes(h.id) && hasFeature(h.hostInfo?.features, "personas", false),
   );
