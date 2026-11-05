@@ -3422,6 +3422,18 @@ export const en: Dictionary = {
     hintAddress:
       "Or the daemon refused this machine's address: on the host, add its network to allowedNetworks (flightdeckd setup does it for Tailscale).",
   },
+  diagnostics: {
+    title: "Diagnostics",
+    hint: "If something breaks, send the log. Lines are redacted: no token, key, link or vault value is ever written.",
+    openLogs: "Open logs folder",
+    copy: "Copy diagnostics",
+    copied: "Diagnostics copied: paste them in your message.",
+    words: "log logs diagnostics support folder",
+    hostCopy: "Copy the host's last log lines",
+    hostCopied: "{n} log lines copied.",
+    hostEmpty: "The host has no log lines yet.",
+    hostHint: "The host keeps its own log in {path}.",
+  },
   hostPage: {
     simpleTitle: "Simple mode",
     simpleHint:

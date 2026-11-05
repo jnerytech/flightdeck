@@ -113,8 +113,8 @@ describe("log-app-ui: the app's own events reach the log", () => {
       onStatus(id: string, conn: object, status: string): void;
       fail(error: unknown): void;
     };
-    internals.update({ hosts: [{ id: "h1", name: "pc", status: "offline", sessions: [] }] });
-    internals.onStatus("h1", { info: null, incompatibility: null, retry: null }, "online");
+    internals.update({ hosts: [{ id: "h1", name: "pc", status: "online", sessions: [] }] });
+    internals.onStatus("h1", { info: null, incompatibility: null, retry: null }, "offline");
     internals.fail(new Error("the host refused: token=0123456789abcdef0123456789abcdef"));
     w.mem.platform.updater.check = async () => null;
     await w.store.checkAppUpdate();
@@ -123,7 +123,7 @@ describe("log-app-ui: the app's own events reach the log", () => {
     };
     await w.store.checkAppUpdate();
     const lines = w.store.appLog.recent(20).map((l) => l.replace(/^\S+ /, ""));
-    expect(lines).toContain("INFO host pc: online");
+    expect(lines).toContain("WARN host pc: offline");
     expect(lines.some((l) => l.startsWith("ERROR refusal the host refused: [redacted]"))).toBe(
       true,
     );

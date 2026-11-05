@@ -766,7 +766,7 @@ export class AppStore {
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
     this.i18n = new I18n(platform);
-    this.appLog = new AppLog();
+    this.appLog = new AppLog({ sink: platform.logs });
     this.i18n.subscribe(() => this.onLanguage());
     this.state = {
       hosts: [],
@@ -1862,6 +1862,11 @@ export class AppStore {
     }
   }
 
+  /** The shell's log file, when the app has one (not in a browser). */
+  platformLogs(): Platform["logs"] {
+    return this.platform.logs;
+  }
+
   async copyText(text: string): Promise<boolean> {
     try {
       await this.platform.copyText(text);
@@ -1915,6 +1920,7 @@ export class AppStore {
   private fail(error: unknown, text?: string, retry?: () => void): void {
     const code = error instanceof RequestError ? error.code : "";
     const message = error instanceof Error ? error.message : String(error);
+    this.appLog.log("error", "refusal", `${code ? `${code}: ` : ""}${text ?? message}`);
     const notice: Notice = { id: ++this.noticeSeq, kind: "error", code, text: text ?? message };
     if (error instanceof RequestError && error.reason) {
       notice.reason = error.reason;
@@ -2090,8 +2096,18 @@ export class AppStore {
   async checkAppUpdate(): Promise<void> {
     try {
       const offer = await this.platform.updater.check();
+      this.appLog.log(
+        "info",
+        "update",
+        offer === null ? "up to date" : `version ${offer.version} is available`,
+      );
       this.update({ appUpdate: { offer, upToDate: offer === null, error: null } });
     } catch (error) {
+      this.appLog.log(
+        "error",
+        "update",
+        `the check failed: ${(error as Error).message ?? String(error)}`,
+      );
       this.setAppUpdate({
         error: this.i18n.t("messages.updateCheckFailed", {
           error: (error as Error).message ?? String(error),
@@ -2244,6 +2260,8 @@ export class AppStore {
   }
 
   private onStatus(hostId: string, conn: HostConnection, status: ConnectionStatus): void {
+    const name = this.state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
+    this.appLog.log(status === "online" ? "info" : "warn", "host", `${name}: ${status}`);
     this.updateHost(hostId, (h) => ({
       ...h,
       status,

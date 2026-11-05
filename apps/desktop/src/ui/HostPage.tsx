@@ -5,6 +5,7 @@ import { AllowedFolders } from "@/components/hosts/allowed-folders";
 import { BypassSwitch } from "@/components/hosts/bypass-switch";
 import { GithubPanel } from "@/components/hosts/github-panel";
 import { HostDoctor } from "@/components/hosts/host-doctor";
+import { HostLogs } from "@/components/hosts/host-logs";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
 import { Field } from "@/components/layout/form";
@@ -185,6 +186,7 @@ export function HostPage(props: {
         {host.status === "online" && hasFeature(info?.features, "maintenance", false) && (
           <MaintenanceSection store={store} hostId={host.id} />
         )}
+        <HostLogs store={store} host={host} />
         {confirming && (
           <ConfirmDialog
             message={
