@@ -51,8 +51,12 @@ export function configOptions(
 
 type Handler = (params: Record<string, unknown>) => unknown;
 
-/** Event loop turns a bounded wait gives: enough for a few stream hops, so a missing write fails an assertion. */
-const TURNS = 300;
+/**
+ * How long a bounded wait lasts: the runtime awaits real file reads (AGENTS.md), which take an
+ * unknown number of event loop turns, so a wait is bounded by time and fails an assertion when
+ * the thing never happens.
+ */
+const WAIT_MS = 2_000;
 
 export async function turns(count = 1): Promise<void> {
   for (let i = 0; i < count; i++) await new Promise<void>((resolve) => setImmediate(resolve));
@@ -197,9 +201,8 @@ export class FakeAcpAgent {
   }
 
   /** Waits (bounded) until `check` holds; answers whether it did. */
-  async until(check: () => boolean): Promise<boolean> {
-    for (let i = 0; i < TURNS && !check(); i++) await turns();
-    return check();
+  until(check: () => boolean): Promise<boolean> {
+    return until(check);
   }
 }
 
@@ -238,6 +241,7 @@ export function manualTimers() {
 
 /** Waits (bounded) until `check` holds; answers whether it did. */
 export async function until(check: () => boolean): Promise<boolean> {
-  for (let i = 0; i < TURNS && !check(); i++) await turns();
+  const deadline = performance.now() + WAIT_MS;
+  while (!check() && performance.now() < deadline) await turns();
   return check();
 }
