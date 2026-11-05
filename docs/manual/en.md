@@ -310,6 +310,8 @@ the last session stops and when the daemon exits.
   the computer sleeps as usual.
 - It works for the host's own computer: a host on another machine keeps that machine awake, not
   yours.
+- Inside WSL it holds nothing: a lock taken there does not keep Windows awake, so the page says so
+  and the switch is for the Windows host.
 
 ### Sessions without permission prompts
 

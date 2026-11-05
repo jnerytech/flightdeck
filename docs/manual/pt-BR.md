@@ -299,6 +299,8 @@ o computador quando a última sessão para e quando o daemon sai.
   e o computador dorme como de costume.
 - Vale para o computador do próprio host: um host em outra máquina mantém aquela máquina acordada,
   não a sua.
+- Dentro do WSL ele não segura nada: um bloqueio tomado ali não mantém o Windows acordado, então a
+  página diz isso e a chave vale para o host do Windows.
 
 ### Sessões sem pedidos de permissão
 
