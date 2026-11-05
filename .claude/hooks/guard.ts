@@ -3,7 +3,7 @@
  * PreToolUse (Bash|Edit|Write), in the main checkout and in its worktrees. It blocks staging
  * everything at once (docs/TDD.md), hand edits of generated files, test edits that add
  * .only/.skip/test.todo/toMatchSnapshot, commits whose subject breaks the format or the TDD
- * order, heavy runs outside `bun run slot --`, and pushes of anything but the session's own work
+ * order, heavy runs outside `bun run slot --`, a session's hand merge or tag of a PR, and pushes of anything but the session's own work
  * branch. Exit 2 blocks the call and shows the reason to Claude. The rules live in
  * scripts/lib/claude-hooks.ts, with their tests.
  */
@@ -16,6 +16,7 @@ import {
   commitViolation,
   commitWaived,
   generatedViolation,
+  prMergeViolation,
   pushViolation,
   slotViolation,
   testEditViolation,
@@ -36,6 +37,7 @@ const { command, file_path: filePath } = input?.tool_input ?? {};
 if (typeof command === "string") {
   block("command", commandViolation(command));
   block("slot", slotViolation(command, process.env));
+  block("pr-merge", prMergeViolation(command, process.env));
   const cwd = typeof input.cwd === "string" ? input.cwd : ROOT;
   const repo = {
     git: (args: string[], dir: string) => {
