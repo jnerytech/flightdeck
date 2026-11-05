@@ -243,7 +243,7 @@ describe("direcao-visual: três colunas", () => {
     expect(within(main()).queryByText("Escolha uma sessão para ler.")).not.toBeNull();
   });
 
-  test("Histórico de um host que ainda não conectou mostra só o carregamento, sem a lista", async () => {
+  test("a host's History that cannot connect shows the host's offline banner, without the list", async () => {
     const mem = memoryPlatform();
     const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());
@@ -255,7 +255,9 @@ describe("direcao-visual: três colunas", () => {
     await act(async () => {
       store.router.push({ name: "history", host: hostId });
     });
-    expect(screen.queryByRole("status", { name: "Conectando a longe…" })).not.toBeNull();
+    // Issue #227: after a failed try it is not "connecting" forever, it says the host is offline.
+    await settle(() => screen.queryByRole("region", { name: "Estado da conexão" }) !== null);
+    expect(screen.queryByRole("status", { name: "Conectando a longe…" })).toBeNull();
     expect(within(main()).queryByRole("separator")).toBeNull();
     expect(screen.queryByRole("list", { name: "Sessões do histórico" })).toBeNull();
   });
