@@ -136,6 +136,7 @@ import { terminalEnabled } from "./terminal/policy.ts";
 import { bunPty, type PtyFactory } from "./terminal/pty.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
 import { TraceService } from "./trace/service.ts";
+import { ProjectTrust } from "./trust/project-trust.ts";
 import {
   binaryVersion,
   refusedAddress,
@@ -652,10 +653,21 @@ export async function startDaemon(
     pack: packPersonas,
     publisher: agentPublisher(agentcfg),
   });
+  // Whether a folder's own hooks, MCP servers and settings may load in a session (issue #196): only
+  // where the person trusted it (or already worked in it before this existed). A card's worktree is
+  // read from its project's main checkout.
+  const projectTrust = new ProjectTrust(store.db, {
+    configRootOf: (cwd) => {
+      const found = board.projectForCwd(cwd);
+      return found?.card ? found.project.path : null;
+    },
+    log: (line) => logger.log(line),
+  });
   const manager = new SessionManager({
     store,
     runtime,
     risk,
+    trust: (cwd) => projectTrust.sessionTrust(cwd),
     autoApprove,
     allowedRoots: config.allowedRoots,
     defaultPermissionMode: config.defaultPermissionMode,

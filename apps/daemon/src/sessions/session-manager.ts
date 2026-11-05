@@ -538,6 +538,7 @@ export class SessionManager {
                 ctx.signal,
                 parseSuggestions(ctx.suggestions),
               ),
+      ...(this.opts.trust ? { trust: this.opts.trust(session.cwd) } : {}),
       ...(resume ? { resume } : {}),
       ...(session.model ? { model: session.model } : {}),
       ...(this.efforts.has(sessionId)
