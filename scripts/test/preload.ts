@@ -10,6 +10,7 @@ import { assertNoClaudeCalls, installClaudeGuard } from "./claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./cli-guard.ts";
 import { installGitEnvGuard } from "./git-env.ts";
 import { assertHomeGuard, installHomeGuard } from "./home-guard.ts";
+import { captureGlobals, installBetweenFiles } from "./isolation.ts";
 import { assertNoNetwork, installNetworkGuard } from "./network-guard.ts";
 import { assertPathUntouched, assertRepoUntouched, installRepoGuard } from "./repo-guard.ts";
 import { assertNoTauriCalls, installTauriGuard } from "./tauri-guard.ts";
@@ -52,6 +53,9 @@ const tauri = installTauriGuard();
 // first or leaves a fake on the second fails the run.
 const repo = installRepoGuard(join(import.meta.dir, "../.."));
 const pathBefore = process.env.PATH;
+// Everything above is in place: this is the state each test file starts from. A file that leaves a
+// timer, Date, fetch or env variable changed does not hand that to the next one (issue #274).
+installBetweenFiles(captureGlobals());
 
 // `Bun.which(name)` without options keeps the PATH the process started with; code must pass the
 // current one. Make sure that lookup now lands on the sentinel, or stop before any test runs.
