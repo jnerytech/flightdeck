@@ -107,12 +107,12 @@ describe("clients-vault: the vault tag and the scope on the Clients screen", () 
     const before = sent().length;
     await click(scopeBox());
     await settle(() => screen.queryByText(/Ligar o escopo do cofre de Acme/) !== null);
-    expect(screen.queryByText(/negar o Claude, as automações e os workflows/) !== null).toBe(true);
+    expect(screen.queryByText(/negar o Claude, as automações e os workflows/)).not.toBeNull();
     expect(store.clients.list().find((c) => c.id === acme)?.defaults.vaultScope).toBe(false);
-    expect(sent().length).toBe(before);
+    expect(sent()).toHaveLength(before);
     await click(screen.queryByRole("button", { name: "Cancelar" }));
     expect(store.clients.list().find((c) => c.id === acme)?.defaults.vaultScope).toBe(false);
-    expect(sent().length).toBe(before);
+    expect(sent()).toHaveLength(before);
   });
 
   test("confirming turns it on and the host is sent the generated rules", async () => {
@@ -189,13 +189,13 @@ describe("clients-vault: what could take a secret out of its client", () => {
     await settle(
       () => screen.queryByText(/uma regra libera ou pede o projeto de outro cliente/) !== null,
     );
-    expect(screen.queryByText(/github\.com\/beta\/app/) !== null).toBe(true);
-    expect(screen.queryByText(/pode ir para hosts sem projetos do cliente/) !== null).toBe(true);
-    expect(screen.queryByText(/ghost/) !== null).toBe(true);
+    expect(screen.queryByText(/github\.com\/beta\/app/)).not.toBeNull();
+    expect(screen.queryByText(/pode ir para hosts sem projetos do cliente/)).not.toBeNull();
+    expect(screen.queryByText(/ghost/)).not.toBeNull();
   });
 
   test("nothing is said when the secret stays inside its client", async () => {
     await open({ tag: "client:acme" });
-    expect(screen.queryByText("Segredos que podem sair do cliente") !== null).toBe(false);
+    expect(screen.queryByText("Segredos que podem sair do cliente")).toBeNull();
   });
 });

@@ -10,6 +10,7 @@ import type { ConnectionStatus } from "../src/lib/host-connection.ts";
 import { hostStatusView, hostsBanner } from "../src/lib/host-status.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { unfoldAll } from "./unfold.ts";
 import { stays, waiter } from "./wait.ts";
 
 registerDom();
@@ -314,7 +315,8 @@ describe("estados-avisos", () => {
     expect(strip?.textContent ?? "").toContain("2 hosts offline");
     expect(strip?.textContent ?? "").toContain("notebook");
     expect(strip?.textContent ?? "").toContain("servidor");
-    // The online host's sessions are still listed.
+    // The online host's sessions are still listed (the projects start folded).
+    await unfoldAll(act);
     await settle(() => screen.queryByRole("listitem", { name: "Viva" }) !== null);
     expect(screen.queryByRole("listitem", { name: "Viva" })).not.toBeNull();
     expect(sessionId).not.toBe("");

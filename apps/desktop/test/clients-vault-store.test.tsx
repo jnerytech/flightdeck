@@ -156,7 +156,7 @@ describe("clients-vault: turning scope on and off", () => {
       store.clients.setDefaults(acme, { vaultScope: false });
     });
     await stays(() => sent().length === before, 400);
-    expect(sent().length).toBe(before);
+    expect(sent()).toHaveLength(before);
   });
 });
 
@@ -171,7 +171,7 @@ describe("clients-vault: when the client's projects change", () => {
     ];
     await act(() => store.refreshHub());
     await settle(() => ids(lastFor(secret.id)?.rules).length > before.length);
-    expect(ids(lastFor(secret.id)?.rules).length).toBe(before.length + 1);
+    expect(ids(lastFor(secret.id)?.rules)).toHaveLength(before.length + 1);
     await settle(() => said.length > 0);
     expect(said).toEqual(["As regras de segredos do cliente Acme mudaram com os projetos dele."]);
   });
@@ -200,7 +200,7 @@ describe("clients-vault: reading the rules back from a host", () => {
     expect(readBack).toEqual([OWN]);
     await store.setVaultRules(secret.id, [...(readBack ?? []), OWN2]);
     const held = daemon.vaultRules[secret.id] as Array<{ id: string }>;
-    expect(held.filter((r) => r.id.startsWith(SCOPE_RULE_PREFIX)).length).toBe(5);
+    expect(held.filter((r) => r.id.startsWith(SCOPE_RULE_PREFIX))).toHaveLength(5);
     expect(held.filter((r) => !r.id.startsWith(SCOPE_RULE_PREFIX))).toEqual([OWN, OWN2]);
     await act(async () => {
       store.clients.setDefaults(acme, { vaultScope: false });

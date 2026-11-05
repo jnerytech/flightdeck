@@ -152,6 +152,7 @@ describe("desktop: conexão com o host", () => {
       connectTimeoutMs: 80,
     });
     await waitFor(() => conn.retry?.kind === "timeout", "timeout state");
+    expect(conn.retry?.kind).toBe("timeout");
   });
 
   test("wake tries at once instead of waiting out the backoff", async () => {
@@ -186,6 +187,7 @@ describe("desktop: conexão com o host", () => {
       conn.wake();
       return (conn.retry?.lastTryAt ?? 0) > seen && gap() === 100;
     }, "backoff restarted");
+    expect(gap()).toBe(100);
   });
 
   test("wake calls close together make one reconnect, and an online host is left alone", async () => {
@@ -201,7 +203,7 @@ describe("desktop: conexão com o host", () => {
     conn.wake();
     await waitFor(() => statuses.filter((s) => s === "connecting").length > before, "one retry");
     await Bun.sleep(100);
-    expect(statuses.filter((s) => s === "connecting").length).toBe(before + 1);
+    expect(statuses.filter((s) => s === "connecting")).toHaveLength(before + 1);
     const { listen } = daemon();
     const live = connect(listen().url, TOKEN, { wakeDebounceMs: 0 });
     await waitFor(() => live.conn.status === "online", "online");

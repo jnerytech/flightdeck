@@ -4,6 +4,7 @@ import type { AssistantBlock, McpLiveStatus } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { ulid } from "../ulid.ts";
 import { whichOnPath } from "../which.ts";
+import { describeCommands } from "./commands.ts";
 import type {
   AgentRun,
   AgentRuntime,
@@ -39,6 +40,21 @@ class Interrupted extends Error {}
  * `[bash]` asks permission for a Bash command, with suggestions. `[result:<path>]` writes a
  * small Markdown file at `<path>` under the cwd, as a task that made a result would.
  */
+/** `count` fake slash commands in every shape a session lists: plain, plugin skills, MCP prompts. */
+/** The demo asks for a long list with `FLIGHTDECK_FAKE_SLASH=<count>`, for the layout checks. */
+function envSlashCommands(): string[] | undefined {
+  const count = Number(process.env.FLIGHTDECK_FAKE_SLASH);
+  return Number.isInteger(count) && count > 0 ? fakeSlashCommands(count) : undefined;
+}
+
+export function fakeSlashCommands(count: number): string[] {
+  return Array.from({ length: count }, (_, i) => {
+    if (i % 3 === 1) return `plugin:skill-${i}`;
+    if (i % 3 === 2) return `mcp__server__prompt-${i}`;
+    return `command-${i}`;
+  });
+}
+
 export class FakeRuntime implements AgentRuntime {
   /** Every `start` call, so tests can inspect what the session manager handed over. */
   readonly starts: StartOptions[] = [];
@@ -50,7 +66,7 @@ export class FakeRuntime implements AgentRuntime {
     this.delayMs = options.delayMs ?? 10;
     this.rewind = options.rewind;
     this.mcpServers = options.mcpServers ?? [];
-    this.slashCommands = options.slashCommands;
+    this.slashCommands = options.slashCommands ?? envSlashCommands();
     this.judge = options.judge;
   }
 
@@ -218,7 +234,19 @@ class FakeRun implements AgentRun {
         claudeSessionId: this.claudeSessionId,
         model: this.opts.model ?? "fake-model",
         tools: ["Read", "Write", "Bash"],
-        ...(this.slashCommands ? { slashCommands: this.slashCommands } : {}),
+        ...(this.slashCommands
+          ? {
+              slashCommands: this.slashCommands,
+              // Like the SDK: Claude Code's own are the plain names, the rest are namespaced.
+              commands: describeCommands(
+                this.slashCommands.map((name) => ({
+                  name,
+                  description: `Run /${name}`,
+                  builtin: !name.includes(":") && !name.startsWith("mcp__"),
+                })),
+              ),
+            }
+          : {}),
       });
     }
     const windows = [...text.matchAll(/\[ratelimit:(\w+)=([\d.]+)@(\d+)\]/g)].map(

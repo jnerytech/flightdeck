@@ -114,6 +114,38 @@ describe("sessao-barra: the composer toolbar", () => {
     expect(screen.queryByLabelText("Modelo")).toBeNull();
   });
 
+  test("a daemon that describes the commands gives the groups and the description of the selected one", async () => {
+    render(
+      <SessionView
+        title="s"
+        session={{
+          ...emptySession(),
+          status: "idle",
+          slashCommands: ["compact", "deploy", "mcp__gh__issue"],
+          commands: [
+            { name: "compact", description: "Compact the conversation", kind: "builtin" },
+            { name: "deploy", description: "Deploy the app", kind: "skill" },
+            { name: "mcp__gh__issue", description: "Open an issue", kind: "mcp" },
+          ],
+        }}
+        actions={actions}
+      />,
+    );
+    await act(async () => void fireEvent.change(box(), { target: { value: "/" } }));
+    await act(async () => {});
+    const menu = within(screen.getByRole("listbox"));
+    expect(menu.getAllByRole("group").map((g) => g.getAttribute("aria-label"))).toEqual([
+      "Comandos (1)",
+      "Skills (1)",
+      "Prompts MCP (1)",
+    ]);
+    expect(screen.getByTestId("prompt-menu-description").textContent).toBe(
+      "Compact the conversation",
+    );
+    await act(async () => void fireEvent.keyDown(box(), { key: "ArrowDown" }));
+    expect(screen.getByTestId("prompt-menu-description").textContent).toBe("Deploy the app");
+  });
+
   test("typing / also offers the slash commands of the session, and one fills the box", async () => {
     render(
       <SessionView
