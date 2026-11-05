@@ -432,6 +432,7 @@ export const DAEMON_FEATURES = [
   "runEnv",
   "templates",
   "tasks",
+  "sleep",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];
 

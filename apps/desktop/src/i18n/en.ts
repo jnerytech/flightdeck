@@ -1146,6 +1146,7 @@ export const en: Dictionary = {
     runEnv: "the run environment",
     templates: "ready-made tasks",
     tasks: "task results",
+    sleep: "putting idle sessions to sleep",
     history: "the history",
     central: "the central session list",
     vault: "the vault",
