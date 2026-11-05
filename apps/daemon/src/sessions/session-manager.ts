@@ -761,6 +761,7 @@ export class SessionManager {
     this.store.updateSession(sessionId, { status });
     this.emit(sessionId, { type: "session.status", status, ...(reason ? { reason } : {}) });
     this.emitSummary(sessionId);
+    this.opts.onActivity?.(this.activeSessionCount());
   }
 
   private emit(sessionId: string, event: SessionEvent): void {
