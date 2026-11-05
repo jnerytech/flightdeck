@@ -25,7 +25,7 @@ export function Breadcrumb(props: {
   const hidden = folded ? crumbs.slice(1, -1) : [];
   const shown = folded ? [crumbs[0], crumbs.at(-1)] : crumbs;
   return (
-    <nav aria-label={props.label} className="min-w-0 flex-1">
+    <nav aria-label={props.label} className="min-w-0 flex-1 overflow-hidden">
       <ol className="flex min-w-0 items-center gap-1 text-sm">
         {shown.map((crumb, i) => {
           if (!crumb) return null;
@@ -50,7 +50,7 @@ export function Breadcrumb(props: {
                               type="button"
                               aria-label={props.moreLabel}
                               title={props.moreLabel}
-                              className="inline-flex min-h-6 items-center rounded-sm px-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              className="inline-flex min-h-6 items-center rounded-sm px-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                             >
                               <Ellipsis aria-hidden="true" className="size-4" />
                             </button>
@@ -75,12 +75,12 @@ export function Breadcrumb(props: {
                   />
                 </>
               )}
-              {/* The earlier steps give way first (a factor 100 times larger), down to 2rem; then the current one, which keeps 4rem. Factors under 1 in total would shrink only that share of the overflow. */}
-              <li className={isLast ? "min-w-[4rem] shrink" : "min-w-[2rem] shrink-[100]"}>
+              {/* The earlier steps give way first (a factor 100 times larger), down to 1rem; then the current one, which keeps 4rem. The floors of three steps and their chevrons (140 px) fit the slot of a 720 px window (156 px). Factors under 1 in total would shrink only that share of the overflow. */}
+              <li className={isLast ? "min-w-[4rem] shrink" : "min-w-[1rem] shrink-[100]"}>
                 {crumb.route ? (
                   <button
                     type="button"
-                    className="block min-h-6 max-w-full truncate rounded-sm text-muted-foreground leading-6 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="block min-h-6 max-w-full truncate rounded-sm text-muted-foreground leading-6 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                     title={crumb.label}
                     onClick={() => crumb.route && props.onGo(crumb.route)}
                   >
