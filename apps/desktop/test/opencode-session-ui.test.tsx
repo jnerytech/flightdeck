@@ -109,6 +109,18 @@ describe("opencode-session-ui", () => {
     });
     await settleMaybe(() => document.querySelector('[data-slot="runtime-badge"]') !== null);
     expect(document.querySelector('[data-slot="runtime-badge"]')?.textContent).toBe("OpenCode");
+    // In both of the hub's views.
+    const badgeIn = async (view: "Cards" | "List") => {
+      await act(async () => {
+        fireEvent.click(screen.queryByRole("button", { name: view }) as HTMLElement);
+      });
+      await settleMaybe(
+        () =>
+          (document.querySelector('[data-slot="session-card"]') !== null) === (view === "Cards"),
+      );
+      return document.querySelector('[data-slot="runtime-badge"]')?.textContent ?? null;
+    };
+    expect([await badgeIn("Cards"), await badgeIn("List")]).toEqual(["OpenCode", "OpenCode"]);
   });
 
   test("a host without OpenCode does not offer the agent; the label is translated", async () => {
