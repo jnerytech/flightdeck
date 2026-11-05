@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { colorOf, contrast, tokensOf } from "../lib/theme-contrast.ts";
 
@@ -113,5 +113,34 @@ describe("theme-contrast: the light theme's fields and the status colors (issue 
         }
       }
     }
+  });
+});
+
+describe("theme-contrast: fields use the field token (issue #176)", () => {
+  // A token test cannot see a control that draws its edge with the decorative --border: a vault
+  // select did, at 1.14:1 in the light theme.
+  test("every select, input and textarea that draws a border in the app's screens uses border-input", () => {
+    const root = resolve(import.meta.dir, "../../apps/desktop/src");
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = resolve(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (!path.endsWith("components/ui")) walk(path);
+        } else if (entry.name.endsWith(".tsx")) files.push(path);
+      }
+    };
+    walk(root);
+    const offenders: string[] = [];
+    for (const file of files) {
+      const source = readFileSync(file, "utf8");
+      for (const m of source.matchAll(/<(select|input|textarea)\b[^>]*?className="([^"]*)"/gs)) {
+        const classes = (m[2] as string).split(/\s+/);
+        if (classes.includes("border") && !classes.includes("border-input")) {
+          offenders.push(`${file.slice(root.length + 1)}: <${m[1]}>`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });
