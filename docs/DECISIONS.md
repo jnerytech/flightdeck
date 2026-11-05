@@ -4049,14 +4049,15 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   WebSocket, `.listen(`). A spawn is also `cp.exec(`, `child_process`, `Bun.$`, `fork(`, `execa(`
   or `new Worker`, and in Rust and Python `Command::new`, `std::process`, `subprocess.`,
   `os.system`; deletes and listeners have their Rust and Python forms too. A line that is only a
-  comment does not count; code before, between or after comments on the same line does (`#` is a
-  comment only in `.sh`, `.py` and `.ps1`; in TypeScript it is a private field). Code is `.[cm]?[jt]sx?`,
+  comment and nothing else does not count; a line is never cut, so one with any code is read whole
+  (a glob's `*/` or comment marks in a string cannot hide what it does; `#` is a comment only in
+  `.sh`, `.py` and `.ps1`, since in TypeScript it is a private field). Code is `.[cm]?[jt]sx?`,
   `.rs`, `.sh`, `.ps1` and `.py`. A mode change counts as a permission change. Some paths are risky
   whatever they add: the vault and pairing code, the Tauri shell's capabilities and
   `tauri*.conf.json` (CSP, scopes), `.github/workflows/`, and the files whose contents run as code
   (`package.json`, `Cargo.toml`, `build.rs`, `bunfig*.toml`, `.claude/settings*.json`,
   `.claude/hooks/`), and the guards themselves (the gate, the hook rules, the TDD audit, the
-  hand-off check, `.github/actions/`); a pure rename into one counts too. Left as known limits: a
+  hand-off check, the hook runner, `bun run pr`, the security-reviewer agent, `.github/actions/`); a pure rename into one counts too. Left as known limits: a
   risky file moved by rename from a test folder is read by its edited lines only, a mode change on
   a file with no code extension is not seen, and every `package.json` change asks for a review. Patterns, not a parser: they err toward asking for a review.
 - **It fails closed** (the OpenCode review on #279): a `git diff` or `git log` that fails (an error,
