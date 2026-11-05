@@ -9,6 +9,10 @@ import {
   parseOpenCodeVersion,
   resolveOpenCodePath,
 } from "../src/runtime/opencode-discovery.ts";
+import { globalConfigDir } from "../src/runtime/opencode-scope.ts";
+
+/** The global folder as the code computes it here (backslashes on Windows). */
+const GLOBAL = globalConfigDir({ HOME: "/home/u" });
 
 interface Call {
   argv: string[];
@@ -42,7 +46,7 @@ function deps(overrides: Partial<DiscoveryDeps> = {}, answers: Record<string, st
 
 const sources = (...paths: string[]) =>
   JSON.stringify([
-    { type: "directory", path: "/home/u/.config/opencode" },
+    { type: "directory", path: GLOBAL },
     { type: "document", info: {} },
     ...paths.map((path) => ({ type: "document", path, info: { model: CANARY_MODEL } })),
   ]);
@@ -129,7 +133,7 @@ describe("opencode-discovery", () => {
     const findings = [
       {
         kind: "plugins_entry" as const,
-        path: "/home/u/.config/opencode/opencode.json",
+        path: join(GLOBAL, "opencode.json"),
         detail: "x",
       },
     ];
@@ -158,7 +162,7 @@ describe("opencode-discovery", () => {
 
   test("any source but the global folder, its config files and our document fails the canary", async () => {
     const odd = JSON.stringify([
-      { type: "directory", path: "/home/u/.config/opencode" },
+      { type: "directory", path: GLOBAL },
       { type: "document", path: "/private/tmp/canary/opencode.json" },
     ]);
     const { deps: d } = deps({}, { "api GET /api/config --standalone": odd });
