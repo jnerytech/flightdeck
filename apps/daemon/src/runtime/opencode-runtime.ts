@@ -116,7 +116,7 @@ export const REAL_KILL_DEPS = {
 export function treeKiller(
   platform: NodeJS.Platform,
   deps: { run: (argv: string[]) => void; killGroup: (pid: number, signal: NodeJS.Signals) => void },
-): Killer {
+): (child: Pick<SpawnedAcp, "pid" | "kill">, force: boolean) => void {
   return (child, force) => {
     if (platform === "win32") {
       deps.run(["taskkill", "/PID", String(child.pid), "/T", "/F"]);

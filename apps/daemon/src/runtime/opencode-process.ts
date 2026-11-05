@@ -9,6 +9,7 @@ import type { Subprocess } from "bun";
 import { FlightdeckError } from "../errors.ts";
 import { OPENCODE_API_TIMEOUT_MS, opencodeConfig, opencodeEnv } from "./opencode-config.ts";
 import type { RunResult } from "./opencode-discovery.ts";
+import { REAL_KILL_DEPS, treeKiller } from "./opencode-runtime.ts";
 import type { ScopeResult } from "./opencode-scope.ts";
 
 /** The exit code a run reports when it hit its deadline. */
@@ -20,9 +21,11 @@ export const TIMED_OUT = 124;
  */
 function killTree(child: Subprocess): void {
   if (child.exitCode !== null) return;
-  if (process.platform === "win32") Bun.spawn(["taskkill", "/PID", String(child.pid), "/T", "/F"]);
-  else process.kill(-child.pid, "SIGKILL");
+  KILL_TREE(child, true);
 }
+
+/** The same tree kill as a session's process (tested on both platforms through treeKiller). */
+const KILL_TREE = treeKiller(process.platform, REAL_KILL_DEPS);
 
 export async function runCommand(
   argv: string[],
