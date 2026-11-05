@@ -3583,3 +3583,131 @@ Probes on 2026-11-04 with `anthropic/claude-sonnet-5-5` (four short turns, about
   session with its reason (`opencode_config_outranks`, `opencode_saved_rules`, `opencode_preflight_failed`) instead of
   running and detecting afterwards. Flightdeck never deletes a person's saved rules. The tripwire stays as a second line,
   for a rule saved from OpenCode's own TUI while a session is live.
+- **Residual risk accepted (maintainer).** The preflight checks, then the session runs: a rule saved, or a config file
+  changed, between the check and the first tool call is not seen by the preflight. The tripwire and the live re-checks
+  below are the line for that window.
+
+### Phase 39: the independent review (OpenCode, `flightdeck-handoff/opencode-spec39-review.md`) and a third probe round
+
+Probes on 2026-11-04 in a scratch "hostile" project: a `.opencode/plugins/evil.ts` that writes a marker at import, a
+project `opencode.json` with `permissions *: allow`, an MCP server `evil` (a `touch` command), the policies
+`mcp.use evil allow` and `plugin.use * allow`, an agent named `flightdeck` with `*: allow` (JSON and markdown), a command
+`.opencode/commands/hello.md` with a `` !`touch ...` `` block, and an `AGENTS.md`. Model calls with Sonnet and the free
+default model, a dozen short turns; every probe session was deleted.
+
+Findings:
+
+- **Code loads before any check can refuse.** Each `opencode api ... --standalone` call imported the project plugin
+  (one marker line per call), and `session/new` imported it and started the project MCP server. So any preflight that
+  starts OpenCode in the folder already ran the repo's code.
+- **The review's detection endpoints see nothing.** `GET /api/plugin`, `/api/mcp` and `/api/command` answered empty lists
+  with the plugin, the server and the command all present (built-ins are not listed either).
+- **Inline `plugins: ["-*"]` breaks OpenCode and does not stop the plugin.** It also removed the provider plugins
+  (`session/new` failed with `CatalogNotReady`, "No models are available"), and the plugin's import-time code still ran.
+  `plugin.use * deny` in the inline config did not stop it either.
+- **Inline policies do not outrank the project's.** With the inline `mcp.use * deny` plus `mcp.use flightdeck allow`, the
+  project's server `evil` (allowed by the project's own policy) still started, while an extra server passed through ACP
+  (`other`) was blocked and `flightdeck` started. (A first `--standalone` run without the `mcp` marker was confounded:
+  `--standalone` calls do not start MCP servers.)
+- **`OPENCODE_DISABLE_PROJECT_CONFIG=1`** (found in the binary, not in the docs) removes the project `opencode.json` and
+  `.opencode/` as config sources (`GET /api/config` lists only the global folder and the inline document): no plugin
+  import, no project MCP server, no project command (`/hello` became a plain prompt), our agents intact. It also drops the
+  project's `AGENTS.md` instructions (the model did not see them); an inline `instructions` entry did not bring them back.
+- **Inline agents beat project agents of the same id**, in JSON and in markdown (`.opencode/agents/flightdeck.md`).
+- **Commands.** A prompt `" /hello lead"` (leading space) ran the command's shell block; `"​/hello zw"` (a zero-width
+  space first) did not. Project commands appear in `available_commands_update` (`hello`) next to the built-ins `init`,
+  `review`, `goal`, `compact`.
+- **Outside the folder, `grep`, `glob` and `read` ask** (a request each, with the outside path in `rawInput`).
+- **A plain `reject`** fails the tool ("The user declined this tool call") and ends the turn with `stopReason: cancelled`.
+- **A fork's cost starts fresh:** the fork's first `usage_update` was 0.0018 USD, not the parent's total.
+- **SIGKILL of `opencode acp` took its running shell command with it** on Linux (`sleep 41` gone, no marker). Windows is
+  unverified.
+- **Cost of the preflight:** the three `--standalone` calls in parallel, next to a live `opencode acp`, took 12.4 s on the
+  Pi (all exit 0). An idle `opencode acp` holds about 110 MB of RSS.
+- Other switches in the binary (undocumented): `OPENCODE_CONFIG_DIR`, `OPENCODE_DISABLE_FILEWATCHER`,
+  `OPENCODE_DISABLE_CLAUDE_CODE`, `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS`, `OPENCODE_SERVER_PASSWORD`, `OPENCODE_DB`.
+
+#### ADR 39-1 (B1): code and servers the project loads
+
+- **Context.** OpenCode imports plugins and starts MCP servers from the project's config at session start, before any
+  question; a plugin can answer permissions itself. A preflight that starts OpenCode runs that code too.
+- **Options.**
+  1. *Detect and refuse* through OpenCode (`/api/plugin`, `/api/mcp`): rejected, the endpoints list nothing and asking
+     already ran the code.
+  2. *Inline removal* (`plugins: ["-*"]`, `plugin.use` and `mcp.use` deny policies): rejected, it breaks the providers,
+     does not stop import-time code, and the project's policies win.
+  3. *A file scan in Flightdeck before any OpenCode process* (plugins dirs, `plugins` and `mcp` keys up the folder tree):
+     works, but reimplements OpenCode's discovery, which can drift with a version.
+  4. *`OPENCODE_DISABLE_PROJECT_CONFIG=1` on every OpenCode process Flightdeck starts*, plus a no-process scan of the
+     global and system scopes only: one switch, verified with the markers; the cost is the project's own OpenCode config
+     (models, providers, agents, commands, instructions) being ignored.
+- **Decision: option 4.** Every OpenCode process (ACP, preflight, models) gets `OPENCODE_DISABLE_PROJECT_CONFIG=1` and an
+  environment with every other `OPENCODE_*` removed. Before any of them runs, a scan without OpenCode reads the global
+  config folder (`$XDG_CONFIG_HOME/opencode` or `~/.config/opencode`, computed from the child's environment) and the
+  system scope (`/etc/opencode/`, macOS managed preferences): a `plugins` entry, a file in `plugins/` or `plugin/`, an
+  `mcp` server, or any system or managed config makes OpenCode unavailable on the host, with the reason in `host.info` and
+  in the doctor. Then the preflight checks that `GET /api/config` lists exactly the global folder and the inline document;
+  an unknown source refuses. The session's `AGENTS.md` (the folder's own, text only) is sent as an embedded resource with
+  the first prompt of a new session, so project instructions still reach the model without loading project config.
+- **Consequences.** A repo cannot load code, servers, agents or commands into a Flightdeck OpenCode session. A person who
+  relies on a project `opencode.json` loses it here (the manual says so). The switch is undocumented: `doctor` warns when
+  the installed OpenCode is newer than the last verified version (2.2.5), and the opt-in `smoke:opencode-real` replays the
+  hostile project at each upgrade.
+
+#### ADR 39-2 (B2): commands run shell outside the permission flow
+
+- **Options.** 1. Refuse folders with commands: harsh, and the global and built-in names stay. 2. Neutralize: every text
+  block whose `trimStart()` begins with `/` gets a zero-width space first, in the runtime's `send` (the one place every
+  caller goes through: the app, the queue, messaging). 3. Both.
+- **Decision: option 2,** plus advertising no command (`session.init.slashCommands` is omitted). With ADR 39-1 no project
+  command is loaded; neutralizing also covers global commands and a global command that replaces a built-in name. The
+  built-in `/compact` and friends are not offered in version 1.
+- **Consequence.** The zero-width rule is verified on 2.2.5 only; `smoke:opencode-real` re-checks it.
+
+#### ADR 39-3: nobody but a person approves an OpenCode request in version 1
+
+- **Decision.** For OpenCode sessions the automatic approval (rules and AI judge) is off and `acceptEdits` is not offered
+  (modes: `default`, `plan`, `bypassPermissions` when the host allows it). A shell command that writes a plugin into the
+  global folder cannot be classified reliably, so a person sees every request. Writes into the global OpenCode folder are
+  also `high` risk.
+- **Live re-check.** After every `tool.result` the runtime re-reads the global and system scopes (stat only) and fails the
+  session with `opencode_permissions_overridden` when they changed; a `config_option_update` or `current_mode_update` that
+  leaves the `mode` options other than our two, or the current mode other than the one set, does the same.
+
+#### The review's majors and minors
+
+| Item | Decision |
+| --- | --- |
+| M1 child sessions | Accept. Filter on `_meta["opencode/child-session"]` and the `<childId>:` tool call prefix; a child's permission request is answered `reject` without the broker, also when the session is idle. |
+| M2 `opencode:*` risk | Accept. Every unmapped tool is `high` and network (never automatic, moot with ADR 39-3); `websearch` maps to `WebSearch`; `flightdeck_<tool>` maps to `mcp__flightdeck__<tool>` so `run_with_secret` and `alwaysAsks` apply; `execute` (Code Mode) stays `opencode:execute`. The tool name is ACP's `name` field (probe: `shell`, `grep`, `glob`, `read`). |
+| M3 glob/grep outside | Resolved by probe: both ask outside the folder. Rules unchanged; a fixture pins it. |
+| M4 preflight wiring | Accept. The session manager puts a `preparing` placeholder (with the message queue) in place before the first await, so a second send cannot start a second run; `create`, `resume` and `createResumed` throw the typed refusal; a lazy reattach that fails sets the session to `error` with a `session.error` that carries the reason and its params (an additive field) and drops the queued text with a notice. |
+| M5 preflight cost | Accept, changed. `GET /api/config` replaces `debug config`. A passing preflight is cached 10 minutes per (folder, OpenCode version, config content hash, global scope fingerprint); refusals are not cached. Refusal texts carry the OpenCode version. The saved rules refusal shows the action and at most 40 characters of the resource with secrets masked, and the exact removal command per rule (`opencode api DELETE /api/permission/saved/<id>`, run in the folder). |
+| M6 tripwire | Accept, coarse: trip only on `completed`, only when no permission request carried that `toolCallId`, never after `interrupt()`, never for `read`, `glob` or `grep` inside the folder; the error names the tool and a masked command prefix. No reimplementation of OpenCode's rule matching. |
+| M7 reject | Accept. A deny answers `reject`, which ends the turn (probe) and rejects every other pending request of the session, so the runtime cancels the session's other open broker requests; the app text for a denied OpenCode request says the turn stopped. No feedback field was found in ACP's outcome. On `interrupt` the broker's cancel answers `reject` before `session/cancel`; the turn ends either way, and a test pins it. |
+| M8 fork and costs | Accept the scope cut: no `forkSession` for OpenCode in version 1 (`runtime_unsupported`). A `turn.result` has no `costUsd` when no `usage_update` came. Budgets and alerts do not count OpenCode spend (Later). |
+| M9 transcript features | Accept. Every consumer keyed by `claudeSessionId` that reads Claude transcripts or the history tables (trace, history, review files and changes, telemetry, names, summary, `history.lastActivity`) gets an empty state or `runtime_unsupported` for OpenCode sessions, listed in the SPEC; messaging endpoints leave OpenCode sessions out in version 1. |
+| M10 lifecycle | Accept. POSIX: the child in its own process group and `kill(-pid)`; Windows: `taskkill /PID <pid> /T /F`, behind an injected killer. stderr stays ignored (no pipe to stall). `close()` is idempotent, `session/close` has a 2 s timeout, then stdin closes, then a kill after 3 s, with injected timers. An idle reaper closes the process after 15 minutes without a turn (110 MB each) and the next send resumes with `session/resume` (no replay). `initialize` and `session/new` time out at 30 s and fail the session. |
+| M11 stranded users | Accept for agents: extra visible agents from the global scope are disabled by id in the config content (two passes, cached) instead of refusing. Saved rules: the refusal gives the exact commands; an app action to remove them is Later. |
+| M12 testability | Accept. Synthetic fixtures are allowed for shapes the docs define, each marked with its doc URL; recorded ones are scrubbed (paths, ids, model list). An opt-in `smoke:opencode-real` (never in the suite or CI) runs the hostile project against the real binary at each OpenCode upgrade; `doctor` warns when the version is newer than the verified one. The fake also answers `--version`, `models --standalone` and the three `api ... --standalone` calls. The preload clears `OPENCODE_*` and the `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME` of the test environment. |
+| m1 | `cancelled` maps to `error_during_execution` with `isError`, like the Claude runtime. |
+| m2 | 10 s after `interrupt` with no prompt answer: `session/close`, kill, and a `turn.result` with `isError`. |
+| m3 | No text block when the text is empty and images come. |
+| m4 | ACP stdio MCP entries are `{ name, command, args, env: [{ name, value }] }`; the exact JSON is tested. |
+| m5 | Effort `low` to `max` maps 1:1; the choice is hidden when `session/new` offers no `effort`; a failed `set_config_option` fails the start. |
+| m6 | `models --standalone` runs in a Flightdeck-owned empty folder with the session environment rules (project config off), after the global scan passed. |
+| m7 | `auth_required` becomes `session.error` `opencode_auth_required` ("run `opencode auth login` on the host"). |
+| m8 | Reads of credential paths (the patterns `risk.ts` knows) ask, as extra rules. |
+| m9 | No `session/prompt` before `set_config_option mode` answered with our mode as `currentValue`; a resume sets it again. |
+| m10 | `tool_use` is emitted before `canUseTool` is called; chunks without `messageId` join the current message; an edit result with only a diff falls back to `rawOutput` or a short text. |
+| m11 | Every `OPENCODE_*` of the daemon's environment is removed; the Anthropic key strip stays (OpenCode uses its own stored auth). |
+| m12 | `clientCapabilities: {}` (no `fs`, `terminal`, `elicitation`, `auth`); `_meta` retry and compaction notices keep the turn alive and show nothing. |
+| m13 | The rules are also set as top-level `permissions`; hidden agents are allowed by exact id (`compaction`, `title`, `summary`). |
+| m14 | Session-scoped rules can only come from a plugin or another client; plugins are out (ADR 39-1); another client on the same session is the accepted residual. |
+| m15 | `session.init.tools` carries the names the fixtures show, not `[]`, if the app needs them; checked in `opencode-session-ui`. |
+| m16 | `session/delete` is never called: resume needs the session; stated in the manual. |
+| m17 | Covered by the coarse tripwire (M6): a completed `.env` read without a request trips it. |
+
+- **A parity gap outside this phase.** Claude sessions started by Flightdeck load the project's settings
+  (`settingSources` includes `project`), so a repo's Claude Code hooks and MCP servers run there without a question too.
+  Worth its own issue.
