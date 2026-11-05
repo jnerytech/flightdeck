@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { startServer } from "../src/server.ts";
 import { FolderLocks } from "../src/worktrees/locks.ts";
@@ -66,9 +67,14 @@ describe("worktrees-server: over the wire (issue #152)", () => {
       { projectId: project.id },
     );
     expect(list?.worktrees.map((w) => w.path)).toEqual([path]);
+    // Without the confirmation the host does not even look at the items.
+    expect(
+      (await client.request("worktree.remove", { items: [{ projectId: project.id, path }] })).ok,
+    ).toBe(false);
+    expect(existsSync(path)).toBe(true);
     const done = await client.data<{ removed: Array<{ path: string }>; kept: unknown[] }>(
       "worktree.remove",
-      { items: [{ projectId: project.id, path }] },
+      { items: [{ projectId: project.id, path }], confirm: true },
     );
     expect(done?.removed.map((r) => r.path)).toEqual([path]);
     expect(done?.kept).toEqual([]);
@@ -78,7 +84,7 @@ describe("worktrees-server: over the wire (issue #152)", () => {
     const { client, project, repo } = await serve();
     const done = await client.data<{ removed: unknown[]; kept: Array<{ reason: string }> }>(
       "worktree.remove",
-      { items: [{ projectId: project.id, path: repo }] },
+      { items: [{ projectId: project.id, path: repo }], confirm: true },
     );
     expect(done?.removed).toEqual([]);
     expect(done?.kept[0]?.reason).toBe("not_listed");
