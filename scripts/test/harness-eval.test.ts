@@ -84,6 +84,14 @@ describe("harness-eval", () => {
     });
   });
 
+  test("a line that is not JSON (stderr, a blank line) is skipped, not fatal", () => {
+    let parsed: ReturnType<typeof parseStream> | undefined;
+    expect(() => {
+      parsed = parseStream(`${STREAM}\n\nnot json: a warning on stderr\n`);
+    }).not.toThrow();
+    expect(parsed).toEqual(parseStream(STREAM));
+  });
+
   test("a run that followed docs/TDD.md passes every grader", () => {
     expect(grade(TASK, facts())).toEqual({
       "test-file": true,
