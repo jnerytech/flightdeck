@@ -3027,6 +3027,7 @@ export const en: Dictionary = {
     observability: "Observability",
     library: "Library",
     machines: "Machines",
+    attention: "A machine needs attention",
   },
   settingsRail: {
     label: "Settings sections",

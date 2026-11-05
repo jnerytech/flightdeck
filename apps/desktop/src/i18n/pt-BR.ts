@@ -3029,6 +3029,7 @@ export const ptBR = {
     observability: "Observabilidade",
     library: "Biblioteca",
     machines: "Máquinas",
+    attention: "Uma máquina precisa de atenção",
   },
   settingsRail: {
     label: "Seções das configurações",

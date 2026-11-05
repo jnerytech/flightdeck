@@ -676,8 +676,9 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   barra na borda esquerda, os itens com subpáginas terminam em uma seta, as novidades levam um selo
   **Beta** ou **Novo** que some sozinho na versão em que foi marcado para acabar (o Beta de
   Equipes acaba na 0.39, o Novo de Conversas na 0.38), e o **Manual** no pé abre este manual no navegador (o ícone diz que sai do
-  app). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados, e o trilho
-  estreito de ícones não tem títulos.
+  app). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados (um grupo **Máquinas** dobrado mostra
+  uma marca de aviso no título enquanto uma máquina está offline, sem uma dependência obrigatória ou
+  repassando a chave de API), e o trilho estreito de ícones não tem títulos.
 - Com uma área, a barra de abas fica na barra do topo, na linha do caminho; com a tela dividida,
   cada área tem a sua. A barra mantém três ferramentas: o menu de **Ações** da aba ativa (mover
   para a esquerda ou a direita, mover para a outra área, fixar), **Nova aba** e **Dividir**.

@@ -177,6 +177,8 @@ function NavGroup(props: {
   onToggle(): void;
   /** Something at the end of the title (the + of Machines). */
   action?: ReactNode;
+  /** What the folded group still has to say (a host needs attention): a mark after its name. */
+  attention?: string | undefined;
   children: ReactNode;
 }) {
   const items = Children.toArray(props.children).filter(Boolean);
@@ -202,6 +204,14 @@ function NavGroup(props: {
             className={cn("size-3 transition-transform duration-150", props.folded && "-rotate-90")}
           />
           {props.label}
+          {props.folded && props.attention && (
+            <TriangleAlert
+              role="img"
+              data-slot="group-attention"
+              aria-label={props.attention}
+              className="size-3 text-status-needs-you"
+            />
+          )}
         </button>
         {props.action}
       </div>
@@ -563,6 +573,11 @@ export function Sidebar(props: {
         <NavGroup
           id="machines"
           label={t("sidebarGroups.machines")}
+          attention={
+            state.hosts.some((host) => hostNeedsAttention(host, state.deps[host.id]))
+              ? t("sidebarGroups.attention")
+              : undefined
+          }
           collapsed={collapsed}
           folded={folded.includes("machines")}
           onToggle={() => toggle("machines")}
@@ -691,6 +706,17 @@ const requiredMissing = (deps: DepsResult | undefined) =>
   deps?.items.some(
     (item) => item.group === "required" && (item.state === "missing" || item.state === "outdated"),
   ) === true;
+
+/** A machine the person should look at: not connected, a required dependency missing, or its key forwarded. */
+function hostNeedsAttention(host: HostView, deps: DepsResult | undefined): boolean {
+  return (
+    host.status === "offline" ||
+    host.status === "unauthorized" ||
+    host.status === "incompatible" ||
+    requiredMissing(deps) ||
+    host.hostInfo?.apiKeySanitized === false
+  );
+}
 
 /** A host's connection state as a dot. */
 function HostDot(props: { host: HostView; t: T }) {
