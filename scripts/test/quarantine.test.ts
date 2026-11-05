@@ -1,13 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import {
   escapeRegExp,
   excludeArgs,
   excludePattern,
   onlyArgs,
   onlyPattern,
+  QUARANTINE_FILE,
   type QuarantineEntry,
+  readQuarantine,
   shardArgs,
 } from "../lib/quarantine.ts";
 import { realTempDir } from "./temp-dir.ts";
@@ -127,5 +129,24 @@ describe("quarantine: the required jobs leave out the listed tests and a non-blo
       "--shard=1/3",
       ...excludeArgs(entries),
     ]);
+  });
+
+  test("a list that is not a list, or an entry without its fields, is refused naming the entry", () => {
+    const read = (text: string) => {
+      const root = realTempDir("fd-quarantine-list-");
+      mkdirSync(dirname(join(root, QUARANTINE_FILE)), { recursive: true });
+      writeFileSync(join(root, QUARANTINE_FILE), text);
+      return () => readQuarantine(root);
+    };
+    expect(read("{}")).toThrow("expected a list of entries");
+    expect(
+      read('[{"file":"a.test.ts","test":"t","issue":288,"reason":"r"},{"file":"b.test.ts"}]'),
+    ).toThrow("[1]: file and test are strings");
+    expect(read('[{"file":"a.test.ts","test":"t","issue":"288","reason":"r"}]')).toThrow(
+      "[0]: issue is a number and reason a string",
+    );
+    expect(read('[{"file":"a.test.ts","test":"t","issue":288,"reason":"r"}]')()).toEqual(
+      [entry("t")].map((e) => ({ ...e, reason: "r" })),
+    );
   });
 });
