@@ -61,7 +61,15 @@ async function hostPage(
       opened.push(url);
     },
   };
-  const store = new AppStore(platform, { baseDelayMs: 60_000 });
+  const ticks: Array<() => void> = [];
+  const store = new AppStore(platform, {
+    baseDelayMs: 60_000,
+    // The sign-in poll is advanced by hand: one tick is one `gh auth status`.
+    githubTicker: (tick) => {
+      ticks.push(tick);
+      return () => ticks.splice(ticks.indexOf(tick), 1);
+    },
+  });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
   await act(async () => {
@@ -72,7 +80,12 @@ async function hostPage(
   await act(async () => {
     store.tabs.open({ name: "host", host: hostId });
   });
-  return { d, store, hostId, copies, opened };
+  /** One poll of the sign-in, as the interval would make it. */
+  const tick = () =>
+    act(async () => {
+      for (const fn of [...ticks]) fn();
+    });
+  return { d, store, hostId, copies, opened, ticks, tick };
 }
 
 const click = async (name: string) => {
@@ -109,6 +122,7 @@ for (const [lang, t] of [
       expect(page.opened).toEqual(["https://github.com/login/device"]);
       // The person confirms on GitHub: gh now says it is signed in.
       gh.respond([signedIn(), LOGIN]);
+      await page.tick();
       await settle(
         () => screen.queryByText(t.github.signedIn.replace("{login}", "octocat")) !== null,
       );
@@ -173,3 +187,35 @@ for (const [lang, t] of [
     });
   });
 }
+
+describe("github-app: the sign-in poll", () => {
+  test("the panel starts its poll through the store's ticker, and stops it when the sign-in ends", async () => {
+    fakeGh([SIGNED_OUT, LOGIN]);
+    const page = await hostPage("en");
+    await settle(() => screen.queryByText(t.github.signedOut) !== null);
+    expect(page.ticks).toHaveLength(0);
+    await click(t.github.signIn);
+    await settle(() => screen.queryByText(CODE) !== null);
+    expect(page.ticks).toHaveLength(1);
+    await click(t.github.cancel);
+    await settle(() => screen.queryByRole("button", { name: t.github.signIn }) !== null);
+    expect(page.ticks).toHaveLength(0);
+  });
+
+  test("with no ticker given the store polls every 1.5 s", () => {
+    const store = new AppStore(memoryPlatform(false, "en").platform);
+    const timers: number[] = [];
+    const real = globalThis.setInterval;
+    globalThis.setInterval = ((fn: () => void, ms: number) => {
+      timers.push(ms);
+      return real(fn, 1_000_000);
+    }) as typeof setInterval;
+    try {
+      store.githubTicker(() => {})();
+    } finally {
+      globalThis.setInterval = real;
+      store.dispose();
+    }
+    expect(timers).toEqual([1500]);
+  });
+});
