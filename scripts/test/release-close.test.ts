@@ -130,6 +130,13 @@ describe("release-close", () => {
     });
   });
 
+  test("a Refs: line, the commit gate's trailer, counts too (#253)", () => {
+    expect(issueRefs(commit("fix(a): x", "Why.\n\nRefs: #15\nRefs #16"))).toEqual({
+      closes: [15, 16],
+      mentioned: [],
+    });
+  });
+
   test("the dry run reads, says what it would do, and changes nothing", async () => {
     const f = fake({
       170: open("Card data loss"),
