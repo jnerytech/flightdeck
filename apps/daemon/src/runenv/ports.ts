@@ -106,7 +106,7 @@ export class CardPorts {
         .map((row) => row.block_start),
     );
     for (let start = this.base; start + BLOCK_SIZE - 1 <= LAST_PORT; start += BLOCK_SIZE) {
-      if (taken.has(start) || !(await this.blockFree(start))) continue;
+      if (taken.has(start) || !(await this.blockFree(start))) continue; // NOSONAR: blocks are probed in order to take the first free one
       this.opts.db
         .query("INSERT INTO card_ports (card_id, block_start) VALUES (?, ?)")
         .run(cardId, start);
@@ -122,7 +122,7 @@ export class CardPorts {
 
   private async blockFree(start: number): Promise<boolean> {
     for (let port = start; port < start + BLOCK_SIZE; port++) {
-      if (!(await this.isFree(port))) return false;
+      if (!(await this.isFree(port))) return false; // NOSONAR: ports are probed in order and the block is refused at the first taken one
     }
     return true;
   }

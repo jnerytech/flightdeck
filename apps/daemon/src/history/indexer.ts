@@ -485,7 +485,7 @@ export class HistoryIndexer {
     } else {
       terms.forEach((term, i) => {
         where.push(String.raw`m.text LIKE $t${i} ESCAPE '\'`);
-        params[`t${i}`] = `%${term.replace(/[\\%_]/g, String.raw`\$&`)}%`;
+        params[`t${i}`] = "%" + term.replace(/[\\%_]/g, String.raw`\$&`) + "%";
       });
     }
     if (query.cwd) {
@@ -556,13 +556,13 @@ export class HistoryIndexer {
     await inSequence(await this.files(), async (path) => {
       let merged = null as IndexResult | null;
       for (;;) {
-        const { result, more } = await this.indexSlice(path, sliceBytes);
+        const { result, more } = await this.indexSlice(path, sliceBytes); // NOSONAR: sequential by design: each pass needs the answer of the one before
         if (result) {
           merged = merged
             ? { ...merged, added: merged.added + result.added, reset: merged.reset || result.reset }
             : result;
         }
-        await pause();
+        await pause(); // NOSONAR: poll interval: the wait between looks is the point of this loop
         if (!more) break;
       }
       if (merged) {
@@ -583,7 +583,7 @@ export class HistoryIndexer {
       do {
         this.again = false;
         try {
-          await this.scanAsync();
+          await this.scanAsync(); // NOSONAR: sequential by design: each pass needs the answer of the one before
         } catch (error) {
           this.opts.log?.(`histórico: falha na varredura (${describe(error)})`);
         }
@@ -666,11 +666,11 @@ export class HistoryIndexer {
     let chunk = Buffer.alloc(Math.min(stat.size - offset, maxBytes));
     let end = 0;
     for (;;) {
-      const handle = await open(path, "r");
+      const handle = await open(path, "r"); // NOSONAR: sequential by design: each pass needs the answer of the one before
       try {
-        await handle.read(chunk, 0, chunk.length, offset);
+        await handle.read(chunk, 0, chunk.length, offset); // NOSONAR: sequential by design: each pass needs the answer of the one before
       } finally {
-        await handle.close();
+        await handle.close(); // NOSONAR: sequential by design: each pass needs the answer of the one before
       }
       // Only complete lines: a last line without its newline is left for the next pass.
       end = chunk.lastIndexOf(0x0a) + 1;

@@ -200,10 +200,10 @@ async function run(work: string): Promise<void> {
     const waitSnapshots = async (count: number, what: string) => {
       const deadline = Date.now() + TIMEOUT_MS;
       for (;;) {
-        const list = await snapshots();
+        const list = await snapshots(); // NOSONAR: sequential by design: each pass needs the answer of the one before
         if (list.length >= count) return list;
         if (Date.now() > deadline) throw new Error(`timeout: ${what} (${list.length} snapshots)`);
-        await Bun.sleep(50);
+        await Bun.sleep(50); // NOSONAR: poll interval: the wait between looks is the point of this loop
       }
     };
     const statusBefore = git(project, "status", "--porcelain=v1", "--ignored");

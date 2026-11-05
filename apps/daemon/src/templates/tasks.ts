@@ -39,7 +39,7 @@ async function walk(folder: string, into: Snapshot): Promise<void> {
   let seen = 0;
   while (queue.length > 0 && seen < MAX_WALKED) {
     const { dir, depth } = queue.shift() as { dir: string; depth: number };
-    const found = await scanFolder(dir, into, MAX_WALKED - seen);
+    const found = await scanFolder(dir, into, MAX_WALKED - seen); // NOSONAR: sequential by design: each pass needs the answer of the one before
     seen += found.files;
     if (depth < MAX_DEPTH)
       queue.push(...found.folders.map((path) => ({ dir: path, depth: depth + 1 })));
@@ -60,7 +60,7 @@ async function scanFolder(
     const path = join(dir, entry.name);
     if (entry.isDirectory()) folders.push(path);
     else if (entry.isFile()) {
-      const info = await orElse(() => lstat(path), null);
+      const info = await orElse(() => lstat(path), null); // NOSONAR: files are read in order so the snapshot stops exactly at the cap
       if (!info) continue;
       into[path] = { size: info.size, mtimeMs: info.mtimeMs };
       if (++files >= room) break;

@@ -2903,7 +2903,7 @@ export class AppStore {
     const run = async () => {
       do {
         this.clientBudgetAgain = false;
-        await this.lookAtClientBudgets();
+        await this.lookAtClientBudgets(); // NOSONAR: sequential by design: each pass needs the answer of the one before
       } while (this.clientBudgetAgain);
     };
     this.clientBudgetCheck = run().finally(() => {
@@ -3235,9 +3235,9 @@ export class AppStore {
     for (const host of this.state.hosts) {
       if (host.status !== "online" || !hasFeature(host.hostInfo?.features, "watch", false))
         continue;
-      const found = await this.hostCommand(host.id, "watch.byUrl", { url });
+      const found = await this.hostCommand(host.id, "watch.byUrl", { url }); // NOSONAR: hosts are asked in order and the first that knows the address wins
       if (found?.via === "card" && found.trace) {
-        const card = await this.hostCommand(host.id, "card.get", { cardId: found.trace.cardId });
+        const card = await this.hostCommand(host.id, "card.get", { cardId: found.trace.cardId }); // NOSONAR: hosts are asked in order and the first that knows the address wins
         if (card) {
           return { name: "card", host: host.id, projectId: card.projectId, cardId: card.id };
         }
@@ -3358,27 +3358,37 @@ export class AppStore {
   ): Promise<{ ok: true } | Extract<HostResult<never>, { ok: false }>> {
     const secret = this.vault.list().find((s) => s.id === secretId);
     const accepted: string[] = [];
+    let refusal: Extract<HostResult<never>, { ok: false }> | null = null;
     for (const host of this.state.hosts) {
       if (host.status !== "online" || !secret?.allowedHosts.includes(host.id)) continue;
-      const result = await this.hostRequest(host.id, "vault.rules.set", {
-        secretId,
-        tags: secret.tags,
-        rules: this.effectiveVaultRules(secret, rules),
-      });
-      if (!result.ok) {
-        // The hosts that took the refused set go back to the saved one: none keeps rules the
-        // app did not save (they could be looser).
-        const saved = this.rules.get(secretId);
-        await inSequence(accepted, async (hostId) => {
-          await this.hostRequest(hostId, "vault.rules.set", {
+      const result =
+        await /* NOSONAR: stops at the first host that refuses, to put back the ones that accepted */ this.hostRequest(
+          host.id,
+          "vault.rules.set",
+          {
             secretId,
             tags: secret.tags,
-            rules: this.effectiveVaultRules(secret, saved),
-          });
-        });
-        return result;
+            rules: this.effectiveVaultRules(secret, rules),
+          },
+        );
+      if (!result.ok) {
+        refusal = result;
+        break;
       }
       accepted.push(host.id);
+    }
+    if (refusal && secret) {
+      // The hosts that took the refused set go back to the saved one: none keeps rules the
+      // app did not save (they could be looser).
+      const saved = this.rules.get(secretId);
+      await inSequence(accepted, async (hostId) => {
+        await this.hostRequest(hostId, "vault.rules.set", {
+          secretId,
+          tags: secret.tags,
+          rules: this.effectiveVaultRules(secret, saved),
+        });
+      });
+      return refusal;
     }
     this.rules.set(secretId, rules);
     for (const hostId of accepted) {

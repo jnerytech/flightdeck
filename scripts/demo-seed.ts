@@ -204,10 +204,10 @@ async function until<T>(
 ): Promise<T> {
   const deadline = Date.now() + 20_000;
   for (;;) {
-    const value = await check();
+    const value = await check(); // NOSONAR: sequential by design: each pass needs the answer of the one before
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`demo: tempo esgotado em ${what}`);
-    await Bun.sleep(50);
+    await Bun.sleep(50); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }
 
@@ -829,11 +829,14 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     "Mostre o código:\n```ts\nexport const total = (a: number, b: number) => a + b;\n```",
   );
   for (let turn = 1; turn <= 24; turn++) {
-    await until(async () => (await statusOf(long.sessionId)) === "idle", `turno ${turn}`);
-    await client.call("session.send", {
-      sessionId: long.sessionId,
-      text: `Passo ${turn}: explique o ponto ${turn} da revisão com detalhes suficientes para passar de uma linha na tela.`,
-    });
+    await until(async () => (await statusOf(long.sessionId)) === "idle", `turno ${turn}`); // NOSONAR: the turns of one conversation, each after the last
+    await /* NOSONAR: the turns of one conversation, each after the last */ client.call(
+      "session.send",
+      {
+        sessionId: long.sessionId,
+        text: `Passo ${turn}: explique o ponto ${turn} da revisão com detalhes suficientes para passar de uma linha na tela.`,
+      },
+    );
   }
   await until(async () => (await statusOf(long.sessionId)) === "idle", "última resposta");
   const longClaude = (await until(async () => {

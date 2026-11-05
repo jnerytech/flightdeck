@@ -12,7 +12,7 @@ const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /** One argument of the remote command, single-quoted for a POSIX shell. */
 export function quoteArg(arg: string): string {
-  return `'${arg.replaceAll("'", String.raw`'\''`)}'`;
+  return "'" + arg.replaceAll("'", String.raw`'\''`) + "'";
 }
 
 /** The remote command: a fixed prelude exports the stdin's `NAME=value` lines, then runs argv. */

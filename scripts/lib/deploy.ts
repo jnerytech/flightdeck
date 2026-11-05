@@ -73,7 +73,7 @@ export async function runDeploy(alias: string, deps: DeployDeps): Promise<number
   let stdout = "";
   for (const cmd of deployPlan(host, deps.root)) {
     deps.log(`$ ${cmd.join(" ")}`);
-    const result = await deps.exec(cmd);
+    const result = await deps.exec(cmd); // NOSONAR: the deploy commands run in order and stop at the first failure
     if (result.code !== 0) {
       deps.log(`falhou: ${cmd.join(" ")}`);
       return 1;

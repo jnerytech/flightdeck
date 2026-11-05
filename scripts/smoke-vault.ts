@@ -163,7 +163,7 @@ async function run(work: string): Promise<void> {
         for (;;) {
           const found = listenUrl(out);
           if (found) return found;
-          await Bun.sleep(20);
+          await Bun.sleep(20); // NOSONAR: poll interval: the wait between looks is the point of this loop
         }
       })(),
       "daemon anunciar a porta",
@@ -193,7 +193,7 @@ async function run(work: string): Promise<void> {
         for (;;) {
           const found = client.frames.find((f) => f.type === "vault.used");
           if (found) return found;
-          await Bun.sleep(20);
+          await Bun.sleep(20); // NOSONAR: poll interval: the wait between looks is the point of this loop
         }
       })(),
       "frame vault.used",

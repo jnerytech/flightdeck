@@ -131,10 +131,10 @@ interface SessionRow {
 async function waitStatus(client: Client, sessionId: string, status: string): Promise<void> {
   const deadline = Date.now() + TIMEOUT_MS;
   for (;;) {
-    const { sessions } = await client.call<{ sessions: SessionRow[] }>("session.list", {});
+    const { sessions } = await client.call<{ sessions: SessionRow[] }>("session.list", {}); // NOSONAR: sequential by design: each pass needs the answer of the one before
     if (sessions.find((s) => s.id === sessionId)?.status === status) return;
     if (Date.now() > deadline) throw new Error(`timeout: sessão ${sessionId} em ${status}`);
-    await Bun.sleep(50);
+    await Bun.sleep(50); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }
 

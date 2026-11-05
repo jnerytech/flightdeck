@@ -23,9 +23,9 @@ export async function ensureOnline(
   const waitFor = async () => {
     const deadline = probe.now() + waitMs;
     for (;;) {
-      if (await probe.online()) return true;
+      if (await probe.online()) return true; // NOSONAR: sequential by design: each pass needs the answer of the one before
       if (probe.now() >= deadline) return false;
-      await probe.sleep(pollMs);
+      await probe.sleep(pollMs); // NOSONAR: poll interval: the wait between looks is the point of this loop
     }
   };
   if (await waitFor()) return "online";

@@ -272,8 +272,9 @@ export class UsageIndexer {
     this.running = (async () => {
       do {
         this.again = false;
-        await this.pass().catch((error: unknown) =>
-          this.opts.log?.(`custos: falha na leitura de uso (${describe(error)})`),
+        await /* NOSONAR: sequential by design: each pass needs the answer of the one before */ this.pass().catch(
+          (error: unknown) =>
+            this.opts.log?.(`custos: falha na leitura de uso (${describe(error)})`),
         );
       } while (this.again && !this.stopped);
       this.running = null;
@@ -306,7 +307,7 @@ export class UsageIndexer {
         owner = this.owner(file.claudeSessionId);
         owners.set(file.claudeSessionId, owner);
       }
-      added += await this.indexSlices(file, owner, first);
+      added += await this.indexSlices(file, owner, first); // NOSONAR: files are indexed one at a time: each updates the shared load counter and the database
     }
     if (first) {
       this.load.state = "done";
@@ -322,12 +323,12 @@ export class UsageIndexer {
   private async indexSlices(file: TranscriptFile, owner: Owner, first: boolean): Promise<number> {
     let added = 0;
     for (;;) {
-      if (this.opts.warmKeys) await this.warm(file, owner);
-      const slice = await this.indexFile(file, owner, this.opts.sliceBytes ?? SLICE_BYTES);
+      if (this.opts.warmKeys) await this.warm(file, owner); // NOSONAR: sequential by design: each pass needs the answer of the one before
+      const slice = await this.indexFile(file, owner, this.opts.sliceBytes ?? SLICE_BYTES); // NOSONAR: sequential by design: each pass needs the answer of the one before
       added += slice.added;
       // The file counts as done when its last slice is in, before the pause that follows it.
       if (first && !slice.more) this.load.filesDone++;
-      await (this.opts.pause ?? zeroTimer)();
+      await (this.opts.pause ?? zeroTimer)(); // NOSONAR: poll interval: the wait between looks is the point of this loop
       if (!slice.more || this.stopped) return added;
     }
   }
@@ -456,7 +457,7 @@ export class UsageIndexer {
     let chunk: Buffer = Buffer.alloc(Math.min(size - offset, maxBytes));
     let end = 0;
     for (;;) {
-      chunk = await readSlice(file.path, offset, chunk.length);
+      chunk = await readSlice(file.path, offset, chunk.length); // NOSONAR: sequential by design: each pass needs the answer of the one before
       // Only complete lines: a last line without its newline is left for the next pass.
       end = chunk.lastIndexOf(0x0a) + 1;
       if (end > 0 || chunk.length >= size - offset) break;

@@ -175,12 +175,16 @@ export class GithubBoards implements BoardProvider {
     let truncated = false;
     let redacted = 0;
     for (let page = 0; page < PAGE_CAP + 1; page += 1) {
-      const data = await this.graphql<{
-        viewer: { login: string };
-        node: {
-          items: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: GhNode[] };
-        } | null;
-      }>(PULL_QUERY, { board: boardId, field: STATUS_FIELD_NAME, ...(cursor ? { cursor } : {}) });
+      const data =
+        await /* NOSONAR: paging: each page is asked for with the cursor of the one before */ this.graphql<{
+          viewer: { login: string };
+          node: {
+            items: {
+              pageInfo: { hasNextPage: boolean; endCursor: string | null };
+              nodes: GhNode[];
+            };
+          } | null;
+        }>(PULL_QUERY, { board: boardId, field: STATUS_FIELD_NAME, ...(cursor ? { cursor } : {}) });
       if (!data.node) throw refuse("board_not_found", "the board was not found");
       if (page === PAGE_CAP) {
         truncated = true;

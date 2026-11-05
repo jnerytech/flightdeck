@@ -165,8 +165,8 @@ export function processOps(
     },
     waitForSocket: async (sock) => {
       for (let look = 0; look < SOCKET_LOOKS; look++) {
-        if (await exists(sock)) return true;
-        await sleep(50);
+        if (await exists(sock)) return true; // NOSONAR: retry: an attempt starts only after the one before has not worked
+        await sleep(50); // NOSONAR: poll interval: the wait between looks is the point of this loop
       }
       return false;
     },

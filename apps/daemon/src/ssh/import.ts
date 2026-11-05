@@ -278,7 +278,9 @@ export class SshImporter {
       }
       const glob = new Bun.Glob(basename(absolute));
       const names: string[] = [];
-      for await (const name of glob.scan({ cwd: dirname(absolute), onlyFiles: true })) {
+      for await (/* NOSONAR: the files of each Include are listed in the order they are written */ const name of glob.scan(
+        { cwd: dirname(absolute), onlyFiles: true },
+      )) {
         names.push(name);
       }
       names.sort(byCodeUnit);

@@ -69,7 +69,7 @@ async function until<T>(check: () => T | null | undefined | false, what: string)
     const value = check();
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(20);
+    await Bun.sleep(20); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }
 
@@ -181,12 +181,12 @@ const ghRules = (state: string, bucket: string, id: number) => [
 async function pushedRound(client: Client, cardId: string) {
   const deadline = Date.now() + TIMEOUT_MS;
   for (;;) {
-    const watch = await client.call<Watch>("watch.get", { cardId });
+    const watch = await client.call<Watch>("watch.get", { cardId }); // NOSONAR: sequential by design: each pass needs the answer of the one before
     const round = watch.rounds.find((r) => r.status === "pushed");
     if (round) return round;
     if (watch.status === "needs_you") throw new Error(`a vigia pediu você: ${watch.reason}`);
     if (Date.now() > deadline) throw new Error("timeout: rodada com push");
-    await Bun.sleep(100);
+    await Bun.sleep(100); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }
 

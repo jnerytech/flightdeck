@@ -200,7 +200,7 @@ class FakeRun implements AgentRun {
     this.processing = true;
     try {
       for (let text = this.inbox.shift(); text !== undefined; text = this.inbox.shift()) {
-        await this.turn(text);
+        await this.turn(text); // NOSONAR: turns run one after the other: a message is served when the one before is done
         if (this.events.isEnded) return;
       }
     } catch (error) {

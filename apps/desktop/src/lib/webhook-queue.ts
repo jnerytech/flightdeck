@@ -119,7 +119,7 @@ export class WebhookQueue {
   }
 
   async idle(): Promise<void> {
-    while (this.running.size > 0) await Promise.all([...this.running]);
+    while (this.running.size > 0) await Promise.all([...this.running]); // NOSONAR: sequential by design: each pass needs the answer of the one before
   }
 
   private async pace(state: TargetState): Promise<void> {
@@ -130,7 +130,7 @@ export class WebhookQueue {
 
   private async drain(targetId: string, state: TargetState): Promise<void> {
     for (let item = state.items.shift(); item; item = state.items.shift()) {
-      await this.deliver(targetId, state, merged(item.events));
+      await this.deliver(targetId, state, merged(item.events)); // NOSONAR: a target's events are delivered in order, one batch after another
     }
     state.running = false;
   }
@@ -138,10 +138,10 @@ export class WebhookQueue {
   private async deliver(targetId: string, state: TargetState, event: NotifyEvent): Promise<void> {
     let result: SendResult = { status: null };
     for (let attempt = 0; attempt <= this.backoffMs.length; attempt++) {
-      await this.pace(state);
+      await this.pace(state); // NOSONAR: poll interval: the wait between looks is the point of this loop
       state.lastSendAt = this.now();
       try {
-        result = await this.options.send(targetId, event);
+        result = await this.options.send(targetId, event); // NOSONAR: retry: an attempt starts only after the one before has not worked
       } catch {
         result = { status: null };
       }
@@ -152,7 +152,7 @@ export class WebhookQueue {
         return;
       }
       const base = (this.backoffMs[attempt] as number) * (0.75 + 0.5 * this.random());
-      await this.options.sleep(Math.max(base, result.retryAfterMs ?? 0));
+      await this.options.sleep(Math.max(base, result.retryAfterMs ?? 0)); // NOSONAR: poll interval: the wait between looks is the point of this loop
     }
   }
 }

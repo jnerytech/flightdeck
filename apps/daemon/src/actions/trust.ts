@@ -41,7 +41,7 @@ const exists = (path: string) =>
 /** Whether some folder above the file holds a `.git`. */
 async function insideRepository(file: string): Promise<boolean> {
   for (let dir = dirname(file); ; dir = dirname(dir)) {
-    if (await exists(join(dir, ".git"))) return true;
+    if (await exists(join(dir, ".git"))) return true; // NOSONAR: walks up one folder at a time and stops at the first hit
     if (dirname(dir) === dir) return false;
   }
 }

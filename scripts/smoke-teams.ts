@@ -53,10 +53,10 @@ async function until<T>(
 ): Promise<T> {
   const deadline = Date.now() + TIMEOUT_MS;
   for (;;) {
-    const found = await check();
+    const found = await check(); // NOSONAR: sequential by design: each pass needs the answer of the one before
     if (found) return found;
     if (Date.now() > deadline) throw new Error(`timeout esperando ${what}`);
-    await Bun.sleep(40);
+    await Bun.sleep(40); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }
 
@@ -245,7 +245,7 @@ async function startHost(work: string, name: string): Promise<Host> {
       for (;;) {
         const found = /listening on (ws:\/\/\S+)/.exec(out.join(""))?.[1];
         if (found) return found;
-        await Bun.sleep(20);
+        await Bun.sleep(20); // NOSONAR: poll interval: the wait between looks is the point of this loop
       }
     })(),
     `${name} anunciar a porta`,
@@ -382,10 +382,14 @@ async function checkLoop(
   let paused = "";
   for (let i = 0; i < 14 && !paused; i++) {
     const [from, to] = i % 2 === 0 ? [claudeA1, a2] : [claudeA2, a1];
-    const result = await from.tool<{ resultado: string; motivo?: string }>("send_to_session", {
-      to: `host-a/${to}`,
-      text: `vai e volta ${i}`,
-    });
+    const result =
+      await /* NOSONAR: each message follows the reply of the one before: the loop looks for the pause */ from.tool<{
+        resultado: string;
+        motivo?: string;
+      }>("send_to_session", {
+        to: `host-a/${to}`,
+        text: `vai e volta ${i}`,
+      });
     if (result.data.resultado === "recusada") paused = result.data.motivo ?? "";
   }
   if (!paused.includes("laço")) throw new Error(`o laço devia ser recusado: ${paused}`);

@@ -542,13 +542,14 @@ export class Teams {
     for (let i = 0; i < count; i++) {
       const number = Math.max(0, ...taken) + 1;
       taken.push(number);
-      const added = await this.startWorker(
-        team,
-        `${label(row.name)} · executora ${number}`,
-        spec.persona,
-        coordinator?.address ?? null,
-        spec.model,
-      );
+      const added =
+        await /* NOSONAR: workers start one at a time: each takes its own worktree and a free slot */ this.startWorker(
+          team,
+          `${label(row.name)} · executora ${number}`,
+          spec.persona,
+          coordinator?.address ?? null,
+          spec.model,
+        );
       members.push(added);
       this.save(row.id, { members: JSON.stringify(members) });
       const asked = [

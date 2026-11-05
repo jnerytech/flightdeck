@@ -79,7 +79,7 @@ export async function waitForState(
         // Half written: read it again.
       }
     }
-    await deps.sleep(200);
+    await deps.sleep(200); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
   throw new Error(`o demo não ficou pronto em ${timeoutMs} ms`);
 }

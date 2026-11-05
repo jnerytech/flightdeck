@@ -233,7 +233,7 @@ async function waitForSlot(
         );
       }
     }
-    await env.sleep(POLL_MS);
+    await env.sleep(POLL_MS); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
   return false;
 }
@@ -377,10 +377,10 @@ function isBunTest(command: string): boolean {
 async function lowerWhile(env: SlotEnv, finished: { done: boolean }): Promise<void> {
   while (!finished.done) {
     try {
-      await lowerOthers(env);
+      await lowerOthers(env); // NOSONAR: sequential by design: each pass needs the answer of the one before
     } catch {
       // Listing or renicing is best effort: the run itself is not affected.
     }
-    await env.sleep(RENICE_MS);
+    await env.sleep(RENICE_MS); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }

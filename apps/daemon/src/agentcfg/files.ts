@@ -126,7 +126,7 @@ async function insideProject(project: string, rel: string): Promise<string> {
   const root = await realpath(project);
   const file = join(root, rel);
   let existing = file;
-  while (!(await lstat(existing).catch(() => null))) existing = dirname(existing);
+  while (!(await lstat(existing).catch(() => null))) existing = dirname(existing); // NOSONAR: walks up one folder at a time and stops at the first hit
   if (!isInside(root, await realpath(existing)))
     throw bad(`${rel} is outside the project`, "agentcfg_outside_project", { path: rel });
   return file;

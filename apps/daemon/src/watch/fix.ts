@@ -190,7 +190,7 @@ export class PrFixer {
 
   /** Settles when no round is running. */
   async idle(): Promise<void> {
-    while (this.pending.size > 0) await Promise.all([...this.pending]);
+    while (this.pending.size > 0) await Promise.all([...this.pending]); // NOSONAR: sequential by design: each pass needs the answer of the one before
   }
 
   rounds(cardId: string): FixRound[] {
@@ -314,11 +314,12 @@ export class PrFixer {
     for (const command of settings.checks) {
       // Stored settings are checked again: only a plain command and its arguments runs unattended.
       if (!isWatchCheck(command)) return `local check refused: ${masked(command)}`;
-      const result = await this.opts.checks.run(
-        command,
-        worktree,
-        settings.checkTimeoutMin * 60_000,
-      );
+      const result =
+        await /* NOSONAR: checks run one after the other and stop at the first that fails */ this.opts.checks.run(
+          command,
+          worktree,
+          settings.checkTimeoutMin * 60_000,
+        );
       if (result.timedOut) {
         return `local check timed out: ${masked(command)} (after ${settings.checkTimeoutMin} min)`;
       }

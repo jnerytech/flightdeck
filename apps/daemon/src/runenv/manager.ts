@@ -170,7 +170,7 @@ export class RunManager {
 
   /** Resolves when no card is being stopped: its trees are gone and its files and ports are free. */
   async idle(): Promise<void> {
-    while (this.stopping.size > 0) await Promise.allSettled([...this.stopping]);
+    while (this.stopping.size > 0) await Promise.allSettled([...this.stopping]); // NOSONAR: sequential by design: each pass needs the answer of the one before
   }
 
   state(cardId: string): RunState {

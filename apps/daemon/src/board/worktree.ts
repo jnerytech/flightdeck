@@ -48,8 +48,8 @@ export const worktreeDir = (repo: string, slug: string) =>
 async function freeSlug(repo: string, base: string): Promise<string> {
   for (let n = 1; ; n++) {
     const slug = n === 1 ? base : `${base}-${n}`;
-    const branch = await git(repo, "show-ref", "--verify", "--quiet", `refs/heads/fd/${slug}`);
-    if (branch.code !== 0 && !(await exists(worktreeDir(repo, slug)))) return slug;
+    const branch = await git(repo, "show-ref", "--verify", "--quiet", `refs/heads/fd/${slug}`); // NOSONAR: each candidate name is tried only after the one before was found taken
+    if (branch.code !== 0 && !(await exists(worktreeDir(repo, slug)))) return slug; // NOSONAR: each candidate name is tried only after the one before was found taken
   }
 }
 

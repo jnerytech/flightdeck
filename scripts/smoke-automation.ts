@@ -66,10 +66,10 @@ async function until<T>(
 ): Promise<T> {
   const deadline = Date.now() + TIMEOUT_MS;
   for (;;) {
-    const value = await check();
+    const value = await check(); // NOSONAR: sequential by design: each pass needs the answer of the one before
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(30);
+    await Bun.sleep(30); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }
 

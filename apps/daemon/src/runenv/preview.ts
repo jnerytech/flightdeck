@@ -33,9 +33,9 @@ export async function waitReady(url: string, options: WaitOptions): Promise<Read
   const deadline = now() + options.timeoutMs;
   for (;;) {
     if (options.stopped?.()) return "stopped";
-    if (await options.probe(url)) return "ready";
+    if (await options.probe(url)) return "ready"; // NOSONAR: sequential by design: each pass needs the answer of the one before
     if (now() >= deadline) return "timeout";
-    await sleep(options.intervalMs);
+    await sleep(options.intervalMs); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }
 

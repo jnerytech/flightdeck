@@ -514,14 +514,15 @@ export class WorkflowEngine {
       for (let index = next++; index < items.length; index = next++) {
         const item = items[index] as InnerAction;
         try {
-          outputs[index] = await this.innerStep(
-            run,
-            worktree,
-            `${stepId}.${index}`,
-            1,
-            item,
-            context,
-          );
+          outputs[index] =
+            await /* NOSONAR: a worker of the pool takes the next item only when its previous one is done */ this.innerStep(
+              run,
+              worktree,
+              `${stepId}.${index}`,
+              1,
+              item,
+              context,
+            );
         } catch (error) {
           failures[index] = { error };
         }
@@ -602,13 +603,14 @@ export class WorkflowEngine {
     this.emit(run.id);
     try {
       for (let attempt = 1; ; attempt++) {
-        const check = await this.checkStep(
-          run,
-          worktree,
-          `${stepId}.check`,
-          attempt,
-          loop.until.check,
-        );
+        const check =
+          await /* NOSONAR: retry: an attempt starts only after the one before has not worked */ this.checkStep(
+            run,
+            worktree,
+            `${stepId}.check`,
+            attempt,
+            loop.until.check,
+          );
         if (check.exitCode === 0) {
           this.endStep(run.id, stepId, 1, "completed", check.output);
           return check.output;
@@ -618,7 +620,7 @@ export class WorkflowEngine {
           throw new Stop("paused", why);
         }
         const inner = { ...context, loop: { lastCheck: check } };
-        await this.innerStep(run, worktree, `${stepId}.do`, attempt, loop.do, inner);
+        await this.innerStep(run, worktree, `${stepId}.do`, attempt, loop.do, inner); // NOSONAR: a worker of the pool takes the next item only when its previous one is done
       }
     } catch (error) {
       this.endStep(run.id, stepId, 1, "failed", null);

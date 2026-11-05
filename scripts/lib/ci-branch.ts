@@ -66,13 +66,10 @@ async function waitForRun(
 ): Promise<RunView | null> {
   const doneBy = deps.now() + options.waitMs;
   for (;;) {
-    const answer = await deps.gh([
-      "run",
-      "view",
-      String(id),
-      "--json",
-      "status,conclusion,url,jobs",
-    ]);
+    const answer =
+      await /* NOSONAR: sequential by design: each pass needs the answer of the one before */ deps.gh(
+        ["run", "view", String(id), "--json", "status,conclusion,url,jobs"],
+      );
     const view = JSON.parse(answer.stdout) as RunView;
     if (view.status === "completed") return view;
     if (deps.now() >= doneBy) {
@@ -81,7 +78,7 @@ async function waitForRun(
       );
       return null;
     }
-    await deps.sleep(options.pollMs);
+    await deps.sleep(options.pollMs); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }
 
@@ -130,13 +127,13 @@ export async function ciBranch(
   const appearBy = deps.now() + options.appearMs;
   let id: number | undefined;
   while (id === undefined) {
-    id = (await runIds(branch, deps)).find((candidate) => !before.has(candidate));
+    id = (await runIds(branch, deps)).find((candidate) => !before.has(candidate)); // NOSONAR: sequential by design: each pass needs the answer of the one before
     if (id !== undefined) break;
     if (deps.now() >= appearBy) {
       deps.log(`ci-branch: the run did not appear within ${Math.round(options.appearMs / 1000)} s`);
       return 2;
     }
-    await deps.sleep(options.pollMs);
+    await deps.sleep(options.pollMs); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 
   const view = await waitForRun(id, deps, options);

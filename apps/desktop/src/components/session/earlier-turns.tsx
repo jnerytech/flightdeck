@@ -31,11 +31,16 @@ export function EarlierTurns(
       let cursor: string | undefined;
       let more = false;
       while (true) {
-        const answer = await store.hostRequest(hostId, "history.get", {
-          claudeSessionId,
-          limit: HISTORY_PAGE,
-          ...(cursor ? { cursor } : {}),
-        });
+        const answer =
+          await /* NOSONAR: paging: each page is asked for with the cursor of the one before */ store.hostRequest(
+            hostId,
+            "history.get",
+            {
+              claudeSessionId,
+              limit: HISTORY_PAGE,
+              ...(cursor ? { cursor } : {}),
+            },
+          );
         if (!alive) return;
         if (!answer.ok) return setLoaded({ state: "failed", reason: answer.message });
         messages.push(...answer.data.messages.filter((m) => m.kind === "message"));

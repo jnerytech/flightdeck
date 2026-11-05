@@ -29,7 +29,7 @@ export async function launchFirst<T>(
   const reasons: string[] = [];
   for (const attempt of browserAttempts(which)) {
     try {
-      return await launch(attempt);
+      return await launch(attempt); // NOSONAR: retry: an attempt starts only after the one before has not worked
     } catch (error) {
       reasons.push((error as Error).message);
     }

@@ -89,7 +89,7 @@ async function until(check: () => boolean, what: string): Promise<void> {
   const deadline = Date.now() + TIMEOUT_MS;
   while (!check()) {
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(10);
+    await Bun.sleep(10); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }
 

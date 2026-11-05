@@ -151,8 +151,8 @@ function shots(ids: DemoIds): Shot[] {
       route: { name: "hub" },
       async prepare(page) {
         for (let i = 0; i < 20; i++) {
-          await page.keyboard.press("Control+t");
-          await page.keyboard.press("Escape");
+          await page.keyboard.press("Control+t"); // NOSONAR: key presses reach the page in order
+          await page.keyboard.press("Escape"); // NOSONAR: key presses reach the page in order
         }
         await page.getByRole("button", { name: /^(Todas as abas|All tabs)$/ }).waitFor();
       },
@@ -755,7 +755,7 @@ export async function takeShots(
         for (const shot of shots(ids).filter((s) =>
           s.name.includes(process.env.DEMO_SHOTS ?? ""),
         )) {
-          problems.push(...(await printOne(context, shot, { theme, lang, dir, url, log, visual })));
+          problems.push(...(await printOne(context, shot, { theme, lang, dir, url, log, visual }))); // NOSONAR: one screen at a time: they share one browser context
         }
         await context.close();
         log(`prints ${theme} ${lang}`);

@@ -98,7 +98,7 @@ async function until(check: () => boolean, what: string): Promise<void> {
   const deadline = Date.now() + TIMEOUT_MS;
   while (!check()) {
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(10);
+    await Bun.sleep(10); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }
 
@@ -209,9 +209,9 @@ async function run(): Promise<void> {
     const roundTrips: number[] = [];
     while (client.events.filter((e) => e.event.type === "turn.result").length < 2) {
       const started = performance.now();
-      await client.call("host.info", {});
+      await client.call("host.info", {}); // NOSONAR: sequential by design: each pass needs the answer of the one before
       roundTrips.push(performance.now() - started);
-      await Bun.sleep(20);
+      await Bun.sleep(20); // NOSONAR: poll interval: the wait between looks is the point of this loop
       if (roundTrips.length > 4000) throw new Error("the answer never ended");
     }
 

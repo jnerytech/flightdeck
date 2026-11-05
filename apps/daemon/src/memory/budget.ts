@@ -129,8 +129,8 @@ export async function contextBudget(input: BudgetInput): Promise<ContextBudget> 
   await skills(join(input.claudeDir, "skills"));
   // The folders above the project load their CLAUDE.md files too.
   for (let dir = dirname(root); dirname(dir) !== dir; dir = dirname(dir)) {
-    await file("project", join(dir, "CLAUDE.md"), "start");
-    await file("local", join(dir, "CLAUDE.local.md"), "start");
+    await file("project", join(dir, "CLAUDE.md"), "start"); // NOSONAR: walks up one folder at a time and stops at the first hit
+    await file("local", join(dir, "CLAUDE.local.md"), "start"); // NOSONAR: walks up one folder at a time and stops at the first hit
   }
   const AT_START = new Set(["CLAUDE.md", "CLAUDE.local.md", ".claude/CLAUDE.md"]);
   await inSequence(await claudeMds(root), async (rel) => {
