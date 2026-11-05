@@ -606,7 +606,8 @@ export function SessionView(props: SessionViewProps) {
         }
         extra={props.persona}
       />
-      {props.recap}
+      {/* The summary lines up with the header and the conversation (issue #177). */}
+      {props.recap && <div className="recap-slot">{props.recap}</div>}
       <div className="pane-fill">
         <Timeline
           ref={timeline}

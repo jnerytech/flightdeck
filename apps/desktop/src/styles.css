@@ -227,6 +227,13 @@
   bottom: 0.75rem;
 }
 
+/* The summary card under a session's header: the same 16 px from each side as the conversation. */
+@utility recap-slot {
+  flex-shrink: 0;
+  padding-inline: 1rem;
+  padding-top: 0.75rem;
+}
+
 /* The summary's folded line: the toggle, then a one-line preview that is cut, never wrapped. */
 @utility recap-head {
   display: flex;
