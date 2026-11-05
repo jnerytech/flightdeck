@@ -3,6 +3,8 @@
  * on timeout the whole process group killed, grandchildren too, so nothing it started keeps the
  * caller waiting.
  */
+import { spawn, spawnSync } from "node:child_process";
+import { join } from "node:path";
 
 export interface BoundedResult {
   /** The exit code; null when it was killed or could not start. */
@@ -12,6 +14,48 @@ export interface BoundedResult {
   timedOut: boolean;
 }
 
-export async function runBounded(_command: string[], _timeoutMs: number): Promise<BoundedResult> {
-  return { code: 0, stderr: "", timedOut: false };
+/** How much of the stderr is kept. */
+const TAIL = 500;
+
+/** Kills a process and everything it started: its group on POSIX, its tree on Windows. */
+function killTree(pid: number): void {
+  try {
+    if (process.platform === "win32") {
+      const taskkill = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "taskkill.exe");
+      spawnSync(taskkill, ["/T", "/F", "/PID", String(pid)], { stdio: "ignore" });
+    } else process.kill(-pid, "SIGKILL");
+  } catch {
+    // Already gone.
+  }
+}
+
+export function runBounded(command: string[], timeoutMs: number): Promise<BoundedResult> {
+  const [program = "", ...args] = command;
+  return new Promise((done) => {
+    let tail = "";
+    let settled = false;
+    const finish = (result: BoundedResult) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      // A grandchild may still hold the pipe: stop reading it rather than wait for its end.
+      child.stderr?.destroy();
+      done(result);
+    };
+    // Its own process group on POSIX, so a timeout reaches what it started.
+    const child = spawn(program, args, {
+      detached: process.platform !== "win32",
+      stdio: ["ignore", "ignore", "pipe"],
+      windowsHide: true,
+    });
+    child.stderr?.on("data", (chunk: Buffer) => {
+      tail = (tail + chunk.toString("utf8")).slice(-TAIL);
+    });
+    child.on("error", (error) => finish({ code: null, stderr: error.message, timedOut: false }));
+    child.on("exit", (code) => finish({ code, stderr: tail.trimEnd(), timedOut: false }));
+    const timer = setTimeout(() => {
+      if (child.pid !== undefined) killTree(child.pid);
+      finish({ code: null, stderr: tail.trimEnd(), timedOut: true });
+    }, timeoutMs);
+  });
 }

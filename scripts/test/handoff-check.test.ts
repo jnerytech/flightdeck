@@ -64,10 +64,17 @@ describe("handoff-check", () => {
 
   test("the stamp carries the CI of HEAD, and vouches only when it is green too (#266)", async () => {
     const stamp = async (ci: string) =>
-      runHandoff({ run: async () => 0, branch: "b", head: HEAD, now: "t", ci: async () => ci });
+      runHandoff({
+        run: async () => 0,
+        branch: "b",
+        head: HEAD,
+        now: "t",
+        ci: async () => ci,
+        security: async () => "0",
+      });
     const pending = await stamp("pending");
     expect(pending.stamp).toBe(
-      `HANDOFF b ${HEAD} typecheck=0 lint=0 audit=0 related=0 ci=pending t`,
+      `HANDOFF b ${HEAD} typecheck=0 lint=0 audit=0 related=0 security=0 ci=pending t`,
     );
     expect(pending.code).toBe(1);
     expect(stampProblem(pending.stamp, HEAD)).toBe("failed: ci=pending");
@@ -85,10 +92,11 @@ describe("handoff-check", () => {
         head: HEAD,
         now: "t",
         security: async () => security,
+        ci: async () => "0",
       });
     const unreviewed = await stamp("unreviewed");
     expect(unreviewed.stamp).toBe(
-      `HANDOFF b ${HEAD} typecheck=0 lint=0 audit=0 related=0 security=unreviewed t`,
+      `HANDOFF b ${HEAD} typecheck=0 lint=0 audit=0 related=0 security=unreviewed ci=0 t`,
     );
     expect(unreviewed.code).toBe(1);
     expect(stampProblem(unreviewed.stamp, HEAD)).toBe("failed: security=unreviewed");

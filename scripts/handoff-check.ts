@@ -16,8 +16,7 @@ import { resolve } from "node:path";
 import { spawnExec } from "../apps/daemon/src/exec.ts";
 import { runHandoff, stampProblem } from "./lib/handoff.ts";
 import { headCi } from "./lib/pr-flow.ts";
-import { addedLines, parseBranchLog, riskyFiles, securityProblem } from "./lib/security-gate.ts";
-import { auditBase } from "./lib/tdd-audit.ts";
+import { securityVerdict } from "./lib/security-gate.ts";
 
 const git = (args: string[]) => spawnSync("git", args, { encoding: "utf8" }).stdout?.trim() ?? ""; // NOSONAR: git from the PATH of the developer running the script
 const root = git(["rev-parse", "--show-toplevel"]) || resolve(import.meta.dir, "..");
@@ -38,32 +37,15 @@ if (process.argv.includes("--verify")) {
   process.exit(problem ? 1 : 0);
 }
 
-/** The security gate (#273): "0", or "unreviewed" after printing the risky files and what to do. */
+/** The security gate (#273, lib/security-gate.ts): "0", "unreviewed" or "unknown". */
 function securityGate(): string {
   const run = (args: string[]) => {
     const proc = spawnSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 * 2 ** 20 }); // NOSONAR: git from the PATH of the developer running the script
     return proc.status === 0 ? proc.stdout : null;
   };
-  // --base is resolved to a commit first: a value that starts with "-" never reaches git as an option.
-  const asked = base
-    ? run(["rev-parse", "--verify", "--end-of-options", `${base}^{commit}`])
-    : null;
-  const ref = (base ? asked : auditBase(run))?.trim();
-  if (!ref) return "unknown";
-  // Names unquoted (core.quotepath), and a merge lists the files it edited itself (combined).
-  const quiet = ["-c", "core.quotepath=off"];
-  const diff = run([...quiet, "diff", "-U0", "--no-color", `${ref}...HEAD`]) ?? "";
-  const log = run([
-    ...quiet,
-    "log",
-    "--diff-merges=combined",
-    "--format=%x1e%H%x1f%(trailers:key=Security-Reviewed,valueonly,separator=%x20)",
-    "--name-only",
-    `${ref}..HEAD`,
-  ]);
-  const problem = securityProblem(riskyFiles(addedLines(diff)), parseBranchLog(log ?? ""));
-  if (problem) console.error(`\n${problem}`);
-  return problem ? "unreviewed" : "0";
+  const { verdict, message } = securityVerdict(run, base);
+  if (message) console.error(`\n${message}`);
+  return verdict;
 }
 
 const result = await runHandoff({

@@ -5,6 +5,7 @@
  * merge needs FLIGHTDECK_COORDINATOR=1.
  */
 import { spawnExec } from "../apps/daemon/src/exec.ts";
+import { runBounded } from "./lib/bounded-run.ts";
 import { prFlow } from "./lib/pr-flow.ts";
 
 process.exit(
@@ -13,16 +14,14 @@ process.exit(
     {
       gh: (cmd) => spawnExec(["gh", ...cmd]),
       git: (cmd) => spawnExec(["git", ...cmd]),
-      // The FLIGHTDECK_PR_OPENED hook (#273): two minutes at most, then it is killed.
+      // The FLIGHTDECK_PR_OPENED hook (#273): two minutes at most, then its whole group is killed.
       run: async (cmd) => {
-        const proc = Bun.spawn(cmd, {
-          stdout: "pipe",
-          stderr: "ignore",
-          stdin: "ignore",
-          timeout: 120_000,
-        });
-        const [stdout, code] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
-        return { code, stdout };
+        const { code, stderr, timedOut } = await runBounded(cmd, 120_000);
+        return {
+          code: code ?? 1,
+          stdout: "",
+          stderr: timedOut ? `timed out after 120 s ${stderr}` : stderr,
+        };
       },
       env: process.env,
       log: (line) => console.log(line),

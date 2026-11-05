@@ -4,6 +4,7 @@
  * the pairing code, and whether the security-reviewer's verdict was committed after the last of
  * them, as a `Security-Reviewed: <summary>` trailer.
  */
+import { auditBase } from "./tdd-audit.ts";
 
 export interface RiskyFile {
   path: string;
@@ -30,7 +31,11 @@ export function addedLines(diff: string): Map<string, string[]> {
       current = null;
       inHeader = true;
     } else if (line.startsWith("@@")) inHeader = false;
-    else if (inHeader && line.startsWith("+++ ")) {
+    else if (inHeader && line.startsWith("rename to ")) {
+      // A pure rename has no hunk and no "+++" line: its new path still counts.
+      const path = line.slice("rename to ".length);
+      if (!added.has(path)) added.set(path, []);
+    } else if (inHeader && line.startsWith("+++ ")) {
       // git ends a name with a space with a tab.
       const path = line.slice(4).replace(/\t$/, "");
       current = path.startsWith("b/") ? [] : null;
@@ -40,16 +45,18 @@ export function addedLines(diff: string): Map<string, string[]> {
   return added;
 }
 
-/** A file the gate reads: code, never a test, a fixture or a document. */
-const SOURCE = /\.(?:ts|tsx|rs|sh|ps1)$/;
+/** A file whose added lines the gate reads: code, never a test, a fixture or a document. */
+const SOURCE = /\.(?:[cm]?[jt]sx?|rs|sh|ps1|py)$/;
 const NOT_SOURCE =
-  /^(?:(?:apps|packages)\/[^/]+\/test|scripts\/(?:test|e2e))\/|\.(?:test|e2e)\.tsx?$/;
+  /^(?:(?:apps|packages)\/[^/]+\/test|scripts\/(?:test|e2e))\/|\.(?:test|e2e)\.[cm]?[jt]sx?$/;
+/** A line that is only a comment says nothing the code does. */
+const COMMENT = /^\s*(?:\/\/|\/\*|\*|#(?!!))/;
 
 /** The risk areas, in the order they are named, each by what an added line says. */
 const AREAS: [string, RegExp][] = [
   [
     "spawn",
-    /\bspawn\w*\s*\(|\b(?:execFileSync|execFile|execSync)\s*\(|(?<![.\w])exec\s*\(|\.kill\s*\(|\bprocess\.kill\b|\btaskkill\b|\bpkill\b/,
+    /\bspawn\w*\s*\(|\b(?:execFileSync|execFile|execSync)\s*\(|(?<![.\w])exec\s*\(|\b(?:cp|childProcess|child_process)\.exec\w*\s*\(|\bchild_process\b|\bBun\.\$|\bfork\s*\(|\bnew Worker\b|\bexeca\w*\s*\(|\.kill\s*\(|\bprocess\.kill\b|\btaskkill\b|\bpkill\b/,
   ],
   [
     "delete",
@@ -59,18 +66,24 @@ const AREAS: [string, RegExp][] = [
   ["permission", /\bchmod(?:Sync)?\b|\bchown|\bpermission|\ballowedNetworks\b/i],
   ["network", /\bBun\.(?:serve|listen|connect)\b|\bfetch\s*\(|\bnew WebSocket\b|\.listen\s*\(/],
 ];
-/** A path in the vault or the pairing code is risky whatever it adds. */
-const SENSITIVE_PATH = /(?:^|\/)[^/]*(?:vault|pairing)[^/]*(?:\/|$)/i;
+/** Paths that are risky whatever they add: the vault and pairing code, the Tauri shell's
+ * capabilities and config (CSP, scopes), and the CI workflows. */
+const SENSITIVE_PATHS: [string, RegExp][] = [
+  ["vault or pairing", /(?:^|\/)[^/]*(?:vault|pairing)[^/]*(?:\/|$)/i],
+  ["tauri config", /\/src-tauri\/capabilities\/|(?:^|\/)tauri(?:\.[\w-]+)?\.conf\.json$/],
+  ["workflow", /^\.github\/workflows\//],
+];
 
 /** The changed source files (never a test) in a risk area, sorted by path. */
 export function riskyFiles(added: Map<string, string[]>): RiskyFile[] {
   const risky: RiskyFile[] = [];
   for (const [path, lines] of added) {
-    if (!SOURCE.test(path) || NOT_SOURCE.test(path)) continue;
-    const why = AREAS.filter(([, pattern]) => lines.some((line) => pattern.test(line))).map(
+    if (NOT_SOURCE.test(path)) continue;
+    const code = SOURCE.test(path) ? lines.filter((line) => !COMMENT.test(line)) : [];
+    const why = AREAS.filter(([, pattern]) => code.some((line) => pattern.test(line))).map(
       ([name]) => name,
     );
-    if (SENSITIVE_PATH.test(path)) why.push("vault or pairing");
+    for (const [name, pattern] of SENSITIVE_PATHS) if (pattern.test(path)) why.push(name);
     if (why.length > 0) risky.push({ path, why });
   }
   return risky.sort((a, b) => (a.path < b.path ? -1 : 1));
@@ -97,7 +110,9 @@ export function securityProblem(risky: RiskyFile[], commits: BranchCommit[]): st
   if (risky.length === 0) return null;
   const paths = new Set(risky.map((r) => r.path));
   const last = commits.findIndex((c) => c.files.some((f) => paths.has(f)));
-  const since = last < 0 ? commits : commits.slice(0, last + 1);
+  // No commit of the log touches them (a merge that resolved them by itself, a base that differs):
+  // no review can be placed after them, so none vouches.
+  const since = last < 0 ? [] : commits.slice(0, last + 1);
   if (since.some((c) => c.reviewed)) return null;
   return [
     `security: ${risky.length} risky file(s) changed with no review after their last commit:`,
@@ -118,6 +133,44 @@ export interface SecurityVerdict {
 }
 
 /** The gate end to end (#273): the base, the diff and the log from git, then the verdict. */
-export function securityVerdict(_git: GitRun, _base?: string): SecurityVerdict {
-  return { verdict: "0", message: null };
+export function securityVerdict(git: GitRun, base?: string): SecurityVerdict {
+  const unknown = (why: string): SecurityVerdict => ({
+    verdict: "unknown",
+    message: `security: ${why}, so the gate cannot vouch`,
+  });
+  // --base is resolved to a commit first: a value that starts with "-" never reaches git as an option.
+  const ref = (
+    base ? git(["rev-parse", "--verify", "--end-of-options", `${base}^{commit}`]) : auditBase(git)
+  )?.trim();
+  if (!ref) return unknown(base ? `${base} is not a commit` : "no base to compare with");
+  // The prefixes are forced (a user's diff.noprefix or mnemonicPrefix would change the headers),
+  // and no external diff or text conversion runs. Names come unquoted.
+  const quiet = ["-c", "core.quotepath=off"];
+  const diff = git([
+    ...quiet,
+    "diff",
+    "-U0",
+    "--no-color",
+    "--no-ext-diff",
+    "--no-textconv",
+    "--src-prefix=a/",
+    "--dst-prefix=b/",
+    "-M",
+    `${ref}...HEAD`,
+  ]);
+  if (diff === null) return unknown("git diff failed");
+  // Topological order, so "after" follows the history, not the dates; a merge lists the files it
+  // edited itself (combined); a folded trailer is one line.
+  const log = git([
+    ...quiet,
+    "log",
+    "--topo-order",
+    "--diff-merges=combined",
+    "--format=%x1e%H%x1f%(trailers:key=Security-Reviewed,valueonly,unfold,separator=%x20)",
+    "--name-only",
+    `${ref}..HEAD`,
+  ]);
+  if (log === null) return unknown("git log failed");
+  const problem = securityProblem(riskyFiles(addedLines(diff)), parseBranchLog(log));
+  return problem ? { verdict: "unreviewed", message: problem } : { verdict: "0", message: null };
 }
