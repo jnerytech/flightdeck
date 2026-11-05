@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { testTiers, tierCounts } from "../lib/test-tiers.ts";
+import { TIERS, type Tier, testTiers, tierCounts } from "../lib/test-tiers.ts";
 
 const ROOT = resolve(import.meta.dir, "../..");
 
@@ -70,15 +70,14 @@ describe("test-tiers", () => {
     });
   });
 
-  test("test-tiers.json is the classifier's answer for this tree, so every test file has a tier", () => {
+  test("every test file of this tree gets a tier, computed live: no committed manifest for PRs to conflict in", () => {
     const tracked = spawnSync("git", ["ls-files", "*.ts", "*.tsx"], { cwd: ROOT, encoding: "utf8" })
       .stdout.split("\n")
       .filter(Boolean);
     const sources = new Map(tracked.map((path) => [path, readFileSync(join(ROOT, path), "utf8")]));
-    const manifest = JSON.parse(readFileSync(join(ROOT, "test-tiers.json"), "utf8"));
-    // A stale manifest: run `bun run test:tiers -- --write`.
-    expect(manifest).toEqual(testTiers(sources));
+    const tiers = testTiers(sources);
     const tests = tracked.filter((path) => /\.test\.tsx?$/.test(path));
-    expect(tests.filter((path) => !(path in manifest))).toEqual([]);
+    expect(tests.filter((path) => !TIERS.includes(tiers[path] as Tier))).toEqual([]);
+    expect(existsSync(join(ROOT, "test-tiers.json"))).toBe(false);
   });
 });
