@@ -3914,3 +3914,11 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   coordinator, or `spec-verifier`) runs `bun run handoff:check -- --verify` in the worktree, which
   refuses a missing stamp, one for another HEAD, or any check that was not 0.
 - **Never under the slot** (review S2-2): `test:related` takes the slot by itself above 60 files.
+
+## The manuals run the CI again (issue #235)
+
+- `docs/manual/**` left the push filter (#217); only `docs/images/**` is skipped now. The docs
+  tests read the manuals: `md-links` and `md-size` read every tracked Markdown file, and the split
+  check (`docs-split.test.ts`) reads both manuals by path, so a manuals-only push that broke a link
+  or an anchor would otherwise have run no CI until its pull request. `ci-branches.test.ts` already
+  refused the filter once a test named a manual's path.
