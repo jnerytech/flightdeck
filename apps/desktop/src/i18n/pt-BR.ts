@@ -2855,6 +2855,7 @@ export const ptBR = {
     title: "Bloqueado por",
     blockingTitle: "Bloqueando",
     none: "Nada bloqueia este card.",
+    pickFirst: "Escolha antes o card que ele espera.",
     pick: "Escolha um card…",
     addLabel: "Adicionar bloqueio",
     add: "Adicionar",
