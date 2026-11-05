@@ -49,7 +49,7 @@ describe("ci-quick", () => {
     ]);
   });
 
-  test("a quick job runs typecheck, lint, the TDD audit, the Sonar ratchet and the ratchet tests (#272)", () => {
+  test("a quick job runs typecheck, lint, the TDD audit and the ratchet tests (#272), no local Sonar (#283)", () => {
     const quick = job("quick");
     expect(quick.name).toBe("quick checks");
     expect(quick["runs-on"]).toBe("ubuntu-latest");
@@ -60,7 +60,6 @@ describe("ci-quick", () => {
       "bun run typecheck",
       "bun run lint",
       "bun run tdd:audit -- --since auto",
-      "bun run lint:sonar -- --ratchet",
       "bun run scripts/ci-quick.ts",
     ]) {
       expect(commands).toContain(command);
@@ -68,6 +67,7 @@ describe("ci-quick", () => {
     // The TDD audit counts from the merge-base: it needs the whole history.
     expect(quick.steps[0]?.with?.["fetch-depth"]).toBe(0);
     expect(ci.jobs["sonar-lint"]).toBeUndefined();
+    expect(commands).not.toContain("lint:sonar");
   });
 
   test("the heavy jobs wait for the quick one, and the Linux suite no longer repeats its checks (#272)", () => {
