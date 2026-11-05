@@ -274,10 +274,7 @@ class Connection {
       this.client.close();
       const { timers, runtime } = this.deps;
       const handles: unknown[] = [];
-      let giveUp: () => void = () => {};
-      const gaveUp = new Promise<void>((resolve) => {
-        giveUp = resolve;
-      });
+      const { promise: gaveUp, resolve: giveUp } = Promise.withResolvers<void>();
       // A process that stays gets a kill, then a forced one; close() never waits forever.
       handles.push(
         timers.set(() => {
