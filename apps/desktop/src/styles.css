@@ -507,6 +507,7 @@
 
 /* Under the conversation: queue, thumbnails, activity line, the floating box and its state line. */
 @utility composer-dock {
+  position: relative;
   display: flex;
   flex-shrink: 0;
   flex-direction: column;
@@ -850,6 +851,36 @@
 @utility action-button-box {
   position: relative;
   display: inline-flex;
+}
+
+/* The / menu: a popover above the message box, so it takes no room in the page and scrolls inside. */
+@utility prompt-menu {
+  position: absolute;
+  inset-inline: 1rem;
+  bottom: 100%;
+  z-index: 20;
+  display: flex;
+  max-height: 40vh;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-popover);
+  color: var(--color-popover-foreground);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+}
+@utility prompt-menu-option {
+  display: block;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  &:hover,
+  &[aria-selected="true"] {
+    background: var(--color-muted);
+  }
 }
 
 /* A breadcrumb step with a long name shortens with an ellipsis; its title says the whole name. */

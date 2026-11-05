@@ -1742,6 +1742,12 @@ export const en: Dictionary = {
     historyGap: "part of the history is no longer available on the host",
     message: "Message",
     snippets: "Prompt snippets",
+    promptMenu: {
+      commands: "Commands",
+      snippets: "Snippets",
+      skills: "Skills",
+      mcp: "MCP prompts",
+    },
     placeholder: "Type / for commands",
     attach: "Attach image",
     statusLine: "Session state",

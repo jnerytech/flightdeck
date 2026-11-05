@@ -617,6 +617,46 @@ async function lastRowProblem(page: Page): Promise<string | null> {
 }
 
 /**
+ * The / menu of a session with 100 commands (issue #102): the page does not scroll either way, the
+ * menu takes at most 40% of the window and the message box stays on screen.
+ */
+async function slashMenuProblems(c: Context): Promise<string[]> {
+  await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
+  const box = c.page.getByLabel(c.t("session.message"), { exact: true });
+  // Where the box is with some text and no menu: opening the menu must not move it, nor cover it.
+  await box.fill("x");
+  const before = await box.boundingBox();
+  await box.fill("/");
+  const menu = c.page.getByRole("listbox", { name: c.t("session.snippets") });
+  await menu.waitFor({ timeout: WAIT });
+  const options = await menu.getByRole("option").count();
+  return c.page.evaluate(
+    ({ options: count, label, was }) => {
+      const found: string[] = [];
+      const { innerWidth: width, innerHeight: height } = window;
+      const root = document.documentElement;
+      if (root.scrollWidth > width) found.push("a página rola para o lado com o menu /");
+      if (root.scrollHeight > height) found.push("a página rola para baixo com o menu /");
+      if (count < 100) found.push(`o menu lista só ${count} itens`);
+      const popover = document.querySelector<HTMLElement>(".prompt-menu");
+      const at = popover?.getBoundingClientRect();
+      if (at && at.height > height * 0.4 + 1) {
+        found.push(`o menu ocupa ${Math.round(at.height)} de ${height}`);
+      }
+      const field = document.querySelector<HTMLElement>(`[aria-label="${label}"]`);
+      const box = field?.getBoundingClientRect();
+      if (!box) found.push("a caixa de mensagem sumiu");
+      else if (was && Math.abs(box.top - was.y) > 1)
+        found.push("o menu / mexeu na caixa de mensagem");
+      else if (popover && at && box.top < at.bottom - 1)
+        found.push("o menu / cobre a caixa de mensagem");
+      return found;
+    },
+    { options, label: c.t("session.message"), was: before },
+  );
+}
+
+/**
  * The Choose folder dialog (issue #99): the dialog does not scroll sideways, and every button of
  * its footer, with the reason a disabled one gives, is inside the dialog's box.
  */
@@ -828,6 +868,9 @@ export async function layout(c: Context, problems: string[]) {
     for (const issue of await folderDialogProblems(c)) {
       problems.push(`${c.lang} ${viewport.width}x${viewport.height} pasta: ${issue}`);
     }
+    for (const issue of await slashMenuProblems(c)) {
+      problems.push(`${c.lang} ${viewport.width}x${viewport.height} menu /: ${issue}`);
+    }
     await open(c, { name: "hub" });
     const hidden = await lastRowProblem(c.page);
     if (hidden) {
@@ -836,11 +879,14 @@ export async function layout(c: Context, problems: string[]) {
       );
     }
   }
-  // The smallest window the app allows (tauri.conf.json), where the longest labels are tightest.
+  // The smallest window the app allows (tauri.conf.json): where the menu and the dialog are tightest.
   await c.page.setViewportSize({ width: 720, height: 480 });
   await open(c, { name: "hub" });
   const smallHosts = await hostsProblem(c.page);
   if (smallHosts) problems.push(`${c.lang} 720x480: ${smallHosts}`);
+  for (const issue of await slashMenuProblems(c)) {
+    problems.push(`${c.lang} 720x480 menu /: ${issue}`);
+  }
   for (const issue of await folderDialogProblems(c)) {
     problems.push(`${c.lang} 720x480 pasta: ${issue}`);
   }
