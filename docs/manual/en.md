@@ -699,8 +699,13 @@ live; the list is the project's, so a session of another project never shows her
 - **Home** (first in Work) is a strip of four cards over the last seven days of every online host,
   each with a sparkline: **Spend** (with the month's host budgets, when set), **Turns** (ok and
   failed), **Tokens** (with what came from the cache) and the **average turn** (cost, time and
-  success rate). Spend, Tokens and the average open Costs; Turns opens the History of the first
-  online host. The failed turns and the turn time are counted by the daemon from this version on: a
+  success rate). Spend, Tokens and the average open Costs on the same seven days (across all hosts when
+  several have costs); Turns opens the History of the host, on the same days, when there is one
+  online host, and Costs across all of them when there are several (History is one host's). A host
+  that does not have costs shows "—" for Spend and Tokens, not $0, and the card names it; the
+  average cost counts managed sessions only, unlike Spend, which reads every transcript, and its
+  card says so. While the hosts are still connecting at start, Home says "Connecting to your
+  hosts…" in a live region, and "Home is ready." is announced when the numbers arrive. The failed turns and the turn time are counted by the daemon from this version on: a
   host on an older daemon shows "—" instead of a made-up zero, and days before the update are
   unknown (the average time and the success rate use only the turns that were counted). Home reads
   again every minute and when the window gets focus; a host that does not answer is named under

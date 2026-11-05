@@ -3646,3 +3646,18 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   That is accepted: CI minutes are free for this public repository, and the two runs check
   different trees.
 - **Based on `rc/0363`,** which adds `workflow_dispatch` (#129) to the same `on:` block.
+
+## Home follow-ups (issues #210, #211, #212)
+
+- **#212, connecting is not "no host".** Home has one live region (`role=status`) from the first word to the numbers: "Connecting to your
+  hosts…" (hosts not read yet, or one is `connecting`), "No host is connected yet." (all offline or refused), "Reading the hosts…", then
+  "Home is ready." (screen-reader only once the cards are there). It is one element so the change is what is announced. The "some hosts
+  did not answer" line became a polite live text without the `status` role, so there is one status on the page.
+- **#211, unknown is not zero.** No host giving costs makes Spend and Tokens `null` (shown "—"); hosts without the `costs` feature are
+  named under Spend. A host that has costs and did not answer is already named in the "did not answer" line. Avg cost per turn comes from
+  the usage ledger (managed sessions only) while Spend reads transcripts, so the Avg card says "Managed sessions only" instead of the two
+  cards pretending to be one population.
+- **#210, the same days and every host.** The cards pass `period: "7d"` to Costs (a route field now, honoured by the page) and, when more
+  than one online host has costs, `host: "__all__"` (the Costs screen's all-hosts choice, now `ALL_HOSTS` in `lib/costs`). History is one
+  host's list and has no all-hosts form, so Turns opens it (with `from` and `to` for the seven days, new route fields the list starts on)
+  only when one host is online; with several it opens Costs across all of them. A History across hosts would be a feature of its own.

@@ -685,8 +685,13 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
 - O **Início** (primeiro em Trabalho) é uma faixa de quatro cartões com os últimos sete dias de todos
   os hosts online, cada um com um gráfico pequeno: **Gasto** (com o orçamento mensal dos hosts, quando
   há), **Turnos** (ok e com falha), **Tokens** (com o que veio do cache) e o **turno médio** (custo,
-  tempo e taxa de sucesso). Gasto, Tokens e o turno médio abrem Custos; Turnos abre o Histórico do
-  primeiro host online. Os turnos com falha e o tempo do turno são contados pelo daemon a partir
+  tempo e taxa de sucesso). Gasto, Tokens e o turno médio abrem Custos nos mesmos sete dias (em todos
+  os hosts quando vários têm custos); Turnos abre o Histórico do host, nos mesmos dias, quando há um
+  host online, e Custos em todos eles quando há vários (o Histórico é de um host). Um host que não
+  tem custos mostra "—" em Gasto e Tokens, não US$ 0, e o cartão o cita; o custo médio conta só
+  sessões gerenciadas, ao contrário do Gasto, que lê todas as transcrições, e o cartão diz isso.
+  Enquanto os hosts ainda estão conectando na abertura, o Início diz "Conectando aos seus hosts…"
+  numa região viva, e "O Início está pronto." é anunciado quando os números chegam. Os turnos com falha e o tempo do turno são contados pelo daemon a partir
   desta versão: um host com daemon mais antigo mostra "—" em vez de um zero inventado, e os dias
   anteriores à atualização são desconhecidos (o tempo médio e a taxa de sucesso usam só os turnos
   que foram contados). O Início lê de novo a cada minuto e quando a janela volta ao foco; um host

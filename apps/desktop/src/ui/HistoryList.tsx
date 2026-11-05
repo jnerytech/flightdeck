@@ -57,8 +57,8 @@ export function HistoryList(props: {
   const [draft, setDraft] = useState<Draft>(() => ({
     cwd: props.initial?.cwd ?? "",
     projectKey: props.initial?.projectKey ?? "",
-    from: props.initial?.day ?? "",
-    to: props.initial?.day ?? "",
+    from: props.initial?.from ?? props.initial?.day ?? "",
+    to: props.initial?.to ?? props.initial?.day ?? "",
     origin: "",
   }));
   const [filter, setFilter] = useState<HistoryFilter>(() => toFilter(draft));
@@ -70,13 +70,15 @@ export function HistoryList(props: {
     props.initial &&
     (props.initial.cwd !== seen?.cwd ||
       props.initial.projectKey !== seen?.projectKey ||
-      props.initial.day !== seen?.day)
+      props.initial.day !== seen?.day ||
+      props.initial.from !== seen?.from ||
+      props.initial.to !== seen?.to)
   ) {
     const next = {
       cwd: props.initial.cwd ?? "",
       projectKey: props.initial.projectKey ?? "",
-      from: props.initial.day ?? "",
-      to: props.initial.day ?? "",
+      from: props.initial.from ?? props.initial.day ?? "",
+      to: props.initial.to ?? props.initial.day ?? "",
       origin: "" as const,
     };
     setSeen(props.initial);

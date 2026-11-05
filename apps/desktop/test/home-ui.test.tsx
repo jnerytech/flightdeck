@@ -162,11 +162,12 @@ describe("home-ui: four cards with the last seven days of every host", () => {
       await act(async () => void fireEvent.click(screen.getByRole("button", { name })));
     }
     await act(async () => void fireEvent.click(screen.getByRole("button", { name: "Open Turns" })));
+    // On the same seven days Home shows (issue #210).
     expect(routes).toEqual([
-      { name: "costs" },
-      { name: "costs" },
-      { name: "costs" },
-      { name: "history", host: "h1" },
+      { name: "costs", period: "7d" },
+      { name: "costs", period: "7d" },
+      { name: "costs", period: "7d" },
+      { name: "history", host: "h1", from: "2026-10-04", to: "2026-10-10" },
     ]);
   });
 

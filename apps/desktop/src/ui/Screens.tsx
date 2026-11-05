@@ -376,8 +376,15 @@ export function Screen(props: ScreenProps) {
             store={store}
             hostId={hostId}
             initial={
-              route.name === "history" && (route.cwd || route.projectKey || route.day)
-                ? { cwd: route.cwd, projectKey: route.projectKey, day: route.day }
+              route.name === "history" &&
+              (route.cwd || route.projectKey || route.day || route.from || route.to)
+                ? {
+                    cwd: route.cwd,
+                    projectKey: route.projectKey,
+                    day: route.day,
+                    from: route.from,
+                    to: route.to,
+                  }
                 : undefined
             }
             hostName={state.hosts.find((h) => h.id === hostId)?.name ?? hostId}
@@ -617,6 +624,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           {...(route.host ? { host: route.host } : {})}
           {...(route.projectKey ? { projectKey: route.projectKey } : {})}
           {...(route.client ? { client: route.client } : {})}
+          {...(route.period ? { period: route.period } : {})}
         />
       );
     case "vault":
