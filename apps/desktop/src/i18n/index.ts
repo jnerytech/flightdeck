@@ -51,6 +51,14 @@ function entry(dictionary: Dictionary, key: Key): string | Plural {
 }
 
 /**
+ * Whether a count takes the singular. CLDR puts 0 in pt's "one" category, but a Brazilian reader
+ * expects "0 sessões ativas", so in pt-BR only exactly 1 is singular.
+ */
+function isSingular(rules: Intl.PluralRules, lang: Lang, n: number): boolean {
+  return lang === "pt-BR" ? Math.abs(n) === 1 : rules.select(n) === "one";
+}
+
+/**
  * `t(key, vars)`: the text of `key` in `lang` with `{name}` replaced from `vars` (a missing one
  * stays visible). A plural picks its form from `vars.n` through Intl.PluralRules.
  */
@@ -61,7 +69,7 @@ export function translator(lang: Lang, mode: "full" | "simple" = "full"): T {
     const found = renames[key] ?? entry(DICTIONARIES[lang], key);
     let text: string;
     if (typeof found === "string") text = found;
-    else text = rules.select(Number(vars.n ?? 0)) === "one" ? found.one : found.other;
+    else text = isSingular(rules, lang, Number(vars.n ?? 0)) ? found.one : found.other;
     return text.replace(/\{(\w+)\}/g, (all, name: string) =>
       name in vars ? String(vars[name]) : all,
     );

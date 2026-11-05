@@ -36,3 +36,8 @@ export function depLook(item: DepResult): DepLook {
 export function fixFor(item: DepResult, os: string): string | null {
   return item.fix.find((fix) => fix.os === os)?.command ?? null;
 }
+
+/** The official install page for the dependency on the host's own OS, or null. */
+export function fixPageFor(item: DepResult, os: string): string | null {
+  return item.fix.find((fix) => fix.os === os)?.url ?? null;
+}

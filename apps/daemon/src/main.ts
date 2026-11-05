@@ -54,6 +54,7 @@ import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
 import { checkDeps, type DepsEnv } from "./deps/deps.ts";
 import { formatDeps } from "./deps/format.ts";
+import { probeVersion } from "./deps/probe.ts";
 import { runDoctor } from "./doctor.ts";
 import { type Exec, spawnExec } from "./exec.ts";
 import { runGh } from "./github/gh.ts";
@@ -1121,11 +1122,13 @@ export async function startDaemon(
     deps: () =>
       checkDeps({
         platform: process.platform,
-        which: (name) => whichOnPath(name),
-        version: async (path) => {
-          const { code, stdout } = await spawnExec([path, "--version"]);
-          return code === 0 ? (stdout.split("\n")[0] ?? null) : null;
+        // Like host.info: the path `flightdeckd setup` wrote, since a service's PATH does not see claude.
+        which: async (name) => {
+          const configured = name === "claude" ? claudePath : undefined;
+          if (!configured) return whichOnPath(name);
+          return (await Bun.file(configured).exists()) ? configured : null;
         },
+        version: (path) => probeVersion([path, "--version"]),
         allowedRoots: config.allowedRoots,
         serviceInstalled:
           options.serviceInstalled ??

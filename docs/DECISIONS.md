@@ -3548,6 +3548,15 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   only item that leaves the app (the issue also named GitHub releases, which the app already reaches from the update banner).
 - **Tests that clicked "Conexões"** now click "SSH"; the screen is still called Connections where its page names it.
 
+## No installer is a download piped into a shell (issue #121, review)
+
+- A fix is now `{ os, command?, url? }`: the package-manager line where one exists (apt, brew, winget, xcode-select) and the official
+  install page. The Azure CLI and Tailscale have no one-line package install on Linux, so there the row has only the page; the old
+  `curl ... | sudo bash` and `curl ... | sh` lines are gone.
+- A test walks every fix of every dependency on the three systems and fails on `| sudo`, `| bash`, `| sh` or `| zsh`. The row shows the
+  command to copy (when there is one) and an Install page button that opens the page in the browser; `flightdeckd doctor` prints
+  `page: <url>` under the command.
+
 ## The rc/0361 gate: three leaks of the machine into the tests
 
 - **The focus ring** (`abas-foco`): the crumb fix moved the tab's ring to the strip with `has-[[role=tab]:focus-visible]` so the outline

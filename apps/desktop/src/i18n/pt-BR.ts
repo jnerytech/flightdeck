@@ -3404,6 +3404,8 @@ export const ptBR = {
     groups: { required: "Obrigatórias", optional: "Opcionais", checks: "Verificações" },
   },
   hostDeps: {
+    installPage: "Página de instalação",
+    installPageFor: "Abrir a página de instalação de {name}",
     title: "Dependências",
     check: "Verificar de novo",
     checking: "Verificando…",

@@ -69,7 +69,7 @@ function setup(deps: DepsResult | null) {
       />
     </TooltipProvider>
   );
-  return { view, copied, checks: () => checks };
+  return { view, copied, store, checks: () => checks };
 }
 
 describe("deps-ui: the dependencies of a host", () => {
@@ -110,6 +110,47 @@ describe("deps-ui: the dependencies of a host", () => {
         void fireEvent.click(within(git).getByRole("button", { name: "Copy the command for Git" })),
     );
     expect(copied).toEqual(["sudo apt install git"]);
+  });
+
+  test("a program with no one-line install offers only its install page, which opens in the browser", async () => {
+    const { view, store } = setup({
+      items: [
+        dep("az", "optional", "missing", {
+          breaks: ["azure"],
+          fix: [
+            { os: "linux", url: "https://learn.microsoft.com/cli/azure/install-azure-cli-linux" },
+          ],
+        }),
+        dep("gh", "optional", "missing", {
+          fix: [{ os: "linux", command: "sudo apt install gh", url: "https://cli.github.com" }],
+        }),
+      ],
+    });
+    const opened: string[] = [];
+    store.openLink = (url: string) => void opened.push(url);
+    render(view);
+    const az = screen.getByRole("listitem", { name: "Azure CLI (az)" });
+    expect(within(az).queryByRole("button", { name: /Copy the command/ })).toBeNull();
+    await act(
+      async () =>
+        void fireEvent.click(
+          within(az).getByRole("button", { name: "Open the install page for Azure CLI (az)" }),
+        ),
+    );
+    const gh = screen.getByRole("listitem", { name: "GitHub CLI (gh)" });
+    expect(
+      within(gh).getByRole("button", { name: "Copy the command for GitHub CLI (gh)" }),
+    ).not.toBeNull();
+    await act(
+      async () =>
+        void fireEvent.click(
+          within(gh).getByRole("button", { name: "Open the install page for GitHub CLI (gh)" }),
+        ),
+    );
+    expect(opened).toEqual([
+      "https://learn.microsoft.com/cli/azure/install-azure-cli-linux",
+      "https://cli.github.com",
+    ]);
   });
 
   test("everything in place says All set; Check again asks the host again", async () => {
