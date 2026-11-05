@@ -22,7 +22,7 @@ export function moneyFieldsIn(source: string, names: readonly string[]): string[
   const found: string[] = [];
   for (const name of names) {
     const body =
-      new RegExp(`export interface ${name} \\{([\\s\\S]*?)\\n\\}`).exec(source)?.[1] ?? "";
+      new RegExp(String.raw`export interface ${name} \{([\s\S]*?)\n\}`).exec(source)?.[1] ?? "";
     for (const field of body.matchAll(/^\s{2}(\w+)\??:/gm)) {
       const key = field[1] as string;
       if (!COST_FIELDS.has(key) && FIELD_WORDS.test(key)) found.push(key);

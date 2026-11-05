@@ -139,7 +139,7 @@ export function reasonlessRefusals(source: string): number {
     if (argumentCount(text, at + CALL.length - 1) < 3) total++;
   }
   for (const name of helpers.names) {
-    total += [...text.matchAll(new RegExp(`(?<![\\w.])${name}\\(`, "g"))].length;
+    total += [...text.matchAll(new RegExp(String.raw`(?<![\w.])${name}\(`, "g"))].length;
   }
   return total;
 }

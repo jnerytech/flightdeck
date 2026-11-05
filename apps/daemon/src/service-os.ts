@@ -44,7 +44,7 @@ export function osServiceContext(
     home: userHome(),
     user: platform === "win32" ? `${env.USERDOMAIN}\\${env.USERNAME}` : userInfo().username,
     command: daemonCommand(process.execPath, Bun.main),
-    systemRoot: env.SystemRoot ?? "C:\\Windows",
+    systemRoot: env.SystemRoot ?? String.raw`C:\Windows`,
     tempDir: tmpdir(),
     dryRun,
     exec: guardedExec,

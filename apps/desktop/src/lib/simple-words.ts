@@ -63,6 +63,6 @@ export const HIDDEN_TERMS: Record<Lang, readonly string[]> = {
 /** The hidden terms a text holds, whole words, whatever the case. */
 export function hiddenTermsIn(text: string, lang: Lang): string[] {
   return HIDDEN_TERMS[lang].filter((term) =>
-    new RegExp(`(?<![\\p{L}\\p{N}])${term}(?![\\p{L}\\p{N}])`, "iu").test(text),
+    new RegExp(String.raw`(?<![\p{L}\p{N}])${term}(?![\p{L}\p{N}])`, "iu").test(text),
   );
 }

@@ -20,7 +20,7 @@ export interface FileSession {
 const caseInsensitive = process.platform === "win32" || process.platform === "darwin";
 
 /** A stored path in the comparable form of `normalizeCwd` (slashes, and case where the OS folds it). */
-const COMPARABLE = `${caseInsensitive ? "lower" : ""}(rtrim(replace(f.path, '\\', '/'), '/'))`;
+const COMPARABLE = String.raw`${caseInsensitive ? "lower" : ""}(rtrim(replace(f.path, '\', '/'), '/'))`;
 
 /** Which session wrote which file, from the transcripts (changes made by Bash do not count). */
 export class SessionFiles {

@@ -134,7 +134,7 @@ export function decisionLog(path: string): (decision: MemoryDecision) => Promise
 
 /** Where the organization's CLAUDE.md lives on this platform. */
 export function managedClaudeMdPath(platform: NodeJS.Platform = process.platform): string {
-  if (platform === "win32") return "C:\\Program Files\\ClaudeCode\\CLAUDE.md";
+  if (platform === "win32") return String.raw`C:\Program Files\ClaudeCode\CLAUDE.md`;
   if (platform === "darwin") return "/Library/Application Support/ClaudeCode/CLAUDE.md";
   return "/etc/claude-code/CLAUDE.md";
 }

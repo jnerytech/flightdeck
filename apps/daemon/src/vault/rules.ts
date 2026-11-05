@@ -291,7 +291,9 @@ export function validateRules(raw: unknown): { rules: Rule[]; errors: RuleIssue[
 /** `deploy-*` against a name: `*` is the only wildcard, everything else is literal. */
 function wildcard(pattern: string, text: string): boolean {
   if (!pattern.includes("*")) return pattern === text;
-  const pieces = pattern.split("*").map((piece) => piece.replace(/[.+?^${}()|[\]\\]/g, "\\$&"));
+  const pieces = pattern
+    .split("*")
+    .map((piece) => piece.replace(/[.+?^${}()|[\]\\]/g, String.raw`\$&`));
   return new RegExp(`^${pieces.join(".*")}$`).test(text);
 }
 

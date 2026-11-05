@@ -52,7 +52,7 @@ const WILDCARD = /[*?]/;
 /** An OpenSSH pattern (`*` and `?`) as a regular expression. */
 function patternRegex(pattern: string): RegExp {
   const body = pattern
-    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    .replace(/[.+^${}()|[\]\\]/g, String.raw`\$&`)
     .replace(/\*/g, ".*")
     .replace(/\?/g, ".");
   return new RegExp(`^${body}$`);

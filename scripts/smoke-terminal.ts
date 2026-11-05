@@ -34,7 +34,7 @@ const ROOT = resolve(import.meta.dir, "..");
 const BIN = join(ROOT, "apps/daemon/src/bin.ts");
 
 /** The whole of what runs in the terminal: a fixed script, nothing a user typed. */
-const SCRIPT = `
+const SCRIPT = String.raw`
 const { spawn } = require("node:child_process");
 const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
 console.log("READY pid=" + process.pid + " child=" + child.pid);
@@ -43,7 +43,7 @@ let buffer = "";
 process.stdin.on("data", (chunk) => {
   buffer += chunk;
   for (;;) {
-    const end = buffer.search(/[\\r\\n]/);
+    const end = buffer.search(/[\r\n]/);
     if (end < 0) break;
     const line = buffer.slice(0, end);
     buffer = buffer.slice(end + 1);

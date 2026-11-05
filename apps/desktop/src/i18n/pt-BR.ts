@@ -3463,7 +3463,7 @@ export const ptBR = {
     rootsTitle: "Pastas permitidas",
     rootsList: "Pastas permitidas deste host",
     rootsInput: "Pasta a permitir",
-    rootsPlaceholder: "D:\\repos\\...",
+    rootsPlaceholder: String.raw`D:\repos\...`,
     rootsChoose: "Escolher pasta…",
     rootsNeeded: "Digite a pasta a permitir.",
     bypassTitle: "Sessões sem pedidos de permissão",

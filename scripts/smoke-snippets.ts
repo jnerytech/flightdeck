@@ -36,14 +36,14 @@ const ROOT = resolve(import.meta.dir, "..");
 const BIN = join(ROOT, "apps/daemon/src/bin.ts");
 
 /** The whole of what runs in the terminal: a fixed script that echoes what it reads. */
-const SCRIPT = `
+const SCRIPT = String.raw`
 console.log("READY");
 process.stdin.setEncoding("utf8");
 let buffer = "";
 process.stdin.on("data", (chunk) => {
   buffer += chunk;
   for (;;) {
-    const end = buffer.search(/[\\r\\n]/);
+    const end = buffer.search(/[\r\n]/);
     if (end < 0) break;
     const line = buffer.slice(0, end);
     buffer = buffer.slice(end + 1);

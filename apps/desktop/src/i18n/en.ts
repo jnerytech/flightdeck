@@ -3461,7 +3461,7 @@ export const en: Dictionary = {
     rootsTitle: "Allowed folders",
     rootsList: "Allowed folders of this host",
     rootsInput: "Folder to allow",
-    rootsPlaceholder: "D:\\repos\\...",
+    rootsPlaceholder: String.raw`D:\repos\...`,
     rootsChoose: "Choose folder…",
     rootsNeeded: "Type the folder to allow.",
     bypassTitle: "Sessions without permission prompts",

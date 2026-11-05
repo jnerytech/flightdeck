@@ -38,7 +38,7 @@ const FS_NAMES = [
   "writeFile",
 ];
 const BLOCKING = new RegExp(
-  `\\b(?:(?:${FS_NAMES.join("|")})Sync|execSync|execFileSync|spawnSync)\\b`,
+  String.raw`\b(?:(?:${FS_NAMES.join("|")})Sync|execSync|execFileSync|spawnSync)\b`,
   "g",
 );
 

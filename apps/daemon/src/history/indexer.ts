@@ -105,8 +105,7 @@ export const MAYBE_ACTIVE_MS = 2 * 60_000;
 const READABLE = "'message', 'summary', 'system'";
 
 /** The session's folder, or anything below it (never a look-alike prefix). */
-const CWD_CONDITION =
-  "(s.cwd = $cwd OR substr(s.cwd, 1, length($cwd) + 1) IN ($cwd || '/', $cwd || '\\'))";
+const CWD_CONDITION = String.raw`(s.cwd = $cwd OR substr(s.cwd, 1, length($cwd) + 1) IN ($cwd || '/', $cwd || '\'))`;
 
 /**
  * A run nobody typed: print-mode (an sdk entrypoint), or in a temp folder (a folder called temp or
@@ -152,7 +151,7 @@ function snippet(text: string, terms: string[]): string {
   const first = found.length > 0 ? Math.min(...found) : 0;
   const start = Math.max(0, first - SNIPPET_RADIUS);
   const end = Math.min(text.length, first + SNIPPET_RADIUS * 2);
-  const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`));
   const pattern = new RegExp(escaped.join("|"), "gi");
   const excerpt = text.slice(start, end).replace(/\s+/g, " ").replace(pattern, "«$&»");
   return `${start > 0 ? "…" : ""}${excerpt}${end < text.length ? "…" : ""}`;
@@ -484,8 +483,8 @@ export class HistoryIndexer {
       params.match = terms.map((t) => `"${t.replaceAll('"', '""')}"*`).join(" ");
     } else {
       terms.forEach((term, i) => {
-        where.push(`m.text LIKE $t${i} ESCAPE '\\'`);
-        params[`t${i}`] = `%${term.replace(/[\\%_]/g, "\\$&")}%`;
+        where.push(String.raw`m.text LIKE $t${i} ESCAPE '\'`);
+        params[`t${i}`] = `%${term.replace(/[\\%_]/g, String.raw`\$&`)}%`;
       });
     }
     if (query.cwd) {

@@ -69,7 +69,7 @@ export function formatReport(
 const slashes = (path: string) => path.replaceAll("\\", "/");
 
 const escaped = (path: string) =>
-  path.replace(/[.*+?^${}()|[\]\\/]/g, (c) => (c === "/" ? "[\\\\/]" : `\\${c}`));
+  path.replace(/[.*+?^${}()|[\]\\/]/g, (c) => (c === "/" ? String.raw`[\\/]` : `\\${c}`));
 
 /**
  * What the preload registers with `Bun.plugin`: a filter for the listed files (any root, either
@@ -83,7 +83,7 @@ export function onLoadFor(
   filter: RegExp;
   load: (path: string) => { contents: string; loader: "ts" | "tsx" } | undefined;
 } {
-  const filter = new RegExp(`(?:^|[\\\\/])(?:${files.map(escaped).join("|")})$`);
+  const filter = new RegExp(String.raw`(?:^|[\\/])(?:${files.map(escaped).join("|")})$`);
   return {
     filter,
     load(path) {

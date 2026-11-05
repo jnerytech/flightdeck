@@ -258,7 +258,9 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await waitFor(async () => (await shown()) >= 2, "o eco do terminal", WAIT * 2);
     await c.page.getByRole("button", { name: c.t("terminalUi.close"), exact: true }).click();
     await c.page.getByRole("button", { name: c.t("terminalUi.detach"), exact: true }).click();
-    const attach = c.t("hostTerminal.attach", { cwd: "" }).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const attach = c
+      .t("hostTerminal.attach", { cwd: "" })
+      .replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
     // The newest live terminal is this run's: one left by a run that failed comes first.
     await c.page
       .getByRole("button", { name: new RegExp(`^${attach}`) })

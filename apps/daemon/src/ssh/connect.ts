@@ -82,7 +82,8 @@ export async function resolveSshPath(opts: {
   which: (name: string) => string | null;
 }): Promise<string> {
   if (opts.platform === "win32") {
-    const system = `${process.env.SystemRoot ?? "C:\\Windows"}\\System32\\OpenSSH\\ssh.exe`;
+    const windows = process.env.SystemRoot ?? String.raw`C:\Windows`;
+    const system = String.raw`${windows}\System32\OpenSSH\ssh.exe`;
     if (await opts.exists(system)) return system;
   }
   return opts.which("ssh") ?? "ssh";

@@ -30,7 +30,7 @@ export function isLocalUrl(url: string): boolean {
 
 /** POSIX shell quoting, only when the word needs it. */
 const shQuote = (word: string) =>
-  /^[\w@%+=:,./-]+$/.test(word) ? word : `'${word.replaceAll("'", "'\\''")}'`;
+  /^[\w@%+=:,./-]+$/.test(word) ? word : `'${word.replaceAll("'", String.raw`'\''`)}'`;
 
 /** cmd.exe quoting, only when the word has a space. */
 const cmdQuote = (word: string) => (/\s/.test(word) ? `"${word}"` : word);

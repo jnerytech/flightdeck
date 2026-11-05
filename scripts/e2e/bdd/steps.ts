@@ -196,7 +196,7 @@ const pattern = (template: string) =>
   new RegExp(
     template
       .split(/\{\w+\}/)
-      .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`))
       .join(".*"),
   );
 

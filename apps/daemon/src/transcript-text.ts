@@ -7,9 +7,9 @@
 /** Tags the harness wraps its text in; a block is dropped with what is inside it. */
 const WRAPPER_TAGS =
   "system-reminder|local-command-caveat|local-command-stdout|local-command-stderr|command-name|command-message|command-args|pasted_content";
-const CLOSED = new RegExp(`<(${WRAPPER_TAGS})\\b[^>]*>[\\s\\S]*?</\\1>`, "g");
+const CLOSED = new RegExp(String.raw`<(${WRAPPER_TAGS})\b[^>]*>[\s\S]*?</\1>`, "g");
 /** A block whose end was cut off (a long message is stored cut): it runs to the end of the text. */
-const OPEN = new RegExp(`<(?:${WRAPPER_TAGS})\\b[^>]*>[\\s\\S]*$`);
+const OPEN = new RegExp(String.raw`<(?:${WRAPPER_TAGS})\b[^>]*>[\s\S]*$`);
 
 /** The text of a message `content` (a string, or blocks with text blocks among them). */
 function textOf(content: unknown): string {
