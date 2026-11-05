@@ -3635,3 +3635,25 @@ uncalled: `need`, `afterAck` and the registry are each covered by a test.
 **Exit criteria.** No function under `src/server/` above cognitive complexity 15. `server.ts`
 holds only the transport (about 400 lines). The registry is complete by type. The gate test and the
 overlap test both pass, and so do the server tests and the smokes.
+
+**Progress (2026-11-05).** The quiet domains have moved: `security` (34 commands), `agents` (44),
+`messaging` (20), `terminal` (14), `costs` (25), `runs` (21) and `review` (21), one commit each.
+That is 179 of the 280 commands; `server.ts` is down from 2,316 to 1,218 lines. The gate table
+also holds the single-name gates that were written inline (`bypass`, `doctor`, `forker`,
+`snapshots`, `tasks`, `templates`, `ui`, `updater`, `updates`). `findProjects` names its command
+(`projects.scan` or `projects.clone`), so it stays a check of its own. The hot domains wait for
+the v0.37 rc.
+
+The cases were moved by a script: `ok(command.type, x)` became `return x`, `command.payload`
+became `payload`, and a gate accessor became `server.need(key)`. Typecheck caught three hazards
+of that rewrite, and the script now guards each one:
+- **A local named like a shared name.** `terminal.settings` and `runenv.watch` declare their own
+  `manager`, which is not the session manager.
+- **A spread before an accessor.** In `...actions()`, the spread's dot looked like a member
+  access.
+- **A name used only inside a string.** It must not be taken as a use of `send`.
+
+`afterAck` returns a class instance, not a plain object, because an awaited object with a `then`
+method is taken for a promise. `recusas-recurso` now reads the feature names from `server.ts`, the
+handler modules and the gate table. It had failed since the gates moved to `need()`, and it is now
+part of the fixed set of each step.
