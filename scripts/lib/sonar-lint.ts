@@ -1,3 +1,5 @@
+import { byCodeUnit } from "@flightdeck/protocol";
+
 export interface PluginRule {
   name: string;
   /** The rule's documentation URL, which carries its Sonar key (`.../S1186/javascript`). */
@@ -158,4 +160,11 @@ export function countsForCoverage(path: string, properties: string): boolean {
   return (
     !any("sonar.exclusions") && !any("sonar.test.inclusions") && !any("sonar.coverage.exclusions")
   );
+}
+
+/** How many findings each rule has, for the per-rule ratchet. */
+export function ruleCounts(findings: Finding[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const { rule } of findings) counts[rule] = (counts[rule] ?? 0) + 1;
+  return Object.fromEntries(Object.entries(counts).sort(([a], [b]) => byCodeUnit(a, b)));
 }

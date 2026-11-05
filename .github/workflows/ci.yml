@@ -52,6 +52,10 @@ jobs:
       - name: lint:sonar
         run: bun run lint:sonar -- --base "$(git merge-base HEAD origin/${{ github.base_ref }})"
 
+      # The open count per rule over the whole repository only goes down (sonar-baseline.json).
+      - name: lint:sonar --ratchet
+        run: bun run lint:sonar -- --ratchet
+
   test:
     # A dispatched run's jobs have names of their own: a skipped copy of `test (ubuntu-latest)` next to
     # the real check must never stand in for the one the branch rules require.
