@@ -6,6 +6,7 @@
  * the same file. The tiers are computed from the code on every call (about 100 ms for the tree);
  * no manifest is committed, so no PR has one to update or conflict in.
  */
+import { byCodeUnit } from "@flightdeck/protocol";
 import { importsOf, resolveImport } from "./test-related.ts";
 
 export type Tier = "unit" | "component" | "integration" | "e2e";
@@ -87,7 +88,7 @@ export function testTiers(sources: Map<string, string>): Record<string, Tier> {
     return found;
   };
   const tiers: Record<string, Tier> = {};
-  for (const path of [...known].sort()) {
+  for (const path of [...known].sort(byCodeUnit)) {
     if (E2E_FILE.test(path)) {
       tiers[path] = "e2e";
       continue;
