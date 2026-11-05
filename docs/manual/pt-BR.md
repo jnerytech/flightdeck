@@ -1392,7 +1392,8 @@ credencial). Você pode acrescentar padrões na configuração do host (`risk.ex
 podem ser rebaixados.
 
 - Um pedido de **Risco alto** fica vermelho e **Aprovar** vira **Segurar para aprovar**: segure o botão por
-  2 segundos. A tecla A não o aprova; N continua negando.
+  2 segundos. O motivo fica escrito sob o botão (não só numa dica). A tecla A não o aprova; N
+  continua negando.
 - A bandeja nunca aprova um pedido de risco alto: só oferece **Abrir**.
 - Com a aprovação automática ligada, o que ninguém aprovou à mão aparece na linha do tempo da sessão como
   "Aprovado automaticamente", com quem decidiu e o motivo. Um pedido de risco alto ou que acessa a rede

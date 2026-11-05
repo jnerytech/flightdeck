@@ -3559,3 +3559,10 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   That is accepted: CI minutes are free for this public repository, and the two runs check
   different trees.
 - **Based on `rc/0363`,** which adds `workflow_dispatch` (#129) to the same `on:` block.
+
+## Hold button hint as visible text (issue #238)
+
+- **The reason to hold is text under the button,** linked with `aria-describedby`, not a native
+  `title`. A `title` never shows on touch or keyboard and is read inconsistently. It covers both
+  users of `HoldButton`: the approval card and the simple-mode question card. A button without a
+  hint renders exactly as before.

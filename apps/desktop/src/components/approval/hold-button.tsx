@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -12,10 +12,11 @@ export function HoldButton(props: {
   onHeld(): void;
   /** Off while the last hold is being answered. */
   disabled?: boolean;
-  /** The tooltip: why the button has to be held. */
+  /** Why the button has to be held: shown as text under the button, never only as a tooltip. */
   hint?: string;
 }) {
   const [holding, setHolding] = useState(false);
+  const hintId = useId();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cancel = () => {
@@ -37,10 +38,10 @@ export function HoldButton(props: {
   useEffect(() => cancel, []);
 
   const isHoldKey = (e: KeyboardEvent) => e.key === " " || e.key === "Enter";
-  return (
+  const button = (
     <Button
       type="button"
-      title={props.hint}
+      aria-describedby={props.hint ? hintId : undefined}
       disabled={props.disabled}
       data-holding={holding ? "true" : "false"}
       className="relative overflow-hidden"
@@ -69,5 +70,14 @@ export function HoldButton(props: {
       />
       <span className="relative">{props.label}</span>
     </Button>
+  );
+  if (!props.hint) return button;
+  return (
+    <span className="inline-flex flex-col items-start gap-1">
+      {button}
+      <span id={hintId} className="text-xs text-muted-foreground">
+        {props.hint}
+      </span>
+    </span>
   );
 }
