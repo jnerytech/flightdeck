@@ -142,3 +142,12 @@ export function ackError(
 export function decode(raw: string | Buffer): unknown {
   return JSON.parse(typeof raw === "string" ? raw : raw.toString("utf8"));
 }
+
+/** The connection's end of its terminals: frames out, and how full its socket is. */
+export function terminalSink(ws: Socket): TerminalSink {
+  ws.data.terminalSink ??= {
+    send: (frame) => send(ws, frame),
+    backlog: () => ws.getBufferedAmount(),
+  };
+  return ws.data.terminalSink;
+}

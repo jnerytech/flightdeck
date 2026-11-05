@@ -89,7 +89,7 @@ import type { TelemetryStore } from "./telemetry/store.ts";
 import type { LoadedTemplates } from "./templates/files.ts";
 import { startTemplate } from "./templates/start.ts";
 import type { TaskTracker } from "./templates/tasks.ts";
-import type { TerminalManager, TerminalSink } from "./terminal/terminal-manager.ts";
+import type { TerminalManager } from "./terminal/terminal-manager.ts";
 import { tokenMatches } from "./token.ts";
 import type { TraceService } from "./trace/service.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
@@ -560,10 +560,6 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "telemetry");
   }
 
-  function bg(): BgService {
-    return need(opts, "bg");
-  }
-
   function webhook(): WebhookSender {
     return need(opts, "webhook");
   }
@@ -605,19 +601,6 @@ export function startServer(opts: ServerOptions): RunningServer {
   /** A project's folder, with the root of its repository looked up first without waiting for git. */
   function sessionFiles(): SessionFiles {
     return need(opts, "sessionFiles");
-  }
-
-  function terminals(): TerminalManager {
-    return need(opts, "terminals");
-  }
-
-  /** The connection's end of its terminals: frames out, and how full its socket is. */
-  function terminalSink(ws: Socket): TerminalSink {
-    ws.data.terminalSink ??= {
-      send: (frame) => send(ws, frame),
-      backlog: () => ws.getBufferedAmount(),
-    };
-    return ws.data.terminalSink;
   }
 
   function runenv() {
@@ -1099,16 +1082,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type, costs().summary(command.payload));
       case "telemetry.session":
         return ok(command.type, telemetry().timeline(command.payload.claudeSessionId));
-      case "bg.list":
-        return ok(command.type, await bg().list());
-      case "bg.start":
-        return ok(command.type, await bg().start(command.payload));
-      case "bg.stop":
-        return ok(command.type, await bg().stop(command.payload.id));
-      case "bg.respawn":
-        return ok(command.type, await bg().respawn(command.payload.id));
-      case "bg.message":
-        return ok(command.type, await bg().message(command.payload.id, command.payload.text));
       case "webhook.send":
         return ok(command.type, await webhook().send(command.payload, ws.data.origin));
       case "session.summary": {
@@ -1238,45 +1211,6 @@ export function startServer(opts: ServerOptions): RunningServer {
           }),
         );
       }
-      case "terminal.open": {
-        const { cwd, command: argv, claude, cols, rows } = command.payload;
-        return ok(
-          command.type,
-          await terminals().open({
-            cwd,
-            ...(argv ? { command: argv } : {}),
-            ...(claude ? { claude } : {}),
-            cols,
-            rows,
-          }),
-        );
-      }
-      case "terminal.write":
-        terminals().write(command.payload.terminalId, command.payload.data);
-        return ok(command.type);
-      case "terminal.resize":
-        terminals().resize(command.payload.terminalId, command.payload.cols, command.payload.rows);
-        return ok(command.type);
-      case "terminal.attach":
-        return ok(
-          command.type,
-          terminals().attach(
-            command.payload.terminalId,
-            terminalSink(ws),
-            command.payload.flow === true,
-          ),
-        );
-      case "terminal.ack":
-        terminals().ack(command.payload.terminalId, terminalSink(ws), command.payload.bytes);
-        return ok(command.type);
-      case "terminal.detach":
-        terminals().detach(command.payload.terminalId, terminalSink(ws));
-        return ok(command.type);
-      case "terminal.close":
-        terminals().close(command.payload.terminalId, command.payload.kill, terminalSink(ws));
-        return ok(command.type);
-      case "terminal.list":
-        return ok(command.type, { terminals: terminals().list() });
       case "template.list": {
         if (!opts.templates) throw featureOff("templates");
         return ok(command.type, await opts.templates());
@@ -1337,20 +1271,6 @@ export function startServer(opts: ServerOptions): RunningServer {
         opts.ui.mode = next.mode;
         opts.ui.locked = next.locked;
         return ok(command.type, { ...next });
-      }
-      case "terminal.settings": {
-        const { enabled, confirm } = command.payload;
-        const manager = terminals();
-        if (enabled && !manager.enabled && confirm !== true) {
-          throw new FlightdeckError(
-            "invalid_state",
-            "ligar o terminal dá um shell completo neste host: confirme com confirm: true",
-            "terminal_enable_confirm",
-          );
-        }
-        manager.setEnabled(enabled);
-        await opts.onTerminalSettings?.(enabled);
-        return ok(command.type, manager.settings());
       }
       case "pr.comments":
         return ok(command.type, { comments: await board().prComments(command.payload.cardId) });
