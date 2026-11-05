@@ -33,6 +33,6 @@ describe("raizes-persistencia: roots.add on a running daemon", () => {
     const ack = await client.request("roots.add", { path: folder, confirm: true });
     expect(ack.ok).toBe(true);
     const saved = JSON.parse(readFileSync(file, "utf8")).allowedRoots as string[];
-    expect(saved).toContain(realpathSync(folder));
+    expect(saved).toContain(realpathSync.native(folder));
   });
 });
