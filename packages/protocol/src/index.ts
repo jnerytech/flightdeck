@@ -3928,6 +3928,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("boardsync.status", z.object({ projectId: z.string().min(1) }).strict()),
   cmd("boardsync.syncNow", z.object({ projectId: z.string().min(1) }).strict()),
   cmd("boardsync.log", z.object({ cardId: z.string().min(1) }).strict()),
+  /** Phase 39: the models a runtime offers (OpenCode's `models`); refused when it is not there. */
+  cmd("runtime.models", z.object({ runtime: z.literal("opencode") }).strict()),
   /** Clones a repository into a folder inside the allowed roots; a refusal carries its reason. */
   cmd(
     "projects.clone",
@@ -4066,6 +4068,19 @@ export const UpdateStatus = z.object({
 });
 export type UpdateStatus = z.infer<typeof UpdateStatus>;
 
+/** Phase 39: a runtime the host offers besides Claude Code, as discovery found it. */
+export const HostRuntime = z.object({
+  kind: SessionRuntime,
+  available: z.boolean(),
+  path: z.string().optional(),
+  version: z.string().optional(),
+  /** False when the version is not the one Flightdeck verified. */
+  verified: z.boolean().optional(),
+  /** Why it is not available (a reason the app translates). */
+  reason: z.string().optional(),
+});
+export type HostRuntime = z.infer<typeof HostRuntime>;
+
 export const HostInfoResult = z.object({
   hostName: z.string(),
   os: z.string(),
@@ -4090,6 +4105,8 @@ export const HostInfoResult = z.object({
   ui: UiSettings.optional(),
   /** Whether a session may start in `bypassPermissions`; absent on a daemon that predates the switch. */
   allowBypassPermissions: z.boolean().optional(),
+  /** Phase 39: the host's other runtimes (OpenCode), each available or not with the reason. */
+  runtimes: z.array(HostRuntime).optional(),
 });
 export type HostInfoResult = z.infer<typeof HostInfoResult>;
 
@@ -4486,6 +4503,7 @@ export interface CommandResults {
   "boardsync.status": BoardSyncStatus;
   "boardsync.syncNow": { status: BoardSyncStatus; report: BoardSyncReport };
   "boardsync.log": { entries: BoardSyncLogEntry[] };
+  "runtime.models": { models: Array<{ id: string; name: string }> };
   "github.status": GithubStatusResult;
   "github.login.start": GithubLoginResult;
   "github.login.cancel": undefined;

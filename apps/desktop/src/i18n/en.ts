@@ -1637,6 +1637,31 @@ export const en: Dictionary = {
     cwd_outside_roots:
       "The folder {cwd} is outside the host's allowed folders. Add it with flightdeckd setup, or in allowedRoots in ~/.flightdeck/config.json.",
     session_not_found: "Session {id} does not exist on this host.",
+    runtime_unavailable: "OpenCode is not available on this host.",
+    runtime_unsupported: "An OpenCode session does not offer {feature}.",
+    opencode_unsafe_global:
+      "OpenCode {version} cannot run here: its global or system config loads code or servers Flightdeck does not allow ({found}).",
+    opencode_config_outranks:
+      "OpenCode {version}: {what} would outrank Flightdeck's questions, so the session was not started.",
+    opencode_saved_rules:
+      'OpenCode {version} has saved "always" rules for this folder, which would skip Flightdeck\'s questions: {rules}. Remove them with: {commands}',
+    opencode_preflight_failed:
+      "OpenCode {version} could not check this folder. Try again, or run flightdeckd doctor.",
+    opencode_changed:
+      "OpenCode changed since the daemon checked it. Restart the daemon, or run flightdeckd doctor, to check it again.",
+    opencode_permissions_overridden:
+      "Something outside Flightdeck changed OpenCode's rules during the session ({detail}), so the session was stopped.",
+    opencode_auth_required:
+      "OpenCode has no login for this provider: run opencode auth login on the host.",
+    opencode_disabled: "OpenCode is turned off in this host's config.",
+    opencode_missing: "OpenCode is not installed on this host.",
+    opencode_version_failed: "OpenCode did not tell its version.",
+    opencode_v1: "This host has OpenCode 1; Flightdeck needs OpenCode 2.",
+    opencode_project_config_not_disabled:
+      "OpenCode {version} did not turn the project config off, so Flightdeck cannot use it safely.",
+    opencode_canary_failed: "OpenCode could not be checked on this host.",
+    opencode_scope_mismatch:
+      "OpenCode reads its global config from another folder than the one Flightdeck checked.",
     session_ended: "The session is not running (it ended or failed): resume it to send a message.",
     session_not_ended: "The session is still running: there is nothing to resume.",
     personas_off: "Personas are not available on this host.",

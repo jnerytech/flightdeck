@@ -18,6 +18,7 @@ import {
   type ExternalStatus,
   type ExternalUpdated,
   type HistoryChanged,
+  type HostRuntime,
   type IdleFiredFrame,
   type MessagesRelayFrame,
   type MessagesUpdatedFrame,
@@ -95,6 +96,7 @@ import { type RoiSummarizer, roiPeriod } from "./roi/summary.ts";
 import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
+import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 import type { HistoryImporter } from "./snippets/history.ts";
 import type { Snippets } from "./snippets/store.ts";
@@ -131,8 +133,25 @@ export const DAEMON_VERSION: string = pkg.version;
 export const PING_INTERVAL_MS = 15_000;
 const MAX_MISSED_PINGS = 4;
 
+/** What `host.info` says about OpenCode: no executable fingerprint, no finding paths. */
+function hostRuntime(info: OpenCodeInfo): HostRuntime {
+  return {
+    kind: "opencode",
+    available: info.available,
+    ...(info.path ? { path: info.path } : {}),
+    ...(info.version ? { version: info.version } : {}),
+    ...(info.verified !== undefined ? { verified: info.verified } : {}),
+    ...(info.reason ? { reason: info.reason } : {}),
+  };
+}
+
 export interface ServerOptions {
   manager: SessionManager;
+  /** Phase 39: whether OpenCode runs on this host, and its models. */
+  opencode?: {
+    info: () => OpenCodeInfo;
+    models: () => Promise<Array<{ id: string; name: string }>>;
+  };
   /** Looks up the project of a folder before a session is created in it (without blocking). */
   warmProjectKey?: (cwd: string) => Promise<unknown>;
   /** The project key of a folder, asked without blocking: `history.list` filters by it. */
@@ -1450,10 +1469,12 @@ export function startServer(opts: ServerOptions): RunningServer {
             ...(opts.ui ? ["ui.mode"] : []),
             ...(opts.templates ? ["templates"] : []),
             ...(opts.tasks ? ["tasks"] : []),
+            ...(opts.opencode?.info().available ? ["opencode"] : []),
           ],
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
           ...(opts.ui ? { ui: { ...opts.ui } } : {}),
           ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
+          ...(opts.opencode ? { runtimes: [hostRuntime(opts.opencode.info())] } : {}),
           ...updateStatus(),
           ...(opts.terminal ?? {}),
         });
@@ -1698,6 +1719,16 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "roi.summary":
         return ok(command.type, await roi().summaryWithSignals(roiPeriod(command.payload)));
+      case "runtime.models": {
+        if (!opts.opencode?.info().available) {
+          throw new FlightdeckError(
+            "invalid_state",
+            "OpenCode is not available on this host",
+            "runtime_unavailable",
+          );
+        }
+        return ok(command.type, { models: await opts.opencode.models() });
+      }
       case "boardsync.boards":
         return ok(command.type, { boards: await boardsync().boards() });
       case "boardsync.link":
