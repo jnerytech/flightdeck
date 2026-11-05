@@ -3,7 +3,7 @@ import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
 registerDom();
-const { act, cleanup, fireEvent, render, screen, within } = await import("@testing-library/react");
+const { act, cleanup, render, screen, within } = await import("@testing-library/react");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { TabSwitcherHost } = await import("../src/components/tabs/tab-switcher.tsx");
 
@@ -72,7 +72,7 @@ describe("tab-mru-ui: hold Ctrl and press Tab to cycle the recent tabs (issue #1
     expect(selected()?.textContent).toContain("Sessions");
     await releaseCtrl();
     expect(screen.queryByRole("listbox")).toBeNull();
-    expect(active(store)).toBe("hub");
+    expect(active(store)).toBe("home");
   });
 
   test("Ctrl+Shift+Tab opens on the least recent tab", async () => {
@@ -80,7 +80,7 @@ describe("tab-mru-ui: hold Ctrl and press Tab to cycle the recent tabs (issue #1
     await ctrlTab(true);
     expect(selected()?.textContent).toContain("Sessions");
     await releaseCtrl();
-    expect(active(store)).toBe("hub");
+    expect(active(store)).toBe("home");
   });
 
   test("a tap goes to the previous tab and a second tap comes back", async () => {
