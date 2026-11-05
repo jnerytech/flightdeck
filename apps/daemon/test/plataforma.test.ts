@@ -8,6 +8,7 @@ import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import type { RuntimeEvent } from "../src/runtime/types.ts";
 import { osServiceContext, processPath } from "../src/service-os.ts";
 import { stopServiceDaemon } from "../src/update.ts";
+import { shortPath } from "./short-path.ts";
 
 describe("plataforma", () => {
   test("o home vem do ambiente na hora da chamada: HOME, ou USERPROFILE no Windows", () => {
@@ -65,17 +66,8 @@ describe("plataforma", () => {
       const exe = join(dir, "flightdeckd.exe");
       writeFileSync(exe, "");
       // How a task registered from an 8.3 TEMP names the daemon (C:\Users\RUNNER~1\...).
-      const short = Bun.spawnSync(
-        [
-          "powershell.exe",
-          "-NoProfile",
-          "-Command",
-          "(New-Object -ComObject Scripting.FileSystemObject).GetFile($env:FD_EXE).ShortPath",
-        ],
-        { env: { ...process.env, FD_EXE: exe } },
-      )
-        .stdout.toString()
-        .trim();
+      // Through cmd, in milliseconds: a real PowerShell took seconds to start on a CI runner.
+      const short = shortPath(exe);
       expect(short).not.toBe(exe);
       const killed: number[] = [];
       const stopped = await stopServiceDaemon(
@@ -96,9 +88,6 @@ describe("plataforma", () => {
       expect(killed).toEqual([4242]);
       expect(stopped).toBe(true);
     },
-    // The only slow step is the real PowerShell above (it starts the shell and a COM object, and
-    // blocks): seconds on a loaded Windows runner, more than the 15 s default once in a while.
-    60_000,
   );
 
   test("no Windows, o executável do processo vem do Get-Process do PowerShell", async () => {

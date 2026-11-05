@@ -328,6 +328,7 @@ export type HostCommandType = Extract<
   | `terminal.${string}`
   | `runenv.${string}`
   | "roots.add"
+  | "history.get"
   | "host.bypass"
   | `ssh.${string}`
   | `snippets.${string}`
@@ -1578,6 +1579,7 @@ export class AppStore {
     hostId: string,
     claudeSessionId: string,
     cursor?: string,
+    tail = false,
   ): Promise<HistoryGetResult | null> {
     try {
       const conn = this.connections.get(hostId);
@@ -1586,6 +1588,7 @@ export class AppStore {
         claudeSessionId,
         limit: HISTORY_PAGE,
         ...(cursor ? { cursor } : {}),
+        ...(tail && !cursor ? { tail: true } : {}),
       });
     } catch (error) {
       // Not indexed yet is a normal state (the indexer catches up), not something to tell the person.

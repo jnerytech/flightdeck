@@ -10,6 +10,8 @@ export interface DoctorDeps {
   isDirectory(path: string): boolean | Promise<boolean>;
   serviceInstalled(): Promise<boolean>;
   healthy(): Promise<boolean>;
+  /** When nothing healthy answers: the address the daemon refused, if that is why. */
+  refused?(): Promise<string | null>;
   tailscaleIp(): Promise<string | null>;
   hooks(): HooksState | Promise<HooksState>;
   claudePath(): string | null;
@@ -116,16 +118,26 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
   );
 
   const address = `${config.bind}:${config.port}`;
+  const healthy = await deps.healthy();
+  const refused = healthy ? null : ((await deps.refused?.()) ?? null);
   checks.push(
-    (await deps.healthy())
+    healthy
       ? check("daemon", "daemon", "ok", `answering on ${address}`)
-      : check(
-          "daemon",
-          "daemon",
-          "fail",
-          `nothing answers on ${address}`,
-          "run: flightdeckd service start (or flightdeckd start, in a terminal, to see the error)",
-        ),
+      : refused
+        ? check(
+            "daemon",
+            "daemon",
+            "fail",
+            `the daemon refused this machine's address (${refused}): add its network to allowedNetworks (or run flightdeckd setup)`,
+            "run: flightdeckd setup (it adds the Tailscale networks), or add the network to allowedNetworks in the config",
+          )
+        : check(
+            "daemon",
+            "daemon",
+            "fail",
+            `nothing answers on ${address}`,
+            "run: flightdeckd service start (or flightdeckd start, in a terminal, to see the error)",
+          ),
   );
 
   const claude = deps.claudePath();

@@ -1,5 +1,7 @@
 import { expect, test } from "bun:test";
-import { delimiter } from "node:path";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { delimiter, join } from "node:path";
 import { installFakeCli } from "./fake-cli.ts";
 
 test("fakes restored in any order leave the PATH they found", () => {
@@ -127,4 +129,49 @@ test("every fake refuses what Bun refuses for a Windows .cmd shim, unless told n
     fake.restore();
     lenient.restore();
   }
+});
+
+test("a fake answers in process as its process does: output, code, the call and its cwd recorded", async () => {
+  const env: Record<string, string | undefined> = { PATH: "" };
+  const fake = installFakeCli(
+    "az",
+    [
+      { args: ["pr", "show"], call: 1, stdout: "primeira\n" },
+      { args: ["pr", "show"], stdout: "{}\n", stderr: "aviso\n", code: 3 },
+    ],
+    env,
+  );
+  const cwd = mkdtempSync(join(tmpdir(), "fd-fake-run-"));
+  const bin = join(fake.dir, "az.cmd");
+  expect(await fake.run([bin, "repos", "pr", "show"], cwd)).toEqual({
+    code: 0,
+    stdout: "primeira\n",
+    stderr: "",
+  });
+  expect(await fake.run([bin, "repos", "pr", "show"], cwd)).toEqual({
+    code: 3,
+    stdout: "{}\n",
+    stderr: "aviso\n",
+  });
+  const missing = await fake.run([bin, "repos", "pr", "list"], cwd);
+  expect(missing.code).toBe(1);
+  expect(missing.stderr).toContain("fake: sem resposta");
+  expect(fake.calls()).toEqual([
+    ["repos", "pr", "show"],
+    ["repos", "pr", "show"],
+    ["repos", "pr", "list"],
+  ]);
+  expect(fake.cwds()).toEqual([cwd, cwd, cwd]);
+  fake.restore();
+});
+
+test("in process, a fake refuses what Bun refuses for a .cmd shim and records nothing", async () => {
+  const env: Record<string, string | undefined> = { PATH: "" };
+  const fake = installFakeCli("az", [{ args: [], stdout: "ok\n" }], env);
+  const cwd = mkdtempSync(join(tmpdir(), "fd-fake-run-"));
+  const refused = await fake.run([join(fake.dir, "az.cmd"), "--title", "a & b"], cwd);
+  expect(refused.code).toBe(1);
+  expect(refused.stderr).toContain("caractere especial do cmd.exe");
+  expect(fake.calls()).toEqual([]);
+  fake.restore();
 });

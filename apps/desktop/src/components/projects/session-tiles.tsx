@@ -177,12 +177,18 @@ export function SessionTiles(props: {
   state: HubRowState;
   hostId: string;
   projectKey: string;
+  /** The project's folder: a session keyed by its folder still belongs to it. */
+  path?: string;
   onOpen(row: HubRow): void;
 }) {
   const { store, hostId } = props;
   const { t } = store.i18n;
   const [layout, setLayout] = useState<TileLayout>(() => store.tileLayout());
-  const project = { hostId, projectKey: props.projectKey };
+  const project = {
+    hostId,
+    projectKey: props.projectKey,
+    ...(props.path ? { path: props.path } : {}),
+  };
   const all = hubRows(props.state);
   const rows = pickTiles(all, project, layout);
   const hidden = hiddenTiles(all, project, layout);

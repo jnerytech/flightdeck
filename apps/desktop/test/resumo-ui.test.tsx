@@ -100,10 +100,21 @@ const show = async (store: InstanceType<typeof AppStore>, question?: string) => 
   );
 };
 
+/** The summary starts folded to one line (issue #97): opens it, whatever the language. */
+async function expand() {
+  const toggle = screen.getByRole("button", { name: /^(Resumo da sessão|Session summary)$/ });
+  if (toggle.getAttribute("aria-expanded") === "true") return;
+  await act(async () => {
+    fireEvent.click(toggle);
+  });
+}
+
 describe("resumo-ui", () => {
   test("it shows what was asked and done, the files, the cost and the open question (pt-BR)", async () => {
     const { store } = await online("pt-BR");
     await show(store, "Rodar o teste?");
+    await settle(() => screen.queryByRole("region", { name: "Resumo da sessão" }) !== null);
+    await expand();
     await settle(() => screen.queryByText("Add a retry to the queue") !== null);
     const region = screen.getByRole("region", { name: "Resumo da sessão" });
     expect(region.textContent).toContain("Pedido");
@@ -118,11 +129,39 @@ describe("resumo-ui", () => {
   test("the same in English", async () => {
     const { store } = await online("en");
     await show(store);
+    await settle(() => screen.queryByRole("region", { name: "Session summary" }) !== null);
+    await expand();
     await settle(() => screen.queryByText("Add a retry to the queue") !== null);
     const region = screen.getByRole("region", { name: "Session summary" });
     expect(region.textContent).toContain("Asked");
     expect(region.textContent).toContain("Done");
     expect(region.textContent).not.toContain("Open question");
+  });
+
+  test("the first time a session is seen its summary card is open; seen again it is one line, the done text, and opens to every row (issue #97)", async () => {
+    const { store } = await online("en");
+    await show(store, "Run the test?");
+    const region = () => screen.getByRole("region", { name: "Session summary" });
+    await settle(() => screen.queryByRole("region", { name: "Session summary" }) !== null);
+    const toggle = () => screen.getByRole("button", { name: "Session summary" });
+    // First time: open, with every row.
+    expect(toggle().getAttribute("aria-expanded")).toBe("true");
+    expect(region().textContent).toContain("Asked");
+    cleanup();
+    await show(store, "Run the test?");
+    await settle(() => screen.queryByRole("region", { name: "Session summary" }) !== null);
+    expect(toggle().getAttribute("aria-expanded")).toBe("false");
+    // One line: the preview, nothing of the other rows, and no copy button.
+    expect(region().textContent).toContain("Retry added with backoff.");
+    expect(region().textContent).not.toContain("Asked");
+    expect(region().textContent).not.toContain("/r/queue.ts");
+    expect(screen.queryByRole("button", { name: "Copy summary" })).toBeNull();
+    expect(region().querySelector("[data-slot='recap-preview']")?.className).toContain("truncate");
+    await expand();
+    expect(toggle().getAttribute("aria-expanded")).toBe("true");
+    expect(region().textContent).toContain("Asked");
+    expect(region().textContent).toContain("Open question");
+    expect(region().querySelector("[data-slot='recap-preview']")).toBeNull();
   });
 
   test("Copy summary puts the summary as text on the clipboard", async () => {
@@ -132,6 +171,8 @@ describe("resumo-ui", () => {
       copied.push(text);
     };
     await show(store);
+    await settle(() => screen.queryByRole("region", { name: "Session summary" }) !== null);
+    await expand();
     await settle(() => screen.queryByRole("button", { name: "Copy summary" }) !== null);
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Copy summary" }));
@@ -209,6 +250,8 @@ describe("resumo-ui", () => {
   test("a session that changed no file has no files row", async () => {
     const { store } = await online("en", { plain: true });
     await show(store);
+    await settle(() => screen.queryByRole("region", { name: "Session summary" }) !== null);
+    await expand();
     await settle(() => screen.queryByText("Add a retry to the queue") !== null);
     expect(screen.getByRole("region", { name: "Session summary" }).textContent).not.toContain(
       "Files",
