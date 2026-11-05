@@ -41,6 +41,13 @@ export class Forker {
   ) {}
 
   async fork(request: ForkRequest): Promise<ForkResult> {
+    const fork = this.opts.runtime.forkSession;
+    if (!fork)
+      throw new FlightdeckError(
+        "invalid_state",
+        "this runtime does not fork sessions",
+        "fork_unsupported",
+      );
     // Phase 39: an OpenCode session does not fork in version 1 (the fork runs on the Claude runtime).
     const opencode = this.opts.manager
       .list()
@@ -53,13 +60,6 @@ export class Forker {
         { feature: "fork" },
       );
     }
-    const fork = this.opts.runtime.forkSession;
-    if (!fork)
-      throw new FlightdeckError(
-        "invalid_state",
-        "this runtime does not fork sessions",
-        "fork_unsupported",
-      );
     if (request.rewindTurn !== undefined) {
       await this.opts.rewinder?.apply(request.claudeSessionId, request.rewindTurn, true);
     }
