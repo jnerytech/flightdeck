@@ -414,8 +414,8 @@ export function SessionsHub(props: {
         <FoldAll
           expandLabel={t("hub.expandAll")}
           collapseLabel={t("hub.collapseAll")}
-          onExpand={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.key, true])))}
-          onCollapse={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.key, false])))}
+          onExpand={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, true])))}
+          onCollapse={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, false])))}
         />
         {state.hosts.length > 1 && (
           <HostFilterRow
@@ -478,7 +478,9 @@ export function SessionsHub(props: {
                 name={group.name}
                 expanded={groupView?.expanded ?? true}
                 toggleLabel={t("hub.toggleProject", { name: label })}
-                onToggle={() => setOpen({ ...open, [group.key]: !(groupView?.expanded ?? false) })}
+                onToggle={() =>
+                  setOpen({ ...open, [group.foldKey]: !(groupView?.expanded ?? false) })
+                }
               >
                 {clientChip && state.clientSelection === ALL_CLIENTS && (
                   <ClientChip name={clientChip.name} color={clientChip.color} />
@@ -653,7 +655,7 @@ export function SessionsHub(props: {
                   className="self-start text-muted-foreground text-xs"
                   aria-expanded={groupView.earlierShown}
                   onClick={() =>
-                    setEarlierOpen({ ...earlierOpen, [group.key]: !groupView.earlierShown })
+                    setEarlierOpen({ ...earlierOpen, [group.foldKey]: !groupView.earlierShown })
                   }
                 >
                   {groupView.earlier.length === 1

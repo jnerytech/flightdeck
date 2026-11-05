@@ -405,10 +405,12 @@ export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
     b.lastActivity.localeCompare(a.lastActivity);
   return withHints(
     [...byKey.entries()]
-      .map(([, list]) => {
-        // A stable key whichever row is newest: the smallest project key among the rows.
+      .map(([merged, list]) => {
+        // The group's own key names a real project (the client scope reads it): the smallest
+        // project key among the rows. The fold state is kept under the merged identity instead,
+        // which a host going offline or a folder merging does not change.
         const key = list.map((r) => r.projectKey).reduce((x, y) => (y < x ? y : x));
-        return { key, foldKey: key, name: groupName(key), rows: [...list].sort(order) };
+        return { key, foldKey: merged, name: groupName(key), rows: [...list].sort(order) };
       })
       .sort((a, b) => (b.rows[0]?.lastActivity ?? "").localeCompare(a.rows[0]?.lastActivity ?? "")),
   );
@@ -530,8 +532,10 @@ export function hubView(
       .sort((a, b) => b.lastActivity.localeCompare(a.lastActivity));
     const live = group.rows.filter((r) => !isEarlier(r));
     // Every project starts folded (the list gets long); a search or filter opens what it keeps.
-    const expanded = open[group.key] ?? searching;
-    const earlierShown = searching || earlierOpen[group.key] === true;
+    // Kept under the stable key; a choice made under the project's old key still counts.
+    const expanded = open[group.foldKey] ?? open[group.key] ?? searching;
+    const earlierShown =
+      searching || (earlierOpen[group.foldKey] ?? earlierOpen[group.key]) === true;
     return {
       group,
       live,
@@ -547,11 +551,13 @@ export function hubView(
   });
 }
 
-/** Whether the filter narrows the list on purpose, so what it keeps is shown, not folded away. */
+/**
+ * Whether the filter narrows the list on purpose, so what it keeps is shown, not folded away. A
+ * Hosts chip only chooses whose sessions the list is about: the projects stay as they were.
+ */
 export function isSearching(filter: HubFilter): boolean {
   return (
     filter.text.trim() !== "" ||
-    filter.host !== "" ||
     filter.origin !== "" ||
     filter.state !== "" ||
     filter.persona !== "" ||
@@ -567,9 +573,12 @@ export function capGroups(
   let left = limit;
   const kept: HubGroup[] = [];
   for (const group of groups) {
-    if (left <= 0) break;
-    kept.push(group.rows.length <= left ? group : { ...group, rows: group.rows.slice(0, left) });
-    left -= group.rows.length;
+    // A project folded to nothing costs no rows: its header stays whatever the cap has left.
+    if (group.rows.length === 0) kept.push(group);
+    else if (left > 0) {
+      kept.push(group.rows.length <= left ? group : { ...group, rows: group.rows.slice(0, left) });
+      left -= group.rows.length;
+    }
   }
   const total = groups.reduce((sum, group) => sum + group.rows.length, 0);
   return { groups: kept, hidden: Math.max(0, total - limit) };
