@@ -51,6 +51,8 @@ export interface SessionManagerOptions {
   allowBypass?: () => boolean;
   /** Whether a folder's own configuration may load in a session (issue #196); absent: it always does. */
   trust?: (cwd: string) => { trusted: boolean; configRoot?: string };
+  /** Looks at a folder's git boundaries before its run is decided (issue #196); awaited by every async entry. */
+  prepareTrust?: (cwd: string) => Promise<void>;
   baseEnv: Record<string, string | undefined>;
   /** Plan quota readings of any session go to the host's quota (phase 7). */
   onQuota?: (readings: QuotaReading[]) => void;

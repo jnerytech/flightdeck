@@ -117,4 +117,17 @@ describe("trust-commands: the person sees what a project would load and decides 
       ]);
     }
   });
+
+  test("trusting an allowed root, or a folder above one, is refused with a reason; trusting a project inside passes", async () => {
+    const { root, project, refusal } = await daemon();
+    expect(await refusal("project.trust.set", { path: root, trusted: true })).toBe(
+      "invalid_state/trust_root_refused",
+    );
+    expect(await refusal("project.trust.set", { path: join(root, ".."), trusted: true })).toMatch(
+      /^(invalid_state\/trust_root_refused|forbidden_cwd\/cwd_outside_roots)$/,
+    );
+    expect(await refusal("project.trust.set", { path: project, trusted: true })).toBe("ok");
+    // Revoking a root is harmless and is not refused.
+    expect(await refusal("project.trust.set", { path: root, trusted: false })).toBe("ok");
+  });
 });

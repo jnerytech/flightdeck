@@ -30,4 +30,27 @@ describe("trust-sessions: every run of a session is told whether its folder is t
     await waitFor(() => runtime.starts.length >= 1, { label: "start" });
     expect(runtime.starts[0]?.trust).toBeUndefined();
   });
+
+  test("the folder is looked at before a new session and a resumed one run, then decided", async () => {
+    const order: string[] = [];
+    const runtime = new FakeRuntime({ delayMs: 1 });
+    const { manager, project, start } = newManager({
+      runtime,
+      prepareTrust: async (cwd) => {
+        await Bun.sleep(5);
+        order.push(`prepare ${cwd}`);
+      },
+      trust: () => {
+        order.push("decide");
+        return { trusted: true };
+      },
+    });
+    const created = await start({ cwd: project, prompt: "oi" });
+    await waitFor(() => manager.get(created.sessionId).status === "idle", { label: "idle" });
+    expect(order.slice(0, 2)).toEqual([`prepare ${manager.get(created.sessionId).cwd}`, "decide"]);
+    await manager.close(created.sessionId);
+    order.length = 0;
+    await manager.resume(created.sessionId);
+    expect(order.slice(0, 2)).toEqual([`prepare ${manager.get(created.sessionId).cwd}`, "decide"]);
+  });
 });
