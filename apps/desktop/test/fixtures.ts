@@ -188,6 +188,8 @@ export function daemon(
   const historyRoot = join(root, "claude-projects");
   mkdirSync(historyRoot);
   const history = new HistoryIndexer({ db: store.db, roots: [historyRoot] });
+  /** Phase 39: the fake OpenCode runtime, on a host that has it. */
+  const opencodeRuntime = options.opencode ? new FakeRuntime({ delayMs: 1 }) : undefined;
   const runtime = new FakeRuntime({
     delayMs: 1,
     ...(options.mcpServers ? { mcpServers: options.mcpServers } : {}),
@@ -225,7 +227,7 @@ export function daemon(
         }
       : {}),
     onQuota: (readings) => quota.record(readings),
-    ...(options.opencode ? { opencode: new FakeRuntime({ delayMs: 1 }) } : {}),
+    ...(opencodeRuntime ? { opencode: opencodeRuntime } : {}),
     onTurn: (sessionId, cwd, turn) => usage.record(sessionId, cwd, turn),
     store,
     runtime,
@@ -572,6 +574,7 @@ export function daemon(
     history,
     historyRoot,
     runtime,
+    opencodeRuntime,
     board,
     snapshots,
     mcp,

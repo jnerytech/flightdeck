@@ -71,6 +71,11 @@ describe("opencode-session-ui", () => {
       });
     });
     await act(async () => {
+      fireEvent.change(screen.queryByLabelText("Effort") as HTMLElement, {
+        target: { value: "high" },
+      });
+    });
+    await act(async () => {
       fireEvent.change(screen.queryByLabelText("First prompt") as HTMLElement, {
         target: { value: "hello" },
       });
@@ -81,6 +86,8 @@ describe("opencode-session-ui", () => {
     });
     await settle(() => d.manager.list().length === 1);
     expect(d.manager.list()[0]?.runtime).toBe("opencode");
+    await settle(() => (d.opencodeRuntime?.starts.length ?? 0) > 0);
+    expect(d.opencodeRuntime?.starts[0]?.effort).toBe("high");
     await settle(() => screen.queryByText("OpenCode") !== null);
     expect(screen.queryByLabelText("Model")).toBeNull();
   });
