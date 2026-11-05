@@ -53,6 +53,17 @@ describe("opencode-ledger: the process groups the daemon starts (issue #250)", (
     expect(ledger.size).toBe(1);
   });
 
+  test("a pid written twice (a process started again under the same pid) is one entry, the latest", () => {
+    const { file, proc, ledger } = setup();
+    proc.start(4242);
+    ledger.add(4242);
+    proc.start(4242, { startTicks: 2000 });
+    ledger.add(4242);
+    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual([
+      { pid: 4242, startTicks: 2000, cmdline: "opencode acp" },
+    ]);
+  });
+
   test("a leader still there with the same start and command is killed with its group, then forgotten", () => {
     const { proc, killed, ledger, make } = setup();
     proc.start(4242);
