@@ -55,7 +55,7 @@ async function setup(files: boolean) {
 
 const dialog = () => within(screen.queryByRole("dialog") as HTMLElement);
 const press = async (name: string | RegExp) => {
-  await waitFor(() => expect(dialog().queryByRole("button", { name }) !== null).toBe(true));
+  await waitFor(() => expect(dialog().queryByRole("button", { name })).not.toBeNull());
   await act(async () => {
     fireEvent.click(dialog().queryByRole("button", { name }) as HTMLElement);
   });

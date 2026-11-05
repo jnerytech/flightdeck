@@ -90,10 +90,10 @@ describe("conta-atualizar: when the account is read", () => {
     const { time, reads, watch } = setup();
     watch();
     await tick();
-    expect(reads.length).toBe(1);
+    expect(reads).toHaveLength(1);
     watch();
     await tick();
-    expect(reads.length).toBe(1);
+    expect(reads).toHaveLength(1);
     expect(timerOf(time)).toBe(1);
   });
 
@@ -103,14 +103,14 @@ describe("conta-atualizar: when the account is read", () => {
     watch();
     await tick();
     await time.advance(FIVE_MIN - 1);
-    expect(reads.length).toBe(1);
+    expect(reads).toHaveLength(1);
     await time.advance(1);
-    expect(reads.length).toBe(2);
+    expect(reads).toHaveLength(2);
     fail = true;
     await time.advance(FIVE_MIN);
-    expect(reads.length).toBe(3);
+    expect(reads).toHaveLength(3);
     await time.advance(FIVE_MIN);
-    expect(reads.length).toBe(4);
+    expect(reads).toHaveLength(4);
   });
 
   test("when the last watcher leaves the timer is cleared and nothing more is read", async () => {
@@ -123,22 +123,22 @@ describe("conta-atualizar: when the account is read", () => {
     stopB();
     expect(timerOf(time)).toBe(0);
     await time.advance(2 * FIVE_MIN);
-    expect(reads.length).toBe(1);
+    expect(reads).toHaveLength(1);
     watch();
     await tick();
-    expect(reads.length).toBe(2);
+    expect(reads).toHaveLength(2);
   });
 
   test("a turn end reads when watched and does nothing when not", async () => {
     const { reads, watch, account } = setup();
     account.turnEnded();
     await tick();
-    expect(reads.length).toBe(0);
+    expect(reads).toHaveLength(0);
     watch();
     await tick();
     account.turnEnded();
     await tick();
-    expect(reads.length).toBe(2);
+    expect(reads).toHaveLength(2);
   });
 
   test("a read that is running is shared by a turn end, a poll and a refresh", async () => {
@@ -154,7 +154,7 @@ describe("conta-atualizar: when the account is read", () => {
     const again = account.refresh();
     open();
     const [a, b] = await Promise.all([refreshed, again]);
-    expect(reads.length).toBe(1);
+    expect(reads).toHaveLength(1);
     expect(a).toEqual(b);
   });
 });
@@ -180,7 +180,7 @@ describe("conta-atualizar: the manual refresh", () => {
     await account.refresh();
     await time.advance(30_000);
     await account.refresh();
-    expect(reads.length).toBe(2);
+    expect(reads).toHaveLength(2);
   });
 
   test("a refused refresh reads nothing", async () => {
@@ -188,7 +188,7 @@ describe("conta-atualizar: the manual refresh", () => {
     await account.refresh();
     await time.advance(1_000);
     await account.refresh().catch(() => {});
-    expect(reads.length).toBe(1);
+    expect(reads).toHaveLength(1);
   });
 });
 
@@ -197,7 +197,7 @@ describe("conta-atualizar: what the watchers get", () => {
     const { pushes, watch } = setup();
     watch();
     await tick();
-    expect(pushes.length).toBe(1);
+    expect(pushes).toHaveLength(1);
     expect(pushes[0]?.status).toBe("signed_in");
   });
 
@@ -213,7 +213,7 @@ describe("conta-atualizar: what the watchers get", () => {
         resetsAt: time.now() + 3_600_000,
       },
     ]);
-    expect(pushes.length).toBe(2);
+    expect(pushes).toHaveLength(2);
     expect(pushes[1]?.windows.map((w) => w.window)).toEqual(["five_hour"]);
   });
 
@@ -225,7 +225,7 @@ describe("conta-atualizar: what the watchers get", () => {
     });
     const stop = account.watch(() => got.push(1));
     await tick();
-    expect(got.length).toBe(1);
+    expect(got).toHaveLength(1);
     stop();
     quota.record([
       {
@@ -235,6 +235,6 @@ describe("conta-atualizar: what the watchers get", () => {
         resetsAt: time.now() + 3_600_000,
       },
     ]);
-    expect(got.length).toBe(1);
+    expect(got).toHaveLength(1);
   });
 });

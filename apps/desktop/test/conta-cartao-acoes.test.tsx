@@ -114,7 +114,7 @@ describe("conta-cartao-acoes: the card watches while it is on screen", () => {
     const { watchers } = await mount();
     await settle(() => screen.queryByText("demo@example.com") !== null);
     expect(screen.queryByText("Max")).not.toBeNull();
-    expect(screen.queryAllByRole("meter").length).toBe(1);
+    expect(screen.queryAllByRole("meter")).toHaveLength(1);
     expect(watchers()).toBe(1);
   });
 

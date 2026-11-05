@@ -25,7 +25,7 @@ describe("conta-poc: the proof of concept answers are recorded in DECISIONS.md",
     const answers = phase34Section()
       .split("\n")
       .filter((line) => /^[1-6]\. /.test(line));
-    expect(answers.length).toBe(6);
+    expect(answers).toHaveLength(6);
     for (const line of answers) expect(line).toContain("claude 2.1.317");
   });
 

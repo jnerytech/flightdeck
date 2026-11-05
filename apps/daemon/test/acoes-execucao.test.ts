@@ -99,18 +99,20 @@ describe("acoes-execucao", () => {
     expect(existsSync(/p=(.*)/.exec(viaEnv.output)?.[1]?.trim() ?? "?")).toBe(false);
   });
 
-  test("em sistemas POSIX o arquivo do segredo só é legível pelo dono", async () => {
-    if (process.platform === "win32") return;
-    const result = await runAction(
-      make("console.log(require('node:fs').statSync(process.argv[1]).mode & 0o777)", {}, [
-        "{{secretFile.chave}}",
-      ]),
-      {},
-      { chave: KEY },
-      opts(),
-    );
-    expect(result.output.trim()).toBe(String(0o600));
-  });
+  test.skipIf(process.platform === "win32")(
+    "em sistemas POSIX o arquivo do segredo só é legível pelo dono",
+    async () => {
+      const result = await runAction(
+        make("console.log(require('node:fs').statSync(process.argv[1]).mode & 0o777)", {}, [
+          "{{secretFile.chave}}",
+        ]),
+        {},
+        { chave: KEY },
+        opts(),
+      );
+      expect(result.output.trim()).toBe(String(0o600));
+    },
+  );
 
   test("parâmetro fora do pattern, faltando, desconhecido ou só casando em parte é recusado, e nada é executado", async () => {
     const marker = join(tempDir(), "rodou.txt");

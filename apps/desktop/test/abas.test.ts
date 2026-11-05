@@ -247,9 +247,9 @@ describe("abas", () => {
       expect(tabs.open(hub).preview).toBe(false);
       const before = seen.length;
       tabs.commit("t2");
-      expect(seen.length).toBe(before);
+      expect(seen).toHaveLength(before);
       tabs.commit("t1");
-      expect(seen.length).toBe(before + 1);
+      expect(seen).toHaveLength(before + 1);
     });
 
     test("restore keeps which tabs are previews", () => {

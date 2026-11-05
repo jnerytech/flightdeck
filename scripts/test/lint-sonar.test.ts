@@ -20,22 +20,24 @@ function lint(...fixtures: string[]) {
 }
 
 describe("lint:sonar", () => {
-  test("a file with a known Sonar issue fails and names rule and line", () => {
-    const { code, out } = lint("flagged.ts");
-    expect(code).toBe(1);
-    expect(out).toContain("flagged.ts:3  sonarjs/no-all-duplicated-branches");
-  });
-
-  test("the same issue with a NOSONAR and a reason passes", () => {
-    const { code, out } = lint("suppressed.ts");
-    expect(out).toContain("lint:sonar: no findings");
-    expect(code).toBe(0);
-  });
-
-  test("a NOSONAR with no reason fails", () => {
-    const { code, out } = lint("bare.ts");
-    expect(code).toBe(1);
-    expect(out).toContain("bare.ts:3  nosonar-reason");
+  test.each([
+    [
+      "a file with a known Sonar issue fails and names rule and line",
+      "flagged.ts",
+      1,
+      "flagged.ts:3  sonarjs/no-all-duplicated-branches",
+    ],
+    [
+      "the same issue with a NOSONAR and a reason passes",
+      "suppressed.ts",
+      0,
+      "lint:sonar: no findings",
+    ],
+    ["a NOSONAR with no reason fails", "bare.ts", 1, "bare.ts:3  nosonar-reason"],
+  ])("%s", (_title, fixture, code, line) => {
+    const result = lint(fixture);
+    expect(result.code).toBe(code);
+    expect(result.out).toContain(line);
   });
 
   test("test code gets the test rules: a skipped test fails", () => {

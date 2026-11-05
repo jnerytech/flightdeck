@@ -88,7 +88,7 @@ describe("conta-protocolo: account.get, account.watch and account.refresh over t
     });
     expect(state.windows.map((w) => w.window)).toEqual(["five_hour"]);
     await client.request("account.get", {});
-    expect(reads.length).toBe(1);
+    expect(reads).toHaveLength(1);
   });
 
   test("account.watch acks, pushes account.updated after the read, and again for a stream reading", async () => {

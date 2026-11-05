@@ -151,8 +151,8 @@ describe("clients-costs: the Costs screen across hosts", () => {
     await settle(() => total() === "US$ 3.00");
     expect(total()).toBe("US$ 3.00");
     expect(rowsOf("Por projeto")).toEqual(["github.com/beta/appUS$ 3.00"]);
-    expect(screen.queryByRole("region", { name: "Por cliente" }) !== null).toBe(false);
-    expect(screen.queryByText("Só o cliente Beta.") !== null).toBe(true);
+    expect(screen.queryByRole("region", { name: "Por cliente" })).toBeNull();
+    expect(screen.queryByText("Só o cliente Beta.")).not.toBeNull();
     await act(async () => store.setClientSelection(UNASSIGNED));
     await settle(() => total() === "US$ 1.00");
     expect(total()).toBe("US$ 1.00");
@@ -163,15 +163,15 @@ describe("clients-costs: the Costs screen across hosts", () => {
     await pickHost("__all__");
     await settle(() => total() === "US$ 6.00");
     expect(total()).toBe("US$ 6.00");
-    expect(screen.queryByRole("region", { name: "Por cliente" }) !== null).toBe(false);
+    expect(screen.queryByRole("region", { name: "Por cliente" })).toBeNull();
   });
 
   test("across hosts there is no CSV export, which is per host", async () => {
     await setup();
-    expect(screen.queryByRole("button", { name: "Exportar CSV" }) !== null).toBe(true);
+    expect(screen.queryByRole("button", { name: "Exportar CSV" })).not.toBeNull();
     await pickHost("__all__");
     await settle(() => total() === "US$ 6.00");
-    expect(screen.queryByRole("button", { name: "Exportar CSV" }) !== null).toBe(false);
+    expect(screen.queryByRole("button", { name: "Exportar CSV" })).toBeNull();
   });
 
   test("a host without costs is named as skipped, and one that does not answer as failed", async () => {
@@ -186,8 +186,8 @@ describe("clients-costs: the Costs screen across hosts", () => {
     await settle(() => store.getState().hosts.every((h) => h.hostInfo != null));
     await pickHost("__all__");
     await settle(() => screen.queryByText("Sem resposta de: delta.") !== null);
-    expect(screen.queryByText("Sem resposta de: delta.") !== null).toBe(true);
-    expect(screen.queryByText("Sem custos de: gama.") !== null).toBe(true);
+    expect(screen.queryByText("Sem resposta de: delta.")).not.toBeNull();
+    expect(screen.queryByText("Sem custos de: gama.")).not.toBeNull();
     expect(total()).toBe("US$ 6.00");
   });
 
