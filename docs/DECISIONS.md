@@ -4047,17 +4047,22 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   permission (`chmod`, `chown`, permission, `allowedNetworks`), or when its path is in the vault or
   pairing code, or when they open a listener or an outbound call (`Bun.serve`, `fetch(`, a
   WebSocket, `.listen(`). A spawn is also `cp.exec(`, `child_process`, `Bun.$`, `fork(`, `execa(`
-  or `new Worker`. Comment-only lines do not count. Code is `.[cm]?[jt]sx?`, `.rs`, `.sh`, `.ps1`
-  and `.py`. Some paths are risky whatever they add: the vault and pairing code, the Tauri shell's
-  capabilities and `tauri*.conf.json` (CSP, scopes), and `.github/workflows/`; a pure rename into
-  one counts too. Patterns, not a parser: they err toward asking for a review.
+  or `new Worker`, and in Rust and Python `Command::new`, `std::process`, `subprocess.`,
+  `os.system`; deletes and listeners have their Rust and Python forms too. A line that is only a
+  comment does not count; code after a comment on the same line does. Code is `.[cm]?[jt]sx?`,
+  `.rs`, `.sh`, `.ps1` and `.py`. A mode change counts as a permission change. Some paths are risky
+  whatever they add: the vault and pairing code, the Tauri shell's capabilities and
+  `tauri*.conf.json` (CSP, scopes), `.github/workflows/`, and the files whose contents run as code
+  (`package.json`, `Cargo.toml`, `build.rs`, `bunfig*.toml`, `.claude/settings*.json`,
+  `.claude/hooks/`); a pure rename into one counts too. Patterns, not a parser: they err toward asking for a review.
 - **It fails closed** (the OpenCode review on #279): a `git diff` or `git log` that fails (an error,
   an output past 64 MB), or a `--base` that is not a commit, stamps `security=unknown`, never `0`.
   The diff forces `--src-prefix=a/ --dst-prefix=b/` (a user's `diff.noprefix` or
   `diff.mnemonicPrefix` would change the headers) with no external diff or text conversion. The
   diff's file headers are read only before a file's first hunk (an added line can look like one),
   names come unquoted, and a merge counts by the files it edited itself. The log is in topological
-  order, so "after" follows the history, not the dates, and a folded trailer reads as one line.
+  order, so "after" follows the history, not the dates, a folded trailer reads as one line, and a
+  user's `log.showSignature` adds nothing to it (`--no-show-signature`).
   Risky files that no commit of the log touches need a review all the same. `--verify` refuses a
   stamp with no `security=` or no `ci=`, so a stamp from before the gate does not pass. It is a guard against slips,
   not a security boundary: the trailer is the session's own word that the review ran. A name git
@@ -4071,10 +4076,12 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   `FLIGHTDECK_PR_OPENED` with the PR's number, branch and base. The command comes from the
   session's own environment, never from the repository: words split on spaces, or a JSON array of
   strings for a path with spaces (Windows), with no shell. It runs bounded
-  (scripts/lib/bounded-run.ts): stdout ignored, the last 500 characters of stderr kept for the
-  failure line, and past two minutes its whole process group killed (its tree, with `taskkill /T`,
-  on Windows), so a grandchild that holds a pipe cannot keep `open` waiting. A hook that fails,
-  cannot start or times out only prints a line: the PR is open either way. Its program is found by Bun's own PATH lookup, not `whichOnPath`: the environment, and the
+  (scripts/lib/bounded-run.ts): its output ignored, since it inherits the environment and what it
+  prints may hold a token, so the failure line says only the exit code (124 past the deadline, 127
+  when it could not start). Past two minutes its whole process group is killed (its tree, with
+  `taskkill /T`, on Windows; an orphan whose parent already died escapes that walk). A hook that
+  fails, cannot start or times out only prints that line: the PR is open either way. On Windows a
+  bare program name may resolve in the current folder first: give the hook an absolute path. Its program is found by Bun's own PATH lookup, not `whichOnPath`: the environment, and the
   PATH with it, are the session's own. The number, branch and base come last, as positional
   arguments: a hook script must not read them as options.
 
