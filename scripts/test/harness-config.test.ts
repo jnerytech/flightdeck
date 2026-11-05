@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { slotViolation } from "../lib/claude-hooks.ts";
@@ -118,5 +119,28 @@ describe("harness-config", () => {
         .map((command) => `${file.slice(ROOT.length + 1)}: ${command}`),
     );
     expect(refused).toEqual([]);
+  });
+
+  test("the path rules exist, their frontmatter parses, and every paths glob matches a tracked file", () => {
+    const dir = join(ROOT, ".claude/rules");
+    const names = existsSync(dir) ? readdirSync(dir).sort() : [];
+    expect(names).toEqual(["daemon.md", "protocol.md", "scripts.md", "tests.md", "ui.md"]);
+    const tracked = spawnSync("git", ["ls-files"], { cwd: ROOT, encoding: "utf8" })
+      .stdout.split("\n")
+      .filter(Boolean);
+    for (const name of names) {
+      const meta = frontmatter(join(dir, name));
+      const paths = typeof meta === "string" ? meta : meta.paths;
+      // A frontmatter that does not parse makes Claude Code load the rule everywhere, silently.
+      expect(`${name}: ${Array.isArray(paths) && paths.length > 0 ? "list" : String(paths)}`).toBe(
+        `${name}: list`,
+      );
+      for (const glob of paths as string[]) {
+        const matcher = new Bun.Glob(glob);
+        expect(`${name}: ${glob} ${tracked.some((path) => matcher.match(path))}`).toBe(
+          `${name}: ${glob} true`,
+        );
+      }
+    }
   });
 });
