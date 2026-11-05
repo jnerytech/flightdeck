@@ -2901,6 +2901,9 @@ export const ptBR = {
     cost: "Custo do card",
     back: "Voltar ao board",
     description: "Descrição",
+    changedElsewhere:
+      "Mudou em outro lugar enquanto você editava: use a versão de lá para vê-la e edite de novo.",
+    useTheirs: "Usar a de lá",
     saveDescription: "Salvar descrição",
     title: "Título",
     saveTitle: "Salvar título",

@@ -47,6 +47,21 @@ interface Confirming {
 const CARDDETAIL_KEYS = ["runs", "personas", "hosts", "cards"] as const;
 
 /** One card: description, runs, the active run's conversation, its diff and the actions. */
+/** An edit of a card field and the card text it started from (issue #170). */
+interface Draft {
+  text: string;
+  base: string;
+}
+
+/**
+ * The draft once `sent` was saved as `stored`: gone if it is what was sent; a newer edit typed
+ * meanwhile stays, now starting from what was saved.
+ */
+function settled(draft: Draft | null, sent: string, stored: string): Draft | null {
+  if (draft === null || draft.text === sent) return null;
+  return { text: draft.text, base: stored };
+}
+
 export const CardDetail = memo(function CardDetail(props: {
   store: AppStore;
   hostId: string;
@@ -60,9 +75,10 @@ export const CardDetail = memo(function CardDetail(props: {
   const state = useStoreSlice(store, CARDDETAIL_KEYS);
   const card = state.cards[sessionKey(hostId, cardId)];
   // Issue #170: a draft exists only while the person edits; until then the fields show the card as
-  // it is now, so a card that arrives after the screen opens (or changes elsewhere) fills them.
-  const [descriptionDraft, setDescription] = useState<string | null>(null);
-  const [titleDraft, setTitle] = useState<string | null>(null);
+  // it is now, so a card that arrives after the screen opens (or changes elsewhere) fills them. A
+  // draft keeps the card text it started from: a change made elsewhere meanwhile stops a plain Save.
+  const [descriptionDraft, setDescriptionDraft] = useState<Draft | null>(null);
+  const [titleDraft, setTitleDraft] = useState<Draft | null>(null);
   const [adjustment, setAdjustment] = useState("");
   const [tab, setTab] = useState<"conversation" | "diff">("conversation");
   const [confirming, setConfirming] = useState<Confirming | null>(null);
@@ -158,8 +174,17 @@ export const CardDetail = memo(function CardDetail(props: {
   }, [store, hostId, cardId, missing]);
 
   if (!card) return <p className="p-6 text-muted-foreground text-sm">{t("cardUi.notFound")}</p>;
-  const title = titleDraft ?? card.title;
-  const description = descriptionDraft ?? card.description;
+  const title = titleDraft?.text ?? card.title;
+  const description = descriptionDraft?.text ?? card.description;
+  const titleStale = titleDraft !== null && titleDraft.base !== card.title;
+  const descriptionStale = descriptionDraft !== null && descriptionDraft.base !== card.description;
+  // Typing the card's own text back is no edit any more: the field follows the card again.
+  const editTitle = (text: string) =>
+    setTitleDraft(text === card.title ? null : { text, base: titleDraft?.base ?? card.title });
+  const editDescription = (text: string) =>
+    setDescriptionDraft(
+      text === card.description ? null : { text, base: descriptionDraft?.base ?? card.description },
+    );
 
   const askDiscard = async () => {
     const current = card.worktreePath
@@ -307,11 +332,12 @@ export const CardDetail = memo(function CardDetail(props: {
             value={title}
             // The menu's Edit… opens the card to change it: the title is where the cursor goes.
             autoFocus={props.edit === true}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => editTitle(e.target.value)}
           />
           <ActionButton
             variant="outline"
-            disabled={title.trim() === "" || title.trim() === card.title}
+            disabled={title.trim() === "" || title.trim() === card.title || titleStale}
+            {...(titleStale ? { disabledReason: t("cardUi.changedElsewhere") } : {})}
             onClick={async () => {
               const sent = title;
               const saved = await store.hostCommand(hostId, "card.update", {
@@ -319,34 +345,45 @@ export const CardDetail = memo(function CardDetail(props: {
                 title: sent.trim(),
               });
               // A refused save keeps the edit (the banner says why), and so does a newer edit
-              // typed while this one was on its way.
-              if (saved) setTitle((draft) => (draft === sent ? null : draft));
+              // typed while this one was on its way (it now starts from what was saved).
+              if (saved) setTitleDraft((draft) => settled(draft, sent, sent.trim()));
             }}
           >
             {t("cardUi.saveTitle")}
           </ActionButton>
+          {titleStale && (
+            <Button variant="ghost" size="sm" onClick={() => setTitleDraft(null)}>
+              {t("cardUi.useTheirs")}
+            </Button>
+          )}
         </Inline>
         <div className="flex items-start gap-2">
           <Textarea
             aria-label={t("cardUi.description")}
             value={description}
             className="min-h-20 flex-1"
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => editDescription(e.target.value)}
           />
           <ActionButton
             variant="outline"
-            disabled={description === card.description}
+            disabled={description === card.description || descriptionStale}
+            {...(descriptionStale ? { disabledReason: t("cardUi.changedElsewhere") } : {})}
             onClick={async () => {
               const sent = description;
               const saved = await store.hostCommand(hostId, "card.update", {
                 cardId,
                 description: sent,
               });
-              if (saved) setDescription((draft) => (draft === sent ? null : draft));
+              if (saved) setDescriptionDraft((draft) => settled(draft, sent, sent));
             }}
           >
             {t("cardUi.saveDescription")}
           </ActionButton>
+          {descriptionStale && (
+            <Button variant="ghost" size="sm" onClick={() => setDescriptionDraft(null)}>
+              {t("cardUi.useTheirs")}
+            </Button>
+          )}
         </div>
         {withRoi && <CardHours store={store} hostId={hostId} card={card} />}
         <div className="flex flex-wrap items-center gap-2">
