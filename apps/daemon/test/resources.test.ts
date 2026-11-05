@@ -52,7 +52,18 @@ const session = (id: string, cwd: string, createdAt: string, active = true): Res
   name: id,
   cwd,
   createdAt,
+  updatedAt: createdAt,
   active,
+});
+
+/** A session that is over and was alive for the whole of today (and then some): its folder's leftovers are its. */
+const ended = (cwd: string): ResourceSession => ({
+  id: `old-${cwd}`,
+  name: null,
+  cwd,
+  createdAt: "2020-01-01T00:00:00Z",
+  updatedAt: "2100-01-01T00:00:00Z",
+  active: false,
 });
 
 function make(
@@ -172,7 +183,7 @@ describe("resources: what the host's work costs it (issue #154)", () => {
       // Started 10 s ago: probably a short query that is about to end.
       proc(501, DAEMON, "claude", 90, { cwd: "/new", startTicks: 1_000_000 - 1000 }),
     ];
-    const snap = await make(procs).snapshot();
+    const snap = await make(procs, { sessions: [ended("/gone"), ended("/new")] }).snapshot();
     expect(snap.orphans).toEqual([
       {
         pid: 500,
@@ -204,7 +215,7 @@ describe("resources: what the host's work costs it (issue #154)", () => {
         proc(DAEMON, 1, "flightdeckd", 50),
         proc(500, DAEMON, "claude", 120, { cwd: "/gone", startTicks: 1 }),
       ],
-      { killed },
+      { killed, sessions: [ended("/gone")] },
     );
     await resources.endOrphan(500, 1);
     expect(killed).toEqual([500]);

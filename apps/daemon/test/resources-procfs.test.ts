@@ -104,7 +104,14 @@ describe("resources-procfs: nothing that holds arguments or secrets is opened (F
       proc: procfsReader({ root, pageSize: 4096, ticksPerSecond: 100 }),
       ownPid: 100,
       sessions: () => [
-        { id: "s", name: "s", cwd: "/work/x", createdAt: "2026-11-05T10:00:00Z", active: true },
+        {
+          id: "s",
+          name: "s",
+          cwd: "/work/x",
+          createdAt: "2026-11-05T10:00:00Z",
+          updatedAt: "2026-11-05T10:00:00Z",
+          active: true,
+        },
       ],
       terminals: () => [],
       memory: () => ({ totalBytes: 1, freeBytes: 1 }),

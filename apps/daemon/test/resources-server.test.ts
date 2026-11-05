@@ -41,7 +41,16 @@ async function serve(withResources = true) {
           resources: new Resources({
             proc,
             ownPid: 42,
-            sessions: () => [],
+            sessions: () => [
+              {
+                id: "old",
+                name: null,
+                cwd: "/gone",
+                createdAt: "2020-01-01T00:00:00Z",
+                updatedAt: "2100-01-01T00:00:00Z",
+                active: false,
+              },
+            ],
             terminals: () => [],
             memory: () => ({ totalBytes: 1000, freeBytes: 400 }),
             disk: async () => null,

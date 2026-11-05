@@ -11,6 +11,7 @@ export interface ResourcesDeps {
     cwd: string;
     status: string;
     createdAt: string;
+    updatedAt: string;
   }>;
   terminals(): Array<{
     terminalId: string;
@@ -75,6 +76,7 @@ export function createResources(given: ResourcesDeps): Resources {
         name: s.name,
         cwd: s.cwd,
         createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
         active: !GONE.has(s.status),
       })),
     terminals: () =>

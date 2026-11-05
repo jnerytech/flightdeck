@@ -4,20 +4,52 @@ import { createResources } from "../src/resources/wiring.ts";
 
 const MB = 1024 * 1024;
 
+/** A session of /gone that is over, alive for the whole of this century so far. */
+const OLD_SESSION = {
+  id: "old",
+  name: null,
+  cwd: "/gone",
+  status: "ended",
+  createdAt: "2020-01-01T00:00:00Z",
+  updatedAt: "2100-01-01T00:00:00Z",
+};
+
 const deps = (over: Partial<Parameters<typeof createResources>[0]> = {}) => ({
   platform: "linux" as NodeJS.Platform,
   ownPid: 42,
   dataDir: "/data",
   sessions: () => [
-    { id: "a", name: "A", cwd: "/w", status: "running", createdAt: "2026-11-05T10:00:00Z" },
-    { id: "b", name: null, cwd: "/w", status: "ended", createdAt: "2026-11-05T10:00:00Z" },
-    { id: "c", name: "C", cwd: "/w", status: "error", createdAt: "2026-11-05T10:00:00Z" },
+    {
+      id: "a",
+      name: "A",
+      cwd: "/w",
+      status: "running",
+      createdAt: "2026-11-05T10:00:00Z",
+      updatedAt: "2026-11-05T11:00:00Z",
+    },
+    {
+      id: "b",
+      name: null,
+      cwd: "/w",
+      status: "ended",
+      createdAt: "2026-11-05T10:00:00Z",
+      updatedAt: "2026-11-05T11:00:00Z",
+    },
+    {
+      id: "c",
+      name: "C",
+      cwd: "/w",
+      status: "error",
+      createdAt: "2026-11-05T10:00:00Z",
+      updatedAt: "2026-11-05T11:00:00Z",
+    },
     {
       id: "d",
       name: "D",
       cwd: "/w",
       status: "awaiting_permission",
       createdAt: "2026-11-05T10:00:00Z",
+      updatedAt: "2026-11-05T11:00:00Z",
     },
   ],
   terminals: () => [
@@ -98,7 +130,7 @@ describe("resources-wiring: the daemon's own resources (issue #154)", () => {
     await createResources(
       deps({
         proc,
-        sessions: () => [],
+        sessions: () => [OLD_SESSION],
         terminals: () => [],
         kill: (pid, sig) => void signals.push([pid, sig]),
       }),
@@ -124,7 +156,7 @@ describe("resources-wiring: the machine's own defaults (issue #154)", () => {
     };
     const resources = createResources({
       dataDir: tmpdir(),
-      sessions: () => [],
+      sessions: () => [OLD_SESSION],
       terminals: () => [],
       pidOf: () => null,
       ownPid: 42,
@@ -161,7 +193,7 @@ describe("resources-wiring: the machine's own page size and clock (F8)", () => {
       const asked: string[] = [];
       const snap = await createResources({
         dataDir: tmpdir(),
-        sessions: () => [],
+        sessions: () => [OLD_SESSION],
         terminals: () => [],
         pidOf: () => null,
         ownPid: 42,
@@ -195,5 +227,40 @@ describe("resources-wiring: getconf", () => {
     if (process.platform === "win32") return;
     expect(getconf("PAGESIZE")).toBeGreaterThanOrEqual(4096);
     expect(getconf("CLK_TCK")).toBeGreaterThan(0);
+  });
+});
+
+describe("resources-wiring: which sessions' leftovers count (N1)", () => {
+  const proc = {
+    pageSize: 4096,
+    ticksPerSecond: 100,
+    pids: async () => [42, 9],
+    stat: async (p: number) =>
+      p === 42
+        ? { pid: 42, ppid: 0, name: "flightdeckd", cpuTicks: 0, startTicks: 0, rssPages: 1 }
+        : { pid: p, ppid: 42, name: "claude", cpuTicks: 0, startTicks: 1, rssPages: 1 },
+    cwd: async () => "/gone",
+    uptimeSec: async () => 10_000,
+  };
+  const orphans = async (status: string) =>
+    (
+      await createResources(
+        deps({ proc, sessions: () => [{ ...OLD_SESSION, status }], terminals: () => [] }),
+      ).snapshot()
+    ).orphans.map((o) => o.pid);
+
+  test("an ended or an error session's leftover is an orphan; a running, starting or waiting one is not (it is alive)", async () => {
+    expect(await orphans("ended")).toEqual([9]);
+    expect(await orphans("error")).toEqual([9]);
+    for (const status of ["running", "starting", "awaiting_permission", "idle"]) {
+      expect(await orphans(status)).toEqual([]);
+    }
+  });
+
+  test("with no session of the folder at all nothing is an orphan", async () => {
+    const none = await createResources(
+      deps({ proc, sessions: () => [], terminals: () => [] }),
+    ).snapshot();
+    expect(none.orphans).toEqual([]);
   });
 });

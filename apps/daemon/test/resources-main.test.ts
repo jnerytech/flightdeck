@@ -27,7 +27,7 @@ const proc = (ownPid: number): ProcReader => ({
 });
 
 describe("resources-main: a booted daemon answers resources.get", () => {
-  test("it lists the sessions it has and the orphan the reader shows", async () => {
+  test("it lists the sessions it has, and a claude no session of this daemon ever had is not an orphan", async () => {
     const dir = tempDir("fd-res-main-");
     const file = join(dir, "config.json");
     writeFileSync(
@@ -69,6 +69,7 @@ describe("resources-main: a booted daemon answers resources.get", () => {
     expect(ack?.ok).toBe(true);
     const snap = (ack?.ok ? ack.data : null) as protocol.ResourcesSnapshot;
     expect(snap.measured).toBe(true);
-    expect(snap.orphans.map((o) => o.pid)).toEqual([90_001]);
+    // The reader shows a claude in /gone that no session of this daemon had: not one of its leftovers.
+    expect(snap.orphans).toEqual([]);
   });
 });

@@ -65,7 +65,18 @@ const session = (
   name: id,
   cwd,
   createdAt,
+  updatedAt: createdAt,
   active,
+});
+
+/** A session that is over and was alive for the whole of today (and then some): its folder's leftovers are its. */
+const ended = (cwd: string): ResourceSession => ({
+  id: `old-${cwd}`,
+  name: null,
+  cwd,
+  createdAt: "2020-01-01T00:00:00Z",
+  updatedAt: "2100-01-01T00:00:00Z",
+  active: false,
 });
 
 function make(
@@ -84,7 +95,8 @@ function make(
   return new Resources({
     proc: options.reader ?? reader(procs),
     ownPid: options.ownPid ?? DAEMON,
-    sessions: () => options.sessions ?? [],
+    // By default the old sessions of /gone and /x are over: their leftovers can be orphans.
+    sessions: () => options.sessions ?? [ended("/gone"), ended("/x")],
     terminals: () => options.terminals ?? [],
     memory: () => ({ totalBytes: 8000 * MB, freeBytes: 3000 * MB }),
     disk: async () => null,
@@ -128,7 +140,7 @@ describe("resources-security: what is never called an orphan (F1, F2, F6)", () =
     const r = make(
       [proc(DAEMON, 1, "flightdeckd"), proc(200, DAEMON, "claude", { cwd: "/work/api" })],
       {
-        sessions: [session("s", "/work/api", false)],
+        sessions: [ended("/work/api")],
       },
     );
     expect(await orphansOf(r)).toEqual([200]);

@@ -28,6 +28,8 @@ export interface ResourceSession {
   name: string | null;
   cwd: string;
   createdAt: string;
+  /** When it was last touched: for a session that is over, about when its process should have ended. */
+  updatedAt: string;
   /** Whether it can still own a process. */
   active: boolean;
 }
