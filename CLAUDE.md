@@ -46,8 +46,10 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
 - Which function a file is missing: `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` runs
   the tests that reach the files (or the ones named after --tests) and lists the functions no test
   called as `file:line`. Bun's coverage only counts them. It instruments in memory, never the sources.
-- Before hand-off from a session: `bun run typecheck`, `bun run lint`, `bun run tdd:audit`
-  and `bun run test:related`. The full suite (`bun run slot -- bun run test`) runs at the
+- Before hand-off from a session: `bun run handoff:check` runs `typecheck`, `lint`, `tdd:audit`
+  and `test:related` in order and prints a `HANDOFF <branch> <head> ...` stamp line; paste it in
+  the hand-off message. The receiver runs `bun run handoff:check -- --verify` in the worktree
+  (refused when stale or not all 0). The full suite (`bun run slot -- bun run test`) runs at the
   orchestrator's version gate and in CI, not in every session.
 - Format: `bun run format`. Smokes: `bun run slot -- bun run smoke:<name>` (list in
   `package.json`; never `smoke:real` unless asked).

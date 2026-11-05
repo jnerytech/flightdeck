@@ -33,7 +33,9 @@ checkout). Run everything inside the worktree.
 5. **The phase's smoke**, if the spec asks for one: it exists in `package.json` and prints its
    `OK`. Never run `smoke:real` or anything that calls the real Claude.
 6. **Version:** `bun run release:version v0.N.0`.
-7. **Docs:** the README (pt-BR and en), the manual and DECISIONS mention what the phase
+7. **Hand-off stamp:** when the session gave a `HANDOFF` line, `bun run handoff:check -- --verify`
+   in the worktree must print OK for its HEAD.
+8. **Docs:** the README (pt-BR and en), the manual and DECISIONS mention what the phase
    delivers.
 
 For each command, show the exit code (`echo $?` right after it). Do not trust commit messages or
