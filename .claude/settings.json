@@ -36,6 +36,19 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.ts\"; [ -f \"$f\" ] || exit 0; bun \"$f\"",
+            "timeout": 10,
+            "onFailure": "continue"
+          }
+        ]
+      }
     ]
   }
 }
