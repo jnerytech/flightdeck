@@ -423,7 +423,7 @@ describe("ClaudeSdkRuntime", () => {
         canUseTool: async () => ({ behavior: "allow" }),
       });
       const event = (await run.events[Symbol.asyncIterator]().next()).value as RuntimeEvent;
-      run.close?.();
+      await run.close?.();
       return event;
     };
     const makeQuery =
