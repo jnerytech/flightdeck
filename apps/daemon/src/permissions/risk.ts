@@ -107,6 +107,12 @@ function credential(text: string): boolean {
   );
 }
 
+/** Phase 39: OpenCode's global folder (`~/.config/opencode`): a plugin written there runs code. */
+function opencodeConfig(text: string): boolean {
+  const parts = text.toLowerCase().replaceAll("\\", "/").split("/");
+  return parts.some((p, i) => p === ".config" && parts[i + 1] === "opencode");
+}
+
 /** The words of a command, without quotes, split also where a path cannot go on. */
 const words = (command: string) => command.split(/[\s"'`;|&<>()=,]+/).filter((w) => w !== "");
 
@@ -229,11 +235,15 @@ export class RiskClassifier {
     if (WRITE_TOOLS.has(toolName)) {
       const path = text("file_path") || text("notebook_path");
       if (credential(path)) return [["high", "escrita em caminho de credencial"]];
+      if (opencodeConfig(path)) return [["high", "writes OpenCode's configuration"]];
       return this.allowed(path, cwd)
         ? [["medium", "escrita dentro do projeto"]]
         : [["high", "escrita fora do cwd e de allowedRoots"]];
     }
     if (NETWORK_TOOLS.has(toolName)) return [["medium", "acessa a rede"]];
+    // Phase 39: an OpenCode tool the normalizer could not map (Code Mode, another MCP server).
+    if (toolName.startsWith("opencode:"))
+      return [["high", "an OpenCode tool Flightdeck does not know"]];
     if (toolName.startsWith("mcp__")) {
       // Phase 17: a command Claude wrote, with a secret in its environment, from any server.
       if (toolName.endsWith("__run_with_secret")) {
@@ -273,12 +283,19 @@ export class RiskClassifier {
       }
     }
     if (words(command).some(credential)) out.push(["high", "caminho de credencial"]);
+    if (words(command).some(opencodeConfig)) out.push(["high", "writes OpenCode's configuration"]);
     if (this.extra.some((re) => re.test(command))) out.push(["high", "padrão de risk.extraHigh"]);
     return out;
   }
 
   private network(toolName: string, input: Record<string, unknown>): boolean {
-    if (NETWORK_TOOLS.has(toolName) || toolName.startsWith("mcp__")) return true;
+    if (
+      NETWORK_TOOLS.has(toolName) ||
+      toolName.startsWith("mcp__") ||
+      toolName.startsWith("opencode:")
+    ) {
+      return true;
+    }
     if (!SHELL_TOOLS.has(toolName)) return false;
     return segments(String(input.command ?? "")).some((segment) => {
       const { prog, args } = invocation(segment);
