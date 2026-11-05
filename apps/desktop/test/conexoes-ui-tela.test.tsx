@@ -74,6 +74,7 @@ describe("conexoes-ui: the screen", () => {
     await settle(() => d.commands.some((c) => c.type === "host.info"));
     render(<App store={store} />);
     await stays(() => screen.queryByRole("button", { name: "Conexões" }) === null, 100);
+    expect(screen.queryByRole("button", { name: "Conexões" })).toBeNull();
   });
 
   test("each destino shows its name, user@host:port and tags, with Conectar, Editar, Duplicar and Remover", async () => {

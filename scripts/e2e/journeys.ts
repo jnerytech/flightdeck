@@ -40,7 +40,9 @@ export async function open(c: Context, route: Route, prefs = true) {
   await c.page.waitForTimeout(1500);
   await ensureOnline({
     online: () => demoHostsOnline(c),
-    reload: async () => void (await c.page.reload()),
+    reload: async () => {
+      await c.page.reload();
+    },
     sleep: (ms) => c.page.waitForTimeout(ms),
     now: () => Date.now(),
   });

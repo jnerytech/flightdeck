@@ -77,7 +77,9 @@ export function TerminalPage(props: {
         fontSize: store.terminalFont.value,
         fontFamily: TERMINAL_FONT_FAMILY,
         clipboard: {
-          copy: async (text) => void (await store.copyText(text)),
+          copy: async (text) => {
+            await store.copyText(text);
+          },
           read: () => navigator.clipboard.readText(),
         },
         onInput: (data) => session.current?.input(data),

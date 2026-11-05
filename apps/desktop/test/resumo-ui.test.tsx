@@ -214,6 +214,11 @@ describe("resumo-ui", () => {
           "O resumo aparece depois do primeiro turno da sessão e se atualiza sozinho.",
         ) !== null,
     );
+    expect(
+      screen.queryByText(
+        "O resumo aparece depois do primeiro turno da sessão e se atualiza sozinho.",
+      ),
+    ).not.toBeNull();
   });
 
   test("it asks again until the host has indexed the transcript, then shows the summary", async () => {
@@ -239,12 +244,14 @@ describe("resumo-ui", () => {
       )
       .run(later, file);
     await settle(() => screen.queryByText("Late prompt") !== null);
+    expect(screen.queryByText("Late prompt")).not.toBeNull();
   });
 
   test("a host without the feature shows nothing at all", async () => {
     const { store } = await online("en", { legacy: true });
     await show(store);
     await stays(() => screen.queryByRole("region") === null, 100);
+    expect(screen.queryByRole("region")).toBeNull();
   });
 
   test("a session that changed no file has no files row", async () => {
@@ -290,6 +297,7 @@ describe("resumo-ui", () => {
     });
     await settle(() => screen.queryByRole("region", { name: "Session summary" }) !== null);
     await settle(() => screen.queryByText("Managed prompt") !== null);
+    expect(screen.queryByText("Managed prompt")).not.toBeNull();
   });
 
   test("a terminal session with no name and no folder yet is titled New session, never its id", async () => {

@@ -147,12 +147,18 @@ async function run(work: string): Promise<void> {
       platform: {
         storage: {
           getItem: (k) => store.get(k) ?? null,
-          setItem: (k, v) => void store.set(k, v),
+          setItem: (k, v) => {
+            store.set(k, v);
+          },
         },
         vault: {
           get: async (id: string) => vault.get(id) ?? null,
-          set: async (id: string, v: string) => void vault.set(id, v),
-          delete: async (id: string) => void vault.delete(id),
+          set: async (id: string, v: string) => {
+            vault.set(id, v);
+          },
+          delete: async (id: string) => {
+            vault.delete(id);
+          },
         } as never,
       },
       send: async (request) => {
@@ -170,7 +176,9 @@ async function run(work: string): Promise<void> {
           retryAfterMs: result.retryAfterMs,
         };
       },
-      sleep: async (ms) => void sleeps.push(ms),
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
       random: () => 0.5,
     });
     const target = (

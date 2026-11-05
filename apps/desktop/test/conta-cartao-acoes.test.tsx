@@ -123,6 +123,7 @@ describe("conta-cartao-acoes: the card watches while it is on screen", () => {
     await settle(() => screen.queryByText("demo@example.com") !== null);
     view.unmount();
     await settle(() => watchers() === 0);
+    expect(watchers()).toBe(0);
   });
 });
 

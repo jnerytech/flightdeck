@@ -1,4 +1,4 @@
-import { afterEach, describe, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { ptBR } from "../src/i18n/pt-BR.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
@@ -35,6 +35,7 @@ describe("roi-pessoas-reativa: the people table follows the people the person ke
       () => screen.queryByRole("table", { name: ptBR.roiUi.people.title }) !== null,
       3000,
     );
+    expect(screen.queryByRole("table", { name: ptBR.roiUi.people.title })).not.toBeNull();
     store.dispose();
   });
 });
