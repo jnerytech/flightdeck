@@ -184,6 +184,8 @@ describe("claude-aqui: no app", () => {
     });
     const action = screen.queryByRole("option", { name: "Abrir no terminal" });
     expect(action).not.toBeNull();
+    // A host that is reconnecting is not online for the terminal: the action would copy a command.
+    await waitFor(() => expect(store.embeddedTerminal(hostId)).toBe(true));
     await act(async () => {
       if (action) fireEvent.click(action);
     });
