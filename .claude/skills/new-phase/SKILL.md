@@ -50,7 +50,8 @@ Each item with its command and exit code visible:
       section.
 - [ ] The `spec-verifier` agent's verdict is **accept**.
 - [ ] Hand over: push the branch (`git push -u origin fase-N`), wait for its CI to be green, and
-      send the HEAD, the `HANDOFF` stamp of `bun run handoff:check`, the commands above with
+      send the HEAD, the `HANDOFF` stamp of `bun run handoff:check` (it needs that green CI run:
+      `ci=0`), the commands above with
       their exit codes, the CI run and the verifier's table. The coordinator integrates, tags and releases.
 - [ ] The spec's specific items, such as a check with the real claude. Use Sonnet and a short
       prompt, to save quota.
