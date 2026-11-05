@@ -59,8 +59,10 @@ export const CardDetail = memo(function CardDetail(props: {
   const { store, hostId, cardId } = props;
   const state = useStoreSlice(store, CARDDETAIL_KEYS);
   const card = state.cards[sessionKey(hostId, cardId)];
-  const [description, setDescription] = useState(card?.description ?? "");
-  const [title, setTitle] = useState(card?.title ?? "");
+  // Issue #170: a draft exists only while the person edits; until then the fields show the card as
+  // it is now, so a card that arrives after the screen opens (or changes elsewhere) fills them.
+  const [descriptionDraft, setDescription] = useState<string | null>(null);
+  const [titleDraft, setTitle] = useState<string | null>(null);
   const [adjustment, setAdjustment] = useState("");
   const [tab, setTab] = useState<"conversation" | "diff">("conversation");
   const [confirming, setConfirming] = useState<Confirming | null>(null);
@@ -156,6 +158,8 @@ export const CardDetail = memo(function CardDetail(props: {
   }, [store, hostId, cardId, missing]);
 
   if (!card) return <p className="p-6 text-muted-foreground text-sm">{t("cardUi.notFound")}</p>;
+  const title = titleDraft ?? card.title;
+  const description = descriptionDraft ?? card.description;
 
   const askDiscard = async () => {
     const current = card.worktreePath
@@ -308,9 +312,16 @@ export const CardDetail = memo(function CardDetail(props: {
           <ActionButton
             variant="outline"
             disabled={title.trim() === "" || title.trim() === card.title}
-            onClick={() =>
-              store.hostCommand(hostId, "card.update", { cardId, title: title.trim() })
-            }
+            onClick={async () => {
+              const sent = title;
+              const saved = await store.hostCommand(hostId, "card.update", {
+                cardId,
+                title: sent.trim(),
+              });
+              // A refused save keeps the edit (the banner says why), and so does a newer edit
+              // typed while this one was on its way.
+              if (saved) setTitle((draft) => (draft === sent ? null : draft));
+            }}
           >
             {t("cardUi.saveTitle")}
           </ActionButton>
@@ -324,7 +335,15 @@ export const CardDetail = memo(function CardDetail(props: {
           />
           <ActionButton
             variant="outline"
-            onClick={() => store.hostCommand(hostId, "card.update", { cardId, description })}
+            disabled={description === card.description}
+            onClick={async () => {
+              const sent = description;
+              const saved = await store.hostCommand(hostId, "card.update", {
+                cardId,
+                description: sent,
+              });
+              if (saved) setDescription((draft) => (draft === sent ? null : draft));
+            }}
           >
             {t("cardUi.saveDescription")}
           </ActionButton>
