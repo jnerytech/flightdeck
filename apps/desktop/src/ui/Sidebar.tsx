@@ -625,6 +625,7 @@ export function Sidebar(
 function HostDot(props: Readonly<{ host: HostView; t: T }>) {
   return (
     <StatusDot
+      dot
       {...hostDotView(props.host.status)}
       label={props.t("sidebar.hostState", {
         host: props.host.name,
