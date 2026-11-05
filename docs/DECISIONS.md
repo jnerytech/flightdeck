@@ -3952,3 +3952,19 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   on several hosts, the host's folder key when two folders of one host share a name), not the smallest project key among the rows
   present, which changed when a host went offline. `group.key` still names a real project for the client scope. A fold saved under the
   old key still counts until the person chooses again; no migration of storage.
+
+## Phase 40: AI assistant (provider keys, the magic wand, commit and PR messages)
+
+- **Base.** `fase-40` starts from `rc/0364` (v0.36.4), not from `main`: the spec was reviewed against that tree, and
+  `spec:lint`, the usage indexer's current shape and the Costs page it describes are there. When v0.36.4 is tagged, `main`
+  fast-forwards to it, and the branch merges `origin/main`; it is never rebased.
+- **The spec's review** (fd-developer, 2026-11-05, against `rc/0364`) is applied in `docs/SPEC-fase-40.md`:
+  - `risk.ts` exports `isCredentialPath`, in a commit of its own before `assistant-context`.
+  - `UsageIndexer.record` gains optional `messageId`, `origin`, `provider` and `costUsd`.
+  - The Rust guards are `pub` functions, and the `#[tauri::command]`s wrap them, because an integration test reaches only
+    `pub` items. `spawn_blocking_result` moves to a shared `pub(crate)` module.
+  - A word diff is new in `lib/`.
+  - `Mod+I` gets a dictionary key, `shortcuts.assistField`.
+  - The "add an Anthropic key" scenario stays out of the e2e, which runs on the web build.
+  The research behind the spec is `docs/research-fase-40.md`.
+- **Open questions.** The phase follows each default of the spec's list until the maintainer says otherwise.
