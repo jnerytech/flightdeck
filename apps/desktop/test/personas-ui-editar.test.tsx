@@ -63,7 +63,7 @@ describe("personas-ui-editar: Edit opens where the persona is (issue #134)", () 
     const form = last.querySelector("form") as HTMLElement;
     expect(form).not.toBeNull();
     expect(screen.getAllByRole("textbox", { name: "Nome" })).toHaveLength(1);
-    expect(within(form).getByLabelText("Nome") === document.activeElement).toBe(true);
+    expect(document.activeElement).toBe(within(form).getByLabelText("Nome"));
     expect(scrolled.some((el) => el.tagName === "FORM" && last.contains(el))).toBe(true);
     // The other cards are still there, with their own Edit buttons.
     expect(items().length).toBeGreaterThan(1);
@@ -78,7 +78,7 @@ describe("personas-ui-editar: Edit opens where the persona is (issue #134)", () 
     viewport().scrollTop = 0;
     await click(within(last).getByRole("button", { name: "Cancelar" }));
     expect(last.querySelector("form")).toBeNull();
-    expect(document.activeElement === button(`Editar ${name}`)).toBe(true);
+    expect(document.activeElement).toBe(button(`Editar ${name}`));
     expect(viewport().scrollTop).toBe(321);
   });
 
@@ -91,7 +91,7 @@ describe("personas-ui-editar: Edit opens where the persona is (issue #134)", () 
     viewport().scrollTop = 0;
     await click(within(last).getByRole("button", { name: "Salvar persona" }));
     await settle(() => screen.queryByRole("button", { name: `Editar ${name}` }) !== null);
-    expect(document.activeElement === button(`Editar ${name}`)).toBe(true);
+    expect(document.activeElement).toBe(button(`Editar ${name}`));
     expect(viewport().scrollTop).toBe(200);
   });
 
@@ -99,7 +99,7 @@ describe("personas-ui-editar: Edit opens where the persona is (issue #134)", () 
     await open();
     await click(button("Nova persona"));
     const id = screen.getByLabelText("Id");
-    expect(id === document.activeElement).toBe(true);
+    expect(document.activeElement).toBe(id);
     expect(items().every((li) => li.querySelector("form") === null)).toBe(true);
   });
 });
