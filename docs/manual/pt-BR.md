@@ -668,7 +668,9 @@ foram conferidos numa máquina real.
 **Nova sessão** mostra **Agente** só num host com o OpenCode ligado. Escolha **OpenCode**: a lista de
 modelos vem do host (`opencode models`), **Esforço** escolhe o quanto o modelo trabalha, e os modos de
 permissão são **Padrão** e **Planejar** (e **Ignorar permissões** quando o host permite). Não há
-persona. A página da sessão mostra um selo **OpenCode**.
+persona. Os modelos vêm agrupados por provedor. A página da sessão e a linha dela na lista de
+sessões mostram um selo **OpenCode**. A linha do tempo diz quando o `AGENTS.md` do projeto foi com a
+primeira mensagem, ou por que não foi.
 
 ### O que uma sessão do OpenCode pergunta
 
@@ -686,11 +688,12 @@ persona. A página da sessão mostra um selo **OpenCode**.
 ### O que uma sessão do OpenCode ainda não tem
 
 Isto fica com as sessões do Claude Code por enquanto: personas, times e mensagens entre sessões,
-cards do quadro e variantes da arena, começar em segundo plano, bifurcar, a linha do tempo
-(checkpoints e voltar arquivos), "Abrir no terminal", o resumo da sessão, trocar o modelo de uma
-sessão em andamento, os modos Aceitar edições e Automático, a aprovação automática, a página de
-Custos com orçamentos e cota, importar as sessões antigas do OpenCode para o Histórico, e a tela de
-MCP. A linha de resultado de cada turno ainda mostra o custo da sessão até ali, como o OpenCode
+cards do quadro e variantes da arena, começar em segundo plano, bifurcar, "Abrir no terminal", o
+resumo da sessão, as abas Mudanças, Tempo e Rastro (elas leem a transcrição do Claude Code), os
+modos Aceitar edições e Automático, a aprovação automática, a página de Custos com orçamentos e
+cota, importar as sessões antigas do OpenCode para o Histórico, e a tela de MCP. A linha do tempo
+continua: os snapshots git são feitos a cada turno, então voltar arquivos funciona, e o modelo pode
+ser trocado com a sessão em andamento, pela lista do OpenCode. A linha de resultado de cada turno ainda mostra o custo da sessão até ali, como o OpenCode
 informa.
 
 ### Por que o opencode.json do projeto é ignorado

@@ -3843,6 +3843,47 @@ Probes for this round (2026-11-05; no credential read; every probe session delet
 - **The pure parts** (the hostile project, the options it answers with, the saved rules' ids, `--model`) are in
   `scripts/lib/opencode-real.ts` with `scripts/test/opencode-real.test.ts` (scope `opencode-real`, not a row of the table).
 
+### Phase 39: the spec-verifier's round (2026-11-05)
+
+Fixed after its report:
+
+- **`AGENTS.md` followed links** (its blocker): a repo's `AGENTS.md` linked to `~/.aws/credentials` would have gone to the
+  model on the first prompt. It is now sent only when its real path is inside the folder's and is not a credential (the
+  check reads, globs and greps already had); otherwise it is skipped and the timeline says so.
+- **The app pieces of the spec:** the model list grouped by provider, in the form and in the live switch of an OpenCode
+  session (the switch had been hidden with a wrong reason: `setModel` works for OpenCode); the badge in the hub's cards and
+  list; the text when a denial stopped the turn; the `AGENTS.md` line or its skipped notice; no Changes, Time, Trace or
+  Messages tab (they read Claude Code's transcript, or messaging, which OpenCode sessions stay out of). The timeline stays,
+  as the spec says: snapshots are taken on every turn edge whatever the runtime, so the git-snapshot rewind works (its fork
+  answers `runtime_unsupported`).
+- **The unsafe scan names what it found** in the doctor's row (CLI and host page), with the paths.
+- **macOS managed preferences** (`/Library/Managed Preferences`, and the user's folder in it) are scanned by default, and
+  any file in the system folder is a finding, not only the three config names.
+
+Decided as they are:
+
+- **The model list is a native select**, grouped by provider; its type-ahead is the search.
+- **Effort is offered for every OpenCode session.** Whether OpenCode offers an `effort` option is known only after
+  `session/new`, after the form; the runtime sets it only when the option exists.
+- **The host page shows OpenCode through the doctor's row** (available, version, reason and findings), not a separate
+  `host.info.runtimes` block.
+- **The scope fingerprint covers the config files and the code folders**, not every file of the global folder. A global
+  agent or command added mid-session changes nothing a running session may do: our agents are inline and beat same-id
+  ones, other agents are disabled at the preflight and a mode switch fails the session, commands are not offered and `/`
+  is neutralized.
+- **The preflight's cache key has no config-content hash:** the content is decided by the checks themselves (the extra
+  agents they disable) from the same folder, OpenCode version and scope fingerprint the key holds.
+- **The usage ledger and the account:** an OpenCode turn's cost goes to `usage.record` like a Claude turn's; the Costs
+  page, budgets and quota for OpenCode stay in phase 40 (the scope cut). `turnEnded` and `divergences()` are skipped by
+  construction (the runtime check in `onTurn`; `usage_entries` come only from Claude transcripts).
+- **`SessionManagerOptions` keeps `runtime` plus `opencode`** rather than a `runtimes` map: there are two runtimes.
+
+The kill check (by hand, 2026-11-05, Sonnet on the Pi): an OpenCode session ran an approved `sleep 287`; the daemon
+stopped with SIGTERM left no `sleep` and no `opencode acp` behind. Killed with SIGKILL, `opencode acp` exited when its
+stdin closed but the `sleep` it started survived (an orphan in its own process group), as any child of a killed process
+does. Under the systemd service the unit's control group is cleaned when it stops or restarts. Proposed for phase 40: a pid
+ledger of OpenCode process groups in the data folder, reaped at the next start.
+
 ## A conversation opens on its latest message (issue #112)
 
 - **The end follows the layout, not only the messages.** Images, code blocks and the summary panel change the height after

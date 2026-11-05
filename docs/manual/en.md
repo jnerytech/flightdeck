@@ -680,7 +680,9 @@ shows it on its OpenCode row. That row never fails the doctor. On Windows and ma
 **New session** shows **Agent** only on a host that has OpenCode on. Choose **OpenCode**: the model
 list comes from the host (`opencode models`), **Effort** picks how hard the model works, and the
 permission modes are **Default** and **Plan** (and **Bypass permissions** when the host allows it).
-There is no persona. The session's page shows an **OpenCode** badge.
+There is no persona. The models are grouped by provider. The session's page and its row in the
+session list show an **OpenCode** badge. The timeline says when the project's `AGENTS.md` went with
+the first message, or why it did not.
 
 ### What an OpenCode session asks
 
@@ -698,10 +700,12 @@ There is no persona. The session's page shows an **OpenCode** badge.
 ### What an OpenCode session does not have yet
 
 These stay with Claude Code sessions for now: personas, teams and messages between sessions,
-board cards and arena variants, starting in the background, fork, the timeline (checkpoints and
-rewind), "Open in terminal", the session summary, switching the model of a running session, the
-Accept edits and Automatic modes, automatic approval, the Costs page with its budgets and quota,
-importing OpenCode's past sessions into History, and the MCP screen. Each turn's result line still
+board cards and arena variants, starting in the background, fork, "Open in terminal", the session
+summary, the Changes, Time and Trace tabs (they read Claude Code's transcript), the Accept edits and
+Automatic modes, automatic approval, the Costs page with its budgets and quota, importing
+OpenCode's past sessions into History, and the MCP screen. The timeline stays: its git snapshots
+are taken on every turn, so rewinding files works, and the model can be switched while the session
+runs, from OpenCode's list. Each turn's result line still
 shows the session's cost so far, as OpenCode reports it.
 
 ### Why the project's own opencode.json is ignored
