@@ -139,13 +139,9 @@ async function isLink(path: string): Promise<boolean> {
  */
 async function readEnd(path: string): Promise<string | null> {
   if (await isLink(path)) return null;
-  let file: Awaited<ReturnType<typeof open>>;
+  let file: Awaited<ReturnType<typeof open>> | undefined;
   try {
     file = await open(path, constants.O_RDONLY | NO_FOLLOW);
-  } catch {
-    return null;
-  }
-  try {
     const info = await file.stat();
     if (!info.isFile()) return null;
     const start = Math.max(0, info.size - TAIL_BYTES);
@@ -155,8 +151,9 @@ async function readEnd(path: string): Promise<string | null> {
     // A window that starts in the middle of a line does not hand out the piece.
     return start > 0 ? text.slice(text.indexOf("\n") + 1) : text;
   } catch {
+    // Missing, a link, unreadable: nothing to hand out.
     return null;
   } finally {
-    await file.close();
+    await file?.close();
   }
 }
