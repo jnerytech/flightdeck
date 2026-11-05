@@ -97,4 +97,15 @@ describe("log-tauri: the shell's log file (issue #255)", () => {
     expect(rust).toMatch(/const LOG_TAIL_BYTES: u64 = 256 \* 1024;/);
     expect(rust).toContain("SeekFrom::Start");
   });
+
+  test("opening the folder makes it private too, and only a regular file is opened (no link, no pipe)", () => {
+    const opener = /async fn open_logs_dir[\s\S]*?\n}\n/.exec(rust)?.[0] ?? "";
+    expect(opener).toContain("make_log_dir(&dir)");
+    expect(opener).not.toContain("create_dir_all");
+    expect(rust).toMatch(/fn is_regular_file\(/);
+    const reader = /fn read_log_end[\s\S]*?\n}\n/.exec(rust)?.[0] ?? "";
+    const writer = /fn open_live_log[\s\S]*?\n}\n/.exec(rust)?.[0] ?? "";
+    expect(reader).toContain("is_regular_file");
+    expect(writer).toContain("exists_but_not_regular");
+  });
 });
