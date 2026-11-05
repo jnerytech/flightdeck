@@ -1,6 +1,6 @@
 import type { ResourceRow, ResourcesSnapshot } from "@flightdeck/protocol";
 import { TriangleAlert } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Bar } from "@/components/layout/bar";
 import { Panel } from "@/components/layout/panel";
@@ -100,9 +100,17 @@ export function HostResources(props: {
   const [ending, setEnding] = useState<ResourcesSnapshot["orphans"][number] | null>(null);
   const offered = hasFeature(host.hostInfo?.features, "resources", false);
   const reading = offered && host.status === "online" && props.active !== false;
+  // A read that has not come back is not asked again: a slow host is not piled up with requests.
+  const inFlight = useRef(false);
   const read = useCallback(async () => {
-    const next = await store.hostCommand(host.id, "resources.get", {});
-    if (next) setSnap(next);
+    if (inFlight.current) return;
+    inFlight.current = true;
+    try {
+      const next = await store.hostCommand(host.id, "resources.get", {});
+      if (next) setSnap(next);
+    } finally {
+      inFlight.current = false;
+    }
   }, [store, host.id]);
   useEffect(() => {
     if (!reading) return;

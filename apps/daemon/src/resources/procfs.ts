@@ -18,7 +18,7 @@ export function parseStat(line: string): ProcStat | null {
     .split(/\s+/);
   const field = (n: number) => Number(rest[n - 3]);
   const values = [field(4), field(14), field(15), field(22), field(24)];
-  if (!Number.isInteger(pid) || values.some((v) => !Number.isFinite(v))) return null;
+  if (!Number.isInteger(pid) || pid <= 0 || values.some((v) => !Number.isFinite(v))) return null;
   const [ppid, utime, stime, startTicks, rssPages] = values as [
     number,
     number,

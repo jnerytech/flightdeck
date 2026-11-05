@@ -1016,6 +1016,8 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "resources.get":
         return ok(command.type, await resources().snapshot());
       case "resources.endOrphan":
+        // Like the other commands that change the host: not from beyond loopback and Tailscale.
+        requireVaultTransport(ws.data.origin, "resources.endOrphan", opts.log);
         await resources().endOrphan(command.payload.pid, command.payload.startTicks);
         return ok(command.type, { ended: true });
       case "maintenance.status":

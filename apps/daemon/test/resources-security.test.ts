@@ -307,7 +307,7 @@ describe("resources-security: the request (F5, F6)", () => {
   test("F5: ending an orphan asks for the same transport as the other host-changing commands", () => {
     const source = readFileSync(join(import.meta.dir, "../src/server.ts"), "utf8");
     expect(source).toMatch(
-      /case "resources\.endOrphan":\s*\n\s*requireVaultTransport\(ws\.data\.origin, "resources\.endOrphan"/,
+      /case "resources\.endOrphan":[\s\S]{0,200}?requireVaultTransport\(ws\.data\.origin, "resources\.endOrphan"/,
     );
   });
 });

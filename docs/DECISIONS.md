@@ -3586,3 +3586,28 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   watching while the panel is closed, which the no-timer rule forbids until the status bar exists), End session per row, the session
   view's own line, Windows and macOS samplers. The Resources panel is on the host page's single page; when the tabbed host page lands
   (`host-page-sessions`), pass `active={tab === "usage"}` so a hidden tab does not poll.
+
+### Host resources: the OpenCode security review (issue #154)
+
+Findings F1 to F8 of `opencode-resources-review.md`, all fixed test-first (`resources-security.test.ts`; each guard was removed once to see its test fail).
+
+- **F1/F2: fail closed.** An orphan is a `claude` that is a direct child of the daemon, with a *readable* folder, in a folder where *no active
+  session* lives (`<path> (deleted)` counts as the path), older than 60 s, not a terminal's root. Where a session and one or more
+  processes share a folder, none is called an orphan: which is whose cannot be told. An ended session's lingering process is still an
+  orphan. The rows may still swap the numbers of two sessions in one folder; that no longer decides what is killed.
+- **F3.** The orphan carries `startTicks`; `resources.endOrphan {pid, startTicks}` is refused unless that very process is listed, and the
+  process is read again right before `kill` (same start, still a child of the daemon, same name). ESRCH is "ended"; any other error is
+  not hidden. SIGTERM goes to the root pid only (grandchildren survive, though the row shows the tree's memory).
+- **F4.** One shared snapshot: whoever asks while it is being read gets the same promise, and it is kept for 1.5 s (which also gives every
+  reader the same CPU window). `/proc` is read 32 processes at a time, `children` is built with push, and the tree walk keeps a visited set.
+  `endOrphan` reads on its own and never touches the CPU samples. The panel does not ask again while a read is out. A per-connection rate
+  limit was not added: the cache already makes extra callers free.
+- **F5.** `resources.endOrphan` requires the vault transport (loopback or Tailscale). `resources.get` stays open. The test pins the guard in
+  the source because a test connection is always loopback.
+- **F6.** Guards now pinned: the `claude` name filter, a terminal whose program is `claude`, an unreadable folder, a shared folder, a
+  `(deleted)` folder, the start-time check, the re-read before the kill, ESRCH, the batch size, the visited set, the request's validation
+  (pid 0, -1, 1.5, a missing start, an extra key), and a snapshot taken through the real `/proc` reader over a readable command line and
+  environment that must not appear.
+- **F7.** A daemon that is pid 1 lists no orphans. A process name is cleaned of control characters and cut to 32.
+- **F8.** The page size and clock ticks come from `getconf PAGESIZE` and `CLK_TCK` (4096 and 100 when it cannot say); `parseStat` refuses a
+  pid that is not positive.

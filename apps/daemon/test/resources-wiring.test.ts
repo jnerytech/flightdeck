@@ -6,7 +6,7 @@ const MB = 1024 * 1024;
 
 const deps = (over: Partial<Parameters<typeof createResources>[0]> = {}) => ({
   platform: "linux" as NodeJS.Platform,
-  ownPid: 1,
+  ownPid: 42,
   dataDir: "/data",
   sessions: () => [
     { id: "a", name: "A", cwd: "/w", status: "running", createdAt: "2026-11-05T10:00:00Z" },
@@ -87,11 +87,11 @@ describe("resources-wiring: the daemon's own resources (issue #154)", () => {
     const proc = {
       pageSize: 4096,
       ticksPerSecond: 100,
-      pids: async () => [1, 9],
+      pids: async () => [42, 9],
       stat: async (pid: number) =>
-        pid === 1
-          ? { pid: 1, ppid: 0, name: "flightdeckd", cpuTicks: 0, startTicks: 0, rssPages: 1 }
-          : { pid: 9, ppid: 1, name: "claude", cpuTicks: 0, startTicks: 1, rssPages: 1 },
+        pid === 42
+          ? { pid: 42, ppid: 0, name: "flightdeckd", cpuTicks: 0, startTicks: 0, rssPages: 1 }
+          : { pid: 9, ppid: 42, name: "claude", cpuTicks: 0, startTicks: 1, rssPages: 1 },
       cwd: async () => "/gone",
       uptimeSec: async () => 10_000,
     };
@@ -114,11 +114,11 @@ describe("resources-wiring: the machine's own defaults (issue #154)", () => {
     const proc = {
       pageSize: 4096,
       ticksPerSecond: 100,
-      pids: async () => [1, pid],
+      pids: async () => [42, pid],
       stat: async (p: number) =>
         p === 1
-          ? { pid: 1, ppid: 0, name: "flightdeckd", cpuTicks: 0, startTicks: 0, rssPages: 1 }
-          : { pid: p, ppid: 1, name: "claude", cpuTicks: 0, startTicks: 1, rssPages: 1 },
+          ? { pid: 42, ppid: 0, name: "flightdeckd", cpuTicks: 0, startTicks: 0, rssPages: 1 }
+          : { pid: p, ppid: 42, name: "claude", cpuTicks: 0, startTicks: 1, rssPages: 1 },
       cwd: async () => "/gone",
       uptimeSec: async () => 10_000,
     };
@@ -127,7 +127,7 @@ describe("resources-wiring: the machine's own defaults (issue #154)", () => {
       sessions: () => [],
       terminals: () => [],
       pidOf: () => null,
-      ownPid: 1,
+      ownPid: 42,
       platform: "linux",
       proc,
     });
@@ -143,7 +143,7 @@ describe("resources-wiring: the machine's own defaults (issue #154)", () => {
 
 describe("resources-wiring: the machine's own page size and clock (F8)", () => {
   test("the /proc reader uses the page size and ticks the machine says, not guesses", async () => {
-    const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import("node:fs");
+    const { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } = await import("node:fs");
     const { join } = await import("node:path");
     const root = mkdtempSync(join(tmpdir(), "fd-proc-wiring-"));
     try {
@@ -155,15 +155,16 @@ describe("resources-wiring: the machine's own page size and clock (F8)", () => {
           `${pid} (${name}) S ${ppid} 1 1 0 -1 0 0 0 0 0 0 0 0 0 20 0 1 0 ${start} 1 ${rss} 1`,
         );
       };
-      add(1, 0, "flightdeckd", 1, 0);
-      add(9, 1, "claude", 100, 1);
+      add(42, 0, "flightdeckd", 1, 0);
+      add(9, 42, "claude", 100, 1);
+      symlinkSync("/gone", join(root, "9", "cwd"));
       const asked: string[] = [];
       const snap = await createResources({
         dataDir: tmpdir(),
         sessions: () => [],
         terminals: () => [],
         pidOf: () => null,
-        ownPid: 1,
+        ownPid: 42,
         platform: "linux",
         procRoot: root,
         sysconf: (name) => {
@@ -173,7 +174,7 @@ describe("resources-wiring: the machine's own page size and clock (F8)", () => {
       }).snapshot();
       expect(asked.sort()).toEqual(["CLK_TCK", "PAGESIZE"]);
       // 100 pages of 16 KB, and a start of 1 tick at 250 per second in a 10 000 s uptime.
-      expect(snap.orphans[0]).toMatchObject({ pid: 9, rssBytes: 100 * 16384, ageSec: 9999 });
+      expect(snap.orphans[0]).toMatchObject({ pid: 9, rssBytes: 100 * 16384, ageSec: 10_000 });
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -185,5 +186,14 @@ describe("resources-wiring: the machine's own page size and clock (F8)", () => {
     expect(defaultSysconf(() => null, "CLK_TCK")).toBe(100);
     expect(defaultSysconf((name) => (name === "PAGESIZE" ? 65536 : 128), "PAGESIZE")).toBe(65536);
     expect(defaultSysconf(() => Number.NaN, "CLK_TCK")).toBe(100);
+  });
+});
+
+describe("resources-wiring: getconf", () => {
+  test("the machine's own page size and clock are asked, and are whole positive numbers", async () => {
+    const { getconf } = await import("../src/resources/wiring.ts");
+    if (process.platform === "win32") return;
+    expect(getconf("PAGESIZE")).toBeGreaterThanOrEqual(4096);
+    expect(getconf("CLK_TCK")).toBeGreaterThan(0);
   });
 });

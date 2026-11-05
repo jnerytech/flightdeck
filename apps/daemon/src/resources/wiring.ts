@@ -56,7 +56,16 @@ export function createResources(given: ResourcesDeps): Resources {
     kill: (pid: number, signal: NodeJS.Signals) => void process.kill(pid, signal),
     ...given,
   };
-  const proc = deps.platform === "linux" ? (deps.proc ?? procfsReader()) : null;
+  const ask = deps.sysconf ?? getconf;
+  const proc =
+    deps.platform === "linux"
+      ? (deps.proc ??
+        procfsReader({
+          root: deps.procRoot ?? "/proc",
+          pageSize: defaultSysconf(ask, "PAGESIZE"),
+          ticksPerSecond: defaultSysconf(ask, "CLK_TCK"),
+        }))
+      : null;
   return new Resources({
     proc,
     ownPid: deps.ownPid,
@@ -97,10 +106,26 @@ export function createResources(given: ResourcesDeps): Resources {
   });
 }
 
-/** Stub: the machine's value, or the usual one when it cannot say. */
+/** The machine's value of `name` (`getconf`), or the usual one when it cannot say. */
 export function defaultSysconf(
-  _ask: (name: "PAGESIZE" | "CLK_TCK") => number | null,
-  _name: "PAGESIZE" | "CLK_TCK",
+  ask: (name: "PAGESIZE" | "CLK_TCK") => number | null,
+  name: "PAGESIZE" | "CLK_TCK",
 ): number {
-  return 0;
+  const value = ask(name);
+  return value !== null && Number.isFinite(value) && value > 0
+    ? value
+    : name === "PAGESIZE"
+      ? 4096
+      : 100;
+}
+
+/** Asks `getconf`; null when it is not there or answers something else. */
+export function getconf(name: "PAGESIZE" | "CLK_TCK"): number | null {
+  try {
+    const out = Bun.spawnSync(["getconf", name], { stdout: "pipe", stderr: "ignore" });
+    const value = Number.parseInt(out.stdout.toString().trim(), 10);
+    return out.exitCode === 0 && Number.isFinite(value) ? value : null;
+  } catch {
+    return null;
+  }
 }

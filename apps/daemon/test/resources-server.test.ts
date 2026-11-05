@@ -15,13 +15,13 @@ const MB = 1024 * 1024;
 const proc: ProcReader = {
   pageSize: 4096,
   ticksPerSecond: 100,
-  pids: async () => [1, 500],
+  pids: async () => [42, 500],
   stat: async (pid) =>
-    pid === 1
-      ? { pid: 1, ppid: 0, name: "flightdeckd", cpuTicks: 0, startTicks: 0, rssPages: 100 }
+    pid === 42
+      ? { pid: 42, ppid: 0, name: "flightdeckd", cpuTicks: 0, startTicks: 0, rssPages: 100 }
       : {
           pid: 500,
-          ppid: 1,
+          ppid: 42,
           name: "claude",
           cpuTicks: 0,
           startTicks: 1,
@@ -40,7 +40,7 @@ async function serve(withResources = true) {
       ? {
           resources: new Resources({
             proc,
-            ownPid: 1,
+            ownPid: 42,
             sessions: () => [],
             terminals: () => [],
             memory: () => ({ totalBytes: 1000, freeBytes: 400 }),
@@ -88,7 +88,7 @@ describe("resources-server: over the wire (issue #154)", () => {
 
   test("resources.endOrphan ends the orphan, and refuses a pid that is not one", async () => {
     const { client, killed } = await serve();
-    const refused = await client.request("resources.endOrphan", { pid: 1, startTicks: 0 });
+    const refused = await client.request("resources.endOrphan", { pid: 42, startTicks: 0 });
     expect(refused.ok).toBe(false);
     expect(killed).toEqual([]);
     const done = await client.data<{ ended: boolean }>("resources.endOrphan", {

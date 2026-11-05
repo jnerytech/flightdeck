@@ -2474,7 +2474,11 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
   environment). Memory or disk at 80% reads **High** and at 90% **Critical**, in words as well as
   colour. **Leftover processes** lists a `claude` that the host's daemon started and no session
   owns (older than a minute), with its pid, age and memory; **End** asks first and ends only that
-  process (the daemon checks again that it is still one of its own children without an owner). The
+  process (the daemon checks again, right before the signal, that it is the same process, by pid and
+  start time, still its own child and still without an owner). A `claude` whose folder cannot be read,
+  or that runs in a folder where a live session is, is never listed: which one is whose cannot be told.
+  A daemon running as pid 1 (a container) lists none. Ending needs a connection from loopback or
+  Tailscale, like the other commands that change the host, and sends SIGTERM to that process only. The
   panel reads every 5 s while the page is open and the host is online, and the daemon keeps no
   timer for it. Per-process numbers come from `/proc`, so only Linux hosts have them; macOS and
   Windows hosts show the memory and disk (and the load, on macOS) and say the processes are not
