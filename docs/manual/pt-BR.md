@@ -501,8 +501,14 @@ histórico.
   teclado: **Copiar mensagem**, **Bifurcar a partir daqui** (na última mensagem: leva a conversa
   inteira até ali), **Fixar sessão** e há quanto tempo a mensagem foi escrita.
 - A caixa flutua no fim da tela como um cartão arredondado. O **+** anexa imagens (quando o host
-  suporta). Sob o cartão, uma linha de estado mostra o modelo e o modo de permissão, cada um um
-  seletor quando a sessão deixa mudar, e um indicador girando enquanto um turno roda. Durante o
+  suporta). Sob o cartão, uma linha de estado mostra o modelo e o modo de permissão, e um
+  indicador girando enquanto um turno roda. Quando a sessão deixa mudar, o modo é um **chip** (por
+  exemplo "Padrão"): clique nele, ou foque e tecle Enter, para abrir o menu **Modo** com todos os
+  modos, o que cada um faz e seu número (tecle 1 a 4 para escolher). **Shift+Tab** na caixa
+  alterna entre Padrão, Aceitar edições e Planejar. **Ignorar permissões** também está no menu,
+  mas o ciclo nunca cai nele: ele pergunta antes, citando o host e a sessão, e o chip fica
+  vermelho enquanto está ligado. Em um host com a chave desligada (ou para um modo mais solto que
+  o da partida da sessão) a linha fica esmaecida, diz por quê e leva às configurações do host. Durante o
   turno, uma linha acima da caixa diz o que está acontecendo ("Executando um comando", "Editando
   arquivos", "Esperando você") e há quanto tempo; o indicador para de girar se o sistema pedir
   menos movimento.

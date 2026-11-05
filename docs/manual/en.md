@@ -516,8 +516,14 @@ A session appears only once. The order of preference is managed, then terminal, 
   here** (on the latest message: it carries the whole conversation so far), **Pin session** and how
   long ago the message was written.
 - The box floats at the bottom as a rounded card. **+** attaches images (when the host supports it).
-  Under the card a status line shows the model and the permission mode, each a picker when the
-  session lets you change it, and a spinner while a turn runs. While a turn runs a line above the
+  Under the card a status line shows the model and the permission mode, and a spinner while a turn
+  runs. When the session lets you change them, the mode is a **chip** (for example "Default"):
+  click it, or focus it and press Enter, to open the **Mode** menu with every mode, what it does
+  and its number (press 1 to 4 to pick one). **Shift+Tab** in the box cycles Default, Accept edits
+  and Plan. **Bypass permissions** is in the menu too, but the chip never lands on it by cycling:
+  it asks first, naming the host and the session, and the chip turns red while it is on. On a
+  host where the switch is off (or for a mode looser than the one the session started with) the
+  row is greyed out, says why, and links to the host's settings. While a turn runs a line above the
   box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
   long; the spinner stops moving if your system asks for reduced motion.
 
