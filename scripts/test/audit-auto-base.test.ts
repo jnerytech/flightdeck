@@ -30,9 +30,28 @@ describe("audit-auto-base", () => {
     const git = fakeGit({
       "rev-parse HEAD": `${HEAD}\n`,
       "merge-base HEAD origin/main": `${HEAD}\n`,
-      "describe --tags --abbrev=0 HEAD": "v0.36.2\n",
+      "describe --tags --abbrev=0 --match v[0-9]* HEAD": "v0.36.2\n",
     });
     expect(auditBase(git)).toBe("v0.36.2");
+  });
+
+  test("on a local main with commits not pushed yet, the base is still the last release tag", () => {
+    const git = fakeGit({
+      "rev-parse HEAD": `${HEAD}\n`,
+      "symbolic-ref --short HEAD": "main\n",
+      "merge-base HEAD origin/main": `${BASE}\n`,
+      "describe --tags --abbrev=0 --match v[0-9]* HEAD": "v0.36.2\n",
+    });
+    expect(auditBase(git)).toBe("v0.36.2");
+  });
+
+  test("a phase tag (fase-N) is never the base: only release tags v* count", () => {
+    const git = fakeGit({
+      "rev-parse HEAD": `${HEAD}\n`,
+      "merge-base HEAD origin/main": `${HEAD}\n`,
+      "describe --tags --abbrev=0 HEAD": "fase-39\n",
+    });
+    expect(auditBase(git)).toBeNull();
   });
 
   test("no main and no tag gives no base", () => {
