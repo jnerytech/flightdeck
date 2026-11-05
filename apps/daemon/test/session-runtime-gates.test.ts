@@ -82,7 +82,7 @@ describe("session-runtime-gates", () => {
       .eventsSince(sessionId)
       .find((e) => e.event.type === "permission.requested");
     manager.respondPermission({
-      requestId: (request?.event as { requestId: string }).requestId,
+      requestId: (request?.event as { requestId?: string } | undefined)?.requestId ?? "",
       decision: "allow",
     });
     expect(await poll(() => turns.length === 1)).toBe(true);
