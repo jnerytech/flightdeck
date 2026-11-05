@@ -4,6 +4,7 @@ import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { NAV_ICONS } from "@/components/nav-icons";
 import { SessionTiles } from "@/components/projects/session-tiles";
+import { TrustPanel } from "@/components/projects/trust-panel";
 import type { Key } from "../i18n/index.ts";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { HubRowState } from "../lib/hub.ts";
@@ -118,6 +119,15 @@ export function ProjectPage(props: {
           </li>
         ))}
       </ul>
+      {hasFeature(host?.hostInfo?.features, "projectTrust", false) && (
+        <TrustPanel
+          store={store}
+          hostId={hostId}
+          hostName={host?.name ?? hostId}
+          projectName={project.name}
+          path={project.path}
+        />
+      )}
       <SessionTiles
         store={store}
         state={state}

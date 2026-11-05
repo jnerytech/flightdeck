@@ -3161,6 +3161,32 @@ export const ptBR = {
     placeholder: "Digite uma mensagem",
   },
   projectPage: {
+    trust: {
+      title: "Configuração do projeto",
+      hint: "Um projeto pode trazer hooks, servidores MCP, configurações, agentes e skills próprios. Eles só carregam em uma sessão quando você confia no projeto.",
+      untrusted:
+        "Sem confiança. As sessões aqui carregam as suas configurações, não as deste projeto.",
+      trusted: "Com confiança: a configuração própria deste projeto carrega nas sessões dele.",
+      trustedVia:
+        "Com confiança por {path}: a configuração própria deste projeto carrega nas sessões dele.",
+      cost: "Até você confiar nele, os hooks, servidores MCP, configurações, CLAUDE.md, agentes e skills deste projeto não carregam, e os seus próprios servidores MCP e plugins também não, nas sessões iniciadas aqui.",
+      listing: "O que este projeto carregaria",
+      hooks: "Hooks (comandos que rodam sozinhos)",
+      mcp: "Servidores MCP (programas que iniciam com a sessão)",
+      env: "Variáveis de ambiente (só os nomes)",
+      allow: "Ferramentas liberadas sem perguntar",
+      agents: "Agentes",
+      skills: "Skills",
+      commands: "Comandos",
+      claudeMd: "CLAUDE.md",
+      unreadable: "Arquivos que não puderam ser lidos ou seguidos",
+      nothing: "Nada: este projeto não traz configuração própria.",
+      action: "Confiar neste projeto",
+      revoke: "Revogar a confiança",
+      confirm:
+        "Confiar em {project} em {host}? Os hooks dele rodam comandos e os servidores MCP dele iniciam programas naquele computador, sem perguntar a você, sempre que uma sessão começa ali. Só faça isso para código que você escreveu ou leu.",
+      failed: "Não foi possível ler a configuração deste projeto.",
+    },
     notHere: "Este projeto não está neste host.",
     sessionsHint: "As sessões de todos os projetos",
     boardHint: "Cards por coluna, do backlog ao concluído",
