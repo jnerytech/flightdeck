@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { Sparkline } from "./sparkline.tsx";
 
 /**
@@ -15,11 +15,23 @@ export function KpiCard(props: {
   seriesLabel: string;
   onOpen(): void;
 }) {
+  const id = useId();
   return (
-    <button type="button" aria-label={props.openLabel} className="kpi-card" onClick={props.onOpen}>
+    // The name says what the button opens; the number and the details are its description, so they are heard.
+    <button
+      type="button"
+      aria-label={props.openLabel}
+      aria-describedby={`${id}-value ${id}-details`}
+      className="kpi-card"
+      onClick={props.onOpen}
+    >
       <span className="kpi-title">{props.title}</span>
-      <span className="kpi-value">{props.value}</span>
-      <span className="kpi-details">{props.details}</span>
+      <span id={`${id}-value`} className="kpi-value">
+        {props.value}
+      </span>
+      <span id={`${id}-details`} className="kpi-details">
+        {props.details}
+      </span>
       <Sparkline values={props.series} label={props.seriesLabel} />
     </button>
   );
