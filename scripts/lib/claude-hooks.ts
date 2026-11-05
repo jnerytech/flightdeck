@@ -153,14 +153,19 @@ export interface CommitGateDeps {
 /**
  * Why the `git commit` in `command` is blocked: its subject is not `type(scope): text`, a
  * feat/fix has no scope, or a feat(x)/fix(x) has no earlier test(x) since the audit base
- * (docs/TDD.md). `cwd` is where the shell starts. Anything it cannot read (a message from an
- * editor or a file, a quoted directory, git failing) passes: the audit and CI still check it.
+ * (docs/TDD.md). A `TDD-Waiver: <why>` trailer lets a deliberate exception through. `cwd` is where
+ * the shell starts. Anything it cannot read (a message from an editor or a file, a quoted
+ * directory, git failing) passes: the audit and CI still check it.
  */
 export function commitViolation(command: string, cwd: string, deps: CommitGateDeps): string | null {
-  const dir = commitDir(command, cwd);
-  if (dir === undefined) return null;
-  const subject = commitSubject(command);
-  if (subject === null || /^(Merge|Revert) /.test(subject)) return null;
+  const commit = findCommit(command, cwd);
+  if (!commit || commit.message === null) return null;
+  const subject =
+    commit.message
+      .split("\n")
+      .find((line) => line.trim() !== "")
+      ?.trim() ?? "";
+  if (/^(Merge |Revert |fixup! |squash! )/.test(subject)) return null;
   const match = SUBJECT.exec(subject);
   if (!match) {
     return `Commit subject "${subject}" is blocked: write type(scope): text, with type one of ${COMMIT_TYPES.join(", ")} (docs/TDD.md).`;
@@ -170,14 +175,15 @@ export function commitViolation(command: string, cwd: string, deps: CommitGateDe
   if (!scope) {
     return `${type} needs a scope: ${type}(<area>): text, the same scope as its earlier test(<area>) commit (docs/TDD.md).`;
   }
-  if (/(?:^|\s)FLIGHTDECK_TDD_WAIVER=/.test(commandWords(command)) || dir === null) return null;
+  if (commit.waived || commit.dir === null) return null;
+  const dir = commit.dir;
   const git = (args: string[]) => deps.git(args, dir);
   const base = auditBase(git);
   if (base === null) return null;
   const log = git(["log", "--format=%H%x1f%s", `${base}..HEAD`]);
   if (log === null) return null;
   if (parseCommits(log).some((c) => c.type === "test" && c.scope === scope)) return null;
-  return `${type}(${scope}) is blocked: no earlier test(${scope}) commit since ${base} (docs/TDD.md: commit the failing test first). For a deliberate exception, prefix the command with FLIGHTDECK_TDD_WAIVER="<why>" and add the commit to scripts/tdd-audit-waivers.json right after.`;
+  return `${type}(${scope}) is blocked: no earlier test(${scope}) commit since ${base} (docs/TDD.md: commit the failing test first). For a deliberate exception, end the message with a trailer line "TDD-Waiver: <why>"; tdd:audit lists it.`;
 }
 
 const COMMIT_TYPES = [
@@ -194,48 +200,93 @@ const COMMIT_TYPES = [
   "revert",
 ];
 const SUBJECT = new RegExp(`^(${COMMIT_TYPES.join("|")})(?:\\(([^)]+)\\))?!?: \\S`);
-const HEREDOC = /<<-?\s*(['"]?)(\w+)\1[^\n]*\n([\s\S]*?)\n\s*\2\s*(?=\n|\)|$)/;
-const MESSAGE_FLAG = /(?:^|\s)(?:-m|--message)(?:=|\s+)("(?:[^"\\]|\\.)*"|'[^']*'|[^\s"']\S*)/;
-const STDIN_FILE = /(?:^|\s)(?:-F|--file)(?:=|\s+)-(?=\s|$)/;
-
-/** The first line of the message the command commits with, or null when it cannot be read. */
-function commitSubject(command: string): string | null {
-  const flag = MESSAGE_FLAG.exec(command)?.[1];
-  let message: string | undefined;
-  if (flag?.startsWith('"$(')) message = HEREDOC.exec(flag)?.[3];
-  else if (flag?.startsWith('"')) message = flag.slice(1, -1).replace(/\\(.)/g, "$1");
-  else if (flag?.startsWith("'")) message = flag.slice(1, -1);
-  else if (flag) message = flag;
-  else if (STDIN_FILE.test(command)) message = HEREDOC.exec(command)?.[3];
-  const first = message?.split("\n").find((line) => line.trim() !== "");
-  return first === undefined ? null : first.trim();
-}
+const HEREDOC = /<<-?\s*(['"]?)(\w+)\1[^\n]*\n([\s\S]*?)\n\s*\2[ \t]*(?=\n|\)|$)/g;
+const WAIVER = /^TDD-Waiver:[ \t]*\S/m;
 
 /**
- * The directory the command's `git commit` runs in: the shell's, moved by each `cd` before it and
- * by `git -C`. Null when a directory is quoted (its words are hidden from the parse), undefined
- * when the command commits nothing.
+ * The command with heredoc bodies and the inside of quoted strings blanked to spaces, so every
+ * offset still points at the same character of the original: words found here are commands, and
+ * the values they take are read from the original at the same place.
  */
-function commitDir(command: string, cwd: string): string | null | undefined {
-  let dir = cwd;
-  for (const segment of commandWords(command).split(/[;&|\n]+/)) {
-    const words = segment.trim().split(/\s+/);
-    if (words[0] === "cd") {
-      const target = words[1];
-      if (!target || target.includes('"')) return null;
-      dir = resolve(dir, target);
+function maskCommand(command: string): string {
+  const blank = (text: string) => " ".repeat(text.length);
+  return command
+    .replace(HEREDOC, (whole: string) => {
+      const head = whole.indexOf("\n") + 1;
+      return whole.slice(0, head) + blank(whole.slice(head));
+    })
+    .replace(
+      /"(?:[^"\\]|\\.)*"|'[^']*'/g,
+      (quoted) => `${quoted[0]}${blank(quoted.slice(1, -1))}${quoted[0]}`,
+    );
+}
+
+/** The value of an option that starts at `at` in the original command. */
+function optionValue(command: string, at: number): string | null {
+  if (command.startsWith('"$(', at)) {
+    HEREDOC.lastIndex = 0;
+    return HEREDOC.exec(command.slice(at))?.[3] ?? null;
+  }
+  const quoted = /"((?:[^"\\]|\\.)*)"|'([^']*)'|(\S+)/y;
+  quoted.lastIndex = at;
+  const m = quoted.exec(command);
+  if (!m) return null;
+  return m[1] !== undefined ? m[1].replace(/\\(.)/g, "$1") : (m[2] ?? m[3] ?? null);
+}
+
+interface FoundCommit {
+  /** Where it runs; null when a directory is quoted (its words are hidden from the parse). */
+  dir: string | null;
+  /** The whole message, or null when the command gives none it can read. */
+  message: string | null;
+  waived: boolean;
+}
+
+/** The command's `git commit`: its directory (each `cd` before it, `git -C`) and its message. */
+function findCommit(command: string, cwd: string): FoundCommit | undefined {
+  const masked = maskCommand(command);
+  let dir: string | null = cwd;
+  for (const segment of masked.matchAll(/[^;&|\n]+/g)) {
+    const tokens = [...segment[0].matchAll(/\S+/g)].map((t) => ({
+      word: t[0],
+      at: segment.index + t.index,
+    }));
+    const word = (i: number) => tokens[i]?.word ?? "";
+    if (word(0) === "cd") {
+      dir = dir === null || !word(1) || word(1).includes('"') ? null : resolve(dir, word(1));
       continue;
     }
-    let i = words.indexOf("git");
+    let i = tokens.findIndex((t) => t.word === "git");
     if (i < 0) continue;
     let at = dir;
-    for (i++; words[i]?.startsWith("-"); i += GIT_OPTIONS_WITH_VALUE.has(words[i] ?? "") ? 2 : 1) {
-      if (words[i] !== "-C") continue;
-      const target = words[i + 1];
-      if (!target || target.includes('"')) return null;
-      at = resolve(dir, target);
+    for (i++; word(i).startsWith("-"); i += GIT_OPTIONS_WITH_VALUE.has(word(i)) ? 2 : 1) {
+      if (word(i) !== "-C") continue;
+      at =
+        at === null || !word(i + 1) || word(i + 1).includes('"') ? null : resolve(at, word(i + 1));
     }
-    if (words[i] === "commit") return at;
+    if (word(i) !== "commit") continue;
+    const parts: string[] = [];
+    let waived = false;
+    let fromStdin = false;
+    for (let j = i + 1; j < tokens.length; j++) {
+      const { word: w, at: pos } = tokens[j] as { word: string; at: number };
+      const flag = /^(-m|--message|--trailer|-F|--file)(=)?/.exec(w);
+      if (!flag) continue;
+      const valueAt = flag[2] ? pos + flag[0].length : tokens[j + 1]?.at;
+      if (valueAt === undefined) continue;
+      const value = optionValue(command, valueAt);
+      if (flag[1] === "-F" || flag[1] === "--file") fromStdin ||= value === "-";
+      else if (flag[1] === "--trailer") waived ||= WAIVER.test(value ?? "");
+      else if (value !== null) parts.push(value);
+    }
+    if (parts.length === 0 && fromStdin) {
+      HEREDOC.lastIndex = segment.index;
+      const doc = HEREDOC.exec(command);
+      if (doc && doc.index < segment.index + segment[0].length) parts.push(doc[3] ?? "");
+    }
+    const message = parts.length > 0 ? parts.join("\n\n") : null;
+    const body = message?.split("\n").slice(1).join("\n") ?? "";
+    return { dir: at, message, waived: waived || WAIVER.test(body) };
   }
   return undefined;
 }
