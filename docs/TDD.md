@@ -190,7 +190,6 @@ em vez de depender de cuidado.
 - CI starts with a quick job (#272): typecheck, lint, the TDD audit, Sonar's ratchet and every
   ratchet test, in minutes. The heavy jobs need it. A new ratchet's test file ends in
   `-ratchet.test.ts` (or `.tsx`), so the quick job picks it up by itself (scripts/lib/ci-quick.ts).
-
 - Right after `open`, the session turns on auto-merge: `bun run pr -- auto <n>` (#271). GitHub
   then merges the PR with a merge commit, never a squash, once the main ruleset's required checks
   are green on its HEAD and it is up to date (the ruleset is strict; auto-merge never updates the
