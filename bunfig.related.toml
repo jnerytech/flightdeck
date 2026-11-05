@@ -1,0 +1,9 @@
+# `bun run test:related`: the area run with coverage on and no threshold. The script checks the
+# changed files itself (scripts/lib/related-coverage.ts); the 100% gate of the whole suite lives in bunfig.toml.
+[test]
+preload = ["./scripts/test/preload.ts"]
+coverage = true
+coverageSkipTestFiles = true
+coverageReporter = ["lcov"]
+coveragePathIgnorePatterns = ["**/test/**", "**/components/ui/**", "**/scripts/demo-seed.ts"]
+pathIgnorePatterns = ["mods/**"]
