@@ -839,6 +839,12 @@ live; the list is the project's, so a session of another project never shows her
   three folding groups: **Work** (Workflows, Costs, Conversations, Teams), **Library** (Personas,
   Snippets, Plugins, Vault) and **Infra** (Connections, History). A group with nothing to offer is
   not drawn, the folded groups are remembered, and the narrow icon rail has no headings.
+- At the foot of the bar, **Settings** is a visible item (marked while Settings is open), and the Claude
+  account (its email and plan, read from the host's account card; the rail shows only its initial)
+  opens a menu with **Settings**, **Toggle theme**, **Manual** and, for each host whose `gh` is signed
+  in to GitHub with a login the app can remove, **Sign out of GitHub** (after a confirmation; a login
+  that comes from the daemon's environment is removed there). With several hosts the account of the
+  open host is shown, and how many accounts there are when they differ; an offline host shows none.
 - **Home** (first in Work) is a strip of four cards over the last seven days of every online host,
   each with a sparkline: **Spend** (with the month's host budgets, when set), **Turns** (ok and
   failed), **Tokens** (with what came from the cache) and the **average turn** (cost, time and

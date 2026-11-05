@@ -135,7 +135,7 @@ describe("sidebar-config: Sign out of GitHub in the account menu (issue #213)", 
     await chooseFromAccountMenu("Sign out of GitHub");
     expect(screen.getByText(/Sign out of GitHub on alfa\?/)).toBeTruthy();
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      fireEvent.click(screen.getByRole("button", { name: /^Cancel/ }));
     });
     expect(calls.filter(([, type]) => type === "github.logout")).toEqual([]);
     await chooseFromAccountMenu("Sign out of GitHub");

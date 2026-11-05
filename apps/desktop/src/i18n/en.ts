@@ -12,7 +12,6 @@ export const en: Dictionary = {
     signOutGithubHost: "Sign out of GitHub ({host})",
     signOutGithubConfirm:
       "Sign out of GitHub on {host}? Its sessions lose access to your repositories until you sign in again.",
-    signOutGithubDone: "Signed out of GitHub",
   },
   home: {
     title: "Home",

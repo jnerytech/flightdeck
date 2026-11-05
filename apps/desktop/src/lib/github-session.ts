@@ -1,4 +1,5 @@
 import type { AppStore, HostView } from "./app-store.ts";
+import { hasFeature } from "./version.ts";
 
 /** A host whose `gh` is signed in to GitHub and can sign out from the app. */
 export interface GithubHost {
@@ -14,7 +15,12 @@ export async function githubSignedIn(
   store: Pick<AppStore, "hostCommand">,
   hosts: readonly HostView[],
 ): Promise<GithubHost[]> {
-  void store;
-  void hosts;
-  return [];
+  const answers = await Promise.all(
+    hosts
+      .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "github", false))
+      .map(async (h) => ({ host: h, status: await store.hostCommand(h.id, "github.status", {}) })),
+  );
+  return answers
+    .filter(({ status }) => status?.installed && status.loggedIn && status.source !== "env")
+    .map(({ host }) => ({ id: host.id, name: host.name }));
 }

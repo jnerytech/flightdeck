@@ -110,10 +110,11 @@ describe("sidebar-conta: the account at the foot of the bar", () => {
     expect(opened[0]).toMatch(/docs\/manual\/en\.md$/);
   });
 
-  test("they are no longer separate buttons in the bar, and Search stays", () => {
+  test("Toggle theme and Manual are not separate buttons in the bar, Settings and Search are (issue #213)", () => {
     const { view } = setup();
     render(view());
-    for (const name of ["Settings", "Toggle theme", "Manual"]) {
+    expect(screen.getByRole("button", { name: "Settings" })).not.toBeNull();
+    for (const name of ["Toggle theme", "Manual"]) {
       expect(screen.queryByRole("button", { name })).toBeNull();
     }
     expect(screen.getByRole("button", { name: "Search the history (Ctrl+K)" })).not.toBeNull();
