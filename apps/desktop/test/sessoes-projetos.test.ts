@@ -185,3 +185,66 @@ describe("sessoes-projetos: one project on two hosts is one group (issue #111)",
     expect(groups).toHaveLength(2);
   });
 });
+
+describe("sessoes-projetos: two folders of one host never merge, and say where they are (issue #111)", () => {
+  const at = (n: number, host: string, dir: string, over: Partial<HubRow> = {}) =>
+    row(n, {
+      hostId: host,
+      hostName: host,
+      cwd: dir,
+      projectKey: `host:${host}:${dir}`,
+      ...over,
+    });
+
+  test("two api folders on one host stay two groups, each with a short path hint", () => {
+    const groups = hubGroups(
+      [at(1, "alfa", "/home/a/work/api"), at(2, "alfa", "/home/a/play/api")],
+      DEFAULT_HUB_FILTER,
+    );
+    expect(groups).toHaveLength(2);
+    expect(groups.map((g) => g.hint).sort()).toEqual(["play", "work"]);
+  });
+
+  test("a name that is ambiguous on one host is not merged with the other host either", () => {
+    const groups = hubGroups(
+      [
+        at(1, "alfa", "/home/a/work/api"),
+        at(2, "alfa", "/home/a/play/api"),
+        at(3, "beta", "/srv/api"),
+      ],
+      DEFAULT_HUB_FILTER,
+    );
+    expect(groups).toHaveLength(3);
+  });
+
+  test("the grouping does not change when a filter hides the other folder", () => {
+    const rows = [
+      at(1, "alfa", "/home/a/work/api"),
+      at(2, "alfa", "/home/a/play/api", { title: "other" }),
+      at(3, "beta", "/srv/api"),
+    ];
+    const groups = hubGroups(rows, { ...DEFAULT_HUB_FILTER, host: "beta" });
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.rows).toHaveLength(1);
+  });
+
+  test("a project alone under its name has no hint, and joined hosts have none", () => {
+    const groups = hubGroups(
+      [at(1, "alfa", "/home/a/api"), at(2, "beta", "/srv/api"), at(3, "alfa", "/home/a/docs")],
+      DEFAULT_HUB_FILTER,
+    );
+    expect(groups).toHaveLength(2);
+    expect(groups.every((g) => g.hint === undefined)).toBe(true);
+  });
+
+  test("a resolved remote and a folder with the same name get hints too", () => {
+    const groups = hubGroups(
+      [
+        at(1, "alfa", "/home/a/work/api", { projectKey: "github.com/acme/api" }),
+        at(2, "alfa", "/home/a/play/api"),
+      ],
+      DEFAULT_HUB_FILTER,
+    );
+    expect(groups.map((g) => g.hint).sort()).toEqual(["github.com/acme", "play"]);
+  });
+});

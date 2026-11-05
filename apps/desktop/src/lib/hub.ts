@@ -121,6 +121,8 @@ export interface HubGroup {
   key: string;
   /** Repository name (or folder) shown on the group. */
   name: string;
+  /** Where the project is, when another group has the same name; else absent. */
+  hint?: string;
   rows: HubRow[];
 }
 
