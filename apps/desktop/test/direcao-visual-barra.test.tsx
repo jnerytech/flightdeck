@@ -78,7 +78,10 @@ describe("direcao-visual: barra lateral", () => {
     const nav = aside().querySelector("nav") as HTMLElement;
     // The Machines group holds the hosts, which have their own test below.
     const items = [...nav.querySelectorAll("button")].filter(
-      (b) => !b.closest("fieldset")?.getAttribute("aria-label")?.includes("Máquinas"),
+      (b) =>
+        !b.closest("fieldset")?.getAttribute("aria-label")?.includes("Máquinas") &&
+        // The Setup row (issue #164) has its own tests; it comes and goes with the real state.
+        b.closest('[class~="group/setup"]') === null,
     );
     expect(items.map((b) => b.textContent?.replace(/\d+$/, ""))).toEqual([
       // The folding groups by purpose, each with its heading.

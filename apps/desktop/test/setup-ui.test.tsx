@@ -10,6 +10,7 @@ const { Sidebar } = await import("../src/ui/Sidebar.tsx");
 const { SetupPage } = await import("../src/ui/SetupPage.tsx");
 const { Settings } = await import("../src/ui/Settings.tsx");
 const { StartScreen } = await import("../src/ui/StartScreen.tsx");
+const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -36,8 +37,13 @@ const project = {
   worktreeInclude: false,
 };
 
-function make(patch: object = {}, language: "en" | "pt-BR" = "en") {
+function make(
+  patch: object = {},
+  language: "en" | "pt-BR" = "en",
+  stored: Record<string, string> = {},
+) {
   const mem = memoryPlatform(false, language);
+  for (const [key, value] of Object.entries(stored)) mem.platform.storage.setItem(key, value);
   const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   const state = { ...store.getState(), setupProbes: {}, ...patch };
@@ -46,7 +52,11 @@ function make(patch: object = {}, language: "en" | "pt-BR" = "en") {
 
 /** Everything the four core steps ask for. */
 const COMPLETE = {
-  hosts: [host("h1", { sessions: [{ id: "s", status: "idle", cwd: "/p", updatedAt: "t" }] })],
+  hosts: [
+    host("h1", {
+      sessions: [{ id: "s", status: "idle", cwd: "/p", updatedAt: "t", pendingPermissions: [] }],
+    }),
+  ],
   projects: { h1: [project] },
   setupProbes: { h1: { hooks: "installed", github: false } },
 };
@@ -83,7 +93,12 @@ describe("setup-ui: the sidebar row (issue #164)", () => {
     expect(row.textContent).toContain("0/4");
     expect(row.querySelector("[data-slot='setup-ring']")).not.toBeNull();
     const work = screen.getByRole("group", { name: "Work" });
-    expect(within(work).getAllByRole("button")[0]).toBe(row);
+    // Before the first screen of the group (Overview).
+    const buttons = within(work).getAllByRole("button");
+    expect(buttons.indexOf(row)).toBeGreaterThanOrEqual(0);
+    expect(buttons.indexOf(row)).toBeLessThan(
+      buttons.findIndex((b) => b.textContent?.startsWith("Home") ?? false),
+    );
   });
 
   test("a host online moves the ring to 1/4 without a reload, and losing it moves it back", () => {
@@ -115,9 +130,7 @@ describe("setup-ui: the sidebar row (issue #164)", () => {
     expect(screen.queryByRole("button", { name: /^Setup, / })).toBeNull();
     expect(w.store.setup.hidden).toBe(true);
     cleanup();
-    const again = make();
-    again.mem.platform.storage.setItem("flightdeck.setupHidden", "on");
-    sidebar(again);
+    sidebar(make({}, "en", { "flightdeck.setupHidden": "on" }));
     expect(screen.queryByRole("button", { name: /^Setup, / })).toBeNull();
   });
 
@@ -143,7 +156,11 @@ describe("setup-ui: the sidebar row (issue #164)", () => {
 
 function page(w: ReturnType<typeof make>) {
   const routes: unknown[] = [];
-  render(<SetupPage store={w.store} state={w.state} go={(route) => void routes.push(route)} />);
+  render(
+    <TContext.Provider value={w.store.i18n.t}>
+      <SetupPage store={w.store} state={w.state} go={(route) => void routes.push(route)} />
+    </TContext.Provider>,
+  );
   return routes;
 }
 
@@ -253,7 +270,11 @@ describe("setup-ui: a missing tool gets a quiet card on Start (issue #164)", () 
     (w.store as unknown as { update(p: object): void }).update({
       deps: { h1: { items: [dep("gh", "optional", "missing"), dep("git", "required", "ok")] } },
     });
-    render(<StartScreen store={w.store} hosts={[host("h1")] as never} go={() => {}} />);
+    render(
+      <TContext.Provider value={w.store.i18n.t}>
+        <StartScreen store={w.store} hosts={[host("h1")] as never} go={() => {}} />
+      </TContext.Provider>,
+    );
   }
 
   test("it names the tool and the host, links the fix and can be dismissed for good", async () => {
@@ -277,7 +298,11 @@ describe("setup-ui: a missing tool gets a quiet card on Start (issue #164)", () 
     (w.store as unknown as { update(p: object): void }).update({
       deps: { h1: { items: [dep("gh", "optional", "ok")] } },
     });
-    render(<StartScreen store={w.store} hosts={[host("h1")] as never} go={() => {}} />);
+    render(
+      <TContext.Provider value={w.store.i18n.t}>
+        <StartScreen store={w.store} hosts={[host("h1")] as never} go={() => {}} />
+      </TContext.Provider>,
+    );
     expect(screen.queryByRole("note")).toBeNull();
   });
 });
@@ -285,9 +310,12 @@ describe("setup-ui: a missing tool gets a quiet card on Start (issue #164)", () 
 describe("setup-ui: what the hosts answer (issue #164)", () => {
   function asked(w: ReturnType<typeof make>, answers: Record<string, unknown>) {
     const calls: string[] = [];
-    w.store.hostCommand = (async (_host: string, type: string) => {
+    // Background probes use the quiet request: a host that cannot answer raises no toast.
+    w.store.hostRequest = (async (_host: string, type: string) => {
       calls.push(type);
-      return answers[type] ?? null;
+      return type in answers
+        ? { ok: true, data: answers[type] }
+        : { ok: false, message: "no answer" };
     }) as never;
     w.store.loadProjects = (async () => {
       calls.push("loadProjects");

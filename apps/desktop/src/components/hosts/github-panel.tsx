@@ -33,7 +33,10 @@ export function GithubPanel(props: { store: AppStore; host: HostView }) {
     if (!device) return;
     const timer = setInterval(() => {
       void refresh().then((next) => {
-        if (next?.loggedIn) setDevice(null);
+        if (next?.loggedIn) {
+          setDevice(null);
+          void store.refreshSetup(host.id);
+        }
       });
     }, POLL_MS);
     return () => clearInterval(timer);
@@ -51,6 +54,7 @@ export function GithubPanel(props: { store: AppStore; host: HostView }) {
   const signOut = async () => {
     await store.hostCommand(host.id, "github.logout", {});
     await refresh();
+    void store.refreshSetup(host.id);
   };
 
   return (

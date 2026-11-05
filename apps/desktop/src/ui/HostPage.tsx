@@ -120,6 +120,8 @@ export function HostPage(props: {
         ? await store.hostCommand(host.id, "hooks.install", { confirm: true })
         : await store.hostCommand(host.id, "hooks.uninstall", { confirm: true });
     if (result) setHooks(result);
+    // The setup checklist reads the hooks too.
+    void store.refreshSetup(host.id);
   };
   return (
     <Page

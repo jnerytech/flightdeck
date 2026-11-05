@@ -19,6 +19,8 @@ function setup(
 ) {
   const store = new AppStore(platform, { baseDelayMs: 600_000 });
   store.i18n.start();
+  // The Setup row has its own tests (issue #164); here the groups are the subject.
+  store.setup.setHidden(true);
   const state = {
     ...store.getState(),
     hosts: [

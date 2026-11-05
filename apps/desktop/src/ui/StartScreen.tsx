@@ -1,3 +1,4 @@
+import { MissingToolsCards } from "@/components/hosts/missing-tools-cards";
 import { Page, Section } from "@/components/layout/page";
 import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,7 @@ import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { basename } from "../lib/paths.ts";
 import type { Route } from "../lib/router.ts";
+import { useStoreSlice } from "../lib/use-store.ts";
 
 const RECENT = 5;
 const SHORTCUTS = [
@@ -22,6 +24,7 @@ export function StartScreen(props: {
 }) {
   const t = useT();
   const { hosts, go } = props;
+  const { deps } = useStoreSlice(props.store, ["deps"]);
   const firstHost = hosts.find((host) => host.status === "online");
   const recent = hosts
     .flatMap((host) => host.sessions.map((session) => ({ host: host.id, session })))
@@ -30,6 +33,7 @@ export function StartScreen(props: {
   return (
     <Page title={t("start.title")} subtitle={t("start.subtitle")}>
       <Stack gap={6}>
+        <MissingToolsCards store={props.store} hosts={hosts} deps={deps} />
         <Inline gap={2}>
           {firstHost && (
             <Button

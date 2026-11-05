@@ -69,6 +69,10 @@ export const Settings = memo(function Settings(props: {
     props.store.terminalFont.subscribe,
     () => props.store.terminalFont.value,
   );
+  const setupHidden = useSyncExternalStore(
+    props.store.setup.subscribe,
+    () => props.store.setup.hidden,
+  );
   const { settings } = props;
   const [shortcut, setShortcut] = useState(settings.globalShortcut);
   const shortcutOff = !settings.globalShortcutSupported;
@@ -189,6 +193,14 @@ export const Settings = memo(function Settings(props: {
               onChange={(e) => props.onAutostart(e.target.checked)}
             />
             {t("prefs.autostart")}
+          </label>
+          <label className={check}>
+            <input
+              type="checkbox"
+              checked={!setupHidden}
+              onChange={(e) => props.store.setup.setHidden(!e.target.checked)}
+            />
+            {t("setup.restore")}
           </label>
           {!settings.autostartSupported && (
             <small className="text-muted-foreground text-xs">{t("prefs.unavailable")}</small>

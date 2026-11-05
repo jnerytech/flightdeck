@@ -1057,6 +1057,9 @@ export class AppStore {
       sessions,
       cards,
       selected: this.state.selected?.hostId === hostId ? null : this.state.selected,
+      setupProbes: Object.fromEntries(
+        Object.entries(this.state.setupProbes).filter(([id]) => id !== hostId),
+      ),
     });
     this.persistHosts();
   }
@@ -1855,7 +1858,26 @@ export class AppStore {
 
   /** Asks a host what the setup checklist needs from it: its hooks, GitHub, projects. */
   async refreshSetup(hostId: string): Promise<void> {
-    void hostId;
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    if (!host || host.status !== "online") return;
+    const features = host.hostInfo?.features;
+    const wantsHooks = hasFeature(features, "central", false);
+    const wantsGithub = hasFeature(features, "github", false);
+    if (hasFeature(features, "workflows", false) && this.state.projects[hostId] === undefined) {
+      void this.loadProjects(hostId);
+    }
+    if (!wantsHooks && !wantsGithub) return;
+    const [hooks, github] = await Promise.all([
+      wantsHooks ? this.hostRequest(hostId, "hooks.status", {}) : null,
+      wantsGithub ? this.hostRequest(hostId, "github.status", {}) : null,
+    ]);
+    // The host may have gone while it was asked.
+    if (!this.state.hosts.some((h) => h.id === hostId)) return;
+    const probe: SetupProbe = {
+      hooks: hooks?.ok ? hooks.data.status : null,
+      github: github?.ok ? github.data.installed && github.data.loggedIn : null,
+    };
+    this.update({ setupProbes: { ...this.state.setupProbes, [hostId]: probe } });
   }
 
   /** Asks the host for its `host.info` again (after a change of its settings). */
@@ -2381,6 +2403,8 @@ export class AppStore {
       const done = h.daemonUpdate && hostInfo?.daemonVersion === h.daemonUpdate.target;
       return { ...h, hostInfo, infoAt: Date.now(), ...(done ? { daemonUpdate: null } : {}) };
     });
+    // The setup checklist reads what this host has: its hooks, GitHub, projects.
+    void this.refreshSetup(hostId);
     // ssh asks for passwords through the daemon: this app is who answers.
     if (hasFeature(hostInfo?.features, "ssh", false)) {
       void conn.request("askpass.watch", {}).catch(() => null);
