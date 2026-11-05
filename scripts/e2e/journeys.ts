@@ -4,11 +4,11 @@
  * sideways, and the end of the long list shows after scrolling). The runner is `@playwright/test`
  * (scripts/e2e/journeys.e2e.ts); this file holds the journeys themselves.
  */
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import type { Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../demo-seed.ts";
-import { acoesAction, DANGER_SESSION, VIEWPORTS } from "../lib/e2e-journeys.ts";
+import { acoesAction, DANGER_SESSION, OVERFLOW_VIEWPORTS, VIEWPORTS } from "../lib/e2e-journeys.ts";
 import { ensureOnline } from "../lib/e2e-online.ts";
 
 const ALFA = "demo-alfa";
@@ -415,6 +415,56 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .click();
     await tile(second).getByText(c.t("deps.unblocked"), { exact: true }).waitFor({ timeout: WAIT });
   },
+
+  // 15. A long conversation opens on its latest message, stays put when scrolled up while a message
+  // arrives (the button counts it), and is where the reader left it when they come back.
+  "rolagem-fim": async (c) => {
+    const bottom = (el: HTMLElement) => el.scrollHeight - el.scrollTop - el.clientHeight;
+    await open(c, { name: "session", host: ALFA, id: c.ids.scrollSession });
+    await c.page
+      .getByText("Echo: Passo 24:", { exact: false })
+      .first()
+      .waitFor({ timeout: SESSION_WAIT });
+    const log = c.page
+      .locator("[tabindex='0'].overflow-y-auto")
+      .filter({ hasText: "Passo 24" })
+      .first();
+    // The code block and the summary are what push the layout after the first paint.
+    await c.page.locator("pre").first().waitFor({ timeout: WAIT });
+    await c.page
+      .getByRole("region", { name: c.t("recap.region") })
+      .waitFor({ timeout: SESSION_WAIT });
+    await waitFor(async () => (await log.evaluate(bottom)) <= 24, "a conversa abriu no fim");
+    // Scrolled up, a message that arrives leaves the view where it was and is counted.
+    await log.evaluate((el) => {
+      el.scrollTop = 300;
+    });
+    const jump = c.page.getByRole("button", { name: new RegExp(`^${c.t("session.jumpLatest")}$`) });
+    await jump.waitFor({ timeout: WAIT });
+    const kept = await log.evaluate((el) => el.scrollTop);
+    const box = c.page.getByLabel(c.t("session.message"), { exact: true });
+    await box.fill("mais uma do e2e");
+    await box.press("Enter");
+    await c.page
+      .getByRole("button", { name: /\(\d+ (new|nova|novas)\)/ })
+      .waitFor({ timeout: SESSION_WAIT });
+    await c.page.waitForTimeout(500);
+    expect(Math.abs((await log.evaluate((el) => el.scrollTop)) - kept)).toBeLessThanOrEqual(2);
+    // Leaving the screen for another and coming back: the same place.
+    await c.page.getByRole("button", { name: c.t("sidebar.projects"), exact: true }).click();
+    await log.waitFor({ state: "detached", timeout: WAIT });
+    await c.page
+      .getByRole("tab", { name: /Conversa longa/ })
+      .first()
+      .click();
+    const back = c.page
+      .locator("[tabindex='0'].overflow-y-auto")
+      .filter({ hasText: "Passo 24" })
+      .first();
+    await back.waitFor({ timeout: WAIT });
+    await c.page.waitForTimeout(500);
+    expect(Math.abs((await back.evaluate((el) => el.scrollTop)) - kept)).toBeLessThanOrEqual(2);
+  },
 };
 
 /** What sticks out of the window sideways, outside a box that scrolls. */
@@ -439,6 +489,111 @@ async function overflow(page: Page): Promise<string[]> {
     }
     return found;
   });
+}
+
+/** The page never scrolls sideways: when it does, the widest element sticking out is named. */
+async function pageScrollsSideways(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const root = document.documentElement;
+    if (root.scrollWidth <= root.clientWidth && document.body.scrollWidth <= root.clientWidth) {
+      return null;
+    }
+    let widest = { name: "?", right: 0 };
+    for (const el of document.querySelectorAll<HTMLElement>("body *")) {
+      const box = el.getBoundingClientRect();
+      if (box.width > 0 && box.right > widest.right) {
+        widest = {
+          name: `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 60)}`,
+          right: box.right,
+        };
+      }
+    }
+    return `scrollWidth ${root.scrollWidth} > ${root.clientWidth}; widest ${widest.name} ends at ${Math.round(widest.right)}`;
+  });
+}
+
+/** The crumbs end before the bell, and what does not fit is cut with an ellipsis (issue #133). */
+async function crumbsProblem(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const slot = document.querySelector<HTMLElement>(".header-crumbs");
+    const nav = slot?.querySelector<HTMLElement>("nav");
+    const bell = slot?.lastElementChild as HTMLElement | null;
+    if (!slot || !nav || !bell || bell === nav) return "no breadcrumb";
+    const limit = bell.getBoundingClientRect().left + 1;
+    // Where the person is must stay readable: the current step never shrinks to nothing.
+    const current = nav.querySelector<HTMLElement>("[aria-current='page']");
+    if (current && current.getBoundingClientRect().width < 48) {
+      return `the current crumb (${current.textContent}) is ${Math.round(current.getBoundingClientRect().width)}px wide`;
+    }
+    for (const el of nav.querySelectorAll<HTMLElement>("li > *")) {
+      const box = el.getBoundingClientRect();
+      if (box.right > limit)
+        return `a crumb (${el.textContent}) ends at ${Math.round(box.right)}, past the bell at ${Math.round(limit)}`;
+      if (el.scrollWidth > el.clientWidth + 1) {
+        const style = getComputedStyle(el);
+        if (style.textOverflow !== "ellipsis" || style.overflow !== "hidden") {
+          return `a crumb (${el.textContent}) is cut without an ellipsis`;
+        }
+      }
+    }
+    return null;
+  });
+}
+
+/** The tabs share the strip like a browser's: one width, and not under the minimum. */
+async function tabWidthsProblem(page: Page, minimum: number): Promise<string | null> {
+  const widths = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>(".tab-item")].map((tab) =>
+      Math.round(tab.getBoundingClientRect().width),
+    ),
+  );
+  if (widths.length === 0) return "no tabs";
+  if (Math.max(...widths) - Math.min(...widths) > 1) return `widths differ: ${widths.join(", ")}`;
+  if (Math.min(...widths) < minimum) return `a tab is ${Math.min(...widths)}px, under ${minimum}px`;
+  return null;
+}
+
+/** Twelve tabs, as a window left open for a day, with `first` on screen (the active tab). */
+const crowdedWindow = (c: Context, first: Route, count = 12) =>
+  JSON.stringify({
+    v: 1,
+    split: null,
+    focus: 0,
+    fraction: 0.5,
+    areas: [
+      {
+        active: 0,
+        tabs: [
+          first,
+          { name: "board", host: ALFA, projectId: c.ids.project },
+          { name: "hub" },
+          { name: "needs-you" },
+          { name: "costs" },
+          { name: "settings" },
+          { name: "clients" },
+          { name: "history", host: ALFA },
+          { name: "host", host: ALFA },
+          { name: "project", host: ALFA, projectId: c.ids.project },
+          { name: "teams" },
+          { name: "personas" },
+        ]
+          .slice(0, count)
+          .map((route) => ({ route, pinned: false })),
+      },
+    ],
+  });
+
+/** Opens the demo on a window with twelve tabs: no `?route=`, which would start a fresh window. */
+async function openCrowded(c: Context, first: Route, count = 12) {
+  // Any page of the demo holds the window's storage; the first call starts on one.
+  if (!c.page.url().startsWith(c.url)) await c.page.goto(c.url);
+  await c.page.evaluate(
+    ([key, value]) => localStorage.setItem(key as string, value as string),
+    ["flightdeck.workspace", crowdedWindow(c, first, count)],
+  );
+  const query = new URLSearchParams({ lang: c.lang, theme: "light", reconnect: "fast" });
+  await c.page.goto(`${c.url}?${query}`);
+  await c.page.waitForTimeout(1500);
 }
 
 /** After scrolling every box to its end, the last row of the list is on screen (or why not). */
@@ -539,6 +694,41 @@ export async function layout(c: Context, problems: string[]) {
     ],
     ["historico", { name: "history", host: ALFA }],
   ];
+  // Issue #103: with 12 tabs and a long worktree path, no screen scrolls the page sideways.
+  const crowded: Array<[string, Route]> = [
+    ["sessao-longa", { name: "session", host: ALFA, id: c.ids.longSession }],
+    ["titulo-longo", { name: "session", host: ALFA, id: c.ids.longTitleSession }],
+    ...screens,
+  ];
+  for (const viewport of OVERFLOW_VIEWPORTS) {
+    await c.page.setViewportSize(viewport);
+    for (const [name, route] of crowded) {
+      await openCrowded(c, route);
+      // A print of the crowded window on request (the hand-off of issue #103 shows it).
+      if (process.env.E2E_PRINT_DIR && name === "sessao-longa" && viewport.width > 1500) {
+        await c.page.screenshot({
+          path: `${process.env.E2E_PRINT_DIR}/janela-lotada-${c.lang}.png`,
+        });
+      }
+      const crumbs = await crumbsProblem(c.page);
+      if (crumbs)
+        problems.push(`${c.lang} ${viewport.width}x${viewport.height} ${name}: ${crumbs}`);
+      const sideways = await pageScrollsSideways(c.page);
+      if (sideways) {
+        problems.push(
+          `${c.lang} ${viewport.width}x${viewport.height} ${name} (12 abas): ${sideways}`,
+        );
+      }
+    }
+    // Equal widths with 12 tabs and with 2, and 12 never under 80px.
+    await openCrowded(c, { name: "hub" });
+    const crowdedTabs = await tabWidthsProblem(c.page, 80);
+    if (crowdedTabs)
+      problems.push(`${c.lang} ${viewport.width}x${viewport.height} 12 abas: ${crowdedTabs}`);
+    await openCrowded(c, { name: "hub" }, 2);
+    const fewTabs = await tabWidthsProblem(c.page, 80);
+    if (fewTabs) problems.push(`${c.lang} ${viewport.width}x${viewport.height} 2 abas: ${fewTabs}`);
+  }
   // The tab strip starts at the same x whatever the crumbs say ("Hosts > alfa" is wider than "Settings").
   const lefts: number[] = [];
   for (const [, route] of screens.filter(([n]) => n === "host" || n === "configuracoes")) {
