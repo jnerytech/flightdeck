@@ -79,7 +79,8 @@ const env: SlotEnv = {
   },
   now: () => Date.now(),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-  log: (line) => console.error(line),
+  // NOSONAR: the slot logs its own queue status (holder label, pid, wait time), never secrets.
+  log: (line) => console.error(line), // NOSONAR
   terminate: (pid) => {
     try {
       process.kill(pid, "SIGTERM");
