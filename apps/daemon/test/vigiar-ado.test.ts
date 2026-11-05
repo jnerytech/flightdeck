@@ -173,6 +173,19 @@ describe("vigiar-ado: the watcher", () => {
     expect(triggers).toEqual([]);
   });
 
+  test("a round is answered in this process, so a slow or loaded machine cannot stretch it (#246)", async () => {
+    // A held rule (delayMs) holds only a fake's own process: in this process the round is instant.
+    const held = (rule: FakeRule): FakeRule => ({ ...rule, delayMs: 3000 });
+    const { az, card, watcher } = await watched(
+      [show("succeeded"), evaluations(evaluation("approved", "CI", 88)), NO_COMMENTS].map(held),
+    );
+    watcher.setEnabled(card.id, true);
+    const started = performance.now();
+    await watcher.tick();
+    expect(performance.now() - started).toBeLessThan(1500);
+    expect(az.calls().length).toBeGreaterThan(0);
+  });
+
   test("the project's default turns it on for its cards, and a card's own choice wins", async () => {
     const { project, card, watcher } = await watched([]);
     expect(watcher.settings(project.id)).toEqual({

@@ -171,6 +171,20 @@ describe("vigiar-github: the watcher", () => {
     expect(triggers).toHaveLength(2);
   });
 
+  test("a round is answered in this process, so a slow or loaded machine cannot stretch it (#246)", async () => {
+    // A held rule (delayMs) holds only a fake's own process: in this process the round is instant.
+    const held = (rule: FakeRule): FakeRule => ({ ...rule, delayMs: 3000 });
+    const { gh, watcher } = await watched(
+      [checks({ name: "build", bucket: "pass", link: run(501) }), mergeable("MERGEABLE")]
+        .concat(COMMENT_RULES())
+        .map(held),
+    );
+    const started = performance.now();
+    await watcher.tick();
+    expect(performance.now() - started).toBeLessThan(1500);
+    expect(gh.calls().map((args) => args.slice(0, 2).join(" "))).toContain("pr checks");
+  });
+
   test("only comments of the team fire it: an outsider's are not acted on", async () => {
     const { gh, watcher, triggers } = await watched([
       checks(),
