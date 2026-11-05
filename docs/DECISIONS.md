@@ -3918,3 +3918,12 @@ ledger of OpenCode process groups in the data folder, reaped at the next start.
   That is accepted: CI minutes are free for this public repository, and the two runs check
   different trees.
 - **Based on `rc/0363`,** which adds `workflow_dispatch` (#129) to the same `on:` block.
+
+## A ledger of OpenCode's process groups (issue #250)
+
+- **Why.** When the daemon is killed with SIGKILL, `opencode acp` exits (its pipe closes) but a command it was running survives as an orphan in the same process group. systemd clears the cgroup on a stop or restart; other setups do not.
+- **How.** `runtime/process-ledger.ts` keeps `opencode-groups.json` in the data folder: the pid, the start time (clock ticks, from `/proc/<pid>/stat`) and the command line of each `opencode acp` the daemon starts, written once the process has answered `initialize` (right after the spawn /proc may still show the parent's command). When the process ends, whatever is left of its group is killed and the entry goes. At the next start, before anything else (even with OpenCode off), every remaining entry is checked and its group killed with SIGKILL.
+- **Pid reuse.** A leader still there is killed only if its start time and command line are the recorded ones and it leads its own group. A leader that is gone leaves its group's members: Linux does not hand a pid to another process while a group of that id has members, so those members, if they started after the leader, are what it left. Anything else is dropped as stale and nothing is signalled.
+- **Elsewhere.** On macOS and Windows `/proc` is not there, so nothing is recorded or reaped (Windows ends the tree with `taskkill` at close, as before). A ledger that cannot be written only loses the cleanup.
+- **Also.** `store.test.ts` now tests the `sessions.runtime` migration on a database from before the column (the old rows are Claude's).
+- **Not covered.** `runCommand`'s short OpenCode commands (`models`, `--version`) are not in the ledger: they have a deadline that ends their group, and live seconds.

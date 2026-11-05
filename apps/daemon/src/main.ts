@@ -109,6 +109,7 @@ import { OpenCodePreflight } from "./runtime/opencode-preflight.ts";
 import { OpenCodeModels, runCommand } from "./runtime/opencode-process.ts";
 import { OpenCodeRuntime, REAL_KILL_DEPS, treeKiller } from "./runtime/opencode-runtime.ts";
 import { scanOpenCodeScope } from "./runtime/opencode-scope.ts";
+import { OPENCODE_LEDGER_FILE, ProcessLedger, procSource } from "./runtime/process-ledger.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { DAEMON_VERSION, startServer } from "./server.ts";
 import {
@@ -629,6 +630,17 @@ async function createOpenCode(
 ): Promise<CreatedOpenCode> {
   // The demo and the journeys show the picker with a fake OpenCode, which runs nothing.
   if (kind === "fake") return fakeOpenCode();
+  // A daemon that was killed leaves the commands its OpenCode sessions ran: reaped first, even
+  // when OpenCode is off now (issue #250).
+  const ledger = new ProcessLedger({
+    file: join(config.dataDir, OPENCODE_LEDGER_FILE),
+    proc: procSource(),
+    killGroup: REAL_KILL_DEPS.killGroup,
+  });
+  const left = ledger.reap();
+  if (left.reaped.length > 0) {
+    log(`OpenCode: ${left.reaped.length} process group(s) left by an earlier daemon were ended`);
+  }
   if (!config.opencode.enabled) return { info: { available: false, reason: "opencode_disabled" } };
   const childEnv = buildChildEnv(env, config.allowApiKey);
   const scan = () => scanOpenCodeScope({ env: childEnv });
@@ -652,6 +664,7 @@ async function createOpenCode(
     scan,
     kill: treeKiller(process.platform, REAL_KILL_DEPS),
     mcpServer,
+    ledger,
   });
   const models = new OpenCodeModels({
     path,
