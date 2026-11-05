@@ -1,5 +1,7 @@
 /** Keeps the computer awake while sessions run (issue #163). */
+
 import { whichOnPath } from "../which.ts";
+import { detectWsl, realWslProbe } from "../wsl-host.ts";
 
 export type WakeMethod = "powershell" | "systemd-inhibit" | "caffeinate";
 /** Why nothing is held although it was asked: the app words each code in both languages. */
@@ -33,24 +35,34 @@ export interface PowerContext {
 }
 
 /**
- * The PowerShell that holds the system awake: ES_CONTINUOUS | ES_SYSTEM_REQUIRED stays set for as
- * long as this process lives, and it ends when the daemon does. The screen may still turn off.
+ * The PowerShell that holds the system awake: ES_CONTINUOUS | ES_SYSTEM_REQUIRED (0x80000001) stays
+ * set for as long as this process lives, and it ends when the daemon does. The screen may still turn
+ * off. The flags are written as the decimal 2147483649: `0x80000001` is a negative Int32 in
+ * PowerShell and does not convert to the uint parameter. Any error stops the script, so a holder
+ * that holds nothing ends (the page then says so) instead of looping for nothing.
  */
-export const windowsScript = (pid: number) =>
-  [
+export const windowsScript = (pid: number) => {
+  if (!Number.isInteger(pid) || pid <= 0) throw new Error(`not a pid: ${pid}`);
+  return [
+    "$ErrorActionPreference = 'Stop';",
     "Add-Type -Namespace Fd -Name Power -MemberDefinition",
-    "'[DllImport(\"kernel32.dll\")] public static extern uint SetThreadExecutionState(uint flags);';",
-    "[void][Fd.Power]::SetThreadExecutionState(0x80000001);",
+    "\"[DllImport('kernel32.dll')] public static extern uint SetThreadExecutionState(uint flags);\";",
+    "[void][Fd.Power]::SetThreadExecutionState(2147483649);",
     `while (Get-Process -Id ${pid} -ErrorAction SilentlyContinue) { Start-Sleep -Seconds 5 }`,
   ].join(" ");
+};
 
 /** The command that holds the computer awake on this system, or why there is none. */
 export function holderCommand(
   ctx: Pick<PowerContext, "platform" | "pid" | "which"> & { wsl?: boolean },
 ): { cmd: string[]; method: WakeMethod } | { reason: WakeReason } {
   if (ctx.platform === "linux") {
+    // Inside WSL an inhibitor holds the WSL machine only: Windows would still sleep.
+    if (ctx.wsl) return { reason: "wsl" };
     const inhibit = ctx.which("systemd-inhibit");
-    if (!inhibit) return { reason: "no-inhibitor" };
+    // tail --pid is GNU: found like the inhibitor, so a minimal system gives a reason, not an early exit.
+    const tail = ctx.which("tail");
+    if (!inhibit || !tail) return { reason: "no-inhibitor" };
     return {
       method: "systemd-inhibit",
       cmd: [
@@ -59,7 +71,7 @@ export function holderCommand(
         "--who=Flightdeck",
         "--why=Sessions are running",
         "--mode=block",
-        "tail",
+        tail,
         `--pid=${ctx.pid}`,
         "-f",
         "/dev/null",
@@ -76,7 +88,14 @@ export function holderCommand(
     if (!shell) return { reason: "no-inhibitor" };
     return {
       method: "powershell",
-      cmd: [shell, "-NoProfile", "-NonInteractive", "-Command", windowsScript(ctx.pid)],
+      cmd: [
+        shell,
+        "-NoProfile",
+        "-NonInteractive",
+        "-EncodedCommand",
+        // Base64 of UTF-16LE: the quotes of the script do not depend on Windows argv quoting.
+        Buffer.from(windowsScript(ctx.pid), "utf16le").toString("base64"),
+      ],
     };
   }
   return { reason: "unsupported-platform" };
@@ -195,7 +214,7 @@ export function osPowerContext(): PowerContext {
   return {
     platform: process.platform,
     pid: process.pid,
-    wsl: false,
+    wsl: detectWsl(realWslProbe) !== null,
     which: whichOnPath,
     hold: spawnHolder,
   };

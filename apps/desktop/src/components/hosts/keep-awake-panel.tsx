@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Panel } from "@/components/layout/panel";
 import { useT } from "@/i18n/context";
@@ -12,6 +13,12 @@ export function KeepAwakePanel(props: { store: AppStore; host: HostView }) {
   const { store, host } = props;
   const t = useT();
   const status = host.hostInfo?.keepAwake;
+  // The host says "holding" while a session runs: read it again when one starts, changes or ends.
+  const activity = host.sessions.map((s) => `${s.id}:${s.status}`).join(",");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `activity` is the trigger
+  useEffect(() => {
+    if (status !== undefined) void store.reloadHostInfo(host.id);
+  }, [store, host.id, activity]);
   if (status === undefined) return null;
   const set = async (enabled: boolean) => {
     await store.hostCommand(host.id, "host.keepAwake", { enabled });

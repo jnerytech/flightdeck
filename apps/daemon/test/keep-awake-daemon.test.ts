@@ -21,7 +21,7 @@ function fakePower() {
     platform: "linux",
     pid: 1,
     wsl: false,
-    which: (name) => (name === "systemd-inhibit" ? "/usr/bin/systemd-inhibit" : null),
+    which: (name) => (["systemd-inhibit", "tail"].includes(name) ? `/usr/bin/${name}` : null),
     hold: () => {
       state.started++;
       state.alive++;

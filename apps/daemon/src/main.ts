@@ -1070,9 +1070,10 @@ export async function startDaemon(
     keepAwake: {
       status: () => keepAwake.status(),
       set: async (enabled) => {
+        // The file first: when it cannot be written the switch stays as it was, for the client and the daemon.
+        await updateConfigFile(configFile, (raw) => ({ ...raw, keepAwake: enabled }));
         config.keepAwake = enabled;
         keepAwake.setEnabled(enabled);
-        await updateConfigFile(configFile, (raw) => ({ ...raw, keepAwake: enabled }));
       },
     },
     persistRoots: (roots) =>
@@ -1288,8 +1289,9 @@ export async function startDaemon(
     stop: () => {
       stopped ??= (async () => {
         unwatchFile(configFile, onConfigChange);
-        await wsl?.stop();
+        // First: whatever stops slowly after must not keep the computer awake meanwhile.
         keepAwake.stop();
+        await wsl?.stop();
         automations.stop();
         clearInterval(messagingSweep);
         stopNames();
