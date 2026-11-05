@@ -14,6 +14,8 @@ export interface BgServiceOptions {
   start?: { self: string[]; configFile: string; allowedRoots: readonly string[] };
   /** The folder, prompt and name a card starts a session with; refuses (not_found) one that does not exist. */
   card?: (cardId: string) => { cwd: string; prompt: string; name: string };
+  /** What a folder's project setup may do (project trust): none to say means it is left alone. */
+  trust?: (cwd: string) => { trusted: boolean; configRoot?: string };
 }
 
 /** The listing and the commands are quick; a `claude` that does not answer is as good as none. */

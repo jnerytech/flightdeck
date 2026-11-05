@@ -42,7 +42,10 @@ const LOST = {
   state: "stopped",
 };
 
-function setup(channel?: (id: string, text: string) => boolean) {
+function setup(
+  channel?: (id: string, text: string) => boolean,
+  trust?: (cwd: string) => { trusted: boolean; configRoot?: string },
+) {
   const fake = installFakeClaude([]);
   cleanups.push(fake.restore);
   fake.setAgents([RUNNING, DONE, LOST]);
@@ -50,6 +53,7 @@ function setup(channel?: (id: string, text: string) => boolean) {
     db: new EventStore(":memory:").db,
     claude: () => whichOnPath("claude"),
     ...(channel ? { channel } : {}),
+    ...(trust ? { trust } : {}),
   });
   return { fake, service };
 }
@@ -127,6 +131,41 @@ describe("bg-controlar: a message", () => {
     await service.message("a1b2c3d4", "--not-a-flag, continue");
     expect(starts(fake)).toEqual([
       ["--resume", "99999999-0000-4000-8000-000000000000", "--bg", "--", "--not-a-flag, continue"],
+    ]);
+  });
+
+  test("a session in a folder not trusted is continued without the project's hooks and servers, and one in a card's worktree reads the project's setup", async () => {
+    const untrusted = setup(undefined, () => ({ trusted: false }));
+    await untrusted.service.message("a1b2c3d4", "continue");
+    expect(starts(untrusted.fake)).toEqual([
+      [
+        "--resume",
+        "99999999-0000-4000-8000-000000000000",
+        "--bg",
+        "--setting-sources",
+        "user",
+        "--strict-mcp-config",
+        "--",
+        "continue",
+      ],
+    ]);
+    const asked: string[] = [];
+    const worktree = setup(undefined, (cwd) => {
+      asked.push(cwd);
+      return { trusted: true, configRoot: "/work/main" };
+    });
+    await worktree.service.message("a1b2c3d4", "continue");
+    expect(asked).toEqual(["/work/app"]);
+    expect(starts(worktree.fake)).toEqual([
+      [
+        "--resume",
+        "99999999-0000-4000-8000-000000000000",
+        "--bg",
+        "--project-config-root",
+        "/work/main",
+        "--",
+        "continue",
+      ],
     ]);
   });
 
