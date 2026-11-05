@@ -22,7 +22,14 @@ export function SimpleModePanel(props: { store: AppStore; host: HostView }) {
       <p className="text-muted-foreground text-xs">{t("hostPage.simpleHint")}</p>
       <div className="flex flex-wrap gap-2">
         {!locked && (
-          <ActionButton variant="outline" onClick={() => store.setUiChoice(host.id, "simple")}>
+          <ActionButton
+            variant="outline"
+            onClick={() => {
+              // The app shows simple mode for the selected host: this page's host is the one meant.
+              store.select(host.id, null);
+              store.setUiChoice(host.id, "simple");
+            }}
+          >
             {t("hostPage.simpleUse")}
           </ActionButton>
         )}

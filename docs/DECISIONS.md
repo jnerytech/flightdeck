@@ -3586,3 +3586,8 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 
 - **Done.** The create button says "Create and start" (it also starts the coordinator and the workers; the daemon is unchanged). A member row links to its session and to its card (a worker whose card waits in the queue has no session link yet). The empty state "No connected host with teams" has an "Add a host" button. No e2e journey: the demo daemon has no teams host.
 - **Not done.** Pointing the empty state at the host's features (the old-daemon case needs an "update the daemon" path that does not exist yet).
+
+## Simple mode, journey J8 (issue #191)
+
+- **Done.** "Use simple mode on this host" selects that host first, so the switch applies to the host whose page it is on (it used to apply to the selected or first online host, and looked like it did nothing on another). Simple mode mounts the notices, so a failure is no longer silent.
+- **Not done.** An action on "This computer has no ready-made tasks yet", and one exit instead of two ("Show details" goes to full mode without asking, "Show everything" asks): they belong with #132's visible exit.
