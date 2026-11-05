@@ -284,6 +284,22 @@ hooks, Tailscale e a versão do daemon contra a do app. Cada item fica **ok**, *
 **falhou**; cada um que não está **ok** vem com um passo simples para consertar, no idioma do app.
 O daemon segue respondendo enquanto confere (nada trava). As mesmas conferências rodam no
 terminal com `flightdeckd doctor`.
+### Manter o computador acordado
+
+Enquanto uma sessão de um host roda, ou espera a sua resposta, o host pede ao computador dele para
+não dormir, e assim aprovações e avisos continuam chegando e uma execução longa não é pausada por
+uma soneca. A página do host tem **Manter este computador acordado** para desligar ou ligar de
+novo; a escolha fica na config do host (`keepAwake`, ligado por padrão) e vale na hora. O host solta
+o computador quando a última sessão para e quando o daemon sai.
+
+- Isso impede o computador de dormir por inatividade; a tela ainda pode apagar, e fechar a tampa
+  segue as configurações de energia do sistema.
+- No Linux usa `systemd-inhibit`, no macOS `caffeinate` e no Windows o PowerShell
+  (`SetThreadExecutionState`). Se nenhum deles existe, ou não consegue iniciar, a página diz o motivo
+  e o computador dorme como de costume.
+- Vale para o computador do próprio host: um host em outra máquina mantém aquela máquina acordada,
+  não a sua.
+
 ### Sessões sem pedidos de permissão
 
 Por padrão nenhuma sessão de um host roda em **Ignorar permissões** (toda ferramenta roda sem

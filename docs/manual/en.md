@@ -295,6 +295,22 @@ hooks, Tailscale and the daemon's version against the app's. Every item is **ok*
 **failed**; each one that is not **ok** comes with a plain step to fix it, in the app's language.
 The daemon keeps answering while it checks (nothing blocks). The same checks run in a terminal
 with `flightdeckd doctor`.
+### Keeping the computer awake
+
+While a session of a host runs, or waits for your answer, the host asks its computer not to go to
+sleep, so approvals and notifications keep arriving and a long run is not paused by a nap. The
+host's page has **Keep this computer awake** to turn it off or on again; the choice is saved in the
+host's config (`keepAwake`, on by default) and applies at once. The host releases the computer when
+the last session stops and when the daemon exits.
+
+- It stops the computer from sleeping when idle; the screen may still turn off, and closing the lid
+  follows the system's power settings.
+- On Linux it uses `systemd-inhibit`, on macOS `caffeinate` and on Windows PowerShell
+  (`SetThreadExecutionState`). When none of them is there, or it cannot start, the page says why and
+  the computer sleeps as usual.
+- It works for the host's own computer: a host on another machine keeps that machine awake, not
+  yours.
+
 ### Sessions without permission prompts
 
 By default no session of a host can run in **Bypass permissions** (every tool runs without asking).
