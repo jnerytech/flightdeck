@@ -43,6 +43,8 @@ interface Opts {
   openPr?: string;
   /** The version test passes before the version moves (it must be red). */
   notRed?: boolean;
+  /** The version test stays red after the packages moved. */
+  alwaysRed?: boolean;
   surfaceLost?: boolean;
   baselineChanged?: boolean;
   fail?: RegExp;
@@ -94,7 +96,7 @@ function fake(opts: Opts = {}) {
       if (args.includes(VERSAO)) {
         versaoRuns.push(1);
         if (opts.notRed) return ok();
-        return versaoRuns.length === 1 ? bad : ok();
+        return versaoRuns.length === 1 || opts.alwaysRed ? bad : ok();
       }
       if (args.includes("scripts/protocol-surface.ts") && !args.includes("--write")) {
         return opts.surfaceLost ? bad : ok();
@@ -342,5 +344,39 @@ describe("release: after the PR merged", () => {
   test("a failed release:close is its exit code", async () => {
     const { deps } = fake({ ...merged, fail: /release:close/ });
     expect(await release(["v0.37.0"], deps)).toBe(1);
+  });
+});
+
+describe("release: when a step fails", () => {
+  const stops = async (opts: Opts, saying: string) => {
+    const { deps, calls, logs } = fake(opts);
+    expect(await release(["v0.37.0"], deps)).toBe(1);
+    expect(pushed(calls)).toBe(false);
+    expect(logs.join("\n")).toContain(saying);
+  };
+
+  test("a version test still red after the packages moved stops before the chore commit", async () => {
+    await stops({ alwaysRed: true }, "still red");
+  });
+
+  test("a commit git refuses stops the release", async () => {
+    await stops({ fail: /^git commit -m test\(versao\)/ }, "test(versao)");
+  });
+
+  test("a baseline commit git refuses stops before the push", async () => {
+    await stops(
+      { baselineChanged: true, fail: /^git commit -m chore\(release\)/ },
+      "chore(release)",
+    );
+  });
+
+  test("packages that cannot be read on main stop the release", async () => {
+    await stops({ fail: /^git show/ }, "cannot be read");
+  });
+
+  test("auto-merge that does not turn on says which command to run", async () => {
+    const { deps, logs } = fake({ fail: /pr -- auto/ });
+    expect(await release(["v0.37.0"], deps)).toBe(1);
+    expect(logs.join("\n")).toContain("bun run pr -- auto 42");
   });
 });

@@ -12,7 +12,7 @@ import { PROTOCOL_VERSION } from "@flightdeck/protocol";
 import { parsePublicKey } from "../../apps/daemon/src/updates/signature.ts";
 
 /** The packages that carry the product version (`tauri.conf.json` reads the desktop's). */
-const PACKAGES = ["packages/protocol", "apps/daemon", "apps/desktop"] as const;
+export const PACKAGES = ["packages/protocol", "apps/daemon", "apps/desktop"] as const;
 
 /** `build:daemon` outputs. */
 export const DAEMONS = [

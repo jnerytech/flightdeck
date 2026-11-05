@@ -4035,3 +4035,18 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   The hook is a guard against slips, not a security boundary.
 - **WIP limit.** At most 2 open branches per session, stated in CLAUDE.md and docs/TDD.md. It is
   not enforced in code.
+
+## One command per release (issue #275)
+
+- **`bun run release vX.Y.Z`** (the coordinator's, `FLIGHTDECK_COORDINATOR=1`; it refuses without
+  it and touches nothing) is a state machine over `origin/main`, so running it again carries on.
+  Main behind the tag: a branch `release-vX` gets `test(versao)` (the version test moves first and
+  must be red), `chore(versao)` (the three packages and `bun.lock`; the test must be green), the
+  protocol-surface check (a lost baseline line stops the release) and, when `--write` changes the
+  baseline, `chore(release)`; then the branch is pushed, a PR is opened (not through `pr open`,
+  which would close the issue of its first commit) and `pr auto` turns on auto-merge. Main at the
+  version: the surface check, `pr tag vX` (so the CI gate of #264 still decides) and
+  `release:close -- vX --apply`. A tag that exists is not made again; the close still runs.
+- **Why a state machine, not one blocking run.** The PR merges when its checks are green, which
+  takes longer than a session should wait; the second run is the "after merge" half of the
+  issue. Logic in `scripts/lib/release-cmd.ts`, effects injected, no test pushes or tags.
