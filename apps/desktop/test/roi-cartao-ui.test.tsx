@@ -47,6 +47,8 @@ async function roiPage(
   mkdirSync(repo, { recursive: true });
   await Bun.spawn(["git", "init", "-q", repo]).exited;
   const mem = memoryPlatform(false, lang);
+  // The card opens folded (issue #178); these tests read its details, so it starts open.
+  mem.win.localStorage.setItem("flightdeck.roiOpen", "true");
   const store = new AppStore(mem.platform, {
     baseDelayMs: 60_000,
     now: () => Date.parse(`${TODAY}T12:00:00Z`),
