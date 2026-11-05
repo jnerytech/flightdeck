@@ -3726,3 +3726,14 @@ and project config off; both sessions deleted afterwards.
 - **Child sessions (7),** recorded with a scratch config that allows `subagent`: the child's updates and its permission
   request carry `_meta["opencode/child-session"] = { id, parentID, depth, title }` and a tool call id
   `<childSessionId>:<id>`, on the parent's `sessionId`, as the docs say.
+
+### Phase 39: two probes before the runtime (shipped environment)
+
+- **A global `opencode.json` is a config source of its own.** With `XDG_CONFIG_HOME` pointing at a scratch folder holding
+  `opencode/opencode.json`, `/api/config --standalone` listed that file as a `document` with its path, next to the folder
+  (`directory`) and the inline document. The preflight now allows the global folder's config files (the ones the scope
+  scan reads) and nothing else in it; a test pins it.
+- **Saved rules under the shipped environment** (`OPENCODE_DISABLE_PROJECT_CONFIG=1` and the phase's document, free
+  model): an `always` answer saved `shell echo *` for the folder's project, `/api/permission/saved --standalone` with the
+  same environment listed it, and the same command in the next turn ran with no request. So the switch does not change
+  how saved rules apply, and the preflight's check sees them. Rule and session deleted.
