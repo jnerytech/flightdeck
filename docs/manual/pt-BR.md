@@ -2588,6 +2588,28 @@ bun run e2e          # as cinco jornadas num navegador de verdade, nos 2 idiomas
 Nada sai da máquina e nenhum dado real é usado. Os scripts usam o Chrome instalado (ou o Edge)
 pelo `playwright-core`; no CI, o job `screenshots` roda os três e publica os prints.
 
+### Logs e diagnóstico
+
+Se algo quebrar, envie o log. O app de desktop guarda o próprio arquivo de log na pasta de logs do
+sistema (no Windows `%LOCALAPPDATA%\dev.flightdeck.app\logs`, no Linux
+`~/.local/share/dev.flightdeck.app/logs`, no macOS `~/Library/Logs/dev.flightdeck.app`), girado aos
+5 MB em 5 arquivos. Ele registra o que acontece com os hosts (conectou, ficou offline), o que um
+host recusou, o resultado das verificações de atualização e os erros e avisos do console do próprio
+app. **Configurações > Diagnóstico** tem **Abrir a pasta de logs** e **Copiar diagnóstico**: o segundo
+copia a versão e o sistema do app, o nome, o estado, a versão e os recursos de cada host (nunca um
+endereço ou token) e as últimas 50 linhas do log, para colar numa mensagem. Nenhum dos dois botões
+existe no navegador.
+
+O daemon também guarda um log, `flightdeckd.log` em `~/.flightdeck/logs` (também girado), e o
+`host.info` diz onde fica. Na página de um host, **Copiar as últimas linhas de log do host** copia
+até 100 delas.
+
+Cada linha é editada antes de ser gravada, pelo mesmo verificador que protege snippets e personas:
+um token (GitHub, Slack, AWS, chaves `sk-`), um cabeçalho Bearer, um `password=` ou `token=` na
+linha, um bloco de chave, uma senha numa URL, o token de um link de pareamento e qualquer valor do
+cofre viram `[redacted]`. É uma lista de padrões, não uma garantia: leia as linhas antes de
+postá-las em público.
+
 ### Desempenho
 
 O que mantém o app e o daemon leves, e os números que você mesmo pode ler.

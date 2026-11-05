@@ -2607,6 +2607,25 @@ Nothing leaves the machine and no real data is used. The scripts use the install
 Edge) through `playwright-core`; in CI, the `screenshots` job runs all three and publishes the
 screenshots.
 
+### Logs and diagnostics
+
+If something breaks, send the log. The desktop app keeps its own log file in the system's app log
+folder (on Windows `%LOCALAPPDATA%\dev.flightdeck.app\logs`, on Linux
+`~/.local/share/dev.flightdeck.app/logs`, on macOS `~/Library/Logs/dev.flightdeck.app`), rotated at
+5 MB across 5 files. It records what happens to hosts (connected, offline), what a host refused, the
+result of update checks, and the webview's own errors and console warnings. **Settings >
+Diagnostics** has **Open logs folder** and **Copy diagnostics**: the second copies the app's version
+and system, each host's name, state, version and features (never an address or a token), and the
+last 50 log lines, to paste in a message. Neither button exists in a browser.
+
+The daemon keeps its own log file too, `flightdeckd.log` in `~/.flightdeck/logs` (also rotated), and
+`host.info` says where. On a host page, **Copy the host's last log lines** copies up to 100 of them.
+
+Every line is redacted before it is written, by the same scanner that guards snippets and personas:
+a token (GitHub, Slack, AWS, `sk-` keys), a Bearer header, a `password=` or `token=` on the line,
+a key block, a password in a URL, a pairing link's token and any vault value become `[redacted]`.
+It is a pattern list, not a guarantee: read the lines before you post them in public.
+
 ### Performance
 
 What keeps the app and the daemon light, and the numbers you can read yourself.

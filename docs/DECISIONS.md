@@ -3559,3 +3559,24 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   That is accepted: CI minutes are free for this public repository, and the two runs check
   different trees.
 - **Based on `rc/0363`,** which adds `workflow_dispatch` (#129) to the same `on:` block.
+
+## The app and daemon log files (issue #255)
+
+- **No `tauri-plugin-log`.** The issue asked for the plugin. This session has no `cargo`, so the new crate (and its dependencies) could
+  not be added to `Cargo.lock`, and a manifest change without its lock breaks a locked build. The shell instead has three std-only commands
+  (`append_log`, `read_log_tail`, `open_logs_dir`) over the OS's own app log folder (`app_log_dir`), with the same 5 MB x 5 files rotation
+  written by hand and unit-tested in Rust (`log_tests`). None takes a path from the webview. Swapping in the plugin later changes only
+  `platform/tauri`.
+- **Redaction is the webview's, then the reader's.** Every line goes through `SecretScanner.redact` (new, in the protocol: it replaces what
+  `scan` finds with `[redacted]`, leaves a `{{variable}}`, and replaces vault values of 6 characters or more) before it is written or kept in
+  memory, and the diagnostics redact the lines again. The daemon does the same before it writes and again when it tails. The scanner is a list
+  of shapes, not a proof: the manual says to read a log before posting it.
+- **What the app logs:** a host's state changes, every refusal the app shows (`fail`), app update checks and failures, and the webview's
+  `error`, `unhandledrejection` and `console.error`/`console.warn`. Update installs and deep links are not logged. A sink that fails is ignored.
+- **Copy diagnostics** uses the last 50 lines of the file, or the 200 the app keeps in memory when the file gives none. It is in English
+  whatever the app's language: it is for whoever helps. It carries host names, states, versions and features, never a URL or a token.
+- **The daemon:** `flightdeckd.log` in `~/.flightdeck/logs` (not under the data dir: it is one folder per user, like the config), rotated,
+  every line redacted, one line per message and cut at 2000 characters. `host.info.logPath` and the `logs` feature name it, and
+  `logs.tail {lines <= 500}` hands out the last lines. A folder that cannot be written is ignored.
+- **Not built:** the daemon's `doctor` naming the path (host.info does), update-install events, and Windows rotation tests (Windows cannot
+  rename over an open file: a single writer appends and rotates from the same process, so it never has the file open elsewhere).
