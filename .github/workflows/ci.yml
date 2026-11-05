@@ -135,6 +135,7 @@ jobs:
           bun run smoke:github
           bun run smoke:boardsync
           bun run smoke:roi
+          bun run smoke:opencode
 
       - name: System libraries of the Tauri shell (Linux)
         if: runner.os == 'Linux'
