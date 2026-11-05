@@ -270,8 +270,11 @@ export function riskyEdits(
   const edits: RiskyFile[] = [];
   for (const [path, lines] of removed) {
     if (known.has(path) || any(NOT_SOURCE, path) || !SOURCE.test(path)) continue;
-    // Comments and blank lines taken out change nothing the code does.
-    const code = lines.filter((line) => line.trim() !== "" && !commentOnly(line, path));
+    // Comments and blank lines taken out change nothing the code does, except a "/*" that opened a
+    // block: without it, the lines after it run.
+    const code = lines.filter(
+      (line) => OPENS_BLOCK.test(line) || (line.trim() !== "" && !commentOnly(line, path)),
+    );
     if (code.length === 0) continue;
     const gone = areasOf(code, path);
     const head = gone.length > 0 ? "" : read(path);
@@ -283,6 +286,16 @@ export function riskyEdits(
     if (why.length > 0) edits.push({ path, why });
   }
   return edits.sort((a, b) => (a.path < b.path ? -1 : 1));
+}
+
+/** A line that opens a block comment it does not close. */
+const OPENS_BLOCK = /^\s*\/\*(?!.*\*\/)/;
+
+/** Files a rename brings from a test folder into the code: their contents were never read as code. */
+export function movedFromTests(renames: Map<string, string>): RiskyFile[] {
+  return [...renames]
+    .filter(([from, to]) => any(NOT_SOURCE, from) && !any(NOT_SOURCE, to) && SOURCE.test(to))
+    .map(([, to]) => ({ path: to, why: ["moved from tests"] }));
 }
 
 /** The risk areas these lines of code touch, comments left out. */
@@ -407,7 +420,8 @@ export function securityVerdict(git: GitRun, base?: string): SecurityVerdict {
   const edits = riskyEdits(added, removedLines(diff), (path) =>
     deleted.has(path) ? "" : git(["show", `HEAD:${renames.get(path) ?? path}`]),
   );
-  const risky = [...added, ...edits].sort((a, b) => (a.path < b.path ? -1 : 1));
+  const moved = movedFromTests(renames).filter((m) => !added.some((a) => a.path === m.path));
+  const risky = [...added, ...edits, ...moved].sort((a, b) => (a.path < b.path ? -1 : 1));
   const problem = securityProblem(risky, parseBranchLog(log));
   return problem ? { verdict: "unreviewed", message: problem } : { verdict: "0", message: null };
 }
