@@ -329,6 +329,7 @@ export type HostCommandType = Extract<
   | `terminal.${string}`
   | `runenv.${string}`
   | "roots.add"
+  | "history.get"
   | "host.bypass"
   | `ssh.${string}`
   | `snippets.${string}`

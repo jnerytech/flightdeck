@@ -2325,6 +2325,8 @@ Discord or any HTTPS endpoint** when something needs you.
 - Each field is cut to a fixed size. A field that holds a secret (a token, a key, a password typed
   on the line, a vault value) is replaced by `[secret hidden]`, in the app and in every message.
 - **Copy summary** puts the lines on the clipboard. A host without the feature shows no panel.
+- It is a card in the session's header: **open the first time** you see a session, then **folded to
+  one line** (the done text, cut) until you open it with the arrow. It pushes the conversation down and never overlaps it.
 - It shows on terminal sessions and on the sessions Flightdeck starts (once Claude Code has named the session).
 
 ### Webhooks
@@ -2505,7 +2507,11 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
   the commands to check the daemon (`systemctl --user status flightdeckd`,
   `sudo loginctl enable-linger $USER`, and `systemd=true` in `/etc/wsl.conf` on WSL). The app also
   tries an offline host at once, and starts the countdown over, when the window regains focus or
-  the network comes back (at most once every 2 seconds).
+  the network comes back (at most once every 2 seconds). When the daemon runs but refuses this
+  machine's address (it is outside `allowedNetworks`), `flightdeckd doctor` says so and names the
+  address; the app cannot tell that apart from a daemon that is down, so for a host that is not
+  on this machine it adds the hint to check `allowedNetworks` (`flightdeckd setup` adds the
+  Tailscale networks).
 - **Notifications** carry the host name.
 - **Closing the window** sends the app to the tray (can be turned off in Settings). **Start with
   Windows** is in Settings, off by default.

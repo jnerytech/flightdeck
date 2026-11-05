@@ -1718,6 +1718,13 @@ export const ptBR = {
     endMessage: "Encerrar esta sessão? O Claude Code para; dá para retomá-la depois.",
     endConfirm: "Encerrar sessão",
     pruned: "conversa removida pela retenção",
+    earlier: {
+      title: "Antes de retomar",
+      unreadable: "Não foi possível ler os turnos anteriores: {reason}",
+      empty: "O transcript não tem turnos anteriores para mostrar.",
+      truncated:
+        "Só os primeiros {count} turnos anteriores aparecem. Abra o transcript no Histórico para ver o resto.",
+    },
     historyGap: "parte do histórico não está mais disponível no host",
     message: "Mensagem",
     snippets: "Snippets de prompt",
@@ -3488,6 +3495,8 @@ export const ptBR = {
     hintWsl:
       "No WSL, ligue também o systemd em /etc/wsl.conf (depois rode wsl --shutdown no Windows):",
     hintGeneric: "Confira se o host está ligado e alcançável, e se o daemon roda lá.",
+    hintAddress:
+      "Ou o daemon recusou o endereço desta máquina: no host, inclua a rede dela em allowedNetworks (o flightdeckd setup faz isso para o Tailscale).",
   },
   hostPage: {
     simpleTitle: "Modo simples",

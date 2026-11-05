@@ -34,6 +34,10 @@ export function ProjectPage(props: {
   useEffect(() => {
     if (!state.projects[hostId]) void store.loadProjects(hostId);
   }, [store, hostId, state.projects]);
+  // The tiles are made of the hub's lists, which the Sessions screen used to be the only one to ask for.
+  useEffect(() => {
+    void store.refreshHub();
+  }, [store]);
 
   if (!project) {
     return (
@@ -119,6 +123,7 @@ export function ProjectPage(props: {
         state={state}
         hostId={hostId}
         projectKey={store.projectKeyOf(hostId, project)}
+        path={project.path}
         onOpen={(row) => props.go({ name: "session", host: hostId, id: row.sessionId as string })}
       />
     </Page>

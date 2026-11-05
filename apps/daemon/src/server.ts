@@ -2240,7 +2240,8 @@ export function startServer(opts: ServerOptions): RunningServer {
       // Origin filter before anything else, on every route, before any upgrade.
       const origin = srv.requestIP(req)?.address ?? "";
       if (!ipInNetworks(origin, opts.allowedNetworks ?? DEFAULT_ALLOWED_NETWORKS)) {
-        return new Response("forbidden", { status: 403 });
+        // Its own address, so a person told "refused" can add the right network (the doctor reads it).
+        return new Response(`forbidden: ${origin}`, { status: 403 });
       }
       const url = new URL(req.url);
       if (url.pathname === WS_PATH) {

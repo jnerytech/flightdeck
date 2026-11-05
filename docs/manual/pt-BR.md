@@ -2315,6 +2315,8 @@ A página de uma sessão de terminal mostra um **resumo** curto, e o app pode ma
   senha digitada na linha, um valor do cofre) é trocado por `[secret hidden]`, no app e em toda
   mensagem.
 - **Copiar resumo** põe as linhas na área de transferência. Um host sem o recurso não mostra o painel.
+- É um cartão no cabeçalho da sessão: **aberto na primeira vez** que você vê a sessão, depois
+  **recolhido numa linha** (o texto do que foi feito, cortado) até você abrir com a seta. Empurra a conversa para baixo e nunca passa por cima dela.
 - Aparece nas sessões de terminal e nas que o Flightdeck inicia (depois que o Claude Code dá nome à sessão).
 
 ### Webhooks
@@ -2493,7 +2495,11 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
   local, WSL ou Linux, o aviso lista os comandos para conferir o daemon
   (`systemctl --user status flightdeckd`, `sudo loginctl enable-linger $USER` e `systemd=true` em
   `/etc/wsl.conf` no WSL). O app também tenta um host desconectado na hora, e reinicia a contagem,
-  quando a janela volta a ter o foco ou a rede volta (no máximo uma vez a cada 2 segundos).
+  quando a janela volta a ter o foco ou a rede volta (no máximo uma vez a cada 2 segundos). Quando o daemon roda mas recusa o endereço desta máquina
+  (ele está fora de `allowedNetworks`), o `flightdeckd doctor` diz isso e cita o endereço; o app não
+  consegue separar isso de um daemon parado, então, para um host que não está nesta máquina, ele
+  acrescenta a dica de conferir `allowedNetworks` (o `flightdeckd setup` inclui as redes do
+  Tailscale).
 - **Notificações** trazem o nome do host.
 - **Fechar a janela** manda o app para a bandeja (desligável em Configurações). **Iniciar com o
   Windows** fica em Configurações, desligado por padrão.

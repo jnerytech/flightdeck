@@ -39,6 +39,7 @@ export const Timeline = forwardRef<
   return (
     <div
       ref={ref}
+      data-slot="timeline"
       // biome-ignore lint/a11y/noNoninteractiveTabindex: a region that scrolls takes focus, so the keyboard reaches it
       tabIndex={0}
       className={cn(

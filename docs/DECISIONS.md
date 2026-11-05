@@ -3569,3 +3569,27 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   (7420 to 7422). It asks for port 0, and a ratchet test now refuses a fixed 742x in a server started by a test (`startServer`,
   `Bun.serve`, `.listen(`, or a config written for a `startDaemon` without a spread that lets the caller override it). Pure
   functions and pairing links that only mention 742x are data, not servers.
+
+## A refused address (issue #106, follow-up)
+
+- **The doctor names the cause; the app can only hint.** The origin filter answers 403 before any upgrade, and a browser
+  WebSocket reports only that it closed, so the app sees the same close as for a daemon that is down. Telling them apart in the
+  app would need either an HTTP probe (the webview's CSP allows no `http:` in `connect-src`, and widening it lets any injected
+  script talk out over plain HTTP) or an upgrade that closes with a code (it would end the guarantee, tested in `redes`, that a
+  refused address gets no handshake at all). Neither is worth it for a message, so the app shows a hint for a refused connection
+  to a non-loopback host: "or the daemon refused this machine's address ... allowedNetworks".
+- **The 403 now says the address** (`forbidden: <ip>`, the client's own address, which it already has), so `flightdeckd doctor`
+  reads it from `/health` and reports "the daemon refused this machine's address (<ip>)" as a failure, with the setup fix.
+
+## The rc/0362 gate: ui-contraste meets three older tests
+
+- **Dark lines (`cromo-calmo`).** Phase 10's rule said every line is at most 6% alpha. #98 replaced the dark ones with opaque colors
+  on purpose: a 6% line cannot be 3:1 against a surface (WCAG 1.4.11), and the dark theme's panels and dividers had disappeared. The
+  rule is now two: the light lines stay faint (6% alpha, #98 did not touch them), and the dark lines are opaque with a floor of 3:1
+  and a ceiling of 6:1 against the background, both surfaces and the sidebar. The floor is also in `theme-contrast`; the ceiling is
+  what keeps them from being harsh, since a brighter border would still pass the floor.
+- **Tokens that point at tokens (`abas-a11y`).** `--card` is `var(--surface-1)` now, so a test that reads a token has to follow the
+  reference; its `tokens()` helper resolves `var()` (the check is kept, not dropped).
+- **The summary card (`sessao-rolagem`).** #97 made the summary a one-line card, and the first version folded it every time. The
+  older rule stays: the card opens the first time a session is seen (it is still a bounded card in the header that pushes the
+  conversation down) and is one line after, with the preview. The e2e overlap check holds in both states.
