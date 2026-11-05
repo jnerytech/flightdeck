@@ -99,7 +99,8 @@ function fake(
         );
       }
       if (args.includes("graphql")) {
-        if (opts.graphqlError) return { code: 1, stdout: JSON.stringify({ errors: [{ message: opts.graphqlError }] }) };
+        if (opts.graphqlError)
+          return { code: 1, stdout: JSON.stringify({ errors: [{ message: opts.graphqlError }] }) };
         return ok(`{"data":{"enablePullRequestAutoMerge":{"clientMutationId":null}}}`);
       }
       m = /commits\/(\w+)\/check-runs/.exec(path);
@@ -393,13 +394,27 @@ describe("pr-flow: update and merge", () => {
   test("auto refuses a draft or a stacked PR, and writes nothing (#271)", async () => {
     for (const [p, reason] of [
       [pr(16, "wip", { draft: true }), "a draft"],
-      [pr(20, "b", { base: "a" }), "onto a, not main"],
+      [pr(20, "b", { base: "a" }), "onto a, which main does not have yet"],
     ] as const) {
-      const f = fake({ prs: [p] });
+      const f = fake({ prs: [p], behind: { "main...a": 2 } });
       expect(await prFlow(["auto", String(p.number)], f.deps)).toBe(2);
       expect(f.writes).toEqual([]);
       expect(f.out()).toContain(reason);
     }
+  });
+
+  test("auto retargets to main a stacked PR whose parent main already has, then turns it on (#271)", async () => {
+    const f = fake({ prs: [pr(20, "b", { base: "a" })], behind: { "main...a": 0 } });
+    expect(await prFlow(["auto", "20"], f.deps)).toBe(0);
+    expect(f.writes[0]).toBe(`api -X PATCH ${R}/pulls/20 -f base=main`);
+    expect(f.writes[1]).toContain("enablePullRequestAutoMerge");
+    const refused = fake({
+      prs: [pr(20, "b", { base: "a" })],
+      behind: { "main...a": 0 },
+      fail: /PATCH/,
+    });
+    expect(await prFlow(["auto", "20"], refused.deps)).toBe(1);
+    expect(refused.writes.filter((w) => w.includes("graphql"))).toEqual([]);
   });
 
   test("auto that GitHub refuses fails with its reason; an unreadable PR fails too (#271)", async () => {
