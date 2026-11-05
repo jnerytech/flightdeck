@@ -1057,23 +1057,42 @@ export class AppStore {
     return null;
   }
 
-  /** Reads a host's whole health now: its dependencies and its doctor; the sidebar and the host page read it. */
-  async checkHealth(hostId: string): Promise<void> {
+  private readonly healthReads = new Map<string, Promise<void>>();
+
+  /**
+   * Reads a host's whole health now: its dependencies and its doctor; the sidebar and the host page
+   * read it. Silent (a failure goes to `healthError`, not to a banner), each half on its own, and a
+   * read already on its way is the answer to a second ask.
+   */
+  checkHealth(hostId: string): Promise<void> {
+    const running = this.healthReads.get(hostId);
+    if (running) return running;
+    const read = this.readHealth(hostId).finally(() => this.healthReads.delete(hostId));
+    this.healthReads.set(hostId, read);
+    return read;
+  }
+
+  private async readHealth(hostId: string): Promise<void> {
     const host = this.state.hosts.find((h) => h.id === hostId);
     const features = host?.hostInfo?.features;
     const [deps, doctor] = await Promise.all([
       hasFeature(features, "depsCheck", false)
-        ? this.hostCommand(hostId, "deps.check", {})
+        ? this.hostRequest(hostId, "deps.check", {})
         : Promise.resolve(null),
       hasFeature(features, "doctor.run", false)
-        ? this.hostCommand(hostId, "doctor.run", { appVersion: APP_VERSION })
+        ? this.hostRequest(hostId, "doctor.run", { appVersion: APP_VERSION })
         : Promise.resolve(null),
     ]);
-    if (!deps && !doctor) return;
+    const failed = [deps, doctor].find((half) => half !== null && !half.ok);
+    const error = this.state.healthError;
+    const { [hostId]: _gone, ...rest } = error;
+    const got = deps?.ok ? deps.data : null;
+    const heard = doctor?.ok ? doctor.data : null;
     this.update({
-      ...(deps ? { deps: { ...this.state.deps, [hostId]: deps } } : {}),
-      ...(doctor ? { doctor: { ...this.state.doctor, [hostId]: doctor } } : {}),
-      healthAt: { ...this.state.healthAt, [hostId]: this.now() },
+      ...(got ? { deps: { ...this.state.deps, [hostId]: got } } : {}),
+      ...(heard ? { doctor: { ...this.state.doctor, [hostId]: heard } } : {}),
+      ...(got || heard ? { healthAt: { ...this.state.healthAt, [hostId]: this.now() } } : {}),
+      healthError: failed && !failed.ok ? { ...rest, [hostId]: failed.message } : rest,
     });
   }
 

@@ -156,20 +156,24 @@ export function HostHealth(props: {
   const optional = (base.kind === "optional" ? base.n : 0) + warning;
   const read = props.deps !== null || props.doctor !== null;
   const kind = required > 0 ? "required" : optional > 0 ? "optional" : "ok";
-  const headline = !read
-    ? t("hostDeps.checking")
-    : {
-        required: t("hostDeps.requiredMissing", { n: required }),
-        optional: t("hostDeps.optionalMissing", { n: optional }),
-        ok: t("hostDeps.allSet"),
-      }[kind];
-  const headlineLook: DepLook = !read
-    ? { icon: "dash", tone: "off" }
-    : kind === "ok"
-      ? { icon: "check", tone: "ok" }
-      : kind === "optional"
-        ? { icon: "warning", tone: "warn" }
-        : { icon: "cross", tone: "error" };
+  const headline = props.error
+    ? t("hostDeps.readFailed", { reason: props.error })
+    : !read
+      ? t("hostDeps.checking")
+      : {
+          required: t("hostDeps.requiredMissing", { n: required }),
+          optional: t("hostDeps.optionalMissing", { n: optional }),
+          ok: t("hostDeps.allSet"),
+        }[kind];
+  const headlineLook: DepLook = props.error
+    ? { icon: "warning", tone: "warn" }
+    : !read
+      ? { icon: "dash", tone: "off" }
+      : kind === "ok"
+        ? { icon: "check", tone: "ok" }
+        : kind === "optional"
+          ? { icon: "warning", tone: "warn" }
+          : { icon: "cross", tone: "error" };
   const HeadIcon = ICONS[headlineLook.icon];
 
   const renderRow = (row: HealthRow) => {
@@ -242,14 +246,15 @@ export function HostHealth(props: {
       <p role="status" className="dep-line">
         <HeadIcon data-slot="dep-icon" aria-hidden="true" className={TONES[headlineLook.tone]} />
         <strong>{headline}</strong>
-        {props.checkedAt !== null && (
-          <span className="dep-found">
-            {t("hostHealth.checked", {
-              ago: formatAgo(Math.max(0, store.now() - props.checkedAt), t),
-            })}
-          </span>
-        )}
       </p>
+      {/* Outside the live region: the age changes every minute and must not be announced each time. */}
+      {props.checkedAt !== null && (
+        <span className="dep-found">
+          {t("hostHealth.checked", {
+            ago: formatAgo(Math.max(0, store.now() - props.checkedAt), t),
+          })}
+        </span>
+      )}
       {group("required")}
       {group("optional")}
       {group("checks")}

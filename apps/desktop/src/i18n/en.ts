@@ -3402,6 +3402,7 @@ export const en: Dictionary = {
     title: "Dependencies",
     check: "Check again",
     checking: "Checking…",
+    readFailed: "Could not read the health: {reason}",
     allSet: "All set",
     optionalMissing: "{n} optional missing",
     requiredMissing: "{n} required missing",

@@ -3404,6 +3404,7 @@ export const ptBR = {
     title: "Dependências",
     check: "Verificar de novo",
     checking: "Verificando…",
+    readFailed: "Não foi possível ler a saúde: {reason}",
     allSet: "Tudo certo",
     optionalMissing: "Opcionais faltando: {n}",
     requiredMissing: "Obrigatórias faltando: {n}",
