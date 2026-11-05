@@ -287,6 +287,8 @@ describe("hub-ui", () => {
       "Abrir em nova aba",
       "Renomear",
       "Fixar",
+      "Silenciar notificações",
+      "Adiar notificações por 1 hora",
       "Arquivar",
       "Copiar comando",
     ]);
