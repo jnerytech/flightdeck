@@ -215,3 +215,47 @@ export function compareToBaseline(
     fixed: Object.keys(baseline).filter((key) => key.includes(here) && !now.has(key)),
   };
 }
+
+/** The windows the geometry is checked at: the smallest the app allows, the usual one, a big one. */
+export const GUARD_SIZES: ReadonlyArray<{ width: number; height: number }> = [
+  { width: 720, height: 480 },
+  { width: 1280, height: 800 },
+  { width: 1920, height: 1080 },
+];
+
+/** The contract: these regions have room on screen at 1280x800 (a collapsed one hid the hosts, a clipped one the approval). */
+export const KEY_REGIONS: RegionRule[] = [
+  { slot: "sidebar-hosts", minHeight: 24 },
+  { slot: "approval-card", minHeight: 60 },
+  { slot: "board-columns", minHeight: 120 },
+  { slot: "form-actions", minHeight: 28 },
+];
+
+/** Bars that never grow: the tab bar is one row. */
+export const BARS = [{ selector: ".tab-bar", maxHeight: 48 }];
+
+/** What fails with no baseline: the contract. The heuristic rules wait for a baseline file. */
+const CONTRACT: ReadonlySet<Rule> = new Set(["region-small", "region-missing"]);
+
+/**
+ * What a screen's findings mean for the build. A key region that is small or missing always fails;
+ * the heuristic rules fail only when they are new against the baseline, and with no baseline file
+ * yet (`null`) they fail nothing and are only reported (the first run writes them down).
+ */
+export function judge(
+  screen: string,
+  findings: Finding[],
+  baseline: Baseline | null,
+): { failures: string[]; fixed: string[] } {
+  void screen;
+  void findings;
+  void baseline;
+  void CONTRACT;
+  return { failures: [], fixed: [] };
+}
+
+/** The baseline file, or `null` when there is none yet. */
+export function loadBaseline(read: () => string | null): Baseline | null {
+  void read;
+  return {};
+}

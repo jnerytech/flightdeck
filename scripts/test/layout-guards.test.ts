@@ -172,3 +172,39 @@ describe("layout-guards: the baseline keeps heuristic findings quiet and only le
     expect(compareToBaseline("board@720", [], baseline).fixed).toEqual([]);
   });
 });
+
+import { judge, loadBaseline } from "../lib/layout-guards.ts";
+
+describe("layout-guards: what the findings mean for the build", () => {
+  const clipped = { rule: "clipped" as const, path: "main > card", detail: "cut" };
+  const small = { rule: "region-small" as const, path: "approval-card", detail: "400 x 20 px" };
+
+  test("a key region that is small fails with no baseline too: it is the contract", () => {
+    expect(judge("needs-you@1280", [small], null).failures).toEqual([
+      "needs-you@1280: region-small approval-card (400 x 20 px)",
+    ]);
+  });
+
+  test("heuristic findings fail nothing until there is a baseline, then only the new ones", () => {
+    expect(judge("board@720", [clipped], null).failures).toEqual([]);
+    expect(judge("board@720", [clipped], {}).failures).toEqual([
+      "board@720: clipped main > card (cut)",
+    ]);
+    expect(
+      judge("board@720", [clipped], { "clipped|board@720|main > card": true }).failures,
+    ).toEqual([]);
+  });
+
+  test("a baseline entry whose finding is gone comes back as fixed, for the baseline to go down", () => {
+    expect(judge("board@720", [], { "clipped|board@720|main > card": true }).fixed).toEqual([
+      "clipped|board@720|main > card",
+    ]);
+  });
+
+  test("the baseline file is read as its keys; no file is no baseline", () => {
+    expect(loadBaseline(() => null)).toBeNull();
+    expect(loadBaseline(() => '{"clipped|a@1|x":"main > card"}')).toEqual({
+      "clipped|a@1|x": true,
+    });
+  });
+});
