@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { slotViolation } from "../lib/claude-hooks.ts";
 import { realTempDir } from "./temp-dir.ts";
 
 /**
@@ -24,6 +25,24 @@ function frontmatter(path: string): Record<string, unknown> | string {
   } catch (error) {
     return `does not parse as YAML (${String(error)}); quote a value that holds ": "`;
   }
+}
+
+/** Every Markdown file under `dir`, recursively. */
+function markdownUnder(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true, recursive: true })
+    .filter((e) => e.isFile() && e.name.endsWith(".md"))
+    .map((e) => join(e.parentPath, e.name));
+}
+
+/** The commands a Markdown file shows: each line of a fenced block and each inline code span. */
+function commandsIn(text: string): string[] {
+  const fenced = [...text.matchAll(/```[a-z]*\n([\s\S]*?)```/g)].flatMap((m) =>
+    (m[1] ?? "").split("\n"),
+  );
+  const inline = [...text.replace(/```[\s\S]*?```/g, "").matchAll(/`([^`\n]+)`/g)].map(
+    (m) => m[1] ?? "",
+  );
+  return [...fenced, ...inline];
 }
 
 async function runGuard(stdin: string) {
@@ -85,5 +104,19 @@ describe("harness-config", () => {
         typeof meta === "string" ? meta : `${typeof meta.name}/${typeof meta.description}`;
       expect(`${file}: ${shape}`).toBe(`${file}: string/string`);
     }
+  });
+
+  test("the instructions never tell a session to run a heavy command the guard refuses", () => {
+    const files = [
+      join(ROOT, "CLAUDE.md"),
+      join(ROOT, "docs/TDD.md"),
+      ...markdownUnder(join(ROOT, ".claude")),
+    ];
+    const refused = files.flatMap((file) =>
+      commandsIn(readFileSync(file, "utf8"))
+        .filter((command) => slotViolation(command, {}) !== null)
+        .map((command) => `${file.slice(ROOT.length + 1)}: ${command}`),
+    );
+    expect(refused).toEqual([]);
   });
 });
