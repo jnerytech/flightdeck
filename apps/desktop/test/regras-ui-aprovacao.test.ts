@@ -135,12 +135,16 @@ describe("regras-ui-aprovacao: a request that the rules decided", () => {
     expect(types()).not.toContain("vault.deliver");
   });
 
-  test("approving from the tray tells the daemon it was the tray", async () => {
-    const { store, hostId, push, payload, types, fromTray } = await setup();
+  // Issue #244 (H3): the tray's label cannot show which secret and parameters a grant covers,
+  // so a vault request is opened from the tray, never granted there.
+  test("an Approve from the tray opens a vault request instead of granting it", async () => {
+    const { store, hostId, push, types, fromTray } = await setup();
+    const opened: string[] = [];
+    store.onOpenRequest((item) => opened.push(item.requestId));
     push({});
     await settle(() => needsYou(store.getState()).length === 1);
     fromTray({ key: `${hostId}/r1`, action: "approve" });
-    await settle(() => types().includes("vault.deliver"));
-    expect(payload("vault.approve")).toEqual({ requestId: "r1", via: "tray", scope: "once" });
+    await settle(() => opened.length === 1);
+    expect(types()).not.toContain("vault.approve");
   });
 });
