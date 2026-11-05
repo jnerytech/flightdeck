@@ -270,7 +270,12 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       enableFileCheckpointing: true,
       // Hooks from the user's settings fire here too; the receptor ignores sessions marked so.
       env: { ...opts.env, FLIGHTDECK_MANAGED: "1" },
-      settingSources: ["user", "project", "local"],
+      // A folder the person has not trusted brings no hooks, servers, settings or CLAUDE.md of its own
+      // (issue #196); the user's own settings and the MCP server Flightdeck passes still load. A
+      // worktree reads its project configuration from the main checkout, never from the branch.
+      settingSources: opts.trust?.trusted === false ? ["user"] : ["user", "project", "local"],
+      ...(opts.trust?.trusted === false ? { strictMcpConfig: true } : {}),
+      ...(opts.trust?.configRoot ? { projectConfigRoot: opts.trust.configRoot } : {}),
       // Added to the user's and the project's servers, never instead of them. The key is the one
       // `claude mcp add flightdeck` uses, so a person who registered it by hand still has one entry.
       ...(this.mcpServer
