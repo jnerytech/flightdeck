@@ -73,6 +73,22 @@ for (const [lang, t] of [
       expect(described(add)).not.toContain(t.hostPage.needsOnline.replace("{host}", "pc"));
     });
 
+    test("an incompatible host leads with a sentence of the catalog; the daemon's own words are under Details", async () => {
+      const store = await offlinePage(lang);
+      await act(async () => {
+        const host = store.getState().hosts[0];
+        (store as unknown as { update(patch: object): void }).update({
+          hosts: [{ ...host, status: "incompatible", incompatibility: "protocolo 1 apenas" }],
+        });
+      });
+      const page = document.body.textContent ?? "";
+      expect(page).toContain(t.errors.protocol_incompatible);
+      const raw = [...document.querySelectorAll("details")].find((d) =>
+        (d.textContent ?? "").includes("protocolo 1 apenas"),
+      );
+      expect(raw?.querySelector("summary")?.textContent).toBe(t.toast.details);
+    });
+
     test("the allowed folder field is off, and Add gives the offline reason, not 'type the folder'", async () => {
       await offlinePage(lang);
       const reason = t.hostPage.needsOnline.replace("{host}", "pc");
