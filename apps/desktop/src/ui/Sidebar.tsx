@@ -32,6 +32,7 @@ import type { Key, T } from "../i18n/index.ts";
 import { type AppState, type AppStore, type HostView, needsYou } from "../lib/app-store.ts";
 import { budgetAlerts } from "../lib/budgets.ts";
 import { requiredMissing } from "../lib/deps-summary.ts";
+import { type GithubHost, githubSignedIn } from "../lib/github-session.ts";
 import type { HostNameError } from "../lib/host-name.ts";
 import { hostDotView } from "../lib/host-status.ts";
 import { hubRows } from "../lib/hub.ts";
@@ -246,6 +247,9 @@ export function Sidebar(props: {
     state.loopAlerts.length +
     watchAlerts(state).length;
   const pinned = hubRows(state).filter((row) => row.pinned && !row.archived);
+  // Who is signed in to GitHub is asked when the account menu opens, not on every render.
+  const [githubHosts, setGithubHosts] = useState<GithubHost[]>([]);
+  const [signingOut, setSigningOut] = useState<GithubHost | null>(null);
   const [pinnedOpen, setPinnedOpen] = useState(true);
   const [folded, setFolded] = useState<SidebarGroup[]>(() => props.store.sidebarFolded());
   const toggle = (group: SidebarGroup) => {
@@ -641,8 +645,20 @@ export function Sidebar(props: {
             </kbd>
           }
         />
+        <NavButton
+          collapsed={collapsed}
+          icon={<NavIcon name="settings" aria-hidden="true" className={icon} />}
+          active={here === "settings"}
+          label={t("sidebar.settings")}
+          onClick={() => go({ name: "settings" })}
+        />
         <AccountFooter
           account={account}
+          githubHosts={githubHosts}
+          onOpen={() => void githubSignedIn(props.store, state.hosts).then(setGithubHosts)}
+          onSignOutGithub={(hostId) =>
+            setSigningOut(githubHosts.find((host) => host.id === hostId) ?? null)
+          }
           collapsed={collapsed}
           t={t}
           go={go}
@@ -659,6 +675,20 @@ export function Sidebar(props: {
           name={renaming.name}
           onRename={(name) => props.onRenameHost(renaming.id, name)}
           onClose={() => setRenaming(null)}
+        />
+      )}
+      {signingOut && (
+        <ConfirmDialog
+          message={t("sidebarAccount.signOutGithubConfirm", { host: signingOut.name })}
+          confirmLabel={t("sidebarAccount.signOutGithub")}
+          destructive
+          onConfirm={() => {
+            const host = signingOut;
+            setSigningOut(null);
+            setGithubHosts((hosts) => hosts.filter((h) => h.id !== host.id));
+            void props.store.hostCommand(host.id, "github.logout", {});
+          }}
+          onCancel={() => setSigningOut(null)}
         />
       )}
       {removing && (

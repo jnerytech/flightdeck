@@ -8,6 +8,10 @@ export const en: Dictionary = {
     none: "Claude account",
     unread: "Not read yet",
     plan: "{plan} plan",
+    signOutGithub: "Sign out of GitHub",
+    signOutGithubHost: "Sign out of GitHub ({host})",
+    signOutGithubConfirm:
+      "Sign out of GitHub on {host}? Its sessions lose access to your repositories until you sign in again.",
   },
   home: {
     title: "Home",
