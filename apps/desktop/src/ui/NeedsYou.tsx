@@ -199,11 +199,17 @@ export function NeedsYou(props: {
           const { item } = entry;
           const summary = inputSummary(item.input);
           const chip = chipOf(item.sessionId);
+          // A workflow gate is not a tool: its line says which step waits (issue #175).
+          const what = item.gate
+            ? t("needsYou.gateRow", { step: item.gate.stepId })
+            : summary
+              ? `${item.toolName}: ${summary}`
+              : item.toolName;
           return (
             <li key={entry.key}>
               <button
                 type="button"
-                aria-label={`${item.hostName} · ${item.sessionName}: ${item.toolName}`}
+                aria-label={`${item.hostName} · ${item.sessionName}: ${item.gate ? what : item.toolName}`}
                 aria-pressed={selected === entry.key}
                 data-active={cursor === i}
                 className={ROW}
@@ -223,9 +229,7 @@ export function NeedsYou(props: {
                     {formatAgo(store.now() - Date.parse(item.createdAt), t)}
                   </time>
                 </RowHead>
-                <span className="truncate pl-4 text-muted-foreground text-xs">
-                  {summary ? `${item.toolName}: ${summary}` : item.toolName}
-                </span>
+                <span className="truncate pl-4 text-muted-foreground text-xs">{what}</span>
               </button>
             </li>
           );
