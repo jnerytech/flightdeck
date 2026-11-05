@@ -8,9 +8,7 @@ import {
 
 const RULES = [
   { action: "*", resource: "*", effect: "ask" },
-  { action: "read", resource: "*", effect: "allow" },
-  { action: "glob", resource: "*", effect: "allow" },
-  { action: "grep", resource: "*", effect: "allow" },
+
   ...[
     "*/.env*",
     "*.env",
@@ -30,7 +28,7 @@ const RULES = [
 ];
 
 describe("opencode-env", () => {
-  test("the rules: everything asks, reads, globs and greps are allowed, credential reads ask, question and subagent denied", () => {
+  test("the rules: everything asks (Flightdeck allows reads inside the folder by real path), question and subagent denied", () => {
     expect(CREDENTIAL_READS.length).toBe(11);
     expect(opencodeRules()).toEqual(RULES as ReturnType<typeof opencodeRules>);
   });
