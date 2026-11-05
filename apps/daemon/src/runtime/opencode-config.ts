@@ -64,13 +64,19 @@ export function opencodeConfig(disabledAgents: readonly string[] = []): Record<s
   return { default_agent: FLIGHTDECK_AGENT, permissions: rules, agents };
 }
 
+/** The one `OPENCODE_*` that is a provider credential (OpenCode Zen), not a config switch. */
+const KEPT_VARIABLES: ReadonlySet<string> = new Set(["OPENCODE_API_KEY"]);
+
 /** The session's environment without the daemon's `OPENCODE_*`, plus project config off and ours. */
 export function opencodeEnv(
   sessionEnv: Record<string, string>,
   configContent: string,
 ): Record<string, string> {
   const env = Object.fromEntries(
-    Object.entries(sessionEnv).filter(([key]) => !key.toUpperCase().startsWith("OPENCODE_")),
+    Object.entries(sessionEnv).filter(
+      ([key]) =>
+        !key.toUpperCase().startsWith("OPENCODE_") || KEPT_VARIABLES.has(key.toUpperCase()),
+    ),
   );
   return { ...env, OPENCODE_DISABLE_PROJECT_CONFIG: "1", OPENCODE_CONFIG_CONTENT: configContent };
 }
