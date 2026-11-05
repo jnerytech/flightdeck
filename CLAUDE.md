@@ -14,9 +14,9 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
 - `.claude/`: the shared Claude Code setup. Skills `tdd-area` (one TDD area) and `new-phase`
   (open or close a phase); agents `spec-verifier` (checks a phase against its spec) and
   `tauri-rust-reviewer` (for changes in `src-tauri`); hooks that block wide `git add`, edits of
-  generated files, test edits that add `.only`/`.skip`/`test.todo`/`toMatchSnapshot`, and commits
-  that break `type(scope): text` or the TDD order, and that run Biome after each edit, in the main
-  checkout and its worktrees. The hook rules live in `scripts/lib/claude-hooks.ts`;
+  generated files, test edits that add `.only`/`.skip`/`test.todo`/`toMatchSnapshot`, commits
+  that break `type(scope): text` or the TDD order, and heavy runs outside the slot, and that run
+  Biome after each edit, in the main checkout and its worktrees. The hook rules live in `scripts/lib/claude-hooks.ts`;
   `bun run harness:stats` shows how often each rule blocked and how long the hooks took. Personal
   settings go to `.claude/settings.local.json` (ignored).
 
@@ -63,8 +63,8 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
 - Red → green per area: stub with real signatures and wrong values (never `throw`), red **by
   assertion**, commit the test alone (`test(<area>): ...`), minimal implementation, green, full
   suite, commit `feat(<area>): ...`. Every `feat`/`fix` needs a prior `test` with the same scope;
-  the commit hook enforces it. For a deliberate exception, prefix the commit command with
-  `FLIGHTDECK_TDD_WAIVER="<why>"` and add the commit to `scripts/tdd-audit-waivers.json`.
+  the commit hook enforces it. For a deliberate exception, end the message with a trailer line
+  `TDD-Waiver: <why>`; `tdd:audit` lists it as waived.
 - `git add` always with explicit paths, never `-A`, `-u` or `.`, and `git status --short` before
   the commit. No `git commit -a`.
 - Forbidden in committed code: `.only`, `.skip`, `test.todo`, `toMatchSnapshot` on the first
@@ -81,7 +81,7 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   maintainer integrates the phase into `main`, tags it and releases.
 
 - Full suite, `demo:shots`, `e2e`, the smokes and the builds run only through
-  `bun run slot --`, never bare: two of them at once overload the machine and make the
+  `bun run slot --`, never bare (the guard hook refuses them otherwise): two of them at once overload the machine and make the
   timing-sensitive tests flaky. Area tests, typecheck and lint do not need the slot.
 
 ## Conventions

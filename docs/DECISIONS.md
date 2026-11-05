@@ -3535,14 +3535,23 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   `git -C`. Anything else (an editor, `-F file`, a quoted directory, git failing) passes, since
   the audit and CI still check it.
 - **One base everywhere.** `auditBase` (the merge-base with `origin/main`, then `main`; the last
-  tag when `HEAD` is on `main`) is used by the hook, by `tdd:audit --since auto` and by CI. Without
+  release tag, `v*` and never `fase-N`, when `HEAD` is on `main`, pushed or not) is used by the
+  hook, by `tdd:audit --since auto` and by CI. Measured before turning CI on: all 21 open branches
+  on `origin`, `rc/0363` included, pass it. Without
   `--since`, `tdd:audit` now means `auto`; before, the bare command that CLAUDE.md suggested
   exited 2 with a usage line. In a pull request, CI's merge commit has no conventional type, so the
   audit ignores it.
-- **The waiver is a prefix in the command.** A waiver in `scripts/tdd-audit-waivers.json` is keyed
-  by the full commit hash, which does not exist before the commit. `FLIGHTDECK_TDD_WAIVER="<why>"`
-  in the command lets the commit through, in plain sight in the transcript; the hash goes to the
-  waiver file right after, as before.
+- **The waiver is a trailer.** A waiver in `scripts/tdd-audit-waivers.json` is keyed by the full
+  commit hash, which does not exist before the commit. A `TDD-Waiver: <why>` trailer in the
+  message is read by the hook and by `tdd:audit` (`%(trailers:key=TDD-Waiver)`), needs no hash
+  and survives a rebase. The hook logs such a commit as `waived`, so `harness:stats` shows how
+  often the gate is bypassed. The JSON file keeps the waivers made before.
+- **Only the commit's own message is read.** The command is masked (heredoc bodies and quoted
+  text blanked, offsets kept): `git commit` and its `-m`, `--message`, `--trailer` and `-F -` are
+  found only as words of their own segment, and their values are read from the original at the
+  same offsets. A first version read the first `-m` or heredoc anywhere, so a `cat >> f <<EOF`
+  before the commit, a `grep -m 1` or a `-m` in the body became the subject, and a quote inside a
+  `$(cat <<EOF)` body ended the message early.
 - **Not enforced: "the test commit holds only the test".** docs/TDD.md says the stub stays out of
   the test commit. In practice it goes in: 404 of the last 1,500 `test(...)` commits also change a
   file under `apps/*/src`, `packages/*/src`, `scripts/lib` or `src-tauri/src` (for example
@@ -3559,5 +3568,49 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   main checkout and its worktrees, rotated to `.jsonl.1` past 1 MB. `bun run harness:stats` gives
   the calls, blocks and p50/p95 per hook, and the blocks per rule. The `biome-on-edit` numbers
   decide whether `noFloatingPromises` moves out of the edit hook into the commit gate and CI.
+- **Heavy runs outside the slot are refused.** The guard refuses `bun run test|coverage|e2e|
+  demo:shots|smoke*|build:daemon|build:desktop` and a bare `bun test` unless the segment is
+  `bun run slot -- ...`. A session that runs under a slot holder (`FLIGHTDECK_SLOT_HOLDER` in the
+  hook's environment, #141) passes, since its run is already in the slot. The slot's own child is
+  started by the slot, not by Claude's Bash tool, so the hook never sees it.
+- **Timeouts and fail-open are explicit.** `guard` has `timeout: 10`, `biome-on-edit` 30, both
+  `onFailure: "continue"` (without it, a failing shell-form hook blocks on Windows without Git
+  Bash), and the gate's git calls stop after 2 s. `onFailure: "block"` is never used: the guard
+  imports `scripts/lib`, so a broken edit there would block the edit that repairs it.
+- **The setup is tested.** `harness-config.test.ts` checks that each hook in `settings.json` runs
+  a file that exists, with a timeout and `onFailure`; that the deny list keeps the credentials;
+  that the real `guard.ts` blocks with exit 2 and passes bad input; and that every agent and skill
+  frontmatter parses as YAML. It found two that did not (`tauri-rust-reviewer`, `new-phase`: an
+  unquoted `: ` in the description); Claude Code read them anyway, but a rule's `paths` that does
+  not parse is silently dropped, so the check stays.
+- **`test:related` sees data files.** A test that names a changed path, or one of its folders, as
+  a string literal is related to it (`names .claude/settings.json`). Names with no slash (a root
+  file, a top-level folder) do not count, because tests use `.claude`, `docs` or `CLAUDE.md` as
+  product words; a `*-baseline.json` also counts by its file name, as the ratchets name it.
 - **The hook files stay thin.** `.claude/hooks/*.ts` only read stdin, call `scripts/lib` and exit.
   They are not under coverage; the rules they apply are, at 100%.
+
+## Harness: decisions on the independent review of the #169 proposal
+
+The review (OpenCode, 2026-11-04) ranked 20 findings. Each one is accepted, deferred to its
+delivery, or rejected:
+
+| Finding | Decision |
+| --- | --- |
+| S2-1 "a test commit holds only tests" | Accepted: never enforced (see D1 above). TDD.md's text against the practice is for the maintainer. |
+| S2-2 D7 under the slot deadlocks | Accepted: D4 and D7 come after #141 (`slot-reentrant`, v0.36.3); the eval's model phase runs outside the slot, `handoff:check` never under it. |
+| S2-3 no waiver path, missing types | Accepted: the `TDD-Waiver:` trailer; `style`, `revert`, `Merge`, `Revert`, `fixup!` and `squash!` pass; a commit with no readable message passes. |
+| S2-4 hook timeouts, onFailure | Accepted: see D1 above. |
+| S2-5 D4 sender-side keyword gate | Accepted: D4 becomes receiver-side. `handoff:check` prints one stamp line (HEAD, four exit codes, time) that the session pastes; the orchestrator or `spec-verifier` checks it for HEAD. A sender hook, if any, comes after S1-1 and only advises. |
+| S2-6 `test:related` misses non-TS changes | Accepted: see D1 above. |
+| S2-9 log volume and rotation | Rejected in part: the log already rotates by `rename`, never truncates, and a lost line is acceptable. Every call is kept: `biome-on-edit`'s latency is what decides S3-6. |
+| S2-10 the gate is a guardrail | Accepted: TDD.md says so; the audit in CI is the wall. |
+| S2-11 `fase-N` tags | Accepted: `--match 'v[0-9]*'`. |
+| S3-1 heavy runs outside the slot | Accepted: see D1 above, with the slot-holder exception. |
+| S3-2 `merge=union` on DECISIONS.md | Rejected: union keeps both sides of a conflict without order, so two branches appending near the same heading can interleave silently. D2b's one file per unit of work removes the conflicts at the root. |
+| S3-3 the setup itself is untested | Accepted: `harness-config.test.ts`. |
+| S3-4 branch-aware push guard | Rejected for now: the orchestrator pushes feature branches from the same checkout, so a rule by branch would block it. It needs a session identity, not a branch. |
+| S1-2 rules lost after `/compact` | Accepted for D5: every rule that guards a non-negotiable stays in the root CLAUDE.md, path-scoped rules are a bonus, and a `SessionStart` hook with `matcher: "compact"` restates the essentials (S3-5). |
+| S1-3 unquoted `paths:` globs | Accepted for D5: list form with quoted patterns; `harness-config` parses every frontmatter. |
+| S1-4 `claude -w` | Accepted: dropped. A dev session starts with `cd ../flightdeck-x && claude`, or moves with `/cd`. |
+| S1-1, S2-7, S2-8, S3-5..S3-9, S4-1..S4-7 | Deferred to their deliveries (D2, D4, D5, D6, D7), where each is decided before the code. |

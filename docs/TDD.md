@@ -65,10 +65,13 @@ every push and pull request. The project's PreToolUse hook (`.claude/hooks/guard
 - it refuses an Edit or Write that adds `.only(`, `.skip(`, `test.todo(` or `toMatchSnapshot(` to
   a test file (one that keeps or removes them passes).
 
-For a deliberate exception, prefix the commit command with `FLIGHTDECK_TDD_WAIVER="<why>"` and
-add the commit to `scripts/tdd-audit-waivers.json` right after. A message the hook cannot read
-(from an editor or a file) passes; the audit still checks it. `bun run harness:stats` shows how
-often each rule blocked.
+For a deliberate exception, end the commit message with a trailer line `TDD-Waiver: <why>` (or
+pass `--trailer "TDD-Waiver: <why>"`). The hook lets the commit through and `tdd:audit` lists it
+as waived; the trailer needs no hash, so it survives a rebase. `scripts/tdd-audit-waivers.json`
+keeps the waivers made before trailers existed. A message the hook cannot read (from an editor or
+a file) passes, and so does a commit hidden in `sh -c` or a subshell: the hook is a guardrail, and
+the audit in CI is the wall. `bun run harness:stats` shows how often each rule blocked and how
+many commits were waived.
 
 **Antes de entregar uma sessão:** `bun run typecheck`, `bun run lint`, `bun run tdd:audit` e
 `bun run test:related`. O `test:related [--base <ref>]` roda só os testes que alcançam o que
