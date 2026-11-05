@@ -140,7 +140,11 @@ describe("bandeja-aprovacao", () => {
       items: [
         { key: "h1/r1", label: "alfa · Gerenciada · Bash: npm test 1", actions: BOTH },
         { key: "h2/r2", label: "beta · app · Write: C:\\app\\a.txt", actions: BOTH },
-        { key: "h1/r3", label: "alfa · Card X · gate revisão", actions: ["open"] },
+        {
+          key: "h1/r3",
+          label: "alfa · Card X · A etapa “revisão” do workflow espera sua aprovação",
+          actions: ["open"],
+        },
         { key: "h1/r4", label: "alfa · Gerenciada · Read", actions: BOTH },
         { key: "h1/r5", label: `alfa · Gerenciada · Bash: ${"x".repeat(80)}…`, actions: BOTH },
       ],
