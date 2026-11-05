@@ -148,7 +148,7 @@ async function create(name: string, workers = "1") {
   await change("Objetivo", `objetivo de ${name}`);
   await change("Nome do time", name);
   await workerRows(Number(workers));
-  await click("Criar time");
+  await click("Criar e iniciar");
   await settle(() => row(name) !== null);
 }
 
@@ -182,7 +182,9 @@ describe("times-ui: the teams of a host", () => {
   test("Criar time is disabled without a goal, and says why", async () => {
     await open();
     await click("Novo time");
-    const button = screen.queryByRole("button", { name: "Criar time" }) as HTMLButtonElement | null;
+    const button = screen.queryByRole("button", {
+      name: "Criar e iniciar",
+    }) as HTMLButtonElement | null;
     expect(button?.disabled).toBe(true);
     const reason = screen.queryByText("Escreva o objetivo do time.");
     expect(reason).not.toBeNull();
@@ -195,7 +197,7 @@ describe("times-ui: the teams of a host", () => {
     await change("Objetivo", "revisar o login");
     await change("Nome do time", "login");
     await workerRows(2);
-    await click("Criar time");
+    await click("Criar e iniciar");
     await settle(() => row("login") !== null);
     const created = await teams();
     expect(created.map((t) => [t.name, t.members.length])).toEqual([["login", 3]]);
@@ -217,7 +219,7 @@ describe("times-ui: the teams of a host", () => {
     await change("Objetivo", "com personas");
     await change("Nome do time", "tp");
     await pickWorkerPersonas("qa", "revisor");
-    await click("Criar time");
+    await click("Criar e iniciar");
     await settle(() => row("tp") !== null);
     const members = (await teams())[0]?.members as Array<{ name: string; persona: string | null }>;
     expect(members.filter((m) => m.name.includes("executora")).map((m) => m.persona)).toEqual([
@@ -244,7 +246,7 @@ describe("times-ui: the teams of a host", () => {
     expect(
       (screen.queryByLabelText("Persona da coordenadora (opcional)") as HTMLSelectElement).value,
     ).toBe("");
-    await click("Criar time");
+    await click("Criar e iniciar");
     await settle(() => row("dev") !== null);
     const members = (await teams())[0]?.members as Array<{ name: string; persona: string | null }>;
     expect(members.filter((m) => m.name.includes("executora")).map((m) => m.persona)).toEqual([
@@ -258,7 +260,7 @@ describe("times-ui: the teams of a host", () => {
     await click("Novo time");
     await change("Objetivo", "um objetivo");
     await change("Nome do time", "t1");
-    await click("Criar time");
+    await click("Criar e iniciar");
     await settle(() => row("t1") !== null);
     await click("Pausar t1", row("t1"));
     await settle(() => row("t1")?.textContent?.includes("Pausado") === true);
@@ -287,7 +289,7 @@ describe("times-ui: the teams of a host", () => {
     await click("Novo time");
     await change("Objetivo", "outro");
     await change("Nome do time", "t2");
-    await click("Criar time");
+    await click("Criar e iniciar");
     await settle(() => row("t2") !== null);
     await click("Encerrar t2", row("t2"));
     await click("Cancelar", screen.queryByRole("alertdialog"));
@@ -304,7 +306,7 @@ describe("times-ui: the teams of a host", () => {
     await change("Objetivo", "mais um");
     await change("Nome do time", "t3");
     await workerRows(1);
-    await click("Criar time");
+    await click("Criar e iniciar");
     await settle(() => row("t3") !== null);
     // The button opens the pickers; Cancelar closes them without adding anything.
     await click("Adicionar executora a t3", row("t3"));
@@ -404,7 +406,7 @@ describe("times-ui: the teams of a host", () => {
     await change("Persona da coordenadora (opcional)", "revisor");
     // A choice among the host's personas, never text typed.
     expect(screen.queryByLabelText("Persona da coordenadora (opcional)")?.tagName).toBe("SELECT");
-    await click("Criar time");
+    await click("Criar e iniciar");
     await settle(() => row("no-pi") !== null);
     const made = await other.teams();
     expect(made.map((t) => t.name)).toEqual(["no-pi"]);
@@ -452,7 +454,7 @@ describe("times-ui: the teams of a host", () => {
     await change("Nome do time", "tm");
     await change("Modelo da coordenadora", "opus");
     await change("Modelo da executora 2", "haiku");
-    await click("Criar time");
+    await click("Criar e iniciar");
     await settle(() => row("tm") !== null);
     const members = (await teams())[0]?.members as Array<{ name: string; model: string | null }>;
     expect(members.map((m) => [m.name, m.model])).toEqual([
@@ -480,7 +482,7 @@ describe("times-ui: the teams of a host", () => {
     await click("Novo time");
     await settle(() => screen.queryByText("Este host ainda não tem projetos.") !== null);
     const button = () =>
-      screen.queryByRole("button", { name: "Criar time" }) as HTMLButtonElement | null;
+      screen.queryByRole("button", { name: "Criar e iniciar" }) as HTMLButtonElement | null;
     expect(button()?.disabled).toBe(true);
     await change("Objetivo", "com projeto novo");
     // The goal is there; the project is what is missing, and the reason says so.
@@ -499,7 +501,7 @@ describe("times-ui: the teams of a host", () => {
     await click("Adicionar", dialog);
     await settle(() => button()?.disabled === false);
     await change("Nome do time", "novo");
-    await click("Criar time");
+    await click("Criar e iniciar");
     await settle(() => row("novo") !== null);
     expect((await teams()).map((t) => t.name)).toEqual(["novo"]);
   });
@@ -534,5 +536,41 @@ describe("times-ui: the teams of a host", () => {
       store.router.push({ name: "teams" });
     });
     expect(screen.queryByText("Nenhum host conectado com times")).not.toBeNull();
+  });
+
+  test("the empty state has a way out: Adicionar host opens the add-host form", async () => {
+    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    const daemon = legacyDaemon(cleanups);
+    render(<App store={store} />);
+    await act(() => store.addHost({ name: "velho", url: daemon.url, token: TOKEN }));
+    await settle(() => store.getState().hosts[0]?.hostInfo != null);
+    await act(async () => {
+      store.router.push({ name: "teams" });
+    });
+    await click("Adicionar host");
+    expect(store.router.current.name).toBe("add-host");
+  });
+
+  test("a member row links to its session and to its card", async () => {
+    const { store, project } = await open();
+    await create("links", "1");
+    const item = row("links") as HTMLElement;
+    await settle(
+      () =>
+        within(item).queryByRole("button", { name: "Abrir a sessão de links · executora 1" }) !==
+        null,
+    );
+    await click("Abrir a sessão de links · executora 1", item);
+    expect(store.router.current).toMatchObject({ name: "session" });
+    await act(async () => {
+      store.router.push({ name: "teams" });
+    });
+    const again = row("links") as HTMLElement;
+    await click("Abrir o card de links · executora 1", again);
+    expect(store.router.current).toMatchObject({
+      name: "card",
+      projectId: project?.id,
+    });
   });
 });
