@@ -4045,12 +4045,15 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   isolation.ts`) restores what a file can leave changed for the next one: `setTimeout`,
   `clearTimeout`, `setInterval`, `clearInterval`, `setImmediate`, `clearImmediate`, `Date`, `fetch`,
   the environment, and (once happy-dom is registered) the window size, `localStorage`,
-  `sessionStorage` and `document.body`. The snapshot is taken at the end of the preload, after the
-  guards, so their PATH, HOME and fetch wrapper are part of the baseline.
-- **happy-dom's timers are the baseline once it is registered.** Registering swaps `setTimeout`,
-  `clearTimeout`, `setInterval` and `clearInterval` for its own; restoring the preload-time ones
-  would undo that for the files that do not register again. With a DOM, the expected timer is the
-  window's own.
+  `sessionStorage` and `document.body`. The first snapshot is taken at the end of the preload, after
+  the guards, so their PATH, HOME and fetch wrapper are part of the baseline.
+- **The baseline is taken after each file has loaded, not before.** The plugin appends a call to
+  the file's source, so it runs once the file's top-level code has. A helper that sets an env
+  variable (`board-helpers.ts` sets `GIT_AUTHOR_*`) or registers happy-dom (which swaps the timers
+  for its own) when it loads runs once, because Bun caches the module; restoring the state from
+  before the first file would have taken that away from every later file (the first version did:
+  1132 tests failed with `Author identity unknown` in the full run, each green alone). So only what
+  a file's tests and hooks change is put back; what its top-level code set stays.
 - **Named, not silent.** A leak other than the routine browser state (size, storage, body: nearly
   every UI file leaves some) prints `isolation: <file> left … changed; put back before <next>` on
   stderr, so the culprit is one line away. The reset is a net, not a licence: fix the file.
