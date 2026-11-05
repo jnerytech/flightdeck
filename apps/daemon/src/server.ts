@@ -315,7 +315,7 @@ interface Connection {
   dropped?: boolean;
   /** Pings sent and not yet answered, by id → send time. */
   pendingPings: Map<string, number>;
-  /** When the last frame of any kind arrived from this client (`performance.now()`). */
+  /** When the last frame of any kind arrived from this client (the heartbeat clock). */
   lastFrameAt: number;
   /** Stops the `sessions.watch` stream, when active. */
   unwatch?: () => void;
@@ -496,9 +496,16 @@ export function startServer(opts: ServerOptions): RunningServer {
   let pingSeq = 0;
 
   const pingEveryMs = opts.pingIntervalMs ?? PING_INTERVAL_MS;
-  const heartbeat = setInterval(() => {
+  const now = opts.now ?? (() => performance.now());
+  const pingTicker =
+    opts.pingTicker ??
+    ((tick: () => void, everyMs: number) => {
+      const timer = setInterval(tick, everyMs);
+      return () => clearInterval(timer);
+    });
+  const stopHeartbeat = pingTicker(() => {
     for (const ws of authed) {
-      const silentMs = performance.now() - ws.data.lastFrameAt;
+      const silentMs = now() - ws.data.lastFrameAt;
       if (
         ws.data.pendingPings.size >= MAX_MISSED_PINGS &&
         silentMs >= MAX_MISSED_PINGS * pingEveryMs
@@ -507,7 +514,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         continue;
       }
       const id = String(++pingSeq);
-      ws.data.pendingPings.set(id, performance.now());
+      ws.data.pendingPings.set(id, now());
       const { lastRttMs } = ws.data;
       send(ws, { type: "ping", id, ...(lastRttMs !== undefined ? { lastRttMs } : {}) });
     }
@@ -518,7 +525,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     const pong = Pong.safeParse(frame);
     const sentAt = pong.success ? ws.data.pendingPings.get(pong.data.id) : undefined;
     if (sentAt === undefined) return;
-    ws.data.lastRttMs = Math.round(performance.now() - sentAt);
+    ws.data.lastRttMs = Math.round(now() - sentAt);
     ws.data.pendingPings.clear();
   }
 
@@ -2249,7 +2256,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             subscriptions: new Map(),
             coalescers: new Set(),
             pendingPings: new Map(),
-            lastFrameAt: performance.now(),
+            lastFrameAt: now(),
             changeWatchers: new Map(),
           },
         });
@@ -2262,7 +2269,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     websocket: {
       drain: drainAll,
       message(ws, raw) {
-        ws.data.lastFrameAt = performance.now();
+        ws.data.lastFrameAt = now();
         let frame: unknown;
         try {
           frame = decode(raw);
@@ -2312,7 +2319,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       for (const ws of authed) ws.close(CLOSE_UNAUTHORIZED, "token rotacionado");
     },
     stop: () => {
-      clearInterval(heartbeat);
+      stopHeartbeat();
       opts.plugins?.close();
       return server.stop(true);
     },
