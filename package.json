@@ -45,6 +45,7 @@
     "smoke:otel": "bun run scripts/smoke-otel.ts",
     "smoke:webhook": "bun run scripts/smoke-webhook.ts",
     "smoke:github": "bun run scripts/smoke-github.ts",
+    "smoke:opencode": "bun run scripts/smoke-opencode.ts",
     "smoke:boardsync": "bun run scripts/smoke-boardsync.ts",
     "smoke:roi": "bun run scripts/smoke-roi.ts",
     "smoke:perf": "bun run scripts/smoke-perf.ts",

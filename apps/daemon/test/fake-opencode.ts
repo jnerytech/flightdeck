@@ -20,6 +20,8 @@ export interface FakeOpenCode {
     hasConfigContent: boolean;
     session: string | null;
   }>;
+  /** The ACP requests it got, in order: the method, and a prompt's text. */
+  acp(): Array<{ method: string; text?: string }>;
 }
 
 export function installFakeOpenCode(): FakeOpenCode {
@@ -37,6 +39,7 @@ export function installFakeOpenCode(): FakeOpenCode {
     `@echo off\r\nset "FAKE_OPENCODE_LOG=${log}"\r\n"${bun}" "${main}" %*\r\n`,
   );
   return {
+    acp: () => [],
     dir,
     path: join(dir, process.platform === "win32" ? "opencode.cmd" : "opencode"),
     calls: () =>
