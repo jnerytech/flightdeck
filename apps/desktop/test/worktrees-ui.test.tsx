@@ -299,3 +299,141 @@ describe("worktrees-ui: the Worktrees panel (issue #152)", () => {
     expect((row("merged") as HTMLElement).textContent).toContain("30 dias parada");
   });
 });
+
+describe("worktrees-seguranca-ui: what is removed is what is on the screen (F7)", () => {
+  test("Select all under a filter ticks only the rows shown, and only they are sent", async () => {
+    const w = setup();
+    render(w.view());
+    await ready();
+    await click(screen.getByRole("button", { name: "Suggested" }));
+    await click(screen.getByRole("button", { name: "Select all that can go" }));
+    await click(screen.getByRole("button", { name: "All" }));
+    expect(box("merged").checked).toBe(true);
+    expect(box("fresh").checked).toBe(false);
+    await click(screen.getByRole("button", { name: "Remove 1 worktree" }));
+    expect(screen.getByRole("alertdialog").textContent).not.toContain("fd/fresh");
+    await click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Remove worktrees" }),
+    );
+    await settle(() => w.asked.some(([t]) => t === "worktree.remove"));
+    const sent = w.asked.find(([t]) => t === "worktree.remove")?.[1] as
+      | { items: unknown[] }
+      | undefined;
+    expect(sent?.items).toEqual([
+      { projectId: "p1", path: "/work/api/.flightdeck/worktrees/merged" },
+    ]);
+  });
+
+  test("a row ticked and then hidden by a filter is not removed", async () => {
+    const w = setup();
+    render(w.view());
+    await ready();
+    await click(box("fresh"));
+    await click(screen.getByRole("button", { name: "Suggested" }));
+    expect(
+      (screen.getByRole("button", { name: /^Remove/ }) as HTMLButtonElement).hasAttribute(
+        "disabled",
+      ) || screen.getByRole("button", { name: /^Remove/ }).getAttribute("aria-disabled") === "true",
+    ).toBe(true);
+  });
+
+  test("the confirmation names the branch, the card and its column", async () => {
+    const w = setup();
+    render(w.view());
+    await ready();
+    await click(box("merged"));
+    await click(screen.getByRole("button", { name: "Remove 1 worktree" }));
+    const text = screen.getByRole("alertdialog").textContent ?? "";
+    expect(text).toContain("fd/merged");
+    expect(text).toContain("Fix login");
+    expect(text).toContain("Done");
+  });
+
+  test("a second click while the removal runs sends nothing more", async () => {
+    const w = setup();
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const inner = w.store.hostCommand;
+    w.store.hostCommand = (async (h: string, type: string, payload: unknown) => {
+      if (type === "worktree.remove") await gate;
+      return (inner as (...a: unknown[]) => unknown)(h, type, payload);
+    }) as never;
+    render(w.view());
+    await ready();
+    await click(box("merged"));
+    await click(screen.getByRole("button", { name: "Remove 1 worktree" }));
+    await click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Remove worktrees" }),
+    );
+    const button = screen.getByRole("button", { name: /^Remove/ });
+    expect(button.hasAttribute("disabled") || button.getAttribute("aria-disabled") === "true").toBe(
+      true,
+    );
+    await act(async () => release());
+    await settle(() => w.asked.filter(([t]) => t === "worktree.remove").length === 1);
+  });
+
+  test("a branch that was kept and a host that did not answer are both said", async () => {
+    const w = setup();
+    w.store.hostCommand = (async (_h: string, type: string) => {
+      if (type === "worktree.list") return LIST;
+      return {
+        removed: [
+          {
+            path: "/work/api/.flightdeck/worktrees/merged",
+            freedBytes: 250 * MB,
+            branchKept: true,
+          },
+        ],
+        kept: [],
+      };
+    }) as never;
+    render(w.view());
+    await ready();
+    await click(box("merged"));
+    await click(screen.getByRole("button", { name: "Remove 1 worktree" }));
+    await click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Remove worktrees" }),
+    );
+    const region = () => screen.getByRole("region", { name: "Worktrees" }).textContent ?? "";
+    await settle(() => region().includes("branch kept"));
+    expect(region()).toContain("fd/merged");
+    w.store.hostCommand = (async (_h: string, type: string) =>
+      type === "worktree.list" ? LIST : null) as never;
+    await click(box("fresh"));
+    await click(screen.getByRole("button", { name: "Remove 1 worktree" }));
+    await click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Remove worktrees" }),
+    );
+    await settle(() => region().includes("did not answer"));
+  });
+
+  test("the new reasons are said in words, in both languages", async () => {
+    const list: WorktreesResult = {
+      worktrees: [
+        item("odd", { blockers: ["unknown_state"], suggested: false }),
+        item("feat", { branch: "feature/x", blockers: ["other_branch"], suggested: false }),
+        item("notes", { blockers: ["ignored_files"], suggested: false }),
+      ],
+      disks: [],
+    };
+    for (const [language, words] of [
+      ["en", ["git could not tell its state", "Flightdeck's branches", "ignored files"]],
+      [
+        "pt-BR",
+        ["o git não soube dizer o estado", "não é um branch do Flightdeck", "arquivos ignorados"],
+      ],
+    ] as const) {
+      const w = setup({ list, language });
+      const { unmount } = render(w.view());
+      await ready();
+      const text = rows()
+        .map((r) => r.textContent)
+        .join(" ");
+      for (const word of words) expect(text).toContain(word);
+      unmount();
+    }
+  });
+});

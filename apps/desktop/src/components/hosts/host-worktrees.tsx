@@ -105,6 +105,7 @@ export function HostWorktrees(props: { store: AppStore; host: HostView }) {
   const [picked, setPicked] = useState<string[]>([]);
   const [confirming, setConfirming] = useState(false);
   const [notice, setNotice] = useState<string[]>([]);
+  const [removing, setRemoving] = useState(false);
   const offered = hasFeature(host.hostInfo?.features, "worktrees", false);
   const reading = offered && host.status === "online";
   const read = useCallback(async () => {
@@ -122,7 +123,8 @@ export function HostWorktrees(props: { store: AppStore; host: HostView }) {
     .sort((a, b) =>
       sort === "size" ? (b.sizeBytes ?? -1) - (a.sizeBytes ?? -1) : b.idleDays - a.idleDays,
     );
-  const removable = all.filter((item) => item.blockers.length === 0);
+  // Only what is on the screen can be ticked, selected in bulk or removed.
+  const removable = shown.filter((item) => item.blockers.length === 0);
   const chosen = removable.filter((item) => picked.includes(item.path));
   const toggle = (path: string) =>
     setPicked((now) => (now.includes(path) ? now.filter((p) => p !== path) : [...now, path]));
@@ -141,13 +143,31 @@ export function HostWorktrees(props: { store: AppStore; host: HostView }) {
       ? `${t("worktrees.reasons.failed")}: ${detail}`
       : t(`worktrees.reasons.${reason}` as Key, { n: 0 });
 
+  const describe = (item: WorktreeItem) => {
+    const name = item.branch ?? item.path;
+    return item.cardTitle
+      ? t("worktrees.confirmItem", {
+          name,
+          card: item.cardTitle,
+          column: item.column ? t(`kanban.columns.${item.column}` as Key) : "",
+        })
+      : name;
+  };
+
   const remove = async () => {
-    const result = await store.hostCommand(host.id, "worktree.remove", {
-      items: chosen.map((item) => ({ projectId: item.projectId, path: item.path })),
-      confirm: true,
-    });
+    setRemoving(true);
+    let result: Awaited<ReturnType<typeof store.hostCommand<"worktree.remove">>>;
+    try {
+      result = await store.hostCommand(host.id, "worktree.remove", {
+        items: chosen.map((item) => ({ projectId: item.projectId, path: item.path })),
+        confirm: true,
+      });
+    } finally {
+      setRemoving(false);
+    }
     setPicked([]);
-    if (result) {
+    if (!result) setNotice([t("worktrees.noAnswer")]);
+    else {
       const freed = result.removed.reduce((sum, r) => sum + (r.freedBytes ?? 0), 0);
       const lines = [
         result.removed.length === 0
@@ -155,6 +175,13 @@ export function HostWorktrees(props: { store: AppStore; host: HostView }) {
           : freed > 0
             ? t("worktrees.freed", { size: formatBytes(freed, lang) })
             : t("worktrees.removedNoSize", { n: result.removed.length }),
+        ...result.removed
+          .filter((r) => r.branchKept)
+          .map((r) =>
+            t("worktrees.branchKept", {
+              branch: all.find((i) => i.path === r.path)?.branch ?? r.path,
+            }),
+          ),
         ...result.kept.map((k) =>
           t("worktrees.keptItem", {
             branch: all.find((i) => i.path === k.path)?.branch ?? k.path,
@@ -252,7 +279,7 @@ export function HostWorktrees(props: { store: AppStore; host: HostView }) {
                 variant="destructive"
                 size="sm"
                 className="self-start"
-                disabled={chosen.length === 0}
+                disabled={chosen.length === 0 || removing}
                 disabledReason={t("worktrees.removeNeeds")}
                 onClick={() => setConfirming(true)}
               >
@@ -272,7 +299,7 @@ export function HostWorktrees(props: { store: AppStore; host: HostView }) {
       {confirming && (
         <ConfirmDialog
           message={t("worktrees.confirm", {
-            names: chosen.map((i) => i.branch ?? i.path).join(", "),
+            names: chosen.map(describe).join("; "),
             size: formatBytes(
               chosen.reduce((sum, i) => sum + (i.sizeBytes ?? 0), 0),
               lang,

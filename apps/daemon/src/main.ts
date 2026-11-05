@@ -158,6 +158,7 @@ import { PrWatcher } from "./watch/watch.ts";
 import { WebhookSender } from "./webhook/sender.ts";
 import { whichOnPath } from "./which.ts";
 import { shellCheckRunner } from "./workflows/check-runner.ts";
+import { FolderLocks } from "./worktrees/locks.ts";
 import { createWorktrees } from "./worktrees/wiring.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
 import { detectWsl, readProcVersion } from "./wsl-host.ts";
@@ -653,7 +654,10 @@ export async function startDaemon(
     pack: packPersonas,
     publisher: agentPublisher(agentcfg),
   });
+  // Folders a worktree removal holds: nothing starts in one while it is being removed.
+  const folderLocks = new FolderLocks();
   const manager = new SessionManager({
+    folderLocks,
     store,
     runtime,
     risk,
@@ -713,6 +717,7 @@ export async function startDaemon(
   usageIndex.start();
   const prepare: Prepare = (ref, cwd) => preparePersonas(personaStore, ref, cwd);
   const board = new Board({
+    folderLocks,
     preparePersonas: prepare,
     db: store.db,
     manager,
@@ -787,6 +792,7 @@ export async function startDaemon(
     : undefined;
   // Real shells behind a PTY, kept across connections; none outlives the daemon.
   const terminals = new TerminalManager({
+    folderLocks,
     pty: options.pty ?? bunPty(),
     enabled: terminalEnabled(config.bind, config.terminal.enabled),
     allowedRoots: config.allowedRoots,
@@ -1213,7 +1219,14 @@ export async function startDaemon(
     }),
     central,
     maintenance,
-    worktrees: createWorktrees({ board, sessions: manager, runs: runManager }),
+    worktrees: createWorktrees({
+      board,
+      sessions: manager,
+      runs: runManager,
+      terminals,
+      externals: central.external,
+      locks: folderLocks,
+    }),
     ...(updates ? { updates } : {}),
     snapshots,
     rewinder,

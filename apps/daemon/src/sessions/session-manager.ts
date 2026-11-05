@@ -38,6 +38,7 @@ import type {
 } from "../runtime/types.ts";
 import { type EventStore, personaBadge } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
+import { folderRemoving } from "../worktrees/locks.ts";
 
 export const RESTART_REASON = "daemon reiniciado";
 
@@ -243,6 +244,7 @@ export class SessionManager {
     extra: { unattended?: boolean; prepared?: PreparedPersonas } = {},
   ): Promise<{ sessionId: string }> {
     const cwd = await resolveAllowedCwd(payload.cwd, this.opts.allowedRoots);
+    if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
     const id = ulid();
     // Resolved by the caller before anything is created, so a missing, untrusted or invalid
     // persona leaves no session. The manager reads no persona file itself.
@@ -306,6 +308,7 @@ export class SessionManager {
     agents?: PreparedPersonas["agents"];
   }): Promise<{ sessionId: string }> {
     const cwd = await resolveAllowedCwd(opts.cwd, this.opts.allowedRoots);
+    if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
     const id = ulid();
     const permissionMode = opts.permissionMode ?? this.opts.defaultPermissionMode;
     this.store.createSession({

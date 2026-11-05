@@ -30,6 +30,7 @@ import type { SecretScanner } from "../snippets/model.ts";
 import { ulid } from "../ulid.ts";
 import { type CheckRunner, shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
+import { folderRemoving } from "../worktrees/locks.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
 import { cyclePath, MAX_BLOCKERS } from "./deps.ts";
@@ -1311,6 +1312,7 @@ export class Board {
         .run(added.slug, added.branch, added.path, notice, now(), id);
       this.changed(id);
     }
+    if (this.opts.folderLocks?.isHeld(worktree)) throw folderRemoving(worktree);
     await excludeLocalSettingsAsync(project.path);
     if (project.setupScript) await runSetup(project.setupScript, worktree);
     // The newest run is the active one: older sessions of the card are closed.
@@ -1901,16 +1903,22 @@ export class Board {
       .map(({ id }) => this.getCard(id));
   }
 
-  /** Whether a card's run is going or waiting (stub). */
-  isActive(_cardId: string): boolean {
-    return false;
+  /** Whether a card's run is going or waiting: its folder is in use. */
+  isActive(cardId: string): boolean {
+    return this.running.has(cardId) || this.getCard(cardId).queued;
   }
 
   /** The card no longer has its worktree (a panel removed it); the watchers hear of it. */
-  releaseWorktree(id: string, _path?: string, _clearBranch?: boolean): void {
-    this.db
-      .query("UPDATE cards SET worktree_path = NULL, notice = NULL, updated_at = ? WHERE id = ?")
-      .run(new Date().toISOString(), id);
+  releaseWorktree(id: string, path: string, clearBranch: boolean): void {
+    // Only the worktree that was removed: a card that got another one meanwhile keeps it.
+    const done = this.db
+      .query(
+        `UPDATE cards SET worktree_path = NULL, notice = NULL, updated_at = ?${
+          clearBranch ? ", branch = NULL" : ""
+        } WHERE id = ? AND worktree_path = ?`,
+      )
+      .run(new Date().toISOString(), id, path);
+    if (done.changes === 0) return;
     this.changed(id);
   }
 

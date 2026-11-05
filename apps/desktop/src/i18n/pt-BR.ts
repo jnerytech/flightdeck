@@ -3453,6 +3453,9 @@ export const ptBR = {
       unpushed: "tem {n} commits que não existem em outro lugar",
       unpushedOne: "tem 1 commit que não existe em outro lugar",
       unknown_base: "o branch base dela não foi encontrado",
+      unknown_state: "o git não soube dizer o estado dela",
+      other_branch: "ela não é um branch do Flightdeck (fd/…)",
+      ignored_files: "tem arquivos ignorados que um build ou uma instalação não recria",
       not_listed: "ela não é mais uma worktree do projeto",
       failed: "o git não conseguiu removê-la",
     },
@@ -3463,6 +3466,10 @@ export const ptBR = {
     removeNeeds: "Marque as worktrees a remover.",
     confirm:
       "Remover {names} e os branches delas? Cerca de {size} serão liberados. Nada com alterações não commitadas ou commits não enviados é removido.",
+    confirmItem: '{name} (cartão "{card}", {column})',
+    branchKept: "{branch}: pasta removida, branch mantido (tem trabalho mais novo)",
+    noAnswer:
+      "O host não respondeu, então não se sabe se algo foi removido. Escaneie de novo para ver o que sobrou.",
     freed: "Liberou {size}",
     removedNoSize: "Removeu {n} worktrees",
     keptItem: "Mantida: {branch} ({reason})",

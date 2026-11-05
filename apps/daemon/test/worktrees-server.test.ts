@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { join } from "node:path";
 import { startServer } from "../src/server.ts";
+import { FolderLocks } from "../src/worktrees/locks.ts";
 import { createWorktrees } from "../src/worktrees/wiring.ts";
 import { git, newBoard } from "./board-helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
@@ -27,6 +28,9 @@ async function serve(withPanel = true) {
             board: ctx.board,
             sessions: { list: () => [] },
             runs: { state: () => ({ status: "idle" }) },
+            terminals: { list: () => [] },
+            externals: { list: () => [] },
+            locks: new FolderLocks(),
           }),
         }
       : {}),

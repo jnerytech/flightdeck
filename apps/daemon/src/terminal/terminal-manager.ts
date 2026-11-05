@@ -6,6 +6,7 @@ import { resolveAllowedCwd } from "../paths.ts";
 import type { Timers } from "../quota/quota.ts";
 import { ulid } from "../ulid.ts";
 import { whichOnPath } from "../which.ts";
+import { folderRemoving } from "../worktrees/locks.ts";
 import type { Pty, PtyFactory } from "./pty.ts";
 import { Ring } from "./ring.ts";
 import { defaultShell } from "./shell.ts";
@@ -255,6 +256,7 @@ export class TerminalManager {
   async open(req: OpenRequest): Promise<TerminalInfo> {
     this.assertOn();
     const cwd = req.internal ? req.cwd : await resolveAllowedCwd(req.cwd, this.opts.allowedRoots);
+    if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
     const max = this.opts.max ?? DEFAULT_MAX;
     if (this.live() >= max) {
       throw new FlightdeckError(

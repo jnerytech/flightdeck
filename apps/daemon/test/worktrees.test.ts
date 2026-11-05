@@ -27,7 +27,7 @@ function setup(over: Partial<WorktreesOptions> = {}, cards: WorktreeCard[] = [])
     projects: () => [project],
     cards: () => cards,
     busy: () => null,
-    detach: (id) => void detached.push(id),
+    detach: (id) => void (id !== null && detached.push(id)),
     git: (cwd, ...args) => run(cwd, ...args),
     size: async () => 50 * MB,
     disk: async () => ({ totalBytes: 1000 * MB, freeBytes: 400 * MB }),
@@ -207,7 +207,7 @@ describe("worktrees: removing the safe ones", () => {
     const path = s.add("gone");
     const w = new Worktrees({ ...s.options, cards: () => [card("c1", path, { column: "done" })] });
     const result = await w.remove([{ projectId: "p1", path }]);
-    expect(result.removed).toEqual([{ path, freedBytes: 50 * MB }]);
+    expect(result.removed).toEqual([{ path, freedBytes: 50 * MB, branchKept: false }]);
     expect(result.kept).toEqual([]);
     expect(existsSync(path)).toBe(false);
     expect(git(s.repo, "branch", "--list", "fd/gone").trim()).toBe("");
@@ -278,7 +278,7 @@ describe("worktrees: removing the safe ones", () => {
     const w = new Worktrees({
       ...s.options,
       git: async (cwd, ...args) =>
-        args[0] === "worktree" && args[1] === "remove" && args[2] === bad
+        args.includes("remove") && args.at(-1) === bad
           ? { code: 1, stdout: "", stderr: "locked" }
           : run(cwd, ...args),
     });

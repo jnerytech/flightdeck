@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, renameSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { git as run } from "../src/board/command.ts";
+import { git as run, type runCommand } from "../src/board/command.ts";
 import { FlightdeckError } from "../src/errors.ts";
 import { FolderLocks } from "../src/worktrees/locks.ts";
+import { createWorktrees, gitWithin } from "../src/worktrees/wiring.ts";
 import { type WorktreeCard, Worktrees, type WorktreesOptions } from "../src/worktrees/worktrees.ts";
 import { git, gitRepo, gitRepoWithOrigin, newBoard } from "./board-helpers.ts";
 import { newManager } from "./helpers.ts";
@@ -444,5 +445,93 @@ describe("worktrees-seguranca: the card keeps a truthful record (F6)", () => {
     await ctx.board.startCard(card.id);
     expect(ctx.board.isActive(card.id)).toBe(true);
     ctx.board.stop();
+  });
+});
+
+describe("worktrees-seguranca: what else holds a folder (F4, wiring)", () => {
+  async function panel(over: Partial<Parameters<typeof createWorktrees>[0]> = {}) {
+    const ctx = newBoard();
+    const project = await ctx.board.addProject({ path: ctx.repo, promptTemplate: "" });
+    const path = join(ctx.repo, ".flightdeck", "worktrees", "one");
+    git(ctx.repo, "worktree", "add", "-q", "-b", "fd/one", path, "main");
+    const card = ctx.board.createCard(project.id, { title: "One", description: "" });
+    ctx.store.db.query("UPDATE cards SET worktree_path = ? WHERE id = ?").run(path, card.id);
+    const w = createWorktrees({
+      board: ctx.board,
+      sessions: { list: () => [] },
+      runs: { state: () => ({ status: "idle" }) },
+      terminals: { list: () => [] },
+      externals: { list: () => [] },
+      locks: new FolderLocks(),
+      ...over,
+    });
+    const blockers = async () => (await w.list()).worktrees.find((i) => i.path === path)?.blockers;
+    return { ...ctx, card, path, blockers, w };
+  }
+
+  test("an open terminal, an external session or an active card keeps the worktree; closed ones do not", async () => {
+    const open = await panel({ terminals: { list: () => [{ cwd: "/x", exitCode: null }] } });
+    expect(await open.blockers()).toEqual([]);
+    const inside = await panel();
+    const terminals = [{ cwd: join(inside.path, "src"), exitCode: null as number | null }];
+    const withTerminal = createWorktrees({
+      board: inside.board,
+      sessions: { list: () => [] },
+      runs: { state: () => ({ status: "idle" }) },
+      terminals: { list: () => terminals },
+      externals: { list: () => [] },
+      locks: new FolderLocks(),
+    });
+    const find = async (w: typeof withTerminal) =>
+      (await w.list()).worktrees.find((i) => i.path === inside.path)?.blockers;
+    expect(await find(withTerminal)).toEqual(["live_session"]);
+    terminals[0] = { cwd: terminals[0]?.cwd ?? "", exitCode: 0 };
+    expect(await find(withTerminal)).toEqual([]);
+    const externals = [{ cwd: inside.path as string | null, status: "running" }];
+    const withExternal = createWorktrees({
+      board: inside.board,
+      sessions: { list: () => [] },
+      runs: { state: () => ({ status: "idle" }) },
+      terminals: { list: () => [] },
+      externals: { list: () => externals },
+      locks: new FolderLocks(),
+    });
+    expect(await find(withExternal)).toEqual(["live_session"]);
+    externals[0] = { cwd: null, status: "running" };
+    expect(await find(withExternal)).toEqual([]);
+    externals[0] = { cwd: inside.path, status: "ended" };
+    expect(await find(withExternal)).toEqual([]);
+    let active = false;
+    const withCard = createWorktrees({
+      board: {
+        listProjects: () => inside.board.listProjects(),
+        worktreeCards: (id) => inside.board.worktreeCards(id),
+        releaseWorktree: () => {},
+        isActive: () => active,
+      },
+      sessions: { list: () => [] },
+      runs: { state: () => ({ status: "idle" }) },
+      terminals: { list: () => [] },
+      externals: { list: () => [] },
+      locks: new FolderLocks(),
+    });
+    expect(await find(withCard)).toEqual([]);
+    active = true;
+    expect(await find(withCard)).toEqual(["running"]);
+  });
+
+  test("a git that runs out of time is a failure, not an answer", async () => {
+    const seen: Array<number | undefined> = [];
+    const run = (code: number, timedOut: boolean) =>
+      (async (_cmd, _cwd, _input, timeoutMs) => {
+        seen.push(timeoutMs);
+        return { code, stdout: "5", stderr: "", timedOut };
+      }) as typeof runCommand;
+    expect((await gitWithin("/x", ["status"], 250, run(0, true))).code).not.toBe(0);
+    expect((await gitWithin("/x", ["status"], 250, run(137, true))).code).toBe(137);
+    expect((await gitWithin("/x", ["status"], 250, run(0, false))).code).toBe(0);
+    expect(seen).toEqual([250, 250, 250]);
+    const real = await panel({ gitDeadlineMs: 20_000 });
+    expect((await real.w.list()).worktrees).toHaveLength(1);
   });
 });

@@ -3583,3 +3583,34 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   compared with the daemon's `samePath`.
 - **Not built:** the panel on each Project page (the host page has it), the PR-open-with-Watch rule, and the "Freed" total in the
   notification center.
+
+### Worktrees panel: safety review (OpenCode, issue #152)
+
+The first version could delete work. What changed, each with a test that fails without it (`worktrees-seguranca.test.ts`):
+
+- **The base must be a branch.** It is resolved to a hash through `refs/heads/<base>` or `refs/remotes/<base>` only; a tag, `HEAD`, `@`,
+  `HEAD~1`, an option (`--help`) or a missing name is `unknown_base`, as is a worktree that is on the base branch itself ("not on the
+  base" would be empty by construction). Unpushed = `rev-list --count HEAD --not --remotes <hash>`. "Pushed" still means a remote-tracking
+  ref has it, with no fetch: a branch force-pushed away upstream and not pruned counts as pushed (a small, accepted gap); a
+  squash-merged and deleted branch counts as unpushed, so it is kept.
+- **When git cannot say, nothing is removed.** A failed or non-numeric `rev-list`, a failed `log`, a branch tip that cannot be read, or a
+  `busy` check that throws is the blocker `unknown_state`, never 0. A git command has a 60 s deadline in the wiring; a timeout is a
+  failure.
+- **The branch goes only if it is still what was checked.** `git update-ref -d refs/heads/<b> <hash>` deletes only an unmoved ref; a late
+  commit keeps the branch and the result says `branchKept`. Only `fd/*` branches are ever deleted; a worktree on another branch (or a
+  detached one) is `other_branch` and kept whole. The card loses its worktree path only if it still has the removed one, and its branch
+  only when the ref was deleted (`releaseWorktree(id, path, clearBranch)`).
+- **A lock between the last look and the removal.** `FolderLocks` (shared by the session manager, the terminal manager, the board and the
+  panel) holds the folder; `SessionManager.create/createResumed`, `TerminalManager.open` and `Board.launch` refuse a held folder
+  (`invalid_state`, reason `folder_removing`) right after their last await. The size (`du`) is read first, then the worktree is looked at
+  once more under the lock; a second removal of the same folder is refused as `running`. More things block: an open terminal, an external
+  Claude session, a card the board runs or queues (`Board.isActive`). One item that throws is `failed`, the others go on.
+- **Files git does not show.** Status is asked with `--untracked-files=all` and `-c status.showUntrackedFiles=all` whatever the user's
+  config says, and with `--ignored=matching`: an ignored file that is not rebuildable (not `node_modules`, `dist`, `build`, `target`,
+  caches, the local `.claude/settings.local.json`, and not a byte-identical copy of the project's own file, which is what
+  `.worktreeinclude` puts there) is `ignored_files`.
+- **`worktree.remove` needs `confirm: true`** (like discard and delete). In the app the selection is only the rows on screen (Select all
+  under a filter, a row hidden after being ticked), the confirmation shows branch, card and column, the button is disabled while the
+  request runs, and a branch kept or a host that did not answer is said.
+- **Not done:** `git worktree list -z` (a path with a newline is skipped today because its `lstat` fails), and scanning once per project
+  instead of once per item.

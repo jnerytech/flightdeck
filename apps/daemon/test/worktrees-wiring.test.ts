@@ -1,8 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { FolderLocks } from "../src/worktrees/locks.ts";
 import { createWorktrees } from "../src/worktrees/wiring.ts";
 import { git, newBoard } from "./board-helpers.ts";
+
+/** Nothing else is using any folder. */
+const quiet = {
+  terminals: { list: () => [] },
+  externals: { list: () => [] },
+  locks: new FolderLocks(),
+};
 
 /** A board with one project, a worktree of fd/one and a card (and a variant card) pointing at it. */
 async function setup() {
@@ -34,7 +42,7 @@ describe("worktrees-wiring: the board's cards behind the panel (issue #152)", ()
     const s = await setup();
     const seen: Array<string | null> = [];
     s.board.watch((card) => void seen.push(card.worktreePath));
-    s.board.releaseWorktree(s.card.id);
+    s.board.releaseWorktree(s.card.id, s.path, true);
     expect(s.board.getCard(s.card.id).worktreePath).toBeNull();
     expect(seen).toContain(null);
   });
@@ -47,6 +55,7 @@ describe("worktrees-wiring: the board's cards behind the panel (issue #152)", ()
       board: s.board,
       sessions: { list: () => (live ? [{ cwd: join(s.path, "src"), status: "running" }] : []) },
       runs: { state: (id) => ({ status: running && id === s.card.id ? "running" : "idle" }) },
+      ...quiet,
     });
     const first = (await w.list()).worktrees;
     expect(first.map((i) => i.cardId).sort()).toEqual([s.card.id, s.variant.id].sort());
@@ -66,6 +75,7 @@ describe("worktrees-wiring: the board's cards behind the panel (issue #152)", ()
       board: s.board,
       sessions: { list: () => [{ cwd: s.path, status: "ended" }] },
       runs: { state: () => ({ status: "idle" }) },
+      ...quiet,
     });
     expect((await ended.list()).worktrees.find((i) => i.path === s.path)?.blockers).toEqual([]);
     const result = await w.remove([{ projectId: s.project.id, path: s.path }]);
@@ -81,6 +91,7 @@ describe("worktrees-wiring: the board's cards behind the panel (issue #152)", ()
       board: s.board,
       sessions: { list: () => [] },
       runs: { state: () => ({ status: "idle" }) },
+      ...quiet,
     });
     const { worktrees, disks } = await w.list();
     expect(worktrees.find((i) => i.path === s.path)?.sizeBytes).toBeGreaterThan(300 * 1024);

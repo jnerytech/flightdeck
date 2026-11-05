@@ -3450,6 +3450,9 @@ export const en: Dictionary = {
       unpushed: "it has {n} commits that exist nowhere else",
       unpushedOne: "it has 1 commit that exists nowhere else",
       unknown_base: "its base branch was not found",
+      unknown_state: "git could not tell its state",
+      other_branch: "it is not on one of Flightdeck's branches (fd/…)",
+      ignored_files: "it has ignored files that are not rebuilt by a build or an install",
       not_listed: "it is no longer one of the project's worktrees",
       failed: "git could not remove it",
     },
@@ -3460,6 +3463,10 @@ export const en: Dictionary = {
     removeNeeds: "Tick the worktrees to remove.",
     confirm:
       "Remove {names} and their branches? About {size} will be freed. Nothing with uncommitted changes or unpushed commits is removed.",
+    confirmItem: '{name} (card "{card}", {column})',
+    branchKept: "{branch}: folder removed, branch kept (it has newer work)",
+    noAnswer:
+      "The host did not answer, so nothing is known to have been removed. Scan again to see what is left.",
     freed: "Freed {size}",
     removedNoSize: "Removed {n} worktrees",
     keptItem: "Kept: {branch} ({reason})",

@@ -2461,12 +2461,17 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
   estourou o tempo, nunca 0), há quanto tempo estão paradas e o card de cada uma. **Sugerida** marca
   uma worktree limpa, sem commits não enviados e sem sessão ao vivo, parada há mais de 7 dias, cujo
   card está Concluído ou cujo PR foi mesclado, ou que não tem card. Uma worktree com alterações não
-  commitadas, commits que não existem em outro lugar, sessão ou execução rodando, ou branch base
-  desconhecido fica **mantida**: a linha diz por quê e não pode ser marcada. Filtre por Sugeridas,
+  commitadas, commits que não existem em outro lugar, sessão, terminal ou execução rodando, branch base
+  desconhecido (precisa ser um branch de verdade, não uma tag nem `HEAD`), um branch que não é um
+  `fd/…` do Flightdeck, arquivos ignorados que um build não recria (`node_modules` e saída de build
+  não contam), ou algo que o git não soube responder fica **mantida**: a linha diz por quê e não
+  pode ser marcada. Filtre por Sugeridas,
   Protegidas ou Sem card, ordene por idade ou tamanho, **Selecionar sugeridas** ou **Selecionar
-  todas que podem sair**, e então **Remover**: a confirmação cita cada branch e o espaço liberado, e
-  o host confere cada worktree de novo antes de removê-la (sem force), então uma que mudou nesse
-  meio-tempo é mantida. O card, se houver, continua no board sem a worktree. Um disco com menos de
+  todas que podem sair**, e então **Remover**: a confirmação cita cada branch com o card e a coluna, e o espaço
+  liberado. Só as linhas na tela podem ser marcadas ou removidas. O host trava cada pasta (nada
+  pode começar nela) e confere de novo antes de removê-la (sem force), então uma que mudou nesse
+  meio-tempo é mantida; o branch só é apagado se ainda estiver no commit que foi conferido, senão
+  a pasta sai e o branch fica, e o resultado diz isso. O card, se houver, continua no board sem a worktree. Um disco com menos de
   10% livre gera aviso. Apagar algo que está mantido continua sendo pelo **Descartar** do card.
 - **Um host desconectado** mostra um aviso no topo da página dele: o estado, o que falhou em
   palavras simples (nada respondeu, sem resposta a tempo, a conexão caiu, o token foi recusado), a

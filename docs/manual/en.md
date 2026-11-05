@@ -2473,11 +2473,16 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
   time, never 0), how long they have been idle, and their card. **Suggested** marks a clean worktree
   with no unpushed commits and no live session, idle for over 7 days, whose card is Done or whose
   PR merged, or that has no card. A worktree with uncommitted changes, commits that exist nowhere
-  else, a running session or run, or an unknown base branch is **kept**: the row says why and
-  cannot be ticked. Filter by Suggested, Protected or No card, sort by age or size, **Select
+  else, a running session, terminal or run, an unknown base branch (it must be a real branch, not
+  a tag or `HEAD`), a branch that is not one of Flightdeck's `fd/…`, ignored files a build does not
+  recreate (`node_modules` and build output do not count), or anything git could not answer about
+  is **kept**: the row says why and cannot be ticked. Filter by Suggested, Protected or No card, sort by age or size, **Select
   suggested** or **Select all that can go**, then **Remove**: the confirmation names every branch
-  and the space it frees, and the host checks each worktree again before removing it (without
-  force), so one that changed meanwhile is kept. The card, if any, stays on the board without its
+  with its card and column, and the space it frees. Only the rows on screen can be ticked or
+  removed. The host holds each folder (nothing can start in it) and checks it again before removing
+  it (without force), so one that changed meanwhile is kept; the branch is deleted only if it is
+  still at the commit that was checked, otherwise the folder goes and the branch stays, and the
+  result says so. The card, if any, stays on the board without its
   worktree. A disk under 10% free is warned about. Deleting something that is kept still goes through
   the card's **Discard**.
 - **A host that is offline** shows a banner at the top of its page: the state, what failed in plain
