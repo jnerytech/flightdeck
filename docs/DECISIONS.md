@@ -4145,31 +4145,3 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   PATH with it, are the session's own. The number, branch and base come last, as positional
   arguments: a hook script must not read them as options.
 
-
-## Quarantine for wall-clock tests (issue #288)
-
-- **The user's call (2026-11-05):** quarantine the flaky tests now and fix them later. Windows
-  failed on every PR and on main, and `test (windows-latest)` is a required check, so five tests that
-  bet on the machine blocked every merge. The fixes are tracked in #288; the tests stay intact (no
-  `.skip`, no `test.todo`, no weaker assertion): only the job that runs them changes.
-- **One list, `scripts/test/quarantine.json`:** each entry has the file, the test's title, the issue
-  and the reason. The required jobs leave the listed tests out by name: `bun run test` (Linux,
-  with the 100% gate) and `scripts/run-shard.ts` (each Windows shard) pass Bun a
-  `--test-name-pattern` made of a negative lookahead over the escaped titles
-  (`scripts/lib/quarantine.ts`). A filtered test is not run and is not counted as skipped. A test's
-  name ends with its title whatever suite holds it, so the pattern anchors on the end. The
-  `quarantine (ubuntu-latest | windows-latest, non-blocking)` job runs them alone
-  (`scripts/run-quarantine.ts`) with `continue-on-error`; no aggregate needs it, so no required check
-  can wait for it.
-- **The ratchet** (`quarantine-ratchet.test.ts`): at most 5 entries, only lowered; every entry has an
-  issue number and a one-line reason, names a test that still exists in its file, once. A renamed or
-  deleted test comes off the list. Whether the issue is still open is not checked (the tests touch no
-  network): close #288 only when the list is empty.
-- **The five:** hub-list "the render time at 9,090 rows is within 2x…" (a ratio of two wall-clock
-  render times); heartbeat "qualquer quadro do cliente conta como vivo…" (10 ms and 25 ms timers
-  against a 75 ms silence limit); platform "lint barra @tauri-apps/*…" (spawns biome; over 15 s on a
-  loaded Windows runner in three runs, even with one call for the probes); proto-restore "two files
-  that patch HTMLElement.prototype…" (a child `bun test` with the whole preload; over 15 s on
-  Windows); wait "it returns once the window ended…" (counts polls in an 80 ms window).
-- **Coverage:** the Linux gate now runs without these five. If a line is covered only by one of
-  them, the gate names it; the fix is the test in #288, not a bigger list.
