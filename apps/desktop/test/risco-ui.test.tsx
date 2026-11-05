@@ -128,6 +128,36 @@ describe("risco-ui: o alto pede para segurar", () => {
     expect(calls).toEqual([]);
   });
 
+  // Issue #245 (L3): a plan is an action like any other; only a question is answered by a click.
+  test("a high-risk plan is held too: no Approve the plan, and a click or the A key approves nothing", async () => {
+    const calls: unknown[][] = [];
+    render(
+      <ApprovalCard
+        request={{
+          ...base,
+          toolName: "ExitPlanMode",
+          input: { plan: "1. apagar a pasta" },
+          risk: "high",
+          riskReason: "motivo high",
+        }}
+        t={pt}
+        nowMs={NOW}
+        onRespond={(...args) => calls.push(args)}
+        holdMs={80}
+      />,
+    );
+    const group = screen.getByRole("group", { name: "Pedido de ExitPlanMode" });
+    expect(button(group, "Aprovar plano") === null).toBe(true);
+    const hold = button(group, "Segurar para aprovar");
+    expect(hold).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(hold as HTMLElement);
+      fireEvent.keyDown(group, { key: "a" });
+    });
+    await wait(150);
+    expect(calls).toEqual([]);
+  });
+
   test("segurar o tempo todo aprova uma vez só, e a barra mostra o andamento", async () => {
     const { calls, group } = card("high");
     const hold = button(group, "Segurar para aprovar") as HTMLElement;
