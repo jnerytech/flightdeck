@@ -112,7 +112,8 @@ describe("approval-safety: a vault grant needs what the person must see", () => 
     store.onOpenRequest((item) => opened.push(item.requestId));
     push({});
     await settle(() => needsYou(store.getState()).length === 1);
-    expect(trayMenu(needsYou(store.getState())).items[0]?.actions).toEqual(["open"]);
+    // Issue #245 (L1): Deny needs no hold, so the tray offers it; only Approve takes the window.
+    expect(trayMenu(needsYou(store.getState())).items[0]?.actions).toEqual(["deny", "open"]);
     fromTray({ key: `${hostId}/r1`, action: "approve" });
     await stays(() => !types().includes("vault.approve"), 300);
     expect(types()).not.toContain("vault.approve");

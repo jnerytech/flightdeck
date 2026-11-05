@@ -113,7 +113,8 @@ describe("risco-ui: do daemon à tela", () => {
     expect(item).toMatchObject({ risk: "high", toolName: "Bash" });
     expect(typeof item?.riskReason).toBe("string");
     await settle(() => (tray.menus.at(-1)?.items.length ?? 0) === 1, 3000);
-    expect(tray.menus.at(-1)?.items[0]?.actions).toEqual(["open"]);
+    // Issue #245 (L1): Deny needs no hold, so the tray offers it; only Approve takes the window.
+    expect(tray.menus.at(-1)?.items[0]?.actions).toEqual(["deny", "open"]);
 
     const opened: unknown[] = [];
     store.onOpenRequest((i) => opened.push(i));
@@ -121,6 +122,10 @@ describe("risco-ui: do daemon à tela", () => {
     await Bun.sleep(150);
     expect(opened).toHaveLength(1);
     expect(d.manager.get(sessionId).status).toBe("awaiting_permission");
+    // Deny from the tray answers it there.
+    tray.act({ key: `${item?.hostId}/${item?.requestId}`, action: "deny" });
+    await settle(() => d.manager.get(sessionId).status !== "awaiting_permission", 3000);
+    expect(d.manager.get(sessionId).status).not.toBe("awaiting_permission");
   });
 
   test("na fila e na conversa o pedido alto mostra o selo e pede para segurar; segurar na conversa aprova", async () => {

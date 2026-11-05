@@ -104,7 +104,8 @@ describe("regras-ui-aprovacao: a request that the rules decided", () => {
     push({ needsHold: true });
     await settle(() => needsYou(store.getState()).length === 1);
     expect(needsYou(store.getState())[0]?.risk).toBe("high");
-    expect(trayMenu(needsYou(store.getState())).items[0]?.actions).toEqual(["open"]);
+    // Issue #245 (L1): Deny needs no hold, so the tray offers it; only Approve takes the window.
+    expect(trayMenu(needsYou(store.getState())).items[0]?.actions).toEqual(["deny", "open"]);
     await store.respondTo(hostId, "r1", "allow");
     await settle(() => types().includes("vault.deliver"));
     expect(payload("vault.approve")).toEqual({

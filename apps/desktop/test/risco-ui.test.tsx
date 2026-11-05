@@ -223,8 +223,9 @@ describe("risco-ui: a bandeja", () => {
 
   test("o pedido de risco alto só tem Abrir; os outros seguem com Aprovar, Negar e Abrir", () => {
     const menu = trayMenu([item(1, "high"), item(2, "medium"), item(3, "low"), item(4)]);
+    // Issue #245 (L1): Deny needs no hold, so the tray offers it; only Approve takes the window.
     expect(menu.items.map((i) => i.actions)).toEqual([
-      ["open"],
+      ["deny", "open"],
       ["approve", "deny", "open"],
       ["approve", "deny", "open"],
       ["approve", "deny", "open"],

@@ -98,7 +98,8 @@ describe("acoes-ui-aprovacao: a request of the daemon for an action, in Precisa 
     expect(item?.risk).toBe("high");
     const shown = JSON.stringify(item?.input);
     for (const part of ["make deploy", "deploy", "alfa"]) expect(shown).toContain(part);
-    expect(trayMenu(needsYou(store.getState())).items[0]?.actions).toEqual(["open"]);
+    // Issue #245 (L1): Deny needs no hold, so the tray offers it; only Approve takes the window.
+    expect(trayMenu(needsYou(store.getState())).items[0]?.actions).toEqual(["deny", "open"]);
   });
 
   test("a request that names no action is denied without a question", async () => {
