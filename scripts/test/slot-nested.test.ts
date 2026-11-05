@@ -1,5 +1,4 @@
 import { expect, test } from "bun:test";
-import {} from "node:fs";
 import { join } from "node:path";
 import { realTempDir } from "./temp-dir.ts";
 
@@ -25,7 +24,7 @@ test("slot-reentrant: a slot call made under the slot runs and finishes, with th
 });
 
 test("slot-reentrant: what runs under the slot is told which lock is the slot's, whatever its own temp folder", async () => {
-  const tmp = mkdtempSync(join(tmpdir(), "fd-slot-lock-"));
+  const tmp = realTempDir("fd-slot-lock-");
   const env: Record<string, string | undefined> = { ...process.env, FLIGHTDECK_SLOT_HOLDER: "" };
   // No lock path given: the slot derives it from the temp folder, and says so to its child.
   env.FLIGHTDECK_SLOT_LOCK = undefined;
