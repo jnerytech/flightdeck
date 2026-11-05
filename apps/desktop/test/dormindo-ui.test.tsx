@@ -227,4 +227,18 @@ describe("dormindo-ui: the host's setting", () => {
       "0",
     );
   });
+
+  test("a delay the config holds outside the list is shown too, in words", () => {
+    setting(45);
+    const select = screen.getByLabelText("Sleep idle sessions after") as HTMLSelectElement;
+    expect(select.value).toBe("45");
+    expect([...select.options].map((o) => o.textContent)).toContain("45 minutes");
+    cleanup();
+    setting(120);
+    expect(
+      [...(screen.getByLabelText("Sleep idle sessions after") as HTMLSelectElement).options].map(
+        (o) => o.textContent,
+      ),
+    ).toContain("2 hours");
+  });
 });
