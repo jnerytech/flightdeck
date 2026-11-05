@@ -301,7 +301,7 @@ const matches = (row: HubRow, filter: HubFilter) =>
   (filter.showArchived || !row.archived);
 
 /** Repository name of a group: last path segment of the remote or of the folder. */
-const groupName = (key: string) => basename(key.replace(/^host:[^:]*:/, ""));
+export const groupName = (key: string) => basename(key.replace(/^host:[^:]*:/, ""));
 
 /**
  * Filtered rows by project; the ones that need you first, then pinned, then the standard names
