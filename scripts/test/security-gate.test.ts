@@ -654,4 +654,20 @@ describe("security-gate: end to end", () => {
     const verdict = securityVerdict(fakeGit({ diff, log: "" }).git);
     expect(verdict.message ?? "").toContain("apps/daemon/src/helper.ts (moved from tests)");
   });
+
+  test("a file moved from tests that its added lines already make risky is listed once (#284)", () => {
+    const diff = [
+      "diff --git a/apps/daemon/test/helper.ts b/apps/daemon/src/helper.ts",
+      "similarity index 90%",
+      "rename from apps/daemon/test/helper.ts",
+      "rename to apps/daemon/src/helper.ts",
+      "--- a/apps/daemon/test/helper.ts",
+      "+++ b/apps/daemon/src/helper.ts",
+      "@@ -1,0 +2 @@",
+      '+Bun.spawn(["git"]);',
+    ].join("\n");
+    const message = securityVerdict(fakeGit({ diff, log: "" }).git).message ?? "";
+    expect(message).toContain("1 risky file(s)");
+    expect(message).toContain("apps/daemon/src/helper.ts (spawn)");
+  });
 });
