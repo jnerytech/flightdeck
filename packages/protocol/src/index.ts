@@ -2884,6 +2884,8 @@ export const Command = z.discriminatedUnion("type", [
       archived: z.boolean().optional(),
     }),
   ),
+  /** Issue #255: the last lines of the daemon's own log file, redacted and bounded. */
+  cmd("logs.tail", z.object({ lines: z.number().int().min(1).max(500).optional() }).strict()),
   cmd("maintenance.status", z.object({}).strict()),
   cmd("maintenance.backup", z.object({}).strict()),
   /** Applies the retention policy now; `dryRun` only counts. */
@@ -4073,6 +4075,8 @@ export const HostInfoResult = z.object({
   ui: UiSettings.optional(),
   /** Whether a session may start in `bypassPermissions`; absent on a daemon that predates the switch. */
   allowBypassPermissions: z.boolean().optional(),
+  /** Issue #255: where the daemon writes its log; absent when it keeps none. */
+  logPath: z.string().optional(),
 });
 export type HostInfoResult = z.infer<typeof HostInfoResult>;
 
@@ -4193,6 +4197,9 @@ export type BackupInfo = z.infer<typeof BackupInfo>;
 
 /** Rows removed (or that would be, with `dryRun`) per table. */
 export const PruneCounts = z.record(z.string(), z.number());
+
+export const LogTail = z.object({ lines: z.array(z.string()), path: z.string() });
+export type LogTail = z.infer<typeof LogTail>;
 export type PruneCounts = z.infer<typeof PruneCounts>;
 
 export const MaintenanceStatus = z.object({
@@ -4251,6 +4258,7 @@ export interface CommandResults {
   "external.watch": undefined;
   "external.message": undefined;
   "session.meta.set": SessionMeta & { claudeSessionId: string };
+  "logs.tail": LogTail;
   "maintenance.status": MaintenanceStatus;
   "maintenance.backup": BackupInfo;
   "maintenance.prune": PruneCounts;

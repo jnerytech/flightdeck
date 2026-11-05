@@ -70,6 +70,7 @@ import type { GithubService } from "./github/service.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Issues } from "./issues/issues.ts";
+import type { FileLog } from "./logs/file-log.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
 import type { ProjectMemory } from "./memory/memory.ts";
 import type { Idle } from "./messaging/idle.ts";
@@ -177,6 +178,8 @@ export interface ServerOptions {
   central?: Central;
   /** Retention and backups behind the `maintenance.*` commands (phase 7). */
   maintenance?: Maintenance;
+  /** The daemon's own log file, behind `logs.tail` and `host.info.logPath` (issue #255). */
+  fileLog?: FileLog;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
   /** Phase 16: secrets the app hands over for one use (`vault.*`). */
