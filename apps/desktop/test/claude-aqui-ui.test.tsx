@@ -161,7 +161,8 @@ describe("claude-aqui: no app", () => {
     // The palette loads the hosts' sessions when it opens: the terminal session comes after.
     await act(async () => {
       store.openSearch();
-      await Bun.sleep(300);
+      // Its own load of the hosts' data, awaited: the palette asks for the same when it opens.
+      await store.loadPalette();
     });
     await act(async () =>
       inject(store, hostId, { ...external("claude-9", "launch-x"), cwd: root }),
@@ -171,6 +172,10 @@ describe("claude-aqui: no app", () => {
     await act(async () => {
       fireEvent.change(input as HTMLElement, { target: { value: basename(root) } });
     });
+    // ArrowDown on an empty list chooses nothing: wait for the session to be listed.
+    await waitFor(() =>
+      expect(document.querySelectorAll("dialog [role=option]").length).toBeGreaterThan(0),
+    );
     await act(async () => {
       fireEvent.keyDown(input as HTMLElement, { key: "ArrowDown" });
     });
