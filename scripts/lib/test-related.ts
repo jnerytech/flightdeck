@@ -84,6 +84,10 @@ export interface PlanDeps {
   coverageDir?: string;
   /** `--fast`: only the tests that import a changed file directly (the transitive set runs in CI). */
   fast?: boolean;
+  /** `--tier unit,component`: only the tests of these tiers (#261); the 100% gate stays in CI. */
+  tiers?: string[];
+  /** A test file's tier, from test-tiers.json; undefined for a file the manifest does not list. */
+  tierOf?: (path: string) => string | undefined;
 }
 
 export interface Plan {
