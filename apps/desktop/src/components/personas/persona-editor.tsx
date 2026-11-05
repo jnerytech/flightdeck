@@ -7,7 +7,6 @@ import { useBusy } from "@/hooks/use-busy";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { type AppPersona, personaInput } from "@/lib/global-personas";
-import { cn } from "@/lib/utils";
 import { MODELS } from "./model-select";
 
 const SELECT = "h-9 rounded-md border bg-transparent px-2";
@@ -26,7 +25,7 @@ const KNOWN_MODELS: readonly string[] = [
 ];
 const OTHER = "__other__";
 
-/** The tools the multi-select offers; a persona's own extra ones are kept in it too. */
+/** The tools the checkboxes offer; a persona's own extra ones are kept among them too. */
 const KNOWN_TOOLS: readonly string[] = [
   "Read",
   "Grep",
@@ -196,21 +195,30 @@ export function PersonaEditor(props: {
           ))}
         </select>
       ))}
-      {field("tools", t("personas.editor.tools"), (fid) => (
-        <select
-          id={fid}
-          multiple
-          className={cn(SELECT, "h-32")}
-          value={tools}
-          onChange={(e) => setTools([...e.target.selectedOptions].map((o) => o.value))}
-        >
+      {/* Issue #237: one checkbox per tool, so each click adds or removes that tool only (a
+          native multi-select dropped the others on a plain click). */}
+      <fieldset className="flex flex-col gap-1 text-sm">
+        <legend>{t("personas.editor.tools")}</legend>
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
           {toolChoices.map((tool) => (
-            <option key={tool} value={tool}>
+            <label key={tool} className="hit-inline gap-2">
+              <input
+                type="checkbox"
+                className="hit-control"
+                checked={tools.includes(tool)}
+                onChange={(e) =>
+                  setTools(
+                    toolChoices.filter((choice) =>
+                      choice === tool ? e.target.checked : tools.includes(choice),
+                    ),
+                  )
+                }
+              />
               {tool}
-            </option>
+            </label>
           ))}
-        </select>
-      ))}
+        </div>
+      </fieldset>
       {field("mode", t("personas.editor.mode"), (fid) => (
         <select id={fid} className={SELECT} value={mode} onChange={(e) => setMode(e.target.value)}>
           <option value="">{t("personas.editor.none")}</option>
