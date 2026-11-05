@@ -3796,3 +3796,11 @@ delivery, or rejected:
 - **The table and the commits check each other.** `tdd:audit -- --spec <spec>` fails on an area
   with no `test(<area>)` commit in the range. `new-phase` and `spec-verifier` call it; an older
   table (no Test file column) yields no areas, so their audits run as before.
+
+## The bell says which notification is unread and what it is about (issue #137)
+
+- **Opening the panel already marked nothing**; the bug was that every row looked the same. An unread row now has a dot (the accent color), a bold title and an "unread" word for assistive technology: icon and weight, not color alone. The badge counts the unread rows, so it always equals the dots.
+- **Rows are named by what they are about.** A notification keeps `subject` (the session, card or team), `host`, `ask` (the request in words: the first question of AskUserQuestion, the command of Bash, the file of an edit, else "Wants to use <tool>") and `group`. Entries saved before this keep their old title and body.
+- **A session's repeated requests collapse** into one row with a count when they share a `group` and the same read state on the same side of midnight; reading one never hides an unread one, and clicking a collapsed row reads every entry it stands for. Today and Earlier replace Today, Yesterday and dates.
+- **A target that is gone** (a card with no pull request to fall back on, or a request no longer open) says so in its row and offers Dismiss, which removes the entries of the row; clicking the row only marks it read.
+

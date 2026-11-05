@@ -1706,9 +1706,16 @@ O sino à direita da barra superior guarda toda notificação que o app envia: u
 precisa de você, uma sessão que terminou, um alerta de orçamento ou de cota, o resultado de um
 PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
 
-- Clique no sino para abrir o painel: mais recentes primeiro, agrupadas por dia (Hoje, Ontem e
-  depois a data).
-- Clique numa entrada para marcá-la como lida e abrir a tela dela (um pedido abre no card dele;
+- Clique no sino para abrir o painel: as não lidas primeiro, depois as mais recentes, em dois
+  grupos (Hoje e Antes). Abrir o painel não marca nada como lido.
+- Uma linha não lida tem um ponto, o título em negrito e a palavra "não lida" para o leitor de
+  tela; uma lida não tem nada disso. O selo conta os pontos. Cada linha diz a sessão, o card ou o
+  time e o host, e diz o que pede em palavras ("Pergunta: qual banco usar?"), não o nome da
+  ferramenta. Os pedidos repetidos de uma sessão viram uma linha só com a contagem ("3 vezes").
+  Uma linha cujo card ou pedido não existe mais avisa e tem **Descartar**.
+- Passe o mouse numa linha (ou foque nela) para ver o controle **Marcar como lida**: ele marca
+  aquela linha e não abre nada.
+- Clique numa entrada para marcar só ela como lida e abrir a tela dela (um pedido abre no card dele;
   um alerta de cota abre o host). Um alerta de orçamento abre os Custos já filtrados pelo host e
   pelo projeto dele, ou pelo cliente; um alerta de time abre Times com esse time em primeiro e
   destacado. A entrada de um card (resultado de um PR vigiado, card desbloqueado) abre o PR no

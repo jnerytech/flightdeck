@@ -1237,3 +1237,103 @@
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+
+/* The notification panel: a row has its own pick area, a hover control and an unread dot. */
+@utility inbox-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 28rem;
+  padding: 0.75rem;
+}
+@utility inbox-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 0.5rem;
+}
+@utility inbox-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+@utility inbox-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+  overflow-y: auto;
+}
+@utility inbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+@utility inbox-list {
+  display: flex;
+  flex-direction: column;
+}
+@utility inbox-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-md);
+  &:hover {
+    background-color: var(--accent);
+  }
+  &:hover .inbox-mark {
+    opacity: 1;
+  }
+  &:hover .inbox-time {
+    visibility: hidden;
+  }
+}
+@utility inbox-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.375rem 0.5rem;
+  text-align: left;
+  border-radius: var(--radius-md);
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+  }
+}
+@utility inbox-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+}
+@utility inbox-time {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+@utility inbox-mark {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  opacity: 0;
+  &:focus-within {
+    opacity: 1;
+  }
+}
+@utility inbox-dismiss {
+  align-self: flex-start;
+  margin: 0 0.5rem 0.375rem;
+}
+@utility unread-dot {
+  align-self: center;
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: var(--primary);
+}
