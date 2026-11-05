@@ -62,6 +62,7 @@
     "build:daemon": "bun run scripts/build-daemon.ts",
     "build:desktop": "bun run --filter @flightdeck/desktop build",
     "deploy": "bun run scripts/deploy.ts",
+    "ci:branch": "bun run scripts/ci-branch.ts",
     "release:version": "bun run scripts/release-version.ts",
     "release:assets": "bun run scripts/release-assets.ts",
     "release:tauri-config": "bun run scripts/release-tauri-config.ts",

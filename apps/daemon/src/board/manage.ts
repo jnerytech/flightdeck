@@ -38,6 +38,14 @@ function scopedCard(deps: ManageDeps, payload: Payload): Card {
   return card;
 }
 
+/** The title and the description a call names; a field it leaves out is left out. */
+function titleAndDescription(payload: Payload): { title?: string; description?: string } {
+  const changes: { title?: string; description?: string } = {};
+  if (payload.title !== undefined) changes.title = payload.title;
+  if (payload.description !== undefined) changes.description = payload.description;
+  return changes;
+}
+
 /** The change the call asks for, with what each action needs checked first. */
 async function applyAction(board: Board, card: Card, payload: Payload): Promise<Card> {
   const cardId = card.id;
@@ -49,10 +57,7 @@ async function applyAction(board: Board, card: Card, payload: Payload): Promise<
       if (payload.title === undefined && payload.description === undefined) {
         throw needs("a title or a description");
       }
-      return board.updateCard(cardId, {
-        ...(payload.title !== undefined ? { title: payload.title } : {}),
-        ...(payload.description !== undefined ? { description: payload.description } : {}),
-      });
+      return board.updateCard(cardId, titleAndDescription(payload));
     case "comment":
       if (!payload.text) throw needs("a text");
       return board.updateCard(cardId, {

@@ -45,7 +45,13 @@ export interface SlotEnv {
   now(): number;
   sleep(ms: number): Promise<void>;
   log(line: string): void;
-  spawn(command: string[], nice: boolean): SlotChild;
+  /**
+   * Starts the command. `asHolder` marks the child as running under this process's lock, so a slot
+   * call it makes itself runs at once (see `holder`).
+   */
+  spawn(command: string[], nice: boolean, asHolder?: boolean): SlotChild;
+  /** The pid named by `FLIGHTDECK_SLOT_HOLDER` in this process's environment, if any. */
+  holder?: number;
   /** Asks a process to stop (SIGTERM). */
   terminate(pid: number): void;
   /** The user's processes; absent where the platform cannot list them (no renicing then). */
@@ -271,6 +277,16 @@ export function cancel(env: SlotEnv): number {
   return 0;
 }
 
+/**
+ * Whether this process was started by the process that holds the slot now: the variable names a
+ * live pid, and the lock names the same one (a name left over from an old run is not enough).
+ */
+function underHolder(env: SlotEnv): boolean {
+  const { holder } = env;
+  if (holder === undefined || !env.alive(holder)) return false;
+  return parseHolder(env.fs.read(env.path))?.pid === holder;
+}
+
 /** Runs the command under the slot and returns its exit code (a signal's code when one stopped it). */
 export async function run(env: SlotEnv, argv: string[]): Promise<number> {
   const args = parseArgs(argv);
@@ -289,11 +305,18 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
     state.child?.kill();
   });
   try {
+    // A command the slot started that asks for the slot again (the test runner does above 60
+    // files) would wait for the lock its own parent holds, forever: it runs at once instead.
+    if (underHolder(env)) {
+      state.child = env.spawn(args.command, args.nice, false);
+      const code = await state.child.wait();
+      return state.signal ?? code;
+    }
     if (!(await acquire(env, args.command.join(" "), () => state.signal !== null, args.maxAgeMs))) {
       return state.signal ?? 1;
     }
     try {
-      state.child = env.spawn(args.command, args.nice);
+      state.child = env.spawn(args.command, args.nice, true);
       const finished = { done: false };
       const lowering = args.priority ? lowerWhile(env, finished) : Promise.resolve();
       const code = await state.child.wait();
