@@ -11,6 +11,22 @@ const enT = translator("en");
 const ptT = translator("pt-BR");
 
 const REASONS = [
+  "runtime_unavailable",
+  "runtime_unsupported",
+  "opencode_unsafe_global",
+  "opencode_config_outranks",
+  "opencode_saved_rules",
+  "opencode_preflight_failed",
+  "opencode_changed",
+  "opencode_permissions_overridden",
+  "opencode_auth_required",
+  "opencode_disabled",
+  "opencode_missing",
+  "opencode_version_failed",
+  "opencode_v1",
+  "opencode_project_config_not_disabled",
+  "opencode_canary_failed",
+  "opencode_scope_mismatch",
   "bypass_not_allowed",
   "bypass_confirm",
   "card_scope_unknown",
