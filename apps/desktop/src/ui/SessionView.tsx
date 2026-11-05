@@ -341,7 +341,8 @@ export function SessionView(props: SessionViewProps) {
   useEffect(() => {
     if (!focusRequestId || cards === 0) return;
     const card = timeline.current?.querySelector(`[data-request-id="${focusRequestId}"]`);
-    card?.scrollIntoView?.({ block: "center" });
+    // The whole card, as little scroll as needed: centered, a tall card near the end was cut.
+    card?.scrollIntoView?.({ block: "nearest" });
   }, [focusRequestId, cards]);
   const missed = awaySeq === null ? 0 : props.session.items.filter((i) => i.seq > awaySeq).length;
   const { session, actions } = props;
