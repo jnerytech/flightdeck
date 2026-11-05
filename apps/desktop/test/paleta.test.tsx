@@ -227,6 +227,8 @@ describe("paleta", () => {
       await openPalette();
       await settle(() => sections().includes("Ações"));
       await type(query);
+      // The entry is on screen before the keys move to it (a list that fills late moves the cursor).
+      await settle(() => options().some((option) => option.includes(query)));
       await press("ArrowDown");
       for (const key of keys) await press(key);
     };
