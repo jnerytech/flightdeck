@@ -47,6 +47,7 @@ const OVERVIEW_KEYS = [
   "deps",
   "doctor",
   "healthAt",
+  "healthError",
 ] as const;
 
 /**
@@ -175,6 +176,7 @@ export function HostPage(props: {
                   deps={overviewState.deps[host.id] ?? null}
                   doctor={overviewState.doctor[host.id] ?? null}
                   checkedAt={overviewState.healthAt[host.id] ?? null}
+                  error={overviewState.healthError[host.id] ?? null}
                   onCheck={() => store.checkHealth(host.id)}
                   onAddFolder={() => setTab("settings")}
                 />

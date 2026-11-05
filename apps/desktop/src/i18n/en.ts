@@ -3404,13 +3404,12 @@ export const en: Dictionary = {
   hostDeps: {
     installPage: "Install page",
     installPageFor: "Open the install page for {name}",
-    title: "Dependencies",
     check: "Check again",
     checking: "Checking…",
+    readFailed: "Could not read the health: {reason}",
     allSet: "All set",
     optionalMissing: "{n} optional missing",
     requiredMissing: "{n} required missing",
-    groups: { required: "Required", optional: "Optional" },
     state: { ok: "OK", outdated: "Outdated", missing: "Missing", na: "Not applicable" },
     names: {
       claude: "Claude Code",
