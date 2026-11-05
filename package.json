@@ -52,6 +52,7 @@
     "smoke:perf": "bun run scripts/smoke-perf.ts",
     "tdd:audit": "bun run scripts/tdd-audit.ts",
     "spec:lint": "bun run scripts/spec-lint.ts",
+    "handoff:check": "bun run scripts/handoff-check.ts",
     "harness:stats": "bun run scripts/harness-stats.ts",
     "test:related": "bun run scripts/test-related.ts",
     "coverage:funcs": "bun run scripts/coverage-funcs.ts",

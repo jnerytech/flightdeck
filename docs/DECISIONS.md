@@ -3901,3 +3901,16 @@ The `*.pt.feature` twins are gone. Each behaviour has one English `.feature` (th
 `scripts/lib/layout-guards.ts` is the one browser function (`layoutFindings`, run in the page) that the e2e `layout` journey and `demo:shots` share, replacing the ad hoc `overflow()` (nearly blind: it skipped everything under an `overflow-hidden` ancestor) and the sideways check each fix had added. Its rules are the precise ones of the UX review: the page scrolls sideways; a box is cut by an ancestor that clips on an axis no ancestor scrolls; content is squeezed under 8 px tall; text is cut with an ellipsis to under 48 px; an alert is off screen; a bar grew; a key region (`sidebar-hosts`, `approval-card`, `board-columns`, `form-actions`, each now carrying its `data-slot`) is smaller than its minimum at 1280 px. Each finding names its culprit by `data-slot` path (`sidebar > sidebar-hosts`), not by class soup. "One word per line", unnamed controls and small targets are not rebuilt: axe covers the last two. The geometry runs on the pt-BR layout journey at 720x480, 1280x800 and 1920x1080 (geometry only, no prints).
 
 Noise: the key-region rules are a contract and always fail. The heuristic rules fail only when new against `scripts/layout-findings-baseline.json`, keyed by rule, screen and path (no text, no pixels), and a baseline entry whose finding is gone fails too, so the file only goes down. **There is no baseline file yet**: until it is committed the heuristic findings fail nothing and the run writes what it saw to `playwright-report/layout-findings.json` (the CI e2e artifact); that file, copied to `scripts/layout-findings-baseline.json`, is the first baseline. Not done: the `?gallery` page of the audit's G5 (the prints folder and visual diff already review; a static index from `demo:shots` is cheaper), and a settle that waits for fonts and equal `scrollHeight` instead of the fixed waits of `open()`.
+
+## Harness D4: the hand-off stamp, checked by the receiver (issue #169)
+
+- **Receiver-side, no hook** (review S2-5, S1-1). The proposal's sender-side gate (a `PreToolUse`
+  hook on `SendMessage` matching "hand-off") depended on an undocumented tool input, matched the
+  repo's own names (`flightdeck-handoff/`) and could be skipped by resending. Instead
+  `bun run handoff:check` runs `typecheck`, `lint`, `tdd:audit` and `test:related` in order (all
+  of them, so one run shows every failure), prints one stamp line
+  (`HANDOFF <branch> <head> typecheck=0 lint=0 audit=0 related=0 <time>`) and keeps it in the
+  worktree's git folder. The session pastes the line in its hand-off; the receiver (the
+  coordinator, or `spec-verifier`) runs `bun run handoff:check -- --verify` in the worktree, which
+  refuses a missing stamp, one for another HEAD, or any check that was not 0.
+- **Never under the slot** (review S2-2): `test:related` takes the slot by itself above 60 files.
