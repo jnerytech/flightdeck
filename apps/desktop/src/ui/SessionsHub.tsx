@@ -1,5 +1,5 @@
 import type { SessionMeta } from "@flightdeck/protocol";
-import { ListFilter, MoreHorizontal, Radio, X } from "lucide-react";
+import { ListFilter, Moon, MoreHorizontal, Radio, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AssignMenu } from "@/components/clients/assign-menu";
 import { ClientChip } from "@/components/clients/client-chip";
@@ -47,6 +47,9 @@ import { hasFeature } from "../lib/version.ts";
 
 /** How often the hub asks the hosts about their background sessions. */
 const BG_REFRESH_MS = 10_000;
+
+/** The key of a row's state: an asleep session is its own word, though it is idle underneath. */
+const stateKey = (row: HubRow) => (row.asleep ? "asleep" : row.state);
 
 const TONES: Record<HubState, StateTone> = {
   running: "running",
@@ -234,6 +237,13 @@ export function SessionsHub(props: {
           >
             {t("hub.rename")}
           </DropdownMenuItem>
+          {row.origin === "flightdeck" && row.state === "idle" && !row.asleep && row.sessionId && (
+            <DropdownMenuItem
+              onSelect={() => void store.sleepSession(row.hostId, row.sessionId as string)}
+            >
+              {t("hub.sleepNow")}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onSelect={() => meta(row, { pinned: !row.pinned })}>
             {row.pinned ? t("hub.unpin") : t("hub.pin")}
           </DropdownMenuItem>
@@ -452,11 +462,12 @@ export function SessionsHub(props: {
                       title={row.title}
                       project={group.name}
                       host={row.hostName}
-                      stateLabel={t(`hub.stateDots.${row.state}` as Key)}
+                      stateLabel={t(`hub.stateDots.${stateKey(row)}` as Key)}
                       tone={TONES[row.state]}
                       line={sessionLineText(row.summary, store.now(), t)}
                       {...cardCost(row)}
                       persona={row.persona?.name ?? null}
+                      asleep={row.asleep ? t("hub.asleep") : null}
                       current={props.isOpen(row)}
                       active={listed[cursor]?.key === row.key}
                       onOpen={() => {
@@ -492,7 +503,7 @@ export function SessionsHub(props: {
                       >
                         <StatusDot
                           tone={TONES[row.state]}
-                          label={t(`hub.stateDots.${row.state}` as Key)}
+                          label={t(`hub.stateDots.${stateKey(row)}` as Key)}
                         />
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -520,6 +531,12 @@ export function SessionsHub(props: {
                         {row.persona && (
                           <span className="shrink-0 rounded bg-muted px-1 text-xs">
                             {row.persona.name}
+                          </span>
+                        )}
+                        {row.asleep && (
+                          <span className="inline-flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
+                            <Moon aria-hidden="true" className="size-3" />
+                            {t("hub.asleep")}
                           </span>
                         )}
                         {row.controllable && (

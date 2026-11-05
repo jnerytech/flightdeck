@@ -1,3 +1,4 @@
+import { Moon } from "lucide-react";
 import type { ReactNode } from "react";
 import { type StateTone, StatusDot } from "@/components/status/status-dot";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,8 @@ export function SessionCard(props: {
   cost?: string;
   costLabel: string;
   persona?: string | null;
+  /** The word for a session with no process (asleep): shown with a moon. */
+  asleep?: string | null;
   /** The session open on the right. */
   current?: boolean;
   /** The row the keyboard is on. */
@@ -52,6 +55,12 @@ export function SessionCard(props: {
         <span className="min-w-0 truncate">{props.host}</span>
         {props.persona && (
           <span className="shrink-0 rounded bg-muted px-1 text-foreground">{props.persona}</span>
+        )}
+        {props.asleep && (
+          <span className="inline-flex shrink-0 items-center gap-1">
+            <Moon aria-hidden="true" className="size-3" />
+            {props.asleep}
+          </span>
         )}
         {props.cost !== undefined && (
           <output aria-label={props.costLabel} className="ml-auto shrink-0 tabular-nums">

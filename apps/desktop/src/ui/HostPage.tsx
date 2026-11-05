@@ -7,6 +7,7 @@ import { GithubPanel } from "@/components/hosts/github-panel";
 import { HostDoctor } from "@/components/hosts/host-doctor";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
+import { SleepSetting } from "@/components/hosts/sleep-setting";
 import { Field } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
@@ -143,6 +144,7 @@ export function HostPage(props: {
         </Panel>
         <AllowedFolders store={store} host={host} />
         <BypassSwitch store={store} host={host} />
+        <SleepSetting store={store} host={host} />
         <SimpleModePanel store={store} host={host} />
         {host.status === "online" && hasFeature(info?.features, "doctor.run", false) && (
           <HostDoctor store={store} host={host} />

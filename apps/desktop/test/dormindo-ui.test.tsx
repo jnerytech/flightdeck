@@ -85,7 +85,7 @@ const rowOf = (title: string) => screen.getByRole("listitem", { name: title });
 async function openMenu(title: string) {
   await act(async () => {
     fireEvent.pointerDown(
-      within(rowOf(title)).getByRole("button", { name: `Actions for ${title}` }),
+      within(rowOf(title)).getByRole("button", { name: `Actions of ${title}` }),
       {
         button: 0,
         ctrlKey: false,

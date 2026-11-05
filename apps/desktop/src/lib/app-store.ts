@@ -320,6 +320,8 @@ export type HostCommandType = Extract<
   | "roots.add"
   | "history.get"
   | "host.bypass"
+  | "host.sleep"
+  | "session.sleep"
   | `ssh.${string}`
   | `snippets.${string}`
   | `personas.${string}`
@@ -1196,8 +1198,11 @@ export class AppStore {
     };
   }
 
-  /** Puts an idle session to sleep now and says what came of it (stub). */
-  async sleepSession(_hostId: string, _sessionId: string): Promise<void> {}
+  /** Puts an idle session to sleep now and says, in a toast, what came of it. */
+  async sleepSession(hostId: string, sessionId: string): Promise<void> {
+    const answer = await this.hostCommand(hostId, "session.sleep", { sessionId });
+    if (answer) this.success(this.i18n.t(`sleep.result.${answer.result}` as Key));
+  }
 
   /** The sidebar groups the user folded; kept across starts. */
   sidebarFolded(): SidebarGroup[] {

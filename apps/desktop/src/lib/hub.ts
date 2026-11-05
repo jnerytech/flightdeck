@@ -37,7 +37,7 @@ export interface HubRow {
   persona: SessionPersona | null;
   /** Phase 21: `project · persona · number`, on a host with names; null elsewhere. */
   standardName?: string | null;
-  /** Issue #157: idle with no process: a message wakes it (stub: always false). */
+  /** Issue #157: idle with no process: a message wakes it. Only a managed session can be. */
   asleep?: boolean;
 }
 
@@ -229,6 +229,7 @@ export function hubRows(state: HubRowState): HubRow[] {
         sessionId: s.id,
         title: name ?? s.name ?? basename(s.cwd),
         state: MANAGED[live?.status ?? s.status],
+        asleep: MANAGED[live?.status ?? s.status] === "idle" && s.asleep === true,
         controllable: false,
         lastActivity: live?.updatedAt ?? s.updatedAt,
         summary: liveLine(s.summary, live),

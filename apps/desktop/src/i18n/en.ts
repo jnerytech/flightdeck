@@ -836,8 +836,11 @@ export const en: Dictionary = {
       running: "running",
       needs_you: "needs you",
       idle: "idle",
+      asleep: "asleep",
       ended: "ended",
     },
+    asleep: "Asleep",
+    sleepNow: "Sleep now",
     origins: {
       flightdeck: "Flightdeck",
       terminal: "Terminal",
@@ -3421,6 +3424,23 @@ export const en: Dictionary = {
     hintGeneric: "Check that the host is on and reachable, and that the daemon runs there.",
     hintAddress:
       "Or the daemon refused this machine's address: on the host, add its network to allowedNetworks (flightdeckd setup does it for Tailscale).",
+  },
+  sleep: {
+    title: "Sleep idle sessions",
+    label: "Sleep idle sessions after",
+    hint: "An idle session gives back its memory after this long. A message wakes it from where it was. Pinned sessions, a card's sessions and ones you have open stay awake.",
+    off: "Off",
+    minutes: "{n} minutes",
+    hour: "1 hour",
+    hours: "{n} hours",
+    result: {
+      slept: "The session is asleep. A message wakes it.",
+      already: "The session was already asleep.",
+      not_idle: "The session is working or waiting for you, so it stays awake.",
+      queued: "A message is waiting, so the session stays awake.",
+      subscribed: "Someone has the session open, so it stays awake.",
+      kept_awake: "The session is pinned or belongs to a card, so it stays awake.",
+    },
   },
   hostPage: {
     simpleTitle: "Simple mode",

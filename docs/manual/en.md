@@ -659,6 +659,19 @@ Click a card to open the project's page. It links the project's **Board**, **Ses
 **Workflows**, **Costs** (when the host reports costs) and **Settings** (the host's project
 settings, where the folder, base branch, setup and personas are edited).
 
+### Sleeping idle sessions
+
+An idle session keeps its Claude Code process, and its memory, until it ends. On the host page,
+**Sleep idle sessions after** (Off, 15 minutes, 30 minutes, 1 hour or 4 hours; off by default, and
+`sessions.sleepAfterMinutes` in the daemon config) lets the host end the process of a session that
+has been idle that long. The session stays in every list as **Asleep** (a moon) and keeps its
+transcript, name and place; the next message starts it again from where it was, with no visible
+loss. Only a session with nothing going on sleeps: not one that is working or waiting for you, not
+one with a queued message, not one open in a tab or watched by the app, not a pinned one and not a
+card's. **Sleep now** in a session's menu does it at once for an idle session (it still refuses a
+pinned or card session). Every sleep is logged in the session's events. While the setting is off the
+daemon runs no timer for it, and a daemon restart leaves idle sessions asleep in the same way.
+
 ### Sessions side by side
 
 When the project has sessions that Flightdeck started, the page shows them as **tiles**. The
