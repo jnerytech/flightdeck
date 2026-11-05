@@ -72,7 +72,7 @@ export const SYSTEM_RUN: RunDeps = {
 export function runBounded(
   command: string[],
   timeoutMs: number,
-  _deps: RunDeps = SYSTEM_RUN,
+  deps: RunDeps = SYSTEM_RUN,
 ): Promise<BoundedResult> {
   const [program = "", ...args] = command;
   return new Promise((done) => {
@@ -80,19 +80,16 @@ export function runBounded(
     const finish = (result: BoundedResult) => {
       if (settled) return;
       settled = true;
-      clearTimeout(timer);
+      deps.clearTimer(timer);
       done(result);
     };
     // Its own process group on POSIX, so a timeout reaches what it started.
-    const child = spawn(program, args, {
-      detached: process.platform !== "win32",
-      stdio: "ignore",
-      windowsHide: true,
-    });
+    const child = deps.spawn(program, args, { detached: deps.platform !== "win32" });
     child.on("error", (error) => finish({ code: null, stderr: error.message, timedOut: false }));
     child.on("exit", (code) => finish({ code, stderr: "", timedOut: false }));
-    const timer = setTimeout(() => {
-      if (child.pid !== undefined) killTree(child.pid);
+    const timer = deps.setTimer(() => {
+      if (settled) return;
+      if (child.pid !== undefined) deps.killTree(child.pid);
       finish({ code: null, stderr: "", timedOut: true });
     }, timeoutMs);
   });

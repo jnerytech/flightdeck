@@ -19,6 +19,9 @@ export interface BranchCommit {
   reviewed: string | null;
 }
 
+/** Marks a mode change among a file's added lines: no added line of a diff can start with NUL. */
+const MODE_CHANGE = "\u0000mode ";
+
 /**
  * Reads one file header line: a "+++" line starts the file's list of added lines (none for a
  * deleted file), and a "rename to" line (a pure rename has no hunk) registers the new path.
@@ -29,9 +32,17 @@ function readHeader(
   current: string[] | null,
   file: string,
 ): string[] | null {
-  // A mode change (chmod) has no hunk: it counts as a permission change of the file.
+  // A mode change (chmod) has no hunk: it counts as a permission change of the file, whatever it is.
   if (line.startsWith("new mode ")) {
-    added.set(file, [...(added.get(file) ?? []), `chmod ${line.slice("new mode ".length)}`]);
+    added.set(file, [
+      ...(added.get(file) ?? []),
+      `${MODE_CHANGE}${line.slice("new mode ".length)}`,
+    ]);
+    return current;
+  }
+  // A deleted file keeps its path, so the path rules (a guard, the vault) still see it.
+  if (line.startsWith("deleted file mode ")) {
+    if (!added.has(file)) added.set(file, []);
     return current;
   }
   if (line.startsWith("rename to ")) {
@@ -175,8 +186,20 @@ const SENSITIVE_PATHS: [string, RegExp[]][] = [
 const any = (patterns: RegExp[], text: string) => patterns.some((pattern) => pattern.test(text));
 
 /** The removed lines of each file in a `git diff -U0` output (#284). */
-export function removedLines(_diff: string): Map<string, string[]> {
-  return new Map();
+export function removedLines(diff: string): Map<string, string[]> {
+  const removed = new Map<string, string[]>();
+  let file = "";
+  let inHeader = false;
+  for (const line of diff.split("\n")) {
+    if (line.startsWith("diff --git ")) {
+      file = line.slice(line.lastIndexOf(" b/") + 3);
+      inHeader = true;
+    } else if (line.startsWith("@@")) inHeader = false;
+    else if (!inHeader && line.startsWith("-")) {
+      removed.set(file, [...(removed.get(file) ?? []), line.slice(1)]);
+    }
+  }
+  return removed;
 }
 
 /**
@@ -184,11 +207,30 @@ export function removedLines(_diff: string): Map<string, string[]> {
  * stays (read from HEAD) is: removing a check in front of a spawn needs a review too (#284).
  */
 export function riskyEdits(
-  _risky: RiskyFile[],
-  _removed: Map<string, string[]>,
-  _read: (path: string) => string | null,
+  risky: RiskyFile[],
+  removed: Map<string, string[]>,
+  read: (path: string) => string | null,
 ): RiskyFile[] {
-  return [];
+  const known = new Set(risky.map((r) => r.path));
+  const edits: RiskyFile[] = [];
+  for (const [path, lines] of removed) {
+    if (known.has(path) || any(NOT_SOURCE, path) || !SOURCE.test(path)) continue;
+    const gone = areasOf(lines, path);
+    const why =
+      gone.length > 0
+        ? gone.map((area) => `removes ${area}`)
+        : areasOf((read(path) ?? "").split("\n"), path).map((area) => `edits ${area} code`);
+    if (why.length > 0) edits.push({ path, why });
+  }
+  return edits.sort((a, b) => (a.path < b.path ? -1 : 1));
+}
+
+/** The risk areas these lines of code touch, comments left out. */
+function areasOf(lines: string[], path: string): string[] {
+  const code = lines.filter((line) => !commentOnly(line, path));
+  return AREAS.filter(([, patterns]) => code.some((line) => any(patterns, line))).map(
+    ([name]) => name,
+  );
 }
 
 /** The changed source files (never a test) in a risk area, sorted by path. */
@@ -196,10 +238,10 @@ export function riskyFiles(added: Map<string, string[]>): RiskyFile[] {
   const risky: RiskyFile[] = [];
   for (const [path, lines] of added) {
     if (any(NOT_SOURCE, path)) continue;
-    const code = SOURCE.test(path) ? lines.filter((line) => !commentOnly(line, path)) : [];
-    const why = AREAS.filter(([, patterns]) => code.some((line) => any(patterns, line))).map(
-      ([name]) => name,
-    );
+    const modeChanged = lines.some((line) => line.startsWith(MODE_CHANGE));
+    const added = lines.filter((line) => !line.startsWith(MODE_CHANGE));
+    const why = SOURCE.test(path) ? areasOf(added, path) : [];
+    if (modeChanged && !why.includes("permission")) why.push("permission");
     for (const [name, patterns] of SENSITIVE_PATHS) if (any(patterns, path)) why.push(name);
     if (why.length > 0) risky.push({ path, why });
   }
@@ -289,6 +331,10 @@ export function securityVerdict(git: GitRun, base?: string): SecurityVerdict {
     `${ref}..HEAD`,
   ]);
   if (log === null) return unknown("git log failed");
-  const problem = securityProblem(riskyFiles(addedLines(diff)), parseBranchLog(log));
+  // Removed lines count too: taking a check out in front of a spawn needs a review (#284).
+  const added = riskyFiles(addedLines(diff));
+  const edits = riskyEdits(added, removedLines(diff), (path) => git(["show", `HEAD:${path}`]));
+  const risky = [...added, ...edits].sort((a, b) => (a.path < b.path ? -1 : 1));
+  const problem = securityProblem(risky, parseBranchLog(log));
   return problem ? { verdict: "unreviewed", message: problem } : { verdict: "0", message: null };
 }
