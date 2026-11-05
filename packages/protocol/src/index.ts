@@ -4188,6 +4188,16 @@ export const ProjectLoad = z.object({
   skills: z.array(z.string()),
   commands: z.array(z.string()),
   claudeMd: z.boolean(),
+  /** Settings that name a program to run (apiKeyHelper, statusLine, ...): the whole command. */
+  executables: z.array(z.object({ key: z.string(), file: z.string(), command: z.string() })),
+  /** Environment variables that send traffic or code elsewhere (a base URL, a proxy, NODE_OPTIONS): the value too. */
+  redirects: z.array(z.object({ key: z.string(), file: z.string(), value: z.string() })),
+  /** Plugins and marketplaces the settings turn on or add. */
+  plugins: z.array(z.string()),
+  /** Settings keys present that this listing does not explain, so a key it does not know is still named. */
+  otherKeys: z.array(z.string()),
+  /** Agent, skill and command files whose header carries hooks, servers or tool grants. */
+  extras: z.array(z.object({ file: z.string(), keys: z.array(z.string()) })),
   unreadable: z.array(z.string()),
   /** How many entries of each list were left out because the list is capped: the screen must say so. */
   omitted: z.object({

@@ -19,6 +19,11 @@ export interface ProjectLoad {
   skills: string[];
   commands: string[];
   claudeMd: boolean;
+  executables: Array<{ key: string; file: string; command: string }>;
+  redirects: Array<{ key: string; file: string; value: string }>;
+  plugins: string[];
+  otherKeys: string[];
+  extras: Array<{ file: string; keys: string[] }>;
   /** Files that exist and could not be read as JSON, or are not what they seem. */
   unreadable: string[];
   /** How many entries of each list were left out because the list is capped. */
@@ -112,6 +117,11 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
     skills: [],
     commands: [],
     claudeMd: false,
+    executables: [],
+    redirects: [],
+    plugins: [],
+    otherKeys: [],
+    extras: [],
     unreadable,
     omitted: { hooks: 0, mcpServers: 0, allowRules: 0, envKeys: 0 },
   };
