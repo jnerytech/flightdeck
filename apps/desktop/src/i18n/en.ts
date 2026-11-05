@@ -253,6 +253,7 @@ export const en: Dictionary = {
       derivation: "How it was computed",
     },
     title: "Return on cost",
+    details: "Details",
     period: "Period",
     period7: "7 days",
     period30: "30 days",

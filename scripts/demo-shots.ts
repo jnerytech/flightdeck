@@ -420,9 +420,10 @@ function shots(ids: DemoIds): Shot[] {
       roi: true,
       route: { name: "board", host: ALFA, projectId: ids.project },
       prepare: async (page) => {
-        await page
-          .getByRole("region", { name: /^(Return on cost|Retorno sobre o custo)$/ })
-          .waitFor({ timeout: 8000 });
+        const card = page.getByRole("region", { name: /^(Return on cost|Retorno sobre o custo)$/ });
+        await card.waitFor({ timeout: 8000 });
+        // The card opens folded (issue #178): the print shows it open.
+        await card.getByRole("button", { name: /^(Details|Detalhes)$/ }).click();
       },
     },
     {

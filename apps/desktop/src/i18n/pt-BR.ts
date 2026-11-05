@@ -256,6 +256,7 @@ export const ptBR = {
       derivation: "Como foi calculado",
     },
     title: "Retorno sobre o custo",
+    details: "Detalhes",
     period: "Período",
     period7: "7 dias",
     period30: "30 dias",
