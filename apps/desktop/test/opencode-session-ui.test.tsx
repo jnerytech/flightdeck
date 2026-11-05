@@ -95,6 +95,12 @@ describe("opencode-session-ui", () => {
     await settle(() => (d.opencodeRuntime?.starts.length ?? 0) > 0);
     expect(d.opencodeRuntime?.starts[0]?.effort).toBe("high");
     await settle(() => screen.queryByText("OpenCode") !== null);
+    // The tabs that read Claude Code's transcript, and messaging (OpenCode sessions stay out of it).
+    await settleMaybe(() => screen.queryByRole("button", { name: "Conversation" }) !== null, 2000);
+    const claudeTabs = ["Changes", "Time", "Trace", "Messages"].filter(
+      (name) => screen.queryByRole("button", { name }) !== null,
+    );
+    expect(claudeTabs).toEqual([]);
     // The live switch offers OpenCode's models, as the form did.
     await settleMaybe(() => options("Model").length > 1);
     expect(options("Model")).toEqual([
