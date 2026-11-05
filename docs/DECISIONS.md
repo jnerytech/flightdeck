@@ -3818,6 +3818,31 @@ Probes for this round (2026-11-05; no credential read; every probe session delet
   show) and axe on the new form, which runs with `demo:shots` at the phase's end (the slot was jammed). No `/` commands
   needs no UI code: OpenCode's `session.init` has no `slashCommands`.
 
+### Phase 39: the smokes
+
+- **`smoke:opencode` runs in CI** with the other smokes: the daemon in-process, the fake `opencode` first on its PATH. The
+  fake records each ACP request (method and prompt text) in its own log (`FAKE_OPENCODE_ACP_LOG`), which is how the smoke
+  sees the `/` text arrive with a zero-width space, the `session/cancel` and the `session/resume` after the restart.
+- **`smoke:opencode-real` runs the daemon as its own process.** A daemon started inside the smoke names `Bun.main` (the
+  smoke) in the Flightdeck MCP entry it gives OpenCode, so OpenCode ran the smoke a second time as that server, which never
+  answered, and `session/new` timed out after 30 s. A host runs the daemon itself, so nothing changes in the product.
+- **Probe (2026-11-05): the background service loads the project config.** `opencode session list` without
+  `--standalone`, run in the hostile project with `OPENCODE_DISABLE_PROJECT_CONFIG=1`, was answered by the person's
+  `opencode serve --service`, which never sees the caller's variables: the project's plugin and MCP server ran in it (their
+  markers appeared). The same calls with `--standalone`, and `opencode acp`, ran none of them (no marker in a plain folder,
+  a git one, the hostile one and the hostile git one). The daemon only runs `acp` and `--standalone` calls; the smoke's
+  cleanup (`session list` and `session delete`) uses `--standalone` too, and the manual's saved-rule commands carry it.
+- **OpenCode makes a session even when `session/new` times out**, so the real smoke deletes every session of its scratch
+  project at the end instead of the ids it saw.
+- **30 s for each call that boots OpenCode's private server** (`OPENCODE_API_TIMEOUT_MS`: the preflight's three checks,
+  the canary, `models`). The real smoke found it: on the Pi 5 at load 15 to 20, the three checks in parallel took 8 to
+  15 s each, and `/api/agent` passed the old 15 s limit (exit 124), so the session was refused with
+  `opencode_preflight_failed`. It only matters when the host is slow; a session start already waits for the checks.
+  Proposed for phase 40: one private server per preflight (`opencode serve` with Flightdeck's environment, three HTTP
+  GETs) instead of three boots, which would also cut the CPU of every start by about two thirds.
+- **The pure parts** (the hostile project, the options it answers with, the saved rules' ids, `--model`) are in
+  `scripts/lib/opencode-real.ts` with `scripts/test/opencode-real.test.ts` (scope `opencode-real`, not a row of the table).
+
 ## A conversation opens on its latest message (issue #112)
 
 - **The end follows the layout, not only the messages.** Images, code blocks and the summary panel change the height after
