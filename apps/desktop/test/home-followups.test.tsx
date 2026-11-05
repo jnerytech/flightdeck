@@ -4,11 +4,13 @@ import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
 registerDom();
-const { cleanup, render, waitFor, within } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { emptySummary } = await import("../src/lib/client-costs.ts");
 const { HomePage } = await import("../src/ui/HomePage.tsx");
+const { CostsPage } = await import("../src/ui/CostsPage.tsx");
+const { HistoryList } = await import("../src/ui/HistoryList.tsx");
 
 setDefaultTimeout(30_000);
 afterEach(cleanup);
@@ -181,5 +183,126 @@ describe("home-followups: hosts without costs show unknown, and Avg says where i
     render(w.view([{ id: "h1", features: [] }], { hostsLoaded: true }));
     const card = await screen.findByRole("button", { name: "Abrir Gasto" });
     expect(card.textContent).toContain("Sem dados de custo de host-h1");
+  });
+});
+
+describe("home-followups: the cards open the screen with the same days and every host (issue #210)", () => {
+  const open = async (name: string) => {
+    await act(async () => void fireEvent.click(screen.getByRole("button", { name })));
+  };
+
+  test("with one host, Spend, Tokens and Avg open Costs for the seven days, and Turns its History for them", async () => {
+    const w = world();
+    render(w.view([{ id: "h1" }], { hostsLoaded: true }));
+    await screen.findByRole("button", { name: "Open Spend" });
+    for (const name of ["Open Spend", "Open Tokens", "Open Avg cost / turn", "Open Turns"]) {
+      await open(name);
+    }
+    expect(w.routes).toEqual([
+      { name: "costs", period: "7d" },
+      { name: "costs", period: "7d" },
+      { name: "costs", period: "7d" },
+      { name: "history", host: "h1", from: "2026-10-04", to: "2026-10-10" },
+    ]);
+  });
+
+  test("with several hosts that have costs, Costs opens across all of them, and so does Turns (History is per host)", async () => {
+    const w = world();
+    render(w.view([{ id: "h1" }, { id: "h2" }], { hostsLoaded: true }));
+    await screen.findByRole("button", { name: "Open Spend" });
+    await open("Open Spend");
+    await open("Open Turns");
+    expect(w.routes).toEqual([
+      { name: "costs", period: "7d", host: "__all__" },
+      { name: "costs", period: "7d", host: "__all__" },
+    ]);
+  });
+
+  test("one host with costs and one without: Costs is for the one that has them", async () => {
+    const w = world();
+    render(
+      w.view(
+        [
+          { id: "h1", features: [] },
+          { id: "h2", features: ["costs"] },
+        ],
+        { hostsLoaded: true },
+      ),
+    );
+    await screen.findByRole("button", { name: "Open Spend" });
+    await open("Open Spend");
+    expect(w.routes).toEqual([{ name: "costs", period: "7d" }]);
+  });
+});
+
+describe("home-followups: Costs and History start where Home pointed (issue #210)", () => {
+  const costsStore = (hosts: string[]) => {
+    const w = world();
+    const asked: Array<{ host: string; from: string; to: string }> = [];
+    w.store.hostCommand = (async (
+      host: string,
+      command: string,
+      payload: { from?: string; to?: string },
+    ) => {
+      if (command === "costs.summary") {
+        asked.push({ host, from: payload.from ?? "", to: payload.to ?? "" });
+        return costs();
+      }
+      return null;
+    }) as never;
+    (w.store as unknown as { update(p: object): void }).update({
+      hosts: hosts.map((id) => ({
+        id,
+        name: `host-${id}`,
+        status: "online",
+        hostInfo: { daemonVersion: "x", features: ["costs"] },
+        sessions: [],
+      })),
+    });
+    return { w, asked };
+  };
+
+  test("a period in the route is the period chosen", async () => {
+    const { w, asked } = costsStore(["h1"]);
+    render(<CostsPage store={w.store} onOpenSession={() => {}} period="30d" />);
+    await waitFor(() => expect(asked.length).toBeGreaterThan(0));
+    expect(asked[0]).toMatchObject({ host: "h1", from: "2026-09-11", to: "2026-10-10" });
+    expect(screen.getByRole("button", { name: "30 days" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "7 days" }).getAttribute("aria-pressed")).toBe(
+      "false",
+    );
+  });
+
+  test("without a period it is seven days, as before", async () => {
+    const { w, asked } = costsStore(["h1"]);
+    render(<CostsPage store={w.store} onOpenSession={() => {}} />);
+    await waitFor(() => expect(asked.length).toBeGreaterThan(0));
+    expect(asked[0]).toMatchObject({ from: "2026-10-04", to: "2026-10-10" });
+  });
+
+  test("the all-hosts choice reads every host that has costs", async () => {
+    const { w, asked } = costsStore(["h1", "h2"]);
+    render(<CostsPage store={w.store} onOpenSession={() => {}} host="__all__" period="7d" />);
+    await waitFor(() => expect(new Set(asked.map((a) => a.host))).toEqual(new Set(["h1", "h2"])));
+  });
+
+  test("History starts on the days Home pointed at", async () => {
+    const w = world();
+    w.store.historyList = (async () => ({ sessions: [], total: 0 })) as never;
+    render(
+      <HistoryList
+        store={w.store}
+        hostId="h1"
+        hostName="host-h1"
+        density="comfortable"
+        openId={null}
+        onOpen={() => {}}
+        initial={{ from: "2026-10-04", to: "2026-10-10" }}
+      />,
+    );
+    expect((screen.getByLabelText("From") as HTMLInputElement).value).toBe("2026-10-04");
+    expect((screen.getByLabelText("To") as HTMLInputElement).value).toBe("2026-10-10");
   });
 });

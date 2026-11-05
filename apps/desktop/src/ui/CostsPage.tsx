@@ -101,6 +101,8 @@ export const CostsPage = memo(function CostsPage(props: {
   host?: string;
   projectKey?: string;
   client?: string;
+  /** The period it opens on (Home points at the last seven days). */
+  period?: Exclude<Period, "range">;
 }) {
   const t = useT();
   const number = useFormatNumber();
