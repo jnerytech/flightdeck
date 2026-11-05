@@ -1205,6 +1205,13 @@ export class AppStore {
     saveFolded(this.platform.storage, folded);
   }
 
+  /** Whether the Activity board shows its Idle column; kept across starts. */
+  activityIdle(): boolean {
+    return false;
+  }
+
+  setActivityIdle(_on: boolean): void {}
+
   /** Whether a file of the host can be opened here: the app can, and the host runs on this machine. */
   canOpenPaths(hostId: string): boolean {
     const host = this.state.hosts.find((h) => h.id === hostId);
