@@ -1768,6 +1768,11 @@ export const en: Dictionary = {
     continueAnyway: "Continue anyway",
     loadPrevious: "Load earlier",
     tool: "Tool {name}",
+    loading: "Opening the session…",
+    missing: "This session is not on {host} any more: it may have been deleted or moved.",
+    failed: "The session could not be read from {host}.",
+    back: "Back to sessions",
+    retry: "Try again",
     transcript: "Transcript",
   },
   toolCall: {

@@ -1765,6 +1765,11 @@ export const ptBR = {
     continueAnyway: "Continuar mesmo assim",
     loadPrevious: "Carregar anteriores",
     tool: "Ferramenta {name}",
+    loading: "Abrindo a sessão…",
+    missing: "Esta sessão não está mais em {host}: pode ter sido apagada ou movida.",
+    failed: "Não foi possível ler a sessão em {host}.",
+    back: "Voltar às sessões",
+    retry: "Tentar de novo",
     transcript: "Transcript",
   },
   toolCall: {

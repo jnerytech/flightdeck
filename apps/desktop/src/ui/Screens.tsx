@@ -1,6 +1,7 @@
 import type { CommandPayload } from "@flightdeck/protocol";
 import { BookOpen, MessagesSquare } from "lucide-react";
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
+import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
@@ -503,11 +504,16 @@ function costsOpener(go: (route: Route) => void): OpenCostSession {
   return opener;
 }
 
+/** What a screen shows instead of itself while it cannot open: the wait, or why it cannot. */
+function ScreenState(props: { children: ReactNode }) {
+  return <div className="p-6">{props.children}</div>;
+}
+
 function ScreenLoading(props: { label: string }) {
   return (
-    <div className="p-6">
+    <ScreenState>
       <LoadingState label={props.label} />
-    </div>
+    </ScreenState>
   );
 }
 
@@ -525,6 +531,21 @@ function routeScreen(props: ScreenProps): ReactNode {
   // before the connection (a deep link at start-up).
   const waiting = hostToWait(route);
   const waitHost = waiting ? hostOf(waiting) : undefined;
+  // Issue #227: once a try has failed, the host is down, not on its way: a spinner there was a dead
+  // end. The host's banner says why and offers to reconnect.
+  if (
+    waitHost &&
+    ((waitHost.status === "offline" && waitHost.retry) || waitHost.status === "unauthorized")
+  ) {
+    return (
+      <ScreenState>
+        <HostOfflineBanner
+          host={waitHost}
+          onReconnect={() => void store.reconnectHost(waitHost.id)}
+        />
+      </ScreenState>
+    );
+  }
   if (waiting && waitHost?.status !== "online") {
     const { t } = store.i18n;
     const label = waitHost ? t("states.connecting", { host: waitHost.name }) : t("states.loading");

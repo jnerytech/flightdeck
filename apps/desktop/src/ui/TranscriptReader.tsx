@@ -1,14 +1,15 @@
 import type { HistoryMessage, HistorySessionSummary } from "@flightdeck/protocol";
-import { Copy } from "lucide-react";
+import { Copy, History } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { Note } from "@/components/layout/note";
+import { EmptyState, ErrorState, LoadingState } from "@/components/layout/states";
 import { Message, SessionHeader, SessionPane, Timeline } from "@/components/session/parts";
 import { ToolRow } from "@/components/session/tool-row";
 import { Button } from "@/components/ui/button";
 import { useStoreState } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
-import type { AppStore } from "../lib/app-store.ts";
+import { type AppStore, HISTORY_PAGE } from "../lib/app-store.ts";
 import { basename, isInside } from "../lib/paths.ts";
 import { messageParts } from "../lib/tool-line.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -60,21 +61,39 @@ export function TranscriptReader(props: {
   const roots = host?.info?.allowedRoots ?? [];
   const [copied, setCopied] = useState(false);
 
+  // Issue #227: the first page says what happened: loading, a session the host does not have, or a
+  // request that failed (with Try again). The screen only opens on an online host.
+  const [load, setLoad] = useState<"loading" | "missing" | "failed" | "ready">("loading");
+  const [attempt, setAttempt] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new attempt reads the page again
   useEffect(() => {
     let live = true;
-    void store.historyGet(target.hostId, target.claudeSessionId, target.cursor).then((page) => {
-      if (!live || !page) return;
-      setSession(page.session);
-      setCwdExists(page.cwdExists ?? null);
-      setMessages(page.messages);
-      setNext(page.nextCursor);
-      atEnd.current = page.nextCursor === null;
-      setPrev(page.prevCursor);
-    });
+    setLoad("loading");
+    void store
+      .hostRequest(target.hostId, "history.get", {
+        claudeSessionId: target.claudeSessionId,
+        limit: HISTORY_PAGE,
+        ...(target.cursor ? { cursor: target.cursor } : {}),
+      })
+      .then((result) => {
+        if (!live) return;
+        if (!result.ok) {
+          setLoad(result.reason === "transcript_not_indexed" ? "missing" : "failed");
+          return;
+        }
+        const page = result.data;
+        setLoad("ready");
+        setSession(page.session);
+        setCwdExists(page.cwdExists ?? null);
+        setMessages(page.messages);
+        setNext(page.nextCursor);
+        atEnd.current = page.nextCursor === null;
+        setPrev(page.prevCursor);
+      });
     return () => {
       live = false;
     };
-  }, [store, target]);
+  }, [store, target, attempt]);
 
   // Opens at the hit once its page is on screen.
   useEffect(() => {
@@ -208,6 +227,25 @@ export function TranscriptReader(props: {
             </Button>
           </div>
         </div>
+      )}
+      {load === "loading" && <LoadingState label={t("reader.loading")} />}
+      {load === "missing" && (
+        <EmptyState
+          icon={History}
+          title={t("reader.missing", { host: props.hostName })}
+          action={
+            <Button variant="outline" onClick={() => store.router.push({ name: "hub" })}>
+              {t("reader.back")}
+            </Button>
+          }
+        />
+      )}
+      {load === "failed" && (
+        <ErrorState
+          message={t("reader.failed", { host: props.hostName })}
+          retryLabel={t("reader.retry")}
+          onRetry={() => setAttempt((n) => n + 1)}
+        />
       )}
       <Timeline
         role="log"
