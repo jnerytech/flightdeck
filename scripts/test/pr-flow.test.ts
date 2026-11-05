@@ -22,6 +22,8 @@ const green = (): CheckRun[] =>
 
 interface FakePr extends Pr {
   state: "open" | "closed";
+  /** GitHub's mergeable_state: "dirty" when the PR conflicts with its base. */
+  mergeableState?: string;
 }
 
 /** A fake GitHub behind `gh api`, and a fake git; every write is recorded. */
@@ -103,6 +105,7 @@ function fake(
             draft: pr.draft,
             head: { ref: pr.head, sha: pr.sha },
             base: { ref: pr.base },
+            mergeable_state: pr.mergeableState ?? "clean",
           }),
         );
       }
@@ -412,6 +415,7 @@ describe("pr-flow: next", () => {
         pr(15, "running"),
         pr(16, "wip", { draft: true }),
         pr(17, "done"),
+        pr(19, "conflicted", { mergeableState: "dirty" }),
       ],
       runs: {
         sha12: green(),
@@ -421,21 +425,24 @@ describe("pr-flow: next", () => {
         sha15: green().map((r, i) => (i === 1 ? { ...r, status: "queued", conclusion: null } : r)),
         sha16: green(),
         sha17: green(),
+        sha19: green(),
       },
       behind: { "main...behind": 3 },
     });
     expect(await prFlow(["next"], f.deps)).toBe(0);
+    // Behind main is no reason to wait (#305: the ruleset is not strict); only a conflict is.
     expect(f.lines).toEqual([
       "ready to merge, in order:",
       "  #12 a",
+      "  #13 behind",
       "  #17 done",
       "not ready:",
       // In merge order: a stacked PR right after the PR it sits on.
       "  #20 b: waits for #12 (a)",
-      "  #13 behind: 3 commit(s) behind main (bun run pr -- update 13)",
       "  #14 red: failing: test (ubuntu-latest)",
       "  #15 running: running: test (windows-latest)",
       "  #16 wip: a draft",
+      "  #19 conflicted: conflicts with main: merge main into conflicted and resolve them",
     ]);
   });
 
@@ -476,7 +483,7 @@ describe("pr-flow: update and merge", () => {
     expect(f.writes).toEqual([`api -X PUT ${R}/pulls/12/merge -f merge_method=merge -f sha=sha12`]);
   });
 
-  test("a draft, a stacked PR, red or pending checks, or a PR behind main is refused, by reason", async () => {
+  test("a draft, a stacked PR, red or pending checks, or a conflict with main is refused, by reason", async () => {
     const cases: [FakePr, CheckRun[], number, string][] = [
       [pr(16, "wip", { draft: true }), green(), 0, "a draft"],
       [pr(20, "b", { base: "a" }), green(), 0, "onto a, not main"],
@@ -487,7 +494,7 @@ describe("pr-flow: update and merge", () => {
         "failing: test (ubuntu-latest)",
       ],
       [pr(18, "none"), [], 0, "missing: test (ubuntu-latest)"],
-      [pr(13, "behind"), green(), 3, "3 commit(s) behind main"],
+      [pr(19, "conflicted", { mergeableState: "dirty" }), green(), 3, "conflicts with main"],
     ];
     for (const [p, runs, behind, reason] of cases) {
       const f = fake({
@@ -500,6 +507,20 @@ describe("pr-flow: update and merge", () => {
       expect(f.writes).toEqual([]);
       expect(f.out()).toContain(reason);
     }
+  });
+
+  test("a green PR behind main merges, with how far behind it is as a note (#305)", async () => {
+    const f = fake({
+      prs: [pr(13, "behind")],
+      runs: { sha13: green() },
+      behind: { "main...behind": 3 },
+      env: COORDINATOR,
+    });
+    expect(await prFlow(["merge", "13"], f.deps)).toBe(0);
+    expect(f.writes).toEqual([`api -X PUT ${R}/pulls/13/merge -f merge_method=merge -f sha=sha13`]);
+    expect(f.out()).toContain(
+      "#13 is 3 commit(s) behind main (merged anyway; main's push CI runs on the result)",
+    );
   });
 
   test("a merge GitHub refuses, or a PR that cannot be read, fails with exit 1", async () => {
