@@ -38,6 +38,14 @@ export function CardAdjustment(props: { store: AppStore; hostId: string; cardId:
   );
 }
 
+/** Where a run stands: ended, running or still queued. */
+function runState(
+  run: Card["runs"][number],
+): "cardUi.runEnded" | "cardUi.runActive" | "cardUi.runQueued" {
+  if (run.endedAt) return "cardUi.runEnded";
+  return run.startedAt ? "cardUi.runActive" : "cardUi.runQueued";
+}
+
 /** Every run of the card, oldest first: its number, when it was queued and where it stands. */
 export function CardRuns(props: { runs: Card["runs"]; formatDateTime(iso: string): string }) {
   const t = useT();
@@ -50,15 +58,7 @@ export function CardRuns(props: { runs: Card["runs"]; formatDateTime(iso: string
       >
         {props.runs.map((run, i) => (
           <li key={run.queuedAt} className="tabular-nums">
-            {[
-              `#${i + 1}`,
-              props.formatDateTime(run.queuedAt),
-              run.endedAt
-                ? t("cardUi.runEnded")
-                : run.startedAt
-                  ? t("cardUi.runActive")
-                  : t("cardUi.runQueued"),
-            ].join(" · ")}
+            {[`#${i + 1}`, props.formatDateTime(run.queuedAt), t(runState(run))].join(" · ")}
           </li>
         ))}
       </ul>

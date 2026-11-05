@@ -109,13 +109,10 @@ export function CardWork(props: {
       {label}
     </Button>
   );
-  return (
-    <>
-      <div className="flex gap-2">
-        {tabButton("conversation", t("cardUi.conversation"))}
-        {tabButton("diff", t("cardUi.diff"))}
-      </div>
-      {tab === "diff" ? (
+  /** What shows under the tabs: one element in one place, so the conversation keeps its place in the tree. */
+  const view = () => {
+    if (tab === "diff") {
+      return (
         <div className="flex flex-col gap-5">
           {card.prUrl && props.withReview && (
             <PrComments
@@ -140,7 +137,10 @@ export function CardWork(props: {
             )}
           />
         </div>
-      ) : openedStep?.type === "check" ? (
+      );
+    }
+    if (openedStep?.type === "check") {
+      return (
         <div className="flex flex-col gap-2">
           <p className="text-muted-foreground text-xs">
             {t("cardUi.exitCode", { code: openedStep.exitCode ?? "" })}
@@ -151,37 +151,41 @@ export function CardWork(props: {
             </pre>
           </section>
         </div>
-      ) : openedStep && stepSession ? (
-        <div
-          role="log"
-          aria-label={t("cardUi.stepConversation", { step: openedStep.stepId })}
-          className="card-chat"
-        >
-          <SessionView
-            title={`${card.title} · ${openedStep.stepId}`}
-            session={stepSession}
-            actions={store}
-            t={store.i18n.t}
-            nowMs={store.now()}
-            focusRequestId={null}
-            alwaysAllow={props.alwaysAllow}
-          />
-        </div>
-      ) : session ? (
-        <div role="log" aria-label={t("cardUi.cardConversation")} className="card-chat">
-          <SessionView
-            title={card.title}
-            session={session}
-            actions={store}
-            t={store.i18n.t}
-            nowMs={store.now()}
-            focusRequestId={null}
-            alwaysAllow={props.alwaysAllow}
-          />
-        </div>
-      ) : (
-        <p className="text-muted-foreground text-sm">{t("cardUi.noSession")}</p>
-      )}
+      );
+    }
+    const shown = openedStep && stepSession ? { step: openedStep, session: stepSession } : null;
+    const conversation = shown?.session ?? session;
+    if (!conversation)
+      return <p className="text-muted-foreground text-sm">{t("cardUi.noSession")}</p>;
+    return (
+      <div
+        role="log"
+        aria-label={
+          shown
+            ? t("cardUi.stepConversation", { step: shown.step.stepId })
+            : t("cardUi.cardConversation")
+        }
+        className="card-chat"
+      >
+        <SessionView
+          title={shown ? `${card.title} · ${shown.step.stepId}` : card.title}
+          session={conversation}
+          actions={store}
+          t={store.i18n.t}
+          nowMs={store.now()}
+          focusRequestId={null}
+          alwaysAllow={props.alwaysAllow}
+        />
+      </div>
+    );
+  };
+  return (
+    <>
+      <div className="flex gap-2">
+        {tabButton("conversation", t("cardUi.conversation"))}
+        {tabButton("diff", t("cardUi.diff"))}
+      </div>
+      {view()}
     </>
   );
 }
