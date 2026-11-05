@@ -98,6 +98,7 @@ import { RunManager } from "./runenv/manager.ts";
 import { CardPorts } from "./runenv/ports.ts";
 import { FakeRuntime } from "./runtime/fake-runtime.ts";
 import { type FlightdeckMcpServer, flightdeckMcpServer } from "./runtime/flightdeck-mcp.ts";
+import { VERIFIED_OPENCODE_VERSION } from "./runtime/opencode-config.ts";
 import { discoverOpenCode, type OpenCodeInfo } from "./runtime/opencode-discovery.ts";
 import { OpenCodePreflight } from "./runtime/opencode-preflight.ts";
 import { OpenCodeModels, runCommand } from "./runtime/opencode-process.ts";
@@ -565,6 +566,20 @@ interface CreatedOpenCode {
   models?: () => Promise<Array<{ id: string; name: string }>>;
 }
 
+/** Phase 39: the fake host's OpenCode, for the demo and the journeys. */
+function fakeOpenCode(): CreatedOpenCode {
+  const models = [
+    "anthropic/claude-sonnet-5-5",
+    "openai/gpt-6.1-sol",
+    "opencode/crouton-alpha-free",
+  ];
+  return {
+    info: { available: true, path: "fake", version: VERIFIED_OPENCODE_VERSION, verified: true },
+    runtime: new FakeRuntime(),
+    models: async () => models.map((id) => ({ id, name: id })),
+  };
+}
+
 /** `size:mtime` of a file, so a replaced OpenCode binary is noticed; null when it is not there. */
 function fileStamp(path: string): Promise<string | null> {
   const info = statSync(path, { throwIfNoEntry: false });
@@ -577,9 +592,12 @@ function fileStamp(path: string): Promise<string | null> {
  */
 async function createOpenCode(
   config: Config,
+  kind: RuntimeKind,
   env: Record<string, string | undefined>,
   mcpServer: FlightdeckMcpServer,
 ): Promise<CreatedOpenCode> {
+  // The demo and the journeys show the picker with a fake OpenCode, which runs nothing.
+  if (kind === "fake") return fakeOpenCode();
   if (!config.opencode.enabled) return { info: { available: false, reason: "opencode_disabled" } };
   const childEnv = buildChildEnv(env, config.allowApiKey);
   const scan = () => scanOpenCodeScope({ env: childEnv });
@@ -678,7 +696,7 @@ export async function startDaemon(
     accountReaders: readers,
   } = await createRuntime(runtimeKind, claudePath, mcpServer);
   // Phase 39: OpenCode, when this host turned it on.
-  const opencode = await createOpenCode(config, env, mcpServer);
+  const opencode = await createOpenCode(config, runtimeKind, env, mcpServer);
   // The plan quota is the host's: every managed session feeds it (phase 7).
   const quota = new Quota({ pauseAt: config.quota.pauseAt });
   const quotaHistory = new QuotaHistory({ db: store.db });
