@@ -52,6 +52,18 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     controlada com código 1, não crash) e é commitado num `test(<área>)`.
 11. **Proibido:** implementação antes do teste, enfraquecer ou apagar asserção para passar,
     `.only`, `.skip` ou `test.todo` em código commitado.
+    **The one exception: an unstable test is skipped off Ubuntu** (decided 2026-11-05, issue #288).
+    A test that bets on the machine (wall-clock polls, a timer against a limit, a child process on
+    a loaded Windows runner) is written `test.skipIf(notLinux)(…)` (`notLinux` is in
+    `scripts/test/not-linux.ts`; `process.platform !== "linux"` also counts) with
+    `// unstable: #<issue> <reason>` on the same line or the line above. The issue is where the fix
+    goes: a skip is a promise to fix, not a place to leave the test. The test is intact, it still
+    runs on Ubuntu under the 100% coverage gate, and only Windows (and macOS) skip it. No other
+    skip is allowed: `.skip`, `.only`, `test.todo` and a first-run snapshot stay forbidden, and a
+    `skipIf` for a platform *capability* (no 8.3 names, no symlinks) is still fine without a note.
+    `unstable-skip-ratchet.test.ts` checks every such skip has the note, with an issue number and a
+    reason, and that there are at most 5 in the repository (lower the number in that test when one
+    is fixed; never raise it).
 
 A auditoria `bun run tdd:audit -- --since <tag>` confere a ordem dos commits e a ausência de
 testes desligados. With `--spec docs/SPEC-fase-N.md` it also fails on an area of the spec's table
@@ -67,6 +79,9 @@ every push and pull request. The project's PreToolUse hook (`.claude/hooks/guard
   scope, and a `feat(x)`/`fix(x)` with no `test(x)` commit since that base;
 - it refuses an Edit or Write that adds `.only(`, `.skip(`, `test.todo(` or `toMatchSnapshot(` to
   a test file (one that keeps or removes them passes).
+- it refuses an Edit or Write that adds a `skipIf(notLinux)` (or `skipIf(process.platform !==
+  "linux")`) to a test file without `// unstable: #<issue> <reason>` on that line or the line above
+  (one that is already there, or a skip for a platform capability, passes).
 
 For a deliberate exception, end the commit message with a trailer line `TDD-Waiver: <why>` (or
 pass `--trailer "TDD-Waiver: <why>"`). The hook lets the commit through and `tdd:audit` lists it

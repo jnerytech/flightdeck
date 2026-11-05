@@ -1,3 +1,6 @@
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
+
 /**
  * A test skipped off Linux because it is unstable (docs/TDD.md): `test.skipIf(notLinux)(…)` with
  * `// unstable: #<issue> <reason>` on the same line or the line above. The fix goes to that issue.
@@ -53,6 +56,25 @@ export interface SkipCount {
 }
 
 /** Every test file under the roots that has an unstable skip, keyed under `root`. */
-export function unstableSkipCounts(_root: string): Record<string, SkipCount> {
-  return {};
+export function unstableSkipCounts(root: string): Record<string, SkipCount> {
+  const counts: Record<string, SkipCount> = {};
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== "node_modules") walk(path);
+      } else if (/\.test\.tsx?$/.test(entry.name)) {
+        const skips = unstableSkips(readFileSync(path, "utf8"));
+        if (skips.length === 0) continue;
+        counts[relative(root, path).replaceAll("\\", "/")] = {
+          total: skips.length,
+          undocumented: skips.filter((skip) => !skip.documented).length,
+        };
+      }
+    }
+  };
+  for (const dir of UNSTABLE_ROOTS) {
+    if (existsSync(join(root, dir))) walk(join(root, dir));
+  }
+  return counts;
 }
