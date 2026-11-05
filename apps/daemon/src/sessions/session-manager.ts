@@ -40,6 +40,8 @@ import { type EventStore, personaBadge } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
 
 export const RESTART_REASON = "daemon reiniciado";
+/** The reason of the `session.status` event a sleeping session logs. */
+export const SLEPT_REASON = "slept";
 
 export interface SessionManagerOptions {
   store: EventStore;
@@ -58,6 +60,8 @@ export interface SessionManagerOptions {
   onTurnEdge?: (edge: TurnEdge) => void;
   /** Phase 13: the risk of each permission request; built-in rules over allowedRoots when absent. */
   risk?: RiskClassifier;
+  /** Issue #157: a session the host wants awake (pinned, a card's): it never sleeps. */
+  keepAwake?: (session: SessionSummary) => boolean;
   /** Phase 13: the projects' automatic approval. */
   autoApprove?: Pick<AutoApprover, "decide">;
 }
@@ -193,7 +197,12 @@ export class SessionManager {
   }
 
   list(): SessionSummary[] {
-    return this.store.listSessions();
+    return this.store.listSessions().map((s) => this.withSleep(s));
+  }
+
+  /** Idle with no process is asleep: the daemon put it to sleep, or a restart left it so. */
+  private withSleep(session: SessionSummary): SessionSummary {
+    return { ...session, asleep: session.status === "idle" && !this.live.has(session.id) };
   }
 
   /** Open permission requests of a session, oldest first, as its summaries list them. */
@@ -229,7 +238,7 @@ export class SessionManager {
         "session_not_found",
         { id: sessionId },
       );
-    return session;
+    return this.withSleep(session);
   }
 
   /**
@@ -374,12 +383,29 @@ export class SessionManager {
     this.setStatus(sessionId, "ended");
   }
 
-  /** Ends an idle session's process without ending the session (stub). */
+  /**
+   * Ends an idle session's process and keeps the session: it stays `idle`, with no process, which
+   * is also how a session a restart left looks, and the next message starts the process again from
+   * its Claude session id (`send` already does that). It sleeps only when nothing is going on:
+   * no turn, no open request, no queued message, nobody subscribed (unless `manual`: the person
+   * asked) and nothing the host wants awake (`keepAwake`: pinned, or a card's). The event log says why.
+   */
   async sleep(
-    _sessionId: string,
-    _options: { manual?: boolean } = {},
+    sessionId: string,
+    options: { manual?: boolean } = {},
   ): Promise<"slept" | "already" | "not_idle" | "queued" | "subscribed" | "kept_awake"> {
-    return "not_idle";
+    const session = this.get(sessionId);
+    if (session.status !== "idle") return "not_idle";
+    const live = this.live.get(sessionId);
+    if (!live) return "already";
+    if (live.queue.length > 0) return "queued";
+    if (this.opts.keepAwake?.(session)) return "kept_awake";
+    if (!options.manual && (this.listeners.get(sessionId)?.size ?? 0) > 0) return "subscribed";
+    live.closing = true;
+    this.live.delete(sessionId);
+    await live.run.close();
+    this.setStatus(sessionId, "idle", SLEPT_REASON);
+    return "slept";
   }
 
   /** Reopens an `ended` or `error` session with the stored Claude session id. */

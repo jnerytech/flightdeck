@@ -39,7 +39,7 @@ describe("sleeper: an idle session gives back its process (issue #157)", () => {
     const { manager, sessionId } = await idleSession();
     const rec = record(manager, sessionId);
     expect(manager.get(sessionId).asleep).toBe(false);
-    expect(await manager.sleep(sessionId)).toBe("slept");
+    expect(await manager.sleep(sessionId, { manual: true })).toBe("slept");
     expect(manager.get(sessionId)).toMatchObject({ status: "idle", asleep: true });
     expect(manager.list().find((s) => s.id === sessionId)?.asleep).toBe(true);
     const slept = rec.find("session.status").filter((e) => e.reason === "slept");
