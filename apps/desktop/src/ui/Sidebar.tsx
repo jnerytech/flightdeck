@@ -14,7 +14,7 @@ import {
   SunMoon,
   TriangleAlert,
 } from "lucide-react";
-import { Children, type ReactNode, useState } from "react";
+import { Children, type ReactNode, useId, useState } from "react";
 import { ClientSwitcher } from "@/components/clients/client-switcher";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
 import { AccountFooter } from "@/components/shell/account-footer";
@@ -82,10 +82,12 @@ function NavButton(props: {
   external?: boolean;
 }) {
   const railName = props.hint ? `${props.label} (${props.hint})` : props.label;
+  const badgeId = useId();
   return (
     <button
       type="button"
       aria-current={props.active ? "page" : undefined}
+      aria-describedby={props.badge ? badgeId : undefined}
       aria-keyshortcuts={props.keys}
       className={cn(
         ITEM,
@@ -115,6 +117,7 @@ function NavButton(props: {
       {!props.collapsed && <span className="min-w-0 flex-1 truncate">{props.label}</span>}
       {!props.collapsed && props.badge && (
         <span
+          id={badgeId}
           data-slot="nav-badge"
           className="rounded bg-sidebar-accent px-1 font-medium text-[10px] text-sidebar-foreground/80 uppercase"
         >
@@ -171,7 +174,6 @@ function SectionTitle(props: {
  * a run of icons, since a heading has no room there.
  */
 function NavGroup(props: {
-  id: string;
   label: string;
   collapsed: boolean;
   folded: boolean;
@@ -244,7 +246,6 @@ export function Sidebar(props: {
     state.loopAlerts.length +
     watchAlerts(state).length;
   const pinned = hubRows(state).filter((row) => row.pinned && !row.archived);
-  const [hostsOpen, setHostsOpen] = useState(true);
   const [pinnedOpen, setPinnedOpen] = useState(true);
   const [folded, setFolded] = useState<SidebarGroup[]>(() => props.store.sidebarFolded());
   const toggle = (group: SidebarGroup) => {
@@ -400,7 +401,6 @@ export function Sidebar(props: {
       />
       <nav aria-label={t("sidebarGroups.main")} className="sidebar-nav">
         <NavGroup
-          id="work"
           label={t("sidebarGroups.work")}
           collapsed={collapsed}
           folded={folded.includes("work")}
@@ -455,7 +455,6 @@ export function Sidebar(props: {
           />
         </NavGroup>
         <NavGroup
-          id="automation"
           label={t("sidebarGroups.automation")}
           collapsed={collapsed}
           folded={folded.includes("automation")}
@@ -492,7 +491,6 @@ export function Sidebar(props: {
           )}
         </NavGroup>
         <NavGroup
-          id="observability"
           label={t("sidebarGroups.observability")}
           collapsed={collapsed}
           folded={folded.includes("observability")}
@@ -518,7 +516,6 @@ export function Sidebar(props: {
           />
         </NavGroup>
         <NavGroup
-          id="library"
           label={t("sidebarGroups.library")}
           collapsed={collapsed}
           folded={folded.includes("library")}
@@ -567,7 +564,6 @@ export function Sidebar(props: {
 
       <div data-slot="sidebar-hosts" className="sidebar-hosts">
         <NavGroup
-          id="machines"
           label={t("sidebarGroups.machines")}
           collapsed={collapsed}
           folded={folded.includes("machines")}
