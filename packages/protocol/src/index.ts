@@ -2810,6 +2810,16 @@ export const Command = z.discriminatedUnion("type", [
   cmd("roots.add", z.object({ path: z.string().min(1), confirm: z.boolean().optional() })),
   /** Lets a session of this host start with every permission check off; turning it on asks for `confirm`. */
   cmd("host.bypass", z.object({ allow: z.boolean(), confirm: z.boolean().optional() })),
+  /** Issue #196: which folders may bring their own hooks, MCP servers and settings into a managed session. */
+  cmd(
+    "project.trust.state",
+    z.object({ paths: z.array(z.string().min(1).max(4096)).min(1).max(200) }).strict(),
+  ),
+  cmd("project.trust.inspect", z.object({ path: z.string().min(1).max(4096) }).strict()),
+  cmd(
+    "project.trust.set",
+    z.object({ path: z.string().min(1).max(4096), trusted: z.boolean() }).strict(),
+  ),
   cmd("board.get", z.object({ projectId: z.string() })),
   /** Host-wide board settings; without fields it only reads them. */
   cmd("board.settings", z.object({ maxParallelRuns: z.number().int().min(1).optional() })),
@@ -4156,6 +4166,32 @@ export type HistorySearchResult = z.infer<typeof HistorySearchResult>;
 /** The host's allowed folders after `roots.add`. */
 export const RootsResult = z.object({ allowedRoots: z.array(z.string()) });
 
+/** Issue #196: whether a folder is trusted, and through which record (a parent folder may be the one). */
+export const ProjectTrustState = z.object({
+  path: z.string(),
+  trusted: z.boolean(),
+  via: z.string().nullable(),
+});
+export type ProjectTrustState = z.infer<typeof ProjectTrustState>;
+export const ProjectTrustStates = z.object({ items: z.array(ProjectTrustState) });
+export type ProjectTrustStates = z.infer<typeof ProjectTrustStates>;
+
+/** What a project's own files would load into a session, read without running anything. */
+export const ProjectLoad = z.object({
+  path: z.string(),
+  hooks: z.array(z.object({ event: z.string(), file: z.string(), commands: z.array(z.string()) })),
+  mcpServers: z.array(z.object({ name: z.string(), file: z.string(), command: z.string() })),
+  envKeys: z.array(z.string()),
+  allowRules: z.array(z.string()),
+  defaultMode: z.string().nullable(),
+  agents: z.array(z.string()),
+  skills: z.array(z.string()),
+  commands: z.array(z.string()),
+  claudeMd: z.boolean(),
+  unreadable: z.array(z.string()),
+});
+export type ProjectLoad = z.infer<typeof ProjectLoad>;
+
 /** Whether this host lets a session start in `bypassPermissions` (off until a person turns it on). */
 export const BypassResult = z.object({ allowBypassPermissions: z.boolean() });
 export type BypassResult = z.infer<typeof BypassResult>;
@@ -4233,6 +4269,9 @@ export interface CommandResults {
   "board.settings": BoardSettings;
   "roots.add": RootsResult;
   "host.bypass": BypassResult;
+  "project.trust.state": ProjectTrustStates;
+  "project.trust.inspect": ProjectLoad;
+  "project.trust.set": ProjectTrustState;
   "board.watch": undefined;
   "card.create": Card;
   "card.update": Card;
