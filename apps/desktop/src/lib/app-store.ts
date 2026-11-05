@@ -1124,8 +1124,10 @@ export class AppStore {
     }
     const item = needsYou(this.state).find((i) => `${i.hostId}/${i.requestId}` === key);
     if (!item) return;
-    // The tray never approves a high-risk request: that takes holding the button in the app.
-    if (action === "open" || (action === "approve" && item.risk === "high")) this.openRequest(item);
+    // The tray never approves a high-risk request: that takes holding the button in the app. A
+    // workflow gate is answered on its card, never as a permission (the host refuses its id).
+    if (action === "open" || item.gate || (action === "approve" && item.risk === "high"))
+      this.openRequest(item);
     else if (item.vault && action === "approve") {
       // The daemon records that it was the tray that approved it.
       this.vaultQuestions.get(item.requestId)?.({ scope: "once", via: "tray" });
