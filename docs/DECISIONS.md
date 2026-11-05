@@ -3839,3 +3839,10 @@ delivery, or rejected:
 - **Model and tools as choices.** The host announces no list of models, so the select offers the aliases (opus, sonnet, haiku) and the
   ids the pack uses, with "Other…" for free text (a persona whose model is not in the list opens on it). Tools are a multi-select of
   the tools Claude Code names plus `mcp__flightdeck`, keeping any tool a persona already had that is not in the list.
+
+- **The capacity follows the memory (#216 follow-up).** With 8 Claude sessions (about 3.4 GB)
+  and the bun tests, two tsc runs still pushed the Pi to 1.5 GB free and a memory pressure of
+  14%. The lane now opens one place per 2.5 GB of `MemAvailable`, between 1 and 2, read from
+  `/proc/meminfo` on every try (`lanePlaces`); off Linux it keeps 2, and
+  `FLIGHTDECK_LANE_PLACES` overrides the count. A run already in a place the lane no longer opens
+  finishes normally; only new runs see the smaller lane.

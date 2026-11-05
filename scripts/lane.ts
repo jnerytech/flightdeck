@@ -1,14 +1,15 @@
 #!/usr/bin/env bun
 /**
- * `bun run scripts/lane.ts <command...>`: runs the command in the light lane, two at a time on the
- * machine, so typechecks and lints never pile up and run it out of memory. `bun run typecheck`
+ * `bun run scripts/lane.ts <command...>`: runs the command in the light lane, at most two at a time
+ * on the machine and one when less than 5 GB is available (FLIGHTDECK_LANE_PLACES overrides), so
+ * typechecks and lints never pile up and run it out of memory. `bun run typecheck`
  * and `bun run lint` go through it. The logic is in `lib/lane.ts`; this file is the real files,
  * clock and processes (the lock files sit next to the slot's, in the temp folder).
  */
 import { linkSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { runInLane } from "./lib/lane.ts";
+import { lanePlaces, runInLane } from "./lib/lane.ts";
 import type { SlotEnv } from "./lib/slot.ts";
 
 /** The file is written whole under another name and linked in, as the slot does. */
@@ -58,9 +59,21 @@ const lock = (place: number) =>
 const args = process.argv.slice(2);
 const command = args[0] === "--" ? args.slice(1) : args;
 const [program = "bun", ...rest] = command;
+/** The memory left now: /proc/meminfo on Linux, null elsewhere (the lane keeps 2 places). */
+function meminfo(): string | null {
+  try {
+    return readFileSync("/proc/meminfo", "utf8");
+  } catch {
+    return null;
+  }
+}
+
+const places = () => lanePlaces(meminfo(), process.env.FLIGHTDECK_LANE_PLACES);
+const capacity = Math.max(2, places());
 process.exit(
   await runInLane(command, {
-    locks: [lock(0), lock(1)],
+    locks: Array.from({ length: capacity }, (_, place) => lock(place)),
+    places,
     nested: Boolean(process.env.FLIGHTDECK_LANE_HOLDER || process.env.FLIGHTDECK_SLOT_HOLDER),
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     log: (line) => console.error(line),
