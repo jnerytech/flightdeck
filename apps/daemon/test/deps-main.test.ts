@@ -62,7 +62,14 @@ describe("deps-main: the running daemon looks for the programs on its own PATH",
   });
 
   /** Starts a daemon with this config extra, asks deps.check and returns the answer's rows. */
-  async function checkWith(extra: Record<string, unknown>, tag: string) {
+  async function checkWith(
+    extra: Record<string, unknown>,
+    tag: string,
+    options: Record<string, unknown> = {
+      serviceInstalled: async () => true,
+      linger: async () => "on",
+    },
+  ) {
     const dir = tempDir(`fd-deps-main-${tag}-`);
     const file = join(dir, "config.json");
     writeFileSync(
@@ -80,7 +87,7 @@ describe("deps-main: the running daemon looks for the programs on its own PATH",
       { command: "start", config: file, runtime: "fake" },
       {},
       { log: () => {}, error: () => {} },
-      { serviceInstalled: async () => true, linger: async () => "on" },
+      options,
     );
     cleanups.push(() => daemon.stop());
     const ws = new WebSocket(daemon.url);
@@ -124,5 +131,32 @@ describe("deps-main: the running daemon looks for the programs on its own PATH",
     const by = await checkWith({ claude: { executablePath: gone } }, "gone");
     expect(by("claude")).toMatchObject({ state: "missing" });
     expect(by("claudeAuth")).toMatchObject({ state: "na" });
+  });
+
+  test("deps.check asks the service manager it was given, not the real one (HD-M5)", async () => {
+    const calls: string[][] = [];
+    const by = await checkWith({}, "ctx", {
+      serviceContext: (dryRun: boolean) => ({
+        platform: "linux",
+        home: "/h",
+        user: "u",
+        command: ["/h/flightdeckd"],
+        systemRoot: "",
+        tempDir: "/tmp",
+        dryRun,
+        exec: async (cmd: string[]) => {
+          calls.push(cmd);
+          return {
+            code: 0,
+            stdout: cmd.includes("loginctl") ? "Linger=no\n" : "ExecStart=/h/flightdeckd\n",
+          };
+        },
+        writeFile: () => {},
+        removeFile: () => {},
+        which: () => null,
+      }),
+    });
+    expect(calls.length).toBeGreaterThan(0);
+    expect(by("service")).toBeDefined();
   });
 });
