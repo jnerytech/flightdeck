@@ -72,9 +72,9 @@ export function stampProblem(stamp: string | null, head: string): string | null 
   const failed = (m[3] ?? "").split(" ").filter((pair) => pair && !pair.endsWith("=0"));
   if (failed.length > 0) return `failed: ${failed.join(" ")}`;
   // A stamp from before the gate (or one with a field dropped) vouches for nothing (#273).
-  const keys = (m[3] ?? "").split(" ").map((pair) => pair.split("=")[0]);
+  const keys = new Set((m[3] ?? "").split(" ").map((pair) => pair.split("=")[0]));
   for (const key of ["security", "ci"]) {
-    if (!keys.includes(key)) return `incomplete: no ${key}= in the stamp`;
+    if (!keys.has(key)) return `incomplete: no ${key}= in the stamp`;
   }
   return null;
 }

@@ -71,8 +71,12 @@ export function addedLines(diff: string): Map<string, string[]> {
 
 /** A file whose added lines the gate reads: code, never a test, a fixture or a document. */
 const SOURCE = /\.(?:[cm]?[jt]sx?|rs|sh|ps1|py)$/;
-const NOT_SOURCE =
-  /^(?:(?:apps|packages)\/[^/]+\/test|scripts\/(?:test|e2e))\/|\.(?:test|e2e)\.[cm]?[jt]sx?$/;
+/** Tests, fixtures and journeys: their folders, and test files anywhere. */
+const NOT_SOURCE = [
+  /^(?:apps|packages)\/[^/]+\/test\//,
+  /^scripts\/(?:test|e2e)\//,
+  /\.(?:test|e2e)\.[cm]?[jt]sx?$/,
+];
 /** Files where `#` starts a comment (in TypeScript it is a private field). */
 const HASH_COMMENTS = /\.(?:sh|py|ps1)$/;
 
@@ -91,52 +95,95 @@ function commentOnly(line: string, path: string): boolean {
   );
 }
 
-/** The risk areas, in the order they are named, each by what an added line says. */
-const AREAS: [string, RegExp][] = [
+/** The risk areas, in the order they are named, each by what an added line says (any pattern). */
+const AREAS: [string, RegExp[]][] = [
   [
     "spawn",
-    /\bspawn\w*\s*\(|\b(?:execFileSync|execFile|execSync)\s*\(|(?<![.\w])exec\s*\(|\b(?:cp|childProcess|child_process)\.exec\w*\s*\(|\bchild_process\b|\bBun\.\$|\bfork\s*\(|\bnew Worker\b|\bexeca\w*\s*\(|\.kill\s*\(|\bprocess\.kill\b|\btaskkill\b|\bpkill\b|Command::new\s*\(|\bstd::process\b|\bsubprocess\.|\bos\.(?:system|popen|exec\w*|spawn\w*)\s*\(/,
+    [
+      /\bspawn\w*\s*\(/,
+      /\b(?:execFileSync|execFile|execSync)\s*\(/,
+      /(?<![.\w])exec\s*\(/,
+      /\b(?:cp|childProcess|child_process)\.exec\w*\s*\(/,
+      /\bchild_process\b/,
+      /\bBun\.\$/,
+      /\bfork\s*\(/,
+      /\bnew Worker\b/,
+      /\bexeca\w*\s*\(/,
+      /\.kill\s*\(|\bprocess\.kill\b/,
+      /\b(?:taskkill|pkill)\b/,
+      /Command::new\s*\(|\bstd::process\b/,
+      /\bsubprocess\./,
+      /\bos\.(?:system|popen|exec\w*|spawn\w*)\s*\(/,
+    ],
   ],
   [
     "delete",
-    /\b(?:rmSync|rmdirSync|unlinkSync|rm|rmdir|unlink)\s*\(|\bRemove-Item\b|\brm\s+-[a-z]*[rf]|\bremove_(?:file|dir|dir_all)\s*\(|\bshutil\.rmtree\b|\bos\.(?:remove|unlink|rmdir)\s*\(/,
+    [
+      /\b(?:rmSync|rmdirSync|unlinkSync|rm|rmdir|unlink)\s*\(/,
+      /\bRemove-Item\b/,
+      /\brm\s+-[a-z]*[rf]/,
+      /\bremove_(?:file|dir|dir_all)\s*\(/,
+      /\bshutil\.rmtree\b/,
+      /\bos\.(?:remove|unlink|rmdir)\s*\(/,
+    ],
   ],
-  ["secret", /\b(?:token|secret|password|credential|api[_-]?key)s?\b/i],
-  ["permission", /\bchmod(?:Sync)?\b|\bchown|\bpermission|\ballowedNetworks\b/i],
+  ["secret", [/\b(?:token|secret|password|credential|api[_-]?key)s?\b/i]],
+  ["permission", [/\bchmod(?:Sync)?\b|\bchown/, /\bpermission/i, /\ballowedNetworks\b/]],
   [
     "network",
-    /\bBun\.(?:serve|listen|connect)\b|\bfetch\s*\(|\bnew WebSocket\b|\.listen\s*\(|\bTcpListener::bind\b|\bTcpStream::connect\b|\bsocket\.(?:socket|create_connection)\b|\burllib\b|\brequests\.\w+\s*\(/,
+    [
+      /\bBun\.(?:serve|listen|connect)\b/,
+      /\bfetch\s*\(/,
+      /\bnew WebSocket\b/,
+      /\.listen\s*\(/,
+      /\bTcpListener::bind\b|\bTcpStream::connect\b/,
+      /\bsocket\.(?:socket|create_connection)\b/,
+      /\burllib\b|\brequests\.\w+\s*\(/,
+    ],
   ],
 ];
-/** Paths that are risky whatever they add: the vault and pairing code, the Tauri shell's
- * capabilities and config (CSP, scopes), and the CI workflows. */
-const SENSITIVE_PATHS: [string, RegExp][] = [
-  ["vault or pairing", /(?:^|\/)[^/]*(?:vault|pairing)[^/]*(?:\/|$)/i],
-  ["tauri config", /\/src-tauri\/capabilities\/|(?:^|\/)tauri(?:\.[\w-]+)?\.conf\.json$/],
-  ["workflow", /^\.github\/workflows\//],
-  // Files whose contents run as code: package scripts, the Rust build, bun's config, Claude's
-  // settings and hooks.
+/** Paths that are risky whatever they add (any pattern). */
+const SENSITIVE_PATHS: [string, RegExp[]][] = [
+  ["vault or pairing", [/(?:^|\/)[^/]*(?:vault|pairing)[^/]*(?:\/|$)/i]],
+  // The Tauri shell's capabilities and config (CSP, scopes).
+  ["tauri config", [/\/src-tauri\/capabilities\//, /(?:^|\/)tauri(?:\.[\w-]+)?\.conf\.json$/]],
+  ["workflow", [/^\.github\/workflows\//]],
   // The gate and the checks it stands with: a change that weakens one needs a review too.
   [
     "guard",
-    /^scripts\/(?:lib\/(?:security-gate|claude-hooks|tdd-audit|handoff|bounded-run)\.ts|handoff-check\.ts|pr-flow\.ts)$|^\.github\/actions\/|^\.claude\/agents\/security-reviewer\.md$/,
+    [
+      /^scripts\/lib\/(?:security-gate|claude-hooks|tdd-audit|handoff|bounded-run)\.ts$/,
+      /^scripts\/(?:handoff-check|pr-flow)\.ts$/,
+      /^\.github\/actions\//,
+      /^\.claude\/agents\/security-reviewer\.md$/,
+    ],
   ],
+  // Files whose contents run as code: package scripts, the Rust build, bun's config, Claude's
+  // settings and hooks.
   [
     "runs code",
-    /(?:^|\/)(?:package\.json|Cargo\.toml|build\.rs)$|^bunfig[\w.]*\.toml$|^\.claude\/(?:settings[\w.-]*\.json$|hooks\/)/,
+    [
+      /(?:^|\/)(?:package\.json|Cargo\.toml|build\.rs)$/,
+      /^bunfig[\w.]*\.toml$/,
+      /^\.claude\/settings[\w.-]*\.json$/,
+      /^\.claude\/hooks\//,
+    ],
   ],
 ];
+
+/** Whether any of these patterns matches. */
+const any = (patterns: RegExp[], text: string) => patterns.some((pattern) => pattern.test(text));
 
 /** The changed source files (never a test) in a risk area, sorted by path. */
 export function riskyFiles(added: Map<string, string[]>): RiskyFile[] {
   const risky: RiskyFile[] = [];
   for (const [path, lines] of added) {
-    if (NOT_SOURCE.test(path)) continue;
+    if (any(NOT_SOURCE, path)) continue;
     const code = SOURCE.test(path) ? lines.filter((line) => !commentOnly(line, path)) : [];
-    const why = AREAS.filter(([, pattern]) => code.some((line) => pattern.test(line))).map(
+    const why = AREAS.filter(([, patterns]) => code.some((line) => any(patterns, line))).map(
       ([name]) => name,
     );
-    for (const [name, pattern] of SENSITIVE_PATHS) if (pattern.test(path)) why.push(name);
+    for (const [name, patterns] of SENSITIVE_PATHS) if (any(patterns, path)) why.push(name);
     if (why.length > 0) risky.push({ path, why });
   }
   return risky.sort((a, b) => (a.path < b.path ? -1 : 1));

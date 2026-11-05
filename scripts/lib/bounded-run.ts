@@ -36,7 +36,7 @@ export const SYSTEM_KILL: KillDeps = {
 export function killTree(pid: number, deps: KillDeps = SYSTEM_KILL): void {
   try {
     if (deps.platform === "win32") {
-      const taskkill = join(deps.systemRoot ?? "C:\\Windows", "System32", "taskkill.exe");
+      const taskkill = join(deps.systemRoot ?? String.raw`C:\Windows`, "System32", "taskkill.exe");
       deps.runSync(taskkill, ["/T", "/F", "/PID", String(pid)]);
     } else deps.kill(-pid, "SIGKILL");
   } catch {

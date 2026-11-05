@@ -61,7 +61,7 @@ const result = await runHandoff({
   head,
   now: new Date().toISOString(),
   ...(base ? { base } : {}),
-  security: async () => securityGate(),
+  security: () => Promise.resolve(securityGate()),
   ci: async () =>
     process.argv.includes("--no-ci")
       ? "skip"
