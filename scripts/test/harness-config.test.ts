@@ -113,11 +113,17 @@ describe("harness-config", () => {
       join(ROOT, "docs/TDD.md"),
       ...markdownUnder(join(ROOT, ".claude")),
     ];
-    const refused = files.flatMap((file) =>
-      commandsIn(readFileSync(file, "utf8"))
-        .filter((command) => slotViolation(command, {}) !== null)
-        .map((command) => `${file.slice(ROOT.length + 1)}: ${command}`),
+    const commands = files.flatMap((file) =>
+      commandsIn(readFileSync(file, "utf8")).map((command) => ({ file, command })),
     );
+    // Not vacuous: the skills and agents are found, and their commands are read.
+    expect(files.length).toBeGreaterThan(5);
+    expect(commands.some(({ command }) => command.includes("bun run slot -- bun run test"))).toBe(
+      true,
+    );
+    const refused = commands
+      .filter(({ command }) => slotViolation(command, {}) !== null)
+      .map(({ file, command }) => `${file.slice(ROOT.length + 1)}: ${command}`);
     expect(refused).toEqual([]);
   });
 
