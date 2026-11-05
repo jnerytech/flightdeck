@@ -193,14 +193,14 @@ async function finish(run: Run): Promise<number> {
   const { deps, tag } = run;
   if (!(await surfaceKept(run))) return 1;
   // On origin, not in this repository: a local tag is anyone's, and `pr tag` is what gates it.
-  const onOrigin = await deps.git([
-    "ls-remote",
-    "--exit-code",
-    "--tags",
-    "origin",
-    `refs/tags/${tag}`,
-  ]);
-  if (onOrigin.code !== 0) {
+  // ls-remote matches its pattern as a suffix (x/refs/tags/v1.2.3 too), so the ref is compared whole.
+  const listed = await deps.git(["ls-remote", "--tags", "origin", `refs/tags/${tag}`]);
+  if (listed.code !== 0) {
+    say(run, "cannot ask origin for its tags: no tag made, nothing closed");
+    return 1;
+  }
+  const refs = listed.stdout.split("\n").map((line) => line.split(/\s+/)[1]);
+  if (!refs.includes(`refs/tags/${tag}`)) {
     const tagged = await deps.bun(["run", "pr", "--", "tag", tag]);
     if (tagged.code !== 0) {
       say(run, `not tagged (bun run pr -- tag exited ${tagged.code})`);

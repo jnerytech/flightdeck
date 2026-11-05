@@ -4156,8 +4156,9 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   session's `bun run release:close ... --apply` (or `bun scripts/release-close.ts ... --apply`) is
   blocked by the hook guard like `bun run release`: it closes issues on GitHub, so it is the
   coordinator's; the dry run stays open. `bun run release` takes a tag as already made only when
-  `git ls-remote` finds it on origin (a local tag is anyone's; `pr tag` is what gates a tag), and
-  it reads a version from main only when it is `x.y.z`.
+  `git ls-remote` lists exactly `refs/tags/<tag>` on origin (a local tag is anyone's, `pr tag` is
+  what gates a tag, and ls-remote matches a suffix, so `x/refs/tags/<tag>` is not it); an origin it
+  cannot ask is an error, not "absent". It reads a version from main only when it is `x.y.z`.
 
 ## Risky changes get a security review before the hand-off (issue #273)
 
