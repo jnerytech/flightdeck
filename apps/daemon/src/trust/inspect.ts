@@ -154,6 +154,7 @@ async function headers(
   root: string,
   dir: string,
   skills: boolean,
+  unreadable: string[],
 ): Promise<Array<{ file: string; keys: string[] }>> {
   const files: string[] = [];
   const walk = async (at: string, depth: number): Promise<void> => {
@@ -169,7 +170,7 @@ async function headers(
       if (entry.isDirectory()) {
         if (depth < 3) await walk(full, depth + 1);
       } else if (
-        entry.isFile() &&
+        (entry.isFile() || entry.isSymbolicLink()) &&
         (skills ? entry.name === "SKILL.md" : entry.name.endsWith(".md"))
       ) {
         files.push(full);
@@ -179,19 +180,22 @@ async function headers(
   await walk(join(root, dir), 0);
   const out: Array<{ file: string; keys: string[] }> = [];
   for (const full of files) {
+    const name = relative(root, full).split(sep).join("/");
     try {
       const real = await realpath(full);
-      if (!isInside(root, real)) continue;
+      if (!isInside(root, real)) throw new Error("leaves the project");
       const info = await stat(real);
-      if (!info.isFile() || info.size > MAX_FILE) continue;
+      if (!info.isFile() || info.size > MAX_FILE)
+        throw new Error("not a plain file of a sane size");
       const text = await readFile(real, "utf8");
       const head = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)?.[1] ?? "";
       const keys = [...head.matchAll(/^([A-Za-z][\w-]*)\s*:/gm)]
         .map((m) => m[1] as string)
         .filter((key) => HEADER_KEYS.has(key));
-      if (keys.length > 0) out.push({ file: relative(root, full).split(sep).join("/"), keys });
+      if (keys.length > 0) out.push({ file: name, keys });
     } catch {
-      // A file that cannot be read says nothing here; the names list still shows it.
+      // A link out of the project, a dangling one or a file too big is not read, and is said so.
+      unreadable.push(name);
     }
   }
   return out;
@@ -291,9 +295,9 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
   load.allowRules = load.allowRules.slice(0, MAX_ITEMS);
   load.otherKeys = [...otherKeys].sort();
   load.extras = [
-    ...(await headers(root, ".claude/agents", false)),
-    ...(await headers(root, ".claude/skills", true)),
-    ...(await headers(root, ".claude/commands", false)),
+    ...(await headers(root, ".claude/agents", false, unreadable)),
+    ...(await headers(root, ".claude/skills", true, unreadable)),
+    ...(await headers(root, ".claude/commands", false, unreadable)),
   ].slice(0, MAX_ITEMS);
   load.agents = await names(root, ".claude/agents", false);
   load.skills = await names(root, ".claude/skills", true);
