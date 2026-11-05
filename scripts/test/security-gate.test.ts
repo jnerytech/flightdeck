@@ -479,4 +479,24 @@ describe("security-gate: end to end", () => {
     expect(verdict.message ?? "").toContain("apps/daemon/src/run.ts (edits spawn code)");
     expect(calls.find((c) => c.includes("show"))).toEqual(["show", "HEAD:apps/daemon/src/run.ts"]);
   });
+
+  test("risky files found by their added lines and by an edit are listed together, by path (#284)", () => {
+    const diff = [
+      "diff --git a/apps/daemon/src/z.ts b/apps/daemon/src/z.ts",
+      "+++ b/apps/daemon/src/z.ts",
+      "@@ -1 +1 @@",
+      '+Bun.spawn(["git"]);',
+      "diff --git a/apps/daemon/src/a.ts b/apps/daemon/src/a.ts",
+      "+++ b/apps/daemon/src/a.ts",
+      "@@ -2 +1,0 @@",
+      "-if (!ok) return;",
+    ].join("\n");
+    const show = { "apps/daemon/src/a.ts": "rmSync(dir);" };
+    const verdict = securityVerdict(fakeGit({ diff, log: "", show }).git);
+    const message = verdict.message ?? "";
+    expect(message.indexOf("apps/daemon/src/a.ts (edits delete code)")).toBeLessThan(
+      message.indexOf("apps/daemon/src/z.ts (spawn)"),
+    );
+    expect(message.indexOf("apps/daemon/src/a.ts")).toBeGreaterThan(-1);
+  });
 });

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { EventEmitter } from "node:events";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { killTree, type RunDeps, runBounded, SYSTEM_KILL } from "../lib/bounded-run.ts";
+import { killTree, type RunDeps, runBounded, SYSTEM_KILL, SYSTEM_RUN } from "../lib/bounded-run.ts";
 import { realTempDir } from "./temp-dir.ts";
 
 const BUN = process.execPath;
@@ -121,5 +121,11 @@ describe("bounded-run", () => {
     });
     SYSTEM_KILL.kill(child.pid, "SIGKILL");
     expect(await child.exited).not.toBe(0);
+  });
+
+  test("the system's tree kill of a process that already ended is no error (#284)", async () => {
+    const child = Bun.spawn([BUN, "-e", "0"], { stdio: ["ignore", "ignore", "ignore"] });
+    await child.exited;
+    expect(() => SYSTEM_RUN.killTree(child.pid)).not.toThrow();
   });
 });
