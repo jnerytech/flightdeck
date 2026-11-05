@@ -642,9 +642,8 @@ async function createOpenCode(
     run: runCommand,
     scan,
     log,
-    ...(info.fingerprint
-      ? { exe: { fingerprint: info.fingerprint, current: () => fileStamp(path) } }
-      : {}),
+    // An executable discovery could not stamp is never trusted: the preflight refuses opencode_changed.
+    exe: { fingerprint: info.fingerprint ?? "", current: () => fileStamp(path) },
   });
   const runtime = new OpenCodeRuntime({
     path,
