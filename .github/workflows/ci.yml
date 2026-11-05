@@ -1,20 +1,36 @@
 name: CI
 
 on:
+  # Every pushed branch runs the whole CI (#216): the full suite on both systems, the prints, e2e
+  # and SonarCloud leave the machine's single test slot, and a session hands off on a green run
+  # (scripts/ci-branch.sh reads it). A new push cancels the branch's previous run (concurrency).
+  # A push that only changes files no test reads starts no run; ci-branches.test.ts keeps that
+  # list honest. Pull requests are never filtered, so their required checks always report.
   push:
-    branches: [main]
+    branches: ["**"]
+    paths-ignore: ["docs/manual/**", "docs/images/**"]
   pull_request:
+  # Any pushed branch can run the whole CI by hand (scripts/ci-branch.sh): the prints, e2e and the
+  # Windows suite then leave the machine's single test slot.
+  workflow_dispatch:
+    inputs:
+      only:
+        description: Which jobs to run
+        type: choice
+        options: [all, screenshots]
+        default: all
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
   test:
     name: test (${{ matrix.os }})
+    if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
     strategy:
       fail-fast: false
       matrix:
@@ -70,7 +86,7 @@ jobs:
       # available (pull requests from forks).
       - name: Versão para o SonarCloud
         id: sonar
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && github.event_name != 'workflow_dispatch'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |

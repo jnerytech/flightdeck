@@ -374,6 +374,7 @@ export function App({ store }: { store: AppStore }) {
               <Breadcrumb
                 crumbs={breadcrumb(route, state, t)}
                 label={t("shell.breadcrumb")}
+                moreLabel={t("shell.breadcrumbMore")}
                 onGo={go}
               />
               <NotificationBell store={store} inbox={state.inbox} t={t} go={go} />

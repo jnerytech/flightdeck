@@ -141,6 +141,7 @@ import { TerminalManager } from "./terminal/terminal-manager.ts";
 import { TraceService } from "./trace/service.ts";
 import {
   binaryVersion,
+  refusedAddress,
   requestShutdown,
   runUpdate,
   type StopDeps,
@@ -1413,6 +1414,7 @@ async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
     isDirectory: async (path) => (await stat(path).catch(() => null))?.isDirectory() === true,
     serviceInstalled: async () => (await serviceCommand(ctx)) !== null,
     healthy: async () => waitHealthy(healthUrl(await load()), 1_000, 250),
+    refused: async () => refusedAddress(healthUrl(await load()), 1_000),
     tailscaleIp: () => tailscaleIp(deps.exec ?? spawnExec),
     hooks: async () => hooksStatus(settings, hookTarget(await load(), self)),
     claudePath: () => whichOnPath("claude"),

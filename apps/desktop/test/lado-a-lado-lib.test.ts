@@ -46,6 +46,29 @@ describe("lado-a-lado: which sessions the tiles show", () => {
     ]);
   });
 
+  test("a session whose key is still the folder's counts for the project by its folder (issue #105)", () => {
+    // The daemon answers `known(cwd)` with the folder key until git has been asked: the project's
+    // own key is the remote's, so the keys differ for the same folder.
+    const real = { hostId: "h", projectKey: "github.com/acme/app", path: "/work/app" };
+    const rows = [
+      row(1, { cwd: "/work/app", projectKey: "host:alfa:/work/app" }),
+      row(2, { cwd: "/work/app/sub", projectKey: "host:alfa:/work/app/sub" }),
+      row(3, { cwd: "/work/app", projectKey: "github.com/acme/app" }),
+      row(4, { cwd: "/work/other", projectKey: "host:alfa:/work/other" }),
+      row(5, { cwd: "/work/application", projectKey: "host:alfa:/work/application" }),
+      row(6, { hostId: "x", cwd: "/work/app", projectKey: "host:beta:/work/app" }),
+    ];
+    expect(
+      pickTiles(rows, real, "auto")
+        .map((r) => r.sessionId)
+        .sort(),
+    ).toEqual(["s1", "s2", "s3"]);
+    // Without the path, only the key counts, as before.
+    expect(
+      pickTiles(rows, { hostId: "h", projectKey: real.projectKey }, "auto").map((r) => r.sessionId),
+    ).toEqual(["s3"]);
+  });
+
   test("it stops at the count, and the same state is ordered by the latest activity", () => {
     const rows = [1, 2, 3, 4, 5].map((n) => row(n, { state: "running" }));
     expect(pickTiles(rows, project, "2").map((r) => r.sessionId)).toEqual(["s5", "s4"]);

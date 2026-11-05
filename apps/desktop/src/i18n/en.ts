@@ -767,6 +767,7 @@ export const en: Dictionary = {
   shell: {
     sidebar: "Sidebar",
     breadcrumb: "You are in",
+    breadcrumbMore: "Show the steps in between",
     collapse: "Collapse sidebar",
     expand: "Show sidebar",
   },
@@ -1738,6 +1739,8 @@ export const en: Dictionary = {
     insertSnippet: "Insert a snippet",
     mentionFolder: "Mention a file or folder",
     jumpLatest: "Jump to latest",
+    jumpLatestOne: "Jump to latest ({n} new)",
+    jumpLatestMany: "Jump to latest ({n} new)",
     cost: "estimated cost:",
     costLabel: "Session cost",
     resume: "Resume",
@@ -1748,6 +1751,13 @@ export const en: Dictionary = {
     endMessage: "End this session? Claude Code stops; you can resume it later.",
     endConfirm: "End session",
     pruned: "conversation removed by retention",
+    earlier: {
+      title: "Before resuming",
+      unreadable: "Could not read the earlier turns: {reason}",
+      empty: "The transcript has no earlier turns to show.",
+      truncated:
+        "Only the first {count} earlier turns are shown. Open the transcript in History for the rest.",
+    },
     historyGap: "part of the history is no longer available on the host",
     message: "Message",
     snippets: "Prompt snippets",
@@ -3510,6 +3520,8 @@ export const en: Dictionary = {
     hintLinux: "On the host, check that the daemon runs, and that it starts at boot:",
     hintWsl: "On WSL, also turn on systemd in /etc/wsl.conf (then run wsl --shutdown on Windows):",
     hintGeneric: "Check that the host is on and reachable, and that the daemon runs there.",
+    hintAddress:
+      "Or the daemon refused this machine's address: on the host, add its network to allowedNetworks (flightdeckd setup does it for Tailscale).",
   },
   hostPage: {
     simpleTitle: "Simple mode",

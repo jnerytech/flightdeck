@@ -53,7 +53,7 @@
   "src/ui/Settings.tsx": 9,
   "src/ui/Sidebar.tsx": 32,
   "src/ui/SnippetsPage.tsx": 19,
-  "src/ui/TabBar.tsx": 12,
+  "src/ui/TabBar.tsx": 11,
   "src/ui/TeamsPage.tsx": 34,
   "src/ui/TerminalPage.tsx": 3,
   "src/ui/ToolCall.tsx": 8,
