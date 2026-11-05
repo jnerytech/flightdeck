@@ -127,9 +127,9 @@ export function CardDeps(props: {
             </Field>
             <ActionButton
               variant="outline"
-              onClick={() =>
-                picked ? update({ blockedBy: [...card.blockedBy, picked] }) : undefined
-              }
+              disabled={!picked}
+              disabledReason={t("deps.pickFirst")}
+              onClick={() => update({ blockedBy: [...card.blockedBy, picked] })}
             >
               {t("deps.add")}
             </ActionButton>
