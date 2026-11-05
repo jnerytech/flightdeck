@@ -39,5 +39,28 @@ describe("hook-pr-guard", () => {
     const env = { FLIGHTDECK_COORDINATOR: "1" };
     expect(prMergeViolation("bun run pr -- merge 12", env)).toBeNull();
     expect(prMergeViolation("bun run pr -- tag v1.2.3", env)).toBeNull();
+    expect(prMergeViolation("bun run release v1.2.3", env)).toBeNull();
+  });
+
+  test("a session's bun run release is blocked too: it pushes and tags (#275)", () => {
+    for (const command of [
+      "bun run release v1.2.3",
+      "bun run release -- v1.2.3",
+      "FLIGHTDECK_COORDINATOR=1 bun run release v1.2.3",
+      "cd ../flightdeck-x && bun scripts/release-cmd.ts v1.2.3",
+    ]) {
+      const reason = session(command) ?? "";
+      expect(reason).toContain("bun run release is the coordinator's");
+    }
+  });
+
+  test("release:close, release:version and words in a message pass (#275)", () => {
+    for (const command of [
+      "bun run release:version v1.2.3",
+      "bun run release:close -- v1.2.3",
+      "git commit -m 'docs: bun run release is the coordinator'",
+    ]) {
+      expect(session(command)).toBeNull();
+    }
   });
 });
