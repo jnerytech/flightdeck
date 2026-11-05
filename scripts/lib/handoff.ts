@@ -26,7 +26,15 @@ export interface HandoffDeps {
 }
 
 /** Runs every step (all of them, so one run shows every failure) and builds the stamp line. */
-export async function runHandoff({ run, branch, head, now, base, ci }: HandoffDeps): Promise<{
+export async function runHandoff({
+  run,
+  branch,
+  head,
+  now,
+  base,
+  ci,
+  security,
+}: HandoffDeps): Promise<{
   code: number;
   stamp: string;
 }> {
@@ -36,6 +44,11 @@ export async function runHandoff({ run, branch, head, now, base, ci }: HandoffDe
     const code = await run(name === "related" && base ? [...command, "--base", base] : command);
     failed ||= code !== 0;
     codes.push(`${name}=${code}`);
+  }
+  if (security) {
+    const verdict = await security();
+    failed ||= verdict !== "0";
+    codes.push(`security=${verdict}`);
   }
   if (ci) {
     const verdict = await ci();

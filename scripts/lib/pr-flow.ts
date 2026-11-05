@@ -241,7 +241,19 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
     return 1;
   }
   deps.log(`#${created.stdout.trim()}`);
+  await prOpenedHook(created.stdout.trim().split(" ")[0] ?? "", branch, base, deps);
   return 0;
+}
+
+/**
+ * Runs FLIGHTDECK_PR_OPENED (#273), when set, with the new PR's number, branch and base: the
+ * coordinator's tooling queues an OpenCode review there. It fails open: the PR is open anyway.
+ */
+async function prOpenedHook(n: string, branch: string, base: string, deps: PrFlowDeps) {
+  const hook = deps.env.FLIGHTDECK_PR_OPENED?.trim();
+  if (!hook || !deps.run) return;
+  const { code } = await deps.run([...hook.split(/\s+/), n, branch, base]);
+  if (code !== 0) deps.log(`FLIGHTDECK_PR_OPENED hook failed (exit ${code}); #${n} is open`);
 }
 
 async function nextPrs(deps: PrFlowDeps): Promise<number> {

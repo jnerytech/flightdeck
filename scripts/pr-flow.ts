@@ -13,6 +13,7 @@ process.exit(
     {
       gh: (cmd) => spawnExec(["gh", ...cmd]),
       git: (cmd) => spawnExec(["git", ...cmd]),
+      run: (cmd) => spawnExec(cmd),
       env: process.env,
       log: (line) => console.log(line),
     },
