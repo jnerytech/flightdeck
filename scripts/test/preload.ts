@@ -2,8 +2,7 @@
 // `az`, nor a real shell command from a workflow `check`, nor read the real `~/.claude`, nor reach
 // the Tauri shell (the terminal opened by "Abrir no terminal").
 import { afterAll, setDefaultTimeout } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { assertBinaryUntouched, installBinaryGuard } from "./binary-guard.ts";
 import { assertCheckGuardActive, assertNoRefusedChecks, installCheckGuard } from "./check-guard.ts";
@@ -14,6 +13,7 @@ import { assertHomeGuard, installHomeGuard } from "./home-guard.ts";
 import { assertNoNetwork, installNetworkGuard } from "./network-guard.ts";
 import { assertPathUntouched, assertRepoUntouched, installRepoGuard } from "./repo-guard.ts";
 import { assertNoTauriCalls, installTauriGuard } from "./tauri-guard.ts";
+import { realTempDir } from "./temp-dir.ts";
 import { installTempRun, removeTempRun } from "./temp-run.ts";
 import { defaultTestTimeoutMs } from "./timeout.ts";
 
@@ -42,7 +42,7 @@ const home = installHomeGuard();
 // The installed daemon of the real home (`update` swaps it); the guard above hides that home.
 const binary = installBinaryGuard(dirname(home.realClaude));
 // The real service controller (systemctl, schtasks, loginctl) only records attempts here.
-const serviceGuard = join(mkdtempSync(join(tmpdir(), "fd-service-guard-")), "calls.log");
+const serviceGuard = join(realTempDir("fd-service-guard-"), "calls.log");
 process.env.FLIGHTDECK_SERVICE_GUARD = serviceGuard;
 const checks = installCheckGuard();
 // No test reaches the internet: only 127.0.0.1 and localhost (phase 9).

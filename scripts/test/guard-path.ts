@@ -5,13 +5,13 @@
  * links to everything else in it. Where links to files are not possible (Windows without the
  * privilege), the folder is dropped, as the guards always did.
  */
-import { existsSync, mkdtempSync, readdirSync, symlinkSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readdirSync, symlinkSync } from "node:fs";
 import { delimiter, join } from "node:path";
+import { realTempDir } from "./temp-dir.ts";
 
 function standIn(dir: string, hidden: readonly string[]): string | null {
   if (process.platform === "win32") return null;
-  const copy = mkdtempSync(join(tmpdir(), "fd-path-guard-"));
+  const copy = realTempDir("fd-path-guard-");
   for (const name of readdirSync(dir)) {
     if (!hidden.includes(name)) symlinkSync(join(dir, name), join(copy, name));
   }

@@ -17,11 +17,38 @@ export const TEMP_PATH_ALLOWED: readonly string[] = [
  * long real path, so a test builds its folders with `realTempDir` and resolves with
  * `realpathSync.native`.
  */
-export function bareTempUses(_source: string): number {
-  return 0;
+export function bareTempUses(source: string): number {
+  // Comments name these calls to explain them: they are not uses.
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+  const tmp = code.match(/(?<![\w$])tmpdir\(\)/g)?.length ?? 0;
+  const real = code.match(/(?<![\w$.])realpathSync\(/g)?.length ?? 0;
+  return tmp + real;
 }
 
 /** Bare temp-path uses per test file (files with none left out). */
-export function tempPathCounts(_root: string): Record<string, number> {
-  return { "stub.ts": 1 };
+export function tempPathCounts(root: string): Record<string, number> {
+  const counts: Record<string, number> = {};
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== "node_modules" && entry.name !== "fixtures") walk(path);
+        continue;
+      }
+      if (!/\.tsx?$/.test(entry.name) || entry.name === "temp-path-ratchet.test.ts") continue;
+      const name = relative(root, path).replaceAll("\\", "/");
+      if (TEMP_PATH_ALLOWED.includes(name)) continue;
+      const count = bareTempUses(readFileSync(path, "utf8"));
+      if (count > 0) counts[name] = count;
+    }
+  };
+  for (const dir of [
+    "apps/daemon/test",
+    "apps/desktop/test",
+    "packages/protocol/test",
+    "scripts/test",
+  ]) {
+    walk(join(root, dir));
+  }
+  return counts;
 }
