@@ -100,8 +100,9 @@ describe("keep-awake-ui: the host page's switch (#163)", () => {
     );
     expect(screen.queryByText("Holding the computer awake now.")).toBeNull();
     store.d.setKeepAwake({ held: true, method: "systemd-inhibit" });
+    // Started on the host, as another client or a card run would: the page stays where it is.
     await act(async () => {
-      await store.createSession(store.hostId, { cwd: store.d.project, prompt: "oi", name: "s1" });
+      await store.d.manager.create({ cwd: store.d.project, prompt: "oi", name: "s1" });
     });
     await settle(() => screen.queryByText("Holding the computer awake now.") !== null);
   });
