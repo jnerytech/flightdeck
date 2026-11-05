@@ -115,6 +115,68 @@ function lines(source: string): Json[] {
   return out;
 }
 
+/** A user line: its tool results are kept by call id, and a typed prompt (not a result) becomes an event. */
+function readUser(parsed: Parsed, line: Json, ts: number | null, content: unknown, blocks: Json[]) {
+  const prompt =
+    typeof content === "string"
+      ? content
+      : blocks
+          .filter((b) => b.type === "text")
+          .map((b) => text(b.text) ?? "")
+          .join("\n");
+  for (const block of blocks) {
+    const id = text(block.tool_use_id);
+    if (block.type === "tool_result" && id) {
+      parsed.results.set(id, {
+        ts,
+        text: resultText(block.content),
+        error: block.is_error === true,
+        agentId: text(obj(line.toolUseResult).agentId),
+      });
+    }
+  }
+  const onlyResults = blocks.length > 0 && blocks.every((b) => b.type === "tool_result");
+  if (prompt.trim() !== "" && !onlyResults && line.isSidechain !== true) {
+    parsed.events.push({ kind: "prompt", ts, text: prompt });
+  }
+}
+
+/** An assistant line: the message's usage once, then its thoughts and tool calls as events. */
+function readAssistant(parsed: Parsed, line: Json, ts: number | null, blocks: Json[]) {
+  const message = obj(line.message);
+  const messageId = text(message.id);
+  const usage = obj(message.usage);
+  if (messageId && !parsed.messages.has(messageId)) {
+    parsed.messages.set(messageId, {
+      input: num(usage.input_tokens),
+      output: num(usage.output_tokens),
+      cacheRead: num(usage.cache_read_input_tokens),
+      cacheWrite: num(usage.cache_creation_input_tokens),
+    });
+  }
+  if (messageId) parsed.events.push({ kind: "message", ts, messageId });
+  for (const block of blocks) {
+    if (block.type === "thinking" && text(block.thinking)) {
+      parsed.events.push({
+        kind: "thought",
+        ts,
+        uuid: text(line.uuid) ?? String(parsed.events.length),
+        text: text(block.thinking) as string,
+      });
+    } else if (block.type === "tool_use" && text(block.id)) {
+      parsed.events.push({
+        kind: "call",
+        ts,
+        id: text(block.id) as string,
+        name: text(block.name) ?? "tool",
+        input: block.input,
+        lineUuid: text(line.uuid),
+        messageId,
+      });
+    }
+  }
+}
+
 function parse(source: string): Parsed {
   const parsed: Parsed = {
     events: [],
@@ -130,65 +192,10 @@ function parse(source: string): Parsed {
       parsed.firstTs = Math.min(parsed.firstTs ?? ts, ts);
       parsed.lastTs = Math.max(parsed.lastTs ?? ts, ts);
     }
-    const message = obj(line.message);
-    const content = message.content;
+    const content = obj(line.message).content;
     const blocks = Array.isArray(content) ? content.map(obj) : [];
-    if (line.type === "user") {
-      const prompt =
-        typeof content === "string"
-          ? content
-          : blocks
-              .filter((b) => b.type === "text")
-              .map((b) => text(b.text) ?? "")
-              .join("\n");
-      for (const block of blocks) {
-        const id = text(block.tool_use_id);
-        if (block.type === "tool_result" && id) {
-          parsed.results.set(id, {
-            ts,
-            text: resultText(block.content),
-            error: block.is_error === true,
-            agentId: text(obj(line.toolUseResult).agentId),
-          });
-        }
-      }
-      const onlyResults = blocks.length > 0 && blocks.every((b) => b.type === "tool_result");
-      if (prompt.trim() !== "" && !onlyResults && line.isSidechain !== true) {
-        parsed.events.push({ kind: "prompt", ts, text: prompt });
-      }
-      continue;
-    }
-    const messageId = text(message.id);
-    const usage = obj(message.usage);
-    if (messageId && !parsed.messages.has(messageId)) {
-      parsed.messages.set(messageId, {
-        input: num(usage.input_tokens),
-        output: num(usage.output_tokens),
-        cacheRead: num(usage.cache_read_input_tokens),
-        cacheWrite: num(usage.cache_creation_input_tokens),
-      });
-    }
-    if (messageId) parsed.events.push({ kind: "message", ts, messageId });
-    for (const block of blocks) {
-      if (block.type === "thinking" && text(block.thinking)) {
-        parsed.events.push({
-          kind: "thought",
-          ts,
-          uuid: text(line.uuid) ?? String(parsed.events.length),
-          text: text(block.thinking) as string,
-        });
-      } else if (block.type === "tool_use" && text(block.id)) {
-        parsed.events.push({
-          kind: "call",
-          ts,
-          id: text(block.id) as string,
-          name: text(block.name) ?? "tool",
-          input: block.input,
-          lineUuid: text(line.uuid),
-          messageId,
-        });
-      }
-    }
+    if (line.type === "user") readUser(parsed, line, ts, content, blocks);
+    else readAssistant(parsed, line, ts, blocks);
   }
   return parsed;
 }

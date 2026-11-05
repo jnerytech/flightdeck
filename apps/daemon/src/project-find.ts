@@ -36,6 +36,56 @@ const isRepo = (dir: string) =>
     () => false,
   );
 
+interface ScanState {
+  found: Map<string, { name: string; path: string; root: string }>;
+  cap: number;
+  list: NonNullable<ScanOptions["readdir"]>;
+  truncated: boolean;
+  opened: number;
+}
+
+/** Remembers a repository; false (and truncated) once the cap of repositories is reached. */
+function addRepo(state: ScanState, path: string, root: string): boolean {
+  if (state.found.has(path)) return true;
+  if (state.found.size >= state.cap) {
+    state.truncated = true;
+    return false;
+  }
+  state.found.set(path, { name: path.split(/[\\/]/).pop() ?? path, path, root });
+  return true;
+}
+
+/** Opens one folder: the repositories among its sub-folders are added, the others returned to walk on. */
+async function openFolder(state: ScanState, dir: string, root: string): Promise<string[]> {
+  const next: string[] = [];
+  const entries = await state.list(dir, { withFileTypes: true }).catch(() => []);
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name.startsWith(".") || SKIPPED.has(entry.name)) continue;
+    const child = join(dir, entry.name);
+    if (await isRepo(child)) {
+      if (!addRepo(state, child, root)) break;
+    } else next.push(child);
+  }
+  return next;
+}
+
+/** Walks one root level by level, down to `depth`, until the caps are reached. */
+async function scanRoot(state: ScanState, root: string, depth: number): Promise<void> {
+  let level = [root];
+  for (let n = 1; n <= depth && level.length > 0 && !state.truncated; n++) {
+    const next: string[] = [];
+    for (const dir of level) {
+      if (state.truncated || state.opened >= MAX_FOLDERS) {
+        state.truncated = true;
+        break;
+      }
+      state.opened++;
+      next.push(...(await openFolder(state, dir, root)));
+    }
+    level = next;
+  }
+}
+
 /**
  * Looks for git repositories under the allowed roots. It never blocks the daemon (every call is
  * async), never follows a link, skips hidden folders and `node_modules`, does not enter a
@@ -45,54 +95,24 @@ export async function scanRepos(
   roots: readonly string[],
   options: ScanOptions = {},
 ): Promise<ProjectsScanResult> {
-  const depth = options.depth ?? DEFAULT_DEPTH;
-  const cap = options.cap ?? DEFAULT_CAP;
-  const list = options.readdir ?? readdir;
-  const real = await Promise.all(roots.map(realFolder));
-  const found = new Map<string, { name: string; path: string; root: string }>();
-  let truncated = false;
-  let opened = 0;
-  const add = (path: string, root: string) => {
-    if (found.has(path)) return true;
-    if (found.size >= cap) {
-      truncated = true;
-      return false;
-    }
-    found.set(path, { name: path.split(/[\\/]/).pop() ?? path, path, root });
-    return true;
+  const state: ScanState = {
+    found: new Map(),
+    cap: options.cap ?? DEFAULT_CAP,
+    list: options.readdir ?? readdir,
+    truncated: false,
+    opened: 0,
   };
-
+  const real = await Promise.all(roots.map(realFolder));
   for (const root of new Set(real.filter((r): r is string => r !== null))) {
     if (await isRepo(root)) {
-      if (!add(root, root)) break;
+      if (!addRepo(state, root, root)) break;
       continue;
     }
-    let level = [root];
-    for (let n = 1; n <= depth && level.length > 0 && !truncated; n++) {
-      const next: string[] = [];
-      for (const dir of level) {
-        if (truncated || opened >= MAX_FOLDERS) {
-          truncated = true;
-          break;
-        }
-        opened++;
-        const entries = await list(dir, { withFileTypes: true }).catch(() => []);
-        for (const entry of entries) {
-          if (!entry.isDirectory() || entry.name.startsWith(".") || SKIPPED.has(entry.name)) {
-            continue;
-          }
-          const child = join(dir, entry.name);
-          if (await isRepo(child)) {
-            if (!add(child, root)) break;
-          } else next.push(child);
-        }
-      }
-      level = next;
-    }
-    if (truncated) break;
+    await scanRoot(state, root, options.depth ?? DEFAULT_DEPTH);
+    if (state.truncated) break;
   }
-  const repos = [...found.values()].sort((a, b) => (a.path < b.path ? -1 : 1));
-  return { repos, truncated };
+  const repos = [...state.found.values()].sort((a, b) => (a.path < b.path ? -1 : 1));
+  return { repos, truncated: state.truncated };
 }
 
 /** Runs `git` with these arguments; the exit code and what it said on stderr. */
