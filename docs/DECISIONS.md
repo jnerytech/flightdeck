@@ -3559,3 +3559,207 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   That is accepted: CI minutes are free for this public repository, and the two runs check
   different trees.
 - **Based on `rc/0363`,** which adds `workflow_dispatch` (#129) to the same `on:` block.
+
+## Harness D1: the commit gate, the test-edit guard and the audit in CI (issue #169)
+
+- **A Claude Code hook, not a git `commit-msg` hook.** A git hook reads the message reliably, but it
+  needs `core.hooksPath`, which is unset; setting it would change all open worktrees and the
+  maintainer's commits at once. The PreToolUse guard is already versioned in `.claude/` and runs
+  in every checkout. It reads the subject from `-m`, `--message`, a `$(cat <<EOF)` heredoc or
+  `-F -` with a heredoc, and finds the commit's directory from each `cd` before it and from
+  `git -C`. Anything else (an editor, `-F file`, a quoted directory, git failing) passes, since
+  the audit and CI still check it.
+- **One base everywhere.** `auditBase` (the merge-base with `origin/main`, then `main`; the last
+  release tag, `v*` and never `fase-N`, when `HEAD` is on `main`, pushed or not) is used by the
+  hook, by `tdd:audit --since auto` and by CI. Measured before turning CI on: all 21 open branches
+  on `origin`, `rc/0363` included, pass it. Without
+  `--since`, `tdd:audit` now means `auto`; before, the bare command that CLAUDE.md suggested
+  exited 2 with a usage line. In a pull request, CI's merge commit has no conventional type, so the
+  audit ignores it.
+- **The waiver is a trailer.** A waiver in `scripts/tdd-audit-waivers.json` is keyed by the full
+  commit hash, which does not exist before the commit. A `TDD-Waiver: <why>` trailer in the
+  message is read by the hook and by `tdd:audit` (`%(trailers:key=TDD-Waiver)`), needs no hash
+  and survives a rebase. The hook logs such a commit as `waived`, so `harness:stats` shows how
+  often the gate is bypassed. The JSON file keeps the waivers made before.
+- **Only the commit's own message is read.** The command is masked (heredoc bodies and quoted
+  text blanked, offsets kept): `git commit` and its `-m`, `--message`, `--trailer` and `-F -` are
+  found only as words of their own segment, and their values are read from the original at the
+  same offsets. A first version read the first `-m` or heredoc anywhere, so a `cat >> f <<EOF`
+  before the commit, a `grep -m 1` or a `-m` in the body became the subject, and a quote inside a
+  `$(cat <<EOF)` body ended the message early.
+- **Not enforced: "the test commit holds only the test".** docs/TDD.md says the stub stays out of
+  the test commit. In practice it goes in: 404 of the last 1,500 `test(...)` commits also change a
+  file under `apps/*/src`, `packages/*/src`, `scripts/lib` or `src-tauri/src` (for example
+  `test(setup-linger)` adds `linger.ts` answering `null`). Blocking it would refuse about one test
+  commit in four. The rule stays as written until the maintainer decides between the text and the
+  practice.
+- **`toMatchSnapshot(` only in the hook.** A new snapshot records its first run, which is the
+  stub's output. The audit does not scan for it, because a snapshot that already exists is allowed;
+  the hook only refuses one being added.
+- **Measured on the Orange Pi** (load around 6): the guard takes 0.04 to 0.1 s on a `git commit` (one
+  `rev-parse`, one `merge-base` and one `log`) and 0.01 to 0.03 s on anything else. `biome-on-edit`
+  takes about 1.9 s per edit, 1.7 s of it in the type-aware `noFloatingPromises` scan.
+- **The decision log** is `<common .git>/flightdeck-hooks.jsonl`: never tracked, one file for the
+  main checkout and its worktrees, rotated to `.jsonl.1` past 1 MB. `bun run harness:stats` gives
+  the calls, blocks and p50/p95 per hook, and the blocks per rule. The `biome-on-edit` numbers
+  decide whether `noFloatingPromises` moves out of the edit hook into the commit gate and CI.
+- **Heavy runs outside the slot are refused.** The guard refuses `bun run test|coverage|e2e|
+  demo:shots|smoke*|build:daemon|build:desktop` and a bare `bun test` unless the segment is
+  `bun run slot -- ...`. A session that runs under a slot holder (`FLIGHTDECK_SLOT_HOLDER` in the
+  hook's environment, #141) passes, since its run is already in the slot. The slot's own child is
+  started by the slot, not by Claude's Bash tool, so the hook never sees it.
+- **Timeouts and fail-open are explicit.** `guard` has `timeout: 10`, `biome-on-edit` 30, both
+  `onFailure: "continue"` (without it, a failing shell-form hook blocks on Windows without Git
+  Bash), and the gate's git calls stop after 2 s. `onFailure: "block"` is never used: the guard
+  imports `scripts/lib`, so a broken edit there would block the edit that repairs it.
+- **Only this project's commits.** The gate checks a commit only when its directory belongs to the
+  main checkout or one of its worktrees (`checkoutRoot`), so `git commit -m init` in a scratch
+  repository passes. The slot guard has no such scope yet: `bun run test` in another project, run
+  from a Flightdeck session, is refused (rare; known limit).
+- **The instructions follow the guard.** CLAUDE.md, TDD.md, `new-phase`, `spec-verifier` and
+  `tauri-rust-reviewer` showed the full suite, the builds, `demo:shots` and `e2e` bare; they now
+  show `bun run slot -- <command>`, and `tdd-area`'s green step runs `test:related`. A
+  `harness-config` case keeps any instruction from showing a command the guard refuses.
+- **Minimum Claude Code version: 2.1.295,** for `onFailure`. Checked on 2.1.318 with `claude -p
+  --debug` in the worktree: the settings load without a validation warning and the guard fires.
+- **The setup is tested.** `harness-config.test.ts` checks that each hook in `settings.json` runs
+  a file that exists, with a timeout and `onFailure`; that the deny list keeps the credentials;
+  that the real `guard.ts` blocks with exit 2 and passes bad input; and that every agent and skill
+  frontmatter parses as YAML. It found two that did not (`tauri-rust-reviewer`, `new-phase`: an
+  unquoted `: ` in the description); Claude Code read them anyway, but a rule's `paths` that does
+  not parse is silently dropped, so the check stays.
+- **`test:related` sees data files.** A test that names a changed path, or one of its folders, as
+  a string literal is related to it (`names .claude/settings.json`). Names with no slash (a root
+  file, a top-level folder) do not count, because tests use `.claude`, `docs` or `CLAUDE.md` as
+  product words; a `*-baseline.json` also counts by its file name, as the ratchets name it.
+- **The hook files stay thin.** `.claude/hooks/*.ts` only read stdin, call `scripts/lib` and exit.
+  They are not under coverage; the rules they apply are, at 100%.
+
+## Harness: decisions on the independent review of the #169 proposal
+
+The review (OpenCode, 2026-11-04) ranked 20 findings. Each one is accepted, deferred to its
+delivery, or rejected:
+
+| Finding | Decision |
+| --- | --- |
+| S2-1 "a test commit holds only tests" | Accepted: never enforced (see D1 above). TDD.md's text against the practice is for the maintainer. |
+| S2-2 D7 under the slot deadlocks | Accepted: D4 and D7 come after #141 (`slot-reentrant`, v0.36.3); the eval's model phase runs outside the slot, `handoff:check` never under it. |
+| S2-3 no waiver path, missing types | Accepted: the `TDD-Waiver:` trailer; `style`, `revert`, `Merge`, `Revert`, `fixup!` and `squash!` pass; a commit with no readable message passes. |
+| S2-4 hook timeouts, onFailure | Accepted: see D1 above. |
+| S2-5 D4 sender-side keyword gate | Accepted: D4 becomes receiver-side. `handoff:check` prints one stamp line (HEAD, four exit codes, time) that the session pastes; the orchestrator or `spec-verifier` checks it for HEAD. A sender hook, if any, comes after S1-1 and only advises. |
+| S2-6 `test:related` misses non-TS changes | Accepted: see D1 above. |
+| S2-9 log volume and rotation | Rejected in part: the log already rotates by `rename`, never truncates, and a lost line is acceptable. Every call is kept: `biome-on-edit`'s latency is what decides S3-6. |
+| S2-10 the gate is a guardrail | Accepted: TDD.md says so; the audit in CI is the wall. |
+| S2-11 `fase-N` tags | Accepted: `--match 'v[0-9]*'`. |
+| S3-1 heavy runs outside the slot | Accepted: see D1 above, with the slot-holder exception. |
+| S3-2 `merge=union` on DECISIONS.md | Rejected: union keeps both sides of a conflict without order, so two branches appending near the same heading can interleave silently. D2b's one file per unit of work removes the conflicts at the root. |
+| S3-3 the setup itself is untested | Accepted: `harness-config.test.ts`. |
+| S3-4 branch-aware push guard | Rejected for now: the orchestrator pushes feature branches from the same checkout, so a rule by branch would block it. It needs a session identity, not a branch. |
+| S1-2 rules lost after `/compact` | Accepted for D5: every rule that guards a non-negotiable stays in the root CLAUDE.md, path-scoped rules are a bonus, and a `SessionStart` hook with `matcher: "compact"` restates the essentials (S3-5). |
+| S1-3 unquoted `paths:` globs | Accepted for D5: list form with quoted patterns; `harness-config` parses every frontmatter. |
+| S1-4 `claude -w` | Accepted: dropped. A dev session starts with `cd ../flightdeck-x && claude`, or moves with `/cd`. |
+| S1-1, S2-7, S2-8, S3-5..S3-9, S4-1..S4-7 | Deferred to their deliveries (D2, D4, D5, D6, D7), where each is decided before the code. |
+
+## Sessions push their own work branches (issue #218, part of #216)
+
+- **The rule moves from "sessions never push" to "sessions push only their own work branches".**
+  The guard (`pushViolation` in `scripts/lib/claude-hooks.ts`) blocks a push to `main` or
+  `rc/*`, a tag (a `refs/tags/` refspec or the name of a local tag), `--tags`, `--all`,
+  `--mirror` and `--follow-tags`. A push with no refspec, or of `HEAD`, means the current branch.
+- **"Own branch" is the branch checked out in that checkout.** Who created a branch is not
+  recorded anywhere; the branch a session works on is. A `--force-with-lease` passes only to it.
+  A bare `--force` (or a `+` refspec) is blocked even there, which is stricter than #218's text:
+  `--force-with-lease` does the same job without overwriting a push someone else made.
+- **The coordinator is exempt through its environment.** `FLIGHTDECK_COORDINATOR=1` in the hook's
+  own environment lets every push through. The coordinator's launch must set it
+  (`start-flightdeck.sh`). A session cannot fake it: a `FLIGHTDECK_COORDINATOR=1 git push`
+  prefix changes the command's environment, not the hook's.
+- **Other repositories are not checked**, the same as the commit gate (`checkoutRoot`).
+- **Limits.** Like the other guard rules, it reads the command's words: `sh -c "git push ..."`, a
+  subshell or `gh` calls that push are not seen. It is a guardrail; branch protection on `main`
+  is the wall.
+- **`findCommit` and `pushViolation` share one parse** (`gitCalls`): the masked segments, each
+  `cd`, `git -C`, and the subcommand's words with their offsets.
+
+## Harness D3: the SPEC template, spec:lint and tdd:audit --spec (issue #169)
+
+- **The template keeps the shape the specs settled on** (Goal, Proof of concept first, Design,
+  Tests and criteria since phase 28) and adds what was missing or ad hoc: Non-goals; Protocol,
+  migration and rollback; Acceptance scenarios with the `.feature` each Feature runs as (#131
+  keeps the BDD work itself); Risks; Acceptance criteria and Real checks as their own headings;
+  and a Test file column in the area table. It lives in `docs/templates/SPEC.md`; the specs stay
+  in `docs/` (review S4-7).
+- **The lint reads the sections as an ordered subsequence.** Recent specs put extra headings
+  between them (phase 36's answers and addendum, phase 33's decisions), so extra headings pass and
+  "None." is a valid body (review finding on `spec-lint`). A row's area is kebab-case; its test
+  file is in `apps/*/test`, `packages/*/test` or `scripts/test`, named after the area as
+  docs/TDD.md asks, or is a smoke or a `.feature`; a `-ui` area is tested in `apps/desktop/test`.
+- **From phase 40 on.** The 38 older specs, many in Portuguese and none with the Test file
+  column, are not held to it; a spec can opt in with `<!-- spec-lint -->`. The suite lints every
+  held spec, so CI enforces it without a new step; `bun run spec:lint <spec>` is for the author.
+- **The table and the commits check each other.** `tdd:audit -- --spec <spec>` fails on an area
+  with no `test(<area>)` commit in the range. `new-phase` and `spec-verifier` call it; an older
+  table (no Test file column) yields no areas, so their audits run as before.
+
+## Harness D5: rules per area and the SessionStart hook (issue #169)
+
+- **Rules close to the code are a bonus, not the guard.** A session started in the main checkout
+  that edits a sibling worktree loads neither `.claude/rules` nor a nested CLAUDE.md (proof of
+  concept in the proposal), and after `/compact` a path-scoped rule is gone until a matching file
+  is touched again (review S1-2). So every non-negotiable stays in the root CLAUDE.md, which is
+  always loaded; the rules restate the area's own conventions where the code is.
+- **Five rules, quoted list globs.** `ui` (apps/desktop/src), `protocol`, `daemon`, `tests`
+  (`**/test/**`, `**/*.test.ts`, `**/*.test.tsx`) and `scripts`. An unquoted `**` is a YAML alias,
+  and a frontmatter that does not parse makes Claude Code load the rule everywhere (review S1-3);
+  `harness-config.test.ts` parses each frontmatter and checks that every glob matches a tracked
+  file. Checked live with `claude -p` in the worktree and an `InstructionsLoaded` hook: a
+  `scripts/test` file loads `tests` and `scripts`, a daemon file loads `daemon`, nothing else.
+- **No per-package CLAUDE.md.** One mechanism, in one folder, with globs that cut across
+  packages (`tests` covers three).
+- **The SessionStart hook** (`startup|resume|compact`) adds a few lines: the branch, the commits
+  past main, the scopes with a `test(...)` commit so far, the slot's holder (a lock of a dead
+  process counts as free), and after a compact the note about the rules. On the main checkout it
+  points dev work to a worktree. About 0.2 to 0.3 s; any error adds nothing.
+- **Sessions start in their worktree** (`cd ../flightdeck-x && claude`, or `/cd`), not with
+  `claude -w`, which creates its own worktree layout (review S1-4).
+- **Not done, on purpose.** The TDD.md translation (an active file that open branches still
+  touch) and the `lib-purity` ratchet (it would baseline the ratchets themselves, which scan files
+  by design; review S2-12). Functional core, imperative shell is a paragraph in TDD.md and a line
+  in the `scripts` and `daemon` rules.
+
+## Harness D6: the reviewer agents and the protocol-surface ratchet (issue #169)
+
+- **Protocol compatibility is a check, not an agent.** `scripts/lib/protocol-surface.ts` reads
+  every exported schema of `packages/protocol` through its JSON Schema (`toJSONSchema`, input
+  side) into one line per command, field (`?` when optional), constant and enum value;
+  discriminated unions are named by their `type`, so reordering members changes nothing. A line of
+  `packages/protocol/surface-baseline.txt` that the code lost fails `protocol-surface.test.ts`: a
+  removed command or field, an optional field made required, a dropped enum value. Additions are
+  free. Checked: making `HelloPayload.protocolVersion` required is reported.
+- **The baseline moves at release only.** It holds main's surface (7,533 lines). The coordinator
+  refreshes it with `bun run scripts/protocol-surface.ts --write` when cutting a release, so a
+  branch that adds to the protocol never touches the file, and a removal between two releases is
+  caught against what the last release shipped.
+- **Two read-only agents, static.** `test-quality-reviewer` reads each `test(x)` and `feat(x)`
+  pair, the red evidence in the message and the stub's tree through `git show`, and looks for tests
+  that cannot fail (passing on the stub, red by error, weakened in the implementation commit,
+  mock-only, hidden waits, vacuous loops); it runs only area tests and never checks out a commit
+  (review S2-7: a fresh worktree has no dependencies). `security-reviewer` follows inputs from
+  their protocol schema to spawns, paths, logs, refusals and the network, and complements the
+  built-in `/security-review`. Both list `Read, Bash` (listing Bash drops Grep and Glob on Linux)
+  and run on sonnet; `harness-config.test.ts` checks it.
+- **No UX reviewer.** `demo:shots` already runs axe in both themes and languages, and the UX
+  sessions read the prints.
+
+## Harness D4: the hand-off stamp, checked by the receiver (issue #169)
+
+- **Receiver-side, no hook** (review S2-5, S1-1). The proposal's sender-side gate (a `PreToolUse`
+  hook on `SendMessage` matching "hand-off") depended on an undocumented tool input, matched the
+  repo's own names (`flightdeck-handoff/`) and could be skipped by resending. Instead
+  `bun run handoff:check` runs `typecheck`, `lint`, `tdd:audit` and `test:related` in order (all
+  of them, so one run shows every failure), prints one stamp line
+  (`HANDOFF <branch> <head> typecheck=0 lint=0 audit=0 related=0 <time>`) and keeps it in the
+  worktree's git folder. The session pastes the line in its hand-off; the receiver (the
+  coordinator, or `spec-verifier`) runs `bun run handoff:check -- --verify` in the worktree, which
+  refuses a missing stamp, one for another HEAD, or any check that was not 0.
+- **Never under the slot** (review S2-2): `test:related` takes the slot by itself above 60 files.
