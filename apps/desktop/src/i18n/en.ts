@@ -2854,6 +2854,7 @@ export const en: Dictionary = {
     title: "Blocked by",
     blockingTitle: "Blocking",
     none: "Nothing blocks this card.",
+    noneToPick: "No other card can block this one.",
     pickFirst: "Choose the card it waits for first.",
     pick: "Choose a card…",
     addLabel: "Add a blocker",

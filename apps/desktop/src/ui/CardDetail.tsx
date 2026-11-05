@@ -318,15 +318,6 @@ export const CardDetail = memo(function CardDetail(props: {
             {reasonText(t, card.notice, card.noticeReason, card.noticeParams)}
           </InlineNotice>
         )}
-        {withDeps && (
-          <CardDeps
-            store={store}
-            hostId={hostId}
-            card={card}
-            cards={projectCards(state, hostId, card.projectId)}
-            workflows={workflows}
-          />
-        )}
         <Panel
           title={t("cardUi.detailsTitle")}
           label={t("cardUi.detailsTitle")}
@@ -402,6 +393,16 @@ export const CardDetail = memo(function CardDetail(props: {
           </Field>
           {withRoi && <CardHours store={store} hostId={hostId} card={card} />}
         </Panel>
+        {/* Details, then what the card waits for, then how it runs (issue #174). */}
+        {withDeps && (
+          <CardDeps
+            store={store}
+            hostId={hostId}
+            card={card}
+            cards={projectCards(state, hostId, card.projectId)}
+            workflows={workflows}
+          />
+        )}
         <Panel title={t("cardUi.runTitle")} label={t("cardUi.runTitle")} slot="card-run">
           <div className="flex flex-wrap items-end gap-2">
             <Field label={t("cardUi.workflow")}>
@@ -425,14 +426,17 @@ export const CardDetail = memo(function CardDetail(props: {
               )}
             </Field>
             {chosen?.inputs.map((name) => (
-              <Input
-                key={name}
-                aria-label={t("cardUi.input", { name })}
-                placeholder={name}
-                className="w-48"
-                value={inputs[name] ?? ""}
-                onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
-              />
+              <Field key={name} label={t("cardUi.input", { name })}>
+                {(control) => (
+                  <Input
+                    {...control}
+                    placeholder={name}
+                    className="w-48"
+                    value={inputs[name] ?? ""}
+                    onChange={(e) => setInputs({ ...inputs, [name]: e.target.value })}
+                  />
+                )}
+              </Field>
             ))}
           </div>
           <div className="flex flex-wrap items-end gap-2">
@@ -577,18 +581,22 @@ export const CardDetail = memo(function CardDetail(props: {
             }
           />
         )}
-        <div className="field-with-action">
-          <Textarea
-            aria-label={t("cardUi.adjustment")}
-            placeholder={t("cardUi.adjustmentPlaceholder")}
-            value={adjustment}
-            className="min-h-16 flex-1"
-            onChange={(e) => setAdjustment(e.target.value)}
-          />
-          <Button variant="outline" onClick={sendAdjustment}>
-            {t("cardUi.askAdjustment")}
-          </Button>
-        </div>
+        <Field label={t("cardUi.adjustment")}>
+          {(control) => (
+            <div className="field-with-action">
+              <Textarea
+                {...control}
+                placeholder={t("cardUi.adjustmentPlaceholder")}
+                value={adjustment}
+                className="min-h-16 flex-1"
+                onChange={(e) => setAdjustment(e.target.value)}
+              />
+              <Button variant="outline" onClick={sendAdjustment}>
+                {t("cardUi.askAdjustment")}
+              </Button>
+            </div>
+          )}
+        </Field>
         <section className="flex flex-col gap-2">
           <h3 className="font-semibold text-sm">{t("cardUi.runs")}</h3>
           <ul
