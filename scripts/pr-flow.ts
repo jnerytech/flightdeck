@@ -14,14 +14,11 @@ process.exit(
     {
       gh: (cmd) => spawnExec(["gh", ...cmd]),
       git: (cmd) => spawnExec(["git", ...cmd]),
-      // The FLIGHTDECK_PR_OPENED hook (#273): two minutes at most, then its whole group is killed.
+      // The FLIGHTDECK_PR_OPENED hook (#273): two minutes at most, then its whole group is killed;
+      // 124 when it ran past the deadline, 127 when it could not start (as a shell says).
       run: async (cmd) => {
-        const { code, stderr, timedOut } = await runBounded(cmd, 120_000);
-        return {
-          code: code ?? 1,
-          stdout: "",
-          stderr: timedOut ? `timed out after 120 s ${stderr}` : stderr,
-        };
+        const { code, timedOut } = await runBounded(cmd, 120_000);
+        return { code: timedOut ? 124 : (code ?? 127), stdout: "" };
       },
       env: process.env,
       log: (line) => console.log(line),

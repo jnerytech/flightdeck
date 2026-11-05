@@ -1,7 +1,7 @@
 /**
- * Runs a hook command with a deadline (#273): its stdout ignored, the tail of its stderr kept, and
- * on timeout the whole process group killed, grandchildren too, so nothing it started keeps the
- * caller waiting.
+ * Runs a hook command with a deadline (#273): its output ignored (a hook inherits the environment
+ * and may print a token, so nothing it prints reaches a log), and on timeout its whole process
+ * group killed, grandchildren too, so nothing it started keeps the caller waiting.
  */
 import { spawn, spawnSync } from "node:child_process";
 import { join } from "node:path";
@@ -9,13 +9,10 @@ import { join } from "node:path";
 export interface BoundedResult {
   /** The exit code; null when it was killed or could not start. */
   code: number | null;
-  /** The last characters of its stderr, or why it could not start. */
+  /** Why it could not start (the program's name and the error), else empty. */
   stderr: string;
   timedOut: boolean;
 }
-
-/** How much of the stderr is kept. */
-const TAIL = 500;
 
 export interface KillDeps {
   platform: NodeJS.Platform;
@@ -50,30 +47,24 @@ export function killTree(pid: number, deps: KillDeps = SYSTEM_KILL): void {
 export function runBounded(command: string[], timeoutMs: number): Promise<BoundedResult> {
   const [program = "", ...args] = command;
   return new Promise((done) => {
-    let tail = "";
     let settled = false;
     const finish = (result: BoundedResult) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      // A grandchild may still hold the pipe: stop reading it rather than wait for its end.
-      child.stderr?.destroy();
       done(result);
     };
     // Its own process group on POSIX, so a timeout reaches what it started.
     const child = spawn(program, args, {
       detached: process.platform !== "win32",
-      stdio: ["ignore", "ignore", "pipe"],
+      stdio: "ignore",
       windowsHide: true,
     });
-    child.stderr?.on("data", (chunk: Buffer) => {
-      tail = (tail + chunk.toString("utf8")).slice(-TAIL);
-    });
     child.on("error", (error) => finish({ code: null, stderr: error.message, timedOut: false }));
-    child.on("exit", (code) => finish({ code, stderr: tail.trimEnd(), timedOut: false }));
+    child.on("exit", (code) => finish({ code, stderr: "", timedOut: false }));
     const timer = setTimeout(() => {
       if (child.pid !== undefined) killTree(child.pid);
-      finish({ code: null, stderr: tail.trimEnd(), timedOut: true });
+      finish({ code: null, stderr: "", timedOut: true });
     }, timeoutMs);
   });
 }

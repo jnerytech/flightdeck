@@ -17,8 +17,8 @@ export interface PrFlowDeps {
   gh(args: string[]): Promise<GhResult>;
   /** Runs `git <args>` in the repository. */
   git(args: string[]): Promise<GhResult>;
-  /** Runs a command (the FLIGHTDECK_PR_OPENED hook, #273); `stderr` is the tail of its errors. */
-  run?(command: string[]): Promise<GhResult & { stderr?: string }>;
+  /** Runs a command (the FLIGHTDECK_PR_OPENED hook, #273); only its exit code is read. */
+  run?(command: string[]): Promise<GhResult>;
   env: Record<string, string | undefined>;
   log(line: string): void;
 }
@@ -274,10 +274,9 @@ async function prOpenedHook(n: string, branch: string, base: string, deps: PrFlo
   if (hook.length === 0 || !deps.run) return;
   let failure: string | null;
   try {
-    const { code, stderr } = await deps.run([...hook, n, branch, base]);
-    const said = (stderr ?? "").replace(/\s+/g, " ").trim();
-    const reason = said ? `exit ${code}: ${said}` : `exit ${code}`;
-    failure = code === 0 ? null : reason;
+    // Only the exit code: the hook inherits the environment, so what it prints may hold a token.
+    const { code } = await deps.run([...hook, n, branch, base]);
+    failure = code === 0 ? null : `exit ${code}`;
   } catch (error) {
     failure = error instanceof Error ? error.message : String(error);
   }

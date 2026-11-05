@@ -27,7 +27,13 @@ function readHeader(
   line: string,
   added: Map<string, string[]>,
   current: string[] | null,
+  file: string,
 ): string[] | null {
+  // A mode change (chmod) has no hunk: it counts as a permission change of the file.
+  if (line.startsWith("new mode ")) {
+    added.set(file, [...(added.get(file) ?? []), `chmod ${line.slice("new mode ".length)}`]);
+    return current;
+  }
   if (line.startsWith("rename to ")) {
     const path = line.slice("rename to ".length);
     if (!added.has(path)) added.set(path, []);
@@ -37,7 +43,7 @@ function readHeader(
   // git ends a name with a space with a tab; "/dev/null" (a deleted file) adds nothing.
   const path = line.slice(4).replace(/\t$/, "");
   if (!path.startsWith("b/")) return null;
-  const lines: string[] = [];
+  const lines = added.get(path.slice(2)) ?? [];
   added.set(path.slice(2), lines);
   return lines;
 }
@@ -49,12 +55,15 @@ export function addedLines(diff: string): Map<string, string[]> {
   // A header line comes only between `diff --git` and the first hunk: inside a hunk, an added
   // line that reads "++ b/x" shows as "+++ b/x" and stays an added line.
   let inHeader = false;
+  // The file of the current header, from "diff --git a/<old> b/<new>" (the prefixes are forced).
+  let file = "";
   for (const line of diff.split("\n")) {
     if (line.startsWith("diff --git ")) {
       current = null;
       inHeader = true;
+      file = line.slice(line.lastIndexOf(" b/") + 3);
     } else if (line.startsWith("@@")) inHeader = false;
-    else if (inHeader) current = readHeader(line, added, current);
+    else if (inHeader) current = readHeader(line, added, current, file);
     else if (current && line.startsWith("+")) current.push(line.slice(1));
   }
   return added;
@@ -65,21 +74,24 @@ const SOURCE = /\.(?:[cm]?[jt]sx?|rs|sh|ps1|py)$/;
 const NOT_SOURCE =
   /^(?:(?:apps|packages)\/[^/]+\/test|scripts\/(?:test|e2e))\/|\.(?:test|e2e)\.[cm]?[jt]sx?$/;
 /** A line that is only a comment says nothing the code does. */
-const COMMENT = /^\s*(?:\/\/|\/\*|\*|#(?!!))/;
+const COMMENT = /^\s*(?:\/\/.*|\/\*.*\*\/\s*|\/\*(?!.*\*\/).*|\*(?!\/).*|#(?!!).*)$/;
 
 /** The risk areas, in the order they are named, each by what an added line says. */
 const AREAS: [string, RegExp][] = [
   [
     "spawn",
-    /\bspawn\w*\s*\(|\b(?:execFileSync|execFile|execSync)\s*\(|(?<![.\w])exec\s*\(|\b(?:cp|childProcess|child_process)\.exec\w*\s*\(|\bchild_process\b|\bBun\.\$|\bfork\s*\(|\bnew Worker\b|\bexeca\w*\s*\(|\.kill\s*\(|\bprocess\.kill\b|\btaskkill\b|\bpkill\b/,
+    /\bspawn\w*\s*\(|\b(?:execFileSync|execFile|execSync)\s*\(|(?<![.\w])exec\s*\(|\b(?:cp|childProcess|child_process)\.exec\w*\s*\(|\bchild_process\b|\bBun\.\$|\bfork\s*\(|\bnew Worker\b|\bexeca\w*\s*\(|\.kill\s*\(|\bprocess\.kill\b|\btaskkill\b|\bpkill\b|Command::new\s*\(|\bstd::process\b|\bsubprocess\.|\bos\.(?:system|popen|exec\w*|spawn\w*)\s*\(/,
   ],
   [
     "delete",
-    /\b(?:rmSync|rmdirSync|unlinkSync|rm|rmdir|unlink)\s*\(|\bRemove-Item\b|\brm\s+-[a-z]*[rf]/,
+    /\b(?:rmSync|rmdirSync|unlinkSync|rm|rmdir|unlink)\s*\(|\bRemove-Item\b|\brm\s+-[a-z]*[rf]|\bremove_(?:file|dir|dir_all)\s*\(|\bshutil\.rmtree\b|\bos\.(?:remove|unlink|rmdir)\s*\(/,
   ],
   ["secret", /\b(?:token|secret|password|credential|api[_-]?key)s?\b/i],
   ["permission", /\bchmod(?:Sync)?\b|\bchown|\bpermission|\ballowedNetworks\b/i],
-  ["network", /\bBun\.(?:serve|listen|connect)\b|\bfetch\s*\(|\bnew WebSocket\b|\.listen\s*\(/],
+  [
+    "network",
+    /\bBun\.(?:serve|listen|connect)\b|\bfetch\s*\(|\bnew WebSocket\b|\.listen\s*\(|\bTcpListener::bind\b|\bTcpStream::connect\b|\bsocket\.(?:socket|create_connection)\b|\burllib\b|\brequests\.\w+\s*\(/,
+  ],
 ];
 /** Paths that are risky whatever they add: the vault and pairing code, the Tauri shell's
  * capabilities and config (CSP, scopes), and the CI workflows. */
@@ -87,6 +99,12 @@ const SENSITIVE_PATHS: [string, RegExp][] = [
   ["vault or pairing", /(?:^|\/)[^/]*(?:vault|pairing)[^/]*(?:\/|$)/i],
   ["tauri config", /\/src-tauri\/capabilities\/|(?:^|\/)tauri(?:\.[\w-]+)?\.conf\.json$/],
   ["workflow", /^\.github\/workflows\//],
+  // Files whose contents run as code: package scripts, the Rust build, bun's config, Claude's
+  // settings and hooks.
+  [
+    "runs code",
+    /(?:^|\/)(?:package\.json|Cargo\.toml|build\.rs)$|^bunfig[\w.]*\.toml$|^\.claude\/(?:settings[\w.-]*\.json$|hooks\/)/,
+  ],
 ];
 
 /** The changed source files (never a test) in a risk area, sorted by path. */
@@ -179,6 +197,7 @@ export function securityVerdict(git: GitRun, base?: string): SecurityVerdict {
   const log = git([
     ...quiet,
     "log",
+    "--no-show-signature",
     "--topo-order",
     "--diff-merges=combined",
     "--format=%x1e%H%x1f%(trailers:key=Security-Reviewed,valueonly,unfold,separator=%x20)",
