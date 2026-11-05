@@ -45,7 +45,10 @@ const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
 
 export function homeKpis(input: HomeInput): HomeKpis {
   const { days } = input;
-  const byDay = input.costs.flatMap((c) => c.byDay);
+  // A host in a time zone ahead of the app's already is on the next day: that day is the last one here.
+  const last = days.at(-1) ?? "";
+  const clamp = (day: string) => (day > last ? last : day);
+  const byDay = input.costs.flatMap((c) => c.byDay).map((d) => ({ ...d, day: clamp(d.day) }));
   const spendSeries = perDay(
     days,
     byDay.map((d) => [d.day, d.costUsd]),
@@ -59,7 +62,10 @@ export function homeKpis(input: HomeInput): HomeKpis {
           limitUsd: sum(monthly.map((b) => b.limitUsd)),
         };
 
-  const rows = input.usage.flatMap((u) => u.rows).filter((r) => days.includes(r.day));
+  const rows = input.usage
+    .flatMap((u) => u.rows)
+    .map((r) => ({ ...r, day: clamp(r.day) }))
+    .filter((r) => days.includes(r.day));
   const turnSeries = perDay(
     days,
     rows.map((r) => [r.day, r.turns]),
