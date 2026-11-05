@@ -8,7 +8,7 @@
  * claude of phase 5 sends a `PermissionRequest` with `permission_suggestions`, answered with one
  * of them: the hook's answer carries `updatedPermissions`.
  */
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
 import { type FakeClaudeEvent, installFakeClaude } from "../apps/daemon/test/fake-claude.ts";
@@ -301,12 +301,21 @@ async function run(work: string): Promise<void> {
     if (!content.includes("npm test:*"))
       throw new Error(`a regra não chegou ao runtime: ${content}`);
     const settings = join(repo, SETTINGS);
-    const allow = existsSync(settings)
-      ? JSON.parse(readFileSync(settings, "utf8")).permissions?.allow
-      : null;
-    if (JSON.stringify(allow) !== JSON.stringify(["Bash(npm test:*)"])) {
-      throw new Error(`settings.local.json da raiz: ${JSON.stringify(allow)}`);
-    }
+    const allow = (): unknown => {
+      try {
+        return JSON.parse(readFileSync(settings, "utf8")).permissions?.allow ?? null;
+      } catch {
+        return null;
+      }
+    };
+    // The board writes the rule in the background (ruleWrites) after the answer reached the runtime,
+    // so the tool result can come first: wait for the file instead of reading it once.
+    await until(
+      () => JSON.stringify(allow()) === JSON.stringify(["Bash(npm test:*)"]),
+      "regra no settings.local.json da raiz",
+    ).catch(() => {
+      throw new Error(`settings.local.json da raiz: ${JSON.stringify(allow())}`);
+    });
     log("regra Bash(npm test:*) no runtime e no settings.local.json da raiz");
 
     step = "permissão do claude do terminal";
