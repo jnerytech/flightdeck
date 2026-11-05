@@ -80,7 +80,8 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   assertion**, commit the test alone (`test(<area>): ...`), minimal implementation, green, full
   suite, commit `feat(<area>): ...`. Every `feat`/`fix` needs a prior `test` with the same scope;
   the commit hook enforces it. For a deliberate exception, end the message with a trailer line
-  `TDD-Waiver: <why>`; `tdd:audit` lists it as waived.
+  `TDD-Waiver: <why>`; `tdd:audit` lists it as waived. A `feat`/`fix` also names its issue:
+  `(#N)` at the end of the subject, or a `Refs: #N` line, so `release:close` can close it.
 - `git add` always with explicit paths, never `-A`, `-u` or `.`, and `git status --short` before
   the commit. No `git commit -a`. No `git stash` (only `list` and `show`): `refs/stash` is shared
   by every worktree, so a pop can apply another session's changes. Keep work aside with

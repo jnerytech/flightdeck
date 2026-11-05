@@ -3970,3 +3970,17 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   `FLIGHTDECK_BOARD_CMD`, called as `<cmd> <issue> done ""`: the coordinator's `issue-note.sh`,
   whose REST queue of #242 survives a rate limit. Without it the board is skipped, said once. The
   coordinator tooling stays outside the repository; the script only knows the command's contract.
+
+## A feat or fix names its issue (issue #253)
+
+- **Why.** `release:close` (#252) closes the issues a tag's commits name, and nine of v0.36.4's
+  issues shipped in commits that named none: they had to be closed by hand.
+- **The rule.** The commit gate refuses a `feat`/`fix` with no issue: `(#N)` inside the subject's
+  parentheses (`(#12)`, `(#12, #13)`, `(review of rc/0364, #237)`), or a message line or
+  `--trailer` `Refs: #N`, `Closes #N`, `Fixes #N` or `Resolves #N`. A bare `#12` in the subject
+  text or a "see #12" in the body does not count, since `release:close` would not close it either.
+- **Not waived, not wider.** `TDD-Waiver` is for the TDD order and does not lift this rule. Other
+  types (`test`, `docs`, `chore(versao)`, `refactor`) and merges, reverts, `fixup!`, `squash!` need
+  no issue. `release:close` now also reads `Refs:` lines.
+- **The audit does not check it yet.** The commits between v0.36.4 and the day this lands would
+  fail it; once a release has gone out with the gate, the audit can add the same rule.
