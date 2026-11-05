@@ -201,4 +201,17 @@ describe("host-health-ui: one section for the dependencies and the doctor", () =
     render(setup({ checkedAt: null, deps: null }).view);
     expect(section().textContent).toContain("Checking…");
   });
+
+  test("a daemon newer than the app can report an id or a feature the app has no text for, and the section still renders (HD-M2)", () => {
+    const future = {
+      items: [
+        dep("claude", "required", "ok"),
+        dep("future" as never, "optional", "missing", { breaks: ["teleport" as never] }),
+      ],
+    } as DepsResult;
+    render(setup({ deps: future }).view);
+    // The row shows the raw id and the feature; nothing throws.
+    expect(row("future").textContent).toContain("teleport");
+    expect(row("Claude Code")).not.toBeNull();
+  });
 });
