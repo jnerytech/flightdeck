@@ -11,6 +11,7 @@ import { isInside, trimTrailingSeparators } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { FolderPicker } from "./FolderPicker.tsx";
+import { ModelOptions } from "./ModelOptions.tsx";
 
 const MODES: PermissionMode[] = [
   "default",
@@ -229,11 +230,7 @@ export function NewSessionForm(props: {
         {(control) => (
           <NativeSelect {...control} value={model} onChange={(e) => setModel(e.target.value)}>
             <option value="">{t("session.modelDefault")}</option>
-            {models.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
+            <ModelOptions models={models} />
           </NativeSelect>
         )}
       </Field>

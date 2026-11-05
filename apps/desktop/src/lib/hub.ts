@@ -37,6 +37,8 @@ export interface HubRow {
   persona: SessionPersona | null;
   /** Phase 21: `project · persona · number`, on a host with names; null elsewhere. */
   standardName?: string | null;
+  /** Phase 39: set for an OpenCode session only. */
+  runtime?: "opencode";
 }
 
 export interface HubFilter {
@@ -231,6 +233,7 @@ export function hubRows(state: HubRowState): HubRow[] {
         lastActivity: live?.updatedAt ?? s.updatedAt,
         summary: liveLine(s.summary, live),
         persona: s.persona ?? null,
+        ...(s.runtime === "opencode" ? { runtime: "opencode" as const } : {}),
       };
     });
     // Claude Code's background sessions: a session the host has under another origin stays there.

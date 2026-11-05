@@ -39,6 +39,7 @@ import type { ChatItem, SessionState } from "../lib/session-state.ts";
 import { isBusy } from "../lib/status.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Markdown } from "./Markdown.tsx";
+import { ModelOptions } from "./ModelOptions.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
 
@@ -189,6 +190,8 @@ const TimelineItem = memo(function TimelineItem(props: {
   pin: SessionViewProps["pin"];
   /** Set on the latest assistant message only. */
   fork: SessionViewProps["fork"];
+  /** Phase 39: an OpenCode session's timeline. */
+  opencode: boolean;
 }) {
   const { item } = props;
   switch (item.kind) {
@@ -215,7 +218,21 @@ const TimelineItem = memo(function TimelineItem(props: {
         />
       );
     case "permission":
-      return <PermissionItem {...props} item={item} />;
+      return (
+        <>
+          <PermissionItem {...props} item={item} />
+          {/* OpenCode ends the turn on a reject (ACP's reject carries no message). */}
+          {props.opencode && item.resolution?.decision === "deny" && (
+            <div className="text-muted-foreground text-xs">{props.t("session.openCodeDenied")}</div>
+          )}
+        </>
+      );
+    case "context":
+      return (
+        <div className="text-muted-foreground text-xs">
+          {props.t(item.sent ? "session.contextSent" : "session.contextSkipped")}
+        </div>
+      );
     case "result":
       return <TurnResult item={item} t={props.t} />;
     case "persona":
@@ -279,8 +296,10 @@ interface SessionViewProps {
   pin?: { pinned: boolean; toggle(): void };
   /** Forks the conversation at its latest message; offered on that message only. */
   fork?: () => void;
-  /** Phase 39: the agent; an OpenCode session says so and offers no model switch or fork. */
+  /** Phase 39: the agent; an OpenCode session says so and offers no fork. */
   runtime?: "claude" | "opencode";
+  /** Phase 39: OpenCode's models, for the live switch of an OpenCode session (none until known). */
+  models?: readonly string[];
   /** Renders a picker for a folder; `done` gets the path chosen, or null when it was closed. */
   pickPath?: (done: (path: string | null) => void) => ReactNode;
 }
@@ -465,7 +484,7 @@ export function SessionView(props: SessionViewProps) {
   };
 
   const pickers = {
-    ...(props.settings && actions.setModel && !opencode
+    ...(props.settings && actions.setModel && (!opencode || props.models)
       ? {
           model: (
             <NativeSelect
@@ -479,11 +498,7 @@ export function SessionView(props: SessionViewProps) {
               }}
             >
               <option value="">{t("session.modelDefault")}</option>
-              {MODELS.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
+              <ModelOptions models={opencode ? (props.models ?? []) : MODELS} />
             </NativeSelect>
           ),
         }
@@ -611,6 +626,7 @@ export function SessionView(props: SessionViewProps) {
               nowMs={item.kind === "permission" ? (props.nowMs ?? Date.now()) : 0}
               pin={props.pin}
               fork={item.seq === latestAssistant ? fork : undefined}
+              opencode={opencode}
             />
           ))}
           {session.streaming && (

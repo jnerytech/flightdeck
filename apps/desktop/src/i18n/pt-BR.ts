@@ -1727,6 +1727,10 @@ export const ptBR = {
       'Em {host}, "{session}" vai executar tudo sem perguntar antes, a partir de agora, até você voltar o modo. Pode editar e apagar arquivos e rodar comandos.',
     bypassConfirm: "Mudar para ignorar permissões",
     runtimeOpenCode: "OpenCode",
+    openCodeDenied: "O OpenCode parou este turno porque o pedido foi negado.",
+    contextSent: "As instruções do projeto (AGENTS.md) foram com a primeira mensagem.",
+    contextSkipped:
+      "O AGENTS.md não foi enviado: tem mais de 64 KB, ou aponta para fora da pasta ou para uma credencial.",
     modeLabel: "Modo de permissão",
     modelLabel: "Modelo",
     modelDefault: "Modelo padrão",

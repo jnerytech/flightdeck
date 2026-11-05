@@ -47,6 +47,8 @@ export type ChatItem =
       durationMs: number;
       costUsd?: number;
     }
+  /** Phase 39: what went with an OpenCode session's first message (its AGENTS.md), or was left out. */
+  | { kind: "context"; seq: number; sent: boolean }
   | {
       kind: "error";
       seq: number;
@@ -145,13 +147,18 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
           : { busySince: undefined }),
       };
     }
-    case "session.init":
-      return {
+    case "session.init": {
+      const started = {
         ...next,
         model: event.model,
         claudeSessionId: event.claudeSessionId,
         ...(event.slashCommands ? { slashCommands: event.slashCommands } : {}),
       };
+      // Only OpenCode sessions name these; AGENTS.md is the one file there is.
+      const sent = (event.contextFiles?.length ?? 0) > 0;
+      if (!sent && (event.contextSkipped?.length ?? 0) === 0) return started;
+      return { ...started, items: [...started.items, { kind: "context", seq, sent }] };
+    }
     case "message.user":
       return push({
         kind: "user",

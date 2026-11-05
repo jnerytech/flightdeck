@@ -18,6 +18,8 @@ export function SessionCard(props: {
   cost?: string;
   costLabel: string;
   persona?: string | null;
+  /** Phase 39: the agent's name when it is not Claude Code ("OpenCode"). */
+  runtime?: string | null;
   /** The session open on the right. */
   current?: boolean;
   /** The row the keyboard is on. */
@@ -52,6 +54,11 @@ export function SessionCard(props: {
         <span className="min-w-0 truncate">{props.host}</span>
         {props.persona && (
           <span className="shrink-0 rounded bg-muted px-1 text-foreground">{props.persona}</span>
+        )}
+        {props.runtime && (
+          <span data-slot="runtime-badge" className="shrink-0 rounded border px-1 text-foreground">
+            {props.runtime}
+          </span>
         )}
         {props.cost !== undefined && (
           <output aria-label={props.costLabel} className="ml-auto shrink-0 tabular-nums">

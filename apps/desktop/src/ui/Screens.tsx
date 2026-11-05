@@ -126,6 +126,7 @@ function ManagedSession(props: {
   }, [store, state.selected, hostId, sessionId]);
   const summary = host?.sessions.find((s) => s.id === sessionId);
   const session = useSessionState(store, sessionKey(hostId, sessionId));
+  const openCodeModels = useOpenCodeModels(store, hostId, summary?.runtime === "opencode");
   // Estimated cost of the session, once its claudeSessionId is known (phase 8): from its own
   // events, else from the Sessões list.
   const claudeId =
@@ -193,6 +194,7 @@ function ManagedSession(props: {
         {...(pin ? { pin } : {})}
         {...(fork ? { fork } : {})}
         {...(summary?.runtime ? { runtime: summary.runtime } : {})}
+        {...(openCodeModels ? { models: openCodeModels } : {})}
         settings={hasFeature(host?.hostInfo?.features, "session.settings", false)}
         {...(host?.hostInfo?.allowBypassPermissions === true
           ? { bypass: { host: host.name } }
@@ -846,6 +848,22 @@ function routeScreen(props: ScreenProps): ReactNode {
   const selectedHost = selected ? hostOf(selected.hostId) : undefined;
   if (selectedHost) return <NewSession store={store} state={state} host={selectedHost} />;
   return null;
+}
+
+/** Phase 39: the host's OpenCode models, for an OpenCode session's live switch; null until known. */
+function useOpenCodeModels(store: AppStore, hostId: string, opencode: boolean): string[] | null {
+  const [models, setModels] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!opencode) return;
+    let live = true;
+    void store.hostRequest(hostId, "runtime.models", { runtime: "opencode" }).then((result) => {
+      if (live) setModels(result.ok ? result.data.models.map((m) => m.id) : []);
+    });
+    return () => {
+      live = false;
+    };
+  }, [store, hostId, opencode]);
+  return opencode ? models : null;
 }
 
 /** "Iniciar em segundo plano": the session runs under Claude Code's supervisor; the hub shows it. */

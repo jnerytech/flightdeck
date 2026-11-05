@@ -1731,6 +1731,10 @@ export const en: Dictionary = {
       'On {host}, "{session}" will run everything without asking you first, from now on, until you change the mode back. It can edit and delete files and run commands.',
     bypassConfirm: "Switch to bypass",
     runtimeOpenCode: "OpenCode",
+    openCodeDenied: "OpenCode stopped this turn because the request was denied.",
+    contextSent: "Project instructions (AGENTS.md) went with the first message.",
+    contextSkipped:
+      "AGENTS.md was not sent: it is over 64 KB, or it links out of the folder or to a credential.",
     modeLabel: "Permission mode",
     modelLabel: "Model",
     modelDefault: "Default model",

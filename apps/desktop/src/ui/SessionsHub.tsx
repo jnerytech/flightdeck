@@ -457,6 +457,7 @@ export function SessionsHub(props: {
                       line={sessionLineText(row.summary, store.now(), t)}
                       {...cardCost(row)}
                       persona={row.persona?.name ?? null}
+                      runtime={row.runtime ? t("session.runtimeOpenCode") : null}
                       current={props.isOpen(row)}
                       active={listed[cursor]?.key === row.key}
                       onOpen={() => {
@@ -520,6 +521,14 @@ export function SessionsHub(props: {
                         {row.persona && (
                           <span className="shrink-0 rounded bg-muted px-1 text-xs">
                             {row.persona.name}
+                          </span>
+                        )}
+                        {row.runtime && (
+                          <span
+                            data-slot="runtime-badge"
+                            className="shrink-0 rounded border px-1 text-xs"
+                          >
+                            {t("session.runtimeOpenCode")}
                           </span>
                         )}
                         {row.controllable && (
