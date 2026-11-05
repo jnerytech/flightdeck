@@ -125,4 +125,11 @@ describe("opencode-serve: one private server for a preflight (issue #243)", () =
       "/api/agent answered something that is not JSON",
     );
   });
+
+  test("a route asked after the server is gone fails with the route only", async () => {
+    const { start } = setup();
+    const server = await start();
+    await server.stop();
+    expect(await refusal(server.get("/api/config"))).toBe("/api/config could not be asked");
+  });
 });
