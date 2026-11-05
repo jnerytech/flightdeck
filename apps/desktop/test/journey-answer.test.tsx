@@ -97,8 +97,8 @@ describe("journey-answer: a request is answered from where it was announced", ()
     expect(store.getState().inbox[0]?.route).toEqual({
       name: "session",
       host: hostId,
-      id: ids[0],
-      focus: item?.requestId,
+      id: ids[0] as string,
+      focus: item?.requestId as string,
     });
     await store.respondTo(hostId, item?.requestId ?? "", "deny");
     await settle(() => needsYou(store.getState()).length === 0);
