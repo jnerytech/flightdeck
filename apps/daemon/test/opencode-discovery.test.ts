@@ -14,6 +14,7 @@ interface Call {
   argv: string[];
   cwd: string;
   env: Record<string, string>;
+  timeoutMs: number;
 }
 
 /** Deps where `opencode` is on PATH at /bin/opencode, version 2.2.5, a clean scope and a passing canary. */
@@ -153,6 +154,34 @@ describe("opencode-discovery", () => {
     });
     const same = deps({}, { "api GET /api/config --standalone": sources() });
     expect((await discoverOpenCode({ enabled: true }, same.deps)).available).toBe(true);
+  });
+
+  test("any source but the global folder, its config files and our document fails the canary", async () => {
+    const odd = JSON.stringify([
+      { type: "directory", path: "/home/u/.config/opencode" },
+      { type: "document", path: "/private/tmp/canary/opencode.json" },
+    ]);
+    const { deps: d } = deps({}, { "api GET /api/config --standalone": odd });
+    expect((await discoverOpenCode({ enabled: true }, d)).reason).toBe("opencode_scope_mismatch");
+  });
+
+  test("only 2.2.5 itself is verified; the version probe runs with the OpenCode env and 5 s", async () => {
+    const { deps: d, calls } = deps({}, { "--version": "opencode v2.1.0" });
+    const info = await discoverOpenCode({ enabled: true }, d);
+    expect([info.available, info.verified]).toEqual([true, false]);
+    const probe = calls.find((c) => c.argv.includes("--version"));
+    expect([
+      probe?.env.OPENCODE_DISABLE_PROJECT_CONFIG,
+      probe?.env.OPENCODE_CONFIG,
+      probe?.timeoutMs,
+    ]).toEqual(["1", undefined, 5_000]);
+  });
+
+  test("the executable's size and time are kept, for the preflight to notice a replaced binary", async () => {
+    const { deps: d } = deps({
+      statFile: async (path) => (path === "/bin/opencode" ? "100:5" : null),
+    });
+    expect((await discoverOpenCode({ enabled: true }, d)).fingerprint).toBe("100:5");
   });
 
   test("the canary listed as a source means project config is not off; a failed canary is not available either", async () => {

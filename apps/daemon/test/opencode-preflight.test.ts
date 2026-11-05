@@ -292,6 +292,21 @@ describe("opencode-preflight", () => {
     expect(calls.length).toBe(3);
   });
 
+  test("a binary replaced since the daemon checked it refuses until it is checked again", async () => {
+    let now = "100:5";
+    const { preflight, calls } = setup(
+      {},
+      { exe: { fingerprint: "100:5", current: async () => now } },
+    );
+    expect(await refusal(preflight.check("/w"))).toBe(null);
+    now = "200:9";
+    expect(await refusal(preflight.check("/other"))).toEqual({
+      reason: "opencode_changed",
+      params: { version: "2.2.5" },
+    });
+    expect(calls.length).toBe(3);
+  });
+
   test("maskResource cuts at 40 characters and hides token-like runs", () => {
     expect(maskResource("git push *")).toBe("git push *");
     expect(maskResource("export KEY=sk_live_0123456789abcdefABCDEF")).toBe("export KEY=•••");
