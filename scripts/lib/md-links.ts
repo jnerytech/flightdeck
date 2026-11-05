@@ -79,7 +79,7 @@ export function missingDocRefs(
 ): string[] {
   const missing: string[] = [];
   for (const [file, source] of code) {
-    for (const m of source.matchAll(/\bdocs\/[\w./-]*\.md\b/g)) {
+    for (const m of source.matchAll(/\bdocs\/\w[\w./-]*\.md\b/g)) {
       if (!exists(m[0])) missing.push(`${file}: ${m[0]}`);
     }
   }
