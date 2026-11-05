@@ -61,6 +61,31 @@ for (const [lang, t] of [
       expect(store.router.current.name).toBe("hub");
     });
 
+    test("a read that fails on a live host says so, and Try again reads again", async () => {
+      const store = await openReader(lang, "no-such-session", true);
+      await settle(() =>
+        (document.body.textContent ?? "").includes(fill(t.reader.missing, "alfa")),
+      );
+      // From here on the host answers every read with an error that is not "not found".
+      const real = store.hostRequest.bind(store);
+      let reads = 0;
+      store.hostRequest = (async (hostId, type, payload) => {
+        if (type !== "history.get") return real(hostId, type, payload);
+        reads++;
+        return { ok: false, code: "internal", message: "disk error" };
+      }) as typeof store.hostRequest;
+      const id = store.getState().hosts[0]?.id ?? "";
+      await act(async () => {
+        store.router.push({ name: "reader", target: { hostId: id, claudeSessionId: "other" } });
+      });
+      await settle(() => screen.queryByRole("button", { name: t.reader.retry }) !== null);
+      expect(document.body.textContent ?? "").toContain(fill(t.reader.failed, "alfa"));
+      await act(async () => {
+        fireEvent.click(screen.queryByRole("button", { name: t.reader.retry }) as HTMLElement);
+      });
+      await settle(() => reads === 2);
+    });
+
     // A screen of a host that does not answer waited on "connecting" forever: after a failed try
     // it says the host is offline, why, and offers to reconnect.
     test("a host that does not answer: the screen says it is offline, with Reconnect now", async () => {
