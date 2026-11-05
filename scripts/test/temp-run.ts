@@ -70,6 +70,6 @@ export function installTempRun(
 }
 
 /** Removes the run's folder; true when it is gone. */
-export function removeTempRun(run: TempRun): boolean {
+export function removeTempRun(run: TempRun, _budgetMs?: number, _now?: () => number): boolean {
   return remove(run.dir);
 }

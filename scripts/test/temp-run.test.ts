@@ -71,4 +71,20 @@ describe("temp-run: each test run has a temp folder of its own, removed at the e
       expect(readdirSync(base)).toEqual([]);
     }
   }, 60_000);
+
+  test("removing a big folder stops at the time budget, leaves the rest to the next run's sweep and never throws", () => {
+    const base = realTempDir("fd-temp-run-base-");
+    const run = installTempRun({}, base);
+    for (let i = 0; i < 20; i++) {
+      mkdirSync(join(run.dir, `fd-test-${i}`));
+      writeFileSync(join(run.dir, `fd-test-${i}`, "f.txt"), "x");
+    }
+    let clock = 0;
+    // Every look at the clock costs a millisecond: a budget of 5 ms cannot reach the end.
+    expect(removeTempRun(run, 5, () => clock++)).toBe(false);
+    expect(readdirSync(run.dir).length).toBeGreaterThan(1);
+    // The pid file stays until the end, so the sweep still knows the folder is dead and takes it.
+    installTempRun({}, base, () => false);
+    expect(readdirSync(base).filter((name) => run.dir.endsWith(name))).toEqual([]);
+  });
 });
