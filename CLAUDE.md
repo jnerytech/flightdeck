@@ -17,8 +17,11 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   generated files, test edits that add `.only`/`.skip`/`test.todo`/`toMatchSnapshot`, commits
   that break `type(scope): text` or the TDD order, and heavy runs outside the slot, and that run
   Biome after each edit, in the main checkout and its worktrees. The hook rules live in `scripts/lib/claude-hooks.ts`;
-  `bun run harness:stats` shows how often each rule blocked and how long the hooks took. Personal
-  settings go to `.claude/settings.local.json` (ignored).
+  `bun run harness:stats` shows how often each rule blocked and how long the hooks took. Rules per
+  area live in `.claude/rules/` (ui, protocol, daemon, tests, scripts) and load when a matching file
+  is touched; a SessionStart hook states the branch, the tested scopes and the slot, and after a
+  compact reminds that those rules come back only with a matching file. Personal settings go to
+  `.claude/settings.local.json` (ignored).
 
 ## Commands
 
@@ -102,6 +105,8 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
 - The product version is the same in the protocol, the daemon, the desktop and
   `tauri.conf.json`. A test checks this; change the version with the `test(versao)` cycle.
 - Each phase runs in a sibling worktree (`../flightdeck-faseN`, branch `fase-N`, from `main`).
+  Start its session there (`cd ../flightdeck-faseN && claude`, or `/cd` into it): the worktree's
+  own rules and hooks load only for a session whose folder is that worktree.
   Each phase also updates both manuals (`docs/manual/en.md` and `pt-BR.md`).
 - Divergences from the spec go to `docs/DECISIONS.md`, in the phase's section.
 

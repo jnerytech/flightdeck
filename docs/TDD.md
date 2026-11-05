@@ -95,6 +95,12 @@ only the files listed are instrumented. Limits: it follows the test process only
 runs in a spawned child counts as not called), and istanbul skips private `#methods`. Use it before
 hand-off on the files you changed, to close a function gap without bisecting.
 
+**Functional core, imperative shell.** Logic that decides is a function that takes its effects
+(git, fs, clock, spawn, network) as a deps object or an injected context, as `runAudit({ since,
+git, readFile })` and the daemon's service contexts do; the entry file or the command handler
+only wires the real ones. The tests then pass fakes instead of `mock.module`, which leaks across
+files. This is a rule, not a style rewrite: React components and Bun idioms stay as they are.
+
 ## Travas
 
 Os testes provam o comportamento sem tocar em nada real. As travas tornam isso verificável,
