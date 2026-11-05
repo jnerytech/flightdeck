@@ -12,6 +12,7 @@ import {
   checkoutRoot,
   commandViolation,
   commitViolation,
+  commitWaived,
   generatedViolation,
   testEditViolation,
 } from "../../scripts/lib/claude-hooks.ts";
@@ -55,5 +56,6 @@ if (typeof filePath === "string") {
     }),
   );
 }
-logHook("guard", null);
+if (typeof command === "string" && commitWaived(command)) logHook("guard", "commit", "waived");
+else logHook("guard", null);
 process.exit(0);

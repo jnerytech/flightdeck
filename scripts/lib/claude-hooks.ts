@@ -186,6 +186,11 @@ export function commitViolation(command: string, cwd: string, deps: CommitGateDe
   return `${type}(${scope}) is blocked: no earlier test(${scope}) commit since ${base} (docs/TDD.md: commit the failing test first). For a deliberate exception, end the message with a trailer line "TDD-Waiver: <why>"; tdd:audit lists it.`;
 }
 
+/** Whether the command commits with a `TDD-Waiver:` trailer (the hook log counts these). */
+export function commitWaived(command: string): boolean {
+  return findCommit(command, "")?.waived ?? false;
+}
+
 const COMMIT_TYPES = [
   "test",
   "feat",

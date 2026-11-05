@@ -4,9 +4,13 @@
  */
 import { appendFileSync, existsSync, renameSync, statSync } from "node:fs";
 import { resolve } from "node:path";
-import { appendHookLog, hookLogPath } from "../../scripts/lib/hook-log.ts";
+import { appendHookLog, type HookLogEntry, hookLogPath } from "../../scripts/lib/hook-log.ts";
 
-export function logHook(hook: string, rule: string | null): void {
+export function logHook(
+  hook: string,
+  rule: string | null,
+  decision: HookLogEntry["decision"] = rule ? "block" : "allow",
+): void {
   try {
     const path = hookLogPath(process.env.CLAUDE_PROJECT_DIR ?? resolve(import.meta.dir, "../.."));
     if (!path) return;
@@ -16,7 +20,7 @@ export function logHook(hook: string, rule: string | null): void {
         t: new Date().toISOString(),
         hook,
         rule,
-        decision: rule ? "block" : "allow",
+        decision,
         ms: Math.round(performance.now()),
       },
       {

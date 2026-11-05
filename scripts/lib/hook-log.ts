@@ -13,7 +13,8 @@ export interface HookLogEntry {
   hook: string;
   /** The rule that blocked, or null when the call passed. */
   rule: string | null;
-  decision: "allow" | "block";
+  /** `waived`: a commit the gate let through because of its TDD-Waiver trailer. */
+  decision: "allow" | "block" | "waived";
   /** Milliseconds from the hook process start to the decision. */
   ms: number;
 }
@@ -49,9 +50,11 @@ export function summarizeHookLog(text: string): string {
   if (lines.length === 0) return "no hook calls logged yet";
   const byHook = new Map<string, HookLogEntry[]>();
   const byRule = new Map<string, number>();
+  const waivedByRule = new Map<string, number>();
   for (const e of entries) {
     byHook.set(e.hook, [...(byHook.get(e.hook) ?? []), e]);
-    if (e.rule) byRule.set(e.rule, (byRule.get(e.rule) ?? 0) + 1);
+    const counts = e.decision === "waived" ? waivedByRule : byRule;
+    if (e.rule) counts.set(e.rule, (counts.get(e.rule) ?? 0) + 1);
   }
   const hookWidth = Math.max(4, ...[...byHook.keys()].map((h) => h.length)) + 2;
   const out = [`${"hook".padEnd(hookWidth)}calls  blocks  p50 ms  p95 ms`];
@@ -62,10 +65,14 @@ export function summarizeHookLog(text: string): string {
       `${hook.padEnd(hookWidth)}${String(calls.length).padStart(5)}${String(blocks).padStart(8)}${String(percentile(ms, 0.5)).padStart(8)}${String(percentile(ms, 0.95)).padStart(8)}`,
     );
   }
-  if (byRule.size > 0) {
-    const ruleWidth = Math.max(...[...byRule.keys()].map((r) => r.length)) + 2;
-    out.push("", "blocks by rule:");
-    for (const [rule, n] of [...byRule].sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [title, counts] of [
+    ["blocks by rule:", byRule],
+    ["waivers by rule:", waivedByRule],
+  ] as const) {
+    if (counts.size === 0) continue;
+    const ruleWidth = Math.max(...[...counts.keys()].map((r) => r.length)) + 2;
+    out.push("", title);
+    for (const [rule, n] of [...counts].sort(([a], [b]) => a.localeCompare(b))) {
       out.push(`  ${rule.padEnd(ruleWidth)}${n}`);
     }
   }
@@ -85,7 +92,7 @@ function parseEntry(line: string): HookLogEntry | null {
     const ok =
       typeof e?.hook === "string" &&
       typeof e.ms === "number" &&
-      (e.decision === "allow" || e.decision === "block");
+      ["allow", "block", "waived"].includes(e.decision);
     return ok ? (e as HookLogEntry) : null;
   } catch {
     return null;
