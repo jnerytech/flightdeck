@@ -3711,3 +3711,18 @@ Findings:
 - **A parity gap outside this phase.** Claude sessions started by Flightdeck load the project's settings
   (`settingSources` includes `project`), so a repo's Claude Code hooks and MCP servers run there without a question too.
   Worth its own issue.
+
+### Phase 39: proof of concept answers 6 and 7 (recorded fixtures)
+
+Recorded on 2026-11-04 with Sonnet into `apps/daemon/test/fixtures/opencode-acp/` (README there), with the shipped config
+and project config off; both sessions deleted afterwards.
+
+- **Tool names and inputs (6).** ACP's `name` is on the first `tool_call` (status `pending`, `rawInput` empty or
+  `{ cwd }`) and on the permission request's `toolCall`; later `tool_call_update`s carry only the `toolCallId`, so the
+  normalizer keeps the name by id. Inputs: `write { path, content }`, `edit { path, oldString, newString }`,
+  `read { path }`, `glob { pattern }`, `grep { pattern }` (a `path` only when outside the folder), `webfetch { url }`,
+  `shell { command, cwd }`, `subagent { agent, description, prompt }`. Reads, globs and greps inside the folder raised no
+  request. Results come as `content` text blocks plus `rawOutput.metadata` (an edit's has the patch).
+- **Child sessions (7),** recorded with a scratch config that allows `subagent`: the child's updates and its permission
+  request carry `_meta["opencode/child-session"] = { id, parentID, depth, title }` and a tool call id
+  `<childSessionId>:<id>`, on the parent's `sessionId`, as the docs say.
