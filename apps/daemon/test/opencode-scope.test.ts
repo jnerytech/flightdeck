@@ -3,6 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import {
+  defaultManagedDirs,
   globalConfigDir,
   type ScopeOptions,
   scanOpenCodeScope,
@@ -92,6 +93,27 @@ describe("opencode-scope", () => {
     expect(await kinds(s.opts)).toEqual([
       ["system_config", null],
       ["managed_config", null],
+    ]);
+  });
+
+  test("on macOS the managed preferences of the machine and of the user are scanned; elsewhere none", () => {
+    expect(defaultManagedDirs("darwin", { USER: "ana" })).toEqual([
+      "/Library/Managed Preferences",
+      join("/Library/Managed Preferences", "ana"),
+    ]);
+    expect(defaultManagedDirs("darwin", {})).toEqual(["/Library/Managed Preferences"]);
+    expect(defaultManagedDirs("linux", { USER: "ana" })).toEqual([]);
+    expect(defaultManagedDirs("win32", { USER: "ana" })).toEqual([]);
+  });
+
+  test("any file in the system folder is a finding, not only the config names", async () => {
+    const s = scope();
+    mkdirSync(join(s.system, "plugins"), { recursive: true });
+    writeFileSync(join(s.system, "plugins", "x.ts"), "");
+    writeFileSync(join(s.system, "AGENTS.md"), "x");
+    expect((await kinds(s.opts)).sort()).toEqual([
+      ["system_config", null],
+      ["system_config", null],
     ]);
   });
 
