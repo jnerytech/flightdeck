@@ -53,6 +53,11 @@ export async function gitWithin(
   return out.timedOut ? { ...out, code: out.code === 0 ? 124 : out.code } : out;
 }
 
+/** How long a git command may take: the remove has its own deadline (stub). */
+export function gitDeadlineFor(_args: string[], deadlineMs: number): number {
+  return deadlineMs;
+}
+
 /** The panel over the board's projects and cards, the live sessions, the runs and the machine's disk. */
 export function createWorktrees(deps: WorktreesDeps): Worktrees {
   return new Worktrees({

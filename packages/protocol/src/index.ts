@@ -4218,6 +4218,8 @@ export const WorktreeBlocker = z.enum([
   "other_branch",
   /** It holds files git ignores that are not rebuildable (not `node_modules`, build output…). */
   "ignored_files",
+  /** A tracked file is hidden from `git status` (`assume-unchanged`, `skip-worktree`): its edits would go. */
+  "hidden_changes",
 ]);
 export type WorktreeBlocker = z.infer<typeof WorktreeBlocker>;
 export const WorktreeItem = z.object({
