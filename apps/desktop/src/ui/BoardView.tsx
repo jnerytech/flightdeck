@@ -1,9 +1,11 @@
 import type { BoardColumn, Card, Project } from "@flightdeck/protocol";
 import { Columns3, ListTodo, Lock, MoreHorizontal, Plus } from "lucide-react";
 import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { BoardNotice } from "@/components/board/board-notice";
 import { BoardSyncControl } from "@/components/board/board-sync";
 import { BulkDiscardDialog, hasStartedWork } from "@/components/board/bulk-discard-dialog";
 import { ColumnHandle } from "@/components/board/column-handle";
+import { ColumnHeader } from "@/components/board/column-header";
 import { SelectionBar } from "@/components/board/selection-bar";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
@@ -520,15 +522,11 @@ export const BoardView = memo(function BoardView(props: {
           />
         )}
         {notice && (
-          <div
-            role="status"
-            className="flex items-center justify-between gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-sm"
-          >
-            <span>{notice}</span>
-            <Button size="sm" variant="ghost" onClick={() => setNotice(null)}>
-              {t("board.dismiss")}
-            </Button>
-          </div>
+          <BoardNotice
+            text={notice}
+            dismiss={t("board.dismiss")}
+            onDismiss={() => setNotice(null)}
+          />
         )}
         {/* biome-ignore lint/a11y/noStaticElementInteractions: Esc clears the selection from any card inside the board */}
         <div
@@ -563,21 +561,14 @@ export const BoardView = memo(function BoardView(props: {
                 drop(id);
               }}
             >
-              <div className="flex items-center justify-between gap-2 px-1">
-                <h3 className="font-medium text-muted-foreground text-xs">
-                  {t(`kanban.columns.${id}` as Key)}
-                </h3>
-                <span
-                  data-slot="column-count"
-                  className="rounded-full bg-muted px-1.5 text-muted-foreground text-xs tabular-nums"
-                >
-                  {columnCount(
-                    shown.filter((card) => card.column === id).length,
-                    all.filter((card) => card.column === id).length,
-                    filtering,
-                  )}
-                </span>
-              </div>
+              <ColumnHeader
+                title={t(`kanban.columns.${id}` as Key)}
+                count={columnCount(
+                  shown.filter((card) => card.column === id).length,
+                  all.filter((card) => card.column === id).length,
+                  filtering,
+                )}
+              />
               <ul className="flex flex-col gap-2">
                 {shown
                   .filter((card) => card.column === id)
