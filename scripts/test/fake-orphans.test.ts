@@ -41,14 +41,19 @@ async function within(ms: number, check: () => boolean): Promise<boolean> {
   return check();
 }
 
-/** Starts the fake from a short-lived bun parent that exits at once; the fake's pid. */
-async function orphanedFake(dir: string): Promise<number> {
+/**
+ * Starts the fake from a short-lived bun parent, which exits once the fake is going: once the fake
+ * recorded its pid (`started`), or once the fake itself ended (`ended`, for a pipe holder it leaves
+ * behind). The fake's pid.
+ */
+async function orphanedFake(dir: string, until: "started" | "ended"): Promise<number> {
+  const spawn = `const c = Bun.spawn([process.execPath, ${JSON.stringify(MAIN)}, ${JSON.stringify(dir)}, "auth", "login"], { stdio: ["ignore", "ignore", "ignore"] });`;
+  const wait =
+    until === "ended"
+      ? "await c.exited;"
+      : `while (!require("node:fs").existsSync(${JSON.stringify(join(dir, "pids"))} + "/" + c.pid)) await Bun.sleep(10);`;
   const parent = Bun.spawn(
-    [
-      process.execPath,
-      "-e",
-      `const c = Bun.spawn([process.execPath, ${JSON.stringify(MAIN)}, ${JSON.stringify(dir)}, "auth", "login"], { stdio: ["ignore", "ignore", "ignore"] }); console.log(c.pid); process.exit(0);`,
-    ],
+    [process.execPath, "-e", `${spawn} ${wait} console.log(c.pid); process.exit(0);`],
     { stdout: "pipe", stderr: "ignore" },
   );
   const pid = Number((await new Response(parent.stdout).text()).trim());
@@ -60,7 +65,7 @@ async function orphanedFake(dir: string): Promise<number> {
 describe("fake-orphans", () => {
   test("a fake whose caller is gone stops waiting within a second", async () => {
     const dir = fakeDir([WAITING]);
-    const pid = await orphanedFake(dir);
+    const pid = await orphanedFake(dir, "started");
     expect(await within(1500, () => !pidAlive(pid))).toBe(true);
   });
 
@@ -77,7 +82,7 @@ describe("fake-orphans", () => {
 
   test("a fake records its pid while it runs, and its pipe holder's, and the holder stops with the caller", async () => {
     const dir = fakeDir([{ ...WAITING, delayMs: 0, holdPipesMs: 30_000 }]);
-    const pid = await orphanedFake(dir);
+    const pid = await orphanedFake(dir, "ended");
     expect(await within(1500, () => recorded(dir).some((p) => p !== pid))).toBe(true);
     const holder = recorded(dir).find((p) => p !== pid) ?? 0;
     started.push(holder);
