@@ -1,6 +1,13 @@
 import { type KeyboardEvent, useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { type AppState, type AppStore, type GlobalHit, needsYou } from "../lib/app-store.ts";
+import type { T } from "../i18n/index.ts";
+import {
+  type AppState,
+  type AppStore,
+  type GlobalHit,
+  needsYou,
+  type PendingItem,
+} from "../lib/app-store.ts";
 import {
   type PaletteItem,
   type PaletteSection,
@@ -8,6 +15,7 @@ import {
   paletteSections,
 } from "../lib/palette.ts";
 import { basename } from "../lib/paths.ts";
+import { pendingText } from "../lib/pending-text.ts";
 import { hasFeature } from "../lib/version.ts";
 
 /** Renders a daemon snippet, where every match comes wrapped in `«` and `»`. */
@@ -81,7 +89,7 @@ export function GlobalSearch(props: {
         t: store.i18n.t,
         globalSnippets: store.globalSnippets.list(),
         recents: store.paletteRecents(),
-        waiting: needsYou(props.state).length > 0,
+        ...oldestOf(needsYou(props.state), store.i18n.t),
         modeSwitch: modeSwitch(store),
       });
   const visible = sections.flatMap((section) => section.items);
@@ -217,4 +225,14 @@ function modeSwitch(store: AppStore): "simple" | "full" | null {
   const now = hostId ? store.uiMode(hostId) : null;
   if (!now?.canSwitch) return null;
   return now.mode === "simple" ? "full" : "simple";
+}
+
+/** The palette's line for the oldest waiting request, and whether it must be opened to be seen. */
+function oldestOf(items: PendingItem[], t: T): { oldest?: { text: string; opens: boolean } } {
+  const item = items[0];
+  if (!item) return {};
+  const opens = Boolean(item.gate || item.vault || item.risk === "high");
+  return {
+    oldest: { text: `${item.hostName} · ${item.sessionName}: ${pendingText(item, t)}`, opens },
+  };
 }

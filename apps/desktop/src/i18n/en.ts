@@ -956,8 +956,9 @@ export const en: Dictionary = {
     goSessions: "Go to Sessions",
     goNeedsYou: "Go to Needs you",
     goProjects: "Go to Projects",
-    approveOldest: "Approve the oldest request",
-    denyOldest: "Deny the oldest request",
+    openOldest: "Open the oldest request: {what}",
+    approveOldest: "Approve the oldest request: {what}",
+    denyOldest: "Deny the oldest request: {what}",
     showShortcuts: "Show the keyboard shortcuts",
   },
   time: {

@@ -1087,7 +1087,11 @@ export class AppStore {
   /** Approves or denies the oldest waiting request; a high-risk one is opened, as in the tray. */
   decideOldest(decision: "approve" | "deny"): void {
     const item = needsYou(this.state)[0];
-    if (item) this.onTrayAction({ key: `${item.hostId}/${item.requestId}`, action: decision });
+    if (!item) return;
+    // A gate or a vault request is opened to be seen, never answered blind (issue #187); the
+    // palette is not the tray, so a vault grant is never logged as the tray's.
+    if (item.gate || item.vault) this.openRequest(item);
+    else this.onTrayAction({ key: `${item.hostId}/${item.requestId}`, action: decision });
   }
 
   /** What the palette was used for lately, most recent first. */
