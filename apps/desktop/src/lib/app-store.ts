@@ -138,6 +138,7 @@ import {
   terminalLaunch,
 } from "./terminal.ts";
 import type { TerminalHost } from "./terminal-session.ts";
+import { CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
 import { loadTileLayout, saveTileLayout, type TileLayout } from "./tiles.ts";
@@ -763,6 +764,20 @@ export class AppStore {
     this.theme = new ThemeController(platform);
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
+    this.cacheTimer = new CacheTimerSettings(platform.storage);
+    this.clock = new SharedClock({
+      now: () => this.now(),
+      every: (fn, ms) => {
+        const id = setInterval(fn, ms);
+        return () => clearInterval(id);
+      },
+      hidden: () => typeof document !== "undefined" && document.hidden,
+      onVisibility: (fn) => {
+        if (typeof document === "undefined") return () => {};
+        document.addEventListener("visibilitychange", fn);
+        return () => document.removeEventListener("visibilitychange", fn);
+      },
+    });
     this.i18n = new I18n(platform);
     this.i18n.subscribe(() => this.onLanguage());
     this.state = {
@@ -827,6 +842,10 @@ export class AppStore {
   readonly theme: ThemeController;
   readonly density: DensityController;
   readonly terminalFont: TerminalFontController;
+  /** The prompt cache countdown on idle sessions: off by default (issue #159). */
+  readonly cacheTimer: CacheTimerSettings;
+  /** One 1-second clock for every countdown on screen. */
+  readonly clock: SharedClock;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** The screen in use and its history (phase 10). */
