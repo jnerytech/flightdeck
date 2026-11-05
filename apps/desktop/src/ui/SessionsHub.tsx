@@ -1,9 +1,10 @@
 import type { SessionMeta } from "@flightdeck/protocol";
-import { ListFilter, Moon, MoreHorizontal, Radio, X } from "lucide-react";
+import { ListFilter, MoreHorizontal, Radio, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AssignMenu } from "@/components/clients/assign-menu";
 import { ClientChip } from "@/components/clients/client-chip";
 import { HostsBanner } from "@/components/hosts/hosts-banner";
+import { AsleepMark } from "@/components/hub/asleep-mark";
 import { CardGrid } from "@/components/hub/card-grid";
 import { SessionCard } from "@/components/hub/session-card";
 import { ViewToggle } from "@/components/hub/view-toggle";
@@ -533,12 +534,7 @@ export function SessionsHub(props: {
                             {row.persona.name}
                           </span>
                         )}
-                        {row.asleep && (
-                          <span className="inline-flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
-                            <Moon aria-hidden="true" className="size-3" />
-                            {t("hub.asleep")}
-                          </span>
-                        )}
+                        {row.asleep && <AsleepMark label={t("hub.asleep")} />}
                         {row.controllable && (
                           <>
                             <Radio
