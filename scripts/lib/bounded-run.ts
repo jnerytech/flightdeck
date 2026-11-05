@@ -26,7 +26,7 @@ export interface KillDeps {
   systemRoot?: string;
 }
 
-const KILL: KillDeps = {
+export const SYSTEM_KILL: KillDeps = {
   platform: process.platform,
   runSync: (program, args) => {
     spawnSync(program, args, { stdio: "ignore" });
@@ -36,7 +36,7 @@ const KILL: KillDeps = {
 };
 
 /** Kills a process and everything it started: its group on POSIX, its tree on Windows. */
-export function killTree(pid: number, deps: KillDeps = KILL): void {
+export function killTree(pid: number, deps: KillDeps = SYSTEM_KILL): void {
   try {
     if (deps.platform === "win32") {
       const taskkill = join(deps.systemRoot ?? "C:\\Windows", "System32", "taskkill.exe");
