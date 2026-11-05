@@ -112,7 +112,9 @@ describe("text the screen cuts is revealed by a real tooltip, never a native tit
       fireEvent.keyDown(columns[1] as HTMLElement, { key: "End" });
     });
     expect(document.activeElement).toBe(columns[2] as HTMLElement);
-    expect(await tipOf(columns[2] as HTMLElement)).toBe(columns[2]?.getAttribute("aria-label"));
+    expect(await tipOf(columns[2] as HTMLElement)).toBe(
+      columns[2]?.getAttribute("aria-label") ?? "",
+    );
   });
 
   test("tile layout: the options have no title; focusing one shows what it does", async () => {
