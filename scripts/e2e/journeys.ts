@@ -779,6 +779,36 @@ async function bellPanelProblems(c: Context): Promise<string[]> {
   return found.map((issue) => `${c.lang} painel do sino: ${issue}`);
 }
 
+/**
+ * A session at a small window (issue #135): the message box is whole inside the window and the
+ * conversation keeps a minimum height, whatever the header and the summary take. 40% of the window
+ * is out of reach at 720x480, where the title bar and the tabs already take about 190 px: the floor
+ * is 150 px (the old three-line header left about 80).
+ */
+const MIN_CONVERSATION = 150;
+
+async function sessionFitsProblems(c: Context): Promise<string[]> {
+  await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
+  await c.page.locator("[data-slot='composer-card']").first().waitFor({ timeout: WAIT });
+  return c.page.evaluate((min) => {
+    const found: string[] = [];
+    const height = window.innerHeight;
+    const card = document.querySelector<HTMLElement>("[data-slot='composer-card']");
+    const at = card?.getBoundingClientRect();
+    if (!at || at.top < 0 || at.bottom > height + 1) {
+      found.push(
+        `a caixa de mensagem sai da janela (${Math.round(at?.bottom ?? -1)} de ${height})`,
+      );
+    }
+    const timeline = document.querySelector<HTMLElement>("[data-slot='timeline']");
+    const room = timeline?.getBoundingClientRect().height ?? 0;
+    if (room < min) {
+      found.push(`a conversa tem só ${Math.round(room)} de ${height}`);
+    }
+    return found;
+  }, MIN_CONVERSATION);
+}
+
 export async function layout(c: Context, problems: string[]) {
   const screens: Array<[string, Route]> = [
     ["hub", { name: "hub" }],
@@ -865,6 +895,9 @@ export async function layout(c: Context, problems: string[]) {
         }
       }
     }
+    for (const issue of await sessionFitsProblems(c)) {
+      problems.push(`${c.lang} ${viewport.width}x${viewport.height} sessão: ${issue}`);
+    }
     for (const issue of await folderDialogProblems(c)) {
       problems.push(`${c.lang} ${viewport.width}x${viewport.height} pasta: ${issue}`);
     }
@@ -886,6 +919,11 @@ export async function layout(c: Context, problems: string[]) {
   if (smallHosts) problems.push(`${c.lang} 720x480: ${smallHosts}`);
   for (const issue of await slashMenuProblems(c)) {
     problems.push(`${c.lang} 720x480 menu /: ${issue}`);
+  }
+  // The smallest window the app allows (tauri.conf.json), where the header and the dialog are tightest.
+  await c.page.setViewportSize({ width: 720, height: 480 });
+  for (const issue of await sessionFitsProblems(c)) {
+    problems.push(`${c.lang} 720x480 sessão: ${issue}`);
   }
   for (const issue of await folderDialogProblems(c)) {
     problems.push(`${c.lang} 720x480 pasta: ${issue}`);

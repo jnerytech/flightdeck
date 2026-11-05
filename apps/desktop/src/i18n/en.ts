@@ -1711,6 +1711,7 @@ export const en: Dictionary = {
     close: "Close",
   },
   session: {
+    moreActions: "More actions",
     bypassMessage:
       'On {host}, "{session}" will run everything without asking you first, from now on, until you change the mode back. It can edit and delete files and run commands.',
     bypassConfirm: "Switch to bypass",

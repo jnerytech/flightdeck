@@ -536,12 +536,19 @@ export function SessionView(props: SessionViewProps) {
             )}
           </>
         }
+        hint={[session.cwd, typeof props.costUsd === "number" ? usd(props.costUsd) : null]
+          .filter(Boolean)
+          .join(" · ")}
         controls={
           <>
             {session.status && <StatusBadge status={session.status} />}
             {session.statusReason && (
               <span className="text-muted-foreground text-xs">{session.statusReason}</span>
             )}
+          </>
+        }
+        actions={
+          <>
             {props.timeline}
             {props.terminal}
             {closed ? (
@@ -549,31 +556,31 @@ export function SessionView(props: SessionViewProps) {
                 {t("session.resume")}
               </ActionButton>
             ) : (
-              <>
-                <ActionButton
-                  variant="outline"
-                  size="sm"
-                  pending={ending}
-                  onClick={() => setClosing(true)}
-                >
-                  {t("session.end")}
-                </ActionButton>
-                {closing && (
-                  <ConfirmDialog
-                    message={t("session.endMessage")}
-                    confirmLabel={t("session.endConfirm")}
-                    destructive
-                    onConfirm={() => {
-                      setClosing(false);
-                      setEnding(true);
-                      void actions.close().finally(() => setEnding(false));
-                    }}
-                    onCancel={() => setClosing(false)}
-                  />
-                )}
-              </>
+              <ActionButton
+                variant="outline"
+                size="sm"
+                pending={ending}
+                onClick={() => setClosing(true)}
+              >
+                {t("session.end")}
+              </ActionButton>
             )}
           </>
+        }
+        dialogs={
+          closing && (
+            <ConfirmDialog
+              message={t("session.endMessage")}
+              confirmLabel={t("session.endConfirm")}
+              destructive
+              onConfirm={() => {
+                setClosing(false);
+                setEnding(true);
+                void actions.close().finally(() => setEnding(false));
+              }}
+              onCancel={() => setClosing(false)}
+            />
+          )
         }
         extra={props.persona}
       />
