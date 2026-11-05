@@ -874,8 +874,9 @@ export const MIGRATIONS: readonly string[] = [
     WHERE source = 'migration' AND path NOT IN (SELECT path FROM projects);
   `,
   // Home: the failed turns and the time the turns took, next to the cost and the tokens of each day.
+  // NULL for the days from before: their outcome and time are unknown, not zero.
   `
-  ALTER TABLE usage_daily ADD COLUMN failed_turns INTEGER NOT NULL DEFAULT 0;
-  ALTER TABLE usage_daily ADD COLUMN duration_ms INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE usage_daily ADD COLUMN failed_turns INTEGER;
+  ALTER TABLE usage_daily ADD COLUMN duration_ms INTEGER;
   `,
 ];
