@@ -12,12 +12,12 @@ const event = process.env.GITHUB_EVENT_NAME ?? "";
 const base = process.env.GITHUB_BASE_REF ?? "";
 let changed: string[] | null = null;
 if (event === "pull_request" && base) {
-  const diff = spawnSync("git", ["diff", "--name-only", `origin/${base}...HEAD`], {
-    encoding: "utf8",
-  });
+  const args = ["diff", "--name-only", `origin/${base}...HEAD`];
+  const diff = spawnSync("git", args, { encoding: "utf8" }); // NOSONAR: git from the CI runner's PATH
   changed = diff.status === 0 ? diff.stdout.split("\n").filter(Boolean) : null;
 }
 const outputs = planOutputs(ciPlan(event, changed));
-console.log(`${event}: ${changed === null ? "everything" : `${changed.length} changed file(s)`}`);
+const scope = changed === null ? "everything" : `${changed.length} changed file(s)`;
+console.log(`${event}: ${scope}`);
 console.log(outputs.trim());
 if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, outputs);

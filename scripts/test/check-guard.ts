@@ -6,10 +6,10 @@
  * every other command instead of handing it to the shell. Only fake commands installed by the
  * test itself (`installFakeCheck`) are allowed.
  */
-import { appendFileSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type FakeCli, type FakeRule, installFakeCli } from "./fake-cli.ts";
+import { realTempDir } from "./temp-dir.ts";
 
 export const CHECK_GUARD_ENV = "FLIGHTDECK_CHECK_GUARD";
 
@@ -20,7 +20,7 @@ export interface CheckGuard {
 export function installCheckGuard(
   env: Record<string, string | undefined> = process.env,
 ): CheckGuard {
-  const dir = mkdtempSync(join(tmpdir(), "fd-check-guard-"));
+  const dir = realTempDir("fd-check-guard-");
   writeFileSync(join(dir, "allowed"), "");
   env[CHECK_GUARD_ENV] = dir;
   return { dir };

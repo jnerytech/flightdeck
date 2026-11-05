@@ -8,7 +8,7 @@ import { newManager, poll, tempDir } from "./helpers.ts";
 
 /** A root with `code/{app,lib,.git}`, a file, and a sibling folder outside it. */
 function tree() {
-  const base = realpathSync(tempDir("fd-fsdirs-"));
+  const base = realpathSync.native(tempDir("fd-fsdirs-"));
   const root = join(base, "root");
   const outside = join(base, "outside");
   for (const dir of ["code/app", "code/lib", "code/.git", "other"]) {
