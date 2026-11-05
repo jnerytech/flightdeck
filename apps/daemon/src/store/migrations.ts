@@ -858,4 +858,11 @@ export const MIGRATIONS: readonly string[] = [
   INSERT OR IGNORE INTO project_trust (path, trusted_at, source)
     SELECT DISTINCT cwd, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'migration' FROM sessions;
   `,
+  // Issue #196 review: a record covers its folder's tree (`tree`) or only itself (`exact`). The folders
+  // of earlier sessions are exact: a session that once ran in a root must not trust every later clone in it.
+  `
+  ALTER TABLE project_trust ADD COLUMN scope TEXT NOT NULL DEFAULT 'tree';
+  UPDATE project_trust SET scope = 'exact'
+    WHERE source = 'migration' AND path NOT IN (SELECT path FROM projects);
+  `,
 ];
