@@ -24,7 +24,7 @@ const state = () =>
 
 const en = translator("en");
 /** The oldest request the palette offers to answer, as the store hands it (issue #187). */
-const OLDEST = { text: "alfa · Alpha: Bash: npm test", opens: false };
+const OLDEST = { text: "alfa · Alpha: Bash: npm test", opens: false, key: "h1/r1" };
 const sections = (s: AppState, query = "", recents?: string[], waiting = false) =>
   paletteSections(s, query, {
     costs: true,
@@ -76,17 +76,22 @@ describe("paleta-v2: commands with their shortcut", () => {
     expect(item(state(), approve)).toBeUndefined();
     expect(item(state(), deny)).toBeUndefined();
     expect(item(state(), approve, true)).toMatchObject({
-      target: { kind: "decide-oldest", decision: "approve" },
+      // The command carries the request it names (#245, L4).
+      target: { kind: "decide-oldest", decision: "approve", key: "h1/r1" },
       shortcut: "A",
     });
     expect(item(state(), deny, true)).toMatchObject({
-      target: { kind: "decide-oldest", decision: "deny" },
+      target: { kind: "decide-oldest", decision: "deny", key: "h1/r1" },
       shortcut: "N",
     });
   });
 
   test("an oldest item that must be seen (a gate, a vault request, a high-risk one) offers only Open", () => {
-    const gate = { text: "alfa · Ship: Workflow step “plan” waits for your approval", opens: true };
+    const gate = {
+      text: "alfa · Ship: Workflow step “plan” waits for your approval",
+      opens: true,
+      key: "h1/gate:run1/plan/1",
+    };
     const labels = paletteSections(state(), "", { costs: true, t: en, oldest: gate })
       .flatMap((section) => section.items)
       .map((i) => i.label);
