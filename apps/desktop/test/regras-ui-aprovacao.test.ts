@@ -106,7 +106,14 @@ describe("regras-ui-aprovacao: a request that the rules decided", () => {
     expect(needsYou(store.getState())[0]?.risk).toBe("high");
     // Issue #245 (L1): Deny needs no hold, so the tray offers it; only Approve takes the window.
     expect(trayMenu(needsYou(store.getState())).items[0]?.actions).toEqual(["deny", "open"]);
+    // Issue #245 (M2): the store itself refuses an approval that was not held.
     await store.respondTo(hostId, "r1", "allow");
+    await Bun.sleep(150);
+    expect(types().includes("vault.approve")).toBe(false);
+    expect(store.getState().notices.at(-1)?.text).toBe(
+      "Um pedido de risco alto só é aprovado segurando o botão.",
+    );
+    await store.respondTo(hostId, "r1", "allow", { held: true });
     await settle(() => types().includes("vault.deliver"));
     expect(payload("vault.approve")).toEqual({
       requestId: "r1",

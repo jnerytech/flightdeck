@@ -48,6 +48,8 @@ function card(risk: Risk | undefined, over: Record<string, unknown> = {}) {
 }
 
 const button = (g: HTMLElement, name: string) => within(g).queryByRole("button", { name });
+/** What a held approval answers: allow, with the proof of the hold (#245, M2). */
+const HELD = ["allow", undefined, undefined, undefined, true];
 const press = async (el: HTMLElement) => {
   await act(async () => {
     fireEvent.pointerDown(el);
@@ -164,10 +166,10 @@ describe("risco-ui: o alto pede para segurar", () => {
     await press(hold);
     expect(hold.getAttribute("data-holding")).toBe("true");
     await wait(160);
-    expect(calls).toEqual([["allow"]]);
+    expect(calls).toEqual([HELD]);
     await release(hold);
     await wait(120);
-    expect(calls).toEqual([["allow"]]);
+    expect(calls).toEqual([HELD]);
   });
 
   test("soltar antes do tempo, ou sair do botão com o ponteiro, cancela", async () => {
@@ -204,7 +206,7 @@ describe("risco-ui: o alto pede para segurar", () => {
       fireEvent.keyDown(hold, { key: "Enter", repeat: true });
     });
     await wait(160);
-    expect(calls).toEqual([["allow"]]);
+    expect(calls).toEqual([HELD]);
   });
 
   test("o alto não oferece Sempre permitir, e Negar segue num toque", async () => {
@@ -235,7 +237,7 @@ describe("risco-ui: o alto pede para segurar", () => {
     await wait(1700);
     expect(calls).toEqual([]);
     await wait(500);
-    expect(calls).toEqual([["allow"]]);
+    expect(calls).toEqual([HELD]);
   });
 });
 
