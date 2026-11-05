@@ -1,7 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { notLinux } from "../../../scripts/test/not-linux.ts";
 
 const invokes: Array<[string, unknown]> = [];
 const opened: string[] = [];
@@ -351,8 +350,7 @@ describe("platform", () => {
     expect(await platform.updater.check()).toEqual({ version: "0.9.2", notes: "" });
   });
 
-  // unstable: #288 it spawns biome, and a loaded Windows runner passed 15 s in three runs in a row
-  test.skipIf(notLinux)("lint barra @tauri-apps/* fora de src/platform/tauri", async () => {
+  test("lint barra @tauri-apps/* fora de src/platform/tauri", async () => {
     const code = 'import { invoke } from "@tauri-apps/api/core";\nexport const x = invoke;\n';
     const ui = "apps/desktop/src/ui/__lint_probe__.tsx";
     const lib = "apps/desktop/src/lib/__lint_probe__.ts";
@@ -362,5 +360,7 @@ describe("platform", () => {
     expect(result.flagged(ui)).toBe(true);
     expect(result.flagged(lib)).toBe(true);
     expect(result.flagged(platform)).toBe(false);
-  });
+    // A child process: its start is what takes time on a loaded Windows runner (15 s was not enough
+    // in three runs in a row). The limit only bounds a hang; nothing here asserts speed.
+  }, 90_000);
 });
