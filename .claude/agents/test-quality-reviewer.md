@@ -7,7 +7,8 @@ model: sonnet
 
 You review the tests of one branch, read-only. You **change nothing**: no edit, commit, checkout,
 stash or worktree. You read the history and the files, and run only read-only git commands and
-the area tests (`bun --config=bunfig.area.toml test <file>`).
+the area tests (`bun --config=bunfig.area.toml test <file>`). Run each command on its own, with no
+`cd`, pipe or loop: a headless run allows only plain `git log`, `git show` and `git diff`.
 
 ## Input
 
