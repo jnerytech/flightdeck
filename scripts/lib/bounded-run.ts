@@ -44,27 +44,57 @@ export function killTree(pid: number, deps: KillDeps = SYSTEM_KILL): void {
   }
 }
 
-export function runBounded(command: string[], timeoutMs: number): Promise<BoundedResult> {
+/** A started process, as runBounded reads it. */
+export interface ChildLike {
+  pid?: number;
+  on(event: "error", listener: (error: Error) => void): unknown;
+  on(event: "exit", listener: (code: number | null) => void): unknown;
+}
+
+/** What runBounded starts, times and kills with (#284: tests pass fakes, no real process or timer). */
+export interface RunDeps {
+  platform: NodeJS.Platform;
+  spawn: (program: string, args: string[], options: { detached: boolean }) => ChildLike;
+  setTimer: (fire: () => void, ms: number) => unknown;
+  clearTimer: (timer: unknown) => void;
+  killTree: (pid: number) => void;
+}
+
+export const SYSTEM_RUN: RunDeps = {
+  platform: process.platform,
+  spawn: (program, args, { detached }) =>
+    spawn(program, args, { detached, stdio: "ignore", windowsHide: true }),
+  setTimer: (fire, ms) => setTimeout(fire, ms),
+  clearTimer: (timer) => clearTimeout(timer as ReturnType<typeof setTimeout>),
+  killTree: (pid) => killTree(pid),
+};
+
+export function runBounded(
+  command: string[],
+  timeoutMs: number,
+  deps: RunDeps = SYSTEM_RUN,
+): Promise<BoundedResult> {
   const [program = "", ...args] = command;
   return new Promise((done) => {
     let settled = false;
+    // Declared first: a deps.spawn that reported at once would otherwise reach it before it exists.
+    let timer: unknown;
     const finish = (result: BoundedResult) => {
       if (settled) return;
       settled = true;
-      clearTimeout(timer);
+      deps.clearTimer(timer);
       done(result);
     };
     // Its own process group on POSIX, so a timeout reaches what it started.
-    const child = spawn(program, args, {
-      detached: process.platform !== "win32",
-      stdio: "ignore",
-      windowsHide: true,
-    });
+    const child = deps.spawn(program, args, { detached: deps.platform !== "win32" });
     child.on("error", (error) => finish({ code: null, stderr: error.message, timedOut: false }));
     child.on("exit", (code) => finish({ code, stderr: "", timedOut: false }));
-    const timer = setTimeout(() => {
-      if (child.pid !== undefined) killTree(child.pid);
+    timer = deps.setTimer(() => {
+      if (settled) return;
+      if (child.pid !== undefined) deps.killTree(child.pid);
       finish({ code: null, stderr: "", timedOut: true });
     }, timeoutMs);
+    // A child that reported before the timer existed: the timer is not needed.
+    if (settled) deps.clearTimer(timer);
   });
 }
