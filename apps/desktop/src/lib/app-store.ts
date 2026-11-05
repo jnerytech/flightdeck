@@ -517,7 +517,7 @@ export interface LoopAlert {
 
 /** The daemon's key for a pair of sessions, the same in both directions. */
 export const loopPairKey = (alert: Pick<LoopAlert, "from" | "to">): string =>
-  [alert.from, alert.to].sort().join("|");
+  [alert.from, alert.to].sort((a, b) => a.localeCompare(b, "en")).join("|");
 
 export interface PendingItem {
   hostId: string;
@@ -2953,7 +2953,7 @@ export class AppStore {
     const online = this.state.hosts
       .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false))
       .map((h) => h.id)
-      .sort()
+      .sort((a, b) => a.localeCompare(b, "en"))
       .join("|");
     if (online === this.clientBudgetHosts) return;
     this.clientBudgetHosts = online;

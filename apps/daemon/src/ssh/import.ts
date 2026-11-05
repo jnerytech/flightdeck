@@ -245,7 +245,7 @@ export class SshImporter {
       for await (const name of glob.scan({ cwd: dirname(absolute), onlyFiles: true })) {
         names.push(name);
       }
-      names.sort();
+      names.sort((a, b) => a.localeCompare(b, "en"));
       files.push(...names.map((name) => join(dirname(absolute), name)));
     }
     return files;

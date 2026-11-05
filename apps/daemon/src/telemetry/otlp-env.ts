@@ -64,7 +64,7 @@ const isOurs = (env: Record<string, string> | undefined) =>
   (env?.OTEL_EXPORTER_OTLP_HEADERS ?? "").startsWith("Authorization=Bearer ");
 
 const present = (env: Record<string, string> | undefined) =>
-  MANAGED_KEYS.filter((key) => env?.[key] !== undefined).sort();
+  MANAGED_KEYS.filter((key) => env?.[key] !== undefined).sort((a, b) => a.localeCompare(b, "en"));
 
 /** The managed keys that hold a value of the user's, which install would have to overwrite. */
 export async function telemetryConflicts(file: string): Promise<string[]> {

@@ -404,7 +404,9 @@ async function run(work: string): Promise<void> {
         ruleId: string | null;
       }>;
     }>("vault.decisions", {});
-    const outcomes = decisions.map((d) => `${d.requester}:${d.secretId}:${d.outcome}`).sort();
+    const outcomes = decisions
+      .map((d) => `${d.requester}:${d.secretId}:${d.outcome}`)
+      .sort((a, b) => a.localeCompare(b, "en"));
     const expected = [
       "automation:staging-token:refused",
       "claude:prod-token:approved",

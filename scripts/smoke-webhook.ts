@@ -162,7 +162,9 @@ async function run(work: string): Promise<void> {
           refused: string | null;
         }>("webhook.send", request);
         check(
-          Object.keys(result).sort().join() === "refused,retryAfterMs,status",
+          Object.keys(result)
+            .sort((a, b) => a.localeCompare(b, "en"))
+            .join() === "refused,retryAfterMs,status",
           "the answer carries more than the status",
         );
         return {

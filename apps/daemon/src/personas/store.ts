@@ -167,7 +167,7 @@ export class Personas {
     const agents: Record<string, PersonaAgent> = {};
     for (const view of views) agents[`persona-${view.id}`] = agentOf(view);
     const untrusted = (loaded?.views ?? []).filter((view) => !view.trusted).map((view) => view.id);
-    return { agents, untrusted: untrusted.sort() };
+    return { agents, untrusted: untrusted.sort((a, b) => a.localeCompare(b, "en")) };
   }
 
   /** Writes the persona as the project's agent `persona-<id>`, through the agent editor. */

@@ -220,7 +220,9 @@ export class TelemetryStore {
          ORDER BY avgMs DESC, toolName`,
       )
       .all();
-    const keys = [...new Set([...waits, ...tools].map((r) => r.projectKey))].sort();
+    const keys = [...new Set([...waits, ...tools].map((r) => r.projectKey))].sort((a, b) =>
+      a.localeCompare(b, "en"),
+    );
     return {
       projects: keys.map((projectKey) => ({
         projectKey,

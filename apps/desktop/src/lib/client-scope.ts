@@ -71,7 +71,7 @@ export class ClientScope {
     return this.knownProjects
       .map((p) => p.key)
       .filter((key) => this.clientOf(key) === clientId)
-      .sort();
+      .sort((a, b) => a.localeCompare(b, "en"));
   }
 
   /** The projects the app knows, with the folders their sessions ran in. */

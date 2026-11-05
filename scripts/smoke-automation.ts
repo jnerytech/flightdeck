@@ -401,7 +401,9 @@ async function run(work: string): Promise<void> {
     const decisions = await client.call<{
       decisions: Array<{ toolName: string; decision: string; by: string }>;
     }>("autoapprove.list", { projectId: project.id });
-    const summary = decisions.decisions.map((d) => `${d.toolName}:${d.decision}:${d.by}`).sort();
+    const summary = decisions.decisions
+      .map((d) => `${d.toolName}:${d.decision}:${d.by}`)
+      .sort((a, b) => a.localeCompare(b, "en"));
     if (summary.join() !== "Bash:ask:rule,Read:allow:rule,Write:allow:ai") {
       throw new Error(`registro: ${summary}`);
     }

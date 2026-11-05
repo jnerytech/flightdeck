@@ -218,7 +218,7 @@ export class AgentConfig {
               (e) => `${base}skills/${e.name}/SKILL.md`,
             );
     const items: AgentCfgItem[] = [];
-    for (const path of [...paths].sort()) {
+    for (const path of [...paths].sort((a, b) => a.localeCompare(b, "en"))) {
       const bytes = await readFile(join(root, path)).catch(() => null);
       if (bytes) items.push(this.itemOf(bytes, kind, path, origin));
     }

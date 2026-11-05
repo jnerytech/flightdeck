@@ -24,7 +24,11 @@ interface Closed {
 }
 
 /** The route as a string that does not depend on the order of its fields. */
-const routeKey = (route: Route): string => JSON.stringify(route, Object.keys(route).sort());
+const routeKey = (route: Route): string =>
+  JSON.stringify(
+    route,
+    Object.keys(route).sort((a, b) => a.localeCompare(b, "en")),
+  );
 
 const START: Route = { name: "start" };
 
