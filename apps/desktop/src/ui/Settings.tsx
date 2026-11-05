@@ -1,4 +1,5 @@
 import { memo, type ReactNode, useId, useState, useSyncExternalStore } from "react";
+import { AssistantSettings } from "@/components/assistant/assistant-settings";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -323,6 +324,12 @@ export const Settings = memo(function Settings(props: {
           },
         ]
       : []),
+    {
+      id: "assistant",
+      label: t("settingsRail.assistant"),
+      words: t("settingsRail.words.assistant"),
+      node: <AssistantSettings store={props.store} t={t} />,
+    },
     {
       id: "webhooks",
       label: t("webhooks.title"),

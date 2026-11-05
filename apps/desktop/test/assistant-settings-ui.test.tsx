@@ -135,6 +135,7 @@ describe("assistant-settings-ui: the provider, in words", () => {
 describe("assistant-settings-ui: the keys", () => {
   test("a pasted key is stored once, the field is cleared, and only its last four characters are shown", async () => {
     const { fake } = setup();
+    await settle(() => keyInput("Anthropic key") !== null);
     const field = keyInput("Anthropic key");
     expect(field?.type).toBe("password");
     await act(async () => {
@@ -142,7 +143,11 @@ describe("assistant-settings-ui: the keys", () => {
         target: { value: "sk-ant-api03-0123456789wxyz" },
       });
     });
-    await click(button("Save key"));
+    await click(
+      within(screen.getByRole("group", { name: "Anthropic" })).queryByRole("button", {
+        name: "Save key",
+      }),
+    );
     await settle(() => document.body.textContent?.includes("Key saved · …wxyz") === true);
     expect(fake.calls.filter((c) => c[0] === "setKey")).toEqual([["setKey", "anthropic"]]);
     expect(keyInput("Anthropic key")).toBeNull();
@@ -212,12 +217,17 @@ describe("assistant-settings-ui: the keys", () => {
         },
       },
     });
+    await settle(() => keyInput("Anthropic key") !== null);
     await act(async () => {
       fireEvent.change(keyInput("Anthropic key") as HTMLInputElement, {
         target: { value: "sk ant" },
       });
     });
-    await click(button("Save key"));
+    await click(
+      within(screen.getByRole("group", { name: "Anthropic" })).queryByRole("button", {
+        name: "Save key",
+      }),
+    );
     await settle(() => screen.queryByRole("alert") !== null);
     expect(screen.queryByRole("alert")?.textContent).toContain(
       "That is not a usable key: it has a space or a line break",
@@ -345,8 +355,9 @@ describe("assistant-settings-ui: the section in Settings, in both languages", ()
     expect(screen.getByRole("region", { name: "AI assistant" })).toBeDefined();
   });
 
-  test("in Portuguese the section, the providers and the key flow read in Portuguese", () => {
+  test("in Portuguese the section, the providers and the key flow read in Portuguese", async () => {
     settings("pt-BR");
+    await settle(() => screen.queryByLabelText("Chave da Anthropic") !== null);
     const rail = screen.getByRole("navigation", { name: "Seções das configurações" });
     expect(within(rail).queryByRole("button", { name: "Assistente de IA" })).not.toBeNull();
     expect(screen.getByRole("radio", { name: "Claude Code em um host" })).toBeDefined();

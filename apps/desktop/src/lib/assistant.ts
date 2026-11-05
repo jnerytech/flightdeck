@@ -94,6 +94,11 @@ export class AssistantController {
     this.current = readPrefs(deps.storage);
   }
 
+  /** The API providers are available (the desktop shell); false in the web build. */
+  get supported(): boolean {
+    return this.deps.api.supported;
+  }
+
   prefs(): AssistantPrefs {
     return this.current;
   }
@@ -104,10 +109,11 @@ export class AssistantController {
     this.emit();
   }
 
-  subscribe(listener: () => void): () => void {
+  /** An arrow, so a screen can hand it to `useSyncExternalStore` as it is. */
+  readonly subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => void this.listeners.delete(listener);
-  }
+  };
 
   /** Which API providers have a key saved, as last read. */
   keys(): { anthropic: boolean; openrouter: boolean } {

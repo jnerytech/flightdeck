@@ -107,6 +107,6 @@ describe("configuracoes-trilho: the rail and the search", () => {
     await act(async () => {
       fireEvent.change(search, { target: { value: "" } });
     });
-    expect(items()).toHaveLength(6);
+    expect(items()).toHaveLength(7);
   });
 });
