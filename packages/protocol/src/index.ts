@@ -4056,7 +4056,9 @@ export const KeepAwakeStatus = z.object({
   enabled: z.boolean(),
   held: z.boolean(),
   method: z.enum(["powershell", "systemd-inhibit", "caffeinate"]).nullable(),
-  reason: z.enum(["no-inhibitor", "unsupported-platform", "start-failed", "ended"]).nullable(),
+  reason: z
+    .enum(["no-inhibitor", "unsupported-platform", "wsl", "start-failed", "ended"])
+    .nullable(),
 });
 export type KeepAwakeStatus = z.infer<typeof KeepAwakeStatus>;
 

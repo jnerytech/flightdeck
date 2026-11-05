@@ -610,6 +610,10 @@ export function daemon(
     boardSyncStore,
     keys,
     doctorAsked,
+    /** Changes what the host says about keep-awake from now on (the page must read it again). */
+    setKeepAwake: (change: Partial<KeepAwakeStatus>) => {
+      if (awake) awake = { ...awake, ...change };
+    },
   };
 }
 

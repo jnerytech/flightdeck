@@ -3,7 +3,7 @@ import { whichOnPath } from "../which.ts";
 
 export type WakeMethod = "powershell" | "systemd-inhibit" | "caffeinate";
 /** Why nothing is held although it was asked: the app words each code in both languages. */
-export type WakeReason = "no-inhibitor" | "unsupported-platform" | "start-failed" | "ended";
+export type WakeReason = "no-inhibitor" | "unsupported-platform" | "wsl" | "start-failed" | "ended";
 
 export interface WakeStatus {
   /** The setting. */
@@ -25,6 +25,8 @@ export interface PowerContext {
   platform: NodeJS.Platform;
   /** The daemon's pid: the holder leaves when it does. */
   pid: number;
+  /** The daemon runs inside WSL: an inhibitor there does not keep Windows awake. */
+  wsl: boolean;
   which(name: string): string | null;
   /** Starts the holder; null when it cannot start. */
   hold(cmd: string[]): Holder | null;
@@ -34,7 +36,7 @@ export interface PowerContext {
  * The PowerShell that holds the system awake: ES_CONTINUOUS | ES_SYSTEM_REQUIRED stays set for as
  * long as this process lives, and it ends when the daemon does. The screen may still turn off.
  */
-const windowsScript = (pid: number) =>
+export const windowsScript = (pid: number) =>
   [
     "Add-Type -Namespace Fd -Name Power -MemberDefinition",
     "'[DllImport(\"kernel32.dll\")] public static extern uint SetThreadExecutionState(uint flags);';",
@@ -44,7 +46,7 @@ const windowsScript = (pid: number) =>
 
 /** The command that holds the computer awake on this system, or why there is none. */
 export function holderCommand(
-  ctx: Pick<PowerContext, "platform" | "pid" | "which">,
+  ctx: Pick<PowerContext, "platform" | "pid" | "which"> & { wsl?: boolean },
 ): { cmd: string[]; method: WakeMethod } | { reason: WakeReason } {
   if (ctx.platform === "linux") {
     const inhibit = ctx.which("systemd-inhibit");
@@ -193,6 +195,7 @@ export function osPowerContext(): PowerContext {
   return {
     platform: process.platform,
     pid: process.pid,
+    wsl: false,
     which: whichOnPath,
     hold: spawnHolder,
   };

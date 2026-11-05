@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { KeepAwakeStatus } from "@flightdeck/protocol";
 import { loadConfig } from "../src/config.ts";
@@ -20,6 +20,7 @@ function fakePower() {
   const ctx: PowerContext = {
     platform: "linux",
     pid: 1,
+    wsl: false,
     which: (name) => (name === "systemd-inhibit" ? "/usr/bin/systemd-inhibit" : null),
     hold: () => {
       state.started++;
@@ -121,4 +122,21 @@ describe("keep-awake-daemon: the host announces it, holds while a session runs a
     await running.stop();
     expect(power.state.alive).toBe(0);
   });
+
+  test.skipIf(process.platform === "win32")(
+    "when the config cannot be written the switch is not changed: the client gets the error and the daemon keeps what it had",
+    async () => {
+      const { client, project, file, power } = await daemon();
+      const dir = join(file, "..");
+      chmodSync(dir, 0o500);
+      cleanups.push(() => chmodSync(dir, 0o700));
+      const ack = await client.request("host.keepAwake", { enabled: false });
+      expect(ack.ok).toBe(false);
+      const info = await client.data<{ keepAwake?: KeepAwakeStatus }>("host.info", {});
+      expect(info?.keepAwake?.enabled).toBe(true);
+      // And a session still holds the computer awake.
+      await client.data("session.create", { cwd: project, prompt: "[tool] escreve" });
+      await poll(() => power.state.alive === 1, 3000);
+    },
+  );
 });

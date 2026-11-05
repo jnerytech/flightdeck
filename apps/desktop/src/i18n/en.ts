@@ -3485,6 +3485,7 @@ export const en: Dictionary = {
       "no-inhibitor":
         "Nothing on this computer can hold it awake (no systemd-inhibit, caffeinate or PowerShell).",
       "unsupported-platform": "This system has no way to hold the computer awake.",
+      wsl: "This host runs inside WSL and cannot keep Windows awake. Turn it on for the Windows host.",
       "start-failed": "The program that holds the computer awake could not start.",
       ended:
         "The program that holds the computer awake ended. It starts again with the next session.",

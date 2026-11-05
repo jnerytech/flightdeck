@@ -19,7 +19,8 @@ const settle = waiter(4000);
 
 async function hostPage(
   language: "en" | "pt-BR",
-  keepAwake?: { held?: boolean; reason?: "no-inhibitor" | "start-failed" },
+  keepAwake?: { held?: boolean; reason?: "no-inhibitor" | "start-failed" | "wsl" },
+  open = true,
 ) {
   const d = makeDaemon(cleanups, keepAwake ? { keepAwake } : {});
   const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 60_000 });
@@ -30,8 +31,8 @@ async function hostPage(
   });
   await settle(() => store.getState().hosts[0]?.status === "online");
   const hostId = store.getState().hosts[0]?.id ?? "";
-  await act(async () => store.router.push({ name: "host", host: hostId }));
-  return store;
+  if (open) await act(async () => store.router.push({ name: "host", host: hostId }));
+  return Object.assign(store, { hostId, d });
 }
 
 const press = async (name: string) => {
@@ -82,5 +83,42 @@ describe("keep-awake-ui: the host page's switch (#163)", () => {
     await hostPage("en");
     await settle(() => screen.queryByText("Sessions without permission prompts") !== null);
     expect(screen.queryByText("Keep this computer awake")).toBeNull();
+  });
+
+  test("opening the page reads the status again: what changed since the host connected is shown (review: stale panel)", async () => {
+    const store = await hostPage("en", { held: false }, false);
+    // The sessions started after the app connected: the host holds now.
+    store.d.setKeepAwake({ held: true, method: "systemd-inhibit" });
+    await act(async () => store.router.push({ name: "host", host: store.hostId }));
+    await settle(() => screen.queryByText("Holding the computer awake now.") !== null);
+  });
+
+  test("while the page stays open, a session starting makes it read the status again", async () => {
+    const store = await hostPage("en", { held: false });
+    await settle(() => screen.queryByText(/Off|On:/) !== null);
+    expect(screen.queryByText("Holding the computer awake now.")).toBeNull();
+    store.d.setKeepAwake({ held: true, method: "systemd-inhibit" });
+    await act(async () => {
+      await store.createSession(store.hostId, { cwd: store.d.project, prompt: "oi", name: "s1" });
+    });
+    await settle(() => screen.queryByText("Holding the computer awake now.") !== null);
+  });
+
+  test("a WSL host says why it holds nothing, in both languages", async () => {
+    await hostPage("en", { reason: "wsl" });
+    await settle(
+      () =>
+        screen.queryByText(
+          "This host runs inside WSL and cannot keep Windows awake. Turn it on for the Windows host.",
+        ) !== null,
+    );
+    cleanup();
+    await hostPage("pt-BR", { reason: "wsl" });
+    await settle(
+      () =>
+        screen.queryByText(
+          "Este host roda dentro do WSL e não consegue manter o Windows acordado. Ligue no host do Windows.",
+        ) !== null,
+    );
   });
 });

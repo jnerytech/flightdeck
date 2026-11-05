@@ -3487,6 +3487,7 @@ export const ptBR = {
       "no-inhibitor":
         "Nada neste computador consegue segurá-lo acordado (sem systemd-inhibit, caffeinate nem PowerShell).",
       "unsupported-platform": "Este sistema não tem como segurar o computador acordado.",
+      wsl: "Este host roda dentro do WSL e não consegue manter o Windows acordado. Ligue no host do Windows.",
       "start-failed": "O programa que segura o computador acordado não conseguiu iniciar.",
       ended:
         "O programa que segura o computador acordado terminou. Ele volta com a próxima sessão.",
