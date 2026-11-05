@@ -168,7 +168,8 @@ describe("hook-commit-gate", () => {
   });
 
   test("a commit in a repository that is not this project's is never checked", () => {
-    const foreign = { ...repo([]), inProject: (dir: string) => dir !== "/tmp/poc" };
+    // Resolved as the gate resolves it, so the case holds on Windows too.
+    const foreign = { ...repo([]), inProject: (dir: string) => dir !== resolve("/tmp/poc") };
     expect(commitViolation('cd /tmp/poc && git commit -m "init"', CWD, foreign)).toBeNull();
     expect(commitViolation('git -C /tmp/poc commit -m "feat(a): x"', CWD, foreign)).toBeNull();
     expect(foreign.calls).toEqual([]);
