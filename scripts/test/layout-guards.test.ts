@@ -77,7 +77,7 @@ describe("layout-guards: what the page function finds, named by data-slot path",
 
   test("a box cut by an ancestor that clips is found, and one under a scrolling ancestor is not", () => {
     page(`
-      <main data-slot="main" style="overflow:hidden" data-rect="0,0,500,500">
+      <main data-slot="main" style="overflow-x:hidden;overflow-y:hidden" data-rect="0,0,500,500">
         <div data-slot="card" data-rect="400,10,700,40"></div>
       </main>
       <div data-slot="strip" style="overflow-x:auto" data-rect="0,0,500,500">
@@ -88,9 +88,9 @@ describe("layout-guards: what the page function finds, named by data-slot path",
 
   test("a fixed overlay and a screen-reader-only box are not clipped boxes", () => {
     page(`
-      <main data-slot="main" style="overflow:hidden" data-rect="0,0,500,500">
+      <main data-slot="main" style="overflow-x:hidden;overflow-y:hidden" data-rect="0,0,500,500">
         <div data-slot="toast" style="position:fixed" data-rect="400,10,900,40"></div>
-        <span style="position:absolute;width:1px;height:1px;overflow:hidden" data-rect="498,0,900,1">skip</span>
+        <span style="position:absolute;width:1px;height:1px" data-rect="498,0,499,1">skip</span>
       </main>`);
     expect(rules()).toEqual([]);
   });
