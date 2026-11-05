@@ -68,7 +68,10 @@ import { type RoiSummarizer, roiPeriod } from "./roi/summary.ts";
 import { addAllowedRoot, type PlatformInfo } from "./roots.ts";
 import type { RunConfigs } from "./runenv/config.ts";
 import type { RunManager } from "./runenv/manager.ts";
+import { serverContext } from "./server/context.ts";
+import { type Call, type Handler, runHandler } from "./server/dispatch.ts";
 import { need } from "./server/gates.ts";
+import { HANDLERS } from "./server/handlers/index.ts";
 import { ackError, type Connection, decode, type Socket, send } from "./server/transport.ts";
 import type { SessionManager } from "./sessions/session-manager.ts";
 import type { HistoryImporter } from "./snippets/history.ts";
@@ -299,6 +302,9 @@ export function startServer(opts: ServerOptions): RunningServer {
 
   const unauthorized = (ws: Socket) => ws.close(CLOSE_UNAUTHORIZED, "unauthorized");
   const authed = new Set<Socket>();
+  /** What every handler shares (issue #248), and one command's view of its socket. */
+  const context = serverContext(opts);
+  const call = (ws: Socket): Call => ({ ws, send: (frame) => send(ws, frame), server: context });
   let currentToken = opts.token;
   const startedAt = Date.now();
   /** What this daemon has, as `host.info` announces it; the app hides what is missing. */
@@ -724,6 +730,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         ...(opts.central?.external.list() ?? []).flatMap((s) => (s.cwd ? [s.cwd] : [])),
       ]);
     }
+
+    // Issue #248: a command whose domain has moved runs its handler; the rest are still cases here.
+    const handler = HANDLERS[command.type] as Handler<CommandType> | undefined;
+    if (handler) return runHandler(handler, command as never, call(ws));
 
     switch (command.type) {
       case "hello":
