@@ -26,9 +26,9 @@ const fixOf = (result: DepResult, os: string) => result.fix.find((f) => f.os ===
 
 describe("deps-advice: install advice that is true on the system it is shown for (#214)", () => {
   test("a gh older than the one that has `gh project` is outdated, and Linux is sent to the install page, not to apt", async () => {
-    const { items } = await checkDeps(machine("linux", { gh: "2.4.0" }));
-    expect(item(items, "gh")).toMatchObject({ state: "outdated", minVersion: "2.32.0" });
-    const { items: newer } = await checkDeps(machine("linux", { gh: "2.32.0" }));
+    const { items } = await checkDeps(machine("linux", { gh: "2.30.1" }));
+    expect(item(items, "gh")).toMatchObject({ state: "outdated", minVersion: "2.31.0" });
+    const { items: newer } = await checkDeps(machine("linux", { gh: "2.31.0" }));
     expect(item(newer, "gh").state).toBe("ok");
     const linux = fixOf(item(items, "gh"), "linux");
     expect(linux?.command).toBeUndefined();
