@@ -69,8 +69,8 @@ export function Breadcrumb(props: {
                   />
                 </>
               )}
-              {/* The earlier steps give way first, down to 4rem; the current one gives way last. */}
-              <li className={isLast ? "min-w-0 shrink-[0.01]" : "min-w-[4rem] shrink"}>
+              {/* The earlier steps give way first (a factor 100 times larger), down to 4rem; then the current one. Factors under 1 in total would shrink only that share of the overflow. */}
+              <li className={isLast ? "min-w-0 shrink" : "min-w-[4rem] shrink-[100]"}>
                 {crumb.route ? (
                   <button
                     type="button"
