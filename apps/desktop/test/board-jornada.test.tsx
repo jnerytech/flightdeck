@@ -164,7 +164,7 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
     const text = dialog.textContent ?? "";
     expect(text).toContain("Só move o card para Concluído");
     expect(text).toContain("remove a worktree");
-    expect(text).toContain("Mesclar e arquivar");
+    expect(text).toContain("Merge e arquivar");
     // No worktree yet: reviewing and merging is off, and says why.
     const review = within(dialog).queryByRole("button", {
       name: "Revisar e mesclar",

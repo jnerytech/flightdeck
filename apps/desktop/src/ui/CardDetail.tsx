@@ -10,6 +10,7 @@ import { PersonaPicker, useSuggestedPersona } from "@/components/personas/person
 import { CardHours } from "@/components/roi/card-hours";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PrDescriptionDialog } from "@/components/watch/pr-description-dialog";
@@ -18,6 +19,7 @@ import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
+import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
 import type { Key } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { projectCards } from "../lib/board.ts";
@@ -64,6 +66,7 @@ export const CardDetail = memo(function CardDetail(props: {
   const [adjustment, setAdjustment] = useState("");
   const [tab, setTab] = useState<"conversation" | "diff">("conversation");
   const [confirming, setConfirming] = useState<Confirming | null>(null);
+  const [finishing, setFinishing] = useState(false);
   /** Phase 13: the arena's comparison, the start form and the variant being chosen. */
   const [arena, setArena] = useState<Arena | null>(null);
   const [arenaForm, setArenaForm] = useState(false);
@@ -410,11 +413,8 @@ export const CardDetail = memo(function CardDetail(props: {
           >
             {t("cardUi.openPr")}
           </ActionButton>
-          <Button
-            variant="outline"
-            onClick={() => setConfirming({ kind: "complete", warning: null })}
-          >
-            {t("cardUi.complete")}
+          <Button variant="outline" onClick={() => setFinishing(true)}>
+            {t("cardUi.finish")}
           </Button>
           {withArena &&
             variants === 0 &&
@@ -444,6 +444,57 @@ export const CardDetail = memo(function CardDetail(props: {
         )}
         {card.worktreePath && hasFeature(host?.hostInfo?.features, "runenv", false) && (
           <RunPanel store={store} hostId={hostId} card={card} />
+        )}
+        {finishing && (
+          <Dialog open onOpenChange={(open) => !open && setFinishing(false)}>
+            <AppDialogContent aria-describedby={undefined}>
+              <DialogHeader>
+                <DialogTitle>{t("cardUi.finishTitle")}</DialogTitle>
+              </DialogHeader>
+              <ul className="flex flex-col gap-4 text-sm">
+                <li className="flex flex-col gap-1">
+                  <span>{t("cardUi.finishMove")}</span>
+                  <ActionButton
+                    variant="outline"
+                    disabled={card.column === "done"}
+                    disabledReason={t("cardUi.alreadyDone")}
+                    onClick={async () => {
+                      setFinishing(false);
+                      await store.hostCommand(hostId, "card.move", { cardId, column: "done" });
+                    }}
+                  >
+                    {t("cardUi.finishMoveButton")}
+                  </ActionButton>
+                </li>
+                <li className="flex flex-col gap-1">
+                  <span>{t("cardUi.finishComplete")}</span>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setFinishing(false);
+                      setConfirming({ kind: "complete", warning: null });
+                    }}
+                  >
+                    {t("cardUi.complete")}
+                  </Button>
+                </li>
+                <li className="flex flex-col gap-1">
+                  <span>{t("cardUi.finishMerge")}</span>
+                  <ActionButton
+                    variant="outline"
+                    disabled={!card.worktreePath}
+                    disabledReason={t("cardUi.needWorktree")}
+                    onClick={() => {
+                      setFinishing(false);
+                      setTab("diff");
+                    }}
+                  >
+                    {t("cardUi.finishMergeButton")}
+                  </ActionButton>
+                </li>
+              </ul>
+            </AppDialogContent>
+          </Dialog>
         )}
         {confirming && (
           <ConfirmDialog

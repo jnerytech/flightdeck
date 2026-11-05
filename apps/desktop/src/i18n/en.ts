@@ -2926,6 +2926,16 @@ export const en: Dictionary = {
     stop: "Stop",
     openPr: "Open PR",
     complete: "Complete",
+    finish: "Finish…",
+    finishTitle: "Finish this card",
+    finishMove: "Only moves the card to Done. The worktree and the branch stay as they are.",
+    finishMoveButton: "Move to Done",
+    finishComplete:
+      "Moves the card to Done and removes the worktree if there are no pending changes.",
+    finishMerge:
+      "Opens the changes, where Merge and archive puts the work into the base branch and removes the branch.",
+    finishMergeButton: "Review and merge",
+    alreadyDone: "The card is already in Done",
     discard: "Discard",
     completeMessage: "Complete this card? The worktree is removed if there are no pending changes.",
     discardMessage: "Discard this card? The worktree and the local branch are deleted.",

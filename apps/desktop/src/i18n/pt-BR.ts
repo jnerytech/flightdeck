@@ -2927,6 +2927,16 @@ export const ptBR = {
     stop: "Parar",
     openPr: "Abrir PR",
     complete: "Concluir",
+    finish: "Finalizar…",
+    finishTitle: "Finalizar este card",
+    finishMove: "Só move o card para Concluído. A worktree e a branch continuam como estão.",
+    finishMoveButton: "Mover para Concluído",
+    finishComplete:
+      "Move o card para Concluído e remove a worktree se não houver alterações pendentes.",
+    finishMerge:
+      "Abre as alterações, onde Merge e arquivar leva o trabalho para a branch base e remove a branch.",
+    finishMergeButton: "Revisar e mesclar",
+    alreadyDone: "O card já está em Concluído",
     discard: "Descartar",
     completeMessage:
       "Concluir este card? A worktree é removida se não houver alterações pendentes.",
