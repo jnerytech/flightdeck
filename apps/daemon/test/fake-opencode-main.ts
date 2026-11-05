@@ -53,8 +53,69 @@ function agents(): unknown {
   return { data: [...ours, { id: "compaction", hidden: true, permissions: [] }] };
 }
 
+/**
+ * What booting a private server costs: FAKE_OPENCODE_BOOT_MS of busy CPU before an `api --standalone`
+ * answers or a `serve` listens (the real one measured 8 to 15 s on a busy Raspberry Pi 5).
+ */
+function boot(): void {
+  const until = Date.now() + Number(process.env.FAKE_OPENCODE_BOOT_MS ?? 0);
+  while (Date.now() < until) {
+    // busy on purpose: the cost is CPU, not waiting
+  }
+}
+
+/** What a route answers, as the `api` command prints it and `serve` sends it; null for an unknown one. */
+function body(route: string): unknown {
+  if (route === "/api/config") {
+    return [
+      { type: "directory", path: globalDir() },
+      { type: "document", info: {} },
+    ];
+  }
+  if (route === "/api/agent") return agents();
+  if (route === "/api/permission/saved") return { data: [] };
+  return null;
+}
+
+/**
+ * `serve`: the private server a preflight starts once. Prints the line the real one prints, wants
+ * the password of OPENCODE_SERVER_PASSWORD (Basic, user `opencode`) and answers the three routes.
+ * FAKE_OPENCODE_SERVE bends it: `exit` (dies at once), `hang` (never listens), `silent` (listens,
+ * never answers a route), `http500`, `notjson`.
+ */
+async function serve(): Promise<void> {
+  boot();
+  const mode = process.env.FAKE_OPENCODE_SERVE ?? "";
+  if (mode === "exit") process.exit(3);
+  if (mode === "hang") {
+    setInterval(() => {}, 1000);
+    return;
+  }
+  const password = process.env.OPENCODE_SERVER_PASSWORD ?? "";
+  const server = Bun.serve({
+    port: 0,
+    hostname: "127.0.0.1",
+    async fetch(request) {
+      const route = new URL(request.url).pathname;
+      const authorized =
+        password !== "" &&
+        request.headers.get("authorization") === `Basic ${btoa(`opencode:${password}`)}`;
+      if (log) appendFileSync(log, `${JSON.stringify({ args: ["GET", route], authorized })}\n`);
+      if (!authorized) return new Response("unauthorized", { status: 401 });
+      if (mode === "silent") return new Promise<Response>(() => {});
+      if (mode === "http500") return new Response("boom", { status: 500 });
+      if (mode === "notjson") return new Response("secret-looking text");
+      const found = body(route);
+      return found === null ? new Response("no", { status: 404 }) : Response.json(found);
+    },
+  });
+  console.log(`opencode server listening on http://127.0.0.1:${server.port}`);
+  process.on("SIGTERM", () => process.exit(0));
+}
+
 function answer(): void {
   const [first, , route] = args;
+  if (first === "api") boot();
   if (first === "--version") console.log("opencode v2.2.5");
   else if (first === "models") console.log(MODELS.join("\n"));
   else if (first === "api" && route === "/api/config") {
@@ -259,4 +320,5 @@ async function acp(): Promise<void> {
 }
 
 if (args[0] === "acp") await acp();
+else if (args[0] === "serve") await serve();
 else answer();

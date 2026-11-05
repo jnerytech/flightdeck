@@ -109,6 +109,7 @@ import { OpenCodePreflight } from "./runtime/opencode-preflight.ts";
 import { OpenCodeModels, runCommand } from "./runtime/opencode-process.ts";
 import { OpenCodeRuntime, REAL_KILL_DEPS, treeKiller } from "./runtime/opencode-runtime.ts";
 import { scanOpenCodeScope } from "./runtime/opencode-scope.ts";
+import { startPrivateServer } from "./runtime/opencode-serve.ts";
 import { OPENCODE_LEDGER_FILE, ProcessLedger, procSource } from "./runtime/process-ledger.ts";
 import type { AgentRuntime } from "./runtime/types.ts";
 import { DAEMON_VERSION, startServer } from "./server.ts";
@@ -651,7 +652,8 @@ async function createOpenCode(
     path,
     version,
     env: childEnv,
-    run: runCommand,
+    // One private server per preflight, in the process groups the ledger knows (issue #243).
+    serve: (opts) => startPrivateServer({ path, ledger, ...opts }),
     scan,
     log,
     // An executable discovery could not stamp is never trusted: the preflight refuses opencode_changed.

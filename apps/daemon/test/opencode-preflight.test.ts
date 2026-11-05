@@ -10,6 +10,7 @@ import {
   type PreflightDeps,
 } from "../src/runtime/opencode-preflight.ts";
 import { globalConfigDir } from "../src/runtime/opencode-scope.ts";
+import { ServeFailed } from "../src/runtime/opencode-serve.ts";
 
 // The global folder as the code computes it here (backslashes on Windows).
 const GLOBAL = globalConfigDir({ HOME: "/home/u" });
@@ -41,13 +42,23 @@ interface Answers {
   fail?: string;
 }
 
+/** A private server that was started: where, with what, and whether it was stopped. */
+interface Started {
+  cwd: string;
+  env: Record<string, string>;
+  timeoutMs: number;
+  stopped: number;
+  gets: string[];
+}
+
 function setup(answers: Answers = {}, over: Partial<PreflightDeps> = {}) {
   const calls: Array<{
-    argv: string[];
+    route: string;
     cwd: string;
     env: Record<string, string>;
     timeoutMs: number;
   }> = [];
+  const servers: Started[] = [];
   let clock = 1000;
   const deps: PreflightDeps = {
     path: "/bin/opencode",
@@ -55,28 +66,38 @@ function setup(answers: Answers = {}, over: Partial<PreflightDeps> = {}) {
     env: { HOME: "/home/u", PATH: "/bin", OPENCODE_DB: "/x" },
     scan: async () => ({ findings: [], fingerprint: "fp1" }),
     now: () => clock,
-    run: async (argv, opts) => {
-      calls.push({ argv, ...opts });
-      const route = argv[3] ?? "";
-      if (answers.fail && route.includes(answers.fail)) return { exitCode: 1, stdout: "" };
-      const body =
-        route === "/api/config"
-          ? (answers.config ?? goodConfig())
-          : route === "/api/agent"
-            ? {
-                data:
-                  typeof answers.agents === "function"
-                    ? answers.agents(opts.env.OPENCODE_CONFIG_CONTENT ?? "")
-                    : (answers.agents ?? goodAgents()),
-              }
-            : { data: answers.saved ?? [] };
-      return { exitCode: 0, stdout: JSON.stringify(body) };
+    serve: async (opts) => {
+      const started: Started = { ...opts, stopped: 0, gets: [] };
+      servers.push(started);
+      return {
+        get: async (route) => {
+          calls.push({ route, ...opts });
+          started.gets.push(route);
+          if (answers.fail && route.includes(answers.fail)) {
+            throw new ServeFailed(`${route} answered HTTP 500`);
+          }
+          return route === "/api/config"
+            ? (answers.config ?? goodConfig())
+            : route === "/api/agent"
+              ? {
+                  data:
+                    typeof answers.agents === "function"
+                      ? answers.agents(opts.env.OPENCODE_CONFIG_CONTENT ?? "")
+                      : (answers.agents ?? goodAgents()),
+                }
+              : { data: answers.saved ?? [] };
+        },
+        stop: async () => {
+          started.stopped += 1;
+        },
+      };
     },
     ...over,
   };
   return {
     preflight: new OpenCodePreflight(deps),
     calls,
+    servers,
     tick: (ms: number) => {
       clock += ms;
     },
@@ -100,13 +121,13 @@ describe("opencode-preflight", () => {
     expect(await preflight.check("/w")).toEqual({
       configContent: JSON.stringify(opencodeConfig()),
     });
-    expect(calls.map((c) => c.argv.slice(1).join(" ")).sort()).toEqual([
-      "api GET /api/agent --standalone",
-      "api GET /api/config --standalone",
-      "api GET /api/permission/saved --standalone",
+    expect(calls.map((c) => c.route).sort()).toEqual([
+      "/api/agent",
+      "/api/config",
+      "/api/permission/saved",
     ]);
     for (const call of calls) {
-      // Each check boots a private server: 8 to 15 s on a busy Raspberry Pi 5 (2026-11-05).
+      // The server boots once, in the folder: 8 to 15 s on a busy Raspberry Pi 5 (2026-11-05).
       expect([
         call.cwd,
         call.env.OPENCODE_DISABLE_PROJECT_CONFIG,
@@ -222,7 +243,7 @@ describe("opencode-preflight", () => {
     const thrown = setup(
       {},
       {
-        run: async () => {
+        serve: async () => {
           throw new Error("timeout");
         },
       },
@@ -239,12 +260,20 @@ describe("opencode-preflight", () => {
     await refusal(setup({ fail: "/api/agent" }, { log }).preflight.check("/w"));
     const notJson = setup(
       {},
-      { log, run: async () => ({ exitCode: 0, stdout: "secret-looking text" }) },
+      {
+        log,
+        serve: async () => ({
+          get: async (route) => {
+            throw new ServeFailed(`${route} answered something that is not JSON`);
+          },
+          stop: async () => {},
+        }),
+      },
     );
     await refusal(notJson.preflight.check("/w"));
     await refusal(setup({ config: { not: "a list" } }, { log }).preflight.check("/w"));
     expect(logs).toEqual([
-      "opencode preflight failed in /w: /api/agent exited 1",
+      "opencode preflight failed in /w: /api/agent answered HTTP 500",
       "opencode preflight failed in /w: /api/config answered something that is not JSON",
       "opencode preflight failed in /w: a check could not run, or its answer had an unexpected shape",
     ]);
@@ -281,20 +310,22 @@ describe("opencode-preflight", () => {
       version: "2.2.5",
       env: { HOME: "/home/u" },
       scan: async () => ({ findings: [], fingerprint: "fp" }),
-      run: async (argv) => {
-        const route = argv[3] ?? "";
-        calls.push(route);
-        const stdout =
-          route === "/api/config"
-            ? fixture("api-config.json").replace(
-                '"/home/u/.config/opencode"',
-                JSON.stringify(GLOBAL),
-              )
-            : route === "/api/agent"
-              ? fixture("api-agent.json")
-              : JSON.stringify({ data: [] });
-        return { exitCode: 0, stdout };
-      },
+      serve: async () => ({
+        get: async (route) => {
+          calls.push(route);
+          const text =
+            route === "/api/config"
+              ? fixture("api-config.json").replace(
+                  '"/home/u/.config/opencode"',
+                  JSON.stringify(GLOBAL),
+                )
+              : route === "/api/agent"
+                ? fixture("api-agent.json")
+                : JSON.stringify({ data: [] });
+          return JSON.parse(text) as unknown;
+        },
+        stop: async () => {},
+      }),
     });
     expect(await refusal(preflight.check("/work/project"))).toBe(null);
     const saved = JSON.parse(fixture("api-permission-saved.json")) as { data: unknown[] };
@@ -342,5 +373,58 @@ describe("opencode-preflight", () => {
     expect(maskResource("a".repeat(10) + " " + "b".repeat(50))).toBe(`${"a".repeat(10)} •••`);
     expect(maskResource("x ".repeat(30))).toBe(`${"x ".repeat(20)}…`);
     expect(maskResource("auth eyJhbGciOi.J9.eyJzdWIi+Q/x== done")).toBe("auth ••• done");
+  });
+
+  test("one private server serves the three checks, and is stopped once they are done (issue #243)", async () => {
+    const { preflight, servers } = setup();
+    await preflight.check("/w");
+    expect(servers).toHaveLength(1);
+    expect(servers[0]?.gets.sort()).toEqual(["/api/agent", "/api/config", "/api/permission/saved"]);
+    expect(servers[0]?.stopped).toBe(1);
+    expect(servers[0]?.env.OPENCODE_DISABLE_PROJECT_CONFIG).toBe("1");
+    expect(servers[0]?.timeoutMs).toBe(30_000);
+  });
+
+  test("the server is stopped when a check refuses, when one fails, and when it never starts", async () => {
+    const outranks = setup({ config: [...goodConfig(), { type: "document", path: "/w/o.json" }] });
+    await refusal(outranks.preflight.check("/w"));
+    expect(outranks.servers.map((x) => x.stopped)).toEqual([1]);
+    const failing = setup({ fail: "/api/agent" });
+    await refusal(failing.preflight.check("/w"));
+    expect(failing.servers.map((x) => x.stopped)).toEqual([1]);
+    const saved = setup({ saved: [{ id: "psv_1", action: "shell", resource: "echo *" }] });
+    await refusal(saved.preflight.check("/w"));
+    expect(saved.servers.map((x) => x.stopped)).toEqual([1]);
+    const logs: string[] = [];
+    const never = setup(
+      {},
+      {
+        log: (m) => logs.push(m),
+        serve: async () => {
+          throw new ServeFailed("opencode serve did not listen in time");
+        },
+      },
+    );
+    expect(await refusal(never.preflight.check("/w"))).toEqual({
+      reason: "opencode_preflight_failed",
+      params: { version: "2.2.5" },
+    });
+    expect(logs).toEqual([
+      "opencode preflight failed in /w: opencode serve did not listen in time",
+    ]);
+  });
+
+  test("hidden extra agents cost a second server, with the document that disables them, and it is stopped too", async () => {
+    const { preflight, servers } = setup({
+      agents: (content) =>
+        content.includes('"reviewer":{"disabled":true}')
+          ? goodAgents()
+          : [...goodAgents(), agent("reviewer", base)],
+    });
+    await preflight.check("/w");
+    expect(servers).toHaveLength(2);
+    expect(servers.map((x) => x.stopped)).toEqual([1, 1]);
+    expect(servers[1]?.gets).toEqual(["/api/agent"]);
+    expect(servers[1]?.env.OPENCODE_CONFIG_CONTENT).toContain('"reviewer":{"disabled":true}');
   });
 });

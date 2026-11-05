@@ -15,8 +15,8 @@ import {
   opencodeEnv,
   type PermissionRule,
 } from "./opencode-config.ts";
-import type { RunResult } from "./opencode-discovery.ts";
 import { CONFIG_FILES, globalConfigDir, type ScopeResult } from "./opencode-scope.ts";
+import { type PrivateServer, ServeFailed } from "./opencode-serve.ts";
 
 export const PREFLIGHT_CACHE_MS = 10 * 60_000;
 
@@ -25,10 +25,12 @@ export interface PreflightDeps {
   version: string;
   /** The session's environment, before the OpenCode variables. */
   env: Record<string, string>;
-  run: (
-    argv: string[],
-    opts: { cwd: string; env: Record<string, string>; timeoutMs: number },
-  ) => Promise<RunResult>;
+  /** Starts the one private server of a preflight (issue #243). */
+  serve: (opts: {
+    cwd: string;
+    env: Record<string, string>;
+    timeoutMs: number;
+  }) => Promise<Pick<PrivateServer, "get" | "stop">>;
   scan: () => Promise<ScopeResult>;
   now?: () => number;
   /** The executable as discovery saw it, and how it is now. */
@@ -130,7 +132,7 @@ export class OpenCodePreflight {
       .catch((error: unknown) => {
         if (error instanceof FlightdeckError) throw error;
         const why =
-          error instanceof CheckFailed
+          error instanceof CheckFailed || error instanceof ServeFailed
             ? error.message
             : "a check could not run, or its answer had an unexpected shape";
         this.deps.log?.(`opencode preflight failed in ${cwd}: ${why}`);
@@ -189,18 +191,14 @@ export class OpenCodePreflight {
   }
 
   private async get(cwd: string, route: string, content: string): Promise<unknown> {
-    const result = await this.deps.run([this.deps.path, "api", "GET", route, "--standalone"], {
+    // Stub: the server is started and the answer is not read yet.
+    await this.deps.serve({
       cwd,
       env: opencodeEnv(this.deps.env, content),
       timeoutMs: OPENCODE_API_TIMEOUT_MS,
     });
-    if (result.exitCode !== 0) throw new CheckFailed(`${route} exited ${result.exitCode}`);
-    try {
-      return JSON.parse(result.stdout) as unknown;
-    } catch {
-      // The parser's message quotes the output, which is not for logs.
-      throw new CheckFailed(`${route} answered something that is not JSON`);
-    }
+    if (route === "") throw new CheckFailed(route);
+    return null;
   }
 
   private refuse(reason: string, params: Record<string, string>): FlightdeckError {
