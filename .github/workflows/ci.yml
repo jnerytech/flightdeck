@@ -95,33 +95,21 @@ jobs:
       - name: Ratchets
         run: bun run scripts/ci-quick.ts
 
-  # Linux runs the whole suite in one job: the exact 100% line and function gate (bun's lcov has
-  # no per-function records, so shards could not be merged without weakening it) and SonarCloud.
-  test:
-    # A dispatched run's jobs have names of their own: a skipped copy of `test (ubuntu-latest)` next to
-    # the real check must never stand in for the one the branch rules require.
-    name: test (${{ matrix.os }})${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
-    # It runs even when the quick job failed, and fails at once: GitHub counts a skipped required
-    # check as passed (#272).
+  # Linux (#293): the suite, SonarCloud, and the smokes and cargo run as jobs of their own, the
+  # suite and the checks in parallel. The suite stays whole: bun's lcov counts functions per file
+  # but does not name them, so shards could not merge the exact 100% function gate. The required
+  # check `test (ubuntu-latest)` is the aggregate below.
+  test-suite:
+    name: test suite (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
     needs: [changes, quick]
-    if: "!cancelled() && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')"
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     # bash everywhere: stops at the first failing command of a step.
     defaults:
       run:
         shell: bash
     steps:
-      - name: The quick checks passed
-        run: |
-          test "${{ needs.changes.result }}" = success
-          test "${{ needs.quick.result }}" = success
-
-      # Full history: SonarCloud uses the blame to tell new code from old.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
@@ -143,12 +131,40 @@ jobs:
       - name: Testes (cobertura 100%)
         run: bun run test
 
-      # SonarCloud, with the lcov report the tests just wrote. The product version marks the
-      # new-code period ("previous version"). Skipped where the secret is not available (pull
-      # requests from forks).
+      # SonarCloud reads it in its own job.
+      - name: Relatório lcov para o SonarCloud
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+
+  # SonarCloud, with the lcov report of the suite. The product version marks the new-code period
+  # ("previous version"). Skipped on a dispatch, and where the secret is not available (pull requests
+  # from forks).
+  sonar:
+    name: sonarcloud
+    needs: [test-suite]
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Full history: SonarCloud uses the blame to tell new code from old.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Relatório lcov do suite
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: coverage-lcov
+          path: coverage
+
       - name: Versão para o SonarCloud
         id: sonar
-        if: github.event_name != 'workflow_dispatch'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
@@ -162,6 +178,33 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: -Dsonar.projectVersion=${{ env.FD_VERSION }}
+
+  # The rest of the Linux leg, in parallel with the suite: the smokes and the Rust shell, each only
+  # when the path plan asks for it (#264).
+  checks-linux:
+    name: checks (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    needs: [changes, quick]
+    if: (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots') && (needs.changes.outputs.smokes == 'true' || needs.changes.outputs.cargo == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      # Tests create repositories and commit in them.
+      - name: Identidade do git
+        run: |
+          git config --global user.name "flightdeck-ci"
+          git config --global user.email "ci@flightdeck.invalid"
 
       # Only when the daemon, a smoke or what everything reads changed (#264).
       - name: Smokes
@@ -231,6 +274,30 @@ jobs:
           # The unit tests of the shell (phase 33: the checks of `open_result`), on both systems:
           # the disk checks differ (links on Linux, 8.3 names and junctions on Windows).
           cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
+
+  # The check the main ruleset requires: it passes only when the plan, the quick job, the suite,
+  # SonarCloud and the checks passed. It runs even when one failed (not on a cancel), and fails at
+  # once: GitHub counts a skipped required check as passed (#272). A dispatched run's jobs have names
+  # of their own, so a skipped copy never stands in for the real check.
+  test:
+    name: test (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    needs: [changes, quick, test-suite, sonar, checks-linux]
+    if: "!cancelled() && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: The suite, SonarCloud and the checks passed
+        run: |
+          test "${{ needs.changes.result }}" = success
+          test "${{ needs.quick.result }}" = success
+          echo "suite: ${{ needs.test-suite.result }}, sonar: ${{ needs.sonar.result }}, checks: ${{ needs.checks-linux.result }}"
+          test "${{ needs.test-suite.result }}" = success
+          # SonarCloud skips on a dispatch.
+          case "${{ needs.sonar.result }}" in success|skipped) ;; *) exit 1 ;; esac
+          # The checks skip when the plan asks for no smoke and no cargo.
+          if [ "${{ needs.changes.outputs.smokes }}" = true ] || [ "${{ needs.changes.outputs.cargo }}" = true ]; then
+            test "${{ needs.checks-linux.result }}" = success
+          fi
 
   # Windows, the slowest leg (#220: 33 minutes, 25 of them tests), runs the suite in three shards
   # with no coverage: the 100% gate is Linux's. The required check `test (windows-latest)` is the
