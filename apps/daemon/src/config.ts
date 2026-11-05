@@ -139,6 +139,13 @@ export const Config = z.object({
     })
     .catch(() => ({ mode: "full" as const, locked: false }))
     .default(() => ({ mode: "full" as const, locked: false })),
+  /** Sessions (issue #157): minutes an idle one waits before it sleeps; 0 is off. */
+  sessions: z
+    .object({
+      sleepAfterMinutes: z.number().int().min(0).max(1440).catch(0).default(0),
+    })
+    .catch(() => ({ sleepAfterMinutes: 0 }))
+    .default(() => ({ sleepAfterMinutes: 0 })),
   /** Terminals embedded in the host (phase 14). */
   terminal: z
     .object({

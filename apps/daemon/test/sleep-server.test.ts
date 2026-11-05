@@ -21,7 +21,14 @@ async function serve(withSleep = true) {
   const server = startServer({
     manager: ctx.manager,
     ...(withSleep
-      ? { sleep: { minutes: () => minutes, set: (n: number) => void (minutes = n) } }
+      ? {
+          sleep: {
+            minutes: () => minutes,
+            set: (n: number) => {
+              minutes = n;
+            },
+          },
+        }
       : {}),
     hostName: "h",
     bind: "127.0.0.1",
@@ -129,8 +136,12 @@ describe("sleep-main: the config and what the host keeps awake", () => {
           sessions: Array<{ id: string; status: string; claudeSessionId: string | null }>;
         }>("session.list", {})
       )?.sessions.find((s) => s.id === id);
-    const ready = await poll(async () => (await listed())?.status === "idle", 5000);
-    expect(ready).not.toBeNull();
+    let status = "";
+    for (let i = 0; i < 200 && status !== "idle"; i++) {
+      status = (await listed())?.status ?? "";
+      if (status !== "idle") await Bun.sleep(10);
+    }
+    expect(status).toBe("idle");
     await h.client.data("session.meta.set", {
       claudeSessionId: (await listed())?.claudeSessionId,
       pinned: true,
@@ -147,7 +158,8 @@ describe("sleep-main: sessions of cards are left to the board", () => {
     const project = await ctx.board.addProject({ path: ctx.repo, promptTemplate: "" });
     const card = ctx.board.createCard(project.id, { title: "One", description: "" });
     await ctx.board.startCard(card.id);
-    const sessionId = ctx.board.getCard(card.id).sessionId as string;
+    const started = await poll(() => ctx.board.getCard(card.id).sessionId);
+    const sessionId = started as string;
     expect(sessionId).toBeTruthy();
     expect(ctx.board.hasRunSession(sessionId)).toBe(true);
     expect(ctx.board.hasRunSession("not-a-session")).toBe(false);

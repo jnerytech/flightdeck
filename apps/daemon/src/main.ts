@@ -111,6 +111,7 @@ import {
 } from "./service.ts";
 import { killProcess, osServiceContext, processPath } from "./service-os.ts";
 import { SessionManager } from "./sessions/session-manager.ts";
+import { IdleSleeper } from "./sessions/sleeper.ts";
 import { createPrompt, installStableBinary, reconcileStableBinary, runSetup } from "./setup.ts";
 import { defaultHistorySources, HistoryImporter } from "./snippets/history.ts";
 import { SecretScanner } from "./snippets/model.ts";
@@ -652,6 +653,10 @@ export async function startDaemon(
     pack: packPersonas,
     publisher: agentPublisher(agentcfg),
   });
+  const awake = {
+    pinned: (_claudeSessionId: string | null) => false,
+    cardSession: (_sessionId: string) => false,
+  };
   const manager = new SessionManager({
     store,
     runtime,
@@ -661,6 +666,8 @@ export async function startDaemon(
     defaultPermissionMode: config.defaultPermissionMode,
     allowApiKey: config.allowApiKey,
     allowBypass: () => config.allowBypassPermissions,
+    // A pinned session and a card's stay awake; filled in below, once the board and the meta exist.
+    keepAwake: (session) => awake.pinned(session.claudeSessionId) || awake.cardSession(session.id),
     baseEnv: env,
     onQuota: (readings) => {
       quota.record(readings);
@@ -1046,6 +1053,11 @@ export async function startDaemon(
   board.addEnd((cardId) => runManager.stop(cardId));
   const idle = new Idle({ endpoints, messaging, host: config.hostName });
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
+  awake.pinned = (claudeSessionId) =>
+    claudeSessionId !== null && central.meta.get(claudeSessionId).pinned;
+  awake.cardSession = (sessionId) => board.hasRunSession(sessionId);
+  // Idle sessions give back their process after N minutes (off by default: no timer then).
+  const sleeper = new IdleSleeper({ manager, minutes: config.sessions.sleepAfterMinutes });
   // The wrapper finds the receptor through this file: nothing is served before it is there.
   await central.ready();
   const server = startServer({
@@ -1059,6 +1071,16 @@ export async function startDaemon(
       set: async (allow) => {
         config.allowBypassPermissions = allow;
         await updateConfigFile(configFile, (raw) => ({ ...raw, allowBypassPermissions: allow }));
+      },
+    },
+    sleep: {
+      minutes: () => sleeper.minutes(),
+      set: async (minutes) => {
+        sleeper.setMinutes(minutes);
+        await updateConfigFile(configFile, (raw) => ({
+          ...raw,
+          sessions: { ...(raw.sessions as object | undefined), sleepAfterMinutes: minutes },
+        }));
       },
     },
     persistRoots: (roots) =>
@@ -1293,6 +1315,7 @@ export async function startDaemon(
         await central.stop();
         await telemetry.stop();
         maintenance.stop();
+        sleeper.stop();
         updates?.stop();
         await manager.shutdown();
         await server.stop();

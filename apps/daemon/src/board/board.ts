@@ -1889,9 +1889,13 @@ export class Board {
     this.changed(id);
   }
 
-  /** Whether a card's run uses this session (stub). */
-  hasRunSession(_sessionId: string): boolean {
-    return false;
+  /** Whether a card's run uses this session: the board follows it, so the host never puts it to sleep. */
+  hasRunSession(sessionId: string): boolean {
+    return (
+      this.db
+        .query<{ n: number }, [string]>("SELECT COUNT(*) AS n FROM card_runs WHERE session_id = ?")
+        .get(sessionId)?.n !== 0
+    );
   }
 
   /** Tells the watchers about a card whose fields changed outside the board (the board sync's). */

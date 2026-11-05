@@ -950,6 +950,15 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "session.close":
         await manager.close(command.payload.sessionId);
         return ok(command.type);
+      case "session.sleep":
+        return ok(command.type, {
+          result: await manager.sleep(command.payload.sessionId, { manual: true }),
+        });
+      case "host.sleep": {
+        if (!opts.sleep) throw featureOff("sleep");
+        await opts.sleep.set(command.payload.minutes);
+        return ok(command.type, { sleepAfterMinutes: command.payload.minutes });
+      }
       case "session.resume":
         await manager.resume(command.payload.sessionId);
         return ok(command.type);
@@ -1456,6 +1465,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
           ...(opts.ui ? { ui: { ...opts.ui } } : {}),
           ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
+          ...(opts.sleep ? { sleepAfterMinutes: opts.sleep.minutes() } : {}),
           ...updateStatus(),
           ...(opts.terminal ?? {}),
         });
