@@ -54,6 +54,16 @@ const AUTH_HELP = "OpenCode has no login for this provider: run `opencode auth l
 const AGENTS_MD = "AGENTS.md";
 const AGENTS_MD_MAX = 64 * 1024;
 
+/** Whether a path's real path (links followed) is inside the folder's and is not a credential. */
+async function realInside(folder: string, path: string): Promise<boolean> {
+  try {
+    const [root, target] = await Promise.all([realpath(folder), realpath(path)]);
+    return isInside(root, target) && !credential(target);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * The folder's own AGENTS.md as an embedded text resource for a new session's first prompt (project
  * config is off, so OpenCode does not read it). Text only: nothing in it is followed or run.
@@ -66,7 +76,8 @@ async function agentsMd(
   const path = join(cwd, AGENTS_MD);
   const info = await stat(path).catch(() => null);
   if (!info?.isFile()) return null;
-  if (info.size > AGENTS_MD_MAX) return { skipped: true };
+  // A link out of the folder, or to a credential, would send that file to the model unasked.
+  if (info.size > AGENTS_MD_MAX || !(await realInside(cwd, path))) return { skipped: true };
   const text = await readFile(path, "utf8");
   return {
     block: {
@@ -537,15 +548,7 @@ class OpenCodeRun implements AgentRun {
     if (!["Read", "Glob", "Grep"].includes(name)) return false;
     const raw = input.file_path ?? input.path ?? ".";
     if (typeof raw !== "string" || credential(raw)) return false;
-    try {
-      const [root, target] = await Promise.all([
-        realpath(this.opts.cwd),
-        realpath(resolve(this.opts.cwd, raw)),
-      ]);
-      return isInside(root, target) && !credential(target);
-    } catch {
-      return false;
-    }
+    return realInside(this.opts.cwd, resolve(this.opts.cwd, raw));
   }
 
   /** An interrupt that came before the turn began: it ends as cancelled, with no prompt. */
