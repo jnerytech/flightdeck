@@ -383,29 +383,34 @@ export function prMergeViolation(
 ): string | null {
   if (env.FLIGHTDECK_COORDINATOR) return null;
   for (const segment of commandWords(command).split(/[;&|\n]+/)) {
-    const words = segment.trim().split(/\s+/);
-    const g = words.indexOf("gh");
-    const b = words.indexOf("bun");
-    let what: string | null = null;
-    if (g >= 0 && words[g + 1] === "pr" && words[g + 2] === "merge") what = "gh pr merge";
-    else if (
-      g >= 0 &&
-      words[g + 1] === "api" &&
-      words.some((w) => /\/pulls\/\d+\/merge$/.test(w))
-    ) {
-      what = "a REST merge";
-    } else if (b >= 0) {
-      const rest = words.slice(b + 1);
-      const at =
-        rest[0] === "run" && rest[1] === "pr" ? 2 : rest[0]?.endsWith("pr-flow.ts") ? 1 : -1;
-      const sub = at < 0 ? undefined : rest.slice(at).find((w) => w !== "--");
-      if (sub === "merge" || sub === "tag") what = `bun run pr -- ${sub}`;
-    }
+    const what = handMerge(segment.trim().split(/\s+/));
     if (what) {
       return `${what} is the coordinator's: a session opens its PR and turns on auto-merge, \`bun run pr -- auto <n>\` (CLAUDE.md).`;
     }
   }
   return null;
+}
+
+/** The hand merge or tag one command's words run, or null. */
+function handMerge(words: string[]): string | null {
+  const g = words.indexOf("gh");
+  if (g >= 0 && words[g + 1] === "pr" && words[g + 2] === "merge") return "gh pr merge";
+  if (g >= 0 && words[g + 1] === "api" && words.some((w) => /\/pulls\/\d+\/merge$/.test(w))) {
+    return "a REST merge";
+  }
+  const sub = prFlowCommand(words);
+  return sub === "merge" || sub === "tag" ? `bun run pr -- ${sub}` : null;
+}
+
+/** The `bun run pr` (or `bun scripts/pr-flow.ts`) command these words run, or undefined. */
+function prFlowCommand(words: string[]): string | undefined {
+  const b = words.indexOf("bun");
+  if (b < 0) return undefined;
+  const rest = words.slice(b + 1);
+  let at = -1;
+  if (rest[0] === "run" && rest[1] === "pr") at = 2;
+  else if (rest[0]?.endsWith("pr-flow.ts")) at = 1;
+  return at < 0 ? undefined : rest.slice(at).find((w) => w !== "--");
 }
 
 export interface PushGuardDeps extends CommitGateDeps {
