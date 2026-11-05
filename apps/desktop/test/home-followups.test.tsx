@@ -10,6 +10,7 @@ const { AppStore } = await import("../src/lib/app-store.ts");
 const { emptySummary } = await import("../src/lib/client-costs.ts");
 const { HomePage } = await import("../src/ui/HomePage.tsx");
 const { CostsPage } = await import("../src/ui/CostsPage.tsx");
+const { TContext } = await import("../src/i18n/context.tsx");
 const { HistoryList } = await import("../src/ui/HistoryList.tsx");
 
 setDefaultTimeout(30_000);
@@ -264,7 +265,11 @@ describe("home-followups: Costs and History start where Home pointed (issue #210
 
   test("a period in the route is the period chosen", async () => {
     const { w, asked } = costsStore(["h1"]);
-    render(<CostsPage store={w.store} onOpenSession={() => {}} period="30d" />);
+    render(
+      <TContext.Provider value={w.store.i18n.t}>
+        <CostsPage store={w.store} onOpenSession={() => {}} period="30d" />
+      </TContext.Provider>,
+    );
     await waitFor(() => expect(asked.length).toBeGreaterThan(0));
     expect(asked[0]).toMatchObject({ host: "h1", from: "2026-09-11", to: "2026-10-10" });
     expect(screen.getByRole("button", { name: "30 days" }).getAttribute("aria-pressed")).toBe(

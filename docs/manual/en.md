@@ -839,6 +839,23 @@ live; the list is the project's, so a session of another project never shows her
   three folding groups: **Work** (Workflows, Costs, Conversations, Teams), **Library** (Personas,
   Snippets, Plugins, Vault) and **Infra** (Connections, History). A group with nothing to offer is
   not drawn, the folded groups are remembered, and the narrow icon rail has no headings.
+- **Home** (first in Work) is a strip of four cards over the last seven days of every online host,
+  each with a sparkline: **Spend** (with the month's host budgets, when set), **Turns** (ok and
+  failed), **Tokens** (with what came from the cache) and the **average turn** (cost, time and
+  success rate). Spend, Tokens and the average open Costs on the same seven days (across all hosts when
+  several have costs); Turns opens the History of the host, on the same days, when there is one
+  online host, and Costs across all of them when there are several (History is one host's). A host
+  that does not have costs shows "—" for Spend and Tokens, not $0, and the card names it; the
+  average cost counts managed sessions only, unlike Spend, which reads every transcript, and its
+  card says so. While the hosts are still connecting at start, Home says "Connecting to your
+  hosts…" in a live region, and "Home is ready." is announced when the numbers arrive. The failed turns and the turn time are counted by the daemon from this version on: a
+  host on an older daemon shows "—" instead of a made-up zero, and days before the update are
+  unknown (the average time and the success rate use only the turns that were counted). Home reads
+  again every minute and when the window gets focus; a host that does not answer is named under
+  the title and the others still count. The desktop app opens on Home when the window is new; a
+  window you already used comes back with its tabs. The account at the foot of the bar is the one
+  of the host you are on; with no host open it is the shared account of the online hosts, or "N
+  accounts" when they differ.
 - With one area, the tab strip sits in the top bar on the breadcrumb's row; with a split, each
   area has its own strip. The strip keeps three tools: the active tab's **Actions** menu (move left
   or right, move to the other area, pin), **New tab** and **Split**.

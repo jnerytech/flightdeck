@@ -5,7 +5,7 @@ import { Page } from "@/components/layout/page";
 import { Grid, Stack } from "@/components/layout/stack";
 import { formatCompact, formatNumber, formatSeconds, formatUsd } from "@/i18n/format";
 import type { AppState, AppStore } from "../lib/app-store.ts";
-import { daysBetween, periodRange } from "../lib/costs.ts";
+import { ALL_HOSTS, daysBetween, periodRange } from "../lib/costs.ts";
 import { type HomeKpis, homeKpis } from "../lib/home-kpis.ts";
 import type { Route } from "../lib/router.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -110,8 +110,20 @@ export function HomePage(props: {
   const withoutCosts = online
     .filter((host) => !hasFeature(host.hostInfo?.features, "costs", false))
     .map((host) => host.name);
-  const openCosts = () => go({ name: "costs" });
-  const firstHost = online[0]?.id;
+  // Costs and History open on the days the cards show, and on every host Home added up.
+  const withCosts = online.filter((host) => hasFeature(host.hostInfo?.features, "costs", false));
+  const openCosts = () =>
+    go({
+      name: "costs",
+      period: "7d",
+      ...(withCosts.length > 1 ? { host: ALL_HOSTS } : {}),
+    });
+  // History is one host's: with several, the screen that adds them up is Costs.
+  const openTurns = () => {
+    const only = online.length === 1 ? online[0] : undefined;
+    if (only) go({ name: "history", host: only.id, from: range.from, to: range.to });
+    else if (online.length > 1) openCosts();
+  };
 
   return (
     <Page title={t("home.title")} subtitle={t("home.range")}>
@@ -177,7 +189,7 @@ export function HomePage(props: {
                   seriesLabel={series(t("home.turns"), kpis.turns.series, (v) =>
                     formatNumber(v, lang),
                   )}
-                  onOpen={() => (firstHost ? go({ name: "history", host: firstHost }) : undefined)}
+                  onOpen={openTurns}
                 />
                 <KpiCard
                   title={t("home.tokens")}
