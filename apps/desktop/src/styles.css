@@ -546,6 +546,55 @@
   color: var(--color-muted-foreground);
   font-size: 0.75rem;
 }
+/* The mode chip under the composer and its menu: a pill that opens a list of rows (name, what it does, number). */
+@utility mode-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 9999px;
+  padding: 0 0.5rem;
+  background: transparent;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  cursor: pointer;
+  &:hover {
+    background: var(--color-accent);
+    color: var(--color-foreground);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 1px;
+  }
+  &[data-bypass="true"] {
+    border-color: var(--color-status-error);
+  }
+}
+@utility mode-menu {
+  min-width: 16rem;
+  max-width: min(22rem, calc(100vw - 1rem));
+}
+@utility mode-row {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+@utility mode-row-name {
+  font-weight: 500;
+}
+@utility mode-row-note {
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  white-space: normal;
+}
+@utility mode-row-key {
+  margin-left: auto;
+  padding-left: 0.75rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+}
 @utility activity-line {
   display: flex;
   align-items: center;

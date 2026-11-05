@@ -91,7 +91,7 @@ describe("chat-composer: the status line", () => {
   test("with session settings the model and the mode are pickers inside the line", () => {
     view({ settings: true, model: "claude-opus-5-5", mode: "default" });
     const status = screen.getByRole("group", { name: "Estado da sessão" });
-    expect(within(status).getByLabelText("Modo de permissão")).toBeTruthy();
+    expect(within(status).getByRole("button", { name: "Modo de permissão: Padrão" })).toBeTruthy();
     expect(within(status).getByLabelText("Modelo")).toBeTruthy();
   });
 

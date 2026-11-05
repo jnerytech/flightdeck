@@ -15,6 +15,7 @@ import { NativeSelect } from "@/components/layout/form";
 import { MODELS } from "@/components/personas/model-select";
 import { ActivityLine } from "@/components/session/activity-line";
 import { MessageActions } from "@/components/session/message-actions";
+import { ModeChip } from "@/components/session/mode-chip";
 import {
   Composer,
   ComposerDock,
@@ -32,6 +33,7 @@ import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import type { T } from "../i18n/index.ts";
 import { usd } from "../lib/costs.ts";
+import { modeRows, nextMode } from "../lib/mode-menu.ts";
 import { activityOf } from "../lib/session-activity.ts";
 import { type ImageRefusal, readImage, refuseImage } from "../lib/session-images.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
@@ -42,8 +44,6 @@ import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
 
 /** The permission modes a live session can switch between. */
-const MODES = ["plan", "default", "acceptEdits"] as const;
-const ALL_MODES = [...MODES, "bypassPermissions"] as const;
 
 /** How far from the end still counts as being at the end, in pixels. */
 /** Where each conversation was left (by `scrollKey`), so a tab that comes back is where its reader was. */
@@ -352,12 +352,17 @@ export function SessionView(props: SessionViewProps) {
   const [picking, setPicking] = useState(false);
   const start = session.permissionMode ?? "default";
   const [mode, setMode] = useState<PermissionMode>(start);
-  // As strict as the start mode or stricter; a start mode outside the list (bypass, auto) gets all.
-  const at = MODES.indexOf(start as (typeof MODES)[number]);
-  const limit = at < 0 ? MODES.length : at + 1;
-  // A host that allows bypass lets the person pick any mode, looser than the start included.
-  const offeredModes = props.bypass ? ALL_MODES : MODES.slice(0, limit);
   const [bypassAsk, setBypassAsk] = useState(false);
+  const modeMenu = modeRows({ current: mode, start, bypassAllowed: Boolean(props.bypass) });
+  /** A mode from the menu or Shift+Tab: bypass asks first, any other changes at once. */
+  const chooseMode = (next: SettableMode) => {
+    if (next === "bypassPermissions") {
+      setBypassAsk(true);
+      return;
+    }
+    setMode(next);
+    void actions.setMode?.(next);
+  };
   const [model, setModel] = useState("");
   const slash = session.slashCommands;
   // Typing `/` offers the snippets and the commands of the session together.
@@ -478,27 +483,13 @@ export function SessionView(props: SessionViewProps) {
     ...(props.settings && actions.setMode
       ? {
           mode: (
-            <NativeSelect
-              compact
-              inline
-              aria-label={t("session.modeLabel")}
-              value={mode}
-              onChange={(e) => {
-                const next = e.target.value as SettableMode;
-                if (next === "bypassPermissions") {
-                  setBypassAsk(true);
-                  return;
-                }
-                setMode(next);
-                void actions.setMode?.(next);
-              }}
-            >
-              {offeredModes.map((value) => (
-                <option key={value} value={value}>
-                  {t(`modes.${value}.name`)}
-                </option>
-              ))}
-            </NativeSelect>
+            <ModeChip
+              t={t}
+              mode={mode}
+              rows={modeMenu}
+              onPick={chooseMode}
+              onOpenHostSettings={props.onOpenHostSettings}
+            />
           ),
         }
       : {}),
@@ -760,6 +751,15 @@ export function SessionView(props: SessionViewProps) {
             }}
             onKeyDown={(e) => {
               if (e.key === "Escape" && working) void actions.interrupt();
+              if (e.key === "Tab" && e.shiftKey && props.settings && actions.setMode) {
+                // Shift+Tab cycles the permission mode, as in Claude Code; with none to go to, focus moves on.
+                const next = nextMode(modeMenu, mode);
+                if (next) {
+                  e.preventDefault();
+                  chooseMode(next);
+                }
+                return;
+              }
               if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
               if (e.ctrlKey || e.metaKey) {
                 // Ctrl+Enter breaks the line where the cursor is (a textarea only does it for Shift).
