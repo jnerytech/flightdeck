@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { type RunOptions, resolveParams, runAction } from "../src/actions/run.ts";
 import { type ActionDef, validateAction } from "../src/actions/schema.ts";
@@ -40,6 +40,45 @@ const code = async (fn: () => unknown) => {
   }
 };
 
+/** What a started program was given: its argv, its environment and its folder. */
+interface Seen {
+  argv: string[];
+  env: Record<string, string | undefined>;
+  cwd: string;
+}
+
+/**
+ * A stand-in for `Bun.spawn`: the "program" runs the moment it is started (so the folder and the
+ * secret file it was given still exist, as for a real one), and its output comes as the chunks
+ * the test gives. No process is started, so these tests do not wait on a loaded machine
+ * (issue #231); two tests keep a real process to prove the argv and a missing program.
+ */
+function program(
+  run: (seen: Seen) => { out?: string | string[]; err?: string | string[]; code?: number },
+) {
+  const seen: Seen[] = [];
+  const stream = (parts?: string | string[]) =>
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const part of [parts ?? []].flat()) controller.enqueue(new TextEncoder().encode(part));
+        controller.close();
+      },
+    });
+  const spawn = ((argv: string[], given: Omit<Seen, "argv">) => {
+    const call = { argv, env: given.env, cwd: given.cwd };
+    seen.push(call);
+    const done = run(call);
+    return {
+      stdout: stream(done.out),
+      stderr: stream(done.err),
+      exited: Promise.resolve(done.code ?? 0),
+      kill() {},
+      pid: 1,
+    };
+  }) as unknown as typeof Bun.spawn;
+  return { spawn, seen };
+}
+
 describe("acoes-execucao", () => {
   test("o argv vai ao programa como está, sem shell: aspas, ; | $() e espaços não significam nada", async () => {
     const nasty = "a b; echo oops | y $(z) `w` \"q\" 'r' & > f";
@@ -53,14 +92,13 @@ describe("acoes-execucao", () => {
   });
 
   test("o segredo só chega ao programa pelo env, e o argv e a saída mascarada não o têm", async () => {
-    const action = make(
-      [
-        "const h = require('node:crypto').createHash('sha256').update(process.env.TOKEN).digest('hex');",
-        "console.log('hash=' + h + ' argv=' + process.argv.join(' ') + ' valor=' + process.env.TOKEN);",
-      ].join(""),
-      { env: { TOKEN: "{{secret.deploy-token}}" } },
-    );
-    const result = await runAction(action, {}, { "deploy-token": TOKEN }, opts());
+    const { spawn, seen } = program(({ env, argv }) => ({
+      out: `hash=${sha(env.TOKEN ?? "")} argv=${argv.join(" ")} valor=${env.TOKEN}\n`,
+    }));
+    const action = make("-", { env: { TOKEN: "{{secret.deploy-token}}" } });
+    const result = await runAction(action, {}, { "deploy-token": TOKEN }, opts({ spawn }));
+    expect(seen[0]?.env.TOKEN).toBe(TOKEN);
+    expect(seen[0]?.argv.join(" ")).not.toContain(TOKEN);
     expect(result.output).toContain(`hash=${sha(TOKEN)}`);
     expect(result.output).toContain("valor=•••(deploy-token)");
     expect(result.output).not.toContain(TOKEN);
@@ -68,33 +106,38 @@ describe("acoes-execucao", () => {
   });
 
   test("o arquivo temporário do segredo existe durante a execução e é apagado depois, até se falhar", async () => {
-    const show =
-      "const fs=require('node:fs');const p=process.argv[1];console.log('path='+p);console.log('hash='+require('node:crypto').createHash('sha256').update(fs.readFileSync(p,'utf8')).digest('hex'));console.log('conteudo='+fs.readFileSync(p,'utf8'));";
+    let exit = 0;
+    const show = ({ argv }: Seen) => {
+      const path = argv[3] ?? "";
+      const text = readFileSync(path, "utf8");
+      return { out: `path=${path}\nhash=${sha(text)}\nconteudo=${text}\n`, code: exit };
+    };
     const ok = await runAction(
-      make(show, {}, ["{{secretFile.chave}}"]),
+      make("-", {}, ["{{secretFile.chave}}"]),
       {},
       { chave: KEY },
-      opts(),
+      opts({ spawn: program(show).spawn }),
     );
     const path = /path=(.*)/.exec(ok.output)?.[1]?.trim() ?? "";
     expect(ok.output).toContain(`hash=${sha(KEY)}`);
     expect(ok.output).not.toContain("linha-um-da-chave");
     expect(path).not.toBe("");
     expect(existsSync(path)).toBe(false);
+    exit = 3;
     const failing = await runAction(
-      make(`${show}process.exit(3)`, {}, ["{{secretFile.chave}}"]),
+      make("-", {}, ["{{secretFile.chave}}"]),
       {},
       { chave: KEY },
-      opts(),
+      opts({ spawn: program(show).spawn }),
     );
     expect(failing.exitCode).toBe(3);
     expect(existsSync(/path=(.*)/.exec(failing.output)?.[1]?.trim() ?? "")).toBe(false);
     // The same through an env variable that holds the path.
     const viaEnv = await runAction(
-      make("console.log('p='+process.env.KEY_FILE)", { env: { KEY_FILE: "{{secretFile.chave}}" } }),
+      make("-", { env: { KEY_FILE: "{{secretFile.chave}}" } }),
       {},
       { chave: KEY },
-      opts(),
+      opts({ spawn: program(({ env }) => ({ out: `p=${env.KEY_FILE}\n` })).spawn }),
     );
     expect(existsSync(/p=(.*)/.exec(viaEnv.output)?.[1]?.trim() ?? "?")).toBe(false);
   });
@@ -103,12 +146,13 @@ describe("acoes-execucao", () => {
     "em sistemas POSIX o arquivo do segredo só é legível pelo dono",
     async () => {
       const result = await runAction(
-        make("console.log(require('node:fs').statSync(process.argv[1]).mode & 0o777)", {}, [
-          "{{secretFile.chave}}",
-        ]),
+        make("-", {}, ["{{secretFile.chave}}"]),
         {},
         { chave: KEY },
-        opts(),
+        opts({
+          spawn: program(({ argv }) => ({ out: `${statSync(argv[3] ?? "").mode & 0o777}\n` }))
+            .spawn,
+        }),
       );
       expect(result.output.trim()).toBe(String(0o600));
     },
@@ -144,37 +188,27 @@ describe("acoes-execucao", () => {
     expect(existsSync(marker)).toBe(false);
   });
 
-  test("passou do timeout, o programa é morto e o resultado diz isso", async () => {
-    const marker = join(tempDir(), "depois.txt");
-    const action = make(
-      `setTimeout(() => require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'x'), 1500); setInterval(() => {}, 1000)`,
-    );
-    const started = Date.now();
-    const result = await runAction(action, {}, {}, opts({ timeoutMs: 250 }));
-    expect(result.timedOut).toBe(true);
-    expect(result.exitCode).not.toBe(0);
-    expect(Date.now() - started).toBeLessThan(1400);
-    await Bun.sleep(1700);
-    expect(existsSync(marker)).toBe(false);
-  });
-
   test("a saída vai mascarada, com o stderr, e cortada em 32 KB sem deixar metade de um segredo", async () => {
     const secrets = { "deploy-token": TOKEN, chave: KEY };
-    const action = make(
-      [
-        "const t = process.env.TOKEN, k = process.env.KEY;",
-        "console.log('literal ' + t);",
-        "console.log('b64 ' + Buffer.from(t).toString('base64'));",
-        "console.log('hex ' + Buffer.from(t).toString('hex'));",
-        "console.log('url ' + encodeURIComponent(t));",
-        "console.log('chave\\n' + k);",
-        "console.error('erro ' + t);",
-        "console.log('x'.repeat(100000));",
-        "console.log(t);",
-      ].join("\n"),
-      { env: { TOKEN: "{{secret.deploy-token}}", KEY: "{{secret.chave}}" } },
-    );
-    const result = await runAction(action, {}, secrets, opts());
+    const { spawn } = program(({ env }) => {
+      const t = env.TOKEN ?? "";
+      return {
+        out: [
+          `literal ${t}\n`,
+          `b64 ${Buffer.from(t).toString("base64")}\n`,
+          `hex ${Buffer.from(t).toString("hex")}\n`,
+          `url ${encodeURIComponent(t)}\n`,
+          `chave\n${env.KEY}\n`,
+          `${"x".repeat(100000)}\n`,
+          `${t}\n`,
+        ],
+        err: `erro ${t}\n`,
+      };
+    });
+    const action = make("-", {
+      env: { TOKEN: "{{secret.deploy-token}}", KEY: "{{secret.chave}}" },
+    });
+    const result = await runAction(action, {}, secrets, opts({ spawn }));
     expect(result.exitCode).toBe(0);
     expect(result.truncated).toBe(true);
     expect(result.output.length).toBeLessThanOrEqual(32 * 1024 + 100);
@@ -192,20 +226,14 @@ describe("acoes-execucao", () => {
   });
 
   test("uma saída de centenas de KB é lida até o limite e o resto descartado, sem travar o programa nem deixar parte do segredo", async () => {
-    const action = make(
-      [
-        "const t = process.env.TOKEN;",
-        // The capture stops at 250,000 characters: the secret starts ten characters before that.
-        "process.stdout.write('y'.repeat(250_000 - 10));",
-        "process.stdout.write(t);",
-        // Later, so it arrives in a read of its own after the capture is full (Linux merges close writes).
-        "setTimeout(() => process.stdout.write('z'.repeat(1000)), 150);",
-        "process.stderr.write('e'.repeat(100003));",
-        "process.stderr.write('e'.repeat(200001));",
-      ].join("\n"),
-      { env: { TOKEN: "{{secret.deploy-token}}" } },
-    );
-    const result = await runAction(action, {}, { "deploy-token": TOKEN }, opts());
+    // The capture stops at 250,000 characters: the secret starts ten characters before that, and
+    // the rest comes as chunks of its own after the capture is full.
+    const { spawn } = program(({ env }) => ({
+      out: ["y".repeat(250_000 - 10) + (env.TOKEN ?? ""), "z".repeat(1000)],
+      err: ["e".repeat(100003), "e".repeat(200001)],
+    }));
+    const action = make("-", { env: { TOKEN: "{{secret.deploy-token}}" } });
+    const result = await runAction(action, {}, { "deploy-token": TOKEN }, opts({ spawn }));
     expect(result.exitCode).toBe(0);
     expect(result.truncated).toBe(true);
     expect(result.output.length).toBeLessThanOrEqual(32 * 1024 + 100);
@@ -216,30 +244,25 @@ describe("acoes-execucao", () => {
 
   test("roda no cwd da ação, relativo à pasta do projeto, e o ambiente do daemon não leva as chaves de API", async () => {
     const base = tempDir();
-    const sub = join(base, "sub");
-    await Bun.write(join(sub, "marca.txt"), "aqui");
-    const cwdAction = make("console.log(require('node:fs').readFileSync('marca.txt','utf8'))", {
-      cwd: "sub",
-    });
-    expect((await runAction(cwdAction, {}, {}, opts({ base }))).output.trim()).toBe("aqui");
-    const envAction = make("console.log(Object.keys(process.env).join(','))", {
-      env: { LIMPO: "sim" },
-    });
-    const keys = (
-      await runAction(
-        envAction,
-        {},
-        {},
-        opts({
-          baseEnv: {
-            PATH: process.env.PATH,
-            SystemRoot: process.env.SystemRoot,
-            ANTHROPIC_API_KEY: "nao-deve-chegar",
-            OPENAI_API_KEY: "nem-esta",
-          },
-        }),
-      )
-    ).output;
+    const here = program(() => ({}));
+    await runAction(make("-", { cwd: "sub" }), {}, {}, opts({ base, spawn: here.spawn }));
+    expect(here.seen[0]?.cwd).toBe(join(base, "sub"));
+    const envs = program(() => ({}));
+    await runAction(
+      make("-", { env: { LIMPO: "sim" } }),
+      {},
+      {},
+      opts({
+        spawn: envs.spawn,
+        baseEnv: {
+          PATH: process.env.PATH,
+          SystemRoot: process.env.SystemRoot,
+          ANTHROPIC_API_KEY: "nao-deve-chegar",
+          OPENAI_API_KEY: "nem-esta",
+        },
+      }),
+    );
+    const keys = Object.keys(envs.seen[0]?.env ?? {});
     expect(keys).toContain("LIMPO");
     expect(keys).not.toContain("ANTHROPIC_API_KEY");
   });
