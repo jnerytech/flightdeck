@@ -275,6 +275,247 @@ async function newSession(host: Host, name: string): Promise<string> {
   return sessionId;
 }
 
+type Member = TeamInfo["members"][number];
+
+/**
+ * The app in the middle: it carries what a daemon cannot deliver itself. Returns `sync` (the
+ * directories of each host handed to the other) and `stop` for its timer.
+ */
+async function carryBetween(
+  a: Host,
+  b: Host,
+): Promise<{ sync: () => Promise<void>; stop: () => void }> {
+  const hosts = [a, b];
+  const other = (host: Host) => (host === a ? b : a);
+  const tell = (host: Host) => {
+    host.client.onFrame = (frame) => {
+      void (async () => {
+        const peer = other(host);
+        if (frame.type === "messages.relay") {
+          const result = await peer.client.call<{ status: string; reason: string | null }>(
+            "messages.relay",
+            { message: frame.message },
+          );
+          await host.client.call("messages.relayed", { id: frame.message.id, ...result });
+        }
+        if (frame.type === "messages.updated" && frame.message.fromHost !== host.name) {
+          // A message that came from the other host has a new state at its recipient.
+          const m = frame.message;
+          if (m.status === "delivered" || m.status === "refused") {
+            await peer.client.call("messages.relayed", {
+              id: m.id,
+              status: m.status,
+              reason: m.reason,
+            });
+          }
+        }
+      })().catch(() => {});
+    };
+  };
+  for (const host of hosts) {
+    tell(host);
+    await host.client.call("messages.watch", {});
+  }
+  const sync = async () => {
+    for (const host of hosts) {
+      const directory = await host.client.call<{ host: string; sessions: unknown[] }>(
+        "messages.directory",
+        {},
+      );
+      await other(host).client.call("messages.peers", {
+        host: directory.host,
+        sessions: directory.sessions,
+      });
+    }
+  };
+  const timer = setInterval(() => void sync().catch(() => {}), 150);
+  return { sync, stop: () => clearInterval(timer) };
+}
+
+/** A session sees the sessions of both hosts, and a message crosses through the app to the other host. */
+async function checkCrossHost(
+  a: Host,
+  b: Host,
+  claudeA1: FakeClaude,
+  ids: { a2: string; b1: string },
+): Promise<void> {
+  const { a2, b1 } = ids;
+  step = "list_sessions vê as sessões dos dois hosts";
+  const seen = await claudeA1.tool<{ sessions: Array<{ address: string }> }>("list_sessions");
+  const addresses = seen.data.sessions
+    .map((s) => s.address)
+    .sort((a, b) => (a < b ? -1 : Number(a > b)));
+  if (!addresses.includes(`host-b/${b1}`) || !addresses.includes(`host-a/${a2}`)) {
+    throw new Error(`list_sessions: ${JSON.stringify(addresses)}`);
+  }
+  log("a sessão do host A vê a do host B e a do próprio host");
+
+  step = "uma mensagem do host A para o host B";
+  const sent = await claudeA1.tool<{ resultado: string }>("send_to_session", {
+    to: `host-b/${b1}`,
+    text: "do host A para o host B",
+  });
+  if (sent.data.resultado !== "na fila")
+    throw new Error(`devia sair na fila: ${JSON.stringify(sent)}`);
+  const arrived = await until(async () => {
+    const { messages } = await b.client.call<{ messages: MessageInfo[] }>("messages.list", {});
+    return messages.find((m) => m.text === "do host A para o host B" && m.status === "delivered");
+  }, "a mensagem chegar ao host B");
+  if (arrived.fromHost !== "host-a") throw new Error("a mensagem devia vir do host A");
+  await until(async () => {
+    const { messages } = await a.client.call<{ messages: MessageInfo[] }>("messages.list", {});
+    return messages.find((m) => m.id === arrived.id && m.status === "delivered");
+  }, "o host A saber que foi entregue");
+  log("a mensagem atravessou pelo app e foi entregue no host B");
+}
+
+/** A back-and-forth between two sessions is paused after a few rounds and the app is told. */
+async function checkLoop(
+  a: Host,
+  claudeA1: FakeClaude,
+  claudeA2: FakeClaude,
+  ids: { a1: string; a2: string },
+): Promise<void> {
+  const { a1, a2 } = ids;
+  step = "um laço é pausado";
+  let paused = "";
+  for (let i = 0; i < 14 && !paused; i++) {
+    const [from, to] = i % 2 === 0 ? [claudeA1, a2] : [claudeA2, a1];
+    const result = await from.tool<{ resultado: string; motivo?: string }>("send_to_session", {
+      to: `host-a/${to}`,
+      text: `vai e volta ${i}`,
+    });
+    if (result.data.resultado === "recusada") paused = result.data.motivo ?? "";
+  }
+  if (!paused.includes("laço")) throw new Error(`o laço devia ser recusado: ${paused}`);
+  const rules = await a.client.call<{ paused: string[] }>("messaging.rules.get", {});
+  if (rules.paused.length !== 1)
+    throw new Error(`o par devia estar pausado: ${JSON.stringify(rules)}`);
+  const alert = await until(
+    async () => a.client.frames.find((f) => f.type === "messaging.alert"),
+    "o alerta do laço",
+  );
+  if (alert.type !== "messaging.alert") throw new Error("alerta inesperado");
+  log("o vai e volta foi pausado e o app foi avisado");
+  await a.client.call("messaging.rules.set", { policy: {}, unpause: rules.paused });
+}
+
+/** A team of a coordinator and two workers is born, and only its members see its state. */
+async function createTeam(a: Host, claudeA1: FakeClaude, claudes: FakeClaude[]) {
+  step = "um time de uma coordenadora e duas executoras";
+  const team = await a.client.call<TeamInfo>("teams.create", {
+    projectId: a.projectId,
+    goal: "Entregar duas tarefas pequenas.",
+    workers: 2,
+    name: "smoke",
+    checks: ["git log --grep=fake: -1"],
+  });
+  const coordinator = team.coordinator as string;
+  const workers = await until(async () => {
+    const { teams } = await a.client.call<{ teams: TeamInfo[] }>("teams.list", {});
+    const current = teams.find((t) => t.id === team.id);
+    const list = current?.members.filter((m) => m.role === "worker") ?? [];
+    return list.length === 2 && list.every((m) => m.sessionId && m.sessionState === "idle")
+      ? list
+      : null;
+  }, "as executoras ociosas");
+  const claudeC = new FakeClaude(a.configPath, coordinator);
+  claudes.push(claudeC);
+  await claudeC.start();
+  const status = await claudeC.tool<{ members: Array<{ role: string }> }>("team_status", {
+    team: team.id,
+  });
+  if (status.data.members.length !== 3) throw new Error("o time devia ter três membros");
+  const outsider = await claudeA1.tool("team_status", { team: team.id });
+  if (!outsider.error?.includes("não é do time"))
+    throw new Error("quem não é do time não devia ver");
+  log("o time nasceu com a coordenadora e duas executoras, e só os membros veem o estado");
+  return { team, coordinator, workers, claudeC };
+}
+
+/** The coordinator hands a task to each worker and subscribes to their idle notices. */
+async function dispatchTasks(
+  a: Host,
+  claudeC: FakeClaude,
+  coordinator: string,
+  workers: Member[],
+): Promise<void> {
+  step = "a coordenadora despacha e assina o aviso de ocioso";
+  const [first, second] = workers;
+  const tasks = [
+    [first, "Tarefa 1: crie o arquivo pedido. [commit]"],
+    [second, "Tarefa 2: faça a outra parte e relate."],
+  ] as const;
+  for (const [worker, text] of tasks) {
+    const dispatched = await claudeC.tool<{ resultado: string }>("send_to_session", {
+      to: worker?.address,
+      text,
+    });
+    if (dispatched.data.resultado === "recusada") throw new Error("o despacho foi recusado");
+    await claudeC.tool("notify_when_idle", { session: worker?.address });
+  }
+  await until(async () => {
+    const { messages } = await a.client.call<{ messages: MessageInfo[] }>("messages.list", {
+      session: coordinator,
+    });
+    return messages.filter((m) => m.kind === "idle" && m.status === "delivered").length >= 2;
+  }, "os dois avisos de ocioso");
+  log("a coordenadora despachou uma tarefa a cada executora e recebeu os dois avisos de ocioso");
+}
+
+/** The coordinator checks each worker's work: accepts the green one, refuses the failing one. */
+async function reviewWork(
+  a: Host,
+  claudeC: FakeClaude,
+  teamId: string,
+  workers: Member[],
+): Promise<void> {
+  const [first, second] = workers;
+  step = "a coordenadora confere e aceita uma, recusa a outra";
+  const verdicts: Array<{ name: string; green: boolean }> = [];
+  for (const worker of [first, second]) {
+    const card = await claudeC.tool<{ worktreePath: string }>("get_card", {
+      cardId: worker?.cardId,
+    });
+    // The check the team runs: a green commit exists in the worker's own worktree.
+    const found = git(card.data.worktreePath, "log", "--grep=fake:", "-1", "--format=%H");
+    verdicts.push({ name: worker?.name ?? "", green: found !== "" });
+    const reply = found
+      ? `Aceito o seu commit ${found.slice(0, 8)}: o check passou.`
+      : "Recusado: o check não achou nenhum commit seu. Corrija e feche um commit verde.";
+    await claudeC.tool("send_to_session", { to: worker?.address, text: reply });
+  }
+  if (!verdicts[0]?.green || verdicts[1]?.green) {
+    throw new Error(
+      `a conferência devia aceitar a primeira e recusar a segunda: ${JSON.stringify(verdicts)}`,
+    );
+  }
+  const { messages } = await a.client.call<{ messages: MessageInfo[] }>("messages.list", {
+    team: teamId,
+  });
+  const aceito = messages.find((m) => m.text.startsWith("Aceito"));
+  const recusado = messages.find((m) => m.text.startsWith("Recusado"));
+  if (aceito?.toSession !== first?.sessionId || recusado?.toSession !== second?.sessionId) {
+    throw new Error("o aceite e a recusa foram para as executoras erradas");
+  }
+  log("a coordenadora aceitou a executora de check verde e recusou a de check falhando");
+}
+
+/** Pausing the team sends STOP to its three members; resuming makes it active again. */
+async function pauseAndResume(a: Host, teamId: string): Promise<void> {
+  step = "pausar e retomar o time";
+  await a.client.call("teams.pause", { team: teamId });
+  const stops = await a.client.call<{ messages: MessageInfo[] }>("messages.list", {
+    team: teamId,
+  });
+  if (stops.messages.filter((m) => m.kind === "system" && m.text.startsWith("STOP")).length !== 3) {
+    throw new Error("o STOP devia ir aos três membros");
+  }
+  const resumed = await a.client.call<TeamInfo>("teams.resume", { team: teamId });
+  if (resumed.state !== "active") throw new Error("o time devia voltar a ativo");
+  log("o time pausa com STOP para todos e retoma");
+}
+
 async function run(work: string): Promise<void> {
   mkdirSync(work, { recursive: true });
   step = "subir os dois daemons";
@@ -283,50 +524,7 @@ async function run(work: string): Promise<void> {
   const claudes: FakeClaude[] = [];
   const hosts = [a, b];
   try {
-    // The app in the middle: it carries what a daemon cannot deliver itself.
-    const other = (host: Host) => (host === a ? b : a);
-    const tell = (host: Host) => {
-      host.client.onFrame = (frame) => {
-        void (async () => {
-          const peer = other(host);
-          if (frame.type === "messages.relay") {
-            const result = await peer.client.call<{ status: string; reason: string | null }>(
-              "messages.relay",
-              { message: frame.message },
-            );
-            await host.client.call("messages.relayed", { id: frame.message.id, ...result });
-          }
-          if (frame.type === "messages.updated" && frame.message.fromHost !== host.name) {
-            // A message that came from the other host has a new state at its recipient.
-            const m = frame.message;
-            if (m.status === "delivered" || m.status === "refused") {
-              await peer.client.call("messages.relayed", {
-                id: m.id,
-                status: m.status,
-                reason: m.reason,
-              });
-            }
-          }
-        })().catch(() => {});
-      };
-    };
-    for (const host of hosts) {
-      tell(host);
-      await host.client.call("messages.watch", {});
-    }
-    const sync = async () => {
-      for (const host of hosts) {
-        const directory = await host.client.call<{ host: string; sessions: unknown[] }>(
-          "messages.directory",
-          {},
-        );
-        await other(host).client.call("messages.peers", {
-          host: directory.host,
-          sessions: directory.sessions,
-        });
-      }
-    };
-    const timer = setInterval(() => void sync().catch(() => {}), 150);
+    const { sync, stop } = await carryBetween(a, b);
 
     step = "criar as sessões";
     const a1 = await newSession(a, "a1");
@@ -338,150 +536,18 @@ async function run(work: string): Promise<void> {
     claudes.push(claudeA1, claudeA2);
     await Promise.all([claudeA1.start(), claudeA2.start()]);
 
-    step = "list_sessions vê as sessões dos dois hosts";
-    const seen = await claudeA1.tool<{ sessions: Array<{ address: string }> }>("list_sessions");
-    const addresses = seen.data.sessions
-      .map((s) => s.address)
-      .sort((a, b) => (a < b ? -1 : Number(a > b)));
-    if (!addresses.includes(`host-b/${b1}`) || !addresses.includes(`host-a/${a2}`)) {
-      throw new Error(`list_sessions: ${JSON.stringify(addresses)}`);
-    }
-    log("a sessão do host A vê a do host B e a do próprio host");
+    await checkCrossHost(a, b, claudeA1, { a2, b1 });
 
-    step = "uma mensagem do host A para o host B";
-    const sent = await claudeA1.tool<{ resultado: string }>("send_to_session", {
-      to: `host-b/${b1}`,
-      text: "do host A para o host B",
-    });
-    if (sent.data.resultado !== "na fila")
-      throw new Error(`devia sair na fila: ${JSON.stringify(sent)}`);
-    const arrived = await until(async () => {
-      const { messages } = await b.client.call<{ messages: MessageInfo[] }>("messages.list", {});
-      return messages.find((m) => m.text === "do host A para o host B" && m.status === "delivered");
-    }, "a mensagem chegar ao host B");
-    if (arrived.fromHost !== "host-a") throw new Error("a mensagem devia vir do host A");
-    await until(async () => {
-      const { messages } = await a.client.call<{ messages: MessageInfo[] }>("messages.list", {});
-      return messages.find((m) => m.id === arrived.id && m.status === "delivered");
-    }, "o host A saber que foi entregue");
-    log("a mensagem atravessou pelo app e foi entregue no host B");
+    await checkLoop(a, claudeA1, claudeA2, { a1, a2 });
 
-    step = "um laço é pausado";
-    let paused = "";
-    for (let i = 0; i < 14 && !paused; i++) {
-      const [from, to] = i % 2 === 0 ? [claudeA1, a2] : [claudeA2, a1];
-      const result = await from.tool<{ resultado: string; motivo?: string }>("send_to_session", {
-        to: `host-a/${to}`,
-        text: `vai e volta ${i}`,
-      });
-      if (result.data.resultado === "recusada") paused = result.data.motivo ?? "";
-    }
-    if (!paused.includes("laço")) throw new Error(`o laço devia ser recusado: ${paused}`);
-    const rules = await a.client.call<{ paused: string[] }>("messaging.rules.get", {});
-    if (rules.paused.length !== 1)
-      throw new Error(`o par devia estar pausado: ${JSON.stringify(rules)}`);
-    const alert = await until(
-      async () => a.client.frames.find((f) => f.type === "messaging.alert"),
-      "o alerta do laço",
-    );
-    if (alert.type !== "messaging.alert") throw new Error("alerta inesperado");
-    log("o vai e volta foi pausado e o app foi avisado");
-    await a.client.call("messaging.rules.set", { policy: {}, unpause: rules.paused });
+    const { team, coordinator, workers, claudeC } = await createTeam(a, claudeA1, claudes);
 
-    step = "um time de uma coordenadora e duas executoras";
-    const team = await a.client.call<TeamInfo>("teams.create", {
-      projectId: a.projectId,
-      goal: "Entregar duas tarefas pequenas.",
-      workers: 2,
-      name: "smoke",
-      checks: ["git log --grep=fake: -1"],
-    });
-    const coordinator = team.coordinator as string;
-    const workers = await until(async () => {
-      const { teams } = await a.client.call<{ teams: TeamInfo[] }>("teams.list", {});
-      const current = teams.find((t) => t.id === team.id);
-      const list = current?.members.filter((m) => m.role === "worker") ?? [];
-      return list.length === 2 && list.every((m) => m.sessionId && m.sessionState === "idle")
-        ? list
-        : null;
-    }, "as executoras ociosas");
-    const claudeC = new FakeClaude(a.configPath, coordinator);
-    claudes.push(claudeC);
-    await claudeC.start();
-    const status = await claudeC.tool<{ members: Array<{ role: string }> }>("team_status", {
-      team: team.id,
-    });
-    if (status.data.members.length !== 3) throw new Error("o time devia ter três membros");
-    const outsider = await claudeA1.tool("team_status", { team: team.id });
-    if (!outsider.error?.includes("não é do time"))
-      throw new Error("quem não é do time não devia ver");
-    log("o time nasceu com a coordenadora e duas executoras, e só os membros veem o estado");
+    await dispatchTasks(a, claudeC, coordinator, workers);
 
-    step = "a coordenadora despacha e assina o aviso de ocioso";
-    const [first, second] = workers;
-    const tasks = [
-      [first, "Tarefa 1: crie o arquivo pedido. [commit]"],
-      [second, "Tarefa 2: faça a outra parte e relate."],
-    ] as const;
-    for (const [worker, text] of tasks) {
-      const dispatched = await claudeC.tool<{ resultado: string }>("send_to_session", {
-        to: worker?.address,
-        text,
-      });
-      if (dispatched.data.resultado === "recusada") throw new Error("o despacho foi recusado");
-      await claudeC.tool("notify_when_idle", { session: worker?.address });
-    }
-    await until(async () => {
-      const { messages } = await a.client.call<{ messages: MessageInfo[] }>("messages.list", {
-        session: coordinator,
-      });
-      return messages.filter((m) => m.kind === "idle" && m.status === "delivered").length >= 2;
-    }, "os dois avisos de ocioso");
-    log("a coordenadora despachou uma tarefa a cada executora e recebeu os dois avisos de ocioso");
+    await reviewWork(a, claudeC, team.id, workers);
 
-    step = "a coordenadora confere e aceita uma, recusa a outra";
-    const verdicts: Array<{ name: string; green: boolean }> = [];
-    for (const worker of [first, second]) {
-      const card = await claudeC.tool<{ worktreePath: string }>("get_card", {
-        cardId: worker?.cardId,
-      });
-      // The check the team runs: a green commit exists in the worker's own worktree.
-      const found = git(card.data.worktreePath, "log", "--grep=fake:", "-1", "--format=%H");
-      verdicts.push({ name: worker?.name ?? "", green: found !== "" });
-      const reply = found
-        ? `Aceito o seu commit ${found.slice(0, 8)}: o check passou.`
-        : "Recusado: o check não achou nenhum commit seu. Corrija e feche um commit verde.";
-      await claudeC.tool("send_to_session", { to: worker?.address, text: reply });
-    }
-    if (!verdicts[0]?.green || verdicts[1]?.green) {
-      throw new Error(
-        `a conferência devia aceitar a primeira e recusar a segunda: ${JSON.stringify(verdicts)}`,
-      );
-    }
-    const { messages } = await a.client.call<{ messages: MessageInfo[] }>("messages.list", {
-      team: team.id,
-    });
-    const aceito = messages.find((m) => m.text.startsWith("Aceito"));
-    const recusado = messages.find((m) => m.text.startsWith("Recusado"));
-    if (aceito?.toSession !== first?.sessionId || recusado?.toSession !== second?.sessionId) {
-      throw new Error("o aceite e a recusa foram para as executoras erradas");
-    }
-    log("a coordenadora aceitou a executora de check verde e recusou a de check falhando");
-
-    step = "pausar e retomar o time";
-    await a.client.call("teams.pause", { team: team.id });
-    const stops = await a.client.call<{ messages: MessageInfo[] }>("messages.list", {
-      team: team.id,
-    });
-    if (
-      stops.messages.filter((m) => m.kind === "system" && m.text.startsWith("STOP")).length !== 3
-    ) {
-      throw new Error("o STOP devia ir aos três membros");
-    }
-    const resumed = await a.client.call<TeamInfo>("teams.resume", { team: team.id });
-    if (resumed.state !== "active") throw new Error("o time devia voltar a ativo");
-    log("o time pausa com STOP para todos e retoma");
-    clearInterval(timer);
+    await pauseAndResume(a, team.id);
+    stop();
   } finally {
     for (const claude of claudes) await claude.stop();
     for (const host of hosts) {
