@@ -190,12 +190,46 @@ describe("paleta", () => {
     expect(options()).toEqual(["flamingo"]);
   });
 
+  test("a lista que muda sob o cursor não troca o item escolhido", async () => {
+    const { store } = await setup();
+    await openPalette();
+    await settle(() => sections().length === 5);
+    await press("ArrowDown");
+    expect(selected()).toBe("Gerenciada");
+    // A session that sorts before the chosen one arrives (the list updates under the cursor).
+    const [host] = store.getState().hosts;
+    const first = host?.sessions[0];
+    expect(first).toBeDefined();
+    await act(async () => {
+      (store as unknown as { update(patch: object): void }).update({
+        hosts: [
+          {
+            ...host,
+            sessions: [
+              {
+                ...first,
+                id: "chegou-depois",
+                name: "Chegou depois",
+                updatedAt: "2099-01-01T00:00:00.000Z",
+              },
+              ...(host?.sessions ?? []),
+            ],
+          },
+        ],
+      });
+    });
+    await settle(() => options().includes("Chegou depois"));
+    expect(selected()).toBe("Gerenciada");
+  });
+
   test("Tab abre as ações do item; cada ação leva à tela certa", async () => {
     const { repo, opened } = await setup();
     const choose = async (query: string, ...keys: string[]) => {
       await openPalette();
       await settle(() => sections().includes("Ações"));
       await type(query);
+      // The entry is on screen before the keys move to it (a list that fills late moves the cursor).
+      await settle(() => options().some((option) => option.includes(query)));
       await press("ArrowDown");
       for (const key of keys) await press(key);
     };
