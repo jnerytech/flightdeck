@@ -145,6 +145,7 @@ import { TerminalFontController } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
 import { loadTileLayout, saveTileLayout, type TileLayout } from "./tiles.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
+import { loadTreeFolded, saveTreeFolded } from "./tree-fold.ts";
 import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
 import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
 import type { ConflictChoice, ImportPreview, ImportResult } from "./vault-backup.ts";
@@ -1256,10 +1257,12 @@ export class AppStore {
 
   /** The projects folded in the sidebar's tree (`hostId/projectId`); kept across starts. */
   treeFolded(): string[] {
-    return [];
+    return loadTreeFolded(this.platform.storage);
   }
 
-  setTreeFolded(_folded: readonly string[]): void {}
+  setTreeFolded(folded: readonly string[]): void {
+    saveTreeFolded(this.platform.storage, folded);
+  }
 
   /** Whether a file of the host can be opened here: the app can, and the host runs on this machine. */
   canOpenPaths(hostId: string): boolean {

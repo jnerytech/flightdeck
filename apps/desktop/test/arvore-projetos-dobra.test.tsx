@@ -55,8 +55,9 @@ function setup(
 const items = () =>
   screen
     .queryAllByRole("listitem")
-    .map((li) => li.querySelector("button")?.getAttribute("aria-label") ?? "");
-const toggle = (name = "api") => screen.getByRole("button", { name: new RegExp(`^${name}`) });
+    .map((li) => li.querySelector("button")?.getAttribute("aria-label") ?? "")
+    .filter(Boolean);
+const toggle = (name = "api") => screen.getByRole("button", { name: new RegExp(`^${name}(?!:)`) });
 const click = (el: Element) =>
   act(async () => {
     fireEvent.click(el);

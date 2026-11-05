@@ -808,6 +808,9 @@ export const en: Dictionary = {
     base: "base {name}",
     filter: "Branch: {branch}",
     clear: "Clear the branch filter",
+    more: "{n} more",
+    fewer: "Show fewer",
+    pickedFolded: "Branch picked: {branch}",
   },
   hub: {
     view: "View",

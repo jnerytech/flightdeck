@@ -681,7 +681,10 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   (selo **principal**, o branch base) e uma linha por card que tem worktree, cada uma com o pontinho
   de estado, o branch e a base logo abaixo. Escolher um reduz o board e a lista de Sessões àquele
   checkout (um chip com o branch limpa); escolher de novo também limpa. Escolhido na lista de Sessões, ele reduz a lista ali mesmo, sem abrir o board; de outro lugar, abre o board do projeto. Uma escolha cujo branch, projeto ou host sumiu não faz nada e não mostra chip. A árvore vem do que o app já
-  tem, sem mudar o host.
+  tem, sem mudar o host. Um projeto com muitas worktrees lista as 8 primeiras e um botão **mais N**
+  (e **Mostrar menos**) para o resto; o branch escolhido sempre aparece. O nome do projeto dobra
+  seus branches (as setas esquerda e direita dobram e desdobram); a dobra é lembrada neste
+  computador, e um projeto dobrado que guarda o branch escolhido mostra uma marca no nome.
 - Com uma área, a barra de abas fica na barra do topo, na linha do caminho; com a tela dividida,
   cada área tem a sua. A barra mantém três ferramentas: o menu de **Ações** da aba ativa (mover
   para a esquerda ou a direita, mover para a outra área, fixar), **Nova aba** e **Dividir**.

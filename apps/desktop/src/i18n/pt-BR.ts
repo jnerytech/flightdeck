@@ -799,6 +799,9 @@ export const ptBR = {
     release: "Soltar o par",
   },
   projectTree: {
+    more: "mais {n}",
+    fewer: "Mostrar menos",
+    pickedFolded: "Branch escolhida: {branch}",
     list: "Branches de {name}",
     node: "{project}: {branch}",
     primary: "principal",
