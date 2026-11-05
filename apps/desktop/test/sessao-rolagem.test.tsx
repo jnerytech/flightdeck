@@ -82,7 +82,7 @@ describe("sessao-rolagem: the conversation is the one scroll area of the session
     rerender(view(4));
     await act(async () => {});
     expect(s.size.top).toBe(100);
-    const jump = screen.queryByRole("button", { name: "Ir para a última" });
+    const jump = screen.queryByRole("button", { name: "Ir para a última (1 nova)" });
     expect(jump).not.toBeNull();
     await act(async () => void fireEvent.click(jump as HTMLElement));
     expect(s.size.top).toBe(1100);

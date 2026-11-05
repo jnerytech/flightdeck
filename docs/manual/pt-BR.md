@@ -1226,7 +1226,12 @@ código 3.
   e junta os acertos por data, com host, pasta e trecho destacado. Host offline, ou que não
   responde em 5 s, aparece como "sem resposta" sem travar o resto.
 - **Leitor:** somente leitura, com o visual do chat, carregando páginas conforme a rolagem. Vindo
-  da busca, abre no ponto do acerto; "Carregar anteriores" traz o começo.
+  da busca, abre no ponto do acerto; fora isso, abre nas últimas mensagens, e "Carregar anteriores"
+  traz as de antes sem mexer no que você está lendo.
+- **Onde a conversa abre:** uma sessão (gerenciada, de terminal ou do histórico) abre na última
+  mensagem e fica no fim enquanto imagens, código e painéis se ajeitam. Se você rolar para cima, ela
+  fica onde você está e o botão **Ir para a última** conta as mensagens novas ("3 novas"). Ao voltar
+  para uma aba, a conversa está onde você a deixou.
 - **Continuar no Flightdeck** transforma o transcript numa sessão gerenciada com `resume`. Se a
   sessão estiver possivelmente em uso, o app pede confirmação antes, porque dois processos
   escrevendo na mesma conversa a corrompem. **Copiar comando** copia `claude --resume <id>` para
