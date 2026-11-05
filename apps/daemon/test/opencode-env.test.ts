@@ -66,7 +66,7 @@ describe("opencode-env", () => {
     expect(Object.keys(agents).length).toBe(8);
   });
 
-  test("the env drops the daemon's OPENCODE_* and adds project config off and the document", () => {
+  test("the env drops the daemon's OPENCODE_* but the provider key, and adds project config off and the document", () => {
     const env = opencodeEnv(
       {
         PATH: "/bin",
@@ -77,6 +77,7 @@ describe("opencode-env", () => {
         OPENCODE_PASSWORD: "x",
         OPENCODE_DISABLE_PROJECT_CONFIG: "0",
         OPENCODE_CONFIG_CONTENT: "{}",
+        OPENCODE_API_KEY: "zen-key",
       },
       '{"default_agent":"flightdeck"}',
     );
@@ -84,6 +85,7 @@ describe("opencode-env", () => {
       PATH: "/bin",
       HOME: "/h",
       FLIGHTDECK_SESSION: "s1",
+      OPENCODE_API_KEY: "zen-key",
       OPENCODE_DISABLE_PROJECT_CONFIG: "1",
       OPENCODE_CONFIG_CONTENT: '{"default_agent":"flightdeck"}',
     });
