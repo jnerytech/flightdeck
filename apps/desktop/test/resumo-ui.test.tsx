@@ -356,6 +356,9 @@ describe("resumo-ui: the summary in a short area", () => {
     await settle(() => screen.queryByRole("region", { name: "Session summary" }) !== null);
     const toggle = () => screen.getByRole("button", { name: "Session summary" });
     expect(toggle().getAttribute("aria-expanded")).toBe("false");
+    // Folded in a short area it is one thin line: about 38 px, not the 58 of a padded card.
+    const region = screen.getByRole("region", { name: "Session summary" });
+    expect(region.className.split(" ")).toContain("py-0.5");
     await expand();
     expect(toggle().getAttribute("aria-expanded")).toBe("true");
   });

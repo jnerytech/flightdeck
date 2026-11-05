@@ -4,7 +4,9 @@ import { liveScreen, registerDom } from "./dom.ts";
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { SessionHeader, SessionPane } = await import("../src/components/session/parts.tsx");
+const { ComposerDock, SessionHeader, SessionPane } = await import(
+  "../src/components/session/parts.tsx"
+);
 
 /** Reports a width to every box that is observed, as a real layout would. */
 const real = globalThis.ResizeObserver;
@@ -99,5 +101,31 @@ describe("sessao-cabecalho: the session header in a short area", () => {
     await act(async () => {});
     expect(more()).toBeNull();
     expect(screen.queryByText("/tmp/alfa/projects/flightdeck-web")).not.toBeNull();
+  });
+});
+
+// Issue #232: at 720x480 the composer took 111 px; in a short area its dock is compact.
+describe("sessao-cabecalho: the composer in a short area", () => {
+  const dock = () => document.querySelector(".composer-dock");
+  test("in an area under 600 px high the composer's dock is compact", async () => {
+    layoutBox(664, 480);
+    render(
+      <SessionPane>
+        <ComposerDock>box</ComposerDock>
+      </SessionPane>,
+    );
+    await act(async () => {});
+    expect(dock()?.getAttribute("data-short")).toBe("true");
+  });
+
+  test("a tall area keeps the roomy dock", async () => {
+    layoutBox(664, 800);
+    render(
+      <SessionPane>
+        <ComposerDock>box</ComposerDock>
+      </SessionPane>,
+    );
+    await act(async () => {});
+    expect(dock()?.getAttribute("data-short")).toBeNull();
   });
 });
