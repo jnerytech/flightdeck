@@ -265,7 +265,7 @@ describe("reinício", () => {
     const rec = record(manager, "running-1");
     expect(rec.find("session.status").at(-1)).toMatchObject({
       status: "error",
-      reason: "daemon reiniciado",
+      reason: "daemon_restarted",
     });
     expect(store.getPermission("perm-1")?.status).toBe("expired");
     expect(record(manager, "waiting-1").find("permission.resolved")[0]).toMatchObject({

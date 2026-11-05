@@ -40,7 +40,11 @@ import type {
 import { type EventStore, personaBadge } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
 
-export const RESTART_REASON = "daemon reiniciado";
+/** The reason a restart gives the sessions it interrupts: a code (the app words it), not a sentence. */
+export const RESTART_REASON = "daemon_restarted";
+/** What daemons before the code wrote: rows left by them are still offered. */
+const OLD_RESTART_REASON = "daemon reiniciado";
+const OFFER_WINDOW_MS = 24 * 3_600_000;
 
 export interface SessionManagerOptions {
   store: EventStore;
@@ -376,8 +380,33 @@ export class SessionManager {
   }
 
   /** The sessions a daemon restart interrupted in the last 24 hours and nobody resumed since. */
-  interrupted(_options: { now?: number; withinMs?: number } = {}): InterruptedSession[] {
-    return [];
+  interrupted(options: { now?: number; withinMs?: number } = {}): InterruptedSession[] {
+    const now = options.now ?? Date.now();
+    const within = options.withinMs ?? OFFER_WINDOW_MS;
+    const found: InterruptedSession[] = [];
+    for (const session of this.store.listSessions()) {
+      // Only what is still `error` from a restart: a resumed or ended session left the offer.
+      if (session.status !== "error") continue;
+      const events = this.store.eventsSince(session.id);
+      const marked = [...events]
+        .reverse()
+        .find((e) => e.event.type === "session.status" && e.event.status === "error");
+      const reason = marked?.event.type === "session.status" ? marked.event.reason : undefined;
+      if (!marked || (reason !== RESTART_REASON && reason !== OLD_RESTART_REASON)) continue;
+      const interruptedAt = Date.parse(marked.ts);
+      if (now - interruptedAt > within) continue;
+      const asked = [...events].reverse().find((e) => e.event.type === "message.user");
+      found.push({
+        sessionId: session.id,
+        name: session.name,
+        cwd: session.cwd,
+        persona: session.persona?.name ?? null,
+        interruptedAt: marked.ts,
+        ranMs: Math.max(0, interruptedAt - Date.parse(session.createdAt)),
+        lastRequest: asked?.event.type === "message.user" ? asked.event.text.slice(0, 200) : null,
+      });
+    }
+    return found;
   }
 
   /** Reopens an `ended` or `error` session with the stored Claude session id. */
