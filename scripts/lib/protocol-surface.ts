@@ -4,6 +4,7 @@
  * Schema. A line the release baseline has and the code lost is a breaking change: a removed
  * command or field, an optional field made required, a dropped enum value. Additions are free.
  */
+import { byCodeUnit } from "../../packages/protocol/src/compare.ts";
 
 /** A JSON Schema node, as far as the walk reads it. */
 interface Node {
@@ -47,5 +48,5 @@ export function walkSchema(name: string, schema: unknown): string[] {
 /** The lines of the baseline the current surface no longer has, sorted. */
 export function removed(baseline: string[], current: string[]): string[] {
   const now = new Set(current);
-  return baseline.filter((line) => !now.has(line)).sort();
+  return baseline.filter((line) => !now.has(line)).sort(byCodeUnit);
 }

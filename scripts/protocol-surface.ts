@@ -7,6 +7,7 @@
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { byCodeUnit } from "../packages/protocol/src/compare.ts";
 import * as protocol from "../packages/protocol/src/index.ts";
 import { removed, walkSchema } from "./lib/protocol-surface.ts";
 
@@ -24,7 +25,7 @@ const current = Object.entries(protocol)
   );
 
 if (process.argv.includes("--write")) {
-  const lines = [...new Set(current)].sort();
+  const lines = [...new Set(current)].sort(byCodeUnit);
   writeFileSync(BASELINE, `${lines.join("\n")}\n`);
   console.log(`protocol-surface: ${lines.length} line(s) written to ${BASELINE}`);
   process.exit(0);

@@ -40,7 +40,7 @@ export function sonarRules(rules: PluginRule[], profile: string[]): RuleSet {
     implemented.add(key);
     (typed ? set.typed : set.untyped).push(`sonarjs/${name}`);
   }
-  set.unmatched = [...active].filter((key) => !implemented.has(key)).sort();
+  set.unmatched = [...active].filter((key) => !implemented.has(key)).sort(byCodeUnit);
   return set;
 }
 
@@ -69,7 +69,9 @@ function globToRegExp(glob: string): RegExp {
 /** The changed files SonarCloud would analyse as source code. */
 export function lintTargets(paths: string[], exclusions: string[]): string[] {
   const excluded = exclusions.map(globToRegExp);
-  return paths.filter((path) => SOURCE.test(path) && !excluded.some((re) => re.test(path))).sort();
+  return paths
+    .filter((path) => SOURCE.test(path) && !excluded.some((re) => re.test(path)))
+    .sort(byCodeUnit);
 }
 
 /**

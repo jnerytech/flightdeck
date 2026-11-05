@@ -76,4 +76,8 @@ describe("protocol-surface", () => {
     expect(removed(baseline, current)).toEqual([]);
     expect(current.length).toBeGreaterThan(1000);
   });
+
+  test("removed lines come in code-unit order, the same on every machine (#232)", () => {
+    expect(removed(["b", "B", "a", "_x", "Z", "ä"], [])).toEqual(["B", "Z", "_x", "a", "b", "ä"]);
+  });
 });

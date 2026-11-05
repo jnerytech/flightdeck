@@ -261,4 +261,12 @@ describe("sonar-lint: the per-rule count", () => {
   test("no findings is an empty record", () => {
     expect(ruleCounts([])).toEqual({});
   });
+
+  test("rule keys and target files come in code-unit order, not by number or locale (#232)", () => {
+    const set = sonarRules([], ["typescript:S9", "typescript:S10", "typescript:S100"]);
+    expect(set.unmatched).toEqual(["S10", "S100", "S9"]);
+    expect(lintTargets(["scripts/b.ts", "scripts/B.ts", "apps/a.ts", "scripts/_c.ts"], [])).toEqual(
+      ["apps/a.ts", "scripts/B.ts", "scripts/_c.ts", "scripts/b.ts"],
+    );
+  });
 });
