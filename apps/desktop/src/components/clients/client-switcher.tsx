@@ -1,5 +1,6 @@
 import { Briefcase } from "lucide-react";
 import { ClientDot } from "@/components/clients/client-dot";
+import { IconTip } from "@/components/feedback/icon-tip";
 import { Inline } from "@/components/layout/stack";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,31 +54,32 @@ export function ClientSwitcher(props: {
     <Inline gap={1}>
       {/* Not modal: a modal menu aria-hides the header and the sidebar, which stay focusable. */}
       <DropdownMenu modal={false}>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={
-              railMark
-                ? `${t("clients.switcher", { name })} (${others})`
-                : t("clients.switcher", { name })
-            }
-            title={railMark ? `${name} (${others})` : name}
-            className="min-w-0 flex-1 justify-start"
-          >
-            <span className="icon-mark">
-              {selected ? <ClientDot color={selected.color} /> : <Briefcase aria-hidden="true" />}
-              {railMark && (
-                <span
-                  data-attention
-                  aria-hidden="true"
-                  className="-right-1 -top-1 absolute size-2 rounded-full bg-primary"
-                />
-              )}
-            </span>
-            {!collapsed && <span className="min-w-0 flex-1 truncate text-left">{name}</span>}
-          </Button>
-        </DropdownMenuTrigger>
+        <IconTip label={collapsed ? (railMark ? `${name} (${others})` : name) : undefined}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={
+                railMark
+                  ? `${t("clients.switcher", { name })} (${others})`
+                  : t("clients.switcher", { name })
+              }
+              className="min-w-0 flex-1 justify-start"
+            >
+              <span className="icon-mark">
+                {selected ? <ClientDot color={selected.color} /> : <Briefcase aria-hidden="true" />}
+                {railMark && (
+                  <span
+                    data-attention
+                    aria-hidden="true"
+                    className="-right-1 -top-1 absolute size-2 rounded-full bg-primary"
+                  />
+                )}
+              </span>
+              {!collapsed && <span className="min-w-0 flex-1 truncate text-left">{name}</span>}
+            </Button>
+          </DropdownMenuTrigger>
+        </IconTip>
         <DropdownMenuContent align="start">
           <DropdownMenuRadioGroup
             value={selection}

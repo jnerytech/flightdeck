@@ -11,7 +11,9 @@ import {
 } from "lucide-react";
 import { Children, type ReactNode, useState } from "react";
 import { ClientSwitcher } from "@/components/clients/client-switcher";
+import { IconTip } from "@/components/feedback/icon-tip";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
+import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,36 +72,37 @@ function NavButton(props: {
 }) {
   const railName = props.hint ? `${props.label} (${props.hint})` : props.label;
   return (
-    <button
-      type="button"
-      aria-current={props.active ? "page" : undefined}
-      aria-keyshortcuts={props.keys}
-      className={cn(
-        ITEM,
-        props.collapsed && "justify-center px-0",
-        (props.active || props.strong) && "text-sidebar-foreground",
-        props.active && "bg-sidebar-accent font-medium",
-      )}
-      aria-label={props.name ?? (props.collapsed ? railName : undefined)}
-      title={props.collapsed ? railName : undefined}
-      disabled={props.disabled ?? false}
-      onClick={props.onClick}
-    >
-      {props.collapsed && props.attention ? (
-        <span className="relative flex">
-          {props.icon}
-          <span
-            data-attention
-            aria-hidden="true"
-            className="-right-0.5 -top-0.5 absolute size-2 rounded-full bg-primary"
-          />
-        </span>
-      ) : (
-        props.icon
-      )}
-      {!props.collapsed && <span className="min-w-0 flex-1 truncate">{props.label}</span>}
-      {!props.collapsed && props.tail}
-    </button>
+    <IconTip label={props.collapsed ? railName : undefined}>
+      <button
+        type="button"
+        aria-current={props.active ? "page" : undefined}
+        aria-keyshortcuts={props.keys}
+        className={cn(
+          ITEM,
+          props.collapsed && "justify-center px-0",
+          (props.active || props.strong) && "text-sidebar-foreground",
+          props.active && "bg-sidebar-accent font-medium",
+        )}
+        aria-label={props.name ?? (props.collapsed ? railName : undefined)}
+        disabled={props.disabled ?? false}
+        onClick={props.onClick}
+      >
+        {props.collapsed && props.attention ? (
+          <span className="relative flex">
+            {props.icon}
+            <span
+              data-attention
+              aria-hidden="true"
+              className="-right-0.5 -top-0.5 absolute size-2 rounded-full bg-primary"
+            />
+          </span>
+        ) : (
+          props.icon
+        )}
+        {!props.collapsed && <span className="min-w-0 flex-1 truncate">{props.label}</span>}
+        {!props.collapsed && props.tail}
+      </button>
+    </IconTip>
   );
 }
 
@@ -546,11 +549,7 @@ export function Sidebar(props: {
           hint="Ctrl K"
           keys="Control+K"
           onClick={props.onOpenSearch}
-          tail={
-            <kbd className="rounded border bg-background px-1 font-mono text-[11px] text-muted-foreground">
-              Ctrl K
-            </kbd>
-          }
+          tail={<ShortcutKeys keys={["Mod", "K"]} className="text-muted-foreground" />}
         />
         <NavButton
           collapsed={collapsed}

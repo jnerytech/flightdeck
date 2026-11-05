@@ -1,4 +1,5 @@
 import { type KeyboardEvent, useEffect, useState } from "react";
+import { Keycap } from "@/components/shortcuts/keycap";
 import { Input } from "@/components/ui/input";
 import { type AppState, type AppStore, type GlobalHit, needsYou } from "../lib/app-store.ts";
 import {
@@ -161,9 +162,7 @@ export function GlobalSearch(props: {
               >
                 <span>{item.label}</span>{" "}
                 <span className="truncate text-muted-foreground text-xs">{item.detail}</span>
-                {item.shortcut && (
-                  <kbd className="keycap ml-auto shrink-0 bg-muted font-mono">{item.shortcut}</kbd>
-                )}
+                {item.shortcut && <Keycap className="ml-auto">{item.shortcut}</Keycap>}
               </button>
             ))}
           </div>
