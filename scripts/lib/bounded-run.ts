@@ -77,6 +77,8 @@ export function runBounded(
   const [program = "", ...args] = command;
   return new Promise((done) => {
     let settled = false;
+    // Declared first: a deps.spawn that reported at once would otherwise reach it before it exists.
+    let timer: unknown;
     const finish = (result: BoundedResult) => {
       if (settled) return;
       settled = true;
@@ -87,7 +89,7 @@ export function runBounded(
     const child = deps.spawn(program, args, { detached: deps.platform !== "win32" });
     child.on("error", (error) => finish({ code: null, stderr: error.message, timedOut: false }));
     child.on("exit", (code) => finish({ code, stderr: "", timedOut: false }));
-    const timer = deps.setTimer(() => {
+    timer = deps.setTimer(() => {
       if (settled) return;
       if (child.pid !== undefined) deps.killTree(child.pid);
       finish({ code: null, stderr: "", timedOut: true });
