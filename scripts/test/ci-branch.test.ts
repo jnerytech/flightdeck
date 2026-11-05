@@ -268,7 +268,9 @@ describe("ci.yml: any pushed branch can run the full CI by hand", () => {
     expect(workflow.jobs.test?.if).toBe(
       "github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'",
     );
-    expect(workflow.jobs.screenshots?.if).toBeUndefined();
+    // The prints and the e2e journeys run on every dispatch (#220 split them into two jobs).
+    expect(workflow.jobs["screenshots-prints"]?.if).toBeUndefined();
+    expect(workflow.jobs["screenshots-e2e"]?.if).toBeUndefined();
   });
 
   test("a dispatched run never cancels the branch's push or pull request run, and skips SonarCloud", () => {
@@ -291,13 +293,17 @@ describe("ci.yml: any pushed branch can run the full CI by hand", () => {
     expect(name).toContain("github.event_name == 'workflow_dispatch'");
   });
 
-  test("the screenshots job uploads the prints and the Playwright report, even when a step failed", () => {
-    const uploads = (workflow.jobs.screenshots?.steps ?? []).filter((step) =>
-      step.uses?.startsWith("actions/upload-artifact@"),
-    );
-    expect(uploads.map((step) => [step.with?.name, step.with?.path, step.if])).toEqual([
-      ["relatorio-e2e", "playwright-report", "always()"],
+  test("the screenshots jobs upload the prints, the Playwright report and the e2e failures, even when a step failed", () => {
+    const uploads = (key: string) =>
+      (workflow.jobs[key]?.steps ?? [])
+        .filter((step) => step.uses?.startsWith("actions/upload-artifact@"))
+        .map((step) => [step.with?.name, step.with?.path, step.if]);
+    expect(uploads("screenshots-prints")).toEqual([
       ["prints", "apps/desktop/screenshots", "always()"],
+    ]);
+    expect(uploads("screenshots-e2e")).toEqual([
+      ["relatorio-e2e", "playwright-report", "always()"],
+      ["e2e-failures", "apps/desktop/screenshots/e2e-failures", "always()"],
     ]);
   });
 
