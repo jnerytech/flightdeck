@@ -155,9 +155,8 @@ export function selectByPath(changed: string[], sources: Map<string, string>): R
       if (name) found.set(test, `names ${name}`);
     }
   }
-  return [...found]
-    .map(([path, why]) => ({ path, why }))
-    .sort((a, b) => (a.path < b.path ? -1 : 1));
+  // In the sources' order; planRelated sorts what it runs.
+  return [...found].map(([path, why]) => ({ path, why }));
 }
 
 function escapeRegExp(text: string): string {
