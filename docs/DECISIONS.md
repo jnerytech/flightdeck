@@ -4150,6 +4150,15 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   `FLIGHTDECK_BOARD_CMD`, called as `<cmd> <issue> done ""`: the coordinator's `issue-note.sh`,
   whose REST queue of #242 survives a rate limit. Without it the board is skipped, said once. The
   coordinator tooling stays outside the repository; the script only knows the command's contract.
+- **Hardening (issue #287, from the security review of #275).** The tag and `--since` must be
+  `vX.Y.Z` (exit 2 otherwise), so neither can reach git as an option or a range. An issue title is
+  printed with its control characters turned into spaces (no escape sequence in a dry run). A
+  session's `bun run release:close ... --apply` (or `bun scripts/release-close.ts ... --apply`) is
+  blocked by the hook guard like `bun run release`: it closes issues on GitHub, so it is the
+  coordinator's; the dry run stays open. `bun run release` takes a tag as already made only when
+  `git ls-remote` lists exactly `refs/tags/<tag>` on origin (a local tag is anyone's, `pr tag` is
+  what gates a tag, and ls-remote matches a suffix, so `x/refs/tags/<tag>` is not it); an origin it
+  cannot ask is an error, not "absent". It reads a version from main only when it is `x.y.z`.
 
 ## Risky changes get a security review before the hand-off (issue #273)
 
@@ -4340,4 +4349,21 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
 - **Left for later.** The Windows unit-test shards (9 to 12 minutes against 5 to 8) are split by
   `bun test --shard`, which balances by file count; balancing them by recorded durations needs its
   own timing file and script, and stays open in #292.
+## Prints and axe in four jobs, one per theme and language (issue #291)
+
+- **Why.** After #293 the one prints and axe job (13-15 minutes) was the longest of a PR, and every
+  merge waits for the screenshots check.
+- **The split.** `screenshots-prints` is a matrix of the two themes and the two languages, with
+  `fail-fast: false`. Each job runs `bun run demo:shots` with `SHOTS_THEME` and `SHOTS_LANG`
+  (`scripts/lib/shots-variants.ts`: all four pairs when unset, so a local run prints them all) and
+  uploads its own `prints-<theme>-<lang>` artifact. A filter that names no known pair refuses the
+  run instead of printing nothing. The required `screenshots (prints, axe e e2e)` aggregate is
+  unchanged: the matrix job's result is every pair's. The filter is checked before Chrome starts. For the visual
+  check a leg is still a complete run of its pair: a baseline with no print is reported inside the
+  folders the leg printed (`pairs`), so no leg turns the check off once it moves to `compare`; only
+  `DEMO_SHOTS` (some screens) does.
+- **Not here: the e2e shards.** Shard 1 takes 7-11 minutes and the others seconds because the
+  journeys are one file whose tests share the seeded demo, the second language relying on the
+  first one's state (`workers: 1`, `fullyParallel: false`). Balancing them means splitting the
+  journeys into independent tests, which is #292, not a one-line change.
 

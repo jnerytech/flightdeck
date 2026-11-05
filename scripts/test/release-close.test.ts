@@ -40,6 +40,7 @@ function fake(
   } = {},
 ) {
   const calls: string[] = [];
+  const gitCalls: string[] = [];
   const lines: string[] = [];
   const boarded: number[] = [];
   const milestone = {
@@ -92,6 +93,7 @@ function fake(
       return { code: 1, stdout: "" };
     },
     git: async (args) => {
+      gitCalls.push(args.join(" "));
       if (args[0] === "rev-parse")
         return { code: args.includes("v9.9.9^{commit}") ? 1 : 0, stdout: "" };
       if (args[0] === "describe") return { code: 0, stdout: "v0.36.3\n" };
@@ -107,6 +109,7 @@ function fake(
   return {
     deps,
     calls,
+    gitCalls,
     lines,
     boarded,
     milestone,
@@ -242,6 +245,28 @@ describe("release-close", () => {
     await releaseClose("v0.36.4", { apply: false, since: "v0.36.1" }, f.deps);
     expect(f.lines.join("\n")).toContain("v0.36.1..v0.36.4");
     expect(await releaseClose("v9.9.9", { apply: false }, f.deps)).toBe(2);
+  });
+
+  test("a tag that is not vX.Y.Z, or a --since that is not one, is the usage and reaches no git or gh (#287)", async () => {
+    const f = fake({ 170: open("Card") }, { log: commit("fix(x): y (#170)") });
+    for (const tag of ["main", "-x", "--output=/tmp/x", "v1.2", "v1.2.3 --all", "v1.2.3\n"]) {
+      expect(await releaseClose(tag, { apply: true }, f.deps)).toBe(2);
+    }
+    for (const since of ["--output=/tmp/x", "-1", "main", "v1.2", "v0.36.1..v0.36.2"]) {
+      expect(await releaseClose("v0.36.4", { apply: true, since }, f.deps)).toBe(2);
+    }
+    expect(f.gitCalls).toEqual([]);
+    expect(f.calls).toEqual([]);
+  });
+
+  test("an issue title is printed without control characters (#287)", async () => {
+    const f = fake(
+      { 170: open("Card\x1b[2J\r\nINJECTED\x07 line") },
+      { log: commit("fix(x): y (#170)") },
+    );
+    await releaseClose("v0.36.4", { apply: false }, f.deps);
+    expect(f.lines.some((l) => l.includes("Card"))).toBe(true);
+    for (const line of f.lines) expect(/\p{Cc}/u.test(line)).toBe(false);
   });
 
   test("a tag with no milestone of its name says so and closes nothing else", async () => {

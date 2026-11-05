@@ -487,12 +487,18 @@ jobs:
           test "${{ needs.test-windows-shard.result }}" = success
           test "${{ needs.checks-windows.result }}" = success
 
-  # The prints of every screen in both themes and languages and the axe check on them, against
-  # the seeded demo (fake runtime: no real Claude, no network). #220 runs them apart from e2e.
+  # The prints of every screen and the axe check on them, against the seeded demo (fake runtime: no
+  # real Claude, no network). #220 runs them apart from e2e; #291 runs each theme and language pair
+  # in a job of its own (the one job took 13-15 minutes).
   screenshots-prints:
-    name: prints and axe
+    name: prints and axe ${{ matrix.theme }} ${{ matrix.lang }}
     needs: [changes, quick]
     if: needs.changes.outputs.screenshots == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        theme: [light, dark]
+        lang: [pt-BR, en]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -519,18 +525,20 @@ jobs:
       - name: Chrome do runner
         run: google-chrome --version
 
-      - name: Prints (2 temas, 2 idiomas) e axe
+      - name: Prints (${{ matrix.theme }}, ${{ matrix.lang }}) e axe
         # record: the prints are the candidates for apps/desktop/visual-baseline. Once the
         # baselines are committed this becomes compare (docs/DECISIONS.md, "Visual baselines").
         env:
           VISUAL: record
+          SHOTS_THEME: ${{ matrix.theme }}
+          SHOTS_LANG: ${{ matrix.lang }}
         run: bun run demo:shots
 
       - name: Publicar os prints
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: prints
+          name: prints-${{ matrix.theme }}-${{ matrix.lang }}
           path: apps/desktop/screenshots
           if-no-files-found: ignore
 
