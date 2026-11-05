@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
 registerDom();
 const {
@@ -18,7 +18,11 @@ const { translator } = await import("../src/i18n/index.ts");
 const { App } = await import("../src/ui/App.tsx");
 
 setDefaultTimeout(30_000);
-afterEach(cleanup);
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  cleanup();
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
 
 const PORTUGUESE = /inválid|ausente|recusado|pareamento/i;
 
@@ -125,5 +129,101 @@ describe("primeira-vez: the probe gives up (issue #184, J1)", () => {
     });
     expect(result.ok).toBe(false);
     expect(cleared).toEqual([7]);
+  });
+});
+
+describe("primeira-vez: a host that refused the token can be paired again (issue #184, J1)", () => {
+  /** A host added with a token the daemon refuses. */
+  async function refused() {
+    const d = makeDaemon(cleanups);
+    const server = d.listen();
+    const store = new AppStore(memoryPlatform(false, "en").platform, {
+      baseDelayMs: 60_000,
+      wakeDebounceMs: 0,
+    });
+    cleanups.push(() => store.dispose());
+    const hostId = await store.addHost({ name: "pc", url: server.url, token: "wrong-token" });
+    await rtlWaitFor(() => expect(store.getState().hosts[0]?.status).toBe("unauthorized"), {
+      timeout: 4000,
+    });
+    return { store, hostId, url: server.url };
+  }
+
+  test("a new token brings the same host online, without adding another", async () => {
+    const { store, hostId } = await refused();
+    expect(await store.pairAgain(hostId, TOKEN)).toBeNull();
+    await rtlWaitFor(() => expect(store.getState().hosts[0]?.status).toBe("online"), {
+      timeout: 4000,
+    });
+    expect(store.getState().hosts.map((h) => h.id)).toEqual([hostId]);
+  });
+
+  test("a pasted pairing link works too, and a token the host refuses says so and changes nothing", async () => {
+    const { store, hostId, url } = await refused();
+    const port = new URL(url.replace("ws://", "http://")).port;
+    expect(await store.pairAgain(hostId, "still-wrong")).toBe(
+      translator("en")("hostForm.probeRefused"),
+    );
+    expect(store.getState().hosts[0]?.status).toBe("unauthorized");
+    expect(await store.pairAgain(hostId, "flightdeck://pc:1")).toBe(
+      translator("en")("hostForm.pairToken"),
+    );
+    expect(
+      await store.pairAgain(hostId, `flightdeck://127.0.0.1:${port}?token=${TOKEN}&name=pc`),
+    ).toBeNull();
+  });
+
+  test("the notice asks for the new link or token and shows what the host answered", async () => {
+    const { HostOfflineBanner } = await import("../src/components/hosts/host-offline-banner.tsx");
+    const asked: string[] = [];
+    render(
+      <HostOfflineBanner
+        host={
+          {
+            id: "h1",
+            name: "pc",
+            url: "ws://10.0.0.5:7420/v1/ws",
+            status: "unauthorized",
+            retry: null,
+            hostInfo: null,
+          } as never
+        }
+        onReconnect={() => {}}
+        onPairAgain={async (input) => {
+          asked.push(input);
+          return "token refused";
+        }}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("New pairing link or token"), {
+      target: { value: "abc" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Pair again" }));
+    });
+    expect(asked).toEqual(["abc"]);
+    expect(screen.queryByText("token refused")).not.toBeNull();
+  });
+
+  test("a host that is only offline, not refused, has no such field", async () => {
+    const { HostOfflineBanner } = await import("../src/components/hosts/host-offline-banner.tsx");
+    render(
+      <HostOfflineBanner
+        host={
+          {
+            id: "h1",
+            name: "pc",
+            url: "ws://10.0.0.5:7420/v1/ws",
+            status: "offline",
+            retry: { kind: "refused", lastTryAt: 0, nextRetryAt: 1 },
+            hostInfo: null,
+          } as never
+        }
+        onReconnect={() => {}}
+        onPairAgain={async () => null}
+      />,
+    );
+    expect(screen.queryByLabelText("New pairing link or token")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Pair again" })).toBeNull();
   });
 });
