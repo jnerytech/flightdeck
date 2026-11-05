@@ -250,7 +250,8 @@ describe("opencode-permissions", () => {
     writeFileSync(join(cwd, "src", "a.ts"), "x");
     writeFileSync(join(cwd, ".env"), "SECRET=1");
     writeFileSync(join(outside, "secret.txt"), "x");
-    symlinkSync(outside, join(cwd, "docs"));
+    // A junction on Windows: a directory link that needs no admin rights.
+    symlinkSync(outside, join(cwd, "docs"), "junction");
     const asked: string[] = [];
     const ctx = setup(
       async (name, input) => {
