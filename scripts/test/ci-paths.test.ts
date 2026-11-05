@@ -61,7 +61,9 @@ describe("ci-paths: the rules", () => {
       "tsconfig.base.json",
       ".github/workflows/ci.yml",
     ]) {
-      expect(`${path}: ${JSON.stringify(ciPlan(PR, [path]))}`).toBe(`${path}: ${JSON.stringify(all)}`);
+      expect(`${path}: ${JSON.stringify(ciPlan(PR, [path]))}`).toBe(
+        `${path}: ${JSON.stringify(all)}`,
+      );
     }
   });
 
@@ -117,8 +119,13 @@ describe("ci-paths: the workflow", () => {
   test("the e2e journeys run in three Playwright shards, each with its own artifacts", () => {
     expect(job("screenshots-e2e").strategy?.matrix?.shard).toEqual([1, 2, 3]);
     expect(runs("screenshots-e2e")).toContain("bun run e2e -- --shard=${{ matrix.shard }}/3");
-    const names = job("screenshots-e2e").steps.map((s) => s.with?.name ?? "").filter(Boolean);
-    expect(names).toEqual(["relatorio-e2e-${{ matrix.shard }}", "e2e-failures-${{ matrix.shard }}"]);
+    const names = job("screenshots-e2e")
+      .steps.map((s) => s.with?.name ?? "")
+      .filter(Boolean);
+    expect(names).toEqual([
+      "relatorio-e2e-${{ matrix.shard }}",
+      "e2e-failures-${{ matrix.shard }}",
+    ]);
   });
 
   test("the required aggregates succeed when their jobs were skipped by path, and fail otherwise", () => {
@@ -127,6 +134,10 @@ describe("ci-paths: the workflow", () => {
       ["screenshots", "screenshots"],
     ] as const) {
       expect(job(key).needs?.[0]).toBe("changes");
+      // A failed plan has no outputs: it must fail the check, never read as "skipped".
+      const check = runs(key);
+      const planned = check.indexOf('test "${{ needs.changes.result }}" = success');
+      expect(planned >= 0 && planned < check.indexOf("skipped by path")).toBe(true);
       expect(runs(key)).toContain(`if [ "\${{ needs.changes.outputs.${output} }}" != true ]; then`);
       expect(runs(key)).toContain("skipped by path");
     }
