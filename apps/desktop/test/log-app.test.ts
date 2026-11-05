@@ -218,7 +218,7 @@ describe("log-cobertura-app: failures that never reach the caller (issue #255)",
     const { s, written } = sink();
     const log = new AppLog({ sink: s, now: () => NOW });
     const t = { addEventListener: () => {}, removeEventListener: () => {} };
-    const fakeConsole = { error: () => {}, warn: () => {} };
+    const fakeConsole = { error: (..._args: unknown[]) => {}, warn: (..._args: unknown[]) => {} };
     const off = installGlobalLog(t, log, fakeConsole);
     const circular: Record<string, unknown> = { name: "loop" };
     circular.self = circular;
