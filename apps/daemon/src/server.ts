@@ -167,6 +167,10 @@ export interface ServerOptions {
   /** CIDR ranges allowed to connect; defaults to loopback only. */
   allowedNetworks?: readonly string[];
   pingIntervalMs?: number;
+  /** The clock behind the heartbeat (`performance.now()` when absent); a test gives its own. */
+  now?: () => number;
+  /** Runs `tick` every `everyMs` and returns the function that stops it (a `setInterval` when absent); a test fires it by hand. */
+  pingTicker?: (tick: () => void, everyMs: number) => () => void;
   /** Transcript index behind the `history.*` commands. */
   history?: HistoryIndexer;
   /** Projects and cards behind the `project.*`, `board.*` and `card.*` commands. */

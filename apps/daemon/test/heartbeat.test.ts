@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { CLOSE_HEARTBEAT } from "@flightdeck/protocol";
-import { notLinux } from "../../../scripts/test/not-linux.ts";
 import { HostConnection } from "../../desktop/src/lib/host-connection.ts";
-import { PING_INTERVAL_MS, type RunningServer, startServer } from "../src/server.ts";
+import { PING_INTERVAL_MS, type RunningServer, type ServerOptions, startServer } from "../src/server.ts";
 import { newManager, poll } from "./helpers.ts";
 
 const TOKEN = "heartbeat-token-0123456789ab";
@@ -44,7 +43,26 @@ function client(url: string, { hello = true, answer = true } = {}) {
   return { ws, pings, acks, state };
 }
 
-function serve(pingIntervalMs: number) {
+/** A hand-driven heartbeat: the test says when the ping tick fires and what time it is. */
+function fakeHeartbeat() {
+  let at = 0;
+  let fire: (() => void) | undefined;
+  return {
+    now: () => at,
+    advance: (ms: number) => {
+      at += ms;
+    },
+    pingTicker: (tick: () => void) => {
+      fire = tick;
+      return () => {
+        fire = undefined;
+      };
+    },
+    tick: () => fire?.(),
+  };
+}
+
+function serve(pingIntervalMs: number, extra: Partial<ServerOptions> = {}) {
   const { manager } = newManager();
   const server = startServer({
     manager,
@@ -54,6 +72,7 @@ function serve(pingIntervalMs: number) {
     token: TOKEN,
     allowedRoots: [],
     pingIntervalMs,
+    ...extra,
   });
   servers.push(server);
   return server;
@@ -88,27 +107,33 @@ describe("heartbeat", () => {
     expect(c.pings.length - answered).toBe(4);
   });
 
-  // unstable: #288 real 10 ms and 25 ms timers against a 75 ms silence limit close a talking client on a loaded runner
-  test.skipIf(notLinux)(
-    "qualquer quadro do cliente conta como vivo: quem fala sem dar pong não é desconectado, e quem se cala é",
-    async () => {
-      const c = client(serve(25).url);
-      await poll(() => c.pings.length >= 2, 2000);
-      c.state.answer = false;
-      // Commands keep arriving, as a busy page's do, but its pongs are late.
-      const talk = setInterval(
-        () => c.ws.send(JSON.stringify({ id: "q", type: "session.list", payload: {} })),
-        10,
-      );
-      cleanups.push(() => clearInterval(talk));
-      const before = c.pings.length;
-      await poll(() => c.pings.length - before >= 10, 3000);
-      expect(c.state.closed).toBeNull();
-      clearInterval(talk);
-      await poll(() => c.state.closed !== null, 2000);
-      expect(c.state.closed).toBe(4408);
-    },
-  );
+  test("any client frame counts as alive: one that talks without answering pings stays, and one silent for 4 intervals is closed", async () => {
+    const EVERY = 1000;
+    const beat = fakeHeartbeat();
+    const c = client(serve(EVERY, { now: beat.now, pingTicker: beat.pingTicker }).url);
+    expect(await poll(() => c.acks.length === 1)).toBe(true);
+    c.state.answer = false;
+    // A busy page: a command arrives before every tick, but its pongs never do.
+    for (let i = 1; i <= 8; i++) {
+      beat.advance(EVERY);
+      const acked = c.acks.length;
+      c.ws.send(JSON.stringify({ id: `q${i}`, type: "session.list", payload: {} }));
+      expect(await poll(() => c.acks.length > acked)).toBe(true);
+      beat.tick();
+      expect(await poll(() => c.pings.length === i)).toBe(true);
+    }
+    expect(c.state.closed).toBeNull();
+    // Then it goes quiet: one millisecond short of 4 intervals it still stays, at 4 it is closed.
+    beat.advance(4 * EVERY - 1);
+    beat.tick();
+    expect(await poll(() => c.pings.length === 9)).toBe(true);
+    expect(c.state.closed).toBeNull();
+    beat.advance(1);
+    beat.tick();
+    expect(await poll(() => c.state.closed !== null)).toBe(true);
+    expect(c.state.closed).toBe(4408);
+    expect(c.pings).toHaveLength(9);
+  });
 
   test("sem hello não há ping; pong antes do hello fecha com 4401", async () => {
     const idle = client(serve(25).url, { hello: false });
