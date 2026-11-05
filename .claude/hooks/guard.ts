@@ -3,8 +3,9 @@
  * PreToolUse (Bash|Edit|Write), in the main checkout and in its worktrees. It blocks staging
  * everything at once (docs/TDD.md), hand edits of generated files, test edits that add
  * .only/.skip/test.todo/toMatchSnapshot, commits whose subject breaks the format or the TDD
- * order, and heavy runs outside `bun run slot --`. Exit 2 blocks the call and shows the reason to
- * Claude. The rules live in scripts/lib/claude-hooks.ts, with their tests.
+ * order, heavy runs outside `bun run slot --`, and pushes of anything but the session's own work
+ * branch. Exit 2 blocks the call and shows the reason to Claude. The rules live in
+ * scripts/lib/claude-hooks.ts, with their tests.
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -15,6 +16,7 @@ import {
   commitViolation,
   commitWaived,
   generatedViolation,
+  pushViolation,
   slotViolation,
   testEditViolation,
 } from "../../scripts/lib/claude-hooks.ts";
@@ -35,16 +37,15 @@ if (typeof command === "string") {
   block("command", commandViolation(command));
   block("slot", slotViolation(command, process.env));
   const cwd = typeof input.cwd === "string" ? input.cwd : ROOT;
-  block(
-    "commit",
-    commitViolation(command, cwd, {
-      git: (args, dir) => {
-        const proc = spawnSync("git", args, { cwd: dir, encoding: "utf8", timeout: 2000 });
-        return proc.status === 0 ? proc.stdout : null;
-      },
-      inProject: (dir) => checkoutRoot(join(dir, "x"), ROOT) !== null,
-    }),
-  );
+  const repo = {
+    git: (args: string[], dir: string) => {
+      const proc = spawnSync("git", args, { cwd: dir, encoding: "utf8", timeout: 2000 });
+      return proc.status === 0 ? proc.stdout : null;
+    },
+    inProject: (dir: string) => checkoutRoot(join(dir, "x"), ROOT) !== null,
+  };
+  block("commit", commitViolation(command, cwd, repo));
+  block("push", pushViolation(command, cwd, { ...repo, env: process.env }));
 }
 if (typeof filePath === "string") {
   const root = checkoutRoot(filePath, ROOT);
