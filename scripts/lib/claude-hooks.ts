@@ -66,6 +66,10 @@ export function commandViolation(command: string): string | null {
         return `git add ${wide} is blocked: stage files by explicit path and check git status --short first (docs/TDD.md).`;
       }
     }
+    if (sub === "stash" && !["list", "show"].includes(args[0] ?? "")) {
+      const what = args[0] && !args[0].startsWith("-") ? `git stash ${args[0]}` : "git stash";
+      return `${what} is blocked: refs/stash is shared across worktrees; use git diff > /tmp/<name>.patch + git apply, or a WIP commit on your branch.`;
+    }
     if (sub === "commit") {
       const all = args.find((a) => a === "--all" || hasShortFlag(a, "a"));
       if (all) {
