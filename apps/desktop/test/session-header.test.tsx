@@ -39,4 +39,11 @@ describe("session-header: the summary card lines up with the header and the conv
     expect(slot?.className.split(" ")).toContain("recap-slot");
     expect(/padding-inline:\s*1rem;/.test(utility("recap-slot"))).toBe(true);
   });
+
+  test("a screen that draws the summary itself puts it in the same slot (the terminal session's view)", () => {
+    const source = readFileSync(resolve(import.meta.dir, "../src/ui/ExternalView.tsx"), "utf8");
+    const lines = source.split("\n");
+    const at = lines.findIndex((line) => line.includes("<RecapPanel"));
+    expect(lines[at - 1] ?? "").toContain("recap-slot");
+  });
 });
