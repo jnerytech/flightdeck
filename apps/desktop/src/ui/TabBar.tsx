@@ -7,6 +7,9 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Circle,
+  CircleAlert,
+  LoaderCircle,
   type LucideIcon,
   MessageSquare,
   MoreHorizontal,
@@ -38,7 +41,7 @@ import type { AppState, AppStore } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import type { Route } from "../lib/router.ts";
 import { isProd } from "../lib/ssh.ts";
-import { badgePulses, type TabKind, tabBadge, tabKind } from "../lib/tab-badge.ts";
+import { badgePulses, type TabBadge, type TabKind, tabBadge, tabKind } from "../lib/tab-badge.ts";
 import type { Tab, Tabs } from "../lib/tabs.ts";
 
 const ICONS: Record<TabKind, LucideIcon> = {
@@ -263,35 +266,7 @@ export function TabBar(props: {
                         {tag}
                       </span>
                     ))}
-                  {badge && compact && !selected && (
-                    <span
-                      role="img"
-                      data-badge={badge}
-                      data-compact="true"
-                      aria-label={t(`tabs.badge.${badge}`)}
-                      title={t(`tabs.badge.${badge}`)}
-                      className={cn(
-                        "size-2 shrink-0 rounded-full",
-                        badge === "needs-you" ? "bg-status-needs-you" : "bg-muted-foreground",
-                        badgePulses(badge) && "motion-safe:animate-pulse",
-                      )}
-                    />
-                  )}
-                  {badge && !(compact && !selected) && (
-                    <span
-                      data-badge={badge}
-                      className={cn(
-                        "shrink-0 rounded-full px-1.5 text-xs",
-                        badgePulses(badge) && "motion-safe:animate-pulse",
-                        badge === "needs-you"
-                          ? "bg-status-needs-you text-background"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                      title={t(`tabs.badge.${badge}`)}
-                    >
-                      {tab.pinned ? "" : t(`tabs.badge.${badge}`)}
-                    </span>
-                  )}
+                  {badge && <TabBadgeGlyph badge={badge} label={t(`tabs.badge.${badge}`)} />}
                 </button>
                 {!tab.pinned && (
                   <button
@@ -396,5 +371,36 @@ export function TabBar(props: {
         {announcement}
       </div>
     </div>
+  );
+}
+
+/** Each badge's shape: a sign besides its color (issue #172, WCAG 1.4.1). */
+const BADGE_GLYPHS: Record<NonNullable<TabBadge>, { icon: LucideIcon; className: string }> = {
+  "needs-you": { icon: CircleAlert, className: "text-status-needs-you" },
+  running: { icon: LoaderCircle, className: "text-muted-foreground" },
+  unread: { icon: Circle, className: "text-primary [&_svg]:fill-current" },
+};
+
+/**
+ * A tab's badge: a glyph named in words (for screen readers and in its tooltip), never a text
+ * pill, so the tab's title keeps the width.
+ */
+function TabBadgeGlyph(props: { badge: NonNullable<TabBadge>; label: string }) {
+  const glyph = BADGE_GLYPHS[props.badge];
+  const Glyph = glyph.icon;
+  return (
+    <span
+      role="img"
+      data-badge={props.badge}
+      aria-label={props.label}
+      title={props.label}
+      className={cn(
+        "inline-flex shrink-0",
+        glyph.className,
+        badgePulses(props.badge) && "motion-safe:animate-spin",
+      )}
+    >
+      <Glyph aria-hidden="true" className={props.badge === "unread" ? "size-2.5" : "size-3.5"} />
+    </span>
   );
 }
