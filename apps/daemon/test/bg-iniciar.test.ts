@@ -183,7 +183,14 @@ process.exit(${code});
       "--",
       "p",
     ]);
-    expect((await run({ trusted: true })).argv).toEqual(["claude", "--bg", "--name", "n", "--", "p"]);
+    expect((await run({ trusted: true })).argv).toEqual([
+      "claude",
+      "--bg",
+      "--name",
+      "n",
+      "--",
+      "p",
+    ]);
   });
 
   test("a card starts a session in its project's folder, named and prompted by the card", async () => {

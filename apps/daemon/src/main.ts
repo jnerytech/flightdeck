@@ -1177,6 +1177,7 @@ export async function startDaemon(
       db: store.db,
       claude: () => config.claude?.executablePath ?? whichOnPath("claude") ?? null,
       channel: (claudeSessionId, text) => messageExternal(central, claudeSessionId, text),
+      trust: (cwd) => projectTrust.sessionTrust(cwd),
       // `getCard` refuses a card that does not exist, with the not_found the app knows.
       card: (cardId) => {
         const card = board.getCard(cardId);

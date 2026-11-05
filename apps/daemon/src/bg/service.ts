@@ -99,6 +99,16 @@ export class BgService {
     return found;
   }
 
+  /** The flags that keep a folder's project setup from running when it is not trusted (project trust). */
+  private trustFlags(cwd: string): string[] {
+    const trust = this.opts.trust?.(cwd);
+    if (!trust) return [];
+    return [
+      ...(trust.trusted ? [] : ["--setting-sources", "user", "--strict-mcp-config"]),
+      ...(trust.configRoot ? ["--project-config-root", trust.configRoot] : []),
+    ];
+  }
+
   /** Runs a `claude` command; a refusal of Claude Code reaches the app with what it said. */
   private async claudeDo(args: string[]): Promise<void> {
     // The listing was just read, so a `claude` exists.
@@ -142,7 +152,14 @@ export class BgService {
         "bg_no_message_path",
       );
     }
-    await this.claudeDo(["--resume", claudeSessionId, "--bg", "--", text]);
+    await this.claudeDo([
+      "--resume",
+      claudeSessionId,
+      "--bg",
+      ...this.trustFlags(session.cwd),
+      "--",
+      text,
+    ]);
     return this.list();
   }
 
@@ -182,6 +199,7 @@ export class BgService {
         "--bg",
         ...(input.persona ? ["--persona", input.persona] : []),
         ...(name ? ["--name", name] : []),
+        ...this.trustFlags(folder),
         "--",
         prompt ?? "",
       ],
