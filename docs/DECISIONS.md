@@ -3794,3 +3794,12 @@ Probes for this round (2026-11-05; no credential read; every probe session delet
 - **An empty `XDG_CONFIG_HOME` per OpenCode child (the stronger M6 option): rejected (maintainer).** The person's global
   config stays: the scope scan and the preflight already refuse global plugins and MCP servers, and losing the person's
   global models and providers would make the runtime useless for them.
+
+### Phase 39: OpenCode is opt-in per host
+
+- **Decision:** `opencode.enabled` defaults to `false`. Discovery runs the OpenCode binary (`--version`, the canary's
+  `api --standalone`), so a host that turned nothing on runs no third-party program at start. The doctor only looks the
+  binary up (no run) and says how to turn it on (`"opencode": { "enabled": true }` in the host config). With the `fake`
+  runtime (demo, e2e) a fake OpenCode is always offered.
+- **Why not on by default:** it would run OpenCode at every daemon start on every host that has it, and in every test that
+  starts a daemon with the `claude` runtime (the preload's `opencode` sentinel would fail them).
