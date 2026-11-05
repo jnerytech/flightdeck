@@ -238,6 +238,8 @@ export interface AppState {
   doctor: Record<string, DoctorResult>;
   /** When each host's health (dependencies and doctor) was last read, in epoch milliseconds. */
   healthAt: Record<string, number>;
+  /** Why the last health read of a host failed (the screen says it; no banner). Absent when it went well. */
+  healthError: Record<string, string>;
   /** The ssh password or passphrase prompts waiting for an answer, oldest first (phase 15). */
   askpass: Array<{ hostId: string; request: AskpassRequest }>;
   /** The ssh destinos of each host that keeps them, by host id; read when the palette opens (phase 15). */
@@ -793,6 +795,7 @@ export class AppStore {
       deps: {},
       doctor: {},
       healthAt: {},
+      healthError: {},
       budgets: {},
       ssh: {},
       snippets: {},
@@ -965,6 +968,7 @@ export class AppStore {
       deps: {},
       doctor: {},
       healthAt: {},
+      healthError: {},
     });
     const closeToTray = this.platform.storage.getItem(CLOSE_TO_TRAY_KEY) !== "false";
     await this.platform.setCloseToTray(closeToTray);

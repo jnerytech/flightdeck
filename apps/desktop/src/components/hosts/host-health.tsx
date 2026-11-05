@@ -59,6 +59,8 @@ export function HostHealth(props: {
   doctor: DoctorResult | null;
   /** When the health was read, in epoch milliseconds; null before the first read. */
   checkedAt: number | null;
+  /** Why the last read failed, when it did. */
+  error?: string | null;
   onCheck(): Promise<void>;
   /** "Add folder": the app takes the person to the allowed folders. */
   onAddFolder(): void;
