@@ -106,6 +106,10 @@ export function HomePage(props: {
       : !kpis
         ? t("home.loading")
         : t("home.ready");
+  // Hosts that do not have costs at all: their spend is unknown, which is not the same as none.
+  const withoutCosts = online
+    .filter((host) => !hasFeature(host.hostInfo?.features, "costs", false))
+    .map((host) => host.name);
   const openCosts = () => go({ name: "costs" });
   const firstHost = online[0]?.id;
 
@@ -135,14 +139,21 @@ export function HomePage(props: {
                 <KpiCard
                   title={t("home.spend")}
                   openLabel={t("home.openCard", { card: t("home.spend") })}
-                  value={usdOf(kpis.spend.totalUsd)}
+                  value={kpis.spend.totalUsd === null ? unknown : usdOf(kpis.spend.totalUsd)}
                   details={
-                    kpis.spend.budget
-                      ? t("home.ofBudget", {
-                          spent: usdOf(kpis.spend.budget.spentUsd),
-                          limit: usdOf(kpis.spend.budget.limitUsd),
-                        })
-                      : t("home.noBudget")
+                    <>
+                      <span>
+                        {kpis.spend.budget
+                          ? t("home.ofBudget", {
+                              spent: usdOf(kpis.spend.budget.spentUsd),
+                              limit: usdOf(kpis.spend.budget.limitUsd),
+                            })
+                          : t("home.noBudget")}
+                      </span>
+                      {withoutCosts.length > 0 && (
+                        <span>{t("home.noCosts", { hosts: withoutCosts.join(", ") })}</span>
+                      )}
+                    </>
                   }
                   series={kpis.spend.series}
                   seriesLabel={series(t("home.spend"), kpis.spend.series, usdOf)}
@@ -171,8 +182,14 @@ export function HomePage(props: {
                 <KpiCard
                   title={t("home.tokens")}
                   openLabel={t("home.openCard", { card: t("home.tokens") })}
-                  value={formatCompact(kpis.tokens.total, lang)}
-                  details={t("home.cacheRead", { n: formatCompact(kpis.tokens.cacheRead, lang) })}
+                  value={
+                    kpis.tokens.total === null ? unknown : formatCompact(kpis.tokens.total, lang)
+                  }
+                  details={
+                    kpis.tokens.cacheRead === null
+                      ? unknown
+                      : t("home.cacheRead", { n: formatCompact(kpis.tokens.cacheRead, lang) })
+                  }
                   series={kpis.tokens.series}
                   seriesLabel={series(t("home.tokens"), kpis.tokens.series, (v) =>
                     formatCompact(v, lang),
@@ -189,6 +206,7 @@ export function HomePage(props: {
                   }
                   details={
                     <>
+                      <span>{t("home.avgBasis")}</span>
                       <span>
                         {t("home.avgTime")}:{" "}
                         {kpis.average.turnMs === null

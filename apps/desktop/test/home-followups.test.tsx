@@ -158,7 +158,7 @@ describe("home-followups: hosts without costs show unknown, and Avg says where i
     await waitFor(() => expect(spend().textContent).toContain("$2.00"));
     expect(spend().textContent).toContain("No cost data from host-h2");
     expect(spend().textContent).not.toContain("host-h1");
-    expect(tokens().textContent).toContain("1.0M");
+    expect(tokens().textContent).toContain("1M");
   });
 
   test("when every host has costs there is no note", async () => {

@@ -37,6 +37,8 @@ export const en: Dictionary = {
     olderDaemon: "Failed turns and turn time need a daemon with the Home counters.",
     loading: "Reading the hosts…",
     connecting: "Connecting to your hosts…",
+    noCosts: "No cost data from {hosts}",
+    avgBasis: "Managed sessions only",
     ready: "Home is ready.",
   },
   hosts: {

@@ -39,6 +39,8 @@ export const ptBR = {
     olderDaemon: "Turnos com falha e tempo do turno pedem um daemon com os contadores do Início.",
     loading: "Lendo os hosts…",
     connecting: "Conectando aos seus hosts…",
+    noCosts: "Sem dados de custo de {hosts}",
+    avgBasis: "Só sessões gerenciadas",
     ready: "O Início está pronto.",
   },
   hosts: {
