@@ -131,7 +131,7 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
     expect(screen.queryByText(/not shown/)).toBeNull();
   });
 
-  test("the session that needs you comes first, shows its request, and Allow answers it", async () => {
+  test("the session that needs you comes first, shows its request, and Approve answers it (issue #182: the same verb as everywhere)", async () => {
     const { store, hostId, ids } = await setup(["pede", "quieta"]);
     await needsYouFirst();
     const tile = tiles()[0] as HTMLElement;
@@ -140,8 +140,10 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
       "request",
     );
     expect(ask?.textContent).toContain("Write");
+    const approve = within(tile).queryByRole("button", { name: "Approve" });
+    expect(approve).not.toBeNull();
     await act(async () => {
-      fireEvent.click(within(tile).getByRole("button", { name: "Allow" }));
+      fireEvent.click(approve as HTMLElement);
     });
     await waitFor(
       () => within(tile).queryByRole("group", { name: "Request" }) === null,
