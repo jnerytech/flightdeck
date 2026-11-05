@@ -59,19 +59,26 @@ const usage = (extra: Record<string, number> | null): UsageSummary => ({
   ],
 });
 
-function setup(options: { hosts?: number; usage?: UsageSummary } = {}) {
+function setup(
+  options: { hosts?: number; usage?: UsageSummary; refuse?: string; refreshMs?: number } = {},
+) {
   const store = new AppStore(memoryPlatform(false, "en").platform, {
     baseDelayMs: 600_000,
     day: () => "2026-10-10",
   });
   store.i18n.start();
   const asked: string[] = [];
-  store.hostCommand = (async (hostId: string, command: string) => {
+  // Home reads silently: a refusal comes back as a result, never as a banner.
+  store.hostRequest = (async (hostId: string, command: string) => {
     asked.push(`${hostId}:${command}`);
-    if (command === "costs.summary") return costs();
-    if (command === "usage.summary")
-      return options.usage ?? usage({ failedTurns: 1, durationMs: 18_000 });
-    return null;
+    if (`${hostId}:${command}` === options.refuse) {
+      return { ok: false, code: "internal", message: "no" };
+    }
+    if (command === "costs.summary") return { ok: true, data: costs() };
+    if (command === "usage.summary") {
+      return { ok: true, data: options.usage ?? usage({ failedTurns: 1, durationMs: 18_000 }) };
+    }
+    return { ok: false, code: "internal", message: "no" };
   }) as never;
   const hosts = Array.from({ length: options.hosts ?? 1 }, (_, i) => ({
     id: `h${i + 1}`,
@@ -86,8 +93,15 @@ function setup(options: { hosts?: number; usage?: UsageSummary } = {}) {
     budgets: { h1: [budget] },
   } as never as ReturnType<typeof store.getState>;
   const routes: unknown[] = [];
-  const view = <HomePage store={store} state={state} go={(route) => void routes.push(route)} />;
-  return { view, routes, asked };
+  const view = (
+    <HomePage
+      store={store}
+      state={state}
+      go={(route) => void routes.push(route)}
+      {...(options.refreshMs ? { refreshMs: options.refreshMs } : {})}
+    />
+  );
+  return { view, routes, asked, store };
 }
 
 describe("home-ui: four cards with the last seven days of every host", () => {
@@ -210,5 +224,42 @@ describe("home-ui: Home is a screen of the app", () => {
     expect(screen.getByRole("tab", { name: /Home/ })).not.toBeNull();
     expect(screen.getByRole("button", { name: "Home" }).getAttribute("aria-current")).toBe("page");
     for (const fn of cleanups.splice(0).reverse()) await fn();
+  });
+
+  test("a host that does not answer is named, the others still count, and no banner is raised (HK-M2)", async () => {
+    const { view, store } = setup({ hosts: 2, refuse: "h2:usage.summary" });
+    render(view);
+    const spend = await screen.findByRole("button", { name: "Open Spend" });
+    await waitFor(() => expect(spend.textContent).toContain("$2.25"));
+    expect(screen.getByText("Some hosts did not answer: host2.")).toBeTruthy();
+    expect(store.getState().notices).toHaveLength(0);
+  });
+
+  test("a daemon without the Home counters is told, not shown as zero (HK-M2)", async () => {
+    const { view } = setup({ usage: usage(null) });
+    render(view);
+    await screen.findByRole("button", { name: "Open Turns" });
+    expect(
+      await screen.findByText("Failed turns and turn time need a daemon with the Home counters."),
+    ).toBeTruthy();
+  });
+
+  test("while the hosts are asked the page says it is loading, and stops saying it after (HK-M2)", async () => {
+    const { view } = setup();
+    render(view);
+    expect(document.querySelector("[aria-busy='true']")).not.toBeNull();
+    await screen.findByRole("button", { name: "Open Spend" });
+    expect(document.querySelector("[aria-busy='true']")).toBeNull();
+  });
+
+  test("the numbers are read again when the window gets focus back and on a timer (HK-M2)", async () => {
+    const { view, asked } = setup({ refreshMs: 40 });
+    render(view);
+    await screen.findByRole("button", { name: "Open Spend" });
+    const first = asked.length;
+    await waitFor(() => expect(asked.length).toBeGreaterThan(first));
+    const second = asked.length;
+    await act(async () => void window.dispatchEvent(new Event("focus")));
+    await waitFor(() => expect(asked.length).toBeGreaterThan(second));
   });
 });

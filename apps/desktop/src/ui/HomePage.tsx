@@ -19,7 +19,13 @@ interface HostData {
  * Home: the last seven days of every online host in four cards (spend, turns, tokens, the average
  * turn), from the hosts' own costs and usage; no command of its own.
  */
-export function HomePage(props: { store: AppStore; state: AppState; go(route: Route): void }) {
+export function HomePage(props: {
+  store: AppStore;
+  state: AppState;
+  go(route: Route): void;
+  /** How often the numbers are read again, in milliseconds (a minute). */
+  refreshMs?: number;
+}) {
   const { store, state, go } = props;
   const { t, lang } = store.i18n;
   const online = state.hosts.filter((host) => host.status === "online");
