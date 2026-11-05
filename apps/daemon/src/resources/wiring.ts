@@ -1,8 +1,9 @@
+import { statfs } from "node:fs/promises";
+import { cpus, freemem, loadavg, totalmem } from "node:os";
+import { procfsReader } from "./procfs.ts";
 import { type ProcReader, Resources } from "./resources.ts";
 
 export interface ResourcesDeps {
-  platform: NodeJS.Platform;
-  ownPid: number;
   dataDir: string;
   sessions(): Array<{
     id: string;
@@ -18,14 +19,17 @@ export interface ResourcesDeps {
     exitCode: number | null;
   }>;
   pidOf(terminalId: string): number | null;
-  totalmem(): number;
-  freemem(): number;
-  loadavg(): number[];
-  cpus(): number;
-  statfs(path: string): Promise<{ blocks: number; bsize: number; bavail: number }>;
-  kill(pid: number, signal: NodeJS.Signals): void;
+  /** What follows is the machine's own; tests give their own, so no real process or disk is read. */
+  platform?: NodeJS.Platform;
+  ownPid?: number;
+  totalmem?(): number;
+  freemem?(): number;
+  loadavg?(): number[];
+  cpus?(): number;
+  statfs?(path: string): Promise<{ blocks: number; bsize: number; bavail: number }>;
+  kill?(pid: number, signal: NodeJS.Signals): void;
   /** The /proc reader; only used on Linux. */
-  proc: ProcReader | undefined;
+  proc?: ProcReader;
 }
 
 /** Statuses of a session that has no process any more. */
@@ -36,9 +40,21 @@ const GONE = new Set(["ended", "error"]);
  * for the host's numbers. Processes are measured through `/proc`, so only on Linux; macOS and
  * Windows get the host's memory, disk and (where there is one) load, and say the rest is not measured.
  */
-export function createResources(deps: ResourcesDeps): Resources {
+export function createResources(given: ResourcesDeps): Resources {
+  const deps = {
+    platform: process.platform,
+    ownPid: process.pid,
+    totalmem,
+    freemem,
+    loadavg,
+    cpus: () => cpus().length,
+    statfs: (path: string) => statfs(path),
+    kill: (pid: number, signal: NodeJS.Signals) => void process.kill(pid, signal),
+    ...given,
+  };
+  const proc = deps.platform === "linux" ? (deps.proc ?? procfsReader()) : null;
   return new Resources({
-    proc: deps.platform === "linux" && deps.proc ? deps.proc : null,
+    proc,
     ownPid: deps.ownPid,
     sessions: () =>
       deps.sessions().map((s) => ({

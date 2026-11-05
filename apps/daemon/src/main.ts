@@ -83,6 +83,7 @@ import { claudeCli, filePins, Plugins, pluginDecisionLog } from "./plugins/plugi
 import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
+import { createResources } from "./resources/wiring.ts";
 import { Changes } from "./review/changes.ts";
 import { ReviewComments } from "./review/comments.ts";
 import { ReviewFiles } from "./review/files.ts";
@@ -1212,6 +1213,12 @@ export async function startDaemon(
     }),
     central,
     maintenance,
+    resources: createResources({
+      dataDir: config.dataDir,
+      sessions: () => manager.list(),
+      terminals: () => terminals.list(),
+      pidOf: (id) => terminals.pidOf(id),
+    }),
     ...(updates ? { updates } : {}),
     snapshots,
     rewinder,
