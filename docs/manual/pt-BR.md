@@ -688,8 +688,12 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   tempo e taxa de sucesso). Gasto, Tokens e o turno médio abrem Custos; Turnos abre o Histórico do
   primeiro host online. Os turnos com falha e o tempo do turno são contados pelo daemon a partir
   desta versão: um host com daemon mais antigo mostra "—" em vez de um zero inventado, e os dias
-  anteriores à atualização contam como sem falhas e sem tempo. O app abre no Início quando a janela é
-  nova; uma janela que você já usou volta com as abas dela.
+  anteriores à atualização são desconhecidos (o tempo médio e a taxa de sucesso usam só os turnos
+  que foram contados). O Início lê de novo a cada minuto e quando a janela volta ao foco; um host
+  que não responde é citado sob o título e os outros continuam contando. O app abre no Início
+  quando a janela é nova; uma janela que você já usou volta com as abas dela. A conta no pé da
+  barra é a do host em que você está; sem host aberto, é a conta que os hosts online dividem, ou
+  "N contas" quando diferem.
 - Com uma área, a barra de abas fica na barra do topo, na linha do caminho; com a tela dividida,
   cada área tem a sua. A barra mantém três ferramentas: o menu de **Ações** da aba ativa (mover
   para a esquerda ou a direita, mover para a outra área, fixar), **Nova aba** e **Dividir**.
