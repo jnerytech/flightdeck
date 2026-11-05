@@ -722,6 +722,8 @@ export const ptBR = {
   board: {
     cardActions: "Ações de {title}",
     startCard: "Iniciar card",
+    startQueued: "o card já está na fila",
+    startRunning: "o card já está rodando",
     moveTo: "Mover para {column}",
     moveUp: "Mover para cima",
     moveDown: "Mover para baixo",

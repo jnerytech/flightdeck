@@ -3580,7 +3580,7 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 
 - **Done.** Creating a card, and starting it from the card menu, show a toast with "Open" that leads to the card (a success toast can now carry one button). Stop is off, with its reason, until the card has a session or waits in the queue. The e2e journey `card-diff` checks the creation toast.
 - **Part 2 (product call by the coordinator).** "Complete" on the card became "Finish…", a dialog that explains the three ways to Done and offers each: Move to Done (only moves), Complete (moves and removes the worktree, with its confirmation) and Review and merge (opens the changes, where Merge and archive lives; off without a worktree). Move is off when the card is already in Done.
-- **Not done.** The persona and workflow choice in the card menu's Start (the card page has both), and Start disabled by state (a queued card): needs a design for the menu's extra step. Merge and archive itself stays in the review panel.
+- **Part 3.** "Start card" in the card menu opens a small dialog with the workflow (and its inputs) and the persona (prefilled with the host's suggestion, shown when the host has personas), then Start; it toasts "Card started" with Open. The menu entry is off, with the reason in its text, while the card is queued or running. Merge and archive itself stays in the review panel.
 
 ## Teams, journey J6 (issue #189)
 

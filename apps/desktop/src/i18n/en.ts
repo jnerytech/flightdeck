@@ -725,6 +725,8 @@ export const en: Dictionary = {
   board: {
     cardActions: "Actions for {title}",
     startCard: "Start card",
+    startQueued: "the card is already queued",
+    startRunning: "the card is already running",
     moveTo: "Move to {column}",
     moveUp: "Move up",
     moveDown: "Move down",
