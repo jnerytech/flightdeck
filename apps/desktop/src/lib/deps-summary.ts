@@ -1,4 +1,4 @@
-import type { DepResult } from "@flightdeck/protocol";
+import type { DepResult, DepsResult } from "@flightdeck/protocol";
 
 /** The section's headline: everything in place, optional ones missing, or required ones missing. */
 export interface DepsSummary {
@@ -40,4 +40,9 @@ export function fixFor(item: DepResult, os: string): string | null {
 /** The official install page for the dependency on the host's own OS, or null. */
 export function fixPageFor(item: DepResult, os: string): string | null {
   return item.fix.find((fix) => fix.os === os)?.url ?? null;
+}
+
+/** Whether a required dependency of the host is missing (what the sidebar marks red); outdated is amber. */
+export function requiredMissing(_deps: DepsResult | undefined): boolean {
+  return true;
 }

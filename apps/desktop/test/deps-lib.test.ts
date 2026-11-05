@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { DepResult } from "@flightdeck/protocol";
-import { depLook, depsSummary, fixFor } from "../src/lib/deps-summary.ts";
+import { depLook, depsSummary, fixFor, requiredMissing } from "../src/lib/deps-summary.ts";
 
 const dep = (
   id: DepResult["id"],
@@ -32,7 +32,8 @@ describe("deps-lib", () => {
       dep("git", "required", "missing"),
       dep("service", "required", "outdated"),
     ];
-    expect(depsSummary(required)).toEqual({ kind: "required", n: 2 });
+    // An outdated required one still works: only the missing one is red (HD-M6).
+    expect(depsSummary(required)).toEqual({ kind: "required", n: 1 });
   });
 
   test("each row has an icon and a tone: green check, amber warning, red cross, gray dash", () => {
@@ -49,5 +50,15 @@ describe("deps-lib", () => {
     expect(fixFor(item, "win32")).toBe("winget install gh");
     expect(fixFor(item, "darwin")).toBeNull();
     expect(fixFor({ ...item, fix: [] }, "linux")).toBeNull();
+  });
+
+  test("a required one that is outdated is amber everywhere: the headline, the dot and the sidebar (HD-M6)", () => {
+    const outdated = [dep("claude", "required", "ok"), dep("git", "required", "outdated")];
+    expect(depsSummary(outdated)).toEqual({ kind: "optional", n: 1 });
+    expect(requiredMissing({ items: outdated })).toBe(false);
+    expect(requiredMissing({ items: [...outdated, dep("service", "required", "missing")] })).toBe(
+      true,
+    );
+    expect(requiredMissing(undefined)).toBe(false);
   });
 });
