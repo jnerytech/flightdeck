@@ -155,9 +155,10 @@ describe("ci-paths: the workflow", () => {
     }
   });
 
-  test("lint:sonar on a PR is the per-rule ratchet only, so a red X means a rule went up", () => {
-    expect(job("sonar-lint").name).toBe("lint:sonar (ratchet)");
-    expect(runs("sonar-lint")).toContain("bun run lint:sonar -- --ratchet");
-    expect(runs("sonar-lint")).not.toContain("--base");
+  test("no job runs the local Sonar: SonarCloud Code Analysis on the PR is the only Sonar check (#283)", () => {
+    for (const [key, ciJob] of Object.entries(ci.jobs)) {
+      const sonar = ciJob.steps.filter((s) => (s.run ?? "").includes("lint:sonar"));
+      expect(`${key}: ${sonar.length}`).toBe(`${key}: 0`);
+    }
   });
 });

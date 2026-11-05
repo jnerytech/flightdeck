@@ -266,7 +266,7 @@ describe("ci.yml: any pushed branch can run the full CI by hand", () => {
 
   test("the test job is skipped when only the screenshots were asked for, and not otherwise", () => {
     expect(workflow.jobs.test?.if).toBe(
-      "github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'",
+      "!cancelled() && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')",
     );
     // The prints and the e2e journeys follow the path plan only (#264), and a dispatch plans
     // everything, so they still run on every dispatch (#220 split them into two jobs).
