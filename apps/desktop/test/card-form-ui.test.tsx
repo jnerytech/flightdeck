@@ -127,7 +127,9 @@ for (const [lang, t] of [
       await act(async () => {
         fireEvent.click(add() as HTMLButtonElement);
       });
-      await settle(() => within(deps).queryByText("Cart API") !== null);
+      // The chain lists it (the select's option has the same text, so wait for its remove button).
+      const remove = t.deps.remove.replace("{title}", "Cart API");
+      await settle(() => within(deps).queryByRole("button", { name: remove }) !== null);
       expect((screen.queryByLabelText(t.deps.addLabel) as HTMLSelectElement).value).toBe("");
       expect(add()?.disabled).toBe(true);
     });
