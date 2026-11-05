@@ -3,7 +3,8 @@
  * server or real git is `integration`; one that draws the DOM is `component`; the rest is `unit`;
  * the Playwright journeys and the smokes are `e2e`. A helper counts function by function: a test
  * that takes only `waitFor` from fixtures.ts is not an integration test because `daemon()` sits in
- * the same file. The manifest (test-tiers.json) is generated from this and checked by a test.
+ * the same file. The tiers are computed from the code on every call (about 100 ms for the tree);
+ * no manifest is committed, so no PR has one to update or conflict in.
  */
 import { importsOf, resolveImport } from "./test-related.ts";
 
@@ -102,8 +103,8 @@ export function testTiers(sources: Map<string, string>): Record<string, Tier> {
 }
 
 /** How many files each tier holds. */
-export function tierCounts(manifest: Record<string, Tier>): Record<Tier, number> {
+export function tierCounts(tiers: Record<string, Tier>): Record<Tier, number> {
   const counts = { unit: 0, component: 0, integration: 0, e2e: 0 };
-  for (const tier of Object.values(manifest)) counts[tier]++;
+  for (const tier of Object.values(tiers)) counts[tier]++;
   return counts;
 }

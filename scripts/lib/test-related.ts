@@ -86,7 +86,7 @@ export interface PlanDeps {
   fast?: boolean;
   /** `--tier unit,component`: only the tests of these tiers (#261); the 100% gate stays in CI. */
   tiers?: string[];
-  /** A test file's tier, from test-tiers.json; undefined for a file the manifest does not list. */
+  /** A test file's tier (lib/test-tiers.ts); undefined for a file it does not classify. */
   tierOf?: (path: string) => string | undefined;
 }
 
@@ -126,7 +126,7 @@ export function planRelated({
     ...byImport,
     ...selectByPath(changed, sources).filter((r) => !imported.has(r.path)),
   ].sort((a, b) => (a.path < b.path ? -1 : 1));
-  // --tier: a test the manifest does not list (a new file) still runs.
+  // --tier: a test with no tier still runs, never silently dropped.
   const kept = (path: string) => {
     const tier = tierOf(path);
     return !tiers || tier === undefined || tiers.includes(tier);
