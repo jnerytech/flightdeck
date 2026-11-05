@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { killTree, runBounded } from "../lib/bounded-run.ts";
+import { killTree, runBounded, SYSTEM_KILL } from "../lib/bounded-run.ts";
 
 const BUN = process.execPath;
 const alive = (pid: number) => {
@@ -79,5 +79,15 @@ describe("bounded-run", () => {
       },
     };
     expect(() => killTree(42, gone)).not.toThrow();
+  });
+
+  test("the system's runSync runs a program to its end (#273)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "bounded-run-sync-"));
+    const mark = join(dir, "ran");
+    SYSTEM_KILL.runSync(BUN, [
+      "-e",
+      `require("node:fs").writeFileSync(${JSON.stringify(mark)}, "1")`,
+    ]);
+    expect(existsSync(mark)).toBe(true);
   });
 });
