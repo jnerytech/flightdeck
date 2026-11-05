@@ -3577,6 +3577,16 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   `onFailure: "continue"` (without it, a failing shell-form hook blocks on Windows without Git
   Bash), and the gate's git calls stop after 2 s. `onFailure: "block"` is never used: the guard
   imports `scripts/lib`, so a broken edit there would block the edit that repairs it.
+- **Only this project's commits.** The gate checks a commit only when its directory belongs to the
+  main checkout or one of its worktrees (`checkoutRoot`), so `git commit -m init` in a scratch
+  repository passes. The slot guard has no such scope yet: `bun run test` in another project, run
+  from a Flightdeck session, is refused (rare; known limit).
+- **The instructions follow the guard.** CLAUDE.md, TDD.md, `new-phase`, `spec-verifier` and
+  `tauri-rust-reviewer` showed the full suite, the builds, `demo:shots` and `e2e` bare; they now
+  show `bun run slot -- <command>`, and `tdd-area`'s green step runs `test:related`. A
+  `harness-config` case keeps any instruction from showing a command the guard refuses.
+- **Minimum Claude Code version: 2.1.295,** for `onFailure`. Checked on 2.1.318 with `claude -p
+  --debug` in the worktree: the settings load without a validation warning and the guard fires.
 - **The setup is tested.** `harness-config.test.ts` checks that each hook in `settings.json` runs
   a file that exists, with a timeout and `onFailure`; that the deny list keeps the credentials;
   that the real `guard.ts` blocks with exit 2 and passes bad input; and that every agent and skill
