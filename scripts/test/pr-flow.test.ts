@@ -490,14 +490,18 @@ describe("pr-flow: the CI of a commit and the release tag (#266)", () => {
   });
 
   test("a tag git refuses to make or push fails with exit 1", async () => {
-    const f = fake({
+    const ready = {
       env: { FLIGHTDECK_COORDINATOR: "1" },
       mainHead: "abc123",
       onMain: ["abc123"],
       mainRuns: { abc123: [released] },
-      fail: /^push/,
-    });
-    expect(await prFlow(["tag", "v0.36.5"], f.deps)).toBe(1);
-    expect(f.out()).toContain("the push of v0.36.5 failed");
+    };
+    const pushRefused = fake({ ...ready, fail: /^push/ });
+    expect(await prFlow(["tag", "v0.36.5"], pushRefused.deps)).toBe(1);
+    expect(pushRefused.out()).toContain("the push of v0.36.5 failed");
+    const tagRefused = fake({ ...ready, fail: /^tag -a/ });
+    expect(await prFlow(["tag", "v0.36.5"], tagRefused.deps)).toBe(1);
+    expect(tagRefused.out()).toContain("git refused to make v0.36.5");
+    expect(tagRefused.gitWrites).toEqual(["tag -a v0.36.5 -m v0.36.5 abc123"]);
   });
 });
