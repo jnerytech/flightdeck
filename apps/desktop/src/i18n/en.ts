@@ -1708,6 +1708,7 @@ export const en: Dictionary = {
     assistant_no_changes: "There are no changes to describe.",
     assistant_not_a_repo: "This folder is not a git repository.",
     assistant_request_id: "Request id: {id}",
+    assistant_key_invalid: "That is not a usable key: {why}.",
   },
   snippetRefusal: {
     name_invalid: "Name must be 1 to 64 characters: letters, numbers, space, . _ -",

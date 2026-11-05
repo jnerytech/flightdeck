@@ -1704,6 +1704,7 @@ export const ptBR = {
     assistant_no_changes: "Não há alterações para descrever.",
     assistant_not_a_repo: "Esta pasta não é um repositório git.",
     assistant_request_id: "Id do pedido: {id}",
+    assistant_key_invalid: "Essa chave não pode ser usada: {why}.",
   },
   snippetRefusal: {
     name_invalid: "Nome de 1 a 64 caracteres: letras, números, espaço, . _ -",
