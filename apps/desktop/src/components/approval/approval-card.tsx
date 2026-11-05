@@ -179,6 +179,19 @@ function keyAction(
   return e.key === "Escape" ? "leave" : null;
 }
 
+/** Does what the key asked for (nothing for a key that means nothing). */
+function runKeyAction(
+  action: ReturnType<typeof keyAction>,
+  on: { allow(): void; deny(): void; leave(): void },
+): void {
+  if (action) on[action]();
+}
+
+/** The questions an AskUserQuestion request carries; null for any other request. */
+function questionsOf(request: ApprovalRequest) {
+  return request.toolName === "AskUserQuestion" ? parseQuestions(request.input) : null;
+}
+
 /** The plan an ExitPlanMode request carries; null for any other request. */
 function planOf(request: ApprovalRequest): string | null {
   const plan = request.input.plan;
@@ -254,6 +267,62 @@ function CardFooter(props: {
         {t(props.high ? "approval.keysHigh" : "approval.keys")}
       </p>
     </>
+  );
+}
+
+/** The row of buttons: the denial form, or approve and deny, then the caller's extra buttons. */
+function ButtonRow(props: {
+  denying: boolean;
+  kind: "answers" | "hold" | "plain";
+  planning: boolean;
+  pending: boolean;
+  answerable: boolean;
+  holdMs: number;
+  deny: {
+    reason: string;
+    inputRef: React.RefObject<HTMLInputElement | null>;
+    onReason(value: string): void;
+    onDeny(): void;
+  };
+  t: T;
+  onApprove(): void;
+  onSend(): void;
+  onStartDeny(): void;
+  onCancelDeny(): void;
+  children?: ReactNode;
+}) {
+  const { t, pending } = props;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {props.denying ? (
+        <DenyReason
+          inputRef={props.deny.inputRef}
+          reason={props.deny.reason}
+          pending={pending}
+          t={t}
+          onReason={props.deny.onReason}
+          onDeny={props.deny.onDeny}
+          onCancel={props.onCancelDeny}
+        />
+      ) : (
+        <>
+          <ApproveButton
+            kind={props.kind}
+            planning={props.planning}
+            pending={pending}
+            answerable={props.answerable}
+            holdMs={props.holdMs}
+            t={t}
+            onApprove={props.onApprove}
+            onSend={props.onSend}
+          />
+          <Button variant="outline" disabled={pending} onClick={props.onStartDeny}>
+            {t(props.planning ? "approval.plan.keep" : "approval.deny")}
+          </Button>
+        </>
+      )}
+      {props.children}
+    </div>
   );
 }
 
@@ -433,7 +502,7 @@ export function ApprovalCard(props: {
     run(() => props.onRespond(...args));
   const { denying, setDenying, reason, setReason, reasonRef, deny } = useDenyForm(respond);
   const view = approvalView(request.toolName, request.input, request.cwd);
-  const questions = request.toolName === "AskUserQuestion" ? parseQuestions(request.input) : null;
+  const questions = questionsOf(request);
   const plan = planOf(request);
   const [picks, setPicks] = useState<Record<string, AskPick>>({});
   const answers = questions ? buildAnswers(questions, picks) : null;
@@ -446,9 +515,11 @@ export function ApprovalCard(props: {
       high,
       questions: Boolean(questions),
     });
-    if (action === "allow") respond("allow");
-    else if (action === "deny") setDenying(true);
-    else if (action === "leave") e.currentTarget.blur();
+    runKeyAction(action, {
+      allow: () => respond("allow"),
+      deny: () => setDenying(true),
+      leave: () => e.currentTarget.blur(),
+    });
   };
 
   if (questions && resolution) {
@@ -498,39 +569,25 @@ export function ApprovalCard(props: {
         <p className="text-muted-foreground text-sm">{resolutionText(resolution, t)}</p>
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            {denying ? (
-              <DenyReason
-                inputRef={reasonRef}
-                reason={reason}
-                pending={pending}
-                t={t}
-                onReason={setReason}
-                onDeny={deny}
-                onCancel={() => setDenying(false)}
-              />
-            ) : (
-              <>
-                <ApproveButton
-                  kind={questions ? "answers" : high ? "hold" : "plain"}
-                  planning={plan !== null}
-                  pending={pending}
-                  answerable={Boolean(answers)}
-                  holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
-                  t={t}
-                  onApprove={() => respond("allow")}
-                  onSend={() =>
-                    answers &&
-                    respond("allow", undefined, undefined, answeredInput(request.input, answers))
-                  }
-                />
-                <Button variant="outline" disabled={pending} onClick={() => setDenying(true)}>
-                  {t(plan !== null ? "approval.plan.keep" : "approval.deny")}
-                </Button>
-              </>
-            )}
+          <ButtonRow
+            denying={denying}
+            kind={questions ? "answers" : high ? "hold" : "plain"}
+            planning={plan !== null}
+            pending={pending}
+            answerable={Boolean(answers)}
+            holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
+            deny={{ reason, inputRef: reasonRef, onReason: setReason, onDeny: deny }}
+            t={t}
+            onApprove={() => respond("allow")}
+            onSend={() =>
+              answers &&
+              respond("allow", undefined, undefined, answeredInput(request.input, answers))
+            }
+            onStartDeny={() => setDenying(true)}
+            onCancelDeny={() => setDenying(false)}
+          >
             {props.actions}
-          </div>
+          </ButtonRow>
           <CardFooter
             show={Boolean(props.alwaysAllow) && !high && !questions && plan === null}
             high={high}
