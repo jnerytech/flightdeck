@@ -75,3 +75,27 @@ describe("theme-contrast: the dark theme's surfaces and lines (issue #98)", () =
     }
   });
 });
+
+describe("theme-contrast: the state glyphs keep 3:1 on every surface in both themes (issue #146)", () => {
+  const dark = tokensOf(css, ".dark");
+  const light = tokensOf(css, ":root");
+  const themes = { light, dark: new Map([...light, ...dark]) };
+
+  test("running, needs-you, error and idle are visible on the background, cards, sidebar and popovers", () => {
+    for (const [theme, vars] of Object.entries(themes)) {
+      for (const tone of ["running", "needs-you", "error", "idle"]) {
+        for (const surface of ["--background", "--surface-1", "--surface-2", "--sidebar"]) {
+          const glyph = colorOf(vars.get(`--status-${tone}`), vars);
+          const behind = colorOf(vars.get(surface), vars);
+          if (!glyph || !behind) throw new Error(`${theme} ${tone} ${surface}: not an oklch color`);
+          expect([theme, tone, surface, contrast(glyph, behind) >= 3]).toEqual([
+            theme,
+            tone,
+            surface,
+            true,
+          ]);
+        }
+      }
+    }
+  });
+});
