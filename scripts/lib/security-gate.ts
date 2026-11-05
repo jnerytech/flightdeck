@@ -19,6 +19,29 @@ export interface BranchCommit {
   reviewed: string | null;
 }
 
+/**
+ * Reads one file header line: a "+++" line starts the file's list of added lines (none for a
+ * deleted file), and a "rename to" line (a pure rename has no hunk) registers the new path.
+ */
+function readHeader(
+  line: string,
+  added: Map<string, string[]>,
+  current: string[] | null,
+): string[] | null {
+  if (line.startsWith("rename to ")) {
+    const path = line.slice("rename to ".length);
+    if (!added.has(path)) added.set(path, []);
+    return current;
+  }
+  if (!line.startsWith("+++ ")) return current;
+  // git ends a name with a space with a tab; "/dev/null" (a deleted file) adds nothing.
+  const path = line.slice(4).replace(/\t$/, "");
+  if (!path.startsWith("b/")) return null;
+  const lines: string[] = [];
+  added.set(path.slice(2), lines);
+  return lines;
+}
+
 /** The added lines of each file in a `git diff -U0` output. */
 export function addedLines(diff: string): Map<string, string[]> {
   const added = new Map<string, string[]>();
@@ -31,16 +54,8 @@ export function addedLines(diff: string): Map<string, string[]> {
       current = null;
       inHeader = true;
     } else if (line.startsWith("@@")) inHeader = false;
-    else if (inHeader && line.startsWith("rename to ")) {
-      // A pure rename has no hunk and no "+++" line: its new path still counts.
-      const path = line.slice("rename to ".length);
-      if (!added.has(path)) added.set(path, []);
-    } else if (inHeader && line.startsWith("+++ ")) {
-      // git ends a name with a space with a tab.
-      const path = line.slice(4).replace(/\t$/, "");
-      current = path.startsWith("b/") ? [] : null;
-      if (current) added.set(path.slice(2), current);
-    } else if (!inHeader && current && line.startsWith("+")) current.push(line.slice(1));
+    else if (inHeader) current = readHeader(line, added, current);
+    else if (current && line.startsWith("+")) current.push(line.slice(1));
   }
   return added;
 }

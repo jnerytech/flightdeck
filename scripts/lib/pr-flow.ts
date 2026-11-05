@@ -276,7 +276,8 @@ async function prOpenedHook(n: string, branch: string, base: string, deps: PrFlo
   try {
     const { code, stderr } = await deps.run([...hook, n, branch, base]);
     const said = (stderr ?? "").replace(/\s+/g, " ").trim();
-    failure = code === 0 ? null : `exit ${code}${said ? `: ${said}` : ""}`;
+    const reason = said ? `exit ${code}: ${said}` : `exit ${code}`;
+    failure = code === 0 ? null : reason;
   } catch (error) {
     failure = error instanceof Error ? error.message : String(error);
   }
