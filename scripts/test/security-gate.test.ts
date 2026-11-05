@@ -630,4 +630,28 @@ describe("security-gate: end to end", () => {
       "scripts/lib/a b/claude-hooks.ts",
     ]);
   });
+
+  test('removing a lone "/*" un-comments the code after it, so the file\'s code is read (#284)', () => {
+    const diff = [
+      "diff --git a/apps/daemon/src/run.ts b/apps/daemon/src/run.ts",
+      "--- a/apps/daemon/src/run.ts",
+      "+++ b/apps/daemon/src/run.ts",
+      "@@ -3 +2,0 @@",
+      "-/*",
+    ].join("\n");
+    const show = { "apps/daemon/src/run.ts": 'Bun.spawn(["git"]);\n*/' };
+    const verdict = securityVerdict(fakeGit({ diff, log: "", show }).git);
+    expect(verdict.message ?? "").toContain("apps/daemon/src/run.ts (edits spawn code)");
+  });
+
+  test("a file moved from a test folder into the code is risky, even with no line changed (#284)", () => {
+    const diff = [
+      "diff --git a/apps/daemon/test/helper.ts b/apps/daemon/src/helper.ts",
+      "similarity index 100%",
+      "rename from apps/daemon/test/helper.ts",
+      "rename to apps/daemon/src/helper.ts",
+    ].join("\n");
+    const verdict = securityVerdict(fakeGit({ diff, log: "" }).git);
+    expect(verdict.message ?? "").toContain("apps/daemon/src/helper.ts (moved from tests)");
+  });
 });
