@@ -1,5 +1,5 @@
-import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { readRegular } from "../read-regular.ts";
 import { git } from "./command.ts";
 import type { CardDiff, DiffFile, DiffHunk } from "./types.ts";
 import { must } from "./worktree.ts";
@@ -56,11 +56,17 @@ function readHeader(file: DiffFile, line: string): void {
   if (line.startsWith("Binary files ")) file.binary = true;
 }
 
-/** A file git does not track yet, shown as entirely added. */
+/** The largest untracked file whose content is read; a larger one is listed like a binary file. */
+const UNTRACKED_MAX = 256 * 1024;
+
+/**
+ * A file git does not track yet, shown as entirely added. A link, a pipe or a file over
+ * `UNTRACKED_MAX` is listed without content, like a binary file: a link is never followed.
+ */
 async function untrackedFile(worktree: string, path: string): Promise<DiffFile> {
-  const content = await readFile(join(worktree, path));
-  const binary = content.includes(0);
-  const lines = binary ? [] : content.toString("utf8").replace(/\n$/, "").split("\n");
+  const content = await readRegular(join(worktree, path), UNTRACKED_MAX + 1);
+  const binary = !content || content.length > UNTRACKED_MAX || content.includes(0);
+  const lines = !content || binary ? [] : content.toString("utf8").replace(/\n$/, "").split("\n");
   const hunks = binary
     ? []
     : [

@@ -93,18 +93,65 @@ export function hasControl(text: string, allow: string): boolean {
 
 // -- secrets ---------------------------------------------------------------------------------
 
+/** A keyword matched in either case, without a flag: the key's own case tells where a word ends (`clientSecret`). */
+const anyCase = (pattern: string): string => {
+  let out = "";
+  let inClass = false;
+  for (const ch of pattern) {
+    if (ch === "[") inClass = true;
+    if (ch === "]") inClass = false;
+    out += !inClass && /[a-z]/i.test(ch) ? `[${ch.toLowerCase()}${ch.toUpperCase()}]` : ch;
+  }
+  return out;
+};
+
+/** The words that make a name a secret's: found in it (`DB_PASSWORD`, `clientSecret`, `authToken`), never as part of a plain word (`secrets`, `tokenizer`). */
+const SECRET_WORDS =
+  "password|passwd|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|private[_-]?key|credential";
+const SECRET_WORD = anyCase(`(?:${SECRET_WORDS})`);
+/** What may follow the word in a name: `_KEY`, `.value`, `2`, or a capitalised word (`Hash`). */
+const NAME_TAIL = "(?:[A-Z][A-Za-z0-9]*|[_.-][A-Za-z0-9_.-]*|[0-9]+)?";
+
 const SECRET_PATTERNS: Array<[string, RegExp]> = [
   ["token do GitHub", /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/g],
   ["chave sk-", /\bsk-[A-Za-z0-9_-]{16,}/g],
   ["chave da AWS", /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g],
-  ["chave privada", /-----BEGIN [A-Z ]*PRIVATE KEY-----/g],
+  // The whole block, body and END line; a block cut short (a capped message) goes to the end.
+  [
+    "chave privada",
+    /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g,
+  ],
   ["token Bearer", /\bBearer\s+[A-Za-z0-9._~+/=-]{16,}/gi],
   ["token do Slack", /\bxox[abprs]-[A-Za-z0-9-]{10,}/g],
+  // A name with the word anywhere in it, quoted or not (JSON, escaped JSON), then `=` or `:` and the value.
   [
     "senha na linha",
-    /\b(?:password|passwd|pwd|pass|secret|token|api[_-]?key|apikey|access[_-]?key)\s*[=:]\s*['"]?[^\s'"&;]{3,}/gi,
+    new RegExp(
+      `(?:\\b${anyCase("pass")}|(?<![A-Za-z0-9])[A-Za-z0-9_.-]*?${SECRET_WORD}${NAME_TAIL})\\\\?["']?\\s*[=:]\\s*\\\\?["']?[^\\s"'\\\\&;,}]{3,}`,
+      "g",
+    ),
   ],
   ["credencial em URL", /:\/\/[^\s/:@]+:[^\s/@]+@/g],
+  ["senha em opção", new RegExp(`--(?:${SECRET_WORDS})(?:=|\\s+)[^\\s]+`, "gi")],
+  ["senha do curl", /(?<=\bcurl\b[^\n|;&]*\s(?:-u|--user)\s+)[^\s:]+:\S+/g],
+  [
+    "cabeçalho de autorização",
+    // A scheme and its credential, or one long unbroken value: not the word in a sentence.
+    /\b(?:Proxy-)?Authorization\\?["']?\s*[:=]\s*\\?["']?(?:(?:Bearer|Basic|Token|Digest|Negotiate|NTLM|Bot)\s+[^\r\n"'\\]+|[^\s"'\\]{20,})/gi,
+  ],
+  ["cookie", /\b(?:Set-)?Cookie\s*:\s*[^\r\n]+/gi],
+  ["credencial Basic", /\bBasic\s+[A-Za-z0-9+/=]{8,}/g],
+  ["JWT", /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*/g],
+  [
+    "chave de serviço",
+    /\b(?:AIza[0-9A-Za-z_-]{30,}|[sr]k_(?:live|test)_[0-9A-Za-z]{16,}|npm_[A-Za-z0-9]{30,}|glpat-[A-Za-z0-9_-]{16,})/g,
+  ],
+  [
+    "webhook",
+    /\b(?:hooks\.slack\.com\/services\/[A-Za-z0-9/]+|discord(?:app)?\.com\/api\/webhooks\/\d+\/[A-Za-z0-9_-]+)/g,
+  ],
+  ["URL assinada", /[?&](?:sig|signature|x-amz-signature|x-goog-signature)=[^\s&]+/gi],
+  ["token em URL", /:\/\/[A-Za-z0-9_-]{20,}@/g],
 ];
 
 /** Vault values shorter than this are not told apart from ordinary text. */
