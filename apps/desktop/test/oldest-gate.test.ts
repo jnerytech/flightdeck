@@ -74,4 +74,32 @@ describe("oldest-gate: approve or deny the oldest request from the palette", () 
     expect(answered).toEqual([]);
     expect(opened).toEqual(["gate:run1/review-plan/1", "gate:run1/review-plan/1"]);
   });
+
+  test("a vault request first is opened to be seen, never granted from the palette", () => {
+    const { store, answered, opened } = storeWithGateFirst();
+    const hidden = store as unknown as {
+      state: { vaultApprovals: unknown[]; runs: unknown };
+      vaultQuestions: Map<string, (answer: unknown) => void>;
+    };
+    const granted: unknown[] = [];
+    hidden.vaultQuestions.set("v1", (answer) => granted.push(answer));
+    hidden.state = {
+      ...hidden.state,
+      runs: {},
+      vaultApprovals: [
+        {
+          hostId: "h1",
+          hostName: "alfa",
+          sessionId: "s1",
+          sessionName: "Alpha",
+          requestId: "v1",
+          toolName: "vault",
+          createdAt: "2026-11-02T09:00:00Z",
+          vault: true,
+        },
+      ],
+    };
+    store.decideOldest("approve");
+    expect([answered, granted, opened]).toEqual([[], [], ["v1"]]);
+  });
 });
