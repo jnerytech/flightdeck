@@ -36,6 +36,7 @@ import { hubRows } from "../lib/hub.ts";
 import { activeNav } from "../lib/nav-active.ts";
 import type { Route } from "../lib/router.ts";
 import type { SidebarGroup } from "../lib/sidebar-groups.ts";
+import { type NavBadgeKey, navBadge } from "../lib/nav-badges.ts";
 import { APP_VERSION, hasFeature } from "../lib/version.ts";
 import { watchAlerts } from "../lib/watch-alerts.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
@@ -231,6 +232,15 @@ export function Sidebar(props: {
   onToggleTheme(): void;
 }) {
   const { state, t, collapsed, go } = props;
+  const badges = {
+    beta: t("sidebar.badgeBeta"),
+    new: t("sidebar.badgeNew"),
+  };
+  const version = props.appVersion ?? APP_VERSION;
+  const badgeOf = (key: NavBadgeKey) => {
+    const kind = navBadge(key, version);
+    return kind ? badges[kind] : undefined;
+  };
   const here = props.route ? activeNav(props.route) : null;
   /** The host the screens that need one open on: the selected one, else the first online. */
   const navHost =
@@ -464,7 +474,7 @@ export function Sidebar(props: {
               icon={<NavIcon name="teams" aria-hidden="true" className={icon} />}
               active={here === "teams"}
               label={t("sidebar.teams")}
-              badge={t("sidebar.badgeBeta")}
+              badge={badgeOf("teams")}
               onClick={() => go({ name: "teams" })}
             />
           )}
@@ -475,7 +485,7 @@ export function Sidebar(props: {
               icon={<NavIcon name="conversations" aria-hidden="true" className={icon} />}
               active={here === "conversations"}
               label={t("sidebar.conversations")}
-              badge={t("sidebar.badgeNew")}
+              badge={badgeOf("conversations")}
               onClick={() => go({ name: "conversations" })}
             />
           )}
