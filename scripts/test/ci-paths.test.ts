@@ -13,6 +13,7 @@ interface Step {
   name?: string;
   run?: string;
   if?: string;
+  "timeout-minutes"?: number;
   uses?: string;
   with?: Record<string, string>;
 }
@@ -102,6 +103,17 @@ describe("ci-paths: the workflow", () => {
       expect(job(key).if ?? "").toContain(gate("screenshots"));
     }
     expect(step("test", "Smokes")?.if).toBe(gate("smokes"));
+  });
+
+  test("the Tauri system libraries step has its own deadline and retries once, with a fresh apt-get update", () => {
+    // A slow mirror once took 29 minutes here and the job hit its 45-minute limit.
+    const apt = step("test", "System libraries of the Tauri shell (Linux)");
+    expect(apt?.["timeout-minutes"]).toBe(10);
+    const script = apt?.run ?? "";
+    // Each attempt has its own limit, so a hung first one still leaves time for the retry.
+    expect(script).toMatch(/timeout \d+ sudo apt-get update/);
+    expect(script).toMatch(/timeout \d+ sudo apt-get install -y/);
+    expect(script).toContain("install_libs || install_libs");
   });
 
   test("cargo runs only when the plan says so, after rust-cache", () => {
