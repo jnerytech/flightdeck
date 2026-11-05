@@ -113,4 +113,24 @@ describe("menu-barra: the / menu of a message box", () => {
     await key("Home");
     expect(shown() ?? "").toBe("");
   });
+
+  test("a key the menu does not use goes through to the box, so typing and Ctrl+Enter still work", async () => {
+    await open();
+    const used = async (init: { key: string; ctrlKey?: boolean; shiftKey?: boolean }) =>
+      !fireEvent.keyDown(box(), init);
+    expect(await used({ key: "a" })).toBe(false);
+    expect(await used({ key: "Enter", ctrlKey: true })).toBe(false);
+    expect(await used({ key: "Enter", shiftKey: true })).toBe(false);
+    expect(await used({ key: "ArrowDown" })).toBe(true);
+  });
+
+  test("the pointer moves the selection too, and the description follows it", async () => {
+    await open("/rev");
+    const options = screen.getAllByRole("option");
+    expect(options.length).toBeGreaterThan(1);
+    const last = options.at(-1) as HTMLElement;
+    await act(async () => void fireEvent.mouseEnter(last));
+    expect(last.getAttribute("aria-selected")).toBe("true");
+    expect(options[0]?.getAttribute("aria-selected")).toBe("false");
+  });
 });
