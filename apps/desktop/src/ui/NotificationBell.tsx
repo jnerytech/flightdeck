@@ -65,6 +65,7 @@ export function NotificationBell(props: {
         gone={gone}
         onPick={pick}
         onMarkRead={(row) => store.inboxMarkRead(row.ids)}
+        onMarkUnread={(row) => store.inboxMarkUnread(row.ids)}
         onDismiss={(row) => store.inboxDismiss(row.ids)}
         onMarkAll={() => store.inboxMarkAllRead()}
         onClear={() => store.inboxClear()}

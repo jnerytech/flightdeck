@@ -75,8 +75,7 @@ export function markRead(list: InboxEntry[], id: string): InboxEntry[] {
 
 /** Marks an entry unread again. */
 export function markUnread(list: InboxEntry[], id: string): InboxEntry[] {
-  void id;
-  return list;
+  return list.map((e) => (e.id === id ? { ...e, read: false } : e));
 }
 
 export function markAllRead(list: InboxEntry[]): InboxEntry[] {

@@ -103,7 +103,7 @@ describe("notify-prefs-store: the preferences decide what is sent (issue #149)",
 
   test("a snooze silences for the hour and then the session speaks again", () => {
     const w = world();
-    w.store.notifyPrefs.snooze("h1/s", T0 + 3_600_000);
+    w.store.notifyPrefs.snooze("h1/s", T0 + 3_600_000, T0);
     w.summary("s", "idle");
     w.summary("s", "running", ["r1"]);
     expect(w.titles()).toEqual([]);

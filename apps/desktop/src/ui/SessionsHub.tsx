@@ -1,6 +1,6 @@
 import type { SessionMeta } from "@flightdeck/protocol";
 import { ListFilter, MoreHorizontal, Radio, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AssignMenu } from "@/components/clients/assign-menu";
 import { ClientChip } from "@/components/clients/client-chip";
 import { HostsBanner } from "@/components/hosts/hosts-banner";
@@ -204,6 +204,12 @@ export function SessionsHub(props: {
     void store.setMeta(row.hostId, row.claudeSessionId as string, patch);
 
   /** The row's actions menu, the same in a line and on a card. */
+  // The row menu reads the mutes: a change of them draws it again.
+  useSyncExternalStore(store.notifyPrefs.subscribe, () => store.notifyPrefs.value);
+  /** The key notifications use for this session: the host's own id, else the Claude one. */
+  const sessionKeyOf = (row: HubRow) => `${row.hostId}/${row.sessionId ?? row.claudeSessionId}`;
+  const isMuted = (row: HubRow) =>
+    store.notifyPrefs.value.mutedSessions.includes(sessionKeyOf(row));
   const rowActions = (row: HubRow) =>
     row.claudeSessionId && (
       <DropdownMenu>
@@ -236,6 +242,18 @@ export function SessionsHub(props: {
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => meta(row, { pinned: !row.pinned })}>
             {row.pinned ? t("hub.unpin") : t("hub.pin")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => store.notifyPrefs.muteSession(sessionKeyOf(row), !isMuted(row))}
+          >
+            {isMuted(row) ? t("notifyPrefs.unmuteSession") : t("notifyPrefs.mutedLabel")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() =>
+              store.notifyPrefs.snooze(sessionKeyOf(row), store.now() + 3_600_000, store.now())
+            }
+          >
+            {t("notifyPrefs.snooze")}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => meta(row, { archived: !row.archived })}>
             {row.archived ? t("hub.unarchive") : t("hub.archive")}

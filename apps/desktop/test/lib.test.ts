@@ -186,11 +186,11 @@ describe("desktop: notificações e status", () => {
     };
     expect(summaryNotifications(undefined, asking, "pc · s", false)).toEqual([]);
     expect(summaryNotifications(base, asking, "pc · s", false)).toEqual([
-      { title: "pc · s: esperando você", body: "Permitir Bash?" },
+      { event: "needs-you", title: "pc · s: esperando você", body: "Permitir Bash?" },
     ]);
     expect(summaryNotifications(asking, asking, "pc · s", false)).toEqual([]);
     expect(summaryNotifications(base, { ...base, status: "idle" }, "pc · s", false)).toEqual([
-      { title: "pc · s: turno concluído", body: "ociosa" },
+      { event: "turn-finished", title: "pc · s: turno concluído", body: "ociosa" },
     ]);
     expect(
       summaryNotifications({ ...base, status: "idle" }, { ...base, status: "idle" }, "x", false),

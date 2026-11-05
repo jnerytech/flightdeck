@@ -52,7 +52,7 @@ export function tauriPlatform(
       const granted = (await isPermissionGranted()) || (await requestPermission()) === "granted";
       // The desktop plugin reports no clicks, so the link has nowhere to go (docs/DECISIONS.md).
       if (granted) sendNotification({ title: notification.title, body: notification.body });
-      return false;
+      return granted;
     },
     isFocused: () => win.document.hasFocus(),
     openExternal: (url) => openUrl(url),

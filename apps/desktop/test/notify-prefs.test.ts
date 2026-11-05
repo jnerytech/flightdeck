@@ -149,7 +149,7 @@ describe("notify-prefs: kept per computer (issue #149)", () => {
     p.muteHost("h1", true);
     p.muteProject("h1/p-api", true);
     p.muteSession("h1/s", true);
-    p.snooze("h2/s", NOW + 3_600_000);
+    p.snooze("h2/s", NOW + 3_600_000, NOW);
     const again = new NotifyPreferences(kept.storage).value;
     expect(again).toMatchObject({
       enabled: false,
@@ -185,10 +185,10 @@ describe("notify-prefs: kept per computer (issue #149)", () => {
     p.muteSession("h/s", true);
     expect(p.isQuiet("h/s", NOW)).toBe(true);
     p.muteSession("h/s", false);
-    p.snooze("h/s", NOW + 1000);
+    p.snooze("h/s", NOW + 1000, NOW);
     expect(p.isQuiet("h/s", NOW)).toBe(true);
     expect(p.isQuiet("h/s", NOW + 1000)).toBe(false);
-    p.snooze("h/s", NOW - 1);
+    p.snooze("h/s", NOW - 1, NOW);
     expect(p.value.snoozed).toEqual({});
   });
 

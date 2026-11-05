@@ -264,9 +264,9 @@ describe("platform", () => {
 
   test("tauri: notificação só com permissão; deep links da abertura e ao vivo", async () => {
     const platform = tauriPlatform(fakeWindow().win);
-    await platform.notify({ title: "a", body: "b" });
+    expect(await platform.notify({ title: "a", body: "b" })).toBe(true);
     granted = false;
-    await platform.notify({ title: "c", body: "d" });
+    expect(await platform.notify({ title: "c", body: "d" })).toBe(false);
     expect(sent).toEqual([{ title: "a", body: "b" }]);
 
     const received: string[] = [];

@@ -64,6 +64,7 @@ describe("inbox-about: what a notification says it is about", () => {
       en,
     );
     expect(n).toEqual({
+      event: "needs-you",
       title: "Needs you",
       body: "wsl · AskUserQuestion",
       link: "flightdeck://request?host=h1&request=ext-1",
