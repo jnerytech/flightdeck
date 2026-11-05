@@ -49,6 +49,8 @@ export interface SessionManagerOptions {
   allowApiKey: boolean;
   /** Whether a session may start in `bypassPermissions` (the host switch); refused when absent. */
   allowBypass?: () => boolean;
+  /** Whether a folder's own configuration may load in a session (issue #196); absent: it always does. */
+  trust?: (cwd: string) => { trusted: boolean; configRoot?: string };
   baseEnv: Record<string, string | undefined>;
   /** Plan quota readings of any session go to the host's quota (phase 7). */
   onQuota?: (readings: QuotaReading[]) => void;
