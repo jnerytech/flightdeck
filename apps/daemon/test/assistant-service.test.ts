@@ -10,11 +10,12 @@ import { assistantService } from "../src/assistant/factory.ts";
 import { assistantDir } from "../src/assistant/paths.ts";
 import { AssistantService } from "../src/assistant/service.ts";
 import { FlightdeckError } from "../src/errors.ts";
+import { startDaemon } from "../src/main.ts";
 import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import type { CompleteOptions, CompleteResult } from "../src/runtime/types.ts";
 import { startServer } from "../src/server.ts";
 import { git, gitRepo } from "./board-helpers.ts";
-import { newManager } from "./helpers.ts";
+import { newManager, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 /** A clock the test moves by hand. */
@@ -420,6 +421,40 @@ describe("assistant-service: the factory and the server", () => {
       bare.close();
       await server.stop();
       await off.stop();
+    }
+  });
+
+  test("the daemon builds its assistant on its runtime: announced, and it answers", async () => {
+    const dir = tempDir("fd-assistant-daemon-");
+    const token = "a".repeat(24);
+    const config = join(dir, "config.json");
+    writeFileSync(
+      config,
+      JSON.stringify({ port: 0, token, dataDir: join(dir, "data"), allowedRoots: [dir] }),
+    );
+    const daemon = await startDaemon(
+      { command: "start", config, runtime: "fake" },
+      {},
+      { log: () => {}, error: () => {} },
+    );
+    const client = new FrameClient(daemon.url);
+    try {
+      await client.request("hello", { token, client: "test" });
+      const info = await client.data<{ features?: string[] }>("host.info", {});
+      const answer = await client.data<{ text: string }>("assistant.run", {
+        requestId: "r1",
+        kind: "card.title",
+        text: "fix the login bug",
+        language: "en",
+        profile: "quick",
+      });
+      expect([info?.features?.includes("assistant"), answer?.text]).toEqual([
+        true,
+        "improved: fix the login bug",
+      ]);
+    } finally {
+      client.close();
+      await daemon.stop();
     }
   });
 });
