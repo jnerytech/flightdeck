@@ -65,13 +65,49 @@ describe("hook-commit-gate", () => {
     expect(reason).toContain("feat(a) is blocked");
     expect(reason).toContain("test(a)");
     expect(reason).toContain(BASE);
-    expect(reason).toContain("FLIGHTDECK_TDD_WAIVER");
+    expect(reason).toContain("TDD-Waiver:");
   });
 
-  test("a waiver named in the command lets the commit through", () => {
+  test("a TDD-Waiver trailer in the message lets the commit through", () => {
+    for (const command of [
+      'git commit -m "fix(a): x" -m "TDD-Waiver: fixed during the rc merge"',
+      "git commit -F - <<'EOF'\nfix(a): x\n\nWhy.\n\nTDD-Waiver: fixed during the rc merge\nEOF",
+      'git commit -m "fix(a): x" --trailer "TDD-Waiver: fixed during the rc merge"',
+    ]) {
+      expect(gate(command)).toBeNull();
+    }
+    for (const command of [
+      'git commit -m "fix(a): x" -m "TDD-Waiver:"',
+      'FLIGHTDECK_TDD_WAIVER="old prefix" git commit -m "fix(a): x"',
+      'git commit -m "fix(a): TDD-Waiver: in the subject"',
+    ]) {
+      expect(gate(command) ?? "").toContain("fix(a) is blocked");
+    }
+  });
+
+  test("fixup! and squash! commits pass", () => {
+    expect(gate('git commit -m "fixup! feat(a): x"')).toBeNull();
+    expect(gate('git commit -m "squash! feat(a): x"')).toBeNull();
+  });
+
+  test("only the commit's own -m or heredoc is read, never another command's", () => {
+    const appendThenCommit =
+      "cat >> docs/DECISIONS.md <<'EOF'\n\n## Harness D1: the commit gate\n\n- a line\nEOF\ngit status --short && git add docs/DECISIONS.md && git commit -q -F - <<'EOF'\nfeat(a): x\n\nBody.\nEOF";
+    expect(gate(appendThenCommit, ["test(a): red"])).toBeNull();
+    expect(gate(appendThenCommit) ?? "").toContain("feat(a) is blocked");
+    expect(gate('grep -m 1 x f.txt && git commit -m "feat(a): x"', ["test(a): red"])).toBeNull();
     expect(
-      gate('FLIGHTDECK_TDD_WAIVER="fixed during the rc merge" git commit -m "fix(a): x"'),
+      gate('python3 -m json.tool a.json; git commit -m "feat(a): x"', ["test(a): red"]),
     ).toBeNull();
+  });
+
+  test("a -m inside the message body is text, and quotes inside a heredoc body do not end it", () => {
+    expect(
+      gate("git commit -F - <<'EOF'\nfeat(a): x\n\nRun git log -m foo to see it.\nEOF") ?? "",
+    ).toContain("feat(a) is blocked");
+    expect(
+      gate(`git commit -m "$(cat <<'EOF'\nfeat(a): x\n\nThe "quoted" word.\nEOF\n)"`) ?? "",
+    ).toContain("feat(a) is blocked");
   });
 
   test("the subject is read from -m, --message, a heredoc and -F -", () => {
