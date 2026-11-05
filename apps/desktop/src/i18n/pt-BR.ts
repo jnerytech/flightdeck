@@ -937,8 +937,9 @@ export const ptBR = {
     goSessions: "Ir para Sessões",
     goNeedsYou: "Ir para Precisa de você",
     goProjects: "Ir para Projetos",
-    approveOldest: "Aprovar o pedido mais antigo",
-    denyOldest: "Negar o pedido mais antigo",
+    openOldest: "Abrir o pedido mais antigo: {what}",
+    approveOldest: "Aprovar o pedido mais antigo: {what}",
+    denyOldest: "Negar o pedido mais antigo: {what}",
     showShortcuts: "Mostrar os atalhos de teclado",
   },
   time: {

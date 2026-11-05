@@ -32,7 +32,10 @@ export type PaletteTarget =
   | { kind: "go"; to: "hub" | "needs-you" | "all-projects" }
   /** The `?` sheet of shortcuts. */
   | { kind: "shortcuts" }
-  /** Answers the oldest request waiting for the person (a high-risk one is opened instead). */
+  /**
+   * The oldest request waiting for the person, named in the command (issue #187): an ordinary one
+   * is answered; a gate, a vault request or a high-risk one is opened to be seen.
+   */
   | { kind: "decide-oldest"; decision: "approve" | "deny" }
   /** Phase 29: the Clients screen, and a switch of the client the screens show. */
   | { kind: "clients" }
@@ -89,8 +92,11 @@ export function paletteSections(
     t: T;
     globalSnippets?: AppSnippet[];
     recents?: string[];
-    /** A request waits for the person: the approve and deny commands show. */
-    waiting?: boolean;
+    /**
+     * The oldest request waiting for the person, as one line, and whether it must be opened to be
+     * answered: the approve and deny commands (or Open) show and name it.
+     */
+    oldest?: { text: string; opens: boolean };
   },
 ): PaletteSection[] {
   const { t } = options;
@@ -229,7 +235,7 @@ export function paletteSections(
       : undefined;
     return { id, label, detail, target, actions: [], ...(keys ? { shortcut: keys } : {}) };
   };
-  const waiting = options.waiting === true;
+  const oldest = options.oldest;
   const actions = [
     ...online.map((host) =>
       action(`new:${host.id}`, t("palette.newSessionIn", { host: host.name }), {
@@ -269,24 +275,31 @@ export function paletteSections(
       undefined,
       "go-projects",
     ),
-    ...(waiting
+    ...(oldest?.opens
       ? [
-          action(
-            "decide:approve",
-            t("palette.approveOldest"),
-            { kind: "decide-oldest", decision: "approve" },
-            undefined,
-            "A",
-          ),
-          action(
-            "decide:deny",
-            t("palette.denyOldest"),
-            { kind: "decide-oldest", decision: "deny" },
-            undefined,
-            "N",
-          ),
+          action("decide:open", t("palette.openOldest", { what: oldest.text }), {
+            kind: "decide-oldest",
+            decision: "approve",
+          }),
         ]
-      : []),
+      : oldest
+        ? [
+            action(
+              "decide:approve",
+              t("palette.approveOldest", { what: oldest.text }),
+              { kind: "decide-oldest", decision: "approve" },
+              undefined,
+              "A",
+            ),
+            action(
+              "decide:deny",
+              t("palette.denyOldest", { what: oldest.text }),
+              { kind: "decide-oldest", decision: "deny" },
+              undefined,
+              "N",
+            ),
+          ]
+        : []),
     action("theme", t("palette.toggleTheme"), { kind: "toggle-theme" }),
     action("language", t("palette.switchLanguage"), { kind: "switch-language" }),
     ...(options.costs
