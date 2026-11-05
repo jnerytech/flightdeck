@@ -52,6 +52,17 @@ describe("ci-shards", () => {
     expect(runs("test-windows-shard")).not.toContain("bun run test");
   });
 
+  test("the area config the shards run with skips the same paths as the full suite's (the mods run under claude plugin test)", () => {
+    const ignored = (file: string) =>
+      (
+        Bun.TOML.parse(readFileSync(join(ROOT, file), "utf8")) as {
+          test?: { pathIgnorePatterns?: string[] };
+        }
+      ).test?.pathIgnorePatterns ?? [];
+    expect(ignored("bunfig.toml")).toContain("mods/**");
+    expect(ignored("bunfig.area.toml")).toEqual(ignored("bunfig.toml"));
+  });
+
   test("the Windows smokes, cargo, bundle budget and performance baseline run in their own job", () => {
     const checks = runs("checks-windows");
     for (const command of [

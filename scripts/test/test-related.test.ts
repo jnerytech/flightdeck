@@ -197,6 +197,37 @@ describe("planRelated", () => {
     );
   });
 
+  test("--tier runs only the tests of those tiers, says what it left out, and leaves the coverage gate to CI (#261)", () => {
+    const tiered: Record<string, string> = {
+      "apps/daemon/src/a.ts": "export const a = 1;",
+      "apps/daemon/test/a.test.ts": `import "../src/a.ts";`,
+      "apps/daemon/test/b.test.ts": `import "../src/a.ts";`,
+      "apps/daemon/test/c.test.ts": `import "../src/a.ts";`,
+      "apps/daemon/test/new.test.ts": `import "../src/a.ts";`,
+    };
+    const tiers: Record<string, string> = {
+      "apps/daemon/test/a.test.ts": "unit",
+      "apps/daemon/test/b.test.ts": "integration",
+      "apps/daemon/test/c.test.ts": "integration",
+    };
+    const plan = planRelated({
+      platform: "linux",
+      git: fakeGit(["apps/daemon/src/a.ts"], Object.keys(tiered)),
+      readFile: (path) => tiered[path] ?? "",
+      coverageDir: "/tmp/cov",
+      tiers: ["unit", "component"],
+      tierOf: (path) => tiers[path],
+    });
+    // A test the manifest does not list yet (a new file) runs: it is never silently dropped.
+    expect(plan.command?.filter((arg) => arg.endsWith(".test.ts"))).toEqual([
+      "./apps/daemon/test/a.test.ts",
+      "./apps/daemon/test/new.test.ts",
+    ]);
+    expect(plan.output).toContain("--tier unit,component: 2 test file(s) left out (integration 2)");
+    expect(plan.targets).toBeUndefined();
+    expect(plan.command?.some((arg) => arg.startsWith("--coverage-dir"))).toBe(false);
+  });
+
   test("a change that reaches every test is flagged", () => {
     const plan = planRelated({
       platform: "linux",
