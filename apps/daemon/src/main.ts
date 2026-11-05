@@ -13,6 +13,7 @@ import { Actions } from "./actions/actions.ts";
 import { runActionCli, runSnippetCli } from "./actions/cli.ts";
 import { AgentConfig } from "./agentcfg/files.ts";
 import { McpConfig } from "./agentcfg/mcp.ts";
+import { assistantService } from "./assistant/factory.ts";
 import { Automations } from "./automations/automations.ts";
 import { BgService } from "./bg/service.ts";
 import { Board } from "./board/board.ts";
@@ -1050,8 +1051,21 @@ export async function startDaemon(
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
   // The wrapper finds the receptor through this file: nothing is served before it is there.
   await central.ready();
+  // Phase 40: the AI assistant on this host's claude (the fake runtime answers in the demo).
+  const assistant = assistantService({
+    runtime,
+    usage: usageIndex,
+    quota,
+    scanner: snippetScanner,
+    board,
+    allowedRoots: config.allowedRoots,
+    dataDir: config.dataDir,
+    allowApiKey: config.allowApiKey,
+    log: logger.log.bind(logger),
+  });
   const server = startServer({
     manager,
+    ...(assistant ? { assistant } : {}),
     warmProjectKey: (cwd) => keys.resolve(cwd),
     projectKeyOf: (cwd) => keys.resolve(cwd),
     // `roots.add` pushes into this same array, so every service sees the new folder at once.
