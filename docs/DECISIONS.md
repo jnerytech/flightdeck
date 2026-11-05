@@ -4105,6 +4105,10 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
 - **Why a state machine, not one blocking run.** The PR merges when its checks are green, which
   takes longer than a session should wait; the second run is the "after merge" half of the
   issue. Logic in `scripts/lib/release-cmd.ts`, effects injected, no test pushes or tags.
+- **The hook guard knows `bun run release`** (#275, from the security review): the command pushes and
+  tags through child processes the hook never sees, and its own check is the same environment flag,
+  which a command can set inline. `prMergeViolation` now blocks `bun run release` and
+  `bun scripts/release-cmd.ts` in a session, like `pr tag`.
 
 ## `release:close` closes what a tag shipped (issue #252)
 
@@ -4177,4 +4181,3 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   bare program name may resolve in the current folder first: give the hook an absolute path. Its program is found by Bun's own PATH lookup, not `whichOnPath`: the environment, and the
   PATH with it, are the session's own. The number, branch and base come last, as positional
   arguments: a hook script must not read them as options.
-
