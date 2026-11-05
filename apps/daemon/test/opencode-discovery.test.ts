@@ -142,6 +142,19 @@ describe("opencode-discovery", () => {
     expect(calls.some((c) => c.argv.includes("/api/config"))).toBe(false);
   });
 
+  test("the global folder OpenCode reports must be the one the scope scan read", async () => {
+    const elsewhere = JSON.stringify([{ type: "directory", path: "/elsewhere/opencode" }]);
+    const moved = deps({}, { "api GET /api/config --standalone": elsewhere });
+    expect(await discoverOpenCode({ enabled: true }, moved.deps)).toEqual({
+      available: false,
+      path: "/bin/opencode",
+      version: "2.2.5",
+      reason: "opencode_scope_mismatch",
+    });
+    const same = deps({}, { "api GET /api/config --standalone": sources() });
+    expect((await discoverOpenCode({ enabled: true }, same.deps)).available).toBe(true);
+  });
+
   test("the canary listed as a source means project config is not off; a failed canary is not available either", async () => {
     const probe = deps();
     const canaryFile = join(probe.dataDir, "opencode-canary", "opencode.json");
