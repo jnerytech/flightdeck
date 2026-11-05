@@ -844,4 +844,12 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE projects ADD COLUMN roi_commits INTEGER NOT NULL DEFAULT 0;
   ALTER TABLE projects ADD COLUMN roi_issues INTEGER NOT NULL DEFAULT 0;
   `,
+  // Issue #196: the projects whose own hooks, MCP servers and settings may load in a managed session.
+  `
+  CREATE TABLE project_trust (
+    path       TEXT PRIMARY KEY,
+    trusted_at TEXT NOT NULL,
+    source     TEXT NOT NULL
+  );
+  `,
 ];
