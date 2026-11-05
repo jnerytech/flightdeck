@@ -180,10 +180,10 @@ export const VaultPage = memo(function VaultPage(props: {
   const selected = selectedClient(state.clientList, state.clientSelection);
   const byClient = selected?.defaults.vaultTag !== undefined;
   const groups = groupSecrets(state.secrets, state.clientList, selected);
-  const groupLabel = (kind: "client" | "none" | "others") =>
-    kind === "client"
-      ? t("clients.vaultGroupClient", { name: selected?.name ?? "" })
-      : t(kind === "none" ? "clients.vaultGroupNone" : "clients.vaultGroupOthers");
+  const groupLabel = (kind: "client" | "none" | "others") => {
+    if (kind === "client") return t("clients.vaultGroupClient", { name: selected?.name ?? "" });
+    return t(kind === "none" ? "clients.vaultGroupNone" : "clients.vaultGroupOthers");
+  };
   return (
     <Page
       title={t("vault.title")}

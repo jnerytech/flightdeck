@@ -137,7 +137,7 @@ export interface DemoSeed {
 }
 
 function git(cwd: string, ...args: string[]): void {
-  execFileSync("git", args, { cwd, stdio: "ignore" });
+  execFileSync("git", args, { cwd, stdio: "ignore" }); // NOSONAR: git from the PATH of the developer running the script
 }
 
 function repo(path: string, files: Record<string, string>): string {
@@ -345,7 +345,10 @@ function writeCostsHistory(dir: string, cwd: string): void {
       );
       writeFileSync(
         join(dir, `${id}.jsonl`),
-        `${[userLine(`${id}-u`, `Tarefa ${n} em ${basename(project)}`, project, at(12)), ...turns].join("\n")}\n`,
+        [
+          userLine(`${id}-u`, `Tarefa ${n} em ${basename(project)}`, project, at(12)),
+          ...turns,
+        ].join("\n") + "\n",
       );
     }
   }
@@ -469,12 +472,10 @@ async function sendTelemetry(
   };
   const token = (JSON.parse(readFileSync(host.config, "utf8")) as { telemetry: { token: string } })
     .telemetry.token;
-  const value = (v: string | number) =>
-    typeof v === "number"
-      ? Number.isInteger(v)
-        ? { intValue: String(v) }
-        : { doubleValue: v }
-      : { stringValue: v };
+  const value = (v: string | number) => {
+    if (typeof v !== "number") return { stringValue: v };
+    return Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v };
+  };
   const body = {
     resourceLogs: [
       {

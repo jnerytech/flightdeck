@@ -96,7 +96,8 @@ export function withBaseline(source: string, counts: Record<string, number>): st
     ? source.slice(declaration.index + declaration[0].length)
     : source.slice(source.indexOf("\n};", declaration.index) + "\n};".length);
   const body = renderBaseline(counts);
-  return `${head}${opening}${body ? `\n${body}\n};` : "};"}${rest}`;
+  const closed = body ? "\n" + body + "\n};" : "};";
+  return head + opening + closed + rest;
 }
 
 export const SYNC_BASELINE: Record<string, number> = {};

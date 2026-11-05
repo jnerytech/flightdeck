@@ -58,6 +58,7 @@ export function HostPage(props: {
   const [removing, setRemoving] = useState(false);
   const now = useNow();
   const offline = host.status !== "online" && host.status !== "incompatible";
+  const hooksKey = hooks ? HOOK_LABELS[hooks.status] : "hostPage.hooksAsking";
   useEffect(() => {
     if (host.status !== "online") return;
     void store.hostCommand(host.id, "hooks.status", {}).then(setHooks);
@@ -157,11 +158,7 @@ export function HostPage(props: {
         {showHooks && (
           <section aria-label={t("hostPage.hooks")}>
             <Panel title={t("hostPage.hooks")}>
-              <p className="text-sm">
-                {offline
-                  ? t("hostOffline.title")
-                  : t(hooks ? HOOK_LABELS[hooks.status] : "hostPage.hooksAsking")}
-              </p>
+              <p className="text-sm">{offline ? t("hostOffline.title") : t(hooksKey)}</p>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setConfirming("install")}>
                   {t("hostPage.install")}

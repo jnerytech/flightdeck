@@ -288,7 +288,7 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{target.name}</span>
                 <span className="font-mono text-muted-foreground text-sm">
-                  {`${target.user}@${target.host}${target.port === 22 ? "" : `:${target.port}`}`}
+                  {target.user + "@" + target.host + (target.port === 22 ? "" : ":" + target.port)}
                 </span>
                 {target.tags.map((name) => (
                   <span key={name} className="rounded bg-muted px-1.5 text-xs">

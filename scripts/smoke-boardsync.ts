@@ -159,10 +159,11 @@ function rules(items: BoardItem[], scopes: string[]) {
     },
   });
   const data = (value: unknown) => ({ stdout: JSON.stringify({ data: value }) });
+  const quoted = scopes.map((s) => "'" + s + "'").join(", ");
   return [
     {
       args: ["auth", "status"],
-      stdout: `github.com\n  ✓ Logged in to github.com account octocat (keyring)\n  - Token scopes: ${scopes.map((s) => `'${s}'`).join(", ")}\n`,
+      stdout: `github.com\n  ✓ Logged in to github.com account octocat (keyring)\n  - Token scopes: ${quoted}\n`,
     },
     {
       args: ["api", "graphql"],

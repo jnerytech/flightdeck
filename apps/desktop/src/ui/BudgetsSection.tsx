@@ -99,11 +99,12 @@ export function BudgetsSection(props: {
     await store.setBudget(hostId, input);
     setDraft(EMPTY);
   };
-  const needs = !(Number(draft.limitUsd) > 0)
-    ? t("budgetsUi.limitNeeded")
-    : draft.scope === "project" && draft.projectKey.trim() === ""
-      ? t("budgetsUi.projectNeeded")
-      : null;
+  const limit = Number(draft.limitUsd);
+  let needs: string | null = null;
+  if (Number.isNaN(limit) || limit <= 0) needs = t("budgetsUi.limitNeeded");
+  else if (draft.scope === "project" && draft.projectKey.trim() === "") {
+    needs = t("budgetsUi.projectNeeded");
+  }
   const title = t("budgetsUi.title", { host: props.hostName });
   return (
     <section aria-label={title}>

@@ -89,9 +89,7 @@ describe("pasta: Windows paths", () => {
     await press("code");
     await press("app");
     await waitFor(() =>
-      expect(within(dialog() as HTMLElement).queryByText("Nenhuma subpasta aqui.") !== null).toBe(
-        true,
-      ),
+      expect(within(dialog() as HTMLElement).queryByText("Nenhuma subpasta aqui.")).not.toBeNull(),
     );
     // The crumb of the root is a button that goes back; the folder open now is plain text.
     expect(has("code")).toBe(true);

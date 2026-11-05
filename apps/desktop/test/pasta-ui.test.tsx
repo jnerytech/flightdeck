@@ -186,9 +186,7 @@ describe("pasta: escolher uma pasta do host", () => {
     await press("alfa");
     await press("interna");
     await waitFor(() =>
-      expect(within(dialog() as HTMLElement).queryByText("Nenhuma subpasta aqui.") !== null).toBe(
-        true,
-      ),
+      expect(within(dialog() as HTMLElement).queryByText("Nenhuma subpasta aqui.")).not.toBeNull(),
     );
     const list = within(dialog() as HTMLElement).queryByRole("list", {
       name: "Pastas",
@@ -201,8 +199,8 @@ describe("pasta: escolher uma pasta do host", () => {
     await press("many");
     await waitFor(() =>
       expect(
-        within(dialog() as HTMLElement).queryByText(/Só as primeiras 500 pastas/) !== null,
-      ).toBe(true),
+        within(dialog() as HTMLElement).queryByText(/Só as primeiras 500 pastas/),
+      ).not.toBeNull(),
     );
   });
 

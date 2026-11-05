@@ -147,12 +147,8 @@ describe("clients-budgets: the app watches a client's month limit", () => {
     await act(() => store.checkClientBudgets());
     await act(async () => store.router.push({ name: "needs-you" }));
     await settle(() => screen.queryByText(/Orçamento do cliente Beta: 100%/) !== null);
-    expect(screen.queryByText("Orçamento do cliente Acme: 50% de US$ 4.00 no mês") !== null).toBe(
-      true,
-    );
-    expect(screen.queryByText("Orçamento do cliente Beta: 100% de US$ 3.00 no mês") !== null).toBe(
-      true,
-    );
+    expect(screen.queryByText("Orçamento do cliente Acme: 50% de US$ 4.00 no mês")).not.toBeNull();
+    expect(screen.queryByText("Orçamento do cliente Beta: 100% de US$ 3.00 no mês")).not.toBeNull();
   });
 
   test("nothing is held on the hosts: no budget is created there", async () => {

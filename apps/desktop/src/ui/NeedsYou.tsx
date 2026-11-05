@@ -225,23 +225,20 @@ function RequestDetail({
         t={t}
         nowMs={store.now()}
         onCopyPath={(text) => void store.copyText(text)}
-        onRespond={(decision, message, _updates, updatedInput) =>
-          item.gate
-            ? store.respondGate(
-                item.hostId,
-                item.gate,
-                decision === "allow" ? "approve" : "reject",
-                message,
-              )
-            : store.respondTo(
-                item.hostId,
-                item.requestId,
-                decision,
-                undefined,
-                message,
-                updatedInput,
-              )
-        }
+        onRespond={(decision, message, _updates, updatedInput) => {
+          if (!item.gate) {
+            return store.respondTo(
+              item.hostId,
+              item.requestId,
+              decision,
+              undefined,
+              message,
+              updatedInput,
+            );
+          }
+          const verdict = decision === "allow" ? "approve" : "reject";
+          return store.respondGate(item.hostId, item.gate, verdict, message);
+        }}
         actions={
           // A request for a secret belongs to no session: the card is all there is to open.
           item.vault ? (

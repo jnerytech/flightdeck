@@ -13,7 +13,8 @@ export function migrate(source: string, waitPath = "./wait.ts"): string | null {
   const inAct = own[2] !== undefined;
   const same = ms === DEFAULT_MS;
   const factory = inAct ? "waiter" : "plainWaiter";
-  const imported = same ? (inAct ? "settle" : "settlePlain as settle") : factory;
+  const ownImport = inAct ? "settle" : "settlePlain as settle";
+  const imported = same ? ownImport : factory;
   const replacement = same ? "" : `const settle = ${factory}(${own[1]});\n`;
   const without = source.replace(OWN_SETTLE, replacement);
   // After the last static import (the ones that end the line with `from "…";`).

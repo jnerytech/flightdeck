@@ -73,12 +73,13 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
       <Field label={t("teamsUi.name")}>
         {(control) => <Input {...control} value={name} onChange={(e) => setName(e.target.value)} />}
       </Field>
-      {projects.length === 0 && !asked ? null : projects.length === 0 ? (
+      {projects.length === 0 && asked && (
         <div className="flex flex-col items-start gap-2">
           <p className="text-muted-foreground">{t("teamsUi.noProjects")}</p>
           <AddProject store={store} hostId={hostId} onAdded={(added) => setProjectId(added.id)} />
         </div>
-      ) : (
+      )}
+      {projects.length > 0 && (
         <Field label={t("teamsUi.project")}>
           {(control) => (
             <NativeSelect

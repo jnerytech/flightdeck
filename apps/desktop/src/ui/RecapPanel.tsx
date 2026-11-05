@@ -111,9 +111,10 @@ export function RecapPanel(props: {
           </span>
         )}
       </div>
-      {!open ? null : lines.length === 0 ? (
+      {open && lines.length === 0 && (
         <p className="text-muted-foreground text-sm">{t("recap.empty")}</p>
-      ) : (
+      )}
+      {open && lines.length > 0 && (
         <Stack gap={1} className="rows-scroll">
           {lines.map(([label, text]) => (
             <p key={label} className="break-words text-sm">

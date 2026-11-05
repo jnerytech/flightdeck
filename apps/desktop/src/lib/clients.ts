@@ -275,7 +275,7 @@ export class Clients {
 
   /** Sets a client's month limit in US$; false for a limit that is not positive or a client that is gone. */
   setBudget(clientId: string, limitUsd: number): boolean {
-    if (!(limitUsd > 0) || !Number.isFinite(limitUsd)) return false;
+    if (Number.isNaN(limitUsd) || limitUsd <= 0 || !Number.isFinite(limitUsd)) return false;
     const data = this.read();
     if (!data.clients.some((c) => c.id === clientId)) return false;
     this.write({ ...data, budgets: { ...data.budgets, [clientId]: limitUsd } });

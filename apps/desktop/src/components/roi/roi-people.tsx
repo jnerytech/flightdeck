@@ -72,11 +72,13 @@ export function RoiPeople(props: { store: AppStore }) {
   return (
     <section aria-label={t("roiUi.people.title")} className="flex flex-col gap-2">
       <h2 className="font-medium text-sm">{t("roiUi.people.title")}</h2>
-      {rows.length === 0 ? (
+      {rows.length === 0 && (
         <p className="text-muted-foreground text-sm">{t("roiUi.people.empty")}</p>
-      ) : answers === null ? (
+      )}
+      {rows.length > 0 && answers === null && (
         <p className="text-muted-foreground text-sm">{t("roiUi.loading")}</p>
-      ) : (
+      )}
+      {rows.length > 0 && answers !== null && (
         <>
           <table
             aria-label={t("roiUi.people.title")}

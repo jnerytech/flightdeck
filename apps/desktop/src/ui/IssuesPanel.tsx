@@ -191,16 +191,13 @@ export function IssuesPanel(props: {
 
   const shown = filterIssues(issues ?? [], filter);
   const provider = project.issues?.provider === "azure" ? "azure" : "github";
+  const sourceKey = provider === "azure" ? "issuesUi.fromAzure" : "issuesUi.fromGithub";
   return (
     <Sheet open onOpenChange={(open) => !open && props.onClose()}>
       <SheetContent side="right" showCloseButton={false} className="w-[28rem] max-w-full">
         <SheetHeader>
           <SheetTitle>{t("issuesUi.title")}</SheetTitle>
-          <SheetDescription>
-            {configured
-              ? t(provider === "azure" ? "issuesUi.fromAzure" : "issuesUi.fromGithub")
-              : ""}
-          </SheetDescription>
+          <SheetDescription>{configured ? t(sourceKey) : ""}</SheetDescription>
         </SheetHeader>
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4">
           <div className="flex items-center gap-2">

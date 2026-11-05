@@ -162,7 +162,8 @@ export function TranscriptReader(props: {
   const gone = session !== null && cwdExists === false;
   const outside = session !== null && !roots.some((root) => isInside(session.cwd, root));
   const blocked = gone || outside;
-  const why = !session ? null : t(gone ? "reader.gone" : "reader.outside", { folder: session.cwd });
+  const whyKey = gone ? "reader.gone" : "reader.outside";
+  const why = session ? t(whyKey, { folder: session.cwd }) : null;
   return (
     <SessionPane>
       <SessionHeader

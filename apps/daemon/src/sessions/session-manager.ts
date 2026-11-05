@@ -502,6 +502,36 @@ export class SessionManager {
     this.emitSummary(sessionId);
   }
 
+  /** The answer to a tool request: denied outright for a free command in an unattended session or a tool the persona does not use, else asked of the person. */
+  private canUse(
+    sessionId: string,
+    persona: ReturnType<EventStore["sessionPersona"]>,
+    toolName: string,
+    input: Record<string, unknown>,
+    ctx: { signal: AbortSignal; suggestions?: unknown },
+  ) {
+    if (this.unattended.has(sessionId) && /(^|__)run_with_secret$/.test(toolName)) {
+      return Promise.resolve({
+        behavior: "deny" as const,
+        message:
+          "run_with_secret is not available in a session Flightdeck started by itself: a person approves each use",
+      });
+    }
+    if (persona && !toolAllowed(persona.tools, toolName)) {
+      return Promise.resolve({
+        behavior: "deny" as const,
+        message: `a persona ${persona.name} não usa a ferramenta ${toolName}`,
+      });
+    }
+    return this.broker.request(
+      sessionId,
+      toolName,
+      input,
+      ctx.signal,
+      parseSuggestions(ctx.suggestions),
+    );
+  }
+
   private startRun(sessionId: string, resume?: string): LiveSession {
     const session = this.get(sessionId);
     // The persona the session opened with, as it was then: the prompt it appends is in no transcript.
@@ -517,25 +547,7 @@ export class SessionManager {
         ...buildChildEnv(this.opts.baseEnv, this.opts.allowApiKey),
         FLIGHTDECK_SESSION: sessionId,
       },
-      canUseTool: (toolName, input, ctx) =>
-        this.unattended.has(sessionId) && /(^|__)run_with_secret$/.test(toolName)
-          ? Promise.resolve({
-              behavior: "deny",
-              message:
-                "run_with_secret is not available in a session Flightdeck started by itself: a person approves each use",
-            })
-          : persona && !toolAllowed(persona.tools, toolName)
-            ? Promise.resolve({
-                behavior: "deny",
-                message: `a persona ${persona.name} não usa a ferramenta ${toolName}`,
-              })
-            : this.broker.request(
-                sessionId,
-                toolName,
-                input,
-                ctx.signal,
-                parseSuggestions(ctx.suggestions),
-              ),
+      canUseTool: (toolName, input, ctx) => this.canUse(sessionId, persona, toolName, input, ctx),
       ...(resume ? { resume } : {}),
       ...(session.model ? { model: session.model } : {}),
       ...(this.efforts.has(sessionId)

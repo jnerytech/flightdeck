@@ -20,7 +20,7 @@ type T = ReturnType<typeof useT>;
 /** What a node says of itself, in one line. */
 export function nodeTitle(node: TraceNode, t: T): string {
   if (node.kind === "turn") {
-    return `${t("trace.turn", { n: node.n ?? 0 })}${node.label ? ` · ${node.label}` : ""}`;
+    return t("trace.turn", { n: node.n ?? 0 }) + (node.label ? " · " + node.label : "");
   }
   if (node.kind === "thinking") return t("trace.thinking");
   return node.label ? `${node.name} · ${node.label}` : node.name;

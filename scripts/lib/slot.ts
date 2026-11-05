@@ -107,7 +107,7 @@ function readFlags(argv: string[]): SlotFlags | null {
     else if (flag === "--cancel") flags.asCancel = true;
     else if (flag === "--max-age") {
       const minutes = Number(flags.rest[1]);
-      if (!flags.rest[1] || !(minutes > 0)) return null;
+      if (!flags.rest[1] || Number.isNaN(minutes) || minutes <= 0) return null;
       flags.maxAgeMs = minutes * 60_000;
       flags.rest = flags.rest.slice(1);
     } else break;

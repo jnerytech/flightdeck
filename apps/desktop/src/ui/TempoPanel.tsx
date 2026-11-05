@@ -43,9 +43,10 @@ function label(item: TelemetryItem, t: T): string {
 function Step(props: { item: TelemetryItem; longest: number; t: T }) {
   const { item, longest, t } = props;
   const time = item.durationMs;
+  const failedKey = item.error ? "telemetry.failed" : "telemetry.failedPlain";
   const failed =
     item.kind === "tool" && item.success === false
-      ? t(item.error ? "telemetry.failed" : "telemetry.failedPlain", { error: item.error ?? "" })
+      ? t(failedKey, { error: item.error ?? "" })
       : null;
   const text = [label(item, t), time === null ? null : formatMs(time, t), failed]
     .filter((part) => part !== null)

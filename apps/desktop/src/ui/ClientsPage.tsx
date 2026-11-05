@@ -38,7 +38,8 @@ export function ClientsPage(props: {
   const taken = clients.some(
     (c) => c.id !== renaming?.id && c.name.toLowerCase() === clean.toLowerCase(),
   );
-  const needs = clean === "" ? t("clients.nameNeeded") : taken ? t("clients.nameTaken") : null;
+  let needs: string | null = taken ? t("clients.nameTaken") : null;
+  if (clean === "") needs = t("clients.nameNeeded");
 
   const submit = () => {
     if (renaming) store.clients.rename(renaming.id, clean);

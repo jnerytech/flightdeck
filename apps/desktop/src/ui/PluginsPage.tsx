@@ -23,6 +23,28 @@ import { FolderPicker } from "./FolderPicker.tsx";
 
 const PLUGINSPAGE_KEYS = ["hosts"] as const;
 
+type Asking =
+  | { kind: "remove"; plugin: InstalledPlugin }
+  | { kind: "add" }
+  | { kind: "drop"; name: string };
+
+/** What the confirmation says for removing a plugin, adding a source or dropping a marketplace. */
+function askingWords(asking: Asking, source: string, t: ReturnType<typeof useT>) {
+  if (asking.kind === "remove") {
+    return {
+      message: t("pluginsUi.removeMessage", { name: asking.plugin.name }),
+      confirm: t("pluginsUi.removeConfirm"),
+    };
+  }
+  if (asking.kind === "add") {
+    return { message: t("pluginsUi.addMessage", { source }), confirm: t("pluginsUi.addConfirm") };
+  }
+  return {
+    message: t("pluginsUi.dropMessage", { name: asking.name }),
+    confirm: t("pluginsUi.dropConfirm"),
+  };
+}
+
 /**
  * Phase 26: the Claude Code plugins of the first online host that keeps them. A plugin runs code
  * on the machine, so each one shows what it installs, and the hooks that can decide for the user
@@ -44,12 +66,7 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
   /** The host answers `fs.dirs`: an older daemon does not, and there the folder is only typed. */
   const canBrowse = hasFeature(host?.hostInfo?.features, "fs.dirs", false);
   const [updating, setUpdating] = useState<InstalledPlugin | null>(null);
-  const [asking, setAsking] = useState<
-    | { kind: "remove"; plugin: InstalledPlugin }
-    | { kind: "add" }
-    | { kind: "drop"; name: string }
-    | null
-  >(null);
+  const [asking, setAsking] = useState<Asking | null>(null);
   const [source, setSource] = useState("");
 
   /** A change that went through: the message of the CLI, and the lists again. */
@@ -358,20 +375,8 @@ export const PluginsPage = memo(function PluginsPage(props: { store: AppStore })
       )}
       {asking && (
         <ConfirmDialog
-          message={
-            asking.kind === "remove"
-              ? t("pluginsUi.removeMessage", { name: asking.plugin.name })
-              : asking.kind === "add"
-                ? t("pluginsUi.addMessage", { source })
-                : t("pluginsUi.dropMessage", { name: asking.name })
-          }
-          confirmLabel={
-            asking.kind === "remove"
-              ? t("pluginsUi.removeConfirm")
-              : asking.kind === "add"
-                ? t("pluginsUi.addConfirm")
-                : t("pluginsUi.dropConfirm")
-          }
+          message={askingWords(asking, source, t).message}
+          confirmLabel={askingWords(asking, source, t).confirm}
           destructive={asking.kind !== "add"}
           onConfirm={() => void confirmed()}
           onCancel={() => setAsking(null)}

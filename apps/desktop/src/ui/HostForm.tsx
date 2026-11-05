@@ -101,7 +101,7 @@ export function HostForm(props: {
             {...control}
             value={draft.address}
             onChange={set("address")}
-            placeholder="100.64.0.1"
+            placeholder="100.64.0.1" // NOSONAR: an example address in a placeholder
           />
         )}
       </Field>

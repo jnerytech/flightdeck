@@ -58,7 +58,8 @@ export function formatReport(
       const lines = source.split("\n");
       const shown = missed.map(({ line, name }) => {
         const text = name.startsWith("(anonymous_") ? (lines[line - 1] ?? "").trim() : name;
-        return `  ${file}:${line}  ${text.length > LINE_MAX ? `${text.slice(0, LINE_MAX - 1)}…` : text}`;
+        const cut = text.length > LINE_MAX ? text.slice(0, LINE_MAX - 1) + "…" : text;
+        return `  ${file}:${line}  ${cut}`;
       });
       return [`${file}: ${missed.length} of ${functions(total)} never called`, ...shown].join("\n");
     })

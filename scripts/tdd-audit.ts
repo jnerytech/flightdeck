@@ -18,7 +18,7 @@ const result = runAudit({
   since,
   waivers: parseWaivers(readFileSync(resolve(ROOT, "scripts/tdd-audit-waivers.json"), "utf8")),
   git: (gitArgs) => {
-    const proc = spawnSync("git", gitArgs, { cwd: ROOT, encoding: "utf8" });
+    const proc = spawnSync("git", gitArgs, { cwd: ROOT, encoding: "utf8" }); // NOSONAR: git from the PATH of the developer running the script
     return proc.status === 0 ? proc.stdout : null;
   },
   readFile: (path) => readFileSync(resolve(ROOT, path), "utf8"),

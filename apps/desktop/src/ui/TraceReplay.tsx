@@ -123,7 +123,7 @@ export function TraceReplay(props: {
               <Stack as="ul" gap={1}>
                 {changed.files.map((file) => (
                   <li key={file.path} className="text-xs">
-                    {`${file.path} · ${t(`trace.${file.change}` as never)}`}
+                    {file.path + " · " + t(`trace.${file.change}` as never)}
                   </li>
                 ))}
                 <li className="text-xs">{`+${changed.insertions} −${changed.deletions}`}</li>
