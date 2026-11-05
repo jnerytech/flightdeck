@@ -62,6 +62,9 @@ export class FakeAcpAgent {
   stdinClosed = false;
   /** Whether closing stdin ends the process (OpenCode does; a hung one does not). */
   exitOnStdinClose = true;
+  /** How many kills the process shrugs off before it dies (a stuck one). */
+  survives = 0;
+  kills = 0;
   private readonly lines = new AsyncQueue<string>();
   private exitCode: number | null = null;
   private resolveExit: (code: number) => void = () => {};
@@ -109,7 +112,8 @@ export class FakeAcpAgent {
       },
       kill: () => {
         this.killed = true;
-        this.exit(137);
+        this.kills++;
+        if (this.kills > this.survives) this.exit(137);
       },
       exited: this.exited,
       pid: this.pid,

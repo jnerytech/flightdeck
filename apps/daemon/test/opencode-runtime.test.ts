@@ -9,7 +9,7 @@ import {
   treeKiller,
 } from "../src/runtime/opencode-runtime.ts";
 import type { AgentRun, RuntimeEvent, StartOptions } from "../src/runtime/types.ts";
-import { configOptions, FakeAcpAgent, manualTimers } from "./fake-acp-agent.ts";
+import { configOptions, FakeAcpAgent, manualTimers, turns } from "./fake-acp-agent.ts";
 import { poll } from "./helpers.ts";
 
 const MCP = {
@@ -25,7 +25,7 @@ function setup(
 ) {
   const agents: FakeAcpAgent[] = [];
   const timers = manualTimers();
-  const killed: number[] = [];
+  const killed: Array<[number, boolean]> = [];
   const checks: string[] = [];
   const runtime = new OpenCodeRuntime({
     path: "/bin/opencode",
@@ -43,8 +43,8 @@ function setup(
       agents.push(agent);
       return agent.transport();
     },
-    kill: (child: SpawnedAcp) => {
-      killed.push(child.pid);
+    kill: (child: SpawnedAcp, force: boolean) => {
+      killed.push([child.pid, force]);
       child.kill();
     },
     timers,
@@ -312,19 +312,160 @@ describe("opencode-runtime", () => {
     expect(await poll(() => agents[0]?.stdinClosed === true)).toBe(true);
     timers.advance(3_000);
     await Promise.all([closing, again]);
-    expect(killed).toEqual([4242]);
+    expect(killed).toEqual([[4242, false]]);
     expect(methods(agents[0]).filter((m) => m === "session/close").length).toBe(1);
     expect(await poll(() => out.ended)).toBe(true);
   });
 
-  test("treeKiller: taskkill /T /F on Windows, a plain kill elsewhere", () => {
+  test("treeKiller: taskkill /T /F on Windows; elsewhere the process group, TERM then KILL, and the process if the group is gone", () => {
     const runs: string[][] = [];
+    const groups: Array<[number, string]> = [];
     let plain = 0;
     const child = { pid: 77, kill: () => plain++ } as unknown as SpawnedAcp;
-    treeKiller("win32", (argv) => runs.push(argv))(child);
-    treeKiller("linux", (argv) => runs.push(argv))(child);
+    const deps = {
+      run: (argv: string[]) => runs.push(argv),
+      killGroup: (pid: number, signal: NodeJS.Signals) => {
+        groups.push([pid, signal]);
+      },
+    };
+    treeKiller("win32", deps)(child, false);
+    treeKiller("linux", deps)(child, false);
+    treeKiller("linux", deps)(child, true);
     expect(runs).toEqual([["taskkill", "/PID", "77", "/T", "/F"]]);
+    expect(groups).toEqual([
+      [77, "SIGTERM"],
+      [77, "SIGKILL"],
+    ]);
+    const gone = treeKiller("linux", {
+      ...deps,
+      killGroup: () => {
+        throw new Error("ESRCH");
+      },
+    });
+    gone(child, true);
     expect(plain).toBe(1);
+  });
+
+  test("a process that ignores stdin and the first kill gets a forced one, and close() never waits forever", async () => {
+    const { runtime, agents, timers, killed } = setup((agent) => {
+      agent.exitOnStdinClose = false;
+      agent.survives = 99;
+      delete agent.handlers["session/close"];
+    });
+    const run = runtime.start(startOpts());
+    collect(run);
+    run.send("x");
+    expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    agents[0]?.endPrompt();
+    let closed = false;
+    void run.close().then(() => {
+      closed = true;
+    });
+    expect(await poll(() => methods(agents[0]).includes("session/close"))).toBe(true);
+    timers.advance(2_000);
+    expect(await poll(() => agents[0]?.stdinClosed === true)).toBe(true);
+    timers.advance(3_000);
+    timers.advance(2_000);
+    expect(killed).toEqual([
+      [4242, false],
+      [4242, true],
+    ]);
+    timers.advance(5_000);
+    expect(await poll(() => closed)).toBe(true);
+  });
+
+  test("no process until the first send; a failed start leaves no process and runs the preflight once", async () => {
+    const lazy = setup();
+    lazy.runtime.start(startOpts());
+    expect(lazy.agents.length).toBe(0);
+    const extra = setup((agent) => {
+      agent.handlers["session/new"] = () => ({
+        sessionId: "ses_1",
+        configOptions: configOptions({ modes: ["flightdeck", "flightdeck-plan", "build"] }),
+      });
+    });
+    const run = extra.runtime.start(startOpts());
+    const out = collect(run);
+    run.send("x");
+    run.send("y");
+    expect(await poll(() => out.error !== null)).toBe(true);
+    expect(await poll(() => extra.agents.every((a) => !a.alive))).toBe(true);
+    expect([extra.agents.length, extra.checks.length]).toEqual([1, 1]);
+  });
+
+  test("a close during the preflight starts no process", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { runtime, agents } = setup(undefined, {
+      preflight: {
+        check: async () => {
+          await gate;
+          return { configContent: "{}" };
+        },
+      },
+    });
+    const run = runtime.start(startOpts());
+    collect(run);
+    run.send("x");
+    await run.close();
+    release();
+    await turns(20);
+    expect(agents.filter((a) => a.alive).length).toBe(0);
+  });
+
+  test("an interrupt while the turn waits for its start cancels that turn; on an idle run it changes nothing", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { runtime, agents } = setup(undefined, {
+      preflight: {
+        check: async () => {
+          await gate;
+          return { configContent: "{}" };
+        },
+      },
+    });
+    const run = runtime.start(startOpts());
+    const out = collect(run);
+    await run.interrupt();
+    run.send("x");
+    await run.interrupt();
+    release();
+    expect(await poll(() => out.events.some((e) => e.type === "turn.result"))).toBe(true);
+    expect(out.events.find((e) => e.type === "turn.result")).toMatchObject({
+      subtype: "error_during_execution",
+    });
+    expect(agents[0]?.calls("session/prompt") ?? []).toEqual([]);
+    run.send("y");
+    expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+  });
+
+  test("a second interrupt leaves no timer that could end a later turn", async () => {
+    const { runtime, agents, timers } = setup();
+    const run = runtime.start(startOpts());
+    const out = collect(run);
+    run.send("one");
+    expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    await run.interrupt();
+    await run.interrupt();
+    agents[0]?.endPrompt({ stopReason: "cancelled" });
+    expect(await poll(() => out.events.filter((e) => e.type === "turn.result").length === 1)).toBe(
+      true,
+    );
+    run.send("two");
+    expect(await poll(() => (agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    timers.advance(INTERRUPT_ESCALATION_MS);
+    agents[0]?.endPrompt();
+    expect(await poll(() => out.events.filter((e) => e.type === "turn.result").length === 2)).toBe(
+      true,
+    );
+    expect(out.events.filter((e) => e.type === "turn.result").at(-1)).toMatchObject({
+      subtype: "success",
+    });
+    expect(agents[0]?.alive).toBe(true);
   });
 
   test("15 minutes after a turn the process closes; the next send runs the preflight again and resumes", async () => {
