@@ -221,6 +221,24 @@ describe("resources-security: a bounded read (F4)", () => {
     expect(a).toBe(b);
   });
 
+  test("a read that fails is not kept: the next ask reads again", async () => {
+    let calls = 0;
+    const procs = [proc(DAEMON, 1, "flightdeckd")];
+    const base = reader(procs);
+    const flaky: ProcReader = {
+      ...base,
+      pids: async () => {
+        calls++;
+        if (calls === 1) throw new Error("disk hiccup");
+        return base.pids();
+      },
+    };
+    const r = make(procs, { reader: flaky });
+    await expect(r.snapshot()).rejects.toThrow("disk hiccup");
+    expect((await r.snapshot()).measured).toBe(true);
+    expect(calls).toBe(2);
+  });
+
   test("a snapshot is kept for a second or two, then read again", async () => {
     let reads = 0;
     const procs = [proc(DAEMON, 1, "flightdeckd")];
