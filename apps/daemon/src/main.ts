@@ -1132,8 +1132,11 @@ export async function startDaemon(
         allowedRoots: config.allowedRoots,
         serviceInstalled:
           options.serviceInstalled ??
-          (async () => (await serviceCommand(osServiceContext(false))) !== null),
-        linger: options.linger ?? (() => lingerState(osServiceContext(false))),
+          (async () =>
+            (await serviceCommand((options.serviceContext ?? osServiceContext)(false))) !== null),
+        linger:
+          options.linger ??
+          (() => lingerState((options.serviceContext ?? osServiceContext)(false))),
         account: async () => (await account?.get())?.status ?? null,
         hooks: () =>
           hooksStatus(
