@@ -99,15 +99,6 @@ async function openCard(title: string) {
   await settle(() => screen.queryByRole("button", { name: "Voltar ao board" }) !== null);
 }
 
-async function openCard(title: string) {
-  const open = cardItem(title)?.querySelector("button") ?? null;
-  expect(open).not.toBeNull();
-  await act(async () => {
-    fireEvent.click(open as HTMLElement);
-  });
-  await settle(() => screen.queryByRole("button", { name: "Voltar ao board" }) !== null);
-}
-
 async function openCardMenu(title: string) {
   const trigger = screen.queryByRole("button", { name: `Ações de ${title}` });
   expect(trigger).not.toBeNull();
