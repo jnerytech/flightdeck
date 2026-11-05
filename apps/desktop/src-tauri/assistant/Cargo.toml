@@ -1,0 +1,18 @@
+[package]
+name = "flightdeck-assistant"
+version = "0.1.0"
+description = "Phase 40: the AI assistant's provider keys, provider calls and guards, without Tauri (ADR 40-3)"
+edition = "2021"
+publish = false
+
+[dependencies]
+keyring = { version = "3", features = ["apple-native", "windows-native", "linux-native"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Mirrors the updater: one TLS provider (ring), no native-tls, no aws-lc-rs.
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls-no-provider", "system-proxy"] }
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
+
+[dev-dependencies]
+# The version already in the lock through Tauri; no macros (tokio-macros is not in the lock).
+tokio = { version = "1", features = ["rt", "time"] }
