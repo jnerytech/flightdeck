@@ -147,6 +147,11 @@ export interface ServerOptions {
   /** The host's switch for sessions without permission prompts: read for `host.info`, set by `host.bypass`. */
   bypass?: { allowed(): boolean; set(allow: boolean): void | Promise<void> };
   /** Issue #196: the trust of folders and what a project would load; absent, the commands are refused and not announced. */
+  /** Who the peer is, for the origin rules; the socket's own address when absent (tests give theirs). */
+  peerOf?: (
+    req: Request,
+    server: { requestIP(req: Request): { address: string } | null },
+  ) => string;
   projectTrust?: {
     state(paths: string[]): ProjectTrustState[];
     inspect(path: string): Promise<ProjectLoad>;
