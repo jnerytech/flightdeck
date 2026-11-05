@@ -75,6 +75,8 @@ export function TranscriptReader(props: {
       .then((page) => {
         if (!live || !page) return;
         if (page.cursor !== undefined) lastAfter.current = page.cursor;
+        // Asked for the latest messages and got a page with no cursor: the daemon predates `tail` and sent page one.
+        if (latest && page.cursor === undefined) following.current = false;
         setSession(page.session);
         setCwdExists(page.cwdExists ?? null);
         setMessages(page.messages);
@@ -92,7 +94,8 @@ export function TranscriptReader(props: {
     const box = log.current;
     if (!box) return;
     const first = messages[0]?.uuid;
-    if (following.current) box.scrollTop = box.scrollHeight;
+    // Only at the real end of the transcript: a page that is not the last one must not drag the reader past it.
+    if (following.current && atEnd.current) box.scrollTop = box.scrollHeight;
     else if (lastFirst.current !== undefined && first !== lastFirst.current) {
       // Older messages came in above what is being read: the view stays on the same message.
       box.scrollTop += box.scrollHeight - lastHeight.current;
@@ -106,7 +109,7 @@ export function TranscriptReader(props: {
     const box = log.current;
     if (!box || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
-      if (following.current) box.scrollTop = box.scrollHeight;
+      if (following.current && atEnd.current) box.scrollTop = box.scrollHeight;
       lastHeight.current = box.scrollHeight;
     });
     observer.observe(box);
