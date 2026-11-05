@@ -54,6 +54,8 @@ export interface SessionManagerOptions {
   onQuota?: (readings: QuotaReading[]) => void;
   /** Every turn of a managed session, before it is stored (phase 7's usage). */
   onTurn?: (sessionId: string, cwd: string, turn: SessionEventOf<"turn.result">) => void;
+  /** How many sessions are running or waiting for a permission, after every change of status (keep-awake, #163). */
+  onActivity?: (active: number) => void;
   /** Start and end of every turn (phase 12's snapshots); the first start waits for session.init. */
   onTurnEdge?: (edge: TurnEdge) => void;
   /** Phase 13: the risk of each permission request; built-in rules over allowedRoots when absent. */
