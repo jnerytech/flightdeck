@@ -14,6 +14,7 @@ import { AsyncQueue } from "../async-queue.ts";
 import { quotaReadings } from "../quota/quota.ts";
 import { whichOnPath } from "../which.ts";
 import type { FlightdeckMcpServer } from "./flightdeck-mcp.ts";
+import { truncateToolResult } from "./tool-result.ts";
 import type {
   AgentRun,
   AgentRuntime,
@@ -52,8 +53,6 @@ export interface ClaudeSdkRuntimeOptions {
   mcpServer?: FlightdeckMcpServer;
 }
 
-const MAX_TOOL_RESULT = 4000;
-
 /** What the automatic approval's query must answer (phase 13). */
 const JUDGE_SCHEMA = {
   type: "object",
@@ -90,12 +89,6 @@ export function resolveClaudePath(
   const which = proc.which ?? whichOnPath;
   const compiled = main.includes("$bunfs") || main.includes("~BUN");
   return compiled ? (which("claude") ?? undefined) : undefined;
-}
-
-function truncate(text: string): string {
-  return text.length > MAX_TOOL_RESULT
-    ? `${text.slice(0, MAX_TOOL_RESULT)}… [${text.length - MAX_TOOL_RESULT} caracteres omitidos]`
-    : text;
 }
 
 function toolResultText(content: unknown): string {
@@ -153,7 +146,7 @@ export function normalizeSdkMessage(message: SDKMessage): RuntimeEvent[] {
         events.push({
           type: "tool.result",
           toolUseId: block.tool_use_id,
-          content: truncate(toolResultText(block.content)),
+          content: truncateToolResult(toolResultText(block.content)),
           isError: block.is_error === true,
         });
       }
