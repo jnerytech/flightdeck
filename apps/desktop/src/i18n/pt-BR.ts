@@ -2018,6 +2018,7 @@ export const ptBR = {
     openNamed: "Abrir Claude aqui em {name} (terminal)",
     resume: "Continuar no terminal",
     resumeNamed: "Continuar {name} no terminal",
+    start: "Abrir o terminal",
     asSession: "Ver como sessão",
     viewTerminal: "Ver terminal",
   },

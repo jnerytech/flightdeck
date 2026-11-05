@@ -2021,6 +2021,7 @@ export const en: Dictionary = {
     openNamed: "Open Claude here in {name} (terminal)",
     resume: "Continue in the terminal",
     resumeNamed: "Continue {name} in the terminal",
+    start: "Open the terminal",
     asSession: "View as session",
     viewTerminal: "View terminal",
   },

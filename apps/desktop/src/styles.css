@@ -469,6 +469,14 @@
   gap: 0.5rem;
 }
 
+/* The popover that asks for a terminal's persona before it opens (issue #177). */
+@utility terminal-ask {
+  display: flex;
+  width: 18rem;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 /* The terminal's find bar: the box, where the match is, and the buttons in one row. */
 @utility terminal-find {
   display: flex;
