@@ -401,10 +401,15 @@ export function Sidebar(props: {
                 type="button"
                 aria-label={t("sidebar.openHost", { host: host.name })}
                 title={host.name}
-                className="flex size-8 items-center justify-center rounded-md hover:bg-sidebar-accent"
+                className="rail-host"
                 onClick={() => go({ name: "host", host: host.id })}
               >
-                <HostDot host={host} t={t} />
+                <span data-slot="host-initial" aria-hidden="true" className="rail-host-initial">
+                  {[...host.name][0]?.toUpperCase() ?? "?"}
+                </span>
+                <span className="rail-host-status">
+                  <HostDot host={host} t={t} />
+                </span>
               </button>
             ))}
           </div>

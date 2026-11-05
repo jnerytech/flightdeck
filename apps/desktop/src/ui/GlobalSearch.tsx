@@ -164,8 +164,10 @@ export function GlobalSearch(props: {
                 className="flex items-baseline gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent aria-selected:bg-accent"
                 onClick={() => choose(item)}
               >
-                <span>{item.label}</span>{" "}
-                <span className="truncate text-muted-foreground text-xs">{item.detail}</span>
+                <span className="shrink-0 whitespace-nowrap">{item.label}</span>{" "}
+                <span className="min-w-0 truncate text-muted-foreground text-xs">
+                  {item.detail}
+                </span>
                 {item.shortcut && (
                   <kbd className="keycap ml-auto shrink-0 bg-muted font-mono">{item.shortcut}</kbd>
                 )}
