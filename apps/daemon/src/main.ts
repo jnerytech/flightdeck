@@ -80,6 +80,7 @@ import { type Prepare, preparePersonas } from "./personas/prepare.ts";
 import { agentPublisher } from "./personas/publish.ts";
 import { Personas } from "./personas/store.ts";
 import { claudeCli, filePins, Plugins, pluginDecisionLog } from "./plugins/plugins.ts";
+import { KeepAwake, osPowerContext, type PowerContext } from "./power/keep-awake.ts";
 import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
@@ -589,6 +590,8 @@ export async function startDaemon(
     serviceContext?: (dryRun: boolean) => ServiceContext;
     /** Whether a port is free, for the cards' blocks; the real loopback probe when absent. */
     portProbe?: (port: number) => Promise<boolean>;
+    /** What keeps the computer awake (issue #163); the machine's own when absent. */
+    powerContext?: PowerContext;
   } = {},
 ): Promise<Daemon> {
   const configFile = configPath(args);
