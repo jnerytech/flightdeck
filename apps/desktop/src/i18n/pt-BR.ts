@@ -2906,6 +2906,7 @@ export const ptBR = {
   cardUi: {
     noIssueLink: "Esta issue não tem link para abrir",
     needWorktree: "Inicie o card antes de abrir o PR",
+    notRunning: "O card não está rodando",
     prAlreadyOpen: "O PR já está aberto",
     notFound: "Card não encontrado.",
     cost: "Custo do card",

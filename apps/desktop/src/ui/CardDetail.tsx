@@ -396,6 +396,8 @@ export const CardDetail = memo(function CardDetail(props: {
           )}
           <ActionButton
             variant="outline"
+            disabled={!card.sessionId && !card.queued}
+            disabledReason={t("cardUi.notRunning")}
             onClick={() => store.hostCommand(hostId, "card.stop", { cardId })}
           >
             {t("cardUi.stop")}

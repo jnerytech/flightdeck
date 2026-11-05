@@ -111,6 +111,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
     const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
     await tile.waitFor({ timeout: WAIT });
+    // Issue #188: the creation says so, with a way to the new card.
+    await c.page
+      .getByText(c.t("kanban.created", { title }), { exact: true })
+      .waitFor({ timeout: WAIT });
     await tile.getByRole("button", { name: title, exact: true }).click();
     await c.page.getByRole("button", { name: c.t("cardUi.start"), exact: true }).click();
     await open(c, { name: "card", host: ALFA, projectId: c.ids.project, cardId: c.ids.diffCard });

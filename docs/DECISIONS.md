@@ -3575,3 +3575,8 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 
 - **Done.** With two or more hosts online the new-session form has a Host field (changing it opens that host's form); the "New session" buttons of the empty window and the start screen use the host last used, not the first one; the Sessions list header has a New session button; the "no allowed folder" reason has a link to the host's page. The e2e journey `nova-sessao-host` was not run on the Pi (CI runs it).
 - **Not done.** Create sitting below the fold at 1280x800: it needs a layout pass on the form, not a one-line fix.
+
+## Board card to Done, journey J5 (issue #188)
+
+- **Done.** Creating a card, and starting it from the card menu, show a toast with "Open" that leads to the card (a success toast can now carry one button). Stop is off, with its reason, until the card has a session or waits in the queue. The e2e journey `card-diff` checks the creation toast.
+- **Not done.** One "Finish…" menu that explains the three ways to Done (Move, Complete, Merge and archive), the persona and workflow choice in the menu's Start, and Start/Complete enabled by state: they need a product decision on what each outcome means, so they stay in the issue.
