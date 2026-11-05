@@ -392,6 +392,20 @@ describe("orcamentos-ui", () => {
     expect(document.activeElement?.id).toBe("settings-budgets");
   });
 
+  test("typing in the Settings search does not pull the view back to the section it opened on", async () => {
+    const { store } = await online();
+    await act(async () => {
+      store.router.push({ name: "settings", section: "budgets" });
+    });
+    await settle(() => document.activeElement?.id === "settings-budgets");
+    const search = screen.getByLabelText("Buscar nas configurações") as HTMLInputElement;
+    search.focus();
+    await act(async () => {
+      fireEvent.change(search, { target: { value: "orçamentos" } });
+    });
+    expect(document.activeElement === search).toBe(true);
+  });
+
   test("Custos offers to set a budget, and the link opens the budgets", async () => {
     const { store } = await online();
     await act(async () => {

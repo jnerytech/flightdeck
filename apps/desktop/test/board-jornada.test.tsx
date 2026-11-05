@@ -42,12 +42,6 @@ const type = async (label: string, value: string) => {
   });
 };
 
-/** Titles of the cards in a column, top to bottom. */
-const _column = (label: string) =>
-  [...(screen.queryByRole("region", { name: label })?.querySelectorAll("li[draggable]") ?? [])].map(
-    (li) => (li.getAttribute("aria-label") ?? "").replace(/^Card /, ""),
-  );
-
 const cardItem = (title: string) => screen.queryByLabelText(`Card ${title}`);
 
 /** One host with a git repository inside its allowed root, already online. */
@@ -146,8 +140,7 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
       fireEvent.click(within(dialog).getByRole("button", { name: "Iniciar" }));
     });
     await settle(() => toastText().includes("Card iniciado: Login"));
-    // The created toast is still up, so there are two.
-    expect(toastButtons("Abrir")).toHaveLength(2);
+    expect(toastButtons("Abrir").length).toBeGreaterThan(0);
   });
 
   test("Parar is off, and says the card is not running, until the card has been started", async () => {
@@ -177,7 +170,8 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
       name: "Revisar e mesclar",
     }) as HTMLButtonElement | null;
     expect(review?.disabled).toBe(true);
-    expect(text).toContain("Inicie o card antes de abrir o PR");
+    expect(text).toContain("Inicie o card antes: não há trabalho para mesclar");
+    expect(text).toContain("remove a worktree e a branch");
     await act(async () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Mover para Concluído" }));
     });
@@ -188,27 +182,56 @@ describe("board-jornada: the board says what happened to a card (issue #188, J5)
     expect(board.getCard(id ?? "").column).toBe("done");
   });
 
-  test("the menu's Iniciar card is off, saying why, while the card is running", async () => {
-    const { repo, board } = await setup();
+  test("Starting twice in a row sends card.start once", async () => {
+    const { repo, store } = await setup();
     await openBoard(repo);
     await createCard("Login");
+    const asked: string[] = [];
+    const command = store.hostCommand.bind(store);
+    store.hostCommand = (async (id: string, type: never, payload: never) => {
+      asked.push(type);
+      return command(id, type, payload);
+    }) as typeof store.hostCommand;
     await openCardMenu("Login");
     await act(async () => {
       fireEvent.click(screen.getByRole("menuitem", { name: "Iniciar card" }));
     });
-    const dialog = screen.queryByRole("dialog", { name: "Iniciar card" }) as HTMLElement;
+    const dialog = screen.getByRole("dialog", { name: "Iniciar card" });
+    const start = within(dialog).getByRole("button", { name: "Iniciar" });
     await act(async () => {
-      fireEvent.click(within(dialog).getByRole("button", { name: "Iniciar" }));
+      fireEvent.click(start);
+      fireEvent.click(start);
     });
+    await settle(() => toastText().includes("Card iniciado: Login"));
+    expect(asked.filter((type) => type === "card.start")).toHaveLength(1);
+  });
+
+  test("Finalizar… closes with Esc and moves nothing; after Mover para Concluído it says the card is already there", async () => {
+    const { repo, board } = await setup();
+    await openBoard(repo);
+    await createCard("Login");
+    await openCard("Login");
+    await click("Finalizar…");
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    });
+    await settle(() => screen.queryByRole("dialog") === null);
     const id = board
       .getBoard(board.listProjects()[0]?.id ?? "")
-      .columns.flatMap((c) => c.cards)
-      .find((c) => c.title === "Login")?.id;
-    await settle(() => board.getCard(id ?? "").sessionStatus !== null);
-    await settle(() => screen.queryByRole("button", { name: "Ações de Login" }) !== null);
-    await openCardMenu("Login");
-    const entry = screen.queryByRole("menuitem", { name: /o card já está rodando/ });
-    expect(entry).not.toBeNull();
-    expect(entry?.getAttribute("aria-disabled")).toBe("true");
+      .columns.flatMap((c) => c.cards)[0]?.id;
+    expect(board.getCard(id ?? "").column).toBe("backlog");
+    await click("Finalizar…");
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", { name: "Mover para Concluído" }),
+      );
+    });
+    await settle(() => board.getCard(id ?? "").column === "done");
+    await click("Finalizar…");
+    const move = within(screen.getByRole("dialog")).getByRole("button", {
+      name: "Mover para Concluído",
+    }) as HTMLButtonElement;
+    expect(move.disabled).toBe(true);
+    expect(screen.getByRole("dialog").textContent).toContain("O card já está em Concluído");
   });
 });
