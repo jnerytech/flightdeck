@@ -1,9 +1,12 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { delimiter } from "node:path";
 import { ServeFailed, startPrivateServer } from "../src/runtime/opencode-serve.ts";
 import { manualTimers } from "./fake-acp-agent.ts";
 import { installFakeOpenCode } from "./fake-opencode.ts";
 import { poll, tempDir } from "./helpers.ts";
+
+// Each case boots a Bun process or three: more than the default 5 s on a loaded machine.
+setDefaultTimeout(30_000);
 
 const stops: Array<() => Promise<void>> = [];
 afterEach(async () => {
@@ -93,10 +96,10 @@ describe("opencode-serve: one private server for a preflight (issue #243)", () =
 
   test("a server that never listens fails at the limit with its process ended, and writes nothing to the ledger", async () => {
     const timers = manualTimers();
-    const { ledger, opts } = setup("hang", { timers });
+    const { fake, ledger, opts } = setup("hang", { timers });
     const starting = startPrivateServer(opts);
-    // Not yet: the limit has not passed.
-    await Bun.sleep(300);
+    // The process is up and silent; only then does the limit pass.
+    expect(await poll(() => fake.calls().some((c) => c.args[0] === "serve"))).toBe(true);
     timers.advance(30_000);
     expect(await refusal(starting)).toBe("opencode serve did not listen in time");
     expect(ledger).toEqual([]);
@@ -112,7 +115,7 @@ describe("opencode-serve: one private server for a preflight (issue #243)", () =
     const silent = setup("silent", { timers });
     const server = await silent.start();
     const asking = server.get("/api/config");
-    await Bun.sleep(300);
+    expect(await poll(() => silent.fake.calls().some((c) => c.args[0] === "GET"))).toBe(true);
     timers.advance(30_000);
     expect(await refusal(asking)).toBe("/api/config did not answer in time");
     const bad = await setup("http500").start();

@@ -131,7 +131,21 @@ describe("opencode-wiring", () => {
       true,
       sessionId,
     ]);
-    expect(fake.calls().filter((c) => c.args[0] === "api").length).toBeGreaterThanOrEqual(4);
+    // One private server for the preflight's three checks (issue #243); `api --standalone` is left
+    // to the canary of discovery and to the model list.
+    const calls = fake.calls();
+    expect(calls.filter((c) => c.args[0] === "serve")).toHaveLength(1);
+    expect(
+      calls
+        .filter((c) => c.args[0] === "GET")
+        .map((c) => [c.args[1], c.authorized])
+        .sort(),
+    ).toEqual([
+      ["/api/agent", true],
+      ["/api/config", true],
+      ["/api/permission/saved", true],
+    ]);
+    expect(calls.filter((c) => c.args[0] === "api")).toHaveLength(1);
   });
 
   test("the real kill: a group that is gone throws (the killer falls back), and a run spawns", () => {
