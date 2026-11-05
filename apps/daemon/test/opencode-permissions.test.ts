@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { AsyncQueue } from "../src/async-queue.ts";
 import { FlightdeckError } from "../src/errors.ts";
 import { OpenCodeRuntime } from "../src/runtime/opencode-runtime.ts";
@@ -12,7 +15,7 @@ import type {
 import { FakeAcpAgent, manualTimers, turns } from "./fake-acp-agent.ts";
 import { poll } from "./helpers.ts";
 
-function setup(canUseTool: CanUseToolFn, over: Partial<StartOptions> = {}) {
+function setup(canUseTool: CanUseToolFn, over: Partial<StartOptions> = {}, consume = true) {
   const agents: FakeAcpAgent[] = [];
   const runtime = new OpenCodeRuntime({
     path: "/bin/opencode",
@@ -29,14 +32,15 @@ function setup(canUseTool: CanUseToolFn, over: Partial<StartOptions> = {}) {
   });
   const run = runtime.start({ cwd: "/w", permissionMode: "default", env: {}, canUseTool, ...over });
   const out = { events: [] as RuntimeEvent[], error: null as unknown };
-  void (async () => {
+  const reader = async () => {
     try {
       for await (const event of run.events) out.events.push(event);
     } catch (error) {
       out.error = error;
     }
-  })();
-  return { run, agents, out };
+  };
+  if (consume) void reader();
+  return { run, agents, out, reader };
 }
 
 /** Starts a turn and answers once the prompt is open at the agent. */
@@ -235,5 +239,100 @@ describe("opencode-permissions", () => {
         "model=opencode/crouton-alpha-free",
       ],
     );
+  });
+
+  test("reads, globs and greps whose real path is inside the folder are allowed without a question", async () => {
+    const root = realTempDir("fd-oc-perm-");
+    const cwd = join(root, "project");
+    const outside = join(root, "outside");
+    mkdirSync(join(cwd, "src"), { recursive: true });
+    mkdirSync(outside);
+    writeFileSync(join(cwd, "src", "a.ts"), "x");
+    writeFileSync(join(cwd, ".env"), "SECRET=1");
+    writeFileSync(join(outside, "secret.txt"), "x");
+    symlinkSync(outside, join(cwd, "docs"));
+    const asked: string[] = [];
+    const ctx = setup(
+      async (name, input) => {
+        asked.push(
+          `${name} ${String((input as { file_path?: string; path?: string }).file_path ?? (input as { path?: string }).path ?? "")}`,
+        );
+        return { behavior: "allow" };
+      },
+      { cwd },
+    );
+    const agent = await turn(ctx.run, ctx.agents);
+    const read = (id: string, name: string, rawInput: Record<string, unknown>) =>
+      agent.ask("session/request_permission", {
+        sessionId: "ses_1",
+        toolCall: { toolCallId: id, name, rawInput },
+      });
+    expect(await read("r1", "read", { path: join(cwd, "src", "a.ts") })).toEqual(selected("once"));
+    expect(await read("r2", "glob", { pattern: "*.ts" })).toEqual(selected("once"));
+    expect(await read("r3", "grep", { pattern: "x", path: "src" })).toEqual(selected("once"));
+    expect(asked).toEqual([]);
+    expect(await read("r4", "read", { path: join(cwd, "docs", "secret.txt") })).toEqual(
+      selected("once"),
+    );
+    expect(await read("r5", "read", { path: join(outside, "secret.txt") })).toEqual(
+      selected("once"),
+    );
+    expect(await read("r6", "read", { path: join(cwd, ".env") })).toEqual(selected("once"));
+    expect(await read("r7", "read", { path: join(cwd, "missing.ts") })).toEqual(selected("once"));
+    expect(asked).toEqual([
+      `Read ${join(cwd, "docs", "secret.txt")}`,
+      `Read ${join(outside, "secret.txt")}`,
+      `Read ${join(cwd, ".env")}`,
+      `Read ${join(cwd, "missing.ts")}`,
+    ]);
+  });
+
+  test("a request whose run stopped at the card's barrier is cancelled without asking anyone", async () => {
+    let asked = 0;
+    const ctx = setup(
+      async () => {
+        asked++;
+        return { behavior: "allow" };
+      },
+      {},
+      false,
+    );
+    ctx.run.send("go");
+    expect(await poll(() => (ctx.agents[0]?.openPrompts ?? 0) === 1)).toBe(true);
+    const answer = (ctx.agents[0] as FakeAcpAgent).ask(
+      "session/request_permission",
+      shellRequest("t1"),
+    );
+    await turns(5);
+    await ctx.run.close();
+    expect(await answer).toEqual(cancelled);
+    expect(asked).toBe(0);
+  });
+
+  test("a request that carries less input than an earlier update asks with the fuller one", async () => {
+    const inputs: unknown[] = [];
+    const ctx = setup(async (_name, input) => {
+      inputs.push(input);
+      return { behavior: "allow" };
+    });
+    const agent = await turn(ctx.run, ctx.agents);
+    agent.update({
+      sessionUpdate: "tool_call",
+      toolCallId: "t1",
+      name: "shell",
+      status: "pending",
+      rawInput: {},
+    });
+    agent.update({
+      sessionUpdate: "tool_call_update",
+      toolCallId: "t1",
+      status: "in_progress",
+      rawInput: { command: "ls", cwd: "/w" },
+    });
+    await agent.ask("session/request_permission", {
+      sessionId: "ses_1",
+      toolCall: { toolCallId: "t1", name: "shell", rawInput: { cwd: "/w" } },
+    });
+    expect(inputs).toEqual([{ command: "ls", cwd: "/w" }]);
   });
 });
