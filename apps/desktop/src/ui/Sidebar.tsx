@@ -423,7 +423,7 @@ export function Sidebar(props: {
               }
             />
             {hostsOpen && (
-              <ul className="flex flex-col gap-0.5">
+              <ul data-slot="sidebar-hosts" className="flex flex-col gap-0.5">
                 {state.hosts.map((host) => (
                   <li key={host.id} className="group flex items-center gap-1">
                     <button

@@ -208,3 +208,22 @@ describe("layout-guards: what the findings mean for the build", () => {
     });
   });
 });
+
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { KEY_REGIONS } from "../lib/layout-guards.ts";
+
+describe("layout-guards: the key regions carry the data-slot the guards look for (a cheap guard on the source)", () => {
+  const sources = [
+    "components/approval/approval-card.tsx",
+    "ui/Sidebar.tsx",
+    "ui/BoardView.tsx",
+    "components/layout/form.tsx",
+  ].map((file) => readFileSync(join(import.meta.dir, "../../apps/desktop/src", file), "utf8"));
+
+  test("each key region is named in the page it belongs to", () => {
+    for (const { slot } of KEY_REGIONS) {
+      expect(sources.some((text) => text.includes(`data-slot="${slot}"`))).toBe(true);
+    }
+  });
+});

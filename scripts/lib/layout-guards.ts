@@ -247,15 +247,21 @@ export function judge(
   findings: Finding[],
   baseline: Baseline | null,
 ): { failures: string[]; fixed: string[] } {
-  void screen;
-  void findings;
-  void baseline;
-  void CONTRACT;
-  return { failures: [], fixed: [] };
+  const say = (f: Finding) => `${screen}: ${f.rule} ${f.path} (${f.detail})`;
+  const contract = findings.filter((f) => CONTRACT.has(f.rule)).map(say);
+  if (!baseline) return { failures: contract, fixed: [] };
+  const { fresh, fixed } = compareToBaseline(
+    screen,
+    findings.filter((f) => !CONTRACT.has(f.rule)),
+    baseline,
+  );
+  return { failures: [...contract, ...fresh.map(say)], fixed };
 }
 
 /** The baseline file, or `null` when there is none yet. */
 export function loadBaseline(read: () => string | null): Baseline | null {
-  void read;
-  return {};
+  const text = read();
+  if (text === null) return null;
+  const parsed = JSON.parse(text) as Record<string, unknown>;
+  return Object.fromEntries(Object.keys(parsed).map((key) => [key, true as const]));
 }

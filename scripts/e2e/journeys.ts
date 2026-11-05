@@ -4,12 +4,24 @@
  * sideways, and the end of the long list shows after scrolling). The runner is `@playwright/test`
  * (scripts/e2e/journeys.e2e.ts); this file holds the journeys themselves.
  */
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { expect, type Page } from "@playwright/test";
 import type { Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../demo-seed.ts";
 import { acoesAction, DANGER_SESSION, OVERFLOW_VIEWPORTS, VIEWPORTS } from "../lib/e2e-journeys.ts";
 import { ensureOnline } from "../lib/e2e-online.ts";
+import {
+  BARS,
+  type Finding,
+  findingKey,
+  GUARD_SIZES,
+  judge,
+  KEY_REGIONS,
+  layoutFindings,
+  loadBaseline,
+} from "../lib/layout-guards.ts";
 
 const ALFA = "demo-alfa";
 export const WAIT = 15_000;
@@ -465,49 +477,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
   },
 };
 
-/** What sticks out of the window sideways, outside a box that scrolls. */
-async function overflow(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
-    const width = window.innerWidth;
-    const found: string[] = [];
-    if (document.documentElement.scrollWidth > width) found.push("a página rola para o lado");
-    for (const el of document.querySelectorAll<HTMLElement>("body *")) {
-      const box = el.getBoundingClientRect();
-      if (box.width === 0 || box.height === 0 || box.right <= width + 1) continue;
-      let scrolls = false;
-      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
-        const x = getComputedStyle(p).overflowX;
-        if (x === "auto" || x === "scroll" || x === "hidden" || x === "clip") scrolls = true;
-      }
-      const visibility = getComputedStyle(el);
-      if (!scrolls && visibility.display !== "none" && visibility.visibility !== "hidden") {
-        found.push(`${el.tagName.toLowerCase()} ${String(el.className).slice(0, 50)}`);
-      }
-      if (found.length >= 5) break;
-    }
-    return found;
-  });
-}
-
-/** The page never scrolls sideways: when it does, the widest element sticking out is named. */
+/** The page never scrolls sideways: when it does, the guards name the widest element. */
 async function pageScrollsSideways(page: Page): Promise<string | null> {
-  return page.evaluate(() => {
-    const root = document.documentElement;
-    if (root.scrollWidth <= root.clientWidth && document.body.scrollWidth <= root.clientWidth) {
-      return null;
-    }
-    let widest = { name: "?", right: 0 };
-    for (const el of document.querySelectorAll<HTMLElement>("body *")) {
-      const box = el.getBoundingClientRect();
-      if (box.width > 0 && box.right > widest.right) {
-        widest = {
-          name: `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 60)}`,
-          right: box.right,
-        };
-      }
-    }
-    return `scrollWidth ${root.scrollWidth} > ${root.clientWidth}; widest ${widest.name} ends at ${Math.round(widest.right)}`;
-  });
+  const found: Finding[] = await page.evaluate(layoutFindings, {});
+  const sideways = found.find((finding) => finding.rule === "sideways");
+  return sideways ? `${sideways.path}: ${sideways.detail}` : null;
 }
 
 /** The crumbs end before the bell, and what does not fit is cut with an ellipsis (issue #133). */
@@ -737,32 +711,11 @@ export async function layout(c: Context, problems: string[]) {
   if (new Set(lefts).size > 1) {
     problems.push(`${c.lang}: o início das abas muda com o título (${lefts.join(" ≠ ")})`);
   }
+  // The geometry guards (issue #192), at three window sizes, on the longest labels (pt-BR). What
+  // they find is named by data-slot path; the heuristic rules fail only when new against the baseline.
+  if (c.lang === "pt-BR") await geometryGuards(c, screens, problems);
   for (const viewport of VIEWPORTS) {
     await c.page.setViewportSize(viewport);
-    for (const [name, route] of screens) {
-      await open(c, route);
-      const where = `${c.lang} ${viewport.width}x${viewport.height} ${name}`;
-      for (const issue of await overflow(c.page)) problems.push(`${where}: ${issue}`);
-      if (name === "sessao") {
-        // Both states of the card (the first time a session is seen it starts open): the summary
-        // never overlaps the conversation, as found and after flipping it.
-        const toggle = c.page.locator("[data-slot='recap'] button[aria-expanded]").first();
-        const state = async () =>
-          (await toggle.count()) > 0 && (await toggle.getAttribute("aria-expanded")) === "true"
-            ? "aberto"
-            : "fechado";
-        const first = await recapOverlap(c.page);
-        if (first) problems.push(`${where}: ${first} (${await state()})`);
-        if ((await toggle.count()) > 0) {
-          await toggle.click();
-          const flipped = await recapOverlap(c.page);
-          if (flipped) problems.push(`${where}: ${flipped} (${await state()})`);
-        }
-      }
-    }
-    for (const issue of await folderDialogProblems(c)) {
-      problems.push(`${c.lang} ${viewport.width}x${viewport.height} pasta: ${issue}`);
-    }
     await open(c, { name: "hub" });
     const hidden = await lastRowProblem(c.page);
     if (hidden) {
@@ -771,9 +724,40 @@ export async function layout(c: Context, problems: string[]) {
       );
     }
   }
-  // The smallest window the app allows (tauri.conf.json), where the longest labels are tightest.
-  await c.page.setViewportSize({ width: 720, height: 480 });
-  for (const issue of await folderDialogProblems(c)) {
-    problems.push(`${c.lang} 720x480 pasta: ${issue}`);
+}
+
+const BASELINE_FILE = join(import.meta.dirname, "../layout-findings-baseline.json");
+const FINDINGS_FILE = join(process.cwd(), "playwright-report", "layout-findings.json");
+
+/** Every screen at every guard size: findings by data-slot path, judged against the baseline. */
+async function geometryGuards(c: Context, screens: Array<[string, Route]>, problems: string[]) {
+  const baseline = loadBaseline(() =>
+    existsSync(BASELINE_FILE) ? readFileSync(BASELINE_FILE, "utf8") : null,
+  );
+  const seen: Record<string, string> = {};
+  const fixed: string[] = [];
+  for (const size of GUARD_SIZES) {
+    await c.page.setViewportSize(size);
+    for (const [name, route] of screens) {
+      await open(c, route);
+      const screen = `${name}@${size.width}`;
+      const found: Finding[] = await c.page.evaluate(layoutFindings, {
+        // The key regions are a contract at the usual window: the smallest one is #135's business.
+        regions: size.width >= 1280 ? KEY_REGIONS : [],
+        bars: BARS,
+      });
+      for (const finding of found) seen[findingKey(screen, finding)] = finding.detail;
+      const verdict = judge(screen, found, baseline);
+      problems.push(...verdict.failures);
+      fixed.push(...verdict.fixed);
+    }
+  }
+  // What the run saw, for the baseline file (the report folder is an artifact of the CI run).
+  mkdirSync(dirname(FINDINGS_FILE), { recursive: true });
+  writeFileSync(FINDINGS_FILE, JSON.stringify(seen, null, 2));
+  if (fixed.length > 0) {
+    problems.push(
+      `layout-findings-baseline.json holds findings that are gone: remove\n${fixed.join("\n")}`,
+    );
   }
 }
