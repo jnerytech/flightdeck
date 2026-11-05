@@ -2,7 +2,7 @@ import type { Card, WorkflowInfo } from "@flightdeck/protocol";
 import { useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
-import { NativeSelect } from "@/components/layout/form";
+import { Field, NativeSelect } from "@/components/layout/form";
 import { Inline, Stack } from "@/components/layout/stack";
 import { Badge } from "@/components/ui/badge";
 import { useT } from "@/i18n/context";
@@ -108,19 +108,23 @@ export function CardDeps(props: {
             <p className="text-muted-foreground text-xs">{t("deps.more", { count: more })}</p>
           )}
           <Inline gap={2}>
-            <NativeSelect
-              inline
-              aria-label={t("deps.addLabel")}
-              value={picked}
-              onChange={(e) => setPicked(e.target.value)}
-            >
-              <option value="">{""}</option>
-              {offered.map((other) => (
-                <option key={other.id} value={other.id}>
-                  {other.title}
-                </option>
-              ))}
-            </NativeSelect>
+            <Field label={t("deps.addLabel")}>
+              {(control) => (
+                <NativeSelect
+                  {...control}
+                  inline
+                  value={picked}
+                  onChange={(e) => setPicked(e.target.value)}
+                >
+                  <option value="">{t("deps.pick")}</option>
+                  {offered.map((other) => (
+                    <option key={other.id} value={other.id}>
+                      {other.title}
+                    </option>
+                  ))}
+                </NativeSelect>
+              )}
+            </Field>
             <ActionButton
               variant="outline"
               onClick={() =>
@@ -131,15 +135,19 @@ export function CardDeps(props: {
             </ActionButton>
           </Inline>
           <Inline gap={2}>
-            <NativeSelect
-              inline
-              aria-label={t("deps.whenLabel")}
-              value={card.unblockWhen}
-              onChange={(e) => update({ unblockWhen: e.target.value })}
-            >
-              <option value="done">{t("deps.when.done")}</option>
-              <option value="merged">{t("deps.when.merged")}</option>
-            </NativeSelect>
+            <Field label={t("deps.whenLabel")}>
+              {(control) => (
+                <NativeSelect
+                  {...control}
+                  inline
+                  value={card.unblockWhen}
+                  onChange={(e) => update({ unblockWhen: e.target.value })}
+                >
+                  <option value="done">{t("deps.when.done")}</option>
+                  <option value="merged">{t("deps.when.merged")}</option>
+                </NativeSelect>
+              )}
+            </Field>
             <label className="text-sm">
               <Inline gap={2}>
                 <input

@@ -1,6 +1,7 @@
 import type { Card } from "@flightdeck/protocol";
 import { useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
+import { Field } from "@/components/layout/form";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
@@ -13,26 +14,30 @@ export function CardHours(props: { store: AppStore; hostId: string; card: Card }
   const parsed = text.trim() === "" ? null : Number(text);
   const valid = parsed === null || Number.isFinite(parsed);
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Input
-        aria-label={t("roiUi.cardHours")}
-        inputMode="decimal"
-        className="w-28"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-      />
-      <ActionButton
-        variant="outline"
-        onClick={async () => {
-          if (!valid) return;
-          await store.hostCommand(hostId, "card.update", {
-            cardId: card.id,
-            estimateHours: parsed,
-          });
-        }}
-      >
-        {t("roiUi.cardHoursSave")}
-      </ActionButton>
-    </div>
+    <Field label={t("roiUi.cardHours")}>
+      {(control) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            {...control}
+            inputMode="decimal"
+            className="w-28"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <ActionButton
+            variant="outline"
+            onClick={async () => {
+              if (!valid) return;
+              await store.hostCommand(hostId, "card.update", {
+                cardId: card.id,
+                estimateHours: parsed,
+              });
+            }}
+          >
+            {t("roiUi.cardHoursSave")}
+          </ActionButton>
+        </div>
+      )}
+    </Field>
   );
 }
