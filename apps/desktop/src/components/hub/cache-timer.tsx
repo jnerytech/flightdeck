@@ -2,6 +2,7 @@ import { Timer } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import type { Key } from "../../i18n/index.ts";
 import type { AppStore } from "../../lib/app-store.ts";
 import { cacheTimer, spokenParts } from "../../lib/cache-timer.ts";
 
@@ -34,13 +35,10 @@ export function CacheTimer(
   if (!view) return null;
   const cold = view.phase === "cold";
   const { minutes, seconds } = spokenParts(view.remainingMs);
+  const unit = (n: number, one: Key, many: Key) => (n > 0 ? t(n === 1 ? one : many, { n }) : "");
   const spoken = [
-    minutes > 0
-      ? t(minutes === 1 ? "cacheTimer.minutesOne" : "cacheTimer.minutes", { n: minutes })
-      : "",
-    seconds > 0
-      ? t(seconds === 1 ? "cacheTimer.secondsOne" : "cacheTimer.seconds", { n: seconds })
-      : "",
+    unit(minutes, "cacheTimer.minutesOne", "cacheTimer.minutes"),
+    unit(seconds, "cacheTimer.secondsOne", "cacheTimer.seconds"),
   ]
     .filter(Boolean)
     .join(" ");

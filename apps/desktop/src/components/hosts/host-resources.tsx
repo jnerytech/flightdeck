@@ -19,7 +19,14 @@ type Level = "ok" | "high" | "critical";
 
 /** 80% is high and 90% critical; they are said in words as well as drawn. */
 export function levelOf(percent: number): Level {
-  return percent >= 90 ? "critical" : percent >= 80 ? "high" : "ok";
+  if (percent >= 90) return "critical";
+  return percent >= 80 ? "high" : "ok";
+}
+
+/** The line that stands in for the process table when there is nothing to list. */
+function emptyNote(measured: boolean, count: number) {
+  if (!measured) return "resources.notMeasured" as const;
+  return count === 0 ? ("resources.empty" as const) : null;
 }
 
 function Meter(
@@ -124,6 +131,7 @@ export function HostResources(
   }, [reading, read, props.everyMs]);
   if (!offered) return null;
   const rows = [...(snap?.rows ?? [])].sort((a, b) => b.rssBytes - a.rssBytes);
+  const note = snap ? emptyNote(snap.measured, rows.length) : null;
   return (
     <Panel title={t("resources.title")} label={t("resources.title")} slot="host-resources">
       {snap && (
@@ -151,10 +159,8 @@ export function HostResources(
               {t("resources.load", { n: snap.loadPercent })}
             </p>
           )}
-          {!snap.measured ? (
-            <p className="text-muted-foreground text-sm">{t("resources.notMeasured")}</p>
-          ) : rows.length === 0 ? (
-            <p className="text-muted-foreground text-sm">{t("resources.empty")}</p>
+          {note ? (
+            <p className="text-muted-foreground text-sm">{t(note)}</p>
           ) : (
             <table className="w-full text-sm">
               <caption className="sr-only">{t("resources.list")}</caption>
