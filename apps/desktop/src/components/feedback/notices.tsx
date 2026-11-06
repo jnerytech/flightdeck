@@ -87,6 +87,8 @@ export const Notices = memo(function Notices(props: { store: AppStore }) {
   const { t } = store.i18n;
   /** Notices already handed to sonner. */
   const shown = useRef(new Set<number>());
+  /** The error toasts on screen, by notice: one whose notice left the list goes too (#581). */
+  const errors = useRef(new Map<number, string>());
   // sonner keeps its toasts per module: ids carry this instance's prefix, so another store's
   // notices (numbered from 1 too) never take over these, and leaving clears them.
   const [prefix] = useState(() => `n${++instances}-`);
@@ -97,6 +99,12 @@ export const Notices = memo(function Notices(props: { store: AppStore }) {
     [],
   );
   useEffect(() => {
+    const listed = new Set(state.notices.map((notice) => notice.id));
+    for (const [noticeId, toastId] of errors.current) {
+      if (listed.has(noticeId)) continue;
+      toast.dismiss(toastId);
+      errors.current.delete(noticeId);
+    }
     for (const notice of state.notices) {
       if (shown.current.has(notice.id)) continue;
       shown.current.add(notice.id);
@@ -113,6 +121,7 @@ export const Notices = memo(function Notices(props: { store: AppStore }) {
       }
       const { title, detail } = translateError(notice.code, notice.text, t, notice);
       const id = `${prefix}e${notice.id}`;
+      errors.current.set(notice.id, id);
       toast.custom(
         () => (
           <ErrorToast

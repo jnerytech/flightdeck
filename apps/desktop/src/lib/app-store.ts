@@ -128,6 +128,7 @@ import {
 } from "./inbox.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
+import { sameNotice } from "./notice-lifetime.ts";
 import { externalRequestNotification, summaryNotifications } from "./notify.ts";
 import { pairingErrorText } from "./pairing-text.ts";
 import { basename } from "./paths.ts";
@@ -2428,9 +2429,10 @@ export class AppStore {
     }
     if (error instanceof RequestError && error.hostId) notice.hostId = error.hostId;
     if (retry) notice.retry = retry;
+    // The same error again takes the old one's place (#581): one toast, the newest, with a fresh timer.
     this.update({
       error: text ?? describeError(error),
-      notices: [...this.state.notices, notice],
+      notices: [...this.state.notices.filter((n) => !sameNotice(n, notice)), notice],
     });
   }
 
