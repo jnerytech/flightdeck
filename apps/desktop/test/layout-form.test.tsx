@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
+import { InstantClock } from "./in-flight-clock.tsx";
 
 registerDom();
 const { cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -191,11 +192,13 @@ describe("form-layout: a step back in a wizard", () => {
 describe("form-layout: a primary that is working", () => {
   test("busy disables the primary at once, marks it aria-busy and shows a spinner", () => {
     const { container } = render(
-      <Form onSubmit={() => {}}>
-        <FormActions submit="Conectar" busy />
-      </Form>,
+      <InstantClock>
+        <Form onSubmit={() => {}}>
+          <FormActions submit="Conectar" busy />
+        </Form>
+      </InstantClock>,
     );
-    const primary = screen.queryByRole("button", { name: "Conectar" }) as HTMLButtonElement;
+    const primary = screen.queryByRole("button", { name: /Conectar/ }) as HTMLButtonElement;
     expect(primary.disabled).toBe(true);
     expect(primary.getAttribute("aria-busy")).toBe("true");
     expect(container.querySelector("[data-actions] svg.animate-spin")).not.toBeNull();

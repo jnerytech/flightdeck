@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import type { Project } from "@flightdeck/protocol";
 import { type core, z } from "zod";
 import { git } from "../board/command.ts";
+import { refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
 import { FlightdeckError } from "../errors.ts";
 import { hashOf } from "../workflows/repo.ts";
@@ -195,12 +196,21 @@ interface RunSource {
 /** The run.yaml as committed on `base`, never the card's worktree (the agent could write it). */
 async function runConfigSource(repo: string, base: string): Promise<RunSource | null> {
   const listed = must(
-    await git(repo, "ls-tree", "-z", "--name-only", base, "--", RUN_CONFIG_PATH),
+    await git(
+      repo,
+      "ls-tree",
+      "-z",
+      "--name-only",
+      "--end-of-options",
+      refArg(base),
+      "--",
+      RUN_CONFIG_PATH,
+    ),
     "git ls-tree",
   );
   if (!listed.stdout.split("\0").includes(RUN_CONFIG_PATH)) return null;
   const { stdout: source } = must(
-    await git(repo, "show", `${base}:${RUN_CONFIG_PATH}`),
+    await git(repo, "show", "--end-of-options", `${refArg(base)}:${RUN_CONFIG_PATH}`),
     "git show",
   );
   return { source, hash: hashOf(source) };

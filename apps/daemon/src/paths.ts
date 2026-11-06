@@ -21,6 +21,17 @@ export function isInside(root: string, child: string): boolean {
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 }
 
+/** The roots as written and, where they exist, as their real paths: a symlinked root is one place under two names. */
+export async function rootNames(roots: readonly string[]): Promise<string[]> {
+  const names = await Promise.all(
+    roots.map(async (root) => {
+      const at = resolve(root);
+      return [at, await realpath(at).catch(() => at)];
+    }),
+  );
+  return [...new Set(names.flat())];
+}
+
 /** Whether two paths name the same place, case blind where the file system is. */
 export function samePath(a: string, b: string): boolean {
   const norm = (p: string) => (caseInsensitive ? resolve(p).toLowerCase() : resolve(p));

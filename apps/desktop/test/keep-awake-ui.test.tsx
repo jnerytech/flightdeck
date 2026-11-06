@@ -1,0 +1,153 @@
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { liveScreen, registerDom } from "./dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { waiter } from "./wait.ts";
+
+registerDom();
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
+const screen = liveScreen(within);
+const { AppStore } = await import("../src/lib/app-store.ts");
+const { App } = await import("../src/ui/App.tsx");
+const { KeepAwakePanel } = await import("../src/components/hosts/keep-awake-panel.tsx");
+const { TContext } = await import("../src/i18n/context.tsx");
+
+setDefaultTimeout(20_000);
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  cleanup();
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+const settle = waiter(4000);
+
+async function hostPage(
+  language: "en" | "pt-BR",
+  keepAwake?: { held?: boolean; reason?: "no-inhibitor" | "start-failed" | "wsl" },
+  open = true,
+) {
+  const d = makeDaemon(cleanups, keepAwake ? { keepAwake } : {});
+  const store = new AppStore(memoryPlatform(false, language).platform, { baseDelayMs: 60_000 });
+  cleanups.push(() => store.dispose());
+  render(<App store={store} />);
+  await act(async () => {
+    await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+  });
+  await settle(() => store.getState().hosts[0]?.status === "online");
+  const hostId = store.getState().hosts[0]?.id ?? "";
+  if (open) await act(async () => store.router.push({ name: "host", host: hostId }));
+  return Object.assign(store, { hostId, d });
+}
+
+const press = async (name: string) => {
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name }));
+  });
+};
+
+describe("keep-awake-ui: the host page's switch (#163)", () => {
+  test("it says what it does, whether it is on, and turns off and on again", async () => {
+    const store = await hostPage("en", {});
+    await settle(() => screen.queryByText("Keep this computer awake") !== null);
+    expect(screen.queryByText(/screen may still turn off/)).not.toBeNull();
+    expect(
+      screen.queryByText("On: the computer stays awake only while sessions run."),
+    ).not.toBeNull();
+    await press("Turn off");
+    await settle(() => store.getState().hosts[0]?.hostInfo?.keepAwake?.enabled === false);
+    await settle(() => screen.queryByText("Off: the computer sleeps as the system says.") !== null);
+    await press("Turn on");
+    await settle(() => store.getState().hosts[0]?.hostInfo?.keepAwake?.enabled === true);
+  });
+
+  test("while it holds, the page says so", async () => {
+    await hostPage("en", { held: true });
+    await settle(() => screen.queryByText("Holding the computer awake now.") !== null);
+  });
+
+  test("when nothing can hold it, the reason is said in words", async () => {
+    await hostPage("en", { reason: "no-inhibitor" });
+    await settle(
+      () =>
+        screen.queryByText(
+          "Nothing on this computer can hold it awake (no systemd-inhibit, caffeinate or PowerShell).",
+        ) !== null,
+    );
+  });
+
+  test("in Portuguese too", async () => {
+    await hostPage("pt-BR", {});
+    await settle(() => screen.queryByText("Manter este computador acordado") !== null);
+    expect(
+      screen.queryByText("Ligado: o computador fica acordado só enquanto há sessões."),
+    ).not.toBeNull();
+  });
+
+  test("a host that does not announce it shows no switch", async () => {
+    await hostPage("en");
+    await settle(() => screen.queryByText("Sessions without permission prompts") !== null);
+    expect(screen.queryByText("Keep this computer awake")).toBeNull();
+  });
+
+  test("opening the page reads the status again: what changed since the host connected is shown (review: stale panel)", async () => {
+    const store = await hostPage("en", { held: false }, false);
+    // The sessions started after the app connected: the host holds now.
+    store.d.setKeepAwake({ held: true, method: "systemd-inhibit" });
+    await act(async () => store.router.push({ name: "host", host: store.hostId }));
+    await settle(() => screen.queryByText("Holding the computer awake now.") !== null);
+  });
+
+  test("while the page stays open, a session starting makes it read the status again", async () => {
+    const store = await hostPage("en", { held: false });
+    await settle(
+      () => screen.queryByText("On: the computer stays awake only while sessions run.") !== null,
+    );
+    expect(screen.queryByText("Holding the computer awake now.")).toBeNull();
+    store.d.setKeepAwake({ held: true, method: "systemd-inhibit" });
+    // Started on the host, as another client or a card run would: the page stays where it is.
+    await act(async () => {
+      await store.d.manager.create({ cwd: store.d.project, prompt: "oi", name: "s1" });
+    });
+    await settle(() => screen.queryByText("Holding the computer awake now.") !== null);
+  });
+
+  test("a WSL host says why it holds nothing, in both languages", async () => {
+    await hostPage("en", { reason: "wsl" });
+    await settle(
+      () =>
+        screen.queryByText(
+          "This host runs inside WSL and cannot keep Windows awake. Turn it on for the Windows host.",
+        ) !== null,
+    );
+    cleanup();
+    await hostPage("pt-BR", { reason: "wsl" });
+    await settle(
+      () =>
+        screen.queryByText(
+          "Este host roda dentro do WSL e não consegue manter o Windows acordado. Ligue no host do Windows.",
+        ) !== null,
+    );
+  });
+
+  test("a page opened before the host's info arrived reads it again once it does (#484)", async () => {
+    // On a slow machine the page can open while the connect's first host.info is on its way, and
+    // that answer may be older than what the host holds now.
+    const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    const reloads: string[] = [];
+    store.reloadHostInfo = async (hostId: string) => {
+      reloads.push(hostId);
+    };
+    const status = { enabled: true, held: false, method: null, reason: null };
+    const host = (hostInfo: unknown) => ({ id: "h1", sessions: [], hostInfo }) as never;
+    const page = (hostInfo: unknown) => (
+      <TContext.Provider value={store.i18n.t}>
+        <KeepAwakePanel store={store} host={host(hostInfo)} />
+      </TContext.Provider>
+    );
+    const view = render(page(null));
+    expect(reloads).toEqual([]);
+    await act(async () => {
+      view.rerender(page({ keepAwake: status }));
+    });
+    expect(reloads).toEqual(["h1"]);
+  });
+});

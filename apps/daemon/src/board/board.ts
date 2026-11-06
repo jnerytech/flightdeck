@@ -9,6 +9,8 @@ import {
   type BoardResult,
   type EffortLevel,
   IssuesConfig,
+  inSequence,
+  isBranchName,
   type PermissionUpdate,
   type PersonaRef,
   type PersonaSubagentsMode,
@@ -30,6 +32,7 @@ import type { SecretScanner } from "../snippets/model.ts";
 import { ulid } from "../ulid.ts";
 import { type CheckRunner, shellCheckRunner } from "../workflows/check-runner.ts";
 import { WorkflowEngine } from "../workflows/engine.ts";
+import { folderRemoving } from "../worktrees/locks.ts";
 import { type BoardEvent, nextColumn } from "./columns.ts";
 import { git } from "./command.ts";
 import { cyclePath, MAX_BLOCKERS } from "./deps.ts";
@@ -43,6 +46,7 @@ import {
 } from "./merge.ts";
 import { type PrComment, type PrProvider, prMessage, prProvider } from "./pr.ts";
 import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./project-rules.ts";
+import { assertBranchName, refArg } from "./ref-arg.ts";
 import { runSetup } from "./setup.ts";
 import type {
   BoardColumn,
@@ -88,6 +92,8 @@ export interface BoardOptions {
   /** Reads the personas for a session about to open; none when absent. */
   preparePersonas?: Prepare;
   allowedRoots: readonly string[];
+  /** Folders being removed (issue #152): no card starts in one. */
+  folderLocks?: { isHeld(cwd: string): boolean };
   /** 2 when absent. */
   maxParallelRuns?: number;
   prPollIntervalMs?: number;
@@ -258,6 +264,15 @@ const script = (value: string | null | undefined) => value?.trim() || null;
  * Projects (git repositories of this host) and their boards. A card is a thin layer over what
  * already exists: a branch, a worktree, a session and a PR.
  */
+/** The notice for files the worktree copy left out because they passed the size limit. */
+function skippedNotice(left: number, limit: number): string {
+  const files =
+    left === 1
+      ? "1 arquivo do .worktreeinclude não copiado"
+      : left + " arquivos do .worktreeinclude não copiados";
+  return files + ": passou do limite de " + Math.round((limit / 1024 / 1024) * 100) / 100 + " MB";
+}
+
 /** The reason and params of a refusal; `null` for any other error. */
 export function refusalOf(
   error: unknown,
@@ -366,7 +381,15 @@ export class Board {
         () => false,
       ),
     ]);
-    return { ...project, worktreeInclude, ...(projectKey ? { projectKey } : {}) };
+    return {
+      ...project,
+      worktreeInclude,
+      ...(projectKey ? { projectKey } : {}),
+      // A base an older daemon stored without checking: the person is told to set a real one.
+      ...(project.baseBranch !== "HEAD" && !isBranchName(project.baseBranch)
+        ? { baseBranchInvalid: true }
+        : {}),
+    };
   }
 
   getProject(id: string): Project {
@@ -406,7 +429,9 @@ export class Board {
       id: ulid(),
       path,
       name: input.name?.trim() || basename(path),
-      baseBranch: input.baseBranch?.trim() || head.stdout.trim(),
+      baseBranch: input.baseBranch?.trim()
+        ? assertBranchName(input.baseBranch.trim())
+        : head.stdout.trim(),
       prProvider: input.prProvider ?? "none",
       setupScript: script(input.setupScript),
       promptTemplate: input.promptTemplate ?? DEFAULT_PROMPT_TEMPLATE,
@@ -441,7 +466,9 @@ export class Board {
     const next: Project = {
       ...current,
       ...(patch.name?.trim() ? { name: patch.name.trim() } : {}),
-      ...(patch.baseBranch?.trim() ? { baseBranch: patch.baseBranch.trim() } : {}),
+      ...(patch.baseBranch?.trim()
+        ? { baseBranch: assertBranchName(patch.baseBranch.trim()) }
+        : {}),
       ...(patch.prProvider ? { prProvider: patch.prProvider } : {}),
       ...(patch.setupScript !== undefined ? { setupScript: script(patch.setupScript) } : {}),
       ...(patch.promptTemplate !== undefined ? { promptTemplate: patch.promptTemplate } : {}),
@@ -559,12 +586,14 @@ export class Board {
     };
   }
 
-  /** A new card goes to the end of the Backlog. */
+  /** A new card goes to the end of the column it is born in: the Backlog unless it says another. */
   createCard(
     projectId: string,
     input: {
       title: string;
       description: string;
+      /** The column the card is born in; the Backlog when absent. */
+      column?: BoardColumn;
       issueRef?: string;
       issueExternal?: boolean;
       /** Phase 31: what the card waits for. */
@@ -585,24 +614,26 @@ export class Board {
     this.getProject(projectId);
     const blockedBy = input.blockedBy ?? [];
     this.checkBlockers(null, projectId, blockedBy);
+    const column = input.column ?? "backlog";
     const { last } = this.db
-      .query<{ last: number | null }, [string]>(
-        "SELECT MAX(position) AS last FROM cards WHERE project_id = ? AND board_column = 'backlog'",
+      .query<{ last: number | null }, [string, string]>(
+        "SELECT MAX(position) AS last FROM cards WHERE project_id = ? AND board_column = ?",
       )
-      .get(projectId) ?? { last: null };
+      .get(projectId, column) ?? { last: null };
     const id = ulid();
     const at = now();
     this.db
       .query(
         `INSERT INTO cards (id, project_id, title, description, board_column, position, issue_ref,
            issue_external, arena_of, variant, unblock_when, auto_start, created_at, updated_at)
-         VALUES (?, ?, ?, ?, 'backlog', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
         projectId,
         input.title,
         input.description,
+        column,
         (last ?? 0) + 1,
         input.issueRef ?? null,
         input.issueExternal ? 1 : 0,
@@ -658,7 +689,7 @@ export class Board {
     }
     const made: string[] = [];
     try {
-      for (const [i, wanted] of input.variants.entries()) {
+      await inSequence(input.variants.entries(), async ([i, wanted]) => {
         const label = "abcd"[i] as string;
         const variant = this.createCard(card.projectId, {
           title: `${card.title} (${label})`,
@@ -677,10 +708,12 @@ export class Board {
           inputs: input.inputs,
           persona: wanted.persona,
         });
-      }
+      });
     } catch (error) {
       // Half an arena is nothing: the variants already made go, and the card stays as it was.
-      for (const id of made) await this.discardCard(id, true);
+      await inSequence(made, async (id) => {
+        await this.discardCard(id, true);
+      });
       throw error;
     }
     this.place(cardId, { type: "started" });
@@ -776,7 +809,9 @@ export class Board {
         "arena_variant_running",
       );
     }
-    for (const id of ids) if (id !== variantId) await this.discardCard(id, true);
+    await inSequence(ids, async (id) => {
+      if (id !== variantId) await this.discardCard(id, true);
+    });
     this.follows.get(variantId)?.();
     this.follows.delete(variantId);
     this.db.transaction(() => {
@@ -1292,15 +1327,12 @@ export class Board {
       // A card that waited for blockers starts from the base as it is after they merged.
       const from =
         card.blockedBy.length > 0
-          ? await freshBase(project.path, project.baseBranch)
+          ? await freshBase(project.path, refArg(project.baseBranch))
           : { ref: project.baseBranch, notice: null };
       const added = await addWorktree(project.path, card.title, from.ref, limit);
       worktree = added.path;
       const left = added.skipped.length;
-      const skipped =
-        left === 0
-          ? null
-          : `${left === 1 ? "1 arquivo do .worktreeinclude não copiado" : `${left} arquivos do .worktreeinclude não copiados`}: passou do limite de ${Math.round((limit / 1024 / 1024) * 100) / 100} MB`;
+      const skipped = left === 0 ? null : skippedNotice(left, limit);
       const notice = [from.notice, skipped].filter((part) => part !== null).join("; ") || null;
       this.db
         .query(
@@ -1309,6 +1341,7 @@ export class Board {
         .run(added.slug, added.branch, added.path, notice, now(), id);
       this.changed(id);
     }
+    if (this.opts.folderLocks?.isHeld(worktree)) throw folderRemoving(worktree);
     await excludeLocalSettingsAsync(project.path);
     if (project.setupScript) await runSetup(project.setupScript, worktree);
     // The newest run is the active one: older sessions of the card are closed.
@@ -1349,10 +1382,10 @@ export class Board {
         "SELECT * FROM card_runs WHERE card_id = ? AND id <> ? AND ended_at IS NULL",
       )
       .all(id, keep);
-    for (const run of open) {
+    await inSequence(open, async (run) => {
       if (run.session_id) await this.opts.manager.close(run.session_id);
       this.db.query("UPDATE card_runs SET ended_at = ? WHERE id = ?").run(now(), run.id);
-    }
+    });
     this.workflows.abandon(id, "execução encerrada com o card", keep);
     await this.workflows.closeSessions(id, keep);
   }
@@ -1485,14 +1518,17 @@ export class Board {
         "the card has no worktree yet",
         "card_no_worktree",
       );
-    return cardDiff(card.worktreePath, this.getProject(card.projectId).baseBranch);
+    return cardDiff(card.worktreePath, refArg(this.getProject(card.projectId).baseBranch));
   }
 
   /**
    * Pushes the card's branch to `origin` and opens the PR with the card's title and description;
    * `description` (phase 22) is the text the person confirmed, instead of the card's own.
    */
-  async createPr(id: string, options: { description?: string } = {}): Promise<Card> {
+  async createPr(
+    id: string,
+    options: { description?: string; title?: string } = {},
+  ): Promise<Card> {
     const found = options.description ? (this.opts.scanner?.scan(options.description) ?? []) : [];
     if (found.length > 0) {
       throw new FlightdeckError(
@@ -1518,12 +1554,16 @@ export class Board {
         "the card has no worktree yet",
         "card_no_worktree",
       );
-    must(await git(cwd, "push", "-u", "origin", branch), "git push");
+    must(await git(cwd, "push", "-u", "origin", refArg(branch)), "git push");
+    // The provider's CLI takes the base as a plain argument (`az` reads `@file` as a file): a base an
+    // older daemon stored without checking is refused here (issue #369).
+    const base = assertBranchName(project.baseBranch);
     const url = await provider.create({
       cwd,
-      base: project.baseBranch,
+      base,
       head: branch,
-      title: card.title,
+      // Phase 40: the title the person confirmed, else the card's.
+      title: options.title ?? card.title,
       // The provider links the PR to the issue and closes it on merge (`Fixes #n`, `AB#id`).
       body:
         options.description ??
@@ -1599,7 +1639,7 @@ export class Board {
   /** Rebases the card's branch on its base; a conflict aborts and leaves the worktree as it was. */
   async updateFromBase(id: string): Promise<Card> {
     const { card, worktree } = this.idleWorktree(id);
-    await rebaseOnto(worktree, this.getProject(card.projectId).baseBranch);
+    await rebaseOnto(worktree, refArg(this.getProject(card.projectId).baseBranch));
     return this.changed(id);
   }
 
@@ -1607,7 +1647,13 @@ export class Board {
    * "Merge e arquivar" for a card without a PR: into the base where it is checked out (clean), or
    * through a temporary worktree; then the card's worktree and branch go and it is Concluído.
    */
-  async mergeLocal(id: string, mode: "merge" | "squash", confirm: boolean): Promise<Card> {
+  async mergeLocal(
+    id: string,
+    mode: "merge" | "squash",
+    confirm: boolean,
+    /** Phase 40: the message the person confirmed, else the default of the mode. */
+    message?: string,
+  ): Promise<Card> {
     if (!confirm) throw new FlightdeckError("invalid_state", "confirm the merge", "merge_confirm");
     const { card, worktree, branch } = this.idleWorktree(id);
     if (card.prUrl) {
@@ -1627,15 +1673,15 @@ export class Board {
       );
     }
     const project = this.getProject(card.projectId);
-    const base = project.baseBranch;
+    const base = refArg(project.baseBranch);
     await assertLocalBranch(project.path, base);
     const { ahead } = await aheadBehind(worktree, base);
     if (ahead === 0)
       throw new FlightdeckError("invalid_state", `nothing ahead of ${base}`, "nothing_ahead", {
         base,
       });
-    const message = mode === "squash" ? card.title : `Merge ${branch}: ${card.title}`;
-    await mergeIntoBase(project.path, base, branch, mode, message);
+    const text = message ?? (mode === "squash" ? card.title : `Merge ${branch}: ${card.title}`);
+    await mergeIntoBase(project.path, base, refArg(branch), mode, text);
     // The merge is in the base now and cannot be undone: nothing below may leave the card out of
     // Concluído. What could not be cleaned up stays on the card as a notice.
     await this.closeRuns(id);
@@ -1663,7 +1709,7 @@ export class Board {
       const notice = `a pasta da worktree ficou em ${worktree}; remova depois (a branch ${branch} sai junto)`;
       return { worktree: true, branch: true, notice };
     }
-    const deleted = await git(repo, "branch", "-D", branch);
+    const deleted = await git(repo, "branch", "-D", refArg(branch));
     if (deleted.code !== 0) {
       const notice = `a branch ${branch} ficou (${deleted.stderr.trim()}); apague depois`;
       return { worktree: false, branch: true, notice };
@@ -1705,7 +1751,9 @@ export class Board {
       throw new FlightdeckError("invalid_state", "confirm discarding the card", "discard_confirm");
     const card = this.getCard(id);
     // The variants of an arena go with its card.
-    for (const variant of this.variantIds(id)) await this.discardCard(variant, true);
+    await inSequence(this.variantIds(id), async (variant) => {
+      await this.discardCard(variant, true);
+    });
     await this.closeRuns(id);
     this.follows.get(id)?.();
     this.follows.delete(id);
@@ -1718,7 +1766,7 @@ export class Board {
         "git worktree remove",
       );
     }
-    if (card.branch) must(await git(repo, "branch", "-D", card.branch), "git branch -D");
+    if (card.branch) must(await git(repo, "branch", "-D", refArg(card.branch)), "git branch -D");
     return this.removeFromBoard(id, "discarded");
   }
 
@@ -1811,7 +1859,12 @@ export class Board {
         // The card may have been discarded while the provider was answering.
         if (this.db.query("SELECT 1 FROM cards WHERE id = ?").get(id)) this.changed(id);
       };
-      for (const { id } of open) await this.pollPr(id).catch(failed(id));
+      // An empty list is not awaited: a round with nothing to ask ends in the tick it starts.
+      if (open.length > 0) {
+        await inSequence(open, async ({ id }) => {
+          await this.pollPr(id).catch(failed(id));
+        });
+      }
       if (this.stopped) return;
       // Merged, but the worktree removal failed (a busy folder on Windows; its error is the
       // notice): finish again, without asking the provider. Pending changes wait for the user,
@@ -1822,7 +1875,11 @@ export class Board {
            AND worktree_path IS NOT NULL AND notice IS NOT NULL AND notice <> ?`,
         )
         .all(PENDING_NOTICE);
-      for (const { id } of unfinished) await this.finish(id).catch(failed(id));
+      if (unfinished.length > 0) {
+        await inSequence(unfinished, async ({ id }) => {
+          await this.finish(id).catch(failed(id));
+        });
+      }
       for (const listener of this.prRoundListeners) listener();
     } finally {
       this.polling = false;
@@ -1896,6 +1953,35 @@ export class Board {
         .query<{ n: number }, [string]>("SELECT COUNT(*) AS n FROM card_runs WHERE session_id = ?")
         .get(sessionId)?.n !== 0
     );
+  }
+
+  /** Every card of the project that has a worktree, arena variants included. */
+  worktreeCards(projectId: string): Card[] {
+    return this.db
+      .query<{ id: string }, [string]>(
+        "SELECT id FROM cards WHERE project_id = ? AND worktree_path IS NOT NULL",
+      )
+      .all(projectId)
+      .map(({ id }) => this.getCard(id));
+  }
+
+  /** Whether a card's run is going or waiting: its folder is in use. */
+  isActive(cardId: string): boolean {
+    return this.running.has(cardId) || this.getCard(cardId).queued;
+  }
+
+  /** The card no longer has its worktree (a panel removed it); the watchers hear of it. */
+  releaseWorktree(id: string, path: string, clearBranch: boolean): void {
+    // Only the worktree that was removed: a card that got another one meanwhile keeps it.
+    const done = this.db
+      .query(
+        `UPDATE cards SET worktree_path = NULL, notice = NULL, updated_at = ?${
+          clearBranch ? ", branch = NULL" : ""
+        } WHERE id = ? AND worktree_path = ?`,
+      )
+      .run(new Date().toISOString(), id, path);
+    if (done.changes === 0) return;
+    this.changed(id);
   }
 
   /** Tells the watchers about a card whose fields changed outside the board (the board sync's). */

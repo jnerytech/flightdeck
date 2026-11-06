@@ -118,7 +118,8 @@ describe("aprovacao-pendente: the card answers a click before the host does", ()
       fireEvent.pointerDown(hold as HTMLElement);
       await Bun.sleep(80);
     });
-    expect(calls).toEqual([["allow"]]);
+    // The held approval carries the proof of the hold (#245, M2).
+    expect(calls).toEqual([["allow", undefined, undefined, undefined, true]]);
     expect((hold as HTMLButtonElement).disabled).toBe(true);
     await act(async () => {
       fireEvent.pointerDown(hold as HTMLElement);

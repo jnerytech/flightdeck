@@ -1,3 +1,4 @@
+import { byCodeUnit } from "@flightdeck/protocol";
 import { type KnownProject, resolveClient, ruleMatches } from "./client-rules.ts";
 import {
   type Client,
@@ -71,7 +72,7 @@ export class ClientScope {
     return this.knownProjects
       .map((p) => p.key)
       .filter((key) => this.clientOf(key) === clientId)
-      .sort();
+      .sort(byCodeUnit);
   }
 
   /** The projects the app knows, with the folders their sessions ran in. */

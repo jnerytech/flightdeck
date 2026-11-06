@@ -16,6 +16,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { byCodeUnit } from "@flightdeck/protocol";
 import { frontmatter } from "../agentcfg/files.ts";
 import { userHome } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -98,8 +99,10 @@ const notFound = (name: string) =>
 const NAME = /^[A-Za-z0-9][A-Za-z0-9 _.-]{0,98}\.md$/;
 const INDEX = "MEMORY.md";
 
-const lineCount = (text: string) =>
-  text === "" ? 0 : text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
+const lineCount = (text: string) => {
+  if (text === "") return 0;
+  return text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
+};
 
 /** The repository's own folder, from what `git rev-parse --git-common-dir` printed in `real`. */
 async function rootFrom(real: string, code: number, out: string): Promise<string> {
@@ -132,7 +135,7 @@ export function decisionLog(path: string): (decision: MemoryDecision) => Promise
 
 /** Where the organization's CLAUDE.md lives on this platform. */
 export function managedClaudeMdPath(platform: NodeJS.Platform = process.platform): string {
-  if (platform === "win32") return "C:\\Program Files\\ClaudeCode\\CLAUDE.md";
+  if (platform === "win32") return String.raw`C:\Program Files\ClaudeCode\CLAUDE.md`;
   if (platform === "darwin") return "/Library/Application Support/ClaudeCode/CLAUDE.md";
   return "/etc/claude-code/CLAUDE.md";
 }
@@ -178,7 +181,7 @@ export class ProjectMemory {
     const names = (await readdir(dir, { withFileTypes: true }))
       .filter((e) => e.isFile() && NAME.test(e.name))
       .map((e) => e.name)
-      .sort();
+      .sort(byCodeUnit);
     const index = await this.index(dir);
     const files = await Promise.all(names.map((name) => this.describe(dir, name, index)));
     return { dir, exists: true, files };

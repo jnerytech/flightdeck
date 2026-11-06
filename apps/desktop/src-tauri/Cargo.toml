@@ -12,7 +12,13 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+[workspace]
+# Phase 40 (ADR 40-3): the assistant's crate builds and tests without Tauri.
+members = [".", "assistant"]
+default-members = [".", "assistant"]
+
 [dependencies]
+flightdeck-assistant = { path = "assistant" }
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-notification = "2"
 tauri-plugin-deep-link = "2"

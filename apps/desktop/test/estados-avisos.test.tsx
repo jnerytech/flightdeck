@@ -10,6 +10,8 @@ import type { ConnectionStatus } from "../src/lib/host-connection.ts";
 import { hostStatusView, hostsBanner } from "../src/lib/host-status.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { InstantClock } from "./in-flight-clock.tsx";
+import { unfoldAll } from "./unfold.ts";
 import { stays, waiter } from "./wait.ts";
 
 registerDom();
@@ -125,23 +127,23 @@ describe("estados-avisos", () => {
     expect(MIN_LOADING_MS).toBe(150);
     const view = render(<Probe loading={true} timers={timers} />);
     expect(screen.queryByText("carregando")).not.toBeNull();
-    t = 50;
+    t = 250;
     view.rerender(<Probe loading={false} timers={timers} />);
-    // Done after 50 ms: still showing until 150 ms have passed.
+    // Done at 250 ms, 50 ms after the placeholders were drawn: still showing until 150 ms have passed.
     expect(screen.queryByText("carregando")).not.toBeNull();
-    t = 150;
+    t = 350;
     await act(async () => {
       for (const fn of timeouts.splice(0)) fn();
     });
     expect(screen.queryByText("pronto")).not.toBeNull();
-    t = 200;
-    view.rerender(<Probe loading={true} timers={timers} />);
     t = 400;
+    view.rerender(<Probe loading={true} timers={timers} />);
+    t = 800;
     view.rerender(<Probe loading={false} timers={timers} />);
     expect(screen.queryByText("pronto")).not.toBeNull();
   });
 
-  test("a lista do histórico carrega com skeleton e some o skeleton só depois do mínimo", async () => {
+  test("a lista do histórico carrega sem piscar: o status é anunciado na hora e os placeholders, se vistos, ficam o mínimo", async () => {
     const d = makeDaemon(cleanups);
     writeTranscript(d.historyRoot, "-p", "hist-1", [
       userLine({
@@ -160,11 +162,12 @@ describe("estados-avisos", () => {
     });
     await settle(() => store.getState().hosts[0]?.status === "online");
     const hostId = store.getState().hosts[0]?.id ?? "";
-    // When the skeleton mounts and unmounts, seen by the DOM itself: it can show inside the push.
+    // When the placeholders are drawn and removed, seen by the DOM itself: it can show inside the
+    // push. The status region is announced at once; only the placeholders wait and then hold.
     const shown: { at: number | null; gone: number | null } = { at: null, gone: null };
-    const skeleton = '[role="status"][aria-label="Carregando sessões"]';
+    const placeholders = '[role="status"][aria-label="Carregando sessões"] [data-slot="skeleton"]';
     const observer = new MutationObserver(() => {
-      const present = document.querySelector(skeleton) !== null;
+      const present = document.querySelector(placeholders) !== null;
       if (present && shown.at === null) shown.at = performance.now();
       if (!present && shown.at !== null && shown.gone === null) shown.gone = performance.now();
     });
@@ -178,8 +181,10 @@ describe("estados-avisos", () => {
     });
     await settle(() => screen.queryByRole("list", { name: "Sessões do histórico" }) !== null);
     expect(screen.queryByRole("list", { name: "Sessões do histórico" })).not.toBeNull();
-    expect(shown.at).not.toBeNull();
-    expect((shown.gone ?? 0) - (shown.at ?? 0)).toBeGreaterThanOrEqual(100);
+    // A load quicker than the 200 ms deferral draws no placeholders at all (nothing to hold, nothing
+    // flashes); one that drew them keeps them at least 100 ms. The hold itself is proved with a
+    // clock in the test above.
+    if (shown.at !== null) expect((shown.gone ?? 0) - shown.at).toBeGreaterThanOrEqual(100);
     expect(screen.queryByRole("status", { name: "Carregando sessões" })).toBeNull();
   });
 
@@ -314,7 +319,8 @@ describe("estados-avisos", () => {
     expect(strip?.textContent ?? "").toContain("2 hosts offline");
     expect(strip?.textContent ?? "").toContain("notebook");
     expect(strip?.textContent ?? "").toContain("servidor");
-    // The online host's sessions are still listed.
+    // The online host's sessions are still listed (the projects start folded).
+    await unfoldAll(act);
     await settle(() => screen.queryByRole("listitem", { name: "Viva" }) !== null);
     expect(screen.queryByRole("listitem", { name: "Viva" })).not.toBeNull();
     expect(sessionId).not.toBe("");
@@ -326,16 +332,18 @@ describe("estados-avisos", () => {
     let release: () => void = () => {};
     const calls: number[] = [];
     render(
-      <ActionButton
-        onClick={() => {
-          calls.push(1);
-          return new Promise<void>((resolve) => {
-            release = resolve;
-          });
-        }}
-      >
-        Salvar
-      </ActionButton>,
+      <InstantClock>
+        <ActionButton
+          onClick={() => {
+            calls.push(1);
+            return new Promise<void>((resolve) => {
+              release = resolve;
+            });
+          }}
+        >
+          Salvar
+        </ActionButton>
+      </InstantClock>,
     );
     const button = screen.queryByRole("button", { name: "Salvar" }) as HTMLButtonElement;
     expect(button.disabled).toBe(false);

@@ -50,7 +50,7 @@ describe("git-helper: the test repository", () => {
     gitRepo();
     gitRepo("outro");
     gitRepo();
-    expect(spawned.mock.calls.length).toBe(0);
+    expect(spawned.mock.calls).toHaveLength(0);
   });
 
   test("each one is its own repository: main, the initial commit, clean, autocrlf off", () => {
@@ -87,7 +87,7 @@ describe("git-helper: the test repository with an origin", () => {
     spies.push(spawned);
     gitRepoWithOrigin();
     gitRepoWithOrigin();
-    expect(spawned.mock.calls.length).toBe(2);
+    expect(spawned.mock.calls).toHaveLength(2);
     spawned.mockRestore();
     const { repo, remote } = gitRepoWithOrigin();
     expect(git(repo, "remote", "get-url", "origin")).toBe(remote);

@@ -19,7 +19,9 @@ const KEY_TYPES = [
   "ecdsa-sha2-nistp521",
   "ssh-rsa",
 ];
-const KEY_LINE = new RegExp(`^\\S+\\s+(${KEY_TYPES.join("|")})\\s+([A-Za-z0-9+/]+={0,2})\\s*$`);
+const KEY_LINE = new RegExp(
+  String.raw`^\S+\s+(${KEY_TYPES.join("|")})\s+([A-Za-z0-9+/]+={0,2})\s*$`,
+);
 /** What was shown stays confirmable this long. */
 const PENDING_MS = 5 * 60_000;
 

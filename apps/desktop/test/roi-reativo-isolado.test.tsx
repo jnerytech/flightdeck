@@ -1,4 +1,4 @@
-import { afterEach, describe, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import type { Project, RoiPeriod, RoiSummaryResult } from "@flightdeck/protocol";
 import { ptBR } from "../src/i18n/pt-BR.ts";
 import { EMPTY_PERIOD } from "../src/lib/roi.ts";
@@ -29,7 +29,10 @@ const RESULT: RoiSummaryResult = {
 
 /** A store whose hosts answer with one project; nothing re-renders the screens but the store. */
 function answering() {
-  const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+  const mem = memoryPlatform();
+  // The card opens folded (issue #178); these tests read its details, so it starts open.
+  mem.win.localStorage.setItem("flightdeck.roiOpen", "true");
+  const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   store.roiSummaries = async () => [{ hostId: "h1", result: RESULT }];
   return store;
 }
@@ -52,6 +55,7 @@ describe("roi-reativo-isolado: the figures follow the rate the person types, who
       store.roi.setDefaultRate(60);
     });
     await settle(() => screen.queryAllByText(/360[.,]00/).length > 0, 2000);
+    expect(screen.queryAllByText(/360[.,]00/).length).toBeGreaterThan(0);
     store.dispose();
   });
 
@@ -70,11 +74,15 @@ describe("roi-reativo-isolado: the figures follow the rate the person types, who
       store.roi.setDefaultRate(60);
     });
     await settle(() => screen.queryByText(ptBR.roiUi.noRate) === null, 2000);
+    expect(screen.queryByText(ptBR.roiUi.noRate)).toBeNull();
     store.dispose();
   });
 
   test("a card whose hosts answer nothing says no host answered", async () => {
-    const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+    const mem = memoryPlatform();
+    // The card opens folded (issue #178); these tests read its details, so it starts open.
+    mem.win.localStorage.setItem("flightdeck.roiOpen", "true");
+    const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
     store.roiSummaries = async () => [];
     const project = {
       id: "p1",
@@ -85,6 +93,7 @@ describe("roi-reativo-isolado: the figures follow the rate the person types, who
     } as unknown as Project;
     render(<RoiCard store={store} hostId="h1" project={project} />);
     await settle(() => screen.queryByText(ptBR.roiUi.noHost) !== null);
+    expect(screen.queryByText(ptBR.roiUi.noHost)).not.toBeNull();
     store.dispose();
   });
 
@@ -110,6 +119,7 @@ describe("roi-reativo-isolado: the figures follow the rate the person types, who
     await settle(
       () => screen.queryByRole("alert")?.textContent === ptBR.roiUi.settingsPanel.error.number,
     );
+    expect(screen.queryByRole("alert")?.textContent).toBe(ptBR.roiUi.settingsPanel.error.number);
     store.dispose();
   });
 });

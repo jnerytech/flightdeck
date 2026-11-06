@@ -1,15 +1,16 @@
 /**
- * Guard against running the real PR CLIs (`gh`, `az`) from tests and smokes. Same idea as the
- * claude guard: a sentinel per name first on PATH (it records the call and exits 99) and every
- * PATH folder holding a real one taken off (see guard-path.ts). A test that needs one installs
- * its own fake in front.
+ * Guard against running the real PR CLIs (`gh`, `az`) and `opencode` (phase 39) from tests and
+ * smokes. Same idea as the claude guard: a sentinel per name first on PATH (it records the call
+ * and exits 99) and every PATH folder holding a real one taken off (see guard-path.ts). A test
+ * that needs one installs its own fake in front.
  */
-import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { guardPath } from "./guard-path.ts";
+import { logLines } from "./log-lines.ts";
+import { realTempDir } from "./temp-dir.ts";
 
-export const GUARDED_CLIS = ["gh", "az"] as const;
+export const GUARDED_CLIS = ["gh", "az", "opencode"] as const;
 
 const variants = (name: string) => [name, `${name}.exe`, `${name}.cmd`, `${name}.bat`];
 
@@ -25,14 +26,19 @@ export function installCliGuard(
   names: readonly string[] = GUARDED_CLIS,
   env: Record<string, string | undefined> = process.env,
 ): CliGuard {
-  const dir = mkdtempSync(join(tmpdir(), "fd-cli-guard-"));
+  const dir = realTempDir("fd-cli-guard-");
   const log = join(dir, "calls.log");
+  const versions = join(dir, "versions.log");
   for (const name of names) {
-    writeFileSync(join(dir, name), `#!/bin/sh\necho "${name} $*" >> "${log}"\nexit 99\n`);
+    // `--version` is answered and logged apart, in versions.log (see claude-guard.ts): the dependency probe asks it.
+    writeFileSync(
+      join(dir, name),
+      `#!/bin/sh\n[ "$1" = "--version" ] && { echo "${name} --version" >> "${versions}"; echo "${name} 0.0.0 (sentinel)"; exit 0; }\necho "${name} $*" >> "${log}"\nexit 99\n`,
+    );
     chmodSync(join(dir, name), 0o755);
     writeFileSync(
       join(dir, `${name}.cmd`),
-      `@echo off\r\necho ${name} %* >> "${log}"\r\nexit /b 99\r\n`,
+      `@echo off\r\nif "%1"=="--version" (echo ${name} --version>> "${versions}" & echo ${name} 0.0.0 ^(sentinel^) & exit /b 0)\r\necho ${name} %* >> "${log}"\r\nexit /b 99\r\n`,
     );
   }
   // Windows spells it "Path"; rewrite every casing so children inherit the guarded value.
@@ -55,7 +61,7 @@ export function assertCliGuardActive(guard: CliGuard): void {
 
 /** Lines recorded by the sentinels; empty when no guarded CLI was executed. */
 export function cliCalls(guard: CliGuard): string[] {
-  return existsSync(guard.log) ? readFileSync(guard.log, "utf8").trim().split(/\r?\n/) : [];
+  return existsSync(guard.log) ? logLines(readFileSync(guard.log, "utf8")) : [];
 }
 
 export function assertNoCliCalls(guard: CliGuard): void {

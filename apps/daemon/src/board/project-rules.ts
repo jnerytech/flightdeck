@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { PermissionRule } from "@flightdeck/protocol";
+import { writeFileAtomic } from "../atomic-write.ts";
 import { FlightdeckError } from "../errors.ts";
 
 /** Where Claude Code keeps a project's local (not versioned) settings. */
@@ -48,7 +49,7 @@ async function write(repo: string, settings: Settings, allow: string[]): Promise
   const file = join(repo, LOCAL_SETTINGS);
   await mkdir(dirname(file), { recursive: true });
   const next = { ...settings, permissions: { ...settings.permissions, allow } };
-  await writeFile(file, `${JSON.stringify(next, null, 2)}\n`);
+  await writeFileAtomic(file, `${JSON.stringify(next, null, 2)}\n`);
 }
 
 /** `permissions.allow` of the repository's settings.local.json; empty without the file. */

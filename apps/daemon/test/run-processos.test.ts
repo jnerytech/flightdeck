@@ -125,31 +125,33 @@ describe("run-processos: killTree", () => {
     expect(signals).toEqual([]);
   });
 
-  test("o filho de um PTY lidera o próprio grupo, longe do grupo do daemon: é esse grupo que o Stop mata", async () => {
-    // `ps` is not on Windows, where taskkill takes the tree by parent.
-    if (process.platform === "win32") return;
-    const ps = (pid: number) =>
-      Bun.spawnSync(["ps", "-o", "pgid=", "-p", String(pid)])
-        .stdout.toString()
-        .trim();
-    const pty = bunPty()({
-      argv: [process.execPath, "-e", "setInterval(()=>{},1000)"],
-      cwd: process.cwd(),
-      env: { PATH: process.env.PATH ?? "" },
-      cols: 80,
-      rows: 24,
-      onData: () => {},
-      onExit: () => {},
-    });
-    const child = pty.pid ?? -1;
-    try {
-      expect(await poll(() => ps(child) !== "", 3000)).toBe(true);
-      expect(ps(child)).toBe(String(child));
-      expect(ps(child)).not.toBe(ps(process.pid));
-    } finally {
-      void killTree(child);
-    }
-  });
+  // `ps` is not on Windows, where taskkill takes the tree by parent.
+  test.skipIf(process.platform === "win32")(
+    "o filho de um PTY lidera o próprio grupo, longe do grupo do daemon: é esse grupo que o Stop mata",
+    async () => {
+      const ps = (pid: number) =>
+        Bun.spawnSync(["ps", "-o", "pgid=", "-p", String(pid)])
+          .stdout.toString()
+          .trim();
+      const pty = bunPty()({
+        argv: [process.execPath, "-e", "setInterval(()=>{},1000)"],
+        cwd: process.cwd(),
+        env: { PATH: process.env.PATH ?? "" },
+        cols: 80,
+        rows: 24,
+        onData: () => {},
+        onExit: () => {},
+      });
+      const child = pty.pid ?? -1;
+      try {
+        expect(await poll(() => ps(child) !== "", 3000)).toBe(true);
+        expect(ps(child)).toBe(String(child));
+        expect(ps(child)).not.toBe(ps(process.pid));
+      } finally {
+        void killTree(child);
+      }
+    },
+  );
 
   test("de verdade: um processo e o filho dele, que ignoram SIGHUP e SIGTERM, somem com a árvore", async () => {
     const ignores =

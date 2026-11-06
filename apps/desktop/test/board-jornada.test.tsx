@@ -1,0 +1,300 @@
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { git } from "../../daemon/test/board-helpers.ts";
+import { liveScreen, registerDom } from "./dom.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { sidebarNav } from "./sidebar.ts";
+import { waiter } from "./wait.ts";
+
+registerDom();
+// Loaded after the DOM exists: react-dom and Testing Library read it on import.
+const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
+const screen = liveScreen(within);
+const sidebar = sidebarNav({ act, fireEvent, screen });
+const { AppStore } = await import("../src/lib/app-store.ts");
+const { App } = await import("../src/ui/App.tsx");
+
+// Real git under the in-process daemon: more than the default 5 s.
+setDefaultTimeout(20_000);
+
+const cleanups: Array<() => unknown> = [];
+afterEach(async () => {
+  cleanup();
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+
+const settle = waiter(4000);
+
+const click = async (name: string | RegExp) => {
+  const button = screen.queryByRole("button", { name });
+  expect(button).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(button as HTMLElement);
+  });
+};
+
+const type = async (label: string, value: string) => {
+  const field = screen.queryByLabelText(label) as HTMLInputElement | null;
+  expect(field).not.toBeNull();
+  await act(async () => {
+    fireEvent.change(field as HTMLInputElement, { target: { value } });
+  });
+};
+
+const cardItem = (title: string) => screen.queryByLabelText(`Card ${title}`);
+
+/** One host with a git repository inside its allowed root, already online. */
+async function setup() {
+  const d = makeDaemon(cleanups);
+  const repo = join(d.root, "repo");
+  mkdirSync(repo);
+  git(repo, "init", "-q", "-b", "main");
+  git(repo, "config", "commit.gpgsign", "false");
+  writeFileSync(join(repo, "README.md"), "# repo\n");
+  git(repo, "add", ".");
+  git(repo, "commit", "-q", "-m", "inicial");
+  const server = d.listen();
+  const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+  render(<App store={store} />);
+  await act(async () => {
+    await store.addHost({ name: "alfa", url: server.url, token: TOKEN });
+  });
+  await settle(() => store.getState().hosts[0]?.status === "online");
+  return { ...d, repo, store };
+}
+
+/** Registers the repo through the Projects screen and opens its board. */
+async function openBoard(repo: string) {
+  await sidebar.hostAction("Projetos", "alfa");
+  await type("Caminho do repositório", repo);
+  await type("Modelo de instruções", "");
+  await click("Cadastrar projeto");
+  await settle(() => screen.queryByRole("button", { name: "Abrir board de repo" }) !== null);
+  await click("Abrir board de repo");
+  await settle(() => screen.queryByRole("heading", { name: "Board de repo" }) !== null);
+}
+
+async function createCard(title: string, description = "faça") {
+  // The form lives in a dialog the "Novo card" button opens.
+  await click("Novo card");
+  await type("Título do card", title);
+  await type("Descrição do card", description);
+  await click("Criar card");
+  await settle(() => cardItem(title) !== null);
+}
+
+async function openCard(title: string) {
+  const open = cardItem(title)?.querySelector("button") ?? null;
+  expect(open).not.toBeNull();
+  await act(async () => {
+    fireEvent.click(open as HTMLElement);
+  });
+  await settle(() => screen.queryByRole("button", { name: "Voltar ao board" }) !== null);
+}
+
+async function openCardMenu(title: string) {
+  const trigger = screen.queryByRole("button", { name: `Ações de ${title}` });
+  expect(trigger).not.toBeNull();
+  await act(async () => {
+    fireEvent.pointerDown(trigger as HTMLElement, {
+      button: 0,
+      ctrlKey: false,
+      pointerType: "mouse",
+    });
+    fireEvent.click(trigger as HTMLElement);
+  });
+}
+
+const toastText = () => document.body.textContent ?? "";
+const toastButtons = (name: string) => screen.queryAllByRole("button", { name });
+
+describe("board-jornada: the board says what happened to a card (issue #188, J5)", () => {
+  test("creating a card shows a toast with Abrir, and Abrir opens the new card", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    await createCard("Login");
+    await settle(() => toastText().includes("Card criado: Login"));
+    await act(async () => {
+      fireEvent.click(toastButtons("Abrir")[0] as HTMLElement);
+    });
+    await settle(() => screen.queryByRole("button", { name: "Voltar ao board" }) !== null);
+    expect(screen.queryByRole("button", { name: "Voltar ao board" })).not.toBeNull();
+  });
+
+  test("Iniciar card from the card menu says it started, with Abrir to the card", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    await createCard("Login");
+    await openCardMenu("Login");
+    const entry = screen.queryByRole("menuitem", { name: "Iniciar card" });
+    expect(entry).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(entry as HTMLElement);
+    });
+    // Start opens a small dialog: the workflow, and the persona when the host has them.
+    const dialog = screen.queryByRole("dialog", { name: "Iniciar card" }) as HTMLElement;
+    expect(dialog).not.toBeNull();
+    expect(within(dialog).queryByLabelText("Workflow")).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Iniciar" }));
+    });
+    await settle(() => toastText().includes("Card iniciado: Login"));
+    expect(toastButtons("Abrir").length).toBeGreaterThan(0);
+  });
+
+  test("Parar is off, and says the card is not running, until the card has been started", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    await createCard("Login");
+    await openCard("Login");
+    const stop = () => screen.queryByRole("button", { name: "Parar" }) as HTMLButtonElement | null;
+    expect(stop()?.disabled).toBe(true);
+    expect(screen.queryByText("O card não está rodando")).not.toBeNull();
+  });
+
+  test("Finalizar… explains the three ways to Done; Mover para Concluído only moves the card", async () => {
+    const { repo, board } = await setup();
+    await openBoard(repo);
+    await createCard("Login");
+    await openCard("Login");
+    await click("Finalizar…");
+    const dialog = screen.queryByRole("dialog") as HTMLElement;
+    expect(dialog).not.toBeNull();
+    const text = dialog.textContent ?? "";
+    expect(text).toContain("Só move o card para Concluído");
+    expect(text).toContain("remove a worktree");
+    expect(text).toContain("Merge e arquivar");
+    // No worktree yet: reviewing and merging is off, and says why.
+    const review = within(dialog).queryByRole("button", {
+      name: "Revisar e mesclar",
+    }) as HTMLButtonElement | null;
+    expect(review?.disabled).toBe(true);
+    expect(text).toContain("Inicie o card antes: não há trabalho para mesclar");
+    expect(text).toContain("remove a worktree e a branch");
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Mover para Concluído" }));
+    });
+    const id = board
+      .getBoard(board.listProjects()[0]?.id ?? "")
+      .columns.flatMap((c) => c.cards)[0]?.id;
+    await settle(() => board.getCard(id ?? "").column === "done");
+    expect(board.getCard(id ?? "").column).toBe("done");
+  });
+
+  test("Starting twice in a row sends card.start once", async () => {
+    const { repo, store } = await setup();
+    await openBoard(repo);
+    await createCard("Login");
+    const asked: string[] = [];
+    const command = store.hostCommand.bind(store);
+    store.hostCommand = (async (id: string, type: never, payload: never) => {
+      asked.push(type);
+      return command(id, type, payload);
+    }) as typeof store.hostCommand;
+    await openCardMenu("Login");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "Iniciar card" }));
+    });
+    const dialog = screen.getByRole("dialog", { name: "Iniciar card" });
+    const start = within(dialog).getByRole("button", { name: "Iniciar" });
+    await act(async () => {
+      fireEvent.click(start);
+      fireEvent.click(start);
+    });
+    await settle(() => toastText().includes("Card iniciado: Login"));
+    expect(asked.filter((type) => type === "card.start")).toHaveLength(1);
+  });
+
+  test("Finalizar… closes with Esc and moves nothing; after Mover para Concluído it says the card is already there", async () => {
+    const { repo, board } = await setup();
+    await openBoard(repo);
+    await createCard("Login");
+    await openCard("Login");
+    await click("Finalizar…");
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    });
+    await settle(() => screen.queryByRole("dialog") === null);
+    const id = board
+      .getBoard(board.listProjects()[0]?.id ?? "")
+      .columns.flatMap((c) => c.cards)[0]?.id;
+    expect(board.getCard(id ?? "").column).toBe("backlog");
+    await click("Finalizar…");
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", { name: "Mover para Concluído" }),
+      );
+    });
+    await settle(() => board.getCard(id ?? "").column === "done");
+    await click("Finalizar…");
+    const move = within(screen.getByRole("dialog")).getByRole("button", {
+      name: "Mover para Concluído",
+    }) as HTMLButtonElement;
+    expect(move.disabled).toBe(true);
+    expect(screen.getByRole("dialog").textContent).toContain("O card já está em Concluído");
+  });
+
+  test("Revisar e mesclar, with a worktree, opens the changes of the card", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    await createCard("Login");
+    await openCard("Login");
+    await click("Iniciar");
+    await settle(
+      () =>
+        (screen.queryByRole("button", { name: "Finalizar…" }) as HTMLButtonElement | null) !== null,
+    );
+    // The worktree appears once the card has started.
+    await settle(() => {
+      const open = screen.queryByRole("button", { name: "Abrir PR" }) as HTMLButtonElement | null;
+      return open !== null && !open.disabled;
+    });
+    await click("Finalizar…");
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", { name: "Revisar e mesclar" }),
+      );
+    });
+    expect(screen.getByRole("button", { name: "Mudanças" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+  });
+
+  test("a host with no folder: the reason links to the host's page", async () => {
+    const { store } = await setup();
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    // biome-ignore lint/suspicious/noExplicitAny: the test empties the host's folders
+    (store as any).updateHost(hostId, (h: any) => ({
+      ...h,
+      info: { ...h.info, allowedRoots: [] },
+    }));
+    await act(async () => {
+      store.router.push({ name: "new-session", host: hostId });
+    });
+    await settle(
+      () =>
+        screen.queryByRole("button", { name: "Adicionar uma pasta na página de alfa" }) !== null,
+    );
+    await click("Adicionar uma pasta na página de alfa");
+    expect(store.router.current).toEqual({ name: "host", host: hostId });
+  });
+
+  test("Esc closes the Start dialog and starts nothing", async () => {
+    const { repo, board } = await setup();
+    await openBoard(repo);
+    await createCard("Login");
+    await openCardMenu("Login");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "Iniciar card" }));
+    });
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("dialog", { name: "Iniciar card" }), { key: "Escape" });
+    });
+    await settle(() => screen.queryByRole("dialog", { name: "Iniciar card" }) === null);
+    const id = board
+      .getBoard(board.listProjects()[0]?.id ?? "")
+      .columns.flatMap((c) => c.cards)[0]?.id;
+    expect(board.getCard(id ?? "").sessionId).toBeNull();
+  });
+});

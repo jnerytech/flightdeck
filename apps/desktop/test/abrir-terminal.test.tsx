@@ -231,6 +231,9 @@ describe("abrir-terminal", () => {
         quiet,
       );
       const store = new AppStore(memoryPlatform().platform, { baseDelayMs: 60_000 });
+      // This is about host.info: the dependency check the app starts on connect would run the real
+      // programs' versions, which the suite never does.
+      store.checkHealth = async () => {};
       try {
         await store.addHost({ name: "pc", url: daemon.url, token: TOKEN });
         await poll(() => store.getState().hosts[0]?.hostInfo, 3000);

@@ -3,19 +3,24 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AskpassPrompt } from "@/components/connections/askpass-prompt";
 import { Notices } from "@/components/feedback/notices";
+import { ResumeOfferDialog } from "@/components/hosts/resume-offer-dialog";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
+import { TopBarActions, TopBarHost, TopBarQuotaSlot } from "@/components/shell/top-bar";
 import { SnippetUse } from "@/components/snippets/snippet-use";
+import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TContext } from "@/i18n/context";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import { typing } from "../lib/keys.ts";
+import { pairingErrorText } from "../lib/pairing-text.ts";
 import type { PaletteTarget } from "../lib/palette.ts";
 import type { Route } from "../lib/router.ts";
 import { type ChordState, chordStep, isMac, NO_CHORD } from "../lib/shortcuts.ts";
 import { useStoreState } from "../lib/use-store.ts";
+import { APP_VERSION } from "../lib/version.ts";
 import { Areas } from "./Areas.tsx";
 import { GlobalSearch } from "./GlobalSearch.tsx";
 import { draftFromLink } from "./HostForm.tsx";
@@ -32,8 +37,11 @@ type InPlace =
   | "terminal"
   | "new-terminal"
   | "toggle-theme"
+  | "toggle-ui-mode"
   | "switch-language"
   | "start-card"
+  | "create-card"
+  | "create-card-issue"
   | "snippet"
   | "pull-link"
   | "switch-client"
@@ -75,6 +83,8 @@ function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route 
       return { name: "projects", host: target.hostId };
     case "settings":
       return { name: "settings" };
+    case "add-host":
+      return { name: "add-host" };
     case "costs":
       return { name: "costs" };
     case "go":
@@ -86,33 +96,200 @@ function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route 
   }
 }
 
+/** A card from an issue the palette named: by its full reference, else by its number in the project. */
+async function createFromIssue(
+  store: AppStore,
+  target: Extract<PaletteTarget, { kind: "create-card-issue" }>,
+) {
+  const issueRef =
+    target.ref ??
+    (target.id
+      ? (
+          await store.hostCommand(target.hostId, "issues.get", {
+            projectId: target.projectId,
+            id: target.id,
+          })
+        )?.ref
+      : undefined);
+  return issueRef
+    ? store.hostCommand(target.hostId, "issues.createCard", {
+        projectId: target.projectId,
+        issueRef,
+      })
+    : null;
+}
+
 /**
  * The tab shortcuts (Ctrl+T/W/Shift+T, Ctrl+Tab, Ctrl+1…9, Ctrl+Shift+PageUp/Down): true when the
  * key was one of them and has been handled.
  */
 function tabShortcut(store: AppStore, e: KeyboardEvent): boolean {
-  const { tabs } = store;
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-  if (key === "\\") store.workspace.toggleSplit();
-  else if (key === "t" && e.shiftKey) tabs.reopen();
-  else if (key === "t") {
-    tabs.open({ name: "home" });
-    store.openSearch();
-  } else if (key === "w") store.closeTab(tabs, tabs.activeId);
-  else if (key === "Tab") {
-    if (e.shiftKey) tabs.previous();
-    else tabs.next();
-  } else if (/^[1-9]$/.test(key) && !e.shiftKey) tabs.goto(Number(key));
-  else if ((key === "PageUp" || key === "PageDown") && e.shiftKey) {
-    const index = tabs.tabs.findIndex((tab) => tab.id === tabs.activeId);
-    tabs.move(tabs.activeId, index + (key === "PageUp" ? -1 : 1));
-  } else return false;
-  return true;
+  const action = tabAction(store, key, e.shiftKey);
+  action?.();
+  return action !== null;
 }
 
-export function App({ store }: { store: AppStore }) {
+/** What a key does among the tab shortcuts; null when it is none of them. */
+function tabAction(store: AppStore, key: string, shift: boolean): (() => void) | null {
+  const { tabs } = store;
+  if (key === "\\") return () => store.workspace.toggleSplit();
+  if (key === "t" && shift) return () => tabs.reopen();
+  if (key === "t") {
+    return () => {
+      tabs.open({ name: "home" });
+      store.openSearch();
+    };
+  }
+  if (key === "w") return () => store.closeTab(tabs, tabs.activeId);
+  if (key === "Tab") return () => (shift ? tabs.previous() : tabs.next());
+  if (/^[1-9]$/.test(key) && !shift) return () => tabs.goto(Number(key));
+  if ((key === "PageUp" || key === "PageDown") && shift) {
+    const step = key === "PageUp" ? -1 : 1;
+    return () => {
+      const index = tabs.tabs.findIndex((tab) => tab.id === tabs.activeId);
+      tabs.move(tabs.activeId, index + step);
+    };
+  }
+  return null;
+}
+
+/** Where each go-to chord leads. */
+const CHORD_ROUTES: Record<string, Route> = {
+  "go-sessions": { name: "hub" },
+  "go-needs-you": { name: "needs-you" },
+  "go-projects": { name: "all-projects" },
+  "go-costs": { name: "costs" },
+  "go-settings": { name: "settings" },
+};
+
+/** Ctrl+K, the tab shortcuts, Alt+Shift+C and Alt+←/→: what the whole app answers to. */
+function windowShortcut(e: KeyboardEvent, store: AppStore): void {
+  const mod = e.ctrlKey || e.metaKey;
+  const key = e.key.toLowerCase();
+  if (mod && key === "k") {
+    e.preventDefault();
+    store.openSearch();
+  } else if (mod && tabShortcut(store, e)) {
+    e.preventDefault();
+  } else if (e.altKey && e.shiftKey && key === "c") {
+    e.preventDefault();
+    store.nextClient();
+  } else if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+    e.preventDefault();
+    if (e.key === "ArrowLeft") store.router.back();
+    else store.router.forward();
+  }
+}
+
+/** A key pressed anywhere in the window: simple mode, the go-to chords and `?`, then the shortcuts. */
+function appKey(
+  e: KeyboardEvent,
+  store: AppStore,
+  chord: { current: ChordState },
+  showHelp: () => void,
+): void {
+  // Ctrl+Shift+M: simple mode and the full app, when the host lets the person choose.
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "m") {
+    if (store.toggleUiMode()) e.preventDefault();
+    return;
+  }
+  // The go-to chords and `?` (never while typing in a field).
+  const step = chordStep(
+    chord.current,
+    {
+      key: e.key,
+      ctrlKey: e.ctrlKey,
+      metaKey: e.metaKey,
+      altKey: e.altKey,
+      typing: typing(e.target),
+    },
+    Date.now(),
+  );
+  chord.current = step.state;
+  if (step.consumed) e.preventDefault();
+  if (step.action === "help") showHelp();
+  else {
+    const route = step.action ? CHORD_ROUTES[step.action] : undefined;
+    if (route) store.router.push(route);
+  }
+  windowShortcut(e, store);
+}
+
+/** An action of the palette that is not a screen: done in place, else the target's route. */
+export function runPaletteTarget(
+  store: AppStore,
+  target: PaletteTarget,
+  ui: { lang: string; go(route: Route): void; showHelp(): void },
+): void {
+  switch (target.kind) {
+    case "terminal":
+      if (store.embeddedTerminal(target.hostId)) {
+        void store.openClaudeHere(target.hostId, target.target);
+      } else void store.openInTerminal(target.hostId, target.target);
+      return;
+    case "new-terminal":
+      void store.openTerminal(target.hostId);
+      return;
+    case "toggle-theme":
+      store.theme.toggle();
+      return;
+    case "toggle-ui-mode":
+      store.toggleUiMode();
+      return;
+    case "switch-language":
+      store.i18n.setLang(ui.lang === "pt-BR" ? "en" : "pt-BR");
+      return;
+    case "switch-client":
+      store.setClientSelection(target.clientId);
+      return;
+    case "snippet":
+      store.chooseSnippet({ hostId: target.hostId, snippetId: target.snippetId });
+      return;
+    case "pull-link":
+      void store.openPrLink(target.url).then((route) => {
+        if (route) ui.go(route);
+      });
+      return;
+    case "create-card": {
+      // Issue #147: text that matches no card becomes one in the project, and its board opens.
+      const board: Route = { name: "board", host: target.hostId, projectId: target.projectId };
+      void store
+        .hostCommand(target.hostId, "card.create", {
+          projectId: target.projectId,
+          title: target.title,
+          description: "",
+        })
+        .then((card) => {
+          if (card) ui.go(board);
+        });
+      return;
+    }
+    case "create-card-issue": {
+      const board: Route = { name: "board", host: target.hostId, projectId: target.projectId };
+      void createFromIssue(store, target).then((card) => {
+        if (card) ui.go(board);
+      });
+      return;
+    }
+    case "start-card":
+      void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });
+      return;
+    case "shortcuts":
+      ui.showHelp();
+      return;
+    case "decide-oldest":
+      store.decideOldest(target.decision, target.key);
+      return;
+    default:
+      ui.go(paletteRoute(target));
+  }
+}
+
+export function App({ store }: Readonly<{ store: AppStore }>) {
   const state = useStoreState(store);
   const themeMode = useSyncExternalStore(store.theme.subscribe, () => store.theme.mode);
+  const resolvedTheme = useSyncExternalStore(store.theme.subscribe, () => store.theme.resolved);
   const lang = useSyncExternalStore(store.i18n.subscribe, () => store.i18n.lang);
   const density = useSyncExternalStore(store.density.subscribe, () => store.density.value);
   const { router } = store;
@@ -174,7 +351,10 @@ export function App({ store }: { store: AppStore }) {
         if (store.openRequestLink(url)) return;
         const parsed = parsePairingLink(url);
         if (!parsed.ok) {
-          store.reportError(`Link de pareamento recusado: ${parsed.error}`);
+          const { t } = store.i18n;
+          store.reportError(
+            t("hostForm.pairRefused", { reason: pairingErrorText(t, parsed.error) }),
+          );
           return;
         }
         const { url: wsUrl, name, token } = parsed.value;
@@ -197,41 +377,7 @@ export function App({ store }: { store: AppStore }) {
   // Ctrl+K inside the app only (as a global shortcut it would clash with browsers and VS Code);
   // Alt+←/→ and the mouse's back and forward buttons walk the history.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      // The go-to chords and `?` (never while typing in a field).
-      const step = chordStep(
-        chord.current,
-        {
-          key: e.key,
-          ctrlKey: e.ctrlKey,
-          metaKey: e.metaKey,
-          altKey: e.altKey,
-          typing: typing(e.target),
-        },
-        Date.now(),
-      );
-      chord.current = step.state;
-      if (step.consumed) e.preventDefault();
-      if (step.action === "help") setHelp(true);
-      else if (step.action === "go-sessions") router.push({ name: "hub" });
-      else if (step.action === "go-needs-you") router.push({ name: "needs-you" });
-      else if (step.action === "go-projects") router.push({ name: "all-projects" });
-      else if (step.action === "go-costs") router.push({ name: "costs" });
-      else if (step.action === "go-settings") router.push({ name: "settings" });
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        store.openSearch();
-      } else if ((e.ctrlKey || e.metaKey) && tabShortcut(store, e)) {
-        e.preventDefault();
-      } else if (e.altKey && e.shiftKey && e.key.toLowerCase() === "c") {
-        e.preventDefault();
-        store.nextClient();
-      } else if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
-        e.preventDefault();
-        if (e.key === "ArrowLeft") router.back();
-        else router.forward();
-      }
-    };
+    const onKey = (e: KeyboardEvent) => appKey(e, store, chord, () => setHelp(true));
     // Ctrl+click and the middle button open what was clicked in a new tab: the navigation of
     // that event goes to a new tab (the middle button fires no click, so it clicks for itself).
     const onNewTab = (e: MouseEvent) => {
@@ -300,33 +446,11 @@ export function App({ store }: { store: AppStore }) {
   /** An entry or action of the Ctrl+K palette: its screen, or an action in place. */
   const goTo = (target: PaletteTarget) => {
     store.closeSearch();
-    if (target.kind === "terminal") {
-      if (store.embeddedTerminal(target.hostId))
-        void store.openClaudeHere(target.hostId, target.target);
-      else void store.openInTerminal(target.hostId, target.target);
-    } else if (target.kind === "new-terminal") void store.openTerminal(target.hostId);
-    else if (target.kind === "toggle-theme") store.theme.toggle();
-    else if (target.kind === "switch-language") {
-      store.i18n.setLang(lang === "pt-BR" ? "en" : "pt-BR");
-    } else if (target.kind === "switch-client") {
-      store.setClientSelection(target.clientId);
-    } else if (target.kind === "snippet") {
-      store.chooseSnippet({ hostId: target.hostId, snippetId: target.snippetId });
-    } else if (target.kind === "pull-link") {
-      void store.openPrLink(target.url).then((route) => {
-        if (route) go(route);
-      });
-    } else if (target.kind === "start-card") {
-      void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });
-    } else if (target.kind === "shortcuts") setHelp(true);
-    else if (target.kind === "decide-oldest") store.decideOldest(target.decision);
-    else go(paletteRoute(target));
+    runPaletteTarget(store, target, { lang, go, showHelp: () => setHelp(true) });
   };
 
   // A host set to simple (or chosen so) shows simple mode in place of the full frame.
-  const focusHost =
-    state.hosts.find((h) => h.id === state.selected?.hostId) ??
-    state.hosts.find((h) => h.status === "online");
+  const focusHost = state.hosts.find((h) => h.id === store.uiHostId());
   if (focusHost && store.uiMode(focusHost.id).mode === "simple") {
     return (
       <TContext.Provider value={t}>
@@ -353,6 +477,19 @@ export function App({ store }: { store: AppStore }) {
           }}
           header={
             <>
+              <TopBarHost
+                hosts={state.hosts.map((h) => ({
+                  id: h.id,
+                  name: h.name,
+                  status: h.status,
+                  version: h.hostInfo?.daemonVersion ?? null,
+                }))}
+                currentId={store.uiHostId()}
+                appVersion={APP_VERSION}
+                t={t}
+                onChoose={(hostId) => store.select(hostId, null)}
+                onAdd={() => go({ name: "add-host" })}
+              />
               <Button
                 variant="ghost"
                 size="icon"
@@ -377,8 +514,18 @@ export function App({ store }: { store: AppStore }) {
                 moreLabel={t("shell.breadcrumbMore")}
                 onGo={go}
               />
-              <NotificationBell store={store} inbox={state.inbox} t={t} go={go} />
             </>
+          }
+          actions={
+            <TopBarActions
+              t={t}
+              theme={resolvedTheme}
+              version={APP_VERSION}
+              bell={<NotificationBell store={store} inbox={state.inbox} t={t} go={go} />}
+              quota={<TopBarQuotaSlot t={t} state={state} now={Date.now()} go={go} />}
+              onSearch={() => store.openSearch()}
+              onToggleTheme={() => store.theme.toggle()}
+            />
           }
           sidebar={(collapsed) => (
             <Sidebar
@@ -398,6 +545,10 @@ export function App({ store }: { store: AppStore }) {
               onOpenSearch={() => store.openSearch()}
               onNewTab={() => store.tabs.openNextInNewTab()}
               onToggleTheme={() => store.theme.toggle()}
+              onShortcuts={() => setHelp(true)}
+              {...(focusHost && store.uiMode(focusHost.id).canSwitch
+                ? { onSimpleMode: () => void store.toggleUiMode() }
+                : {})}
             />
           )}
         >
@@ -421,6 +572,20 @@ export function App({ store }: { store: AppStore }) {
             />
           </div>
           <Notices store={store} />
+          {Object.entries(state.resumeOffers).map(([hostId, offer]) => {
+            const host = state.hosts.find((h) => h.id === hostId);
+            return offer.open && host ? (
+              <ResumeOfferDialog
+                key={hostId}
+                store={store}
+                hostId={hostId}
+                hostName={host.name}
+                sessions={offer.sessions}
+                resumed={offer.resumed}
+              />
+            ) : null;
+          })}
+          <TabSwitcherHost store={store} />
           {state.closingTerminal && (
             <TerminalCloseDialog onClose={(kill) => void store.finishCloseTerminal(kill)} />
           )}

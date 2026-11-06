@@ -52,7 +52,13 @@ const SUGGESTIONS = [
   { type: "futuro", destination: "session" },
 ];
 
-function ask(receptor: Receptor) {
+function ask(
+  receptor: Receptor,
+  tool: { name: string; input: Record<string, unknown> } = {
+    name: "Bash",
+    input: { command: "mkdir novo" },
+  },
+) {
   return (
     fetch(`${receptor.url}/hooks/PermissionRequest`, {
       method: "POST",
@@ -60,8 +66,8 @@ function ask(receptor: Receptor) {
       body: JSON.stringify({
         session_id: "s1",
         hook_event_name: "PermissionRequest",
-        tool_name: "Bash",
-        tool_input: { command: "mkdir novo" },
+        tool_name: tool.name,
+        tool_input: tool.input,
         permission_suggestions: SUGGESTIONS,
       }),
     })
@@ -91,7 +97,7 @@ describe("permitir-externo", () => {
     const frame = await openFrame(client);
     const rule = {
       type: "addRules",
-      rules: [{ toolName: "Bash", ruleContent: "mkdir:*" }],
+      rules: [{ toolName: "Bash", ruleContent: "npm test:*" }],
       behavior: "allow",
       destination: "localSettings",
     };
@@ -111,12 +117,10 @@ describe("permitir-externo", () => {
 
   test("the hook's decision carries updatedInput, so AskUserQuestion gets its answers", async () => {
     const { receptor, client } = await setup();
-    const answer = ask(receptor);
+    const questions = [{ question: "Which one?", header: "Pick", options: [], multiSelect: false }];
+    const answer = ask(receptor, { name: "AskUserQuestion", input: { questions } });
     const frame = await openFrame(client);
-    const updatedInput = {
-      questions: [{ question: "Which one?", header: "Pick", options: [], multiSelect: false }],
-      answers: { "Which one?": "A" },
-    };
+    const updatedInput = { questions, answers: { "Which one?": "A" } };
     const ack = await client.request("permission.respond", {
       requestId: frame?.requestId,
       decision: "allow",

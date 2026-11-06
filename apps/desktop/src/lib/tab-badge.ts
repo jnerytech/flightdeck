@@ -17,6 +17,15 @@ export function tabBadge(route: Route, state: AppState): TabBadge {
   return state.unread[sessionKey(route.host, route.id)] ? "unread" : null;
 }
 
+/** Since when the session of a tab has been idle (its prompt cache runs from then), else null. */
+export function tabIdleSince(route: Route, state: AppState): string | null {
+  if (route.name !== "session") return null;
+  const session = state.hosts
+    .find((host) => host.id === route.host)
+    ?.sessions.find((candidate) => candidate.id === route.id);
+  return session?.status === "idle" ? session.updatedAt : null;
+}
+
 /** Whether the badge pulses: a session that is working moves, so a glance at the tabs shows it. */
 export function badgePulses(badge: TabBadge): boolean {
   return badge === "running";
@@ -37,6 +46,7 @@ const KINDS: Partial<Record<Route["name"], TabKind>> = {
   reader: "reader",
   agent: "agent",
   hub: "sessions",
+  overview: "overview",
   "needs-you": "needs-you",
   workflows: "workflows",
   history: "history",

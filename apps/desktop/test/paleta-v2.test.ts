@@ -23,8 +23,15 @@ const state = () =>
   }) as unknown as AppState;
 
 const en = translator("en");
+/** The oldest request the palette offers to answer, as the store hands it (issue #187). */
+const OLDEST = { text: "alfa · Alpha: Bash: npm test", opens: false, key: "h1/r1" };
 const sections = (s: AppState, query = "", recents?: string[], waiting = false) =>
-  paletteSections(s, query, { costs: true, t: en, waiting, ...(recents ? { recents } : {}) });
+  paletteSections(s, query, {
+    costs: true,
+    t: en,
+    ...(waiting ? { oldest: OLDEST } : {}),
+    ...(recents ? { recents } : {}),
+  });
 const items = (s: AppState, query = "", waiting = false) =>
   sections(s, query, undefined, waiting).flatMap((section) => section.items);
 const item = (s: AppState, label: string, waiting = false) =>
@@ -62,18 +69,36 @@ describe("paleta-v2: commands with their shortcut", () => {
     expect(item(s, "Toggle theme")?.shortcut).toBeUndefined();
   });
 
-  test("approve and deny the oldest request show only while one waits, with A and N", () => {
-    expect(item(state(), "Approve the oldest request")).toBeUndefined();
-    expect(item(state(), "Deny the oldest request")).toBeUndefined();
-    const waiting = state();
-    expect(item(waiting, "Approve the oldest request", true)).toMatchObject({
-      target: { kind: "decide-oldest", decision: "approve" },
+  // Issue #187: the commands name the request they answer, so nothing is approved unseen.
+  test("approve and deny the oldest request show only while one waits, name it, with A and N", () => {
+    const approve = `Approve the oldest request: ${OLDEST.text}`;
+    const deny = `Deny the oldest request: ${OLDEST.text}`;
+    expect(item(state(), approve)).toBeUndefined();
+    expect(item(state(), deny)).toBeUndefined();
+    expect(item(state(), approve, true)).toMatchObject({
+      // The command carries the request it names (#245, L4).
+      target: { kind: "decide-oldest", decision: "approve", key: "h1/r1" },
       shortcut: "A",
     });
-    expect(item(waiting, "Deny the oldest request", true)).toMatchObject({
-      target: { kind: "decide-oldest", decision: "deny" },
+    expect(item(state(), deny, true)).toMatchObject({
+      target: { kind: "decide-oldest", decision: "deny", key: "h1/r1" },
       shortcut: "N",
     });
+  });
+
+  test("an oldest item that must be seen (a gate, a vault request, a high-risk one) offers only Open", () => {
+    const gate = {
+      text: "alfa · Ship: Workflow step “plan” waits for your approval",
+      opens: true,
+      key: "h1/gate:run1/plan/1",
+    };
+    const labels = paletteSections(state(), "", { costs: true, t: en, oldest: gate })
+      .flatMap((section) => section.items)
+      .map((i) => i.label);
+    expect(labels).toContain(`Open the oldest request: ${gate.text}`);
+    expect(
+      labels.some((l) => l.startsWith("Approve the oldest") || l.startsWith("Deny the oldest")),
+    ).toBe(false);
   });
 
   test("the commands match what is typed, and the same words in Portuguese", () => {
@@ -95,12 +120,12 @@ describe("paleta-v2: recents", () => {
     );
   });
 
-  test("an id that is gone is dropped, and at most five show", () => {
+  test("an id that is gone is dropped, and at most six show (issue #147 raised it from five)", () => {
     const s = state();
     const all = items(s).map((i) => i.id);
     const out = sections(s, "", ["gone:1", ...all.slice(0, 8)]);
-    expect(out[0]?.items).toHaveLength(5);
-    expect(out[0]?.items.map((i) => i.id)).toEqual(all.slice(0, 5));
+    expect(out[0]?.items).toHaveLength(6);
+    expect(out[0]?.items.map((i) => i.id)).toEqual(all.slice(0, 6));
   });
 
   test("once something is typed, or with no recents, there is no Recent section", () => {

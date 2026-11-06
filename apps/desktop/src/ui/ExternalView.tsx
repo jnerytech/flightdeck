@@ -1,8 +1,8 @@
 import { Radio } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
 import { PersonaSwitch } from "@/components/personas/persona-switch";
-import { Composer, SessionHeader, SessionPane } from "@/components/session/parts";
+import { Composer, RecapSlot, SessionHeader, SessionPane } from "@/components/session/parts";
 import { PromptMenu, type PromptSnippets } from "@/components/snippets/prompt-menu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,16 +28,18 @@ const STATE_KEYS = {
  * A live session opened outside Flightdeck: its transcript as it grows, its permission requests
  * inline, and a message box when it runs under `flightdeckd claude` (controllable).
  */
-export function ExternalView(props: {
-  store: AppStore;
-  state: AppState;
-  hostId: string;
-  hostName: string;
-  claudeSessionId: string;
-  onResumed(): void;
-  /** Phase 18: the prompt snippets `/` offers in the message box. */
-  prompts?: PromptSnippets;
-}) {
+export function ExternalView(
+  props: Readonly<{
+    store: AppStore;
+    state: AppState;
+    hostId: string;
+    hostName: string;
+    claudeSessionId: string;
+    onResumed(): void;
+    /** Phase 18: the prompt snippets `/` offers in the message box. */
+    prompts?: PromptSnippets;
+  }>,
+) {
   const t = props.store.i18n.t;
   const { store, state, hostId, claudeSessionId: id } = props;
   const key = sessionKey(hostId, id);
@@ -49,6 +51,7 @@ export function ExternalView(props: {
     .filter(([k, request]) => k.startsWith(`${hostId}/`) && request.claudeSessionId === id)
     .map(([, request]) => request);
   const [text, setText] = useState("");
+  const box = useRef<HTMLTextAreaElement>(null);
   const terminalId = useLaunchTerminal(store, hostId, session?.launchId ?? null);
   const host = state.hosts.find((h) => h.id === hostId);
   const alwaysAllow = hasFeature(host?.hostInfo?.features, "rules", false);
@@ -115,12 +118,14 @@ export function ExternalView(props: {
         }
       />
       <BgPanel store={store} hostId={hostId} claudeSessionId={id} />
-      <RecapPanel
-        store={store}
-        hostId={hostId}
-        claudeSessionId={id}
-        {...(session?.lastEventAt ? { stamp: session.lastEventAt } : {})}
-      />
+      <RecapSlot>
+        <RecapPanel
+          store={store}
+          hostId={hostId}
+          claudeSessionId={id}
+          {...(session?.lastEventAt ? { stamp: session.lastEventAt } : {})}
+        />
+      </RecapSlot>
       {requests.length > 0 && (
         <div className="flex flex-col gap-3 border-b p-3">
           {requests.map((request) => (
@@ -140,33 +145,40 @@ export function ExternalView(props: {
               nowMs={store.now()}
               onCopyPath={(path) => void store.copyText(path)}
               alwaysAllow={alwaysAllow}
-              onRespond={(decision, message, updates, updatedInput) =>
-                store.respondTo(hostId, request.requestId, decision, updates, message, updatedInput)
+              onRespond={(decision, message, updates, updatedInput, held) =>
+                store.respondTo(hostId, request.requestId, decision, {
+                  updatedPermissions: updates,
+                  message,
+                  updatedInput,
+                  held,
+                })
               }
             />
           ))}
         </div>
       )}
       {session?.controllable && (
-        <PromptMenu
-          prompts={props.prompts}
-          text={text}
-          label={t("session.snippets")}
-          onFill={setText}
-        />
-      )}
-      {session?.controllable && (
-        <Composer>
-          <Textarea
-            aria-label={t("external.message")}
-            placeholder={t("external.placeholder")}
-            value={text}
-            className="max-h-40 min-h-9 flex-1 resize-none"
-            rows={1}
-            onChange={(e) => setText(e.target.value)}
+        <div className="relative">
+          <PromptMenu
+            prompts={props.prompts}
+            text={text}
+            label={t("session.snippets")}
+            onFill={setText}
+            input={box}
           />
-          <Button onClick={send}>{t("external.send")}</Button>
-        </Composer>
+          <Composer>
+            <Textarea
+              ref={box}
+              aria-label={t("external.message")}
+              placeholder={t("external.placeholder")}
+              value={text}
+              className="max-h-40 min-h-9 flex-1 resize-none"
+              rows={1}
+              onChange={(e) => setText(e.target.value)}
+            />
+            <Button onClick={send}>{t("external.send")}</Button>
+          </Composer>
+        </div>
       )}
       <div className="min-h-0 flex-1">
         <TranscriptReader

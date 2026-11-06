@@ -16,7 +16,7 @@ import { displayPath } from "../src/memory/display-path.ts";
 import { decisionLog, type MemoryDecision, ProjectMemory } from "../src/memory/memory.ts";
 import { startServer } from "../src/server.ts";
 import { git, gitRepo, newBoard } from "./board-helpers.ts";
-import { tempDir } from "./helpers.ts";
+import { BASELINE_FEATURES, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
@@ -543,13 +543,13 @@ describe("memoria: protocolo", () => {
     const on = await served();
     expect(
       (await on.client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toContain("memory");
     const off = await served(false);
     expect(
       (await off.client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).not.toContain("memory");
     expect(await off.client.request("memory.list", { projectId: off.projectId })).toMatchObject({
@@ -700,7 +700,7 @@ describe("memoria: o daemon inteiro", () => {
       await client.request("hello", { token: "memoria-daemon-token-0123456789", client: "t" });
       expect(
         (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-          (name) => name !== "session.images",
+          (name) => !BASELINE_FEATURES.includes(name),
         ),
       ).toContain("memory");
       const project = await client.data<{ id: string }>("project.add", { path: repo });
