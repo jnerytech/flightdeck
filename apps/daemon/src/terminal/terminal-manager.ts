@@ -364,7 +364,7 @@ export class TerminalManager {
   /** The process id of a live terminal, when its PTY has one. */
   pidOf(terminalId: string): number | null {
     const entry = this.entries.get(terminalId);
-    return entry && entry.exitCode === null ? (entry.pty.pid ?? null) : null;
+    return entry?.exitCode === null ? (entry.pty.pid ?? null) : null;
   }
 
   write(terminalId: string, data: string): void {
@@ -583,7 +583,7 @@ export class TerminalManager {
 
   private onExit(id: string, exitCode: number): void {
     const entry = this.entries.get(id);
-    if (!entry || entry.exitCode !== null) return;
+    if (entry?.exitCode !== null) return;
     entry.exitCode = exitCode;
     this.log(`terminal ${id} encerrado (código ${exitCode})`);
     entry.afterExit?.(exitCode);
