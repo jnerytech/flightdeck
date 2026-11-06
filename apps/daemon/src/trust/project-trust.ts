@@ -2,7 +2,7 @@
 import type { Database } from "bun:sqlite";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
-import { isInside } from "../paths.ts";
+import { isInside, rootNames } from "../paths.ts";
 
 export type TrustSource = "person" | "migration";
 
@@ -72,7 +72,7 @@ export class ProjectTrust {
   /** The record that makes `cwd` trusted (its own folder or the nearest one above), or null. */
   via(cwd: string): string | null {
     const here = resolve(cwd);
-    const roots = (this.opts.roots?.() ?? []).map((root) => resolve(root));
+    const roots = rootNames(this.opts.roots?.() ?? []);
     const granting = this.rows()
       .filter((row) => {
         if (row.scope === "exact") return resolve(row.path) === here;

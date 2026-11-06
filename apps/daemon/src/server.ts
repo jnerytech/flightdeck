@@ -82,7 +82,7 @@ import type { Idle } from "./messaging/idle.ts";
 import type { Messaging } from "./messaging/messages.ts";
 import type { Names } from "./names/names.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
-import { isInside, resolveAllowedCwd } from "./paths.ts";
+import { isInside, resolveAllowedCwd, rootNames } from "./paths.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
 import type { OpenSessionPersonas } from "./personas/open-session.ts";
 import { preparePersonas } from "./personas/prepare.ts";
@@ -1634,7 +1634,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         // A root, or a folder above one, holds many repos: trusting it would trust every clone inside.
         if (
           command.payload.trusted &&
-          opts.allowedRoots.some((root) => isInside(path, resolve(root)))
+          rootNames(opts.allowedRoots).some((root) => isInside(path, root))
         ) {
           throw new FlightdeckError(
             "invalid_state",
