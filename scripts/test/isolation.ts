@@ -38,10 +38,13 @@ export function captureGlobals(scope: Scope = globalThis): Snapshot {
   return { env: { ...scope.process.env }, members };
 }
 
+/** Variables the Bun runtime itself adds on Windows when it spawns (nothing in the repository sets them): not a test's leak. */
+const RUNTIME_ENV = new Set(["NoDefaultCurrentDirectoryInExePath"]);
+
 function restoreEnv(snapshot: Snapshot, scope: Scope, leaked: string[]): void {
   const env = scope.process.env;
   for (const key of new Set([...Object.keys(env), ...Object.keys(snapshot.env)])) {
-    if (env[key] === snapshot.env[key]) continue;
+    if (env[key] === snapshot.env[key] || RUNTIME_ENV.has(key)) continue;
     leaked.push(`env.${key}`);
     if (snapshot.env[key] === undefined) delete env[key];
     else env[key] = snapshot.env[key];
