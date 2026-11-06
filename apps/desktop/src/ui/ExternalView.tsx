@@ -1,6 +1,7 @@
 import { Radio } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
+import { AssistField } from "@/components/assistant/assist-field";
 import { PersonaSwitch } from "@/components/personas/persona-switch";
 import { Composer, RecapSlot, SessionHeader, SessionPane } from "@/components/session/parts";
 import { PromptMenu, type PromptSnippets } from "@/components/snippets/prompt-menu";
@@ -166,18 +167,35 @@ export function ExternalView(
             onFill={setText}
             input={box}
           />
-          <Composer>
-            <Textarea
-              ref={box}
-              aria-label={t("external.message")}
-              placeholder={t("external.placeholder")}
-              value={text}
-              className="max-h-40 min-h-9 flex-1 resize-none"
-              rows={1}
-              onChange={(e) => setText(e.target.value)}
-            />
-            <Button onClick={send}>{t("external.send")}</Button>
-          </Composer>
+          {/* The AI wand (phase 40): it improves the message and never sends it. */}
+          <AssistField
+            binding={{
+              controller: store.assistant,
+              kind: "prompt",
+              fieldHostId: hostId,
+              ...(session.cwd ? { cwd: session.cwd } : {}),
+              openSettings: () => store.router.push({ name: "settings", section: "assistant" }),
+            }}
+            value={text}
+            onChange={setText}
+            t={t}
+          >
+            {(assist) => (
+              <Composer>
+                <Textarea
+                  ref={box}
+                  {...assist}
+                  aria-label={t("external.message")}
+                  placeholder={t("external.placeholder")}
+                  value={text}
+                  className="max-h-40 min-h-9 flex-1 resize-none"
+                  rows={1}
+                  onChange={(e) => setText(e.target.value)}
+                />
+                <Button onClick={send}>{t("external.send")}</Button>
+              </Composer>
+            )}
+          </AssistField>
         </div>
       )}
       <div className="min-h-0 flex-1">

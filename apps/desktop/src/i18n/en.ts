@@ -794,6 +794,7 @@ export const en: Dictionary = {
   },
   statusBar: {
     label: "Status bar",
+    more: "More status items",
     refreshQuota: "Refresh the plan usage",
     refreshingQuota: "Refreshing the plan usage…",
     keepAwake: {
@@ -1987,6 +1988,8 @@ export const en: Dictionary = {
     assistant_auth: "The provider refused the key. Check it in Settings, Assistant.",
     assistant_credits: "The provider says there is no credit left on this key.",
     assistant_rate_limited: "Too many requests right now. Wait a moment and try again.",
+    assistant_repo_other_host:
+      "The assistant host is not this card's host and cannot read its repository. Choose the card's host or an API key.",
     assistant_overloaded: "The provider is overloaded. Try again in a moment.",
     assistant_routing_unavailable:
       "No provider of this model on OpenRouter takes the request without collecting data. Turn off the data switch in Settings, or pick another model.",
@@ -2378,6 +2381,8 @@ export const en: Dictionary = {
     modeLabel: "Merge mode",
     modeMerge: "Merge with a merge commit (--no-ff)",
     modeSquash: "Squash (a single commit)",
+    commitMessage: "Commit message",
+    commitMessageHint: "Empty: the default message, with the card's title.",
     merged: "Card done: the work went into {base}.",
     prComments: "PR comments",
     prEmpty: "No comments on the PR.",
@@ -3373,6 +3378,7 @@ export const en: Dictionary = {
     notifyTitle: "A PR needs you",
     entry: "PR of {card}: {reason}",
     descriptionTitle: "PR description",
+    prTitle: "PR title",
     redactedOne: "{n} line taken out for looking like a secret",
     redactedMany: "{n} lines taken out for looking like secrets",
     confirm: "Open the PR with this text",

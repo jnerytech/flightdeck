@@ -313,19 +313,25 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   // room in its card and inside its own box. A finding names the element and the px it has.
   const spacing = options.spacing;
   const nameOf = (el: Element) => pathOf(el, true).split(" > ").pop() ?? "";
+  /** Whether this box itself is clipped away on purpose (the sr-only pattern). */
+  const clippedAway = (el: Element) => {
+    const style = getComputedStyle(el);
+    const clip = style.getPropertyValue("clip").replace(/px/g, "");
+    return (
+      style.getPropertyValue("clip-path") === "inset(50%)" ||
+      /^rect\(0[ ,]+0[ ,]+0[ ,]+0\)$/.test(clip)
+    );
+  };
+  /** Each element's answer, since every rule asks for the same ancestors (#677). */
+  const srOnlyOf = new WeakMap<Element, boolean>();
   /** Hidden for screen readers only (#641): it, or a box around it, is clipped away on purpose. */
-  const srOnly = (el: Element) => {
-    for (let at: Element | null = el; at && at !== document.body; at = at.parentElement) {
-      const style = getComputedStyle(at);
-      const clip = style.getPropertyValue("clip").replace(/px/g, "");
-      if (
-        style.getPropertyValue("clip-path") === "inset(50%)" ||
-        /^rect\(0[ ,]+0[ ,]+0[ ,]+0\)$/.test(clip)
-      ) {
-        return true;
-      }
-    }
-    return false;
+  const srOnly = (el: Element): boolean => {
+    if (el === document.body) return false;
+    const known = srOnlyOf.get(el);
+    if (known !== undefined) return known;
+    const answer = clippedAway(el) || (el.parentElement !== null && srOnly(el.parentElement));
+    srOnlyOf.set(el, answer);
+    return answer;
   };
   /** On screen for a person: not hidden, and not hidden for screen readers only. */
   const seenBy = (el: Element) => !hidden(el) && !srOnly(el);
@@ -482,12 +488,12 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     }
   };
   const checkNestedScroll = (shown: Element[]) => {
+    const page = root.scrollHeight - root.clientHeight;
     for (const el of shown) {
       const inner = hides(el);
       if (!inner) continue;
       let outer = el.parentElement;
       while (outer && outer !== document.body && !hides(outer)) outer = outer.parentElement;
-      const page = root.scrollHeight - root.clientHeight;
       if (outer && outer !== document.body) {
         add(
           "nested-scroll",
@@ -504,19 +510,16 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     }
   };
   const checkHeader = (rules: ResponsiveRules) => {
-    const tabs = [...document.querySelectorAll(rules.tabs)].find((el) => !hidden(el));
+    // Every app tab row (a split has one per pane): a header is checked against the ones over it.
+    const rows = [...document.querySelectorAll(rules.tabs)].filter((el) => !hidden(el)).map(rectOf);
     for (const header of document.querySelectorAll(rules.header)) {
       if (hidden(header)) continue;
       const box = rectOf(header);
-      const row = tabs ? rectOf(tabs) : null;
-      const under = row ? row.bottom - box.top : 0;
-      if (
-        row &&
-        under > 0.5 &&
-        box.top >= row.top &&
-        box.left < row.right &&
-        row.left < box.right
-      ) {
+      const over = rows.filter(
+        (row) => box.top >= row.top && box.left < row.right && row.left < box.right,
+      );
+      const under = Math.max(0, ...over.map((row) => row.bottom - box.top));
+      if (under > 0.5) {
         add(
           "header-clipped",
           pathOf(header, true),
@@ -620,7 +623,6 @@ export const SCROLL_SIZES: ReadonlyArray<{ width: number; height: number }> = [
   { width: 1280, height: 600 },
 ];
 
-/** The spacing guard's rules (#588): heuristic, judged against a baseline that only goes down. */
 /** The narrow-window rules (#641): a page header, its title and the tab row, by selector. */
 export interface ResponsiveRules {
   header: string;
@@ -634,9 +636,11 @@ export const RESPONSIVE_RULES: Rule[] = ["overflow-x", "nested-scroll", "header-
 export const RESPONSIVE: ResponsiveRules = {
   header: '[data-slot="page-header"]',
   title: '[data-slot="page-title"]',
-  tabs: '[role="tablist"]',
+  // The app's tab rows (TabBar), not an in-page tab list (#677).
+  tabs: '.tab-strip[role="tablist"]',
 };
 
+/** The spacing guard's rules (#588): heuristic, judged against a baseline that only goes down. */
 export const SPACING_RULES: readonly Rule[] = [
   "block-gap",
   "card-gap",
@@ -699,14 +703,19 @@ export interface Ratchet {
   gone: string[];
 }
 
-/** A baseline of counts, or `null` when there is none yet; an entry that is not a number counts as one. */
-export function loadCounts(read: () => string | null): Record<string, number> | null {
+/** A baseline of counts, or `null` when there is none yet; refuses one that is not counts, by name (#677). */
+export function loadCounts(read: () => string | null, file: string): Record<string, number> | null {
   const text = read();
   if (text === null) return null;
-  const parsed = JSON.parse(text) as Record<string, unknown>;
-  return Object.fromEntries(
-    Object.entries(parsed).map(([key, value]) => [key, typeof value === "number" ? value : 1]),
-  );
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new Error(`${file} is not valid JSON`);
+  }
+  const wrong = Object.entries(parsed).find(([, value]) => !Number.isInteger(value));
+  if (wrong) throw new Error(`${file}: ${wrong[0]} is not a count of findings`);
+  return parsed as Record<string, number>;
 }
 
 /** Judges one screen against a ratchet: records what it saw and what is gone; returns the failures. */

@@ -449,7 +449,7 @@ describe("layout-guards: what the page function finds, named by data-slot path",
 
   test("narrow (#641): a page header that starts under the tab row, and a title cut short, are findings", () => {
     page(`
-      <div role="tablist" data-rect="0,0,640,40"></div>
+      <div class="tab-strip" role="tablist" data-rect="0,0,640,40"></div>
       <section data-slot="page" data-rect="0,32,640,800">
         <div data-slot="page-header" data-rect="0,32,640,100">
           <h1 data-slot="page-title" data-rect="24,48,400,76" data-sw="520" data-cw="376">A very long project name</h1>
@@ -460,7 +460,7 @@ describe("layout-guards: what the page function finds, named by data-slot path",
       "header-clipped: page > page-header > page-title (cut: 376 px of 520)",
     ]);
     page(`
-      <div role="tablist" data-rect="0,0,640,40"></div>
+      <div class="tab-strip" role="tablist" data-rect="0,0,640,40"></div>
       <section data-slot="page" data-rect="0,40,640,800">
         <div data-slot="page-header" data-rect="0,40,640,100">
           <h1 data-slot="page-title" data-rect="24,56,400,84" data-sw="376" data-cw="376">Short</h1>
@@ -469,10 +469,64 @@ describe("layout-guards: what the page function finds, named by data-slot path",
     expect(narrow()).toEqual([]);
   });
 
-  test("narrow (#641): the rules are heuristic, judged against their baseline; with none they fail nothing", () => {
-    const each = RESPONSIVE_RULES.map((rule) => ({ rule, path: "page > x", detail: "1 px" }));
-    expect(each.length).toBe(3);
-    expect(judge("dark en 640x800 board", each, null).failures).toEqual([]);
+  test("#677: the narrow findings go through a ratchet: none fail with no baseline, each counts against one", () => {
+    page(`
+      <div data-slot="card" data-rect="0,0,300,100">
+        <div data-slot="table" data-rect="0,0,380,80">a table</div>
+        <div style="clip-path: inset(50%)" data-rect="0,0,500,20">a caption for screen readers</div>
+      </div>`);
+    const found = layoutFindings({ responsive: RESPONSIVE }).filter((f) =>
+      RESPONSIVE_RULES.includes(f.rule),
+    );
+    const ratchet = (baseline: Record<string, number> | null) => ({
+      baseline,
+      seen: {} as Record<string, number>,
+      occurrences: {} as Record<string, string>,
+      gone: [] as string[],
+    });
+    expect(ratchetScreen("dark en 640x800 card", found, ratchet(null))).toEqual([]);
+    // The clipped caption, wider than its card, is not a finding: only the table is.
+    expect(ratchetScreen("dark en 640x800 card", found, ratchet({}))).toEqual([
+      "dark en 640x800 card: overflow-x card > table, 1 where the baseline has 0: card > table (80 px past the right of card)",
+    ]);
+  });
+
+  test("#677: the old clip: rect(0 0 0 0) form hides for screen readers only too", () => {
+    page(`
+      <div data-slot="card" data-rect="0,0,300,100">
+        <span data-slot="caption" data-old-clip data-rect="0,0,1,1" data-sw="90" data-cw="1">a caption</span>
+      </div>`);
+    // happy-dom does not compute `clip`: this element's computed style answers as Chrome does.
+    const real = window.getComputedStyle;
+    window.getComputedStyle = ((el: Element) => {
+      const style = real(el);
+      if (!el.hasAttribute("data-old-clip")) return style;
+      return new Proxy(style, {
+        get: (target, key) =>
+          key === "getPropertyValue"
+            ? (name: string) =>
+                name === "clip" ? "rect(0px, 0px, 0px, 0px)" : target.getPropertyValue(name)
+            : Reflect.get(target, key),
+      });
+    }) as typeof window.getComputedStyle;
+    try {
+      expect(spacing()).toEqual([]);
+    } finally {
+      window.getComputedStyle = real;
+    }
+  });
+
+  test("#677: a header is checked against the app tab rows over it (split panes), not an in-page tablist", () => {
+    page(`
+      <div role="tablist" data-rect="0,40,640,80">settings tabs</div>
+      <div class="tab-strip" role="tablist" data-rect="0,0,320,40"></div>
+      <div class="tab-strip" role="tablist" data-rect="320,0,640,48"></div>
+      <section data-slot="page" data-rect="320,40,640,800">
+        <div data-slot="page-header" data-rect="320,40,640,100"></div>
+      </section>`);
+    expect(narrow()).toEqual([
+      "header-clipped: page > page-header (starts 8 px under the tab row)",
+    ]);
   });
 
   test("an element with no slot is named by its tag and first class", () => {
@@ -769,11 +823,14 @@ describe("layout-guards: one screen against a ratchet of counts, as demo:shots r
     ]);
   });
 
-  test("a baseline of counts loads as counts; an entry that is not a number counts as one", () => {
-    expect(loadCounts(() => null)).toBeNull();
-    expect(loadCounts(() => '{"a|s|p": 3, "b|s|p": "1406 px past its box"}')).toEqual({
-      "a|s|p": 3,
-      "b|s|p": 1,
-    });
+  test("#677: a baseline of counts loads as counts; an entry that is not a count, or bad JSON, is refused by file name", () => {
+    expect(loadCounts(() => null, "spacing-baseline.json")).toBeNull();
+    expect(loadCounts(() => '{"a|s|p": 3}', "spacing-baseline.json")).toEqual({ "a|s|p": 3 });
+    expect(() =>
+      loadCounts(() => '{"b|s|p": "1406 px past its box"}', "spacing-baseline.json"),
+    ).toThrow("spacing-baseline.json: b|s|p is not a count of findings");
+    expect(() => loadCounts(() => "{ nope", "responsive-baseline.json")).toThrow(
+      "responsive-baseline.json is not valid JSON",
+    );
   });
 });

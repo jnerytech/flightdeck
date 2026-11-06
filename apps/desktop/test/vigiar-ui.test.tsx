@@ -222,7 +222,7 @@ describe("vigiar-ui: the PR description is the person's to confirm", () => {
     await click("Abrir o PR com este texto");
     await settle(() => sent(daemon, "card.pr.create").length > 0);
     expect(sent(daemon, "card.pr.create")).toEqual([
-      { cardId: "c1", description: "## Login\n\ntexto editado" },
+      { cardId: "c1", description: "## Login\n\ntexto editado", title: "Login" },
     ]);
   });
 
