@@ -3,6 +3,10 @@ import {
   RANK,
   READ_TOOLS,
   type RiskLevel,
+  SECRET_DIRS,
+  SECRET_EXTENSIONS,
+  SECRET_NAMES,
+  SECRET_PAIRS,
   SHELL_TOOLS,
   WRITE_TOOLS,
 } from "./risk.ts";
@@ -62,6 +66,9 @@ const SENSITIVE = [
   [".claude", ".credentials.json"],
   [".github", "workflows"],
   [".vscode", "tasks.json"],
+  // What `credential()` names (issue #439): one list, so a rule cannot cover what a call may not.
+  ...[...SECRET_NAMES, ...SECRET_DIRS, ...SECRET_EXTENSIONS].map((name) => [name]),
+  ...SECRET_PAIRS.map(([dir, next]) => [dir, next]),
 ];
 /** A segment's glob as a regular expression (`*` and `?` stay inside the segment). */
 const segmentGlob = (segment: string) =>
