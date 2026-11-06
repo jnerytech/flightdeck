@@ -2,6 +2,8 @@
 export const SYNC_COMMANDS_ALLOWED = [
   "focus_main",
   "set_close_to_tray",
+  // Issue #233: the taskbar overlay is a window call.
+  "set_unread_badge",
   "tray_set_menu",
   "tray_set_status",
 ];
