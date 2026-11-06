@@ -359,8 +359,14 @@ const LOG_MAX_TAIL: usize = 500;
 const LOG_TAIL_BYTES: u64 = 256 * 1024;
 const LOG_NAME: &str = "flightdeck.log";
 /// If a rotation keeps failing (a viewer holds the file open on Windows), the live file may grow to
-/// this much before a line is refused: logging is not lost at the first hiccup, and stays bounded.
-const LOG_HARD_LIMIT: u64 = 2 * LOG_MAX_BYTES;
+/// this many times its limit before a line is refused: logging is not lost at the first hiccup,
+/// and stays bounded.
+const LOG_HARD_LIMIT_FACTOR: u64 = 2;
+/// The most lines one `append_log` call takes (issue #259). The webview batches what arrives while
+/// a write is in flight and holds at most 500 waiting; past this the call is refused whole. Tauri
+/// has already built the list by then: this bounds the disk work and the time under the lock, not
+/// the memory of the call.
+const LOG_MAX_BATCH: usize = 1000;
 /// One writer at a time: `append_log` runs on the blocking pool, and two appends at the rotation
 /// boundary would each rotate and push history out.
 static LOG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -376,15 +382,30 @@ fn log_path(dir: &std::path::Path, n: usize) -> std::path::PathBuf {
 
 /// Shifts the files one place up: the live one becomes `.1`, the oldest is dropped.
 fn rotate_logs(dir: &std::path::Path, files: usize) -> std::io::Result<()> {
+    rotate_logs_with(dir, files, |from, to| std::fs::rename(from, to))
+}
+
+/// `rotate_logs` with the rename given, so a test can make one fail. Only the files below the first
+/// free slot move, and the oldest is dropped only when there is no free slot (issue #259): a
+/// rotation whose last rename fails (a viewer holds the live file on Windows) leaves `.1` free, so
+/// trying again, line after line, drops nothing.
+fn rotate_logs_with(
+    dir: &std::path::Path,
+    files: usize,
+    rename: impl Fn(&std::path::Path, &std::path::Path) -> std::io::Result<()>,
+) -> std::io::Result<()> {
     let files = files.max(1);
-    let oldest = log_path(dir, files - 1);
-    if oldest.exists() {
-        std::fs::remove_file(&oldest)?;
-    }
-    for n in (0..files - 1).rev() {
+    let top = match (1..files).find(|&n| !log_path(dir, n).exists()) {
+        Some(free) => free,
+        None => {
+            std::fs::remove_file(log_path(dir, files - 1))?;
+            files - 1
+        }
+    };
+    for n in (0..top).rev() {
         let from = log_path(dir, n);
         if from.exists() {
-            std::fs::rename(&from, log_path(dir, n + 1))?;
+            rename(&from, &log_path(dir, n + 1))?;
         }
     }
     Ok(())
@@ -418,28 +439,64 @@ fn open_live_log(path: &std::path::Path) -> std::io::Result<std::fs::File> {
     if exists_but_not_regular {
         return Err(std::io::Error::other("the log file is not a regular file"));
     }
+    open_append(path)
+}
+
+/// The open itself: append, owner-only on creation. On Unix it refuses a link at the last part of
+/// the path (`O_NOFOLLOW`), so a link planted between the look above and this open is not followed
+/// either (issue #259). Windows has no such flag; the look above is what refuses a link there.
+fn open_append(path: &std::path::Path) -> std::io::Result<std::fs::File> {
     let mut options = std::fs::OpenOptions::new();
     options.create(true).append(true);
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
-        options.mode(0o600);
+        options.mode(0o600).custom_flags(libc::O_NOFOLLOW);
     }
     options.open(path)
 }
 
 /// Appends one line, flattened and cut, rotating first when the live file would pass the limit.
+#[cfg(test)]
 fn append_line(
     dir: &std::path::Path,
     line: &str,
     max_bytes: u64,
     files: usize,
 ) -> std::io::Result<()> {
-    use std::io::Write;
+    append_lines(dir, &[line.to_string()], max_bytes, files)
+}
+
+/// Appends the lines in order under one lock, each as `append_one` does (issue #259). A batch of
+/// more than `LOG_MAX_BATCH` lines is refused whole: the list comes from the webview.
+fn append_lines(
+    dir: &std::path::Path,
+    lines: &[String],
+    max_bytes: u64,
+    files: usize,
+) -> std::io::Result<()> {
+    if lines.len() > LOG_MAX_BATCH {
+        return Err(std::io::Error::other("too many log lines in one call"));
+    }
     let _one_writer = LOG_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     make_log_dir(dir)?;
+    for line in lines {
+        append_one(dir, line, max_bytes, files)?;
+    }
+    Ok(())
+}
+
+/// One line, flattened and cut, rotating first when the live file would pass the limit. The
+/// caller holds `LOG_LOCK` and has made the folder.
+fn append_one(
+    dir: &std::path::Path,
+    line: &str,
+    max_bytes: u64,
+    files: usize,
+) -> std::io::Result<()> {
+    use std::io::Write;
     // Cut first, on a character boundary, so a flood is never copied whole.
     let mut cut = line;
     if cut.len() > LOG_MAX_LINE {
@@ -455,7 +512,8 @@ fn append_line(
     let size = std::fs::metadata(&live).map(|m| m.len()).unwrap_or(0);
     if size > 0 && size + text.len() as u64 > max_bytes {
         // A failed rotation still lets the line in, until the hard limit.
-        if rotate_logs(dir, files).is_err() && size + text.len() as u64 > LOG_HARD_LIMIT.max(max_bytes) {
+        let hard_limit = max_bytes.saturating_mul(LOG_HARD_LIMIT_FACTOR);
+        if rotate_logs(dir, files).is_err() && size + text.len() as u64 > hard_limit {
             return Err(std::io::Error::other("the log is full and cannot rotate"));
         }
     }
@@ -519,12 +577,13 @@ fn app_logs(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
     app.path().app_log_dir().map_err(|e| e.to_string())
 }
 
-/// Appends a line of the app's log. The webview redacts it with the protocol's scanner first.
+/// Appends lines of the app's log, in order (issue #259: the webview batches what arrives while a
+/// write is in flight). The webview redacts each with the protocol's scanner first.
 #[tauri::command]
-async fn append_log(app: tauri::AppHandle, line: String) -> Result<(), String> {
+async fn append_log(app: tauri::AppHandle, lines: Vec<String>) -> Result<(), String> {
     let dir = app_logs(&app)?;
     spawn_blocking_result(move || {
-        append_line(&dir, &line, LOG_MAX_BYTES, LOG_FILES).map_err(|e| e.to_string())
+        append_lines(&dir, &lines, LOG_MAX_BYTES, LOG_FILES).map_err(|e| e.to_string())
     })
     .await
 }
