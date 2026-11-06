@@ -9,6 +9,13 @@ import {
 } from "./assistant.ts";
 import { isBranchName } from "./git-ref.ts";
 import { type RunConfigInfo, RunState } from "./run.ts";
+import {
+  TeleportCancelPayload,
+  type TeleportChunk,
+  type TeleportManifest,
+  TeleportPreparePayload,
+  TeleportReadPayload,
+} from "./teleport.ts";
 
 export const PROTOCOL_VERSION = 1;
 /** Oldest client protocol this daemon still serves. */
@@ -3066,6 +3073,10 @@ export const Command = z.discriminatedUnion("type", [
   cmd("card.get", CardIdPayload),
   cmd("card.stop", CardIdPayload),
   cmd("card.diff", CardIdPayload),
+  /** Issue #100: teleport, the source side (feature `teleport`). */
+  cmd("teleport.prepare", TeleportPreparePayload),
+  cmd("teleport.read", TeleportReadPayload),
+  cmd("teleport.cancel", TeleportCancelPayload),
   /** Phase 40: the AI assistant (feature `assistant`). */
   cmd("assistant.run", AssistantRunPayload),
   cmd("assistant.cancel", AssistantCancelPayload),
@@ -4786,6 +4797,9 @@ export interface CommandResults {
   "assistant.run": AssistantResult;
   "assistant.cancel": undefined;
   "assistant.context": AssistantContextBundle;
+  "teleport.prepare": TeleportManifest;
+  "teleport.read": TeleportChunk;
+  "teleport.cancel": undefined;
   "assistant.record": undefined;
   "card.message": SessionSendResult;
   "card.pr.create": Card;
@@ -5434,6 +5448,7 @@ export * from "./refusals.ts";
 export * from "./run.ts";
 export * from "./sequence.ts";
 export * from "./snippets.ts";
+export * from "./teleport.ts";
 
 /**
  * Phase 19: the one rule for a production tag, shared by the daemon's rules and the app's

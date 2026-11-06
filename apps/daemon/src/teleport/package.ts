@@ -7,9 +7,17 @@
  * like secrets and names their kinds, never their text. A package goes when its time is up, when it
  * is cancelled and when the daemon starts.
  */
+
+import { randomUUID } from "node:crypto";
 import { mkdir, open, realpath, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
-import type { PermissionMode, SessionPersona, SessionStatus } from "@flightdeck/protocol";
+import type {
+  PermissionMode,
+  SessionPersona,
+  SessionStatus,
+  TeleportChunk,
+  TeleportManifest,
+} from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
 import { readRegularSized } from "../read-regular.ts";
@@ -45,25 +53,7 @@ export interface TeleportDeps {
   chunkBytes?: number;
 }
 
-export interface TeleportManifest {
-  id: string;
-  sessionId: string;
-  claudeSessionId: string;
-  cwd: string;
-  model: string | null;
-  permissionMode: PermissionMode;
-  persona: string | null;
-  expiresAt: string;
-  parts: Array<{ name: "transcript"; size: number; sha256: string }>;
-  secrets: { lines: number; labels: string[] };
-}
-
-export interface TeleportChunk {
-  /** The bytes, in base64. */
-  data: string;
-  next: number;
-  eof: boolean;
-}
+export type { TeleportChunk, TeleportManifest };
 
 /** How long a package waits for the target to read it. */
 export const TELEPORT_TTL_MS = 30 * 60_000;
@@ -80,7 +70,7 @@ interface Entry {
   timer: unknown;
 }
 
-const refuse = (code: "invalid_state" | "invalid_input" | "not_found", reason: string) =>
+const refuse = (code: "invalid_state" | "bad_request" | "not_found", reason: string) =>
   new FlightdeckError(code, reason.replaceAll("_", " "), reason);
 
 /** The lines of a transcript that look like secrets, and the kinds found, in the order met. */
@@ -122,7 +112,7 @@ export class TeleportPackages {
     }
     const claudeId = session.claudeSessionId;
     if (!claudeId) throw refuse("not_found", "teleport_no_transcript");
-    if (!UUID.test(claudeId)) throw refuse("invalid_input", "teleport_unsafe_transcript");
+    if (!UUID.test(claudeId)) throw refuse("bad_request", "teleport_unsafe_transcript");
     const file = this.deps.transcriptOf(claudeId);
     if (!file) throw refuse("not_found", "teleport_no_transcript");
     const text = await this.readTranscript(file, claudeId);
@@ -161,7 +151,7 @@ export class TeleportPackages {
     const size = entry?.manifest.parts.find((p) => p.name === part)?.size;
     if (size === undefined) throw refuse("not_found", "teleport_not_found");
     if (!Number.isInteger(offset) || offset < 0 || offset > size) {
-      throw refuse("invalid_input", "request_invalid");
+      throw refuse("bad_request", "request_invalid");
     }
     const length = Math.min(this.deps.chunkBytes ?? TELEPORT_CHUNK_BYTES, size - offset);
     const buffer = Buffer.alloc(length);
@@ -190,19 +180,19 @@ export class TeleportPackages {
   private async readTranscript(file: string, claudeId: string): Promise<Buffer> {
     const max = this.deps.maxBytes ?? TELEPORT_MAX_BYTES;
     if (basename(file) !== `${claudeId}.jsonl`) {
-      throw refuse("invalid_input", "teleport_unsafe_transcript");
+      throw refuse("bad_request", "teleport_unsafe_transcript");
     }
     const folder = await realpath(dirname(file)).catch(() => null);
     const roots = await Promise.all(
       this.deps.historyRoots.map((r) => realpath(r).catch(() => null)),
     );
     if (!folder || !roots.some((root) => root !== null && isInside(root, folder))) {
-      throw refuse("invalid_input", "teleport_unsafe_transcript");
+      throw refuse("bad_request", "teleport_unsafe_transcript");
     }
     const read = await readRegularSized(join(folder, basename(file)), max);
-    if (!read) throw refuse("invalid_input", "teleport_unsafe_transcript");
+    if (!read) throw refuse("bad_request", "teleport_unsafe_transcript");
     if (read.size > max) {
-      throw new FlightdeckError("invalid_input", "transcript too large", "teleport_too_large", {
+      throw new FlightdeckError("bad_request", "transcript too large", "teleport_too_large", {
         max,
       });
     }
@@ -218,4 +208,31 @@ export class TeleportPackages {
     this.pending.add(work);
     void work.finally(() => this.pending.delete(work));
   }
+}
+
+/** The daemon's parts a teleport reads (issue #100). */
+export interface TeleportWiring {
+  manager: { get(id: string): TeleportSession };
+  names: { get(id: string): { team?: unknown } | null };
+  indexer: { transcriptFile(claudeSessionId: string): string | null } | undefined;
+  historyRoots: readonly string[];
+  dataDir: string;
+  scan(text: string): string[];
+  log(line: string): void;
+}
+
+/** The real deps of the daemon's teleport packages. */
+export function teleportDeps(wiring: TeleportWiring): TeleportDeps {
+  return {
+    session: (id) => wiring.manager.get(id),
+    inTeam: (id) => Boolean(wiring.names.get(id)?.team),
+    transcriptOf: (claudeSessionId) => wiring.indexer?.transcriptFile(claudeSessionId) ?? null,
+    historyRoots: wiring.historyRoots,
+    dir: join(wiring.dataDir, "teleport"),
+    scan: wiring.scan,
+    now: Date.now,
+    newId: randomUUID,
+    timers: globalThis,
+    log: wiring.log,
+  };
 }
