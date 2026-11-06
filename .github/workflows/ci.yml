@@ -11,9 +11,10 @@ on:
     branches: [main]
     paths-ignore: ["docs/images/**"]
   pull_request:
-  # The whole suite every night on main (#309): a PR runs the cheap base of the test pyramid.
+  # The whole suite every 3 hours on main (#309, #444): a PR and a push to main run the cheap base
+  # of the test pyramid plus the related tests, so a red only the full suite sees shows within 3 h.
   schedule:
-    - cron: "17 4 * * *"
+    - cron: "17 */3 * * *"
   workflow_dispatch:
     inputs:
       only:
@@ -57,6 +58,7 @@ jobs:
       cargo: ${{ steps.plan.outputs.cargo }}
       e2e: ${{ steps.plan.outputs.e2e }}
       windows_shards: ${{ steps.plan.outputs.windows_shards }}
+      base: ${{ steps.plan.outputs.base }}
     steps:
       # Full history: the changed paths are taken against the merge-base with the target branch,
       # and the TDD audit counts from the merge-base with main or from the last tag.
@@ -68,8 +70,11 @@ jobs:
         with:
           bun-version: 1.4.4
 
+      # A push to main plans against the commit it came after (#444), like a PR against its target.
       - name: The jobs this run needs
         id: plan
+        env:
+          BEFORE: ${{ github.event.before }}
         run: bun run scripts/ci-paths.ts
 
       - name: Instalar dependências
@@ -139,15 +144,16 @@ jobs:
       # The test pyramid (#309): a PR runs every unit and component test plus the tests of the other
       # tiers that reach a changed file, and every changed source file must be at 100% lines and
       # functions from them. The coverage report stays in coverage/ for SonarCloud.
-      - name: Testes do PR (pirâmide)
-        if: github.event_name == 'pull_request'
+      # A push to main does the same from the commit it came after (#444).
+      - name: Testes da seleção (pirâmide)
+        if: needs.quick.outputs.base != ''
         env:
-          BASE_REF: ${{ github.base_ref }}
-        run: bun run test:related -- --pr --base "origin/$BASE_REF" --keep-coverage coverage
+          BASE: ${{ needs.quick.outputs.base }}
+        run: bun run test:related -- --pr --base "$BASE" --keep-coverage coverage
 
-      # main, the nightly schedule and a dispatch: the whole suite and the whole-repo 100% gate.
+      # The schedule (every 3 hours) and a dispatch: the whole suite and the whole-repo 100% gate.
       - name: Testes (cobertura 100%)
-        if: github.event_name != 'pull_request'
+        if: needs.quick.outputs.base == ''
         run: bun run test
 
       # SonarCloud reads it in its own job.
@@ -434,16 +440,16 @@ jobs:
       # On a PR, the selection the Linux suite runs (#309, #399): every unit and component test plus
       # the integration and e2e tests related to the changed files, or the whole suite when a file
       # every test reads changed. No coverage gate on Windows: Linux holds the 100% gate.
-      - name: Testes do PR (shard ${{ matrix.shard }}/${{ strategy.job-total }}, seleção do test:related)
-        if: github.event_name == 'pull_request'
+      - name: Testes da seleção (shard ${{ matrix.shard }}/${{ strategy.job-total }}, test:related)
+        if: needs.quick.outputs.base != ''
         env:
-          BASE_REF: ${{ github.base_ref }}
+          BASE: ${{ needs.quick.outputs.base }}
         run: |
-          bun run test:related -- --pr --base "origin/$BASE_REF" --list selection.txt
+          bun run test:related -- --pr --base "$BASE" --list selection.txt
           bun run test:shards -- run ${{ matrix.shard }}/${{ strategy.job-total }} --files selection.txt --junit junit-${{ matrix.shard }}.xml
 
       - name: Testes (shard ${{ matrix.shard }}/${{ strategy.job-total }})
-        if: github.event_name != 'pull_request'
+        if: needs.quick.outputs.base == ''
         run: bun run test:shards -- run ${{ matrix.shard }}/${{ strategy.job-total }} --junit junit-${{ matrix.shard }}.xml
 
       - name: Publicar os tempos dos testes
