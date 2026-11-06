@@ -88,7 +88,7 @@ describe("persona-names: the daemon records who a team session is (#101)", () =>
     );
     expect([
       recorded,
-      team.members.map((member) => member.number ?? "none"),
+      team.members.map((member) => (member.number === undefined ? "none" : member.number)),
       coordinator?.aliases,
       [coordinator, ...workers.map((id) => names.get(id as string))].map((n) => n?.standard),
     ]).toEqual([
@@ -119,7 +119,12 @@ describe("persona-names: the daemon records who a team session is (#101)", () =>
     );
     store.db.query("UPDATE teams SET members = ? WHERE id = ?").run(JSON.stringify(old), team.id);
     const grown = await teams.update({ team: team.id, addWorkers: 1 });
-    expect(grown.members.map((member) => [member.role, member.number ?? "none"])).toEqual([
+    expect(
+      grown.members.map((member) => [
+        member.role,
+        member.number === undefined ? "none" : member.number,
+      ]),
+    ).toEqual([
       ["coordinator", null],
       ["worker", 1],
       ["worker", 2],
