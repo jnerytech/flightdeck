@@ -4114,6 +4114,35 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
 - **WIP limit.** At most 2 open branches per session, stated in CLAUDE.md and docs/TDD.md. It is
   not enforced in code.
 
+## Test isolation (#274)
+
+- **Between files, not between tests.** Bun's preload `beforeAll`/`afterAll` run once for the whole
+  run and `expect.getState().testPath` does not exist in 1.4.4, so the preload has no hook at a file
+  boundary. It registers a `Bun.plugin` `onLoad` for `*.test.ts(x)`: Bun loads a file, runs it, then
+  loads the next, so the load of file N is the end of file N-1. There the preload (`scripts/test/
+  isolation.ts`) restores what a file can leave changed for the next one: `setTimeout`,
+  `clearTimeout`, `setInterval`, `clearInterval`, `setImmediate`, `clearImmediate`, `Date`, `fetch`,
+  the environment, and (once happy-dom is registered) the window size, `localStorage`,
+  `sessionStorage` and `document.body`. The first snapshot is taken at the end of the preload, after
+  the guards, so their PATH, HOME and fetch wrapper are part of the baseline.
+- **The baseline is taken after each file has loaded, not before.** The plugin appends a call to
+  the file's source, so it runs once the file's top-level code has. A helper that sets an env
+  variable (`board-helpers.ts` sets `GIT_AUTHOR_*`) or registers happy-dom (which swaps the timers
+  for its own) when it loads runs once, because Bun caches the module; restoring the state from
+  before the first file would have taken that away from every later file (the first version did:
+  1132 tests failed with `Author identity unknown` in the full run, each green alone). So only what
+  a file's tests and hooks change is put back; what its top-level code set stays.
+- **Named, not silent.** A leak other than the routine browser state (size, storage, body: nearly
+  every UI file leaves some) prints `isolation: <file> left … changed; put back before <next>` on
+  stderr, so the culprit is one line away. The reset is a net, not a licence: fix the file.
+- **Not reset:** location, `matchMedia` (follows the viewport), `process.cwd()`, other globals a file
+  defines, module state and `mock.module` (a file restores its own mocks, see the tests rules).
+- **Sleep ratchet.** `sleep-baseline.json` counts `Bun.sleep`, `Bun.sleepSync`, a promise resolved
+  from a timer and calls of a `sleep`/`delay` helper per test file (the four test folders, test
+  files only: a fake binary sleeps on purpose). A `// timing:` comment on the line above allows a
+  sleep where the clock is under test. It only goes down: a file may not exceed its entry.
+  Baseline when added: 113 files, 251 sleeps.
+
 ## One command per release (issue #275)
 
 - **`bun run release vX.Y.Z`** (the coordinator's, `FLIGHTDECK_COORDINATOR=1`; it refuses without
@@ -4332,6 +4361,14 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   ratchet bounds the first kind: it is exactly saturated (at most 5 and the five files named), and
   it runs in CI over the whole checkout. The hook matcher also covers only Edit, Write and Bash, as
   before. All of it is how the guard already worked for `skipIf`, which it never blocked.
+- **Four of the five are fixed (issue #288, 2026-11-05).** The hub-list ratio failed on Ubuntu CI too
+  (249 ms against 229), so the skip off Linux did not save it. Now: hub-list compares counts (rows
+  drawn, React commits, reads of the history) at 690 and at 9,090 rows, with no clock; wait-stays
+  asserts at least two looks and that it returned no earlier than its window (`Date.now()` is what
+  `stays` itself loops on); platform lint and proto-restore keep a 90 s limit that only bounds a hang.
+  They lost their skip and note, and the ratchet maximum went from 5 to 1. Only the heartbeat test is
+  still skipped: its fix needs a ticker and a clock injected into `startServer`
+  (`performance.now()` and `setInterval` for the ping), so #288 stays open for it.
 
 ## The e2e journeys of each language are a file of their own (issue #292)
 
@@ -4349,6 +4386,17 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
 - **Left for later.** The Windows unit-test shards (9 to 12 minutes against 5 to 8) are split by
   `bun test --shard`, which balances by file count; balancing them by recorded durations needs its
   own timing file and script, and stays open in #292.
+## A PR behind main merges; only a conflict waits (issue #305)
+
+- **Why.** With the ruleset strict, every merge made each other PR behind, and each of them reran
+  its whole CI before it could merge. The coordinator turned the up-to-date rule off: a green PR
+  now auto-merges behind `main`, and `main`'s push CI (and `pr tag`, which needs a green full run
+  on main) still catch a combined break.
+- **`bun run pr` follows.** `pr next` lists a PR behind `main` as ready, and `pr merge` merges it,
+  printing how far behind it is as a note for the coordinator's hand merges. What still blocks is a
+  conflict, read from GitHub's `mergeable_state` (`dirty`): the message says to merge `main` into
+  the branch and resolve it, since GitHub's update-branch cannot resolve a conflict.
+- The #271 entry above describes the strict ruleset; it is history.
 ## Prints and axe in four jobs, one per theme and language (issue #291)
 
 - **Why.** After #293 the one prints and axe job (13-15 minutes) was the longest of a PR, and every

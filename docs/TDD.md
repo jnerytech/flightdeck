@@ -31,6 +31,13 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     wait (the screen stopped changing). `lazy-wait-baseline.json` (a fixed wait before a one-shot
     query, or ending a helper) is empty, and an `act(() => Bun.sleep(…))` is allowed only with a
     `// timing:` comment on the line above saying why the clock is the thing under test.
+    Any other fixed sleep in a test file (`Bun.sleep`, `Bun.sleepSync`, a promise on a timer, a
+    `sleep(` or `delay(` helper) is counted by the sleep ratchet: `sleep-baseline.json` only goes
+    down, so a new test waits on the condition, and a `// timing:` comment on the line above allows
+    a sleep where the clock itself is under test.
+    The preload puts the timers, `Date`, `fetch`, the environment, the window size, the browser
+    storage and the page body back between two test files, and names on stderr the file that
+    left one changed (`isolation: <file> left … changed`): fix that file, the reset is a net.
    - Nada de `toMatchSnapshot` na primeira rodada: ele grava o resultado do stub. Use literais
      escritos à mão (`toBe`, `toMatchInlineSnapshot` com o texto).
    - `toContain` sobre algo que pode ser `undefined`: use `?? ""`.
@@ -220,14 +227,17 @@ em vez de depender de cuidado.
   `-ratchet.test.ts` (or `.tsx`), so the quick job picks it up by itself (scripts/lib/ci-quick.ts).
 - Right after `open`, the session turns on auto-merge: `bun run pr -- auto <n>` (#271). GitHub
   then merges the PR with a merge commit, never a squash, once the main ruleset's required checks
-  are green on its HEAD and it is up to date (the ruleset is strict; auto-merge never updates the
-  branch, so a PR behind `main` waits for `bun run pr -- update <n>`). It refuses a draft, and a stacked PR whose parent
+  are green on its HEAD, behind `main` or not (#305: the ruleset is not strict, so a merge no
+  longer reruns every other PR's CI; `main`'s push CI checks the merged result). It refuses a
+  draft, and a stacked PR whose parent
   `main` does not have yet; once the parent is in `main`, it retargets the PR onto `main` first.
 - A session keeps at most 2 branches open (pushed and not merged yet).
-- `bun run pr -- next` lists the open PRs in merge order with what each still needs.
-  `bun run pr -- update <n>` brings one up to date with its base. `bun run pr -- merge <n>` (the
-  coordinator only; the guard hook refuses it in a session) merges by hand with a merge commit,
-  under the same conditions.
+- `bun run pr -- next` lists the open PRs in merge order with what each still needs; a PR that
+  conflicts with its base (GitHub's mergeable state) waits until `main` is merged into it and the
+  conflicts resolved. `bun run pr -- update <n>` brings a PR up to date with its base when there is
+  no conflict. `bun run pr -- merge <n>` (the coordinator only; the guard hook refuses it in a
+  session) merges by hand with a merge commit, under the same conditions; a PR behind `main` merges,
+  with how far behind it is printed as a note.
 - A PR runs only the jobs its paths need (#264, scripts/lib/ci-paths.ts): docs or scripts only run
   the Linux tests and lint; the daemon or a smoke adds Windows and the smokes; the app, the
   protocol, the dependencies or the workflow run everything; the Tauri shell adds cargo. A job
