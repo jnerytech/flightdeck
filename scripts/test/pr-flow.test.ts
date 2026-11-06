@@ -730,6 +730,16 @@ describe("pr-flow: the CI of a commit and the release tag (#266)", () => {
       expect(f.out()).toContain("no commit with the v0.37.0 bump has a green CI run on main");
     });
 
+    test("a history that is all bump and has no green run refuses", async () => {
+      const f = fake({
+        ...stacked,
+        history: ["head3", "bump2"],
+        mainRuns: { head3: [cancelled], bump2: [cancelled] },
+      });
+      expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(2);
+      expect(f.gitWrites).toEqual([]);
+    });
+
     test("a commit whose package.json cannot be read ends the search", async () => {
       const f = fake({
         ...stacked,
