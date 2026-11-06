@@ -122,7 +122,9 @@ describe("ci-paths: the workflow", () => {
     const cache = step("checks-linux", "Cache of the Tauri system packages");
     const apt = step("checks-linux", "System libraries of the Tauri shell (Linux)");
     // Pinned by commit, gated like the install, and before it.
-    expect(cache?.uses ?? "").toMatch(/^actions\/cache@[0-9a-f]{40} # v4\.\d+\.\d+$/);
+    expect(cache?.uses ?? "").toMatch(/^actions\/cache@[0-9a-f]{40}$/);
+    const raw = readFileSync(join(ROOT, ".github/workflows/ci.yml"), "utf8");
+    expect(raw).toMatch(new RegExp(`${cache?.uses} # v4\\.\\d+\\.\\d+`));
     expect(cache?.if).toBe(apt?.if);
     expect(at("Cache of the Tauri system packages")).toBeLessThan(
       at("System libraries of the Tauri shell (Linux)"),
