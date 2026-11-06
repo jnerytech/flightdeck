@@ -16,7 +16,7 @@ import {
   SunMoon,
   TriangleAlert,
 } from "lucide-react";
-import { Children, type ReactNode, useState } from "react";
+import { Children, type ReactNode, useId, useState } from "react";
 import { ClientSwitcher } from "@/components/clients/client-switcher";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
@@ -88,11 +88,13 @@ function NavButton(
   }>,
 ) {
   const railName = props.hint ? `${props.label} (${props.hint})` : props.label;
+  const badgeId = useId();
   return (
     <IconTip label={props.collapsed ? railName : undefined}>
       <button
         type="button"
         aria-current={props.active ? "page" : undefined}
+        aria-describedby={props.badge ? badgeId : undefined}
         aria-keyshortcuts={props.keys}
         className={cn(
           ITEM,
@@ -121,6 +123,7 @@ function NavButton(
         {!props.collapsed && <span className="min-w-0 flex-1 truncate">{props.label}</span>}
         {!props.collapsed && props.badge && (
           <span
+            id={badgeId}
             data-slot="nav-badge"
             className="rounded bg-sidebar-accent px-1 font-medium text-[10px] text-sidebar-foreground/80 uppercase"
           >
@@ -181,7 +184,6 @@ function SectionTitle(
  */
 function NavGroup(
   props: Readonly<{
-    id: string;
     label: string;
     collapsed: boolean;
     folded: boolean;
@@ -280,7 +282,6 @@ export function Sidebar(
     state.loopAlerts.length +
     watchAlerts(state).length;
   const pinned = hubRows(state).filter((row) => row.pinned && !row.archived);
-  const [hostsOpen, setHostsOpen] = useState(true);
   const [pinnedOpen, setPinnedOpen] = useState(true);
   const [folded, setFolded] = useState<SidebarGroup[]>(() => props.store.sidebarFolded());
   const toggle = (group: SidebarGroup) => {
@@ -446,7 +447,6 @@ export function Sidebar(
       />
       <nav aria-label={t("sidebarGroups.main")} className="sidebar-nav">
         <NavGroup
-          id="work"
           label={t("sidebarGroups.work")}
           collapsed={collapsed}
           folded={folded.includes("work")}
@@ -494,7 +494,6 @@ export function Sidebar(
           />
         </NavGroup>
         <NavGroup
-          id="automation"
           label={t("sidebarGroups.automation")}
           collapsed={collapsed}
           folded={folded.includes("automation")}
@@ -531,7 +530,6 @@ export function Sidebar(
           )}
         </NavGroup>
         <NavGroup
-          id="observability"
           label={t("sidebarGroups.observability")}
           collapsed={collapsed}
           folded={folded.includes("observability")}
@@ -550,13 +548,13 @@ export function Sidebar(
           <NavButton
             collapsed={collapsed}
             icon={<NavIcon name="history" aria-hidden="true" className={icon} />}
+            active={here === "history"}
             label={t("sidebar.history")}
             disabled={!navHost}
             onClick={needHost((host) => ({ name: "history", host }))}
           />
         </NavGroup>
         <NavGroup
-          id="library"
           label={t("sidebarGroups.library")}
           collapsed={collapsed}
           folded={folded.includes("library")}
@@ -567,6 +565,7 @@ export function Sidebar(
             <NavButton
               collapsed={collapsed}
               icon={<NavIcon name="personas" aria-hidden="true" className={icon} />}
+              active={here === "personas"}
               label={t("sidebar.personas")}
               onClick={() => go({ name: "personas" })}
             />
@@ -576,6 +575,7 @@ export function Sidebar(
             <NavButton
               collapsed={collapsed}
               icon={<NavIcon name="snippets" aria-hidden="true" className={icon} />}
+              active={here === "snippets"}
               label={t("sidebar.snippets")}
               onClick={() => go({ name: "snippets" })}
             />
@@ -585,6 +585,7 @@ export function Sidebar(
             <NavButton
               collapsed={collapsed}
               icon={<NavIcon name="plugins" aria-hidden="true" className={icon} />}
+              active={here === "plugins"}
               label={t("sidebar.plugins")}
               onClick={() => go({ name: "plugins" })}
             />
@@ -592,6 +593,7 @@ export function Sidebar(
           <NavButton
             collapsed={collapsed}
             icon={<NavIcon name="vault" aria-hidden="true" className={icon} />}
+            active={here === "vault"}
             label={t("sidebar.vault")}
             chevron
             onClick={() => go({ name: "vault" })}
@@ -601,7 +603,6 @@ export function Sidebar(
 
       <div data-slot="sidebar-hosts" className="sidebar-hosts">
         <NavGroup
-          id="machines"
           label={t("sidebarGroups.machines")}
           attention={
             state.hosts.some((host) => hostNeedsAttention(host, state.deps[host.id]))
@@ -629,6 +630,7 @@ export function Sidebar(
             <NavButton
               collapsed={collapsed}
               icon={<NavIcon name="connections" aria-hidden="true" className={icon} />}
+              active={here === "connections"}
               label={t("sidebar.connections")}
               onClick={() => go({ name: "connections" })}
             />
@@ -679,6 +681,7 @@ export function Sidebar(
         <NavButton
           collapsed={collapsed}
           icon={<NavIcon name="settings" aria-hidden="true" className={icon} />}
+          active={here === "settings"}
           label={t("sidebar.settings")}
           chevron
           onClick={() => go({ name: "settings" })}
