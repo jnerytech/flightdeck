@@ -193,6 +193,51 @@ describe("ci-paths: the workflow", () => {
     expect(script).toContain("install_libs || install_libs");
   });
 
+  test("the Tauri system packages come from a cache keyed on their list, before the mirror (#405)", () => {
+    const steps = job("checks-linux").steps;
+    const at = (name: string) => steps.findIndex((s) => s.name === name);
+    const cache = step("checks-linux", "Cache of the Tauri system packages");
+    const apt = step("checks-linux", "System libraries of the Tauri shell (Linux)");
+    // Pinned by commit, gated like the install, and before it.
+    expect(cache?.uses ?? "").toMatch(/^actions\/cache@[0-9a-f]{40}$/);
+    const raw = readFileSync(join(ROOT, ".github/workflows/ci.yml"), "utf8");
+    expect(raw).toMatch(new RegExp(`${cache?.uses} # v4\\.\\d+\\.\\d+`));
+    expect(cache?.if).toBe(apt?.if);
+    expect(at("Cache of the Tauri system packages")).toBeLessThan(
+      at("System libraries of the Tauri shell (Linux)"),
+    );
+    expect(cache?.with?.path).toBe("~/.cache/tauri-debs");
+    // Keyed on the runner image too: an image update must not get older packages over newer ones.
+    const image = step("checks-linux", "Runner image of the Tauri package cache");
+    expect(image?.if).toBe(apt?.if);
+    expect(image?.run ?? "").toContain('"version=$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"');
+    expect(at("Runner image of the Tauri package cache")).toBeLessThan(
+      at("Cache of the Tauri system packages"),
+    );
+    expect(cache?.with?.key).toBe(
+      "tauri-debs-${{ runner.os }}-${{ runner.arch }}-${{ steps.tauri-image.outputs.version }}-${{ hashFiles('.github/tauri-apt-packages.txt') }}",
+    );
+    // A hit installs the saved packages with no mirror; anything else falls back to apt, which
+    // downloads into the cached folder.
+    const script = apt?.run ?? "";
+    expect(script).toContain('sudo dpkg -i "$debs"/*.deb');
+    expect(script.indexOf("dpkg -i")).toBeLessThan(script.indexOf("install_libs || install_libs"));
+    expect(script).toContain('-o Dir::Cache::archives="$debs"');
+    // apt writes the files as root: the cache's save, which runs as the runner user, must read them.
+    expect(script).toContain('sudo chown -R "$(id -u):$(id -g)" "$debs"');
+    expect(script).toContain(".github/tauri-apt-packages.txt");
+    // The list is one file, read by both the key and the install.
+    const list = readFileSync(join(ROOT, ".github/tauri-apt-packages.txt"), "utf8");
+    expect(list.split(/\s+/).filter(Boolean)).toEqual([
+      "pkg-config",
+      "libwebkit2gtk-4.1-dev",
+      "libgtk-3-dev",
+      "libayatana-appindicator3-dev",
+      "librsvg2-dev",
+      "libsoup-3.0-dev",
+    ]);
+  });
+
   test("cargo runs only when the plan says so, after rust-cache", () => {
     for (const key of ["checks-linux", "checks-windows"]) {
       const steps = job(key).steps;

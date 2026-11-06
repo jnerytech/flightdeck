@@ -49,9 +49,9 @@ async function open(
   cleanups.push(() => store.dispose());
   await store.addHost({ name: "pc", url: d.url, token: TOKEN });
   render(<App store={store} />);
-  await settle(() => screen.queryByRole("button", { name: "Conexões" }) !== null);
+  await settle(() => screen.queryByRole("button", { name: "SSH" }) !== null);
   await act(async () => {
-    fireEvent.click(screen.queryByRole("button", { name: "Conexões" }) as HTMLElement);
+    fireEvent.click(screen.queryByRole("button", { name: "SSH" }) as HTMLElement);
   });
   await settle(() => screen.queryByRole("button", { name: "Importar do SSH config" }) !== null);
   return { d };

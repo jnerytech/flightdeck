@@ -117,6 +117,28 @@ for (const [lang, dict] of [
       expect(beta?.textContent ?? "").toContain("v0.36.4");
     });
 
+    test("a host's connection in the menu stays a plain 8 px dot, not a session's glyph (#146)", async () => {
+      render(
+        <TopBarHost
+          hosts={HOSTS}
+          currentId="a"
+          t={t}
+          onChoose={() => undefined}
+          onAdd={() => undefined}
+        />,
+      );
+      await open(
+        screen.queryByRole("button", {
+          name: fill(dict.shell.host, { host: "alfa" }),
+        }) as HTMLElement,
+      );
+      const item = screen.queryByRole("menuitemradio", { name: /^alfa, / }) as HTMLElement | null;
+      expect(item).not.toBeNull();
+      const dot = within(item as HTMLElement).queryByRole("img");
+      expect(dot?.className.includes("size-2") ?? false).toBe(true);
+      expect(dot?.querySelector("svg") === null).toBe(true);
+    });
+
     test("the menu adds a host too, and with no host the switcher says so", async () => {
       const chosen: string[] = [];
       render(

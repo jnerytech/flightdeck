@@ -258,20 +258,47 @@ jobs:
           bun run smoke:roi
 
       # The Tauri shell only when it changed, or on main (#264).
-      # A slow mirror once took 29 minutes here: each attempt has 4.5 minutes, and a failed or hung
-      # one is retried once with a fresh apt-get update, inside the step's 10.
+      # The .deb files are cached between runs, keyed on the package list (#405): a slow mirror hit
+      # this step three times in two days (exit 124).
+      # The runner image is part of the key: a cache from an older image would install older
+      # packages over the newer ones the image ships.
+      - name: Runner image of the Tauri package cache
+        id: tauri-image
+        if: needs.changes.outputs.cargo == 'true'
+        run: echo "version=$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
+
+      - name: Cache of the Tauri system packages
+        if: needs.changes.outputs.cargo == 'true'
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/tauri-debs
+          key: tauri-debs-${{ runner.os }}-${{ runner.arch }}-${{ steps.tauri-image.outputs.version }}-${{ hashFiles('.github/tauri-apt-packages.txt') }}
+
+      # A cache hit installs the saved packages with no mirror. A miss, or a dpkg that fails (a new
+      # runner image), falls back to apt: each attempt has 4.5 minutes, and a failed or hung one is
+      # retried once with a fresh apt-get update, inside the step's 10. apt downloads into the
+      # cached folder, so the next run hits.
       - name: System libraries of the Tauri shell (Linux)
         if: needs.quick.outputs.cargo == 'true'
         timeout-minutes: 10
         run: |
+          debs="$HOME/.cache/tauri-debs"
+          mkdir -p "$debs/partial"
+          if ls "$debs"/*.deb >/dev/null 2>&1 && sudo dpkg -i "$debs"/*.deb; then
+            echo "Tauri system packages installed from the cache"
+            exit 0
+          fi
+          packages=$(cat .github/tauri-apt-packages.txt)
           install_libs() {
             # Finishes what a killed attempt left half-configured (instant when nothing is).
             sudo dpkg --configure -a || true
+            # shellcheck disable=SC2086 # one word per package
             timeout 120 sudo apt-get update &&
-              timeout 150 sudo apt-get install -y pkg-config libwebkit2gtk-4.1-dev libgtk-3-dev \
-                libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev
+              timeout 150 sudo apt-get install -y -o Dir::Cache::archives="$debs" $packages
           }
           install_libs || install_libs
+          # apt wrote the files as root; the cache saves them as the runner user after the job.
+          sudo chown -R "$(id -u):$(id -g)" "$debs"
 
       - name: Rust cache
         if: needs.quick.outputs.cargo == 'true'

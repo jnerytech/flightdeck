@@ -120,13 +120,14 @@ pub fn answer(reply: &Reply, key: &Secret, model: &str) -> Result<Answer, Refusa
 /// What an error reply means, with its request id and its message (the key taken out).
 pub fn refusal(reply: &Reply, key: &Secret) -> Refusal {
     let value: Value = serde_json::from_str(&reply.body).unwrap_or(Value::Null);
-    let detail = value["error"]["message"].as_str().map(|message| crate::scrub(message, key));
+    let message = value["error"]["message"].as_str().map(|message| crate::scrub(message, key));
     let request_id = reply
         .header("request-id")
         .or_else(|| value["request_id"].as_str())
-        .map(|id| crate::scrub(id, key));
+        .and_then(|id| crate::token(&crate::scrub(id, key)));
     let retry_after = reply.header("retry-after");
-    let spend = detail.as_deref().is_some_and(|d| d.to_ascii_lowercase().contains("spend limit"));
+    let spend = message.as_deref().is_some_and(|m| m.to_ascii_lowercase().contains("spend limit"));
+    let detail = message.map(|m| m.chars().take(guard::MAX_DETAIL_CHARS).collect::<String>());
     let reason = match (reply.status, retry_after) {
         (400, _) if spend => "assistant_credits",
         (401 | 403, _) => "assistant_auth",
@@ -144,8 +145,11 @@ pub fn refusal(reply: &Reply, key: &Secret) -> Refusal {
     if let Some(detail) = detail {
         refused = refused.with("detail", detail);
     }
-    if let (429, Some(after)) = (reply.status, retry_after) {
-        refused = refused.with("retryAfter", crate::scrub(after, key));
+    if reply.status == 413 {
+        refused = refused.with("max", guard::MAX_INPUT_CHARS.to_string());
+    }
+    if let (429, Some(after)) = (reply.status, retry_after.and_then(|after| crate::token(&crate::scrub(after, key)))) {
+        refused = refused.with("retryAfter", after);
     }
     refused
 }
@@ -198,6 +202,9 @@ pub async fn run(
     call: &Call<'_>,
     lookup: Lookup<'_>,
 ) -> Result<Answer, Refusal> {
+    guard::check_model(call.model)?;
+    guard::check_prompt(call.system)?;
+    guard::check_prompt(call.user)?;
     let reply =
         guard::send(client, endpoint, "/v1/messages", Method::Post(body(call, lookup)), key, &headers()).await?;
     answer(&reply, key, call.model)
@@ -222,9 +229,8 @@ pub async fn test(client: &reqwest::Client, endpoint: &Endpoint, key: &Secret) -
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::{Read, Write};
+    use crate::test_server::serve_once;
     use std::net::TcpListener;
-    use std::sync::{Arc, Mutex};
 
     const FAKE: &str = "sk-ant-FAKEKEY-anthropic-0123456789";
 
@@ -344,6 +350,10 @@ mod tests {
             assert_eq!(refused.reason, *want, "{} {}", sent.status, sent.body);
             assert_eq!(refused.params.get("requestId").map(String::as_str), Some("req_42"));
         }
+        let late = format!("{} spend limit", "a".repeat(400));
+        assert_eq!(refusal(&reply(400, &id, &error(&late)), &key()).reason, "assistant_credits", "past the detail's cap");
+        let large = refusal(&cases[5].0, &key());
+        assert_eq!(large.params.get("max").map(String::as_str), Some("100000"), "the strings show {{max}}");
         let limited = refusal(&cases[7].0, &key());
         assert_eq!(limited.params.get("retryAfter").map(String::as_str), Some("30"));
         let forbidden = refusal(&cases[3].0, &key());
@@ -410,44 +420,6 @@ mod tests {
         );
     }
 
-    /// One loopback answer; returns the raw request it read.
-    fn serve_once(body: &'static str) -> (String, Arc<Mutex<String>>) {
-        let answer = format!(
-            "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
-            body.len()
-        );
-        let listener = TcpListener::bind("127.0.0.1:0").ok();
-        let base = listener
-            .as_ref()
-            .and_then(|l| l.local_addr().ok())
-            .map(|a| format!("http://{a}"))
-            .unwrap_or_default();
-        let seen = Arc::new(Mutex::new(String::new()));
-        let raw = seen.clone();
-        std::thread::spawn(move || {
-            let Some(listener) = listener else { return };
-            let Ok((mut stream, _)) = listener.accept() else { return };
-            let _ = stream.set_read_timeout(Some(std::time::Duration::from_millis(500)));
-            let mut buf = [0u8; 8192];
-            let mut got = Vec::new();
-            while let Ok(n) = stream.read(&mut buf) {
-                if n == 0 {
-                    break;
-                }
-                got.extend_from_slice(&buf[..n]);
-                let text = String::from_utf8_lossy(&got).to_string();
-                if text.contains("\r\n\r\n") && text.contains("\"messages\"") && text.ends_with('}') {
-                    break;
-                }
-            }
-            if let Ok(mut r) = raw.lock() {
-                *r = String::from_utf8_lossy(&got).to_string();
-            }
-            let _ = stream.write_all(answer.as_bytes());
-        });
-        (base, seen)
-    }
-
     #[test]
     fn a_run_posts_to_messages_and_reads_the_answer() {
         let (base, seen) = serve_once(
@@ -469,6 +441,58 @@ mod tests {
     #[test]
     fn scrub_takes_the_key_out_of_any_text() {
         assert_eq!(crate::scrub(&format!("x {FAKE} y {FAKE}"), &key()), "x <key> y <key>");
+        assert_eq!(crate::scrub(&format!("x{FAKE}y"), &key()), "x<key>y");
         assert_eq!(crate::scrub("nothing here", &key()), "nothing here");
+        assert_eq!(
+            crate::scrub("bad key sk-ant-api03-abc…wxyz and sk-or-v1-au7...890, or SK-ANT-API03-XYZ0123", &key()),
+            "bad key <key> and <key>, or <key>",
+            "a prefix, a masked or a case-changed key"
+        );
+        assert_eq!(crate::scrub("ask-me later", &key()), "ask-me later", "sk- inside a word");
+    }
+
+    #[test]
+    fn a_detail_is_scrubbed_and_capped_and_a_request_id_or_retry_after_is_a_short_token() {
+        let long = "a".repeat(1000);
+        assert_eq!(crate::detail(&long, &key()).chars().count(), crate::guard::MAX_DETAIL_CHARS);
+        assert_eq!(crate::detail(&format!("bad {FAKE}"), &key()), "bad <key>");
+        assert_eq!(crate::token("req_01Ab-2.c:3"), Some("req_01Ab-2.c:3".to_string()));
+        let wide = "r".repeat(201);
+        for bad in ["", "req 1", "req\n<script>", "ré", wide.as_str()] {
+            assert_eq!(crate::token(bad), None, "{bad:?}");
+        }
+        let error = |message: &str| format!(r#"{{"error":{{"message":"{message}"}}}}"#);
+        let odd = refusal(&reply(429, &[("request-id", "req 1<b>"), ("retry-after", "soon!")], &error(&long)), &key());
+        assert_eq!(
+            (odd.reason, odd.params.get("requestId"), odd.params.get("retryAfter")),
+            ("assistant_rate_limited", None, None)
+        );
+        assert_eq!(odd.params.get("detail").map(|d| d.chars().count()), Some(crate::guard::MAX_DETAIL_CHARS));
+    }
+
+    #[test]
+    fn a_run_checks_the_model_and_the_input_before_any_request() {
+        // A port nobody listens on: a request would come back `assistant_offline`.
+        let port = TcpListener::bind("127.0.0.1:0").and_then(|l| l.local_addr()).map(|a| a.port()).unwrap_or(1);
+        let long = "x".repeat(guard::MAX_PROMPT_CHARS + 1);
+        let wrapped = "x".repeat(guard::MAX_INPUT_CHARS + 50_000);
+        let outcome = |call: Call<'_>| {
+            tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|_| "rt").and_then(|rt| {
+                rt.block_on(async {
+                    let client = guard::client().map_err(|r| r.reason)?;
+                    let endpoint = Endpoint::with_base(&format!("http://127.0.0.1:{port}")).map_err(|r| r.reason)?;
+                    run(&client, &endpoint, &key(), &call, Lookup::NoList).await.map(|a| a.text).map_err(|r| r.reason)
+                })
+            })
+        };
+        assert_eq!(outcome(call("../v1/models")), Err("assistant_model_unavailable"));
+        assert_eq!(outcome(Call { user: &long, ..call("claude-haiku-5-5") }), Err("assistant_too_long"));
+        assert_eq!(outcome(Call { system: &long, ..call("claude-haiku-5-5") }), Err("assistant_too_long"));
+        assert_eq!(outcome(call("claude-haiku-5-5")), Err("assistant_offline"), "the checks pass, the request goes");
+        assert_eq!(
+            outcome(Call { user: &wrapped, ..call("claude-haiku-5-5") }),
+            Err("assistant_offline"),
+            "a text at the cap, wrapped with its context, still goes"
+        );
     }
 }

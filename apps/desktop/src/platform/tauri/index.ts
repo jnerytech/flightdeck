@@ -11,6 +11,7 @@ import {
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
+import { badgeRgba } from "../../lib/badge-icon.ts";
 import { type FilePickerWindow, saveWithPicker } from "../save-file.ts";
 import type { GeneratedKey, PickedFile, Platform, TrayAction } from "../types.ts";
 
@@ -73,7 +74,18 @@ export function tauriPlatform(
       };
     },
     setTrayStatus: (status) => call("tray_set_status", { ...status }),
+    setBadge: async (count) => {
+      await call("set_unread_badge", { rgba: badgeRgba(count) ?? [] });
+    },
     setTrayMenu: (menu) => call("tray_set_menu", { ...menu }),
+    // Issue #402: the tray's Quit asks the app first, so a downloaded update installs on the way out.
+    onQuitRequested(handler) {
+      const unlisten = subscribe("quit-requested", () => handler());
+      return () => void unlisten.then((stop) => stop());
+    },
+    quitNow: async () => {
+      await call("quit_now");
+    },
     // The Rust tray emits `tray-action` for each click in the "Precisa de você" submenu.
     onTrayAction(handler) {
       const unlisten = subscribe<TrayAction>("tray-action", (event) => handler(event.payload));
@@ -120,6 +132,10 @@ export function tauriPlatform(
         if (!pending) throw new Error("no update found to download");
         await pending.download();
         downloaded = pending;
+      },
+      installDownloaded: async () => {
+        // Windows' passive installer starts the app again by default (/R, AUTOLAUNCHAPP): Quit means quit.
+        if (downloaded) await downloaded.install({ restartAfterInstall: false });
       },
       install: async () => {
         if (!pending) throw new Error("no update found to install");

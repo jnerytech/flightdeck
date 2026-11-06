@@ -71,6 +71,8 @@ export function SimpleModePanel(props: Readonly<{ store: AppStore; host: HostVie
       <div className="flex flex-wrap items-center gap-3">
         <span className="inline-flex items-center gap-2 text-sm">
           <Switch
+            // 24 px tall by itself: axe's target-size rule asks that of a target with a neighbor close by.
+            className="data-[size=default]:h-6"
             aria-label={t("hostPage.simpleLock")}
             checked={locked}
             onCheckedChange={(next) => (next ? setLocking(true) : void setLocked(false))}
