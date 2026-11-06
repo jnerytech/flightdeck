@@ -10,11 +10,26 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { SessionView } = await import("../src/ui/SessionView.tsx");
 const { emptySession } = await import("../src/lib/session-state.ts");
-const { ShortArea } = await import("../src/components/session/parts.tsx");
 const { AssistantSettings } = await import("../src/components/assistant/assistant-settings.tsx");
 
 setDefaultTimeout(30_000);
-afterEach(cleanup);
+const realObserver = globalThis.ResizeObserver;
+afterEach(() => {
+  cleanup();
+  globalThis.ResizeObserver = realObserver;
+});
+
+/** Reports a 664x480 box to every observer, as a real layout does in a 720x480 window. */
+function shortWindow() {
+  globalThis.ResizeObserver = class {
+    constructor(private readonly callback: (entries: unknown[]) => void) {}
+    observe() {
+      this.callback([{ contentRect: { width: 664, height: 480 } }]);
+    }
+    disconnect() {}
+    unobserve() {}
+  } as unknown as typeof ResizeObserver;
+}
 
 const ANSWER = {
   model: "claude-haiku-5-5",
@@ -57,24 +72,23 @@ async function make(
   }
   const opened: string[] = [];
   const t = translator(language);
+  if (options.short) shortWindow();
   const ui = render(
-    <ShortArea.Provider value={options.short === true}>
-      <SessionView
-        t={t}
-        title="s"
-        session={{ ...emptySession(), status: "idle" }}
-        actions={actions}
-        {...(options.assist === false
-          ? {}
-          : {
-              assist: {
-                controller: store.assistant,
-                kind: "prompt" as const,
-                openSettings: () => void opened.push("settings"),
-              },
-            })}
-      />
-    </ShortArea.Provider>,
+    <SessionView
+      t={t}
+      title="s"
+      session={{ ...emptySession(), status: "idle" }}
+      actions={actions}
+      {...(options.assist === false
+        ? {}
+        : {
+            assist: {
+              controller: store.assistant,
+              kind: "prompt" as const,
+              openSettings: () => void opened.push("settings"),
+            },
+          })}
+    />,
   );
   return { store, fake, opened, t, ui };
 }
