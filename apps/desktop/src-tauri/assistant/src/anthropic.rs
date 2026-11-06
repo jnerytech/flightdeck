@@ -350,6 +350,8 @@ mod tests {
             assert_eq!(refused.reason, *want, "{} {}", sent.status, sent.body);
             assert_eq!(refused.params.get("requestId").map(String::as_str), Some("req_42"));
         }
+        let late = format!("{} spend limit", "a".repeat(400));
+        assert_eq!(refusal(&reply(400, &id, &error(&late)), &key()).reason, "assistant_credits", "past the detail's cap");
         let large = refusal(&cases[5].0, &key());
         assert_eq!(large.params.get("max").map(String::as_str), Some("100000"), "the strings show {{max}}");
         let limited = refusal(&cases[7].0, &key());
