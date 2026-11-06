@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { HistoryIndexer } from "../src/history/indexer.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
-import { TeleportPackages, teleportDeps } from "../src/teleport/package.ts";
+import { TeleportPackages, type TeleportSession, teleportDeps } from "../src/teleport/package.ts";
 import { newManager, tempDir } from "./helpers.ts";
 import { FrameClient, projectsRoot, userLine, writeTranscript } from "./history-helpers.ts";
 
@@ -44,9 +44,16 @@ describe("teleport-wiring: the daemon's parts behind a teleport (#100)", () => {
 
   test("the deps read the session, its team and its transcript from the daemon, and keep packages under the data dir", async () => {
     const { indexer, file, root } = await indexed();
-    const session = { id: "s1", cwd: "/work/app", status: "idle", claudeSessionId: ID };
+    const session: TeleportSession = {
+      id: "s1",
+      cwd: "/work/app",
+      status: "idle",
+      permissionMode: "default",
+      model: null,
+      claudeSessionId: ID,
+    };
     const deps = teleportDeps({
-      manager: { get: () => session as never },
+      manager: { get: () => session },
       names: { get: (id) => (id === "s1" ? ({ team: { name: "t" } } as never) : null) },
       indexer,
       historyRoots: [root],
