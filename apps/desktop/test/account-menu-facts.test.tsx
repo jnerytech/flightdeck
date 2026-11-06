@@ -8,6 +8,7 @@ const { act, cleanup, fireEvent, render, screen } = await import("@testing-libra
 const { AccountFooter } = await import("../src/components/shell/account-footer.tsx");
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { Sidebar } = await import("../src/ui/Sidebar.tsx");
+const { App } = await import("../src/ui/App.tsx");
 const { footAccount } = await import("../src/lib/foot-account.ts");
 const { APP_VERSION } = await import("../src/lib/version.ts");
 
@@ -138,9 +139,22 @@ describe("account-menu-facts: the host whose account the foot shows (issue #282)
 });
 
 describe("account-menu-facts: the sidebar wires the menu to the app (issue #282)", () => {
-  function sidebar() {
+  function sidebar(withAccount = false) {
     const store = new AppStore(memoryPlatform(false, "en").platform);
     store.i18n.start();
+    const copied: string[] = [];
+    store.copyText = async (text: string) => {
+      copied.push(text);
+      return true;
+    };
+    const base = store.getState();
+    const state = withAccount
+      ? ({
+          ...base,
+          hosts: [{ id: "h1", name: "alfa", status: "online", sessions: [] }],
+          account: { h1: account() },
+        } as never)
+      : base;
     const routes: string[] = [];
     let checks = 0;
     let shortcuts = 0;
@@ -150,7 +164,7 @@ describe("account-menu-facts: the sidebar wires the menu to the app (issue #282)
     render(
       <Sidebar
         store={store}
-        state={store.getState()}
+        state={state}
         collapsed={false}
         t={store.i18n.t}
         go={(r) => void routes.push(r.name)}
@@ -166,13 +180,20 @@ describe("account-menu-facts: the sidebar wires the menu to the app (issue #282)
         }}
       />,
     );
-    return { store, routes, counts: () => ({ checks, shortcuts }) };
+    return { store, routes, copied, counts: () => ({ checks, shortcuts }) };
   }
 
   test("the header shows the app's own version", async () => {
     sidebar();
     await openMenu();
     expect(screen.getByRole("menu").textContent ?? "").toContain(`Version ${APP_VERSION}`);
+  });
+
+  test("a fact chosen in the menu goes to the clipboard through the store", async () => {
+    const { copied } = sidebar(true);
+    await openMenu();
+    await choose("Copy the host id: h1");
+    expect(copied).toEqual(["h1"]);
   });
 
   test("Compact rows switches the app's density, kept on this computer", async () => {
@@ -190,5 +211,15 @@ describe("account-menu-facts: the sidebar wires the menu to the app (issue #282)
     await openMenu();
     await choose("Keyboard shortcuts");
     expect([routes, counts()]).toEqual([["settings"], { checks: 1, shortcuts: 1 }]);
+  });
+});
+
+describe("account-menu-facts: the app opens the shortcuts sheet from the menu (issue #282)", () => {
+  test("Keyboard shortcuts in the account menu opens the sheet of shortcuts", async () => {
+    const store = new AppStore(memoryPlatform(false, "en").platform);
+    render(<App store={store} />);
+    await openMenu();
+    await choose("Keyboard shortcuts");
+    expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).not.toBeNull();
   });
 });
