@@ -360,12 +360,14 @@ describe("board-ui", () => {
     expect(column("Em revisão")).toEqual(["Terminar"]);
 
     await openCard("Terminar");
+    await click("Finalizar…");
     await click("Concluir");
     expect(dialog()?.textContent ?? "").toContain("Concluir este card?");
     await click("Cancelar");
     expect(dialog()).toBeNull();
     const id = board.getBoard(board.listProjects()[0]?.id ?? "").columns[3]?.cards[0]?.id ?? "";
     expect(board.getCard(id).column).toBe("review");
+    await click("Finalizar…");
     await click("Concluir");
     await click("Concluir card");
     await settle(() => board.getCard(id).worktreePath === null);

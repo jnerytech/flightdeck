@@ -78,7 +78,14 @@ export function SimpleModePanel(props: { store: AppStore; host: HostView }) {
           {t("hostPage.simpleLock")}
         </span>
         {!locked && (
-          <ActionButton variant="outline" onClick={() => store.setUiChoice(host.id, "simple")}>
+          <ActionButton
+            variant="outline"
+            onClick={() => {
+              // The app shows simple mode for the selected host: this page's host is the one meant.
+              store.select(host.id, null);
+              store.setUiChoice(host.id, "simple");
+            }}
+          >
             {t("hostPage.simpleUse")}
           </ActionButton>
         )}

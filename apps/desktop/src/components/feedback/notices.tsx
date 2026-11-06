@@ -102,6 +102,9 @@ export const Notices = memo(function Notices(props: { store: AppStore }) {
         toast.success(notice.text, {
           id: `${prefix}s${notice.id}`,
           duration: noticeLifetime(notice),
+          ...(notice.link
+            ? { action: { label: notice.link.label, onClick: notice.link.run } }
+            : {}),
         });
         store.dismissNotice(notice.id);
         continue;

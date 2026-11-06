@@ -55,7 +55,7 @@ import type {
   WatchSettings,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { byCodeUnit, EPHEMERAL_EVENTS } from "@flightdeck/protocol";
+import { byCodeUnit, EPHEMERAL_EVENTS, parsePairingLink } from "@flightdeck/protocol";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type {
@@ -117,6 +117,7 @@ import {
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
 import { externalRequestNotification, summaryNotifications } from "./notify.ts";
+import { pairingErrorText } from "./pairing-text.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
 import { isHot } from "./quota.ts";
@@ -519,6 +520,8 @@ export interface Notice {
   hostId?: string;
   /** Runs the refused action again (after the person fixed what it needed). */
   retry?: () => void;
+  /** A success toast's button: where the news leads (Open the card). */
+  link?: { label: string; run: () => void };
 }
 
 /** Phase 21: a pair of sessions a host paused because they kept answering each other. */
@@ -1088,6 +1091,27 @@ export class AppStore {
     if (error) return error;
     this.updateHost(hostId, (h) => ({ ...h, name: name.trim() }));
     this.persistHosts();
+    return null;
+  }
+
+  /** A new token or pairing link for a host that refused the old one; the error text, or null. */
+  async pairAgain(hostId: string, input: string): Promise<string | null> {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    if (!host) return this.i18n.t("hostOffline.pairGone");
+    const text = input.trim();
+    let token = text;
+    if (text.toLowerCase().startsWith("flightdeck://")) {
+      const parsed = parsePairingLink(text);
+      if (!parsed.ok) return pairingErrorText(this.i18n.t, parsed.error);
+      token = parsed.value.token;
+    }
+    if (!token) return this.i18n.t("hostForm.pairToken");
+    const probe = await probeHost(host.url, token, this.i18n.t);
+    if (!probe.ok) return probe.error;
+    // The host may have been removed while it was tested: keep no secret for it.
+    if (!this.state.hosts.some((h) => h.id === hostId)) return this.i18n.t("hostOffline.pairGone");
+    await this.platform.secrets.set(hostId, token);
+    await this.reconnectHost(hostId);
     return null;
   }
 
@@ -1993,9 +2017,12 @@ export class AppStore {
   }
 
   /** A short success toast (copied, saved, started…), already translated. */
-  success(text: string): void {
+  success(text: string, link?: { label: string; run: () => void }): void {
     this.update({
-      notices: [...this.state.notices, { id: ++this.noticeSeq, kind: "success", code: "", text }],
+      notices: [
+        ...this.state.notices,
+        { id: ++this.noticeSeq, kind: "success", code: "", text, ...(link ? { link } : {}) },
+      ],
     });
   }
 

@@ -1,5 +1,5 @@
 /**
- * The e2e journeys (phase 10): fourteen in a real browser against the seeded demo, in both
+ * The e2e journeys (phase 10): eighteen in a real browser against the seeded demo, in both
  * languages, and a layout check of the main screens at 1280x800 and 800x600 (nothing sticks out
  * sideways, and the end of the long list shows after scrolling). The runner is `@playwright/test`
  * (scripts/e2e/define-journeys.ts, one file per language); this file holds the journeys themselves.
@@ -155,6 +155,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
     const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
     await tile.waitFor({ timeout: WAIT });
+    // Issue #188: the creation says so, with a way to the new card.
+    await c.page
+      .getByText(c.t("kanban.created", { title }), { exact: true })
+      .waitFor({ timeout: WAIT });
     await tile.getByRole("button", { name: title, exact: true }).click();
     await c.page.getByRole("button", { name: c.t("cardUi.start"), exact: true }).click();
     await open(c, { name: "card", host: ALFA, projectId: c.ids.project, cardId: c.ids.diffCard });
@@ -450,6 +454,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       tile(title).getByRole("button", { name: c.t("board.cardActions", { title }), exact: true });
     await actions(second).click();
     await c.page.getByRole("menuitem", { name: c.t("board.startCard"), exact: true }).click();
+    // The menu's Start asks for the workflow and persona first (issue #188).
+    await c.page
+      .getByRole("dialog", { name: c.t("board.startCard") })
+      .getByRole("button", { name: c.t("cardUi.start"), exact: true })
+      .click();
     await c.page
       .getByText(c.t("daemonRefusal.card_blocked", { blockers: first }), { exact: true })
       .waitFor({ timeout: WAIT });
@@ -511,6 +520,43 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await back.waitFor({ timeout: WAIT });
     await c.page.waitForTimeout(500);
     expect(Math.abs((await back.evaluate((el) => el.scrollTop)) - kept)).toBeLessThanOrEqual(2);
+  },
+
+  // 16. The first run (issue #184): a pasted link that is not a pairing link is answered in the
+  // app's language, from the catalog.
+  "primeira-vez": async (c) => {
+    await open(c, { name: "add-host" });
+    await c.page
+      .getByLabel(c.t("hostForm.link"), { exact: true })
+      .fill("flightdeck://pc:7420?name=x");
+    await c.page.getByText(c.t("hostForm.pairToken"), { exact: true }).waitFor({ timeout: WAIT });
+    await c.page.getByLabel(c.t("hostForm.link"), { exact: true }).fill("http://pc:7420?token=t");
+    await c.page.getByText(c.t("hostForm.pairScheme"), { exact: true }).waitFor({ timeout: WAIT });
+  },
+
+  // 17. A second host (issue #185): "Add a host" is a command of the palette and opens the form.
+  "segundo-host": async (c) => {
+    await open(c, { name: "hub" });
+    await c.page.keyboard.press("Control+K");
+    await c.page.getByLabel(c.t("searchUi.input"), { exact: true }).fill(c.t("palette.addHost"));
+    await c.page.getByText(c.t("palette.addHost"), { exact: true }).first().click();
+    await c.page.getByLabel(c.t("hostForm.link"), { exact: true }).waitFor({ timeout: WAIT });
+  },
+
+  // 18. New session (issue #186): the Sessions list starts one, and the form lets the host be chosen.
+  "nova-sessao-host": async (c) => {
+    await open(c, { name: "hub" });
+    await c.page
+      .locator('[data-slot="page-actions"]')
+      .first()
+      .getByRole("button", { name: c.t("sidebar.newSession"), exact: true })
+      .click();
+    const host = c.page.getByLabel(c.t("newSession.host"), { exact: true });
+    await host.waitFor({ timeout: WAIT });
+    await host.selectOption({ label: "beta" });
+    await c.page
+      .getByRole("heading", { name: c.t("newSession.title", { host: "beta" }) })
+      .waitFor({ timeout: WAIT });
   },
 };
 
