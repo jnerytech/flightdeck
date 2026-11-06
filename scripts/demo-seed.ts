@@ -682,6 +682,11 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   const empty = await client.call<{ id: string }>("project.add", {
     path: join(alfa.projects, "vazio"),
   });
+  // Issue #689: seven projects in all, so the sidebar tree shows its five and hides the rest.
+  for (const name of ["mobile-app", "infra", "design-system", "billing", "analytics"]) {
+    repo(join(alfa.projects, name), { "README.md": `# ${name}\n` });
+    await client.call("project.add", { path: join(alfa.projects, name) });
+  }
   const card = (title: string, description: string) =>
     client.call<{ id: string }>("card.create", { projectId: project.id, title, description });
   await card("Documentar a API pública", "Escreva o guia de uso.");
