@@ -32,7 +32,11 @@ function setupHost() {
   return store;
 }
 
-const tabs = () => screen.queryAllByRole("tab");
+/** The window's tab row: a host's Overview page has tabs of its own, which are not part of it. */
+const tabs = () => {
+  const row = screen.queryByRole("tablist", { name: "Abas" });
+  return row ? within(row).queryAllByRole("tab") : [];
+};
 const names = () => tabs().map((tab) => tab.getAttribute("aria-label") ?? tab.textContent);
 const press = async (name: string) => {
   const button = screen.queryByRole("button", { name });
@@ -119,14 +123,20 @@ describe("abas: a barra de abas", () => {
   });
 
   test("Ctrl+T opens a new tab on the palette; Ctrl+W closes the tab; Ctrl+Shift+T brings it back", async () => {
-    const store = setup();
-    await key("t");
+    // A new tab is a host's Overview: Sessões (shared) and the host's History are already open.
+    const store = setupHost();
+    await act(async () => {
+      store.hostTabs.open({ name: "history", host: "ha" });
+    });
     expect(tabs()).toHaveLength(2);
+    await key("t");
+    expect(tabs()).toHaveLength(3);
+    expect(store.router.current).toEqual({ name: "host", host: "ha" });
     expect(store.getState().searchOpen).toBe(true);
     await key("w");
-    expect(tabs()).toHaveLength(1);
-    await key("T", { shift: true });
     expect(tabs()).toHaveLength(2);
+    await key("T", { shift: true });
+    expect(tabs()).toHaveLength(3);
   });
 
   test("with the Tab order setting, Ctrl+Tab and Ctrl+Shift+Tab walk the tabs in strip order, Ctrl+N goes to the Nth", async () => {
