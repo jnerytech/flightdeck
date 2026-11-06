@@ -1,6 +1,7 @@
 /**
  * Which CI jobs a pull request needs, from the paths it changes (issue #264). Docs or scripts only
- * run the Linux tests and lint; the daemon adds the smokes; the app, the protocol, the
+ * run the Linux tests and lint; the daemon adds the smokes; the demo and the print guards add the
+ * prints (#637); the app, the protocol, the
  * dependencies or the workflow itself run everything; the Tauri shell adds cargo. Windows is not
  * planned for a PR or a push to main (#534); the schedule and a run by hand run everything,
  * Windows included, as a signal that gates nothing.
@@ -49,6 +50,14 @@ const E2E =
   /^(?:scripts\/e2e\/|scripts\/lib\/(?:e2e|demo)[^/]*\.ts$|scripts\/demo[^/]*\.ts$|playwright[^/]*$|apps\/daemon\/|scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$)/;
 
 /**
+ * demo:shots and what it runs (#637): the demo, the print guards, their ratchets and axe. A change
+ * to a guard must run the prints it guards; ci-paths.test.ts checks every local file demo-shots
+ * imports.
+ */
+const SHOTS =
+  /^scripts\/(?:demo[^/]*\.ts|lib\/(?:axe|browser|layout-[^/]*|print-theme|shots-[^/]*|visual)\.ts)$/;
+
+/**
  * Above this many selected integration and e2e test files, a PR's Windows tests take three shards
  * (#444, #483). Every PR selects the ~600 fast-tier tests, which one shard runs in minutes; a PR on
  * a widely imported file adds hundreds of slow ones (about 420 of #479's 1021).
@@ -73,7 +82,7 @@ export function ciPlan(
   return {
     windows: false,
     smokes: daemon,
-    screenshots: everything,
+    screenshots: everything || any(SHOTS),
     cargo: any(TAURI),
     e2e: everything || any(E2E),
     windowsShards:
