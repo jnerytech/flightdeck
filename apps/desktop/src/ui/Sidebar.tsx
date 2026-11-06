@@ -5,7 +5,6 @@ import {
   ChevronRight,
   CircleAlert,
   CircleX,
-  ExternalLink,
   Lock,
   type LucideProps,
   MoreHorizontal,
@@ -86,8 +85,6 @@ function NavButton(
     chevron?: boolean;
     /** A recent feature: a small badge after the label, already translated ("Beta", "New"). */
     badge?: string;
-    /** The item leaves the app (the manual): its icon says so. */
-    external?: boolean;
   }>,
 ) {
   const railName = props.hint ? `${props.label} (${props.hint})` : props.label;
@@ -137,13 +134,6 @@ function NavButton(
         {!props.collapsed && props.chevron && (
           <ChevronRight
             data-slot="nav-chevron"
-            aria-hidden="true"
-            className="size-3.5 shrink-0 text-sidebar-foreground/50"
-          />
-        )}
-        {!props.collapsed && props.external && (
-          <ExternalLink
-            data-slot="nav-external"
             aria-hidden="true"
             className="size-3.5 shrink-0 text-sidebar-foreground/50"
           />
