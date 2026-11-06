@@ -408,9 +408,10 @@ describe("mudancas-ui", () => {
 
   test("um arquivo grande demais para mostrar vem com o tamanho e um jeito de abrir fora, sem o conteúdo", async () => {
     const ctx = await setup();
-    const opened: string[] = [];
-    ctx.platform.openPath = async (path) => {
-      opened.push(path);
+    const shown: string[] = [];
+    ctx.platform.openPath = async () => {};
+    ctx.platform.revealPath = async (path) => {
+      shown.push(path);
     };
     writeFileSync(join(ctx.repo, "dump.log"), `SEGREDO${"x".repeat(700_000)}`);
     writeFileSync(join(ctx.repo, "novo.txt"), "um\ndois\n");
@@ -423,9 +424,10 @@ describe("mudancas-ui", () => {
     expect(diff()).not.toContain("SEGREDO");
     // The small file beside it is shown whole.
     expect(diff()).toContain("+dois");
-    await click("Abrir dump.log fora do Flightdeck");
-    expect(opened).toHaveLength(1);
-    expect(opened[0]?.endsWith("/dump.log")).toBe(true);
+    // Any file can be shown in its folder; opening one with the system's app is refused for most extensions.
+    await click("Mostrar dump.log na pasta");
+    expect(shown).toHaveLength(1);
+    expect(shown[0]?.endsWith("/dump.log")).toBe(true);
     // The editor stays one click away: it says why it cannot take the file when it is over 1 MB.
     expect(screen.queryByRole("button", { name: "Editar arquivo dump.log" })).not.toBeNull();
   });
@@ -439,7 +441,7 @@ describe("mudancas-ui", () => {
     await settle(() => files().includes("dump.log"));
     const diff = screen.queryByRole("region", { name: "Diff unificado" })?.textContent ?? "";
     expect(diff).toContain("Grande demais para mostrar aqui");
-    expect(screen.queryByRole("button", { name: "Abrir dump.log fora do Flightdeck" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Mostrar dump.log na pasta" })).toBeNull();
   });
 
   test("Sessões que mexeram aqui lista as sessões que gravaram o arquivo", async () => {

@@ -45,11 +45,17 @@ describe("diff-view-cap: a file the daemon did not send says so", () => {
 
   test("no open button without a way to open, and with one it hands the file back", () => {
     render(view(file({ bytes: 700_000 })));
-    expect(screen.queryByRole("button", { name: /fora do Flightdeck/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /na pasta/ })).toBeNull();
     cleanup();
     const opened: string[] = [];
     render(view(file({ bytes: 700_000 }), (f) => opened.push((f as { path: string }).path)));
-    fireEvent.click(screen.getByRole("button", { name: "Abrir dump.log fora do Flightdeck" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mostrar dump.log na pasta" }));
     expect(opened).toEqual(["dump.log"]);
+  });
+
+  test("a deleted file has nothing to show in a folder, so it gets the note and no button", () => {
+    render(view(file({ status: "deleted", bytes: 700_000 }), () => {}));
+    expect(screen.queryByText(/Grande demais para mostrar aqui/)).not.toBeNull();
+    expect(screen.queryByRole("button", { name: /na pasta/ })).toBeNull();
   });
 });

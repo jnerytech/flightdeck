@@ -1,5 +1,5 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
-import { appendFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { cardDiff, DIFF_FILE_MAX, DIFF_LIMITS, workingDiff } from "../src/board/diff.ts";
 import { git, gitRepo } from "./board-helpers.ts";
@@ -146,8 +146,8 @@ const shownBytes = (file: { hunks: Array<{ lines: Array<{ text: string }> }> }) 
   file.hunks.reduce((sum, h) => sum + h.lines.reduce((n, l) => n + l.text.length + 2, 0), 0);
 
 describe("changes-cap: the whole answer has a budget, and a huge diff is not read to the end", () => {
-  test("the default limits are 4 MB of shown diff and 32 MB of git output", () => {
-    expect(DIFF_LIMITS).toEqual({ totalBytes: 4 * 1024 * 1024, rawBytes: 32 * 1024 * 1024 });
+  test("the default limits are 4 MB of shown diff and 16 MB of git output", () => {
+    expect(DIFF_LIMITS).toEqual({ totalBytes: 4 * 1024 * 1024, rawBytes: 16 * 1024 * 1024 });
   });
 
   test("thirty files of 100 KB each: the first ones are shown while the budget lasts, all are listed", async () => {
@@ -257,5 +257,14 @@ describe("changes-cap: what git wrote before it was cut is kept once", () => {
       [true, 0],
       [true, 0],
     ]);
+  });
+});
+
+describe("changes-cap: a base branch is a revision, never an option of git", () => {
+  test("a base that looks like git's --output option writes nothing and is refused", async () => {
+    const { repo, root } = gitRepo();
+    const out = join(root, "stolen");
+    await expect(cardDiff(repo, `--output=${out}`)).rejects.toThrow();
+    expect(existsSync(`${out}...HEAD`)).toBe(false);
   });
 });
