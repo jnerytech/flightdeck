@@ -121,9 +121,9 @@ describe("layout", () => {
     const overlay = screen.queryByRole("dialog", { name: "Barra lateral" });
     expect(overlay?.textContent ?? "").toContain("hosts");
     // The overlay does not push: the rail keeps its 56 px column and the content its place.
-    expect(document.querySelector("[data-slot='sidebar']")?.parentElement?.className ?? "").toContain(
-      "grid-cols-[56px_minmax(0,1fr)]",
-    );
+    expect(
+      document.querySelector("[data-slot='sidebar']")?.parentElement?.className ?? "",
+    ).toContain("grid-cols-[56px_minmax(0,1fr)]");
     await act(async () => {
       fireEvent.keyDown(overlay as HTMLElement, { key: "Escape" });
     });

@@ -8,7 +8,8 @@ export const MEDIUM_QUERY = "(width < 1024px)";
 
 /** Which of the three widths the window is in now, following its resize. */
 export function useBreakpoint(): Breakpoint {
-  useMediaQuery(COMPACT_QUERY);
-  useMediaQuery(MEDIUM_QUERY);
-  return "wide";
+  const compact = useMediaQuery(COMPACT_QUERY);
+  const medium = useMediaQuery(MEDIUM_QUERY);
+  if (compact) return "compact";
+  return medium ? "medium" : "wide";
 }
