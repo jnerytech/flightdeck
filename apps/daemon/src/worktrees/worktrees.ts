@@ -89,7 +89,7 @@ const REBUILDABLE = new Set([
  * the classifier knows come from its one list (`credential()`); this adds the ones a name only
  * hints at.
  */
-const CREDENTIAL_HINT = /^.*(?:credential|secret|token|passw(?:or)?d|api[_-]?key).*$/i;
+const CREDENTIAL_HINT = /credential|secret|token|passw(?:or)?d|api[_-]?key/i;
 const credentialName = (part: string) => credential(part) || CREDENTIAL_HINT.test(part);
 
 /** The size an ignored file may have to be compared with the project's copy of it. */
@@ -104,6 +104,105 @@ interface Scanned {
 }
 
 const COUNT = /^\d+$/;
+const SHA = /^[0-9a-f]{40,64}$/;
+
+type Listed = { path: string; branch: string | null };
+type Owned = Listed & { mtimeMs: number };
+
+/** The worktree when it sits directly inside `dir` as a real folder (not a link); null otherwise. */
+async function owned(entry: Listed, dir: string): Promise<Owned | null> {
+  if (resolve(entry.path, "..") !== resolve(dir)) return null;
+  try {
+    const info = await lstat(entry.path);
+    if (info.isSymbolicLink()) return null;
+    if (resolve(await realpath(entry.path), "..") !== resolve(await realpath(dir))) return null;
+    return { ...entry, mtimeMs: info.mtimeMs };
+  } catch {
+    // Gone since git listed it: not ours to show.
+    return null;
+  }
+}
+
+/** The trimmed output of a git answer that succeeded; null when it failed or was not asked. */
+const okOut = (answer: CommandResult | null): string | null =>
+  answer?.code === 0 ? answer.stdout.trim() : null;
+
+/** Whether git printed a plain number (a count, a unix time). */
+const isCount = (text: string | null): text is string => text !== null && COUNT.test(text);
+
+/**
+ * Whether `git ls-files -v -z` shows a tracked file that status hides: `assume-unchanged` (a
+ * lowercase tag) or `skip-worktree` (`S`).
+ */
+function hidesChanges(listing: CommandResult): boolean {
+  return (
+    listing.code === 0 &&
+    listing.stdout.split("\0").some((entry) => entry !== "" && /^[a-z]|^S/.test(entry))
+  );
+}
+
+/** Any answer of git that is not a plain number (or a failed command) is "git cannot say". */
+function cannotTell(facts: {
+  baseUsable: boolean;
+  count: string | null;
+  listingFailed: boolean;
+  stamp: string | null;
+  branch: string | null;
+  tipSha: string | null;
+}): boolean {
+  return (
+    (facts.baseUsable && !isCount(facts.count)) ||
+    facts.listingFailed ||
+    !isCount(facts.stamp) ||
+    (facts.branch !== null && !SHA.test(facts.tipSha ?? ""))
+  );
+}
+
+/** What stops a removal, in the order the app shows it. */
+function blockersOf(facts: {
+  busy: ReturnType<WorktreesOptions["busy"]>;
+  dirty: boolean;
+  hidden: boolean;
+  ignoredFiles: boolean;
+  unpushed: number;
+  baseUsable: boolean;
+  unknownState: boolean;
+  branch: string | null;
+}): WorktreeBlocker[] {
+  const flags: Array<[boolean, WorktreeBlocker]> = [
+    [facts.dirty, "dirty"],
+    [facts.hidden, "hidden_changes"],
+    [facts.ignoredFiles, "ignored_files"],
+    [facts.unpushed > 0, "unpushed"],
+    [!facts.baseUsable, "unknown_base"],
+    [facts.unknownState, "unknown_state"],
+    [facts.branch === null || !OWN_BRANCH.test(facts.branch), "other_branch"],
+  ];
+  return [
+    ...(facts.busy ? [facts.busy] : []),
+    ...flags.filter(([on]) => on).map(([, blocker]) => blocker),
+  ];
+}
+
+/** The latest of the last commit, the folder's own mtime and the card's last change. */
+function lastActivityMs(stamp: string | null, mtimeMs: number, card?: WorktreeCard): number {
+  const commitMs = isCount(stamp) ? Number(stamp) * 1000 : 0;
+  return Math.max(commitMs, mtimeMs, card ? Date.parse(card.updatedAt) || 0 : 0);
+}
+
+/** The card's fields an item shows; null where the worktree has no card. */
+function cardFields(card?: WorktreeCard) {
+  return {
+    cardId: card?.id ?? null,
+    cardTitle: card?.title ?? null,
+    column: card?.column ?? null,
+    prState: card?.prState ?? null,
+  };
+}
+
+/** Without a card, or with its work done or merged, nothing is left to lose in the folder. */
+const finishedCard = (card?: WorktreeCard): boolean =>
+  !card || card.column === "done" || card.prState === "merged";
 
 /** What the cards leave on the disk: every `fd/*` worktree, how big, and whether it is safe to remove. */
 export class Worktrees {
@@ -190,127 +289,137 @@ export class Worktrees {
     }
     const cards = this.opts.cards(project.id);
     const base = await this.baseSha(project);
-    const mine: Array<{ path: string; branch: string | null; mtimeMs: number }> = [];
-    for (const entry of parseList(listed.stdout)) {
+    const mine = (await Promise.all(parseList(listed.stdout).map((entry) => owned(entry, dir))))
       // Directly inside the worktrees folder, a real folder (not a link), nowhere else.
-      if (resolve(entry.path, "..") !== resolve(dir)) continue;
-      try {
-        const info = await lstat(entry.path);
-        if (info.isSymbolicLink()) continue;
-        if (resolve(await realpath(entry.path), "..") !== resolve(await realpath(dir))) continue;
-        mine.push({ ...entry, mtimeMs: info.mtimeMs });
-      } catch {
-        // Gone since git listed it: not ours to show.
-      }
-    }
+      .filter((entry): entry is Owned => entry !== null);
     const now = this.opts.now();
     return Promise.all(
-      mine.map(async (entry): Promise<Scanned> => {
-        const card = cards.find((c) => c.worktreePath && samePath(c.worktreePath, entry.path));
-        // The base is the branch itself: "not on the base" would be empty by construction.
-        const baseUsable = base !== null && entry.branch !== project.baseBranch;
-        // The branch tip first: the commits are counted on it, so the count and the sha that the
-        // branch is deleted against are one snapshot.
-        const tip = entry.branch
-          ? await git(
-              project.path,
-              "rev-parse",
-              "--verify",
-              "--quiet",
-              `refs/heads/${entry.branch}^{commit}`,
-            )
-          : null;
-        const tipSha = tip && tip.code === 0 ? tip.stdout.trim() : null;
-        const [status, hiddenList, ahead, last, sizeBytes] = await Promise.all([
-          // Untracked files shown whatever the user's config says; ignored ones listed as well.
-          git(
-            entry.path,
-            "-c",
-            "status.showUntrackedFiles=all",
-            "status",
-            "--porcelain",
-            "--untracked-files=all",
-            "--ignored=matching",
-          ),
-          // The tag of each tracked file: what `assume-unchanged` or `skip-worktree` hides from status.
-          git(entry.path, "ls-files", "-v", "-z"),
-          baseUsable && (entry.branch === null || tipSha !== null)
-            ? // git-arg: tipSha and base are commit ids git printed (baseSha resolves the project base to one)
-              git(entry.path, "rev-list", "--count", tipSha ?? "HEAD", "--not", "--remotes", base)
-            : Promise.resolve(null),
-          git(entry.path, "log", "-1", "--format=%ct"),
-          withSize ? this.opts.size(entry.path) : Promise.resolve(null),
-        ]);
-        // A status that fails is treated as dirty: when git cannot say, nothing is removed.
-        const changed = status.stdout.split("\n").some((l) => l !== "" && !l.startsWith("!! "));
-        const dirty = status.code !== 0 || changed;
-        const ignoredFiles =
-          status.code === 0 && (await this.keepsIgnored(project, entry.path, status.stdout));
-        const count = ahead && ahead.code === 0 ? ahead.stdout.trim() : null;
-        const stamp = last.code === 0 ? last.stdout.trim() : null;
-        // Any answer that is not a plain number (or a failed command) is "git cannot say".
-        const unknownState =
-          (baseUsable && (count === null || !COUNT.test(count))) ||
-          hiddenList.code !== 0 ||
-          stamp === null ||
-          !COUNT.test(stamp) ||
-          (entry.branch !== null && !/^[0-9a-f]{40,64}$/.test(tipSha ?? ""));
-        const hidden =
-          hiddenList.code === 0 &&
-          hiddenList.stdout
-            .split("\0")
-            .some((entry) => entry !== "" && (/[a-z]/.test(entry[0] ?? "") || entry[0] === "S"));
-        const unpushed = count !== null && COUNT.test(count) ? Number(count) : 0;
-        const commitMs = stamp !== null && COUNT.test(stamp) ? Number(stamp) * 1000 : 0;
-        const lastMs = Math.max(
-          commitMs,
-          entry.mtimeMs,
-          card ? Date.parse(card.updatedAt) || 0 : 0,
-        );
-        let busy: ReturnType<WorktreesOptions["busy"]> = null;
-        let fault: Error | null = null;
-        try {
-          busy = this.opts.busy(entry.path, card?.id ?? null);
-        } catch (error) {
-          fault = error instanceof Error ? error : new Error(String(error));
-        }
-        const blockers: WorktreeBlocker[] = [
-          ...(busy ? [busy] : []),
-          ...(dirty ? (["dirty"] as const) : []),
-          ...(hidden ? (["hidden_changes"] as const) : []),
-          ...(ignoredFiles ? (["ignored_files"] as const) : []),
-          ...(unpushed > 0 ? (["unpushed"] as const) : []),
-          ...(baseUsable ? [] : (["unknown_base"] as const)),
-          ...(unknownState || fault ? (["unknown_state"] as const) : []),
-          ...(entry.branch !== null && OWN_BRANCH.test(entry.branch)
-            ? []
-            : (["other_branch"] as const)),
-        ];
-        const idleDays = Math.max(0, (now - lastMs) / DAY_MS);
-        const finished = !card || card.column === "done" || card.prState === "merged";
-        return {
-          branchSha: tipSha,
-          fault,
-          item: {
-            projectId: project.id,
-            projectName: project.name,
-            path: entry.path,
-            branch: entry.branch,
-            cardId: card?.id ?? null,
-            cardTitle: card?.title ?? null,
-            column: card?.column ?? null,
-            prState: card?.prState ?? null,
-            dirty,
-            unpushed,
-            sizeBytes,
-            lastActivity: new Date(lastMs).toISOString(),
-            idleDays,
-            blockers,
-            suggested: blockers.length === 0 && finished && idleDays > IDLE_DAYS,
-          },
-        };
-      }),
+      mine.map((entry) =>
+        this.scanOne(project, entry, {
+          base,
+          withSize,
+          now,
+          card: cards.find((c) => c.worktreePath && samePath(c.worktreePath, entry.path)),
+        }),
+      ),
     );
+  }
+
+  /** The tip of the branch, as a hash; null without a branch or when git cannot name it. */
+  private async branchTip(project: WorktreeProject, branch: string | null): Promise<string | null> {
+    if (!branch) return null;
+    return okOut(
+      await this.opts.git(
+        project.path,
+        "rev-parse",
+        "--verify",
+        "--quiet",
+        `refs/heads/${branch}^{commit}`,
+      ),
+    );
+  }
+
+  /** How many commits of the branch are on no remote and not on the base; null when not asked. */
+  private unpushedCommits(
+    path: string,
+    branch: string | null,
+    tipSha: string | null,
+    base: string | null,
+  ): Promise<CommandResult | null> {
+    // Without a branch the work is the checkout's HEAD; with one, it must have a tip to count on.
+    if (base === null || (branch !== null && tipSha === null)) return Promise.resolve(null);
+    // git-arg: tipSha and base are commit ids git printed (baseSha resolves the project base to one)
+    return this.opts.git(path, "rev-list", "--count", tipSha ?? "HEAD", "--not", "--remotes", base);
+  }
+
+  /** Whether anything runs in the folder; a check that throws makes this one worktree unknown. */
+  private busyOf(path: string, cardId: string | null) {
+    try {
+      return { busy: this.opts.busy(path, cardId), fault: null };
+    } catch (error) {
+      return { busy: null, fault: error instanceof Error ? error : new Error(String(error)) };
+    }
+  }
+
+  /** One worktree's facts and what stops its removal. */
+  private async scanOne(
+    project: WorktreeProject,
+    entry: Owned,
+    ctx: { base: string | null; withSize: boolean; now: number; card?: WorktreeCard },
+  ): Promise<Scanned> {
+    const { git } = this.opts;
+    const { card } = ctx;
+    // The base is the branch itself: "not on the base" would be empty by construction.
+    const base = entry.branch === project.baseBranch ? null : ctx.base;
+    // The branch tip first: the commits are counted on it, so the count and the sha that the
+    // branch is deleted against are one snapshot.
+    const tipSha = await this.branchTip(project, entry.branch);
+    const [status, listing, ahead, last, sizeBytes] = await Promise.all([
+      // Untracked files shown whatever the user's config says; ignored ones listed as well.
+      git(
+        entry.path,
+        "-c",
+        "status.showUntrackedFiles=all",
+        "status",
+        "--porcelain",
+        "--untracked-files=all",
+        "--ignored=matching",
+      ),
+      // The tag of each tracked file: what `assume-unchanged` or `skip-worktree` hides from status.
+      git(entry.path, "ls-files", "-v", "-z"),
+      this.unpushedCommits(entry.path, entry.branch, tipSha, base),
+      git(entry.path, "log", "-1", "--format=%ct"),
+      ctx.withSize ? this.opts.size(entry.path) : Promise.resolve(null),
+    ]);
+    // A status that fails is treated as dirty: when git cannot say, nothing is removed.
+    const dirty =
+      status.code !== 0 || status.stdout.split("\n").some((l) => l !== "" && !l.startsWith("!! "));
+    const ignoredFiles =
+      status.code === 0 && (await this.keepsIgnored(project, entry.path, status.stdout));
+    const count = okOut(ahead);
+    const stamp = okOut(last);
+    const { busy, fault } = this.busyOf(entry.path, card?.id ?? null);
+    const unpushed = isCount(count) ? Number(count) : 0;
+    const baseUsable = base !== null;
+    const blockers = blockersOf({
+      busy,
+      dirty,
+      hidden: hidesChanges(listing),
+      ignoredFiles,
+      unpushed,
+      baseUsable,
+      unknownState:
+        fault !== null ||
+        cannotTell({
+          baseUsable,
+          count,
+          listingFailed: listing.code !== 0,
+          stamp,
+          branch: entry.branch,
+          tipSha,
+        }),
+      branch: entry.branch,
+    });
+    const lastMs = lastActivityMs(stamp, entry.mtimeMs, card);
+    const idleDays = Math.max(0, (ctx.now - lastMs) / DAY_MS);
+    return {
+      branchSha: tipSha,
+      fault,
+      item: {
+        projectId: project.id,
+        projectName: project.name,
+        path: entry.path,
+        branch: entry.branch,
+        ...cardFields(card),
+        dirty,
+        unpushed,
+        sizeBytes,
+        lastActivity: new Date(lastMs).toISOString(),
+        idleDays,
+        blockers,
+        suggested: blockers.length === 0 && finishedCard(card) && idleDays > IDLE_DAYS,
+      },
+    };
   }
 
   async list(projectId?: string): Promise<WorktreesResult> {
@@ -336,7 +445,7 @@ export class Worktrees {
     const kept: WorktreeRemoveResult["kept"] = [];
     for (const item of items) {
       try {
-        const outcome = await this.removeOne(item);
+        const outcome = await this.removeOne(item); // NOSONAR: one folder at a time, each re-checked right before git removes it
         if ("freedBytes" in outcome) removed.push(outcome);
         else kept.push(outcome);
       } catch (error) {

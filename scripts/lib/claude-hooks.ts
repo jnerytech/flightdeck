@@ -26,7 +26,8 @@ const TEST_FILE = /\.test\.tsx?$/;
 
 /** The audit's markers plus a snapshot, which on its first run records whatever the stub returns. */
 const TEST_MARKERS = [
-  ...FORBIDDEN_MARKERS,
+  // A skip is judged by its note instead (#494): see undocumentedSkips below.
+  ...FORBIDDEN_MARKERS.filter(({ text }) => text !== ".skip("),
   { pattern: /\.toMatchSnapshot\(/g, text: "toMatchSnapshot(" },
 ];
 
@@ -161,9 +162,9 @@ export function testEditViolation(
   );
   if (!added) {
     if (undocumentedSkips(after) <= undocumentedSkips(before)) return null;
-    return `Adding a skipIf that skips off Linux to ${file} is blocked: it needs \`// unstable: #<issue> <reason>\` on the same line or the line above, and the fix goes to that issue (docs/TDD.md).`;
+    return `Adding a skip to ${file} is blocked: a flaky test is skipped only with \`// unstable: #<issue> <reason>\` on the same line or the line above, naming the open issue that owns its fix (docs/TDD.md).`;
   }
-  return `Adding ${added.text} to ${file} is blocked: committed tests have no .only, .skip, test.todo or first-run toMatchSnapshot (docs/TDD.md). Write the assertion with a hand-written literal.`;
+  return `Adding ${added.text} to ${file} is blocked: committed tests have no .only, test.todo or first-run toMatchSnapshot, and a .skip only with an \`// unstable: #<issue>\` note (docs/TDD.md). Write the assertion with a hand-written literal.`;
 }
 
 export interface CommitGateDeps {
@@ -199,6 +200,11 @@ export function commitViolation(command: string, cwd: string, deps: CommitGateDe
   if (!scope) {
     return `${type} needs a scope: ${type}(<area>): text, the same scope as its earlier test(<area>) commit (docs/TDD.md).`;
   }
+  const lines = [commit.message, ...commit.trailers].join("\n");
+  const text = subject.slice(match[0].length - 1);
+  if (!ISSUE_IN_SUBJECT.test(text) && !ISSUE_LINE.test(lines)) {
+    return `${type}(${scope}) needs an issue: end the subject with (#N), or add a line "Refs: #N" (or "Closes #N") to the message, so release:close can close it (docs/TDD.md).`;
+  }
   if (commit.waived || commit.dir === null) return null;
   const dir = commit.dir;
   const git = (args: string[]) => deps.git(args, dir);
@@ -231,6 +237,13 @@ const COMMIT_TYPES = [
 const SUBJECT = new RegExp(String.raw`^(${COMMIT_TYPES.join("|")})(?:\(([^)]+)\))?!?: \S`);
 const HEREDOC = /<<-?\s*(['"]?)(\w+)\1[^\n]*\n([\s\S]*?)\n\s*\2[ \t]*(?=\n|\)|$)/g;
 const WAIVER = /^TDD-Waiver:[ \t]*\S/m;
+/**
+ * An issue in parentheses in the subject's text (after `type(scope): `): `(#12)`, `(#12, #13)`,
+ * `(review of rc/0364, #237)`. One digit is enough for a presence test and keeps it linear.
+ */
+const ISSUE_IN_SUBJECT = /\([^()]*#\d[^()]*\)/;
+/** A message line that names an issue: `Refs: #12`, `Closes #12`, `Fixes #12`, `Resolves #12`. */
+const ISSUE_LINE = /^[ \t]*(?:refs|closes|fixes|resolves):?[ \t]+#\d+/im;
 
 /**
  * The command with heredoc bodies and the inside of quoted strings blanked to spaces, so every
@@ -317,6 +330,8 @@ interface FoundCommit {
   dir: string | null;
   /** The whole message, or null when the command gives none it can read. */
   message: string | null;
+  /** The values of `--trailer`, which git appends to the message. */
+  trailers: string[];
   waived: boolean;
 }
 
@@ -325,6 +340,7 @@ function findCommit(command: string, cwd: string): FoundCommit | undefined {
   const call = gitCalls(command, cwd).find((c) => c.sub === "commit");
   if (!call) return undefined;
   const parts: string[] = [];
+  const trailers: string[] = [];
   let waived = false;
   let fromStdin = false;
   call.args.forEach(({ word: w, at: pos }, j) => {
@@ -334,8 +350,10 @@ function findCommit(command: string, cwd: string): FoundCommit | undefined {
     if (valueAt === undefined) return;
     const value = optionValue(command, valueAt);
     if (flag[1] === "-F" || flag[1] === "--file") fromStdin ||= value === "-";
-    else if (flag[1] === "--trailer") waived ||= WAIVER.test(value ?? "");
-    else if (value !== null) parts.push(value);
+    else if (flag[1] === "--trailer") {
+      waived ||= WAIVER.test(value ?? "");
+      if (value !== null) trailers.push(value);
+    } else if (value !== null) parts.push(value);
   });
   if (parts.length === 0 && fromStdin) {
     HEREDOC.lastIndex = call.start;
@@ -344,7 +362,7 @@ function findCommit(command: string, cwd: string): FoundCommit | undefined {
   }
   const message = parts.length > 0 ? parts.join("\n\n") : null;
   const body = message?.split("\n").slice(1).join("\n") ?? "";
-  return { dir: call.dir, message, waived: waived || WAIVER.test(body) };
+  return { dir: call.dir, message, trailers, waived: waived || WAIVER.test(body) };
 }
 
 /**

@@ -885,9 +885,12 @@ live; the list is the project's, so a session of another project never shows her
   is offline, misses a required dependency or forwards its API key), and the narrow icon rail has no headings.
 - At the foot of the bar, **Settings** is a visible item (marked while Settings is open), and the Claude
   account (its email and plan, read from the host's account card; the rail shows only its initial)
-  opens a menu with **Settings**, **Toggle theme**, **Manual** and, for each host whose `gh` is signed
-  in to GitHub with a login the app can remove, **Sign out of GitHub** (after a confirmation; a login
-  that comes from the daemon's environment is removed there). With several hosts the account of the
+  opens a menu. Its header names the app and its version. Then come the plan, the account and the id
+  of the host whose account it is, each copied when chosen; **Compact rows**, a switch kept on this
+  computer (the same density as in Settings); **Settings**; **Check for updates** (it opens Settings,
+  where the answer shows); **Keyboard shortcuts**; **Toggle theme**; **Manual**; and, for each host
+  whose `gh` is signed in to GitHub with a login the app can remove, **Sign out of GitHub** (after a
+  confirmation; a login that comes from the daemon's environment is removed there). With several hosts the account of the
   open host is shown, and how many accounts there are when they differ; an offline host shows none.
 - **Home** (first in Work) is a strip of four cards over the last seven days of every online host,
   each with a sparkline: **Spend** (with the month's host budgets, when set), **Turns** (ok and
@@ -2293,14 +2296,34 @@ window resets.
   ago").
   - The bar turns red from `quota.pauseAt`.
   - Crossing `pauseAt` raises a notification, once per window.
-- **In the top bar:** a small meter shows the window under most pressure across the online hosts,
-  with its percentage (the window's name shows from 960 px wide). From 80% it carries a warning
-  mark in the needs-you colour, and at 100% (or from `pauseAt`, as the account card) the bar
-  turns red; its name and tooltip say the level,
-  the host and the time left. Clicking it opens that host's page. With no reading, it does not
-  show.
+- **In the status bar** (the slim line at the bottom of the window, below): a small meter shows the
+  window under most pressure across the online hosts, with its percentage and the time left until it
+  resets (the window's name shows from 960 px wide), and a **Refresh the plan usage** button that
+  asks the hosts again. From 80% it carries a warning mark in the needs-you colour, and at 100% (or
+  from `pauseAt`, as the account card) the bar turns red; its name and tooltip say the level, the
+  host and the time left. Clicking it opens that host's page. With no reading, neither the meter
+  nor the refresh shows.
 - **Terminal only:** the hooks do not carry the quota. Anyone who only uses terminal sessions
   sees empty or stale bars until a card or a managed session runs on the host.
+
+### The status bar
+
+A slim bar (24 px) runs along the bottom of the window. On the left, the plan quota (above) with its
+reset time and a refresh. On the right, each item opens its page:
+
+- **Update:** only when there is one to say: an app update on offer, one downloaded that needs a
+  restart, or a failed check. It opens Settings.
+- **Keep awake:** what the hosts that offer it say together: **Awake** (holding the computer awake
+  now), **Keep awake** (on, holding only while sessions run) or **Sleep ok** (off). It opens that
+  host's page, where the switch is. A host that does not offer it is not counted.
+- **Terminals:** how many terminal tabs are open, in both areas. It brings the first one forward; with
+  none open, it opens the host where one can be opened.
+- **Hosts:** how many are online of all ("2/3"). It opens the first host that is not online, so a
+  problem is one click away; with every host online, the host in view.
+
+Every item is a button with its words as the name and a tooltip, never colour alone, and the two
+counts are live regions, so a screen reader hears them change.
+In a window under 600 px tall the bar is hidden, to leave the height to the conversation.
 
 ### Quota queue
 
@@ -2705,12 +2728,18 @@ tab, with no SSH.
   Linux) in its first allowed folder. The panel also lists the live terminals, each with
   **Open**.
 - **In the tab:** copy and paste with `Ctrl+Shift+C` / `Ctrl+Shift+V` or the right button's
-  menu (**Copy**, which needs a selection, **Paste** and **Select all**; `Ctrl+C` goes to the
-  process). Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
+  menu (**Copy**, which needs a selection, **Paste** and **Select all**). On Windows `Ctrl+C`
+  also copies while something is selected, and goes to the process (the interrupt) when nothing is;
+  elsewhere `Ctrl+C` always goes to the process. A program that redraws its screen (Claude Code)
+  can drop a selection before you reach **Copy**: the last selection stays copyable until you
+  type. When the program takes the mouse for itself, hold `Shift` while you drag to select.
+  `Shift+Enter` adds a new line in a Claude Code prompt instead of sending it (the same as
+  `Alt+Enter`). Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
   in another color and its position ("2 of 5") beside the box; Enter or **Next match** goes to
   the next one, Shift+Enter or **Previous match** to the previous, Esc or **Close search**
   closes. Links in the output open in the browser (`http` and `https` only). The font is the
-  system monospace; its size is in Settings (**Terminal font size**, 10 to 24).
+  system monospace; its size is in Settings (**Terminal font size**, 10 to 24). The tab keeps
+  the last 10,000 lines to scroll back to and to search.
 - **Detach and reopen:** a terminal survives the app: it keeps the last 2 MB of output, and
   attaching again shows them. Closing a terminal tab asks: **Detach** (the default; the process
   keeps running on the host) or **End process**. A terminal shown as detached or ended has
@@ -2921,6 +2950,15 @@ Hover one for its name.
 - **Keyboard:** `J` and `K` move through the list, `Enter` opens, `Esc` closes the detail, `A`
   and `N` approve and deny, `Ctrl K` opens the palette, `Alt+←` and `Alt+→` go back and forward.
 - **Density:** compact rows (32 px, the default) or comfortable (40 px), in Settings.
+- **Prompt cache timer** (Settings, off by default): Claude Code keeps the start of a conversation
+  cached for 5 minutes (1 hour with extended caching, **Cache lifetime** in Settings), and replying
+  inside that window is cheaper. With the timer on, an idle session on the Sessions list (row and
+  card) and in its status line under the message box shows a small clock with the time left as
+  `m:ss`, in the warning colour for its last minute and as a clock alone once the cache is cold (the next message re-sends the whole context as
+  uncached tokens). Screen readers hear "Prompt cache expires in 2 minutes 10 seconds". The session's tab carries the
+  clock icon alone in its corner (the time is in its tooltip), so the tab gets no wider. The
+  countdown does not run for sessions that are running or ended, one 1-second clock serves them
+  all, and it stops while the window is hidden.
 - **Theme:** Light, Dark and System (the default), in Settings, in the sidebar and in the
   palette. The choice is remembered.
 - **Language:** the system's (`pt-BR` for any `pt-*`, `en` for the rest), switched in Settings or
@@ -3058,8 +3096,11 @@ signature (see [Installation](#from-the-release-binaries)).
 - **The app:**
   - looks for a new version on open and every 6 h, in the latest release's `latest.json`;
   - with **Update automatically** on (the default), it downloads the new version in the
-    background, checks its signature, and then shows the banner "Flightdeck X is ready. Restart
-    to update." with **Restart now** and **Later**. Nothing restarts by itself (#280). Quitting
+    background, checks its signature, and then shows a card in the bottom-right corner:
+    **Update available**, "Flightdeck vX is ready.", "Your sessions will not be interrupted." (they
+    run in the hosts' daemons), **Release notes** (the version's page on GitHub), one **Update**
+    button and a close button (×) that puts it away until the next check (#490). Nothing restarts
+    by itself (#280). Quitting
     from the tray with a version downloaded installs it on the way out, without starting the app
     again (#402);
   - with it off, the banner says "Flightdeck X available", with the notes, **Install and

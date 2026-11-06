@@ -55,6 +55,11 @@ describe("ci-shards", () => {
       "bun run test:shards -- run ${{ matrix.shard }}/${{ strategy.job-total }} --junit junit-${{ matrix.shard }}.xml",
     );
     expect(runs("test-windows-shard")).not.toContain("--shard=");
+    // A long selection runs in batches, each with its own JUnit file (#483): the upload keeps them all.
+    const upload = job("test-windows-shard").steps.find(
+      (s) => s.name === "Publicar os tempos dos testes",
+    );
+    expect(upload?.with?.path).toBe("junit-${{ matrix.shard }}*.xml");
     expect(runs("test-windows-shard")).not.toMatch(/bun run test(\s|$)/);
   });
 

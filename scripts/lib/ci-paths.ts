@@ -49,8 +49,21 @@ const SCRIPTS = /^scripts\//;
 const E2E =
   /^(?:scripts\/e2e\/|scripts\/lib\/(?:e2e|demo)[^/]*\.ts$|scripts\/demo[^/]*\.ts$|playwright[^/]*$|apps\/daemon\/|scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$)/;
 
-export function ciPlan(event: string, changed: string[] | null, removed: string[] = []): CiPlan {
-  if (event !== "pull_request" || changed === null) return { ...FULL };
+/**
+ * Above this many selected integration and e2e test files, a PR's Windows tests take three shards
+ * (#444, #483). Every PR selects the ~600 fast-tier tests, which one shard runs in minutes; a PR on
+ * a widely imported file adds hundreds of slow ones (about 420 of #479's 1021).
+ */
+export const WINDOWS_SPLIT_ABOVE = 100;
+
+export function ciPlan(
+  event: string,
+  changed: string[] | null,
+  removed: string[] = [],
+  selected = 0,
+): CiPlan {
+  // A PR and a push to main plan by their paths (#444); the schedule and a run by hand run all.
+  if ((event !== "pull_request" && event !== "push") || changed === null) return { ...FULL };
   const any = (re: RegExp) => changed.some((path) => re.test(path));
   const everything = any(EVERYTHING);
   const daemon = everything || any(DAEMON);
@@ -60,8 +73,24 @@ export function ciPlan(event: string, changed: string[] | null, removed: string[
     screenshots: everything,
     cargo: any(TAURI),
     e2e: everything || any(E2E),
-    windowsShards: any(GLOBAL_FILE) || removed.some((path) => TEST_FILE.test(path)) ? 3 : 1,
+    windowsShards:
+      any(GLOBAL_FILE) ||
+      removed.some((path) => TEST_FILE.test(path)) ||
+      selected > WINDOWS_SPLIT_ABOVE
+        ? 3
+        : 1,
   };
+}
+
+/**
+ * The ref `test:related --pr` compares with (#444): the PR's target branch, or the commit a push
+ * to main came after; none ("") for the schedule and a run by hand, which run the whole suite.
+ * A push's before must be a commit id (a new branch's is all zeros).
+ */
+export function selectionBase(event: string, baseRef: string, before: string): string {
+  if (event === "pull_request") return baseRef ? `origin/${baseRef}` : "";
+  if (event === "push" && /^[0-9a-f]{40}$/.test(before) && !/^0+$/.test(before)) return before;
+  return "";
 }
 
 /** The plan as GitHub step outputs, one `name=value` per line. */

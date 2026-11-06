@@ -153,6 +153,9 @@ async function watched(rules: FakeRule[]) {
   const watcher = new PrWatcher({
     db: ctx.store.db,
     board: ctx.board,
+    // The fake answers in this process: a real process per call made a round as slow as the
+    // machine (#246). The calls are the same, recorded by the same fake.
+    provider: (kind) => (kind === "azure-devops" ? new AzureDevOpsCli({ run: az.run }) : null),
     onTrigger: (trigger) => {
       triggers.push(trigger);
     },
@@ -171,6 +174,19 @@ describe("vigiar-ado: the watcher", () => {
     await watcher.tick();
     expect(az.calls()).toEqual([]);
     expect(triggers).toEqual([]);
+  });
+
+  test("a round is answered in this process, so a slow or loaded machine cannot stretch it (#246)", async () => {
+    // A held rule (delayMs) holds only a fake's own process: in this process the round is instant.
+    const held = (rule: FakeRule): FakeRule => ({ ...rule, delayMs: 3000 });
+    const { az, card, watcher } = await watched(
+      [show("succeeded"), evaluations(evaluation("approved", "CI", 88)), NO_COMMENTS].map(held),
+    );
+    watcher.setEnabled(card.id, true);
+    const started = performance.now();
+    await watcher.tick();
+    expect(performance.now() - started).toBeLessThan(1500);
+    expect(az.calls().length).toBeGreaterThan(0);
   });
 
   test("the project's default turns it on for its cards, and a card's own choice wins", async () => {
