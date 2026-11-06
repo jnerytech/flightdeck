@@ -2308,6 +2308,10 @@ Sessões do Claude Code podem trocar mensagens pelo Flightdeck, no mesmo host ou
   você acrescenta ou tira linhas (o número de linhas é o número de executoras, de 1 a 8). A
   persona de cada executora começa como o Desenvolvedor, quando o host o tem; escolha **Nenhuma**
   para o padrão simples. Sem escolha, o modelo é o da persona. O modelo de cada membro aparece na linha dele.
+- **O nome de cada membro** diz quem ele é: o time e a persona no idioma do app, como
+  "md-server · Arquiteto 2" ou "md-server · Coordenadora"; sem persona, "Executora 2". O nome vale na
+  lista de sessões, na busca e em Precisa de você. Um nome que você deu, ou o que o Claude Code deu, continua
+  valendo, e o endereço para mensagens não muda.
 - **O ciclo da coordenadora:**
   1. quebrar o objetivo em tarefas, cada uma com o que significa "pronto";
   2. mandar uma tarefa para cada executora e pedir um aviso quando ela ficar ociosa;
