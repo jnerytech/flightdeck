@@ -207,10 +207,10 @@ export function TabBar(
                 key={tab.id}
                 role="presentation"
                 {...(prod === undefined ? {} : { "data-prod": String(prod) })}
+                {...(tab.pinned ? { "data-pinned": "true" } : {})}
                 {...(dropOn?.id === tab.id ? { "data-drop": dropOn.side } : {})}
                 className={cn(
-                  "tab-item group relative flex items-center rounded-t-md border border-b-0 text-sm has-[[role=tab]:focus-visible]:ring-2 has-[[role=tab]:focus-visible]:ring-ring",
-                  selected ? "bg-background" : "bg-muted/40 text-muted-foreground",
+                  "tab-item group relative text-sm has-[[role=tab]:focus-visible]:ring-2 has-[[role=tab]:focus-visible]:ring-ring",
                   prod && "border-2 border-destructive",
                   dropOn?.id === tab.id &&
                     (dropOn.side === "before"
@@ -229,7 +229,7 @@ export function TabBar(
                     aria-keyshortcuts={`${tab.pinned ? "" : "Delete "}${MOVE_KEYS}`}
                     // A pinned tab shows no title, so its name is set here, with the badge's words.
                     {...(tab.pinned ? { "aria-label": pinnedLabel } : {})}
-                    className="flex min-w-0 flex-1 items-center gap-1.5 rounded-t-md px-2 py-1.5 outline-none hover:bg-accent/60"
+                    className="tab-button"
                     onClick={() => tabs.activate(tab.id)}
                     onDoubleClick={() => tabs.commit(tab.id)}
                     onKeyDown={(e) => {
@@ -274,7 +274,7 @@ export function TabBar(
                       if (id) tabs.move(id, tabs.tabs.indexOf(tab));
                     }}
                   >
-                    <Icon data-icon={kind} className="size-4 shrink-0" aria-hidden />
+                    <Icon data-icon={kind} className="size-3.5 shrink-0" aria-hidden />
                     {!tab.pinned && (
                       <span className={cn("truncate", tab.preview && "italic")}>{label}</span>
                     )}
