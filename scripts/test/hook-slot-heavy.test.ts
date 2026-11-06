@@ -67,6 +67,8 @@ describe("guard: a worker session's full coverage run holds the slot for what CI
       "bun run test:related FLIGHTDECK_SLOT_HEAVY=reason",
       // An escaped quote does not end the string: its ; is no separator.
       'git commit -m "a \\"quote\\"; FLIGHTDECK_SLOT_HEAVY=reason bun run x" && bun run test:related',
+      // An escaped quote outside quotes opens no string: the ; still splits.
+      'FLIGHTDECK_SLOT_HEAVY=\\"reason-long; bun run test:related',
     ]) {
       expect(worker(command) ?? `allowed: ${command}`).toContain("holds the slot");
       expect(heavyRunWaived(command)).toBe(false);
