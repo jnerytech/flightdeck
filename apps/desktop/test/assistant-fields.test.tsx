@@ -158,7 +158,11 @@ describe("assistant-fields: the New card dialog (issue #160)", () => {
 
   test("with no provider the wand opens Settings, Assistant", async () => {
     const { store, fake } = await newCardDialog({ configured: false });
-    await click(/with AI/);
+    const wand = screen.queryAllByRole("button", { name: /with AI/ })[0];
+    expect(wand).toBeDefined();
+    await act(async () => {
+      fireEvent.click(wand as HTMLElement);
+    });
     expect(store.router.current).toEqual({ name: "settings", section: "assistant" });
     expect(asked(fake)).toHaveLength(0);
   });
