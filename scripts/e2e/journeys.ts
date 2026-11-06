@@ -1017,9 +1017,13 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
   // answer is right; what matters is that it answers).
   "notify-prefs": async (c) => {
     await open(c, { name: "settings" });
-    const box = (name: string) => c.page.getByRole("checkbox", { name, exact: true });
-    const finished = box(c.t("notifyPrefs.event.turn-finished"));
-    const muteAlfa = box(c.t("notifyPrefs.muteHost", { name: "alfa" }));
+    // Settings has other switches with the same words (Needs you): these two groups are the panel's.
+    const events = c.page.getByRole("group", { name: c.t("notifyPrefs.events"), exact: true });
+    const mutes = c.page.getByRole("group", { name: c.t("notifyPrefs.mute"), exact: true });
+    const box = (group: typeof events, name: string) =>
+      group.getByRole("checkbox", { name, exact: true });
+    const finished = box(events, c.t("notifyPrefs.event.turn-finished"));
+    const muteAlfa = box(mutes, c.t("notifyPrefs.muteHost", { name: "alfa" }));
     await finished.scrollIntoViewIfNeeded({ timeout: WAIT });
     if (!(await finished.isChecked())) throw new Error("Turn finished começa ligado");
     if (await muteAlfa.isChecked()) throw new Error("alfa começa sem silêncio");
@@ -1034,7 +1038,7 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     );
     await waitFor(async () => await muteAlfa.isChecked(), "alfa silenciado após recarregar");
     // The other switches were not touched.
-    if (!(await box(c.t("notifyPrefs.event.needs-you")).isChecked())) {
+    if (!(await box(events, c.t("notifyPrefs.event.needs-you")).isChecked())) {
       throw new Error("Needs you mudou sem ninguém pedir");
     }
     await finished.check();
