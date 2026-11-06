@@ -31,6 +31,7 @@ const ACTIONS: ShortcutAction[] = [
   "go-needs-you",
   "go-projects",
   "go-costs",
+  "go-activity",
   "go-settings",
 ];
 
@@ -92,6 +93,7 @@ describe("atalhos-registro: the chords", () => {
     expect(second).toEqual({ state: NO_CHORD, action: "go-sessions", consumed: true });
     expect(chordStep({ pending: "g", at: 0 }, key("n"), 10).action).toBe("go-needs-you");
     expect(chordStep({ pending: "g", at: 0 }, key("c"), 10).action).toBe("go-costs");
+    expect(chordStep({ pending: "g", at: 0 }, key("a"), 10).action).toBe("go-activity");
     expect(chordStep({ pending: "g", at: 0 }, key(","), 10).action).toBe("go-settings");
   });
 

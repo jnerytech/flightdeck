@@ -81,7 +81,7 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
     expect(groups.slice(0, 4).map((g) => names(g).slice(1))).toEqual([
       ["Home", "Open Sessions", "Needs you", "Projects", "Board"],
       ["Workflows", "Teams", "Conversations"],
-      ["Costs", "History"],
+      ["Costs", "Activity", "History"],
       ["Personas", "Snippets", "Plugins", "Vault"],
     ]);
     for (const name of titles) {

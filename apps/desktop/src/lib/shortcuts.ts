@@ -12,6 +12,7 @@ export type ShortcutAction =
   | "go-needs-you"
   | "go-projects"
   | "go-costs"
+  | "go-activity"
   | "go-settings";
 
 export type ShortcutGroup = "general" | "navigation" | "tabs" | "lists" | "approvals";
