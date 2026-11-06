@@ -2802,7 +2802,9 @@ numa aba, sem SSH.
   então colar nele entra direto. Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
   atual em outra cor e sua posição ("2 de 5") ao lado da caixa; Enter ou **Próximo resultado**
   vai para o próximo, Shift+Enter ou **Resultado anterior** para o anterior, Esc ou **Fechar
-  busca** fecha. Links na saída abrem no navegador (só `http` e `https`). A fonte é a
+  busca** fecha. Ao lado da caixa, **Diferenciar maiúsculas e minúsculas** (`Alt+C`), **Palavra
+  inteira** (`Alt+W`) e **Usar expressão regular** (`Alt+R`) estreitam a busca; uma expressão que
+  não se lê, ou que casa com texto vazio, avisa em vez de buscar. Links na saída abrem no navegador (só `http` e `https`). A fonte é a
   monoespaçada do sistema; o tamanho fica nas Configurações (**Tamanho da fonte do terminal**, de
   10 a 24). Na aba, `Ctrl+=` (ou `Ctrl++`) e `Ctrl+-`, ou `Ctrl` com a roda do mouse, aumentam ou
   diminuem um ponto, e `Ctrl+0` volta para 13; o tamanho é a mesma configuração e fica guardado. Para

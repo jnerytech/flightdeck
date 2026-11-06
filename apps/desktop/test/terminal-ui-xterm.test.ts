@@ -427,6 +427,19 @@ describe("terminal-ui: the xterm screen", () => {
     expect(s.linked).toEqual(["https://example.com"]);
   });
 
+  test("find passes match case, whole word and regex on; a pattern it cannot search clears instead (issue #476)", () => {
+    const s = setup();
+    s.screen.find("Hit", "next", false, { caseSensitive: true, wholeWord: true });
+    expect(s.findOptions.at(-1)).toMatchObject({ caseSensitive: true, wholeWord: true });
+    expect(s.screen.find("a(", "next", true, { regex: true })).toBe(false);
+    expect(s.screen.find("a*", "previous", false, { regex: true })).toBe(false);
+    expect(s.log.filter((line) => /^(next|prev|clear)/.test(line))).toEqual([
+      "next:Hit",
+      "clear",
+      "clear",
+    ]);
+  });
+
   test("find highlights every match and marks the current one; typing keeps the match", () => {
     const s = setup();
     s.screen.find("hit", "next");

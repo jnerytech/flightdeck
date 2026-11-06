@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  findPatternProblem,
   isWindowsHost,
   pasteLines,
   pasteNeedsConfirm,
@@ -174,6 +175,13 @@ describe("terminal-ui: keys, colors and font", () => {
     expect(fresh.items.get(TERMINAL_READER_KEY)).toBe("off");
     const kept = memoryStorage({ [TERMINAL_READER_KEY]: "on" });
     expect(new TerminalReaderSetting(kept.storage).value).toBe(true);
+  });
+
+  test("a regular expression that cannot be read, or that matches empty text, is not searched (issue #476)", () => {
+    expect(findPatternProblem("a(", { regex: true })).toBe("invalid");
+    expect(findPatternProblem("a*", { regex: true })).toBe("empty");
+    expect(findPatternProblem("a+", { regex: true })).toBeNull();
+    expect(findPatternProblem("a(", {})).toBeNull();
   });
 
   test("the host is Windows when the user agent says so", () => {
