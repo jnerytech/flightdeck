@@ -13,7 +13,7 @@ interface Step {
 }
 const ci = Bun.YAML.parse(readFileSync(join(ROOT, ".github/workflows/ci.yml"), "utf8")) as {
   on: { schedule?: { cron: string }[] };
-  jobs: Record<string, { steps: Step[] }>;
+  jobs: Record<string, { if?: string; name?: string; needs?: string[]; steps: Step[] }>;
 };
 const steps = ci.jobs["test-suite"]?.steps ?? [];
 const step = (name: string) => steps.find((s) => s.name === name);
@@ -37,5 +37,13 @@ describe("ci-pyramid (#309)", () => {
     const full = step("Testes (cobertura 100%)");
     expect(full?.if).toBe("github.event_name != 'pull_request'");
     expect(full?.run).toBe("bun run test");
+  });
+
+  test("the fast-coverage ratchet runs on main, nightly and by hand, never on a PR (#309 d)", () => {
+    const job = ci.jobs["fast-coverage"];
+    expect(job?.name).toBe("fast coverage (ubuntu-latest)");
+    expect(job?.needs).toEqual(["changes", "quick"]);
+    expect(job?.if ?? "").toContain("github.event_name != 'pull_request'");
+    expect((job?.steps ?? []).some((s) => s.run === "bun run fast-coverage")).toBe(true);
   });
 });
