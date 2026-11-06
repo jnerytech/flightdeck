@@ -249,6 +249,8 @@ export function Sidebar(
     /** The next navigation opens a new tab ("Abrir em nova aba"). */
     onNewTab(): void;
     onToggleTheme(): void;
+    /** Opens the sheet of keyboard shortcuts (the account menu, issue #282). */
+    onShortcuts?(): void;
     /** Switches to simple mode; absent when the host in view does not let the person choose. */
     onSimpleMode?(): void;
   }>,
@@ -330,6 +332,10 @@ export function Sidebar(
 
   /** The Claude account the foot shows: the open host's, how many differ, none from an offline host. */
   const foot = footAccount(state, props.route);
+  const density = useSyncExternalStore(
+    props.store.density.subscribe,
+    () => props.store.density.value,
+  );
   /** The hosts of the Machines group: a dot each in the rail, a list with a menu each otherwise. */
   const hereHost = props.route?.name === "host" ? props.route.host : null;
   const hostsList = collapsed ? (
@@ -766,6 +772,16 @@ export function Sidebar(
           t={t}
           go={go}
           onToggleTheme={props.onToggleTheme}
+          hostId={foot.hostId}
+          version={version}
+          density={density}
+          onDensity={(next) => props.store.density.set(next)}
+          onCopy={(text) => void props.store.copyText(text)}
+          onCheckUpdates={() => {
+            go({ name: "settings" });
+            void props.store.checkAppUpdate();
+          }}
+          onShortcuts={() => props.onShortcuts?.()}
           onOpenManual={() =>
             void props.store.openLink(
               `https://github.com/jnerytech/flightdeck/blob/main/docs/manual/${t.lang === "pt-BR" ? "pt-BR" : "en"}.md`,

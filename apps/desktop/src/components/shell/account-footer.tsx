@@ -1,20 +1,36 @@
 import type { AccountState } from "@flightdeck/protocol";
-import { BookOpen, ChevronsUpDown, ExternalLink, LogOut, Settings, SunMoon } from "lucide-react";
+import {
+  BookOpen,
+  ChevronsUpDown,
+  Copy,
+  ExternalLink,
+  Keyboard,
+  LogOut,
+  RefreshCw,
+  Settings,
+  SunMoon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { T } from "../../i18n/index.ts";
+import type { Key, T } from "../../i18n/index.ts";
+import type { Density } from "../../lib/density.ts";
 import type { Route } from "../../lib/router.ts";
 
 const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 /**
  * The foot of the sidebar: the Claude account (its email and plan, from the account card) and a
- * menu with Settings, the theme and the manual. The rail shows only the initial.
+ * menu (issue #282): the app and its version; the plan, the account and the host id, each copied by
+ * choosing it; the compact rows switch kept on this computer; Settings, Check for updates, Keyboard
+ * shortcuts, the theme, the manual and the GitHub sign-outs. The rail shows only the initial.
  */
 export function AccountFooter(props: {
   account: AccountState | null;
@@ -30,6 +46,15 @@ export function AccountFooter(props: {
   /** Hosts signed in to GitHub that the app can sign out. */
   githubHosts: Array<{ id: string; name: string }>;
   onSignOutGithub(hostId: string): void;
+  /** The host whose account is shown, copied from the menu; `null` with none. */
+  hostId: string | null;
+  /** The app's version, in the menu's header. */
+  version: string;
+  density: Density;
+  onDensity(density: Density): void;
+  onCopy(text: string): void;
+  onCheckUpdates(): void;
+  onShortcuts(): void;
 }) {
   const { t, account } = props;
   const name =
@@ -43,6 +68,12 @@ export function AccountFooter(props: {
         ? t("sidebarAccount.plan", { plan: capitalized(account.plan) })
         : t("sidebarAccount.unread");
   const label = t("sidebarAccount.menu", { name });
+  const planName = props.many > 1 ? null : account?.plan ? capitalized(account.plan) : null;
+  const facts = [
+    { key: "copyPlan", value: planName },
+    { key: "copyAccount", value: props.many > 1 ? null : (account?.name ?? null) },
+    { key: "copyHost", value: props.hostId },
+  ].flatMap((fact) => (fact.value ? [{ key: fact.key, value: fact.value }] : []));
   return (
     <DropdownMenu onOpenChange={(open) => open && props.onOpen()}>
       <DropdownMenuTrigger asChild>
@@ -73,9 +104,40 @@ export function AccountFooter(props: {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent side="top" align="start" className="min-w-52">
+        <DropdownMenuLabel className="flex items-baseline justify-between gap-3">
+          <span>Flightdeck</span>
+          <span className="font-normal text-muted-foreground text-xs">
+            {t("sidebarAccount.version", { version: props.version })}
+          </span>
+        </DropdownMenuLabel>
+        {facts.length > 0 && <DropdownMenuSeparator />}
+        {facts.map((fact) => (
+          <DropdownMenuItem key={fact.key} onSelect={() => props.onCopy(fact.value)}>
+            <Copy aria-hidden="true" />
+            <span className="min-w-0 truncate">
+              {t(`sidebarAccount.${fact.key}` as Key, { value: fact.value })}
+            </span>
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuCheckboxItem
+          checked={props.density === "compact"}
+          onCheckedChange={(on) => props.onDensity(on ? "compact" : "comfortable")}
+        >
+          {t("sidebarAccount.compact")}
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => props.go({ name: "settings" })}>
           <Settings aria-hidden="true" />
           {t("sidebar.settings")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={props.onCheckUpdates}>
+          <RefreshCw aria-hidden="true" />
+          {t("sidebarAccount.checkUpdates")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={props.onShortcuts}>
+          <Keyboard aria-hidden="true" />
+          {t("sidebarAccount.shortcuts")}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={props.onToggleTheme}>
           <SunMoon aria-hidden="true" />

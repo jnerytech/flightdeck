@@ -879,9 +879,13 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   repassando a chave de API), e o trilho estreito de ícones não tem títulos.
 - No pé da barra, **Configurações** é um item visível (marcado enquanto as Configurações estão
   abertas), e a conta do Claude (e-mail e plano, lidos do cartão da conta do host; o trilho mostra só
-  a inicial) abre um menu com **Configurações**, **Alternar tema**, **Manual** e, para cada host cujo
-  `gh` está conectado ao GitHub com um login que o app pode remover, **Sair do GitHub** (após uma
-  confirmação; um login que vem do ambiente do daemon é removido lá). Com vários hosts aparece a
+  a inicial) abre um menu. O cabeçalho dele diz o nome do app e a versão. Depois vêm o plano, a conta
+  e o id do host dessa conta, cada um copiado ao ser escolhido; **Linhas compactas**, uma chave
+  guardada neste computador (a mesma densidade das Configurações); **Configurações**; **Procurar
+  atualizações** (abre as Configurações, onde a resposta aparece); **Atalhos de teclado**; **Alternar
+  tema**; **Manual**; e, para cada host cujo `gh` está conectado ao GitHub com um login que o app pode
+  remover, **Sair do GitHub** (após uma confirmação; um login que vem do ambiente do daemon é removido
+  lá). Com vários hosts aparece a
   conta do host aberto, e quantas contas há quando diferem; um host offline não mostra nenhuma.
 - O **Início** (primeiro em Trabalho) é uma faixa de quatro cartões com os últimos sete dias de todos
   os hosts online, cada um com um gráfico pequeno: **Gasto** (com o orçamento mensal dos hosts, quando
@@ -2723,8 +2727,13 @@ numa aba, sem SSH.
   shell padrão do host (`pwsh` ou `powershell` no Windows; `$SHELL`, `bash` ou `sh` no Linux) na
   primeira pasta permitida. O painel também lista os terminais vivos, cada um com **Abrir**.
 - **Na aba:** copiar e colar com `Ctrl+Shift+C` / `Ctrl+Shift+V` ou com o menu do botão direito
-  (**Copiar**, que precisa de uma seleção, **Colar** e **Selecionar tudo**; `Ctrl+C` vai para o
-  processo). Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
+  (**Copiar**, que precisa de uma seleção, **Colar** e **Selecionar tudo**). No Windows `Ctrl+C`
+  também copia enquanto há algo selecionado, e vai para o processo (a interrupção) quando não há;
+  nos outros sistemas `Ctrl+C` sempre vai para o processo. Um programa que redesenha a tela (o
+  Claude Code) pode soltar uma seleção antes de você chegar em **Copiar**: a última seleção
+  continua copiável até você digitar. Quando o programa toma o mouse para si, segure `Shift` ao
+  arrastar para selecionar. `Shift+Enter` adiciona uma nova linha no prompt do Claude Code em vez
+  de enviá-lo (o mesmo que `Alt+Enter`). Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
   atual em outra cor e sua posição ("2 de 5") ao lado da caixa; Enter ou **Próximo resultado**
   vai para o próximo, Shift+Enter ou **Resultado anterior** para o anterior, Esc ou **Fechar
   busca** fecha. Links na saída abrem no navegador (só `http` e `https`). A fonte é a
