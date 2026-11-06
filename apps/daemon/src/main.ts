@@ -827,10 +827,10 @@ export async function startDaemon(
     pack: packPersonas,
     publisher: agentPublisher(agentcfg),
   });
-  const awake = {
-    pinned: (_claudeSessionId: string | null) => false,
-    cardSession: (_sessionId: string) => false,
-  };
+  const awake: {
+    pinned?: (claudeSessionId: string | null) => boolean;
+    cardSession?: (sessionId: string) => boolean;
+  } = {};
   // Holds the computer awake while a session runs or waits for a permission (issue #163).
   const keepAwake = new KeepAwake(options.powerContext ?? osPowerContext(), config.keepAwake);
 
@@ -862,7 +862,8 @@ export async function startDaemon(
     allowApiKey: config.allowApiKey,
     allowBypass: () => config.allowBypassPermissions,
     // A pinned session and a card's stay awake; filled in below, once the board and the meta exist.
-    keepAwake: (session) => awake.pinned(session.claudeSessionId) || awake.cardSession(session.id),
+    keepAwake: (session) =>
+      awake.pinned?.(session.claudeSessionId) === true || awake.cardSession?.(session.id) === true,
     baseEnv: env,
     ...(opencode.runtime ? { opencode: opencode.runtime } : {}),
     onQuota: (readings) => {
