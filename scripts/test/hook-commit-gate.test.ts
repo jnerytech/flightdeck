@@ -90,6 +90,7 @@ describe("hook-commit-gate", () => {
     for (const command of [
       'git commit -m "feat(a): x"',
       'git commit -m "fix(a): handle #12 in the subject without parentheses"',
+      'git commit -m "fix(#12): the scope is an area, not the issue"',
       'git commit -m "fix(a): x" -m "See #12 for the history."',
       'git commit -m "fix(a): x" -m "TDD-Waiver: the waiver is for the TDD order only"',
     ]) {
