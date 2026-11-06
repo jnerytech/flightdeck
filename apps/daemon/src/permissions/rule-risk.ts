@@ -14,51 +14,77 @@ export type RuleLevel = RiskLevel | "any";
 export type ClassifyCall = (toolName: string, input: Record<string, unknown>) => RiskLevel;
 
 /**
- * The only open shell rules (a prefix that lets any arguments follow) a person may save: read-only
- * forms and the project's own tests and scripts. Any other program can be told to read a
- * credential, write outside the project, or run another program (`env`, `xargs`, `timeout`), and no
- * list of the bad ones keeps up (issue #384). The other rules are an exact command.
+ * The only open shell rules (a prefix that lets any arguments follow) a person may save: the
+ * status of the repository, and the project's own tests and scripts. Any other program can be told
+ * to read a credential, write outside the project, or run another program (`env`, `xargs`,
+ * `timeout`); `git diff`, `log` and `show` take `--output` (they write a file) and run the programs
+ * `.git/config` names. No list of the bad ones keeps up (issue #384). The other rules are an exact
+ * command. A script name starts with a letter, a digit or `_`: an option or a file is not one.
  */
 const OPEN_SHELL = [
-  /^git (?:status|diff|log|show)$/,
+  /^git status$/,
   /^(?:npm|pnpm|yarn|bun) test$/,
-  /^(?:npm|pnpm|yarn|bun) run [\w:.-]+$/,
+  /^(?:npm|pnpm|yarn|bun) run [A-Za-z0-9_][\w:-]*$/,
 ];
 /** Syntax that makes a prefix more than one command, or hides one. */
 const SHELL_SYNTAX = /[;&|<>$`()\n\\"']/;
 
-/** The file names a credential has: a rule that can match one covers a high-risk call. */
-const SENSITIVE = [
-  ".env",
-  ".env.local",
-  "id_rsa",
-  "x.pem",
-  "x.key",
-  ".ssh/id_rsa",
-  ".aws/credentials",
-  ".config/gh/hosts.yml",
-  ".claude/.credentials.json",
-];
-
 /** Rule syntax of the CLI that this check does not read: a class, an alternation, a negation. */
 const PATH_SYNTAX = /[[\]{}!]/;
 
-/** A gitignore-style pattern as a regular expression: `**` crosses folders, `*` and `?` do not. */
-function globToRegex(pattern: string): RegExp {
-  let out = "^";
-  for (let i = 0; i < pattern.length; i++) {
-    const c = pattern[i] as string;
-    if (c === "*" && pattern[i + 1] === "*") {
-      i++;
-      if (pattern[i + 1] === "/") {
-        i++;
-        out += "(?:.*/)?";
-      } else out += ".*";
-    } else if (c === "*") out += "[^/]*";
-    else if (c === "?") out += "[^/]";
-    else out += c.replaceAll(/[.+^${}()|[\]\\]/g, "\\$&");
+/** What a wildcard of a path rule may stand for: the names the classifier calls a credential. */
+const NAMES = ["x", ".env", "id_rsa", "x.pem", "x.key", ".ssh", ".aws", "credentials"];
+/** What a `?` may stand for, one character at a time. */
+const CHARS = [..."abcdefghijklmnopqrstuvwxyz0123456789._-"];
+const WILDCARD = /(\*\*\/|\*\*|\*|\?)/;
+const MAX_WILDCARDS = 6;
+
+/**
+ * The files that decide what the session may do or run: its own rules, the repository's hooks and
+ * config, the scripts a test run starts, the CI. A standing permission to write one lets the
+ * session end every hold, so no rule may cover them.
+ */
+const CONTROL = [
+  /(^|\/)\.claude(\/|$)/,
+  /(^|\/)\.git(\/|$)/,
+  /(^|\/)\.mcp\.json$/,
+  /(^|\/)package\.json$/,
+  /(^|\/)\.husky(\/|$)/,
+  /(^|\/)\.github\/workflows(\/|$)/,
+  /(^|\/)\.vscode\/tasks\.json$/,
+];
+const isControl = (path: string) =>
+  CONTROL.some((re) => re.test(path.toLowerCase().replaceAll("\\", "/")));
+
+/** What a network rule must say: `domain:` and a host with at least two labels, one `*.` at most. */
+const DOMAIN = /^domain:(?:\*\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i;
+
+/**
+ * The paths a rule's pattern could stand for: each wildcard in turn becomes each of the names a
+ * credential has (the others stay `x`), then all of them the same name. `null` when there are too
+ * many wildcards to look at.
+ */
+function instances(pattern: string): string[] | null {
+  const parts = pattern.split(WILDCARD);
+  const wildcards = parts.filter((_, i) => i % 2 === 1);
+  if (wildcards.length > MAX_WILDCARDS) return null;
+  const plain = (part: string) => (part === "**/" ? "" : "x");
+  const render = (pick: (k: number, part: string) => string) => {
+    let k = 0;
+    return parts.map((part, i) => (i % 2 === 0 ? part : pick(k++, part))).join("");
+  };
+  const options = (part: string) =>
+    part === "?" ? CHARS : part === "**/" ? ["", ...NAMES.map((name) => `${name}/`)] : NAMES;
+  const out = new Set<string>([render((_, part) => plain(part))]);
+  wildcards.forEach((part, at) => {
+    for (const option of options(part)) {
+      out.add(render((k, p) => (k === at ? option : plain(p))));
+    }
+  });
+  for (const name of NAMES) {
+    out.add(render((_, part) => (part === "?" ? "x" : part === "**/" ? `${name}/` : name)));
   }
-  return new RegExp(`${out}$`);
+  return [...out];
 }
 
 /** A rule's path as the CLI reads it: `//abs` is absolute, a single leading `/` is the project's root. */
@@ -95,13 +121,15 @@ function pathLevel(
     classify(toolName, Object.fromEntries(keys.map((key) => [key, path])));
   const pattern = readAs(content);
   const wild = pattern.search(/[*?]/);
-  if (wild === -1) return call(pattern);
   // Backslashes are an escape in a pattern: this check does not follow them.
-  if (pattern.includes("\\")) return "any";
-  const folder = pattern.slice(0, pattern.lastIndexOf("/", wild) + 1);
-  const matches = globToRegex(pattern);
-  if (SENSITIVE.some((name) => matches.test(`${folder}${name}`))) return "any";
-  return call(`${folder}x`);
+  if (wild !== -1 && pattern.includes("\\")) return "any";
+  const paths = wild === -1 ? [pattern] : instances(pattern);
+  if (paths === null) return "any";
+  if (WRITE_TOOLS.has(toolName) && paths.some(isControl)) return "any";
+  const levels = paths.map(call);
+  // A pattern that can stand for a credential covers a high-risk call: it is not narrow.
+  if (wild !== -1 && levels.includes("high")) return "any";
+  return highest(levels);
 }
 
 /**
@@ -118,6 +146,8 @@ export function ruleLevel(
   if (READ_TOOLS[toolName] || WRITE_TOOLS.has(toolName))
     return pathLevel(toolName, content, classify);
   // A network tool names a domain: the whole tool would reach any host.
-  if (NETWORK_TOOLS.has(toolName)) return content === undefined ? "any" : classify(toolName, {});
+  if (NETWORK_TOOLS.has(toolName)) {
+    return content !== undefined && DOMAIN.test(content) ? classify(toolName, {}) : "any";
+  }
   return highest([classify(toolName, {})]);
 }
