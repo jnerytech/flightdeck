@@ -95,7 +95,7 @@ async function readStats(proc: ProcReader): Promise<Map<number, ProcStat>> {
   const stats = new Map<number, ProcStat>();
   const pids = await proc.pids();
   for (let from = 0; from < pids.length; from += BATCH) {
-    const batch = await Promise.all(pids.slice(from, from + BATCH).map((pid) => proc.stat(pid)));
+    const batch = await Promise.all(pids.slice(from, from + BATCH).map((pid) => proc.stat(pid))); // NOSONAR: sequential by design: one batch at a time, so a busy machine is not asked for every pid at once
     for (const stat of batch) if (stat) stats.set(stat.pid, stat);
   }
   return stats;
@@ -160,7 +160,7 @@ async function rootsByFolder(
 ): Promise<Map<string, ProcStat[]>> {
   const byCwd = new Map<string, ProcStat[]>();
   for (const root of roots) {
-    const cwd = await proc.cwd(root.pid);
+    const cwd = await proc.cwd(root.pid); // NOSONAR: sequential by design: one /proc read at a time; the roots are few
     if (cwd === null) continue;
     const folder = sameFolder(cwd);
     byCwd.set(

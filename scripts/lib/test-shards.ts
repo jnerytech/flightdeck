@@ -311,12 +311,13 @@ async function runBatches(
   // Every batch runs, so one failure never hides another; the worst exit code is the run's.
   let worst = 0;
   for (const [index, part] of parts.entries()) {
-    const code = await deps.bun([
+    const args = [
       ...bunTest(deps.platform),
       "--reporter=junit",
       `--reporter-outfile=${batchReport(report.junit, index)}`,
       ...part,
-    ]); // NOSONAR: sequential by design: one bun test at a time on the runner
+    ];
+    const code = await deps.bun(args); // NOSONAR: sequential by design: one bun test at a time on the runner
     worst = Math.max(worst, code);
   }
   return worst;

@@ -1704,8 +1704,8 @@ export class AppStore {
     for (const session of sessions) {
       try {
         if (!conn) throw new Error("offline");
-        await conn.request("session.resume", { sessionId: session.sessionId });
-        await conn.request("session.send", { sessionId: session.sessionId, text: CONTINUATION });
+        await conn.request("session.resume", { sessionId: session.sessionId }); // NOSONAR: sequential by design: a session is resumed before it is sent to, one session at a time
+        await conn.request("session.send", { sessionId: session.sessionId, text: CONTINUATION }); // NOSONAR: sequential by design: the continuation goes only after the resume answered
         result[session.sessionId] = { ok: true };
         markHandled(this.platform.storage, hostId, [offerKey(session)]);
       } catch (error) {
