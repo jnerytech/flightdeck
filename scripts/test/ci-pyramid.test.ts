@@ -13,7 +13,7 @@ interface Step {
 }
 const ci = Bun.YAML.parse(readFileSync(join(ROOT, ".github/workflows/ci.yml"), "utf8")) as {
   on: { schedule?: { cron: string }[] };
-  jobs: Record<string, { steps: Step[] }>;
+  jobs: Record<string, { if?: string; steps: Step[] }>;
 };
 const steps = ci.jobs["test-suite"]?.steps ?? [];
 const step = (name: string) => steps.find((s) => s.name === name);
