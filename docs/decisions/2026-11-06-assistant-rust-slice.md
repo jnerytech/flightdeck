@@ -52,3 +52,12 @@ ADR 40-3 and the earlier phase 40 entries, frozen. These cover the crate `flight
 - **Accepted risk: a key in memory is not zeroed** when its `Secret` is dropped. A process that
   can read the app's memory can also read the keyring as the same user, so `zeroize` would add a
   dependency without closing a path.
+- **OpenRouter, where the spec is silent.** `finish_reason: "length"` is `assistant_truncated` even
+  with some text, as Anthropic's `max_tokens` is: a cut-off commit message is not an answer.
+  `content_filter` is `assistant_refused`. A 403 without `limit_source` (a permission or a
+  guardrail) is `assistant_auth` with its detail; 500 is `assistant_overloaded`, like 502; 413 is
+  `assistant_too_long` with `max`. `retryAfter` is passed for a 429 and for
+  `openrouter_in_flight_budget`, whatever the status. A mandatory-reasoning model that does not
+  take `low` gets the lowest effort it lists. A price that does not parse, or is negative (a
+  router's variable price), shows no price; a price is rounded to the millionth of a dollar per
+  million tokens. No request id is passed: OpenRouter's answers carry none the person can quote.
