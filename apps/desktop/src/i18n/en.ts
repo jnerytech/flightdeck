@@ -3490,6 +3490,10 @@ export const en: Dictionary = {
     trustMessage:
       "Trust the workflow {name}? It will be able to run these commands in the cards' worktrees: {commands}.",
     none: "none",
+    loading: "Loading workflows",
+    empty: "No workflows on the base branch yet.",
+    failed:
+      "Could not read the workflows. Check that the host is connected, then open the page again.",
   },
   shortcuts: {
     title: "Keyboard shortcuts",
