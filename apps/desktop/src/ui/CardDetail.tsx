@@ -225,10 +225,6 @@ export const CardDetail = memo(function CardDetail(props: {
             formatTime={(iso) => store.formatTime(iso)}
             costUsd={runCost}
             onOpenStep={openStep}
-            onRespond={(step, decision, note) =>
-              store.respondGate(hostId, { runId: run.id, ...step }, decision, note)
-            }
-            gatesAbove
           />
         )}
         {withSync && card.externalUrl && (

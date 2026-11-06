@@ -78,12 +78,14 @@ export function RunTimeline(props: {
   /** HH:MM of an instant (the quota's reset). */
   formatTime(iso: string): string;
   onOpenStep(step: StepRun): void;
-  /** A promise keeps the gate's buttons busy until the answer is in. */
-  onRespond(step: StepRun, decision: "approve" | "reject", note: string): unknown;
+  /**
+   * Answers a waiting gate in its step; a promise keeps the gate's buttons busy until the answer is
+   * in. Left out when the gate is answered elsewhere (the top of the card, issue #227): the step
+   * then only says it waits.
+   */
+  onRespond?(step: StepRun, decision: "approve" | "reject", note: string): unknown;
   /** Estimated cost of the run's sessions (phase 8); `null` when unknown. */
   costUsd?: number | null;
-  /** The waiting gate is answered at the top of the card (issue #227): the step only says it waits. */
-  gatesAbove?: boolean;
 }) {
   const t = useT();
   const { run } = props;
@@ -137,7 +139,7 @@ export function RunTimeline(props: {
               ) : (
                 <span className="px-3 text-muted-foreground text-xs">{line}</span>
               )}
-              {step.type === "gate" && step.status === "waiting" && !props.gatesAbove && (
+              {step.type === "gate" && step.status === "waiting" && props.onRespond && (
                 <GateCard step={step} onRespond={props.onRespond} />
               )}
             </li>
