@@ -17,3 +17,17 @@ until it ends. Revoking does not stop it (a person may be mid-work); it says so.
 
 Not done: a restart is the person's click, never the daemon's. A session in a nested folder of a
 revoked project counts under every folder above it.
+
+Known limits (security review, all low):
+
+- Only `project.trust.set` tells the watchers at once. A trust that stops covering a folder for
+  another reason (`roots.add` puts a root under a trusted record, a rescan of a folder) is counted
+  by `staleSessions` straight away, but the `trustStale` mark waits for the session's next summary.
+- Revoke, then trust again: the mark clears, though the session still runs with the setup it loaded
+  when it started (the person trusted again knowingly).
+- An OpenCode session reads no trust decision (`opts.trust`), yet it is marked after a revoke; the
+  restart changes nothing for it. OpenCode's project configuration is switched off by the host's
+  environment, not by this trust.
+- Restart closes the run: the turn in flight is aborted, queued messages are dropped and pending
+  permissions are cancelled (never allowed). The button does not say so.
+

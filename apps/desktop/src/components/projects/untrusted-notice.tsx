@@ -44,9 +44,12 @@ export function UntrustedNotice(
   if (stale && announced) {
     const restart = async (id: string) => {
       setRestarting(true);
-      await store.hostCommand(hostId, "session.close", { sessionId: id });
-      await store.hostCommand(hostId, "session.resume", { sessionId: id });
-      setRestarting(false);
+      try {
+        await store.hostCommand(hostId, "session.close", { sessionId: id });
+        await store.hostCommand(hostId, "session.resume", { sessionId: id });
+      } finally {
+        setRestarting(false);
+      }
     };
     return (
       <InlineNotice tone="warn">
@@ -56,7 +59,7 @@ export function UntrustedNotice(
             variant="link"
             size="sm"
             disabled={restarting}
-            onClick={() => void restart(sessionId)}
+            onClick={() => restart(sessionId).catch(() => undefined)}
           >
             {t("projectPage.trust.restart")}
           </Button>
