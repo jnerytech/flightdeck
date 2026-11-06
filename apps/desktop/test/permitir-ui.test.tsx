@@ -132,12 +132,13 @@ describe("permitir-ui", () => {
   });
 
   test("a regra escrita vira uma regra do projeto: com parênteses é a ferramenta e o conteúdo, sem eles a ferramenta toda", () => {
-    const asRule = (rules: Array<{ toolName: string; ruleContent?: string }>) => ({
-      type: "addRules",
-      rules,
-      behavior: "allow",
-      destination: "localSettings",
-    });
+    const asRule = (rules: Array<{ toolName: string; ruleContent?: string }>) =>
+      ({
+        type: "addRules",
+        rules,
+        behavior: "allow",
+        destination: "localSettings",
+      }) as const;
     expect(projectRule("Bash(npm test:*)")).toEqual(
       asRule([{ toolName: "Bash", ruleContent: "npm test:*" }]),
     );
