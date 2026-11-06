@@ -91,6 +91,7 @@ export function TerminalPage(
         onFindResults: setResults,
         onLink: (uri) => store.openLink(uri),
         onSnippets: () => setPicking(true),
+        onZoom: (step) => store.terminalFont.zoom(step),
       });
       const current = new TerminalSession({
         terminalId,
