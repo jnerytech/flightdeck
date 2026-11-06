@@ -109,7 +109,8 @@ describe("persona-names: a team session is named by its persona, in the person's
       "fd-coordinator",
       "md-server · QA engineer 1",
       "named at start",
-      "repo · qa · card 1",
+      // The standard name in the app's language (#668): the persona's name, not its slug.
+      "repo · QA engineer · card 1",
       null,
     ]);
   });
@@ -163,7 +164,14 @@ const TEAM_STATE = {
   names: {
     h1: [
       info({ sessionId: "s2" }),
-      info({ sessionId: "s1", display: "app · geral · 1", persona: "geral", team: null }),
+      info({
+        sessionId: "s1",
+        display: "app · geral · 1",
+        project: "app",
+        persona: "geral",
+        cardNumber: null,
+        team: null,
+      }),
     ],
   },
 } as unknown as AppState;

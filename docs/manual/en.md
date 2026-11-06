@@ -2307,6 +2307,8 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   `flightdeck · revisor · 3`.
   - Without a persona, the persona is `geral`.
   - A card's session takes the card's number: `flightdeck · autor · card 42`.
+  - The app shows the name in its language, with the persona's name: `flightdeck · Code reviewer · 3`,
+    and `general` for a session without a persona. The alias stays as it is.
 - **Every session also gets an alias:** `project-persona-number`, for example
   `flightdeck-revisor-3`. The alias addresses the session, alone or as `host/alias` across hosts.
 - **A number is never reused**, not even after the session is gone.
