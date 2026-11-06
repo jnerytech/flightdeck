@@ -2344,7 +2344,11 @@ html:not(:has([data-slot="status-bar"])) {
 /* What is fine, folded: one line per row (#640). */
 @utility health-ok {
   font-size: 0.875rem;
+  /* A target at least 24 px tall (axe target-size); 28 px reads as a row. */
   & > summary {
+    display: flex;
+    align-items: center;
+    min-height: 1.75rem;
     cursor: pointer;
     color: var(--muted-foreground);
   }
