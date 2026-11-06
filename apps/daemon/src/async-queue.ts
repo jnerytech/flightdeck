@@ -7,7 +7,7 @@ export class AsyncQueue<T> implements AsyncIterable<T> {
   }> = [];
   private ended = false;
   private failure: { error: unknown } | null = null;
-  private idlers: Array<() => void> = [];
+  private readonly idlers: Array<() => void> = [];
 
   push(item: T): void {
     if (this.ended) return;

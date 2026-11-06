@@ -42,7 +42,7 @@ export class Tabs {
   /** Changes with every change of the tabs or of the route of the active one. */
   version = 0;
   readonly router: Navigation;
-  private closed: Closed[] = [];
+  private readonly closed: Closed[] = [];
   private newTab = false;
   private readonly listeners = new Set<() => void>();
   /** The tab ids, the most recently active first; kept up to date by `remember`. */

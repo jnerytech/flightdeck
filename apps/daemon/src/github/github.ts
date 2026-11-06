@@ -16,8 +16,7 @@ const detailOf = (result: GhResult) =>
   `${result.stderr}\n${result.stdout}`
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter(Boolean)
-    .shift()
+    .find(Boolean)
     ?.slice(0, 300) ?? "";
 
 const LIST_LIMIT = 50;
