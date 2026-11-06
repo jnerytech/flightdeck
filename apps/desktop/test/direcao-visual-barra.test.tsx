@@ -75,21 +75,25 @@ describe("direcao-visual: barra lateral", () => {
     expect(inAside().queryByText("Flightdeck")).not.toBeNull();
     expect(aside().querySelector("img, svg[data-logo]")).not.toBeNull();
     const nav = aside().querySelector("nav") as HTMLElement;
-    const items = [...nav.querySelectorAll("button")];
+    // The Machines group holds the hosts, which have their own test below.
+    const items = [...nav.querySelectorAll("button")].filter(
+      (b) => !b.closest("fieldset")?.getAttribute("aria-label")?.includes("Máquinas"),
+    );
     expect(items.map((b) => b.textContent?.replace(/\d+$/, ""))).toEqual([
+      // The folding groups by purpose, each with its heading.
+      "Trabalho",
       "Sessões",
       "Precisa de você",
       "Projetos",
       "Board",
-      // Then the folding groups, each with its heading.
-      "Trabalho",
+      "Automação",
       "Workflows",
+      "Observabilidade",
       "Custos",
+      "Histórico",
       "Biblioteca",
       // The vault is the app's (phase 16), so Cofre shows whatever the hosts offer.
       "Cofre",
-      "Infra",
-      "Histórico",
     ]);
     for (const item of items.filter((b) => b.getAttribute("aria-expanded") === null)) {
       expect(item.querySelector("svg")).not.toBeNull();
@@ -129,9 +133,9 @@ describe("direcao-visual: barra lateral", () => {
     expect(await go("Configurações")).toBe("settings");
   });
 
-  test("Hosts recolhe; cada host tem pontinho de estado, nome e menu", async () => {
+  test("Máquinas recolhe; cada host tem pontinho de estado, nome e menu", async () => {
     const { store } = await setup();
-    const section = inAside().queryByRole("button", { name: "Hosts" });
+    const section = inAside().queryByRole("button", { name: "Máquinas" });
     expect(section?.getAttribute("aria-expanded")).toBe("true");
     expect(inAside().queryByRole("img", { name: "alfa: online" })?.className ?? "").toContain(
       "bg-status-running",

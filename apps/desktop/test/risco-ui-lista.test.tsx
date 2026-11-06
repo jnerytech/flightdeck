@@ -127,7 +127,7 @@ describe("risco-ui: a lista de aprovações automáticas", () => {
   });
 
   test("o filtro de projeto pede ao daemon só as decisões daquele projeto", async () => {
-    const { board, decide, root } = await setup();
+    const { board, decide, root, store } = await setup();
     const other = join(root, "outro");
     mkdirSync(other);
     git(other, "init", "-q", "-b", "main");
@@ -138,6 +138,11 @@ describe("risco-ui: a lista de aprovações automáticas", () => {
     const project = await board.addProject({ path: other, promptTemplate: "" });
     board.updateProject(project.id, { autoApprove: { enabled: true } });
     await decide(other, "r3", "Glob", low);
+    // The host page loaded this host's projects on its own: ask again, so the list is not older
+    // than the project added just above.
+    await act(async () => {
+      await store.loadProjects(store.getState().hosts[0]?.id as string);
+    });
     await click("Aprovações automáticas");
     await settle(() => rows().length === 3);
     expect(screen.queryByLabelText("Projeto")).not.toBeNull();

@@ -53,6 +53,9 @@ import { Costs } from "./costs/costs.ts";
 import { resolvePricing } from "./costs/pricing.ts";
 import { runStatusline } from "./costs/statusline.ts";
 import { UsageIndexer } from "./costs/usage-indexer.ts";
+import { checkDeps, type DepsEnv } from "./deps/deps.ts";
+import { doctorExitCode, formatDeps } from "./deps/format.ts";
+import { probeVersion } from "./deps/probe.ts";
 import { type OpenCodeState, runDoctor } from "./doctor.ts";
 import { buildChildEnv } from "./env.ts";
 import { type Exec, spawnExec } from "./exec.ts";
@@ -176,6 +179,8 @@ import { PrWatcher } from "./watch/watch.ts";
 import { WebhookSender } from "./webhook/sender.ts";
 import { whichOnPath } from "./which.ts";
 import { shellCheckRunner } from "./workflows/check-runner.ts";
+import { FolderLocks } from "./worktrees/locks.ts";
+import { createWorktrees } from "./worktrees/wiring.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
 import { detectWsl, readProcVersion } from "./wsl-host.ts";
 
@@ -802,6 +807,9 @@ export async function startDaemon(
     pack: packPersonas,
     publisher: agentPublisher(agentcfg),
   });
+  // Folders a worktree removal holds: nothing starts in one while it is being removed.
+  const folderLocks = new FolderLocks();
+
   // Whether a folder's own hooks, MCP servers and settings may load in a session (issue #196): only
   // where the person trusted it (or already worked in it before this existed). A card's worktree is
   // read from its project's main checkout.
@@ -814,6 +822,7 @@ export async function startDaemon(
     log: (line) => logger.log(line),
   });
   const manager = new SessionManager({
+    folderLocks,
     store,
     runtime,
     risk,
@@ -877,6 +886,7 @@ export async function startDaemon(
   usageIndex.start();
   const prepare: Prepare = (ref, cwd) => preparePersonas(personaStore, ref, cwd);
   const board = new Board({
+    folderLocks,
     preparePersonas: prepare,
     db: store.db,
     manager,
@@ -965,6 +975,7 @@ export async function startDaemon(
   void updates?.start();
   // Real shells behind a PTY, kept across connections; none outlives the daemon.
   const terminals = new TerminalManager({
+    folderLocks,
     pty: options.pty ?? bunPty(),
     enabled: terminalEnabled(config.bind, config.terminal.enabled),
     allowedRoots: config.allowedRoots,
@@ -1334,6 +1345,32 @@ export async function startDaemon(
           ).problems,
         version: { daemon: DAEMON_VERSION, ...(appVersion ? { app: appVersion } : {}) },
       }),
+    // The dependencies of this host: the same probes as the doctor, the program on the PATH and its version.
+    deps: () =>
+      checkDeps({
+        platform: process.platform,
+        // Like host.info: the path `flightdeckd setup` wrote, since a service's PATH does not see claude.
+        which: async (name) => {
+          const configured = name === "claude" ? claudePath : undefined;
+          if (!configured) return whichOnPath(name);
+          return (await Bun.file(configured).exists()) ? configured : null;
+        },
+        version: (path) => probeVersion([path, "--version"]),
+        allowedRoots: config.allowedRoots,
+        serviceInstalled:
+          options.serviceInstalled ??
+          (async () =>
+            (await serviceCommand((options.serviceContext ?? osServiceContext)(false))) !== null),
+        linger:
+          options.linger ??
+          (() => lingerState((options.serviceContext ?? osServiceContext)(false))),
+        account: async () => (await account?.get())?.status ?? null,
+        hooks: () =>
+          hooksStatus(
+            claudeSettingsPath(),
+            hookTarget(config, daemonCommand(process.execPath, Bun.main)),
+          ),
+      }),
     sessionSettings: true,
     messaging,
     names,
@@ -1432,6 +1469,14 @@ export async function startDaemon(
     }),
     central,
     maintenance,
+    worktrees: createWorktrees({
+      board,
+      sessions: manager,
+      runs: runManager,
+      terminals,
+      externals: central.external,
+      locks: folderLocks,
+    }),
     ...(updates ? { updates } : {}),
     snapshots,
     rewinder,
@@ -1616,7 +1661,29 @@ async function runDoctorCommand(args: CliArgs, deps: CliDeps): Promise<number> {
     deps.log.log(`${item.status.toUpperCase().padEnd(4)} ${item.name.padEnd(16)} ${item.detail}`);
     if (item.fix) deps.log.log(`     -> ${item.fix}`);
   }
-  return report.ok ? 0 : 1;
+  // What the host needs and does without, grouped like the app's Dependencies section.
+  const found = await checkDeps(
+    deps.depsEnv ?? {
+      platform: process.platform,
+      // Like the running daemon: the claude that `flightdeckd setup` wrote into the config wins.
+      which: async (name) => {
+        const cfg = await load();
+        const configured =
+          name === "claude" ? (cfg.claude?.executablePath ?? cfg.claudePath) : undefined;
+        if (!configured) return whichOnPath(name);
+        return (await Bun.file(configured).exists()) ? configured : null;
+      },
+      version: (path) => probeVersion([path, "--version"]),
+      allowedRoots: (await load()).allowedRoots,
+      serviceInstalled: async () => (await serviceCommand(ctx)) !== null,
+      linger: () => lingerState(ctx),
+      // The terminal does not ask the Claude account: the card in the app does.
+      account: async () => null,
+      hooks: async () => hooksStatus(settings, hookTarget(await load(), self)),
+    },
+  );
+  for (const line of formatDeps(found, process.platform)) deps.log.log(line);
+  return doctorExitCode(report.ok, found);
 }
 
 /** `flightdeckd setup`: the guided first run (folders, service started now, pair link). */
@@ -2039,6 +2106,8 @@ function printResult(deps: CliDeps, result: { output: string[]; instructions: st
 
 export interface CliDeps {
   env: Record<string, string | undefined>;
+  /** The machine the dependency check probes, in `doctor`; the real one when absent (tests give theirs). */
+  depsEnv?: DepsEnv;
   log: Logger;
   exit(code: number): void;
   onSignal(signal: "SIGINT" | "SIGTERM", handler: () => Promise<void>): void;

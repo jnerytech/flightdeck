@@ -115,6 +115,8 @@ step(Then, "the full app shows", async (c) =>
 
 step(When, "I go back to simple mode from the page of host {string}", async (c) => {
   await open(c, { name: "host", host: ALFA });
+  // The host page opens on its Overview: the mode panel is in the Settings tab.
+  await c.page.getByRole("tab", { name: c.t("hostHome.settings"), exact: true }).click();
   await c.page.getByRole("button", { name: c.t("hostPage.simpleUse"), exact: true }).click();
 });
 

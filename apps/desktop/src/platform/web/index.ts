@@ -97,6 +97,8 @@ export function createWebPlatform(
     // A page has no tray: the badge goes to the title, the submenu nowhere.
     setTrayMenu: noop,
     onTrayAction: () => () => {},
+    onQuitRequested: () => () => {},
+    quitNow: noop,
     autostart: { supported: false, isEnabled: () => Promise.resolve(false), setEnabled: noop },
     setCloseToTray: noop,
     systemLanguage: () => win.navigator?.language ?? "",
@@ -124,6 +126,7 @@ export function createWebPlatform(
       supported: false,
       check: () => Promise.resolve(null),
       download: noop,
+      installDownloaded: noop,
       install: noop,
     },
   };

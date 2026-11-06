@@ -152,6 +152,16 @@ export function Message(
 }
 
 /** Under the conversation: what waits to go out, the activity line, the box and its state line. */
+/** The band above the conversation: the not-trusted notice and the summary (issue #422). */
+export function RecapSlot(props: Readonly<{ children: ReactNode }>) {
+  const short = useContext(ShortArea);
+  return (
+    <div className="recap-slot" {...(short ? { "data-short": "true" } : {})}>
+      {props.children}
+    </div>
+  );
+}
+
 export function ComposerDock(props: Readonly<{ children: ReactNode }>) {
   // In a short area the dock's padding and gaps shrink: the conversation keeps its room (#232).
   const short = useContext(ShortArea);

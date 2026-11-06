@@ -52,7 +52,7 @@ export function TopBarHost(
             {/* Narrow, the name gives its room to the crumbs: the icon stays, named by the button. */}
             <Server aria-hidden="true" className="top-bar-host-icon" />
             <span className="top-bar-host-name">{current?.name ?? t("shell.noHost")}</span>
-            <ChevronsUpDown aria-hidden="true" />
+            <ChevronsUpDown aria-hidden="true" className="top-bar-host-chevron" />
           </Button>
         </DropdownMenuTrigger>
       </IconTip>
@@ -97,7 +97,7 @@ function HostItem(props: Readonly<{ host: TopBarHostItem; appVersion: string | u
         });
   return (
     <DropdownMenuRadioItem value={host.id} aria-label={label}>
-      <StatusDot {...hostDotView(host.status)} label={state} />
+      <StatusDot dot {...hostDotView(host.status)} label={state} />
       {host.name}
       {version !== null && (
         <span className={differs ? "top-bar-host-version-differs" : "top-bar-host-version"}>

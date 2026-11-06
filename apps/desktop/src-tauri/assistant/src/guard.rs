@@ -7,7 +7,7 @@
 use crate::keys::{Refusal, Secret};
 use std::collections::{HashMap, VecDeque};
 use std::future::Future;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
 /// The longest text a call takes, in characters.
@@ -25,6 +25,8 @@ pub const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 pub const TOTAL_TIMEOUT: Duration = Duration::from_secs(60);
 /// A vault value shorter than this is not told apart from ordinary text.
 pub const MIN_VAULT_VALUE: usize = 6;
+/// The most characters of a provider's error text that reach the app.
+pub const MAX_DETAIL_CHARS: usize = 300;
 pub const ANTHROPIC_BASE: &str = "https://api.anthropic.com";
 pub const OPENROUTER_BASE: &str = "https://openrouter.ai";
 
@@ -36,16 +38,30 @@ pub fn check_input(text: &str) -> Result<(), Refusal> {
     Ok(())
 }
 
+/// The longest prompt (system or user) a call sends: the text, wrapped with its context.
+pub const MAX_PROMPT_CHARS: usize = 2 * MAX_INPUT_CHARS;
+
+/// Refuses a prompt over `MAX_PROMPT_CHARS`; the refusal names the text's own cap.
+pub fn check_prompt(text: &str) -> Result<(), Refusal> {
+    if text.chars().count() > MAX_PROMPT_CHARS {
+        return Err(Refusal::new("assistant_too_long").with("max", MAX_INPUT_CHARS.to_string()));
+    }
+    Ok(())
+}
+
 /// The output tokens a call asks for, at most `MAX_OUTPUT_TOKENS`.
 pub fn cap_output_tokens(asked: u32) -> u32 {
     asked.min(MAX_OUTPUT_TOKENS)
 }
 
-/// Refuses a model id that is empty, over `MAX_MODEL_ID` or outside `[A-Za-z0-9._:/-]`.
+/// Refuses a model id that is empty, over `MAX_MODEL_ID`, outside `[A-Za-z0-9._:/-]`, starting
+/// with `/` or with a `..` segment, so an id can never become a path.
 pub fn check_model(id: &str) -> Result<(), Refusal> {
     let shaped = !id.is_empty()
         && id.len() <= MAX_MODEL_ID
-        && id.chars().all(|c| c.is_ascii_alphanumeric() || "._:/-".contains(c));
+        && id.chars().all(|c| c.is_ascii_alphanumeric() || "._:/-".contains(c))
+        && !id.starts_with('/')
+        && !id.split('/').any(|segment| segment == "..");
     if shaped {
         Ok(())
     } else {
@@ -81,9 +97,8 @@ pub struct Permit {
 
 impl Drop for Permit {
     fn drop(&mut self) {
-        if let Ok(mut running) = self.running.lock() {
-            *running = running.saturating_sub(1);
-        }
+        let mut running = locked(&self.running);
+        *running = running.saturating_sub(1);
     }
 }
 
@@ -101,11 +116,11 @@ impl Limits {
     /// A place for one more call, or `assistant_rate_limited`.
     pub fn admit(&self) -> Result<Permit, Refusal> {
         let limited = || Refusal::new("assistant_rate_limited");
-        let mut running = self.running.lock().map_err(|_| limited())?;
+        let mut running = locked(&self.running);
         if *running >= MAX_IN_FLIGHT {
             return Err(limited());
         }
-        let mut taken = self.taken.lock().map_err(|_| limited())?;
+        let mut taken = locked(&self.taken);
         let now = (self.clock)();
         while taken.front().is_some_and(|at| now.saturating_duration_since(*at) >= BUCKET_WINDOW) {
             taken.pop_front();
@@ -132,9 +147,10 @@ impl Endpoint {
         Endpoint(OPENROUTER_BASE.to_string())
     }
 
-    /// A base URL: exactly one of the two providers', or `http://` on a loopback address.
+    /// A base URL: exactly one of the two providers', or, in a debug build (the tests), `http://`
+    /// on a loopback address. A release build never sends a key to a local listener.
     pub fn with_base(url: &str) -> Result<Self, Refusal> {
-        if url == ANTHROPIC_BASE || url == OPENROUTER_BASE || loopback(url) {
+        if url == ANTHROPIC_BASE || url == OPENROUTER_BASE || (cfg!(debug_assertions) && loopback(url)) {
             Ok(Endpoint(url.to_string()))
         } else {
             Err(Refusal::new("assistant_not_configured"))
@@ -146,15 +162,19 @@ impl Endpoint {
     }
 }
 
-/// `http://` on 127.0.0.1, localhost or [::1] with a port, and nothing after it.
+/// `http://` on 127.0.0.1 or [::1] with a port, and nothing after it; never a name, which DNS or
+/// the hosts file could point elsewhere.
 fn loopback(url: &str) -> bool {
     let Some(authority) = url.strip_prefix("http://") else { return false };
-    ["127.0.0.1:", "localhost:", "[::1]:"].iter().any(|host| {
+    ["127.0.0.1:", "[::1]:"].iter().any(|host| {
         authority
             .strip_prefix(host)
             .is_some_and(|port| !port.is_empty() && port.chars().all(|c| c.is_ascii_digit()))
     })
 }
+
+/// The HTTP client type, so the app's commands keep one without depending on `reqwest` itself.
+pub type Client = reqwest::Client;
 
 /// The HTTP client of every call: the timeouts, no redirect, no default headers.
 pub fn client() -> Result<reqwest::Client, Refusal> {
@@ -166,6 +186,7 @@ pub fn client() -> Result<reqwest::Client, Refusal> {
         .connect_timeout(CONNECT_TIMEOUT)
         .timeout(TOTAL_TIMEOUT)
         .redirect(reqwest::redirect::Policy::none())
+        .retry(reqwest::retry::never())
         .build()
         .map_err(|_| Refusal::new("assistant_offline"))
 }
@@ -180,11 +201,17 @@ pub enum Method {
 }
 
 /// A provider's answer, as it came.
-#[derive(Debug)]
 pub struct Reply {
     pub status: u16,
     pub headers: Vec<(String, String)>,
     pub body: String,
+}
+
+/// The status and the headers; never the body, which may echo the key.
+impl std::fmt::Debug for Reply {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Reply").field("status", &self.status).field("headers", &self.headers).finish_non_exhaustive()
+    }
 }
 
 impl Reply {
@@ -206,6 +233,10 @@ pub async fn send(
     key: &Secret,
     headers: &[(&'static str, String)],
 ) -> Result<Reply, Refusal> {
+    // A path not starting with `/` could turn the base into a userinfo and reach another host.
+    if !path.starts_with('/') {
+        return Err(Refusal::new("assistant_not_configured"));
+    }
     let url = format!("{}{}", endpoint.0, path);
     let mut request = match method {
         Method::Get => client.get(url),
@@ -226,45 +257,97 @@ pub async fn send(
     Ok(Reply { status, headers, body })
 }
 
-/// The calls running, by request id.
+/// The cancels kept for calls that have not started yet; the oldest goes first.
+const EARLY_CANCELS: usize = 16;
+
+/// The calls running, by request id; the ids cancelled before their call started; and the ids
+/// of the calls that ended, so a cancel that comes too late is not kept for a call to come.
 #[derive(Default)]
 pub struct Calls {
     running: Mutex<HashMap<String, tokio::task::AbortHandle>>,
+    cancelled_early: Mutex<VecDeque<String>>,
+    ended: Mutex<VecDeque<String>>,
+}
+
+/// A lock even after a panic elsewhere held it: the maps stay usable, so one bug cannot refuse
+/// every call after it.
+fn locked<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+/// Keeps the last `EARLY_CANCELS` ids, once each.
+fn remember(ids: &mut VecDeque<String>, id: &str) {
+    if ids.iter().any(|kept| kept == id) {
+        return;
+    }
+    if ids.len() >= EARLY_CANCELS {
+        ids.pop_front();
+    }
+    ids.push_back(id.to_string());
+}
+
+/// A call's place in `Calls`. However the wait ends (an answer, a timeout, the wait itself
+/// dropped), dropping it aborts the task and frees the id.
+struct Place<'a> {
+    calls: &'a Calls,
+    id: String,
+    handle: tokio::task::AbortHandle,
+}
+
+impl Drop for Place<'_> {
+    fn drop(&mut self) {
+        self.handle.abort();
+        let mut running = locked(&self.calls.running);
+        running.remove(&self.id);
+        remember(&mut locked(&self.calls.ended), &self.id);
+    }
 }
 
 impl Calls {
     /// Runs the call as a task: `assistant_timeout` after `limit`, `assistant_cancelled` when
-    /// `cancel` stops it; either way the task is aborted and its answer is never delivered.
+    /// `cancel` stops it or came before it; either way the task is aborted and its answer is never
+    /// delivered. An id already running is `assistant_rate_limited`, so one id is one call.
     pub async fn run<T, F>(&self, request_id: &str, limit: Duration, call: F) -> Result<T, Refusal>
     where
         F: Future<Output = Result<T, Refusal>> + Send + 'static,
         T: Send + 'static,
     {
-        let task = tokio::spawn(call);
-        let handle = task.abort_handle();
-        if let Ok(mut running) = self.running.lock() {
-            running.insert(request_id.to_string(), handle.clone());
-        }
-        let outcome = tokio::time::timeout(limit, task).await;
-        if let Ok(mut running) = self.running.lock() {
-            running.remove(request_id);
-        }
-        match outcome {
-            Err(_) => {
-                handle.abort();
-                Err(Refusal::new("assistant_timeout"))
+        let (task, place) = {
+            let mut running = locked(&self.running);
+            let mut early = locked(&self.cancelled_early);
+            if let Some(at) = early.iter().position(|id| id == request_id) {
+                early.remove(at);
+                return Err(Refusal::new("assistant_cancelled"));
             }
+            drop(early);
+            if running.contains_key(request_id) {
+                return Err(Refusal::new("assistant_rate_limited"));
+            }
+            let task = tokio::spawn(call);
+            let handle = task.abort_handle();
+            running.insert(request_id.to_string(), handle.clone());
+            (task, Place { calls: self, id: request_id.to_string(), handle })
+        };
+        let outcome = tokio::time::timeout(limit, task).await;
+        drop(place);
+        match outcome {
+            Err(_) => Err(Refusal::new("assistant_timeout")),
             Ok(Ok(result)) => result,
+            // A panic in the call is a bug, not a cancel the person asked for. Only in tests and
+            // debug builds: a release build aborts on a panic (`panic = "abort"`).
+            Ok(Err(error)) if error.is_panic() => Err(Refusal::new("assistant_bad_output")),
             Ok(Err(_)) => Err(Refusal::new("assistant_cancelled")),
         }
     }
 
-    /// Stops a running call; an id with no call is nothing.
+    /// Stops a running call; an id with no call yet is kept, so the call it names answers
+    /// `assistant_cancelled` when it starts.
     pub fn cancel(&self, request_id: &str) {
-        if let Ok(running) = self.running.lock() {
-            if let Some(handle) = running.get(request_id) {
-                handle.abort();
-            }
+        let running = locked(&self.running);
+        if let Some(handle) = running.get(request_id) {
+            handle.abort();
+        } else if !locked(&self.ended).iter().any(|id| id == request_id) {
+            remember(&mut locked(&self.cancelled_early), request_id);
         }
     }
 }
