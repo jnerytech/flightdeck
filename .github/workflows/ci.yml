@@ -441,6 +441,7 @@ jobs:
           bun run smoke:github
           bun run smoke:boardsync
           bun run smoke:roi
+          bun run smoke:opencode
 
       # The built frontend: the bundle budget reads it, and the Tauri context needs it (frontendDist).
       # Only when the app or the shell changed, or on main (#264).
