@@ -3,9 +3,10 @@
  * HEAD has beyond its base on origin, and a WIP commit of the working tree (changed and untracked
  * files, never ignored ones) built in a temporary index: the person's index and stash are never
  * touched. `git bundle` takes only refs, so the WIP commit is named by a ref of Flightdeck's own
- * (`refs/flightdeck/teleport/<id>`) for the time of the bundle, then the ref goes. No hook, fsmonitor
- * or external diff of the repository runs: every call turns them off. The repository's clean
- * filters do run on `add`, as they do on the person's own `git add` (Git LFS needs them).
+ * (`refs/flightdeck/teleport/<id>`) for the time of the bundle, then the ref goes. No hook,
+ * fsmonitor, external diff or signature check (gpg.program) of the repository runs: every call
+ * turns them off. The repository's clean filters do run on `add`, as they do on the person's own
+ * `git add` (Git LFS needs them).
  */
 import { copyFile, readFile, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
@@ -58,7 +59,7 @@ const ID = /^[A-Za-z0-9-]{1,64}$/;
 const refuse = (reason: string, params?: Record<string, string | number>) =>
   new FlightdeckError("invalid_state", reason.replaceAll("_", " "), reason, params);
 
-/** One git call in `cwd`, with no hook of the repository; null when it fails. */
+/** One git call in `cwd`, with no hook, fsmonitor or gpg of the repository; null when it fails. */
 async function git(
   cwd: string,
   args: string[],
@@ -72,6 +73,8 @@ async function git(
       "core.hooksPath=/dev/null",
       "-c",
       "core.fsmonitor=false",
+      "-c",
+      "log.showSignature=false",
       ...args,
     ],
     cwd,
