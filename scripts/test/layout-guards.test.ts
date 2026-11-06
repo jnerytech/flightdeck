@@ -449,7 +449,7 @@ describe("layout-guards: what the page function finds, named by data-slot path",
 
   test("narrow (#641): a page header that starts under the tab row, and a title cut short, are findings", () => {
     page(`
-      <div role="tablist" data-rect="0,0,640,40"></div>
+      <div class="tab-strip" role="tablist" data-rect="0,0,640,40"></div>
       <section data-slot="page" data-rect="0,32,640,800">
         <div data-slot="page-header" data-rect="0,32,640,100">
           <h1 data-slot="page-title" data-rect="24,48,400,76" data-sw="520" data-cw="376">A very long project name</h1>
@@ -460,7 +460,7 @@ describe("layout-guards: what the page function finds, named by data-slot path",
       "header-clipped: page > page-header > page-title (cut: 376 px of 520)",
     ]);
     page(`
-      <div role="tablist" data-rect="0,0,640,40"></div>
+      <div class="tab-strip" role="tablist" data-rect="0,0,640,40"></div>
       <section data-slot="page" data-rect="0,40,640,800">
         <div data-slot="page-header" data-rect="0,40,640,100">
           <h1 data-slot="page-title" data-rect="24,56,400,84" data-sw="376" data-cw="376">Short</h1>
