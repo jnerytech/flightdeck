@@ -8,7 +8,7 @@ registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { TopBarQuota } = await import("../src/components/shell/top-bar.tsx");
+const { QuotaGlanceButton } = await import("../src/components/shell/status-bar.tsx");
 
 afterEach(() => cleanup());
 
@@ -21,11 +21,11 @@ for (const [lang, dict] of [
 ] as const) {
   const t = translator(lang);
   const window = dict.account.windows.five_hour;
-  describe(`top-bar-quota (${lang}): the plan quota at a glance in the top bar (issue #118)`, () => {
+  describe(`top-bar-quota (${lang}): the plan quota at a glance, a button of the status bar (issue #118, #491)`, () => {
     test("it shows the window and the percent, says the rest in its name, and opens the host", async () => {
       const opened: string[] = [];
       render(
-        <TopBarQuota
+        <QuotaGlanceButton
           t={t}
           glance={{
             hostId: "b",
@@ -57,7 +57,7 @@ for (const [lang, dict] of [
 
     test("near the limit it says so in words and with a mark, not by colour alone", () => {
       render(
-        <TopBarQuota
+        <QuotaGlanceButton
           t={t}
           glance={{ hostId: "b", window: "five_hour", percent: 85, remaining: "", level: "near" }}
           hostName="beta"
@@ -77,21 +77,23 @@ for (const [lang, dict] of [
     });
 
     test("with no host reporting a quota, nothing shows", () => {
-      render(<TopBarQuota t={t} glance={null} hostName="" onOpen={() => undefined} />);
+      render(<QuotaGlanceButton t={t} glance={null} hostName="" onOpen={() => undefined} />);
       expect(screen.queryByRole("meter")).toBeNull();
     });
   });
 }
 
-describe("top-bar-quota: the slot in the app's top bar (issue #118)", () => {
-  test("it reads the online hosts' quota, names the host and opens it", async () => {
-    const { TopBarQuotaSlot } = await import("../src/components/shell/top-bar.tsx");
+describe("status-bar: the slot over the app's state (issue #491)", () => {
+  test("the quota glance reads the online hosts' quota, names the host and opens it", async () => {
+    const { StatusBarSlot } = await import("../src/components/shell/status-bar.tsx");
     const routes: unknown[] = [];
     const state = {
       hosts: [
         { id: "a", name: "alfa", status: "online" },
         { id: "b", name: "beta", status: "offline" },
       ],
+      appUpdate: { offer: null, upToDate: false, error: null, ready: null },
+      settings: { autoUpdate: false },
       quota: {
         a: {
           pauseAt: null,
@@ -119,11 +121,16 @@ describe("top-bar-quota: the slot in the app's top bar (issue #118)", () => {
         },
       },
     } as never;
+    const calls: string[] = [];
     render(
-      <TopBarQuotaSlot
+      <StatusBarSlot
         t={translator("en")}
         state={state}
         now={Date.UTC(2026, 10, 6, 12)}
+        terminalTabs={2}
+        refreshing={false}
+        onRefreshQuota={() => calls.push("refresh")}
+        onOpenTerminals={() => calls.push("terminals")}
         go={(route) => routes.push(route)}
       />,
     );
@@ -133,6 +140,16 @@ describe("top-bar-quota: the slot in the app's top bar (issue #118)", () => {
     await act(async () => {
       fireEvent.click(button as HTMLElement);
     });
-    expect(routes).toEqual([{ name: "host", host: "a" }]);
+    // The hosts item goes to the host that is not online; Settings is where an update is dealt with.
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "1 of 2 hosts online" }));
+      fireEvent.click(screen.getByRole("button", { name: "2 open terminals" }));
+      fireEvent.click(screen.getByRole("button", { name: "Refresh the plan usage" }));
+    });
+    expect(routes).toEqual([
+      { name: "host", host: "a" },
+      { name: "host", host: "b" },
+    ]);
+    expect(calls).toEqual(["terminals", "refresh"]);
   });
 });
