@@ -28,6 +28,12 @@ export interface Wand {
   cancel(): void;
   accept(): void;
   discard(): void;
+  /** Makes the proposal a text the person edits before Accept. */
+  edit(): void;
+  /** What the person typed into the edited proposal. */
+  setProposal(text: string): void;
+  /** Sends the same text again. */
+  retry(): void;
   /** Ctrl or Cmd+I (and Esc while there is something to close) in the field: true when the wand took the key. */
   onKeyDown(event: React.KeyboardEvent): boolean;
 }
@@ -125,6 +131,9 @@ export function useWand(
     cancel,
     accept,
     discard,
+    edit: () => {},
+    setProposal: () => {},
+    retry: () => {},
     onKeyDown,
   };
 }

@@ -172,6 +172,60 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     expect(asked(fake)).toHaveLength(1);
   });
 
+  test("Edit makes After a text to change, and Accept puts the edited text in the box", async () => {
+    await make();
+    type("fix the totl");
+    await click("Improve with AI");
+    const dialog = await screen.findByRole("dialog", { name: "AI suggestion" });
+    expect(within(dialog).queryByRole("textbox", { name: "After" })).toBeNull();
+    const edit = within(dialog).queryByRole("button", { name: "Edit" });
+    expect(edit).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(edit as HTMLElement);
+    });
+    const edited = within(dialog).queryByRole("textbox", { name: "After" }) as HTMLTextAreaElement;
+    expect(edited?.value).toBe("Fix the total.");
+    await act(async () => {
+      fireEvent.change(edited, { target: { value: "Fix the total of the cart." } });
+    });
+    // Nothing reaches the box before Accept, edited or not.
+    expect(box().value).toBe("fix the totl");
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Accept" }));
+    });
+    expect(box().value).toBe("Fix the total of the cart.");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  test("Esc in the edited text discards the preview and leaves the box alone", async () => {
+    await make();
+    type("fix the totl");
+    await click("Improve with AI");
+    await click("Edit");
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("textbox", { name: "After" }), { key: "Escape" });
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(box().value).toBe("fix the totl");
+  });
+
+  test("Retry sends the same text again and shows the new answer", async () => {
+    let n = 0;
+    const { fake } = await make({
+      run: (request) => ({ ...ANSWER, text: `Answer ${++n}`, model: request.model }),
+    });
+    type("fix the totl");
+    await click("Improve with AI");
+    const first = await screen.findByRole("dialog", { name: "AI suggestion" });
+    expect(within(first).queryByText("Answer 1")).not.toBeNull();
+    await click("Retry");
+    await settle(() => screen.queryByText("Answer 2") !== null);
+    expect(asked(fake)).toHaveLength(2);
+    const sent = asked(fake).map((call) => (call[1] as { user: string }).user);
+    expect(sent[1]).toBe(sent[0]);
+    expect(box().value).toBe("fix the totl");
+  });
+
   test("Discard and Esc leave the box alone", async () => {
     await make();
     type("fix the totl");
@@ -368,6 +422,8 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     await click("Melhorar com IA");
     const dialog = await screen.findByRole("dialog", { name: "Sugestão da IA" });
     expect(within(dialog).getByRole("button", { name: "Aceitar" })).not.toBeNull();
+    expect(within(dialog).queryByRole("button", { name: "Editar" })).not.toBeNull();
+    expect(within(dialog).queryByRole("button", { name: "Tentar de novo" })).not.toBeNull();
     expect(within(dialog).getByRole("button", { name: "Descartar" })).not.toBeNull();
   });
 });
