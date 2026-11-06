@@ -1,6 +1,7 @@
 import type { CommandPayload } from "@flightdeck/protocol";
 import { BookOpen, MessagesSquare } from "lucide-react";
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
+import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
@@ -116,6 +117,8 @@ function ManagedSession(props: {
   hostId: string;
   sessionId: string;
   focus: string | null;
+  /** Opens the host's page (the mode menu links to the bypass switch there). */
+  go(route: Route): void;
 }) {
   const { store, state, hostId, sessionId } = props;
   const host = state.hosts.find((h) => h.id === hostId);
@@ -126,6 +129,8 @@ function ManagedSession(props: {
   }, [store, state.selected, hostId, sessionId]);
   const summary = host?.sessions.find((s) => s.id === sessionId);
   const session = useSessionState(store, sessionKey(hostId, sessionId));
+  const opencode = summary?.runtime === "opencode";
+  const openCodeModels = useOpenCodeModels(store, hostId, opencode);
   // Estimated cost of the session, once its claudeSessionId is known (phase 8): from its own
   // events, else from the Sessões list.
   const claudeId =
@@ -175,10 +180,13 @@ function ManagedSession(props: {
       store={store}
       hostId={hostId}
       claudeSessionId={claudeId}
-      enabled={hasFeature(host?.hostInfo?.features, "review", false)}
-      messagingId={hasFeature(host?.hostInfo?.features, "messaging", false) ? sessionId : null}
-      telemetry={hasFeature(host?.hostInfo?.features, "telemetry", false)}
-      trace={hasFeature(host?.hostInfo?.features, "trace", false)}
+      // Phase 39: these tabs read Claude Code's transcript, and OpenCode sessions stay out of messaging.
+      enabled={!opencode && hasFeature(host?.hostInfo?.features, "review", false)}
+      messagingId={
+        !opencode && hasFeature(host?.hostInfo?.features, "messaging", false) ? sessionId : null
+      }
+      telemetry={!opencode && hasFeature(host?.hostInfo?.features, "telemetry", false)}
+      trace={!opencode && hasFeature(host?.hostInfo?.features, "trace", false)}
     >
       <SessionView
         t={store.i18n.t}
@@ -192,7 +200,11 @@ function ManagedSession(props: {
         actions={store}
         {...(pin ? { pin } : {})}
         {...(fork ? { fork } : {})}
+        {...(summary?.runtime ? { runtime: summary.runtime } : {})}
+        {...(openCodeModels ? { models: openCodeModels } : {})}
         settings={hasFeature(host?.hostInfo?.features, "session.settings", false)}
+        effort={hasFeature(host?.hostInfo?.features, "session.effort", false)}
+        onOpenHostSettings={() => props.go({ name: "host", host: hostId })}
         {...(host?.hostInfo?.allowBypassPermissions === true
           ? { bypass: { host: host.name } }
           : {})}
@@ -504,11 +516,16 @@ function costsOpener(go: (route: Route) => void): OpenCostSession {
   return opener;
 }
 
+/** What a screen shows instead of itself while it cannot open: the wait, or why it cannot. */
+function ScreenState(props: { children: ReactNode }) {
+  return <div className="p-6">{props.children}</div>;
+}
+
 function ScreenLoading(props: { label: string }) {
   return (
-    <div className="p-6">
+    <ScreenState>
       <LoadingState label={props.label} />
-    </div>
+    </ScreenState>
   );
 }
 
@@ -526,6 +543,21 @@ function routeScreen(props: ScreenProps): ReactNode {
   // before the connection (a deep link at start-up).
   const waiting = hostToWait(route);
   const waitHost = waiting ? hostOf(waiting) : undefined;
+  // Issue #227: once a try has failed, the host is down, not on its way: a spinner there was a dead
+  // end. The host's banner says why and offers to reconnect.
+  if (
+    waitHost &&
+    ((waitHost.status === "offline" && waitHost.retry) || waitHost.status === "unauthorized")
+  ) {
+    return (
+      <ScreenState>
+        <HostOfflineBanner
+          host={waitHost}
+          onReconnect={() => void store.reconnectHost(waitHost.id)}
+        />
+      </ScreenState>
+    );
+  }
   if (waiting && waitHost?.status !== "online") {
     const { t } = store.i18n;
     const label = waitHost ? t("states.connecting", { host: waitHost.name }) : t("states.loading");
@@ -630,6 +662,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           hostId={route.host}
           sessionId={route.id}
           focus={route.focus ?? null}
+          go={go}
         />
       );
     case "new-session": {
@@ -839,12 +872,29 @@ function routeScreen(props: ScreenProps): ReactNode {
         hostId={selected.hostId}
         sessionId={selected.sessionId}
         focus={null}
+        go={go}
       />
     );
   }
   const selectedHost = selected ? hostOf(selected.hostId) : undefined;
   if (selectedHost) return <NewSession store={store} state={state} host={selectedHost} />;
   return null;
+}
+
+/** Phase 39: the host's OpenCode models, for an OpenCode session's live switch; null until known. */
+function useOpenCodeModels(store: AppStore, hostId: string, opencode: boolean): string[] | null {
+  const [models, setModels] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!opencode) return;
+    let live = true;
+    void store.hostRequest(hostId, "runtime.models", { runtime: "opencode" }).then((result) => {
+      if (live) setModels(result.ok ? result.data.models.map((m) => m.id) : []);
+    });
+    return () => {
+      live = false;
+    };
+  }, [store, hostId, opencode]);
+  return opencode ? models : null;
 }
 
 /** "Iniciar em segundo plano": the session runs under Claude Code's supervisor; the hub shows it. */
@@ -915,6 +965,7 @@ function NewSession(props: {
       }
       // The created session opens by itself (AppStore.createSession).
       onCreate={(payload) => {
+        if (payload.runtime === "opencode") return props.store.createSession(host.id, payload);
         if (background) return startInBackground(props.store, host.id, payload, persona);
         const ref = props.store.personaRef(persona);
         return props.store.createSession(host.id, { ...payload, ...(ref ? { persona: ref } : {}) });

@@ -11,6 +11,7 @@ import type {
   CommandPayload,
   CommandResults,
   CommandType,
+  EffortLevel,
   EventEnvelope,
   ExternalPermissionFrame,
   ExternalSession,
@@ -39,6 +40,7 @@ import type {
   SessionMeta,
   SessionNameInfo,
   SessionRecap,
+  SessionRuntime,
   SessionStatus,
   SessionSubscribeResult,
   SessionSummary,
@@ -53,7 +55,7 @@ import type {
   WatchSettings,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { EPHEMERAL_EVENTS } from "@flightdeck/protocol";
+import { byCodeUnit, EPHEMERAL_EVENTS } from "@flightdeck/protocol";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type {
@@ -87,6 +89,7 @@ import { localDay, usd } from "./costs.ts";
 import { DensityController } from "./density.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
+import { HIGH_RISK_HOLD_MS } from "./hold.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostNameError, hostNameError } from "./host-name.ts";
 import type { RetryState } from "./host-offline.ts";
@@ -96,14 +99,24 @@ import {
   type HubView,
   hubRows,
   loadHubFilter,
+  loadHubOpen,
   loadHubView,
   saveHubFilter,
+  saveHubOpen,
   saveHubView,
 } from "./hub.ts";
-import { addEntry, type InboxEntry, loadInbox, markAllRead, markRead, saveInbox } from "./inbox.ts";
+import {
+  addEntry,
+  type InboxAbout,
+  type InboxEntry,
+  loadInbox,
+  markAllRead,
+  markRead,
+  saveInbox,
+} from "./inbox.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
-import { summaryNotifications } from "./notify.ts";
+import { externalRequestNotification, summaryNotifications } from "./notify.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
 import { isHot } from "./quota.ts";
@@ -160,9 +173,6 @@ import { WebhookFeed } from "./webhook-feed.ts";
 import { Webhooks } from "./webhooks.ts";
 import { WORKSPACE_KEY, Workspace } from "./workspace.ts";
 
-/** How long a prod or high-risk approval is held, as the approval card measures it. */
-const HOLD_MS = 2000;
-
 /** What the sidebar knows about a session, straight from `session.summary`. */
 export interface SidebarSession {
   id: string;
@@ -171,6 +181,8 @@ export interface SidebarSession {
   status: SessionStatus;
   pendingPermissions: PendingPermission[];
   updatedAt: string;
+  /** Phase 39: set for an OpenCode session only. */
+  runtime?: SessionRuntime;
 }
 
 export interface HostView extends HostConfig {
@@ -375,6 +387,7 @@ export type HostCommandType = Extract<
   | `pr.${string}`
   | "files.sessions"
   | "fs.dirs"
+  | "runtime.models"
   | "fs.files"
   | "doctor.run"
   | "projects.scan"
@@ -463,6 +476,8 @@ export interface AppStoreOptions {
   wakeDebounceMs?: number;
   /** How long the global search waits for each host. */
   searchTimeoutMs?: number;
+  /** Starts the poll of the GitHub sign-in (calls `tick` now and then, returns its stop); tests drive it by hand. */
+  githubTicker?: (tick: () => void) => () => void;
   /** Milliseconds now: the age of quota readings. */
   now?: () => number;
   /** HH:MM of an instant (quota resets); the host machine's time zone when absent. */
@@ -517,7 +532,7 @@ export interface LoopAlert {
 
 /** The daemon's key for a pair of sessions, the same in both directions. */
 export const loopPairKey = (alert: Pick<LoopAlert, "from" | "to">): string =>
-  [alert.from, alert.to].sort().join("|");
+  [alert.from, alert.to].sort(byCodeUnit).join("|");
 
 export interface PendingItem {
   hostId: string;
@@ -535,6 +550,8 @@ export interface PendingItem {
   cwd?: string | null;
   /** An open gate of a workflow run (`sessionId` is the card), answered with `gate.respond`. */
   gate?: GateRef;
+  /** What the gate asks and shows, so it is approved in sight of it (issue #245). */
+  gateText?: { message: string; output?: string };
   /** Phase 13: the risk the daemon judged for the request; an older daemon sends none. */
   risk?: RiskLevel;
   riskReason?: string;
@@ -622,6 +639,10 @@ export function needsYou(state: AppState): PendingItem[] {
               attempt: step.attempt,
               cardId: run.cardId,
             },
+            gateText: {
+              message: step.message ?? "",
+              ...(step.output ? { output: step.output } : {}),
+            },
           })),
       ),
   ]);
@@ -629,6 +650,21 @@ export function needsYou(state: AppState): PendingItem[] {
     state.hosts.some((h) => h.id === item.hostId),
   );
   return [...requests, ...known].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+/** What goes with an answer to a request, besides allow or deny. */
+export interface Answer {
+  /** "Allow in this session" and "always in this project" (phase 7). */
+  updatedPermissions?: PermissionUpdate[] | undefined;
+  /** Why it was denied (phase 10: the card's reason). */
+  message?: string | undefined;
+  /** The tool's input as the person changed it (the answers of AskUserQuestion). */
+  updatedInput?: Record<string, unknown> | undefined;
+  /**
+   * The Approve was held its full time (#245): a high-risk request is approved only with it, so a
+   * screen that forgets the risk cannot approve one with a click.
+   */
+  held?: boolean | undefined;
 }
 
 /** Filters of the per-host history list. */
@@ -642,6 +678,8 @@ export const HISTORY_PAGE = 50;
 
 /** Preference stored in plain settings; anything but "false" means on. */
 export const CLOSE_TO_TRAY_KEY = "flightdeck.closeToTray";
+/** Where the return on cost card's open or folded state is kept. */
+const ROI_OPEN_KEY = "flightdeck.roiOpen";
 export const PALETTE_RECENTS_KEY = "flightdeck.paletteRecents";
 /** How many used palette entries are kept (the palette shows five). */
 const PALETTE_RECENTS_KEPT = 12;
@@ -919,12 +957,29 @@ export class AppStore {
   }
 
   /** How the hub draws its sessions: lines or cards. */
+  hubOpen(): Record<string, boolean> {
+    return loadHubOpen(this.platform.storage);
+  }
+
+  saveHubOpen(open: Record<string, boolean | undefined>): void {
+    saveHubOpen(this.platform.storage, open);
+  }
+
   hubView(): HubView {
     return loadHubView(this.platform.storage);
   }
 
   saveHubView(view: HubView): void {
     saveHubView(this.platform.storage, view);
+  }
+
+  /** Whether the return on cost card opens unfolded (issue #178): folded unless the person opened it. */
+  roiOpen(): boolean {
+    return this.platform.storage.getItem(ROI_OPEN_KEY) === "true";
+  }
+
+  saveRoiOpen(open: boolean): void {
+    this.platform.storage.setItem(ROI_OPEN_KEY, String(open));
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -1036,6 +1091,13 @@ export class AppStore {
     return null;
   }
 
+  /** Starts the poll the GitHub panel runs while a sign-in waits; the returned function stops it. */
+  githubTicker(tick: () => void): () => void {
+    if (this.options.githubTicker) return this.options.githubTicker(tick);
+    const timer = setInterval(tick, 1500);
+    return () => clearInterval(timer);
+  }
+
   /** Drops the connection and opens a new one right away. */
   async reconnectHost(hostId: string): Promise<void> {
     const host = this.state.hosts.find((h) => h.id === hostId);
@@ -1066,10 +1128,22 @@ export class AppStore {
     return true;
   }
 
-  /** Approves or denies the oldest waiting request; a high-risk one is opened, as in the tray. */
-  decideOldest(decision: "approve" | "deny"): void {
+  /**
+   * Approves or denies the oldest waiting request; a high-risk one is opened, as in the tray.
+   * `shown` is the `host/request` the command named: when that one has gone in between, the one
+   * now oldest is opened to be seen, never answered unseen (#245).
+   */
+  decideOldest(decision: "approve" | "deny", shown: string): void {
     const item = needsYou(this.state)[0];
-    if (item) this.onTrayAction({ key: `${item.hostId}/${item.requestId}`, action: decision });
+    if (!item) return;
+    if (`${item.hostId}/${item.requestId}` !== shown) {
+      this.openRequest(item);
+      return;
+    }
+    // A gate or a vault request is opened to be seen, never answered blind (issue #187); the
+    // palette is not the tray, so a vault grant is never logged as the tray's.
+    if (item.gate || item.vault) this.openRequest(item);
+    else this.onTrayAction({ key: `${item.hostId}/${item.requestId}`, action: decision });
   }
 
   /** What the palette was used for lately, most recent first. */
@@ -1106,17 +1180,25 @@ export class AppStore {
     }
     const item = needsYou(this.state).find((i) => `${i.hostId}/${i.requestId}` === key);
     if (!item) return;
-    // The tray never approves a high-risk request: that takes holding the button in the app.
-    if (action === "open" || (action === "approve" && item.risk === "high")) this.openRequest(item);
-    else if (item.vault && action === "approve") {
-      // The daemon records that it was the tray that approved it.
-      this.vaultQuestions.get(item.requestId)?.({ scope: "once", via: "tray" });
-    } else
-      void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
+    // The tray never approves a high-risk request: that takes holding the button in the app. A
+    // workflow gate is answered on its card, never as a permission (the host refuses its id).
+    // A vault grant is opened too (#244): the tray's line cannot show the secret and parameters.
+    if (
+      action === "open" ||
+      item.gate ||
+      (action === "approve" && (item.risk === "high" || item.vault))
+    )
+      this.openRequest(item);
+    else void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
   }
 
   /** Sends an OS notification and keeps it in the notification center. */
-  private notifyUser(n: Notification, route?: Route, fallbackUrl?: string | null): void {
+  private notifyUser(
+    notification: Notification & { about?: InboxAbout },
+    route?: Route,
+    fallbackUrl?: string | null,
+  ): void {
+    const { about, ...n } = notification;
     const entry: InboxEntry = {
       id: crypto.randomUUID(),
       at: new Date().toISOString(),
@@ -1125,6 +1207,9 @@ export class AppStore {
       ...(n.link ? { link: n.link } : {}),
       ...(route ? { route } : {}),
       ...(fallbackUrl ? { fallbackUrl } : {}),
+      ...(about ? { subject: about.subject, host: about.host } : {}),
+      ...(about?.ask ? { ask: about.ask } : {}),
+      ...(about?.group ? { group: about.group } : {}),
       read: false,
     };
     this.setInbox(addEntry(this.state.inbox, entry));
@@ -1136,8 +1221,16 @@ export class AppStore {
     saveInbox(this.platform.storage, inbox);
   }
 
-  inboxMarkRead(id: string): void {
-    this.setInbox(markRead(this.state.inbox, id));
+  /** Marks entries read: the one of a click, or every entry a collapsed row stands for. */
+  inboxMarkRead(ids: string | string[]): void {
+    const wanted = new Set(typeof ids === "string" ? [ids] : ids);
+    this.setInbox([...wanted].reduce((list, id) => markRead(list, id), this.state.inbox));
+  }
+
+  /** Drops entries: a notification about something that is gone. */
+  inboxDismiss(ids: string[]): void {
+    const gone = new Set(ids);
+    this.setInbox(this.state.inbox.filter((e) => !gone.has(e.id)));
   }
 
   inboxMarkAllRead(): void {
@@ -1247,6 +1340,26 @@ export class AppStore {
   uiMode(hostId: string): ModeAnswer {
     const host = this.state.hosts.find((h) => h.id === hostId);
     return effectiveMode(this.state.uiChoices[hostId], host?.hostInfo?.ui);
+  }
+
+  /** The host whose mode the window shows: the selected one, else the first that is online. */
+  uiHostId(): string | null {
+    const { hosts, selected } = this.state;
+    return (
+      hosts.find((h) => h.id === selected?.hostId)?.id ??
+      hosts.find((h) => h.status === "online")?.id ??
+      null
+    );
+  }
+
+  /** Switches the window between simple and full mode; false when the host is locked or none shows. */
+  toggleUiMode(): boolean {
+    const hostId = this.uiHostId();
+    if (!hostId) return false;
+    const now = this.uiMode(hostId);
+    if (!now.canSwitch) return false;
+    this.setUiChoice(hostId, now.mode === "simple" ? "full" : "simple");
+    return true;
   }
 
   /** The person's choice for a host; `null` forgets it, so the host's default speaks again. */
@@ -1512,6 +1625,8 @@ export class AppStore {
     claudeSessionId: string,
     cursor?: string,
     tail = false,
+    /** Told why a read was refused (issue #227): the reader tells "not found" from a failure. */
+    refused?: (reason: string | undefined) => void,
   ): Promise<HistoryGetResult | null> {
     try {
       const conn = this.connections.get(hostId);
@@ -1523,6 +1638,7 @@ export class AppStore {
         ...(tail && !cursor ? { tail: true } : {}),
       });
     } catch (error) {
+      refused?.(error instanceof RequestError ? error.reason : undefined);
       // Not indexed yet is a normal state (the indexer catches up), not something to tell the person.
       if (!(error instanceof RequestError && error.reason === "transcript_not_indexed")) {
         this.fail(error);
@@ -1969,6 +2085,12 @@ export class AppStore {
     );
   }
 
+  setEffort(effort: EffortLevel | null): Promise<void> {
+    return this.onSelected((conn, sessionId) =>
+      conn.request("session.setEffort", { sessionId, effort }),
+    );
+  }
+
   close(): Promise<void> {
     return this.onSelected((conn, sessionId) => conn.request("session.close", { sessionId }));
   }
@@ -1977,16 +2099,42 @@ export class AppStore {
     return this.onSelected((conn, sessionId) => conn.request("session.resume", { sessionId }));
   }
 
+  /** The daemon's risk of a waiting request: its queue entry, else the session item it is. */
+  private riskOf(hostId: string, requestId: string): RiskLevel | undefined {
+    const queued = needsYou(this.state).find(
+      (item) => item.hostId === hostId && item.requestId === requestId,
+    );
+    if (queued?.risk) return queued.risk;
+    for (const [key, session] of Object.entries(this.state.sessions)) {
+      if (!key.startsWith(`${hostId}/`)) continue;
+      const item = session.items.find((i) => i.kind === "permission" && i.requestId === requestId);
+      if (item?.kind === "permission" && item.risk) return item.risk;
+    }
+    return undefined;
+  }
+
+  /**
+   * An allow of a high-risk request that was not held is refused here, below every screen, and
+   * the person is told why (#245). Deny never needs a hold.
+   */
+  private unheld(hostId: string, requestId: string, decision: "allow" | "deny", answer: Answer) {
+    if (decision !== "allow" || answer.held || this.riskOf(hostId, requestId) !== "high") {
+      return false;
+    }
+    const text = this.i18n.t("approval.holdRequired");
+    this.fail(new Error(text), text);
+    return true;
+  }
+
   /** Answers a request from the "Precisa de você" queue, on whichever host it lives. */
   async respondTo(
     hostId: string,
     requestId: string,
     decision: "allow" | "deny",
-    updatedPermissions?: PermissionUpdate[],
-    /** Why it was denied (phase 10: the card's reason). */
-    message?: string,
-    updatedInput?: Record<string, unknown>,
+    answer: Answer = {},
   ): Promise<void> {
+    const { updatedPermissions, message, updatedInput } = answer;
+    if (this.unheld(hostId, requestId, decision, answer)) return;
     if (decision === "allow") startMeasure("approve");
     const question = this.vaultQuestions.get(requestId);
     if (question) {
@@ -2024,13 +2172,10 @@ export class AppStore {
     });
   }
 
-  respond(
-    requestId: string,
-    decision: "allow" | "deny",
-    message?: string,
-    updatedPermissions?: PermissionUpdate[],
-    updatedInput?: Record<string, unknown>,
-  ): Promise<void> {
+  respond(requestId: string, decision: "allow" | "deny", answer: Answer = {}): Promise<void> {
+    const { updatedPermissions, message, updatedInput } = answer;
+    const hostId = this.state.selected?.hostId;
+    if (hostId && this.unheld(hostId, requestId, decision, answer)) return Promise.resolve();
     return this.onSelected((conn) =>
       conn.request("permission.respond", {
         requestId,
@@ -2419,6 +2564,7 @@ export class AppStore {
       status: summary.status,
       pendingPermissions: summary.pendingPermissions,
       updatedAt: summary.updatedAt,
+      ...(summary.runtime ? { runtime: summary.runtime } : {}),
     };
     const prev = host.sessions.find((s) => s.id === next.id);
     this.updateHost(hostId, (h) => ({
@@ -2436,8 +2582,14 @@ export class AppStore {
     const linkFor = (requestId: string) => requestLink(hostId, requestId);
     const focused = this.platform.isFocused();
     const t = this.i18n.t;
-    for (const n of summaryNotifications(prev, next, label, focused, linkFor, t)) {
-      this.notifyUser(n);
+    const names = { subject: next.name ?? basename(next.cwd), host: host.name, group: key };
+    for (const n of summaryNotifications(prev, next, label, focused, linkFor, t, names)) {
+      // A request's entry keeps its session too: once answered, the bell opens it at that request.
+      const requestId = n.link ? parseRequestLink(n.link)?.requestId : undefined;
+      this.notifyUser(
+        n,
+        requestId ? { name: "session", host: hostId, id: next.id, focus: requestId } : undefined,
+      );
     }
   }
 
@@ -2493,12 +2645,32 @@ export class AppStore {
       this.state.externals[sessionKey(hostId, frame.claudeSessionId)]?.cwd ?? null,
     );
     if (!this.platform.isFocused()) {
-      this.notifyUser({
-        title: this.i18n.t("notify.externalTitle"),
-        body: `${host?.name ?? hostId} · ${frame.toolName}`,
-        link: requestLink(hostId, frame.requestId),
-      });
+      this.notifyUser(
+        externalRequestNotification(
+          {
+            hostId,
+            hostName: host?.name ?? hostId,
+            subject: this.externalTitle(hostId, frame.claudeSessionId),
+            claudeSessionId: frame.claudeSessionId,
+            toolName: frame.toolName,
+            input: frame.input,
+            link: requestLink(hostId, frame.requestId),
+          },
+          this.i18n.t,
+        ),
+      );
     }
+  }
+
+  /** A terminal session's name for a notification: the one given to it, else its folder or its id. */
+  private externalTitle(hostId: string, claudeSessionId: string): string {
+    const key = sessionKey(hostId, claudeSessionId);
+    const cwd = this.state.externals[key]?.cwd;
+    return (
+      this.state.meta[key]?.name ??
+      this.state.hub[hostId]?.history.find((h) => h.claudeSessionId === claudeSessionId)?.title ??
+      (cwd ? basename(cwd) : claudeSessionId.slice(0, 8))
+    );
   }
 
   /** A discarded card leaves; any other replaces what the app had. */
@@ -2955,7 +3127,7 @@ export class AppStore {
     const online = this.state.hosts
       .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false))
       .map((h) => h.id)
-      .sort()
+      .sort(byCodeUnit)
       .join("|");
     if (online === this.clientBudgetHosts) return;
     this.clientBudgetHosts = online;
@@ -3535,7 +3707,8 @@ export class AppStore {
     const item = this.state.vaultApprovals.find(
       (i) => i.hostId === hostId && i.requestId === requestId,
     );
-    if (!item?.vaultOnce) return;
+    // A high-risk request (a free command, a rule that needs the hold) never gets it (#244).
+    if (!item?.vaultOnce || item.risk === "high") return;
     this.vaultQuestions.get(requestId)?.({ scope: "session", via: "app" });
   }
 
@@ -3550,7 +3723,7 @@ export class AppStore {
           requestId: request.requestId,
           via: answer.via,
           scope: answer.scope,
-          ...(request.needsHold ? { heldMs: HOLD_MS } : {}),
+          ...(request.needsHold ? { heldMs: HIGH_RISK_HOLD_MS } : {}),
         });
       },
     });
@@ -3604,7 +3777,8 @@ export class AppStore {
         : {}),
       vault: true,
       // A request that needs holding is approved only by the held button, one use at a time.
-      ...(request.once && !request.needsHold ? { vaultOnce: true as const } : {}),
+      // Not a free command either: it is high risk, and a session approval has no hold (#244).
+      ...(request.once && !request.needsHold && !free ? { vaultOnce: true as const } : {}),
       vaultRule: {
         secretId: request.secretId,
         match: {

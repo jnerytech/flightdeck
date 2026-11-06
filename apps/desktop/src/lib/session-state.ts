@@ -9,6 +9,7 @@ import type {
   RiskLevel,
   SessionPersona,
   SessionStatus,
+  SlashCommandInfo,
   ToolInput,
 } from "@flightdeck/protocol";
 
@@ -47,7 +48,17 @@ export type ChatItem =
       durationMs: number;
       costUsd?: number;
     }
-  | { kind: "error"; seq: number; code: string; message: string }
+  /** Phase 39: what went with an OpenCode session's first message (its AGENTS.md), or was left out. */
+  | { kind: "context"; seq: number; sent: boolean }
+  | {
+      kind: "error";
+      seq: number;
+      code: string;
+      message: string;
+      /** Phase 39: why, when the daemon says it, for the app's own sentence. */
+      reason?: string;
+      params?: Record<string, string | number>;
+    }
   /** A persona applied to the session or left (phase 20). */
   | { kind: "persona"; seq: number; applied: boolean; name: string };
 
@@ -64,6 +75,8 @@ export interface SessionState {
   permissionMode?: PermissionMode;
   /** The slash commands the session has, from `session.init`. */
   slashCommands?: string[];
+  /** The same commands with a description and a kind, from a daemon that sends them. */
+  commands?: SlashCommandInfo[];
   /** The persona the session runs in (phase 20), from how it opened and from what was applied since. */
   persona?: SessionPersona;
   /** Claude Code's id, from `session.init`: "Abrir no terminal" resumes it. */
@@ -137,13 +150,19 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
           : { busySince: undefined }),
       };
     }
-    case "session.init":
-      return {
+    case "session.init": {
+      const started = {
         ...next,
         model: event.model,
         claudeSessionId: event.claudeSessionId,
         ...(event.slashCommands ? { slashCommands: event.slashCommands } : {}),
+        ...(event.commands ? { commands: event.commands } : {}),
       };
+      // Only OpenCode sessions name these; AGENTS.md is the one file there is.
+      const sent = (event.contextFiles?.length ?? 0) > 0;
+      if (!sent && (event.contextSkipped?.length ?? 0) === 0) return started;
+      return { ...started, items: [...started.items, { kind: "context", seq, sent }] };
+    }
     case "message.user":
       return push({
         kind: "user",
@@ -223,6 +242,13 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
       return event.type === "persona.applied" ? { ...rest, persona: event.persona } : rest;
     }
     default:
-      return push({ kind: "error", seq, code: event.code, message: event.message });
+      return push({
+        kind: "error",
+        seq,
+        code: event.code,
+        message: event.message,
+        ...(event.reason ? { reason: event.reason } : {}),
+        ...(event.params ? { params: event.params } : {}),
+      });
   }
 }

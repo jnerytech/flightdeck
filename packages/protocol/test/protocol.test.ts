@@ -74,6 +74,22 @@ const validCommands: Record<CommandType, unknown> = {
   "card.get": { cardId: "c" },
   "card.stop": { cardId: "c" },
   "card.diff": { cardId: "c" },
+  "assistant.run": {
+    requestId: "r1",
+    kind: "card.title",
+    text: "fix the login bug",
+    language: "en",
+    profile: "quick",
+  },
+  "assistant.cancel": { requestId: "r1" },
+  "assistant.context": { kind: "commit", source: { kind: "card", cardId: "c" } },
+  "assistant.record": {
+    id: "r1",
+    at: "2026-11-05T10:00:00.000Z",
+    provider: "anthropic",
+    model: "claude-haiku-5-5",
+    tokens: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 },
+  },
   "card.message": { cardId: "c", text: "ajuste" },
   "card.pr.create": { cardId: "c" },
   "card.complete": { cardId: "c", confirm: true },
@@ -360,6 +376,7 @@ const validCommands: Record<CommandType, unknown> = {
   "boardsync.status": { projectId: "p1" },
   "boardsync.syncNow": { projectId: "p1" },
   "boardsync.log": { cardId: "c1" },
+  "runtime.models": { runtime: "opencode" },
   "github.status": {},
   "github.login.start": {},
   "github.login.cancel": {},
@@ -369,6 +386,7 @@ const validCommands: Record<CommandType, unknown> = {
   "github.start": { repo: "acme/app", issue: "7", root: "/work", mode: "card" },
   "session.setMode": { sessionId: "s", permissionMode: "plan" },
   "session.setModel": { sessionId: "s", model: null },
+  "session.setEffort": { sessionId: "s", effort: "high" },
   "session.files": { claudeSessionId: "s" },
   "statusline.get": { claudeSessionId: "s" },
   "terminal.open": { cwd: "/w", command: ["bash", "-l"], cols: 80, rows: 24 },
@@ -495,6 +513,22 @@ const validEvents: SessionEvent[] = [
   { type: "session.status", status: "running" },
   { type: "session.status", status: "error", reason: "daemon reiniciado" },
   { type: "session.init", claudeSessionId: "c", model: "m", tools: ["Read"] },
+  {
+    type: "session.init",
+    claudeSessionId: "c",
+    model: "m",
+    tools: ["Read"],
+    slashCommands: ["compact", "plug:skill"],
+    commands: [
+      {
+        name: "compact",
+        description: "Compact the conversation",
+        argumentHint: "",
+        kind: "builtin",
+      },
+      { name: "plug:skill", description: "A plugin skill", kind: "skill" },
+    ],
+  },
   { type: "message.user", text: "oi" },
   {
     type: "message.assistant",
@@ -655,5 +689,24 @@ describe("images in a message", () => {
       text: "x",
       images: 2,
     });
+  });
+});
+
+describe("session.init commands (the / menu)", () => {
+  const init = {
+    type: "session.init" as const,
+    claudeSessionId: "c",
+    model: "m",
+    tools: [] as string[],
+    slashCommands: ["compact"],
+  };
+  test("an init with described commands keeps them, and one without stays valid", () => {
+    const commands = [{ name: "compact", description: "Compact", kind: "builtin" as const }];
+    expect(SessionEvent.parse({ ...init, commands })).toEqual({ ...init, commands });
+    expect(SessionEvent.parse(init)).toEqual(init);
+  });
+  test("a command needs a known kind", () => {
+    const commands = [{ name: "x", description: "", kind: "other" }] as unknown;
+    expect(SessionEvent.safeParse({ ...init, commands }).success).toBe(false);
   });
 });

@@ -73,13 +73,13 @@ describe("clients-vault: the rules editor of a scoped secret", () => {
     await open(true);
     await openRules("solto");
     await stays(() => note() === null, 100);
-    expect(note() !== null).toBe(false);
+    expect(note()).toBeNull();
   });
 
   test("with the scope off there is no note either", async () => {
     await open(false);
     await openRules("do-acme");
     await stays(() => note() === null, 100);
-    expect(note() !== null).toBe(false);
+    expect(note()).toBeNull();
   });
 });

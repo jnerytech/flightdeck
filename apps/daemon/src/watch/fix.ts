@@ -110,7 +110,7 @@ function buildPrompt(input: {
   const shown = trigger.comments.slice(0, COMMENTS_MAX);
   const left = trigger.comments.length - shown.length;
   const comments = [
-    ...shown.map(commentLine),
+    ...shown.map((comment, i) => commentLine(comment, i)),
     ...(left > 0 ? [`(${left} more comments were left out)`] : []),
   ].join("\n\n");
   return [

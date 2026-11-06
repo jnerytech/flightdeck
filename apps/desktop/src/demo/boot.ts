@@ -63,10 +63,7 @@ export function applyDemoPrefs(storage: Platform["storage"], search: string): vo
   if (lang && LANGS.includes(lang)) storage.setItem(LANG_KEY, lang);
 }
 
-/** index.html with the web entry when `FLIGHTDECK_ENTRY=web` (the demo and the prints). */
-export function entryHtml(html: string, entry: string | undefined): string {
-  return entry === "web" ? html.replace("/src/main.tsx", "/src/main.web.tsx") : html;
-}
+export { entryHtml } from "./entry-html.ts";
 
 /**
  * What the store gets in the demo: with seeded hosts, a long wait between attempts, so a host that

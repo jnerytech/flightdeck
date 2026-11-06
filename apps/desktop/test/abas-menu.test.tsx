@@ -79,6 +79,10 @@ describe("abas: Abrir em nova aba nos menus", () => {
       store.tabs.open({ name: "hub" });
     });
     const before = store.tabs.tabs.length;
+    // The Sessions page is project first: every project starts folded.
+    await act(async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Expandir tudo" }));
+    });
     await waitFor(() =>
       expect(screen.queryByRole("button", { name: "Ações de s1" })).not.toBeNull(),
     );

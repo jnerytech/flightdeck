@@ -1,30 +1,72 @@
 #!/usr/bin/env bun
-/** `bun run test:related [--base <ref>]`: runs only the tests that reach the files changed since the base. */
+/**
+ * `bun run test:related [--base <ref>] [--fast] [--tier unit,component] [--pr] [--keep-coverage <dir>]`:
+ * runs only the tests that reach the files changed since the base (`--fast`: only the tests that
+ * import them directly; `--tier`: only those tiers, classified from the code, without the coverage
+ * gate; `--pr`: every unit and component test plus the related tests of the other tiers, the PR's
+ * check on CI, #309), and checks the changed files' coverage. `--keep-coverage` writes the lcov
+ * report into that folder and keeps it (SonarCloud reads it).
+ */
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { checkChanged } from "./lib/related-coverage.ts";
-import { planRelated } from "./lib/test-related.ts";
+import { keepCoverageProblem, planRelated } from "./lib/test-related.ts";
+import { testTiers } from "./lib/test-tiers.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
+
+function liveTiers(): Record<string, string> {
+  const listed = spawnSync("git", ["ls-files", "*.ts", "*.tsx"], { cwd: ROOT, encoding: "utf8" }); // NOSONAR: git comes from the PATH of the developer running the script
+  const paths = listed.stdout.split("\n").filter(Boolean);
+  return testTiers(new Map(paths.map((p) => [p, readFileSync(resolve(ROOT, p), "utf8")])));
+}
 const args = process.argv.slice(2).filter((a) => a !== "--");
 const flag = args.indexOf("--base");
+// --fast: the changed tests and the tests that import a changed file directly (#219).
+const fast = args.includes("--fast");
+// --tier: only the tests of these tiers (#261), for a session on a small machine; CI runs them all.
+const tierFlag = args.indexOf("--tier");
+const tiers = tierFlag >= 0 ? (args[tierFlag + 1] ?? "").split(",").filter(Boolean) : undefined;
+// The tiers are computed from the code on every call (lib/test-tiers.ts), never read from a file.
+// --pr (#309): the PR's check on CI.
+const pyramid = args.includes("--pr");
+const tierMap: Record<string, string> = tiers || pyramid ? liveTiers() : {};
+const keepFlag = args.indexOf("--keep-coverage");
+const keep = keepFlag >= 0 ? args[keepFlag + 1] : undefined;
+// The kept folder stays inside the repository, and is never another flag.
+if (keepFlag >= 0) {
+  const problem = keepCoverageProblem(ROOT.replaceAll("\\", "/"), keep?.replaceAll("\\", "/"));
+  if (problem) {
+    console.error(`test:related: ${problem}`);
+    process.exit(2);
+  }
+}
 
-const coverageDir = mkdtempSync(join(tmpdir(), "test-related-"));
+const coverageDir = keep ? resolve(ROOT, keep) : mkdtempSync(join(tmpdir(), "test-related-"));
+// A report left by an earlier run must never stand in for this one's.
+if (keep) rmSync(join(coverageDir, "lcov.info"), { force: true });
 const plan = planRelated({
   coverageDir,
+  fast,
+  ...(tiers ? { tiers } : {}),
+  ...(tiers || pyramid ? { tierOf: (path: string) => tierMap[path] } : {}),
+  pyramid,
+  // CI has the machine to itself: no machine-wide slot there.
+  slot: !process.env.CI,
   base: flag >= 0 ? args[flag + 1] : undefined,
   platform: process.platform,
   git: (gitArgs) => {
-    const proc = spawnSync("git", gitArgs, { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 26 });
+    const options = { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 26 } as const;
+    const proc = spawnSync("git", gitArgs, options); // NOSONAR: git and bun come from the PATH of the developer running the script
     return proc.status === 0 ? proc.stdout : null;
   },
   readFile: (path) => readFileSync(resolve(ROOT, path), "utf8"),
 });
 (plan.code === 0 ? console.log : console.error)(plan.output);
 if (!plan.command) {
-  rmSync(coverageDir, { recursive: true, force: true });
+  if (!keep) rmSync(coverageDir, { recursive: true, force: true });
   process.exit(plan.code);
 }
 const [cmd = "bun", ...rest] = plan.command;
@@ -65,5 +107,5 @@ if (targets.length > 0) {
     console.log(`\ntest:related: ${targets.length} changed source file(s) fully covered`);
   }
 }
-rmSync(coverageDir, { recursive: true, force: true });
+if (!keep) rmSync(coverageDir, { recursive: true, force: true });
 process.exit(code);

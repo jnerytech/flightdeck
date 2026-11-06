@@ -66,7 +66,7 @@ describe("clients-vault: the vault's list for a selected client", () => {
   test("with all clients the list is one list, as before", async () => {
     await open("all");
     expect(namesIn(screen.queryByRole("list", { name: "Segredos" }))).toHaveLength(3);
-    expect(region("Segredos de Acme") !== null).toBe(false);
+    expect(region("Segredos de Acme")).toBeNull();
   });
 
   test("with a client selected its secrets come first, then nobody's, then the other clients', all shown", async () => {

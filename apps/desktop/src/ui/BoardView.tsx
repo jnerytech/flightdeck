@@ -291,14 +291,15 @@ export const BoardView = memo(function BoardView(props: {
       ?.focus();
   });
 
-  const create = () => {
-    const made = store.hostCommand(hostId, "card.create", {
+  const create = async () => {
+    const made = await store.hostCommand(hostId, "card.create", {
       projectId,
       title: title.trim(),
       description,
     });
-    close();
-    return made;
+    // Issue #229: only a card that exists closes the dialog; a refused one keeps what was typed
+    // (the banner says why).
+    if (made) close();
   };
   /** Closes the dialog and forgets what was typed. */
   const close = () => {
@@ -362,6 +363,7 @@ export const BoardView = memo(function BoardView(props: {
         )}
         <div
           ref={boardRef}
+          data-slot="board-columns"
           // biome-ignore lint/a11y/noNoninteractiveTabindex: the columns scroll sideways; focus lets the keyboard do it
           tabIndex={0}
           className="grid auto-cols-[minmax(15rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2"

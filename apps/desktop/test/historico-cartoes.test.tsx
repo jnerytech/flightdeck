@@ -114,12 +114,12 @@ describe("historico-cartoes: the history screen", () => {
   test("the same toggle swaps the lines for cards with the host, the folder and the origin", async () => {
     await open();
     expect(toggle("Lista")?.getAttribute("aria-pressed")).toBe("true");
-    expect(cards().length).toBe(0);
+    expect(cards()).toHaveLength(0);
     expect(toggle("Cartões")).not.toBeNull();
     await act(async () => {
       fireEvent.click(toggle("Cartões") as HTMLElement);
     });
-    expect(cards().length).toBe(1);
+    expect(cards()).toHaveLength(1);
     const text = cards()[0]?.textContent ?? "";
     expect(text).toContain("Revisar o build");
     expect(text).toContain("alfa");
@@ -127,7 +127,7 @@ describe("historico-cartoes: the history screen", () => {
     await act(async () => {
       fireEvent.click(toggle("Lista") as HTMLElement);
     });
-    expect(cards().length).toBe(0);
+    expect(cards()).toHaveLength(0);
   });
 
   test("opening a card opens the transcript", async () => {
@@ -136,7 +136,7 @@ describe("historico-cartoes: the history screen", () => {
     await act(async () => {
       fireEvent.click(toggle("Cartões") as HTMLElement);
     });
-    expect(cards().length).toBe(1);
+    expect(cards()).toHaveLength(1);
     const title = within(cards()[0] as HTMLElement).queryByRole("button");
     expect(title).not.toBeNull();
     await act(async () => {

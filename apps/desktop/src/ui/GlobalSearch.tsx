@@ -1,7 +1,14 @@
 import { type KeyboardEvent, useEffect, useState } from "react";
 import { Keycap } from "@/components/shortcuts/keycap";
 import { Input } from "@/components/ui/input";
-import { type AppState, type AppStore, type GlobalHit, needsYou } from "../lib/app-store.ts";
+import type { T } from "../i18n/index.ts";
+import {
+  type AppState,
+  type AppStore,
+  type GlobalHit,
+  needsYou,
+  type PendingItem,
+} from "../lib/app-store.ts";
 import {
   type PaletteItem,
   type PaletteSection,
@@ -9,6 +16,7 @@ import {
   paletteSections,
 } from "../lib/palette.ts";
 import { basename } from "../lib/paths.ts";
+import { pendingText } from "../lib/pending-text.ts";
 import { hasFeature } from "../lib/version.ts";
 
 /** Renders a daemon snippet, where every match comes wrapped in `«` and `»`. */
@@ -53,8 +61,8 @@ export function GlobalSearch(props: {
   const { search, hosts } = props.state;
   const { store } = props;
   const [query, setQuery] = useState(search?.query ?? "");
-  /** Index of the chosen entry in the visible list; -1 is the text field. */
-  const [cursor, setCursor] = useState(-1);
+  /** The chosen entry, by id: a list that updates under the cursor keeps the same item chosen. */
+  const [activeId, setActiveId] = useState<string | null>(null);
   /** The entry whose actions are shown (after Tab). */
   const [actionsOf, setActionsOf] = useState<PaletteItem | null>(null);
   const name = (id: string) => hosts.find((h) => h.id === id)?.name ?? id;
@@ -82,12 +90,16 @@ export function GlobalSearch(props: {
         t: store.i18n.t,
         globalSnippets: store.globalSnippets.list(),
         recents: store.paletteRecents(),
-        waiting: needsYou(props.state).length > 0,
+        ...oldestOf(needsYou(props.state), store.i18n.t),
+        modeSwitch: modeSwitch(store),
       });
   const visible = sections.flatMap((section) => section.items);
+  /** Where the chosen entry is in the visible list; -1 is the text field (or an entry that left). */
+  const cursor = visible.findIndex((item) => item.id === activeId);
+  const setCursor = (at: number) => setActiveId(visible[at]?.id ?? null);
   const back = () => {
     setActionsOf(null);
-    setCursor(-1);
+    setActiveId(null);
   };
 
   /** Opens an entry and remembers it for the Recent section (an action of the Tab list is not one). */
@@ -111,7 +123,8 @@ export function GlobalSearch(props: {
       if (actionsOf) back();
       else if (chosen && chosen.actions.length > 0) {
         setActionsOf(chosen);
-        setCursor(0);
+        // The actions are their own list: its first one is chosen.
+        setActiveId("action:0");
       }
     } else if (e.key === "Escape" && actionsOf) {
       // Back to the list; the dialog only closes from there.
@@ -160,9 +173,11 @@ export function GlobalSearch(props: {
                 className="flex items-baseline gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent aria-selected:bg-accent"
                 onClick={() => choose(item)}
               >
-                <span>{item.label}</span>{" "}
-                <span className="truncate text-muted-foreground text-xs">{item.detail}</span>
-                {item.shortcut && <Keycap className="ml-auto">{item.shortcut}</Keycap>}
+                <span className="shrink-0 whitespace-nowrap">{item.label}</span>{" "}
+                <span className="min-w-0 truncate text-muted-foreground text-xs">
+                  {item.detail}
+                </span>
+                {item.shortcut && <Keycap className="ml-auto shrink-0">{item.shortcut}</Keycap>}
               </button>
             ))}
           </div>
@@ -201,4 +216,29 @@ export function GlobalSearch(props: {
       )}
     </dialog>
   );
+}
+
+/** The mode the palette offers to go to, when the host in view allows a change. */
+function modeSwitch(store: AppStore): "simple" | "full" | null {
+  const hostId = store.uiHostId();
+  const now = hostId ? store.uiMode(hostId) : null;
+  if (!now?.canSwitch) return null;
+  return now.mode === "simple" ? "full" : "simple";
+}
+
+/** The palette's line for the oldest waiting request, and whether it must be opened to be seen. */
+function oldestOf(
+  items: PendingItem[],
+  t: T,
+): { oldest?: { text: string; opens: boolean; key: string } } {
+  const item = items[0];
+  if (!item) return {};
+  const opens = Boolean(item.gate || item.vault || item.risk === "high");
+  return {
+    oldest: {
+      text: `${item.hostName} · ${item.sessionName}: ${pendingText(item, t)}`,
+      opens,
+      key: `${item.hostId}/${item.requestId}`,
+    },
+  };
 }
