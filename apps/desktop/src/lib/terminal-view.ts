@@ -19,10 +19,24 @@ const KEY_ACTIONS: Record<string, TerminalKeyAction> = {
   " ": "snippets",
 };
 
-/** Ctrl+Shift+C/V/F/Space are the app's; everything else, Ctrl+C included, goes to the process. */
-export function terminalKeyAction(event: TerminalKey): TerminalKeyAction {
-  if (!event.ctrlKey || !event.shiftKey || event.altKey || event.metaKey) return "pass";
+/**
+ * Ctrl+Shift+C/V/F/Space are the app's. Ctrl+C goes to the process (it is the interrupt), except on
+ * Windows while something is selected: there it copies, as in Windows Terminal.
+ */
+export function terminalKeyAction(
+  event: TerminalKey,
+  context: { windows?: boolean; selected?: boolean } = {},
+): TerminalKeyAction {
+  if (event.altKey || event.metaKey || !event.ctrlKey) return "pass";
+  if (!event.shiftKey) {
+    return context.windows && context.selected && event.key.toLowerCase() === "c" ? "copy" : "pass";
+  }
   return KEY_ACTIONS[event.key.toLowerCase()] ?? "pass";
+}
+
+/** Whether the app runs on Windows, from the browser's user agent (WebView2 says so; macOS and Linux do not). */
+export function isWindowsHost(userAgent: string): boolean {
+  return /\bWindows\b/i.test(userAgent);
 }
 
 export interface TerminalColors {

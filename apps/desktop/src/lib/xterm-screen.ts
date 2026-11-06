@@ -61,7 +61,7 @@ export interface XtermScreenOptions {
   fontSize: number;
   fontFamily: string;
   clipboard: { copy(text: string): Promise<void>; read(): Promise<string> };
-  /** The host is Windows: Ctrl+C copies when there is a selection (stub: not read yet). */
+  /** The host is Windows: Ctrl+C copies when there is a selection, and interrupts when there is none. */
   windows?: boolean;
   onInput(data: string): void;
   onResize(cols: number, rows: number): void;
@@ -107,8 +107,16 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     terminal.loadAddon(addon);
   terminal.unicode.activeVersion = "11";
 
+  // A program that redraws its screen (a TUI) drops xterm's selection when the selected rows change,
+  // often before the person reaches Copy: the last selection stays until they type.
+  let kept = "";
+  const selected = terminal.onSelectionChange(() => {
+    if (terminal.hasSelection()) kept = terminal.getSelection();
+  });
+  const current = () => (terminal.hasSelection() ? terminal.getSelection() : kept);
   const copy = () => {
-    if (terminal.hasSelection()) options.clipboard.copy(terminal.getSelection()).catch(() => {});
+    const text = current();
+    if (text !== "") options.clipboard.copy(text).catch(() => {});
   };
   const paste = () => {
     options.clipboard.read().then(
@@ -117,10 +125,17 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     );
   };
   const results = search.onDidChangeResults((found) => options.onFindResults?.(found));
-  const input = terminal.onData(options.onInput);
+  const input = terminal.onData((data) => {
+    kept = "";
+    options.onInput(data);
+  });
   const size = terminal.onResize(({ cols, rows }) => options.onResize(cols, rows));
   terminal.attachCustomKeyEventHandler((event) => {
-    switch (terminalKeyAction(event)) {
+    const action = terminalKeyAction(event, {
+      windows: options.windows === true,
+      selected: current() !== "",
+    });
+    switch (action) {
       case "copy":
         copy();
         return false;
@@ -162,8 +177,9 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     copy,
     paste,
     selectAll: () => terminal.selectAll(),
-    hasSelection: () => terminal.hasSelection(),
+    hasSelection: () => current() !== "",
     dispose: () => {
+      selected.dispose();
       results.dispose();
       input.dispose();
       size.dispose();

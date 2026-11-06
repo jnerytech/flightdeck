@@ -2701,8 +2701,12 @@ numa aba, sem SSH.
   shell padrão do host (`pwsh` ou `powershell` no Windows; `$SHELL`, `bash` ou `sh` no Linux) na
   primeira pasta permitida. O painel também lista os terminais vivos, cada um com **Abrir**.
 - **Na aba:** copiar e colar com `Ctrl+Shift+C` / `Ctrl+Shift+V` ou com o menu do botão direito
-  (**Copiar**, que precisa de uma seleção, **Colar** e **Selecionar tudo**; `Ctrl+C` vai para o
-  processo). Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
+  (**Copiar**, que precisa de uma seleção, **Colar** e **Selecionar tudo**). No Windows `Ctrl+C`
+  também copia enquanto há algo selecionado, e vai para o processo (a interrupção) quando não há;
+  nos outros sistemas `Ctrl+C` sempre vai para o processo. Um programa que redesenha a tela (o
+  Claude Code) pode soltar uma seleção antes de você chegar em **Copiar**: a última seleção
+  continua copiável até você digitar. Quando o programa toma o mouse para si, segure `Shift` ao
+  arrastar para selecionar. Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
   atual em outra cor e sua posição ("2 de 5") ao lado da caixa; Enter ou **Próximo resultado**
   vai para o próximo, Shift+Enter ou **Resultado anterior** para o anterior, Esc ou **Fechar
   busca** fecha. Links na saída abrem no navegador (só `http` e `https`). A fonte é a

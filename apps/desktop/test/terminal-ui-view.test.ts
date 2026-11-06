@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  isWindowsHost,
   TERMINAL_FONT_DEFAULT,
   TERMINAL_FONT_FAMILY,
   TERMINAL_FONT_KEY,
@@ -40,6 +41,20 @@ describe("terminal-ui: keys, colors and font", () => {
     expect(terminalKeyAction(key("V", { ctrl: true, shift: true }))).toBe("paste");
     expect(terminalKeyAction(key("F", { ctrl: true, shift: true }))).toBe("search");
     expect(terminalKeyAction(key("c", { ctrl: true }))).toBe("pass");
+    // Ctrl+C is the interrupt; on Windows it copies only while something is selected.
+    expect(terminalKeyAction(key("c", { ctrl: true }), { windows: true, selected: true })).toBe(
+      "copy",
+    );
+    expect(terminalKeyAction(key("c", { ctrl: true }), { windows: true, selected: false })).toBe(
+      "pass",
+    );
+    expect(terminalKeyAction(key("c", { ctrl: true }), { windows: false, selected: true })).toBe(
+      "pass",
+    );
+    expect(terminalKeyAction(key("v", { ctrl: true }), { windows: true, selected: true })).toBe(
+      "pass",
+    );
+    expect(terminalKeyAction(key("c", {}), { windows: true, selected: true })).toBe("pass");
     expect(terminalKeyAction(key("v", { ctrl: true }))).toBe("pass");
     expect(terminalKeyAction(key("C", { ctrl: true, shift: true, alt: true }))).toBe("pass");
     expect(terminalKeyAction(key("C", { shift: true }))).toBe("pass");
@@ -87,5 +102,13 @@ describe("terminal-ui: keys, colors and font", () => {
     expect(
       new TerminalFontController(memoryStorage({ [TERMINAL_FONT_KEY]: "400" }).storage).value,
     ).toBe(24);
+  });
+
+  test("the host is Windows when the user agent says so", () => {
+    expect(
+      isWindowsHost("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Edg/130"),
+    ).toBe(true);
+    expect(isWindowsHost("Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36")).toBe(false);
+    expect(isWindowsHost("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)")).toBe(false);
   });
 });
