@@ -2122,6 +2122,10 @@ export const ptBR = {
     viewer: "Arquivo {path}",
     close: "Fechar",
     opening: "Abrindo…",
+    showChanges: "Mostrar mudanças",
+    showFile: "Mostrar o arquivo",
+    jumpLatestOne: "Ir para a mais recente ({n} mudança nova)",
+    jumpLatestMany: "Ir para a mais recente ({n} mudanças novas)",
   },
   changes: {
     tab: "Mudanças",
