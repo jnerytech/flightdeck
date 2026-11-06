@@ -72,7 +72,7 @@ export function InstallDialog(
           <DialogDescription>{t("pluginsUi.installHint")}</DialogDescription>
         </DialogHeader>
         {preview === null && <LoadingState label={t("agent.loading")} />}
-        {preview && preview.hash === null && (
+        {preview?.hash === null && (
           <InlineNotice tone="error">{t("pluginsUi.noPreview", { name: shortName })}</InlineNotice>
         )}
         {preview?.inventory && <InventoryView inventory={preview.inventory} />}

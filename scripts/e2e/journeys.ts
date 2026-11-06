@@ -679,7 +679,36 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await card.waitFor({ state: "detached", timeout: WAIT });
   },
 
-  // 22. Revoking a project's trust (issue #463): a session that started while the project was
+  // 22. The status bar (issue #491): it counts the hosts and the terminals, and its keep-awake item
+  // (on or holding the computer awake) opens the host's setting for it.
+  "status-bar": async (c) => {
+    await open(c, { name: "hub" });
+    const bar = c.page.getByRole("region", { name: c.t("statusBar.label"), exact: true });
+    await bar.waitFor({ timeout: WAIT });
+    const pattern = (key: "statusBar.hosts" | "statusBar.terminals") => {
+      const text = c.t(key, { online: "@1", total: "@2", n: "@1" });
+      const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`^${escaped.replace("@1", "\\d+").replace("@2", "\\d+")}$`);
+    };
+    await bar.getByRole("button", { name: pattern("statusBar.hosts") }).waitFor({ timeout: WAIT });
+    await bar
+      .getByRole("button", { name: pattern("statusBar.terminals") })
+      .or(bar.getByRole("button", { name: c.t("statusBar.terminalsOne"), exact: true }))
+      .first()
+      .waitFor({ timeout: WAIT });
+    const awake = (state: "on" | "off" | "holding") =>
+      bar.getByRole("button", { name: c.t(`statusBar.keepAwake.${state}`), exact: true });
+    const holdsOn = awake("on").or(awake("holding"));
+    await holdsOn.first().click({ timeout: WAIT });
+    await c.page
+      .getByRole("tab", { name: c.t("hostHome.settings"), exact: true })
+      .click({ timeout: WAIT });
+    await c.page
+      .getByText(c.t("hostPage.keepAwakeTitle"), { exact: true })
+      .waitFor({ timeout: WAIT });
+  },
+
+  // 23. Revoking a project's trust (issue #463): a session that started while the project was
   // trusted keeps the hooks and MCP servers it loaded, says so and offers to restart; the restart
   // clears the notice. The journey ends with the project untrusted again, as the demo seeds it.
   "trust-revoke": async (c) => {
@@ -768,7 +797,7 @@ async function crumbsProblem(page: Page): Promise<string | null> {
   });
 }
 
-/** The tabs share the strip like a browser's: one width, and not under the minimum. */
+/** Since #488 a tab is as wide as its title, as in VS Code: never under the minimum, never past 13rem. */
 async function tabWidthsProblem(page: Page, minimum: number): Promise<string | null> {
   const widths = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>(".tab-item")].map((tab) =>
@@ -776,9 +805,91 @@ async function tabWidthsProblem(page: Page, minimum: number): Promise<string | n
     ),
   );
   if (widths.length === 0) return "no tabs";
-  if (Math.max(...widths) - Math.min(...widths) > 1) return `widths differ: ${widths.join(", ")}`;
+  if (Math.max(...widths) > 208 + 1) return `a tab is ${Math.max(...widths)}px, past 13rem`;
   if (Math.min(...widths) < minimum) return `a tab is ${Math.min(...widths)}px, under ${minimum}px`;
   return null;
+}
+
+/**
+ * The active tab stands out (#488): only it has the accent line on top, at 3:1 or more against
+ * the tab and the bar in both themes, and it reaches the bar's lower edge so it joins the screen
+ * below. Hovering another tab looks different from the active one.
+ */
+async function activeTabProblem(page: Page): Promise<string | null> {
+  const problems = await page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return ["no canvas to read colours"];
+    const rgb = (color: string) => {
+      ctx.clearRect(0, 0, 1, 1);
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, 1, 1);
+      return [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3);
+    };
+    const luminance = (c: number[]) => {
+      const f = (v: number) => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * f(c[0] ?? 0) + 0.7152 * f(c[1] ?? 0) + 0.0722 * f(c[2] ?? 0);
+    };
+    const ratio = (a: number[], b: number[]) => {
+      const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+      return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
+    };
+    const bar = document.querySelector<HTMLElement>(".tab-bar");
+    if (!bar) return ["no tab bar"];
+    const found: string[] = [];
+    const root = document.documentElement;
+    const wasDark = root.classList.contains("dark");
+    for (const dark of [false, true]) {
+      root.classList.toggle("dark", dark);
+      const theme = dark ? "dark" : "light";
+      const items = [...bar.querySelectorAll<HTMLElement>(".tab-item")];
+      const active = items.find((it) => it.querySelector('[role="tab"][aria-selected="true"]'));
+      const lined = items.filter((it) => {
+        const content = getComputedStyle(it, "::before").content;
+        return content !== "none" && content !== "normal" && content !== "";
+      });
+      if (!active || lined.length !== 1 || lined[0] !== active) {
+        found.push(`${theme}: ${lined.length} tabs have the accent line, not only the active one`);
+        continue;
+      }
+      const line = rgb(getComputedStyle(active, "::before").backgroundColor);
+      for (const [name, el] of [
+        ["tab", active],
+        ["bar", bar],
+      ] as const) {
+        const r = ratio(line, rgb(getComputedStyle(el).backgroundColor));
+        if (r < 3) found.push(`${theme}: the accent line is ${r.toFixed(2)}:1 against the ${name}`);
+      }
+    }
+    root.classList.toggle("dark", wasDark);
+    const active = bar.querySelector<HTMLElement>(
+      '.tab-item:has([role="tab"][aria-selected="true"])',
+    );
+    const gap = active
+      ? bar.getBoundingClientRect().bottom - active.getBoundingClientRect().bottom
+      : 0;
+    if (gap > 0.5)
+      found.push(`the active tab ends ${gap}px above the bar's edge, whose line runs under it`);
+    return found;
+  });
+  const other = page.locator('.tab-item:not(:has([role="tab"][aria-selected="true"]))').first();
+  if (await other.count()) {
+    await other.hover();
+    const [hovered, active] = await page.evaluate(() => [
+      getComputedStyle(document.querySelector(".tab-item:hover") ?? document.body).backgroundColor,
+      getComputedStyle(
+        document.querySelector('.tab-item:has([role="tab"][aria-selected="true"])') ??
+          document.body,
+      ).backgroundColor,
+    ]);
+    if (hovered === active) problems.push("a hovered tab looks like the active one");
+    await page.mouse.move(0, 0);
+  }
+  return problems.length ? problems.join("; ") : null;
 }
 
 /** Twelve tabs, as a window left open for a day, with `first` on screen (the active tab). */
@@ -1086,7 +1197,7 @@ export async function layout(c: Context, problems: string[]) {
         );
       }
     }
-    // Equal widths with 12 tabs and with 2, and 12 never under 80px.
+    // Widths that follow the title with 12 tabs and with 2, never under 80px.
     await openCrowded(c, { name: "hub" });
     const crowdedTabs = await tabWidthsProblem(c.page, 80);
     if (crowdedTabs)
@@ -1095,11 +1206,17 @@ export async function layout(c: Context, problems: string[]) {
     const fewTabs = await tabWidthsProblem(c.page, 80);
     if (fewTabs) problems.push(`${c.lang} ${viewport.width}x${viewport.height} 2 abas: ${fewTabs}`);
   }
-  // The tab strip starts at the same x whatever the crumbs say ("Hosts > alfa" is wider than "Settings").
+  // Which tab is open shows at a glance (#488), checked with two tabs at 1280x800.
+  await c.page.setViewportSize({ width: 1280, height: 800 });
+  await openCrowded(c, { name: "hub" }, 2);
+  const activeTab = await activeTabProblem(c.page);
+  if (activeTab) problems.push(`${c.lang} 1280x800 aba ativa: ${activeTab}`);
+  // The tab strip starts at the same x whatever the crumbs say ("Hosts > alfa" is wider than
+  // "Settings"); since #488 it has a row of its own over the area.
   const lefts: number[] = [];
   for (const [, route] of screens.filter(([n]) => n === "host" || n === "configuracoes")) {
     await open(c, route);
-    const box = await c.page.locator(".header-tabs").first().boundingBox();
+    const box = await c.page.locator(".tab-bar").first().boundingBox();
     if (box) lefts.push(Math.round(box.x));
   }
   if (new Set(lefts).size > 1) {

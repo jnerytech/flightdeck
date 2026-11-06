@@ -25,6 +25,8 @@ function setup(initial = "", clipboardFails = false, windows = false) {
   let onData: (data: string) => void = () => {};
   let onResize: (size: { cols: number; rows: number }) => void = () => {};
   let keyHandler: (event: KeyboardEvent) => boolean = () => true;
+  let wheelHandler: (event: WheelEvent) => boolean = () => true;
+  const zooms: string[] = [];
   const addons: unknown[] = [];
   const callbacks: Array<() => void> = [];
   const links: Array<(uri: string) => void> = [];
@@ -61,6 +63,9 @@ function setup(initial = "", clipboardFails = false, windows = false) {
     },
     attachCustomKeyEventHandler: (handler) => {
       keyHandler = handler;
+    },
+    attachCustomWheelEventHandler: (handler) => {
+      wheelHandler = handler;
     },
     dispose: () => void log.push("dispose"),
   };
@@ -119,6 +124,7 @@ function setup(initial = "", clipboardFails = false, windows = false) {
     onSearch: () => void searches++,
     onFindResults: (results) => void found.push(results),
     onLink: (uri) => void linked.push(uri),
+    onZoom: (step) => void zooms.push(step),
   });
   const press = (key: string, ctrl = true, shift = true) =>
     keyHandler({
@@ -143,6 +149,8 @@ function setup(initial = "", clipboardFails = false, windows = false) {
     },
     press,
     keys: (event: KeyboardEvent) => keyHandler(event),
+    wheel: (event: WheelEvent) => wheelHandler(event),
+    zooms,
     constructed: () => constructed,
     searches: () => searches,
     findOptions,
@@ -295,6 +303,37 @@ describe("terminal-ui: the xterm screen", () => {
     expect(s.keys(key("keydown", { altKey: true }))).toBe(true);
     expect(s.keys(key("keydown", { metaKey: true }))).toBe(true);
     expect(s.inputs).toEqual(["\u001b\r"]);
+  });
+
+  test("Ctrl+=, Ctrl+- and Ctrl+0 zoom once per press, kept from the process and from the page's own zoom (issue #476)", () => {
+    const s = setup();
+    let prevented = 0;
+    const key = (k: string, type = "keydown") =>
+      ({
+        key: k,
+        type,
+        ctrlKey: true,
+        shiftKey: false,
+        altKey: false,
+        metaKey: false,
+        preventDefault: () => void prevented++,
+      }) as unknown as KeyboardEvent;
+    expect(s.keys(key("="))).toBe(false);
+    expect(s.keys(key("=", "keyup"))).toBe(false);
+    expect(s.keys(key("-"))).toBe(false);
+    expect(s.keys(key("0"))).toBe(false);
+    expect([s.zooms, prevented, s.inputs]).toEqual([["zoomIn", "zoomOut", "zoomReset"], 4, []]);
+  });
+
+  test("Ctrl+wheel zooms and keeps the page from zooming; the wheel alone stays xterm's scroll (issue #476)", () => {
+    const s = setup();
+    let prevented = 0;
+    const wheel = (ctrlKey: boolean, deltaY: number) =>
+      ({ ctrlKey, deltaY, preventDefault: () => void prevented++ }) as unknown as WheelEvent;
+    expect(s.wheel(wheel(true, -100))).toBe(false);
+    expect(s.wheel(wheel(true, 100))).toBe(false);
+    expect(s.wheel(wheel(false, 100))).toBe(true);
+    expect([s.zooms, prevented]).toEqual([["zoomIn", "zoomOut"], 2]);
   });
 
   test("Ctrl+Shift+V pastes the clipboard through xterm; Ctrl+Shift+F asks for the search; the rest passes", async () => {
