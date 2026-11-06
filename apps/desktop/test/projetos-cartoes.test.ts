@@ -159,7 +159,13 @@ const sample: ProjectCard[] = [
     lastActivity: null,
     costWeekUsd: null,
   },
-].map((c) => ({ hostId: "h", projectId: c.name, projectKey: c.name, ...c }));
+].map((c) => ({
+  hostId: "h",
+  projectId: c.name,
+  projectKey: c.name,
+  columns: { backlog: 0, in_progress: 0, waiting: 0, review: 0, done: 0 },
+  ...c,
+}));
 
 describe("projetos-cartoes: search and sort", () => {
   test("search matches name, host, branch and path, ignoring case and accents", () => {
