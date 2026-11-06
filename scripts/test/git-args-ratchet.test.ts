@@ -109,6 +109,29 @@ describe("git-args-ratchet: no git call gives a base or a branch to git unguarde
     );
   });
 
+  test("git started by another call is read the same way: Bun.spawn, spawnSync, runCommand and an injected exec", () => {
+    expect(calls('Bun.spawn(["git", "rebase", base]);')).toHaveLength(1);
+    expect(calls('Bun.spawnSync(["git", "-C", dir, "log", ref], { cwd });')).toHaveLength(1);
+    expect(calls('await runCommand(["git", "show", `${base}:x`], cwd);')).toHaveLength(1);
+    expect(calls('await this.opts.exec(["git", "-C", dir, "diff", branch]);')).toHaveLength(1);
+    expect(calls('Bun.spawn([whichOnPath("git") ?? "git", ...args], { cwd });')).toHaveLength(1);
+    // A guard, a literal, another program and a constant list are fine.
+    expect(calls('Bun.spawn(["git", "rebase", refArg(base)]);')).toEqual([]);
+    expect(calls('Bun.spawn(["git", "check-ignore", "-z", "--stdin"], { cwd });')).toEqual([]);
+    expect(calls('await exec(["git", "-C", dir, "rev-parse", "--abbrev-ref", "HEAD"]);')).toEqual(
+      [],
+    );
+    expect(calls('Bun.spawn(["node", base]);')).toEqual([]);
+    expect(calls('Bun.spawn(["git", ...CLONE_ARGS]);')).toEqual([]);
+    expect(calls('spawn(["git", "diff", "--end-of-options", base]);')).toEqual([]);
+  });
+
+  test("a forwarder says it is one: its callers are what is checked", () => {
+    const reviewed =
+      '// git-arg: a forwarder: the arguments are made by its callers, which are checked\nBun.spawn(["git", ...args]);';
+    expect(calls(reviewed)).toEqual([]);
+  });
+
   test("the daemon's sources hold no unguarded call", () => {
     expect(
       unguardedInTree(join(ROOT, "apps/daemon/src")).map((f) => `${f.file}:${f.line}`),
