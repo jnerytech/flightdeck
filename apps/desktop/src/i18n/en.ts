@@ -2480,6 +2480,10 @@ export const en: Dictionary = {
     reopen: "Reopen",
     close: "Close terminal",
     closeMessage: "Detach keeps the process running on the host. End process stops it.",
+    pasteTitle: "Paste {n} lines?",
+    pasteMessage:
+      "The program in this terminal has not asked for pasted text to be marked, so each line may run as a command as soon as it lands.",
+    pasteConfirm: "Paste",
     detach: "Detach",
     end: "End process",
     searchLabel: "Search in the terminal",

@@ -2794,7 +2794,10 @@ tab, with no SSH.
   `Shift+Enter` adds a new line in a Claude Code prompt instead of sending it (the same as
   `Alt+Enter`). If grey blocks of an old screen stay behind in Claude Code's side panel, that is
   Claude Code leaving cells uncleared (the same happens in other terminals): `Ctrl+L` or resizing
-  the pane makes it repaint. Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
+  the pane makes it repaint. Pasting several lines into a program that has not asked for pasted
+  text to be marked (bracketed paste; a plain shell prompt, for example) asks first, since each line
+  could run as a command as it lands; Cancel has the focus. Claude Code asks for the marking, so a
+  paste into it goes straight in. Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
   in another color and its position ("2 of 5") beside the box; Enter or **Next match** goes to
   the next one, Shift+Enter or **Previous match** to the previous, Esc or **Close search**
   closes. Links in the output open in the browser (`http` and `https` only). The font is the
