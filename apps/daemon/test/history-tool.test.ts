@@ -90,7 +90,7 @@ describe("history-tool: the reader opens a stored tool call to its input and res
       index: 0,
     });
     const error = ack.error as { reason?: string } | undefined;
-    expect([none?.tool ?? "missing", error?.reason ?? "none"]).toEqual([
+    expect([none === null ? "no answer" : none.tool, error?.reason ?? "none"]).toEqual([
       null,
       "transcript_not_indexed",
     ]);
