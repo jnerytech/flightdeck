@@ -62,6 +62,11 @@ fn locked<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 }
 
 impl Assistant {
+    /// Drops a provider's model list, as after its key was saved or deleted.
+    fn forget(&self, provider: Provider) {
+        let _ = provider;
+    }
+
     fn client(&self) -> Result<guard::Client, Refusal> {
         if let Some(client) = self.client.get() {
             return Ok(client.clone());
@@ -93,6 +98,12 @@ enum Known {
     Absent,
     Capabilities(anthropic::Capabilities),
     Reasoning(Option<openrouter::Reasoning>),
+}
+
+/// A request id keys the cancel: the protocol's shape (a UUID fits), nothing a map could choke on.
+fn request_id(id: &str) -> Result<(), Refusal> {
+    let _ = id;
+    Ok(())
 }
 
 fn store_failed() -> Refusal {
@@ -272,4 +283,41 @@ async fn hits(text: String, ids: Vec<String>) -> Result<Vec<String>, Refusal> {
     })
     .await
     .map_err(|_| store_failed())?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn option(id: &str) -> ModelOption {
+        ModelOption { id: id.into(), label: id.into(), ..ModelOption::default() }
+    }
+
+    #[test]
+    fn a_saved_or_deleted_key_forgets_that_providers_model_list_only() {
+        let state = Assistant::default();
+        let caps = anthropic::Capabilities::default();
+        locked(&state.models).insert(
+            Provider::Anthropic.account(),
+            (Instant::now(), Listing::Anthropic(vec![(option("m"), caps)])),
+        );
+        locked(&state.models).insert(
+            Provider::OpenRouter.account(),
+            (Instant::now(), Listing::OpenRouter(vec![(option("m"), None)])),
+        );
+        assert!(matches!(state.known(Provider::Anthropic, "m"), Known::Capabilities(_)));
+        state.forget(Provider::Anthropic);
+        assert!(matches!(state.known(Provider::Anthropic, "m"), Known::NoList));
+        assert!(matches!(state.known(Provider::OpenRouter, "m"), Known::Reasoning(None)));
+        assert!(matches!(state.known(Provider::OpenRouter, "other"), Known::Absent));
+    }
+
+    #[test]
+    fn a_request_id_is_a_short_token() {
+        assert_eq!(request_id("0b6c1f9e-2c55-4c3e-9a51-6f1c1d2e3f40"), Ok(()));
+        let long = "x".repeat(65);
+        for bad in ["", "a b", long.as_str(), "id\n", "id/../x"] {
+            assert_eq!(request_id(bad).map_err(|r| r.reason), Err("assistant_bad_output"), "{bad:?}");
+        }
+    }
 }
