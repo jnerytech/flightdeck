@@ -68,6 +68,11 @@ export function formatAgo(ms: number, t: T): string {
   return ms < 60_000 ? t("time.now") : t("time.ago", { d: formatDuration(ms, t) });
 }
 
+/** The day a release came out as a person reads it ("Nov 6, 2026", "6 de nov. de 2026"), on its UTC day. */
+export function formatDate(iso: string, lang: Lang): string {
+  return plain(dateFormat(lang, { dateStyle: "medium", timeZone: "UTC" }).format(new Date(iso)));
+}
+
 /** A calendar day ("2026-10-09") as day and month: 09/10 in pt-BR, 10/09 in English. */
 export function formatDay(day: string, lang: Lang): string {
   const [year, month, date] = day.split("-").map(Number) as [number, number, number];
