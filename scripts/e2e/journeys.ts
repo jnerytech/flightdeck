@@ -870,6 +870,35 @@ async function tabWidthsProblem(page: Page, minimum: number): Promise<string | n
 }
 
 /**
+ * The list of all tabs behind the chevron (#576): never wider than 24rem nor the window less 2rem,
+ * no row on two lines, nothing scrolling sideways, and Esc closes it.
+ */
+async function tabListProblem(page: Page): Promise<string | null> {
+  await page.getByRole("button", { name: /^(Todas as abas|All tabs)$/ }).click();
+  await page.getByRole("listbox").waitFor({ timeout: 5000 });
+  const problem = await page.evaluate(() => {
+    const box = document.querySelector<HTMLElement>("[data-slot='tab-overflow']");
+    if (!box) return "the list did not open";
+    const width = box.getBoundingClientRect().width;
+    const most = Math.min(384, window.innerWidth - 32);
+    if (width > most + 1) return `the list is ${Math.round(width)}px, past ${most}px`;
+    const list = box.querySelector<HTMLElement>("[role='listbox']");
+    if (list && list.scrollWidth > list.clientWidth + 1) return "the list scrolls sideways";
+    for (const title of box.querySelectorAll<HTMLElement>("[data-slot='tab-title']")) {
+      if (title.getBoundingClientRect().height > 24) return `"${title.title}" takes two lines`;
+    }
+    return null;
+  });
+  await page.keyboard.press("Escape");
+  const closed = await page
+    .getByRole("listbox")
+    .waitFor({ state: "detached", timeout: 2000 })
+    .then(() => true)
+    .catch(() => false);
+  return problem ?? (closed ? null : "Esc did not close the list");
+}
+
+/**
  * The active tab stands out (#488): only it has the accent line on top, at 3:1 or more against
  * the tab and the bar in both themes, and it reaches the bar's lower edge so it joins the screen
  * below. Hovering another tab looks different from the active one.
@@ -1264,6 +1293,11 @@ export async function layout(c: Context, problems: string[]) {
     await openCrowded(c, { name: "hub" }, 2);
     const fewTabs = await tabWidthsProblem(c.page, 80);
     if (fewTabs) problems.push(`${c.lang} ${viewport.width}x${viewport.height} 2 abas: ${fewTabs}`);
+    // The list of all tabs, with a long session title among them (#576).
+    await openCrowded(c, { name: "session", host: ALFA, id: c.ids.longTitleSession });
+    const tabList = await tabListProblem(c.page);
+    if (tabList)
+      problems.push(`${c.lang} ${viewport.width}x${viewport.height} lista de abas: ${tabList}`);
   }
   // Which tab is open shows at a glance (#488), checked with two tabs at 1280x800.
   await c.page.setViewportSize({ width: 1280, height: 800 });
