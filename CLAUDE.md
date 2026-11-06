@@ -55,11 +55,12 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   (processes, a server, real git) and `e2e` (journeys, smokes). On the Pi, a session runs
   `bun run test:related -- --fast --tier unit,component` (a fifth of the suite's time, no coverage
   gate). A PR's CI runs `--pr`: every unit and component test plus the related tests of the other
-  tiers, with 100% on the changed files. Its Windows shard runs the same selection
-  (`test:related -- --pr --list` and `test:shards --files`, #399), and its e2e journeys run when it
-  changes what they read (the screens, the journeys, the demo, the daemon). Main, the nightly run
-  and a run by hand run the whole suite with the whole-repo 100% gate. `bun run test:tiers` prints
-  the counts.
+  tiers, with 100% on the changed files. A push to main runs the same, from the commit before it
+  (#444). The Windows shards run that selection (`test:related -- --pr --list` and
+  `test:shards --files`, #399; three shards above 100 slow-tier files), and the e2e journeys run
+  when the change touches what they read (the screens, the journeys, the demo, the daemon). The
+  schedule (every 3 hours) and a run by hand run the whole suite with the whole-repo 100% gate;
+  `pr tag` tags only a commit with such a full green run. `bun run test:tiers` prints the counts.
 - Which function a file is missing: `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` runs
   the tests that reach the files (or the ones named after --tests) and lists the functions no test
   called as `file:line`. Bun's coverage only counts them. It instruments in memory, never the sources.
