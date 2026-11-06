@@ -199,7 +199,7 @@ async function headers(
         throw new Error("not a plain file of a sane size");
       const text = await readFile(real, "utf8");
       const head = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)?.[1] ?? "";
-      const keys = [...head.matchAll(/^([A-Za-z][\w-]*)\s*:/gm)]
+      const keys = [...head.matchAll(/^["']?([A-Za-z][\w-]*)["']?[ \t]*:/gm)]
         .map((m) => m[1] as string)
         .filter((key) => HEADER_KEYS.has(key));
       if (keys.length > 0) out.push({ file: name, keys });
