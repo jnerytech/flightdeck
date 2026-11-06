@@ -64,6 +64,7 @@ export interface GuardOptions {
   bars?: Array<{ selector: string; maxHeight: number }>;
   gaps?: GapRule[];
   spacing?: SpacingRules;
+  responsive?: ResponsiveRules;
   /** Regions (by `data-slot`) that scroll as one area: at most one element in each may scroll vertically. */
   single?: string[];
 }
@@ -465,6 +466,22 @@ export const SCROLL_SIZES: ReadonlyArray<{ width: number; height: number }> = [
 ];
 
 /** The spacing guard's rules (#588): heuristic, judged against a baseline that only goes down. */
+/** The narrow-window rules (#641): a page header, its title and the tab row, by selector. */
+export interface ResponsiveRules {
+  header: string;
+  title: string;
+  tabs: string;
+}
+
+/** The narrow-window rules: heuristic, judged against apps/desktop/responsive-baseline.json. */
+export const RESPONSIVE_RULES: Rule[] = [];
+
+export const RESPONSIVE: ResponsiveRules = {
+  header: "[data-none]",
+  title: "[data-none]",
+  tabs: "[data-none]",
+};
+
 export const SPACING_RULES: readonly Rule[] = [
   "block-gap",
   "card-gap",

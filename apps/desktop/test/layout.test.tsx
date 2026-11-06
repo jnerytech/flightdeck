@@ -188,6 +188,13 @@ describe("layout", () => {
     );
   });
 
+  test("Page: the header and the title are named page-header and page-title, for the narrow-window guard (#641)", () => {
+    render(<Page title="Projeto">body</Page>);
+    const title = screen.getByRole("heading", { name: "Projeto" });
+    expect(title.getAttribute("data-slot")).toBe("page-title");
+    expect(title.closest("[data-slot='page-header']") !== null).toBe(true);
+  });
+
   test("Page fill: o corpo é uma coluna flex que ocupa o resto da altura, sem a área de rolagem", () => {
     render(
       <Page title="Terminal" fill>
