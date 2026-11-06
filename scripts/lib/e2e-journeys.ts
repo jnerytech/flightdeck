@@ -31,6 +31,7 @@ export const JOURNEYS: readonly string[] = [
   "wand-composer",
   "notify-prefs",
   "activity",
+  "health-fold",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
