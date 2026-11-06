@@ -1,6 +1,7 @@
 import type { Dirent } from "node:fs";
 import { readdir, realpath, stat } from "node:fs/promises";
 import { basename, dirname, join, sep } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { isInside, resolveAllowedCwd } from "./paths.ts";
 
 export interface DirEntry {
@@ -70,14 +71,14 @@ export async function listDirs(
   }
   const real = await resolveAllowedCwd(path, allowedRoots);
   const dirs: DirEntry[] = [];
-  for (const entry of await readdir(real, { withFileTypes: true })) {
-    if (!options.hidden && entry.name.startsWith(".")) continue;
+  await inSequence(await readdir(real, { withFileTypes: true }), async (entry) => {
+    if (!options.hidden && entry.name.startsWith(".")) return;
     const child = join(real, entry.name);
     const target = entry.isDirectory() ? child : await linkTarget(entry, child);
     if (target !== null && roots.some((root) => isInside(root, target))) {
       dirs.push({ name: entry.name, path: target });
     }
-  }
+  });
   dirs.sort(byName);
   const cap = options.cap ?? DEFAULT_CAP;
   const above = dirname(real);
@@ -110,8 +111,8 @@ export async function listFiles(
     return { path: real, files: [], truncated: false };
   }
   const files: DirEntry[] = [];
-  for (const entry of await readdir(real, { withFileTypes: true })) {
-    if (!options.hidden && entry.name.startsWith(".")) continue;
+  await inSequence(await readdir(real, { withFileTypes: true }), async (entry) => {
+    if (!options.hidden && entry.name.startsWith(".")) return;
     const child = join(real, entry.name);
     let target: string | null = null;
     try {
@@ -123,7 +124,7 @@ export async function listFiles(
     if (target !== null && roots.some((root) => isInside(root, target))) {
       files.push({ name: entry.name, path: target });
     }
-  }
+  });
   files.sort(byName);
   const cap = options.cap ?? DEFAULT_CAP;
   return { path: real, files: files.slice(0, cap), truncated: files.length > cap };
