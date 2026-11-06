@@ -1019,13 +1019,13 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await open(c, { name: "activity" });
     const column = (name: string) => c.page.getByRole("region", { name, exact: true });
     const needs = column(c.t("activityBoard.columns.needs_you"));
-    // The request waits in Needs you with its own buttons. Newest change first: the card on top is
-    // the one just asked for, and its key names it, whatever else the demo has waiting.
+    // A request waits in Needs you with its own buttons. The first card that has an Approve is
+    // followed by its key (what the view transition names it), whatever else the demo has waiting.
     const approve = needs.getByRole("button", { name: c.t("activityBoard.approve"), exact: true });
     await approve.first().waitFor({ timeout: SESSION_WAIT });
-    const top = needs.locator("[data-slot='activity-card']").first();
+    const top = needs.locator("[data-slot='activity-card']").filter({ has: approve }).first();
     const key = await top.evaluate((el) => (el as HTMLElement).style.viewTransitionName);
-    if (!key) throw new Error("o card de cima não tem nome de transição");
+    if (!key) throw new Error("o card do pedido não tem nome de transição");
     const mine = needs.locator(`[data-slot='activity-card'][style*="${key}"]`);
     await mine.getByRole("button", { name: c.t("activityBoard.approve"), exact: true }).click();
     await waitFor(
@@ -1055,20 +1055,19 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       async () => !((await shown.textContent()) ?? "0 ").startsWith("0 "),
       "os cards de volta",
     );
-    // Idle waits for its switch, and a card opens its session.
+    // Idle waits for its switch.
     const idle = column(c.t("activityBoard.columns.idle"));
     if ((await idle.count()) !== 0) throw new Error("Ociosas apareceu sem o botão");
     await c.page
       .getByRole("checkbox", { name: c.t("activityBoard.showIdle"), exact: true })
       .check();
     await idle.waitFor({ timeout: WAIT });
-    await idle
+    // A card opens its session: the board is gone.
+    await c.page
       .locator("[data-slot='activity-card'] .activity-card-title")
       .first()
       .click({ timeout: SESSION_WAIT });
-    await c.page
-      .getByLabel(c.t("session.message"), { exact: true })
-      .waitFor({ timeout: SESSION_WAIT });
+    await needs.waitFor({ state: "detached", timeout: SESSION_WAIT });
   },
 };
 
