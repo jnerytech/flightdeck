@@ -3,7 +3,7 @@ import { en } from "../src/i18n/en.ts";
 import { ptBR } from "../src/i18n/pt-BR.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -53,10 +53,8 @@ async function start(mem: ReturnType<typeof setup>) {
   const store = new AppStore(mem.platform);
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
-  // The App runs init() itself on mount.
-  await act(async () => {
-    await Bun.sleep(0);
-  });
+  // The App runs init() itself on mount; the screen settles before the test reads it.
+  await uiIdle();
   return store;
 }
 
