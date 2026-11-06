@@ -1142,7 +1142,9 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
   Um arquivo que pode guardar uma credencial aparece como **Oculto**. O `.git` e links que levam
   para fora do repositório nunca aparecem. **Filtrar por nome** mantém os nomes que batem entre as
   pastas já abertas, com as pastas no caminho. Uma pasta com mais de 500 entradas mostra as
-  primeiras e avisa. Uma sessão fora do git não tem árvore: a aba diz isso.
+  primeiras e avisa. Uma sessão fora do git não tem árvore: a aba diz isso. Um clique num arquivo
+  o abre abaixo da árvore, só para leitura, com as linhas numeradas; um arquivo de mais de 1 MB, um
+  que não é texto ou uma credencial diz isso no lugar.
 - **Comentários inline:**
   - clique no número de uma linha para comentá-la, e com shift em outra para estender o intervalo.
     Uma linha apagada é comentada pelo lado antigo;
