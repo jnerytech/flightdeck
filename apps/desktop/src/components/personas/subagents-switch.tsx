@@ -8,7 +8,9 @@ const SELECT =
 const MODES: PersonaSubagentsMode[] = ["all", "project", "none"];
 
 /** Phase 20: which personas a project's sessions get as `persona-<id>` subagents. */
-export function SubagentsSwitch(props: { store: AppStore; hostId: string; projectId: string }) {
+export function SubagentsSwitch(
+  props: Readonly<{ store: AppStore; hostId: string; projectId: string }>,
+) {
   const t = useT();
   const id = useId();
   const { store, hostId, projectId } = props;

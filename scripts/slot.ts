@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 /**
  * `bun run slot -- <command...>`: runs the command once the full-gate slot is free, so the heavy
- * commands (full suite, e2e, shots, smokes, builds) never overlap. `--status` shows the holder,
+ * commands (full suite, e2e, shots, smokes, builds) never overlap. Waiters get the slot in the order
+ * they queued. `--status` shows the holder and the waiters with their ages,
  * `--nice` lowers the command's priority, `--priority` lowers the other
  * `bun test` processes of the user while the command runs. The logic is in `lib/slot.ts`; this file is the real
  * files, clock and processes.

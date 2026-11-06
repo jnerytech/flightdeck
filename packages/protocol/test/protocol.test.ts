@@ -1,9 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import {
+  ChangesResult,
   Command,
   type CommandType,
   EventEnvelope,
   Project,
+  ProjectAddPayload,
+  ProjectUpdatePayload,
   SESSION_IMAGE_MAX_BYTES,
   SESSION_IMAGE_MAX_COUNT,
   SESSION_IMAGE_TYPES,
@@ -106,6 +109,7 @@ const validCommands: Record<CommandType, unknown> = {
   "daemon.shutdown": {},
   "daemon.update.apply": { confirm: true },
   "daemon.update.check": {},
+  "host.updates.set": { auto: true },
   "snapshots.list": { claudeSessionId: "c1" },
   "snapshots.files": { claudeSessionId: "c", n: 3 },
   "mcp.status": { sessionId: "s1" },
@@ -709,5 +713,62 @@ describe("session.init commands (the / menu)", () => {
   test("a command needs a known kind", () => {
     const commands = [{ name: "x", description: "", kind: "other" }] as unknown;
     expect(SessionEvent.safeParse({ ...init, commands }).success).toBe(false);
+  });
+});
+
+describe("changes-cap: a file the daemon would not send is listed with a marker and its size", () => {
+  const file = {
+    path: "dump.log",
+    oldPath: null,
+    status: "added" as const,
+    additions: 3,
+    deletions: 0,
+    uncommitted: true,
+    binary: false,
+    hunks: [],
+  };
+  const result = (files: unknown[]) => ({
+    target: "session:s1",
+    root: "/w",
+    base: null,
+    files,
+    position: null,
+  });
+  test("tooLarge and bytes survive a parse", () => {
+    const sent = result([{ ...file, tooLarge: true, bytes: 209_715_200 }]);
+    expect(ChangesResult.parse(sent).files[0]).toEqual({
+      ...file,
+      tooLarge: true,
+      bytes: 209_715_200,
+    });
+  });
+  test("a daemon that does not know the marker still parses: the file is simply not too large", () => {
+    const parsed = ChangesResult.parse(result([file])).files[0];
+    expect(parsed?.tooLarge).toBeUndefined();
+    expect(parsed?.bytes).toBeUndefined();
+  });
+  test("a negative size is refused", () => {
+    expect(ChangesResult.safeParse(result([{ ...file, tooLarge: true, bytes: -1 }])).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("git-ref-protocol: a project's base branch is a branch name", () => {
+  const add = (baseBranch: unknown) => ProjectAddPayload.safeParse({ path: "/w/p", baseBranch });
+  const update = (baseBranch: unknown) =>
+    ProjectUpdatePayload.safeParse({ projectId: "p1", baseBranch });
+  test("a name git accepts is kept, in an add and in an update, and no base at all is fine", () => {
+    expect(add("main").success).toBe(true);
+    expect(add("release/1.2").success).toBe(true);
+    expect(update("feature/ü-é").success).toBe(true);
+    expect(ProjectAddPayload.safeParse({ path: "/w/p" }).success).toBe(true);
+    expect(ProjectUpdatePayload.safeParse({ projectId: "p1" }).success).toBe(true);
+  });
+  test("one that git would read as an option, or that is not a branch name, is refused", () => {
+    for (const bad of ["--output=/tmp/stolen", "-main", "a..b", "a b", "x.lock", ""]) {
+      expect(add(bad).success).toBe(false);
+      expect(update(bad).success).toBe(false);
+    }
   });
 });

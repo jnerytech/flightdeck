@@ -21,7 +21,7 @@ const BLOCKS = [
   "command-message",
   "command-args",
 ];
-const BLOCK = new RegExp(`<(${BLOCKS.join("|")})>[\\s\\S]*?</\\1>`, "g");
+const BLOCK = new RegExp(String.raw`<(${BLOCKS.join("|")})>[\s\S]*?</\1>`, "g");
 const OPEN_TAG = new RegExp(`</?(?:${BLOCKS.join("|")})>`, "g");
 const SENT_MESSAGE = /^Another Claude session sent a message:/i;
 // biome-ignore lint/suspicious/noControlCharactersInRegex: ANSI colors in a command's output

@@ -10,13 +10,15 @@ import { PersonaPicker } from "./persona-picker";
  * Phase 20: "Aplicar persona" and "Voltar ao normal" on a session that is already open. The
  * persona goes as a message of the conversation, not as the system prompt, and the app says so.
  */
-export function PersonaSwitch(props: {
-  store: AppStore;
-  hostId: string;
-  target: { sessionId: string } | { claudeSessionId: string };
-  /** The persona the session is in, when known. */
-  current: SessionPersona | null;
-}) {
+export function PersonaSwitch(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    target: { sessionId: string } | { claudeSessionId: string };
+    /** The persona the session is in, when known. */
+    current: SessionPersona | null;
+  }>,
+) {
   const t = useT();
   const { store, hostId, target } = props;
   const [value, setValue] = useState("");

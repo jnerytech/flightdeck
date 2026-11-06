@@ -24,16 +24,18 @@ const LIST_SHARE = 0.45;
  * more than 45% of it, and a narrow area shows one pane at a time (the detail brings a button
  * back to the list).
  */
-export function SplitView(props: {
-  list: ReactNode;
-  detail: ReactNode | null;
-  empty: ReactNode;
-  onClose(): void;
-  labels: { resize: string; back: string };
-  /** The width the list starts with (default 380) and what to do when it changes. */
-  initialWidth?: number;
-  onResize?(width: number): void;
-}) {
+export function SplitView(
+  props: Readonly<{
+    list: ReactNode;
+    detail: ReactNode | null;
+    empty: ReactNode;
+    onClose(): void;
+    labels: { resize: string; back: string };
+    /** The width the list starts with (default 380) and what to do when it changes. */
+    initialWidth?: number;
+    onResize?(width: number): void;
+  }>,
+) {
   const box = useRef<HTMLDivElement>(null);
   const area = useWidth(box);
   const narrow = area > 0 && area < NARROW;

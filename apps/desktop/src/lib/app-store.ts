@@ -57,7 +57,7 @@ import type {
   WatchSettings,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { byCodeUnit, EPHEMERAL_EVENTS, parsePairingLink } from "@flightdeck/protocol";
+import { byCodeUnit, EPHEMERAL_EVENTS, inSequence, parsePairingLink } from "@flightdeck/protocol";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type {
@@ -310,6 +310,8 @@ export interface AppUpdateState {
   upToDate: boolean;
   /** Why the last check or install failed. */
   error: string | null;
+  /** Issue #280: the version downloaded in the background, ready to install on a restart. */
+  ready: string | null;
 }
 
 /** How often the app looks for its own update while open. */
@@ -478,6 +480,8 @@ export interface Settings {
   shortcutError: string | null;
   /** Phase 9: look for app updates at startup and every 6 h. */
   notifyUpdates: boolean;
+  /** Issue #280: a newer version downloads by itself, to install on a restart (on by default). */
+  autoUpdate: boolean;
   updaterSupported: boolean;
 }
 
@@ -698,6 +702,8 @@ export const PALETTE_RECENTS_KEY = "flightdeck.paletteRecents";
 /** How many used palette entries are kept (the palette shows five). */
 const PALETTE_RECENTS_KEPT = 12;
 export const NOTIFY_UPDATES_KEY = "flightdeck.notifyUpdates";
+/** Issue #280: the app downloads a newer version by itself; "false" turns it off. */
+export const AUTO_UPDATE_KEY = "flightdeck.autoUpdate";
 
 export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
 
@@ -866,7 +872,7 @@ export class AppStore {
       notices: [],
       inbox: [],
       hostsLoaded: false,
-      appUpdate: { offer: null, upToDate: false, error: null },
+      appUpdate: { offer: null, upToDate: false, error: null, ready: null },
       // Defaults: close to tray on, start with Windows off.
       settings: {
         closeToTray: true,
@@ -877,6 +883,7 @@ export class AppStore {
         shortcutProblem: null,
         shortcutError: null,
         notifyUpdates: true,
+        autoUpdate: true,
         updaterSupported: platform.updater.supported,
       },
     };
@@ -1035,30 +1042,39 @@ export class AppStore {
       this.platform.autostart.supported && (await this.platform.autostart.isEnabled());
     const globalShortcut = this.platform.storage.getItem(SHORTCUT_KEY) ?? DEFAULT_SHORTCUT;
     const notifyUpdates = this.platform.storage.getItem(NOTIFY_UPDATES_KEY) !== "false";
+    const autoUpdate = this.platform.storage.getItem(AUTO_UPDATE_KEY) !== "false";
     this.update({
-      settings: { ...this.state.settings, closeToTray, autostart, globalShortcut, notifyUpdates },
+      settings: {
+        ...this.state.settings,
+        closeToTray,
+        autostart,
+        globalShortcut,
+        notifyUpdates,
+        autoUpdate,
+      },
     });
     // Client budgets are looked at every few minutes, and when a host with costs comes online.
     this.clientBudgetTimer = setInterval(
       () => void this.checkClientBudgets(),
       this.options.clientBudgetIntervalMs ?? CLIENT_BUDGET_INTERVAL_MS,
     );
-    if (this.platform.updater.supported && notifyUpdates) {
+    if (this.platform.updater.supported && (notifyUpdates || autoUpdate)) {
       void this.checkAppUpdate();
       this.updateTimer = setInterval(() => {
-        if (this.state.settings.notifyUpdates) void this.checkAppUpdate();
+        const { notifyUpdates, autoUpdate } = this.state.settings;
+        if (notifyUpdates || autoUpdate) void this.checkAppUpdate();
       }, this.options.appUpdateIntervalMs ?? APP_UPDATE_INTERVAL_MS);
     }
     if (this.platform.globalShortcut.supported) await this.registerShortcut(globalShortcut);
     this.offTrayAction?.();
     this.offTrayAction = this.platform.onTrayAction((action) => this.onTrayAction(action));
-    for (const config of loadHosts(this.platform.storage)) {
+    await inSequence(loadHosts(this.platform.storage), async (config) => {
       this.update({
         hosts: [...this.state.hosts, newHostView(config)],
       });
       const token = await this.platform.secrets.get(config.id);
       if (token) this.connect(config, token);
-    }
+    });
     this.update({ hostsLoaded: true });
     // Last: the saved hosts must not wait for it.
     if (this.platform.terminal.supported) {
@@ -1578,10 +1594,10 @@ export class AppStore {
       .map(async (host) => {
         const conn = this.connections.get(host.id) as HostConnection;
         const projects = await this.loadProjects(host.id);
-        for (const project of projects ?? []) {
+        await inSequence(projects ?? [], async (project) => {
           const board = await quiet(conn.request("board.get", { projectId: project.id }));
           for (const card of cardsIn(board)) this.onCard(host.id, card);
-        }
+        });
       });
     const targets = this.state.hosts
       .filter(
@@ -1825,68 +1841,82 @@ export class AppStore {
     await Promise.all(
       this.state.hosts
         .filter((host) => host.status === "online")
-        .map(async (host) => {
-          const conn = this.connections.get(host.id) as HostConnection;
-          const named = hasFeature(host.hostInfo?.features, "names", false);
-          const withBackground = hasFeature(host.hostInfo?.features, "bg", false);
-          const [managed, history, external, standard, background] = await Promise.all([
-            quiet(conn.request("session.list", {})),
-            quiet(conn.request("history.list", { limit: HISTORY_LIST_LIMIT })),
-            quiet(conn.request("external.list", {})),
-            named ? quiet(conn.request("names.list", {})) : null,
-            withBackground ? quiet(conn.request("bg.list", {})) : null,
-          ]);
-          // Only what differs from what the state holds is replaced, so a refresh that finds the
-          // same lists tells nobody (the screens compare by reference).
-          const meta = { ...this.state.meta };
-          const externals = { ...this.state.externals };
-          let metaChanged = false;
-          let externalsChanged = false;
-          const putMeta = (key: string, value: SessionMeta) => {
-            if (sameJson(meta[key], value)) return;
-            meta[key] = value;
-            metaChanged = true;
-          };
-          for (const s of [...(managed?.sessions ?? []), ...(history?.sessions ?? [])]) {
-            if (s.claudeSessionId && s.meta)
-              putMeta(sessionKey(host.id, s.claudeSessionId), s.meta);
-          }
-          for (const s of external?.sessions ?? []) {
-            const key = sessionKey(host.id, s.claudeSessionId);
-            // A list read before a hook but answered after its frame is older than what the
-            // frame put in the state: it must not undo it.
-            const held = externals[key];
-            const older =
-              held !== undefined && Date.parse(s.lastEventAt) < Date.parse(held.lastEventAt);
-            if (!older && !sameJson(held, s)) {
-              externals[key] = s;
-              externalsChanged = true;
-            }
-            if (s.meta) putMeta(key, s.meta);
-          }
-          // A request that failed (`null`: a busy host, a timeout) says nothing about the list, so
-          // the one the state holds stays; an empty answer is the only way a list empties.
-          const before = this.state.hub[host.id];
-          const lists = {
-            managed: managed ? managed.sessions : (before?.managed ?? []),
-            history: history ? history.sessions : (before?.history ?? []),
-          };
-          const standardNames = standard ? standard.names : (this.state.names[host.id] ?? []);
-          const patch: Partial<AppState> = {};
-          if (!sameJson(this.state.hub[host.id], lists)) {
-            patch.hub = { ...this.state.hub, [host.id]: lists };
-          }
-          if (!sameJson(this.state.names[host.id], standardNames)) {
-            patch.names = { ...this.state.names, [host.id]: standardNames };
-          }
-          if (background && !sameJson(this.state.background[host.id], background)) {
-            patch.background = { ...this.state.background, [host.id]: background };
-          }
-          if (metaChanged) patch.meta = meta;
-          if (externalsChanged) patch.externals = externals;
-          if (Object.keys(patch).length > 0) this.update(patch);
-        }),
+        .map((host) => this.refreshHost(host)),
     );
+  }
+
+  /** The session lists of one online host, read and folded into the state when they changed. */
+  private async refreshHost(host: HostView): Promise<void> {
+    const conn = this.connections.get(host.id) as HostConnection;
+    const named = hasFeature(host.hostInfo?.features, "names", false);
+    const withBackground = hasFeature(host.hostInfo?.features, "bg", false);
+    const [managed, history, external, standard, background] = await Promise.all([
+      quiet(conn.request("session.list", {})),
+      quiet(conn.request("history.list", { limit: HISTORY_LIST_LIMIT })),
+      quiet(conn.request("external.list", {})),
+      named ? quiet(conn.request("names.list", {})) : null,
+      withBackground ? quiet(conn.request("bg.list", {})) : null,
+    ]);
+    const patch: Partial<AppState> = this.changedMeta(host.id, managed, history, external);
+    // A request that failed (`null`: a busy host, a timeout) says nothing about the list, so
+    // the one the state holds stays; an empty answer is the only way a list empties.
+    const before = this.state.hub[host.id];
+    const lists = {
+      managed: managed ? managed.sessions : (before?.managed ?? []),
+      history: history ? history.sessions : (before?.history ?? []),
+    };
+    const standardNames = standard ? standard.names : (this.state.names[host.id] ?? []);
+    if (!sameJson(this.state.hub[host.id], lists)) {
+      patch.hub = { ...this.state.hub, [host.id]: lists };
+    }
+    if (!sameJson(this.state.names[host.id], standardNames)) {
+      patch.names = { ...this.state.names, [host.id]: standardNames };
+    }
+    if (background && !sameJson(this.state.background[host.id], background)) {
+      patch.background = { ...this.state.background, [host.id]: background };
+    }
+    if (Object.keys(patch).length > 0) this.update(patch);
+  }
+
+  /**
+   * The `meta` and `externals` of the state with what the lists say, each only when it differs from
+   * what the state holds, so a refresh that finds the same lists tells nobody (the screens compare
+   * by reference).
+   */
+  private changedMeta(
+    hostId: string,
+    managed: { sessions: Array<{ claudeSessionId: string | null; meta?: SessionMeta }> } | null,
+    history: { sessions: Array<{ claudeSessionId: string | null; meta?: SessionMeta }> } | null,
+    external: { sessions: ExternalSession[] } | null,
+  ): Partial<AppState> {
+    const meta = { ...this.state.meta };
+    const externals = { ...this.state.externals };
+    let metaChanged = false;
+    let externalsChanged = false;
+    const putMeta = (key: string, value: SessionMeta) => {
+      if (sameJson(meta[key], value)) return;
+      meta[key] = value;
+      metaChanged = true;
+    };
+    for (const s of [...(managed?.sessions ?? []), ...(history?.sessions ?? [])]) {
+      if (s.claudeSessionId && s.meta) putMeta(sessionKey(hostId, s.claudeSessionId), s.meta);
+    }
+    for (const s of external?.sessions ?? []) {
+      const key = sessionKey(hostId, s.claudeSessionId);
+      // A list read before a hook but answered after its frame is older than what the
+      // frame put in the state: it must not undo it.
+      const held = externals[key];
+      const older = held !== undefined && Date.parse(s.lastEventAt) < Date.parse(held.lastEventAt);
+      if (!older && !sameJson(held, s)) {
+        externals[key] = s;
+        externalsChanged = true;
+      }
+      if (s.meta) putMeta(key, s.meta);
+    }
+    return {
+      ...(metaChanged ? { meta } : {}),
+      ...(externalsChanged ? { externals } : {}),
+    };
   }
 
   /** Renames, pins or archives a session (managed or external) of a host. */
@@ -2228,7 +2258,7 @@ export class AppStore {
     decision: "allow" | "deny",
     answer: Answer = {},
   ): Promise<void> {
-    const { updatedPermissions, message, updatedInput } = answer;
+    const { updatedPermissions, message, updatedInput, held } = answer;
     if (this.unheld(hostId, requestId, decision, answer)) return;
     if (decision === "allow") startMeasure("approve");
     const question = this.vaultQuestions.get(requestId);
@@ -2242,6 +2272,7 @@ export class AppStore {
           ...(updatedPermissions ? { updatedPermissions } : {}),
           ...(message ? { message } : {}),
           ...(updatedInput ? { updatedInput } : {}),
+          ...(decision === "allow" && held ? { held: true } : {}),
         });
       } catch (error) {
         this.fail(error);
@@ -2268,7 +2299,7 @@ export class AppStore {
   }
 
   respond(requestId: string, decision: "allow" | "deny", answer: Answer = {}): Promise<void> {
-    const { updatedPermissions, message, updatedInput } = answer;
+    const { updatedPermissions, message, updatedInput, held } = answer;
     const hostId = this.state.selected?.hostId;
     if (hostId && this.unheld(hostId, requestId, decision, answer)) return Promise.resolve();
     return this.onSelected((conn) =>
@@ -2278,6 +2309,7 @@ export class AppStore {
         ...(message ? { message } : {}),
         ...(updatedPermissions ? { updatedPermissions } : {}),
         ...(updatedInput ? { updatedInput } : {}),
+        ...(decision === "allow" && held ? { held: true } : {}),
       }),
     );
   }
@@ -2325,10 +2357,29 @@ export class AppStore {
   async checkAppUpdate(): Promise<void> {
     try {
       const offer = await this.platform.updater.check();
-      this.update({ appUpdate: { offer, upToDate: offer === null, error: null } });
+      this.setAppUpdate({ offer, upToDate: offer === null, error: null });
+      if (offer && this.state.settings.autoUpdate) await this.downloadAppUpdate(offer.version);
     } catch (error) {
       this.setAppUpdate({
         error: this.i18n.t("messages.updateCheckFailed", {
+          error: (error as Error).message ?? String(error),
+        }),
+      });
+    }
+  }
+
+  /**
+   * Issue #280: downloads the version on offer in the background, once; the banner then offers to
+   * restart into it. A failure says why and is tried again at the next check.
+   */
+  private async downloadAppUpdate(version: string): Promise<void> {
+    if (this.state.appUpdate.ready === version) return;
+    try {
+      await this.platform.updater.download();
+      this.setAppUpdate({ ready: version });
+    } catch (error) {
+      this.setAppUpdate({
+        error: this.i18n.t("messages.updateDownloadFailed", {
           error: (error as Error).message ?? String(error),
         }),
       });
@@ -2351,6 +2402,11 @@ export class AppStore {
   /** "Depois": the banner goes until the next check. */
   dismissAppUpdate(): void {
     this.setAppUpdate({ offer: null });
+  }
+
+  setAutoUpdate(enabled: boolean): void {
+    this.platform.storage.setItem(AUTO_UPDATE_KEY, String(enabled));
+    this.update({ settings: { ...this.state.settings, autoUpdate: enabled } });
   }
 
   setNotifyUpdates(enabled: boolean): void {
@@ -2494,20 +2550,24 @@ export class AppStore {
         () => {},
       );
     }
-    if (status !== "online") {
-      for (const [key, listeners] of this.terminalListeners) {
-        if (key.startsWith(`${hostId}|`)) for (const listener of listeners) listener.offline();
-      }
+    if (status !== "online") this.tellTerminalsOffline(hostId);
+    if (status === "connecting") this.dropPartialText(hostId);
+  }
+
+  /** The terminals of the host are told it is gone. */
+  private tellTerminalsOffline(hostId: string): void {
+    for (const [key, listeners] of this.terminalListeners) {
+      if (key.startsWith(`${hostId}|`)) for (const listener of listeners) listener.offline();
     }
-    if (status === "connecting") {
-      // Partial text from before the drop will never be completed by a delta; drop it.
-      const sessions = { ...this.state.sessions };
-      for (const key of Object.keys(sessions)) {
-        if (key.startsWith(`${hostId}/`))
-          sessions[key] = endStreaming(sessions[key] as SessionState);
-      }
-      this.update({ sessions });
+  }
+
+  /** Partial text from before the drop will never be completed by a delta; drop it. */
+  private dropPartialText(hostId: string): void {
+    const sessions = { ...this.state.sessions };
+    for (const key of Object.keys(sessions)) {
+      if (key.startsWith(`${hostId}/`)) sessions[key] = endStreaming(sessions[key] as SessionState);
     }
+    this.update({ sessions });
   }
 
   /**
@@ -3153,7 +3213,7 @@ export class AppStore {
     const run = async () => {
       do {
         this.clientBudgetAgain = false;
-        await this.lookAtClientBudgets();
+        await this.lookAtClientBudgets(); // NOSONAR: sequential by design: each pass needs the answer of the one before
       } while (this.clientBudgetAgain);
     };
     this.clientBudgetCheck = run().finally(() => {
@@ -3356,20 +3416,20 @@ export class AppStore {
    */
   async vaultValuesForScan(): Promise<string[]> {
     const pieces: string[] = [];
-    for (const secret of this.vault.list()) {
+    await inSequence(this.vault.list(), async (secret) => {
       const value = await this.vault.value(secret.id);
-      if (value === null) continue;
+      if (value === null) return;
       // A whole value can be long and many-lined: what a history line would carry is one line,
       // and of an env set, one variable's value.
       for (const line of value.split(/\r?\n/)) {
         const assigned =
-          secret.type === "env" ? line.match(/^\s*[A-Za-z_][A-Za-z0-9_]*\s*=(.*)$/) : null;
+          secret.type === "env" ? /^\s*[A-Za-z_][A-Za-z0-9_]*\s*=(.*)$/.exec(line) : null;
         const piece = (assigned ? (assigned[1] as string) : line)
           .trim()
           .replace(/^(["'])(.*)\1$/, "$2");
         if (piece.length >= 6) pieces.push(piece);
       }
-    }
+    });
     return pieces;
   }
 
@@ -3485,9 +3545,9 @@ export class AppStore {
     for (const host of this.state.hosts) {
       if (host.status !== "online" || !hasFeature(host.hostInfo?.features, "watch", false))
         continue;
-      const found = await this.hostCommand(host.id, "watch.byUrl", { url });
+      const found = await this.hostCommand(host.id, "watch.byUrl", { url }); // NOSONAR: hosts are asked in order and the first that knows the address wins
       if (found?.via === "card" && found.trace) {
-        const card = await this.hostCommand(host.id, "card.get", { cardId: found.trace.cardId });
+        const card = await this.hostCommand(host.id, "card.get", { cardId: found.trace.cardId }); // NOSONAR: hosts are asked in order and the first that knows the address wins
         if (card) {
           return { name: "card", host: host.id, projectId: card.projectId, cardId: card.id };
         }
@@ -3608,27 +3668,37 @@ export class AppStore {
   ): Promise<{ ok: true } | Extract<HostResult<never>, { ok: false }>> {
     const secret = this.vault.list().find((s) => s.id === secretId);
     const accepted: string[] = [];
+    let refusal: Extract<HostResult<never>, { ok: false }> | null = null;
     for (const host of this.state.hosts) {
       if (host.status !== "online" || !secret?.allowedHosts.includes(host.id)) continue;
-      const result = await this.hostRequest(host.id, "vault.rules.set", {
-        secretId,
-        tags: secret.tags,
-        rules: this.effectiveVaultRules(secret, rules),
-      });
-      if (!result.ok) {
-        // The hosts that took the refused set go back to the saved one: none keeps rules the
-        // app did not save (they could be looser).
-        const saved = this.rules.get(secretId);
-        for (const hostId of accepted) {
-          await this.hostRequest(hostId, "vault.rules.set", {
+      const result =
+        await /* NOSONAR: stops at the first host that refuses, to put back the ones that accepted */ this.hostRequest(
+          host.id,
+          "vault.rules.set",
+          {
             secretId,
             tags: secret.tags,
-            rules: this.effectiveVaultRules(secret, saved),
-          });
-        }
-        return result;
+            rules: this.effectiveVaultRules(secret, rules),
+          },
+        );
+      if (!result.ok) {
+        refusal = result;
+        break;
       }
       accepted.push(host.id);
+    }
+    if (refusal && secret) {
+      // The hosts that took the refused set go back to the saved one: none keeps rules the
+      // app did not save (they could be looser).
+      const saved = this.rules.get(secretId);
+      await inSequence(accepted, async (hostId) => {
+        await this.hostRequest(hostId, "vault.rules.set", {
+          secretId,
+          tags: secret.tags,
+          rules: this.effectiveVaultRules(secret, saved),
+        });
+      });
+      return refusal;
     }
     this.rules.set(secretId, rules);
     for (const hostId of accepted) {
@@ -3681,51 +3751,62 @@ export class AppStore {
   }
 
   /**
+   * Sends one host the rules of one secret when the scope changed what it holds. Returns the name of
+   * the client whose projects changed while it stays scoped (so a widening is said), else null.
+   */
+  private async pushScopeTo(
+    host: HostView,
+    secret: SecretMeta,
+    rules: unknown[],
+    text: string,
+  ): Promise<string | null> {
+    const key = `${host.id}/${secret.id}`;
+    const before = this.vaultScopeSent.get(key);
+    const scoped = text.includes(SCOPE_RULE_PREFIX);
+    // Nothing of this secret was sent by the scope, and none is now: leave it alone.
+    if (before === undefined ? !scoped : before === text) return null;
+    const result = await this.hostRequest(host.id, "vault.rules.set", {
+      secretId: secret.id,
+      tags: secret.tags,
+      rules,
+    });
+    if (!result.ok) {
+      // Not held in its client on that host: said, not left to be found out.
+      const client = scopingClient(secret, this.state.clientList);
+      this.fail(
+        new Error(result.code),
+        this.i18n.t("clients.scopeRefused", {
+          host: host.name,
+          name: client?.name ?? "",
+          secret: secret.name,
+          message: result.message,
+        }),
+      );
+      return null;
+    }
+    this.vaultScopeSent.set(key, text);
+    if (!scoped || !before?.includes(SCOPE_RULE_PREFIX)) return null;
+    const client = this.state.clientList.find((c) => text.includes(`${SCOPE_RULE_PREFIX}${c.id}:`));
+    return client?.name ?? null;
+  }
+
+  /**
    * Sends the hosts what changed in the rules of scoped secrets: a client's projects came or went,
    * or scope was turned on or off (the own rules go back). A change in the projects of a client
    * that stays scoped says so, so a widening is never silent.
    */
   private async pushVaultScopes(): Promise<void> {
     const changed = new Set<string>();
-    for (const secret of this.vault.list()) {
+    await inSequence(this.vault.list(), async (secret) => {
       const own = this.rules.get(secret.id);
       const rules = this.effectiveVaultRules(secret, own);
       const text = JSON.stringify(rules);
-      for (const host of this.state.hosts) {
-        if (host.status !== "online" || !secret.allowedHosts.includes(host.id)) continue;
-        const key = `${host.id}/${secret.id}`;
-        const before = this.vaultScopeSent.get(key);
-        const scoped = text.includes(SCOPE_RULE_PREFIX);
-        // Nothing of this secret was sent by the scope, and none is now: leave it alone.
-        if (before === undefined ? !scoped : before === text) continue;
-        const result = await this.hostRequest(host.id, "vault.rules.set", {
-          secretId: secret.id,
-          tags: secret.tags,
-          rules,
-        });
-        if (!result.ok) {
-          // Not held in its client on that host: said, not left to be found out.
-          const client = scopingClient(secret, this.state.clientList);
-          this.fail(
-            new Error(result.code),
-            this.i18n.t("clients.scopeRefused", {
-              host: host.name,
-              name: client?.name ?? "",
-              secret: secret.name,
-              message: result.message,
-            }),
-          );
-          continue;
-        }
-        this.vaultScopeSent.set(key, text);
-        if (scoped && before?.includes(SCOPE_RULE_PREFIX)) {
-          const client = this.state.clientList.find((c) =>
-            text.includes(`${SCOPE_RULE_PREFIX}${c.id}:`),
-          );
-          if (client) changed.add(client.name);
-        }
-      }
-    }
+      await inSequence(this.state.hosts, async (host) => {
+        if (host.status !== "online" || !secret.allowedHosts.includes(host.id)) return;
+        const widened = await this.pushScopeTo(host, secret, rules, text);
+        if (widened) changed.add(widened);
+      });
+    });
     for (const name of changed) this.success(this.i18n.t("clients.scopeChanged", { name }));
   }
 
@@ -3797,15 +3878,16 @@ export class AppStore {
   }
 
   /** Approves a request for a secret for the rest of the requester's session (phase 19). */
-  async approveVaultForSession(hostId: string, requestId: string): Promise<void> {
+  approveVaultForSession(hostId: string, requestId: string): Promise<void> {
     // Only where the rule allows it and no hold is needed: the session approval has no button to
     // hold, so it can never stand in for one.
     const item = this.state.vaultApprovals.find(
       (i) => i.hostId === hostId && i.requestId === requestId,
     );
     // A high-risk request (a free command, a rule that needs the hold) never gets it (#244).
-    if (!item?.vaultOnce || item.risk === "high") return;
+    if (!item?.vaultOnce || item.risk === "high") return Promise.resolve();
     this.vaultQuestions.get(requestId)?.({ scope: "session", via: "app" });
+    return Promise.resolve();
   }
 
   /** The policy of the options, or the one that puts action requests to the user. */

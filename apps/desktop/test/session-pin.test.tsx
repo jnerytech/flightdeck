@@ -3,6 +3,12 @@ import { registerDom } from "./dom.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
+
+/** The person scrolls: the wheel, then the scroll event the browser sends for it. */
+const personScrolls = (el: Element) => {
+  fireEvent.wheel(el, { deltaY: -120 });
+  fireEvent.scroll(el);
+};
 const { SessionView } = await import("../src/ui/SessionView.tsx");
 const { emptySession } = await import("../src/lib/session-state.ts");
 
@@ -80,7 +86,7 @@ describe("session-pin: the conversation stays at its end while you follow it", (
   test("a size change while at the end keeps the end in view, with no Ir para a última", async () => {
     render(<SessionView title="s" session={session(true)} actions={actions} />);
     const s = scroller({ scroll: 1000, client: 400, top: 600 });
-    await act(async () => void fireEvent.scroll(s.el));
+    await act(async () => void personScrolls(s.el));
     s.size.scroll = 1080;
     s.size.client = 300;
     await resized();
@@ -91,7 +97,7 @@ describe("session-pin: the conversation stays at its end while you follow it", (
   test("a size change while reading earlier leaves you where you were", async () => {
     render(<SessionView title="s" session={session(true)} actions={actions} />);
     const s = scroller({ scroll: 1000, client: 400, top: 100 });
-    await act(async () => void fireEvent.scroll(s.el));
+    await act(async () => void personScrolls(s.el));
     s.size.scroll = 1080;
     await resized();
     expect(s.size.top).toBe(100);

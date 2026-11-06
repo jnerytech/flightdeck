@@ -9,6 +9,7 @@ import {
   type BoardResult,
   type EffortLevel,
   IssuesConfig,
+  inSequence,
   type PermissionUpdate,
   type PersonaRef,
   type PersonaSubagentsMode,
@@ -43,6 +44,7 @@ import {
 } from "./merge.ts";
 import { type PrComment, type PrProvider, prMessage, prProvider } from "./pr.ts";
 import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./project-rules.ts";
+import { assertBranchName, refArg } from "./ref-arg.ts";
 import { runSetup } from "./setup.ts";
 import type {
   BoardColumn,
@@ -258,6 +260,15 @@ const script = (value: string | null | undefined) => value?.trim() || null;
  * Projects (git repositories of this host) and their boards. A card is a thin layer over what
  * already exists: a branch, a worktree, a session and a PR.
  */
+/** The notice for files the worktree copy left out because they passed the size limit. */
+function skippedNotice(left: number, limit: number): string {
+  const files =
+    left === 1
+      ? "1 arquivo do .worktreeinclude não copiado"
+      : left + " arquivos do .worktreeinclude não copiados";
+  return files + ": passou do limite de " + Math.round((limit / 1024 / 1024) * 100) / 100 + " MB";
+}
+
 /** The reason and params of a refusal; `null` for any other error. */
 export function refusalOf(
   error: unknown,
@@ -406,7 +417,9 @@ export class Board {
       id: ulid(),
       path,
       name: input.name?.trim() || basename(path),
-      baseBranch: input.baseBranch?.trim() || head.stdout.trim(),
+      baseBranch: input.baseBranch?.trim()
+        ? assertBranchName(input.baseBranch.trim())
+        : head.stdout.trim(),
       prProvider: input.prProvider ?? "none",
       setupScript: script(input.setupScript),
       promptTemplate: input.promptTemplate ?? DEFAULT_PROMPT_TEMPLATE,
@@ -441,7 +454,9 @@ export class Board {
     const next: Project = {
       ...current,
       ...(patch.name?.trim() ? { name: patch.name.trim() } : {}),
-      ...(patch.baseBranch?.trim() ? { baseBranch: patch.baseBranch.trim() } : {}),
+      ...(patch.baseBranch?.trim()
+        ? { baseBranch: assertBranchName(patch.baseBranch.trim()) }
+        : {}),
       ...(patch.prProvider ? { prProvider: patch.prProvider } : {}),
       ...(patch.setupScript !== undefined ? { setupScript: script(patch.setupScript) } : {}),
       ...(patch.promptTemplate !== undefined ? { promptTemplate: patch.promptTemplate } : {}),
@@ -658,7 +673,7 @@ export class Board {
     }
     const made: string[] = [];
     try {
-      for (const [i, wanted] of input.variants.entries()) {
+      await inSequence(input.variants.entries(), async ([i, wanted]) => {
         const label = "abcd"[i] as string;
         const variant = this.createCard(card.projectId, {
           title: `${card.title} (${label})`,
@@ -677,10 +692,12 @@ export class Board {
           inputs: input.inputs,
           persona: wanted.persona,
         });
-      }
+      });
     } catch (error) {
       // Half an arena is nothing: the variants already made go, and the card stays as it was.
-      for (const id of made) await this.discardCard(id, true);
+      await inSequence(made, async (id) => {
+        await this.discardCard(id, true);
+      });
       throw error;
     }
     this.place(cardId, { type: "started" });
@@ -776,7 +793,9 @@ export class Board {
         "arena_variant_running",
       );
     }
-    for (const id of ids) if (id !== variantId) await this.discardCard(id, true);
+    await inSequence(ids, async (id) => {
+      if (id !== variantId) await this.discardCard(id, true);
+    });
     this.follows.get(variantId)?.();
     this.follows.delete(variantId);
     this.db.transaction(() => {
@@ -1297,10 +1316,7 @@ export class Board {
       const added = await addWorktree(project.path, card.title, from.ref, limit);
       worktree = added.path;
       const left = added.skipped.length;
-      const skipped =
-        left === 0
-          ? null
-          : `${left === 1 ? "1 arquivo do .worktreeinclude não copiado" : `${left} arquivos do .worktreeinclude não copiados`}: passou do limite de ${Math.round((limit / 1024 / 1024) * 100) / 100} MB`;
+      const skipped = left === 0 ? null : skippedNotice(left, limit);
       const notice = [from.notice, skipped].filter((part) => part !== null).join("; ") || null;
       this.db
         .query(
@@ -1349,10 +1365,10 @@ export class Board {
         "SELECT * FROM card_runs WHERE card_id = ? AND id <> ? AND ended_at IS NULL",
       )
       .all(id, keep);
-    for (const run of open) {
+    await inSequence(open, async (run) => {
       if (run.session_id) await this.opts.manager.close(run.session_id);
       this.db.query("UPDATE card_runs SET ended_at = ? WHERE id = ?").run(now(), run.id);
-    }
+    });
     this.workflows.abandon(id, "execução encerrada com o card", keep);
     await this.workflows.closeSessions(id, keep);
   }
@@ -1521,7 +1537,7 @@ export class Board {
         "the card has no worktree yet",
         "card_no_worktree",
       );
-    must(await git(cwd, "push", "-u", "origin", branch), "git push");
+    must(await git(cwd, "push", "-u", "origin", refArg(branch)), "git push");
     const url = await provider.create({
       cwd,
       base: project.baseBranch,
@@ -1673,7 +1689,7 @@ export class Board {
       const notice = `a pasta da worktree ficou em ${worktree}; remova depois (a branch ${branch} sai junto)`;
       return { worktree: true, branch: true, notice };
     }
-    const deleted = await git(repo, "branch", "-D", branch);
+    const deleted = await git(repo, "branch", "-D", refArg(branch));
     if (deleted.code !== 0) {
       const notice = `a branch ${branch} ficou (${deleted.stderr.trim()}); apague depois`;
       return { worktree: false, branch: true, notice };
@@ -1715,7 +1731,9 @@ export class Board {
       throw new FlightdeckError("invalid_state", "confirm discarding the card", "discard_confirm");
     const card = this.getCard(id);
     // The variants of an arena go with its card.
-    for (const variant of this.variantIds(id)) await this.discardCard(variant, true);
+    await inSequence(this.variantIds(id), async (variant) => {
+      await this.discardCard(variant, true);
+    });
     await this.closeRuns(id);
     this.follows.get(id)?.();
     this.follows.delete(id);
@@ -1728,7 +1746,7 @@ export class Board {
         "git worktree remove",
       );
     }
-    if (card.branch) must(await git(repo, "branch", "-D", card.branch), "git branch -D");
+    if (card.branch) must(await git(repo, "branch", "-D", refArg(card.branch)), "git branch -D");
     return this.removeFromBoard(id, "discarded");
   }
 
@@ -1821,7 +1839,12 @@ export class Board {
         // The card may have been discarded while the provider was answering.
         if (this.db.query("SELECT 1 FROM cards WHERE id = ?").get(id)) this.changed(id);
       };
-      for (const { id } of open) await this.pollPr(id).catch(failed(id));
+      // An empty list is not awaited: a round with nothing to ask ends in the tick it starts.
+      if (open.length > 0) {
+        await inSequence(open, async ({ id }) => {
+          await this.pollPr(id).catch(failed(id));
+        });
+      }
       if (this.stopped) return;
       // Merged, but the worktree removal failed (a busy folder on Windows; its error is the
       // notice): finish again, without asking the provider. Pending changes wait for the user,
@@ -1832,7 +1855,11 @@ export class Board {
            AND worktree_path IS NOT NULL AND notice IS NOT NULL AND notice <> ?`,
         )
         .all(PENDING_NOTICE);
-      for (const { id } of unfinished) await this.finish(id).catch(failed(id));
+      if (unfinished.length > 0) {
+        await inSequence(unfinished, async ({ id }) => {
+          await this.finish(id).catch(failed(id));
+        });
+      }
       for (const listener of this.prRoundListeners) listener();
     } finally {
       this.polling = false;

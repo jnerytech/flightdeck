@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import type { AssistantBlock, EffortLevel, McpLiveStatus } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { ulid } from "../ulid.ts";
 import { whichOnPath } from "../which.ts";
@@ -34,6 +35,18 @@ export interface FakeRuntimeOptions {
 }
 
 class Interrupted extends Error {}
+
+/** The rate-limit windows a prompt asks for with `[ratelimit:<window>=<utilization>@<reset>]`. */
+function rateLimitWindows(text: string) {
+  return [...text.matchAll(/\[ratelimit:(\w+)=([\d.]+)@(\d+)\]/g)].map(
+    ([, window = "", utilization, resetsAt]) => ({
+      window,
+      utilization: Number(utilization),
+      status: Number(utilization) >= 1 ? ("rejected" as const) : ("allowed" as const),
+      resetsAt: Number(resetsAt) * 1000,
+    }),
+  );
+}
 
 /**
  * Deterministic runtime with no network. Replies `Echo: <text>` in chunks, asks permission for
@@ -131,9 +144,9 @@ export class FakeRuntime implements AgentRuntime {
   /** Forks asked so far (phase 12). */
   readonly forks: Array<{ claudeSessionId: string } & ForkOptions> = [];
 
-  async forkSession(claudeSessionId: string, options: ForkOptions): Promise<{ sessionId: string }> {
+  forkSession(claudeSessionId: string, options: ForkOptions): Promise<{ sessionId: string }> {
     this.forks.push({ claudeSessionId, ...options });
-    return { sessionId: `fake-fork-${ulid().toLowerCase()}` };
+    return Promise.resolve({ sessionId: `fake-fork-${ulid().toLowerCase()}` });
   }
 
   start(opts: StartOptions): AgentRun {
@@ -177,36 +190,42 @@ class FakeRun implements AgentRun {
     this.claudeSessionId = opts.resume ?? `fake-${ulid().toLowerCase()}`;
   }
 
-  async setPermissionMode(mode: string): Promise<void> {
+  setPermissionMode(mode: string): Promise<void> {
     this.modes.push(mode);
+    return Promise.resolve();
   }
 
-  async setModel(model: string | undefined): Promise<void> {
+  setModel(model: string | undefined): Promise<void> {
     this.models.push(model);
+    return Promise.resolve();
   }
 
-  async setEffort(effort: EffortLevel | undefined): Promise<void> {
+  setEffort(effort: EffortLevel | undefined): Promise<void> {
     this.efforts.push(effort);
+    return Promise.resolve();
   }
 
-  async toggleMcpServer(name: string, enabled: boolean): Promise<void> {
+  toggleMcpServer(name: string, enabled: boolean): Promise<void> {
     this.toggles.push({ name, enabled });
+    return Promise.resolve();
   }
 
   /** Connected, unless the last toggle of the server turned it off. */
-  async mcpServerStatus(): Promise<McpLiveStatus[]> {
-    return this.mcpServers.map((name) => ({
-      name,
-      status:
-        this.toggles.filter((t) => t.name === name).at(-1)?.enabled === false
-          ? "disabled"
-          : "connected",
-    }));
+  mcpServerStatus(): Promise<McpLiveStatus[]> {
+    return Promise.resolve(
+      this.mcpServers.map((name) => ({
+        name,
+        status:
+          this.toggles.filter((t) => t.name === name).at(-1)?.enabled === false
+            ? "disabled"
+            : "connected",
+      })),
+    );
   }
 
-  async rewindFiles(userMessageId: string, opts: { dryRun: boolean }): Promise<RewindFilesResult> {
-    return (
-      this.rewind?.(userMessageId, opts.dryRun) ?? { canRewind: false, error: "sem checkpoint" }
+  rewindFiles(userMessageId: string, opts: { dryRun: boolean }): Promise<RewindFilesResult> {
+    return Promise.resolve(
+      this.rewind?.(userMessageId, opts.dryRun) ?? { canRewind: false, error: "sem checkpoint" },
     );
   }
 
@@ -216,14 +235,16 @@ class FakeRun implements AgentRun {
     void this.pump();
   }
 
-  async interrupt(): Promise<void> {
+  interrupt(): Promise<void> {
     this.turnAbort?.abort();
+    return Promise.resolve();
   }
 
-  async close(): Promise<void> {
+  close(): Promise<void> {
     this.turnAbort?.abort();
     this.inbox.length = 0;
     this.events.end();
+    return Promise.resolve();
   }
 
   private async pump(): Promise<void> {
@@ -231,7 +252,7 @@ class FakeRun implements AgentRun {
     this.processing = true;
     try {
       for (let text = this.inbox.shift(); text !== undefined; text = this.inbox.shift()) {
-        await this.turn(text);
+        await this.turn(text); // NOSONAR: turns run one after the other: a message is served when the one before is done
         if (this.events.isEnded) return;
       }
     } catch (error) {
@@ -252,10 +273,34 @@ class FakeRun implements AgentRun {
   }
 
   private async stream(text: string, signal: AbortSignal): Promise<void> {
-    for (const chunk of text.match(/.{1,4}/gsu) ?? []) {
+    await inSequence(text.match(/.{1,4}/gsu) ?? [], async (chunk) => {
       this.emit({ type: "message.delta", text: chunk });
       await this.sleep(signal);
-    }
+    });
+  }
+
+  private emitInitOnce(): void {
+    if (this.initialized) return;
+    this.initialized = true;
+    this.emit({
+      type: "session.init",
+      claudeSessionId: this.claudeSessionId,
+      model: this.opts.model ?? "fake-model",
+      tools: ["Read", "Write", "Bash"],
+      ...(this.slashCommands
+        ? {
+            slashCommands: this.slashCommands,
+            // Like the SDK: Claude Code's own are the plain names, the rest are namespaced.
+            commands: describeCommands(
+              this.slashCommands.map((name) => ({
+                name,
+                description: `Run /${name}`,
+                builtin: !name.includes(":") && !name.startsWith("mcp__"),
+              })),
+            ),
+          }
+        : {}),
+    });
   }
 
   private async turn(text: string): Promise<void> {
@@ -263,36 +308,8 @@ class FakeRun implements AgentRun {
     this.turnAbort = abort;
     // Monotonic: a wall clock that syncs backwards (WSL, containers) would give a negative duration.
     const started = performance.now();
-    if (!this.initialized) {
-      this.initialized = true;
-      this.emit({
-        type: "session.init",
-        claudeSessionId: this.claudeSessionId,
-        model: this.opts.model ?? "fake-model",
-        tools: ["Read", "Write", "Bash"],
-        ...(this.slashCommands
-          ? {
-              slashCommands: this.slashCommands,
-              // Like the SDK: Claude Code's own are the plain names, the rest are namespaced.
-              commands: describeCommands(
-                this.slashCommands.map((name) => ({
-                  name,
-                  description: `Run /${name}`,
-                  builtin: !name.includes(":") && !name.startsWith("mcp__"),
-                })),
-              ),
-            }
-          : {}),
-      });
-    }
-    const windows = [...text.matchAll(/\[ratelimit:(\w+)=([\d.]+)@(\d+)\]/g)].map(
-      ([, window = "", utilization, resetsAt]) => ({
-        window,
-        utilization: Number(utilization),
-        status: Number(utilization) >= 1 ? ("rejected" as const) : ("allowed" as const),
-        resetsAt: Number(resetsAt) * 1000,
-      }),
-    );
+    this.emitInitOnce();
+    const windows = rateLimitWindows(text);
     if (windows.length > 0) this.emit({ type: "quota", windows });
     try {
       await this.sleep(abort.signal);
@@ -300,9 +317,9 @@ class FakeRun implements AgentRun {
       if (text.includes("[tool]")) await this.toolCall(abort.signal);
       if (text.includes("[bash]")) await this.bashCall(abort.signal);
       if (text.includes("[commit]")) await this.commit(text);
-      for (const [, path] of text.matchAll(/\[result:([^\]]+)\]/g)) {
+      await inSequence(text.matchAll(/\[result:([^\]]+)\]/g), async ([, path]) => {
         await this.writeResult(path ?? "");
-      }
+      });
       for (const [, cost] of text.matchAll(/\[cost:(\d+(?:\.\d+)?)\]/g)) {
         const total = this.costs.get(this.claudeSessionId) ?? 0;
         this.costs.set(this.claudeSessionId, total + Number(cost));
@@ -344,21 +361,24 @@ class FakeRun implements AgentRun {
   private async commit(text: string): Promise<void> {
     const file = `fake-${++this.commits}.txt`;
     await writeFile(join(this.opts.cwd, file), `${text}\n`);
-    for (const args of [
-      ["add", file],
-      ["commit", "-q", "-m", `fake: ${text}`],
-    ]) {
-      const git = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
-        cwd: this.opts.cwd,
-        // The daemon's current environment, not the one it started with (see board/command.ts).
-        env: process.env,
-        stdin: "ignore",
-        stdout: "ignore",
-        stderr: "pipe",
-      });
-      const [error, code] = await Promise.all([new Response(git.stderr).text(), git.exited]);
-      if (code !== 0) throw new Error(`git ${args[0]}: ${error.trim()}`);
-    }
+    await inSequence(
+      [
+        ["add", file],
+        ["commit", "-q", "-m", `fake: ${text}`],
+      ],
+      async (args) => {
+        const git = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
+          cwd: this.opts.cwd,
+          // The daemon's current environment, not the one it started with (see board/command.ts).
+          env: process.env,
+          stdin: "ignore",
+          stdout: "ignore",
+          stderr: "pipe",
+        });
+        const [error, code] = await Promise.all([new Response(git.stderr).text(), git.exited]);
+        if (code !== 0) throw new Error(`git ${args[0]}: ${error.trim()}`);
+      },
+    );
   }
 
   /** `[tool]`: a Write that asks permission, with the session suggestions the CLI would send. */

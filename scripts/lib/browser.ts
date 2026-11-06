@@ -29,7 +29,7 @@ export async function launchFirst<T>(
   const reasons: string[] = [];
   for (const attempt of browserAttempts(which)) {
     try {
-      return await launch(attempt);
+      return await launch(attempt); // NOSONAR: retry: an attempt starts only after the one before has not worked
     } catch (error) {
       reasons.push((error as Error).message);
     }
@@ -51,8 +51,8 @@ export const RUNNER_BROWSER_NAMES = [
  * without launching, so on Windows the known install paths are checked as files: Chrome by channel, else Edge by
  * path. No browser is ever downloaded.
  */
-const CHROME_FILE = "Google\\Chrome\\Application\\chrome.exe";
-const EDGE_FILE = "Microsoft\\Edge\\Application\\msedge.exe";
+const CHROME_FILE = String.raw`Google\Chrome\Application\chrome.exe`;
+const EDGE_FILE = String.raw`Microsoft\Edge\Application\msedge.exe`;
 
 export interface BrowserHost {
   env: Record<string, string | undefined>;

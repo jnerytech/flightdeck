@@ -7,6 +7,7 @@ export const DAEMON_REASONS = [
   "terminal_enable_confirm",
   "central_confirm",
   "permission_request_closed",
+  "hold_required",
   "update_needs_service",
   "update_signature_failed",
   "messaging_session_missing",
@@ -338,6 +339,7 @@ export const DAEMON_REASONS = [
   "action_ssh_env_value",
   "review_path_outside",
   "review_target_invalid",
+  "branch_invalid",
   "review_file_missing",
   "review_file_big",
   "review_file_binary",
@@ -451,6 +453,7 @@ export const DAEMON_FEATURES = [
   "templates",
   "tasks",
   "depsCheck",
+  "autoUpdate",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];
 

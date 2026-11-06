@@ -69,11 +69,18 @@ describe("ci-pyramid (#309)", () => {
     expect(check).toContain('test "${{ needs.screenshots-e2e.result }}" = success');
   });
 
-  test("the fast-coverage ratchet runs on main, nightly and by hand, never on a PR (#309 d)", () => {
+  test("the fast-coverage ratchet runs on PRs too, so a drop fails the PR, not main (#309 d, #358)", () => {
     const job = ci.jobs["fast-coverage"];
     expect(job?.name).toBe("fast coverage (ubuntu-latest)");
     expect(job?.needs).toEqual(["changes", "quick"]);
-    expect(job?.if ?? "").toContain("github.event_name != 'pull_request'");
+    expect(job?.if ?? "").not.toContain("pull_request");
     expect((job?.steps ?? []).some((s) => s.run === "bun run fast-coverage")).toBe(true);
+  });
+
+  test("the required test (ubuntu-latest) check waits for the fast-coverage ratchet and needs it green (#358)", () => {
+    const aggregate = ci.jobs.test;
+    expect(aggregate?.needs).toContain("fast-coverage");
+    const check = (aggregate?.steps ?? []).map((s) => s.run ?? "").join("\n");
+    expect(check).toContain('test "${{ needs.fast-coverage.result }}" = success');
   });
 });

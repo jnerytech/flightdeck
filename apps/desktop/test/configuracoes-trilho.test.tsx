@@ -25,6 +25,7 @@ function setup(updater = true) {
       appUpdate={{ upToDate: false } as never}
       onCheckUpdate={() => {}}
       onNotifyUpdates={() => {}}
+      onAutoUpdate={() => {}}
       theme="system"
       onTheme={() => {}}
       density="comfortable"

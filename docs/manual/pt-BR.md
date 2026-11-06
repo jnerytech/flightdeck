@@ -1029,6 +1029,11 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
   - num card, o diff contra a base, com quantos commits ele está à frente e atrás dela;
   - os arquivos com status e contagens, e o diff unificado ou lado a lado, com as linhas
     numeradas. Um arquivo binário aparece na lista, sem diff;
+  - um arquivo grande demais (mais de 512 KB de diff ou de arquivo novo) aparece na lista com a
+    marca **Grande demais** e o tamanho, sem conteúdo, para o painel não travar. O mesmo vale
+    para o que passa de 4 MB de diff no total: os arquivos seguintes entram só na lista. Num host
+    desta máquina, **Mostrar na pasta** abre o gerenciador de arquivos no arquivo (o editor
+    segue ao lado, e recusa o que passa de 1 MB);
   - acompanha o disco ao vivo (o host observa a pasta, com debounce de 500 ms), e **Atualizar**
     lê de novo.
 - **Comentários inline:**
@@ -1541,7 +1546,9 @@ credencial). Você pode acrescentar padrões na configuração do host (`risk.ex
 podem ser rebaixados.
 
 - Um pedido de **Risco alto** fica vermelho e **Aprovar** vira **Segurar para aprovar**: segure o botão por
-  2 segundos. A tecla A não o aprova; N continua negando.
+  2 segundos. O motivo fica escrito sob o botão (não só numa dica). A tecla A não o aprova; N continua negando. O host também confere a espera: recusa a
+  aprovação de um pedido de risco alto que não a traga ("Um pedido de risco alto só é aprovado
+  segurando o botão."), então nenhum outro cliente consegue pulá-la.
 - A bandeja nunca aprova um pedido de risco alto: oferece **Negar** e **Abrir**.
 - Com a aprovação automática ligada, o que ninguém aprovou à mão aparece na linha do tempo da sessão como
   "Aprovado automaticamente", com quem decidiu e o motivo. Um pedido de risco alto ou que acessa a rede
@@ -2150,10 +2157,13 @@ terceiros.
 
 #### Qual conta este host está usando?
 
-- O cartão mostra o e-mail da conta, a organização, o plano (Pro, Max, Team, Enterprise) e duas
+- O cartão mostra o e-mail da conta, a organização, o plano (Pro, Max, Ultra, Team, Enterprise) e duas
   barras, **5 horas** e **7 dias**, com a porcentagem usada e quando cada uma reinicia (passe o
   mouse para ver a hora exata). As barras de 7 dias do Opus e do Sonnet só aparecem quando o host
   as informa.
+- O plano vem do login do `claude` no host, que o guarda desde que você entrou: depois de mudar de
+  plano, saia e entre de novo lá e toque em **Atualizar**. As barras são lidas ao vivo e estão sempre
+  em dia.
 - Ele é lido ao abrir a página e de novo a cada 5 minutos enquanto ela fica aberta, e na hora em
   que uma sessão gerenciada termina um turno. "Última leitura há 2 min" diz o quanto está
   fresco. **Atualizar** lê agora; há 30 segundos de espera entre leituras.

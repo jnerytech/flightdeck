@@ -31,6 +31,17 @@ interface Draft {
 }
 
 /** Date inputs give whole days; the daemon compares ISO timestamps (UTC). */
+/** Why the list is empty once it is read: the hidden automated runs, the filters, or nothing yet. */
+function emptyReason(why: {
+  open: boolean;
+  automated: boolean;
+  filtered: boolean;
+}): "automated" | "filtered" | "nothing" | null {
+  if (!why.open) return null;
+  if (why.automated) return "automated";
+  return why.filtered ? "filtered" : "nothing";
+}
+
 function toFilter(draft: Draft): HistoryFilter {
   return {
     ...(draft.cwd.trim() ? { cwd: draft.cwd.trim() } : {}),
@@ -42,17 +53,19 @@ function toFilter(draft: Draft): HistoryFilter {
 }
 
 /** Indexed sessions of one host, newest first, with folder, period and origin filters. */
-export function HistoryList(props: {
-  store: AppStore;
-  hostId: string;
-  hostName: string;
-  density: Density;
-  /** The session open on the right, if any. */
-  openId: string | null;
-  onOpen(claudeSessionId: string): void;
-  /** Opened from a usage row: starts filtered by that folder and day (UTC). */
-  initial?: { cwd?: string; projectKey?: string; day?: string };
-}) {
+export function HistoryList(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    hostName: string;
+    density: Density;
+    /** The session open on the right, if any. */
+    openId: string | null;
+    onOpen(claudeSessionId: string): void;
+    /** Opened from a usage row: starts filtered by that folder and day (UTC). */
+    initial?: { cwd?: string; projectKey?: string; day?: string };
+  }>,
+) {
   const { store, hostId } = props;
   const [draft, setDraft] = useState<Draft>(() => ({
     cwd: props.initial?.cwd ?? "",
@@ -129,14 +142,11 @@ export function HistoryList(props: {
     onChange: (e: { target: { value: string } }) => setDraft({ ...draft, [key]: e.target.value }),
   });
   /** Why the list is empty, once it is read: the hidden automated runs, the filters, or nothing yet. */
-  const emptyBecause =
-    loading || sessions?.length !== 0
-      ? null
-      : hideAutomated && automatedCount > 0
-        ? "automated"
-        : Object.keys(filter).length > 0
-          ? "filtered"
-          : "nothing";
+  const emptyBecause = emptyReason({
+    open: !loading && sessions?.length === 0,
+    automated: hideAutomated && automatedCount > 0,
+    filtered: Object.keys(filter).length > 0,
+  });
   /** Every filter back to empty, and the list read again without them. */
   const clearFilters = () => {
     const empty: Draft = { cwd: "", projectKey: "", from: "", to: "", origin: "" };

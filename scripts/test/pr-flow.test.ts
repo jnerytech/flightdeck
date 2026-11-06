@@ -44,6 +44,10 @@ function fake(
     mainHead?: string;
     onMain?: string[];
     tags?: string[];
+    /** The first-parent commits of origin/main, newest first. */
+    history?: string[];
+    /** The version in package.json at a commit of main, by SHA. */
+    versions?: Record<string, string>;
     /** The message GitHub's GraphQL answers with when it refuses. */
     graphqlError?: string;
   } = {},
@@ -150,6 +154,15 @@ function fake(
       if (args[0] === "rev-parse" && (args.at(-1) ?? "").startsWith("refs/tags/")) {
         const tag = (args.at(-1) ?? "").slice("refs/tags/".length);
         return { code: (opts.tags ?? []).includes(tag) ? 0 : 1, stdout: "" };
+      }
+      if (args[0] === "rev-list" && args.includes("--first-parent")) {
+        return ok((opts.history ?? []).map((sha) => `${sha}\n`).join(""));
+      }
+      if (args[0] === "show" && (args.at(-1) ?? "").endsWith(":package.json")) {
+        const version = opts.versions?.[(args.at(-1) ?? "").split(":")[0] ?? ""];
+        return version === undefined
+          ? { code: 1, stdout: "" }
+          : ok(`${JSON.stringify({ name: "x", version })}\n`);
       }
       if (args[0] === "rev-parse" && args.at(-1) === "origin/main") {
         return opts.mainHead ? ok(`${opts.mainHead}\n`) : { code: 1, stdout: "" };
@@ -681,6 +694,76 @@ describe("pr-flow: the CI of a commit and the release tag (#266)", () => {
       expect(f.gitWrites).toEqual([]);
       expect(f.out()).toContain(reason);
     }
+  });
+
+  describe("when main's HEAD has no green run because a later merge cancelled it (#376)", () => {
+    const cancelled = { status: "completed", conclusion: "cancelled" };
+    const stacked = {
+      env: COORDINATOR,
+      mainHead: "head3",
+      onMain: ["head3", "bump2", "old1"],
+      history: ["head3", "bump2", "old1"],
+      versions: { head3: "0.37.0", bump2: "0.37.0", old1: "0.36.9" },
+    };
+
+    test("tag takes the newest commit that has the bump and a green run, and says so", async () => {
+      const f = fake({
+        ...stacked,
+        mainRuns: { head3: [cancelled], bump2: [released], old1: [released] },
+      });
+      expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(0);
+      expect(f.gitWrites).toEqual([
+        "tag -a v0.37.0 -m v0.37.0 bump2",
+        "push origin refs/tags/v0.37.0",
+      ]);
+      expect(f.out()).toContain("head3's CI run on main was cancelled");
+      expect(f.out()).toContain("v0.37.0 tagged on bump2");
+    });
+
+    test("a commit from before the bump is never taken, and nothing is written", async () => {
+      const f = fake({
+        ...stacked,
+        mainRuns: { head3: [cancelled], bump2: [cancelled], old1: [released] },
+      });
+      expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(2);
+      expect(f.gitWrites).toEqual([]);
+      expect(f.out()).toContain("no commit with the v0.37.0 bump has a green CI run on main");
+    });
+
+    test("a history that is all bump and has no green run refuses", async () => {
+      const f = fake({
+        ...stacked,
+        history: ["head3", "bump2"],
+        mainRuns: { head3: [cancelled], bump2: [cancelled] },
+      });
+      expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(2);
+      expect(f.gitWrites).toEqual([]);
+    });
+
+    test("a commit whose package.json cannot be read ends the search", async () => {
+      const f = fake({
+        ...stacked,
+        history: ["head3", "unread4", "bump2"],
+        mainRuns: { head3: [cancelled], bump2: [released] },
+      });
+      expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(2);
+      expect(f.gitWrites).toEqual([]);
+    });
+
+    test("a run that failed, or is still going, is not skipped over, and --commit asks for exactly that commit", async () => {
+      for (const [run, reason] of [
+        [{ status: "completed", conclusion: "failure" }, "did not pass"],
+        [{ status: "in_progress", conclusion: null }, "still running"],
+      ] as const) {
+        const f = fake({ ...stacked, mainRuns: { head3: [run], bump2: [released] } });
+        expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(2);
+        expect(f.out()).toContain(reason);
+        expect(f.gitWrites).toEqual([]);
+      }
+      const pinned = fake({ ...stacked, mainRuns: { head3: [cancelled], bump2: [released] } });
+      expect(await prFlow(["tag", "v0.37.0", "--commit", "head3"], pinned.deps)).toBe(2);
+      expect(pinned.gitWrites).toEqual([]);
+    });
   });
 
   test("a tag git refuses to make or push fails with exit 1", async () => {

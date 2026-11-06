@@ -19,6 +19,10 @@ describe("plataforma", () => {
     expect(userHome({ HOME: "/c/x", USERPROFILE: "C:\\Users\\y" }, "win32")).toBe("C:\\Users\\y");
     expect(userHome({}, "linux")).toBe(homedir());
     expect(userHome({ HOME: "" }, "linux")).toBe(homedir());
+    // A relative HOME would put ~/.ssh/config and the history under the current folder (#258).
+    expect(userHome({ HOME: "." }, "linux")).toBe(homedir());
+    expect(userHome({ HOME: "foo/bar" }, "linux")).toBe(homedir());
+    expect(userHome({ USERPROFILE: "Users\\y" }, "win32")).toBe(homedir());
   });
 
   test("expandHome, a config padrão e o contexto do serviço usam o home do ambiente", () => {

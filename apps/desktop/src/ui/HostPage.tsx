@@ -9,8 +9,9 @@ import { hostDownReason } from "@/components/hosts/host-down-reason";
 import { HostHealth } from "@/components/hosts/host-health";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { HostOverview } from "@/components/hosts/host-overview";
+import { HostVersionLine } from "@/components/hosts/host-version";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
-import { Field, FieldRow } from "@/components/layout/form";
+import { FieldRow } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
@@ -68,21 +69,23 @@ const HOOK_LABELS = {
  * One host: what `host.info` reports, heartbeat latency, the Claude Code hooks, and rename /
  * reconnect / remove.
  */
-export function HostPage(props: {
-  store: AppStore;
-  host: HostView;
-  onRename(name: string): HostNameError | null;
-  onReconnect(): void;
-  onPairAgain?(input: string): Promise<string | null>;
-  onOpenAutoApprovals(): void;
-  onOpenHistory(filter: UsageHistoryTarget): void;
-  onOpenSession(row: HubRow): void;
-  onOpenProject(card: ProjectCard): void;
-  onSeeAllSessions(): void;
-  onSeeAllProjects(): void;
-  onNewSession(): void;
-  onRemove(): void;
-}) {
+export function HostPage(
+  props: Readonly<{
+    store: AppStore;
+    host: HostView;
+    onRename(name: string): HostNameError | null;
+    onReconnect(): void;
+    onPairAgain?(input: string): Promise<string | null>;
+    onOpenAutoApprovals(): void;
+    onOpenHistory(filter: UsageHistoryTarget): void;
+    onOpenSession(row: HubRow): void;
+    onOpenProject(card: ProjectCard): void;
+    onSeeAllSessions(): void;
+    onSeeAllProjects(): void;
+    onNewSession(): void;
+    onRemove(): void;
+  }>,
+) {
   const t = useT();
   const { host } = props;
   const [renaming, setRenaming] = useState(false);
@@ -100,6 +103,7 @@ export function HostPage(props: {
     if (host.status === "online") void store.ensureHealth(host.id);
   }, [store, host.id, host.status]);
   const offline = host.status !== "online" && host.status !== "incompatible";
+  const hooksKey = hooks ? HOOK_LABELS[hooks.status] : "hostPage.hooksAsking";
   useEffect(() => {
     if (host.status !== "online") return;
     void store.hostCommand(host.id, "hooks.status", {}).then(setHooks);
@@ -138,7 +142,14 @@ export function HostPage(props: {
   return (
     <Page
       title={host.name}
-      subtitle={host.url}
+      subtitle={
+        <HostVersionLine
+          url={host.url}
+          daemon={info?.daemonVersion ?? null}
+          app={APP_VERSION}
+          t={t}
+        />
+      }
       actions={
         <Button variant="outline" onClick={() => setRenaming(true)}>
           {t("hostPage.rename")}
@@ -268,11 +279,7 @@ export function HostPage(props: {
               {showHooks && (
                 <section aria-label={t("hostPage.hooks")}>
                   <Panel title={t("hostPage.hooks")}>
-                    <p className="text-sm">
-                      {offline
-                        ? t("hostOffline.title")
-                        : t(hooks ? HOOK_LABELS[hooks.status] : "hostPage.hooksAsking")}
-                    </p>
+                    <p className="text-sm">{offline ? t("hostOffline.title") : t(hooksKey)}</p>
                     {/* Issue #181: nothing to install on a host that does not answer; the row says why. */}
                     <FieldRow>
                       <ActionButton
@@ -366,7 +373,7 @@ export function HostPage(props: {
 }
 
 /** The heartbeat latency line: the only part of the page that renders on a ping. */
-function HostLatency(props: { store: AppStore; hostId: string }) {
+function HostLatency(props: Readonly<{ store: AppStore; hostId: string }>) {
   const t = useT();
   const latency = useHostLatency(props.store, props.hostId);
   return <li>{t("hostPage.latency", { value: latency === null ? "—" : `${latency} ms` })}</li>;

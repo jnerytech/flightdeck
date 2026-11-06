@@ -17,6 +17,7 @@ function storeWithUnlistedHighRisk() {
   const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   const sent: string[] = [];
+  const payloads: unknown[] = [];
   const hidden = store as unknown as {
     state: unknown;
     connections: Map<string, { request(type: string, payload: unknown): Promise<unknown> }>;
@@ -44,9 +45,10 @@ function storeWithUnlistedHighRisk() {
   hidden.connections.set("h1", {
     request: async (type, payload) => {
       sent.push(`${type}:${(payload as { decision?: string }).decision ?? ""}`);
+      payloads.push(payload);
     },
   });
-  return { store, sent };
+  return { store, sent, payloads };
 }
 
 // Issue #245 (M2): the risk is looked up where the request is drawn, not only in the queue.
@@ -60,5 +62,27 @@ describe("hold-proof: the store checks the hold of a request it knows from the s
     );
     await store.respondTo("h1", "r1", "allow", { held: true });
     expect(sent).toEqual(["permission.respond:allow"]);
+  });
+
+  test("the hold goes to the host as `held: true` with the allow, and a deny carries none", async () => {
+    const { store, payloads } = storeWithUnlistedHighRisk();
+    await store.respondTo("h1", "r1", "allow", { held: true });
+    await store.respondTo("h1", "r1", "deny");
+    expect(payloads).toEqual([
+      { requestId: "r1", decision: "allow", held: true },
+      { requestId: "r1", decision: "deny" },
+    ]);
+  });
+
+  test("an answer that was not held sends no `held` field at all", async () => {
+    const { store, payloads } = storeWithUnlistedHighRisk();
+    // A low-risk request is allowed without the hold; the wire must not claim one.
+    (
+      store as unknown as {
+        state: { sessions: Record<string, { items: Array<{ risk: string }> }> };
+      }
+    ).state.sessions["h1/s1"]!.items[0]!.risk = "low";
+    await store.respondTo("h1", "r1", "allow");
+    expect(payloads).toEqual([{ requestId: "r1", decision: "allow" }]);
   });
 });

@@ -53,13 +53,14 @@ export interface HumanTokens {
   value: string;
 }
 
+/** The unit a token count is shown in, and its size. */
+function unitOf(tokens: number) {
+  if (tokens >= 100_000) return ["million", 1_000_000] as const;
+  return tokens >= 1_000 ? (["thousand", 1_000] as const) : (["plain", 1] as const);
+}
+
 /** 3,100,000 reads "3.1" million, and so does 442,857 ("0.44"): a million is the unit from 100,000 up; at most two decimals, none when they would be zeros. */
 export function humanTokens(tokens: number): HumanTokens {
-  const [unit, divisor] =
-    tokens >= 100_000
-      ? (["million", 1_000_000] as const)
-      : tokens >= 1_000
-        ? (["thousand", 1_000] as const)
-        : (["plain", 1] as const);
+  const [unit, divisor] = unitOf(tokens);
   return { unit, value: String(Number((tokens / divisor).toFixed(2))) };
 }

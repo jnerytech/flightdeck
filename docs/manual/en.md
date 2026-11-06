@@ -1037,6 +1037,11 @@ conversation. It is where you check what the agent did and send it back what to 
   - for a card, the diff against its base, with how many commits it is ahead of and behind it;
   - the files with their status and counts, and the diff unified or side by side, with numbered
     lines. A binary file is listed without a diff;
+  - a file that is too large (a diff or a new file over 512 KB) is listed with the **Too large**
+    mark and its size, without content, so the panel does not freeze. The same goes for what
+    passes 4 MB of diff in total: the files after that are only listed. On a host of this machine,
+    **Show in folder** opens the file manager on the file (the editor stays beside it, and refuses
+    what is over 1 MB);
   - it follows the disk live (the host watches the folder, with a 500 ms debounce), and
     **Refresh** reads it again.
 - **Inline comments:**
@@ -1553,7 +1558,10 @@ paths). You can add patterns in the host configuration (`risk.extraHigh`); the b
 be lowered.
 
 - A **High risk** request is red and **Approve** becomes **Hold to approve**: hold the button for 2
-  seconds. The A key does not approve it; N still denies.
+  seconds. The reason is written under the button (not only in a tooltip). The A key does not
+  approve it; N still denies. The host checks the hold too: it refuses
+  an approval of a high-risk request that does not carry it ("A high-risk request is approved only
+  by holding the button."), so no other client can skip it either.
 - The tray never approves a high-risk request: it offers **Deny** and **Open**.
 - With automatic approval on, an approval that nobody gave by hand shows in the session's
   timeline as "Approved automatically", with who decided and why. A high-risk request or one that
@@ -2156,9 +2164,12 @@ reports of the Agent SDK), and Anthropic's terms keep a login out of third-party
 
 #### Which account is this host using?
 
-- The card shows the account's email, the organization, the plan (Pro, Max, Team, Enterprise) and
+- The card shows the account's email, the organization, the plan (Pro, Max, Ultra, Team, Enterprise) and
   two bars, **5 hours** and **7 days**, with the percentage used and when each resets (hover for
   the exact time). The 7-day Opus and Sonnet bars show only when the host reports them.
+- The plan comes from the sign-in of `claude` on the host, which keeps it from when you signed in:
+  after a change of plan, sign out and in again there, then press **Refresh**. The bars are read
+  live and are always current.
 - It is read when you open the page and again every 5 minutes while the page stays open, and at
   once when a managed session ends a turn. "Last read 2 min ago" tells how fresh it is. **Refresh**
   reads now; it waits 30 seconds between reads.

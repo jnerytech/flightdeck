@@ -1,5 +1,6 @@
 import {
   type EffortLevel,
+  inSequence,
   type PermissionMode,
   SESSION_IMAGE_MAX_BYTES,
   SESSION_IMAGE_MAX_COUNT,
@@ -70,6 +71,8 @@ function rememberPosition(key: string, top: number, atEnd: boolean, seq: number)
 
 /** How far from the end still counts as being at the end, in pixels. */
 const END_SLACK = 24;
+/** How long after the wheel, a key, a touch or a press on the scrollbar a scroll is the person's. */
+const PERSON_SCROLL_MS = 600;
 
 export interface SessionActions {
   /** Copies a text (the approval's folder); the app's store does. */
@@ -88,15 +91,17 @@ export interface SessionActions {
 
 type Item<K extends ChatItem["kind"]> = Extract<ChatItem, { kind: K }>;
 
-function AssistantMessage(props: {
-  item: Item<"assistant">;
-  toolResults: SessionState["toolResults"];
-  t: T;
-  actions: SessionActions;
-  pin: SessionViewProps["pin"];
-  /** Only the latest message offers Fork. */
-  fork: SessionViewProps["fork"];
-}) {
+function AssistantMessage(
+  props: Readonly<{
+    item: Item<"assistant">;
+    toolResults: SessionState["toolResults"];
+    t: T;
+    actions: SessionActions;
+    pin: SessionViewProps["pin"];
+    /** Only the latest message offers Fork. */
+    fork: SessionViewProps["fork"];
+  }>,
+) {
   const text = props.item.blocks
     .flatMap((block) => (block.type === "text" ? [block.text] : []))
     .join("\n\n");
@@ -129,14 +134,16 @@ function AssistantMessage(props: {
   );
 }
 
-function PermissionItem(props: {
-  item: Item<"permission">;
-  cwd: string | null;
-  actions: SessionActions;
-  alwaysAllow: boolean;
-  t: T;
-  nowMs: number;
-}) {
+function PermissionItem(
+  props: Readonly<{
+    item: Item<"permission">;
+    cwd: string | null;
+    actions: SessionActions;
+    alwaysAllow: boolean;
+    t: T;
+    nowMs: number;
+  }>,
+) {
   const { item, actions } = props;
   return (
     <ApprovalCard
@@ -167,7 +174,7 @@ function PermissionItem(props: {
   );
 }
 
-function TurnResult(props: { item: Item<"result">; t: T }) {
+function TurnResult(props: Readonly<{ item: Item<"result">; t: T }>) {
   const { item } = props;
   const cost = item.costUsd !== undefined ? ` · US$ ${item.costUsd.toFixed(4)}` : "";
   const key = item.isError ? "session.turnFailed" : "session.turnDone";
@@ -351,7 +358,7 @@ function offeredPrompts(
 }
 
 /** Chat history in streaming, tool calls, approval cards, message box and session controls. */
-export function SessionView(props: SessionViewProps) {
+export function SessionView(props: Readonly<SessionViewProps>) {
   const ctx = useT();
   const t = props.t ?? ctx;
   const { focusRequestId } = props;
@@ -369,6 +376,14 @@ export function SessionView(props: SessionViewProps) {
   // Where the view itself last put the scroll: the scroll event of that move says nothing about the
   // reader, and by the time it is delivered the layout may have grown (a panel, a code block).
   const pinnedTop = useRef<number | null>(null);
+  // Until when a scroll is the person's: their wheel, keys, touch or a press on the scrollbar. The
+  // browser also scrolls by itself (it pulls the position back when the content shrinks), and the
+  // event for that can reach the handler after a panel changed the layout: read then, the view
+  // would look away from the end and stop following it (issue #315).
+  const personUntil = useRef(0);
+  const person = () => {
+    personUntil.current = Date.now() + PERSON_SCROLL_MS;
+  };
   const pin = (box: HTMLElement) => {
     box.scrollTop = box.scrollHeight;
     pinnedTop.current = box.scrollTop;
@@ -493,14 +508,14 @@ export function SessionView(props: SessionViewProps) {
     let have = attached.length;
     const taken: SessionImage[] = [];
     let turned: ImageRefusal | null = null;
-    for (const file of images) {
+    await inSequence(images, async (file) => {
       const why = refuseImage(file, have);
       if (why) turned = why;
       else {
         taken.push(await readImage(file));
         have++;
       }
-    }
+    });
     setRefusal(turned);
     if (taken.length > 0) setAttached((before) => [...before, ...taken]);
   };
@@ -663,12 +678,20 @@ export function SessionView(props: SessionViewProps) {
       <div className="pane-fill">
         <Timeline
           ref={timeline}
+          onWheel={person}
+          onTouchStart={person}
+          onTouchMove={person}
+          onKeyDown={person}
+          onPointerDown={person}
           onScroll={(e) => {
             const box = e.currentTarget;
             const own = pinnedTop.current === box.scrollTop;
             pinnedTop.current = null;
             if (own && following.current) return;
             const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight <= END_SLACK;
+            // Following and not at the end, with no hand on it: the layout moved, not the person.
+            // The observer pins the end again.
+            if (following.current && !atEnd && Date.now() >= personUntil.current) return;
             following.current = atEnd;
             lastHeight.current = box.scrollHeight;
             // Leaving the end remembers the last message seen; returning to it forgets that.

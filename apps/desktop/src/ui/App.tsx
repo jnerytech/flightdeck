@@ -5,6 +5,7 @@ import { AskpassPrompt } from "@/components/connections/askpass-prompt";
 import { Notices } from "@/components/feedback/notices";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
+import { TopBarActions, TopBarHost } from "@/components/shell/top-bar";
 import { SnippetUse } from "@/components/snippets/snippet-use";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,6 +18,7 @@ import type { PaletteTarget } from "../lib/palette.ts";
 import type { Route } from "../lib/router.ts";
 import { type ChordState, chordStep, isMac, NO_CHORD } from "../lib/shortcuts.ts";
 import { useStoreState } from "../lib/use-store.ts";
+import { APP_VERSION } from "../lib/version.ts";
 import { Areas } from "./Areas.tsx";
 import { GlobalSearch } from "./GlobalSearch.tsx";
 import { draftFromLink } from "./HostForm.tsx";
@@ -114,9 +116,10 @@ function tabShortcut(store: AppStore, e: KeyboardEvent): boolean {
   return true;
 }
 
-export function App({ store }: { store: AppStore }) {
+export function App({ store }: Readonly<{ store: AppStore }>) {
   const state = useStoreState(store);
   const themeMode = useSyncExternalStore(store.theme.subscribe, () => store.theme.mode);
+  const resolvedTheme = useSyncExternalStore(store.theme.subscribe, () => store.theme.resolved);
   const lang = useSyncExternalStore(store.i18n.subscribe, () => store.i18n.lang);
   const density = useSyncExternalStore(store.density.subscribe, () => store.density.value);
   const { router } = store;
@@ -364,6 +367,19 @@ export function App({ store }: { store: AppStore }) {
           }}
           header={
             <>
+              <TopBarHost
+                hosts={state.hosts.map((h) => ({
+                  id: h.id,
+                  name: h.name,
+                  status: h.status,
+                  version: h.hostInfo?.daemonVersion ?? null,
+                }))}
+                currentId={store.uiHostId()}
+                appVersion={APP_VERSION}
+                t={t}
+                onChoose={(hostId) => store.select(hostId, null)}
+                onAdd={() => go({ name: "add-host" })}
+              />
               <Button
                 variant="ghost"
                 size="icon"
@@ -388,8 +404,17 @@ export function App({ store }: { store: AppStore }) {
                 moreLabel={t("shell.breadcrumbMore")}
                 onGo={go}
               />
-              <NotificationBell store={store} inbox={state.inbox} t={t} go={go} />
             </>
+          }
+          actions={
+            <TopBarActions
+              t={t}
+              theme={resolvedTheme}
+              version={APP_VERSION}
+              bell={<NotificationBell store={store} inbox={state.inbox} t={t} go={go} />}
+              onSearch={() => store.openSearch()}
+              onToggleTheme={() => store.theme.toggle()}
+            />
           }
           sidebar={(collapsed) => (
             <Sidebar

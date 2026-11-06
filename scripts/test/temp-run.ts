@@ -43,6 +43,16 @@ export function pidAlive(pid: number): boolean {
   }
 }
 
+/** Waits until `check` holds or `ms` pass, looking every 25 ms; whether it held. */
+export async function within(ms: number, check: () => boolean): Promise<boolean> {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    if (check()) return true;
+    await Bun.sleep(25);
+  }
+  return check();
+}
+
 /** How long one removal may take: well under a hook's timeout, which a big tree on Windows overran. */
 const REMOVE_BUDGET_MS = 3000;
 

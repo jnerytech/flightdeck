@@ -13,18 +13,20 @@ import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
  * and hands its two parts to the screen: `start`, the button that sits among the card's actions,
  * and `view`, the form, the choose dialog and the comparison further down.
  */
-export function CardArena(props: {
-  store: AppStore;
-  hostId: string;
-  card: Card;
-  /** The host runs arenas. */
-  enabled: boolean;
-  personas: boolean;
-  /** Changes whenever the card or its run moves on: the comparison is read again. */
-  moment: string;
-  personaName(id: string): string;
-  children(parts: { start: ReactNode; view: ReactNode }): ReactNode;
-}) {
+export function CardArena(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    card: Card;
+    /** The host runs arenas. */
+    enabled: boolean;
+    personas: boolean;
+    /** Changes whenever the card or its run moves on: the comparison is read again. */
+    moment: string;
+    personaName(id: string): string;
+    children(parts: { start: ReactNode; view: ReactNode }): ReactNode;
+  }>,
+) {
   const t = useT();
   const { store, hostId, card } = props;
   const cardId = card.id;
