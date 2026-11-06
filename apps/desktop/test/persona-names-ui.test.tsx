@@ -8,6 +8,7 @@ const { act, cleanup, fireEvent, render, within } = await import("@testing-libra
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { TeamMemberRow } = await import("../src/ui/TeamsPage.tsx");
+const { NeedsYou } = await import("../src/ui/NeedsYou.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
 
@@ -130,5 +131,47 @@ describe("persona-names-ui: a team member's row (#101)", () => {
       (name) => within(row as HTMLElement).queryByRole("button", { name }) !== null,
     );
     expect([row?.classList.contains("field-row") ?? false, ...buttons]).toEqual([true, true, true]);
+  });
+});
+
+describe("persona-names-ui: the Needs you screen (#101)", () => {
+  test("a request waiting on a team session names it by its persona", () => {
+    const mem = memoryPlatform(false, "pt-BR");
+    const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
+    store.i18n.start();
+    (store as unknown as { update(p: object): void }).update({
+      hosts: [
+        {
+          id: "h1",
+          name: "alfa",
+          status: "online",
+          sessions: [
+            {
+              id: SESSION,
+              name: WORKER.name,
+              cwd: "/p/app",
+              status: "running",
+              pendingPermissions: [
+                { requestId: "r1", toolName: "Bash", createdAt: "2026-11-06T10:00:00.000Z" },
+              ],
+            },
+          ],
+        },
+      ],
+      names: { h1: [NAME] },
+      personas: { h1: [{ id: "qa", name: "Engenheira de QA", description: "", scope: "pack" }] },
+    });
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <TooltipProvider>
+          <NeedsYou store={store} state={store.getState()} go={() => {}} onOpenRequest={() => {}} />
+        </TooltipProvider>
+      </TContext.Provider>,
+    );
+    const text = document.body.textContent ?? "";
+    expect([text.includes("md-server · Engenheira de QA 1"), text.includes(WORKER.name)]).toEqual([
+      true,
+      false,
+    ]);
   });
 });
