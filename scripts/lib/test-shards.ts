@@ -41,8 +41,16 @@ const median = (values: number[]) => {
 
 /** What a file is expected to take: its recorded time, or the median of the known ones. */
 function weigh(files: string[], timings: Timings): Map<string, number> {
-  const fallback = median(files.flatMap((file) => (file in timings ? [timings[file] ?? 0] : [])));
-  return new Map(files.map((file) => [file, timings[file] ?? fallback]));
+  // Only a finite, non-negative number is a time: anything else (a hand-edited file) is unknown, so
+  // the file still lands on a shard (a NaN weight would leave it on none).
+  const known = (file: string) => {
+    const seconds = timings[file];
+    return typeof seconds === "number" && Number.isFinite(seconds) && seconds >= 0
+      ? seconds
+      : undefined;
+  };
+  const fallback = median(files.flatMap((file) => known(file) ?? []));
+  return new Map(files.map((file) => [file, known(file) ?? fallback]));
 }
 
 /** The test files of each of `count` shards: the slowest first, each to the lightest shard so far. */
@@ -75,7 +83,7 @@ export function parseJunit(xml: string): Timings {
   const out: Timings = {};
   for (const tag of xml.matchAll(/<testsuite\s([^>]*)>/g)) {
     const attrs = Object.fromEntries(
-      [...(tag[1] ?? "").matchAll(/([\w-]+)="([^"]*)"/g)].map((m) => [m[1], m[2]]),
+      [...(tag[1] ?? "").matchAll(/\b([\w-]+)="([^"]*)"/g)].map((m) => [m[1], m[2]]),
     );
     // A file's own suite is named after the file; a describe block carries a line.
     if (attrs.name && attrs.name === attrs.file && !("line" in attrs)) {
