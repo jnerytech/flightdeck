@@ -9,7 +9,7 @@ import {
   stepSwitcher,
 } from "../../lib/tab-switcher.ts";
 import { useStoreState } from "../../lib/use-store.ts";
-import { TAB_ICONS, tabTitle } from "../../ui/TabBar.tsx";
+import { TAB_ICONS, TabBadgeGlyph, tabTitle } from "../../ui/TabBar.tsx";
 
 /**
  * The Ctrl+Tab switcher. Hold Ctrl and press Tab to open it on the previous tab and to go down the
@@ -108,14 +108,7 @@ export function TabSwitcherHost(props: { store: AppStore }) {
               >
                 <Icon aria-hidden="true" className="size-3.5 shrink-0" />
                 <span className="min-w-0 flex-1 truncate">{tabTitle(tab, state, store)}</span>
-                {badge && (
-                  <span
-                    role="img"
-                    aria-label={t(`tabs.badge.${badge}`)}
-                    className={cn(
-                      "size-1.5 shrink-0 rounded-full",
-                      badge === "needs-you" ? "bg-status-needs-you" : "bg-muted-foreground",
-                    )}
+                {badge && <TabBadgeGlyph badge={badge} label={t(`tabs.badge.${badge}`)} />}
                   />
                 )}
               </div>
@@ -123,13 +116,12 @@ export function TabSwitcherHost(props: { store: AppStore }) {
           })}
         </div>
         <p role="status" className="sr-only">
-          {picked
-            ? t("tabs.switcher.position", {
-                title: tabTitle(picked, state, store),
-                n: switcher.index + 1,
-                total: rows.length,
-              })
-            : ""}
+          {picked &&
+            t("tabs.switcher.position", {
+              title: tabTitle(picked, state, store),
+              n: switcher.index + 1,
+              total: rows.length,
+            })}
         </p>
       </div>
     </div>
