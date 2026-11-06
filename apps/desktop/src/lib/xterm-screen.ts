@@ -3,14 +3,21 @@ import {
   type FindDecorations,
   NEWLINE_SEQUENCE,
   type TerminalColors,
+  type TerminalZoom,
   terminalKeyAction,
+  terminalWheelAction,
 } from "./terminal-view.ts";
 
 /** The slice of xterm's Terminal the app uses; a fake stands in for it in the tests. */
 export interface XtermTerminal {
   cols: number;
   rows: number;
-  options: { theme?: TerminalColors; fontSize?: number; fontFamily?: string };
+  options: {
+    theme?: TerminalColors;
+    fontSize?: number;
+    fontFamily?: string;
+    screenReaderMode?: boolean;
+  };
   unicode: { activeVersion: string };
   loadAddon(addon: unknown): void;
   open(parent: HTMLElement): void;
@@ -25,6 +32,7 @@ export interface XtermTerminal {
   onData(listener: (data: string) => void): { dispose(): void };
   onResize(listener: (size: { cols: number; rows: number }) => void): { dispose(): void };
   attachCustomKeyEventHandler(handler: (event: KeyboardEvent) => boolean): void;
+  attachCustomWheelEventHandler(handler: (event: WheelEvent) => boolean): void;
   dispose(): void;
 }
 
@@ -62,11 +70,15 @@ export interface XtermScreenOptions {
   fontSize: number;
   fontFamily: string;
   clipboard: { copy(text: string): Promise<void>; read(): Promise<string> };
+  /** xterm keeps an accessible copy of the output for screen readers (#476). */
+  screenReader?: boolean;
   /** The host is Windows: Ctrl+C copies when there is a selection, and interrupts when there is none. */
   windows?: boolean;
   onInput(data: string): void;
   onResize(cols: number, rows: number): void;
   onSearch(): void;
+  /** Ctrl+=, Ctrl+-, Ctrl+0 or Ctrl+wheel asked for a zoom step (#476). */
+  onZoom?(step: TerminalZoom): void;
   /** The matches of the find bar changed (typing, next, previous). */
   onFindResults?(results: FindResults): void;
   /** A link in the output was clicked. */
@@ -82,6 +94,7 @@ export interface XtermScreen {
   fit(): void;
   setTheme(theme: TerminalColors): void;
   setFontSize(size: number): void;
+  setScreenReader(on: boolean): void;
   find(text: string, direction: "next" | "previous", incremental?: boolean): boolean;
   clearFind(): void;
   focus(): void;
@@ -106,6 +119,7 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     allowProposedApi: true,
     // Issue #476: a long Claude turn stays in the view and in find (xterm keeps 1,000 by default).
     scrollback: SCROLLBACK_LINES,
+    screenReaderMode: options.screenReader === true,
   });
   const fit = deps.fit();
   const search = deps.search();
@@ -158,9 +172,23 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
       case "snippets":
         options.onSnippets?.();
         return false;
+      case "zoomIn":
+      case "zoomOut":
+      case "zoomReset":
+        // Kept from the page too: WebView2 would zoom the whole app on the same keys.
+        event.preventDefault();
+        if (event.type === "keydown") options.onZoom?.(action);
+        return false;
       default:
         return true;
     }
+  });
+  terminal.attachCustomWheelEventHandler((event) => {
+    const step = terminalWheelAction(event);
+    if (!step) return true;
+    event.preventDefault();
+    options.onZoom?.(step);
+    return false;
   });
 
   return {
@@ -173,6 +201,9 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     fit: () => fit.fit(),
     setTheme: (theme) => {
       terminal.options.theme = theme;
+    },
+    setScreenReader: (on) => {
+      terminal.options.screenReaderMode = on;
     },
     setFontSize: (fontSize) => {
       terminal.options.fontSize = fontSize;

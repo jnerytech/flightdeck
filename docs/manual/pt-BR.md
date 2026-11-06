@@ -851,6 +851,20 @@ Clique em um cartão para abrir a página do projeto. Ela leva ao **Board**, às
 **Workflows**, aos **Custos** (quando o host informa custos) e às **Configurações** (as
 configurações de projetos do host, onde se editam pasta, branch base, setup e personas) do projeto.
 
+### Dormir sessões ociosas
+
+Uma sessão ociosa mantém seu processo do Claude Code, e a memória dele, até terminar. Na página do
+host, **Dormir sessões ociosas após** (Desligado, 15 minutos, 30 minutos, 1 hora ou 4 horas;
+desligado por padrão, e `sessions.sleepAfterMinutes` na configuração do daemon) deixa o host
+encerrar o processo de uma sessão ociosa por esse tempo. A sessão continua em todas as listas como
+**Dormindo** (uma lua) e guarda a transcrição, o nome e o lugar; a próxima mensagem a inicia de
+novo de onde estava, sem perda visível. Só dorme a sessão sem nada acontecendo: não a que está
+trabalhando ou esperando você, nem uma com mensagem na fila, aberta numa aba ou observada pelo app,
+nem uma fixada, nem a de um card. **Dormir agora** no menu de uma sessão faz isso na hora para uma
+sessão ociosa (ainda recusa uma fixada ou de card). Cada sono fica registrado nos eventos da
+sessão. Com a opção desligada o daemon não mantém timer para isso, e reiniciar o daemon deixa as
+sessões ociosas dormindo do mesmo jeito.
+
 ### Sessões lado a lado
 
 Quando o projeto tem sessões iniciadas pelo Flightdeck, a página as mostra como **blocos**. O
@@ -1142,6 +1156,20 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
     para fora do repositório também é recusado;
   - acompanha o disco ao vivo (o host observa a pasta, com debounce de 500 ms), e **Atualizar**
     lê de novo.
+- **Aba Arquivos** (quando o host lista arquivos): o repositório da sessão como árvore. Pastas
+  primeiro, depois arquivos, em ordem natural (`file2` antes de `file10`); uma pasta abre com um
+  clique e é lida uma vez. Um arquivo alterado mostra o status (novo, modificado, apagado,
+  renomeado) do mesmo diff da aba Mudanças, ao vivo, e cada pasta acima dele diz **tem mudanças**.
+  Um arquivo que pode guardar uma credencial aparece como **Oculto**. O `.git` e links que levam
+  para fora do repositório nunca aparecem. **Filtrar por nome** mantém os nomes que batem entre as
+  pastas já abertas, com as pastas no caminho. Uma pasta com mais de 500 entradas mostra as
+  primeiras e avisa. Uma sessão fora do git não tem árvore: a aba diz isso. Um clique num arquivo
+  o abre abaixo da árvore, só para leitura, com as linhas numeradas; um arquivo de mais de 1 MB, um
+  que não é texto ou uma credencial diz isso no lugar. Um arquivo alterado tem **Mostrar mudanças**:
+  o diff dele contra o HEAD, ao vivo. Enquanto você está no fim, a mudança mais nova entra na tela
+  conforme a sessão edita; role para cima e isso para, e **Ir para a mais recente** (com quantas
+  mudanças chegaram) ou uma rolagem de volta ao fim retoma. Num host deste computador o visualizador
+  também tem **Abrir no app padrão** e **Mostrar na pasta**.
 - **Comentários inline:**
   - clique no número de uma linha para comentá-la, e com shift em outra para estender o intervalo.
     Uma linha apagada é comentada pelo lado antigo;
@@ -2766,12 +2794,19 @@ numa aba, sem SSH.
   Claude Code) pode soltar uma seleção antes de você chegar em **Copiar**: a última seleção
   continua copiável até você digitar. Quando o programa toma o mouse para si, segure `Shift` ao
   arrastar para selecionar. `Shift+Enter` adiciona uma nova linha no prompt do Claude Code em vez
-  de enviá-lo (o mesmo que `Alt+Enter`). Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
+  de enviá-lo (o mesmo que `Alt+Enter`). Se blocos cinza de uma tela antiga ficarem no painel
+  lateral do Claude Code, é o Claude Code deixando células sem limpar (acontece também em outros
+  terminais): `Ctrl+L` ou redimensionar o painel faz ele redesenhar. Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
   atual em outra cor e sua posição ("2 de 5") ao lado da caixa; Enter ou **Próximo resultado**
   vai para o próximo, Shift+Enter ou **Resultado anterior** para o anterior, Esc ou **Fechar
   busca** fecha. Links na saída abrem no navegador (só `http` e `https`). A fonte é a
   monoespaçada do sistema; o tamanho fica nas Configurações (**Tamanho da fonte do terminal**, de
-  10 a 24). A aba guarda as últimas 10.000 linhas para rolar e buscar.
+  10 a 24). Na aba, `Ctrl+=` (ou `Ctrl++`) e `Ctrl+-`, ou `Ctrl` com a roda do mouse, aumentam ou
+  diminuem um ponto, e `Ctrl+0` volta para 13; o tamanho é a mesma configuração e fica guardado. Para
+  um leitor de tela (NVDA, Narrador), ligue **Suporte a leitor de tela no terminal** nas
+  Configurações: o terminal passa a manter uma cópia da saída que o leitor acompanha (saída longa
+  demora mais para aparecer, por isso começa desligado). A
+  aba guarda as últimas 10.000 linhas para rolar e buscar.
 - **Desanexar e reabrir:** o terminal sobrevive ao app: guarda os últimos 2 MB de saída, e anexar
   de novo os mostra. Fechar a aba de um terminal pergunta: **Desanexar** (o padrão; o processo
   continua no host) ou **Encerrar processo**. Um terminal desanexado ou encerrado tem **Reabrir**.
@@ -2839,6 +2874,24 @@ terminal; **Abrir outra cópia mesmo assim** abre aqui do mesmo jeito.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude
   ganha um selo ⚠. O tempo no ar continua contando enquanto a página está aberta.
+- **Recursos:** um painel da página do host (hosts que anunciam `resources`) mostra a memória e o
+  disco do host em barras, a carga, e uma tabela das sessões e terminais com a maior memória
+  primeiro: projeto, memória, CPU e os programas rodando (só os nomes; nunca uma linha de comando
+  nem o ambiente). Memória ou disco a 80% diz **Alta** e a 90% **Crítica**, em palavras e em cor.
+  **Processos que sobraram** lista um `claude` que o daemon do host iniciou para uma sessão que
+  já acabou (com mais de um minuto, na pasta dessa sessão, iniciado enquanto ela vivia), com pid,
+  idade e memória; um `claude` que o daemon inicia para outra coisa (instalação de plugin, consulta
+  da conta, uma ação) ou o processo de uma sessão viva cuja pasta foi movida nunca é listado; **Encerrar** pergunta antes e encerra só
+  esse processo (o daemon confere de novo, logo antes do sinal, que é o mesmo processo, por pid e
+  hora de início, ainda filho dele e sem dono). Um `claude` cuja pasta não pode ser lida, ou que roda
+  numa pasta onde há uma sessão viva, nunca é listado: não dá para saber de quem é cada um. Um daemon
+  rodando como pid 1 (um contêiner) não lista nenhum. Encerrar exige conexão por loopback ou
+  Tailscale, como os outros comandos que mudam o host, e manda SIGTERM só àquele processo. O painel lê a cada
+  5 s enquanto a página está aberta e o host está online, e o daemon não mantém timer para isso. Os
+  números por processo vêm de `/proc`, então só hosts Linux os têm; hosts macOS e Windows mostram a
+  memória e o disco (e a carga, no macOS) e dizem que os processos não são medidos. Uma sessão é
+  ligada ao seu `claude` pela pasta e pela ordem de início, então duas sessões na mesma pasta podem
+  trocar os números.
 - **Worktrees:** um painel da página do host (hosts que anunciam `worktrees`) lista as worktrees
   dos cards em `.flightdeck/worktrees` com o tamanho em disco (**desconhecido** quando a medição
   estourou o tempo, nunca 0), há quanto tempo estão paradas e o card de cada uma. **Sugerida** marca

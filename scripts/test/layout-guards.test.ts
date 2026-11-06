@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { registerDom } from "../../apps/desktop/test/dom.ts";
-import { compareToBaseline, findingKey, layoutFindings } from "../lib/layout-guards.ts";
+import {
+  compareToBaseline,
+  findingKey,
+  layoutFindings,
+  pinnedProblem,
+} from "../lib/layout-guards.ts";
 
 registerDom();
 
@@ -9,6 +14,7 @@ registerDom();
  * and how much it scrolls with `data-sw` (scrollWidth) and `data-cw` (clientWidth).
  */
 const proto = window.Element.prototype as unknown as Record<string, unknown>;
+const htmlProto = window.HTMLElement.prototype as unknown as Record<string, unknown>;
 const saved = new Map<string, PropertyDescriptor | undefined>();
 const NAMES = ["getBoundingClientRect", "scrollWidth", "clientWidth"];
 
@@ -46,15 +52,37 @@ beforeEach(() => {
       return num(this, "data-cw", 0);
     },
   });
+  // happy-dom defines these on HTMLElement, which sits above Element: both are shadowed.
+  for (const [name, attr] of [
+    ["scrollTop", "data-st"],
+    ["clientHeight", "data-ch"],
+    ["scrollHeight", "data-sh"],
+  ] as const) {
+    for (const holder of [proto, htmlProto]) {
+      saved.set(
+        `${holder === proto ? "E" : "H"}:${name}`,
+        Object.getOwnPropertyDescriptor(holder, name),
+      );
+      Object.defineProperty(holder, name, {
+        configurable: true,
+        get(this: Element) {
+          return num(this, attr, 0);
+        },
+      });
+    }
+  }
   window.innerWidth = 1000;
   window.innerHeight = 700;
 });
 
 afterEach(() => {
-  for (const [name, descriptor] of saved) {
-    if (descriptor) Object.defineProperty(proto, name, descriptor);
-    else delete proto[name];
+  for (const [key, descriptor] of saved) {
+    const holder = key.startsWith("H:") ? htmlProto : proto;
+    const name = key.replace(/^[EH]:/, "");
+    if (descriptor) Object.defineProperty(holder, name, descriptor);
+    else delete holder[name];
   }
+  saved.clear();
   document.body.innerHTML = "";
   document.documentElement.removeAttribute("data-sw");
   document.documentElement.removeAttribute("data-cw");
@@ -270,5 +298,49 @@ describe("layout-guards: a layout that settles late is waited for, not guessed w
     });
     const settled = await waitForStable({ frames: 3, maxMs: 120 });
     expect(settled.stable).toBe(false);
+  });
+});
+
+describe("layout-guards: where a session opens (issues #173 and #456)", () => {
+  /** A timeline 300 px tall at 100..400 that scrolls `st` of `sh`, with an optional request card. */
+  const session = (st: number, sh: number, card?: string) => {
+    document.body.innerHTML = `<div data-slot="timeline" data-rect="0,100,800,400" data-st="${st}" data-ch="300" data-sh="${sh}">${
+      card ? `<div data-request-id="r1" data-rect="${card}"></div>` : ""
+    }</div>`;
+    return pinnedProblem();
+  };
+
+  test("a conversation at its end, with its request whole, is fine", () => {
+    expect(session(200, 500, "0,250,800,390")).toBeNull();
+  });
+
+  test("a conversation that stops short of its end, with no request to explain it, is a problem", () => {
+    expect(session(100, 500)).toBe("the timeline is not at its end (400 of 500)");
+  });
+
+  test("a request taller than the window stops the view at its top: that is not a problem", () => {
+    // 340 px of card in a 300 px window: the end is 40 px further, the card's top is at the edge.
+    expect(session(160, 500, "0,100,800,440")).toBeNull();
+  });
+
+  test("a request that fits, with the view short of the end, is still a problem", () => {
+    expect(session(100, 500, "0,150,800,300")).toBe("the timeline is not at its end (400 of 500)");
+  });
+
+  test("a request whose top is cut above the window is a problem", () => {
+    expect(session(200, 500, "0,60,800,300")).toBe(
+      "the request card (60..300) is cut by the timeline (100..400)",
+    );
+  });
+
+  test("a request that fits but is cut at the bottom is a problem", () => {
+    expect(session(200, 500, "0,250,800,450")).toBe(
+      "the request card (250..450) is cut by the timeline (100..400)",
+    );
+  });
+
+  test("no timeline is named as such", () => {
+    document.body.innerHTML = "";
+    expect(pinnedProblem()).toBe("no timeline");
   });
 });

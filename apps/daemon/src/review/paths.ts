@@ -5,13 +5,13 @@ import { isInside } from "../paths.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
 
 /** The first step of a path relative to the repository's root. */
-const firstStep = (inside: string) => inside.split(/[\\/]/)[0] ?? "";
+export const firstStep = (inside: string) => inside.split(/[\\/]/)[0] ?? "";
 
 /**
  * `.git` as a filesystem may take it: in any case (Windows and macOS do not tell them apart) and
  * with trailing dots or spaces (Windows drops them).
  */
-const isGitDir = (name: string) => name.replace(/[. ]+$/, "").toLowerCase() === ".git";
+export const isGitDir = (name: string) => name.replace(/[. ]+$/, "").toLowerCase() === ".git";
 
 /**
  * A file of the review, given relative to the repository: never absolute, never above the root

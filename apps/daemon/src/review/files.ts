@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { Dirent } from "node:fs";
 import {
   copyFile,
   mkdir,
@@ -9,17 +10,57 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { inSequence } from "@flightdeck/protocol";
+import { dirname, join, relative } from "node:path";
+import { type FileEntry, type FileListing, inSequence } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
 import { refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
 import { FlightdeckError } from "../errors.ts";
-import { resolveAllowedCwd } from "../paths.ts";
+import { isInside, resolveAllowedCwd } from "../paths.ts";
+import { credential } from "../permissions/sensitive-paths.ts";
 import { readRegularSized } from "../read-regular.ts";
 import { ulid } from "../ulid.ts";
 import type { Changes } from "./changes.ts";
-import { type Located, located, refuseCredential } from "./paths.ts";
+import { firstStep, isGitDir, type Located, located, refuseCredential } from "./paths.ts";
+
+/** What a path that cannot be looked at reads as. */
+const absent = () => null;
+
+/** The most entries one folder sends to the explorer; it says the rest were cut. */
+const LIST_CAP = 500;
+
+/**
+ * Folders first, then files; numbers in names in their order (`file2` before `file10`), letters
+ * without regard to case first, so two names of one folder never tie.
+ */
+function folderOrder(a: FileEntry, b: FileEntry): number {
+  if (a.kind !== b.kind) return a.kind === "dir" ? -1 : 1;
+  return a.name.localeCompare(b.name, "en", { numeric: true });
+}
+
+/**
+ * What an entry is, links followed: `null` for a link that leaves the repository or leads nowhere,
+ * and for anything that is neither a folder nor a file.
+ */
+async function entryTarget(
+  realRoot: string,
+  path: string,
+  entry: Dirent,
+): Promise<{ path: string; kind: FileEntry["kind"] } | null> {
+  if (!entry.isSymbolicLink()) {
+    if (entry.isDirectory()) return { path, kind: "dir" };
+    return entry.isFile() ? { path, kind: "file" } : null;
+  }
+  const real = await realpath(path).catch(absent);
+  // Out of the repository, or into its `.git`: not an entry of the explorer.
+  if (!real || !isInside(realRoot, real) || isGitDir(firstStep(relative(realRoot, real)))) {
+    return null;
+  }
+  // Gone since it was resolved: left out like a link that leads nowhere.
+  const info = await stat(real).catch(absent);
+  if (info?.isDirectory()) return { path: real, kind: "dir" };
+  return info?.isFile() ? { path: real, kind: "file" } : null;
+}
 
 export interface ReviewFilesOptions {
   changes: Changes;
@@ -98,6 +139,34 @@ export class ReviewFiles {
       });
     }
     return { path, text: bytes.toString("utf8"), hash: sha256(bytes), size: bytes.length };
+  }
+
+  /**
+   * One folder of the repository for the file explorer (issue #506): folders first, then files, in
+   * natural order. `.git` and links that leave the repository stay out; a credential is marked.
+   */
+  async list(target: string, dir: string): Promise<FileListing> {
+    const { root } = await this.opts.changes.resolve(target);
+    const realRoot = await realpath(root);
+    const folder = dir === "" ? realRoot : (await located(root, realRoot, dir)).real;
+    // `located` resolved it, so it is there.
+    const info = folder ? await stat(folder) : null;
+    if (!folder || !info?.isDirectory()) {
+      throw new FlightdeckError("not_found", `${dir} is not a folder`, "review_file_missing", {
+        path: dir,
+      });
+    }
+    const entries: FileEntry[] = [];
+    await inSequence(await readdir(folder, { withFileTypes: true }), async (entry) => {
+      if (isGitDir(entry.name)) return;
+      const real = await entryTarget(realRoot, join(folder, entry.name), entry);
+      if (!real) return;
+      const asked = dir === "" ? entry.name : `${dir}/${entry.name}`;
+      const secret = credential(asked) || credential(relative(realRoot, real.path));
+      entries.push({ name: entry.name, kind: real.kind, ...(secret ? { secret } : {}) });
+    });
+    entries.sort(folderOrder);
+    return { dir, entries: entries.slice(0, LIST_CAP), truncated: entries.length > LIST_CAP };
   }
 
   /** Writes only when the file still has `expectedHash`; otherwise `file_conflict`. */

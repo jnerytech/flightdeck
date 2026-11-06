@@ -894,16 +894,73 @@ describe("pr-flow: the CI of a commit and the release tag (#266)", () => {
       expect(f.gitWrites).toEqual([]);
     });
 
-    test("a HEAD run that is still going with no earlier green commit refuses, says it is running, and starts nothing", async () => {
+    // HEAD has the bump and no bump commit has a full green run: the full run starts at once, in its own
+    // concurrency group, instead of after HEAD's push run settles (#545).
+    const waiting = {
+      ...stacked,
+      history: ["head3", "bump2"],
+    };
+
+    test("a HEAD run still going and no earlier green commit: a full run starts at once, tag waits for it and tags nothing", async () => {
       const f = fake({
-        ...stacked,
-        history: ["head3", "bump2"],
+        ...waiting,
         mainRuns: { head3: [{ status: "queued", conclusion: null }], bump2: [pushGreen] },
       });
       expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(2);
       expect(f.out()).toContain("head3's CI run on main is still running");
+      expect(f.out()).toContain(
+        "a full run of main was started; run pr tag again when it is green",
+      );
       expect(f.gitWrites).toEqual([]);
-      expect(f.writes).toEqual([]);
+      expect(f.writes).toEqual([START]);
+    });
+
+    test("a dispatch of that commit that is queued or going is not started twice", async () => {
+      for (const status of ["queued", "in_progress"]) {
+        const f = fake({
+          ...waiting,
+          mainRuns: {
+            head3: [
+              { id: 5, event: "push", status: "in_progress", conclusion: null },
+              { id: 6, event: "workflow_dispatch", status, conclusion: null },
+            ],
+            bump2: [pushGreen],
+          },
+        });
+        expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(2);
+        expect(f.out()).toContain(
+          "a full run of main is already going; run pr tag again when it is green",
+        );
+        expect(f.writes).toEqual([]);
+        expect(f.gitWrites).toEqual([]);
+      }
+    });
+
+    test("a dispatch that already finished does not stop a new one while the push run is going", async () => {
+      const f = fake({
+        ...waiting,
+        mainRuns: {
+          head3: [
+            { id: 5, event: "push", status: "in_progress", conclusion: null },
+            { id: 6, event: "workflow_dispatch", status: "completed", conclusion: "cancelled" },
+          ],
+          bump2: [pushGreen],
+        },
+      });
+      expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(2);
+      expect(f.writes).toEqual([START]);
+    });
+
+    test("when GitHub refuses the dispatch of a commit whose run is going, it says how to start one by hand", async () => {
+      const f = fake({
+        ...waiting,
+        mainRuns: { head3: [{ status: "queued", conclusion: null }], bump2: [pushGreen] },
+        fail: /^workflow run/,
+      });
+      expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(2);
+      expect(f.out()).toContain("still running");
+      expect(f.out()).toContain("start one (gh workflow run ci.yml --ref main -f only=all)");
+      expect(f.gitWrites).toEqual([]);
     });
 
     test("--commit pins a commit whose run is still going: it refuses, and falls back to nothing", async () => {
@@ -950,7 +1007,11 @@ describe("pr-flow: the CI of a commit and the release tag (#266)", () => {
         conclusion: "success",
       };
       const runJobs = {
-        7: [{ name: "test suite (ubuntu-latest) (dispatch)", conclusion: "success" }],
+        // Windows is a signal in a full run, never a gate (#534): a red shard does not block the tag.
+        7: [
+          { name: "test suite (ubuntu-latest) (dispatch)", conclusion: "success" },
+          { name: "test shard 1/3 (windows-latest) (dispatch)", conclusion: "failure" },
+        ],
         8: [{ name: "test suite (ubuntu-latest) (dispatch)", conclusion: "skipped" }],
       };
       const ok = fake({ ...stacked, mainRuns: { head3: [full] }, runJobs });

@@ -22,6 +22,8 @@ export const JOURNEYS: readonly string[] = [
   "finalizar-card",
   "webhook-ntfy",
   "update-card",
+  "status-bar",
+  "trust-revoke",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];

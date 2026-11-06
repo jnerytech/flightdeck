@@ -83,7 +83,7 @@ export function highlight(text: string, query: string): Array<{ text: string; hi
   for (const [index, char] of [...text].entries()) {
     const hit = hits.has(index);
     const last = runs.at(-1);
-    if (last && last.hit === hit) last.text += char;
+    if (last?.hit === hit) last.text += char;
     else runs.push({ text: char, hit });
   }
   return runs;

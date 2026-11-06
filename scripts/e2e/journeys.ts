@@ -21,6 +21,7 @@ import {
   KEY_REGIONS,
   layoutFindings,
   loadBaseline,
+  pinnedProblem,
   waitForStable,
 } from "../lib/layout-guards.ts";
 
@@ -678,6 +679,86 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await card.getByRole("button", { name: c.t("update.cardClose"), exact: true }).click();
     await card.waitFor({ state: "detached", timeout: WAIT });
   },
+
+  // 22. The status bar (issue #491): it counts the hosts and the terminals, and its keep-awake item
+  // (on or holding the computer awake) opens the host's setting for it.
+  "status-bar": async (c) => {
+    await open(c, { name: "hub" });
+    const bar = c.page.getByRole("region", { name: c.t("statusBar.label"), exact: true });
+    await bar.waitFor({ timeout: WAIT });
+    const pattern = (key: "statusBar.hosts" | "statusBar.terminals") => {
+      const text = c.t(key, { online: "@1", total: "@2", n: "@1" });
+      const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`^${escaped.replace("@1", "\\d+").replace("@2", "\\d+")}$`);
+    };
+    await bar.getByRole("button", { name: pattern("statusBar.hosts") }).waitFor({ timeout: WAIT });
+    await bar
+      .getByRole("button", { name: pattern("statusBar.terminals") })
+      .or(bar.getByRole("button", { name: c.t("statusBar.terminalsOne"), exact: true }))
+      .first()
+      .waitFor({ timeout: WAIT });
+    const awake = (state: "on" | "off" | "holding") =>
+      bar.getByRole("button", { name: c.t(`statusBar.keepAwake.${state}`), exact: true });
+    const holdsOn = awake("on").or(awake("holding"));
+    await holdsOn.first().click({ timeout: WAIT });
+    await c.page
+      .getByRole("tab", { name: c.t("hostHome.settings"), exact: true })
+      .click({ timeout: WAIT });
+    await c.page
+      .getByText(c.t("hostPage.keepAwakeTitle"), { exact: true })
+      .waitFor({ timeout: WAIT });
+  },
+
+  // 23. Revoking a project's trust (issue #463): a session that started while the project was
+  // trusted keeps the hooks and MCP servers it loaded, says so and offers to restart; the restart
+  // clears the notice. The journey ends with the project untrusted again, as the demo seeds it.
+  "trust-revoke": async (c) => {
+    const project = { name: "project", host: ALFA, projectId: c.ids.project } as const;
+    await open(c, project);
+    const revoke = c.page.getByRole("button", {
+      name: c.t("projectPage.trust.revoke"),
+      exact: true,
+    });
+    const trust = c.page.getByRole("button", {
+      name: c.t("projectPage.trust.action"),
+      exact: true,
+    });
+    // A run that stopped half way left the project trusted: start from the same place anyway.
+    await trust.or(revoke).first().waitFor({ timeout: WAIT });
+    if ((await revoke.count()) === 0) {
+      await trust.click();
+      await c.page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: c.t("projectPage.trust.action"), exact: true })
+        .click();
+      await revoke.waitFor({ timeout: WAIT });
+    }
+    // A session started inside the trusted folder loads the project's setup. It waits for an
+    // answer, so the run is still alive when the trust is removed.
+    const name = `e2e-revoga-${c.lang}-${Date.now()}`;
+    await open(c, { name: "new-session", host: ALFA });
+    await c.page.getByLabel(c.t("newSession.subfolder"), { exact: true }).fill("flightdeck-web");
+    await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
+    await c.page.getByLabel(c.t("newSession.prompt"), { exact: true }).fill("[bash] ls");
+    await c.page.getByRole("button", { name: c.t("newSession.create"), exact: true }).click();
+    const row = c.page.locator("main ul li button", { hasText: name });
+    await open(c, { name: "needs-you" });
+    await row.first().waitFor({ timeout: SESSION_WAIT });
+    // Removing the trust leaves that session as it is, and tells the person to restart it.
+    await open(c, project);
+    await revoke.waitFor({ timeout: WAIT });
+    await revoke.click();
+    await trust.waitFor({ timeout: WAIT });
+    await open(c, { name: "needs-you" });
+    await row.first().click({ timeout: SESSION_WAIT });
+    await c.page.getByRole("button", { name: c.t("approval.openSession"), exact: true }).click();
+    const notice = c.page.getByText(c.t("projectPage.trust.revokedNotice"));
+    await notice.waitFor({ timeout: WAIT });
+    await c.page
+      .getByRole("button", { name: c.t("projectPage.trust.restart"), exact: true })
+      .click();
+    await notice.waitFor({ state: "detached", timeout: SESSION_WAIT });
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */
@@ -1192,19 +1273,7 @@ export async function layout(c: Context, problems: string[]) {
   // request is whole above the composer. Nothing scrolls the page before the measure.
   await c.page.setViewportSize({ width: 1280, height: 800 });
   await open(c, { name: "session", host: ALFA, id: c.ids.waitingSession });
-  const pinned = await c.page.evaluate(() => {
-    const box = document.querySelector<HTMLElement>("[data-slot='timeline']");
-    if (!box) return "no timeline";
-    if (box.scrollTop + box.clientHeight < box.scrollHeight - 24) {
-      return `the timeline is not at its end (${Math.round(box.scrollTop + box.clientHeight)} of ${box.scrollHeight})`;
-    }
-    const card = box.querySelector<HTMLElement>("[data-request-id]")?.getBoundingClientRect();
-    const edge = box.getBoundingClientRect();
-    if (card && (card.top < edge.top - 1 || card.bottom > edge.bottom + 1)) {
-      return `the request card (${Math.round(card.top)}..${Math.round(card.bottom)}) is cut by the timeline (${Math.round(edge.top)}..${Math.round(edge.bottom)})`;
-    }
-    return null;
-  });
+  const pinned = await c.page.evaluate(pinnedProblem);
   if (pinned) problems.push(`${c.lang} waiting session: ${pinned}`);
   // Issue #225: in a split, each area's tab bar keeps its height (it grew to half the area). Only
   // the bars' tablists are counted (a screen may have tabs of its own), and the split is always

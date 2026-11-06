@@ -122,10 +122,8 @@ export class WebhookTargets {
   }
 
   private check(input: { name?: string; kinds?: WebhookKind[] }): void {
-    if (input.name !== undefined && input.name.trim() === "")
-      throw new WebhookTargetError("no_name");
-    if (input.kinds !== undefined && input.kinds.length === 0)
-      throw new WebhookTargetError("no_kinds");
+    if (input.name?.trim() === "") throw new WebhookTargetError("no_name");
+    if (input.kinds?.length === 0) throw new WebhookTargetError("no_kinds");
   }
 
   async add(input: TargetInput): Promise<WebhookTarget> {

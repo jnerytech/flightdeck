@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rm } from "node:fs/promises";
 import { dirname } from "node:path";
 import { byCodeUnit } from "@flightdeck/protocol";
 import { writeFileAtomic } from "../atomic-write.ts";

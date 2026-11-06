@@ -73,6 +73,7 @@ import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
 import { localDay } from "./quota/usage.ts";
+import type { Resources } from "./resources/resources.ts";
 import type { Changes } from "./review/changes.ts";
 import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
@@ -152,6 +153,8 @@ export interface ServerOptions {
   allowedRoots: readonly string[];
   /** The host's switch for sessions without permission prompts: read for `host.info`, set by `host.bypass`. */
   bypass?: { allowed(): boolean; set(allow: boolean): void | Promise<void> };
+  /** Issue #157: how long an idle session may wait before it sleeps; read for `host.info`, set by `host.sleep`. */
+  sleep?: { minutes(): number; set(minutes: number): void | Promise<void> };
   /** Keeps the computer awake while sessions run (issue #163): its status for `host.info`, and the switch for `host.keepAwake`. */
   keepAwake?: { status(): KeepAwakeStatus; set(enabled: boolean): void | Promise<void> };
   /** Issue #196: the trust of folders and what a project would load; absent, the commands are refused and not announced. */
@@ -208,6 +211,8 @@ export interface ServerOptions {
   central?: Central;
   /** Retention and backups behind the `maintenance.*` commands (phase 7). */
   maintenance?: Maintenance;
+  /** What the host's sessions and terminals cost it, behind `resources.*` (issue #154). */
+  resources?: Resources;
   /** What the cards' worktrees take on the disk, behind `worktree.*` (issue #152). */
   worktrees?: Worktrees;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
@@ -384,6 +389,7 @@ function featuresOf(opts: ServerOptions): string[] {
     // Phase 24: the run.yaml of a card and its processes.
     ...(opts.runenv && opts.board ? ["runenv"] : []),
     ...(opts.maintenance ? ["maintenance"] : []),
+    ...(opts.resources ? ["resources"] : []),
     ...(opts.worktrees ? ["worktrees"] : []),
     ...(opts.quota ? ["quota"] : []),
     ...(opts.account ? ["account"] : []),
@@ -396,6 +402,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...(opts.webhook ? ["webhook"] : []),
     ...(opts.bg ? ["bg"] : []),
     ...(opts.changes ? ["review"] : []),
+    // Issue #506: the file explorer lists the folders of a session's repository.
+    ...(opts.files ? ["file.list"] : []),
     // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
     ...(opts.snapshots && opts.rewinder && opts.forker ? ["checkpoints"] : []),
     ...(opts.agentcfg && opts.mcp ? ["agentcfg"] : []),
@@ -613,6 +621,10 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "maintenance");
   }
 
+  function resources(): Resources {
+    return need(opts, "resources");
+  }
+
   function worktrees(): Worktrees {
     return need(opts, "worktrees");
   }
@@ -722,6 +734,15 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "session.close":
         await manager.close(command.payload.sessionId);
         return ok(command.type);
+      case "session.sleep":
+        return ok(command.type, {
+          result: await manager.sleep(command.payload.sessionId, { manual: true }),
+        });
+      case "host.sleep": {
+        if (!opts.sleep) throw featureOff("sleep");
+        await opts.sleep.set(command.payload.minutes);
+        return ok(command.type, { sleepAfterMinutes: command.payload.minutes });
+      }
       case "session.resume":
         await manager.resume(command.payload.sessionId);
         return ok(command.type);
@@ -799,6 +820,13 @@ export function startServer(opts: ServerOptions): RunningServer {
         }
         return ok(command.type, { claudeSessionId, ...meta });
       }
+      case "resources.get":
+        return ok(command.type, await resources().snapshot());
+      case "resources.endOrphan":
+        // Like the other commands that change the host: not from beyond loopback and Tailscale.
+        requireVaultTransport(ws.data.origin, "resources.endOrphan", opts.log);
+        await resources().endOrphan(command.payload.pid, command.payload.startTicks);
+        return ok(command.type, { ended: true });
       case "worktree.list":
         return ok(command.type, await worktrees().list(command.payload.projectId));
       case "worktree.remove":
@@ -948,6 +976,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
           ...(opts.ui ? { ui: { ...opts.ui } } : {}),
           ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
+          ...(opts.sleep ? { sleepAfterMinutes: opts.sleep.minutes() } : {}),
           ...(opts.keepAwake ? { keepAwake: opts.keepAwake.status() } : {}),
           ...(opts.opencode ? { runtimes: [hostRuntime(opts.opencode.info())] } : {}),
           ...updateStatus(),
@@ -1227,6 +1256,8 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "session.clearPersona":
         return ok(command.type, await personaSessions().clear(command.payload));
+      case "file.list":
+        return ok(command.type, await files().list(command.payload.target, command.payload.dir));
       case "file.read":
         return ok(command.type, await files().read(command.payload.target, command.payload.path));
       case "file.write": {

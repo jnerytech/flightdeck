@@ -97,7 +97,7 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
     let kept = target;
     if (runner !== hostId) {
       const via = state.hosts.find((h) => h.id === runner);
-      if (!via || via.status !== "online") {
+      if (via?.status !== "online") {
         return setError(t("connections.viaOffline", { host: via?.name ?? runner }));
       }
       if (!hasFeature(via.hostInfo?.features, "ssh", false)) {

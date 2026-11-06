@@ -6,9 +6,12 @@ import {
   TERMINAL_FONT_KEY,
   TERMINAL_FONT_MAX,
   TERMINAL_FONT_MIN,
+  TERMINAL_READER_KEY,
   TerminalFontController,
+  TerminalReaderSetting,
   terminalKeyAction,
   terminalTheme,
+  terminalWheelAction,
 } from "../src/lib/terminal-view.ts";
 
 const key = (
@@ -107,6 +110,55 @@ describe("terminal-ui: keys, colors and font", () => {
     expect(
       new TerminalFontController(memoryStorage({ [TERMINAL_FONT_KEY]: "400" }).storage).value,
     ).toBe(24);
+  });
+
+  test("Ctrl with =, +, - or 0 zooms the terminal, with Shift or not, and only with Ctrl alone (issue #476)", () => {
+    expect(terminalKeyAction(key("=", { ctrl: true }))).toBe("zoomIn");
+    expect(terminalKeyAction(key("+", { ctrl: true, shift: true }))).toBe("zoomIn");
+    expect(terminalKeyAction(key("-", { ctrl: true }))).toBe("zoomOut");
+    expect(terminalKeyAction(key("_", { ctrl: true, shift: true }))).toBe("zoomOut");
+    expect(terminalKeyAction(key("0", { ctrl: true }))).toBe("zoomReset");
+    expect(terminalKeyAction(key("="))).toBe("pass");
+    expect(terminalKeyAction(key("-", { ctrl: true, alt: true }))).toBe("pass");
+    expect(terminalKeyAction(key("0", { ctrl: true, meta: true }))).toBe("pass");
+  });
+
+  test("Ctrl+wheel zooms, up in and down out; the wheel alone is left to scroll (issue #476)", () => {
+    expect(terminalWheelAction({ ctrlKey: true, deltaY: -120 })).toBe("zoomIn");
+    expect(terminalWheelAction({ ctrlKey: true, deltaY: 120 })).toBe("zoomOut");
+    expect(terminalWheelAction({ ctrlKey: true, deltaY: 0 })).toBeNull();
+    expect(terminalWheelAction({ ctrlKey: false, deltaY: -120 })).toBeNull();
+  });
+
+  test("a zoom step moves the kept font size by 1 within 10..24, and the reset brings back 13 (issue #476)", () => {
+    const kept = memoryStorage({ [TERMINAL_FONT_KEY]: "23" });
+    const controller = new TerminalFontController(kept.storage);
+    const sizes: number[] = [];
+    for (const step of ["zoomIn", "zoomIn", "zoomOut", "zoomReset"] as const) {
+      controller.zoom(step);
+      sizes.push(controller.value);
+    }
+    expect(sizes).toEqual([24, 24, 23, 13]);
+    expect(kept.items.get(TERMINAL_FONT_KEY)).toBe("13");
+    const smallest = new TerminalFontController(
+      memoryStorage({ [TERMINAL_FONT_KEY]: "10" }).storage,
+    );
+    smallest.zoom("zoomOut");
+    expect(smallest.value).toBe(10);
+  });
+
+  test("screen reader support is off at first, then kept as it was set (issue #476)", () => {
+    const fresh = memoryStorage();
+    const setting = new TerminalReaderSetting(fresh.storage);
+    expect(setting.value).toBe(false);
+    let told = 0;
+    setting.subscribe(() => told++);
+    setting.set(true);
+    expect([setting.value, fresh.items.get(TERMINAL_READER_KEY), told]).toEqual([true, "on", 1]);
+    setting.set(false);
+    expect(fresh.items.get(TERMINAL_READER_KEY)).toBe("off");
+    const kept = memoryStorage({ [TERMINAL_READER_KEY]: "on" });
+    expect(new TerminalReaderSetting(kept.storage).value).toBe(true);
   });
 
   test("the host is Windows when the user agent says so", () => {
