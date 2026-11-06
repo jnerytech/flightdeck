@@ -109,8 +109,6 @@ export function TabSwitcherHost(props: { store: AppStore }) {
                 <Icon aria-hidden="true" className="size-3.5 shrink-0" />
                 <span className="min-w-0 flex-1 truncate">{tabTitle(tab, state, store)}</span>
                 {badge && <TabBadgeGlyph badge={badge} label={t(`tabs.badge.${badge}`)} />}
-                  />
-                )}
               </div>
             );
           })}
