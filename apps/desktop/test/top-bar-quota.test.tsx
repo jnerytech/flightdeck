@@ -48,7 +48,7 @@ for (const [lang, dict] of [
       const button = screen.queryByRole("button", { name });
       expect(button).not.toBeNull();
       expect(button?.textContent ?? "").toContain("62%");
-      expect(screen.queryByRole("meter")?.getAttribute("aria-valuenow")).toBe("62");
+      expect(screen.queryByRole("meter")?.getAttribute("value")).toBe("62");
       await act(async () => {
         fireEvent.click(button as HTMLElement);
       });
