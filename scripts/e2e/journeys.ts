@@ -16,6 +16,7 @@ import {
   BARS,
   type Finding,
   findingKey,
+  GAP_BOXES,
   GAPS,
   GUARD_SIZES,
   judge,
@@ -79,7 +80,7 @@ export async function open(
     sleep: (ms) => c.page.waitForTimeout(ms),
     now: () => Date.now(),
   });
-  await c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000 });
+  await c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000, boxes: GAP_BOXES });
 }
 
 /** The sidebar's dots of the demo hosts a journey uses: none of them reads offline or connecting. */
@@ -1182,7 +1183,7 @@ async function openCrowded(c: Context, first: Route, count = 12) {
     .first()
     .waitFor({ timeout: 5000 })
     .catch(() => undefined);
-  await c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000 });
+  await c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000, boxes: GAP_BOXES });
 }
 
 /** After scrolling every box to its end, the last row of the list is on screen (or why not). */
