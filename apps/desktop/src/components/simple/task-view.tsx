@@ -12,7 +12,7 @@ import { QuestionCard } from "./question-card.tsx";
 export interface TaskViewHandlers {
   onBack(): void;
   onStop(): void;
-  onAnswer(requestId: string, decision: "allow" | "deny"): void;
+  onAnswer(requestId: string, decision: "allow" | "deny", held?: boolean): void;
   onOpenFull(): void;
   onCopy(text: string): void;
   onOpenFile(path: string): void;
@@ -138,7 +138,11 @@ export function TaskView(
           plain={question.plain}
           t={t}
           locked={props.locked}
-          onAnswer={(decision) => props.onAnswer(question.requestId, decision)}
+          onAnswer={(decision, held) =>
+            held
+              ? props.onAnswer(question.requestId, decision, true)
+              : props.onAnswer(question.requestId, decision)
+          }
           onOpenFull={props.onOpenFull}
           onCopy={props.onCopy}
         />

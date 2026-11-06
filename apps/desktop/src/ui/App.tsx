@@ -326,7 +326,7 @@ export function App({ store }: { store: AppStore }) {
     } else if (target.kind === "start-card") {
       void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });
     } else if (target.kind === "shortcuts") setHelp(true);
-    else if (target.kind === "decide-oldest") store.decideOldest(target.decision);
+    else if (target.kind === "decide-oldest") store.decideOldest(target.decision, target.key);
     else go(paletteRoute(target));
   };
 

@@ -156,6 +156,30 @@ describe("task-simple-ui: a task, not a transcript", () => {
     expect(calls).toEqual(["answer:r1,allow"]);
   });
 
+  test("Given a high-risk task question, When the yes is held, Then the answer carries the hold's proof (#245)", async () => {
+    const calls = view({
+      ...emptySession(),
+      status: "awaiting_permission",
+      pending: ["r1"],
+      items: [
+        {
+          kind: "permission",
+          seq: 1,
+          requestId: "r1",
+          toolName: "Write",
+          input: {},
+          plain: { ...plain, hold: true, reversible: false },
+        },
+      ],
+    });
+    await act(async () => {
+      fireEvent.pointerDown(screen.getByRole("button", { name: "Yes, go ahead" }));
+      // timing: the hold gesture lasts two seconds; there is nothing to wait on but the clock.
+      await Bun.sleep(2300);
+    });
+    expect(calls).toEqual(["answer:r1,allow,true"]);
+  });
+
   test("Given a done task, Then the summary and the files show, with New or Changed, and no Stop", () => {
     view(
       {
