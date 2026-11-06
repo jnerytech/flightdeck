@@ -36,7 +36,12 @@ way we thought Claude Code matches it. Issue #395 asked for a check against the 
     `realpath` work rides on the same injected lookup.
   - A project-relative rule (`/src`) is looked up from the request's folder, while the CLI reads
     it from the project root. When the two differ, the lookup most often finds nothing there, and
-    that refuses the rule.
+    that refuses the rule (see the next point for when it does not).
+  - A paired client with an open request can learn whether a path is a file (its rule is saved)
+    or not (refused), outside the allowed roots too: one bit about existence and type, never the
+    content.
+  - A project-relative rule looked up in the wrong folder passes if a file happens to be there
+    while the CLI's path is a folder: rare, and not always refused.
   - A new file cannot get an "Always" rule before it exists: allow it once, and save the rule the
     next time.
   - Bash prefix rules have no matcher library to test against, and a live probe of the CLI costs
