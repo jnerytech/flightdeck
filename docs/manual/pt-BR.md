@@ -1009,6 +1009,10 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
   - num card, o diff contra a base, com quantos commits ele está à frente e atrás dela;
   - os arquivos com status e contagens, e o diff unificado ou lado a lado, com as linhas
     numeradas. Um arquivo binário aparece na lista, sem diff;
+  - um arquivo grande demais (mais de 512 KB de diff ou de arquivo novo) aparece na lista com a
+    marca **Grande demais** e o tamanho, sem conteúdo, para o painel não travar. O mesmo vale
+    para o que passa de 4 MB de diff no total: os arquivos seguintes entram só na lista. Num host
+    desta máquina, **Abrir fora do Flightdeck** abre o arquivo no programa do sistema;
   - acompanha o disco ao vivo (o host observa a pasta, com debounce de 500 ms), e **Atualizar**
     lê de novo.
 - **Comentários inline:**
