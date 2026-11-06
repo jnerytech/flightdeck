@@ -157,6 +157,7 @@ import { TelemetryOptIn } from "./telemetry/optin.ts";
 import type { TelemetryStatus } from "./telemetry/otlp-env.ts";
 import { startTelemetry } from "./telemetry/service.ts";
 import { TelemetryStore } from "./telemetry/store.ts";
+import { TeleportPackages, teleportDeps } from "./teleport/package.ts";
 import { BUILTIN_TEMPLATES } from "./templates/builtin.ts";
 import { loadTemplates } from "./templates/files.ts";
 import { TaskTracker } from "./templates/tasks.ts";
@@ -932,6 +933,19 @@ export async function startDaemon(
     ...(config.history.scanIntervalMs ? { scanIntervalMs: config.history.scanIntervalMs } : {}),
   });
   history.start();
+  // Issue #100: the packages of the sessions this host teleports to another; none outlives a run.
+  const teleport = new TeleportPackages(
+    teleportDeps({
+      manager,
+      names,
+      indexer: history,
+      historyRoots: config.history.roots,
+      dataDir: config.dataDir,
+      scan: snippetScanner.scan.bind(snippetScanner),
+      log: logger.log.bind(logger),
+    }),
+  );
+  await teleport.start();
   // Usage of every session of the host, from the transcripts (phase 8): first the ones that
   // already exist, in the background, then whatever the history index sees changing.
   const costs = new Costs({
@@ -1352,6 +1366,7 @@ export async function startDaemon(
       models: () => (opencode.models as NonNullable<CreatedOpenCode["models"]>)(),
     },
     ...(assistant ? { assistant } : {}),
+    teleport,
     warmProjectKey: (cwd) => keys.resolve(cwd),
     projectKeyOf: (cwd) => keys.resolve(cwd),
     // `roots.add` pushes into this same array, so every service sees the new folder at once.
@@ -1689,6 +1704,8 @@ export async function startDaemon(
         autoUpdater?.stop();
         await manager.shutdown();
         await server.stop();
+        // Issue #100: no package of a transcript outlives the daemon.
+        await teleport.stop();
         history.stop();
         await usageIndex.stop();
         budgets.stop();

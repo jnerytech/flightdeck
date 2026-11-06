@@ -1347,6 +1347,7 @@ export const en: Dictionary = {
   },
   daemonFeature: {
     assistant: "the AI assistant",
+    teleport: "moving a session to another host",
     github: "sign-in with GitHub",
     boardsync: "board sync",
     roi: "the ROI view",
@@ -1869,6 +1870,18 @@ export const en: Dictionary = {
     cwd_outside_roots:
       "The folder {cwd} is outside the host's allowed folders. Add it with flightdeckd setup, or in allowedRoots in ~/.flightdeck/config.json.",
     session_not_found: "Session {id} does not exist on this host.",
+    teleport_busy: "This session is working or waits for an answer. Move it once it is idle.",
+    teleport_team:
+      "A session of a team cannot move yet: move one session at a time, outside a team.",
+    teleport_runtime: "Only a Claude Code session can move to another host.",
+    teleport_no_transcript: "This host has no transcript of the session to move.",
+    teleport_unsafe_transcript:
+      "The session's transcript is not a regular file inside Claude Code's history, so it is not read.",
+    teleport_too_large: "The transcript is larger than {max} bytes, the most a move takes.",
+    teleport_not_found:
+      "This move is no longer on the host: it was cancelled or its time ran out. Start it again.",
+    teleport_too_many:
+      "This host is already moving two sessions. Wait for one to finish, or cancel it.",
     runtime_unavailable: "OpenCode is not available on this host.",
     runtime_unsupported: "An OpenCode session does not offer {feature}.",
     opencode_unsafe_global:
