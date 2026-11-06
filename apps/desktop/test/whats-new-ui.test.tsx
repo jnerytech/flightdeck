@@ -125,6 +125,7 @@ describe("whats-new-ui: the dialog (issue #125)", () => {
     const platform = memoryPlatform(false, "en").platform;
     platform.storage.setItem(WHATS_NEW_KEY, "0.0.1");
     const store = new AppStore(platform, { baseDelayMs: 600_000 });
+    store.i18n.start();
     store.releaseNotes = (async () => ({ kind: "ready", releases: [note("v1")] })) as never;
     expect(store.whatsNew.hasNew()).toBe(true);
     let closed = 0;

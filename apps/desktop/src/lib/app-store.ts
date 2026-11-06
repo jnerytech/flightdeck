@@ -66,6 +66,7 @@ import {
   inSequence,
   parsePairingLink,
 } from "@flightdeck/protocol";
+import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type {
@@ -387,6 +388,7 @@ export type HostCommandType = Extract<
   | "history.tool"
   | "host.bypass"
   | "logs.tail"
+  | "releases.list"
   | "host.sleep"
   | "session.sleep"
   | "host.keepAwake"
@@ -1512,7 +1514,16 @@ export class AppStore {
 
   /** The app's latest releases, read through the first online host that offers them (issue #125). */
   async releaseNotes(): Promise<ReleaseNotesResult> {
-    return { kind: "none" };
+    const host = this.state.hosts.find(
+      (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "releases", false),
+    );
+    if (!host) return { kind: "none" };
+    const result = await this.hostRequest(host.id, "releases.list", { limit: 8 });
+    if (result.ok) return { kind: "ready", releases: result.data.releases };
+    return {
+      kind: "error",
+      message: refusalText(result.code, result.message, this.i18n.t, result),
+    };
   }
 
   /** Opens a web page (an issue, a PR) in the user's browser; anything but http(s) is refused. */
