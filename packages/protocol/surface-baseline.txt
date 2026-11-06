@@ -806,6 +806,7 @@ CardDiff.files[].hunks[].lines[].op="-"
 CardDiff.files[].hunks[].lines[].text
 CardDiff.files[].oldPath
 CardDiff.files[].path
+CardDiff.files[].secret?
 CardDiff.files[].status
 CardDiff.files[].status="added"
 CardDiff.files[].status="deleted"
@@ -976,6 +977,7 @@ ChangesResult.files[].hunks[].lines[].op="-"
 ChangesResult.files[].hunks[].lines[].text
 ChangesResult.files[].oldPath
 ChangesResult.files[].path
+ChangesResult.files[].secret?
 ChangesResult.files[].status
 ChangesResult.files[].status="added"
 ChangesResult.files[].status="deleted"
@@ -1004,6 +1006,7 @@ ChangesUpdated.files[].hunks[].lines[].op="-"
 ChangesUpdated.files[].hunks[].lines[].text
 ChangesUpdated.files[].oldPath
 ChangesUpdated.files[].path
+ChangesUpdated.files[].secret?
 ChangesUpdated.files[].status
 ChangesUpdated.files[].status="added"
 ChangesUpdated.files[].status="deleted"
@@ -3614,6 +3617,7 @@ DiffFile.hunks[].lines[].op="-"
 DiffFile.hunks[].lines[].text
 DiffFile.oldPath
 DiffFile.path
+DiffFile.secret?
 DiffFile.status
 DiffFile.status="added"
 DiffFile.status="deleted"
@@ -3886,6 +3890,7 @@ EventEnvelope.event[type=session.summary].status="error"
 EventEnvelope.event[type=session.summary].status="idle"
 EventEnvelope.event[type=session.summary].status="running"
 EventEnvelope.event[type=session.summary].status="starting"
+EventEnvelope.event[type=session.summary].trustStale?
 EventEnvelope.event[type=session.summary].type
 EventEnvelope.event[type=session.summary].type=="session.summary"
 EventEnvelope.event[type=session.summary].updatedAt
@@ -4656,6 +4661,12 @@ MessagingState="ended"
 MessagingState="idle"
 MessagingState="running"
 MessagingState="waiting"
+ModelOption.completionPerMTok?
+ModelOption.group?
+ModelOption.id
+ModelOption.label
+ModelOption.promptPerMTok?
+ModelOption.supportsEffort?
 PendingPermission.createdAt
 PendingPermission.input?
 PendingPermission.requestId
@@ -5317,10 +5328,12 @@ ProjectLoad.redirects[].value
 ProjectLoad.skills
 ProjectLoad.unreadable
 ProjectTrustState.path
+ProjectTrustState.staleSessions?
 ProjectTrustState.trusted
 ProjectTrustState.via
 ProjectTrustStates.items
 ProjectTrustStates.items[].path
+ProjectTrustStates.items[].staleSessions?
 ProjectTrustStates.items[].trusted
 ProjectTrustStates.items[].via
 ProjectUpdatePayload.autoApprove.enabled?
@@ -5837,6 +5850,7 @@ ServerMessage[type=changes.updated].files[].hunks[].lines[].op="-"
 ServerMessage[type=changes.updated].files[].hunks[].lines[].text
 ServerMessage[type=changes.updated].files[].oldPath
 ServerMessage[type=changes.updated].files[].path
+ServerMessage[type=changes.updated].files[].secret?
 ServerMessage[type=changes.updated].files[].status
 ServerMessage[type=changes.updated].files[].status="added"
 ServerMessage[type=changes.updated].files[].status="deleted"
@@ -6081,6 +6095,7 @@ ServerMessage[type=event].event[type=session.summary].status="error"
 ServerMessage[type=event].event[type=session.summary].status="idle"
 ServerMessage[type=event].event[type=session.summary].status="running"
 ServerMessage[type=event].event[type=session.summary].status="starting"
+ServerMessage[type=event].event[type=session.summary].trustStale?
 ServerMessage[type=event].event[type=session.summary].type
 ServerMessage[type=event].event[type=session.summary].type=="session.summary"
 ServerMessage[type=event].event[type=session.summary].updatedAt
@@ -6814,6 +6829,7 @@ SessionEvent[type=session.summary].status="error"
 SessionEvent[type=session.summary].status="idle"
 SessionEvent[type=session.summary].status="running"
 SessionEvent[type=session.summary].status="starting"
+SessionEvent[type=session.summary].trustStale?
 SessionEvent[type=session.summary].type
 SessionEvent[type=session.summary].type=="session.summary"
 SessionEvent[type=session.summary].updatedAt
