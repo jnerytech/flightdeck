@@ -7,9 +7,9 @@ import {
   type AssistantResult,
   type AssistantRunPayload,
   buildRequest,
+  type CommitSource,
   checkOutput,
   KIND_SPECS,
-  type CommitSource,
   type ModelOption,
   SecretScanner,
 } from "@flightdeck/protocol";
