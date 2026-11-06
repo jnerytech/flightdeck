@@ -26,17 +26,21 @@ export interface FastCoverageVerdict {
   dropped: string[];
   /** At 100% now and not listed yet: `--write` adds them. */
   gained: string[];
+  /** Listed, but no longer a source (renamed or deleted): `--write` drops them. */
+  gone: string[];
 }
 
 /** The fast tiers' covered files against the baseline. */
 export function fastCoverageVerdict(
   covered: readonly string[],
   baseline: readonly string[],
+  _sources: readonly string[],
 ): FastCoverageVerdict {
   const now = new Set(covered);
   const listed = new Set(baseline);
   return {
     dropped: baseline.filter((path) => !now.has(path)).sort(byCodeUnit),
     gained: covered.filter((path) => !listed.has(path)).sort(byCodeUnit),
+    gone: [],
   };
 }

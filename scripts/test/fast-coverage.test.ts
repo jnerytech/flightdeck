@@ -36,10 +36,24 @@ describe("fast-coverage (#309)", () => {
   });
 
   test("a listed file that dropped fails; a newly covered file is a gain, not a failure", () => {
-    expect(fastCoverageVerdict(["a.ts", "c.ts"], ["a.ts", "b.ts"])).toEqual({
+    const sources = ["a.ts", "b.ts", "c.ts"];
+    expect(fastCoverageVerdict(["a.ts", "c.ts"], ["a.ts", "b.ts"], sources)).toEqual({
       dropped: ["b.ts"],
       gained: ["c.ts"],
+      gone: [],
     });
-    expect(fastCoverageVerdict(["a.ts"], ["a.ts"])).toEqual({ dropped: [], gained: [] });
+    expect(fastCoverageVerdict(["a.ts"], ["a.ts"], sources)).toEqual({
+      dropped: [],
+      gained: [],
+      gone: [],
+    });
+  });
+
+  test("a listed source that no longer exists (renamed or deleted) is gone, not dropped (#309)", () => {
+    expect(fastCoverageVerdict(["a.ts"], ["a.ts", "old.ts"], ["a.ts"])).toEqual({
+      dropped: [],
+      gained: [],
+      gone: ["old.ts"],
+    });
   });
 });
