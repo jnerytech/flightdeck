@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
+import { unfoldAll } from "./unfold.ts";
 import { settle } from "./wait.ts";
 
 registerDom();
@@ -192,20 +193,37 @@ function hub(options: Parameters<typeof store>[0] = {}) {
 
 const rowOf = (name: string) => screen.getByRole("listitem", { name });
 
+/** The four projects of the demo are drawn, then all of them are opened. */
+async function unfoldProjects() {
+  await settle(
+    () =>
+      [...document.querySelectorAll("button")].filter((b) =>
+        /^(Mostrar ou esconder|Show or hide) /.test(b.getAttribute("aria-label") ?? ""),
+      ).length >= 4,
+    5000,
+    "the four projects",
+  );
+  await unfoldAll(act);
+}
+
 describe("cache-timer-ui: on the Sessions list (issue #159)", () => {
   test("rows: only an idle session that knows since when has a countdown", async () => {
     hub({ on: true });
+    await unfoldProjects();
     await settle(() => screen.queryByRole("listitem", { name: "idle" }) !== null);
     expect(within(rowOf("idle")).getByRole("img", { name: /^Prompt cache/ }).textContent).toBe(
       "2:10",
     );
-    for (const other of ["busy", "done", "none"]) {
+    // An ended session is not on the list any more (it needs "show archived"), so it has no countdown to show.
+    expect(screen.queryByRole("listitem", { name: "done" })).toBeNull();
+    for (const other of ["busy", "none"]) {
       expect(within(rowOf(other)).queryByRole("img", { name: /^Prompt cache/ })).toBeNull();
     }
   });
 
   test("cards: the same, in the card's meta line", async () => {
     hub({ on: true, view: "cards" });
+    await unfoldProjects();
     await settle(() => screen.queryByRole("listitem", { name: "idle" }) !== null);
     expect(within(rowOf("idle")).getByRole("img", { name: /^Prompt cache/ }).textContent).toBe(
       "2:10",
@@ -215,6 +233,7 @@ describe("cache-timer-ui: on the Sessions list (issue #159)", () => {
 
   test("with the setting off nothing is drawn", async () => {
     hub();
+    await unfoldProjects();
     await settle(() => screen.queryByRole("listitem", { name: "idle" }) !== null);
     expect(screen.queryByRole("img", { name: /^Prompt cache/ })).toBeNull();
   });
