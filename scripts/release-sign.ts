@@ -4,10 +4,11 @@
  * `.sig` next to it. The key comes from TAURI_SIGNING_PRIVATE_KEY (and its _PASSWORD).
  */
 import { resolve } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { DAEMONS } from "./lib/release.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
-for (const daemon of DAEMONS) {
+await inSequence(DAEMONS, async (daemon) => {
   const proc = Bun.spawn(
     [process.execPath, "run", "tauri", "signer", "sign", resolve(ROOT, daemon)],
     { cwd: resolve(ROOT, "apps/desktop"), env: process.env, stdout: "ignore", stderr: "inherit" },
@@ -17,4 +18,4 @@ for (const daemon of DAEMONS) {
     process.exit(1);
   }
   console.log(`${daemon}.sig`);
-}
+});

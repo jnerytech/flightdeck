@@ -1,5 +1,6 @@
 import {
   type EffortLevel,
+  inSequence,
   type PermissionMode,
   SESSION_IMAGE_MAX_BYTES,
   SESSION_IMAGE_MAX_COUNT,
@@ -88,15 +89,17 @@ export interface SessionActions {
 
 type Item<K extends ChatItem["kind"]> = Extract<ChatItem, { kind: K }>;
 
-function AssistantMessage(props: {
-  item: Item<"assistant">;
-  toolResults: SessionState["toolResults"];
-  t: T;
-  actions: SessionActions;
-  pin: SessionViewProps["pin"];
-  /** Only the latest message offers Fork. */
-  fork: SessionViewProps["fork"];
-}) {
+function AssistantMessage(
+  props: Readonly<{
+    item: Item<"assistant">;
+    toolResults: SessionState["toolResults"];
+    t: T;
+    actions: SessionActions;
+    pin: SessionViewProps["pin"];
+    /** Only the latest message offers Fork. */
+    fork: SessionViewProps["fork"];
+  }>,
+) {
   const text = props.item.blocks
     .flatMap((block) => (block.type === "text" ? [block.text] : []))
     .join("\n\n");
@@ -129,14 +132,16 @@ function AssistantMessage(props: {
   );
 }
 
-function PermissionItem(props: {
-  item: Item<"permission">;
-  cwd: string | null;
-  actions: SessionActions;
-  alwaysAllow: boolean;
-  t: T;
-  nowMs: number;
-}) {
+function PermissionItem(
+  props: Readonly<{
+    item: Item<"permission">;
+    cwd: string | null;
+    actions: SessionActions;
+    alwaysAllow: boolean;
+    t: T;
+    nowMs: number;
+  }>,
+) {
   const { item, actions } = props;
   return (
     <ApprovalCard
@@ -167,7 +172,7 @@ function PermissionItem(props: {
   );
 }
 
-function TurnResult(props: { item: Item<"result">; t: T }) {
+function TurnResult(props: Readonly<{ item: Item<"result">; t: T }>) {
   const { item } = props;
   const cost = item.costUsd !== undefined ? ` · US$ ${item.costUsd.toFixed(4)}` : "";
   const key = item.isError ? "session.turnFailed" : "session.turnDone";
@@ -351,7 +356,7 @@ function offeredPrompts(
 }
 
 /** Chat history in streaming, tool calls, approval cards, message box and session controls. */
-export function SessionView(props: SessionViewProps) {
+export function SessionView(props: Readonly<SessionViewProps>) {
   const ctx = useT();
   const t = props.t ?? ctx;
   const { focusRequestId } = props;
@@ -493,14 +498,14 @@ export function SessionView(props: SessionViewProps) {
     let have = attached.length;
     const taken: SessionImage[] = [];
     let turned: ImageRefusal | null = null;
-    for (const file of images) {
+    await inSequence(images, async (file) => {
       const why = refuseImage(file, have);
       if (why) turned = why;
       else {
         taken.push(await readImage(file));
         have++;
       }
-    }
+    });
     setRefusal(turned);
     if (taken.length > 0) setAttached((before) => [...before, ...taken]);
   };
