@@ -36,6 +36,11 @@ describe("ci-quick", () => {
     expect((step as { env?: Record<string, string> } | undefined)?.env).toEqual({
       GH_TOKEN: "${{ github.token }}",
     });
+    // The token may read issues in this job only; the rest of the workflow keeps contents: read.
+    expect((job("quick") as { permissions?: Record<string, string> }).permissions).toEqual({
+      contents: "read",
+      issues: "read",
+    });
   });
 
   test("the quick tests are every ratchet and the protocol surface, in order (#272)", () => {
