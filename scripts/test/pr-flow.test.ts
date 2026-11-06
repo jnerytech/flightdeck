@@ -51,7 +51,7 @@ function fake(
     tags?: string[];
     /** The first-parent commits of origin/main, newest first. */
     history?: string[];
-    /** The version in package.json at a commit of main, by SHA. */
+    /** The version in apps/desktop/package.json at a commit of main, by SHA. */
     versions?: Record<string, string>;
     /** The message GitHub's GraphQL answers with when it refuses. */
     graphqlError?: string;
@@ -171,11 +171,15 @@ function fake(
       if (args[0] === "rev-list" && args.includes("--first-parent")) {
         return ok((opts.history ?? []).map((sha) => `${sha}\n`).join(""));
       }
+      // The root package.json has no version: the product's lives in apps/desktop (#559).
       if (args[0] === "show" && (args.at(-1) ?? "").endsWith(":package.json")) {
+        return ok(`${JSON.stringify({ name: "flightdeck", private: true })}\n`);
+      }
+      if (args[0] === "show" && (args.at(-1) ?? "").endsWith(":apps/desktop/package.json")) {
         const version = opts.versions?.[(args.at(-1) ?? "").split(":")[0] ?? ""];
         return version === undefined
           ? { code: 1, stdout: "" }
-          : ok(`${JSON.stringify({ name: "x", version })}\n`);
+          : ok(`${JSON.stringify({ name: "@flightdeck/desktop", version })}\n`);
       }
       if (args[0] === "rev-parse" && args.at(-1) === "origin/main") {
         return opts.mainHead ? ok(`${opts.mainHead}\n`) : { code: 1, stdout: "" };
