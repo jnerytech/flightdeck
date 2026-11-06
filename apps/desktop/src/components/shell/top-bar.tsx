@@ -28,13 +28,15 @@ export interface TopBarHostItem {
  * The host switcher of the top bar (issue #282): the current host, and a menu of every host with
  * its state, to select one (what the new-session form and the simple mode follow), or add one.
  */
-export function TopBarHost(props: {
-  hosts: TopBarHostItem[];
-  currentId: string | null;
-  t: T;
-  onChoose(hostId: string): void;
-  onAdd(): void;
-}) {
+export function TopBarHost(
+  props: Readonly<{
+    hosts: TopBarHostItem[];
+    currentId: string | null;
+    t: T;
+    onChoose(hostId: string): void;
+    onAdd(): void;
+  }>,
+) {
   const { t } = props;
   const current = props.hosts.find((h) => h.id === props.currentId);
   const name = current ? t("shell.host", { host: current.name }) : t("shell.noHost");
@@ -85,14 +87,16 @@ export function TopBarHost(props: {
  * The right side of the top bar (issue #282): the search that opens the palette, the theme button
  * (named for what it switches to), the bell and the app's version. Narrow, the search is its icon.
  */
-export function TopBarActions(props: {
-  t: T;
-  theme: Theme;
-  version: string;
-  bell: ReactNode;
-  onSearch(): void;
-  onToggleTheme(): void;
-}) {
+export function TopBarActions(
+  props: Readonly<{
+    t: T;
+    theme: Theme;
+    version: string;
+    bell: ReactNode;
+    onSearch(): void;
+    onToggleTheme(): void;
+  }>,
+) {
   const { t } = props;
   const toTheme = props.theme === "dark" ? t("shell.toLight") : t("shell.toDark");
   return (
