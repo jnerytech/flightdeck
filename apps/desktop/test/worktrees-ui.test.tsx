@@ -283,6 +283,7 @@ describe("worktrees-ui: the Worktrees panel (issue #152)", () => {
       </TContext.Provider>,
     );
     await act(async () => {
+      // timing: the expected outcome is that nothing is asked, so there is no condition to wait on
       await new Promise((r) => setTimeout(r, 60));
     });
     expect(w.asked).toEqual([]);

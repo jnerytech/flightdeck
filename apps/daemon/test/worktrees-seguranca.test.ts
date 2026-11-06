@@ -284,6 +284,7 @@ describe("worktrees-seguranca: nothing starts in a folder being removed (F4)", (
       .run(path, card.id);
     locks.hold(path);
     await ctx.board.startCard(card.id).catch(() => {});
+    // timing: the expected outcome is that nothing happens, so there is no condition to wait on
     await Bun.sleep(50);
     expect(ctx.board.getCard(card.id).sessionId).toBeNull();
     ctx.board.stop();
