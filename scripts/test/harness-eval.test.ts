@@ -1,10 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import {
+  childEnv,
+  type EvalRunner,
   type EvalTask,
+  evalOptions,
   grade,
   parseStream,
+  prepareClone,
   type RunFacts,
+  savedFacts,
   scorecard,
+  sessionArgs,
 } from "../lib/harness-eval.ts";
 
 const TASK: EvalTask = {
@@ -154,5 +160,129 @@ describe("harness-eval", () => {
         "  turns: 10 a run (min 6, max 15); permission denials: 6",
       ].join("\n"),
     );
+  });
+});
+
+describe("harness-eval: the CLI's options", () => {
+  test("defaults to 3 samples, a $1 budget, sonnet, and no --keep", () => {
+    expect(evalOptions([])).toEqual({ samples: 3, budget: "1", model: "sonnet", keep: false });
+    expect(evalOptions(["--samples", "2", "--budget", "0.5", "--model", "opus", "--keep"])).toEqual(
+      {
+        samples: 2,
+        budget: "0.5",
+        model: "opus",
+        keep: true,
+      },
+    );
+  });
+
+  test("refuses samples that are not a whole number of at least 1, and a budget that is not positive", () => {
+    for (const argv of [
+      ["--samples", "0"],
+      ["--samples", "x"],
+      ["--samples", "1.5"],
+    ]) {
+      expect(String(evalOptions(argv))).toContain("--samples");
+    }
+    for (const argv of [
+      ["--budget", "0"],
+      ["--budget", "-1"],
+      ["--budget", "abc"],
+    ]) {
+      expect(String(evalOptions(argv))).toContain("--budget");
+    }
+  });
+});
+
+describe("harness-eval: what the session may touch", () => {
+  const options = { model: "sonnet", budget: "1" };
+  const split = (args: string[]) => {
+    const allowed = args.indexOf("--allowedTools");
+    const denied = args.indexOf("--disallowedTools");
+    return { allowed: args.slice(allowed + 1, denied), denied: args.slice(denied + 1) };
+  };
+
+  test("Read, Edit and Write reach the clone only, and git can neither push, change a remote nor write a file", () => {
+    const args = sessionArgs("task", options, { dir: "/tmp/fd-eval-x", home: "/home/me" });
+    const { allowed, denied } = split(args);
+    expect(args.slice(0, 2)).toEqual(["-p", "task"]);
+    expect(allowed).toContain("Read(./**)");
+    expect(allowed).toContain("Edit(./**)");
+    expect(allowed).toContain("Write(./**)");
+    expect(allowed.filter((tool) => /^(Read|Edit|Write)$/.test(tool))).toEqual([]);
+    expect(allowed.filter((tool) => /^Bash\(git (diff|log)\*\)$/.test(tool))).toEqual([]);
+    for (const tool of ["Bash(git push *)", "Bash(git remote *)", "Bash(git * --output*)"]) {
+      expect(denied).toContain(tool);
+    }
+    for (const tool of ["Read(~/**)", "Edit(~/**)", "Write(~/**)"]) expect(denied).toContain(tool);
+  });
+
+  test("a clone inside the home folder does not deny the home folder, which would deny the clone", () => {
+    const { denied } = split(
+      sessionArgs("task", options, { dir: "/home/me/tmp/x", home: "/home/me" }),
+    );
+    expect(denied.filter((tool) => tool.includes("~/"))).toEqual([]);
+    expect(denied).toContain("Bash(git push *)");
+  });
+
+  test("the sample's processes keep the PATH, the home and the locale, and no token or key", () => {
+    const env = childEnv({
+      PATH: "/bin",
+      HOME: "/home/me",
+      LANG: "C.UTF-8",
+      GH_TOKEN: "t",
+      ANTHROPIC_API_KEY: "k",
+      SONAR_TOKEN: "s",
+      AWS_SECRET_ACCESS_KEY: "a",
+      TMPDIR: undefined,
+    });
+    expect(env).toEqual({ PATH: "/bin", HOME: "/home/me", LANG: "C.UTF-8" });
+  });
+});
+
+describe("harness-eval: preparing a clone", () => {
+  const places = { root: "/repo", head: "abc", dir: "/tmp/x", bun: "/bin/bun" };
+  const runner = (fail: string, remotes = "") => {
+    const calls: string[] = [];
+    const run: EvalRunner = (command) => {
+      const line = command.join(" ");
+      calls.push(line);
+      if (line === "git remote") return { code: 0, out: remotes };
+      return { code: line.includes(fail) ? 1 : 0, out: "" };
+    };
+    return { run, calls };
+  };
+
+  test("clones, checks out the head, removes origin, checks no remote is left and installs, in that order", () => {
+    const { run, calls } = runner("none");
+    expect(prepareClone(run, places)).toBeNull();
+    expect(calls).toEqual([
+      "git clone --quiet /repo /tmp/x",
+      "git checkout --quiet abc",
+      "git remote remove origin",
+      "git remote",
+      "/bin/bun install --frozen-lockfile",
+    ]);
+  });
+
+  test("stops at the first step that fails, and names it", () => {
+    for (const step of ["clone", "checkout", "remove origin", "install"]) {
+      const { run, calls } = runner(step);
+      expect(String(prepareClone(run, places))).toContain(step);
+      expect(calls.at(-1)).toContain(step);
+    }
+  });
+
+  test("refuses a clone that still has a remote, before the install", () => {
+    const { run, calls } = runner("none", "origin\n");
+    expect(String(prepareClone(run, places))).toContain("remote");
+    expect(calls.at(-1)).toBe("git remote");
+  });
+});
+
+describe("harness-eval: the saved report", () => {
+  test("keeps each step's command and drops its output, which may hold a file or an env value", () => {
+    const run = facts({ steps: [{ command: "env", output: "GH_TOKEN=t" }] });
+    expect(savedFacts(run)).toEqual({ ...run, steps: [{ command: "env", output: "" }] });
   });
 });
