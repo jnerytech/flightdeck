@@ -38,3 +38,15 @@ test("a workflow with no commands draws no empty list under its name", async () 
   // An empty <ul> has no list role for testing-library, so look it up by its label.
   expect(document.querySelector("[aria-label='Comandos de feature']") === null).toBe(true);
 });
+
+test("a host that does not answer leaves a message saying so, not an endless loading", async () => {
+  await act(async () => {
+    render(page(async () => null));
+  });
+  expect(
+    screen.queryByText(
+      "Não deu para ler os workflows. Veja se o host está conectado e abra a página de novo.",
+    ),
+  ).not.toBeNull();
+  expect(screen.queryByRole("status", { name: "Carregando workflows" }) === null).toBe(true);
+});
