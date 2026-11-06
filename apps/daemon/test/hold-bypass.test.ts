@@ -187,7 +187,7 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
       b.respond({ requestId: id, decision: "allow", updatedPermissions: [update] }),
     );
   };
-  const TOO_BROAD = { code: "invalid_permission_update", reason: "perm_rule_too_broad" };
+  const TOO_BROAD = { code: "invalid_permission_update", reason: "perm_rule_too_broad" } as const;
 
   test("a blanket Bash rule from a medium request is refused, because it would cover rm -rf", async () => {
     expect(await saved("Bash", { command: "ls" }, rule("Bash"))).toEqual(TOO_BROAD);
