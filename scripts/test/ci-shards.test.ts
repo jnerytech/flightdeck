@@ -21,7 +21,7 @@ interface Job {
   if?: string;
   needs?: string[];
   "runs-on"?: string;
-  strategy?: { matrix?: Record<string, unknown[]> };
+  strategy?: { matrix?: Record<string, unknown> };
   steps: Step[];
 }
 const ci = Bun.YAML.parse(readFileSync(join(ROOT, ".github/workflows/ci.yml"), "utf8")) as {
@@ -46,10 +46,13 @@ describe("ci-shards", () => {
   test("Windows runs the tests in three shards, without coverage", () => {
     const shard = job("test-windows-shard");
     expect(shard["runs-on"]).toBe("windows-latest");
-    expect(shard.strategy?.matrix?.shard).toEqual([1, 2, 3]);
+    // One shard on a PR, three for the whole suite (#444): the plan says how many.
+    expect(shard.strategy?.matrix?.shard).toBe(
+      "${{ fromJSON(needs.quick.outputs.windows_shards) }}",
+    );
     // Split by the seconds each test file took (scripts/test-timings.json), not by file count (#292).
     expect(runs("test-windows-shard")).toContain(
-      "bun run test:shards -- run ${{ matrix.shard }}/3 --junit junit-${{ matrix.shard }}.xml",
+      "bun run test:shards -- run ${{ matrix.shard }}/${{ strategy.job-total }} --junit junit-${{ matrix.shard }}.xml",
     );
     expect(runs("test-windows-shard")).not.toContain("--shard=");
     expect(runs("test-windows-shard")).not.toMatch(/bun run test(\s|$)/);
@@ -87,7 +90,7 @@ describe("ci-shards", () => {
   test("test (windows-latest) is one aggregate that fails unless every shard and the checks succeeded", () => {
     const gate = job("test-windows");
     expect(gate.name).toBe(`test (windows-latest)${SUFFIX}`);
-    expect(gate.needs).toEqual(["changes", "quick", "test-windows-shard", "checks-windows"]);
+    expect(gate.needs).toEqual(["quick", "test-windows-shard", "checks-windows"]);
     expect(gate.if).toBe(`always() && (${DISPATCH})`);
     const check = runs("test-windows");
     expect(check).toContain('test "${{ needs.test-windows-shard.result }}" = success');
@@ -112,7 +115,7 @@ describe("ci-shards", () => {
     // The Windows jobs also wait for the path plan (#264).
     for (const key of ["test-windows-shard", "checks-windows"]) {
       expect(`${key}: ${job(key).if}`).toBe(
-        `${key}: (${DISPATCH}) && needs.changes.outputs.windows == 'true'`,
+        `${key}: (${DISPATCH}) && needs.quick.outputs.windows == 'true'`,
       );
     }
     for (const key of ["test-windows-shard", "checks-windows"]) {
