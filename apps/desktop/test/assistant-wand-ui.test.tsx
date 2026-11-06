@@ -21,11 +21,11 @@ afterEach(() => {
   globalThis.setTimeout = realSetTimeout;
 });
 
-/** Holds back the long timers (the Undo window) so a test runs them by hand; short ones run as they are. */
+/** Holds back the Undo window (a timer of just under 15 s) so a test runs it by hand; every other timer runs as it is. */
 function watchTimers() {
   const held: { run: () => void; delay: number }[] = [];
   globalThis.setTimeout = ((run: () => void, delay?: number, ...rest: unknown[]) => {
-    if ((delay ?? 0) < 10_000) return realSetTimeout(run, delay, ...rest);
+    if ((delay ?? 0) <= 14_000 || (delay ?? 0) > 15_000) return realSetTimeout(run, delay, ...rest);
     held.push({ run, delay: delay as number });
     return held.length as unknown as ReturnType<typeof setTimeout>;
   }) as unknown as typeof setTimeout;
@@ -382,6 +382,8 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     await make();
     type("fix the totl");
     const timers = watchTimers();
+    // Other code sets long timers too (a reconnect, a toast): only the chip's own is held and fired.
+    const other = setTimeout(() => {}, 600_000);
     const acceptedAt = Date.now();
     await accepted();
     expect(timers.delays()).toHaveLength(1);
@@ -391,6 +393,7 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     const spy = spyOn(Date, "now").mockReturnValue(acceptedAt + 16_000);
     await act(async () => timers.fire());
     spy.mockRestore();
+    clearTimeout(other);
     expect(screen.queryByText("Text replaced by AI.")).toBeNull();
     expect(box().value).toBe("Fix the total.");
   });
