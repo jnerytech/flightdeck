@@ -99,7 +99,8 @@ describe("gate-ui", () => {
     const { run } = await atGate();
     await openCard();
     await type("Nota do gate", "refaça o plano");
-    await click("Recusar");
+    // The same verb as for a request (issue #182).
+    await click("Negar");
     await settle(() => run().status === "rejected");
     expect(run().statusReason).toBe("gate approve recusado: refaça o plano");
   });

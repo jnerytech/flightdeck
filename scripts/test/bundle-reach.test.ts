@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { packageOf, reachedPackages, slashed, staticImports } from "../lib/bundle-reach.ts";
+import { realTempDir } from "./temp-dir.ts";
 
 describe("bundle-lazy: what an entry point loads at start-up", () => {
   test("staticImports lists value imports and re-exports, and skips types, dynamic imports and comments", () => {
@@ -51,7 +51,7 @@ describe("bundle-lazy: what an entry point loads at start-up", () => {
   });
 
   test("it follows relative and @/ imports and reports the chain to a watched package, not past a dynamic import", () => {
-    const root = mkdtempSync(join(tmpdir(), "fd-reach-"));
+    const root = realTempDir("fd-reach-");
     const write = (file: string, text: string) => {
       mkdirSync(dirname(join(root, file)), { recursive: true });
       writeFileSync(join(root, file), text);
@@ -83,6 +83,16 @@ describe("bundle-lazy: the heavy packages stay out of the entry chunk", () => {
       "remark-gfm",
     ]);
     expect(reached).toEqual([]);
+  });
+});
+
+describe("vite-config: what Vite loads to read its config", () => {
+  test("vite.config.ts reaches no workspace package: Vite leaves it to Node, whose type stripping refuses parts of our TypeScript (the Windows build)", () => {
+    // On Windows Vite does not bundle a workspace package into the config (bun links it through a
+    // junction), so Node imports packages/protocol/src itself and stops at the first syntax it
+    // cannot strip, a parameter property (rc/0364, checks (windows-latest)).
+    const desktop = join(import.meta.dir, "../../apps/desktop");
+    expect(reachedPackages(["vite.config.ts"], desktop, ["@flightdeck/"])).toEqual([]);
   });
 });
 

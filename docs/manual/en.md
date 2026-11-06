@@ -472,8 +472,10 @@ one place, grouped by project and ordered by last activity.
   remembered per project. **Expand all** and **Collapse all** at the top do it for every project.
   Opened, a project shows its live sessions first (the ones that need you on top). The
   ended and history sessions sit behind **N earlier sessions**, newest first. Typing in the filter
-  also matches project names, and any filter (text, host, origin, state, persona, pinned) opens
-  everything it keeps. A pinned session always stays with the live ones. **The same project on two
+  also matches project names, and any filter (text, origin, state, persona, pinned) opens
+  everything it keeps. A **Hosts** chip only narrows the list to that host: the projects stay as
+  folded or open as you left them. The fold of a project is remembered under a key that does not
+  change when a host goes offline or folders merge. A pinned session always stays with the live ones. **The same project on two
   hosts is one group** with both host chips, and each row keeps its own host chip. A project
   without a git remote is matched by its folder name across hosts, but never when one host has two
   folders with that name: those stay separate groups everywhere. Groups that share a name show a

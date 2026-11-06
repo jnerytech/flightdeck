@@ -8,6 +8,7 @@ const { AppStore, sessionKey } = await import("../src/lib/app-store.ts");
 const { hubRows } = await import("../src/lib/hub.ts");
 const { useStoreState } = await import("../src/lib/use-store.ts");
 const { SessionTiles } = await import("../src/components/projects/session-tiles.tsx");
+const { TContext } = await import("../src/i18n/context.tsx");
 
 setDefaultTimeout(30_000);
 const cleanups: Array<() => unknown> = [];
@@ -24,14 +25,17 @@ function Live(props: {
   onOpen(row: { sessionId: string | null }): void;
 }) {
   const state = useStoreState(props.store);
+  // The app's language, as App provides it to every screen.
   return (
-    <SessionTiles
-      store={props.store}
-      state={state}
-      hostId={props.hostId}
-      projectKey={props.projectKey}
-      onOpen={props.onOpen as never}
-    />
+    <TContext.Provider value={props.store.i18n.t}>
+      <SessionTiles
+        store={props.store}
+        state={state}
+        hostId={props.hostId}
+        projectKey={props.projectKey}
+        onOpen={props.onOpen as never}
+      />
+    </TContext.Provider>
   );
 }
 
@@ -131,7 +135,7 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
     expect(screen.queryByText(/not shown/)).toBeNull();
   });
 
-  test("the session that needs you comes first, shows its request, and Allow answers it", async () => {
+  test("the session that needs you comes first, shows its request, and Approve answers it (issue #182: the same verb as everywhere)", async () => {
     const { store, hostId, ids } = await setup(["pede", "quieta"]);
     await needsYouFirst();
     const tile = tiles()[0] as HTMLElement;
@@ -140,8 +144,10 @@ describe("lado-a-lado-ui: the tiles of a project", () => {
       "request",
     );
     expect(ask?.textContent).toContain("Write");
+    const approve = within(tile).queryByRole("button", { name: "Approve" });
+    expect(approve).not.toBeNull();
     await act(async () => {
-      fireEvent.click(within(tile).getByRole("button", { name: "Allow" }));
+      fireEvent.click(approve as HTMLElement);
     });
     await waitFor(
       () => within(tile).queryByRole("group", { name: "Request" }) === null,

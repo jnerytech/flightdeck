@@ -79,8 +79,9 @@ const env: SlotEnv = {
   },
   now: () => Date.now(),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-  // The line names the holder's command: one line, whatever the command held.
-  log: (line) => console.error(line.replace(/[\r\n]+/g, " ")),
+  // The line names the holder's command: one line, whatever the command held, so it cannot forge
+  // another log line. NOSONAR: only the queue's own status (label, pid, wait, command) reaches it.
+  log: (line) => console.error(line.replace(/[\r\n]+/g, " ")), // NOSONAR
   terminate: (pid) => {
     try {
       process.kill(pid, "SIGTERM");

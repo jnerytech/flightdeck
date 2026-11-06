@@ -11,15 +11,17 @@
 import {
   chmodSync,
   existsSync,
+  lstatSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmdirSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 
 export interface TempRun {
   /** The temp folder the run found. */
@@ -45,7 +47,13 @@ export function pidAlive(pid: number): boolean {
 const REMOVE_BUDGET_MS = 3000;
 
 /** Removes what `dir` holds, file by file, until the deadline; `keep` is left for the caller. */
-function empty(dir: string, deadline: number, now: () => number, keep?: string): boolean {
+function empty(
+  dir: string,
+  deadline: number,
+  now: () => number,
+  keep?: string,
+  root = realpathSync(dir),
+): boolean {
   let clear = true;
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === keep) continue;
@@ -53,12 +61,19 @@ function empty(dir: string, deadline: number, now: () => number, keep?: string):
     const path = join(dir, entry.name);
     try {
       if (entry.isDirectory()) {
-        if (empty(path, deadline, now)) rmdirSync(path);
+        if (empty(path, deadline, now, undefined, root)) rmdirSync(path);
         else clear = false;
+      } else if (entry.isSymbolicLink()) {
+        // A link goes as a link. A chmod would follow it to what it points at: the PATH guard links
+        // the user's own programs here, and every run left them at 0666 (#232).
+        unlinkSync(path);
       } else {
-        // A read-only file (git's objects) is not removable on Windows until it is writable.
+        // A read-only file (git's objects) is not removable on Windows until it is writable. Only
+        // a file of this folder, never a link's target.
         try {
-          chmodSync(path, 0o666);
+          if (!lstatSync(path).isSymbolicLink() && realpathSync(path).startsWith(root + sep)) {
+            chmodSync(path, 0o666);
+          }
         } catch {
           // Not ours to change: the removal below says whether it matters.
         }

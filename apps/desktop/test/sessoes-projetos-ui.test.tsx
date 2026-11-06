@@ -183,7 +183,8 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
     const first = setup();
     await settle(() => screen.queryByRole("heading", { name: "api" }) !== null);
     await click(screen.getByRole("button", { name: "Mostrar ou esconder api" }));
-    expect(first.store.hubOpen()).toEqual({ [API]: true });
+    // Kept under the project's stable key (issue #241); a choice under the old key still opens it.
+    expect(first.store.hubOpen()).toEqual({ "folder:api": true });
     cleanup();
     setup({ open: { [API]: true } });
     await settle(() => titles().length > 0);
@@ -229,6 +230,20 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
     const header = screen.getByRole("region", { name: "Projeto api" });
     await click(within(header).getByRole("button", { name: "Abrir o host alfa" }));
     expect(pushed).toEqual([{ name: "host", host: "alfa" }]);
+  });
+
+  test("the chip row narrows the list by host without unfolding the projects it keeps (issue #241)", async () => {
+    setup();
+    await settle(() => screen.queryByRole("heading", { name: "docs" }) !== null);
+    const chips = screen.getByRole("group", { name: "Hosts" });
+    await click(within(chips).getByRole("button", { name: "beta" }));
+    const docs = screen.getByRole("region", { name: "Projeto docs" });
+    expect(
+      within(docs)
+        .getByRole("button", { name: "Mostrar ou esconder docs" })
+        .getAttribute("aria-expanded"),
+    ).toBe("false");
+    expect(titles()).toEqual([]);
   });
 
   test("the chip row filters by host", async () => {

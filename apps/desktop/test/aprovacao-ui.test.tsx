@@ -102,6 +102,51 @@ describe("aprovacao-ui", () => {
     });
   });
 
+  test("Sempre neste projeto abre a regra para editar, e Salvar regra aprova com ela", async () => {
+    const calls: unknown[][] = [];
+    render(
+      <ApprovalCard
+        request={{
+          requestId: "r2",
+          toolName: "Bash",
+          input: { command: "npm test" },
+          cwd: "/repo",
+          createdAt: AT,
+        }}
+        t={t}
+        nowMs={NOW}
+        alwaysAllow
+        onRespond={(...args) => calls.push(args)}
+      />,
+    );
+    const card = group("Bash");
+    await act(async () => {
+      fireEvent.click(inGroup(card, "Sempre neste projeto") as HTMLElement);
+    });
+    const rule = screen.getByLabelText("Regra") as HTMLInputElement;
+    expect(rule.value).toBe("Bash(npm test)");
+    await act(async () => {
+      fireEvent.change(rule, { target: { value: "Bash(npm test:*)" } });
+    });
+    await act(async () => {
+      fireEvent.click(inGroup(card, "Salvar regra") as HTMLElement);
+    });
+    expect(calls).toEqual([
+      [
+        "allow",
+        undefined,
+        [
+          {
+            type: "addRules",
+            rules: [{ toolName: "Bash", ruleContent: "npm test:*" }],
+            behavior: "allow",
+            destination: "localSettings",
+          },
+        ],
+      ],
+    ]);
+  });
+
   test("o cartão: Aprovar e Negar juntos com a idade; o motivo só depois de Negar; A, N e Esc", async () => {
     const calls: unknown[][] = [];
     const request = {
