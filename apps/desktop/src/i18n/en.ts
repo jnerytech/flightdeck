@@ -1639,7 +1639,9 @@ export const en: Dictionary = {
     ssh_tag_invalid: "A tag is invalid: up to 40 characters, no commas.",
     vault_rules_invalid: "Some rules are not valid: fix what is marked.",
     transport_refused:
-      "The vault only delivers over loopback or Tailscale, which WireGuard encrypts.",
+      "This only works over a near connection: this computer (loopback) or Tailscale, which WireGuard encrypts. For a WSL host, add it as ws://localhost:<port> (WSL forwards the port) or by its Tailscale address.",
+    trust_root_refused:
+      "This folder is an allowed folder that holds several projects, or a folder above one: trust the project's own folder instead.",
     secret_expired: "The time to use that secret has passed: ask for it again.",
     vault_full:
       "The daemon's vault holds too many delivered secrets: wait for some to be used or to expire.",

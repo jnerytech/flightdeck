@@ -1635,7 +1635,9 @@ export const ptBR = {
     ssh_tag_invalid: "Uma tag é inválida: até 40 caracteres, sem vírgula.",
     vault_rules_invalid: "Algumas regras não valem: corrija o que está marcado.",
     transport_refused:
-      "O cofre só entrega por loopback ou pela Tailscale, que são cifrados pelo WireGuard.",
+      "Isto só funciona por uma conexão próxima: este computador (loopback) ou a Tailscale, que o WireGuard cifra. Para um host WSL, adicione-o como ws://localhost:<porta> (o WSL repassa a porta) ou pelo endereço da Tailscale.",
+    trust_root_refused:
+      "Esta pasta é uma pasta permitida com vários projetos, ou fica acima de uma: confie na pasta do próprio projeto.",
     secret_expired: "O prazo de uso do segredo passou: peça de novo.",
     vault_full:
       "O cofre do daemon está com segredos demais entregues: espere alguns serem usados ou vencerem.",

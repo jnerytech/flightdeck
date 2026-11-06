@@ -61,7 +61,7 @@ import type { Idle } from "./messaging/idle.ts";
 import type { Messaging } from "./messaging/messages.ts";
 import type { Names } from "./names/names.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
-import { isInside, resolveAllowedCwd, rootNames } from "./paths.ts";
+import { resolveAllowedCwd, rootNames } from "./paths.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
 import { realPathOf, statKind } from "./permissions/path-kind.ts";
 import { rulePaths, ruleReadings } from "./permissions/permission-updates.ts";
@@ -108,6 +108,7 @@ import type { TaskTracker } from "./templates/tasks.ts";
 import type { TerminalManager } from "./terminal/terminal-manager.ts";
 import { tokenMatches } from "./token.ts";
 import type { TraceService } from "./trace/service.ts";
+import { trustsManyProjects } from "./trust/trust-root.ts";
 import type { DaemonUpdater } from "./updates/apply.ts";
 import type { UpdateChecker } from "./updates/check.ts";
 import { requireVaultTransport, type Vault } from "./vault/vault.ts";
@@ -1071,14 +1072,15 @@ export function startServer(opts: ServerOptions): RunningServer {
           requireVaultTransport(ws.data.origin, "project.trust.set", opts.log);
         }
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
-        // A root, or a folder above one, holds many repos: trusting it would trust every clone inside.
+        // A folder above a root, or a root that is not one repository, holds many projects:
+        // trusting it would trust every clone inside (#592).
         if (
           command.payload.trusted &&
-          (await rootNames(opts.allowedRoots)).some((root) => isInside(path, root))
+          (await trustsManyProjects(path, await rootNames(opts.allowedRoots)))
         ) {
           throw new FlightdeckError(
             "invalid_state",
-            "trusting an allowed root would trust every project inside it",
+            "trusting this folder would trust every project inside it",
             "trust_root_refused",
           );
         }
