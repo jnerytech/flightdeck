@@ -125,6 +125,14 @@ describe("file-list: one folder of the session's repository, for the file explor
     });
   });
 
+  test("a link that leads nowhere is left out, and the rest is listed", async () => {
+    const { repo, files } = setup();
+    writeFileSync(join(repo, "a.txt"), "x\n");
+    await linkDir(join(repo, "gone"), join(repo, "broken"));
+    expect(await outcome(files.list("session:s-1", ""))).toEqual({ code: "ok", reason: null });
+    expect(lines((await files.list("session:s-1", "")).entries)).toEqual(["file a.txt"]);
+  });
+
   test("a folder with more entries than the cap lists the first ones and says it was cut", async () => {
     const { repo, files } = setup();
     mkdirSync(join(repo, "many"));
