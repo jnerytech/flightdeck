@@ -2439,6 +2439,10 @@ reinício e um botão de atualizar. À direita, cada item abre a sua página:
 Cada item é um botão com as palavras como nome e uma dica, nunca só a cor, e as duas contagens são
 regiões vivas, então o leitor de tela ouve quando mudam.
 Em uma janela com menos de 600 px de altura a barra fica escondida, para deixar a altura para a conversa.
+Em uma janela com menos de 1024 px de largura, as palavras ao lado de um valor vão para a dica e o
+nome do botão (os ícones e os valores ficam). Abaixo de 640 px só a cota e o manter acordado ficam
+na barra; a atualização da cota, a atualização do app, os terminais e os hosts ficam numa lista
+**Mais itens de status** na ponta direita.
 
 ### Fila por cota
 

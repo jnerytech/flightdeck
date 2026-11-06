@@ -2437,6 +2437,9 @@ reset time and a refresh. On the right, each item opens its page:
 Every item is a button with its words as the name and a tooltip, never colour alone, and the two
 counts are live regions, so a screen reader hears them change.
 In a window under 600 px tall the bar is hidden, to leave the height to the conversation.
+In a window under 1024 px wide the words beside a value go to the tooltip and the button's name
+(the icons and values stay). Under 640 px only the quota and keep-awake stay in the bar; the refresh,
+the update, the terminals and the hosts are in a **More status items** list at its right end.
 
 ### Quota queue
 
