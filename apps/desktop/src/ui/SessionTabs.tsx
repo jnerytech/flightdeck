@@ -119,17 +119,15 @@ export function SessionTabs(
       <div hidden={tab !== "conversation"} className="min-h-0 flex-1">
         {props.children}
       </div>
-      {tab === "files" && props.claudeSessionId && (
+      {(tab === "messages" || tab === "time" || tab === "trace" || tab === "files") && (
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          <FileExplorer
-            store={props.store}
-            hostId={props.hostId}
-            target={`session:${props.claudeSessionId}`}
-          />
-        </div>
-      )}
-      {(tab === "messages" || tab === "time" || tab === "trace") && (
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          {tab === "files" && props.claudeSessionId && (
+            <FileExplorer
+              store={props.store}
+              hostId={props.hostId}
+              target={`session:${props.claudeSessionId}`}
+            />
+          )}
           {tab === "messages" && props.messagingId && (
             <SessionMessages
               store={props.store}
