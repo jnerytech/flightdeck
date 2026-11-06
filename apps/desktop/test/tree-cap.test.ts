@@ -126,7 +126,11 @@ describe("tree-cap: what the tree remembers (issue #689)", () => {
 
   test("they are saved under their own keys", () => {
     const saved: Record<string, string> = {};
-    const put = { setItem: (key: string, value: string) => void (saved[key] = value) };
+    const put = {
+      setItem: (key: string, value: string) => {
+        saved[key] = value;
+      },
+    };
     saveTreePinned(put, ["h1/p"]);
     saveTreeOpened(put, ["h2/q"]);
     expect(saved).toEqual({
