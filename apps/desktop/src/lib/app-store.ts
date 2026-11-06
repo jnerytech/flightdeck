@@ -115,6 +115,7 @@ import {
   markAllRead,
   markRead,
   saveInbox,
+  unreadRows,
 } from "./inbox.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
@@ -1028,6 +1029,7 @@ export class AppStore {
 
   async init(): Promise<void> {
     this.update({ inbox: loadInbox(this.platform.storage) });
+    this.syncBadge();
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
     this.listenForWake();
@@ -1337,8 +1339,26 @@ export class AppStore {
     void this.platform.notify(n);
   }
 
+  /** The bell's unread count as a taskbar badge, told only when it changes. */
+  private syncBadge(): void {
+    const count = unreadRows(this.state.inbox, new Date(this.now()));
+    if (count === this.badgeShown) return;
+    this.badgeShown = count;
+    // A taskbar that cannot show it is not worth a toast: the bell has the same count.
+    void Promise.resolve(this.platform.setBadge?.(count)).catch(() => {});
+  }
+
+  private resendBadge(): void {
+    if (this.badgeShown > 0)
+      void Promise.resolve(this.platform.setBadge?.(this.badgeShown)).catch(() => {});
+  }
+
+  /** What the taskbar badge shows now, so it is only told when the count changes. */
+  private badgeShown = 0;
+
   private setInbox(inbox: InboxEntry[]): void {
     this.update({ inbox });
+    this.syncBadge();
     saveInbox(this.platform.storage, inbox);
   }
 
@@ -2333,6 +2353,8 @@ export class AppStore {
     if (typeof target.addEventListener !== "function") return;
     const wake = () => {
       for (const conn of this.connections.values()) conn.wake();
+      // Hiding the window to the tray can drop its taskbar badge: say it again.
+      this.resendBadge();
     };
     const visible = () => {
       if (typeof document === "undefined" || document.visibilityState !== "hidden") wake();

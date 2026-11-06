@@ -1926,6 +1926,10 @@ PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
   pelo projeto dele, ou pelo cliente; um alerta de time abre Times com esse time em primeiro e
   destacado. A entrada de um card (resultado de um PR vigiado, card desbloqueado) abre o PR no
   navegador quando o card não existe mais.
+- No Windows a contagem de não lidas também aparece no botão do app na barra de tarefas, como um
+  selo vermelho com o número (`9+` acima de nove). É a contagem do sino, linha por linha: cai
+  conforme você lê e some quando a lista está limpa; uma fonte silenciada não gera entrada e não
+  soma nada. Ela volta com a contagem na próxima vez que o app abre.
 - **Marcar todas como lidas** mantém a lista; **Limpar** esvazia. A lista fica neste computador
   (as 500 mais recentes) e sobrevive a um reinício. Esc fecha o painel.
 - As notificações do sistema não mudam. A central só guarda uma cópia: uma que nunca é enviada
@@ -2818,9 +2822,11 @@ na bandeja. Para mudar, abra **Configurações → Atalho global**, digite a com
 ### Desenho e navegação
 
 O app segue um desenho só, no estilo do Linear: Inter embutida (sem rede), base de 13 px,
-superfícies em camadas, um único token de destaque e o estado das sessões como um pontinho de
-8 px (rodando em azul, precisa de você em âmbar, ociosa em cinza, encerrada esmaecida, erro em
-vermelho).
+superfícies em camadas, um único token de destaque e o estado das sessões como um glifo num espaço
+de 12 px, com forma além da cor: rodando é um anel azul que gira (parado, com o topo aberto, quando
+o sistema pede menos movimento, e parado enquanto está fora da tela), precisa de você é um ponto de
+interrogação âmbar num balão, erro é um círculo de alerta vermelho, ociosa é um pontinho cinza e
+encerrada é um anel esmaecido. Passe o mouse para ver o nome.
 
 - **Barra lateral:** logo, navegação (Sessões, Precisa de você com o contador, Board, Workflows,
   Custos, Histórico), os hosts, as sessões fixadas e, no rodapé, a busca (`Ctrl K`),
