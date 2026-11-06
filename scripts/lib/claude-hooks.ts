@@ -31,11 +31,12 @@ const TEST_MARKERS = [
   { pattern: /\.toMatchSnapshot\(/g, text: "toMatchSnapshot(" },
 ];
 
+/** Heredoc bodies, which are data, not commands. */
+const HEREDOC_BODY = /<<-?\s*(['"]?)(\w+)\1[^\n]*\n[\s\S]*?\n\s*\2\s*(?=\n|$)/g;
+
 /** The command without heredoc bodies and quoted text, which are data, not commands. */
 function commandWords(command: string): string {
-  return command
-    .replace(/<<-?\s*(['"]?)(\w+)\1[^\n]*\n[\s\S]*?\n\s*\2\s*(?=\n|$)/g, "")
-    .replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""');
+  return command.replace(HEREDOC_BODY, "").replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""');
 }
 
 /** The subcommand and its arguments of each git invocation in a (possibly chained) command. */
@@ -400,23 +401,59 @@ export const HEAVY_ALLOWED =
 
 /** Whether an override's value is a reason, not a bare switch such as 1 or true (#674). */
 export function heavyReasonGiven(value: string | undefined): boolean {
-  const given = (value ?? "").trim();
-  return given !== "" && !/^(?:1|true|yes)$/i.test(given);
+  // A reason is a few words: 1, true, no, x or - are placeholders (#687).
+  return (value ?? "").trim().length >= 8;
 }
 
-/** The override in front of a command (quoted text is blanked in its words): its value, or undefined. */
-function heavyOverride(command: string): string | undefined {
-  const found = /(?:^|[\s;&|(])FLIGHTDECK_SLOT_HEAVY=(?:"([^"]*)"|'([^']*)'|(\S*))/.exec(command);
-  return found ? (found[1] ?? found[2] ?? found[3] ?? "") : undefined;
+/** The command's segments, split at ; & | and newlines outside quotes, without heredoc bodies. */
+function rawSegments(command: string): string[] {
+  const text = command.replace(HEREDOC_BODY, "");
+  const segments: string[] = [];
+  let current = "";
+  let quote = "";
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i] as string;
+    if (quote === '"' && ch === "\\") {
+      current += ch + (text[++i] ?? "");
+    } else if (quote) {
+      current += ch;
+      if (ch === quote) quote = "";
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+      current += ch;
+    } else if (";&|\n".includes(ch)) {
+      segments.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  return [...segments, current];
 }
 
-/** The full coverage run a command starts, through the slot or not, or null. */
-function heavyRun(command: string): string | null {
-  for (const segment of commandWords(command).split(/[;&|\n]+/)) {
-    const words = segment.trim().split(/\s+/);
+/** One `NAME=value` env assignment at the start of the text, with the value unquoted (#687). */
+const ASSIGNMENT = /^([A-Za-z_]\w*)=(?:"((?:[^"\\]|\\.)*)"|'([^']*)'|(\S*))(?:\s+|$)/;
+
+/** FLIGHTDECK_SLOT_HEAVY among the env assignments in front of a segment's command, or undefined. */
+function prefixOverride(segment: string): string | undefined {
+  let rest = segment.trimStart().replace(/^env\s+/, "");
+  for (let found = ASSIGNMENT.exec(rest); found; found = ASSIGNMENT.exec(rest)) {
+    if (found[1] === "FLIGHTDECK_SLOT_HEAVY") return found[2] ?? found[3] ?? found[4] ?? "";
+    rest = rest.slice(found[0].length);
+  }
+  return undefined;
+}
+
+/**
+ * The full coverage run a command starts, through the slot or not, and the override in front of
+ * that run's own segment (#687: an override elsewhere in the command does not count), or null.
+ */
+function heavyRun(command: string): { what: string; override: string | undefined } | null {
+  for (const segment of rawSegments(command)) {
+    const words = commandWords(segment).trim().split(/\s+/);
     for (let i = 0; i < words.length; i++) {
-      const heavy = words[i] === "bun" && words[i + 1] === "run" ? heavyScript(words, i + 2) : null;
-      if (heavy) return heavy;
+      const what = words[i] === "bun" && words[i + 1] === "run" ? heavyScript(words, i + 2) : null;
+      if (what) return { what, override: prefixOverride(segment) };
     }
   }
   return null;
@@ -453,18 +490,17 @@ export function heavyRunViolation(
   env: Record<string, string | undefined>,
 ): string | null {
   if (env.FLIGHTDECK_COORDINATOR) return null;
-  const what = heavyRun(command);
-  if (!what) return null;
-  const override = heavyOverride(command);
-  if (override === undefined) return heavyRunMessage(what);
-  if (heavyReasonGiven(override)) return null;
-  return `FLIGHTDECK_SLOT_HEAVY needs a reason: give the reason as the value. ${heavyRunMessage(what)}`;
+  const heavy = heavyRun(command);
+  if (!heavy) return null;
+  if (heavy.override === undefined) return heavyRunMessage(heavy.what);
+  if (heavyReasonGiven(heavy.override)) return null;
+  return `FLIGHTDECK_SLOT_HEAVY needs a reason: give the reason as the value. ${heavyRunMessage(heavy.what)}`;
 }
 
 /** Whether a refused heavy run goes ahead on an override that gives its reason (#674). */
 export function heavyRunWaived(command: string): boolean {
-  const override = heavyOverride(command);
-  return heavyRun(command) !== null && override !== undefined && heavyReasonGiven(override);
+  const heavy = heavyRun(command);
+  return heavy !== null && heavy.override !== undefined && heavyReasonGiven(heavy.override);
 }
 
 /** The package scripts that run only through the slot (CLAUDE.md). */

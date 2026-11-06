@@ -54,8 +54,9 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   prints a warning: run the full suite then. A worker session runs it with `--fast` or `--tier`
   (#674): the guard hook refuses a plain, `--base` or `--pr` run, through the slot or not, since it
   holds the slot 12 to 25 minutes for what the PR's CI does anyway. `FLIGHTDECK_SLOT_HEAVY="<reason>"`
-  in front of the command lets a real need through (a bare `1` is refused); `harness:stats` counts
-  the refusals and the overrides.
+  as an env prefix of the run itself lets a real need through (#687: anywhere else in the command it
+  does not count, and a reason has at least 8 characters); `harness:stats` counts the refusals and
+  the overrides.
 - Tests by tier (#261, computed from each test's content): `unit`, `component` (the DOM), `integration`
   (processes, a server, real git) and `e2e` (journeys, smokes). On the Pi, a session runs
   `bun run test:related -- --fast --tier unit,component` (a fifth of the suite's time, no coverage
