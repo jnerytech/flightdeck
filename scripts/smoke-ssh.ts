@@ -66,7 +66,7 @@ async function until<T>(check: () => T | null | undefined | false, what: string)
     const value = check();
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(50);
+    await Bun.sleep(50); // NOSONAR: sequential by design: a poll waits before it asks again
   }
 }
 

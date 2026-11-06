@@ -50,7 +50,7 @@ async function until<T>(check: () => T | null | undefined | false, what: string)
     const value = check();
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(20);
+    await Bun.sleep(20); // NOSONAR: sequential by design: a poll waits before it asks again
   }
 }
 
@@ -165,7 +165,7 @@ async function run(work: string): Promise<void> {
         limit: 10,
       });
       listed = sessions.length;
-      if (listed < 2) await Bun.sleep(50);
+      if (listed < 2) await Bun.sleep(50); // NOSONAR: sequential by design: a poll waits before it asks again
     }
     if (listed !== 2) throw new Error(`esperava 2 sessões indexadas, veio ${listed}`);
     log("dois transcripts indexados");

@@ -181,7 +181,7 @@ async function run(work: string): Promise<void> {
         for (;;) {
           const found = client.frames.find((f) => f.type === "vault.used");
           if (found) return found;
-          await Bun.sleep(20);
+          await Bun.sleep(20); // NOSONAR: sequential by design: a poll waits before it asks again
         }
       })(),
       "frame vault.used",

@@ -70,7 +70,7 @@ async function until<T>(check: () => T | null | undefined | false, what: string)
     const value = check();
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(20);
+    await Bun.sleep(20); // NOSONAR: sequential by design: a poll waits before it asks again
   }
 }
 
@@ -176,7 +176,7 @@ async function pushedRound(client: Client, cardId: string) {
     if (round) return round;
     if (watch.status === "needs_you") throw new Error(`a vigia pediu você: ${watch.reason}`);
     if (Date.now() > deadline) throw new Error("timeout: rodada com push");
-    await Bun.sleep(100);
+    await Bun.sleep(100); // NOSONAR: sequential by design: a poll waits before it asks again
   }
 }
 

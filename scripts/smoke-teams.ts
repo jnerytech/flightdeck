@@ -57,7 +57,7 @@ async function until<T>(
     const found = await check();
     if (found) return found;
     if (Date.now() > deadline) throw new Error(`timeout esperando ${what}`);
-    await Bun.sleep(40);
+    await Bun.sleep(40); // NOSONAR: sequential by design: a poll waits before it asks again
   }
 }
 
