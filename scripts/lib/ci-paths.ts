@@ -50,7 +50,8 @@ const E2E =
   /^(?:scripts\/e2e\/|scripts\/lib\/(?:e2e|demo)[^/]*\.ts$|scripts\/demo[^/]*\.ts$|playwright[^/]*$|apps\/daemon\/|scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$)/;
 
 export function ciPlan(event: string, changed: string[] | null, removed: string[] = []): CiPlan {
-  if (event !== "pull_request" || changed === null) return { ...FULL };
+  // A PR and a push to main plan by their paths (#444); the schedule and a run by hand run all.
+  if ((event !== "pull_request" && event !== "push") || changed === null) return { ...FULL };
   const any = (re: RegExp) => changed.some((path) => re.test(path));
   const everything = any(EVERYTHING);
   const daemon = everything || any(DAEMON);
@@ -64,9 +65,15 @@ export function ciPlan(event: string, changed: string[] | null, removed: string[
   };
 }
 
-/** The ref test:related compares with (#444): stub. */
+/**
+ * The ref `test:related --pr` compares with (#444): the PR's target branch, or the commit a push
+ * to main came after; none ("") for the schedule and a run by hand, which run the whole suite.
+ * A push's before must be a commit id (a new branch's is all zeros).
+ */
 export function selectionBase(event: string, baseRef: string, before: string): string {
-  return event + baseRef + before ? "" : "";
+  if (event === "pull_request") return baseRef ? `origin/${baseRef}` : "";
+  if (event === "push" && /^[0-9a-f]{40}$/.test(before) && !/^0+$/.test(before)) return before;
+  return "";
 }
 
 /** The plan as GitHub step outputs, one `name=value` per line. */
