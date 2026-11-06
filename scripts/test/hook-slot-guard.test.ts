@@ -15,6 +15,7 @@ describe("hook-slot-guard", () => {
       "bun run build:desktop",
       "bun run build:daemon",
       "bun run coverage",
+      "bun run fast-coverage",
       "bun test",
       "env -u CLAUDECODE bun test --bail",
       "nice bun run test",
