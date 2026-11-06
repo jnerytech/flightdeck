@@ -80,7 +80,7 @@ describe("toast-gap: the toasts sit clear of the status bar and of the update ca
     expect(lift()).toBe("");
   });
 
-  test("the demo's toast switch shows one toast in the page's language; without it, none", () => {
+  test("in the demo, the prints' event shows one toast in the page's language, each time it is sent", () => {
     const shown: string[] = [];
     const store = {
       success: (text: string) => shown.push(text),
@@ -88,9 +88,13 @@ describe("toast-gap: the toasts sit clear of the status bar and of the update ca
         t: (key: string, params?: Record<string, string>) => `${key} ${JSON.stringify(params)}`,
       },
     };
-    demoToast(store, "?route=x");
+    const page = new EventTarget();
+    const stop = demoToast(store, page);
     expect(shown).toEqual([]);
-    demoToast(store, "?toast=1");
+    page.dispatchEvent(new Event("flightdeck:demo-toast"));
     expect(shown).toEqual(['toast.rootAdded {"folder":"~/projetos/loja","host":"alfa"}']);
+    stop();
+    page.dispatchEvent(new Event("flightdeck:demo-toast"));
+    expect(shown).toHaveLength(1);
   });
 });
