@@ -143,6 +143,7 @@ const REASONS = [
   "teleport_no_git",
   "teleport_no_remote",
   "teleport_git",
+  "teleport_stopped",
   "session_ended",
   "session_not_ended",
   "personas_off",

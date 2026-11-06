@@ -47,6 +47,7 @@ async function setup(
     transcript?: "file" | "link" | "outside" | "none" | "gone";
     maxBytes?: number;
     chunkBytes?: number;
+    code?: TeleportDeps["code"];
   } = {},
 ) {
   const base = tempDir("fd-teleport-");
@@ -102,6 +103,7 @@ async function setup(
     log: (line) => void logs.push(line),
     ...(options.maxBytes ? { maxBytes: options.maxBytes } : {}),
     ...(options.chunkBytes ? { chunkBytes: options.chunkBytes } : {}),
+    ...(options.code ? { code: options.code } : {}),
   };
   const packages = new TeleportPackages(deps);
   return { packages, deps, base, file, timers, logs };
@@ -317,5 +319,93 @@ describe("teleport-package: what the security review asked for (#100)", () => {
       [chunk.data, chunk.eof],
       await reason(() => packages.read(removed.id, "transcript", 0)),
     ]).toEqual([["", true], "teleport_not_found"]);
+  });
+});
+
+/** A code bundle as `bundleCode` gives it, written where the package asks. */
+function fakeCode(over: { fail?: string; wait?: Promise<void>; secret?: boolean } = {}) {
+  const code: NonNullable<TeleportDeps["code"]> = async (input) => {
+    await over.wait;
+    if (over.fail) throw new FlightdeckError("invalid_state", over.fail, over.fail);
+    const file = join(input.folder, "code");
+    await writeFile(file, "BUNDLE");
+    return {
+      file,
+      ref: `refs/flightdeck/teleport/${input.id}`,
+      size: 6,
+      sha256: sha256("BUNDLE"),
+      branch: "feature",
+      head: "a".repeat(40),
+      base: "origin/main",
+      ahead: 2,
+      changed: 1,
+      secrets: over.secret ? { lines: 2, labels: ["AWS key"] } : { lines: 0, labels: [] },
+    };
+  };
+  return code;
+}
+
+describe("teleport-package: the code travels in the same package (#100)", () => {
+  test("the manifest names the code part and where it starts from, and its secrets add to the transcript's", async () => {
+    const line = JSON.stringify({ type: "user", message: { content: `token ${TOKEN}` } });
+    const { packages } = await setup({ lines: [line], code: fakeCode({ secret: true }) });
+    const manifest = await packages.prepare("s1");
+    const code = await packages.read(manifest.id, "code", 0).catch(() => ({ data: "" }));
+    expect([
+      manifest.parts.map((part) => part.name),
+      manifest.parts[1],
+      manifest.git,
+      manifest.secrets,
+      Buffer.from(code.data, "base64").toString("utf8"),
+    ]).toEqual([
+      ["transcript", "code"],
+      { name: "code", size: 6, sha256: sha256("BUNDLE") },
+      {
+        branch: "feature",
+        head: "a".repeat(40),
+        base: "origin/main",
+        ref: "refs/flightdeck/teleport/pkg-1",
+        ahead: 2,
+        changed: 1,
+      },
+      { lines: 3, labels: [...new SecretScanner().scan(line), "AWS key"] },
+      "BUNDLE",
+    ]);
+  });
+
+  test("a new package that fails keeps the session's old one", async () => {
+    let fail = false;
+    const working = fakeCode();
+    const { packages } = await setup({
+      code: (input) => (fail ? fakeCode({ fail: "teleport_no_remote" })(input) : working(input)),
+    });
+    const first = await packages.prepare("s1");
+    fail = true;
+    const refused = await reason(() => packages.prepare("s1"));
+    const still = await packages
+      .read(first.id, "transcript", 0)
+      .catch(() => ({ eof: "the old package is gone" }));
+    expect([refused, still.eof]).toEqual(["teleport_no_remote", true]);
+  });
+
+  test("stop waits for a package being made, and leaves nothing of it", async () => {
+    let release = () => {};
+    const wait = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { packages, deps } = await setup({ code: fakeCode({ wait }) });
+    const making = packages.prepare("s1").then(
+      (m) => m.id,
+      (e: FlightdeckError) => e.reason,
+    );
+    const stopping = packages.stop();
+    release();
+    await stopping;
+    const made = await making;
+    expect([
+      made,
+      await readdir(deps.dir).catch(() => ["no folder"]),
+      await reason(() => packages.read("pkg-1", "transcript", 0)),
+    ]).toEqual(["teleport_stopped", ["no folder"], "teleport_not_found"]);
   });
 });
