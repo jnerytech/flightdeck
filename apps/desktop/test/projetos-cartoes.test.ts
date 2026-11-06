@@ -3,6 +3,7 @@ import type { Card, CostsSummary, Project } from "@flightdeck/protocol";
 import { emptySummary } from "../src/lib/client-costs.ts";
 import type { HubRow } from "../src/lib/hub.ts";
 import {
+  boardLandingOrder,
   buildProjectCards,
   filterProjectCards,
   type ProjectCard,
@@ -87,6 +88,27 @@ describe("projetos-cartoes: one card per project", () => {
     expect(cards.map((c) => c.inProgress)).toEqual([2, 1, 1]);
   });
 
+  test("each board column's cards are counted per project on the same host only (#669)", () => {
+    const cards = buildProjectCards(
+      input({
+        cards: [
+          card({ column: "backlog" }),
+          card({ column: "backlog" }),
+          card({ column: "in_progress" }),
+          card({ column: "waiting" }),
+          card({ column: "done" }),
+          card({ column: "review", projectId: "p-web" }),
+          card({ column: "done", projectId: "p-api" }),
+        ].map((c, i) => ({ hostId: i === 6 ? "h2" : "h1", card: { ...c, id: `c${i}` } as Card })),
+      }),
+    );
+    expect(cards.map((c) => c.columns)).toEqual([
+      { backlog: 2, in_progress: 1, waiting: 1, review: 0, done: 1 },
+      { backlog: 0, in_progress: 0, waiting: 0, review: 1, done: 0 },
+      { backlog: 0, in_progress: 0, waiting: 0, review: 0, done: 1 },
+    ]);
+  });
+
   test("last activity is the latest of the rows and the cards, null when none", () => {
     const cards = buildProjectCards(
       input({
@@ -166,6 +188,19 @@ describe("projetos-cartoes: search and sort", () => {
       "web",
       "docs",
     ]);
+  });
+
+  test("the Board landing puts the ones that need you first, then the latest activity, the never-active last (#669)", () => {
+    const at = (name: string, needsYou: number, lastActivity: string | null) =>
+      ({ ...sample[0], name, needsYou, lastActivity }) as ProjectCard;
+    const order = boardLandingOrder([
+      at("quiet", 0, null),
+      at("recent", 0, "2026-11-05T00:00:00Z"),
+      at("asks", 1, "2026-10-01T00:00:00Z"),
+      at("older", 0, "2026-11-01T00:00:00Z"),
+      at("asks-more", 3, "2026-09-01T00:00:00Z"),
+    ]);
+    expect(order.map((c) => c.name)).toEqual(["asks-more", "asks", "recent", "older", "quiet"]);
   });
 
   test("sorting leaves the input untouched", () => {
