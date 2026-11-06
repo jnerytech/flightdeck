@@ -25,6 +25,16 @@ The file viewer of #506 reads through the same calls, so this is fixed first.
 - The diff marks such a file `secret: true` (a new optional `DiffFile` field), with no hunks and no
   counts. A new one is never read. A tracked one is marked when its path or its old path (a rename)
   is on the list; git still computes its diff, which is dropped before the budget counts it.
+- `.git` is refused however it is spelled: the check runs on the normalized first step of the path
+  (`./.git`, `.//.git`), in any case (`.GIT` is the real `.git` on Windows and macOS), without
+  trailing dots or spaces (Windows drops them). On Windows a colon (an NTFS stream name) is refused.
+  Before, only a first segment of exactly `.git` was refused, and a write to `.git/config` or a hook
+  runs commands.
+- A link whose real path is inside `.git` is `.git`. A file that is not there yet is judged by where
+  it would go (its nearest existing folder, resolved), so a new file through a folder link into
+  `.git` or out of the repository is refused for `write` and `revert` too, and so is a path through
+  a link that leads nowhere yet (writing through it would create whatever it names). Only the repository's own
+  `.git` is covered; a nested repository's is not.
 - Review comments (`ReviewComments.add`, which quotes the lines it comments on) run the same two
   checks on either side of the diff. A comment saved on a credential file before this fix lists
   without its quote, as outdated.
