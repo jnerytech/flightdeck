@@ -54,6 +54,8 @@ export class Names {
     this.db.transaction(() => {
       const cardNumber = input.cardId ? this.cardNumber(input.project, input.cardId) : null;
       this.insert(id, input.project, persona, cardNumber);
+      const title = this.titleOf(id);
+      if (title) this.applyTitle(id, title.title, null);
     })();
     return this.get(id) as SessionName;
   }
@@ -108,6 +110,28 @@ export class Names {
     return this.view({ ...current, display: name });
   }
 
+  /**
+   * The name the session has in Claude Code (issue #605): a `custom-title` (`--name`, `/rename`)
+   * or, without one, an `agent-name`. A title already seen is not applied again, so a rename made
+   * in Flightdeck since stays; a different one is a newer rename in Claude Code and wins.
+   */
+  adoptTitle(id: string, title: string, kind: "custom" | "agent"): void {
+    const name = title.trim();
+    if (!name) return;
+    const known = this.titleOf(id);
+    if (known?.kind === "custom" && kind === "agent") return;
+    if (known?.title === name && known.kind === kind) return;
+    this.db.transaction(() => {
+      this.db
+        .query(
+          `INSERT INTO session_titles (session_id, title, kind) VALUES (?, ?, ?)
+           ON CONFLICT (session_id) DO UPDATE SET title = excluded.title, kind = excluded.kind`,
+        )
+        .run(id, name, kind);
+      this.applyTitle(id, name, known?.title ?? null);
+    })();
+  }
+
   list(): SessionName[] {
     return this.db
       .query<Row, []>("SELECT * FROM session_names ORDER BY rowid")
@@ -116,6 +140,30 @@ export class Names {
   }
 
   // --- internals ---
+
+  private titleOf(id: string): { title: string; kind: string } | null {
+    return this.db
+      .query<{ title: string; kind: string }, [string]>(
+        "SELECT title, kind FROM session_titles WHERE session_id = ?",
+      )
+      .get(id);
+  }
+
+  /**
+   * Makes a title the display name of a named session: over the standard name, or over the title
+   * it replaces. A name the person gave in Flightdeck stays against a title read for the first time.
+   */
+  private applyTitle(id: string, title: string, previous: string | null): void {
+    const row = this.db
+      .query<Row, [string]>("SELECT * FROM session_names WHERE session_id = ?")
+      .get(id);
+    if (!row) return;
+    const standard = row.display === displayName(this.parts(row));
+    if (!standard && (previous === null || previous === title)) return;
+    this.db.query("UPDATE session_names SET display = ? WHERE session_id = ?").run(title, id);
+    const alias = slug(title);
+    if (alias) this.addAlias(id, alias);
+  }
 
   private row(id: string): Row {
     const row = this.db
