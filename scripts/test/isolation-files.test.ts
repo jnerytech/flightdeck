@@ -41,7 +41,12 @@ describe("isolation: the preload puts the globals back between two test files", 
         join(dir, "a.test.ts"),
         join(dir, "b.test.ts"),
       ],
-      { cwd: dir, env: { ...process.env, CLAUDECODE: "", FLIGHTDECK_ISOLATION: "warn" }, stdout: "pipe", stderr: "pipe" },
+      {
+        cwd: dir,
+        env: { ...process.env, CLAUDECODE: "", FLIGHTDECK_ISOLATION: "warn" },
+        stdout: "pipe",
+        stderr: "pipe",
+      },
     );
     const [out, err, code] = await Promise.all([
       new Response(proc.stdout).text(),
