@@ -25,6 +25,8 @@ pub const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 pub const TOTAL_TIMEOUT: Duration = Duration::from_secs(60);
 /// A vault value shorter than this is not told apart from ordinary text.
 pub const MIN_VAULT_VALUE: usize = 6;
+/// The most characters of a provider's error text that reach the app.
+pub const MAX_DETAIL_CHARS: usize = 300;
 pub const ANTHROPIC_BASE: &str = "https://api.anthropic.com";
 pub const OPENROUTER_BASE: &str = "https://openrouter.ai";
 
