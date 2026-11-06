@@ -939,6 +939,8 @@ html:not(:has([data-slot="status-bar"])) {
 /* Under the conversation: queue, thumbnails, activity line, the floating box and its state line. */
 @utility composer-dock {
   position: relative;
+  /* The composer lays itself out by the dock's width: a narrow pane, not the window (#641). */
+  container-type: inline-size;
   display: flex;
   flex-shrink: 0;
   flex-direction: column;
@@ -961,6 +963,14 @@ html:not(:has([data-slot="status-bar"])) {
   box-shadow: 0 1px 6px oklch(0 0 0 / 0.08);
   &:focus-within {
     border-color: var(--color-ring);
+  }
+  /* A narrow dock: the box takes its own line above the buttons, which keep their row (#641). */
+  @container (width < 28rem) {
+    flex-wrap: wrap;
+    & .composer-box {
+      order: -1;
+      flex-basis: 100%;
+    }
   }
 }
 @utility composer-box {
