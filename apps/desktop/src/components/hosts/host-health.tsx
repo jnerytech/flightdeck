@@ -281,44 +281,87 @@ export function HostHealth(
       </li>
     );
   };
-  const group = (which: "required" | "optional" | "checks") =>
-    rows[which].length === 0 ? null : (
+  /** A row needs the person when it warns or fails; the rest are folded (#640). */
+  const needsYou = (row: HealthRow) => row.look.tone === "warn" || row.look.tone === "error";
+  const all = [...rows.required, ...rows.optional, ...rows.checks];
+  const fine = all.filter((row) => !needsYou(row));
+  const count = (tone: DepLook["tone"]) => all.filter((row) => row.look.tone === tone).length;
+  const group = (which: "required" | "optional" | "checks") => {
+    const problems = rows[which].filter(needsYou);
+    return problems.length === 0 ? null : (
       <Stack gap={2}>
         <h4 className="font-medium text-muted-foreground text-xs">
           {t(`hostHealth.groups.${which}` as Key)}
         </h4>
         <ul aria-label={t(`hostHealth.groups.${which}` as Key)} className="dep-list">
-          {rows[which].map(renderRow)}
+          {problems.map(renderRow)}
         </ul>
       </Stack>
     );
+  };
+  const compactRow = (row: HealthRow) => {
+    const Icon = ICONS[row.look.icon];
+    const found = row.found.join(" · ");
+    return (
+      <li key={row.key} aria-label={row.name} data-slot="dep-compact" className="dep-compact">
+        <Icon
+          data-slot="dep-icon"
+          data-icon={row.look.icon}
+          aria-hidden="true"
+          className={toneClass(row.look.tone)}
+        />
+        <span>{row.name}</span>
+        <span className={toneClass(row.look.tone)}>{row.word}</span>
+        <span className="dep-compact-found" title={found}>
+          {found}
+        </span>
+      </li>
+    );
+  };
 
   return (
     <Panel title={t("hostHealth.title")} label={t("hostHealth.title")}>
-      <output className="dep-line">
-        <HeadIcon
-          data-slot="dep-icon"
-          aria-hidden="true"
-          className={toneClass(headlineLook.tone)}
-        />
-        <strong>{headline}</strong>
-      </output>
-      {/* Outside the live region: the age changes every minute and must not be announced each time. */}
-      {props.checkedAt !== null && (
-        <span className="dep-found">
-          {t("hostHealth.checked", {
-            ago: formatAgo(Math.max(0, store.now() - props.checkedAt), t),
-          })}
-        </span>
-      )}
-      {group("required")}
-      {group("optional")}
-      {group("checks")}
-      <div>
+      <div data-slot="health-summary" className="health-summary">
+        <output className="dep-line">
+          <HeadIcon
+            data-slot="dep-icon"
+            aria-hidden="true"
+            className={toneClass(headlineLook.tone)}
+          />
+          <strong>{headline}</strong>
+        </output>
+        {all.length > 0 && (
+          <span className="dep-found">
+            {t("hostHealth.counts", {
+              ok: count("ok"),
+              warn: count("warn"),
+              error: count("error"),
+            })}
+          </span>
+        )}
+        {/* Outside the live region: the age changes every minute and must not be announced each time. */}
+        {props.checkedAt !== null && (
+          <span className="dep-found">
+            {t("hostHealth.checked", {
+              ago: formatAgo(Math.max(0, store.now() - props.checkedAt), t),
+            })}
+          </span>
+        )}
         <ActionButton variant="outline" size="sm" onClick={props.onCheck}>
           {t("hostDeps.check")}
         </ActionButton>
       </div>
+      {group("required")}
+      {group("optional")}
+      {group("checks")}
+      {fine.length > 0 && (
+        <details data-slot="health-ok" className="health-ok">
+          <summary>{t("hostHealth.okFolded", { n: fine.length })}</summary>
+          <ul aria-label={t("hostHealth.okList")} className="dep-compact-list">
+            {fine.map(compactRow)}
+          </ul>
+        </details>
+      )}
       {confirming === "hooks" && (
         <ConfirmDialog
           message={t("hostPage.installMessage", { path: "~/.claude/settings.json" })}
