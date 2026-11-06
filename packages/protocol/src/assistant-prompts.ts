@@ -254,7 +254,7 @@ export function commitNotices(message: string, rules: CommitRules): string[] {
 
 /** Every `{{variable}}` use, sorted: the same names the same number of times. */
 function placeholderUses(text: string): string[] {
-  return [...text.matchAll(/\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g)]
+  return [...text.matchAll(/\{\{\s*([A-Za-z_]\w*)\s*\}\}/g)]
     .map((m) => m[1] as string)
     .sort(byteOrder);
 }

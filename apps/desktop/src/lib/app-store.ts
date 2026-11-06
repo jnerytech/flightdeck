@@ -3735,8 +3735,7 @@ export class AppStore {
       // A whole value can be long and many-lined: what a history line would carry is one line,
       // and of an env set, one variable's value.
       for (const line of value.split(/\r?\n/)) {
-        const assigned =
-          secret.type === "env" ? /^\s*[A-Za-z_][A-Za-z0-9_]*\s*=(.*)$/.exec(line) : null;
+        const assigned = secret.type === "env" ? /^\s*[A-Za-z_]\w*\s*=(.*)$/.exec(line) : null;
         const piece = (assigned ? (assigned[1] as string) : line)
           .trim()
           .replace(/^(["'])(.*)\1$/, "$2");

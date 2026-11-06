@@ -32,7 +32,7 @@ export const CI_BRANCH_DEFAULTS: CiBranchOptions = {
 };
 
 /** Letters, digits and the characters git branches use; nothing a shell or an option parser would read. */
-const BRANCH = /^[A-Za-z0-9_][A-Za-z0-9._/-]*$/;
+const BRANCH = /^\w[\w./-]*$/;
 
 interface RunView {
   status: string;

@@ -3,7 +3,7 @@ import { SecretScanner } from "@flightdeck/protocol";
 /** The variables a snippet fills from where it is used, not from a field (phase 18). */
 export const SPECIAL_VARS: readonly string[] = ["cwd", "branch", "file", "selection"];
 
-const PLACEHOLDER = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g;
+const PLACEHOLDER = /\{\{\s*([A-Za-z_]\w*)\s*\}\}/g;
 
 /** The names between `{{ }}`, in order of appearance and without repeats (as the daemon reads them). */
 export function placeholders(template: string): string[] {
@@ -46,7 +46,7 @@ function words(command: string): string[] {
 
 /** An env name for a secret: the assignment's own name, a flag's, or SECRET (made unique). */
 function envNameOf(word: string, taken: Set<string>): string {
-  const assigned = /^([A-Za-z_][A-Za-z0-9_]*)=/.exec(word)?.[1];
+  const assigned = /^([A-Za-z_]\w*)=/.exec(word)?.[1];
   const flag = /^--?([A-Za-z][A-Za-z0-9-]*)=/.exec(word)?.[1];
   const base = (assigned ?? flag?.replaceAll("-", "_") ?? "SECRET").toUpperCase();
   let name = base;
