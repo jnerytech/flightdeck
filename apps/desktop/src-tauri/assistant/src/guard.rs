@@ -97,9 +97,8 @@ pub struct Permit {
 
 impl Drop for Permit {
     fn drop(&mut self) {
-        if let Ok(mut running) = self.running.lock() {
-            *running = running.saturating_sub(1);
-        }
+        let mut running = locked(&self.running);
+        *running = running.saturating_sub(1);
     }
 }
 
@@ -117,11 +116,11 @@ impl Limits {
     /// A place for one more call, or `assistant_rate_limited`.
     pub fn admit(&self) -> Result<Permit, Refusal> {
         let limited = || Refusal::new("assistant_rate_limited");
-        let mut running = self.running.lock().map_err(|_| limited())?;
+        let mut running = locked(&self.running);
         if *running >= MAX_IN_FLIGHT {
             return Err(limited());
         }
-        let mut taken = self.taken.lock().map_err(|_| limited())?;
+        let mut taken = locked(&self.taken);
         let now = (self.clock)();
         while taken.front().is_some_and(|at| now.saturating_duration_since(*at) >= BUCKET_WINDOW) {
             taken.pop_front();
@@ -334,7 +333,8 @@ impl Calls {
         match outcome {
             Err(_) => Err(Refusal::new("assistant_timeout")),
             Ok(Ok(result)) => result,
-            // A panic in the call is a bug, not a cancel the person asked for.
+            // A panic in the call is a bug, not a cancel the person asked for. Only in tests and
+            // debug builds: a release build aborts on a panic (`panic = "abort"`).
             Ok(Err(error)) if error.is_panic() => Err(Refusal::new("assistant_bad_output")),
             Ok(Err(_)) => Err(Refusal::new("assistant_cancelled")),
         }
