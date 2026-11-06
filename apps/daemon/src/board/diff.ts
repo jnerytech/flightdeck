@@ -1,6 +1,5 @@
-import { lstat } from "node:fs/promises";
 import { join } from "node:path";
-import { readRegular } from "../read-regular.ts";
+import { readRegularSized } from "../read-regular.ts";
 import { git, gitLimited } from "./command.ts";
 import type { CardDiff, DiffFile, DiffHunk } from "./types.ts";
 import { must } from "./worktree.ts";
@@ -63,8 +62,8 @@ function readHeader(file: DiffFile, line: string): void {
  * `tooLarge` marker and its size, and is never read past `max` (issue #329).
  */
 async function untrackedFile(worktree: string, path: string, max: number): Promise<DiffFile> {
-  const full = join(worktree, path);
-  const content = await readRegular(full, max + 1);
+  const read = await readRegularSized(join(worktree, path), max + 1);
+  const content = read?.data ?? null;
   const file = {
     path,
     oldPath: null,
@@ -77,8 +76,7 @@ async function untrackedFile(worktree: string, path: string, max: number): Promi
   };
   if (!content) return file;
   if (content.length > max) {
-    const size = (await lstat(full).catch(() => null))?.size ?? content.length;
-    return { ...file, tooLarge: true, bytes: size };
+    return { ...file, tooLarge: true, bytes: read?.size ?? content.length };
   }
   if (content.includes(0)) return { ...file, binary: true };
   const lines = content.toString("utf8").replace(/\n$/, "").split("\n");

@@ -107,7 +107,7 @@ export async function gitLimited(
     if (size > limit) {
       truncated = true;
       proc.kill();
-      await reader.cancel().catch(() => {});
+      await reader.cancel();
       break;
     }
   }
