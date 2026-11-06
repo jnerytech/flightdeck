@@ -1041,6 +1041,51 @@
   align-items: center;
   gap: 0.5rem;
 }
+/* A team member's row (#594): the name and its chips, then a column of one width on every row
+   for the session's state and the links, so they line up from row to row. */
+@utility member-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+@utility member-id {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+@utility member-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+/* The persona picker and its two buttons on one baseline: the select keeps one width. */
+@utility member-persona {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+@utility persona-field {
+  width: 14rem;
+}
+/* A team's actions and its message to everyone, under the members on the same 8 px step. */
+@utility team-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.75rem;
+}
+@utility team-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
 @utility row-end-wrap {
   display: flex;
   flex-wrap: wrap;

@@ -155,6 +155,19 @@ describe("layout", () => {
     expect(viewport?.textContent ?? "").not.toContain("Nova sessão");
   });
 
+  test("Page: the blocks of the body sit 24 px apart, so a card never touches the one above (#588)", () => {
+    render(
+      <Page title="Projeto">
+        <div data-testid="links">links</div>
+        <div data-testid="config">config</div>
+      </Page>,
+    );
+    const body = screen.queryByTestId("links")?.parentElement;
+    expect(body?.className.split(" ") ?? []).toEqual(
+      expect.arrayContaining(["flex", "flex-col", "gap-6"]),
+    );
+  });
+
   test("Page fill: o corpo é uma coluna flex que ocupa o resto da altura, sem a área de rolagem", () => {
     render(
       <Page title="Terminal" fill>
