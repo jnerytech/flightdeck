@@ -17,6 +17,7 @@ import { HostWorktrees } from "@/components/hosts/host-worktrees";
 import { KeepAwakePanel } from "@/components/hosts/keep-awake-panel";
 import { ResumePanel } from "@/components/hosts/resume-panel";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
+import { SleepSetting } from "@/components/hosts/sleep-setting";
 import { FieldRow } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
@@ -279,6 +280,7 @@ export function HostPage(
             <Stack gap={4}>
               <AllowedFolders store={store} host={host} />
               <BypassSwitch store={store} host={host} />
+              <SleepSetting store={store} host={host} />
               <SimpleModePanel store={store} host={host} />
               <KeepAwakePanel store={store} host={host} />
               <ResumePanel store={store} host={host} />

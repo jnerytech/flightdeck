@@ -176,7 +176,7 @@ import {
   terminalLaunch,
 } from "./terminal.ts";
 import type { TerminalHost } from "./terminal-session.ts";
-import { TerminalFontController } from "./terminal-view.ts";
+import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
 import { loadTileLayout, saveTileLayout, type TileLayout } from "./tiles.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
@@ -382,6 +382,8 @@ export type HostCommandType = Extract<
   | "history.get"
   | "host.bypass"
   | "logs.tail"
+  | "host.sleep"
+  | "session.sleep"
   | "host.keepAwake"
   | `project.trust.${string}`
   | "host.updates.set"
@@ -889,6 +891,7 @@ export class AppStore {
     });
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
+    this.terminalReader = new TerminalReaderSetting(platform.storage);
     this.setup = new SetupSettings(platform.storage);
     this.cacheTimer = new CacheTimerSettings(platform.storage);
     this.clock = new SharedClock(
@@ -969,6 +972,7 @@ export class AppStore {
   readonly assistant: AssistantController;
   readonly density: DensityController;
   readonly terminalFont: TerminalFontController;
+  readonly terminalReader: TerminalReaderSetting;
   /** The setup checklist: hidden or not, and whether a test notification ever showed. */
   readonly setup: SetupSettings;
   /** The prompt cache countdown on idle sessions: off by default (issue #159). */
@@ -1507,6 +1511,12 @@ export class AppStore {
       if (open?.hostId === hostId && open.sessionId === sessionId) return;
       this.connections.get(hostId)?.unsubscribe(sessionId);
     };
+  }
+
+  /** Puts an idle session to sleep now and says, in a toast, what came of it. */
+  async sleepSession(hostId: string, sessionId: string): Promise<void> {
+    const answer = await this.hostCommand(hostId, "session.sleep", { sessionId });
+    if (answer) this.success(this.i18n.t(`sleep.result.${answer.result}` as Key));
   }
 
   /** The sidebar groups the user folded; kept across starts. */
@@ -3769,8 +3779,7 @@ export class AppStore {
       // A whole value can be long and many-lined: what a history line would carry is one line,
       // and of an env set, one variable's value.
       for (const line of value.split(/\r?\n/)) {
-        const assigned =
-          secret.type === "env" ? /^\s*[A-Za-z_][A-Za-z0-9_]*\s*=(.*)$/.exec(line) : null;
+        const assigned = secret.type === "env" ? /^\s*[A-Za-z_]\w*\s*=(.*)$/.exec(line) : null;
         const piece = (assigned ? (assigned[1] as string) : line)
           .trim()
           .replace(/^(["'])(.*)\1$/, "$2");

@@ -87,6 +87,7 @@
     "@types/istanbul-lib-instrument": "1.7.8",
     "@types/pngjs": "6.0.5",
     "axe-core": "4.10.2",
+    "ignore": "7.0.14",
     "istanbul-lib-instrument": "6.0.3",
     "pixelmatch": "8.0.0",
     "playwright-bdd": "9.2.1",

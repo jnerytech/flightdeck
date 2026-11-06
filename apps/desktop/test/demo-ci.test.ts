@@ -143,6 +143,8 @@ describe("demo-prints: axe e CI", () => {
       "webhook-ntfy",
       "update-card",
       "status-bar",
+      "trust-revoke",
+      "terminal-copy",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([

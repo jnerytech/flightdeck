@@ -46,6 +46,8 @@ interface Opts {
   /** Ref names on origin, as `git ls-remote` would list them (default: refs/tags/<remoteTags>). */
   remoteRefs?: string[];
   openPr?: string;
+  /** The branch the checkout is on when the run starts (default: main). */
+  startBranch?: string;
   /** The version test passes before the version moves (it must be red). */
   notRed?: boolean;
   /** The version test stays red after the packages moved. */
@@ -87,6 +89,9 @@ function fake(opts: Opts = {}) {
         const hits = refs.filter((r) => r === pattern || r.endsWith(`/${pattern}`));
         return ok(hits.map((r) => `sha\t${r}\n`).join(""));
       }
+      if (args[0] === "rev-parse" && args[1] === "--abbrev-ref") {
+        return ok(`${opts.startBranch ?? "main"}\n`);
+      }
       if (args[0] === "rev-parse") {
         const tag = (args[3] ?? "").replace("refs/tags/", "");
         return opts.tags?.includes(tag) ? ok("sha") : bad;
@@ -127,6 +132,7 @@ function fake(opts: Opts = {}) {
 }
 
 const at = (calls: string[], needle: string) => calls.findIndex((c) => c.includes(needle));
+const lastGit = (calls: string[]) => calls.filter((c) => c.startsWith("git ")).at(-1);
 const pushed = (calls: string[]) => calls.some((c) => c.startsWith("git push"));
 
 describe("the version helpers", () => {
@@ -316,6 +322,44 @@ describe("release: the bump and its PR", () => {
     expect(pushed(calls)).toBe(false);
     expect(calls.some((c) => c.includes(PR_OPEN))).toBe(true);
     expect(logs.join("\n")).toContain("#40");
+  });
+});
+
+describe("release: back to the branch the run started on (#572)", () => {
+  test("after the bump PR opens, the last git call switches back to the starting branch", async () => {
+    const { deps, calls } = fake({ startBranch: "oc/some-work" });
+    expect(await release(["v0.37.0"], deps)).toBe(0);
+    const started = at(calls, "git rev-parse --abbrev-ref HEAD");
+    expect(started).toBeGreaterThan(-1);
+    expect(started).toBeLessThan(at(calls, "git switch -c release-v0.37.0 origin/main"));
+    expect(lastGit(calls)).toBe("git switch oc/some-work");
+    expect(at(calls, "git switch oc/some-work")).toBeGreaterThan(
+      at(calls, "bun run pr -- auto 42"),
+    );
+  });
+
+  test("when the push is refused it switches back too", async () => {
+    const { deps, calls } = fake({ startBranch: "oc/some-work", fail: /^git push/ });
+    expect(await release(["v0.37.0"], deps)).toBe(1);
+    expect(lastGit(calls)).toBe("git switch oc/some-work");
+  });
+
+  test("when GitHub refuses the PR it switches back too", async () => {
+    const { deps, calls } = fake({ startBranch: "oc/some-work", fail: /POST/ });
+    expect(await release(["v0.37.0"], deps)).toBe(1);
+    expect(lastGit(calls)).toBe("git switch oc/some-work");
+  });
+
+  test("when the bump fails it switches back too", async () => {
+    const { deps, calls } = fake({ startBranch: "oc/some-work", notRed: true });
+    expect(await release(["v0.37.0"], deps)).toBe(1);
+    expect(lastGit(calls)).toBe("git switch oc/some-work");
+  });
+
+  test("a branch that cannot be made leaves the checkout where it was, with no switch back", async () => {
+    const { deps, calls } = fake({ startBranch: "oc/some-work", fail: /^git switch/ });
+    expect(await release(["v0.37.0"], deps)).toBe(1);
+    expect(calls.filter((c) => c === "git switch oc/some-work")).toEqual([]);
   });
 });
 

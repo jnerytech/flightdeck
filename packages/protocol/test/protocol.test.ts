@@ -112,6 +112,8 @@ const validCommands: Record<CommandType, unknown> = {
   "session.meta.set": { claudeSessionId: "c", name: null, pinned: true, archived: false },
   "maintenance.status": {},
   "logs.tail": { lines: 50 },
+  "session.sleep": { sessionId: "s" },
+  "host.sleep": { minutes: 30 },
   "resources.get": {},
   "resources.endOrphan": { pid: 1234, startTicks: 99 },
   "worktree.list": {},

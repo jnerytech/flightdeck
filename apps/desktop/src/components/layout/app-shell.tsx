@@ -62,10 +62,12 @@ export function AppShell(
           open ? "grid-cols-[240px_minmax(0,1fr)]" : "grid-cols-[56px_minmax(0,1fr)]",
         )}
       >
+        {/* The sidebar clips: its own body is the one area that scrolls (#567). */}
         <aside
           aria-label={labels.sidebar}
+          data-slot="sidebar"
           data-collapsed={!open}
-          className="min-h-0 overflow-y-auto overflow-x-hidden border-r bg-sidebar text-sidebar-foreground"
+          className="min-h-0 overflow-hidden border-r bg-sidebar text-sidebar-foreground"
         >
           {props.sidebar(!open)}
         </aside>

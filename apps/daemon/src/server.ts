@@ -42,6 +42,7 @@ import { type Central, messageExternal } from "./central/central.ts";
 import type { Forker } from "./checkpoints/fork.ts";
 import type { Rewinder } from "./checkpoints/rewind.ts";
 import type { Snapshots } from "./checkpoints/snapshots.ts";
+import { userHome } from "./config.ts";
 import type { Budgets } from "./costs/budgets.ts";
 import type { Costs } from "./costs/costs.ts";
 import { statuslineData } from "./costs/statusline.ts";
@@ -62,6 +63,9 @@ import type { Names } from "./names/names.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
 import { isInside, resolveAllowedCwd, rootNames } from "./paths.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
+import { realPathOf, statKind } from "./permissions/path-kind.ts";
+import { rulePaths, ruleReadings } from "./permissions/permission-updates.ts";
+import { pathKinds, realPaths } from "./permissions/rule-risk.ts";
 import type { OpenSessionPersonas } from "./personas/open-session.ts";
 import { preparePersonas } from "./personas/prepare.ts";
 import type { Personas } from "./personas/store.ts";
@@ -151,6 +155,8 @@ export interface ServerOptions {
   allowedRoots: readonly string[];
   /** The host's switch for sessions without permission prompts: read for `host.info`, set by `host.bypass`. */
   bypass?: { allowed(): boolean; set(allow: boolean): void | Promise<void> };
+  /** Issue #157: how long an idle session may wait before it sleeps; read for `host.info`, set by `host.sleep`. */
+  sleep?: { minutes(): number; set(minutes: number): void | Promise<void> };
   /** Keeps the computer awake while sessions run (issue #163): its status for `host.info`, and the switch for `host.keepAwake`. */
   keepAwake?: { status(): KeepAwakeStatus; set(enabled: boolean): void | Promise<void> };
   /** Issue #196: the trust of folders and what a project would load; absent, the commands are refused and not announced. */
@@ -737,6 +743,15 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "session.close":
         await manager.close(command.payload.sessionId);
         return ok(command.type);
+      case "session.sleep":
+        return ok(command.type, {
+          result: await manager.sleep(command.payload.sessionId, { manual: true }),
+        });
+      case "host.sleep": {
+        if (!opts.sleep) throw featureOff("sleep");
+        await opts.sleep.set(command.payload.minutes);
+        return ok(command.type, { sleepAfterMinutes: command.payload.minutes });
+      }
       case "session.resume":
         await manager.resume(command.payload.sessionId);
         return ok(command.type);
@@ -756,10 +771,34 @@ export function startServer(opts: ServerOptions): RunningServer {
         const { requestId, decision, message, updatedPermissions, updatedInput, held } =
           command.payload;
         const external = opts.central?.permissions;
+        // A rule that names a folder covers all it holds (#395): look its paths up first, only for
+        // an allow of a request that is open (an unknown one is refused below anyway).
+        // The file the request itself writes counts as one before it exists. A symlink on the way
+        // makes a rule reach its real path too, so that is rated as well (#528).
+        const { cwd, target } = external?.placeOf(requestId) ?? manager.permissionPlace(requestId);
+        const updates = updatedPermissions ?? [];
+        const home = userHome();
+        const disk =
+          decision === "allow" && cwd
+            ? await Promise.all([
+                pathKinds(rulePaths(updates), cwd, home, statKind, {
+                  ...(target === undefined ? {} : { target }),
+                }),
+                realPaths(ruleReadings(updates), cwd, home, realPathOf),
+              ]).then(([kind, real]) => ({ kind, real }))
+            : undefined;
         if (
-          !external?.respond(requestId, decision, message, updatedPermissions, updatedInput, held)
+          !external?.respond(
+            requestId,
+            decision,
+            message,
+            updatedPermissions,
+            updatedInput,
+            held,
+            disk,
+          )
         ) {
-          manager.respondPermission(command.payload);
+          manager.respondPermission(command.payload, disk);
         }
         return ok(command.type);
       }
@@ -958,6 +997,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           ...(opts.ui ? { ui: { ...opts.ui } } : {}),
           ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
           ...(opts.fileLog ? logPathFor(opts.fileLog, ws.data.origin) : {}),
+          ...(opts.sleep ? { sleepAfterMinutes: opts.sleep.minutes() } : {}),
           ...(opts.keepAwake ? { keepAwake: opts.keepAwake.status() } : {}),
           ...(opts.opencode ? { runtimes: [hostRuntime(opts.opencode.info())] } : {}),
           ...updateStatus(),

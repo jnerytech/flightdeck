@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { join } from "node:path";
 import { AppStore } from "../src/lib/app-store.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN, waitFor } from "./fixtures.ts";
@@ -187,6 +188,45 @@ describe("terminal-ui: the terminal screen", () => {
     expect([store.terminalFont.value, x.terminal.options.fontSize]).toEqual([13, 13]);
   });
 
+  test("pasting several lines into a program without bracketed paste asks first; Cancelar keeps them out (issue #476)", async () => {
+    const { x } = await setup();
+    await settle(() => state("Ao vivo"));
+    const clipboard = navigator.clipboard as unknown as { readText?: () => Promise<string> };
+    const saved = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { ...clipboard, readText: async () => "rm a\nrm b" },
+    });
+    try {
+      await act(async () => void x.chord("V"));
+      await settle(() => screen.queryByRole("alertdialog") !== null);
+      expect(screen.queryByRole("alertdialog", { name: "Colar 2 linhas?" })).not.toBeNull();
+      await click("Cancelar");
+      expect(x.pasted).toEqual([]);
+      await act(async () => void x.chord("V"));
+      await settle(() => screen.queryByRole("alertdialog") !== null);
+      await click("Colar");
+      await settle(() => x.pasted.length > 0);
+    } finally {
+      if (saved) Object.defineProperty(navigator, "clipboard", saved);
+    }
+    expect([x.pasted, screen.queryByRole("alertdialog") === null]).toEqual([["rm a\nrm b"], true]);
+  });
+
+  test("screen reader support turns on xterm's screen reader mode; while it is off the terminal says where it is (issue #476)", async () => {
+    const { x, store } = await setup();
+    await settle(() => state("Ao vivo"));
+    const area = () => document.querySelector<HTMLElement>("[data-terminal-area]");
+    const description = () =>
+      document.getElementById(area()?.getAttribute("aria-describedby") ?? "")?.textContent ?? "";
+    expect(description()).toContain("Suporte a leitor de tela no terminal");
+    act(() => store.terminalReader.set(true));
+    await settle(() => x.terminal.options.screenReaderMode === true);
+    expect([x.terminal.options.screenReaderMode, area()?.hasAttribute("aria-describedby")]).toEqual(
+      [true, false],
+    );
+  });
+
   test("Ctrl+Shift+C copies the selection through the app and Ctrl+Shift+V pastes the clipboard", async () => {
     const { x, copied } = await setup();
     await settle(() => state("Ao vivo"));
@@ -327,6 +367,40 @@ describe("terminal-ui: the terminal screen", () => {
     expect(opened).toEqual(["https://example.com/a"]);
   });
 
+  test("a path in the output, on a host of this computer, shows the file in its folder: never opened (issue #476)", async () => {
+    const { x, store, project } = await setup();
+    await settle(() => state("Ao vivo"));
+    const platform = (store as unknown as { platform: Record<string, unknown> }).platform;
+    const shown: string[] = [];
+    const opened: string[] = [];
+    platform.openPath = async (path: string) => void opened.push(path);
+    platform.revealPath = async (path: string) => void shown.push(path);
+    x.showLines("Edited src/app.ts:4");
+    let clicked = false;
+    await act(async () => {
+      clicked = await x.clickPath(1);
+    });
+    await settle(() => shown.length > 0);
+    expect([clicked, shown, opened]).toEqual([true, [join(project, "src", "app.ts")], []]);
+  });
+
+  test("a path on a host of another computer is copied, taken from the terminal's folder (issue #476)", async () => {
+    const { x, copied, project } = await setup();
+    await settle(() => state("Ao vivo"));
+    x.showLines("", "wrote /var/log/out.log and ./notes/b.md");
+    await act(async () => {
+      await x.clickPath(2);
+    });
+    await settle(() => copied.length > 0);
+    expect(copied).toEqual(["/var/log/out.log"]);
+    x.showLines("./notes/b.md");
+    await act(async () => {
+      await x.clickPath(1);
+    });
+    await settle(() => copied.length > 1);
+    expect(copied).toEqual(["/var/log/out.log", join(project, "notes", "b.md")]);
+  });
+
   test("a click anywhere else closes the right button's menu", async () => {
     await setup();
     await settle(() => state("Ao vivo"));
@@ -377,6 +451,31 @@ describe("terminal-ui: the terminal screen", () => {
     await act(async () => {
       fireEvent.change(box, { target: { value: "" } });
     });
+    expect(x.finds.at(-1)).toBe("clear");
+  });
+
+  test("the search has Diferenciar maiúsculas, Palavra inteira and Expressão regular, by click and by Alt+C/W/R (issue #476)", async () => {
+    const { x } = await setup();
+    await settle(() => state("Ao vivo"));
+    act(() => void x.chord("F"));
+    const box = screen.queryByRole("searchbox", { name: "Buscar no terminal" }) as HTMLElement;
+    const toggle = (name: string) => screen.queryByRole("button", { name });
+    expect(toggle("Diferenciar maiúsculas e minúsculas")?.getAttribute("aria-pressed")).toBe(
+      "false",
+    );
+    await click("Diferenciar maiúsculas e minúsculas");
+    await act(async () => {
+      fireEvent.keyDown(box, { key: "w", altKey: true });
+      fireEvent.change(box, { target: { value: "Er" } });
+    });
+    expect(x.findOptions.at(-1)).toMatchObject({ caseSensitive: true, wholeWord: true });
+    expect(toggle("Palavra inteira")?.getAttribute("aria-pressed")).toBe("true");
+    await act(async () => {
+      fireEvent.keyDown(box, { key: "r", altKey: true });
+      fireEvent.change(box, { target: { value: "a(" } });
+    });
+    expect(toggle("Usar expressão regular")?.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByText("Expressão regular inválida")).not.toBeNull();
     expect(x.finds.at(-1)).toBe("clear");
   });
 

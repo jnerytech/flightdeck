@@ -21,6 +21,9 @@ import {
   KEY_REGIONS,
   layoutFindings,
   loadBaseline,
+  pinnedProblem,
+  SCROLL_SIZES,
+  SINGLE_SCROLL,
   waitForStable,
 } from "../lib/layout-guards.ts";
 
@@ -707,6 +710,115 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByText(c.t("hostPage.keepAwakeTitle"), { exact: true })
       .waitFor({ timeout: WAIT });
   },
+
+  // 23. Revoking a project's trust (issue #463): a session that started while the project was
+  // trusted keeps the hooks and MCP servers it loaded, says so and offers to restart; the restart
+  // clears the notice. The journey ends with the project untrusted again, as the demo seeds it.
+  "trust-revoke": async (c) => {
+    const project = { name: "project", host: ALFA, projectId: c.ids.project } as const;
+    await open(c, project);
+    const revoke = c.page.getByRole("button", {
+      name: c.t("projectPage.trust.revoke"),
+      exact: true,
+    });
+    const trust = c.page.getByRole("button", {
+      name: c.t("projectPage.trust.action"),
+      exact: true,
+    });
+    // A run that stopped half way left the project trusted: start from the same place anyway.
+    await trust.or(revoke).first().waitFor({ timeout: WAIT });
+    if ((await revoke.count()) === 0) {
+      await trust.click();
+      await c.page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: c.t("projectPage.trust.action"), exact: true })
+        .click();
+      await revoke.waitFor({ timeout: WAIT });
+    }
+    // A session started inside the trusted folder loads the project's setup. It waits for an
+    // answer, so the run is still alive when the trust is removed.
+    const name = `e2e-revoga-${c.lang}-${Date.now()}`;
+    await open(c, { name: "new-session", host: ALFA });
+    await c.page.getByLabel(c.t("newSession.subfolder"), { exact: true }).fill("flightdeck-web");
+    await c.page.getByLabel(c.t("newSession.name"), { exact: false }).fill(name);
+    await c.page.getByLabel(c.t("newSession.prompt"), { exact: true }).fill("[bash] ls");
+    await c.page.getByRole("button", { name: c.t("newSession.create"), exact: true }).click();
+    const row = c.page.locator("main ul li button", { hasText: name });
+    await open(c, { name: "needs-you" });
+    await row.first().waitFor({ timeout: SESSION_WAIT });
+    // Removing the trust leaves that session as it is, and tells the person to restart it.
+    await open(c, project);
+    await revoke.waitFor({ timeout: WAIT });
+    await revoke.click();
+    await trust.waitFor({ timeout: WAIT });
+    await open(c, { name: "needs-you" });
+    await row.first().click({ timeout: SESSION_WAIT });
+    await c.page.getByRole("button", { name: c.t("approval.openSession"), exact: true }).click();
+    const notice = c.page.getByText(c.t("projectPage.trust.revokedNotice"));
+    await notice.waitFor({ timeout: WAIT });
+    await c.page
+      .getByRole("button", { name: c.t("projectPage.trust.restart"), exact: true })
+      .click();
+    await notice.waitFor({ state: "detached", timeout: SESSION_WAIT });
+  },
+
+  // 24. In the host terminal: a selection can be copied from the menu (#475), and Shift+Enter alone
+  // sends ESC then CR, the new line Claude Code reads, while a plain Enter does not (#485).
+  "terminal-copy": async (c) => {
+    const marker = `fd-${c.lang}-${Date.now()}`;
+    const rows = c.page.locator(".xterm-rows");
+    const screen = async () => (await rows.first().textContent()) ?? "";
+    await c.page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await open(c, { name: "host", host: ALFA });
+    await c.page
+      .getByRole("tab", { name: c.t("hostHome.settings"), exact: true })
+      .first()
+      .click();
+    await c.page.getByRole("button", { name: c.t("hostTerminal.open"), exact: true }).click();
+    await c.page
+      .getByText(c.t("terminalUi.state.live"), { exact: true })
+      .waitFor({ timeout: WAIT });
+    // The shell draws its prompt before it reads: type only after something is on the screen.
+    await waitFor(async () => (await screen()).trim() !== "", "o prompt do shell");
+    await c.page.locator(".xterm").first().click();
+    await c.page.keyboard.type("PS1='$ '\n");
+    await c.page.keyboard.type(`echo ${marker}\n`);
+    await waitFor(
+      async () => (await screen()).split(marker).length - 1 >= 2,
+      "o eco do terminal",
+      WAIT * 2,
+    );
+
+    // Copy is off with nothing selected, and on after Select all: what the clipboard gets is the screen.
+    const area = c.page.locator("[data-terminal-area]");
+    const menu = c.page.getByRole("menu", { name: c.t("terminalUi.title"), exact: true });
+    const copy = menu.getByRole("button", { name: c.t("terminalUi.copy"), exact: true });
+    await area.click({ button: "right" });
+    await copy.waitFor({ timeout: WAIT });
+    if (await copy.isEnabled()) throw new Error("Copy deveria estar desligado sem seleção");
+    await menu.getByRole("button", { name: c.t("terminalUi.selectAll"), exact: true }).click();
+    await area.click({ button: "right" });
+    await waitFor(async () => copy.isEnabled(), "o Copiar ligado depois de selecionar");
+    await copy.click();
+    await waitFor(
+      async () => (await c.page.evaluate(() => navigator.clipboard.readText())).includes(marker),
+      "o texto selecionado na área de transferência",
+    );
+
+    // An ESC shows as "^[" twice: the terminal's echo of the key, then cat -v printing the byte it read.
+    await c.page.locator(".xterm").first().click();
+    await c.page.keyboard.type("cat -v\n");
+    await c.page.keyboard.press("Enter");
+    const echoed = async () => (await screen()).split("^[").length - 1;
+    if ((await echoed()) !== 0) throw new Error("o Enter simples não manda ESC");
+    await c.page.keyboard.press("Shift+Enter");
+    await waitFor(async () => (await echoed()) === 2, "o ESC do Shift+Enter");
+
+    // Ends it: the demo keeps its state, and the other language's run lists only its own.
+    await c.page.keyboard.press("Control+C");
+    await c.page.getByRole("button", { name: c.t("terminalUi.close"), exact: true }).click();
+    await c.page.getByRole("button", { name: c.t("terminalUi.end"), exact: true }).click();
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */
@@ -1174,6 +1286,16 @@ export async function layout(c: Context, problems: string[]) {
   // The geometry guards (issue #192), at three window sizes, on the longest labels (pt-BR). What
   // they find is named by data-slot path; the heuristic rules fail only when new against the baseline.
   if (c.lang === "pt-BR") await geometryGuards(c, screens, problems);
+  // Issue #567: the sidebar scrolls as one area between its fixed header and footer, at the
+  // usual window and at a short one, where it has to scroll at all.
+  for (const size of SCROLL_SIZES) {
+    await c.page.setViewportSize(size);
+    await open(c, { name: "hub" });
+    const found: Finding[] = await c.page.evaluate(layoutFindings, { single: SINGLE_SCROLL });
+    for (const split of found.filter((f) => f.rule === "scroll-split")) {
+      problems.push(`${c.lang} ${size.width}x${size.height}: ${split.path} ${split.detail}`);
+    }
+  }
   for (const viewport of VIEWPORTS) {
     await c.page.setViewportSize(viewport);
     for (const [name, route] of screens) {
@@ -1221,19 +1343,7 @@ export async function layout(c: Context, problems: string[]) {
   // request is whole above the composer. Nothing scrolls the page before the measure.
   await c.page.setViewportSize({ width: 1280, height: 800 });
   await open(c, { name: "session", host: ALFA, id: c.ids.waitingSession });
-  const pinned = await c.page.evaluate(() => {
-    const box = document.querySelector<HTMLElement>("[data-slot='timeline']");
-    if (!box) return "no timeline";
-    if (box.scrollTop + box.clientHeight < box.scrollHeight - 24) {
-      return `the timeline is not at its end (${Math.round(box.scrollTop + box.clientHeight)} of ${box.scrollHeight})`;
-    }
-    const card = box.querySelector<HTMLElement>("[data-request-id]")?.getBoundingClientRect();
-    const edge = box.getBoundingClientRect();
-    if (card && (card.top < edge.top - 1 || card.bottom > edge.bottom + 1)) {
-      return `the request card (${Math.round(card.top)}..${Math.round(card.bottom)}) is cut by the timeline (${Math.round(edge.top)}..${Math.round(edge.bottom)})`;
-    }
-    return null;
-  });
+  const pinned = await c.page.evaluate(pinnedProblem);
   if (pinned) problems.push(`${c.lang} waiting session: ${pinned}`);
   // Issue #225: in a split, each area's tab bar keeps its height (it grew to half the area). Only
   // the bars' tablists are counted (a screen may have tabs of its own), and the split is always

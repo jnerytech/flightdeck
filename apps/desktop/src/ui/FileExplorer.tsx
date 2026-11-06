@@ -29,6 +29,8 @@ export function FileExplorer(props: Readonly<{ store: AppStore; hostId: string; 
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
   const [query, setQuery] = useState("");
   const [changes, setChanges] = useState<DiffFile[]>([]);
+  /** The repository's folder on the host, from the diff: what makes a path whole. */
+  const [root, setRoot] = useState<string | null>(null);
   /** The file open in the viewer. */
   const [viewing, setViewing] = useState<string | null>(null);
 
@@ -51,9 +53,14 @@ export function FileExplorer(props: Readonly<{ store: AppStore; hostId: string; 
   // The marks follow the same diff as the Changes tab: read once, then live.
   useEffect(() => {
     void store.hostRequest(hostId, "changes.get", { target }).then((result) => {
-      if (result.ok) setChanges(result.data.files);
+      if (!result.ok) return;
+      setChanges(result.data.files);
+      setRoot(result.data.root);
     });
-    return store.watchChanges(hostId, target, (update) => setChanges(update.files));
+    return store.watchChanges(hostId, target, (update) => {
+      setChanges(update.files);
+      setRoot(update.root);
+    });
   }, [store, hostId, target]);
 
   const toggle = (path: string) => {
@@ -157,6 +164,8 @@ export function FileExplorer(props: Readonly<{ store: AppStore; hostId: string; 
               hostId={hostId}
               target={target}
               path={viewing}
+              diff={changes.find((file) => file.path === viewing)}
+              full={root === null ? null : `${root}/${viewing}`}
               onClose={() => setViewing(null)}
             />
           </Suspense>

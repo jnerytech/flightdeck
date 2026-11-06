@@ -1,7 +1,11 @@
+import { findPaths } from "./terminal-paths.ts";
 import {
   FIND_DECORATIONS,
   type FindDecorations,
+  type FindFlags,
+  findPatternProblem,
   NEWLINE_SEQUENCE,
+  pasteNeedsConfirm,
   type TerminalColors,
   type TerminalZoom,
   terminalKeyAction,
@@ -12,8 +16,15 @@ import {
 export interface XtermTerminal {
   cols: number;
   rows: number;
-  options: { theme?: TerminalColors; fontSize?: number; fontFamily?: string };
+  options: {
+    theme?: TerminalColors;
+    fontSize?: number;
+    fontFamily?: string;
+    screenReaderMode?: boolean;
+  };
   unicode: { activeVersion: string };
+  /** What the program turned on; a bracketed paste reaches it marked, so its lines do not run. */
+  modes: { bracketedPasteMode: boolean };
   loadAddon(addon: unknown): void;
   open(parent: HTMLElement): void;
   write(data: Uint8Array, callback?: () => void): void;
@@ -27,11 +38,49 @@ export interface XtermTerminal {
   onData(listener: (data: string) => void): { dispose(): void };
   onResize(listener: (size: { cols: number; rows: number }) => void): { dispose(): void };
   attachCustomKeyEventHandler(handler: (event: KeyboardEvent) => boolean): void;
+  registerLinkProvider(provider: XtermLinkProvider): { dispose(): void };
+  buffer: {
+    active: { getLine(y: number): XtermBufferLine | undefined };
+  };
   attachCustomWheelEventHandler(handler: (event: WheelEvent) => boolean): void;
   dispose(): void;
 }
 
-export interface XtermFindOptions {
+/** A row of xterm's buffer: its text, and its cells (a wide character takes two, the second empty). */
+export interface XtermBufferLine {
+  length: number;
+  getCell(x: number): { getChars(): string; getWidth(): number } | undefined;
+  translateToString(trimRight?: boolean): string;
+}
+
+/**
+ * The cell each character of a row's text starts in: the text's indexes and the columns part ways
+ * after a wide character (a CJK letter, some emoji), where one character takes two cells.
+ */
+function cellColumns(line: XtermBufferLine): number[] {
+  const columns: number[] = [];
+  for (let x = 0; x < line.length; x++) {
+    const cell = line.getCell(x);
+    if (!cell || cell.getWidth() === 0) continue;
+    const chars = cell.getChars() || " ";
+    for (let unit = 0; unit < chars.length; unit++) columns.push(x);
+  }
+  return columns;
+}
+
+/** A link xterm draws over cells of one row; columns and rows count from 1, the end included. */
+export interface XtermLink {
+  range: { start: { x: number; y: number }; end: { x: number; y: number } };
+  text: string;
+  activate(event: MouseEvent, text: string): void;
+}
+
+/** Finds the links of a row when the pointer reaches it. */
+export interface XtermLinkProvider {
+  provideLinks(y: number, callback: (links: XtermLink[] | undefined) => void): void;
+}
+
+export interface XtermFindOptions extends FindFlags {
   /** Keep the current match while the text grows, as typing in a find bar does. */
   incremental?: boolean;
   /** Highlights every match and marks the current one. */
@@ -65,11 +114,20 @@ export interface XtermScreenOptions {
   fontSize: number;
   fontFamily: string;
   clipboard: { copy(text: string): Promise<void>; read(): Promise<string> };
+  /** xterm keeps an accessible copy of the output for screen readers (#476). */
+  screenReader?: boolean;
   /** The host is Windows: Ctrl+C copies when there is a selection, and interrupts when there is none. */
   windows?: boolean;
   onInput(data: string): void;
   onResize(cols: number, rows: number): void;
   onSearch(): void;
+  /**
+   * A file path in the output was clicked (#476): the path as printed, and the line and column
+   * printed after it, when there were (for a viewer that opens at them, #506).
+   */
+  onPath?(path: string, at?: { line: number; col?: number }): void;
+  /** A paste of several lines that would run as it lands: true to paste it anyway (#476). */
+  confirmPaste?(text: string): Promise<boolean>;
   /** Ctrl+=, Ctrl+-, Ctrl+0 or Ctrl+wheel asked for a zoom step (#476). */
   onZoom?(step: TerminalZoom): void;
   /** The matches of the find bar changed (typing, next, previous). */
@@ -87,7 +145,13 @@ export interface XtermScreen {
   fit(): void;
   setTheme(theme: TerminalColors): void;
   setFontSize(size: number): void;
-  find(text: string, direction: "next" | "previous", incremental?: boolean): boolean;
+  setScreenReader(on: boolean): void;
+  find(
+    text: string,
+    direction: "next" | "previous",
+    incremental?: boolean,
+    flags?: FindFlags,
+  ): boolean;
   clearFind(): void;
   focus(): void;
   /** The selection to the clipboard, as Ctrl+Shift+C does. */
@@ -111,6 +175,7 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     allowProposedApi: true,
     // Issue #476: a long Claude turn stays in the view and in find (xterm keeps 1,000 by default).
     scrollback: SCROLLBACK_LINES,
+    screenReaderMode: options.screenReader === true,
   });
   const fit = deps.fit();
   const search = deps.search();
@@ -131,7 +196,11 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
   };
   const paste = () => {
     options.clipboard.read().then(
-      (text) => terminal.paste(text),
+      async (text) => {
+        const ask = pasteNeedsConfirm(text, terminal.modes.bracketedPasteMode);
+        if (ask && options.confirmPaste && !(await options.confirmPaste(text))) return;
+        terminal.paste(text);
+      },
       () => {},
     );
   };
@@ -141,6 +210,32 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     options.onInput(data);
   });
   const size = terminal.onResize(({ cols, rows }) => options.onResize(cols, rows));
+  // File paths as links (#476): the row's text, as xterm keeps it, read when the pointer gets there.
+  const paths = terminal.registerLinkProvider({
+    provideLinks: (y, callback) => {
+      const line = terminal.buffer.active.getLine(y - 1);
+      const text = line?.translateToString(true) ?? "";
+      const columns = line ? cellColumns(line) : [];
+      const cell = (index: number) => (columns[index] ?? index) + 1;
+      const links = findPaths(text).map(
+        (found): XtermLink => ({
+          range: { start: { x: cell(found.start), y }, end: { x: cell(found.end - 1), y } },
+          text: found.text,
+          activate: () =>
+            options.onPath?.(
+              found.path,
+              found.line === undefined
+                ? undefined
+                : {
+                    line: found.line,
+                    ...(found.column === undefined ? {} : { col: found.column }),
+                  },
+            ),
+        }),
+      );
+      callback(links.length > 0 ? links : undefined);
+    },
+  });
   terminal.attachCustomKeyEventHandler((event) => {
     const action = terminalKeyAction(event, {
       windows: options.windows === true,
@@ -193,12 +288,20 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     setTheme: (theme) => {
       terminal.options.theme = theme;
     },
+    setScreenReader: (on) => {
+      terminal.options.screenReaderMode = on;
+    },
     setFontSize: (fontSize) => {
       terminal.options.fontSize = fontSize;
       fit.fit();
     },
-    find: (text, direction, incremental = false) => {
-      const found = { incremental, decorations: FIND_DECORATIONS };
+    find: (text, direction, incremental = false, flags = {}) => {
+      // xterm builds the RegExp unguarded: a pattern that does not read would throw.
+      if (findPatternProblem(text, flags)) {
+        search.clearDecorations();
+        return false;
+      }
+      const found = { incremental, decorations: FIND_DECORATIONS, ...flags };
       return direction === "next" ? search.findNext(text, found) : search.findPrevious(text, found);
     },
     clearFind: () => search.clearDecorations(),
@@ -212,6 +315,7 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
       results.dispose();
       input.dispose();
       size.dispose();
+      paths.dispose();
       terminal.dispose();
     },
   };

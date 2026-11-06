@@ -456,6 +456,7 @@ export const DAEMON_FEATURES = [
   "templates",
   "tasks",
   "logs",
+  "sleep",
   "resources",
   "depsCheck",
   "worktrees",

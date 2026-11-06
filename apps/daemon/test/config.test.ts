@@ -24,6 +24,20 @@ describe("config", () => {
     expect((await loadConfig(file)).token).toBe(config.token);
   });
 
+  test("sessions: the delay to sleep an idle session is 0 (off) unless the file gives a whole number of minutes up to 1440 (#157)", async () => {
+    const read = async (sessions: unknown) => {
+      const file = join(tempDir(), "config.json");
+      writeFileSync(file, JSON.stringify({ token: "x".repeat(32), sessions }));
+      return (await loadConfig(file)).sessions.sleepAfterMinutes;
+    };
+    expect(await read({ sleepAfterMinutes: 45 })).toBe(45);
+    expect(await read({ sleepAfterMinutes: 5000 })).toBe(0);
+    expect(await read({ sleepAfterMinutes: 1.5 })).toBe(0);
+    expect(await read({})).toBe(0);
+    // Not even an object: the whole section falls back to off.
+    expect(await read("often")).toBe(0);
+  });
+
   test("valida o arquivo existente e expande ~", async () => {
     const file = join(tempDir(), "config.json");
     writeFileSync(file, JSON.stringify({ token: "x".repeat(32), dataDir: "~/fd", port: 9000 }));

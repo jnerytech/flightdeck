@@ -9,11 +9,13 @@ import { missingTools } from "../../lib/setup-steps.ts";
  * A quiet, dismissible card for each tool an online host lacks (the GitHub CLI, `claude`): muted,
  * not a red banner, since a missing tool reduces what the app can do rather than breaking it.
  */
-export function MissingToolsCards(props: {
-  store: AppStore;
-  hosts: HostView[];
-  deps: AppState["deps"];
-}) {
+export function MissingToolsCards(
+  props: Readonly<{
+    store: AppStore;
+    hosts: HostView[];
+    deps: AppState["deps"];
+  }>,
+) {
   const t = useT();
   const { store } = props;
   const dismissed = useSyncExternalStore(store.setup.subscribe, () =>

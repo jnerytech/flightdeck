@@ -1,7 +1,13 @@
 import { PermissionUpdate } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { RANK, type RiskLevel } from "./risk.ts";
-import { type ClassifyCall, ruleLevel } from "./rule-risk.ts";
+import {
+  type ClassifyCall,
+  type DiskView,
+  exactPaths,
+  pathReadings,
+  ruleLevel,
+} from "./rule-risk.ts";
 
 /** Destinations an answer may write to: the session, or the project's settings.local.json. */
 const DESTINATIONS: ReadonlySet<string> = new Set(["session", "localSettings"]);
@@ -73,9 +79,15 @@ function checkRule(rule: AddRules["rules"][number], toolName: string): void {
  */
 function checkRisk(
   rule: AddRules["rules"][number],
-  request: { risk: RiskLevel; classify: ClassifyCall },
+  request: { risk: RiskLevel; classify: ClassifyCall } & DiskView,
 ): void {
-  const level = ruleLevel(rule.toolName, rule.ruleContent, request.classify);
+  const level = ruleLevel(
+    rule.toolName,
+    rule.ruleContent,
+    request.classify,
+    request.kind ?? (() => "dir"),
+    request.real,
+  );
   // `any`: not shown to be narrow, so no request, held or not, may save it.
   if (level === "any" || RANK[level] > RANK[request.risk])
     refuse("a regra permitiria mais risco do que este pedido", "perm_rule_too_broad", {
@@ -108,7 +120,7 @@ export function checkUpdates(
     /** The risk judged when it was asked, and the daemon's classifier for what a rule would cover. */
     risk: RiskLevel;
     classify: ClassifyCall;
-  },
+  } & DiskView,
 ): void {
   const suggested = new Set(request.suggestions.map(canonical));
   for (const update of updates) {
@@ -124,4 +136,25 @@ export function checkUpdates(
       checkRisk(rule, request);
     }
   }
+}
+
+/** What `of` gives for each rule `updates` would add. */
+const eachRule = (
+  updates: PermissionUpdate[],
+  of: (toolName: string, content: string | undefined) => string[],
+) =>
+  updates.flatMap((update) =>
+    update.type === "addRules"
+      ? update.rules.flatMap((rule) => of(rule.toolName, rule.ruleContent))
+      : [],
+  );
+
+/** The exact paths the rules of `updates` name, for the server to look up before the check. */
+export function rulePaths(updates: PermissionUpdate[]): string[] {
+  return eachRule(updates, exactPaths);
+}
+
+/** Every reading of the path rules of `updates`, for the server to resolve before the check (#528). */
+export function ruleReadings(updates: PermissionUpdate[]): string[] {
+  return eachRule(updates, pathReadings);
 }

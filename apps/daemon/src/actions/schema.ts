@@ -54,7 +54,7 @@ const FIELDS = new Set([
   "tags",
 ]);
 const NAME = /^[a-z0-9][a-z0-9-]{0,62}$/;
-const ENV_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const ENV_NAME = /^[A-Za-z_]\w*$/;
 /** Where a secret or a parameter goes: `{{secret.x}}`, `{{secretFile.x}}`, `{{param.x}}`. */
 export const REFERENCE = /\{\{\s*(secret|secretFile|param)\.([A-Za-z0-9._-]+)\s*\}\}/g;
 const DEFAULT_TIMEOUT_S = 120;

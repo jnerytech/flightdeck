@@ -25,8 +25,8 @@ export interface SnippetContext {
 }
 
 const NAME = /^[\p{L}\p{N}][\p{L}\p{N} ._-]{0,63}$/u;
-const VAR_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
-const PLACEHOLDER = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g;
+const VAR_NAME = /^[A-Za-z_]\w*$/;
+const PLACEHOLDER = /\{\{\s*([A-Za-z_]\w*)\s*\}\}/g;
 const MAX_COMMAND = 4000;
 const MAX_PROMPT = 20_000;
 const MAX_TAGS = 10;
@@ -113,7 +113,7 @@ const SECRET_WORD = anyCase(`(?:${SECRET_WORDS})`);
 const NAME_TAIL = "(?:[A-Z][A-Za-z0-9]*|[_.-][A-Za-z0-9_.-]*|[0-9]+)?";
 
 const SECRET_PATTERNS: Array<[string, RegExp]> = [
-  ["token do GitHub", /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/g],
+  ["token do GitHub", /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_\w{20,})/g],
   ["chave sk-", /\bsk-[A-Za-z0-9_-]{16,}/g],
   ["chave da AWS", /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g],
   // The whole block, body and END line; a block cut short (a capped message) goes to the end.

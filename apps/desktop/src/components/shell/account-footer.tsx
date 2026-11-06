@@ -32,30 +32,32 @@ const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(
  * choosing it; the compact rows switch kept on this computer; Settings, Check for updates, Keyboard
  * shortcuts, the theme, the manual and the GitHub sign-outs. The rail shows only the initial.
  */
-export function AccountFooter(props: {
-  account: AccountState | null;
-  /** More than one different account and none chosen: how many (0 otherwise). */
-  many: number;
-  collapsed: boolean;
-  t: T;
-  go(route: Route): void;
-  onToggleTheme(): void;
-  onOpenManual(): void;
-  /** The menu opened: the caller looks up who is signed in to GitHub. */
-  onOpen(): void;
-  /** Hosts signed in to GitHub that the app can sign out. */
-  githubHosts: Array<{ id: string; name: string }>;
-  onSignOutGithub(hostId: string): void;
-  /** The host whose account is shown, copied from the menu; `null` with none. */
-  hostId: string | null;
-  /** The app's version, in the menu's header. */
-  version: string;
-  density: Density;
-  onDensity(density: Density): void;
-  onCopy(text: string): void;
-  onCheckUpdates(): void;
-  onShortcuts(): void;
-}) {
+export function AccountFooter(
+  props: Readonly<{
+    account: AccountState | null;
+    /** More than one different account and none chosen: how many (0 otherwise). */
+    many: number;
+    collapsed: boolean;
+    t: T;
+    go(route: Route): void;
+    onToggleTheme(): void;
+    onOpenManual(): void;
+    /** The menu opened: the caller looks up who is signed in to GitHub. */
+    onOpen(): void;
+    /** Hosts signed in to GitHub that the app can sign out. */
+    githubHosts: Array<{ id: string; name: string }>;
+    onSignOutGithub(hostId: string): void;
+    /** The host whose account is shown, copied from the menu; `null` with none. */
+    hostId: string | null;
+    /** The app's version, in the menu's header. */
+    version: string;
+    density: Density;
+    onDensity(density: Density): void;
+    onCopy(text: string): void;
+    onCheckUpdates(): void;
+    onShortcuts(): void;
+  }>,
+) {
   const { t, account } = props;
   const name =
     props.many > 1
