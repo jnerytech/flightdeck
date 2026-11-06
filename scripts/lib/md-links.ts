@@ -80,6 +80,8 @@ export function missingDocRefs(
   const missing: string[] = [];
   for (const [file, source] of code) {
     for (const m of source.matchAll(/\bdocs\/\w[\w./-]*\.md\b/g)) {
+      // A template name such as docs/SPEC-fase-N.md stands for every phase, not one file.
+      if (/-N\.md$/.test(m[0])) continue;
       if (!exists(m[0])) missing.push(`${file}: ${m[0]}`);
     }
   }

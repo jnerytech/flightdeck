@@ -6,6 +6,8 @@
 
 /** The line limit of a tracked Markdown file. */
 export function mdLimit(path: string): number {
+  // Frozen (#304): decisions.ts pins its content, and new decisions go to docs/decisions/.
+  if (path === "docs/DECISIONS.md") return Number.POSITIVE_INFINITY;
   if (/(^|\/)CLAUDE\.md$/.test(path) || /^\.claude\/(rules|agents)\//.test(path)) return 150;
   if (/(^|\/)SKILL\.md$/.test(path)) return 300;
   return 400;
