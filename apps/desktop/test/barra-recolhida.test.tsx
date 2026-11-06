@@ -96,7 +96,13 @@ describe("barra-recolhida: the rail holds icons and nothing that overflows it", 
     await setup();
     await collapse();
     const host = inAside().getByRole("button", { name: "Open host alfa" });
-    expect(host.getAttribute("title")).toBe("alfa");
+    // Issue #239: a real tooltip on focus and hover, never a native title.
+    expect(host.getAttribute("title")).toBeNull();
+    await act(async () => {
+      fireEvent.focus(host);
+    });
+    await settle(() => screen.queryByRole("tooltip") !== null);
+    expect(screen.queryByRole("tooltip")?.textContent).toBe("alfa");
     expect(host.querySelector("[data-slot='host-initial']")?.textContent).toBe("A");
     // The status stays a named dot beside the initial: the letter alone says nothing of the state.
     expect(within(host).getByRole("img", { name: /alfa: online/ })).not.toBeNull();
