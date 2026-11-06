@@ -536,7 +536,12 @@ histórico.
   alterna entre Padrão, Aceitar edições e Planejar. **Ignorar permissões** também está no menu,
   mas o ciclo nunca cai nele: ele pergunta antes, citando o host e a sessão, e o chip fica
   vermelho enquanto está ligado. Em um host com a chave desligada (ou para um modo mais solto que
-  o da partida da sessão) a linha fica esmaecida, diz por quê e leva às configurações do host. Durante o
+  o da partida da sessão) a linha fica esmaecida, diz por quê e leva às configurações do host. O
+  modelo também é um chip ("Opus 5.5 · Médio"): o menu **Modelo** lista Padrão, Opus, Sonnet e
+  Haiku com para que serve cada um e seu número (tecle 1 a 4), **Mais modelos** traz as versões
+  específicas, e **Esforço** (num host que suporta) define Baixo, Médio, Alto, Muito alto ou Máximo
+  para os próximos turnos, ou volta ao nível do próprio modelo. Uma sessão do OpenCode mantém uma
+  lista simples dos seus modelos. Durante o
   turno, uma linha acima da caixa diz o que está acontecendo ("Executando um comando", "Editando
   arquivos", "Esperando você") e há quanto tempo; o indicador para de girar se o sistema pedir
   menos movimento.

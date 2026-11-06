@@ -204,6 +204,7 @@ function ManagedSession(
         {...(summary?.runtime ? { runtime: summary.runtime } : {})}
         {...(openCodeModels ? { models: openCodeModels } : {})}
         settings={hasFeature(host?.hostInfo?.features, "session.settings", false)}
+        effort={hasFeature(host?.hostInfo?.features, "session.effort", false)}
         onOpenHostSettings={() => props.go({ name: "host", host: hostId })}
         {...(host?.hostInfo?.allowBypassPermissions === true
           ? { bypass: { host: host.name } }

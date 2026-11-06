@@ -157,6 +157,7 @@ export function PromptMenu(
         })}
       </div>
       {choice?.description && (
+        // testid: a plain paragraph under the options, with no role or name of its own.
         <p
           data-testid="prompt-menu-description"
           className="border-t px-3 py-1.5 text-muted-foreground text-xs"

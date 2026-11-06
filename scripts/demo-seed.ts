@@ -570,6 +570,8 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   // Before any daemon: hooks, settings and the history never touch the real home.
   const home = join(work, "home");
   mkdirSync(home, { recursive: true });
+  // What the seed changes in the environment, to be put back by stop() (issue #301): unset stays unset.
+  const envBefore = new Map(["HOME", "USERPROFILE", "SHELL"].map((n) => [n, process.env[n]]));
   process.env.HOME = home;
   process.env.USERPROFILE = home;
   writeUserConfig(home);
@@ -1066,6 +1068,10 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       slow.stop(true);
       await alfa.stop();
       await beta.stop();
+      for (const [name, value] of envBefore) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
     },
   };
 }

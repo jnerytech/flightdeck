@@ -23,5 +23,6 @@ apps/desktop/screenshots/
 .claude/worktrees/
 .claude/scheduled_tasks.lock
 playwright-report/
+junit-*.xml
 .features-gen/
 test-results/

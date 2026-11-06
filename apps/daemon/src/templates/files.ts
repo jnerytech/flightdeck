@@ -1,6 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { inSequence, Template, type TemplateProblem } from "@flightdeck/protocol";
+import { byCodeUnit, inSequence, Template, type TemplateProblem } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 
 const bad = (message: string, reason: string) =>
@@ -91,7 +91,7 @@ export async function loadTemplates(options: {
     if (error.code === "ENOENT" || error.code === "ENOTDIR") return [] as string[];
     throw error;
   });
-  await inSequence(names.filter((n) => n.endsWith(".md")).sort(), async (name) => {
+  await inSequence(names.filter((n) => n.endsWith(".md")).sort(byCodeUnit), async (name) => {
     try {
       const template = parseTemplateFile(
         await readFile(join(options.dir, name), "utf8"),

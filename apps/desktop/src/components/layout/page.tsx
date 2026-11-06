@@ -18,7 +18,8 @@ export function Page(
 ) {
   const id = useId();
   return (
-    <section aria-labelledby={id} className="flex h-full min-h-0 flex-col">
+    // The page's stable slot: a layout finding inside it names the region (docs/DESIGN.md).
+    <section aria-labelledby={id} data-slot="page" className="flex h-full min-h-0 flex-col">
       <div className="flex flex-col gap-3 border-b px-6 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -54,7 +55,7 @@ export function Section(
 ) {
   const id = useId();
   return (
-    <section aria-labelledby={id} className="flex flex-col gap-3">
+    <section aria-labelledby={id} data-slot="section" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id={id} className="font-semibold text-lg">
           {props.title}

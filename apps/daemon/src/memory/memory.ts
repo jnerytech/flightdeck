@@ -16,6 +16,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { byCodeUnit } from "@flightdeck/protocol";
 import { frontmatter } from "../agentcfg/files.ts";
 import { userHome } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -180,7 +181,7 @@ export class ProjectMemory {
     const names = (await readdir(dir, { withFileTypes: true }))
       .filter((e) => e.isFile() && NAME.test(e.name))
       .map((e) => e.name)
-      .sort();
+      .sort(byCodeUnit);
     const index = await this.index(dir);
     const files = await Promise.all(names.map((name) => this.describe(dir, name, index)));
     return { dir, exists: true, files };
