@@ -1,7 +1,9 @@
 import type { DiffFile, ReviewComment } from "@flightdeck/protocol";
 import type { ReactNode } from "react";
 import { useT } from "@/i18n/context";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { formatBytes } from "../lib/format-bytes.ts";
 import { type DiffRow, diffRows, type Selection, selected } from "../lib/review.ts";
 
 type LineRow = Extract<DiffRow, { kind: "line" }>;
@@ -42,6 +44,7 @@ function FileDiff(props: {
   mode: "unified" | "split";
   selection: Selection | null;
   onPick(path: string, side: ReviewComment["side"], line: number, extend: boolean): void;
+  onOpenOutside?: (file: DiffFile) => void;
 }) {
   const t = useT();
   const { file, selection, onPick } = props;
@@ -49,6 +52,28 @@ function FileDiff(props: {
   const rows = diffRows(file);
   if (file.binary) {
     return <p className="text-muted-foreground text-xs">{t("changes.binaryNote")}</p>;
+  }
+  if (file.tooLarge) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-muted-foreground text-xs">
+          {file.bytes === undefined
+            ? t("changes.tooLargeNoteNoSize")
+            : t("changes.tooLargeNote", { size: formatBytes(file.bytes) })}
+        </p>
+        {props.onOpenOutside && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-label={t("changes.openOutsideLabel", { path })}
+            onClick={() => props.onOpenOutside?.(file)}
+          >
+            {t("changes.openOutside")}
+          </Button>
+        )}
+      </div>
+    );
   }
   if (rows.length === 0) {
     return <p className="text-muted-foreground text-xs">{t("changes.noLines")}</p>;
@@ -126,6 +151,8 @@ export function DiffView(props: {
   onPick(path: string, side: ReviewComment["side"], line: number, extend: boolean): void;
   /** The form to comment on the selection; shown under the file it belongs to. */
   composer: ReactNode;
+  /** Opens a file with the system's app; absent where the app cannot (a browser, a remote host). */
+  onOpenOutside?: (file: DiffFile) => void;
 }) {
   const t = useT();
   return (
@@ -141,6 +168,7 @@ export function DiffView(props: {
             mode={props.mode}
             selection={props.selection}
             onPick={props.onPick}
+            {...(props.onOpenOutside ? { onOpenOutside: props.onOpenOutside } : {})}
           />
           {props.selection?.path === file.path && props.composer}
         </div>

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "../lib/app-store.ts";
+import { formatBytes } from "../lib/format-bytes.ts";
 import { type Selection, select } from "../lib/review.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { DiffView } from "./DiffView.tsx";
@@ -168,9 +169,14 @@ export function ChangesPanel(props: {
   const fileRow = (file: DiffFile, root: string) => (
     <li key={`${file.path}:${file.uncommitted}`} className="flex items-center gap-2">
       <span className="font-mono text-xs">{file.path}</span>
-      <span className="text-muted-foreground text-xs tabular-nums">{`+${file.additions} −${file.deletions}`}</span>
+      <span className="text-muted-foreground text-xs tabular-nums">
+        {file.tooLarge && file.additions + file.deletions === 0 && file.bytes !== undefined
+          ? formatBytes(file.bytes)
+          : `+${file.additions} −${file.deletions}`}
+      </span>
       <Badge variant="outline">{t(`changes.status.${file.status}`)}</Badge>
       {file.binary && <Badge variant="outline">{t("changes.binary")}</Badge>}
+      {file.tooLarge && <Badge variant="outline">{t("changes.tooLarge")}</Badge>}
       {file.uncommitted && (
         <Badge variant="outline" className="text-status-needs-you">
           {t("diff.uncommitted")}
@@ -257,6 +263,12 @@ export function ChangesPanel(props: {
             selection={selection}
             onPick={onPick}
             composer={composer}
+            {...(store.canOpenPaths(hostId)
+              ? {
+                  onOpenOutside: (file: DiffFile) =>
+                    void store.openPath(hostId, `${changes.root}/${file.path}`),
+                }
+              : {})}
           />
         </>
       )}
