@@ -239,7 +239,7 @@ function shots(ids: DemoIds): Shot[] {
           await page.keyboard.press("Escape");
         }
         await page.getByRole("button", { name: /^(Todas as abas|All tabs)$/ }).click();
-        await page.getByRole("listbox").waitFor();
+        await page.getByRole("listbox", { name: /^(Todas as abas|All tabs)$/ }).waitFor();
       },
     },
     { name: "board", route: { name: "board", host: ALFA, projectId: ids.project } },

@@ -874,8 +874,9 @@ async function tabWidthsProblem(page: Page, minimum: number): Promise<string | n
  * no row on two lines, nothing scrolling sideways, and Esc closes it.
  */
 async function tabListProblem(page: Page): Promise<string | null> {
-  await page.getByRole("button", { name: /^(Todas as abas|All tabs)$/ }).click();
-  await page.getByRole("listbox").waitFor({ timeout: 5000 });
+  const name = /^(Todas as abas|All tabs)$/;
+  await page.getByRole("button", { name }).click();
+  await page.getByRole("listbox", { name }).waitFor({ timeout: 5000 });
   const problem = await page.evaluate(() => {
     const box = document.querySelector<HTMLElement>("[data-slot='tab-overflow']");
     if (!box) return "the list did not open";
@@ -891,7 +892,7 @@ async function tabListProblem(page: Page): Promise<string | null> {
   });
   await page.keyboard.press("Escape");
   const closed = await page
-    .getByRole("listbox")
+    .getByRole("listbox", { name })
     .waitFor({ state: "detached", timeout: 2000 })
     .then(() => true)
     .catch(() => false);
