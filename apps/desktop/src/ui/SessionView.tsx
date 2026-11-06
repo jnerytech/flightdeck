@@ -614,7 +614,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   };
 
   return (
-    <SessionPane>
+    <SessionPane waiting={session.pending.length > 0}>
       <SessionHeader
         title={props.title}
         subtitle={
