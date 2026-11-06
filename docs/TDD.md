@@ -78,7 +78,10 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     time. `unstable-skip-ratchet.test.ts` checks every such skip has the note, with an issue number
     and a reason, and that there are at most 10 in the repository. CI's quick job
     (`scripts/unstable-issues.ts`, with gh) fails when a noted issue is closed or cannot be read, so
-    the skip comes out in the PR that fixes it.
+    the skip comes out in the PR that fixes it. On a pull request it also fails, naming the skip's
+    `file:line`, when the PR closes a noted issue (`Closes`/`Fixes`/`Resolves #N` in its body or
+    its commits' messages, #552): merged, it would close the issue with the skip still in, and
+    every later PR would go red.
 
 A auditoria `bun run tdd:audit -- --since <tag>` confere a ordem dos commits e a ausência de
 testes desligados. With `--spec docs/SPEC-fase-N.md` it also fails on an area of the spec's table
@@ -282,9 +285,12 @@ em vez de depender de cuidado.
   session) merges by hand with a merge commit, under the same conditions; a PR behind `main` merges,
   with how far behind it is printed as a note.
 - A PR runs only the jobs its paths need (#264, scripts/lib/ci-paths.ts): docs or scripts only run
-  the Linux tests and lint; the daemon or a smoke adds Windows and the smokes; the app, the
+  the Linux tests and lint; the daemon or a smoke adds the smokes; the app, the
   protocol, the dependencies or the workflow run everything; the Tauri shell adds cargo. A job
-  skipped by path still reports under the ruleset's name. Every push to `main` runs everything.
+  skipped by path still reports under the ruleset's name. No PR and no push to `main` runs
+  Windows (#534): its jobs run in the schedule's and a run by hand's full runs only, as a signal
+  that gates nothing (`continue-on-error`), and a release does not wait for them. See
+  `docs/decisions/2026-11-06-windows-off-the-pr-path.md`.
 - A release is a tag on a green `main`, and on a commit whose full run (its push to `main`) is
   green; there is no rc branch to assemble. `bun run pr -- tag vX` (the coordinator) tags main's
   HEAD only after that run passed, and pushes the tag alone as `refs/tags/vX`.

@@ -501,6 +501,9 @@ export async function headCi(sha: string, deps: PrFlowDeps): Promise<string> {
   return v.missing.length === required.length ? "none" : "pending";
 }
 
+/** The file that holds the product version: the root package.json has none (the apps and the protocol share it, a test checks). */
+export const VERSION_FILE = "apps/desktop/package.json";
+
 const TAG = /^v\d+\.\d+\.\d+(?:-[\w.]+)?$/;
 
 type MainRun = { id?: number; event?: string; status: string; conclusion: string | null };
@@ -567,11 +570,22 @@ function refuseRuns(sha: string, runs: MainRun[], refuse: (reason: string) => nu
   );
 }
 
+/** Asks for a full run of main unless a dispatch of this commit is already going; says what happened and how to go on. */
+async function startFullRun(runs: MainRun[], deps: PrFlowDeps): Promise<string> {
+  if (runs.some((r) => r.event === "workflow_dispatch" && r.status !== "completed")) {
+    return `a full run of ${MAIN} is already going; run pr tag again when it is green`;
+  }
+  const started = await deps.gh(["workflow", "run", "ci.yml", "--ref", MAIN, "-f", "only=all"]);
+  return started.code === 0
+    ? `a full run of ${MAIN} was started; run pr tag again when it is green`
+    : `start one (gh workflow run ci.yml --ref ${MAIN} -f only=all)`;
+}
+
 /** The newest first-parent commit of main whose package.json says the tag's version and that has a green run. */
 async function greenWithBump(tag: string, deps: PrFlowDeps): Promise<string | null> {
   const listed = await deps.git(["rev-list", "--first-parent", "-n", "30", `origin/${MAIN}`]);
   for (const sha of listed.stdout.split("\n").filter(Boolean)) {
-    const shown = await deps.git(["show", `${sha}:package.json`]);
+    const shown = await deps.git(["show", `${sha}:${VERSION_FILE}`]);
     let version: unknown;
     try {
       version = (JSON.parse(shown.stdout) as { version?: unknown }).version;
@@ -622,15 +636,12 @@ async function tagRelease(args: string[], deps: PrFlowDeps): Promise<number> {
     // (#376, #444); with none, a full run of main starts, and pr tag runs again when it is green.
     const earlier = await greenWithBump(tag, deps);
     if (!earlier) {
-      // Still running and nothing earlier is green: wait for it, and start nothing.
-      if (running) return refuseRuns(sha, runs, refuse);
-      const started = await deps.gh(["workflow", "run", "ci.yml", "--ref", MAIN, "-f", "only=all"]);
+      // A full run starts at once, even while HEAD's push run is going: dispatches have their own concurrency group (#545).
+      const next = await startFullRun(runs, deps);
       return refuse(
-        `${sha} has no full green run on ${MAIN}, and no commit with the ${tag} bump has one: ${
-          started.code === 0
-            ? `a full run of ${MAIN} was started; run pr tag again when it is green`
-            : `start one (gh workflow run ci.yml --ref ${MAIN} -f only=all)`
-        }`,
+        running
+          ? `${sha}'s CI run on ${MAIN} is still running, and no commit with the ${tag} bump has a full green run: ${next}`
+          : `${sha} has no full green run on ${MAIN}, and no commit with the ${tag} bump has one: ${next}`,
       );
     }
     const why = running

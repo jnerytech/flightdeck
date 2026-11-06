@@ -15,6 +15,9 @@ const TONE = {
   " ": "",
 } as const;
 
+/** How a line's number looks, as a button or as plain text. */
+const NUMBER = "w-10 shrink-0 select-none px-1 text-right text-muted-foreground tabular-nums";
+
 /** The number of a line, a button that starts (or, with shift, extends) a comment on it. */
 function LineNumber(
   props: Readonly<{
@@ -22,18 +25,23 @@ function LineNumber(
     side: ReviewComment["side"];
     line: number;
     picked: boolean;
-    onPick(path: string, side: ReviewComment["side"], line: number, extend: boolean): void;
+    /** Starts a comment on a line; without it the numbers are plain text. */
+    onPick?(path: string, side: ReviewComment["side"], line: number, extend: boolean): void;
   }>,
 ) {
   const t = useT();
   const key = props.side === "old" ? "changes.commentOldLine" : "changes.commentLine";
+  const pick = props.onPick;
+  if (!pick) {
+    return <span className={NUMBER}>{props.line}</span>;
+  }
   return (
     <button
       type="button"
       aria-label={t(key, { line: props.line, path: props.path })}
       aria-pressed={props.picked}
-      className="hit-24 w-10 shrink-0 select-none px-1 text-right text-muted-foreground tabular-nums hover:text-foreground aria-pressed:text-foreground"
-      onClick={(e) => props.onPick(props.path, props.side, props.line, e.shiftKey)}
+      className={cn(NUMBER, "hit-24 hover:text-foreground aria-pressed:text-foreground")}
+      onClick={(e) => pick(props.path, props.side, props.line, e.shiftKey)}
     >
       {props.line}
     </button>
@@ -46,7 +54,8 @@ function FileDiff(
     file: DiffFile;
     mode: "unified" | "split";
     selection: Selection | null;
-    onPick(path: string, side: ReviewComment["side"], line: number, extend: boolean): void;
+    /** Starts a comment on a line; without it the numbers are plain text. */
+    onPick?(path: string, side: ReviewComment["side"], line: number, extend: boolean): void;
     onShowInFolder?: (file: DiffFile) => void;
   }>,
 ) {
@@ -156,7 +165,8 @@ export function DiffView(
     files: DiffFile[];
     mode: "unified" | "split";
     selection: Selection | null;
-    onPick(path: string, side: ReviewComment["side"], line: number, extend: boolean): void;
+    /** Starts a comment on a line; without it the numbers are plain text. */
+    onPick?(path: string, side: ReviewComment["side"], line: number, extend: boolean): void;
     /** The form to comment on the selection; shown under the file it belongs to. */
     composer: ReactNode;
     /** Shows a file in the system's file manager; absent where the app cannot (a browser, a remote host). */

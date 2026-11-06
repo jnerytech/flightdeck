@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { HooksStatusResult } from "@flightdeck/protocol";
 import { writeFileAtomic } from "../atomic-write.ts";

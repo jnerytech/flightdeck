@@ -125,9 +125,69 @@ export function unstableSkipCounts(root: string): Record<string, SkipCount> {
 
 /** Every issue the repository's unstable skips are noted under, each once, ascending (#494). */
 export function unstableSkipIssues(root: string): number[] {
-  const issues = new Set<number>();
-  for (const { path } of testFilesUnder(root)) {
-    for (const issue of skipIssues(readFileSync(path, "utf8"))) issues.add(issue);
-  }
+  const issues = new Set(unstableNotes(root).map((note) => note.issue));
   return [...issues].sort((a, b) => a - b);
+}
+
+/** Where an unstable skip is noted (#552): its test file (relative, with `/`), 1-based line and issue. */
+export interface UnstableNote {
+  file: string;
+  line: number;
+  issue: number;
+}
+
+/** Every noted unstable skip of the repository, by file and line (#552). */
+export function unstableNotes(root: string): UnstableNote[] {
+  const notes: UnstableNote[] = [];
+  for (const { path, rel } of testFilesUnder(root)) {
+    const source = readFileSync(path, "utf8");
+    const lines = source.split("\n");
+    for (const skip of unstableSkips(source)) {
+      const issue = notedIssue(lines, skip.line - 1);
+      if (issue !== null) notes.push({ file: rel, line: skip.line, issue });
+    }
+  }
+  return notes;
+}
+
+/**
+ * A closing keyword then `#N`, as GitHub reads a PR's body and the messages of the commits it
+ * merges: close, closes, closed, fix, fixes, fixed, resolve, resolves, resolved, any case, with an
+ * optional colon. Another repository's `owner/repo#N` is not read.
+ */
+const CLOSING = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):?\s+#(\d+)\b/gi;
+
+/** The issues a text closes on merge, in order (#552). */
+export function closingIssues(text: string): number[] {
+  return [...text.matchAll(CLOSING)].map((match) => Number(match[1]));
+}
+
+/** What a pull request run reads (#552): its environment, the event file, and git. */
+export interface PullRequestDeps {
+  env: Record<string, string | undefined>;
+  readFile: (path: string) => string;
+  /** The messages of the commits in `base..head`. */
+  commitMessages: (base: string, head: string) => string;
+}
+
+/**
+ * On a pull request run (`GITHUB_EVENT_NAME`), its body and its commits' messages, read from the
+ * event file GitHub writes (`GITHUB_EVENT_PATH`); null on any other run (#552). An unreadable
+ * event file throws, so the check fails rather than pass unread.
+ */
+export function pullRequestText(deps: PullRequestDeps): string | null {
+  const { GITHUB_EVENT_NAME: name, GITHUB_EVENT_PATH: path } = deps.env;
+  if (name !== "pull_request" || !path) return null;
+  const pr = JSON.parse(deps.readFile(path)).pull_request as {
+    body: string | null;
+    base: { sha: string };
+    head: { sha: string };
+  };
+  return `${pr.body ?? ""}\n${deps.commitMessages(pr.base.sha, pr.head.sha)}`;
+}
+
+/** The notes whose issue the pull request closes (#552): the skip must come out in that PR. */
+export function notesClosedBy(notes: UnstableNote[], closing: number[]): UnstableNote[] {
+  const closes = new Set(closing);
+  return notes.filter((note) => closes.has(note.issue));
 }

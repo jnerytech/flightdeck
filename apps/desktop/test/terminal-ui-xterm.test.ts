@@ -6,6 +6,7 @@ import {
   type XtermSearch,
   type XtermTerminal,
 } from "../src/lib/xterm-screen.ts";
+import { settleMaybe } from "./wait.ts";
 
 const THEME = {
   background: "#000000",
@@ -14,7 +15,12 @@ const THEME = {
   selectionBackground: "#333333",
 };
 
-function setup(initial = "", clipboardFails = false, windows = false) {
+function setup(
+  initial = "",
+  clipboardFails = false,
+  windows = false,
+  more: { clip?: string; bracketed?: boolean; confirm?: (text: string) => Promise<boolean> } = {},
+) {
   let selection = initial;
   let onSelection: () => void = () => {};
   const log: string[] = [];
@@ -25,6 +31,8 @@ function setup(initial = "", clipboardFails = false, windows = false) {
   let onData: (data: string) => void = () => {};
   let onResize: (size: { cols: number; rows: number }) => void = () => {};
   let keyHandler: (event: KeyboardEvent) => boolean = () => true;
+  let wheelHandler: (event: WheelEvent) => boolean = () => true;
+  const zooms: string[] = [];
   const addons: unknown[] = [];
   const callbacks: Array<() => void> = [];
   const links: Array<(uri: string) => void> = [];
@@ -35,6 +43,7 @@ function setup(initial = "", clipboardFails = false, windows = false) {
     rows: 24,
     options: {},
     unicode: { activeVersion: "6" },
+    modes: { bracketedPasteMode: more.bracketed ?? false },
     loadAddon: (addon) => void addons.push(addon),
     open: () => void log.push("open"),
     write: (bytes, callback) => {
@@ -61,6 +70,9 @@ function setup(initial = "", clipboardFails = false, windows = false) {
     },
     attachCustomKeyEventHandler: (handler) => {
       keyHandler = handler;
+    },
+    attachCustomWheelEventHandler: (handler) => {
+      wheelHandler = handler;
     },
     dispose: () => void log.push("dispose"),
   };
@@ -110,15 +122,17 @@ function setup(initial = "", clipboardFails = false, windows = false) {
       },
       read: async () => {
         if (clipboardFails) throw new Error("denied");
-        return "pasted";
+        return more.clip ?? "pasted";
       },
     },
+    ...(more.confirm ? { confirmPaste: more.confirm } : {}),
     windows,
     onInput: (data) => void inputs.push(data),
     onResize: (cols, rows) => void resizes.push([cols, rows]),
     onSearch: () => void searches++,
     onFindResults: (results) => void found.push(results),
     onLink: (uri) => void linked.push(uri),
+    onZoom: (step) => void zooms.push(step),
   });
   const press = (key: string, ctrl = true, shift = true) =>
     keyHandler({
@@ -143,6 +157,8 @@ function setup(initial = "", clipboardFails = false, windows = false) {
     },
     press,
     keys: (event: KeyboardEvent) => keyHandler(event),
+    wheel: (event: WheelEvent) => wheelHandler(event),
+    zooms,
     constructed: () => constructed,
     searches: () => searches,
     findOptions,
@@ -297,6 +313,37 @@ describe("terminal-ui: the xterm screen", () => {
     expect(s.inputs).toEqual(["\u001b\r"]);
   });
 
+  test("Ctrl+=, Ctrl+- and Ctrl+0 zoom once per press, kept from the process and from the page's own zoom (issue #476)", () => {
+    const s = setup();
+    let prevented = 0;
+    const key = (k: string, type = "keydown") =>
+      ({
+        key: k,
+        type,
+        ctrlKey: true,
+        shiftKey: false,
+        altKey: false,
+        metaKey: false,
+        preventDefault: () => void prevented++,
+      }) as unknown as KeyboardEvent;
+    expect(s.keys(key("="))).toBe(false);
+    expect(s.keys(key("=", "keyup"))).toBe(false);
+    expect(s.keys(key("-"))).toBe(false);
+    expect(s.keys(key("0"))).toBe(false);
+    expect([s.zooms, prevented, s.inputs]).toEqual([["zoomIn", "zoomOut", "zoomReset"], 4, []]);
+  });
+
+  test("Ctrl+wheel zooms and keeps the page from zooming; the wheel alone stays xterm's scroll (issue #476)", () => {
+    const s = setup();
+    let prevented = 0;
+    const wheel = (ctrlKey: boolean, deltaY: number) =>
+      ({ ctrlKey, deltaY, preventDefault: () => void prevented++ }) as unknown as WheelEvent;
+    expect(s.wheel(wheel(true, -100))).toBe(false);
+    expect(s.wheel(wheel(true, 100))).toBe(false);
+    expect(s.wheel(wheel(false, 100))).toBe(true);
+    expect([s.zooms, prevented]).toEqual([["zoomIn", "zoomOut"], 2]);
+  });
+
   test("Ctrl+Shift+V pastes the clipboard through xterm; Ctrl+Shift+F asks for the search; the rest passes", async () => {
     const s = setup();
     expect(s.press("V")).toBe(false);
@@ -323,6 +370,37 @@ describe("terminal-ui: the xterm screen", () => {
     expect(s.log.slice(-4)).toEqual(["next:hit", "next:miss", "prev:x", "clear"]);
   });
 
+  test("a paste of several lines waits for the OK unless the program turned on bracketed paste (issue #476)", async () => {
+    const asked: string[] = [];
+    const answers = [false, true];
+    const confirm = async (text: string) => {
+      asked.push(text);
+      return answers.shift() ?? false;
+    };
+    const s = setup("", false, false, { clip: "a\nb", confirm });
+    s.screen.paste();
+    await settleMaybe(() => asked.length === 1);
+    s.screen.paste();
+    await settleMaybe(() => s.log.includes("paste:a\nb"));
+    expect([asked, s.log.filter((line) => line.startsWith("paste:"))]).toEqual([
+      ["a\nb", "a\nb"],
+      ["paste:a\nb"],
+    ]);
+    const marked = setup("", false, false, { clip: "a\nb", bracketed: true, confirm });
+    marked.screen.paste();
+    await settleMaybe(() => marked.log.includes("paste:a\nb"));
+    expect([asked.length, marked.log.includes("paste:a\nb")]).toEqual([2, true]);
+  });
+
+  test("screen reader mode is given to xterm at the start and follows the setting (issue #476)", () => {
+    const s = setup();
+    expect(s.constructed().screenReaderMode).toBe(false);
+    s.screen.setScreenReader(true);
+    expect(s.terminal.options.screenReaderMode).toBe(true);
+    s.screen.setScreenReader(false);
+    expect(s.terminal.options.screenReaderMode).toBe(false);
+  });
+
   test("dispose releases the listeners and xterm", () => {
     const s = setup();
     s.screen.dispose();
@@ -347,6 +425,19 @@ describe("terminal-ui: the xterm screen", () => {
     expect(s.log).toContain("paste:pasted");
     s.links[0]?.("https://example.com");
     expect(s.linked).toEqual(["https://example.com"]);
+  });
+
+  test("find passes match case, whole word and regex on; a pattern it cannot search clears instead (issue #476)", () => {
+    const s = setup();
+    s.screen.find("Hit", "next", false, { caseSensitive: true, wholeWord: true });
+    expect(s.findOptions.at(-1)).toMatchObject({ caseSensitive: true, wholeWord: true });
+    expect(s.screen.find("a(", "next", true, { regex: true })).toBe(false);
+    expect(s.screen.find("a*", "previous", false, { regex: true })).toBe(false);
+    expect(s.log.filter((line) => /^(next|prev|clear)/.test(line))).toEqual([
+      "next:Hit",
+      "clear",
+      "clear",
+    ]);
   });
 
   test("find highlights every match and marks the current one; typing keeps the match", () => {

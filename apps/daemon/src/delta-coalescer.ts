@@ -65,7 +65,7 @@ export function coalesceDeltas(options: CoalescerOptions): DeltaCoalescer {
         return;
       }
       pending =
-        pending && pending.event.type === "message.delta"
+        pending?.event.type === "message.delta"
           ? {
               ...envelope,
               event: { type: "message.delta", text: pending.event.text + envelope.event.text },

@@ -10,6 +10,8 @@ import {
 import { ArrowDown, AtSign, BookText, CornerDownLeft, Plus, Square, X } from "lucide-react";
 import { memo, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
+import { useWand, type WandBinding } from "@/components/assistant/use-wand";
+import { WandButton, WandPanel } from "@/components/assistant/wand-controls";
 import { ActionButton } from "@/components/feedback/action-button";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { NativeSelect } from "@/components/layout/form";
@@ -325,6 +327,8 @@ interface SessionViewProps {
   models?: readonly string[];
   /** Renders a picker for a folder; `done` gets the path chosen, or null when it was closed. */
   pickPath?: (done: (path: string | null) => void) => ReactNode;
+  /** The AI wand of the message box (phase 40): the assistant and where "no provider" goes. */
+  assist?: WandBinding;
 }
 
 /** How many messages came after the one the reader had seen (none while they are at the end). */
@@ -446,6 +450,8 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   // Where the view itself last put the scroll: the scroll event of that move says nothing about the
   // reader, and by the time it is delivered the layout may have grown (a panel, a code block).
   const pinnedTop = useRef<number | null>(null);
+  /** The place a returning reader asked for, until the layout has the height to hold it (issue #515). */
+  const restoring = useRef<number | null>(null);
   // Until when a scroll is the person's: their wheel, keys, touch or a press on the scrollbar. The
   // browser also scrolls by itself (it pulls the position back when the content shrinks), and the
   // event for that can reach the handler after a panel changed the layout: read then, the view
@@ -475,6 +481,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
     const saved = scrollKey ? positions.get(scrollKey) : undefined;
     if (!box || !saved || saved.atEnd) return;
     following.current = false;
+    restoring.current = saved.top;
     box.scrollTop = saved.top;
     setAwaySeq(saved.seq);
   }, []);
@@ -497,7 +504,11 @@ export function SessionView(props: Readonly<SessionViewProps>) {
     const box = timeline.current;
     if (!box || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
-      if (following.current) pin(box);
+      // The content got taller: the place a returning reader asked for may fit now.
+      if (restoring.current !== null) {
+        box.scrollTop = restoring.current;
+        if (box.scrollTop === restoring.current) restoring.current = null;
+      } else if (following.current) pin(box);
       lastHeight.current = box.scrollHeight;
     });
     observer.observe(box);
@@ -523,6 +534,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   const jumpKey = missed === 1 ? "session.jumpLatestOne" : "session.jumpLatestMany";
   const { session, actions } = props;
   const [text, setText] = useState("");
+  const wand = useWand(props.assist, text, setText);
   const [closing, setClosing] = useState(false);
   const [picking, setPicking] = useState(false);
   const start = session.permissionMode ?? "default";
@@ -722,6 +734,13 @@ export function SessionView(props: Readonly<SessionViewProps>) {
             const own = pinnedTop.current === box.scrollTop;
             pinnedTop.current = null;
             if (own && following.current) return;
+            // A restore the layout has not held yet: the browser's clamp is not the reader going to
+            // the end, and the place kept stays as it was. The person's own scroll ends the restore.
+            if (restoring.current !== null) {
+              if (Date.now() < personUntil.current || box.scrollTop === restoring.current)
+                restoring.current = null;
+              else return;
+            }
             const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight <= END_SLACK;
             // Following and not at the end, with no hand on it: the layout moved, not the person.
             // The observer pins the end again.
@@ -859,6 +878,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
           </div>
         )}
         {working && <ActivityLine activity={activity} t={t} />}
+        {wand && <WandPanel wand={wand} t={t} />}
         <Composer>
           {props.images && (
             <>
@@ -896,6 +916,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
               <AtSign aria-hidden="true" />
             </IconActionButton>
           )}
+          {wand && <WandButton wand={wand} t={t} />}
           <Textarea
             ref={box}
             aria-label={t("session.message")}
@@ -920,6 +941,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
               void attach(Array.from(e.dataTransfer?.files ?? []));
             }}
             onKeyDown={(e) => {
+              if (wand?.onKeyDown(e)) return;
               if (e.key === "Escape" && working) void actions.interrupt();
               if (e.key === "Tab" && e.shiftKey && props.settings && actions.setMode) {
                 // Shift+Tab cycles the permission mode, as in Claude Code; with none to go to, focus moves on.

@@ -10,8 +10,7 @@ const ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const ICON = /^[a-z0-9-]{1,30}$/;
 const MODEL = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
 // A tool is a plain name (or an MCP tool/server), never a permission rule such as `Bash(rm:*)`.
-const TOOL =
-  /^(?:[A-Za-z][A-Za-z0-9_]{0,63}|mcp__[A-Za-z0-9_-]{1,100}(?:__[A-Za-z0-9_-]{1,100})?)$/;
+const TOOL = /^(?:[A-Za-z]\w{0,63}|mcp__[\w-]{1,100}(?:__[\w-]{1,100})?)$/;
 const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
 /** `bypassPermissions` cannot be suggested: a persona never asks for fewer checks. */
 const MODES = ["default", "acceptEdits", "plan", "dontAsk", "auto"] as const;

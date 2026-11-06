@@ -16,6 +16,7 @@ process.exit(
   await shards(
     process.argv.slice(2).filter((a) => a !== "--"),
     {
+      platform: process.platform,
       git: (args) => {
         const run = Bun.spawnSync(["git", ...args], { cwd: ROOT }); // NOSONAR: git comes from the PATH of the developer or the CI runner running the script
         return run.exitCode === 0 ? run.stdout.toString() : null;

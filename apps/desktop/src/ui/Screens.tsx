@@ -199,6 +199,7 @@ function ManagedSession(
       }
       telemetry={!opencode && hasFeature(host?.hostInfo?.features, "telemetry", false)}
       trace={!opencode && hasFeature(host?.hostInfo?.features, "trace", false)}
+      files={!opencode && hasFeature(host?.hostInfo?.features, "file.list", false)}
     >
       <SessionView
         t={store.i18n.t}
@@ -236,6 +237,13 @@ function ManagedSession(
           )
         }
         focusRequestId={props.focus}
+        assist={{
+          controller: store.assistant,
+          kind: "prompt",
+          fieldHostId: hostId,
+          ...(cwd ? { cwd } : {}),
+          openSettings: () => props.go({ name: "settings", section: "assistant" }),
+        }}
         {...(session.resumedFrom
           ? {
               earlier: (
@@ -647,6 +655,7 @@ function externalScreen(
       messagingId={has("messaging") ? route.claudeSessionId : null}
       telemetry={has("telemetry")}
       trace={has("trace")}
+      files={has("file.list")}
     >
       <ExternalView
         store={store}

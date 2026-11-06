@@ -22,7 +22,7 @@ const MODIFIERS: Record<string, string> = {
   win: "Super",
 };
 const ORDER = ["Ctrl", "Alt", "Shift", "Super"];
-const KEY = /^([A-Z0-9]|F([1-9]|1[0-9]|2[0-4]))$/;
+const KEY = /^([A-Z0-9]|F([1-9]|1\d|2[0-4]))$/;
 
 /**
  * Checks and normalizes a shortcut such as `Ctrl+Alt+F`. A letter, digit or F-key with at least
