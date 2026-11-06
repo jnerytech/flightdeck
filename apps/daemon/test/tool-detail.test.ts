@@ -34,6 +34,8 @@ const TRANSCRIPT = [
     { type: "tool_use", id: "t2", name: "Read", input: { file_path: "/srv/a.ts" } },
   ]),
   "not json at all",
+  // Names the call's id but is not JSON: read past, not mistaken for its result.
+  'broken {"tool_use_id":"t1"',
   answer("u1", "t2", [
     { type: "text", text: "line one" },
     { type: "image" },
