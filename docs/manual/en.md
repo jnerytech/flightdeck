@@ -885,9 +885,12 @@ live; the list is the project's, so a session of another project never shows her
   is offline, misses a required dependency or forwards its API key), and the narrow icon rail has no headings.
 - At the foot of the bar, **Settings** is a visible item (marked while Settings is open), and the Claude
   account (its email and plan, read from the host's account card; the rail shows only its initial)
-  opens a menu with **Settings**, **Toggle theme**, **Manual** and, for each host whose `gh` is signed
-  in to GitHub with a login the app can remove, **Sign out of GitHub** (after a confirmation; a login
-  that comes from the daemon's environment is removed there). With several hosts the account of the
+  opens a menu. Its header names the app and its version. Then come the plan, the account and the id
+  of the host whose account it is, each copied when chosen; **Compact rows**, a switch kept on this
+  computer (the same density as in Settings); **Settings**; **Check for updates** (it opens Settings,
+  where the answer shows); **Keyboard shortcuts**; **Toggle theme**; **Manual**; and, for each host
+  whose `gh` is signed in to GitHub with a login the app can remove, **Sign out of GitHub** (after a
+  confirmation; a login that comes from the daemon's environment is removed there). With several hosts the account of the
   open host is shown, and how many accounts there are when they differ; an offline host shows none.
 - **Home** (first in Work) is a strip of four cards over the last seven days of every online host,
   each with a sparkline: **Spend** (with the month's host budgets, when set), **Turns** (ok and
@@ -1996,6 +1999,27 @@ unblocked. A badge on the bell counts the unread ones.
 - The OS notifications are unchanged. The center only keeps a copy, so one that is never sent
   (the window had focus) is not in it either.
 
+## Setup checklist
+
+A **Setup** row at the top of the sidebar's Work group shows a ring and a count (for example
+`1/4`) while the steps to get going are not all done. It opens the **Setup** screen: a list of
+steps, each with one sentence and one button that opens the screen where it is fixed. A step is
+done when the app can see that it is: it is read from your hosts and the app, never ticked by hand,
+so connecting a host moves the ring at once and removing it moves it back.
+
+- **To get going:** connect a host (one online); install the Claude Code hooks on it (the host page
+  says installed); add a project with a base branch; start a first session or card. The step the
+  screen marks as current (the first one not done) has the filled button.
+- **Worth doing:** sign in to GitHub on the host, check that notifications work (a test
+  notification reached the system once), set a budget, and add a `.worktreeinclude` to a project.
+  The row does not wait for these.
+- A step the host cannot do (it does not announce the feature) is left out, not left undone.
+- The row leaves by itself once the four steps to get going are done. **Hide** (the eye button that
+  shows beside the row, or on the Setup screen) removes it for good; Settings, Window, **Show the
+  setup checklist** brings it back. Simple mode shows none of this.
+- A tool a host lacks (the GitHub CLI, `claude`) gets a quiet card on the Start screen, not a red
+  banner, with a link to how to install it and **Dismiss**.
+
 ## Snippets
 
 **Snippets** are saved commands and prompts. The **Snippets** screen (sidebar, for hosts that keep
@@ -2306,14 +2330,34 @@ window resets.
   ago").
   - The bar turns red from `quota.pauseAt`.
   - Crossing `pauseAt` raises a notification, once per window.
-- **In the top bar:** a small meter shows the window under most pressure across the online hosts,
-  with its percentage (the window's name shows from 960 px wide). From 80% it carries a warning
-  mark in the needs-you colour, and at 100% (or from `pauseAt`, as the account card) the bar
-  turns red; its name and tooltip say the level,
-  the host and the time left. Clicking it opens that host's page. With no reading, it does not
-  show.
+- **In the status bar** (the slim line at the bottom of the window, below): a small meter shows the
+  window under most pressure across the online hosts, with its percentage and the time left until it
+  resets (the window's name shows from 960 px wide), and a **Refresh the plan usage** button that
+  asks the hosts again. From 80% it carries a warning mark in the needs-you colour, and at 100% (or
+  from `pauseAt`, as the account card) the bar turns red; its name and tooltip say the level, the
+  host and the time left. Clicking it opens that host's page. With no reading, neither the meter
+  nor the refresh shows.
 - **Terminal only:** the hooks do not carry the quota. Anyone who only uses terminal sessions
   sees empty or stale bars until a card or a managed session runs on the host.
+
+### The status bar
+
+A slim bar (24 px) runs along the bottom of the window. On the left, the plan quota (above) with its
+reset time and a refresh. On the right, each item opens its page:
+
+- **Update:** only when there is one to say: an app update on offer, one downloaded that needs a
+  restart, or a failed check. It opens Settings.
+- **Keep awake:** what the hosts that offer it say together: **Awake** (holding the computer awake
+  now), **Keep awake** (on, holding only while sessions run) or **Sleep ok** (off). It opens that
+  host's page, where the switch is. A host that does not offer it is not counted.
+- **Terminals:** how many terminal tabs are open, in both areas. It brings the first one forward; with
+  none open, it opens the host where one can be opened.
+- **Hosts:** how many are online of all ("2/3"). It opens the first host that is not online, so a
+  problem is one click away; with every host online, the host in view.
+
+Every item is a button with its words as the name and a tooltip, never colour alone, and the two
+counts are live regions, so a screen reader hears them change.
+In a window under 600 px tall the bar is hidden, to leave the height to the conversation.
 
 ### Quota queue
 
@@ -2737,6 +2781,10 @@ tab, with no SSH.
 - **Limits:** 10 live terminals per host (`terminal.max`), and a terminal nobody is attached to is
   ended after 120 minutes (`terminal.idleMinutes`). Terminals do not survive a restart or an
   update of the daemon. Their content never goes to the log or to the database.
+- **Scrolling Claude Code:** in Claude Code's fullscreen mode the wheel goes to Claude Code, which
+  moves by its own `CLAUDE_CODE_SCROLL_SPEED`. Terminals opened by the app set it to 3 lines a
+  notch, as Windows Terminal and VS Code feel, unless the host's environment or Claude Code's
+  settings (where `/scroll-speed` keeps it) already set a speed: then that one is used.
 
 ### Claude here
 
@@ -2752,6 +2800,12 @@ checkpoint) gets a companion:
   terminal**: both are the same Claude, tied by the launch id.
 
 The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
+
+When the session is already live in another terminal (VS Code's, say), **Continue in the terminal**
+and the outside terminal ask first: a second `claude` on the same session would not be seen by the
+first one. Each shows only its own turns, and both write to the same history. **View it live here**
+(the default) opens the session's live view, which follows that terminal's transcript; **Open a
+second copy anyway** opens it here all the same.
 
 ## Daily use
 
@@ -3007,7 +3061,9 @@ What keeps the app and the daemon light, and the numbers you can read yourself.
   this documentation). `flightdeckd --version` prints `flightdeckd <version> (protocolo 1)`.
 - **In the app:** the host page shows the daemon version, the app version and the `claude`
   version. A daemon of a different version gets the **≠** badge ("different version from the
-  app's") in the sidebar: it works, but update when you can.
+  app's") in the sidebar: it works, but update when you can. Hovering a host in the sidebar, or
+  moving the keyboard focus to it, shows its daemon's version in a tooltip (in the narrow rail,
+  after its name).
 - **Protocol:** the app sends its protocol version in `hello`. If the daemon does not accept it,
   the host becomes **incompatible: update the daemon**, with the command on the host page. It
   does not try to reconnect and drops out of the lists (sessions, search) until it is updated and
@@ -3084,8 +3140,11 @@ signature (see [Installation](#from-the-release-binaries)).
 - **The app:**
   - looks for a new version on open and every 6 h, in the latest release's `latest.json`;
   - with **Update automatically** on (the default), it downloads the new version in the
-    background, checks its signature, and then shows the banner "Flightdeck X is ready. Restart
-    to update." with **Restart now** and **Later**. Nothing restarts by itself (#280). Quitting
+    background, checks its signature, and then shows a card in the bottom-right corner:
+    **Update available**, "Flightdeck vX is ready.", "Your sessions will not be interrupted." (they
+    run in the hosts' daemons), **Release notes** (the version's page on GitHub), one **Update**
+    button and a close button (×) that puts it away until the next check (#490). Nothing restarts
+    by itself (#280). Quitting
     from the tray with a version downloaded installs it on the way out, without starting the app
     again (#402);
   - with it off, the banner says "Flightdeck X available", with the notes, **Install and

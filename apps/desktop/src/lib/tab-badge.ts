@@ -57,6 +57,7 @@ const KINDS: Partial<Record<Route["name"], TabKind>> = {
   teams: "teams",
   personas: "personas",
   clients: "clients",
+  setup: "setup",
   snippets: "snippets",
   connections: "connections",
   vault: "vault",

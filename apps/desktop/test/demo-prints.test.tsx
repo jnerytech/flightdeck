@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import {
   applyDemoPrefs,
+  demoPlatform,
   demoStoreOptions,
   entryHtml,
   initialRoute,
@@ -131,5 +132,21 @@ describe("demo-prints", () => {
     expect(demoStoreOptions(hosts, "?reconnect=slow")).toEqual({ baseDelayMs: 60_000 });
     expect(demoStoreOptions(hosts, "")).toEqual({ baseDelayMs: 60_000 });
     expect(demoStoreOptions([], "?reconnect=fast")).toEqual({});
+  });
+  test("?update=<version> makes the demo's updater offer that version and download it, so the update card can be driven", async () => {
+    const { platform } = memoryPlatform();
+    const demo = demoPlatform(platform, "?route=%7B%7D&update=9.9.9&lang=en");
+    expect(demo.updater.supported).toBe(true);
+    expect(await demo.updater.check()).toEqual({ version: "9.9.9", notes: "" });
+    await expect(demo.updater.download()).resolves.toBeUndefined();
+    await expect(demo.updater.install()).resolves.toBeUndefined();
+  });
+
+  test("with no ?update, or one that is not a version, the platform is the same object: the demo never offers an update", () => {
+    const { platform } = memoryPlatform();
+    expect(demoPlatform(platform, "")).toBe(platform);
+    expect(demoPlatform(platform, "?reconnect=fast")).toBe(platform);
+    expect(demoPlatform(platform, "?update=latest")).toBe(platform);
+    expect(demoPlatform(platform, "?update=")).toBe(platform);
   });
 });

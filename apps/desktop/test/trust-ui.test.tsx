@@ -283,6 +283,25 @@ describe("trust-ui: the project page says what a project would load and lets the
     );
   });
 
+  test("the panel says how many live sessions still run with the old trust (issue #463)", async () => {
+    render(
+      setup({ state: { path: "/work/api", trusted: false, via: null, staleSessions: 2 } }).view,
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          "Live sessions still running with the old trust: 2. Restart them to apply.",
+        ),
+      ).not.toBeNull(),
+    );
+  });
+
+  test("with none, it says nothing of the kind", async () => {
+    render(setup().view);
+    await waitFor(() => expect(screen.queryByText("What this project would load")).not.toBeNull());
+    expect(screen.queryByText(/Live sessions still running/)).toBeNull();
+  });
+
   test("when only the listing is refused, the state and the way to revoke are still shown (issue #415)", async () => {
     const { view, sent } = setup({
       noListing: true,

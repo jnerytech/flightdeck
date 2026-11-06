@@ -107,6 +107,9 @@ export function TrustPanel(
       <p className="text-muted-foreground text-xs">{t("projectPage.trust.hint")}</p>
       <p className="font-medium text-sm">{trustLine(state, t)}</p>
       {!state.trusted && <p className="text-sm">{t("projectPage.trust.cost")}</p>}
+      {state.staleSessions !== undefined && (
+        <p className="text-sm">{t("projectPage.trust.staleCount", { n: state.staleSessions })}</p>
+      )}
       <h3 className="font-medium text-sm">{t("projectPage.trust.listing")}</h3>
       {anyLong && <p className="text-sm">{t("projectPage.trust.longWarning")}</p>}
       {!load ? (
