@@ -22,10 +22,14 @@ narrow-size prints and guards check.
   outside it.
 - Around every screen, the area wrapper (`ui/Areas.tsx`, `@container min-h-0 flex-1
   overflow-y-auto`) can scroll too. It is there for screens that are not a `Page`.
-- On the Host page the `Page` grows past the area's height:
-  - the wrapper scrolls (2511 px of content in a 592 px box at 1024 x 700);
-  - inside it, the page's own ScrollArea scrolls too.
-  This happens at 1024, 640 and 390 px. It is the "two scrollbars" of #640.
+- On the Host page the wrapper scrolls (2511 px of content in a 592 px box at 1024 x 700), and
+  inside it the page's own ScrollArea scrolls too. This happens at 1024, 640 and 390 px. It is
+  the "two scrollbars" of #640.
+  - The cause is a table's `sr-only` `<caption>`, which is absolutely positioned.
+  - The ScrollArea's viewport is not positioned, so the caption is placed against an ancestor
+    outside it, at its spot 2595 px down the content.
+  - The viewport does not clip it, so it stretches the wrapper.
+  - Any absolutely positioned element in a long page does the same.
 - Because the wrapper holds the page header, scrolling it slides the title under the tab row.
   This is the cut title of #640.
 - At 390 px:
@@ -230,6 +234,8 @@ Taken together:
 ### 4. One scroll container per screen
 
 - The shell's grid never scrolls.
+- A page's scroll viewport is positioned (`relative`), so what is absolutely positioned inside
+  it (an `sr-only` caption, a hint) scrolls and clips with it instead of stretching the screen.
 - The area wrapper around a screen (`ui/Areas.tsx`) never scrolls either. It becomes a flex
   column (`flex min-h-0 flex-1 flex-col overflow-hidden`) that gives its screen exactly its
   height. A screen that is not a `Page` uses `Page` (or `Page fill`) to get its scroller.
