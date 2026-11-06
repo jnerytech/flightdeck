@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import type { DiffFile } from "@flightdeck/protocol";
 import { liveScreen, registerDom } from "./dom.ts";
 
 registerDom();
@@ -22,7 +23,7 @@ const file = (extra: Record<string, unknown>) =>
     ...extra,
   }) as never;
 
-const view = (f: unknown, onShowInFolder?: (file: never) => void) => (
+const view = (f: unknown, onShowInFolder?: (file: DiffFile) => void) => (
   <DiffView
     files={[f as never]}
     mode="unified"
@@ -48,7 +49,7 @@ describe("diff-view-cap: a file the daemon did not send says so", () => {
     expect(screen.queryByRole("button", { name: /na pasta/ })).toBeNull();
     cleanup();
     const opened: string[] = [];
-    render(view(file({ bytes: 700_000 }), (f) => opened.push((f as { path: string }).path)));
+    render(view(file({ bytes: 700_000 }), (f) => opened.push(f.path)));
     fireEvent.click(screen.getByRole("button", { name: "Mostrar dump.log na pasta" }));
     expect(opened).toEqual(["dump.log"]);
   });
