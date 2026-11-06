@@ -270,14 +270,14 @@ describe("teleport-package: the package is read in chunks and does not outlive i
 });
 
 describe("teleport-package: what the security review asked for (#100)", () => {
-  test("the daemon's stop removes every package and clears its timer; a timer never holds the daemon open", async () => {
+  test("the daemon's stop removes the packages' folder and clears every timer; a timer never holds the daemon open", async () => {
     const { packages, deps, timers } = await setup();
     await packages.prepare("s1");
     await packages.stop();
     expect([
       timers.map((t) => [t.live, t.unref]),
       await readdir(deps.dir).catch(() => ["no folder"]),
-    ]).toEqual([[[false, true]], []]);
+    ]).toEqual([[[false, true]], ["no folder"]]);
   });
 
   test("a session has one package at a time, and the host keeps at most two", async () => {
