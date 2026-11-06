@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 import { useStoreState } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
 import type { AppStore } from "../lib/app-store.ts";
+import { toolLoader } from "../lib/history-tool.ts";
 import { basename, isInside } from "../lib/paths.ts";
 import { messageParts } from "../lib/tool-line.ts";
-import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Markdown } from "./Markdown.tsx";
 
@@ -68,17 +68,13 @@ export function TranscriptReader(
   const [allowing, setAllowing] = useState(false);
   const host = useStoreState(store).hosts.find((h) => h.id === target.hostId);
   // Issue #606: a host that answers history.tool opens a stored tool call to its input and result.
-  const toolLoad = (uuid: string, index: number) =>
-    hasFeature(host?.hostInfo?.features, "history.tool", false)
-      ? async () => {
-          const result = await store.hostRequest(target.hostId, "history.tool", {
-            claudeSessionId: target.claudeSessionId,
-            uuid,
-            index,
-          });
-          return result.ok ? (result.data?.tool ?? null) : null;
-        }
-      : undefined;
+  const toolLoad = toolLoader(
+    // No arrow of its own here: what runs on a click is the lib's, covered there.
+    store.hostRequest.bind(store),
+    host?.hostInfo?.features,
+    target.hostId,
+    target.claudeSessionId,
+  );
   const roots = host?.info?.allowedRoots ?? [];
   const [copied, setCopied] = useState(false);
 
