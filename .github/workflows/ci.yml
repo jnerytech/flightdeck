@@ -28,7 +28,10 @@ permissions:
 concurrency:
   # The job choice is in the key: a screenshots-only dispatch must not cancel a full one.
   group: ci-${{ github.ref }}-${{ github.event_name }}-${{ inputs.only }}
-  cancel-in-progress: true
+  # A run on main always finishes (#326): a merge cancelling main's run in progress left 14 main runs
+  # cancelled in a row and no main result to release from. GitHub then keeps the run in progress and
+  # only the newest pending one. Branch and PR runs still cancel their previous push.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   # Which job groups this run needs (#264): on a pull request, from the paths it changes

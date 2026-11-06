@@ -12,7 +12,7 @@ import { join, resolve } from "node:path";
 const ROOT = resolve(import.meta.dir, "../..");
 const ci = Bun.YAML.parse(readFileSync(join(ROOT, ".github/workflows/ci.yml"), "utf8")) as {
   on: Record<string, { branches?: string[]; "paths-ignore"?: string[]; paths?: string[] } | null>;
-  concurrency: { group: string; "cancel-in-progress": boolean };
+  concurrency: { group: string; "cancel-in-progress": boolean | string };
 };
 
 describe("ci-branches", () => {
@@ -50,8 +50,10 @@ describe("ci-branches", () => {
     expect(read).toEqual([]);
   });
 
-  test("a new push to a branch cancels the run of its previous push", () => {
+  test("a new push to a branch cancels the run of its previous push; a run on main always finishes (#326)", () => {
     expect(ci.concurrency.group).toMatch(/\$\{\{ github\.ref \}\}/);
-    expect(ci.concurrency["cancel-in-progress"]).toBe(true);
+    // On main a merge must never cancel the run in progress: GitHub keeps it and only the newest
+    // pending one, so every main run reports and `pr tag` finds a green one.
+    expect(ci.concurrency["cancel-in-progress"]).toBe("${{ github.ref != 'refs/heads/main' }}");
   });
 });
