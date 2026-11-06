@@ -15,7 +15,7 @@ export function activityText(activity: Activity, t: T): string {
 }
 
 /** Above the message box while a turn runs: a small spinner, what is happening and for how long. */
-export function ActivityLine(props: { activity: Activity; t: T }) {
+export function ActivityLine(props: Readonly<{ activity: Activity; t: T }>) {
   const started = useRef(Date.now());
   const [now, setNow] = useState(started.current);
   useEffect(() => {

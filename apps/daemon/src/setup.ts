@@ -32,7 +32,7 @@ export interface SetupDeps {
 }
 
 /** What Tailscale uses: the CGNAT range of IPv4 and the ULA range of IPv6. */
-const TAILSCALE_NETWORKS = ["100.64.0.0/10", "fd7a:115c:a1e0::/48"];
+const TAILSCALE_NETWORKS = ["100.64.0.0/10", "fd7a:115c:a1e0::/48"]; // NOSONAR: Tailscale's documented ranges
 
 const pathsOf = (deps: SetupDeps) => (deps.platform === "win32" ? win32 : posix);
 

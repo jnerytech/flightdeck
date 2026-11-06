@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { isWatchCheck } from "@flightdeck/protocol";
+import { inSequence, isWatchCheck } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { type CommandResult, git as realGit } from "../board/command.ts";
 import { BUILD_LOG_BYTES, type PrComment, type PrProvider, prProvider, tail } from "../board/pr.ts";
@@ -90,8 +90,9 @@ const clip = (text: string, limit: number) =>
   text.length > limit ? `${text.slice(0, limit)} […]` : text;
 
 function commentLine(comment: PrComment, i: number): string {
+  const line = comment.line === null ? "" : ":" + comment.line;
   const where = comment.path
-    ? `${comment.path}${comment.line === null ? "" : `:${comment.line}`} (${comment.author})`
+    ? `${comment.path}${line} (${comment.author})`
     : `review by ${comment.author}`;
   return `${i + 1}. ${where}:\n${clip(comment.body.trim(), COMMENT_CHARS)}`;
 }
@@ -167,6 +168,7 @@ export class PrFixer {
 
   /** The watcher's trigger: starts a round, one at a time per card, unless a limit says stop. */
   async onTrigger(trigger: WatchTrigger): Promise<void> {
+    // NOSONAR: async by contract: a throw must reach the caller as a rejection
     const { cardId } = trigger;
     const { watcher } = this.opts;
     if (this.running.has(cardId) || !watcher.enabled(cardId)) return;
@@ -188,7 +190,7 @@ export class PrFixer {
 
   /** Settles when no round is running. */
   async idle(): Promise<void> {
-    while (this.pending.size > 0) await Promise.all([...this.pending]);
+    while (this.pending.size > 0) await Promise.all([...this.pending]); // NOSONAR: sequential by design: each pass needs the answer of the one before
   }
 
   rounds(cardId: string): FixRound[] {
@@ -219,7 +221,8 @@ export class PrFixer {
     const done = this.counted(cardId);
     if (done.length >= settings.maxRounds) {
       const list = done.map(
-        (r) => `round ${r.n}: ${r.status}${r.summary ? ` (${r.summary.split("\n")[0]})` : ""}`,
+        (r) =>
+          `round ${r.n}: ${r.status}` + (r.summary ? " (" + r.summary.split("\n")[0] + ")" : ""),
       );
       return `limit of ${settings.maxRounds} rounds reached — ${list.join("; ")}`;
     }
@@ -306,6 +309,27 @@ export class PrFixer {
     }
   }
 
+  /** Why the first local check did not pass (refused, timed out, failed), or null when all passed. */
+  private async failedCheck(settings: WatchSettings, worktree: string): Promise<string | null> {
+    for (const command of settings.checks) {
+      // Stored settings are checked again: only a plain command and its arguments runs unattended.
+      if (!isWatchCheck(command)) return `local check refused: ${masked(command)}`;
+      const result =
+        await /* NOSONAR: checks run one after the other and stop at the first that fails */ this.opts.checks.run(
+          command,
+          worktree,
+          settings.checkTimeoutMin * 60_000,
+        );
+      if (result.timedOut) {
+        return `local check timed out: ${masked(command)} (after ${settings.checkTimeoutMin} min)`;
+      }
+      if (result.exitCode !== 0) {
+        return `local check failed: ${masked(command)} (exit ${result.exitCode})\n${masked(result.output)}`;
+      }
+    }
+    return null;
+  }
+
   private async play(input: {
     trigger: WatchTrigger;
     n: number;
@@ -353,33 +377,8 @@ export class PrFixer {
         "the last round made no commit, so nothing changed and nothing will trigger another",
       );
     }
-    for (const command of settings.checks) {
-      // Stored settings are checked again: only a plain command and its arguments runs unattended.
-      if (!isWatchCheck(command)) {
-        return this.failed(cardId, end, `local check refused: ${masked(command)}`, spent);
-      }
-      const result = await this.opts.checks.run(
-        command,
-        worktree,
-        settings.checkTimeoutMin * 60_000,
-      );
-      if (result.timedOut) {
-        return this.failed(
-          cardId,
-          end,
-          `local check timed out: ${masked(command)} (after ${settings.checkTimeoutMin} min)`,
-          spent,
-        );
-      }
-      if (result.exitCode !== 0) {
-        return this.failed(
-          cardId,
-          end,
-          `local check failed: ${masked(command)} (exit ${result.exitCode})\n${masked(result.output)}`,
-          spent,
-        );
-      }
-    }
+    const failure = await this.failedCheck(settings, worktree);
+    if (failure) return this.failed(cardId, end, failure, spent);
     if (this.stopped) return;
     if (!watcher.enabled(cardId))
       return end("stopped", "Vigiar was turned off: nothing was pushed", spent);
@@ -404,14 +403,14 @@ export class PrFixer {
   ): Promise<string> {
     const builds = trigger.failed.filter((c) => c.buildId !== null);
     const parts: string[] = [];
-    for (const check of builds) {
+    await inSequence(builds, async (check) => {
       const text = await provider
         ?.buildLog({ cwd, url, buildId: check.buildId as string })
         .catch(() => "(the log could not be read)");
       parts.push(
         `### ${check.name}\n${tail(text ?? "", Math.floor(BUILD_LOG_BYTES / builds.length))}`,
       );
-    }
+    });
     return parts.join("\n");
   }
 

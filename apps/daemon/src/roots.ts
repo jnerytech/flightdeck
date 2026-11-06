@@ -32,10 +32,10 @@ function systemFolders(info: PlatformInfo): string[] {
       .filter((dir): dir is string => Boolean(dir))
       .map((dir) => p.dirname(dir));
     return [
-      info.env.SystemRoot ?? `${drive}\\Windows`,
-      `${drive}\\Program Files`,
-      `${drive}\\Program Files (x86)`,
-      `${drive}\\ProgramData`,
+      info.env.SystemRoot ?? String.raw`${drive}\Windows`,
+      String.raw`${drive}\Program Files`,
+      String.raw`${drive}\Program Files (x86)`,
+      String.raw`${drive}\ProgramData`,
       p.join(info.home, "AppData"),
       ...appData,
       ...secrets,

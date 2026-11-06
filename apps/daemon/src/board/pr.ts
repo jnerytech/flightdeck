@@ -1,3 +1,4 @@
+import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
 import { mapSpawnError, sanitizeAzArgs } from "./az-text.ts";
@@ -95,9 +96,8 @@ export function prMessage(comments: readonly PrComment[]): string {
   return [
     "Comentários do PR:",
     ...comments.map((c, i) => {
-      const where = c.path
-        ? `\`${c.path}\`${c.line === null ? "" : ` linha ${c.line}`} (${c.author})`
-        : `revisão de ${c.author}`;
+      const line = c.line === null ? "" : " linha " + c.line;
+      const where = c.path ? `\`${c.path}\`${line} (${c.author})` : `revisão de ${c.author}`;
       const body = c.body
         .replace(/\r?\n$/, "")
         .split(/\r?\n/)
@@ -660,7 +660,7 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
     const failed = records.filter((r) => r.type === "Task" && r.result === "failed" && r.log);
     const share = Math.floor(BUILD_LOG_BYTES / Math.max(failed.length, 1));
     const parts: string[] = [];
-    for (const record of failed) {
+    await inSequence(failed, async (record) => {
       const text = await this.ok(
         "az",
         [
@@ -682,7 +682,7 @@ export class AzureDevOpsCli extends CliProvider implements PrProvider {
         cwd,
       );
       parts.push(`### ${record.name}\n${tail(text, share)}`);
-    }
+    });
     return parts.join("\n");
   }
 

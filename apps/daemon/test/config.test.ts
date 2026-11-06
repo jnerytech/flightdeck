@@ -91,6 +91,10 @@ describe("daemon", () => {
     const daemon = await startDaemon({ command: "start", config: file, runtime: "fake" }, {}, out);
     expect(daemon.url).toMatch(/^ws:\/\/127\.0\.0\.1:\d+\/v1\/ws$/);
     expect(out.lines.some((l) => l.includes("listening on"))).toBe(true);
+    // How long the process took to get here, so a slow start shows in a CI log (#347).
+    expect(out.lines.some((l) => /listening on \S+ \(runtime=fake, boot \d+ ms\)/.test(l))).toBe(
+      true,
+    );
     expect(out.lines.some((l) => l.includes("allowedRoots está vazio"))).toBe(true);
     expect(out.lines.some((l) => l.includes('rode "flightdeckd setup"'))).toBe(true);
     expect(out.lines.join("\n")).not.toContain("t".repeat(32));

@@ -1544,7 +1544,7 @@ be lowered.
 
 - A **High risk** request is red and **Approve** becomes **Hold to approve**: hold the button for 2
   seconds. The A key does not approve it; N still denies.
-- The tray never approves a high-risk request: it only offers **Open**.
+- The tray never approves a high-risk request: it offers **Deny** and **Open**.
 - With automatic approval on, an approval that nobody gave by hand shows in the session's
   timeline as "Approved automatically", with who decided and why. A high-risk request or one that
   reaches the network always comes to you.
@@ -1797,7 +1797,7 @@ When Claude, an automation or a workflow runs an action that needs a secret, the
 secrets and the host). **Approve** delivers the secret for that run only; **Deny** fails the run
 at once. An action with `approval: never` runs without a question, `first-per-session` asks once
 and is then remembered until the app restarts, and `always` asks every time. A `run_with_secret`
-is high risk: hold the button for 2 seconds to approve it, and the tray only opens it.
+is high risk: hold the button for 2 seconds to approve it; the tray offers only Deny and Open.
 
 ### Usage rules per secret
 
@@ -2237,7 +2237,9 @@ app, cards and workflows, subagents included.
 - **What it shows:**
   - the estimated cost, the tokens and the cache savings (how much less the cache read cost than
     the same volume as normal input);
-  - a per-day chart stacked by project, and the breakdowns by project, model and origin;
+  - a per-day chart stacked by project (Tab reaches the chart, the arrow keys walk the days, and a
+    day says its total in a tooltip on hover or focus), and the breakdowns by project, model and
+    origin;
   - the most expensive sessions, and clicking one opens it;
   - the estimated cost also shows in the session list, the open session, the card and the
     workflow run.
@@ -2609,7 +2611,12 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
 - **Needs you:** in the sidebar, with the count of open requests across all hosts. The screen
   lists the requests, oldest to newest, and the selected request's card sits next to it: **A**
   approves, **N** denies and **Esc** closes the detail. **Open session** takes you to the
-  conversation.
+  conversation. The card takes the focus, so A and N work with no click first, and once a
+  request is answered the next one is chosen, with how many are left. A high-risk request is
+  still approved only by holding the button.
+- **From a notification:** clicking it opens the session with the request's card focused: one
+  key answers it. In the bell, an entry of a request already answered opens its session at that
+  request.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
   badge. The uptime keeps counting while the page is open.
@@ -2642,7 +2649,8 @@ summary` (for example `pc · api · Bash: npm test`).
   on the request's host, without opening the window; Open brings the app to the session, with
   the approval card.
 - Workflow gates appear only with **Open**: they need reading, and the answer is given on the
-  card.
+  card. A high-risk request and a secret request have **Deny** and **Open**: approving them
+  takes the window.
 - Above 10, the last row is **and N more…**, which opens the app.
 - The submenu is rebuilt half a second after the list stops changing.
 - **Request notification:** carries the link `flightdeck://request?host=…&request=…`, which opens

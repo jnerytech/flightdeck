@@ -15,6 +15,13 @@ describe("decisions-files (#304)", () => {
     expect(
       decisionFileProblem("2026-11-06-fase-40.md", "# Phase 40: the board (phase 40)"),
     ).toBeNull();
+    // A note after the number, as in "(issue #109, part b)" (#340).
+    expect(
+      decisionFileProblem("2026-11-06-model-chip.md", "# The model chip (issue #109, part b)"),
+    ).toBeNull();
+    expect(decisionFileProblem("2026-11-06-model-chip.md", "# Chip (issue #109,)") ?? "").toContain(
+      "a first line `# <title> (issue #N)` or `(phase N)`",
+    );
     expect(decisionFileProblem("ci-prints.md", "# Prints (issue #291)") ?? "").toContain(
       "<yyyy-mm-dd>-<topic>.md",
     );

@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { readRegularSized } from "../read-regular.ts";
 import { git, gitLimited } from "./command.ts";
 import type { CardDiff, DiffFile, DiffHunk } from "./types.ts";
@@ -254,11 +255,11 @@ export async function workingDiff(
   let left = limits.totalBytes - tracked.used;
   // One at a time: a tree of untracked files must not open them all at once, and none is read
   // past what is left of the budget.
-  for (const path of untracked) {
+  await inSequence(untracked, async (path) => {
     const file = await untrackedFile(root, path, Math.min(maxUntracked, Math.max(left, 0)));
     left -= diffBytes(file);
     files.push(file);
-  }
+  });
   return files;
 }
 

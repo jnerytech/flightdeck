@@ -61,7 +61,12 @@ describe("recusas-recurso: a command whose part is off says which feature, as a 
 
   test("the server uses only listed features, and every listed feature is used", () => {
     const source = readFileSync(resolve(import.meta.dir, "../src/server.ts"), "utf8");
-    const used = new Set([...source.matchAll(/featureOff\("(\w+)"\)/g)].map((m) => m[1]));
+    // `featureOff("x")` directly, or `need("key")` / `need("key", "feature")`: the feature is the last name.
+    const direct = [...source.matchAll(/featureOff\("(\w+)"\)/g)].map((m) => m[1]);
+    const needed = [...source.matchAll(/\bneed\("(\w+)"(?:, "(\w+)")?\)/g)].map(
+      (m) => m[2] ?? m[1],
+    );
+    const used = new Set([...direct, ...needed]);
     expect(used.size).toBeGreaterThan(30);
     expect([...used].sort()).toEqual([...(DAEMON_FEATURES as readonly string[])].sort());
   });

@@ -7,6 +7,7 @@
 import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import type { ActionDef } from "./schema.ts";
 
 export interface Fingerprint {
@@ -25,7 +26,8 @@ function canonical(value: unknown): string {
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, v]) => v !== undefined)
       .sort(([a], [b]) => a.localeCompare(b));
-    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(",")}}`;
+    const pairs = entries.map(([k, v]) => JSON.stringify(k) + ":" + canonical(v));
+    return "{" + pairs.join(",") + "}";
   }
   return JSON.stringify(value);
 }
@@ -39,7 +41,7 @@ const exists = (path: string) =>
 /** Whether some folder above the file holds a `.git`. */
 async function insideRepository(file: string): Promise<boolean> {
   for (let dir = dirname(file); ; dir = dirname(dir)) {
-    if (await exists(join(dir, ".git"))) return true;
+    if (await exists(join(dir, ".git"))) return true; // NOSONAR: walks up one folder at a time and stops at the first hit
     if (dirname(dir) === dir) return false;
   }
 }
@@ -49,14 +51,14 @@ export async function fingerprint(action: ActionDef, base: string): Promise<Fing
   const { name: _name, description: _description, ...declared } = action;
   const root = action.cwd ? resolve(base, action.cwd) : base;
   const files: Record<string, string> = {};
-  for (const element of action.run) {
+  await inSequence(action.run, async (element) => {
     // A placeholder is not a path yet; a flag or a bare program does not exist as a file here.
-    if (element.includes("{{")) continue;
+    if (element.includes("{{")) return;
     const path = resolve(root, element);
     const info = await stat(path).catch(() => null);
-    if (!info?.isFile() || !(await insideRepository(path))) continue;
+    if (!info?.isFile() || !(await insideRepository(path))) return;
     files[relative(base, path).replaceAll("\\", "/")] = sha(await readFile(path));
-  }
+  });
   return { declaration: sha(canonical(declared)), files };
 }
 

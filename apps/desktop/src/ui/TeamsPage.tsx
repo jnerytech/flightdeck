@@ -171,6 +171,7 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
 function Member(props: {
   store: AppStore;
   hostId: string;
+  projectId: string;
   member: TeamMember;
   report: { text: string; at: string } | null;
   open: boolean;
@@ -195,7 +196,35 @@ function Member(props: {
             {t(`teamsUi.sessionStates.${member.sessionState}`)}
           </span>
         )}
-        {member.cardId && <span className="font-mono text-muted-foreground">{member.cardId}</span>}
+        {member.sessionId && (
+          <Button
+            variant="link"
+            size="sm"
+            aria-label={t("teamsUi.openSessionOf", { name: member.name })}
+            onClick={() =>
+              store.router.push({ name: "session", host: props.hostId, id: member.sessionId ?? "" })
+            }
+          >
+            {t("teamsUi.openSession")}
+          </Button>
+        )}
+        {member.cardId && (
+          <Button
+            variant="link"
+            size="sm"
+            aria-label={t("teamsUi.openCardOf", { name: member.name })}
+            onClick={() =>
+              store.router.push({
+                name: "card",
+                host: props.hostId,
+                projectId: props.projectId,
+                cardId: member.cardId ?? "",
+              })
+            }
+          >
+            {t("teamsUi.openCard")}
+          </Button>
+        )}
       </div>
       {props.report && (
         <p className="text-muted-foreground">
@@ -328,6 +357,7 @@ function Team(props: {
             key={member.name}
             store={store}
             hostId={hostId}
+            projectId={team.projectId}
             member={member}
             report={reportOf(member.name)}
             open={open}
@@ -507,7 +537,15 @@ export const TeamsPage = memo(function TeamsPage(props: {
   if (!host) {
     return (
       <Page title={t("teamsUi.title")}>
-        <EmptyState icon={UsersRound} title={t("teamsUi.noHost")} />
+        <EmptyState
+          icon={UsersRound}
+          title={t("teamsUi.noHost")}
+          action={
+            <Button variant="link" onClick={() => store.router.push({ name: "add-host" })}>
+              {t("teamsUi.noHostLink")}
+            </Button>
+          }
+        />
       </Page>
     );
   }

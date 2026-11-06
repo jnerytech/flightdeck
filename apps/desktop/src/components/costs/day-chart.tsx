@@ -1,3 +1,5 @@
+import { type KeyboardEvent, useState } from "react";
+import { IconTip } from "@/components/feedback/icon-tip";
 import { Inline } from "@/components/layout/stack";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
@@ -25,15 +27,18 @@ const LABELLED = 7;
  * on every day and in the legend; with more projects than styles the biggest spenders get one
  * each and the rest share the last, which the legend calls "other projects".
  */
-export function DayChart(props: {
-  days: string[];
-  byDay: Array<{ day: string; projectKey: string; costUsd: number }>;
-  /** The projects of the period, the biggest spender first. */
-  projects: string[];
-  /** How a project is named on screen. */
-  label: (projectKey: string) => string;
-}) {
+export function DayChart(
+  props: Readonly<{
+    days: string[];
+    byDay: Array<{ day: string; projectKey: string; costUsd: number }>;
+    /** The projects of the period, the biggest spender first. */
+    projects: string[];
+    /** How a project is named on screen. */
+    label: (projectKey: string) => string;
+  }>,
+) {
   const t = useT();
+  const [at, setAt] = useState(0);
   const { days, byDay, projects, label: projectLabel } = props;
   const totals = new Map<string, number>();
   for (const row of byDay) totals.set(row.day, (totals.get(row.day) ?? 0) + row.costUsd);
@@ -44,35 +49,54 @@ export function DayChart(props: {
   const legend = projects.length > tinted ? [...projects.slice(0, tinted), null] : projects;
   const labelEvery = Math.ceil(days.length / LABELLED);
   const dayText = (day: string) => `${day}: ${usd(totals.get(day) ?? 0)}`;
+  // One tab stop for the whole chart: the arrows walk the days, and the day in focus says its total.
+  const current = Math.min(at, Math.max(days.length - 1, 0));
+  const walk = (e: KeyboardEvent<HTMLElement>) => {
+    const last = days.length - 1;
+    const targets: Record<string, number> = {
+      ArrowRight: Math.min(current + 1, last),
+      ArrowLeft: Math.max(current - 1, 0),
+      Home: 0,
+      End: last,
+    };
+    const to = targets[e.key];
+    if (to === undefined) return;
+    e.preventDefault();
+    setAt(to);
+    (e.currentTarget.parentElement?.children[to] as HTMLElement | undefined)?.focus();
+  };
   return (
     <>
       <div className="flex h-40 items-end gap-1">
-        {days.map((day) => (
-          // biome-ignore lint/a11y/useSemanticElements: a column of the chart, not a form group
-          <div
-            key={day}
-            data-day={day}
-            role="group"
-            aria-label={dayText(day)}
-            title={dayText(day)}
-            className="flex h-full min-w-2 flex-1 flex-col justify-end"
-          >
-            {byDay
-              .filter((row) => row.day === day)
-              .map((row) => (
-                <div
-                  key={row.projectKey}
-                  data-project={row.projectKey}
-                  role="img"
-                  aria-label={`${day} · ${projectLabel(row.projectKey)}: ${usd(row.costUsd)}`}
-                  className={cn(
-                    "border-card border-t first:rounded-t-sm",
-                    SEGMENTS[tintOf(row.projectKey)],
-                  )}
-                  style={{ height: `${highest > 0 ? (row.costUsd / highest) * 100 : 0}%` }}
-                />
-              ))}
-          </div>
+        {days.map((day, index) => (
+          <IconTip key={day} label={dayText(day)}>
+            {/* biome-ignore lint/a11y/useSemanticElements: a column of the chart, not a form group */}
+            <div
+              data-day={day}
+              role="group"
+              aria-label={dayText(day)}
+              tabIndex={index === current ? 0 : -1}
+              onKeyDown={walk}
+              onFocus={() => setAt(index)}
+              className="flex h-full min-w-2 flex-1 flex-col justify-end rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {byDay
+                .filter((row) => row.day === day)
+                .map((row) => (
+                  <div
+                    key={row.projectKey}
+                    data-project={row.projectKey}
+                    role="img"
+                    aria-label={`${day} · ${projectLabel(row.projectKey)}: ${usd(row.costUsd)}`}
+                    className={cn(
+                      "border-card border-t first:rounded-t-sm",
+                      SEGMENTS[tintOf(row.projectKey)],
+                    )}
+                    style={{ height: `${highest > 0 ? (row.costUsd / highest) * 100 : 0}%` }}
+                  />
+                ))}
+            </div>
+          </IconTip>
         ))}
       </div>
       <div className="mt-1 flex gap-1 text-muted-foreground text-xs tabular-nums" aria-hidden>

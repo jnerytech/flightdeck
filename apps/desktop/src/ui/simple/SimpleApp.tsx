@@ -1,6 +1,7 @@
 import type { TaskFile, TaskResultsResult, Template } from "@flightdeck/protocol";
 import { FolderOpen, Home, LayoutDashboard, Settings as SettingsIcon } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { Notices } from "@/components/feedback/notices";
 import { HomeView } from "@/components/simple/home-view";
 import { SettingsView } from "@/components/simple/settings-view";
 import { TaskView } from "@/components/simple/task-view";
@@ -72,7 +73,9 @@ function TaskScreen(props: {
       canOpen={store.canOpenPaths(hostId)}
       onBack={props.onBack}
       onStop={() => void store.hostCommand(hostId, "session.close", { sessionId })}
-      onAnswer={(requestId, decision) => void store.respondTo(hostId, requestId, decision)}
+      onAnswer={(requestId, decision, held) =>
+        void store.respondTo(hostId, requestId, decision, { held })
+      }
       onOpenFull={props.onDetails}
       onCopy={store.copyText.bind(store)}
       onOpenFile={(path) => void store.openPath(hostId, path)}
@@ -301,6 +304,7 @@ export function SimpleApp(props: {
           />
         )}
       </main>
+      <Notices store={store} />
     </div>
   );
 }

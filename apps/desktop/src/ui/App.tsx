@@ -12,6 +12,7 @@ import { TContext } from "@/i18n/context";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import { typing } from "../lib/keys.ts";
+import { pairingErrorText } from "../lib/pairing-text.ts";
 import type { PaletteTarget } from "../lib/palette.ts";
 import type { Route } from "../lib/router.ts";
 import { type ChordState, chordStep, isMac, NO_CHORD } from "../lib/shortcuts.ts";
@@ -76,6 +77,8 @@ function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route 
       return { name: "projects", host: target.hostId };
     case "settings":
       return { name: "settings" };
+    case "add-host":
+      return { name: "add-host" };
     case "costs":
       return { name: "costs" };
     case "go":
@@ -175,7 +178,10 @@ export function App({ store }: { store: AppStore }) {
         if (store.openRequestLink(url)) return;
         const parsed = parsePairingLink(url);
         if (!parsed.ok) {
-          store.reportError(`Link de pareamento recusado: ${parsed.error}`);
+          const { t } = store.i18n;
+          store.reportError(
+            t("hostForm.pairRefused", { reason: pairingErrorText(t, parsed.error) }),
+          );
           return;
         }
         const { url: wsUrl, name, token } = parsed.value;
@@ -326,7 +332,7 @@ export function App({ store }: { store: AppStore }) {
     } else if (target.kind === "start-card") {
       void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });
     } else if (target.kind === "shortcuts") setHelp(true);
-    else if (target.kind === "decide-oldest") store.decideOldest(target.decision);
+    else if (target.kind === "decide-oldest") store.decideOldest(target.decision, target.key);
     else go(paletteRoute(target));
   };
 

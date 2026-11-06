@@ -1,4 +1,5 @@
 import { type KeyboardEvent, useEffect, useState } from "react";
+import { Keycap } from "@/components/shortcuts/keycap";
 import { Input } from "@/components/ui/input";
 import type { T } from "../i18n/index.ts";
 import {
@@ -176,9 +177,7 @@ export function GlobalSearch(props: {
                 <span className="min-w-0 truncate text-muted-foreground text-xs">
                   {item.detail}
                 </span>
-                {item.shortcut && (
-                  <kbd className="keycap ml-auto shrink-0 bg-muted font-mono">{item.shortcut}</kbd>
-                )}
+                {item.shortcut && <Keycap className="ml-auto shrink-0">{item.shortcut}</Keycap>}
               </button>
             ))}
           </div>
@@ -228,11 +227,18 @@ function modeSwitch(store: AppStore): "simple" | "full" | null {
 }
 
 /** The palette's line for the oldest waiting request, and whether it must be opened to be seen. */
-function oldestOf(items: PendingItem[], t: T): { oldest?: { text: string; opens: boolean } } {
+function oldestOf(
+  items: PendingItem[],
+  t: T,
+): { oldest?: { text: string; opens: boolean; key: string } } {
   const item = items[0];
   if (!item) return {};
   const opens = Boolean(item.gate || item.vault || item.risk === "high");
   return {
-    oldest: { text: `${item.hostName} · ${item.sessionName}: ${pendingText(item, t)}`, opens },
+    oldest: {
+      text: `${item.hostName} · ${item.sessionName}: ${pendingText(item, t)}`,
+      opens,
+      key: `${item.hostId}/${item.requestId}`,
+    },
   };
 }

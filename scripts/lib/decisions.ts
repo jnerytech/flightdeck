@@ -13,7 +13,8 @@ export function decisionFileProblem(name: string, firstLine: string): string | n
   if (!/^\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/.test(name)) {
     return `${name}: name it <yyyy-mm-dd>-<topic>.md (lowercase words joined by hyphens)`;
   }
-  if (!/^# .+ \((?:issue #\d+|phase \d+)\)$/.test(firstLine)) {
+  // A note may follow the number: `(issue #109, part b)` (#340).
+  if (!/^# .+ \((?:issue #\d+|phase \d+)(?:, [^()]+)?\)$/.test(firstLine)) {
     return `${name}: give it a first line \`# <title> (issue #N)\` or \`(phase N)\``;
   }
   return null;

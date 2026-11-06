@@ -117,9 +117,11 @@ describe("demo-prints: axe e CI", () => {
     expect(upload).toContain("if: always()");
   });
 
-  test("e2e: the fifteen journeys, in both languages, checked at 1280x800 and 800x600", () => {
+  test("e2e: the sixteen journeys, in both languages, checked at 1280x800 and 800x600", () => {
     expect(JOURNEYS).toEqual([
       "aprovar-bash-com-a",
+      // Issue #187 (J4): two requests answered with A alone, the focus following the queue.
+      "responder-sem-clique",
       "sessao-e-mensagem",
       "card-diff",
       "revisao-comentar-e-enviar",
@@ -134,6 +136,9 @@ describe("demo-prints: axe e CI", () => {
       "clientes",
       "dependencias",
       "rolagem-fim",
+      "primeira-vez",
+      "segundo-host",
+      "nova-sessao-host",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([

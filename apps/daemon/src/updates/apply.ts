@@ -12,7 +12,7 @@ import { updatePublicKey } from "./public-key.ts";
 import { verifyMinisign } from "./signature.ts";
 
 /** The one-shot task that runs the update on Windows; it deletes itself at the end. */
-const UPDATE_TASK = "Flightdeck\\update";
+const UPDATE_TASK = String.raw`Flightdeck\update`;
 
 /** The manifest key of the daemon binary for this OS and architecture. */
 export function assetKey(platform: string, arch: string): string {

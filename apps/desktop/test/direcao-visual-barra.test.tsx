@@ -96,7 +96,7 @@ describe("direcao-visual: barra lateral", () => {
     }
     // Search with its shortcut, settings and the theme button close the bar.
     const search = inAside().queryByRole("button", { name: "Buscar no histórico (Ctrl+K)" });
-    expect(search?.querySelector("kbd")?.textContent).toBe("Ctrl K");
+    expect(search?.querySelector("kbd")?.textContent).toBe("Ctrl+K");
     expect(inAside().queryByRole("button", { name: "Configurações" })).not.toBeNull();
     expect(inAside().queryByRole("button", { name: "Alternar tema" })).not.toBeNull();
   });
@@ -204,9 +204,10 @@ describe("direcao-visual: barra lateral", () => {
     // No visible words: the names move to the buttons' labels and tooltips.
     expect(aside().textContent).not.toContain("Sessões");
     expect(aside().textContent).not.toContain("Hosts");
-    expect(inAside().queryByRole("button", { name: "Abrir Sessões" })?.getAttribute("title")).toBe(
-      "Sessões",
-    );
+    // The names show as real tooltips, never as a native title (issue #165).
+    expect(
+      inAside().queryByRole("button", { name: "Abrir Sessões" })?.getAttribute("title"),
+    ).toBeNull();
     expect(inAside().queryByRole("button", { name: /^Precisa de você/ })).not.toBeNull();
     expect(inAside().queryByRole("button", { name: "Configurações" })).not.toBeNull();
     // A host is just its dot, which still opens the host.

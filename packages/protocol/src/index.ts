@@ -4977,6 +4977,7 @@ export * from "./personas.ts";
 export * from "./question.ts";
 export * from "./refusals.ts";
 export * from "./run.ts";
+export * from "./sequence.ts";
 export * from "./snippets.ts";
 
 /**
