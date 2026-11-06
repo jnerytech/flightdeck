@@ -166,14 +166,15 @@ export function TabBar(
   };
   /** Moves a tab one place with the keyboard and says where it went. */
   const moveByKey = (tab: Tab, delta: -1 | 1) => {
-    if (!tabs.canShift(tab.id, delta)) return;
-    tabs.shift(tab.id, delta);
+    const own = setOf(tab);
+    if (!own.canShift(tab.id, delta)) return;
+    own.shift(tab.id, delta);
     focusTab.current = tab.id;
     setAnnouncement(
       t("tabs.moved", {
         title: title(tab, state, store),
-        n: tabs.tabs.findIndex((other) => other.id === tab.id) + 1,
-        total: tabs.tabs.length,
+        n: own.tabs.findIndex((other) => other.id === tab.id) + 1,
+        total: own.tabs.length,
       }),
     );
   };
