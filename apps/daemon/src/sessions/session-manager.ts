@@ -4,6 +4,7 @@ import type {
   CommandPayload,
   EffortLevel,
   EventEnvelope,
+  InterruptedSession,
   McpLiveStatus,
   PendingPermission,
   PermissionMode,
@@ -41,7 +42,18 @@ import { type EventStore, personaBadge } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
 import { folderRemoving } from "../worktrees/locks.ts";
 
-export const RESTART_REASON = "daemon reiniciado";
+/** The reason a restart gives the sessions it interrupts: a code (the app words it), not a sentence. */
+export const RESTART_REASON = "daemon_restarted";
+
+/** The request cut at 200 characters, never in the middle of an emoji. */
+function cutRequest(text: string): string {
+  const cut = text.slice(0, 200);
+  const last = cut.charCodeAt(cut.length - 1);
+  return last >= 0xd800 && last <= 0xdbff ? cut.slice(0, -1) : cut;
+}
+/** What daemons before the code wrote: rows left by them are still offered. */
+const OLD_RESTART_REASON = "daemon reiniciado";
+const OFFER_WINDOW_MS = 24 * 3_600_000;
 
 /** Phase 39 (ADR 39-3): permission modes an OpenCode session does not offer. */
 const OPENCODE_UNSUPPORTED_MODES: ReadonlySet<PermissionMode> = new Set([
@@ -327,6 +339,11 @@ export class SessionManager {
     const permissionMode = clampPermissionMode(resolved?.persona.permissionMode ?? null, asked);
     const persona = resolved ? snapshotOf(resolved.persona, resolved.hash) : null;
     const name = payload.name ?? null;
+    // The folder's git boundaries are looked at before the session exists: a row that exists can be
+    // run by a message that arrives meanwhile, and its trust would be judged without them (#415).
+    await this.opts.prepareTrust?.(cwd);
+    // A removal may have taken the folder while it was looked at.
+    if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
     if (extra.unattended) this.unattended.add(id);
     this.store.createSession({
       id,
@@ -349,7 +366,6 @@ export class SessionManager {
     this.emit(id, { type: "session.status", status: "starting" });
     this.emitSummary(id);
     if (payload.effort) this.efforts.set(id, payload.effort);
-    await this.opts.prepareTrust?.(cwd);
     this.startRun(id);
     if (payload.prompt === undefined) this.setStatus(id, "idle", "no first prompt");
     else this.deliver(id, payload.prompt);
@@ -372,6 +388,8 @@ export class SessionManager {
     if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
     const id = ulid();
     const permissionMode = opts.permissionMode ?? this.opts.defaultPermissionMode;
+    await this.opts.prepareTrust?.(cwd);
+    if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
     this.store.createSession({
       id,
       name: opts.name,
@@ -390,7 +408,6 @@ export class SessionManager {
       resumedFrom: opts.claudeSessionId,
     });
     this.emit(id, { type: "session.status", status: "starting" });
-    await this.opts.prepareTrust?.(cwd);
     this.startRun(id, opts.claudeSessionId);
     this.setStatus(id, "idle", "retomada do histórico");
     return { sessionId: id };
@@ -439,6 +456,38 @@ export class SessionManager {
       await live.run.close();
     }
     this.setStatus(sessionId, "ended");
+  }
+
+  /** The sessions a daemon restart interrupted in the last 24 hours and nobody resumed since. */
+  interrupted(options: { now?: number; withinMs?: number } = {}): InterruptedSession[] {
+    const now = options.now ?? Date.now();
+    const within = options.withinMs ?? OFFER_WINDOW_MS;
+    const found: InterruptedSession[] = [];
+    // In the order they were started (a team's coordinator comes before its workers); only what is
+    // still `error`: a resumed or ended session left the offer.
+    for (const session of this.store.listSessionsByStatus("error")) {
+      // Without a Claude session id there is nothing to resume.
+      if (!session.claudeSessionId) continue;
+      const events = this.store.eventsSince(session.id);
+      const marked = [...events]
+        .reverse()
+        .find((e) => e.event.type === "session.status" && e.event.status === "error");
+      const reason = marked?.event.type === "session.status" ? marked.event.reason : undefined;
+      if (!marked || (reason !== RESTART_REASON && reason !== OLD_RESTART_REASON)) continue;
+      const interruptedAt = Date.parse(marked.ts);
+      if (!Number.isFinite(interruptedAt) || now - interruptedAt > within) continue;
+      const asked = [...events].reverse().find((e) => e.event.type === "message.user");
+      found.push({
+        sessionId: session.id,
+        name: session.name,
+        cwd: session.cwd,
+        persona: session.persona?.name ?? null,
+        interruptedAt: marked.ts,
+        ranMs: Math.max(0, interruptedAt - Date.parse(session.createdAt)),
+        lastRequest: asked?.event.type === "message.user" ? cutRequest(asked.event.text) : null,
+      });
+    }
+    return found;
   }
 
   /** Reopens an `ended` or `error` session with the stored Claude session id. */

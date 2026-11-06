@@ -80,8 +80,25 @@ describe("trust-transport: trusting lets a project's code run unasked, so only a
     );
     expect(decided).toEqual([[expect.any(String), false]]);
     expect(await refusal(client, "project.trust.state", { paths: [project] })).toBe("ok");
-    expect(await refusal(client, "project.trust.inspect", { path: project })).toBe("ok");
+    expect(await refusal(client, "project.trust.inspect", { path: project })).toBe(
+      "invalid_state/transport_refused",
+    );
     client.close();
+  });
+
+  test("inspecting shows commands and server arguments whole, so it is for a near connection too (#415)", async () => {
+    const far = serve("8.8.8.8");
+    const farClient = new FrameClient(far.server.url);
+    await farClient.request("hello", { token: TOKEN, client: "t" });
+    expect(await refusal(farClient, "project.trust.inspect", { path: far.project })).toBe(
+      "invalid_state/transport_refused",
+    );
+    farClient.close();
+    const near = serve(null);
+    const nearClient = new FrameClient(near.server.url);
+    await nearClient.request("hello", { token: TOKEN, client: "t" });
+    expect(await refusal(nearClient, "project.trust.inspect", { path: near.project })).toBe("ok");
+    nearClient.close();
   });
 
   test("from loopback, trusting passes", async () => {

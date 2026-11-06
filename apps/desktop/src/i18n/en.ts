@@ -788,6 +788,9 @@ export const en: Dictionary = {
     discardInstead: "Discard card",
   },
   shell: {
+    quotaLabel: "Plan quota {state}: {window} at {percent}% on {host}, resets in {remaining}",
+    quotaLabelNoReset: "Plan quota {state}: {window} at {percent}% on {host}",
+    quotaLevels: { ok: "fine", near: "near the limit", reached: "limit reached" },
     host: "Host: {host}",
     noHost: "No host yet",
     hostItem: "{host}, {state}",
@@ -3351,6 +3354,24 @@ export const en: Dictionary = {
       webhooks: "webhook url notify events http",
     },
   },
+  resumeOffer: {
+    title: "Resume interrupted sessions",
+    intro:
+      "The daemon of {host} restarted while these were running. Resume reattaches each one and sends: {text} The original request is not sent again.",
+    rowRan: "ran {n} min",
+    resumeSelected: "Resume selected",
+    notNow: "Not now",
+    dismissAll: "Dismiss all",
+    resumed: "Resumed",
+    failed: "Could not resume: {reason}",
+    retry: "Retry {name}",
+    reopen: "Resume interrupted sessions ({n})",
+    auto: "Resume automatically after a restart",
+    autoHint:
+      "When this host's daemon restarts, the sessions it interrupted are resumed at once, with a notice, and no question.",
+    autoOne: "Resumed {n} session after the restart: {names}",
+    autoMany: "Resumed {n} sessions after the restart: {names}",
+  },
   simple: {
     modeLabel: "Simple mode",
     fullApp: "Full app",
@@ -3496,6 +3517,8 @@ export const en: Dictionary = {
       confirm:
         "Trust {project} on {host}? Its hooks run commands and its MCP servers start programs on that computer, without asking you, whenever a session starts there. Only do this for code you wrote or have read.",
       failed: "Could not read this project's configuration.",
+      listingUnavailable:
+        "The list of what this project would load is shown on the computer this host runs on, or from your Tailscale network.",
       sessionNotice:
         "This folder is not trusted: its own hooks, MCP servers, settings, CLAUDE.md, agents and skills did not load, and neither did your own MCP servers and plugins.",
       sessionNoticeShort: "This folder is not trusted.",

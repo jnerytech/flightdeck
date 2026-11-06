@@ -3,9 +3,10 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AskpassPrompt } from "@/components/connections/askpass-prompt";
 import { Notices } from "@/components/feedback/notices";
+import { ResumeOfferDialog } from "@/components/hosts/resume-offer-dialog";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
-import { TopBarActions, TopBarHost } from "@/components/shell/top-bar";
+import { TopBarActions, TopBarHost, TopBarQuotaSlot } from "@/components/shell/top-bar";
 import { SnippetUse } from "@/components/snippets/snippet-use";
 import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
 import { Button } from "@/components/ui/button";
@@ -521,6 +522,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
               theme={resolvedTheme}
               version={APP_VERSION}
               bell={<NotificationBell store={store} inbox={state.inbox} t={t} go={go} />}
+              quota={<TopBarQuotaSlot t={t} state={state} now={Date.now()} go={go} />}
               onSearch={() => store.openSearch()}
               onToggleTheme={() => store.theme.toggle()}
             />
@@ -570,6 +572,19 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
             />
           </div>
           <Notices store={store} />
+          {Object.entries(state.resumeOffers).map(([hostId, offer]) => {
+            const host = state.hosts.find((h) => h.id === hostId);
+            return offer.open && host ? (
+              <ResumeOfferDialog
+                key={hostId}
+                store={store}
+                hostId={hostId}
+                hostName={host.name}
+                sessions={offer.sessions}
+                resumed={offer.resumed}
+              />
+            ) : null;
+          })}
           <TabSwitcherHost store={store} />
           {state.closingTerminal && (
             <TerminalCloseDialog onClose={(kill) => void store.finishCloseTerminal(kill)} />
