@@ -54,6 +54,7 @@ describe("configuracoes-trilho: the rail and the search", () => {
       "Aparência",
       "Clientes",
       "Janela",
+      "Notificações",
       "Atualizações",
       "Atalho global",
       "Assistente de IA",
@@ -120,6 +121,6 @@ describe("configuracoes-trilho: the rail and the search", () => {
     await act(async () => {
       fireEvent.change(search, { target: { value: "" } });
     });
-    expect(items()).toHaveLength(7);
+    expect(items()).toHaveLength(8);
   });
 });

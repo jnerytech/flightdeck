@@ -6,6 +6,8 @@ import {
   GAPS,
   layoutFindings,
   pinnedProblem,
+  SPACING,
+  SPACING_RULES,
 } from "../lib/layout-guards.ts";
 
 registerDom();
@@ -71,6 +73,19 @@ beforeEach(() => {
         },
       });
     }
+  }
+  // The widths too (#588): the text-spill rule reads both on a block, where happy-dom answers 0.
+  for (const [name, read] of [
+    ["clientWidth", (el: Element) => num(el, "data-cw", 0)],
+    ["scrollWidth", (el: Element) => num(el, "data-sw", num(el, "data-cw", 0))],
+  ] as const) {
+    saved.set(`H:${name}`, Object.getOwnPropertyDescriptor(htmlProto, name));
+    Object.defineProperty(htmlProto, name, {
+      configurable: true,
+      get(this: Element) {
+        return read(this);
+      },
+    });
   }
   window.innerWidth = 1000;
   window.innerHeight = 700;
@@ -240,6 +255,118 @@ describe("layout-guards: what the page function finds, named by data-slot path",
     expect(split()).toEqual([]);
   });
 
+  const spacing = () =>
+    layoutFindings({ spacing: SPACING })
+      .filter((f) => SPACING_RULES.includes(f.rule))
+      .map((f) => `${f.rule}: ${f.path} (${f.detail})`);
+
+  test("spacing (#588): the page body's blocks sit at least 8 px apart, stacked or side by side", () => {
+    page(`
+      <div data-slot="page-body" data-rect="0,0,1000,800">
+        <div data-slot="links" data-rect="0,0,1000,100"></div>
+        <div data-slot="config" data-rect="0,103,1000,300"></div>
+        <div data-slot="left" data-rect="0,320,495,500"></div>
+        <div data-slot="right" data-rect="500,320,1000,500"></div>
+        <div data-slot="after" data-rect="0,524,1000,600"></div>
+        <div data-slot="gone" style="display: none" data-rect="0,600,1000,601"></div>
+      </div>`);
+    expect(spacing()).toEqual([
+      "block-gap: page-body > config (3 px under links, at least 8)",
+      "block-gap: page-body > right (5 px beside left, at least 8)",
+    ]);
+  });
+
+  test("spacing (#588): sibling cards keep 8 px between them; a card and its own content are not siblings", () => {
+    page(`
+      <div data-slot="grid" data-rect="0,0,1000,400">
+        <div data-slot="card" data-rect="0,0,330,100"><div data-slot="card-content" data-rect="16,16,314,84"></div></div>
+        <div data-slot="card" data-rect="334,0,664,100"></div>
+        <div data-slot="card" data-rect="0,112,330,200"></div>
+      </div>`);
+    expect(spacing()).toEqual(["card-gap: grid > card[2] (4 px beside card[1], at least 8)"]);
+  });
+
+  test("spacing (#588): text in a card keeps 8 px of padding, and text that spills its own box is a finding", () => {
+    page(`
+      <div data-slot="card" data-rect="0,0,400,200">
+        <p data-slot="title" data-rect="24,24,376,44">Hooks</p>
+        <code data-slot="hook-command" data-rect="4,60,396,80">bun run a-very-long-command</code>
+        <span data-slot="cut" style="overflow-x: hidden" data-rect="24,90,376,110" data-sw="500" data-cw="352">x</span>
+        <pre data-slot="spill" data-rect="24,120,376,140" data-sw="600" data-cw="352">long line</pre>
+      </div>`);
+    expect(spacing()).toEqual([
+      "text-spill: card > spill (248 px past its box)",
+      "card-padding: card > hook-command (4 px from the card's left edge, at least 8)",
+    ]);
+  });
+
+  test("spacing (#588): chips in a row keep 4 px between them, and a row under another its own gap", () => {
+    page(`
+      <div data-slot="chips" data-rect="0,0,400,60">
+        <span data-slot="badge" data-rect="0,0,60,20">a</span>
+        <span data-slot="badge" data-rect="62,0,120,20">b</span>
+        <span data-slot="badge" data-rect="128,0,200,20">c</span>
+        <span data-slot="badge" data-rect="0,30,60,50">d</span>
+      </div>`);
+    expect(spacing()).toEqual(["chip-gap: chips > badge[2] (2 px beside badge[1], at least 4)"]);
+  });
+
+  test("spacing (#588): two boxes that overlap are a finding, by how far they run into each other", () => {
+    page(`
+      <div data-slot="chips" data-rect="0,0,400,30">
+        <span data-slot="badge" data-rect="0,0,60,20">a</span>
+        <span data-slot="badge" data-rect="50,0,110,20">b</span>
+      </div>`);
+    expect(spacing()).toEqual(["chip-gap: chips > badge[2] (-10 px over badge[1], at least 4)"]);
+  });
+
+  test("spacing (#588): each finding names its element by number, so two tight pairs in a row or two tiles stay two findings", () => {
+    page(`
+      <div data-slot="chips" data-rect="0,0,400,30">
+        <span data-slot="badge" data-rect="0,0,60,20">a</span>
+        <span data-slot="badge" data-rect="62,0,120,20">b</span>
+        <span data-slot="badge" data-rect="140,0,200,20">c</span>
+        <span data-slot="badge" data-rect="202,0,260,20">d</span>
+      </div>
+      <ul data-rect="0,40,800,200">
+        <li data-rect="0,40,390,200"><div data-slot="session-tile" data-rect="0,40,390,200">
+          <span data-rect="8,48,382,60" data-sw="500" data-cw="374">first line</span>
+        </div></li>
+        <li data-rect="400,40,790,200"><div data-slot="session-tile" data-rect="400,40,790,200">
+          <span data-rect="408,48,782,60">short</span>
+          <span data-rect="408,62,782,74" data-sw="600" data-cw="374">second line</span>
+        </div></li>
+      </ul>`);
+    expect(spacing()).toEqual([
+      "text-spill: session-tile[1] > span (126 px past its box)",
+      "text-spill: session-tile[2] > span[2] (226 px past its box)",
+      "chip-gap: chips > badge[2] (2 px beside badge[1], at least 4)",
+      "chip-gap: chips > badge[4] (2 px beside badge[3], at least 4)",
+    ]);
+  });
+
+  test("spacing (#588): card padding counts from where an element's text starts, inside its own padding", () => {
+    page(`
+      <div data-slot="card" data-rect="0,0,400,200">
+        <header data-slot="card-header" style="padding: 12px 24px" data-rect="0,0,400,48">Project configuration</header>
+        <p data-slot="flush" data-rect="0,60,400,80">edge to edge</p>
+      </div>`);
+    expect(spacing()).toEqual([
+      "card-padding: card > flush (0 px from the card's left edge, at least 8)",
+    ]);
+  });
+
+  test("spacing (#588): the rules are heuristic, judged against a baseline; with none they fail nothing", () => {
+    const tight = { rule: "block-gap" as const, path: "page-body > config", detail: "3 px" };
+    expect(judge("dark en projeto", [tight], null).failures).toEqual([]);
+    expect(judge("dark en projeto", [tight], {}).failures).toEqual([
+      "dark en projeto: block-gap page-body > config (3 px)",
+    ]);
+    // None of them is in the contract: with no baseline, a finding of each rule fails nothing.
+    const each = SPACING_RULES.map((rule) => ({ rule, path: "page-body > x", detail: "1 px" }));
+    expect(judge("dark en projeto", each, null).failures).toEqual([]);
+  });
+
   test("an element with no slot is named by its tag and first class", () => {
     page(
       '<main data-slot="main"><div class="flex min-h-0" data-rect="0,0,100,0"><b>x</b></div></main>',
@@ -350,7 +477,7 @@ describe("layout-guards: the key regions carry the data-slot the guards look for
   });
 });
 
-import { waitForStable } from "../lib/layout-guards.ts";
+import { GAP_BOXES, waitForStable } from "../lib/layout-guards.ts";
 
 describe("layout-guards: a layout that settles late is waited for, not guessed with a fixed wait", () => {
   /** The page height the next frames will report, one entry per frame. */
@@ -380,6 +507,41 @@ describe("layout-guards: a layout that settles late is waited for, not guessed w
     });
     const settled = await waitForStable({ frames: 3, maxMs: 120 });
     expect(settled.stable).toBe(false);
+  });
+
+  /** A toast over the status bar (top at 800) whose bottom edge reads the next value on each read. */
+  function slidingToast(bottoms: number[]) {
+    document.body.innerHTML = `
+      <div data-sonner-toast data-rect="1500,700,1900,780">saved</div>
+      <div data-slot="status-bar" data-rect="0,800,1920,824"></div>`;
+    const toast = document.querySelector("[data-sonner-toast]") as Element;
+    let at = 0;
+    Object.defineProperty(toast, "getBoundingClientRect", {
+      configurable: true,
+      value: () => {
+        const bottom = bottoms[Math.min(at++, bottoms.length - 1)] ?? 0;
+        return { left: 1500, right: 1900, top: bottom - 80, bottom, width: 400, height: 80 };
+      },
+    });
+  }
+  const gapFindings = () =>
+    layoutFindings({ gaps: GAPS })
+      .filter((f) => f.rule === "gap")
+      .map((f) => `${f.path}: ${f.detail}`);
+
+  test("issue #655: a toast still sliding in is waited for: one that reads 7 px and settles at 8 is no finding", async () => {
+    heights([100]);
+    slidingToast([793, 792.5, 792, 792, 792, 792, 792]);
+    const settled = await waitForStable({ frames: 3, maxMs: 2000, boxes: GAP_BOXES });
+    expect(settled.stable).toBe(true);
+    expect(gapFindings()).toEqual([]);
+  });
+
+  test("issue #655: the gap rule allows half a pixel of rounding, and no more", () => {
+    slidingToast([792.4]);
+    expect(gapFindings()).toEqual([]);
+    slidingToast([792.6]);
+    expect(gapFindings()).toEqual(["div: 7 px above status-bar, at least 8"]);
   });
 });
 

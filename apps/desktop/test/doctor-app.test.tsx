@@ -46,18 +46,23 @@ describe("doctor-app: the check of a host, in its page", () => {
     const section = await sectionReady();
     await settle(() => (section.textContent ?? "").includes("Pastas permitidas"));
     expect(d.doctorAsked).toEqual([APP_VERSION]);
+    // The group lists the check that needs the person; the ones that pass are folded (#640).
     const items = within(within(section).getByRole("list", { name: "Verificações" })).getAllByRole(
       "listitem",
     );
-    expect(items).toHaveLength(3);
-    expect(items[0]?.textContent).toContain("Pastas permitidas");
-    expect(items[0]?.textContent).toContain("OK");
-    expect(items[0]?.textContent).not.toContain("Como consertar");
-    const claude = items[1]?.textContent ?? "";
+    expect(items).toHaveLength(1);
+    const working = within(within(section).getByRole("list", { name: "Funcionando" })).getAllByRole(
+      "listitem",
+    );
+    expect(working).toHaveLength(2);
+    expect(working[0]?.textContent).toContain("Pastas permitidas");
+    expect(working[0]?.textContent).toContain("OK");
+    expect(working[0]?.textContent).not.toContain("Como consertar");
+    const claude = items[0]?.textContent ?? "";
     expect(claude).toContain("Claude Code");
     expect(claude).toContain("Atenção");
     expect(claude).toContain("Como consertar: Instale o Claude Code no host e reinicie o daemon.");
-    expect(items[1]?.querySelector("[data-slot='dep-icon']")?.getAttribute("data-icon")).toBe(
+    expect(items[0]?.querySelector("[data-slot='dep-icon']")?.getAttribute("data-icon")).toBe(
       "warning",
     );
     expect(section.textContent).toContain("Opcionais faltando: 1");
@@ -74,7 +79,7 @@ describe("doctor-app: the check of a host, in its page", () => {
     await settle(() => d.doctorAsked.length === 2);
     const claude = within(within(section).getByRole("list", { name: "Checks" })).getAllByRole(
       "listitem",
-    )[1];
+    )[0];
     expect(claude?.textContent).toContain("Warning");
     expect(claude?.textContent).toContain(
       "How to fix: Install Claude Code on the host and restart the daemon.",

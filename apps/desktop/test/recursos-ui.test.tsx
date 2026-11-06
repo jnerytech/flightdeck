@@ -290,3 +290,40 @@ describe("recursos-ui: the Resources panel of a host (issue #154)", () => {
     expect(panel("Recursos").textContent).toContain("12,5%");
   });
 });
+
+describe("recursos-ui: the table in a narrow card (#640)", () => {
+  test("each cell names its column, so the rows read as cards when narrow, and the title keeps its full text", async () => {
+    const w = setup();
+    render(w.view());
+    await settle(() => document.querySelector("[data-slot='resources-row']") !== null);
+    const session = document.querySelector("[data-slot='resources-row'][data-id='s1']");
+    const labels = [...(session?.querySelectorAll("td") ?? [])].map((td) =>
+      td.getAttribute("data-label"),
+    );
+    expect({
+      labels,
+      title: session?.querySelector("[data-slot='resources-name']")?.getAttribute("title") ?? null,
+    }).toEqual({ labels: ["Session", "Project", "Memory", "CPU", "Programs"], title: "Fix login" });
+  });
+
+  test("a session whose processes are not measured says so instead of 0 B", async () => {
+    const quiet = {
+      kind: "session" as const,
+      id: "s9",
+      name: "Outside",
+      cwd: "/work/x",
+      rssBytes: 0,
+      cpuPercent: null,
+      processes: 0,
+      names: [],
+    };
+    const w = setup({ snap: snapshot({ rows: [quiet] }) });
+    render(w.view());
+    await settle(() => document.querySelector("[data-slot='resources-row']") !== null);
+    const text = document.querySelector("[data-slot='resources-row']")?.textContent ?? "";
+    expect({ notMeasured: text.includes("not measured"), zero: text.includes("0 B") }).toEqual({
+      notMeasured: true,
+      zero: false,
+    });
+  });
+});

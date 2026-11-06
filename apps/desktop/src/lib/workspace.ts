@@ -14,7 +14,7 @@ export interface WorkspaceSnapshot {
  * Screens that are not kept between starts: the host form (it can hold a token) and the preview
  * (its address may belong to another program by then).
  */
-const NOT_KEPT: ReadonlySet<string> = new Set(["add-host", "preview", "start"]);
+export const NOT_KEPT: ReadonlySet<string> = new Set(["add-host", "preview", "start"]);
 
 /** Where the window's layout is kept. */
 export const WORKSPACE_KEY = "flightdeck.workspace";

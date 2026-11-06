@@ -136,7 +136,6 @@ export const TargetForm = memo(function TargetForm(props: {
   return (
     <Form
       variant="panel"
-      className="mb-4"
       onSubmit={() => {
         if (ready) saving.run(save);
       }}

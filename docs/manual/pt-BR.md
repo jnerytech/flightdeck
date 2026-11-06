@@ -908,7 +908,10 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   abertas), e a conta do Claude (e-mail e plano, lidos do cartão da conta do host; o trilho mostra só
   a inicial) abre um menu. O cabeçalho dele diz o nome do app e a versão. Depois vêm o plano, a conta
   e o id do host dessa conta, cada um copiado ao ser escolhido; **Linhas compactas**, uma chave
-  guardada neste computador (a mesma densidade das Configurações); **Configurações**; **Procurar
+  guardada neste computador (a mesma densidade das Configurações); **Configurações**; **Novidades** (os
+  destaques das últimas versões, lidos do GitHub por um host que consiga; a linha da conta e este item
+  ganham um ponto, e o nome da linha avisa, depois que o app foi atualizado, até você abrir; em tela
+  cheia numa janela estreita; **Ver todas as versões** abre o GitHub); **Procurar
   atualizações** (abre as Configurações, onde a resposta aparece); **Atalhos de teclado**; **Alternar
   tema**; **Manual**; e, para cada host cujo `gh` está conectado ao GitHub com um login que o app pode
   remover, **Sair do GitHub** (após uma confirmação; um login que vem do ambiente do daemon é removido
@@ -2039,8 +2042,34 @@ PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
   soma nada. Ela volta com a contagem na próxima vez que o app abre.
 - **Marcar todas como lidas** mantém a lista; **Limpar** esvazia. A lista fica neste computador
   (as 500 mais recentes) e sobrevive a um reinício. Esc fecha o painel.
-- As notificações do sistema não mudam. A central só guarda uma cópia: uma que nunca é enviada
-  (a janela estava em foco) também não entra nela.
+- Uma linha lida tem **Marcar como não lida** (passe o mouse ou foque nela) para voltar a ela depois.
+- As notificações do sistema saem como antes, a menos que você as ajuste (abaixo). A central só
+  guarda uma cópia: uma que nunca é enviada (a janela estava em foco) também não entra nela.
+
+### Ajustar as notificações
+
+**Configurações, Notificações** (guardadas neste computador, valem depois de reiniciar):
+
+- **Mostrar notificações** é a chave geral das notificações do sistema e do som; o sino mantém suas
+  entradas. Abaixo, uma chave por evento: **Precisa de você** (uma permissão ou uma pergunta),
+  **Turno concluído**, **Sessão com erro** (um turno que termina em erro), **Vigia de PR** e
+  **Orçamento e cota**. Um evento desligado não envia nada, nem entrada no sino.
+- **Silenciar** um host, um projeto ou uma sessão (o menu de uma linha da lista de Sessões:
+  **Silenciar notificações** ou **Adiar notificações por 1 hora**). Uma fonte silenciada não envia
+  notificação do sistema, som nem entrada no sino. Ela continua em **Precisa de você** e no contador
+  da barra lateral: uma permissão bloqueada é estado, não uma interrupção. As sessões silenciadas
+  aparecem na lista com um botão para reativá-las; o adiamento termina sozinho.
+- **Juntar os workers de um time que terminaram em uma só mensagem** (ligado por padrão): workers
+  de um time que terminam em até dez segundos enviam uma notificação, "Time Alpha: 3 workers
+  terminaram". O pedido de permissão de um worker ainda notifica na hora, pois alguém precisa
+  responder; o coordenador notifica como qualquer sessão.
+- **Som**: desligado, o padrão do sistema (um tom curto feito pelo app) ou um arquivo que você
+  escolhe (MP3, WAV, OGG, M4A, AAC ou FLAC, até uns 400 KB), com um volume. Toca no app, nunca num
+  host.
+- **Enviar notificação de teste** mostra uma e diz **Entregue** ou **Não exibida**; quando o
+  sistema não a mostrou, cita a configuração do Windows (Configurações, Sistema, Notificações,
+  Flightdeck).
+- O modo simples mantém sua única chave e nenhum desses controles.
 
 ## Lista de configuração inicial
 

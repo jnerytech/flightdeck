@@ -3114,6 +3114,8 @@ export const Command = z.discriminatedUnion("type", [
   ),
   /** Issue #255: the last lines of the daemon's own log file, redacted and bounded. */
   cmd("logs.tail", z.object({ lines: z.number().int().min(1).max(500).optional() }).strict()),
+  /** Issue #125: the latest releases of the app, with the Highlights of each release's notes. */
+  cmd("releases.list", z.object({ limit: z.number().int().min(1).max(20).optional() }).strict()),
   /** Issue #154: one snapshot of the host's memory, disk and what each session and terminal costs. */
   cmd("resources.get", z.object({}).strict()),
   /** Ends a process the snapshot lists as an orphan; the daemon checks again that it is one. */
@@ -4587,6 +4589,18 @@ export type BackupInfo = z.infer<typeof BackupInfo>;
 /** Rows removed (or that would be, with `dryRun`) per table. */
 export const PruneCounts = z.record(z.string(), z.number());
 
+/** Issue #125: one release of the app, with the bullets of the `## Highlights` section of its notes. */
+export const ReleaseNote = z.object({
+  tag: z.string(),
+  title: z.string(),
+  publishedAt: z.string(),
+  url: z.string(),
+  highlights: z.array(z.string()),
+});
+export type ReleaseNote = z.infer<typeof ReleaseNote>;
+export const ReleaseList = z.object({ releases: z.array(ReleaseNote) });
+export type ReleaseList = z.infer<typeof ReleaseList>;
+
 export const LogTail = z.object({ lines: z.array(z.string()), path: z.string() });
 export type LogTail = z.infer<typeof LogTail>;
 /**
@@ -4774,6 +4788,7 @@ export interface CommandResults {
   "external.message": undefined;
   "session.meta.set": SessionMeta & { claudeSessionId: string };
   "logs.tail": LogTail;
+  "releases.list": ReleaseList;
   "resources.get": ResourcesSnapshot;
   "resources.endOrphan": { ended: true };
   "worktree.list": WorktreesResult;

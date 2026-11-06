@@ -26,6 +26,7 @@ export const JOURNEYS: readonly string[] = [
   "trust-revoke",
   "files-viewer",
   "terminal-copy",
+  "sleep-wake",
   "tab-row",
   "wand-composer",
 ];

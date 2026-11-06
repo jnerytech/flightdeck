@@ -25,7 +25,8 @@ async function viewport(width: number) {
   });
   // The change event reaches the shell on happy-dom's own timer: wait for the query to say so and for
   // React to flush, not for a fixed few milliseconds, which a loaded suite outlasts.
-  await settle(() => window.matchMedia("(max-width: 959px)").matches === width < 960);
+  await settle(() => window.matchMedia("(width < 1024px)").matches === width < 1024);
+  await settle(() => window.matchMedia("(width < 640px)").matches === width < 640);
   await act(async () => {});
 }
 
@@ -108,19 +109,90 @@ describe("layout", () => {
     expect(sidebar()?.textContent).toBe("hosts");
   });
 
-  test("abaixo de 960 px a barra vira trilho sozinha e volta ao alargar", async () => {
+  test("medium (640 to 1023 px): the rail stays, and the toggle opens the full sidebar as an overlay that Esc closes", async () => {
     shell();
-    expect(sidebar()?.getAttribute("data-collapsed")).toBe("false");
     await viewport(800);
     expect(sidebar()?.getAttribute("data-collapsed")).toBe("true");
-    // Still expandable by hand in a narrow window.
+    expect(sidebar()?.textContent).toBe("ícones");
+    expect(toggle()?.getAttribute("aria-expanded")).toBe("false");
     await act(async () => {
       fireEvent.click(toggle() as HTMLElement);
     });
-    expect(sidebar()?.getAttribute("data-collapsed")).toBe("false");
+    const overlay = screen.queryByRole("dialog", { name: "Barra lateral" });
+    expect(overlay?.textContent ?? "").toContain("hosts");
+    // The overlay does not push: the rail keeps its 56 px column and the content its place.
+    expect(
+      document.querySelector("[data-slot='sidebar']")?.parentElement?.className ?? "",
+    ).toContain("grid-cols-[56px_minmax(0,1fr)]");
+    await act(async () => {
+      fireEvent.keyDown(overlay as HTMLElement, { key: "Escape" });
+    });
+    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) === null).toBe(true);
+    expect(sidebar()?.getAttribute("data-collapsed")).toBe("true");
+    await act(async () => {
+      fireEvent.click(toggle() as HTMLElement);
+    });
+    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) !== null).toBe(true);
+    // Widening to 1024 px closes it and the sidebar pushes the content again.
     await viewport(1200);
+    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) === null).toBe(true);
     expect(sidebar()?.getAttribute("data-collapsed")).toBe("false");
     expect(toggle()?.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  test("compact (below 640 px): no rail, a menu button opens the sidebar as a drawer, Esc returns the focus to it", async () => {
+    shell();
+    await viewport(500);
+    expect(sidebar() === null).toBe(true);
+    expect(screen.queryByRole("main")?.textContent).toBe("conteúdo");
+    const menu = toggle() as HTMLElement;
+    expect(menu.getAttribute("aria-label")).toBe("Mostrar barra lateral");
+    await act(async () => {
+      menu.focus();
+      fireEvent.click(menu);
+    });
+    const drawer = screen.queryByRole("dialog", { name: "Barra lateral" });
+    expect(drawer?.textContent ?? "").toContain("hosts");
+    expect(drawer?.className ?? "").toContain("w-[min(320px,85vw)]");
+    await act(async () => {
+      fireEvent.keyDown(drawer as HTMLElement, { key: "Escape" });
+    });
+    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) === null).toBe(true);
+    await settle(() => document.activeElement === toggle());
+    expect(document.activeElement === toggle()).toBe(true);
+  });
+
+  test("the drawer has its own close button, and it closes after navigating (a new navKey)", async () => {
+    const view = (key: string) => (
+      <AppShell
+        header={<span>Flightdeck</span>}
+        sidebar={() => <p>hosts</p>}
+        labels={LABELS}
+        navKey={key}
+      >
+        <p>conteúdo</p>
+      </AppShell>
+    );
+    const { rerender } = render(view("a"));
+    await viewport(500);
+    await act(async () => {
+      fireEvent.click(toggle() as HTMLElement);
+    });
+    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) !== null).toBe(true);
+    rerender(view("a"));
+    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) !== null).toBe(true);
+    rerender(view("b"));
+    await settle(() => screen.queryByRole("dialog", { name: "Barra lateral" }) === null);
+    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) === null).toBe(true);
+    await act(async () => {
+      fireEvent.click(toggle() as HTMLElement);
+    });
+    const close = screen.queryByRole("button", { name: "Recolher barra lateral" });
+    expect(close !== null).toBe(true);
+    await act(async () => {
+      if (close) fireEvent.click(close);
+    });
+    expect(screen.queryByRole("dialog", { name: "Barra lateral" }) === null).toBe(true);
   });
 
   test("Page: título, subtítulo, ações e barra de ferramentas fora da rolagem; o corpo rola", () => {
@@ -166,6 +238,36 @@ describe("layout", () => {
     expect(body?.className.split(" ") ?? []).toEqual(
       expect.arrayContaining(["flex", "flex-col", "gap-6"]),
     );
+  });
+
+  test("Page: the body is named page-body, scrolling or filling, so the spacing guard finds its blocks (#588)", () => {
+    render(
+      <Page title="Projeto">
+        <div data-testid="scrolls">a</div>
+      </Page>,
+    );
+    expect(screen.queryByTestId("scrolls")?.parentElement?.getAttribute("data-slot")).toBe(
+      "page-body",
+    );
+    cleanup();
+    render(
+      <Page title="Terminal" fill>
+        <div data-testid="fills">b</div>
+      </Page>,
+    );
+    expect(screen.queryByTestId("fills")?.parentElement?.getAttribute("data-slot")).toBe(
+      "page-body",
+    );
+  });
+
+  test("Page: the body positions what it holds, so an sr-only caption scrolls inside it and cannot stretch the screen (#640)", () => {
+    render(
+      <Page title="Host">
+        <div data-testid="table">table</div>
+      </Page>,
+    );
+    const body = screen.queryByTestId("table")?.parentElement;
+    expect(body?.className.split(" ").includes("relative") ?? false).toBe(true);
   });
 
   test("Page fill: o corpo é uma coluna flex que ocupa o resto da altura, sem a área de rolagem", () => {
