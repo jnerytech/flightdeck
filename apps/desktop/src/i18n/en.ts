@@ -3384,7 +3384,7 @@ export const en: Dictionary = {
   projectPage: {
     notHere: "This project is not on this host.",
     baseInvalid:
-      "The base branch {name} is not a valid branch name, so the board's git steps refuse it. Set a real one in Settings.",
+      "The base branch {name} is not a valid branch name, so opening a PR and updating from the remote are refused for this project. Set a real one in Settings.",
     trust: {
       title: "Project configuration",
       hint: "A project can carry its own hooks, MCP servers, settings, agents and skills. They load into a session only when you trust the project.",

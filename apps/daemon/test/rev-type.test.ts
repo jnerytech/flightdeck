@@ -67,3 +67,22 @@ describe("rev-type: a revision is checked once, where it comes in, and the type 
     }
   });
 });
+
+describe("rev-type: a Rev is forged nowhere in production code (issue #369)", () => {
+  test("`as Rev` appears only in ref-arg.ts, which is where a name is checked", async () => {
+    const { readdirSync, readFileSync, statSync } = await import("node:fs");
+    const { join, relative, resolve } = await import("node:path");
+    const root = resolve(import.meta.dir, "../src");
+    const holders: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const path = join(dir, name);
+        if (statSync(path).isDirectory()) walk(path);
+        else if (name.endsWith(".ts") && /\bas Rev\b/.test(readFileSync(path, "utf8")))
+          holders.push(relative(root, path).replaceAll("\\", "/"));
+      }
+    };
+    walk(root);
+    expect(holders).toEqual(["board/ref-arg.ts"]);
+  });
+});

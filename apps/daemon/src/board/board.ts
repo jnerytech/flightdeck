@@ -1547,9 +1547,12 @@ export class Board {
         "card_no_worktree",
       );
     must(await git(cwd, "push", "-u", "origin", refArg(branch)), "git push");
+    // The provider's CLI takes the base as a plain argument (`az` reads `@file` as a file): a base an
+    // older daemon stored without checking is refused here (issue #369).
+    const base = assertBranchName(project.baseBranch);
     const url = await provider.create({
       cwd,
-      base: project.baseBranch,
+      base,
       head: branch,
       // Phase 40: the title the person confirmed, else the card's.
       title: options.title ?? card.title,
