@@ -43,7 +43,7 @@ async function setup(
     session?: Partial<TeleportSession>;
     team?: boolean;
     lines?: string[];
-    transcript?: "file" | "link" | "outside" | "none";
+    transcript?: "file" | "link" | "outside" | "none" | "gone";
     maxBytes?: number;
     chunkBytes?: number;
   } = {},
@@ -70,9 +70,11 @@ async function setup(
     inTeam: () => options.team ?? false,
     transcriptOf: () => {
       if (kind === "none") return null;
+      if (kind === "gone") return join(history, "-gone", `${ID}.jsonl`);
       return kind === "outside" ? outside : file;
     },
-    historyRoots: [history],
+    // A root that does not exist on this host is skipped.
+    historyRoots: [join(base, "missing-root"), history],
     dir: join(base, "teleport"),
     scan: (text) => new SecretScanner().scan(text),
     now: () => Date.parse("2026-11-06T12:00:00.000Z"),
@@ -160,21 +162,27 @@ describe("teleport-package: an idle session's transcript becomes a package (#100
     ]);
   });
 
-  test("a transcript that is a link, lies outside the history or has a bad id is never read", async () => {
+  test("a transcript that is a link, lies outside the history, has a bad id or a folder that is gone is never read", async () => {
     const reasons = [];
     const copied = [];
     for (const options of [
       { transcript: "link" as const },
       { transcript: "outside" as const },
       { session: { claudeSessionId: "../../.credentials" } },
+      { transcript: "gone" as const },
     ]) {
       const { packages, deps } = await setup(options);
       reasons.push(await reason(() => packages.prepare("s1")));
       copied.push(await readdir(deps.dir).catch(() => []));
     }
     expect([reasons, copied]).toEqual([
-      ["teleport_unsafe_transcript", "teleport_unsafe_transcript", "teleport_unsafe_transcript"],
-      [[], [], []],
+      [
+        "teleport_unsafe_transcript",
+        "teleport_unsafe_transcript",
+        "teleport_unsafe_transcript",
+        "teleport_unsafe_transcript",
+      ],
+      [[], [], [], []],
     ]);
   });
 
