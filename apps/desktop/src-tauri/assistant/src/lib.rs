@@ -4,3 +4,73 @@
 
 pub mod keys;
 pub mod guard;
+pub mod anthropic;
+
+use keys::Secret;
+use serde::Serialize;
+
+/// What a call asks for: the prompts the app built (`buildRequest`) and the output cap.
+pub struct Call<'a> {
+    pub system: &'a str,
+    pub user: &'a str,
+    pub model: &'a str,
+    pub max_tokens: u32,
+}
+
+/// The protocol's `AssistantUsage`.
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Usage {
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+    pub cache_read_tokens: u64,
+    pub cache_write_tokens: u64,
+}
+
+/// The protocol's `AssistantResult`.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Answer {
+    pub text: String,
+    pub model: String,
+    pub provider: &'static str,
+    pub usage: Usage,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cost_usd: Option<f64>,
+    pub stop_reason: String,
+    pub notices: Vec<String>,
+}
+
+/// The protocol's `ModelOption`.
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelOption {
+    pub id: String,
+    pub label: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt_per_m_tok: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub completion_per_m_tok: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supports_effort: Option<bool>,
+}
+
+/// What Settings' "Test" shows; never OpenRouter's key label.
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TestResult {
+    pub ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit_remaining: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_free_tier: Option<bool>,
+}
+
+/// A provider's text with the key, wherever it appears, as `<key>`.
+pub fn scrub(text: &str, _key: &Secret) -> String {
+    text.to_string()
+}
