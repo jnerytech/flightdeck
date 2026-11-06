@@ -3425,6 +3425,7 @@ export const ptBR = {
       failed: "Não foi possível ler a configuração deste projeto.",
       sessionNotice:
         "Esta pasta não tem confiança: os hooks, servidores MCP, configurações, CLAUDE.md, agentes e skills dela não carregaram, e os seus próprios servidores MCP e plugins também não.",
+      sessionNoticeShort: "Esta pasta não tem confiança.",
       review: "Revisar e confiar",
     },
     notHere: "Este projeto não está neste host.",
