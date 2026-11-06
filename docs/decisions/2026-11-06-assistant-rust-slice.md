@@ -40,7 +40,8 @@ ADR 40-3 and the earlier phase 40 entries, frozen. These cover the crate `flight
 - **One request id is one call.** A call whose id is already running is `assistant_rate_limited`
   (so a second call cannot take over the first's cancel). A cancel that arrives before its call
   starts is kept (the last 16 ids) and that call answers `assistant_cancelled` without running. A
-  wait that is dropped aborts its call and frees the id. The client never retries (also
+  wait that is dropped aborts its call and frees the id. So a request id is unique per call (a
+  UUID, never reused, not even after a webview reload). The client never retries (also
   `reqwest::retry::never()`, so an HTTP/2 build could not resend a POST).
 - **A model id never becomes a path**: besides the character set, an id starting with `/` or with
   a `..` segment is `assistant_model_unavailable`; a call checks the model and both prompts before
