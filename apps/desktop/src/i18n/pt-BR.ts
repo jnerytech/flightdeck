@@ -915,6 +915,11 @@ export const ptBR = {
     base: "base {name}",
     filter: "Branch: {branch}",
     clear: "Limpar o filtro de branch",
+    projectFilter: "Filtrar projetos",
+    noMatch: "Nenhum projeto combina",
+    projectsAll: "Todos os projetos ({n})",
+    pin: "Fixar {name}",
+    unpin: "Desafixar {name}",
   },
   hub: {
     view: "Visualização",

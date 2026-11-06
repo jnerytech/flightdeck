@@ -918,6 +918,11 @@ export const en: Dictionary = {
     more: "{n} more",
     fewer: "Show fewer",
     pickedFolded: "Branch picked: {branch}",
+    projectFilter: "Filter projects",
+    noMatch: "No project matches",
+    projectsAll: "All projects ({n})",
+    pin: "Pin {name}",
+    unpin: "Unpin {name}",
   },
   hub: {
     view: "View",

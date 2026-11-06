@@ -104,9 +104,8 @@ describe("tree-cap-ui: the tree shows a few projects (issue #689)", () => {
   test("a pin moves a project to the top, is kept across starts, and unpins", async () => {
     const w = setup(EIGHT);
     render(w.view());
-    const pin = screen.queryByRole("button", { name: "Pin a" });
-    expect(pin?.getAttribute("aria-pressed")).toBe("false");
     // `a` is not on the tree yet: filter to reach it, then pin.
+    expect(has(screen.queryByRole("button", { name: "Pin a" }))).toBe(false);
     await act(async () => {
       fireEvent.change(screen.getByRole("searchbox", { name: "Filter projects" }), {
         target: { value: "a" },
