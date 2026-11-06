@@ -705,6 +705,14 @@ function shots(ids: DemoIds): Shot[] {
       },
     },
     {
+      // Issue #669: the Board screen of a host, its projects as cards with their counts.
+      name: "board-projetos",
+      route: { name: "projects", host: ALFA, focus: "board" },
+      prepare: async (page) => {
+        await page.locator("[data-slot='board-card']").first().waitFor({ timeout: 15_000 });
+      },
+    },
+    {
       name: "projeto-vazio",
       route: { name: "board", host: ALFA, projectId: ids.emptyProject },
     },

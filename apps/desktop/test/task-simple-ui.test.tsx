@@ -1,13 +1,16 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { PlainInfo, TaskResultsResult } from "@flightdeck/protocol";
+import type { WandBinding } from "../src/components/assistant/use-wand.ts";
 import { translator } from "../src/i18n/index.ts";
 import { emptySession, type SessionState } from "../src/lib/session-state.ts";
 import { liveScreen, registerDom } from "./dom.ts";
+import { fakeAssistant, memoryPlatform } from "./fixtures.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { TaskView } = await import("../src/components/simple/task-view.tsx");
+const { AppStore } = await import("../src/lib/app-store.ts");
 
 afterEach(cleanup);
 
@@ -72,6 +75,7 @@ function view(
     locked?: boolean;
     canOpen?: boolean;
     lang?: "en" | "pt-BR";
+    assist?: WandBinding;
   } = {},
 ) {
   const calls: string[] = [];
@@ -100,6 +104,7 @@ function view(
       onAskChanges={log("ask")}
       onTryAgain={log("again")}
       onShowDetails={log("details")}
+      {...(over.assist ? { assist: over.assist } : {})}
     />,
   );
   return calls;
@@ -353,5 +358,69 @@ describe("task-simple-ui: a task, not a transcript", () => {
       },
     );
     expect(screen.getByText("3.0 MB")).toBeTruthy();
+  });
+});
+
+const ANSWER = {
+  model: "claude-haiku-5-5",
+  provider: "anthropic" as const,
+  usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 },
+  stopReason: "end_turn" as const,
+  notices: [] as string[],
+  text: "Make the summary half as long, in plain words.",
+};
+
+describe("task-simple-ui: the wand of Ask for changes (issue #160)", () => {
+  const finished = { ...emptySession(), status: "idle" as const, items: [said("ok"), done] };
+
+  /** A real controller on a fake provider, for the field's binding. */
+  async function binding(): Promise<{
+    assist: WandBinding;
+    kinds: string[];
+  }> {
+    const kinds: string[] = [];
+    const mem = memoryPlatform(false, "en");
+    const fake = fakeAssistant({
+      run: (request) => {
+        kinds.push(JSON.stringify(request));
+        return ANSWER;
+      },
+    });
+    await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
+    mem.platform.assistant = fake.assistant;
+    const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
+    store.assistant.setPrefs({ provider: "anthropic" });
+    await store.assistant.refreshKeys();
+    return {
+      assist: { controller: store.assistant, kind: "prompt.plain", openSettings: () => {} },
+      kinds,
+    };
+  }
+
+  test("Given a binding, When the wand is used, Then the request is improved in plain words, filled in, and not sent", async () => {
+    const { assist, kinds } = await binding();
+    const calls = view(finished, { results: files, assist });
+    const box = screen.getByRole("textbox", { name: "Ask for changes" }) as HTMLTextAreaElement;
+    fireEvent.change(box, { target: { value: "shorter pls" } });
+    const wand = screen.queryByRole("button", { name: /with AI/ });
+    expect(wand).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(wand as HTMLElement);
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "AI suggestion" })).not.toBeNull(),
+    );
+    expect(kinds.join("")).toContain("shorter pls");
+    expect(kinds.join("")).toContain("plain words");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    });
+    expect(box.value).toBe(ANSWER.text);
+    expect(calls).toEqual([]);
+  });
+
+  test("Given no binding, Then there is no wand", () => {
+    view(finished, { results: files });
+    expect(screen.queryByRole("button", { name: /with AI/ })).toBeNull();
   });
 });

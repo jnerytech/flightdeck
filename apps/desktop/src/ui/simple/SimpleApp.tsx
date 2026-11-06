@@ -65,9 +65,28 @@ function TaskScreen(
     };
   }, [store, hostId, sessionId, state, session.lastSeq]);
 
+  // The wand of Ask for changes (phase 40) shows only when a provider is ready to answer: simple
+  // mode has no Assistant settings to send the person to, so a wand that cannot run is not offered.
+  const assistant = store.assistant;
+  const wandReady = useSyncExternalStore(assistant.subscribe, () => {
+    const provider = assistant.resolve(hostId);
+    return provider !== null && !assistant.needsHostConfirm(provider);
+  });
   const lastUser = [...session.items].reverse().find((item) => item.kind === "user");
   return (
     <TaskView
+      {...(wandReady
+        ? {
+            assist: {
+              controller: assistant,
+              kind: "prompt.plain" as const,
+              fieldHostId: hostId,
+              ...(session.cwd ? { cwd: session.cwd } : {}),
+              // Never reached while ready; if the provider goes away meanwhile, the full details open.
+              openSettings: props.onDetails,
+            },
+          }
+        : {})}
       title={props.title}
       session={session}
       results={results}
