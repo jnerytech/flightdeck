@@ -127,6 +127,32 @@ for (const [lang, dict] of [
         fireEvent.click(search as HTMLElement);
       });
       expect(screen.queryByRole("dialog", { name: dict.searchUi.label })).not.toBeNull();
+      await act(async () => {
+        fireEvent.keyDown(
+          screen.queryByRole("dialog", { name: dict.searchUi.label }) as HTMLElement,
+          {
+            key: "Escape",
+          },
+        );
+      });
+      // The theme button switches the theme and then names the way back.
+      const toDark = bar.queryByRole("button", { name: dict.shell.toDark });
+      expect(toDark).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(toDark as HTMLElement);
+      });
+      expect(bar.queryByRole("button", { name: dict.shell.toLight })).not.toBeNull();
+      // Add a host, from the switcher's menu, opens the form.
+      await open(
+        bar.queryByRole("button", { name: fill(dict.shell.host, { host: "beta" }) }) as HTMLElement,
+      );
+      const add = screen.queryByRole("menuitem", { name: dict.sidebar.addHost });
+      expect(add).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(add as HTMLElement);
+      });
+      // The breadcrumb (and the tab) now say where the person is.
+      expect(bar.queryAllByText(dict.sidebar.addHostCrumb).length > 0).toBe(true);
     });
 
     test("search opens the palette, the theme button says what it switches to, and the version shows", async () => {
