@@ -3835,6 +3835,14 @@ export const en: Dictionary = {
     openBoard: "Open the board of {name}",
     workflows: "Workflows of {name}",
     edit: "Edit {name}",
+    /** What a project row shows on its action buttons; the full name above stays their accessible name. */
+    short: {
+      workflows: "Workflows",
+      agent: "Agent",
+      actions: "Actions",
+      automations: "Automations",
+      edit: "Edit",
+    },
     worktreeIncludeMissing:
       "This project has no .worktreeinclude. List in it the files git ignores that every worktree needs (such as .env), one pattern per line:",
     worktreeIncludeExample: "Example .worktreeinclude",

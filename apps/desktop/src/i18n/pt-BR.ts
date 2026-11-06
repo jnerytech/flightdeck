@@ -3843,6 +3843,13 @@ export const ptBR = {
     actions: "Ações de {name}",
     workflows: "Workflows de {name}",
     edit: "Editar {name}",
+    short: {
+      workflows: "Workflows",
+      agent: "Agente",
+      actions: "Ações",
+      automations: "Automações",
+      edit: "Editar",
+    },
     worktreeIncludeMissing:
       "Este projeto não tem um .worktreeinclude. Liste nele os arquivos que o git ignora e cada worktree precisa (como o .env), um padrão por linha:",
     worktreeIncludeExample: "Exemplo de .worktreeinclude",
