@@ -115,7 +115,7 @@ describe("sidebar-config: Settings is a visible item with an active state (issue
     setup({}, undefined, { name: "settings" });
     const open = screen.getByRole("button", { name: "Settings" });
     expect(open.getAttribute("aria-current")).toBe("page");
-    expect(open.className).toContain("nav-active");
+    expect(open.className).toContain("bg-sidebar-accent");
   });
 
   test("it comes after Search and before the account row", () => {
