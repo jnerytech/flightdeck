@@ -945,6 +945,9 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   as abas da área única ficam na linha da barra do topo, para a janela pequena ter espaço para a
   conversa. A barra mantém três ferramentas: o menu de **Ações** da aba ativa (mover para a esquerda
   ou a direita, mover para a outra área, fixar), **Nova aba** e **Dividir**.
+- O caminho na barra do topo nomeia cada passo numa janela de 1024 px ou mais. De 640 a 1023 px ele
+  mostra só o passo em que você está (o caminho inteiro está na dica e é lido pelo leitor de tela);
+  abaixo de 640 px ele não é desenhado, porque o cabeçalho da própria página traz o título.
 - Enquanto um pedido espera por você numa sessão, o cabeçalho da sessão, o aviso de pasta sem
   confiança e o resumo ocupam uma linha cada, para o pedido aparecer inteiro; **Mais ações** e o
   botão do resumo abrem o resto.

@@ -948,6 +948,9 @@ live; the list is the project's, so a session of another project never shows her
   area's tabs share the top bar's row instead, so a small window keeps room for the conversation.
   The strip keeps three tools: the active tab's **Actions** menu (move left or right, move to the
   other area, pin), **New tab** and **Split**.
+- The path in the top bar names every step in a window 1024 px wide or more. From 640 to 1023 px
+  it shows only the step you are on (the whole path is in its tooltip and read by a screen reader);
+  under 640 px it is not drawn, because the page's own header carries the title.
 - While a request waits for you in a session, the session's header, the not-trusted notice and the
   summary each take one line, so the request is whole on screen; **More actions** and the summary's
   own button open the rest.

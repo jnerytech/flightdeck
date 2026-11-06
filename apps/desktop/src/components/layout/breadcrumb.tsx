@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useBreakpoint } from "@/hooks/use-breakpoint";
 import type { Crumb } from "@/lib/breadcrumb";
 import type { Route } from "@/lib/router";
 
@@ -24,6 +25,32 @@ export function Breadcrumb(
   }>,
 ) {
   const { crumbs } = props;
+  const breakpoint = useBreakpoint();
+  // Compact: the page's own header carries the title, so the bar draws no path (issue #641).
+  if (breakpoint === "compact") return null;
+  const last = crumbs.at(-1);
+  // Medium: only the step you are on, the whole path in its tooltip; the steps above stay in the
+  // text for a screen reader.
+  if (breakpoint === "medium" && last) {
+    return (
+      <nav aria-label={props.label} className="min-w-0 flex-1 overflow-hidden">
+        <ol className="flex min-w-0 items-center text-sm">
+          {crumbs.slice(0, -1).map((crumb) => (
+            <li key={crumb.label} className="sr-only">
+              {crumb.label}
+            </li>
+          ))}
+          <li className="min-w-0 shrink">
+            <IconTip label={crumbs.map((crumb) => crumb.label).join(" › ")}>
+              <span aria-current="page" className="block truncate font-medium">
+                {last.label}
+              </span>
+            </IconTip>
+          </li>
+        </ol>
+      </nav>
+    );
+  }
   const folded = crumbs.length > FOLD_AT;
   const hidden = folded ? crumbs.slice(1, -1) : [];
   const shown = folded ? [crumbs[0], crumbs.at(-1)] : crumbs;
