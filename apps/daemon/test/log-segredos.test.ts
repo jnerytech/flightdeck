@@ -6,7 +6,7 @@ import { FileLog } from "../src/logs/file-log.ts";
 import { createLogScanner } from "../src/logs/scanner.ts";
 import { startDaemon } from "../src/main.ts";
 import { Vault } from "../src/vault/vault.ts";
-import { tempDir } from "./helpers.ts";
+import { poll, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 setDefaultTimeout(20_000);
@@ -122,18 +122,15 @@ describe("log-segredos: a booted daemon never writes its own tokens (issue #255)
     const { file, logDir, daemon } = await boot();
     const config = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
     writeFileSync(file, JSON.stringify({ ...config, token: ROTATED }));
-    const deadline = Date.now() + 5_000;
-    let hidden = false;
-    while (!hidden && Date.now() < deadline) {
-      await Bun.sleep(60);
+    // The scanner follows the file on its own schedule: log a probe each round until it is hidden.
+    const hidden = await poll(() => {
       daemon.logger.log(`probe ${ROTATED}`);
-      await Bun.sleep(60);
-      hidden = !readFileSync(join(logDir, "flightdeckd.log"), "utf8")
+      const last = readFileSync(join(logDir, "flightdeckd.log"), "utf8")
         .split("\n")
         .filter((line) => line.includes("probe"))
-        .at(-1)
-        ?.includes(ROTATED);
-    }
+        .at(-1);
+      return last !== undefined && !last.includes(ROTATED);
+    }, 5_000);
     expect(hidden).toBe(true);
   });
 

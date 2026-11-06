@@ -2,7 +2,7 @@ import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import type { LogSink } from "../src/platform/types.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
-import { settle } from "./wait.ts";
+import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -211,7 +211,10 @@ describe("log-segredos-app: the store feeds the log the host tokens and the vaul
     const { store, written } = setup();
     await store.addHost({ name: "alfa", url: "ws://127.0.0.1:1", token: HOST_TOKEN });
     await store.addSecret({ name: "deploy", type: "token", value: VAULT_VALUE });
-    await Bun.sleep(30);
+    // The scanner learns the vault's values after the list is read again.
+    await settle(() =>
+      (store as unknown as { scanValues(): string[] }).scanValues().includes(VAULT_VALUE),
+    );
     store.appLog.log("error", "host", `refused ${HOST_TOKEN} and ${VAULT_VALUE}`);
     const everything = `${written.join("\n")}\n${store.appLog.recent(50).join("\n")}`;
     expect(everything).not.toContain(HOST_TOKEN);
@@ -276,13 +279,14 @@ describe("log-cobertura-app: the host's log path, the vault cache and the Settin
       scanValues(): string[];
     };
     await store.addSecret({ name: "a", type: "token", value: "Vx9fakevaultvalue0123456789" });
-    await Bun.sleep(30);
+    await settle(() => store.scanValues().includes("Vx9fakevaultvalue0123456789"));
     expect(store.scanValues()).toContain("Vx9fakevaultvalue0123456789");
     store.vaultValuesForScan = async () => {
       throw new Error("keychain locked");
     };
     await store.addSecret({ name: "b", type: "token", value: "another-value-123456" });
-    await Bun.sleep(30);
+    // The refresh failed: the answer is that nothing changes, and `addSecret` is done when it returns.
+    await uiIdle();
     expect(store.scanValues()).toContain("Vx9fakevaultvalue0123456789");
   });
 });
