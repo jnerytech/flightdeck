@@ -58,15 +58,15 @@ export async function createResources(given: ResourcesDeps): Promise<Resources> 
     ...given,
   };
   const ask = deps.sysconf ?? getconf;
-  const proc =
-    deps.platform === "linux"
-      ? (deps.proc ??
-        procfsReader({
-          root: deps.procRoot ?? "/proc",
-          pageSize: await defaultSysconf(ask, "PAGESIZE"),
-          ticksPerSecond: await defaultSysconf(ask, "CLK_TCK"),
-        }))
-      : null;
+  // A reader handed in is the caller's own and is used anywhere; the machine's /proc only on Linux.
+  let proc = deps.proc ?? null;
+  if (!proc && deps.platform === "linux") {
+    proc = procfsReader({
+      root: deps.procRoot ?? "/proc",
+      pageSize: await defaultSysconf(ask, "PAGESIZE"),
+      ticksPerSecond: await defaultSysconf(ask, "CLK_TCK"),
+    });
+  }
   return new Resources({
     proc,
     ownPid: deps.ownPid,
