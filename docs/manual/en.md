@@ -906,9 +906,16 @@ live; the list is the project's, so a session of another project never shows her
   window you already used comes back with its tabs. The account at the foot of the bar is the one
   of the host you are on; with no host open it is the shared account of the online hosts, or "N
   accounts" when they differ.
-- With one area, the tab strip sits in the top bar on the breadcrumb's row; with a split, each
-  area has its own strip. The strip keeps three tools: the active tab's **Actions** menu (move left
-  or right, move to the other area, pin), **New tab** and **Split**.
+- The tabs have a row of their own under the top bar, over each area (with a split, each area has
+  its own). They are flat, as in VS Code: thin lines part them, each is as wide as its title (then
+  the title is cut and its tooltip has it whole), the inactive ones are dimmer, and the active one
+  has the screen's background with an accent line on top. In a window under 600 px tall the one
+  area's tabs share the top bar's row instead, so a small window keeps room for the conversation.
+  The strip keeps three tools: the active tab's **Actions** menu (move left or right, move to the
+  other area, pin), **New tab** and **Split**.
+- While a request waits for you in a session, the session's header, the not-trusted notice and the
+  summary each take one line, so the request is whole on screen; **More actions** and the summary's
+  own button open the rest.
 - **Settings** has a rail of its sections (it takes you to a section and puts the focus there) and
   a search box: typing keeps the sections whose name or settings match.
 - **Costs** shows four tiles above the charts: the estimated cost, the tokens, the cache savings and

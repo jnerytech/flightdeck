@@ -900,9 +900,16 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   quando a janela é nova; uma janela que você já usou volta com as abas dela. A conta no pé da
   barra é a do host em que você está; sem host aberto, é a conta que os hosts online dividem, ou
   "N contas" quando diferem.
-- Com uma área, a barra de abas fica na barra do topo, na linha do caminho; com a tela dividida,
-  cada área tem a sua. A barra mantém três ferramentas: o menu de **Ações** da aba ativa (mover
-  para a esquerda ou a direita, mover para a outra área, fixar), **Nova aba** e **Dividir**.
+- As abas têm uma linha própria sob a barra do topo, sobre cada área (com a tela dividida, cada área
+  tem a sua). São planas, como no VS Code: linhas finas as separam, cada uma tem a largura do título
+  (depois o título é cortado e a dica o mostra inteiro), as inativas ficam mais apagadas e a ativa
+  tem o fundo da tela com uma linha de destaque em cima. Numa janela com menos de 600 px de altura,
+  as abas da área única ficam na linha da barra do topo, para a janela pequena ter espaço para a
+  conversa. A barra mantém três ferramentas: o menu de **Ações** da aba ativa (mover para a esquerda
+  ou a direita, mover para a outra área, fixar), **Nova aba** e **Dividir**.
+- Enquanto um pedido espera por você numa sessão, o cabeçalho da sessão, o aviso de pasta sem
+  confiança e o resumo ocupam uma linha cada, para o pedido aparecer inteiro; **Mais ações** e o
+  botão do resumo abrem o resto.
 - As **Configurações** têm um trilho com as suas seções (leva até a seção e põe o foco nela) e uma
   caixa de busca: ao digitar, ficam as seções cujo nome ou configurações combinam.
 - **Custos** mostra quatro blocos acima dos gráficos: o custo estimado, os tokens, a economia do
