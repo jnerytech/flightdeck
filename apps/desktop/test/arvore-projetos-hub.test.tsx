@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
+import { unfoldAll } from "./unfold.ts";
 import { settle, uiIdle } from "./wait.ts";
 
 registerDom();
@@ -76,6 +77,7 @@ const base = { hostId: "alfa", projectId: "p-api" };
 describe("arvore-projetos-hub: the Sessions list narrows to a picked branch (issue #116)", () => {
   test("a worktree keeps the sessions inside it, with a chip that names the branch", async () => {
     setup({ ...base, kind: "worktree", path: "/wt/login", branch: "fd/login" });
+    await unfoldAll(act);
     await settle(() => titles().length > 0);
     expect(titles()).toEqual(["src"]);
     expect(screen.getByText("Branch: fd/login")).toBeTruthy();
@@ -83,6 +85,7 @@ describe("arvore-projetos-hub: the Sessions list narrows to a picked branch (iss
 
   test("the main checkout keeps the sessions in the project's folder outside every worktree", async () => {
     setup({ ...base, kind: "primary", path: "/work/api", branch: "main" });
+    await unfoldAll(act);
     await settle(() => titles().length > 0);
     expect(titles()).toEqual(["src"]);
     expect(screen.getByText("Branch: main")).toBeTruthy();
@@ -90,6 +93,7 @@ describe("arvore-projetos-hub: the Sessions list narrows to a picked branch (iss
 
   test("the chip clears the filter, and with none every session is listed", async () => {
     const { cleared } = setup({ ...base, kind: "worktree", path: "/wt/login", branch: "fd/login" });
+    await unfoldAll(act);
     await settle(() => titles().length > 0);
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Limpar o filtro de branch" }));
@@ -98,6 +102,7 @@ describe("arvore-projetos-hub: the Sessions list narrows to a picked branch (iss
     expect(cleared).toEqual([null]);
     cleanup();
     setup(null);
+    await unfoldAll(act);
     await settle(() => titles().length > 0);
     expect(titles()).toHaveLength(3);
     expect(screen.queryByText(/^Branch:/)).toBeNull();
@@ -109,6 +114,7 @@ describe("arvore-projetos-hub: a filter that points at nothing is ignored, chip 
 
   test("the worktree's card is gone: every session is listed and there is no chip", async () => {
     setup(login, { cards: {} });
+    await unfoldAll(act);
     await settle(() => titles().length > 0);
     expect(titles()).toHaveLength(3);
     expect(screen.queryByText(/^Branch:/)).toBeNull();
@@ -116,6 +122,7 @@ describe("arvore-projetos-hub: a filter that points at nothing is ignored, chip 
 
   test("the project is gone: the same", async () => {
     setup(login, { projects: { alfa: [] } });
+    await unfoldAll(act);
     await settle(() => titles().length > 0);
     expect(titles()).toHaveLength(3);
     expect(screen.queryByText(/^Branch:/)).toBeNull();
@@ -125,6 +132,7 @@ describe("arvore-projetos-hub: a filter that points at nothing is ignored, chip 
 describe("arvore-projetos-hub: the chip's clear button meets the 24 px target (issue #116 review)", () => {
   test("it is size-6, not size-5", async () => {
     setup({ ...base, kind: "worktree", path: "/wt/login", branch: "fd/login" });
+    await unfoldAll(act);
     await settle(() => titles().length > 0);
     const clear = screen.getByRole("button", { name: "Limpar o filtro de branch" });
     expect(clear.className).toContain("size-6");
