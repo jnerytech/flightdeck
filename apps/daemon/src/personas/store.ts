@@ -390,7 +390,7 @@ export class Personas {
     if (names === null) return null;
     const views: Persona[] = [];
     const errors: string[] = [];
-    for (const name of names.filter((entry) => entry.endsWith(".md")).sort()) {
+    for (const name of names.filter((entry) => entry.endsWith(".md")).sort(byCodeUnit)) {
       const id = name.slice(0, -3);
       const path = join(dir, name);
       try {

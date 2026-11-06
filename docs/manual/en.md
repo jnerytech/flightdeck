@@ -4,7 +4,7 @@ English | [Português (Brasil)](pt-BR.md) · [Back to the README](../../README.m
 
 Complete Flightdeck reference, organized by topic. It applies to version 0.19.0. The roadmap is
 in [`docs/SPEC.md`](../SPEC.md), the deviations from the specs in
-[`docs/DECISIONS.md`](../DECISIONS.md) and the interface vocabulary in
+[`docs/decisions/`](../decisions/) (the older ones in [`docs/DECISIONS.md`](../DECISIONS.md)) and the interface vocabulary in
 [`docs/GLOSSARY.md`](../GLOSSARY.md). Those three documents, `docs/TDD.md` and the phase specs
 are written in Portuguese.
 
@@ -544,9 +544,19 @@ A session appears only once. The order of preference is managed, then terminal, 
   here** (on the latest message: it carries the whole conversation so far), **Pin session** and how
   long ago the message was written.
 - The box floats at the bottom as a rounded card. **+** attaches images (when the host supports it).
-  Under the card a status line shows the model and the permission mode, each a picker when the
-  session lets you change it, and a spinner while a turn runs. While a turn runs a line above the
-  box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
+  Under the card a status line shows the model and the permission mode, and a spinner while a turn
+  runs. When the session lets you change them, the mode is a **chip** (for example "Default"):
+  click it, or focus it and press Enter, to open the **Mode** menu with every mode, what it does
+  and its number (press 1 to 4 to pick one). **Shift+Tab** in the box cycles Default, Accept edits
+  and Plan. **Bypass permissions** is in the menu too, but the chip never lands on it by cycling:
+  it asks first, naming the host and the session, and the chip turns red while it is on. On a
+  host where the switch is off (or for a mode looser than the one the session started with) the
+  row is greyed out, says why, and links to the host's settings. The model is a chip too ("Opus
+  5.5 · Medium"): its **Model** menu lists Default, Opus, Sonnet and Haiku with what each is for
+  and its number (press 1 to 4), **More models** has the specific versions, and **Effort** (on a
+  host that supports it) sets Low, Medium, High, Extra high or Max for the next turns, or back to
+  the model's own level. An OpenCode session keeps a plain list of its own models. While a turn
+  runs a line above the box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
   long; the spinner stops moving if your system asks for reduced motion.
 
 ### Claude Code hooks

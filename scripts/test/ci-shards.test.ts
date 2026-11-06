@@ -47,10 +47,12 @@ describe("ci-shards", () => {
     const shard = job("test-windows-shard");
     expect(shard["runs-on"]).toBe("windows-latest");
     expect(shard.strategy?.matrix?.shard).toEqual([1, 2, 3]);
+    // Split by the seconds each test file took (scripts/test-timings.json), not by file count (#292).
     expect(runs("test-windows-shard")).toContain(
-      "bun --config=bunfig.area.toml test --timeout=15000 --shard=${{ matrix.shard }}/3",
+      "bun run test:shards -- run ${{ matrix.shard }}/3 --junit junit-${{ matrix.shard }}.xml",
     );
-    expect(runs("test-windows-shard")).not.toContain("bun run test");
+    expect(runs("test-windows-shard")).not.toContain("--shard=");
+    expect(runs("test-windows-shard")).not.toMatch(/bun run test(\s|$)/);
   });
 
   test("the area config the shards run with skips the same paths as the full suite's (the mods run under claude plugin test)", () => {

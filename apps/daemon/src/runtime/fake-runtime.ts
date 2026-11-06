@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
-import type { AssistantBlock, McpLiveStatus } from "@flightdeck/protocol";
+import type { AssistantBlock, EffortLevel, McpLiveStatus } from "@flightdeck/protocol";
 import { AsyncQueue } from "../async-queue.ts";
 import { ulid } from "../ulid.ts";
 import { whichOnPath } from "../which.ts";
@@ -8,6 +8,8 @@ import { describeCommands } from "./commands.ts";
 import type {
   AgentRun,
   AgentRuntime,
+  CompleteOptions,
+  CompleteResult,
   ForkOptions,
   JudgeOptions,
   JudgeResult,
@@ -27,6 +29,8 @@ export interface FakeRuntimeOptions {
   slashCommands?: string[];
   /** Phase 13: the fake AI of the automatic approval. */
   judge?: (opts: JudgeOptions) => JudgeResult | Promise<JudgeResult>;
+  /** Phase 40: answers the assistant's calls; a deterministic answer without it. */
+  complete?: (opts: CompleteOptions) => CompleteResult | Promise<CompleteResult>;
 }
 
 class Interrupted extends Error {}
@@ -68,12 +72,14 @@ export class FakeRuntime implements AgentRuntime {
     this.mcpServers = options.mcpServers ?? [];
     this.slashCommands = options.slashCommands ?? envSlashCommands();
     this.judge = options.judge;
+    this.completeAnswer = options.complete;
   }
 
   private readonly rewind: FakeRuntimeOptions["rewind"];
   private readonly mcpServers: string[];
   private readonly slashCommands: string[] | undefined;
   private readonly judge: FakeRuntimeOptions["judge"];
+  private readonly completeAnswer: FakeRuntimeOptions["complete"];
 
   /** MCP servers turned on or off in live runs (phase 12). */
   readonly mcpToggles: Array<{ name: string; enabled: boolean }> = [];
@@ -81,6 +87,30 @@ export class FakeRuntime implements AgentRuntime {
   /** Permission modes and models set in live runs. */
   readonly modes: string[] = [];
   readonly models: Array<string | undefined> = [];
+  /** Efforts set in live runs. */
+  readonly efforts: Array<EffortLevel | undefined> = [];
+
+  /** The assistant's calls so far (phase 40). */
+  readonly completeCalls: CompleteOptions[] = [];
+
+  /**
+   * Answers with `complete`; without it, "improved: <text>" for a field, a valid commit subject for
+   * a commit message, and fake tokens, so the costs see the call.
+   */
+  async complete(opts: CompleteOptions): Promise<CompleteResult> {
+    this.completeCalls.push(opts);
+    if (this.completeAnswer) return this.completeAnswer(opts);
+    const text = /<text>\n([\s\S]*?)\n?<\/text>/.exec(opts.prompt)?.[1] ?? "";
+    let answer = "written by the fake assistant";
+    if (opts.system.includes("commit message")) answer = "feat(fake): describe the change";
+    else if (text) answer = `improved: ${text}`;
+    const tokens = { model: opts.model, speed: "standard", input: 100, output: 20 };
+    return {
+      text: answer,
+      subtype: "success",
+      tokens: { ...tokens, cacheRead: 0, cacheWrite5m: 0, cacheWrite1h: 0 },
+    };
+  }
 
   /** Judge queries so far (phase 13). */
   readonly judgeCalls: JudgeOptions[] = [];
@@ -118,6 +148,7 @@ export class FakeRuntime implements AgentRuntime {
       this.modes,
       this.models,
       this.slashCommands,
+      this.efforts,
     );
   }
 }
@@ -141,6 +172,7 @@ class FakeRun implements AgentRun {
     private readonly modes: string[] = [],
     private readonly models: Array<string | undefined> = [],
     private readonly slashCommands?: string[],
+    private readonly efforts: Array<EffortLevel | undefined> = [],
   ) {
     this.claudeSessionId = opts.resume ?? `fake-${ulid().toLowerCase()}`;
   }
@@ -151,6 +183,10 @@ class FakeRun implements AgentRun {
 
   async setModel(model: string | undefined): Promise<void> {
     this.models.push(model);
+  }
+
+  async setEffort(effort: EffortLevel | undefined): Promise<void> {
+    this.efforts.push(effort);
   }
 
   async toggleMcpServer(name: string, enabled: boolean): Promise<void> {
