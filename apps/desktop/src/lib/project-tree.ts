@@ -23,6 +23,8 @@ export interface TreeProject {
   name: string;
   path: string;
   nodes: TreeNode[];
+  /** When a session of the project last changed, in ms; 0 when none did. */
+  lastActivityAt?: number;
 }
 
 /** The node the person picked: it narrows the board and the Sessions list to that checkout. */
