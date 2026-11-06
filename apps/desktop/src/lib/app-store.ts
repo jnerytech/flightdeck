@@ -655,7 +655,13 @@ function storedWorkspace(storage: Platform["storage"]): unknown {
 }
 
 /** Every open permission request of every host, oldest first. */
-export function needsYou(state: AppState): PendingItem[] {
+/** The parts of the state the requests waiting for the person are made of. */
+export type NeedsYouState = Pick<
+  AppState,
+  "cards" | "externalRequests" | "externals" | "hosts" | "meta" | "runs" | "vaultApprovals"
+>;
+
+export function needsYou(state: NeedsYouState): PendingItem[] {
   const requests: PendingItem[] = state.hosts.flatMap((host) => [
     ...host.sessions.flatMap((session) =>
       session.pendingPermissions.map((p) => ({

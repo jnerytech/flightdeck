@@ -22,6 +22,12 @@ afterEach(cleanup);
 
 type Specs = Parameters<typeof activityState>[0];
 
+/** Puts the fixture's hosts, hub and unread marks in the store, as a daemon's answers would. */
+function feed(store: InstanceType<typeof AppStore>, specs: Specs) {
+  const { hosts, hub, unread } = activityState(specs, store.getState());
+  (store as unknown as { update(patch: object): void }).update({ hosts, hub, unread });
+}
+
 function setup(_specs: Specs, options: { language?: "en" | "pt-BR"; platform?: never } = {}) {
   const mem = memoryPlatform(false, options.language ?? "en");
   const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
@@ -32,18 +38,20 @@ function setup(_specs: Specs, options: { language?: "en" | "pt-BR"; platform?: n
     responded.push([hostId, requestId, decision]);
   }) as never;
   const opened: Array<[string, boolean]> = [];
-  const make = (next: Specs) => activityState(next, store.getState());
-  const view = (next: Specs) => (
-    <TContext.Provider value={store.i18n.t}>
-      <ActivityBoard
-        store={store}
-        state={make(next)}
-        go={() => {}}
-        onOpen={(row: HubRow, newTab: boolean) => void opened.push([row.title, newTab])}
-        holdMs={30}
-      />
-    </TContext.Provider>
-  );
+  /** The sessions the board shows are the store's: the fixture's state replaces it. */
+  const view = (next: Specs) => {
+    feed(store, next);
+    return (
+      <TContext.Provider value={store.i18n.t}>
+        <ActivityBoard
+          store={store}
+          go={() => {}}
+          onOpen={(row: HubRow, newTab: boolean) => void opened.push([row.title, newTab])}
+          holdMs={30}
+        />
+      </TContext.Provider>
+    );
+  };
   return { store, mem, responded, opened, view };
 }
 
@@ -133,14 +141,10 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     const again = new AppStore(w.mem.platform, { baseDelayMs: 600_000 });
     again.i18n.start();
     again.now = () => NOW;
+    feed(again, SPECS);
     render(
       <TContext.Provider value={again.i18n.t}>
-        <ActivityBoard
-          store={again}
-          state={activityState(SPECS, again.getState())}
-          go={() => {}}
-          onOpen={() => {}}
-        />
+        <ActivityBoard store={again} go={() => {}} onOpen={() => {}} />
       </TContext.Provider>,
     );
     expect(cardsOf("Idle")).toEqual(["Old chat"]);

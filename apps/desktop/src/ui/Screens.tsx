@@ -786,7 +786,6 @@ function routeScreen(props: ScreenProps): ReactNode {
       return (
         <ActivityBoard
           store={store}
-          state={state}
           go={go}
           onOpen={(row, newTab) => {
             if (newTab) store.tabs.openNextInNewTab();

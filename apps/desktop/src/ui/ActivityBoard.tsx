@@ -6,15 +6,17 @@ import { Page } from "@/components/layout/page";
 import { EmptyState } from "@/components/layout/states";
 import { Input } from "@/components/ui/input";
 import { useBoardTransition } from "@/hooks/use-board-transition";
+import { useStoreSlice } from "@/lib/use-store";
 import type { Key } from "../i18n/index.ts";
 import {
   ACTIVITY_COLUMNS,
+  ACTIVITY_KEYS,
   type ActivityFilter,
   activityBoard,
   activityOptions,
   NO_ACTIVITY_FILTER,
 } from "../lib/activity.ts";
-import type { AppState, AppStore } from "../lib/app-store.ts";
+import type { AppStore } from "../lib/app-store.ts";
 import type { HubRow } from "../lib/hub.ts";
 import type { Route } from "../lib/router.ts";
 
@@ -24,13 +26,13 @@ import type { Route } from "../lib/router.ts";
  */
 export function ActivityBoard(props: {
   store: AppStore;
-  state: AppState;
   go(route: Route): void;
   onOpen(row: HubRow, newTab: boolean): void;
   /** Test seam: the hold time of a high-risk approval. */
   holdMs?: number;
 }) {
-  const { store, state } = props;
+  const { store } = props;
+  const state = useStoreSlice(store, ACTIVITY_KEYS);
   const { t } = store.i18n;
   const [filter, setFilter] = useState<ActivityFilter>(NO_ACTIVITY_FILTER);
   const [showIdle, setShowIdle] = useState(() => store.activityIdle());

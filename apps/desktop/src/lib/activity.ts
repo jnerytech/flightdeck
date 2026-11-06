@@ -1,5 +1,27 @@
-import { type AppState, needsYou, type PendingItem, sessionKey } from "./app-store.ts";
-import { groupName, type HubRow, hubRows } from "./hub.ts";
+import {
+  type AppState,
+  type NeedsYouState,
+  needsYou,
+  type PendingItem,
+  sessionKey,
+} from "./app-store.ts";
+import { groupName, type HubRow, type HubRowState, hubRows } from "./hub.ts";
+
+/** The parts of the state the board is made of: its rows, the requests and what was not opened. */
+export const ACTIVITY_KEYS = [
+  "cards",
+  "externalRequests",
+  "externals",
+  "hosts",
+  "meta",
+  "runs",
+  "vaultApprovals",
+  "hub",
+  "names",
+  "background",
+  "unread",
+] as const satisfies readonly (keyof AppState)[];
+export type ActivityState = NeedsYouState & HubRowState & Pick<AppState, "unread">;
 
 /** The columns of the Activity board, in order. */
 export type ActivityColumn = "needs_you" | "working" | "done" | "idle";
@@ -50,7 +72,7 @@ const columnOf = (row: HubRow, unread: boolean, now: number, changedAt: number):
  * change first. `shown` counts the cards that pass the filter among the columns on show.
  */
 export function activityBoard(
-  state: AppState,
+  state: ActivityState,
   now: number,
   filter: ActivityFilter,
   showIdle: boolean,
@@ -103,7 +125,7 @@ export function activityBoard(
 }
 
 /** What the filters can pick: the hosts, projects and personas of the live sessions. */
-export function activityOptions(state: AppState): {
+export function activityOptions(state: HubRowState): {
   hosts: string[];
   projects: string[];
   personas: Array<{ id: string; name: string }>;
