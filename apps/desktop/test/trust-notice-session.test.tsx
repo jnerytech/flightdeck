@@ -49,4 +49,40 @@ describe("trust-notice-session: the session screen offers the review of its proj
     expect(route.name).toBe("project");
     expect((route as { projectId?: string }).projectId).toBe(project?.id);
   });
+
+  test("revoking the trust of a folder with a live session marks it, and Restart session runs it without the setup (#463)", async () => {
+    const d = makeDaemon(cleanups, { trust: true });
+    const repo = join(d.root, "shop");
+    mkdirSync(repo, { recursive: true });
+    await Bun.spawn(["git", "init", "-q", repo]).exited;
+    const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts[0]?.status === "online");
+    const hostId = store.getState().hosts[0]?.id ?? "";
+    await store.hostCommand(hostId, "project.add", { path: repo });
+    await store.hostCommand(hostId, "project.trust.set", { path: repo, trusted: true });
+    await act(async () => {
+      await store.loadProjects(hostId);
+    });
+    const { sessionId } = await d.manager.create({ cwd: repo, prompt: "hello" });
+    await act(async () => {
+      store.router.push({ name: "session", host: hostId, id: sessionId });
+    });
+    await settle(
+      () => store.getState().hosts[0]?.sessions.some((s) => s.id === sessionId) === true,
+    );
+    expect(screen.queryByRole("button", { name: "Restart session" })).toBeNull();
+    await act(async () => {
+      await store.hostCommand(hostId, "project.trust.set", { path: repo, trusted: false });
+    });
+    await settle(() => screen.queryByRole("button", { name: "Restart session" }) !== null);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Restart session" }));
+    });
+    await settle(() => screen.queryByRole("button", { name: "Restart session" }) === null);
+  });
 });
