@@ -178,7 +178,10 @@ export class PrFixer {
     if (this.running.has(cardId) || !watcher.enabled(cardId)) return;
     if (watcher.status(cardId).status !== "watching") return;
     const stop = this.limit(cardId);
-    if (stop) return this.needsYou(cardId, stop);
+    if (stop) {
+      this.needsYou(cardId, stop);
+      return;
+    }
     this.running.add(cardId);
     const round = this.run(trigger).finally(() => {
       this.running.delete(cardId);
