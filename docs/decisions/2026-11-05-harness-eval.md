@@ -31,5 +31,7 @@
   checkout, the removal of origin and the install must each succeed, and the session never starts
   in a clone that still lists a remote. Transcripts (only with `--keep`) and the report go to a
   0700 folder as 0600 files, and the report keeps each step's command, never its output. What
-  stays: the tests the session writes run as you, with the network, so run the eval only on a
-  machine where that is acceptable.
+  stays: the code the session writes runs as you, with the network and the real home (where
+  `claude`'s login lives): its tests, and any script it adds to `package.json`, which the allowed
+  `bun run test:related` and `bun run lint` would start. Run the eval only on a machine where that
+  is acceptable.
