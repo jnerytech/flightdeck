@@ -1,6 +1,8 @@
 import { type TaskFile, type TaskResultsResult, taskActivity } from "@flightdeck/protocol";
 import { ArrowLeft, FileText, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { AssistField } from "@/components/assistant/assist-field";
+import type { WandBinding } from "@/components/assistant/use-wand";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { T } from "../../i18n/index.ts";
@@ -86,6 +88,8 @@ export function TaskView(
     locked: boolean;
     /** The platform can open files of the host. */
     canOpen: boolean;
+    /** The AI wand of Ask for changes (phase 40); none when no assistant is ready. */
+    assist?: WandBinding;
   } & TaskViewHandlers,
 ) {
   const { t, session } = props;
@@ -97,6 +101,16 @@ export function TaskView(
     truncated: boolean;
   } | null>(null);
   const [change, setChange] = useState("");
+  const ask = (assist?: object) => (
+    <Textarea
+      {...assist}
+      aria-label={t("simple.askChanges")}
+      placeholder={t("simple.askPlaceholder")}
+      rows={2}
+      value={change}
+      onChange={(e) => setChange(e.target.value)}
+    />
+  );
   const ended = state === "done" || state === "stopped" || state === "failed";
 
   const open = async (file: TaskFile) => {
@@ -207,13 +221,19 @@ export function TaskView(
               setChange("");
             }}
           >
-            <Textarea
-              aria-label={t("simple.askChanges")}
-              placeholder={t("simple.askPlaceholder")}
-              rows={2}
-              value={change}
-              onChange={(e) => setChange(e.target.value)}
-            />
+            {props.assist ? (
+              <AssistField
+                binding={props.assist}
+                value={change}
+                onChange={setChange}
+                t={t}
+                className="flex-1"
+              >
+                {(assist) => ask(assist)}
+              </AssistField>
+            ) : (
+              ask()
+            )}
             <Button type="submit" disabled={change.trim() === ""}>
               {t("simple.askSend")}
             </Button>

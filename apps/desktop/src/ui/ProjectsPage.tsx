@@ -8,6 +8,7 @@ import { Panel } from "@/components/layout/panel";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
 import { AddProject } from "@/components/projects/add-project";
+import { HostBoardLanding } from "@/components/projects/board-landing";
 import { FindProjects } from "@/components/projects/find-projects";
 import { StartFromGithub } from "@/components/projects/start-from-github";
 import { Button } from "@/components/ui/button";
@@ -104,6 +105,8 @@ export function ProjectsPage(
   useEffect(() => {
     void reload();
   }, [reload]);
+  /** What a project added or started from here does: the list is read again. */
+  const reloaded = () => void reload();
 
   const submit = async () => {
     // Blank name and base branch keep the daemon's defaults (folder name, current branch).
@@ -154,41 +157,42 @@ export function ProjectsPage(
     return (
       <Page title={t(board ? "sidebar.boardOf" : "sidebar.workflowsOf", { host: props.hostName })}>
         {loading && <LoadingState label={t("states.loadingProjects")} />}
-        {!loading && list?.projects.length === 0 && (
+        {!loading && hidden && <EmptyState title={t("clients.noneHere")} />}
+        {/* The Board screen of a host: its projects as cards (#669). */}
+        {!loading && board && !hidden && list && (
+          <HostBoardLanding
+            store={store}
+            hostId={hostId}
+            hostName={props.hostName}
+            projects={projects}
+            onOpenBoard={props.onOpenBoard}
+            onAdded={reloaded}
+          />
+        )}
+        {!loading && !board && list?.projects.length === 0 && (
           <EmptyState
             icon={FolderGit2}
             title={t("states.emptyProjects")}
-            action={<AddProject store={store} hostId={hostId} onAdded={() => void reload()} />}
+            action={<AddProject store={store} hostId={hostId} onAdded={reloaded} />}
           />
         )}
-        {!loading && (list?.projects.length ?? 0) > 0 && (
+        {!loading && !board && (list?.projects.length ?? 0) > 0 && (
           <div>
-            <AddProject
-              store={store}
-              hostId={hostId}
-              variant="outline"
-              onAdded={() => void reload()}
-            />
+            <AddProject store={store} hostId={hostId} variant="outline" onAdded={reloaded} />
           </div>
         )}
-        {!loading && hidden && <EmptyState title={t("clients.noneHere")} />}
-        <ul aria-label={t("projectsUi.list")} className="flex flex-col">
-          {projects.map((project) => (
-            <li key={project.id} className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                onClick={() =>
-                  board ? props.onOpenBoard(project.id) : props.onOpenWorkflows(project)
-                }
-              >
-                {board
-                  ? t("projectsUi.openBoard", { name: project.name })
-                  : t("projectsUi.workflows", { name: project.name })}
-              </Button>
-              <span className="text-muted-foreground text-xs">{`${project.path} · ${project.baseBranch}`}</span>
-            </li>
-          ))}
-        </ul>
+        {!board && (
+          <ul aria-label={t("projectsUi.list")} className="flex flex-col">
+            {projects.map((project) => (
+              <li key={project.id} className="flex items-center gap-3">
+                <Button variant="ghost" onClick={() => props.onOpenWorkflows(project)}>
+                  {t("projectsUi.workflows", { name: project.name })}
+                </Button>
+                <span className="text-muted-foreground text-xs">{`${project.path} · ${project.baseBranch}`}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </Page>
     );
   }
@@ -208,10 +212,10 @@ export function ProjectsPage(
         )}
         <div className="button-row">
           {host && hasFeature(host.hostInfo?.features, "projects.scan", false) && (
-            <FindProjects store={store} hostId={hostId} onAdded={() => void reload()} />
+            <FindProjects store={store} hostId={hostId} onAdded={reloaded} />
           )}
           {host && hasFeature(host.hostInfo?.features, "github", false) && (
-            <StartFromGithub store={store} hostId={hostId} onStarted={() => void reload()} />
+            <StartFromGithub store={store} hostId={hostId} onStarted={reloaded} />
           )}
         </div>
         <ul aria-label={t("projectsUi.list")} className="flex flex-col gap-2">

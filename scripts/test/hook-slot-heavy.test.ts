@@ -61,14 +61,17 @@ describe("guard: a worker session's full coverage run holds the slot for what CI
   test("#687: the override counts only as an env prefix of the heavy run itself, never elsewhere in the command", () => {
     for (const command of [
       'FLIGHTDECK_SLOT_HEAVY="the full gate" bun run typecheck && bun run test:related',
-      "echo FLIGHTDECK_SLOT_HEAVY=reason; bun run test:related",
-      "bun run test:related # FLIGHTDECK_SLOT_HEAVY=reason",
-      'git commit -m "FLIGHTDECK_SLOT_HEAVY=reason" && bun run test:related',
-      "bun run test:related FLIGHTDECK_SLOT_HEAVY=reason",
+      "echo FLIGHTDECK_SLOT_HEAVY=a-long-enough-reason; bun run test:related",
+      "bun run test:related # FLIGHTDECK_SLOT_HEAVY=a-long-enough-reason",
+      'git commit -m "FLIGHTDECK_SLOT_HEAVY=a-long-enough-reason" && bun run test:related',
+      "bun run test:related FLIGHTDECK_SLOT_HEAVY=a-long-enough-reason",
       // An escaped quote does not end the string: its ; is no separator.
-      'git commit -m "a \\"quote\\"; FLIGHTDECK_SLOT_HEAVY=reason bun run x" && bun run test:related',
+      'git commit -m "a \\"quote\\"; FLIGHTDECK_SLOT_HEAVY=a-long-enough-reason bun run x" && bun run test:related',
       // An escaped quote outside quotes opens no string: the ; still splits.
       'FLIGHTDECK_SLOT_HEAVY=\\"reason-long; bun run test:related',
+      // #687 review: each heavy run needs its own override; the first one's does not cover a second.
+      'FLIGHTDECK_SLOT_HEAVY="the full gate" bun run test:related; bun run test:related',
+      'bun run test:related -- --fast && FLIGHTDECK_SLOT_HEAVY="the full gate" bun run x; bun run test:related',
     ]) {
       expect(worker(command) ?? `allowed: ${command}`).toContain("holds the slot");
       expect(heavyRunWaived(command)).toBe(false);
@@ -77,6 +80,7 @@ describe("guard: a worker session's full coverage run holds the slot for what CI
       "cd ../flightdeck-x && FLIGHTDECK_SLOT_HEAVY='the full gate' bun run slot -- bun run test:related",
       'CI=1 FLIGHTDECK_SLOT_HEAVY="every desktop test reaches the store" bun run test:related',
       'env FLIGHTDECK_SLOT_HEAVY="the full gate" bun run test:related',
+      'FLIGHTDECK_SLOT_HEAVY="the full gate" bun run test:related && FLIGHTDECK_SLOT_HEAVY="every test reaches it" bun run test:related -- --pr',
     ]) {
       expect(worker(command)).toBeNull();
       expect(heavyRunWaived(command)).toBe(true);
