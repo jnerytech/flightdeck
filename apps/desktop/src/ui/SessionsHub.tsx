@@ -56,8 +56,8 @@ import {
   sharedMeta,
 } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
-import { activeWorktreeFilter, rowInFilter } from "../lib/project-tree.ts";
 import { newSessionHost } from "../lib/new-session-host.ts";
+import { activeWorktreeFilter, rowInFilter } from "../lib/project-tree.ts";
 import { hasFeature } from "../lib/version.ts";
 
 /** How often the hub asks the hosts about their background sessions. */
