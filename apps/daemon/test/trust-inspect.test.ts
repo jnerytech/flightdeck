@@ -45,6 +45,15 @@ describe("trust-inspect: what a project would load, read without running anythin
     });
   });
 
+  test("a header key written in quotes is a key all the same (issue #415)", async () => {
+    const root = repo({
+      ".claude/agents/q.md":
+        "---\nname: q\n\"hooks\":\n  Stop: x\n'mcpServers':\n  s: {}\n---\nbody",
+    });
+    const load = await inspectProject(root);
+    expect(load.extras).toEqual([{ file: ".claude/agents/q.md", keys: ["hooks", "mcpServers"] }]);
+  });
+
   test("hooks are listed by event with their commands, from the shared and the local settings", async () => {
     const root = repo({
       ".claude/settings.json": JSON.stringify({

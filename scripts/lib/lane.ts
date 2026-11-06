@@ -25,6 +25,8 @@ export interface LaneDeps {
   log(line: string): void;
   /** Starts the command, marked as a lane holder so its own lane calls run at once. */
   spawn(command: string[]): SlotChild;
+  /** Makes this process, and so the command it starts, the OOM killer's first choice (#247). */
+  protect?(): void;
   /** How many places are open now, at most `locks.length`; asked on every try (default: all). */
   places?: () => number;
 }
@@ -65,6 +67,8 @@ function tryPlaces(deps: LaneDeps, text: string): PlaceTry {
 
 /** Runs the command once a place in the lane is free, and gives the place back after. */
 export async function runInLane(command: string[], deps: LaneDeps): Promise<number> {
+  // Before anything is spawned, so the command and all it starts inherit the score.
+  deps.protect?.();
   if (deps.nested) return await deps.spawn(command).wait();
   const text = command.join(" ");
   let named = false;

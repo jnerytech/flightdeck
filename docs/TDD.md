@@ -42,6 +42,10 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
    - Nada de `toMatchSnapshot` na primeira rodada: ele grava o resultado do stub. Use literais
      escritos à mão (`toBe`, `toMatchInlineSnapshot` com o texto).
    - `toContain` sobre algo que pode ser `undefined`: use `?? ""`.
+   - No DOM element inside `toEqual`, `toStrictEqual` or `toMatchObject`, on either side. When the
+     assertion fails, Bun's diff formats the element's whole graph (10 GB once, and the OOM killer
+     took it). Compare what you read from it instead: `textContent`, `getAttribute(...)`,
+     `!== null`, `.length`. `dom-equal-baseline.json` (a ratchet) only goes down.
 5. **Commit só do teste**, com caminhos explícitos (`git add <arquivo>`, nunca `git add -A`), e
    confira `git status --short` antes: `test(<área>): <comportamento>`.
 6. **Implementação mínima**, mesmo comando verde, depois a suíte inteira
