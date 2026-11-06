@@ -144,7 +144,6 @@ export const Settings = memo(function Settings(props: {
             {(id) => (
               <NativeSelect
                 id={id}
-                className="w-44"
                 value={String(cacheTtl)}
                 onChange={(e) => props.store.cacheTimer.setTtl(Number(e.target.value) as CacheTtl)}
               >
