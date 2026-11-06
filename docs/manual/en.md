@@ -909,6 +909,12 @@ live; the list is the project's, so a session of another project never shows her
   The project's name folds its branches (the arrow keys left and right fold and unfold it); the fold
   is remembered on this computer, and a folded project that holds the picked branch shows a check
   on its name.
+  The tree lists at most 5 projects: the ones you **pinned** (the pin on a project's row), then the
+  most recently active, and always the project of the picked branch. Below them, **All projects (N)**
+  opens the Projects page. With more than 5 projects a **Filter projects** field narrows the list by
+  name to every match (Esc clears it). With more than 3 projects, all but the active one start
+  folded; what you fold or unfold is remembered, and a folded project with a running session or one
+  that needs you shows a dot on its name. Pins are kept on this computer.
 - At the foot of the bar, **Settings** is a visible item (marked while Settings is open), and the Claude
   account (its email and plan, read from the host's account card; the rail shows only its initial)
   opens a menu. Its header names the app and its version. Then come the plan, the account and the id
