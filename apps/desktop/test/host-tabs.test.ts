@@ -196,6 +196,36 @@ describe("host-tabs: each host keeps its own tabs (#644)", () => {
   });
 });
 
+describe("host-tabs: inside a host's set, today's tab rules hold (#644)", () => {
+  test("back and forward, a sidebar preview, a ctrl link to a new tab, and an unsubscribed listener", () => {
+    const { tabs } = fresh(null, overview("A"));
+    const offTab = { n: 0 };
+    const off = tabs.subscribe(() => void offTab.n++);
+    off();
+    tabs.router.push(session("A", "s1"));
+    const history = [tabs.router.canBack, tabs.router.canForward];
+    tabs.router.back();
+    history.push(tabs.router.canForward);
+    const backTo = label(tabs.router.current);
+    tabs.router.forward();
+    const forwardTo = label(tabs.router.current);
+    tabs.openPreview(board("A"));
+    const preview = tabs.workspace?.tabs.tabs.find((tab) => tab.preview);
+    const afterPreview = tabs.tabCount("A");
+    tabs.openNextInNewTab();
+    tabs.router.push(terminal("A"));
+    expect([
+      history,
+      backTo,
+      forwardTo,
+      label(preview?.router.current ?? home),
+      afterPreview,
+      tabs.tabCount("A"),
+      offTab.n,
+    ]).toEqual([[true, false, true], "host@A", "session@A#s1", "board@A", 2, 3, 0]);
+  });
+});
+
 describe("host-tabs: closing and removing (#644)", () => {
   test("closing a host's last tab shows that host's Overview, once", () => {
     const { tabs, seen } = fresh(null, session("A", "s1"));
