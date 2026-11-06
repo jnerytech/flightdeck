@@ -10,7 +10,7 @@ registerDom();
 const { cleanup, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { UntrustedNotice } = await import("../src/components/projects/untrusted-notice.tsx");
-const { ShortArea } = await import("../src/components/session/parts.tsx");
+const { ShortArea, SessionPane } = await import("../src/components/session/parts.tsx");
 
 afterEach(() => cleanup());
 
@@ -47,6 +47,22 @@ for (const [lang, dict] of [
       ).toBe(true);
       expect(screen.queryByText(trust.sessionNotice, { exact: false })).toBeNull();
       expect(screen.queryByRole("button", { name: trust.review })).not.toBeNull();
+    });
+
+    // Issue #488: while a request waits for the person the notice is its one line too.
+    test("with a request waiting it is the one short line, even in a tall area", async () => {
+      const store = {
+        i18n: { t: translator(lang) },
+        hostCommand: async () => ({ items: [{ trusted: false }] }),
+      } as never;
+      render(
+        <SessionPane waiting>
+          <UntrustedNotice store={store} hostId="h" announced cwd="/p" />
+        </SessionPane>,
+      );
+      expect(
+        await seen(() => screen.queryByText(trust.sessionNoticeShort, { exact: false }) !== null),
+      ).toBe(true);
     });
 
     test("in a tall area it says everything that did not load, as before", async () => {

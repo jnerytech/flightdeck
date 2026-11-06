@@ -18,6 +18,20 @@ const SHORT_AREA = 600;
 /** Whether the session's area is short; `SessionPane` measures it. */
 export const ShortArea = createContext(false);
 
+/**
+ * Whether the conversation needs the room: the area is short, or a request waits for the person
+ * (issue #488). The header, the not-trusted notice and the summary then take one line each, so the
+ * request card stays whole.
+ */
+export const TightArea = createContext(false);
+
+/** The area is short or a request waits: what the bands over the conversation read. */
+export function useTight(): boolean {
+  const short = useContext(ShortArea);
+  const tight = useContext(TightArea);
+  return short || tight;
+}
+
 /** A session's title, its gray line and its controls, over the timeline. */
 export function SessionHeader(
   props: Readonly<{
@@ -37,8 +51,8 @@ export function SessionHeader(
   const t = useT();
   const box = useRef<HTMLElement>(null);
   const width = useWidth(box);
-  const short = useContext(ShortArea);
-  const narrow = (width > 0 && width < NARROW_HEADER) || short;
+  const tight = useTight();
+  const narrow = (width > 0 && width < NARROW_HEADER) || tight;
   if (narrow) {
     return (
       <header
@@ -182,13 +196,22 @@ export function Composer(props: Readonly<{ children: ReactNode }>) {
 }
 
 /** A session pane: header, timeline and composer stacked, filling its column. */
-export function SessionPane(props: Readonly<{ children: ReactNode }>) {
+export function SessionPane(
+  props: Readonly<{
+    children: ReactNode;
+    /** A request waits for the person: the bands over the conversation take one line each (#488). */
+    waiting?: boolean;
+  }>,
+) {
   const box = useRef<HTMLElement>(null);
   const height = useHeight(box);
+  const short = height > 0 && height < SHORT_AREA;
   return (
     <section ref={box} className="flex h-full min-h-0 flex-col">
-      <ShortArea.Provider value={height > 0 && height < SHORT_AREA}>
-        {props.children}
+      <ShortArea.Provider value={short}>
+        <TightArea.Provider value={short || props.waiting === true}>
+          {props.children}
+        </TightArea.Provider>
       </ShortArea.Provider>
     </section>
   );

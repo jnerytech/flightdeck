@@ -1,8 +1,8 @@
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Button } from "@/components/ui/button";
 import type { AppStore } from "@/lib/app-store";
-import { ShortArea } from "../session/parts.tsx";
+import { useTight } from "../session/parts.tsx";
 
 /**
  * A session in a folder the person has not trusted says what did not load: the folder's own hooks,
@@ -28,8 +28,9 @@ export function UntrustedNotice(
   const { t } = store.i18n;
   const [untrusted, setUntrusted] = useState(false);
   const [restarting, setRestarting] = useState(false);
-  // Issue #422: in a short session area the notice is one line; the project page lists the rest.
-  const short = useContext(ShortArea);
+  // Issue #422: in a short session area the notice is one line; the project page lists the rest. So
+  // while a request waits for the person (#488).
+  const short = useTight();
   useEffect(() => {
     if (!announced || stale) return;
     let current = true;
