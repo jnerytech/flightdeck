@@ -105,7 +105,7 @@ export const Settings = memo(function Settings(props: {
             {(id) => (
               <NativeSelect
                 id={id}
-                className="w-44"
+                className="setting-select"
                 value={props.theme}
                 onChange={(e) => props.onTheme(e.target.value as ThemeMode)}
               >
@@ -119,7 +119,7 @@ export const Settings = memo(function Settings(props: {
             {(id) => (
               <NativeSelect
                 id={id}
-                className="w-44"
+                className="setting-select"
                 value={props.density}
                 onChange={(e) => props.onDensity(e.target.value as Density)}
               >
@@ -132,7 +132,7 @@ export const Settings = memo(function Settings(props: {
             {(id) => (
               <NativeSelect
                 id={id}
-                className="w-44"
+                className="setting-select"
                 value={tabOrder}
                 onChange={(e) => props.store.tabOrder.set(e.target.value as TabOrder)}
               >
@@ -146,7 +146,7 @@ export const Settings = memo(function Settings(props: {
               <Input
                 id={id}
                 type="number"
-                className="w-44"
+                className="setting-select"
                 min={TERMINAL_FONT_MIN}
                 max={TERMINAL_FONT_MAX}
                 value={terminalFont}
@@ -158,7 +158,7 @@ export const Settings = memo(function Settings(props: {
             {(id) => (
               <NativeSelect
                 id={id}
-                className="w-44"
+                className="setting-select"
                 value={props.lang}
                 onChange={(e) => props.onLang(e.target.value as Lang)}
               >
