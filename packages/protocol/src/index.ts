@@ -1561,6 +1561,12 @@ export interface DoctorCheckResult {
   status: "ok" | "warn" | "fail";
   detail: string;
   fix?: string;
+  /**
+   * An optional tool that is not installed (OpenCode): its status is "ok", since nothing failed,
+   * but the app shows it muted as "optional, not installed" rather than as OK (#670). An older
+   * daemon leaves it out, and the app then shows the plain status.
+   */
+  absent?: true;
 }
 
 /** What `doctor.run` answers. */
