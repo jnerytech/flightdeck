@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  ARG_BUDGET,
   mergeTimings,
   parseBunLog,
   parseJunit,
@@ -283,6 +284,41 @@ describe("shards: plan and run", () => {
     const f = fake();
     expect(await shards(["run", "1/2", "--files"], f.deps)).toBe(2);
     expect(f.runs).toEqual([]);
+  });
+
+  test("run splits a long file list into batches under the command-line budget, one bun test per batch with its own JUnit file, and runs them all (#483: 1021 files died with ENAMETOOLONG on Windows)", async () => {
+    const tracked = Array.from(
+      { length: 400 },
+      (_, i) => `apps/desktop/test/${"a-long-area-name-".repeat(3)}${i}.test.ts`,
+    );
+    const f = fake({ tracked, timings: {}, code: 1 });
+    expect(await shards(["run", "1/1", "--junit", "junit-1.xml"], f.deps)).toBe(1);
+    expect(f.runs.length).toBeGreaterThan(1);
+    const filesOf = (args: string[]) => args.filter((a) => a.endsWith(".test.ts"));
+    for (const args of f.runs) {
+      expect(filesOf(args).join(" ").length).toBeLessThanOrEqual(ARG_BUDGET);
+    }
+    // Every file runs exactly once, in the shard's order.
+    expect(f.runs.flatMap(filesOf)).toEqual(tracked.map((t) => `./${t}`).sort());
+    expect(f.runs.map((args) => args.find((a) => a.startsWith("--reporter-outfile=")))).toEqual(
+      f.runs.map(
+        (_, i) => `--reporter-outfile=${i === 0 ? "junit-1.xml" : `junit-1.${i + 1}.xml`}`,
+      ),
+    );
+    expect(f.logs.join("\n")).toContain(`${f.runs.length} batches`);
+  });
+
+  test("a batch that passes never hides one that failed: the run's exit code is the worst (#483)", async () => {
+    const tracked = Array.from({ length: 400 }, (_, i) => `apps/x/${"b".repeat(40)}${i}.test.ts`);
+    const codes = [0, 1, 0, 0, 0, 0, 0, 0];
+    const f = fake({ tracked, timings: {} });
+    let call = 0;
+    f.deps.bun = async (args) => {
+      f.runs.push(args);
+      return codes[call++] ?? 0;
+    };
+    expect(await shards(["run", "1/1"], f.deps)).toBe(1);
+    expect(f.runs.length).toBeGreaterThan(2);
   });
 
   test("without --tier the tiers are never read (#309)", async () => {

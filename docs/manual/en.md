@@ -2710,7 +2710,8 @@ tab, with no SSH.
   in another color and its position ("2 of 5") beside the box; Enter or **Next match** goes to
   the next one, Shift+Enter or **Previous match** to the previous, Esc or **Close search**
   closes. Links in the output open in the browser (`http` and `https` only). The font is the
-  system monospace; its size is in Settings (**Terminal font size**, 10 to 24).
+  system monospace; its size is in Settings (**Terminal font size**, 10 to 24). The tab keeps
+  the last 10,000 lines to scroll back to and to search.
 - **Detach and reopen:** a terminal survives the app: it keeps the last 2 MB of output, and
   attaching again shows them. Closing a terminal tab asks: **Detach** (the default; the process
   keeps running on the host) or **End process**. A terminal shown as detached or ended has
@@ -3028,6 +3029,22 @@ the new binary itself.
   `~/.flightdeck/bin/flightdeckd update --from ~/flightdeckd-linux-x64`.
 - **Remote Linux (VPS, Orange Pi):** `scp dist/flightdeckd-linux-arm64 <host>:~/` and, on the
   host, `~/.flightdeck/bin/flightdeckd update --from ~/flightdeckd-linux-arm64`.
+
+### Sessions a restart interrupted
+
+When a host's daemon restarts (an update, a reboot, a service restart), the sessions that were
+running are left in `error` with the reason *the daemon restarted*. When the app reconnects to a
+daemon that offers it, one dialog, **Resume interrupted sessions**, lists the ones from the last 24
+hours, grouped by project folder, each with its persona, how long it ran and its last request. All are
+ticked. The dialog says what resume does: it reattaches each session and sends *Continue where you
+left off.*; the original request is never sent again. **Resume selected** resumes the ticked ones
+(each row ends as *Resumed*, or as *Could not resume: <reason>* with a **Retry** button, and the
+others are not affected); **Not now** closes the dialog and does not bring it back until another
+restart (the host's page keeps a *Resume interrupted sessions (N)* button to reopen it); **Dismiss
+all** drops the offer for good. The host's page also has a switch, **Resume automatically after a
+restart**, off by default: with it on no dialog appears, the sessions are resumed at once and a
+notice lists them. Not yet: a *queued* state when the parallel limit is reached, a team's coordinator
+resumed before its workers, and a status-bar entry to reopen the offer.
 
 ### Signed automatic update
 

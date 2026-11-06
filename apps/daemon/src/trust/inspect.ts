@@ -199,7 +199,7 @@ async function headers(
         throw new Error("not a plain file of a sane size");
       const text = await readFile(real, "utf8");
       const head = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)?.[1] ?? "";
-      const keys = [...head.matchAll(/^([A-Za-z][\w-]*)\s*:/gm)]
+      const keys = [...head.matchAll(/^["']?([A-Za-z][\w-]*)["']?[ \t]*:/gm)]
         .map((m) => m[1] as string)
         .filter((key) => HEADER_KEYS.has(key));
       if (keys.length > 0) out.push({ file: name, keys });
@@ -209,6 +209,76 @@ async function headers(
     }
   }
   return out;
+}
+
+/** The program a setting names, if its value is one: a command string, or an object with one. */
+function programOf(key: string, value: unknown): string | undefined {
+  if (PROGRAM_KEYS.has(key)) return typeof value === "string" ? value : undefined;
+  if (PROGRAM_OBJECT_KEYS.has(key) && isObject(value) && typeof value.command === "string") {
+    return value.command;
+  }
+  return undefined;
+}
+
+/** The commands of the hook groups of one event, as written. */
+function hookCommands(groups: unknown): string[] {
+  return (Array.isArray(groups) ? groups : [])
+    .flatMap((group) => (isObject(group) && Array.isArray(group.hooks) ? group.hooks : []))
+    .flatMap((hook) =>
+      isObject(hook) && typeof hook.command === "string" ? [show(hook.command)] : [],
+    );
+}
+
+/** What starts an MCP server: its command with its arguments, or its address. */
+function mcpCommand(server: Record<string, unknown>): string {
+  if (typeof server.command === "string") {
+    const args = Array.isArray(server.args) ? server.args.map(String) : [];
+    return [server.command, ...args].join(" ");
+  }
+  return typeof server.url === "string" ? server.url : "";
+}
+
+/** What one settings file adds to the listing. */
+function readSettings(
+  load: ProjectLoad,
+  settings: Record<string, unknown>,
+  file: string,
+  shown: { hooks: number },
+  otherKeys: Set<string>,
+): void {
+  if (isObject(settings.hooks)) {
+    for (const [event, groups] of Object.entries(settings.hooks)) {
+      const commands = hookCommands(groups);
+      const kept = commands.slice(0, Math.max(0, MAX_ITEMS - shown.hooks));
+      load.omitted.hooks += commands.length - kept.length;
+      shown.hooks += kept.length;
+      if (kept.length > 0) load.hooks.push({ event, file, commands: kept });
+    }
+  }
+  for (const [key, value] of Object.entries(settings)) {
+    const command = programOf(key, value);
+    if (command !== undefined) load.executables.push({ key, file, command: show(command) });
+    if (!EXPLAINED_KEYS.has(key)) otherKeys.add(key);
+  }
+  for (const key of ["enabledPlugins", "extraKnownMarketplaces"]) {
+    const value = settings[key];
+    if (isObject(value)) load.plugins.push(...Object.keys(value));
+  }
+  if (isObject(settings.env)) {
+    load.envKeys.push(...Object.keys(settings.env));
+    for (const [key, value] of Object.entries(settings.env)) {
+      if (REDIRECT_ENV.has(key.toLowerCase()) && typeof value === "string") {
+        load.redirects.push({ key, file, value: show(value) });
+      }
+    }
+  }
+  if (isObject(settings.permissions)) {
+    const { allow, defaultMode } = settings.permissions;
+    if (Array.isArray(allow)) {
+      load.allowRules.push(...allow.filter((r): r is string => typeof r === "string").map(show));
+    }
+    if (typeof defaultMode === "string") load.defaultMode = defaultMode;
+  }
 }
 
 /** What the project's own files would bring into a session: read, never run. */
@@ -238,48 +308,7 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
   const otherKeys = new Set<string>();
   for (const file of [".claude/settings.json", ".claude/settings.local.json"]) {
     const settings = await readJson(root, file, unreadable);
-    if (!settings) continue;
-    if (isObject(settings.hooks)) {
-      for (const [event, groups] of Object.entries(settings.hooks)) {
-        const commands = (Array.isArray(groups) ? groups : [])
-          .flatMap((group) => (isObject(group) && Array.isArray(group.hooks) ? group.hooks : []))
-          .flatMap((hook) =>
-            isObject(hook) && typeof hook.command === "string" ? [show(hook.command)] : [],
-          );
-        const kept = commands.slice(0, Math.max(0, MAX_ITEMS - shown.hooks));
-        load.omitted.hooks += commands.length - kept.length;
-        shown.hooks += kept.length;
-        if (kept.length > 0) load.hooks.push({ event, file, commands: kept });
-      }
-    }
-    for (const [key, value] of Object.entries(settings)) {
-      const command = PROGRAM_KEYS.has(key)
-        ? value
-        : PROGRAM_OBJECT_KEYS.has(key) && isObject(value)
-          ? value.command
-          : undefined;
-      if (typeof command === "string") load.executables.push({ key, file, command: show(command) });
-      if (!EXPLAINED_KEYS.has(key)) otherKeys.add(key);
-    }
-    for (const key of ["enabledPlugins", "extraKnownMarketplaces"]) {
-      const value = settings[key];
-      if (isObject(value)) load.plugins.push(...Object.keys(value));
-    }
-    if (isObject(settings.env)) {
-      load.envKeys.push(...Object.keys(settings.env));
-      for (const [key, value] of Object.entries(settings.env)) {
-        if (REDIRECT_ENV.has(key.toLowerCase()) && typeof value === "string") {
-          load.redirects.push({ key, file, value: show(value) });
-        }
-      }
-    }
-    if (isObject(settings.permissions)) {
-      const { allow, defaultMode } = settings.permissions;
-      if (Array.isArray(allow)) {
-        load.allowRules.push(...allow.filter((r): r is string => typeof r === "string").map(show));
-      }
-      if (typeof defaultMode === "string") load.defaultMode = defaultMode;
-    }
+    if (settings) readSettings(load, settings, file, shown, otherKeys);
   }
   const mcp = await readJson(root, ".mcp.json", unreadable);
   if (mcp && isObject(mcp.mcpServers)) {
@@ -287,14 +316,7 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
     load.omitted.mcpServers = Math.max(0, servers.length - MAX_ITEMS);
     for (const [name, server] of servers.slice(0, MAX_ITEMS)) {
       if (!isObject(server)) continue;
-      const command =
-        typeof server.command === "string"
-          ? [server.command, ...(Array.isArray(server.args) ? server.args.map(String) : [])].join(
-              " ",
-            )
-          : typeof server.url === "string"
-            ? server.url
-            : "";
+      const command = mcpCommand(server);
       load.mcpServers.push({ name, file: ".mcp.json", command: show(command) });
     }
   }

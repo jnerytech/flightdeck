@@ -13,6 +13,7 @@ import { HostOverview } from "@/components/hosts/host-overview";
 import { HostVersionLine } from "@/components/hosts/host-version";
 import { HostWorktrees } from "@/components/hosts/host-worktrees";
 import { KeepAwakePanel } from "@/components/hosts/keep-awake-panel";
+import { ResumePanel } from "@/components/hosts/resume-panel";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
 import { FieldRow } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -275,6 +276,7 @@ export function HostPage(
               <BypassSwitch store={store} host={host} />
               <SimpleModePanel store={store} host={host} />
               <KeepAwakePanel store={store} host={host} />
+              <ResumePanel store={store} host={host} />
               {host.status === "online" && hasFeature(info?.features, "github", false) && (
                 <GithubPanel store={store} host={host} />
               )}

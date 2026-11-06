@@ -3,6 +3,7 @@ import {
   type Ack,
   CLOSE_UNAUTHORIZED,
   type EventEnvelope,
+  FEATURE_RESUME_OFFER,
   PROTOCOL_VERSION,
   parseServerMessage,
 } from "@flightdeck/protocol";
@@ -252,6 +253,23 @@ describe("replay", () => {
     await Bun.sleep(30);
     expect(client.events).toHaveLength(before);
     client.close();
+  });
+});
+
+describe("session.interrupted over the wire (issue #150)", () => {
+  test("host.info announces the resume offer, and a fresh host lists nothing interrupted", async () => {
+    const { connect } = setup();
+    const client = await connect();
+    const info = await client.ok<{ features?: string[] }>("host.info", {});
+    expect(info.features).toContain(FEATURE_RESUME_OFFER);
+    expect(await client.ok("session.interrupted", {})).toEqual({ sessions: [] });
+  });
+
+  test("a payload with an extra key is refused", async () => {
+    const { connect } = setup();
+    const client = await connect();
+    const ack = await client.request("session.interrupted", { within: 1 });
+    expect(ack).toMatchObject({ ok: false });
   });
 });
 

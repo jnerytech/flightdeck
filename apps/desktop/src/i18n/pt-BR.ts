@@ -3351,6 +3351,24 @@ export const ptBR = {
       webhooks: "webhook url avisar eventos http",
     },
   },
+  resumeOffer: {
+    title: "Retomar as sessões interrompidas",
+    intro:
+      "O daemon de {host} reiniciou enquanto estas rodavam. Retomar reconecta cada uma e envia: {text} O pedido original não é enviado de novo.",
+    rowRan: "rodou {n} min",
+    resumeSelected: "Retomar as escolhidas",
+    notNow: "Agora não",
+    dismissAll: "Dispensar todas",
+    resumed: "Retomada",
+    failed: "Não foi possível retomar: {reason}",
+    retry: "Tentar de novo {name}",
+    reopen: "Retomar as sessões interrompidas ({n})",
+    auto: "Retomar sozinho depois de um reinício",
+    autoHint:
+      "Quando o daemon deste host reinicia, as sessões que ele interrompeu são retomadas na hora, com um aviso e sem perguntar.",
+    autoOne: "{n} sessão retomada depois do reinício: {names}",
+    autoMany: "{n} sessões retomadas depois do reinício: {names}",
+  },
   simple: {
     modeLabel: "Modo simples",
     fullApp: "App completo",
@@ -3495,6 +3513,8 @@ export const ptBR = {
       confirm:
         "Confiar em {project} em {host}? Os hooks dele rodam comandos e os servidores MCP dele iniciam programas naquele computador, sem perguntar a você, sempre que uma sessão começa ali. Só faça isso para código que você escreveu ou leu.",
       failed: "Não foi possível ler a configuração deste projeto.",
+      listingUnavailable:
+        "A lista do que este projeto carregaria aparece no computador em que este host roda, ou pela sua rede Tailscale.",
       sessionNotice:
         "Esta pasta não tem confiança: os hooks, servidores MCP, configurações, CLAUDE.md, agentes e skills dela não carregaram, e os seus próprios servidores MCP e plugins também não.",
       sessionNoticeShort: "Esta pasta não tem confiança.",

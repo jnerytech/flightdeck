@@ -19,6 +19,8 @@ export interface BgServiceOptions {
   trust?: (cwd: string) => { trusted: boolean; configRoot?: string };
   /** Looks at the folder's git boundaries first, so `trust` can answer from them (a nested clone is not covered). */
   prepare?: (cwd: string) => Promise<void>;
+  /** The folders this host allows: a listed session whose folder is outside them is not touched (issue #415). */
+  allowedRoots?: readonly string[];
 }
 
 /** The listing and the commands are quick; a `claude` that does not answer is as good as none. */
@@ -88,6 +90,15 @@ export class BgService {
     return { supported: true, sessions };
   }
 
+  /**
+   * The folder the listing gives a session is Claude Code's word, not ours: it is held against the
+   * allowed roots before anything is run in it (issue #415). The real path is what is used.
+   */
+  private async folderOf(session: BgSession): Promise<string> {
+    const roots = this.opts.allowedRoots;
+    return roots ? resolveAllowedCwd(session.cwd, roots) : session.cwd;
+  }
+
   /** The session the listing has under `id`, or the refusal the app says in its language. */
   private async find(id: string): Promise<BgSession> {
     const found = (await this.list()).sessions.find((session) => session.id === id);
@@ -135,10 +146,11 @@ export class BgService {
   /** Restarts the session so it runs the current Claude Code (it resumes its saved conversation). */
   async respawn(id: string): Promise<BgList> {
     const session = await this.find(id);
+    const folder = await this.folderOf(session);
     // `claude respawn` takes no flags, so it cannot be told to leave a project's own hooks and servers
     // out: in a folder not trusted it is refused (the person trusts the project, or starts a new one).
-    await this.opts.prepare?.(session.cwd);
-    const trust = this.opts.trust?.(session.cwd);
+    await this.opts.prepare?.(folder);
+    const trust = this.opts.trust?.(folder);
     if (trust && !trust.trusted) {
       throw new FlightdeckError(
         "invalid_state",
@@ -148,7 +160,7 @@ export class BgService {
     }
     // A worktree is read from its main checkout, which a respawn cannot be told about: a branch's own
     // hooks would load, even in a trusted project.
-    if (trust?.configRoot && resolve(trust.configRoot) !== resolve(session.cwd)) {
+    if (trust?.configRoot && resolve(trust.configRoot) !== resolve(folder)) {
       throw new FlightdeckError(
         "invalid_state",
         "this session runs in a worktree, which cannot be restarted from here: start a new session",
@@ -176,11 +188,12 @@ export class BgService {
         "bg_no_message_path",
       );
     }
+    const folder = await this.folderOf(session);
     await this.claudeDo([
       "--resume",
       claudeSessionId,
       "--bg",
-      ...(await this.trustFlags(session.cwd)),
+      ...(await this.trustFlags(folder)),
       "--",
       text,
     ]);
