@@ -1163,7 +1163,8 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
     lê de novo.
 - **Aba Arquivos** (quando o host lista arquivos): o repositório da sessão como árvore. Pastas
   primeiro, depois arquivos, em ordem natural (`file2` antes de `file10`); uma pasta abre com um
-  clique e é lida uma vez. Um arquivo alterado mostra o status (novo, modificado, apagado,
+  clique e é lida ao abrir, e de novo quando a sessão escreve ou remove um arquivo nela (não precisa
+  reabrir a aba). Um arquivo alterado mostra o status (novo, modificado, apagado,
   renomeado) do mesmo diff da aba Mudanças, ao vivo, e cada pasta acima dele diz **tem mudanças**.
   Um arquivo que pode guardar uma credencial aparece como **Oculto**. O `.git` e links que levam
   para fora do repositório nunca aparecem. **Filtrar por nome** mantém os nomes que batem entre as
