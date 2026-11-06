@@ -12,21 +12,23 @@ export { HIGH_RISK_HOLD_MS };
  * A high-risk request is approved only by holding the button, never by a click. `pending` keeps
  * both off while an answer is on its way.
  */
-export function ApprovalActions(props: {
-  /**
-   * Required, so each caller says it (#245): a forgotten risk used to mean one click. `undefined`
-   * is a request the daemon judged no risk for (an older daemon) or a gate, which has none.
-   */
-  risk: RiskLevel | undefined;
-  pending?: boolean;
-  size?: "sm";
-  /** A plan to approve says so ("Approve the plan" / "Keep planning"). */
-  labels?: { approve: string; deny: string };
-  holdMs?: number;
-  /** `held`: the Approve was held its full time, the proof the store asks of a high risk (#245). */
-  onApprove(held: boolean): unknown;
-  onDeny(): unknown;
-}) {
+export function ApprovalActions(
+  props: Readonly<{
+    /**
+     * Required, so each caller says it (#245): a forgotten risk used to mean one click. `undefined`
+     * is a request the daemon judged no risk for (an older daemon) or a gate, which has none.
+     */
+    risk: RiskLevel | undefined;
+    pending?: boolean;
+    size?: "sm";
+    /** A plan to approve says so ("Approve the plan" / "Keep planning"). */
+    labels?: { approve: string; deny: string };
+    holdMs?: number;
+    /** `held`: the Approve was held its full time, the proof the store asks of a high risk (#245). */
+    onApprove(held: boolean): unknown;
+    onDeny(): unknown;
+  }>,
+) {
   const t = useT();
   const pending = props.pending ?? false;
   const size = props.size ? { size: props.size } : {};

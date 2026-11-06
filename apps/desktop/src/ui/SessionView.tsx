@@ -71,6 +71,8 @@ function rememberPosition(key: string, top: number, atEnd: boolean, seq: number)
 
 /** How far from the end still counts as being at the end, in pixels. */
 const END_SLACK = 24;
+/** How long after the wheel, a key, a touch or a press on the scrollbar a scroll is the person's. */
+const PERSON_SCROLL_MS = 600;
 
 export interface SessionActions {
   /** Copies a text (the approval's folder); the app's store does. */
@@ -374,6 +376,14 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   // Where the view itself last put the scroll: the scroll event of that move says nothing about the
   // reader, and by the time it is delivered the layout may have grown (a panel, a code block).
   const pinnedTop = useRef<number | null>(null);
+  // Until when a scroll is the person's: their wheel, keys, touch or a press on the scrollbar. The
+  // browser also scrolls by itself (it pulls the position back when the content shrinks), and the
+  // event for that can reach the handler after a panel changed the layout: read then, the view
+  // would look away from the end and stop following it (issue #315).
+  const personUntil = useRef(0);
+  const person = () => {
+    personUntil.current = Date.now() + PERSON_SCROLL_MS;
+  };
   const pin = (box: HTMLElement) => {
     box.scrollTop = box.scrollHeight;
     pinnedTop.current = box.scrollTop;
@@ -668,12 +678,20 @@ export function SessionView(props: Readonly<SessionViewProps>) {
       <div className="pane-fill">
         <Timeline
           ref={timeline}
+          onWheel={person}
+          onTouchStart={person}
+          onTouchMove={person}
+          onKeyDown={person}
+          onPointerDown={person}
           onScroll={(e) => {
             const box = e.currentTarget;
             const own = pinnedTop.current === box.scrollTop;
             pinnedTop.current = null;
             if (own && following.current) return;
             const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight <= END_SLACK;
+            // Following and not at the end, with no hand on it: the layout moved, not the person.
+            // The observer pins the end again.
+            if (following.current && !atEnd && Date.now() >= personUntil.current) return;
             following.current = atEnd;
             lastHeight.current = box.scrollHeight;
             // Leaving the end remembers the last message seen; returning to it forgets that.

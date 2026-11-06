@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
  * carries text the person needs: that goes where it can be read. Never a native `title`, which
  * keyboard users do not get.
  */
-export function IconTip(props: { label: string | undefined; children: ReactElement }) {
+export function IconTip(props: Readonly<{ label: string | undefined; children: ReactElement }>) {
   if (!props.label) return props.children;
   return (
     <TooltipProvider delayDuration={400}>

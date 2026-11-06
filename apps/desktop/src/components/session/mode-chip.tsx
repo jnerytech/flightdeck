@@ -25,14 +25,16 @@ const explainOf = (t: T, mode: PermissionMode) => t(`modes.${mode}.explain`);
  * this host, or looser than the session started) is listed with the reason. Bypass turns the chip
  * to the warning color.
  */
-export function ModeChip(props: {
-  t: T;
-  mode: PermissionMode;
-  rows: ModeRow[];
-  onPick(mode: SettableMode): void;
-  /** Opens the host's page, where the bypass switch is. */
-  onOpenHostSettings?: (() => void) | undefined;
-}) {
+export function ModeChip(
+  props: Readonly<{
+    t: T;
+    mode: PermissionMode;
+    rows: ModeRow[];
+    onPick(mode: SettableMode): void;
+    /** Opens the host's page, where the bypass switch is. */
+    onOpenHostSettings?: (() => void) | undefined;
+  }>,
+) {
   const { t, mode, rows } = props;
   const [open, setOpen] = useState(false);
   const bypass = mode === "bypassPermissions";

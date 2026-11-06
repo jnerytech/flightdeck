@@ -1574,7 +1574,9 @@ paths). You can add patterns in the host configuration (`risk.extraHigh`); the b
 be lowered.
 
 - A **High risk** request is red and **Approve** becomes **Hold to approve**: hold the button for 2
-  seconds. The A key does not approve it; N still denies.
+  seconds. The A key does not approve it; N still denies. The host checks the hold too: it refuses
+  an approval of a high-risk request that does not carry it ("A high-risk request is approved only
+  by holding the button."), so no other client can skip it either.
 - The tray never approves a high-risk request: it offers **Deny** and **Open**.
 - With automatic approval on, an approval that nobody gave by hand shows in the session's
   timeline as "Approved automatically", with who decided and why. A high-risk request or one that

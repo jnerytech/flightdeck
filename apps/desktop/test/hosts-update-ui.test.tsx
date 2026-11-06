@@ -14,7 +14,7 @@ const {
   waitFor: rtlWaitFor,
 } = await import("@testing-library/react");
 const screen = liveScreen(within);
-const { AppStore } = await import("../src/lib/app-store.ts");
+const { AppStore, AUTO_UPDATE_KEY } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 
 const cleanups: Array<() => unknown> = [];
@@ -103,7 +103,14 @@ async function connect(url: string, opts: { offer?: { version: string; notes: st
   const mem = memoryPlatform();
   if (opts.offer) {
     const offer = opts.offer;
-    mem.platform.updater = { supported: true, check: async () => offer, install: async () => {} };
+    // The manual banner ("Update the app first") is what this test reads: no automatic download.
+    mem.items.set(AUTO_UPDATE_KEY, "false");
+    mem.platform.updater = {
+      supported: true,
+      check: async () => offer,
+      download: async () => {},
+      install: async () => {},
+    };
   }
   const store = new AppStore(mem.platform, { baseDelayMs: 10, daemonUpdateTimeoutMs: 300 });
   cleanups.push(() => store.dispose());

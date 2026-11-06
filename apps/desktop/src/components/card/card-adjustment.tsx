@@ -7,7 +7,9 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 
 /** A message to the card's running session: an adjustment, sent with its button. */
-export function CardAdjustment(props: { store: AppStore; hostId: string; cardId: string }) {
+export function CardAdjustment(
+  props: Readonly<{ store: AppStore; hostId: string; cardId: string }>,
+) {
   const t = useT();
   const [adjustment, setAdjustment] = useState("");
   const send = () => {
@@ -47,7 +49,9 @@ function runState(
 }
 
 /** Every run of the card, oldest first: its number, when it was queued and where it stands. */
-export function CardRuns(props: { runs: Card["runs"]; formatDateTime(iso: string): string }) {
+export function CardRuns(
+  props: Readonly<{ runs: Card["runs"]; formatDateTime(iso: string): string }>,
+) {
   const t = useT();
   return (
     <section className="flex flex-col gap-2">

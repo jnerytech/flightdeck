@@ -1137,6 +1137,36 @@
   white-space: nowrap;
 }
 
+/* A daemon's version in the host switcher's list (issue #281); one that is not the app's is marked. */
+@utility top-bar-host-version {
+  margin-left: auto;
+  padding-left: 1rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+}
+
+@utility top-bar-host-version-differs {
+  display: inline-flex;
+  margin-left: auto;
+  padding-left: 1rem;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--color-status-needs-you);
+  font-size: 0.75rem;
+}
+
+/* The host page header's mark for a daemon on another version than the app's (issue #281). */
+@utility host-version-differs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--color-status-needs-you);
+  & > svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+}
+
 /* The top bar's right side: search, theme, the bell and the version, never wrapping. */
 @utility top-bar-actions {
   display: flex;

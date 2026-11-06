@@ -47,12 +47,14 @@ type Reading = Extract<
 >["windows"][number];
 
 /** One window of the plan: its name, the percent used and, when known, when it resets. */
-function WindowMeter(props: {
-  reading: Reading;
-  hostName: string;
-  now: number;
-  formatTime: AccountCardProps["formatTime"];
-}) {
+function WindowMeter(
+  props: Readonly<{
+    reading: Reading;
+    hostName: string;
+    now: number;
+    formatTime: AccountCardProps["formatTime"];
+  }>,
+) {
   const t = useT();
   const { reading, hostName, now, formatTime } = props;
   const label = t(`account.windows.${reading.window}` as Key);

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { Command, WebhookSendResult } from "@flightdeck/protocol";
 import { startServer } from "../src/server.ts";
 import { WebhookSender } from "../src/webhook/sender.ts";
-import { newManager } from "./helpers.ts";
+import { BASELINE_FEATURES, newManager } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const TOKEN = "webhook-token-0123456789abcdef";
@@ -53,7 +53,7 @@ describe("webhook-protocolo", () => {
     const { client, posted } = await served(true);
     expect(
       (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toContain("webhook");
     const result = WebhookSendResult.parse(await client.data("webhook.send", payload));

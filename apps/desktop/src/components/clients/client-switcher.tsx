@@ -20,7 +20,7 @@ import { UNASSIGNED } from "../../lib/clients.ts";
 import { type HubRowState, hubRows } from "../../lib/hub.ts";
 import type { Route } from "../../lib/router.ts";
 
-const Count = ({ n }: { n: number }) =>
+const Count = ({ n }: Readonly<{ n: number }>) =>
   n > 0 ? <span className="ml-auto text-muted-foreground text-xs tabular-nums">{n}</span> : null;
 
 /**

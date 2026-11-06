@@ -116,7 +116,7 @@ function tabShortcut(store: AppStore, e: KeyboardEvent): boolean {
   return true;
 }
 
-export function App({ store }: { store: AppStore }) {
+export function App({ store }: Readonly<{ store: AppStore }>) {
   const state = useStoreState(store);
   const themeMode = useSyncExternalStore(store.theme.subscribe, () => store.theme.mode);
   const resolvedTheme = useSyncExternalStore(store.theme.subscribe, () => store.theme.resolved);
@@ -368,8 +368,14 @@ export function App({ store }: { store: AppStore }) {
           header={
             <>
               <TopBarHost
-                hosts={state.hosts}
+                hosts={state.hosts.map((h) => ({
+                  id: h.id,
+                  name: h.name,
+                  status: h.status,
+                  version: h.hostInfo?.daemonVersion ?? null,
+                }))}
                 currentId={store.uiHostId()}
+                appVersion={APP_VERSION}
                 t={t}
                 onChoose={(hostId) => store.select(hostId, null)}
                 onAdd={() => go({ name: "add-host" })}

@@ -748,6 +748,8 @@ export const ptBR = {
     host: "Host: {host}",
     noHost: "Nenhum host ainda",
     hostItem: "{host}, {state}",
+    hostItemVersion: "{host}, {state}, flightdeckd {version}",
+    hostItemDiffers: "{host}, {state}, flightdeckd {version}, diferente do app {app}",
     search: "Buscar ou ir para…",
     searchLabel: "Buscar ou ir para… (Ctrl+K)",
     toDark: "Mudar para o tema escuro",
@@ -1238,6 +1240,7 @@ export const ptBR = {
       "Ligar o terminal dá um shell completo neste host: confirme para seguir.",
     central_confirm: "Mexer no ~/.claude/settings.json do host pede a sua confirmação.",
     permission_request_closed: "O pedido de permissão {id} não está aberto.",
+    hold_required: "Um pedido de risco alto só é aprovado segurando o botão.",
     update_needs_service:
       "O daemon não roda como serviço: atualize no host com flightdeckd update --from <binário novo>.",
     update_signature_failed: "Não foi possível verificar a atualização: {why}",
@@ -2098,6 +2101,8 @@ export const ptBR = {
     },
   },
   update: {
+    ready: "O Flightdeck {version} está pronto. Reinicie para atualizar.",
+    restartNow: "Reiniciar agora",
     label: "Atualização do app",
     available: "Flightdeck {version} disponível",
     first: "Atualize primeiro o app e depois os daemons dos hosts.",
@@ -3806,6 +3811,7 @@ export const ptBR = {
     unavailable: "indisponível nesta plataforma",
     updates: "Atualizações",
     notifyUpdates: "Avisar sobre atualizações",
+    autoUpdate: "Atualizar automaticamente",
     checkNow: "Procurar atualização agora",
     upToDate: "Você está na versão mais recente",
     shortcut: "Atalho global",
@@ -4115,6 +4121,8 @@ export const ptBR = {
     terminalFailed: "Terminal não abriu: {error}. Use Copiar comando e cole no seu terminal.",
     updateCheckFailed:
       "não consegui procurar atualização: {error}. Confira a rede e tente de novo em Configurações.",
+    updateDownloadFailed:
+      "A versão nova não foi baixada: {error}. Ela é tentada de novo na próxima verificação, ou instale por Configurações.",
     updateInstallFailed:
       "A atualização não foi instalada: {error}. Tente de novo; se repetir, baixe o instalador da versão nova.",
     daemonUpdateLate: "o daemon não voltou na versão {version} a tempo",

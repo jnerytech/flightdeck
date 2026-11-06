@@ -752,6 +752,8 @@ export const en: Dictionary = {
     host: "Host: {host}",
     noHost: "No host yet",
     hostItem: "{host}, {state}",
+    hostItemVersion: "{host}, {state}, flightdeckd {version}",
+    hostItemDiffers: "{host}, {state}, flightdeckd {version}, not the app's {app}",
     search: "Search or jump to…",
     searchLabel: "Search or jump to… (Ctrl+K)",
     toDark: "Switch to the dark theme",
@@ -1243,6 +1245,7 @@ export const en: Dictionary = {
       "Turning the terminal on gives a full shell on this host: confirm it to go on.",
     central_confirm: "Changing the host's ~/.claude/settings.json needs your confirmation.",
     permission_request_closed: "The permission request {id} is not open.",
+    hold_required: "A high-risk request is approved only by holding the button.",
     update_needs_service:
       "The daemon does not run as a service: update on the host with flightdeckd update --from <new binary>.",
     update_signature_failed: "The update could not be verified: {why}",
@@ -2102,6 +2105,8 @@ export const en: Dictionary = {
     },
   },
   update: {
+    ready: "Flightdeck {version} is ready. Restart to update.",
+    restartNow: "Restart now",
     label: "App update",
     available: "Flightdeck {version} available",
     first: "Update the app first, then the hosts' daemons.",
@@ -3803,6 +3808,7 @@ export const en: Dictionary = {
     unavailable: "unavailable on this platform",
     updates: "Updates",
     notifyUpdates: "Notify about updates",
+    autoUpdate: "Update automatically",
     checkNow: "Check for updates now",
     upToDate: "You are on the latest version",
     shortcut: "Global shortcut",
@@ -4111,6 +4117,8 @@ export const en: Dictionary = {
       "The terminal did not open: {error}. Use Copy command and paste it into your terminal.",
     updateCheckFailed:
       "could not check for updates: {error}. Check the network and try again in Settings.",
+    updateDownloadFailed:
+      "The new version did not download: {error}. It is tried again at the next check, or install it from Settings.",
     updateInstallFailed:
       "The update was not installed: {error}. Try again; if it repeats, download the new version's installer.",
     daemonUpdateLate: "the daemon did not come back on version {version} in time",
