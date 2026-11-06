@@ -109,6 +109,26 @@ describe("resources-wiring: the daemon's own resources (issue #154)", () => {
     expect(snap.loadPercent).toBeNull();
   });
 
+  test("a reader handed in is used on any platform (a test's own /proc on Windows measures too)", async () => {
+    const proc = {
+      pageSize: 4096,
+      ticksPerSecond: 100,
+      pids: async () => [42],
+      stat: async () => ({
+        pid: 42,
+        ppid: 0,
+        name: "flightdeckd",
+        cpuTicks: 0,
+        startTicks: 0,
+        rssPages: 1,
+      }),
+      cwd: async () => "/w",
+      uptimeSec: async () => 10_000,
+    };
+    const snap = await (await createResources(deps({ platform: "win32", proc }))).snapshot();
+    expect(snap.measured).toBe(true);
+  });
+
   test("on Windows there is no load average: it reads 0 and is not reported", async () => {
     const snap = await (
       await createResources(deps({ platform: "win32", loadavg: () => [0, 0, 0] }))
