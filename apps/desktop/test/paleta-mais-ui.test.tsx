@@ -313,6 +313,18 @@ describe("paleta-mais-ui: a long section shows eight rows and a more button (iss
     expect(screen.queryByRole("button", { name: /more$/ })).toBeNull();
   });
 
+  test("the more button sits after the section's listbox, which holds only options (axe aria-required-children)", async () => {
+    open(world({ cards: many }));
+    await type("card");
+    const listboxes = screen.queryAllByRole("listbox");
+    expect(listboxes.length).toBeGreaterThan(0);
+    const onlyOptions = listboxes.every((box) =>
+      [...box.children].every((child) => child.getAttribute("role") === "option"),
+    );
+    expect(onlyOptions).toBe(true);
+    expect(screen.queryByRole("button", { name: "22 more" })).not.toBeNull();
+  });
+
   test("a short section has no button", async () => {
     open(world());
     await type("fix");
