@@ -68,6 +68,8 @@ describe("tabela-larga: a wide table scrolls sideways inside its own frame", () 
     expect({
       scrolls: block.includes("overflow-x: auto"),
       shadow: block.includes("background-attachment: local, local, scroll, scroll"),
-    }).toEqual({ scrolls: true, shadow: true });
+      // In its own frame a cell never wraps: a figure stays on one line ("US$ 0.73").
+      oneLine: /& :is\(th, td\) \{[^}]*white-space: nowrap/.test(block),
+    }).toEqual({ scrolls: true, shadow: true, oneLine: true });
   });
 });
