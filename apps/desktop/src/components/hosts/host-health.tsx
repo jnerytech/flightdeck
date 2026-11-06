@@ -12,13 +12,19 @@ import { type DepLook, depLook, depsSummary, fixFor, fixPageFor } from "../../li
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
 
 const ICONS = { check: Check, warning: TriangleAlert, cross: X, dash: Minus } as const;
-// Whole class names, so Tailwind finds them.
-const TONES: Record<DepLook["tone"], string> = {
-  ok: "text-status-ok",
-  warn: "text-status-needs-you",
-  error: "text-status-error",
-  off: "text-status-ended",
-};
+/** The colour of a tone, as whole class names so Tailwind finds them. */
+function toneClass(tone: DepLook["tone"]): string {
+  switch (tone) {
+    case "ok":
+      return "text-status-ok";
+    case "warn":
+      return "text-status-needs-you";
+    case "error":
+      return "text-status-error";
+    default:
+      return "text-status-ended";
+  }
+}
 
 /** The dependency that already says what a doctor check says (the check is then shown once, as the dependency). */
 const COVERED_BY: Record<string, string> = {
@@ -59,9 +65,13 @@ export function HostHealth(props: {
   doctor: DoctorResult | null;
   /** When the health was read, in epoch milliseconds; null before the first read. */
   checkedAt: number | null;
+  /** Why the last read failed, when it did. */
+  error?: string | null;
   onCheck(): Promise<void>;
   /** "Add folder": the app takes the person to the allowed folders. */
   onAddFolder(): void;
+  /** The hooks were installed from here: whoever shows their status asks again. */
+  onHooksChanged(): void;
 }) {
   const { store, host } = props;
   const { t } = store.i18n;
@@ -154,20 +164,24 @@ export function HostHealth(props: {
   const optional = (base.kind === "optional" ? base.n : 0) + warning;
   const read = props.deps !== null || props.doctor !== null;
   const kind = required > 0 ? "required" : optional > 0 ? "optional" : "ok";
-  const headline = !read
-    ? t("hostDeps.checking")
-    : {
-        required: t("hostDeps.requiredMissing", { n: required }),
-        optional: t("hostDeps.optionalMissing", { n: optional }),
-        ok: t("hostDeps.allSet"),
-      }[kind];
-  const headlineLook: DepLook = !read
-    ? { icon: "dash", tone: "off" }
-    : kind === "ok"
-      ? { icon: "check", tone: "ok" }
-      : kind === "optional"
-        ? { icon: "warning", tone: "warn" }
-        : { icon: "cross", tone: "error" };
+  const headline = props.error
+    ? t("hostDeps.readFailed", { reason: props.error })
+    : !read
+      ? t("hostDeps.checking")
+      : {
+          required: t("hostDeps.requiredMissing", { n: required }),
+          optional: t("hostDeps.optionalMissing", { n: optional }),
+          ok: t("hostDeps.allSet"),
+        }[kind];
+  const headlineLook: DepLook = props.error
+    ? { icon: "warning", tone: "warn" }
+    : !read
+      ? { icon: "dash", tone: "off" }
+      : kind === "ok"
+        ? { icon: "check", tone: "ok" }
+        : kind === "optional"
+          ? { icon: "warning", tone: "warn" }
+          : { icon: "cross", tone: "error" };
   const HeadIcon = ICONS[headlineLook.icon];
 
   const renderRow = (row: HealthRow) => {
@@ -179,10 +193,10 @@ export function HostHealth(props: {
             data-slot="dep-icon"
             data-icon={row.look.icon}
             aria-hidden="true"
-            className={TONES[row.look.tone]}
+            className={toneClass(row.look.tone)}
           />
           <strong>{row.name}</strong>
-          <span className={TONES[row.look.tone]}>{row.word}</span>
+          <span className={toneClass(row.look.tone)}>{row.word}</span>
         </span>
         {row.found.length > 0 && <span className="dep-found">{row.found.join(" · ")}</span>}
         {row.breaks && <span className="text-sm">{row.breaks}</span>}
@@ -238,16 +252,21 @@ export function HostHealth(props: {
   return (
     <Panel title={t("hostHealth.title")} label={t("hostHealth.title")}>
       <p role="status" className="dep-line">
-        <HeadIcon data-slot="dep-icon" aria-hidden="true" className={TONES[headlineLook.tone]} />
+        <HeadIcon
+          data-slot="dep-icon"
+          aria-hidden="true"
+          className={toneClass(headlineLook.tone)}
+        />
         <strong>{headline}</strong>
-        {props.checkedAt !== null && (
-          <span className="dep-found">
-            {t("hostHealth.checked", {
-              ago: formatAgo(Math.max(0, store.now() - props.checkedAt), t),
-            })}
-          </span>
-        )}
       </p>
+      {/* Outside the live region: the age changes every minute and must not be announced each time. */}
+      {props.checkedAt !== null && (
+        <span className="dep-found">
+          {t("hostHealth.checked", {
+            ago: formatAgo(Math.max(0, store.now() - props.checkedAt), t),
+          })}
+        </span>
+      )}
       {group("required")}
       {group("optional")}
       {group("checks")}
@@ -263,9 +282,10 @@ export function HostHealth(props: {
           onCancel={() => setConfirming(null)}
           onConfirm={() => {
             setConfirming(null);
-            void store
-              .hostCommand(host.id, "hooks.install", { confirm: true })
-              .then(() => props.onCheck());
+            void store.hostCommand(host.id, "hooks.install", { confirm: true }).then(() => {
+              props.onHooksChanged();
+              return props.onCheck();
+            });
           }}
         />
       )}

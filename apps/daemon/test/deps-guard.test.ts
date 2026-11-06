@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
+import { installFakeCli } from "../../../scripts/test/fake-cli.ts";
 import { startDaemon } from "../src/main.ts";
 import { poll, tempDir } from "./helpers.ts";
 
@@ -22,12 +23,30 @@ function sentinelCalls(): string[] {
   });
 }
 
+/** The `--version` probes the sentinels answered (they keep them apart from the real uses in calls.log). */
+function sentinelProbes(): string[] {
+  const dirs = (process.env.PATH ?? "")
+    .split(delimiter)
+    .filter((dir) => /fd-(claude|cli)-guard-/.test(dir));
+  return dirs.flatMap((dir) => {
+    const log = join(dir, "versions.log");
+    return existsSync(log) ? readFileSync(log, "utf8").trim().split("\n") : [];
+  });
+}
+
 describe("deps-guard: a plain daemon asked for its dependencies runs no real program", () => {
   test("startDaemon, a connection and deps.check reach no claude, gh or az", async () => {
     expect((process.env.PATH ?? "").split(delimiter).some((d) => /fd-claude-guard-/.test(d))).toBe(
       true,
     );
     const before = sentinelCalls();
+    const probesBefore = sentinelProbes().length;
+    // Nothing real is run for the other programs either: stand-ins that record what they are asked.
+    const others = ["git", "ssh", "tailscale", "pwsh"].map((name) => {
+      const fake = installFakeCli(name, [{ args: ["--version"], stdout: `${name} 9.9.9` }]);
+      stops.push(async () => fake.restore());
+      return { name, fake };
+    });
     const dir = tempDir("fd-deps-guard-");
     const file = join(dir, "config.json");
     writeFileSync(
@@ -64,5 +83,14 @@ describe("deps-guard: a plain daemon asked for its dependencies runs no real pro
     const items = ((ack?.ok ? ack.data : null) as protocol.DepsResult).items;
     expect(items.find((i) => i.id === "claude")?.path).toContain("fd-claude-guard-");
     expect(sentinelCalls()).toEqual(before);
+    // The guard still sees the probes: claude, gh and az were each asked for their version, and only that.
+    const probes = sentinelProbes().slice(probesBefore);
+    for (const name of ["claude", "gh", "az"]) expect(probes).toContain(`${name} --version`);
+    // The other programs found on the PATH are the stand-ins, asked for nothing but a version.
+    for (const { name, fake } of others) {
+      if (name === "pwsh" && process.platform !== "win32") continue;
+      expect(fake.calls().length).toBeGreaterThan(0);
+      for (const call of fake.calls()) expect(call).toHaveLength(1);
+    }
   });
 });

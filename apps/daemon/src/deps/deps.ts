@@ -133,6 +133,9 @@ async function service(env: DepsEnv): Promise<DepResult> {
     group: "required" as const,
     breaks: ["autostart"] as DepFeature[],
   };
+  // Only Linux and Windows have a service manager to ask: on macOS the real command throws.
+  if (env.platform !== "linux" && env.platform !== "win32")
+    return { ...base, state: "na", fix: [] };
   const installed = await env.serviceInstalled();
   if (env.platform === "win32") {
     const path = await env.which("schtasks");
@@ -144,7 +147,6 @@ async function service(env: DepsEnv): Promise<DepResult> {
       fix: [{ os: "win32", command: "flightdeckd service install" }],
     };
   }
-  if (env.platform !== "linux") return { ...base, state: "na", fix: [] };
   const path = await env.which("systemctl");
   const linger = await env.linger();
   const ok = path !== null && installed && linger !== "off";

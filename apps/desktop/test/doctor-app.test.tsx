@@ -43,7 +43,7 @@ describe("doctor-app: the check of a host, in its page", () => {
 
   test("the host is asked by itself with the app version, and each check shows an icon and a word, with a plain fix for the ones that failed", async () => {
     const { d } = await hostPage("pt-BR", true);
-    const section = await waitForSection();
+    const section = await sectionReady();
     await settle(() => (section.textContent ?? "").includes("Pastas permitidas"));
     expect(d.doctorAsked).toEqual([APP_VERSION]);
     const items = within(within(section).getByRole("list", { name: "Verificações" })).getAllByRole(
@@ -66,7 +66,7 @@ describe("doctor-app: the check of a host, in its page", () => {
 
   test("Verificar de novo asks again, and the same section in English", async () => {
     const { d } = await hostPage("en", true);
-    const section = await waitForSection("Health & dependencies");
+    const section = await sectionReady("Health & dependencies");
     await settle(() => (section.textContent ?? "").includes("Allowed folders"));
     await act(async () => {
       fireEvent.click(within(section).getByRole("button", { name: "Check again" }));
@@ -83,7 +83,7 @@ describe("doctor-app: the check of a host, in its page", () => {
   });
 });
 
-async function waitForSection(name = "Saúde e dependências") {
+async function sectionReady(name = "Saúde e dependências") {
   await settle(() => screen.queryByRole("region", { name }) !== null);
   return screen.getByRole("region", { name });
 }
