@@ -118,6 +118,14 @@ export class ProjectTrust {
    */
   async prepare(cwd: string): Promise<void> {
     const here = resolve(cwd);
+    await this.scan(here);
+    // The main checkout a worktree area is read from has boundaries of its own: a clone nested in
+    // a trusted project is not covered by it, and neither are the areas inside that clone.
+    const main = this.opts.configRootOf?.(here) ?? repoOfWorktreeArea(here);
+    if (main && resolve(main) !== here) await this.scan(resolve(main));
+  }
+
+  private async scan(here: string): Promise<void> {
     this.boundaries.delete(here);
     const via = this.via(here);
     if (via === null) return;
@@ -150,12 +158,20 @@ export class ProjectTrust {
 
   sessionTrust(cwd: string): SessionTrust {
     const main = this.opts.configRootOf?.(cwd) ?? repoOfWorktreeArea(cwd);
-    if (main) return { trusted: this.isTrusted(main), configRoot: main };
+    if (main) return { trusted: this.folderTrusted(main), configRoot: main };
     const boundary = this.boundaries.get(resolve(cwd));
     if (boundary?.main)
       return { trusted: this.isTrusted(boundary.main), configRoot: boundary.main };
     if (boundary) return { trusted: false };
     return { trusted: this.isTrusted(cwd) };
+  }
+
+  /** Whether a folder is trusted once its own git boundary is counted: a nested clone is not covered. */
+  private folderTrusted(folder: string): boolean {
+    const boundary = this.boundaries.get(resolve(folder));
+    if (boundary?.main) return this.isTrusted(boundary.main);
+    if (boundary) return false;
+    return this.isTrusted(folder);
   }
 
   private rows(): Row[] {
