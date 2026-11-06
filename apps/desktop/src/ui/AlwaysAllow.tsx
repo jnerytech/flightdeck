@@ -32,6 +32,17 @@ function ruleFile(path: string, cwd: string | undefined): string {
   return file.startsWith("/") ? `/${file}` : file;
 }
 
+/** The tools whose `path` is the folder they search: their default rule would name a folder. */
+const FOLDER_TOOLS = new Set(["Grep", "Glob", "LS"]);
+
+/**
+ * Whether the default rule of a request names a folder, which the daemon refuses (it would cover
+ * everything below it, credentials included): "Always in this project" is not offered then (#524).
+ */
+export function namesFolder(toolName: string, input: Record<string, unknown>): boolean {
+  return FOLDER_TOOLS.has(toolName) && typeof input.path === "string" && input.path !== "";
+}
+
 /** `Bash(npm test:*)` or `Write` as the project rule the daemon validates. */
 export function projectRule(text: string): PermissionUpdate {
   const match = /^([^(]+)\((.*)\)$/s.exec(text.trim());
@@ -94,14 +105,16 @@ export function AlwaysAllow(
           {t("alwaysAllow.session")}
         </Button>
       )}
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={props.disabled}
-        onClick={() => setRule(defaultRule(props.toolName, props.input, props.cwd))}
-      >
-        {t("alwaysAllow.project")}
-      </Button>
+      {!namesFolder(props.toolName, props.input) && (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={props.disabled}
+          onClick={() => setRule(defaultRule(props.toolName, props.input, props.cwd))}
+        >
+          {t("alwaysAllow.project")}
+        </Button>
+      )}
     </div>
   );
 }

@@ -2137,6 +2137,8 @@ export const en: Dictionary = {
     saveRule: "Save rule",
     session: "Allow for this session",
     project: "Always in this project",
+    refusedFolder:
+      "That rule names a folder, or a path that is not there yet, so it would cover everything below it ({tool}). Name one file.",
   },
   newSession: {
     bypassTitle: "Start without permission prompts?",

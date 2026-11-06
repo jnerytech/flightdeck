@@ -519,3 +519,44 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
     expect(result.value?.behavior).toBe("allow");
   });
 });
+
+describe("hold-bypass: a refused rule says whether it was refused for naming a folder (issue #524)", () => {
+  /** The params a refused answer carries, or null when it was accepted. */
+  const params = async (
+    tool: string,
+    input: Record<string, unknown>,
+    update: PermissionUpdate,
+    kind: PathKind,
+  ) => {
+    const { b, ask } = broker();
+    const { id } = await ask(tool, input);
+    try {
+      b.respond({ requestId: id, decision: "allow", updatedPermissions: [update] }, { kind });
+    } catch (error) {
+      if (error instanceof FlightdeckError) return error.params ?? {};
+      throw error;
+    }
+    return null;
+  };
+
+  test("a path that is a folder, or not on disk, is refused with names=folder; the same path as a file is saved", async () => {
+    const read = { file_path: `${CWD}/src/a.ts` };
+    expect((await params("Read", read, rule("Read", "src/a.ts"), () => "dir"))?.names).toBe(
+      "folder",
+    );
+    expect((await params("Read", read, rule("Read", "src/a.ts"), () => "missing"))?.names).toBe(
+      "folder",
+    );
+    expect(await params("Read", read, rule("Read", "src/a.ts"), () => "file")).toBeNull();
+  });
+
+  test("a rule that is too broad for another reason does not say it names a folder", async () => {
+    const run = { command: "ls" };
+    expect((await params("Bash", run, rule("Bash"), () => "file"))?.names).toBeUndefined();
+    // A wildcard that can stand for a credential is refused whatever the paths on disk are.
+    const read = { file_path: `${CWD}/src/a.ts` };
+    expect(
+      (await params("Read", read, rule("Read", "src/*"), () => "file"))?.names,
+    ).toBeUndefined();
+  });
+});

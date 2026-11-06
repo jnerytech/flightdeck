@@ -2134,6 +2134,8 @@ export const ptBR = {
     saveRule: "Salvar regra",
     session: "Permitir nesta sessão",
     project: "Sempre neste projeto",
+    refusedFolder:
+      "Essa regra nomeia uma pasta, ou um caminho que ainda não existe, então cobriria tudo que há dentro ({tool}). Nomeie um arquivo.",
   },
   newSession: {
     bypassTitle: "Começar sem pedidos de permissão?",
