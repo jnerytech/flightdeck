@@ -92,7 +92,7 @@ describe("chat-composer: the status line", () => {
     view({ settings: true, model: "claude-opus-5-5", mode: "default" });
     const status = screen.getByRole("group", { name: "Estado da sessão" });
     expect(within(status).getByRole("button", { name: "Modo de permissão: Padrão" })).toBeTruthy();
-    expect(within(status).getByLabelText("Modelo")).toBeTruthy();
+    expect(within(status).getByRole("button", { name: "Modelo: Modelo padrão" })).toBeTruthy();
   });
 
   test("a spinner shows while a turn runs and leaves when it ends", () => {

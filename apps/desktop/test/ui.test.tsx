@@ -155,7 +155,7 @@ describe("desktop: interface", () => {
     await addHost(server.url);
     await newSession("olá");
     await waitFor(() => expect(screen.getAllByText("ociosa").length).toBeGreaterThan(0));
-    await waitFor(() => expect(screen.getByLabelText("Modelo")).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Modelo:/ })).toBeTruthy());
     const chip = () => screen.getByRole("button", { name: /^Modo de permissão:/ });
     const openChip = async () =>
       act(async () => {
@@ -165,7 +165,14 @@ describe("desktop: interface", () => {
     await openChip();
     await act(async () => {
       fireEvent.click(screen.getByRole("menuitemradio", { name: /^Planejar/ }));
-      fireEvent.change(screen.getByLabelText("Modelo"), { target: { value: "opus" } });
+    });
+    const modelChip = () => screen.getByRole("button", { name: /^Modelo:/ });
+    await act(async () => {
+      fireEvent.pointerDown(modelChip(), { button: 0, ctrlKey: false, pointerType: "mouse" });
+      fireEvent.click(modelChip());
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitemradio", { name: /^Opus/ }));
     });
     await waitFor(() => expect(runtime.modes).toEqual(["plan"]));
     await waitFor(() => expect(runtime.models).toEqual(["opus"]));
