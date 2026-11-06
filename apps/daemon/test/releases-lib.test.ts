@@ -114,6 +114,37 @@ describe("releases-lib: the app's release notes from GitHub (issue #125)", () =>
     expect((await releases.list(5)).releases).toHaveLength(1);
   });
 
+  test("a release whose link is not https is left out, and a long tag or title is cut", async () => {
+    const { releases } = feed(() =>
+      json([
+        release("v1", { html_url: "javascript:alert(1)" }),
+        release("v2", { html_url: "http://example.com/v2" }),
+        release("v3", { name: "t".repeat(500), tag_name: "v".repeat(500) }),
+        release("v4"),
+      ]),
+    );
+    const list = (await releases.list(5)).releases;
+    expect(list.map((r) => r.url.startsWith("https://"))).toEqual([true, true]);
+    expect(list[0]?.title.length).toBeLessThanOrEqual(200);
+    expect(list[0]?.tag.length).toBeLessThanOrEqual(200);
+    expect(list[1]?.tag).toBe("v4");
+  });
+
+  test("calls that come while a read is going share it: GitHub is asked once", async () => {
+    const waiting: Array<(r: Response) => void> = [];
+    const { releases, asked } = feed(
+      () =>
+        new Promise<Response>((done) => {
+          waiting.push(done);
+        }),
+    );
+    const calls = [releases.list(1), releases.list(2), releases.list(3)];
+    for (const done of waiting) done(json([release("v1"), release("v2"), release("v3")]));
+    const lists = await Promise.all(calls);
+    expect(asked).toHaveLength(1);
+    expect(lists.map((l) => l.releases.length)).toEqual([1, 2, 3]);
+  });
+
   test("a network failure is the same refusal", async () => {
     const releases = new ReleaseFeed({
       url: "https://api.example/releases",
