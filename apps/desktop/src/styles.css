@@ -246,6 +246,13 @@
   flex-shrink: 0;
   padding-inline: 1rem;
   padding-top: 0.75rem;
+  /* Issue #422: in a short session area the band keeps tight, so the conversation keeps its room. */
+  &[data-short="true"] {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding-top: 0.25rem;
+  }
   /* No summary to show (an older daemon, a session with none): no empty band either. */
   &:empty {
     display: none;

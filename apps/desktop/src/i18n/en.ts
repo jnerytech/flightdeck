@@ -3420,6 +3420,7 @@ export const en: Dictionary = {
       failed: "Could not read this project's configuration.",
       sessionNotice:
         "This folder is not trusted: its own hooks, MCP servers, settings, CLAUDE.md, agents and skills did not load, and neither did your own MCP servers and plugins.",
+      sessionNoticeShort: "This folder is not trusted: some of its settings did not load.",
       review: "Review and trust",
     },
     sessionsHint: "The sessions of every project",
