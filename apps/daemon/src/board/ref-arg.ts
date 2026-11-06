@@ -6,6 +6,9 @@ const invalid = (name: string) =>
     name,
   });
 
+/** A branch or a revision that `refArg` or `assertBranchName` checked: what the git helpers take (issue #369). */
+export type Rev = string;
+
 /**
  * A branch or revision that came from a project's settings, checked before it becomes an argument
  * of git: one that starts with `-` would be read as an option (`--output=`, `--exec=`), issue #345.
