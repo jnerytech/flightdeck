@@ -10,6 +10,7 @@ import { linkSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { lanePlaces, runInLane } from "./lib/lane.ts";
+import { offerToOomKiller } from "./lib/oom-guard.ts";
 import type { SlotEnv } from "./lib/slot.ts";
 
 /** The file is written whole under another name and linked in, as the slot does. */
@@ -77,6 +78,9 @@ process.exit(
     nested: Boolean(process.env.FLIGHTDECK_LANE_HOLDER || process.env.FLIGHTDECK_SLOT_HOLDER),
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     log: (line) => console.error(line),
+    protect: () => {
+      offerToOomKiller({ platform: process.platform, write: writeFileSync });
+    },
     spawn: () => {
       const child = Bun.spawn([program === "bun" ? process.execPath : program, ...rest], {
         stdio: ["inherit", "inherit", "inherit"],
