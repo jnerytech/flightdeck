@@ -168,6 +168,16 @@ describe("layout", () => {
     );
   });
 
+  test("Page: the body positions what it holds, so an sr-only caption scrolls inside it and cannot stretch the screen (#640)", () => {
+    render(
+      <Page title="Host">
+        <div data-testid="table">table</div>
+      </Page>,
+    );
+    const body = screen.queryByTestId("table")?.parentElement;
+    expect(body?.className.split(" ").includes("relative") ?? false).toBe(true);
+  });
+
   test("Page fill: o corpo é uma coluna flex que ocupa o resto da altura, sem a área de rolagem", () => {
     render(
       <Page title="Terminal" fill>

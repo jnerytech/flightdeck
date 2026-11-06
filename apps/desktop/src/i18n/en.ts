@@ -4088,6 +4088,9 @@ export const en: Dictionary = {
     failed: "Failed",
     addFolder: "Add folder",
     groups: { required: "Required", optional: "Optional", checks: "Checks" },
+    counts: "OK: {ok} · Warnings: {warn} · Problems: {error}",
+    okFolded: "{n} with nothing to do",
+    okList: "Working",
   },
   hostDeps: {
     installPage: "Install page",
@@ -4219,6 +4222,7 @@ export const en: Dictionary = {
     memoryCol: "Memory",
     cpu: "CPU",
     programs: "Programs",
+    unmeasured: "not measured",
     list: "Sessions and terminals by memory",
     empty: "No session or terminal is running.",
     notMeasured:
