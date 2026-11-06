@@ -1840,6 +1840,12 @@ export const ptBR = {
     teleport_not_found:
       "Esta mudança não está mais no host: foi cancelada ou o tempo acabou. Comece de novo.",
     teleport_too_many: "Este host já está movendo duas sessões. Espere uma terminar, ou cancele-a.",
+    teleport_no_git:
+      "A pasta da sessão não é um repositório git com um commit: o código dela não pode mudar de host.",
+    teleport_no_remote:
+      "O repositório da sessão não tem uma branch do origin para partir: o outro host não conseguiria buscar o código.",
+    teleport_git:
+      "O git não conseguiu empacotar o código da sessão. Tente de novo; se falhar outra vez, confira o repositório.",
     runtime_unavailable: "O OpenCode não está disponível neste host.",
     runtime_unsupported: "Uma sessão do OpenCode não oferece {feature}.",
     opencode_unsafe_global:
