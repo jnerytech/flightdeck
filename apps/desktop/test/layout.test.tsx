@@ -270,9 +270,9 @@ describe("layout", () => {
     expect(body?.className.split(" ").includes("relative") ?? false).toBe(true);
   });
 
-  test("Page: the side gutter is 12 px compact, 16 px from 640 px and 24 px from 1024 px, in the header and in both bodies (#641)", () => {
+  test("Page: the side gutter is 12 px, 16 px from a 640 px area and 24 px from a 1024 px one (its area, not the window: a split pane is narrow), in the header and both bodies (#641)", () => {
     const gutters = (el: Element | null | undefined) =>
-      ["px-3", "sm:px-4", "lg:px-6", "px-6"].filter((c) =>
+      ["px-3", "@min-[40rem]:px-4", "@min-[64rem]:px-6", "px-6"].filter((c) =>
         (el?.className.split(" ") ?? []).includes(c),
       );
     render(
@@ -282,13 +282,13 @@ describe("layout", () => {
     );
     expect(gutters(screen.queryByTestId("tools")?.parentElement)).toEqual([
       "px-3",
-      "sm:px-4",
-      "lg:px-6",
+      "@min-[40rem]:px-4",
+      "@min-[64rem]:px-6",
     ]);
     expect(gutters(screen.queryByTestId("scrolling")?.parentElement)).toEqual([
       "px-3",
-      "sm:px-4",
-      "lg:px-6",
+      "@min-[40rem]:px-4",
+      "@min-[64rem]:px-6",
     ]);
     cleanup();
     render(
@@ -298,8 +298,8 @@ describe("layout", () => {
     );
     expect(gutters(screen.queryByTestId("filling")?.parentElement)).toEqual([
       "px-3",
-      "sm:px-4",
-      "lg:px-6",
+      "@min-[40rem]:px-4",
+      "@min-[64rem]:px-6",
     ]);
   });
 
