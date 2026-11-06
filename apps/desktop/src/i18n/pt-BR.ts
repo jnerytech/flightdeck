@@ -3498,6 +3498,7 @@ export const ptBR = {
     toggleMode: "Alternar entre o modo simples e o app completo",
     help: "Mostrar os atalhos",
     nextClient: "Trocar para o próximo cliente",
+    assistField: "Melhorar o texto de um campo com IA",
     back: "Voltar",
     forward: "Avançar",
     goSessions: "Ir para Sessões",

@@ -3493,6 +3493,7 @@ export const en: Dictionary = {
     toggleMode: "Switch between simple mode and the full app",
     help: "Show the shortcuts",
     nextClient: "Switch to the next client",
+    assistField: "Improve the text in a field with AI",
     back: "Back",
     forward: "Forward",
     goSessions: "Go to Sessions",
