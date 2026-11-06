@@ -14,6 +14,9 @@ const toneKey = (tone: StateTone): string => {
   return tone === "error" ? "idle" : tone;
 };
 
+/** An element id for a node: letters, digits, `_` and `-` only, so a selector made from it needs no escaping. */
+const idOf = (key: string, part: string) => `pt-${key.replaceAll(/[^A-Za-z0-9_-]/g, "_")}-${part}`;
+
 const same = (a: WorktreeFilter | null, b: WorktreeFilter) =>
   a !== null && a.hostId === b.hostId && a.projectId === b.projectId && a.path === b.path;
 
@@ -112,8 +115,8 @@ export function ProjectTree(props: {
                         aria-current={current ? "true" : undefined}
                         aria-describedby={
                           node.kind === "primary"
-                            ? `${node.key}:badge ${node.key}:base`
-                            : `${node.key}:base`
+                            ? `${idOf(node.key, "badge")} ${idOf(node.key, "base")}`
+                            : idOf(node.key, "base")
                         }
                         className={cn(
                           "project-tree-node",
@@ -127,11 +130,11 @@ export function ProjectTree(props: {
                         />
                         <span className="project-tree-branch">{node.branch}</span>
                         {node.kind === "primary" && (
-                          <span id={`${node.key}:badge`} className="project-tree-badge">
+                          <span id={idOf(node.key, "badge")} className="project-tree-badge">
                             {t("projectTree.primary")}
                           </span>
                         )}
-                        <span id={`${node.key}:base`} className="project-tree-base">
+                        <span id={idOf(node.key, "base")} className="project-tree-base">
                           {t("projectTree.base", { name: node.base })}
                         </span>
                       </button>
