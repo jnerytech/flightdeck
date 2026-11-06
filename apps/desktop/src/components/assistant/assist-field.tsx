@@ -20,6 +20,8 @@ export function AssistField(
     value: string;
     onChange(value: string): void;
     t: T;
+    /** For the caller's own layout: how the field and its panel sit among their neighbours. */
+    className?: string;
     children(control: AssistControl): ReactNode;
   }>,
 ) {
@@ -37,7 +39,7 @@ export function AssistField(
     return () => window.removeEventListener("keydown", claim, true);
   }, [open]);
   return (
-    <Stack gap={1}>
+    <Stack gap={1} {...(props.className ? { className: props.className } : {})}>
       <div className="assist-field">
         <div>
           {props.children({

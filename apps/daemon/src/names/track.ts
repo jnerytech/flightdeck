@@ -2,7 +2,7 @@
  * Phase 21, standard session names: names every session of this host when it shows up, whichever
  * way it was born (the app, a terminal, a card, a team, a plain claude seen by the hooks).
  */
-import type { ExternalSession, SessionSummary } from "@flightdeck/protocol";
+import type { ExternalSession, SessionSummary, SessionTeam } from "@flightdeck/protocol";
 import { projectName } from "./format.ts";
 import type { Names } from "./names.ts";
 
@@ -30,6 +30,8 @@ export interface TrackOptions {
   warm?: (cwd: string) => Promise<unknown> | undefined;
   /** The persona a session already has (phase 20's extension point); null when none. */
   personaOf?: (sessionId: string) => string | null;
+  /** The team a card's session works in (issue #101); null when none. */
+  teamOfCard?: (cardId: string) => SessionTeam | null;
 }
 
 /**
@@ -73,10 +75,12 @@ export function trackNames(opts: TrackOptions): () => void {
 
   const managed = (session: SessionSummary): void => {
     if (names.get(session.id)) return;
+    const cardId = opts.cardOf(session.id);
     names.assign(session.id, {
       project: projectName(opts.projectOf(session.cwd)),
       persona: opts.personaOf?.(session.id) ?? null,
-      cardId: opts.cardOf(session.id),
+      cardId,
+      team: cardId ? (opts.teamOfCard?.(cardId) ?? null) : null,
     });
   };
 

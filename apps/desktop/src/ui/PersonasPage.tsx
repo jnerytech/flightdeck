@@ -9,6 +9,7 @@ import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";
 import type { AppPersona } from "../lib/global-personas.ts";
+import type { Route } from "../lib/router.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
@@ -21,9 +22,13 @@ const originKey = (p: AppPersona) => (p.modified ? "packEdited" : p.scope);
 const PERSONASPAGE_KEYS = ["projects", "hosts"] as const;
 
 /** Phase 20: the personas of the first online host that keeps them, of a project, and the app's. */
-export const PersonasPage = memo(function PersonasPage(props: { store: AppStore }) {
+export const PersonasPage = memo(function PersonasPage(props: {
+  store: AppStore;
+  go(route: Route): void;
+}) {
   const t = useT();
   const { store } = props;
+  const openSettings = () => props.go({ name: "settings", section: "assistant" });
   const state = useStoreSlice(store, PERSONASPAGE_KEYS);
   const host = state.hosts.find(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "personas", false),
@@ -140,6 +145,7 @@ export const PersonasPage = memo(function PersonasPage(props: { store: AppStore 
           hostId={hostId}
           project={project === APP ? "" : project}
           persona={null}
+          onOpenSettings={openSettings}
           onSaved={() => {
             setEditing(null);
             void reload();
@@ -147,7 +153,7 @@ export const PersonasPage = memo(function PersonasPage(props: { store: AppStore 
           onClose={() => setEditing(null)}
         />
       )}
-      <div className="mb-4 flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3">
         <Field label={t("personas.project")}>
           {(control) => (
             <NativeSelect {...control} value={project} onChange={(e) => setProject(e.target.value)}>
@@ -163,7 +169,7 @@ export const PersonasPage = memo(function PersonasPage(props: { store: AppStore 
         </Field>
       </div>
       {message && (
-        <p role="status" className="mb-4 text-sm">
+        <p role="status" className="text-sm">
           {message}
         </p>
       )}
@@ -171,92 +177,101 @@ export const PersonasPage = memo(function PersonasPage(props: { store: AppStore 
         <EmptyState icon={Drama} title={t("personas.empty")} />
       ) : (
         <ul ref={list} aria-label={t("personas.list")} className="flex flex-col gap-2">
-          {personas.map((p) => (
-            <li key={`${p.scope}:${p.id}`} className="flex flex-col gap-2 rounded-lg border p-3">
-              {hostId && editing !== null && editing !== "new" && keyOf(editing) === keyOf(p) ? (
-                <PersonaEditor
-                  store={store}
-                  hostId={hostId}
-                  project={project === APP ? "" : project}
-                  persona={p}
-                  inPlace
-                  onSaved={() => {
-                    setEditing(null);
-                    void reload();
-                  }}
-                  onClose={() => setEditing(null)}
-                />
-              ) : (
-                <>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span data-name className="font-medium">
-                      {p.name}
-                    </span>
-                    <span className="rounded bg-muted px-1.5 text-xs">
-                      {t(`personas.origin.${originKey(p)}`)}
-                    </span>
-                    {!p.trusted && (
-                      <span className="rounded bg-destructive/10 px-1.5 text-destructive text-xs">
-                        {t("personas.untrusted")}
+          {personas.map((p) => {
+            const inEditor =
+              hostId && editing !== null && editing !== "new" && keyOf(editing) === keyOf(p);
+            return (
+              // A row puts its actions beside its text; the one being edited is a full-width card (#588).
+              <li
+                key={`${p.scope}:${p.id}`}
+                data-slot={inEditor ? "persona-card" : "persona-row"}
+                className={inEditor ? "persona-card" : "persona-row"}
+              >
+                {inEditor ? (
+                  <PersonaEditor
+                    store={store}
+                    hostId={hostId}
+                    project={project === APP ? "" : project}
+                    persona={p}
+                    onOpenSettings={openSettings}
+                    onSaved={() => {
+                      setEditing(null);
+                      void reload();
+                    }}
+                    onClose={() => setEditing(null)}
+                  />
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span data-name className="font-medium">
+                        {p.name}
                       </span>
-                    )}
-                  </div>
-                  <p className="text-muted-foreground text-sm">{p.description}</p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      aria-label={t("personas.editFor", { name: p.name })}
-                      data-edit={p.id}
-                      onClick={() => openEditor(p)}
-                    >
-                      {t("personas.edit")}
-                    </Button>
-                    {!p.trusted && (
+                      <span className="rounded bg-muted px-1.5 text-xs">
+                        {t(`personas.origin.${originKey(p)}`)}
+                      </span>
+                      {!p.trusted && (
+                        <span className="rounded bg-destructive/10 px-1.5 text-destructive text-xs">
+                          {t("personas.untrusted")}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-muted-foreground text-sm">{p.description}</p>
+                    <div data-slot="persona-actions" className="persona-actions">
                       <Button
                         size="sm"
                         variant="outline"
-                        aria-label={t("personas.trustFor", { name: p.name })}
-                        onClick={() => void trust(p)}
+                        aria-label={t("personas.editFor", { name: p.name })}
+                        data-edit={p.id}
+                        onClick={() => openEditor(p)}
                       >
-                        {t("personas.trust")}
+                        {t("personas.edit")}
                       </Button>
-                    )}
-                    {p.modified && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        aria-label={t("personas.resetFor", { name: p.name })}
-                        onClick={() => setResetting(p)}
-                      >
-                        {t("personas.reset")}
-                      </Button>
-                    )}
-                    {project && project !== APP && p.scope !== "app" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        aria-label={t("personas.publishFor", { name: p.name })}
-                        onClick={() => setPublishing(p)}
-                      >
-                        {t("personas.publishLabel")}
-                      </Button>
-                    )}
-                    {p.scope !== "pack" && !p.modified && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        aria-label={t("personas.removeFor", { name: p.name })}
-                        onClick={() => setRemoving(p)}
-                      >
-                        {t("personas.remove")}
-                      </Button>
-                    )}
-                  </div>
-                </>
-              )}
-            </li>
-          ))}
+                      {!p.trusted && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          aria-label={t("personas.trustFor", { name: p.name })}
+                          onClick={() => void trust(p)}
+                        >
+                          {t("personas.trust")}
+                        </Button>
+                      )}
+                      {p.modified && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          aria-label={t("personas.resetFor", { name: p.name })}
+                          onClick={() => setResetting(p)}
+                        >
+                          {t("personas.reset")}
+                        </Button>
+                      )}
+                      {project && project !== APP && p.scope !== "app" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          aria-label={t("personas.publishFor", { name: p.name })}
+                          onClick={() => setPublishing(p)}
+                        >
+                          {t("personas.publishLabel")}
+                        </Button>
+                      )}
+                      {p.scope !== "pack" && !p.modified && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          aria-label={t("personas.removeFor", { name: p.name })}
+                          onClick={() => setRemoving(p)}
+                        >
+                          {t("personas.remove")}
+                        </Button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
       {removing && (

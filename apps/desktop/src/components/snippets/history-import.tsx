@@ -123,7 +123,7 @@ export function HistoryImport(
   };
 
   return (
-    <div className="mb-4 flex flex-col gap-3 rounded-lg border p-4 text-sm">
+    <div className="flex flex-col gap-3 rounded-lg border p-4 text-sm">
       {lines === null ? null : (
         <ul aria-label={t("snippets.history.list")} className="flex flex-col gap-1">
           {lines.map((line) => (

@@ -234,7 +234,7 @@ export function SessionTiles(
     projectKey: props.projectKey,
     ...(props.path ? { path: props.path } : {}),
   };
-  const all = hubRows(props.state);
+  const all = hubRows(props.state, t);
   const rows = pickTiles(all, project, layout);
   const hidden = hiddenTiles(all, project, layout);
   const grid = useRef<HTMLUListElement>(null);

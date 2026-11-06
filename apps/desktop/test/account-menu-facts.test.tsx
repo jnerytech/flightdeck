@@ -54,6 +54,8 @@ function footer(over: { account?: AccountState | null; hostId?: string | null } 
       onDensity={(density: string) => void calls.push(`density ${density}`)}
       onCheckUpdates={() => void calls.push("check updates")}
       onShortcuts={() => void calls.push("shortcuts")}
+      hasNew={false}
+      onWhatsNew={() => void calls.push("whats new")}
     />,
   );
   return calls;

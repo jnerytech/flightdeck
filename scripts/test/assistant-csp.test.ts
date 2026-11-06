@@ -4,15 +4,16 @@ import { join } from "node:path";
 
 /**
  * Phase 40: a provider call leaves only through the Rust shell. The webview's CSP stays as it is
- * (no `https:`), no app code reaches a provider host, no command hands a key back, the HTTP client
- * has one TLS provider, and the commands' blocking work goes through `spawn_blocking_result`.
+ * (no `https:`; the one addition is `media-src data:`, for the chosen notification sound, #149),
+ * no app code reaches a provider host, no command hands a key back, the HTTP client has one TLS
+ * provider, and the commands' blocking work goes through `spawn_blocking_result`.
  */
 const ROOT = join(import.meta.dir, "../..");
 const TAURI = join(ROOT, "apps/desktop/src-tauri");
 const read = (path: string) => readFileSync(path, "utf8");
 
 const CSP =
-  "default-src 'self'; connect-src 'self' ws: wss: ipc: http://ipc.localhost; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-src http://127.0.0.1:* http://localhost:* https://127.0.0.1:* https://localhost:*";
+  "default-src 'self'; connect-src 'self' ws: wss: ipc: http://ipc.localhost; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' data:; frame-src http://127.0.0.1:* http://localhost:* https://127.0.0.1:* https://localhost:*";
 
 const COMMANDS = [
   "token_get",
@@ -55,7 +56,7 @@ function sourceFiles(dir: string): string[] {
 }
 
 describe("assistant-csp: a provider is reached only from Rust (phase 40)", () => {
-  test("the CSP is the one before phase 40, and connect-src has no https:", () => {
+  test("the CSP is the one before phase 40 plus media-src data:, and connect-src has no https:", () => {
     const conf = JSON.parse(read(join(TAURI, "tauri.conf.json")));
     const csp: string = conf.app.security.csp;
     expect(csp).toBe(CSP);
