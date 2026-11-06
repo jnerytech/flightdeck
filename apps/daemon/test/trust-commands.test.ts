@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ProjectLoad, ProjectTrustState, ProjectTrustStates } from "@flightdeck/protocol";
 import { startDaemon } from "../src/main.ts";
@@ -12,9 +12,12 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-async function daemon() {
+async function daemon(opts: { rootAsSymlink?: boolean } = {}) {
   const dir = tempDir();
   const { root, project } = workspace();
+  // The allowed root as the config names it: a symlink to the real folder, or the folder itself.
+  const named = join(dir, "code");
+  if (opts.rootAsSymlink) symlinkSync(root, named);
   const file = join(dir, "config.json");
   writeFileSync(
     file,
@@ -22,7 +25,7 @@ async function daemon() {
       port: 0,
       token: TOKEN,
       dataDir: join(dir, "data"),
-      allowedRoots: [root],
+      allowedRoots: [opts.rootAsSymlink ? named : root],
       history: { roots: [join(dir, "nada")] },
     }),
   );
@@ -116,6 +119,14 @@ describe("trust-commands: the person sees what a project would load and decides 
         "forbidden_cwd/cwd_outside_roots",
       ]);
     }
+  });
+
+  test("an allowed root named by a symlink is still refused when the real folder is given (review of #196)", async () => {
+    const { root, project, refusal } = await daemon({ rootAsSymlink: true });
+    expect(await refusal("project.trust.set", { path: root, trusted: true })).toBe(
+      "invalid_state/trust_root_refused",
+    );
+    expect(await refusal("project.trust.set", { path: project, trusted: true })).toBe("ok");
   });
 
   test("trusting an allowed root, or a folder above one, is refused with a reason; trusting a project inside passes", async () => {

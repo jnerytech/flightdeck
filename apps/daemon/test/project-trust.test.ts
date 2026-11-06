@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { EventStore } from "../src/store/event-store.ts";
 import { MIGRATIONS } from "../src/store/migrations.ts";
@@ -134,6 +134,17 @@ describe("project-trust: trust never reaches a folder the person did not mean (s
     expect(trust.isTrusted("/work")).toBe(false);
     trust.trust("/work/app");
     expect(trust.isTrusted("/work/app/src")).toBe(true);
+  });
+
+  test("an allowed root given as a symlink still grants nothing by prefix: the record is compared with its real path (review of #196)", () => {
+    const real = tempDir("fd-trust-real-");
+    const link = join(tempDir("fd-trust-link-"), "code");
+    symlinkSync(real, link);
+    const { trust } = fresh({ roots: () => [link] });
+    trust.trust(real);
+    expect(trust.isTrusted(join(real, "new-clone"))).toBe(false);
+    trust.trust(join(real, "app"));
+    expect(trust.isTrusted(join(real, "app", "src"))).toBe(true);
   });
 
   test("a session folder seeded by the migration is that exact folder and nothing under it; a registered project is its whole tree", () => {
