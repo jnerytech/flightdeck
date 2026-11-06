@@ -1,6 +1,6 @@
 import type { DepResult, DepsResult, DoctorCheckResult, DoctorResult } from "@flightdeck/protocol";
-import { Check, Copy, Minus, TriangleAlert, X } from "lucide-react";
-import { useState } from "react";
+import { Check, ChevronRight, Copy, Minus, TriangleAlert, X } from "lucide-react";
+import { useId, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
@@ -118,11 +118,13 @@ const CHECK_WORDS: Record<DoctorCheckResult["status"], Key> = {
 function checkRow(check: DoctorCheckResult, env: RowEnv): HealthRow {
   const { t, update } = env;
   const offersUpdate = check.id === "version" && check.status !== "ok" && update !== null;
+  // An optional tool that is not installed passed, but it is not "OK": it is muted (#670).
+  const absent = check.absent === true;
   return {
     key: check.id,
     name: t(`doctor.check.${check.id}` as Key),
-    look: CHECK_LOOKS[check.status],
-    word: t(CHECK_WORDS[check.status]),
+    look: absent ? { icon: "dash", tone: "off" } : CHECK_LOOKS[check.status],
+    word: t(absent ? "hostHealth.optionalAbsent" : CHECK_WORDS[check.status]),
     found: [check.detail],
     breaks: null,
     copy: null,
@@ -190,6 +192,8 @@ export function HostHealth(
   const { store, host } = props;
   const { t } = store.i18n;
   const [confirming, setConfirming] = useState<Confirming | null>(null);
+  const [showFine, setShowFine] = useState(false);
+  const fineId = useId();
   const os = host.hostInfo?.os ?? "";
   const offer = host.hostInfo?.update;
   const update = offer?.available ? offer.version : null;
@@ -355,12 +359,23 @@ export function HostHealth(
       {group("optional")}
       {group("checks")}
       {fine.length > 0 && (
-        <details data-slot="health-ok" className="health-ok">
-          <summary>{t("hostHealth.okFolded", { n: fine.length })}</summary>
-          <ul aria-label={t("hostHealth.okList")} className="dep-compact-list">
-            {fine.map(compactRow)}
-          </ul>
-        </details>
+        // A disclosure button, not a <details>: it looks and reads as one (#670).
+        <div data-slot="health-ok" className="health-ok">
+          <button
+            type="button"
+            aria-expanded={showFine}
+            aria-controls={fineId}
+            onClick={() => setShowFine((open) => !open)}
+          >
+            <ChevronRight data-slot="fold-chevron" aria-hidden="true" />
+            {t(showFine ? "hostHealth.okHide" : "hostHealth.okShow", { n: fine.length })}
+          </button>
+          {showFine && (
+            <ul id={fineId} aria-label={t("hostHealth.okList")} className="dep-compact-list">
+              {fine.map(compactRow)}
+            </ul>
+          )}
+        </div>
       )}
       {confirming === "hooks" && (
         <ConfirmDialog

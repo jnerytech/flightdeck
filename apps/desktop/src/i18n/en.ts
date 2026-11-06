@@ -4156,7 +4156,9 @@ export const en: Dictionary = {
     addFolder: "Add folder",
     groups: { required: "Required", optional: "Optional", checks: "Checks" },
     counts: "OK: {ok} · Warnings: {warn} · Problems: {error}",
-    okFolded: "{n} with nothing to do",
+    okShow: "Show {n} checks with nothing to do",
+    okHide: "Hide {n} checks with nothing to do",
+    optionalAbsent: "Optional · not installed",
     okList: "Working",
   },
   hostDeps: {
