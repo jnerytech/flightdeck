@@ -24,8 +24,19 @@ const error = (patch: Partial<Notice>): Notice => ({
 });
 
 describe("toast-repetido: the same error again replaces its toast instead of stacking a second one (issue #581)", () => {
-  test("the same code from the same host is the same notice; another host, another code or a success is not", () => {
-    expect(sameNotice(error({ id: 1 }), error({ id: 2, text: "other words" }))).toBe(true);
+  test("the same error from the same host is the same notice; another host, code, text, reason or params, or a success, is not", () => {
+    expect(sameNotice(error({ id: 1 }), error({ id: 2 }))).toBe(true);
+    // One code covers several errors (not_found: a card, a session): the words tell them apart.
+    expect(
+      sameNotice(error({ code: "not_found" }), error({ code: "not_found", text: "other" })),
+    ).toBe(false);
+    expect(sameNotice(error({ reason: "a" }), error({ reason: "b" }))).toBe(false);
+    expect(sameNotice(error({ params: { cwd: "/a" } }), error({ params: { cwd: "/b" } }))).toBe(
+      false,
+    );
+    expect(sameNotice(error({ params: { cwd: "/a" } }), error({ params: { cwd: "/a" } }))).toBe(
+      true,
+    );
     expect(sameNotice(error({}), error({ hostId: "beta" }))).toBe(false);
     expect(sameNotice(error({}), error({ code: "timeout" }))).toBe(false);
     expect(sameNotice(error({ code: "" }), error({ code: "", text: "terminal off" }))).toBe(true);
