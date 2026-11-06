@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
 import { FlightdeckError } from "../src/errors.ts";
@@ -9,6 +8,7 @@ import {
   TeleportPackages,
   type TeleportSession,
 } from "../src/teleport/package.ts";
+import { tempDir } from "./helpers.ts";
 
 /**
  * Issue #100, slice 1: the source side of a teleport. An idle Claude Code session's transcript is
@@ -48,7 +48,7 @@ async function setup(
     chunkBytes?: number;
   } = {},
 ) {
-  const base = await mkdtemp(join(tmpdir(), "teleport-"));
+  const base = tempDir("fd-teleport-");
   folders.push(base);
   const history = join(base, "projects");
   const project = join(history, "-work-app");
