@@ -36,6 +36,7 @@ const card = (projectId: string, hostId: string): ProjectCard => ({
   needsYou: 0,
   lastActivity: null,
   costWeekUsd: null,
+  columns: { backlog: 0, in_progress: 0, waiting: 0, review: 0, done: 0 },
 });
 
 describe("host-overview", () => {

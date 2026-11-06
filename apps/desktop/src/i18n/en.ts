@@ -3941,6 +3941,15 @@ export const en: Dictionary = {
     costsHint: "What the sessions cost",
     settingsHint: "Folder, base branch, setup, personas and rules",
   },
+  /** The Board screen of a host: its projects as cards (#669). */
+  boardLanding: {
+    noCards: "No cards yet",
+    sessionsNeedYou: { one: "{n} session needs you", other: "{n} sessions need you" },
+    whatIs:
+      "A board holds a project's cards, from the backlog to done, and the sessions that work on them.",
+    filter: "Filter projects",
+    noMatch: "No project matches the filter.",
+  },
   projectsOverview: {
     title: "Projects",
     subtitle: "Every project of every host, with what is running in it.",
