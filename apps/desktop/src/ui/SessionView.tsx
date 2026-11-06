@@ -423,10 +423,13 @@ export function SessionView(props: SessionViewProps) {
   const [picking, setPicking] = useState(false);
   const start = session.permissionMode ?? "default";
   const [mode, setMode] = useState<PermissionMode>(start);
+  const [bypassAsk, setBypassAsk] = useState(false);
   const opencode = props.runtime === "opencode";
   const fork = opencode ? undefined : props.fork;
-  const [bypassAsk, setBypassAsk] = useState(false);
-  const modeMenu = modeRows({ current: mode, start, bypassAllowed: Boolean(props.bypass) });
+  // OpenCode has no accept-edits mode: the menu lists the others and the numbers follow.
+  const modeMenu = modeRows({ current: mode, start, bypassAllowed: Boolean(props.bypass) }).filter(
+    (row) => !opencode || row.mode !== "acceptEdits",
+  );
   /** A mode from the menu or Shift+Tab: bypass asks first, any other changes at once. */
   const chooseMode = (next: SettableMode) => {
     if (next === "bypassPermissions") {
