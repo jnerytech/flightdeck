@@ -3,7 +3,7 @@ import { en } from "../src/i18n/en.ts";
 import { ptBR } from "../src/i18n/pt-BR.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
-import { waiter } from "./wait.ts";
+import { settleMaybe, waiter } from "./wait.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
@@ -96,6 +96,22 @@ for (const [lang, t] of [
       expect(
         within(banner).queryByRole("button", { name: t.hostOffline.reconnectNow }),
       ).not.toBeNull();
+    });
+
+    test("Reconnect now on that screen tries the host again", async () => {
+      const store = await openReader(lang, "any-session", false);
+      await settle(() => screen.queryByRole("region", { name: t.hostOffline.label }) !== null);
+      const before = store.getState().hosts[0]?.retry?.lastTryAt ?? 0;
+      const banner = screen.queryByRole("region", { name: t.hostOffline.label }) as HTMLElement;
+      const reconnect = within(banner).queryByRole("button", { name: t.hostOffline.reconnectNow });
+      await act(async () => {
+        if (reconnect) fireEvent.click(reconnect);
+      });
+      const tried = await settleMaybe(
+        () => (store.getState().hosts[0]?.retry?.lastTryAt ?? 0) > before,
+        3000,
+      );
+      expect(tried).toBe(true);
     });
   });
 }
