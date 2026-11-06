@@ -160,8 +160,9 @@ function overridden(detail: string): FlightdeckError {
 /** The `mode` options must be exactly our two agents, and the current one the one we set. */
 function checkMode(options: ConfigOption[], expected?: string): void {
   const mode = options.find((option) => option.id === "mode");
-  const values = (mode?.options ?? []).map((option) => option.value).sort();
-  if (values.join(",") !== [...OUR_MODES].sort().join(","))
+  const byName = (x: string, y: string) => x.localeCompare(y);
+  const values = (mode?.options ?? []).map((option) => option.value).sort(byName);
+  if (values.join(",") !== [...OUR_MODES].sort(byName).join(","))
     throw overridden(`modes ${values.join(", ")}`);
   if (expected && mode?.currentValue !== expected) throw overridden(`mode ${mode?.currentValue}`);
 }
