@@ -18,6 +18,8 @@ const KEEP_MS = 60 * 60_000;
 const PER_PAGE = 20;
 const TIMEOUT_MS = 10_000;
 const MAX_BULLET = 300;
+/** A tag or title is a line of a card: GitHub allows far more. */
+const MAX_NAME = 200;
 
 /** The part of a GitHub release that the app shows; the rest of what GitHub sends is ignored. */
 const GithubRelease = z.object({
@@ -63,6 +65,8 @@ const unavailable = (why: string) =>
 /** The app's latest releases from GitHub, kept for an hour so a screen opened often asks once. */
 export class ReleaseFeed {
   private kept: { at: number; releases: ReleaseNote[] } | null = null;
+  /** The read going now: calls that come while it runs wait for it instead of asking GitHub again. */
+  private reading: Promise<ReleaseNote[]> | null = null;
   private readonly fetchIt: NonNullable<ReleaseFeedOptions["fetch"]>;
   private readonly now: () => number;
 
@@ -74,9 +78,15 @@ export class ReleaseFeed {
   async list(limit: number): Promise<ReleaseList> {
     const kept = this.kept;
     if (kept && this.now() - kept.at < KEEP_MS) return { releases: kept.releases.slice(0, limit) };
-    const releases = await this.read();
-    this.kept = { at: this.now(), releases };
-    return { releases: releases.slice(0, limit) };
+    this.reading ??= this.read()
+      .then((releases) => {
+        this.kept = { at: this.now(), releases };
+        return releases;
+      })
+      .finally(() => {
+        this.reading = null;
+      });
+    return { releases: (await this.reading).slice(0, limit) };
   }
 
   /** The published releases, newest first as GitHub sends them; a failed read is a refusal. */
@@ -94,10 +104,13 @@ export class ReleaseFeed {
     const parsed = GithubReleases.safeParse(await response.json().catch(() => null));
     if (!parsed.success) throw unavailable("an answer that is not a list of releases");
     return parsed.data
-      .filter((release) => !release.draft && !release.prerelease)
+      .filter(
+        (release) =>
+          !release.draft && !release.prerelease && release.html_url.startsWith("https://"),
+      )
       .map((release) => ({
-        tag: release.tag_name,
-        title: release.name?.trim() || release.tag_name,
+        tag: release.tag_name.slice(0, MAX_NAME),
+        title: (release.name?.trim() || release.tag_name).slice(0, MAX_NAME),
         publishedAt: release.published_at ?? "",
         url: release.html_url,
         highlights: parseHighlights(release.body ?? ""),
