@@ -81,6 +81,7 @@ import type {
 import { AppLog } from "./app-log.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
+import { loadLastBoards, saveLastBoard } from "./board-shortcut.ts";
 import { budgetLabel } from "./budgets.ts";
 import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import {
@@ -1771,6 +1772,16 @@ export class AppStore {
     if (!now.canSwitch) return false;
     this.setUiChoice(hostId, now.mode === "simple" ? "full" : "simple");
     return true;
+  }
+
+  /** The board last opened on a host, kept between runs (#669); `null` when none. */
+  lastBoard(hostId: string): string | null {
+    return loadLastBoards(this.platform.storage)[hostId] ?? null;
+  }
+
+  /** Keeps the board just opened on a host, for the sidebar's Board item (#669). */
+  rememberBoard(hostId: string, projectId: string): void {
+    saveLastBoard(this.platform.storage, hostId, projectId);
   }
 
   /** The person's choice for a host; `null` forgets it, so the host's default speaks again. */
