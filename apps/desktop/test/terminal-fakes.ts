@@ -10,6 +10,7 @@ export function fakeXterm() {
   let onData: (data: string) => void = () => {};
   let onResize: (size: { cols: number; rows: number }) => void = () => {};
   let keyHandler: (event: KeyboardEvent) => boolean = () => true;
+  let wheelHandler: (event: WheelEvent) => boolean = () => true;
   let disposed = false;
   let openLink: (uri: string) => void = () => {};
   let selection = "";
@@ -43,6 +44,9 @@ export function fakeXterm() {
     },
     attachCustomKeyEventHandler: (handler) => {
       keyHandler = handler;
+    },
+    attachCustomWheelEventHandler: (handler) => {
+      wheelHandler = handler;
     },
     dispose: () => {
       disposed = true;
@@ -108,5 +112,19 @@ export function fakeXterm() {
         altKey: false,
         metaKey: false,
       } as KeyboardEvent),
+    /** Ctrl and a key, without Shift, as the zoom keys are pressed. */
+    ctrlKey: (key: string) =>
+      keyHandler({
+        key,
+        type: "keydown",
+        ctrlKey: true,
+        shiftKey: false,
+        altKey: false,
+        metaKey: false,
+        preventDefault: () => {},
+      } as unknown as KeyboardEvent),
+    /** The wheel turned with Ctrl held: negative is up. */
+    ctrlWheel: (deltaY: number) =>
+      wheelHandler({ ctrlKey: true, deltaY, preventDefault: () => {} } as unknown as WheelEvent),
   };
 }
