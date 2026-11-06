@@ -31,6 +31,8 @@ export interface Finding {
   /** The path with no numbers, for the spacing and narrow rules (#641): their baseline counts by it. */
   group?: string;
   detail: string;
+  /** How many px past its rule's limit (#637), for the spacing and narrow rules: bigger is worse. */
+  excess?: number;
 }
 
 /** A region that must be on screen with at least this much room (a contract, not a heuristic). */
@@ -86,12 +88,19 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   const seen = new Set<string>();
   /** A numbered path and the same path with no numbers, which the count baselines key by (#641). */
   const groups = new Map<string, string>();
-  const add = (rule: Rule, path: string, detail: string) => {
+  /** `excess` (#637): how many px past its rule's limit, for the spacing and narrow rules. */
+  const add = (rule: Rule, path: string, detail: string, excess?: number) => {
     const key = `${rule}|${path}`;
     if (seen.has(key)) return;
     seen.add(key);
     const group = groups.get(path);
-    found.push(group === undefined ? { rule, path, detail } : { rule, path, group, detail });
+    found.push({
+      rule,
+      path,
+      ...(group === undefined ? {} : { group }),
+      detail,
+      ...(excess === undefined ? {} : { excess: Math.round(excess) }),
+    });
   };
   const slotOf = (el: Element) => el.getAttribute("data-slot");
   /** An element with no data-slot: its tag and first class. */
@@ -365,6 +374,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
             rule,
             pathOf(b, true),
             `${Math.round(room.px)} px ${room.how} ${nameOf(a)}, at least ${min}`,
+            min - room.px,
           );
         }
       }
@@ -403,6 +413,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
           "card-padding",
           pathOf(el, true),
           `${Math.round(px)} px from the card's ${side} edge, at least ${min}`,
+          min - px,
         );
       }
     }
@@ -411,7 +422,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     // Only text left to spill: a box that clips (an ellipsis) or scrolls is the other rules' business.
     if ((style.overflowX || "visible") !== "visible" || !ownText(el) || srOnly(el)) return;
     const past = el.scrollWidth - el.clientWidth;
-    if (past > 1) add("text-spill", pathOf(el, true), `${past} px past its box`);
+    if (past > 1) add("text-spill", pathOf(el, true), `${past} px past its box`, past);
   };
   const checkSpacing = () => {
     if (!spacing) return;
@@ -463,6 +474,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
         "overflow-x",
         widest ? pathOf(widest, true) : "page",
         `the page scrolls ${extra} px sideways; this ends at ${Math.round(right)}`,
+        extra,
       );
     }
     // The outermost box past the right of a parent that neither clips nor scrolls (a table past its card).
@@ -483,6 +495,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
           "overflow-x",
           pathOf(el, true),
           `${Math.round(box.right - room.right)} px past the right of ${nameOf(parent)}`,
+          box.right - room.right,
         );
       }
     }
@@ -499,12 +512,14 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
           "nested-scroll",
           pathOf(el, true),
           `hides ${inner} px, inside ${nameOf(outer)}, which hides ${hides(outer)}`,
+          inner,
         );
       } else if (page > 1) {
         add(
           "nested-scroll",
           pathOf(el, true),
           `hides ${inner} px, inside the page, which hides ${page}`,
+          inner,
         );
       }
     }
@@ -524,6 +539,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
           "header-clipped",
           pathOf(header, true),
           `starts ${Math.round(under)} px under the tab row`,
+          under,
         );
       }
       for (const title of header.querySelectorAll(rules.title)) {
@@ -532,6 +548,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
             "header-clipped",
             pathOf(title, true),
             `cut: ${title.clientWidth} px of ${title.scrollWidth}`,
+            title.scrollWidth - title.clientWidth,
           );
         }
       }
@@ -693,18 +710,36 @@ export function judge(
 }
 
 /** A baseline of counts and what one run did with it (#641). */
+/** A key's entry in a count baseline (#637): how many findings, and the worst px past the limit. */
+export type CountEntry = number | { count: number; worst?: number };
+
+/** A baseline of counts and what one run did with it (#641). */
 export interface Ratchet {
-  baseline: Record<string, number> | null;
-  /** Findings per key (rule, screen, path with no numbers): the baseline's format. */
-  seen: Record<string, number>;
+  baseline: Record<string, CountEntry> | null;
+  /** Findings per key (rule, screen, path with no numbers), with the worst excess: the baseline's format. */
+  seen: Record<string, { count: number; worst?: number }>;
   /** Each finding by its numbered path, with its detail, for a person. */
   occurrences: Record<string, string>;
   /** Baseline keys this run saw fewer of, with what to do. */
   gone: string[];
 }
 
+/** How many px worse than its baseline a key may get before it fails: rendering differs a little. */
+export const WORSE_TOLERANCE = 2;
+
+/** Whether a baseline entry is a count, or a count with its worst excess (#637). */
+function isCountEntry(value: unknown): value is CountEntry {
+  if (Number.isInteger(value)) return true;
+  if (typeof value !== "object" || value === null) return false;
+  const { count, worst } = value as { count?: unknown; worst?: unknown };
+  return Number.isInteger(count) && (worst === undefined || typeof worst === "number");
+}
+
 /** A baseline of counts, or `null` when there is none yet; refuses one that is not counts, by name (#677). */
-export function loadCounts(read: () => string | null, file: string): Record<string, number> | null {
+export function loadCounts(
+  read: () => string | null,
+  file: string,
+): Record<string, CountEntry> | null {
   const text = read();
   if (text === null) return null;
   let parsed: Record<string, unknown>;
@@ -713,9 +748,15 @@ export function loadCounts(read: () => string | null, file: string): Record<stri
   } catch {
     throw new Error(`${file} is not valid JSON`);
   }
-  const wrong = Object.entries(parsed).find(([, value]) => !Number.isInteger(value));
+  const wrong = Object.entries(parsed).find(([, value]) => !isCountEntry(value));
   if (wrong) throw new Error(`${file}: ${wrong[0]} is not a count of findings`);
-  return parsed as Record<string, number>;
+  return parsed as Record<string, CountEntry>;
+}
+
+/** A baseline entry as a count and an optional worst excess. */
+function entryOf(value: CountEntry | undefined): { count: number; worst?: number } {
+  if (value === undefined) return { count: 0 };
+  return typeof value === "number" ? { count: value } : value;
 }
 
 /** Judges one screen against a ratchet: records what it saw and what is gone; returns the failures. */
@@ -729,21 +770,44 @@ export function ratchetScreen(screen: string, findings: Finding[], ratchet: Ratc
     counted.set(key, [...(counted.get(key) ?? []), finding]);
     ratchet.occurrences[findingKey(screen, finding)] = finding.detail;
   }
-  for (const [key, list] of counted) ratchet.seen[key] = list.length;
+  const worstOf = (list: Finding[]) => {
+    const all = list.flatMap((finding) => (finding.excess === undefined ? [] : [finding]));
+    return all.reduce<Finding | undefined>(
+      (top, next) => (top && (top.excess ?? 0) >= (next.excess ?? 0) ? top : next),
+      undefined,
+    );
+  };
+  for (const [key, list] of counted) {
+    const worst = worstOf(list)?.excess;
+    ratchet.seen[key] =
+      worst === undefined ? { count: list.length } : { count: list.length, worst };
+  }
   const baseline = ratchet.baseline;
   if (!baseline) return failures;
   for (const [key, list] of counted) {
-    const allowed = baseline[key] ?? 0;
-    if (list.length > allowed) {
-      const [rule, , group] = key.split("|");
+    const allowed = entryOf(baseline[key]);
+    const [rule, , group] = key.split("|");
+    if (list.length > allowed.count) {
       const each = list.map((finding) => `${finding.path} (${finding.detail})`).join("; ");
       failures.push(
-        `${screen}: ${rule} ${group}, ${list.length} where the baseline has ${allowed}: ${each}`,
+        `${screen}: ${rule} ${group}, ${list.length} where the baseline has ${allowed.count}: ${each}`,
+      );
+      continue;
+    }
+    const worst = worstOf(list);
+    if (
+      allowed.worst !== undefined &&
+      worst &&
+      (worst.excess ?? 0) > allowed.worst + WORSE_TOLERANCE
+    ) {
+      failures.push(
+        `${screen}: ${rule} ${group}, worst ${worst.excess} px past its limit where the baseline has ${allowed.worst}: ${worst.path} (${worst.detail})`,
       );
     }
   }
   const here = `|${screen}|`;
-  for (const [key, allowed] of Object.entries(baseline)) {
+  for (const [key, value] of Object.entries(baseline)) {
+    const allowed = entryOf(value).count;
     const now = counted.get(key)?.length ?? 0;
     if (key.includes(here) && now < allowed) {
       ratchet.gone.push(

@@ -478,9 +478,9 @@ describe("layout-guards: what the page function finds, named by data-slot path",
     const found = layoutFindings({ responsive: RESPONSIVE }).filter((f) =>
       RESPONSIVE_RULES.includes(f.rule),
     );
-    const ratchet = (baseline: Record<string, number> | null) => ({
+    const ratchet = (baseline: Record<string, CountEntry> | null) => ({
       baseline,
-      seen: {} as Record<string, number>,
+      seen: {} as Ratchet["seen"],
       occurrences: {} as Record<string, string>,
       gone: [] as string[],
     });
@@ -751,7 +751,7 @@ describe("layout-guards: where a session opens (issues #173 and #456)", () => {
   });
 });
 
-import { loadCounts, ratchetScreen } from "../lib/layout-guards.ts";
+import { type CountEntry, loadCounts, type Ratchet, ratchetScreen } from "../lib/layout-guards.ts";
 
 describe("layout-guards: one screen against a ratchet of counts, as demo:shots runs it (#641)", () => {
   const S = "dark en 640x800 board";
@@ -761,9 +761,9 @@ describe("layout-guards: one screen against a ratchet of counts, as demo:shots r
     group,
     detail,
   });
-  const fresh = (baseline: Record<string, number> | null) => ({
+  const fresh = (baseline: Record<string, CountEntry> | null) => ({
     baseline,
-    seen: {} as Record<string, number>,
+    seen: {} as Ratchet["seen"],
     occurrences: {} as Record<string, string>,
     gone: [] as string[],
   });
@@ -857,14 +857,14 @@ describe("layout-guards: one screen against a ratchet of counts, as demo:shots r
       excess,
     });
     const key = `overflow-x|${S}|card > table`;
-    const worse = fresh({ [key]: { count: 2, worst: 76 } } as unknown as Record<string, number>);
+    const worse = fresh({ [key]: { count: 2, worst: 76 } });
     expect(
       ratchetScreen(S, [over("card > table[1]", 40), over("card > table[2]", 79)], worse),
     ).toEqual([
       `${S}: overflow-x card > table, worst 79 px past its limit where the baseline has 76: card > table[2] (79 px past the right of card)`,
     ]);
     expect(worse.seen).toEqual({ [key]: { count: 2, worst: 79 } });
-    const close = fresh({ [key]: { count: 2, worst: 76 } } as unknown as Record<string, number>);
+    const close = fresh({ [key]: { count: 2, worst: 76 } });
     expect(
       ratchetScreen(S, [over("card > table[1]", 40), over("card > table[2]", 78)], close),
     ).toEqual([]);
