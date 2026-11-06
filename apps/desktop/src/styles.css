@@ -1168,13 +1168,7 @@ html:not(:has([data-slot="status-bar"])) {
   justify-content: flex-end;
   gap: 0.5rem;
 }
-/* The persona picker and its two buttons on one baseline: the select keeps one width. */
-@utility member-persona {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.5rem;
-}
+/* The persona picker keeps one width on the shared field row (#101). */
 @utility persona-field {
   width: 14rem;
 }
