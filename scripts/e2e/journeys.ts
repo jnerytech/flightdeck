@@ -759,6 +759,43 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .click();
     await notice.waitFor({ state: "detached", timeout: SESSION_WAIT });
   },
+
+  // 24. The Files tab of a session opens a file read only; when the session rewrites it (a second
+  // window sends the message) the open file offers its diff, live, and the diff toggles back (#506).
+  // The demo keeps its state: after the first run README.md is already changed, so only a fresh
+  // demo proves that the button arrives by itself.
+  "files-viewer": async (c) => {
+    const route: Route = { name: "session", host: ALFA, id: c.ids.idleSession };
+    await open(c, route);
+    await c.page.getByRole("button", { name: c.t("files.tab"), exact: true }).click();
+    const tree = c.page.getByRole("region", { name: c.t("files.region"), exact: true });
+    await tree.getByRole("button", { name: "README.md", exact: true }).click();
+    const viewer = c.page.getByRole("region", { name: c.t("files.viewer", { path: "README.md" }) });
+    // The demo keeps what an earlier run rewrote: any line of the file shows it opened.
+    await viewer.locator(".cm-line").first().waitFor({ timeout: WAIT });
+    const other = await c.page.context().newPage();
+    try {
+      await open({ ...c, page: other }, route);
+      // The tab the first window picked is remembered by the browser: this one starts on the conversation.
+      await other
+        .getByRole("button", { name: c.t("changes.conversationTab"), exact: true })
+        .click();
+      const box = other.getByLabel(c.t("session.message"), { exact: true });
+      await box.fill("[result:README.md] reescreva o arquivo");
+      await box.press("Enter");
+      // The sent message is on screen: the daemon has it, and the first window learns the rest by itself.
+      await other.getByText("[result:README.md]", { exact: false }).first().waitFor({ timeout: WAIT });
+    } finally {
+      await other.close();
+    }
+    const changes = viewer.getByRole("button", { name: c.t("files.showChanges"), exact: true });
+    await changes.click({ timeout: WAIT * 2 });
+    await c.page.getByRole("region", { name: c.t("diff.unifiedLabel") }).waitFor({ timeout: WAIT });
+    await viewer.getByRole("button", { name: c.t("files.showFile"), exact: true }).click();
+    await viewer.locator(".cm-content").waitFor({ timeout: WAIT });
+    await viewer.getByRole("button", { name: c.t("files.close"), exact: true }).click();
+    await viewer.waitFor({ state: "detached", timeout: WAIT });
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */
