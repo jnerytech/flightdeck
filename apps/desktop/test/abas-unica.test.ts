@@ -65,6 +65,19 @@ describe("abas-unica: a screen has one tab", () => {
     expect(routes()).toEqual(["home", "session"]);
   });
 
+  test("routes that differ only inside a nested field are different screens (#576)", () => {
+    const { tabs, routes } = setup();
+    const reader = (claudeSessionId: string): Route => ({
+      name: "reader",
+      target: { hostId: "h", claudeSessionId },
+    });
+    tabs.open(reader("a"));
+    tabs.router.push(reader("b"));
+    expect(tabs.active.router.current).toEqual(reader("b"));
+    tabs.show(reader("a"));
+    expect(routes()).toEqual(["home", "reader", "reader"]);
+  });
+
   test("a ctrl or middle click on a link still opens a new tab (#576)", () => {
     const { tabs, routes } = setup();
     tabs.open(hub);
