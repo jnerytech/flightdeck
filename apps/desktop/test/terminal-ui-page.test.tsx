@@ -400,7 +400,9 @@ describe("terminal-ui: the terminal screen", () => {
     act(() => void x.chord("F"));
     const box = screen.queryByRole("searchbox", { name: "Buscar no terminal" }) as HTMLElement;
     const toggle = (name: string) => screen.queryByRole("button", { name });
-    expect(toggle("Diferenciar maiúsculas e minúsculas")?.getAttribute("aria-pressed")).toBe("false");
+    expect(toggle("Diferenciar maiúsculas e minúsculas")?.getAttribute("aria-pressed")).toBe(
+      "false",
+    );
     await click("Diferenciar maiúsculas e minúsculas");
     await act(async () => {
       fireEvent.keyDown(box, { key: "w", altKey: true });
