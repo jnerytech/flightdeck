@@ -1450,6 +1450,7 @@ export const en: Dictionary = {
       "The variable {name} has a line break or NUL, which an ssh action does not send.",
     review_path_outside: "The path {path} is outside the repository.",
     review_target_invalid: "{target} is not a session or a card to review.",
+    branch_invalid: "{name} is not a valid branch name.",
     review_file_missing: "The file {path} does not exist.",
     review_file_big: "The file {path} is over 1 MB: edit it outside Flightdeck.",
     review_file_binary: "The file {path} is not text.",
