@@ -3899,6 +3899,13 @@ export const ptBR = {
     costsHint: "Quanto as sessões custaram",
     settingsHint: "Pasta, branch base, setup, personas e regras",
   },
+  /** The Board screen of a host: its projects as cards (#669). */
+  boardLanding: {
+    noCards: "Nenhum card ainda",
+    whatIs: "Um board guarda os cards de um projeto, do backlog ao feito, e as sessões que trabalham neles.",
+    filter: "Filtrar projetos",
+    noMatch: "Nenhum projeto corresponde ao filtro.",
+  },
   projectsOverview: {
     title: "Projetos",
     subtitle: "Todos os projetos de todos os hosts, com o que está rodando em cada um.",
