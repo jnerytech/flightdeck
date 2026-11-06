@@ -149,6 +149,25 @@ describe("guard: the #687 lows", () => {
       expect(worker(command) ?? "allowed").toContain("only the coordinator's own environment");
     }
     expect(worker("bun run coverage:funcs apps/desktop/src/store.ts")).toBeNull();
+    // Security review: an assignment after a wrapper (`slot --`, `env`) is in the run's environment too.
+    for (const command of [
+      "bun run slot -- env FLIGHTDECK_COORDINATOR=1 bun run coverage:funcs apps/desktop/src/store.ts",
+      "bun run slot -- FLIGHTDECK_COORDINATOR=1 bun run test:related -- --fast",
+    ]) {
+      expect(worker(command) ?? "allowed").toContain("only the coordinator's own environment");
+    }
+  });
+
+  test("security review: every --tests occurrence counts, and flags with a value do not hide the script", () => {
+    for (const command of [
+      `bun run coverage:funcs a.ts --tests=a.test.ts --tests ${tests(20)}`,
+      `bun run coverage:funcs a.ts --tests ${tests(11)} --tests ${tests(11)}`,
+      "bun run --cwd . test:related",
+      "bun --bun run test:related",
+    ]) {
+      expect(worker(command) ?? `allowed: ${command}`).toContain("holds the slot");
+    }
+    expect(worker("bun --bun run test:related -- --fast")).toBeNull();
   });
 
   test("#698 review: a second heavy run with an override only in front of another command is refused", () => {
