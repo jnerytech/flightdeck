@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
-import { memoryPlatform } from "./fixtures.ts";
+import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { settle } from "./wait.ts";
 
 registerDom();
@@ -166,6 +166,24 @@ function page(w: ReturnType<typeof make>) {
 }
 
 describe("setup-ui: the Setup screen (issue #164)", () => {
+  test("the app opens the setup route as a tab, with the screen's title", async () => {
+    const { App } = await import("../src/ui/App.tsx");
+    const cleanups: Array<() => unknown> = [];
+    const server = makeDaemon(cleanups, {}).listen();
+    const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 60_000 });
+    cleanups.push(() => store.dispose());
+    render(<App store={store} />);
+    await act(async () => {
+      await store.addHost({ name: "pc", url: server.url, token: TOKEN });
+    });
+    await settle(() => store.getState().hosts[0]?.status === "online");
+    await act(async () => {
+      store.tabs.open({ name: "setup" });
+    });
+    expect(await screen.findByRole("heading", { name: "Setup" })).not.toBeNull();
+    for (const fn of cleanups.splice(0).reverse()) await fn();
+  });
+
   test("opening it asks every online host about GitHub, once", async () => {
     const w = make({ hosts: [host("h1"), host("h2", { status: "offline" })] });
     const asks: unknown[] = [];
