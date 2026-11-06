@@ -23,6 +23,9 @@ import { ulid } from "../ulid.ts";
 import type { Changes } from "./changes.ts";
 import { firstStep, isGitDir, type Located, located, refuseCredential } from "./paths.ts";
 
+/** What a path that cannot be looked at reads as. */
+const absent = () => null;
+
 /** The most entries one folder sends to the explorer; it says the rest were cut. */
 const LIST_CAP = 500;
 
@@ -47,14 +50,15 @@ async function entryTarget(
     if (entry.isDirectory()) return { path, kind: "dir" };
     return entry.isFile() ? { path, kind: "file" } : null;
   }
-  const real = await realpath(path).catch(() => null);
+  const real = await realpath(path).catch(absent);
   // Out of the repository, or into its `.git`: not an entry of the explorer.
   if (!real || !isInside(realRoot, real) || isGitDir(firstStep(relative(realRoot, real)))) {
     return null;
   }
-  const info = await stat(real);
-  if (info.isDirectory()) return { path: real, kind: "dir" };
-  return info.isFile() ? { path: real, kind: "file" } : null;
+  // Gone since it was resolved: left out like a link that leads nowhere.
+  const info = await stat(real).catch(absent);
+  if (info?.isDirectory()) return { path: real, kind: "dir" };
+  return info?.isFile() ? { path: real, kind: "file" } : null;
 }
 
 export interface ReviewFilesOptions {
