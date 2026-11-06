@@ -230,3 +230,23 @@ describe("webhook-alvos: an ntfy target (#263)", () => {
     expect((await targets.update(generic.id, { type: "ntfy" })).type).toBe("ntfy");
   });
 });
+
+describe("webhook-alvos: switching a target's type (#263)", () => {
+  test("a target made ntfy drops the generic signing secret it had, unless a token comes with it", async () => {
+    const { targets, vault } = setup();
+    const generic = await targets.add(
+      input({
+        type: "generic",
+        url: "https://ntfy.sh/alerts",
+        signingSecret: "a secret with spaces",
+      }),
+    );
+    await targets.update(generic.id, { type: "ntfy" });
+    expect(vault.has(`webhook-sign:${generic.id}`)).toBe(false);
+    const other = await targets.add(
+      input({ type: "generic", url: "https://ntfy.sh/other", signingSecret: "old" }),
+    );
+    await targets.update(other.id, { type: "ntfy", signingSecret: "tk_new" });
+    expect(vault.get(`webhook-sign:${other.id}`)).toBe("tk_new");
+  });
+});
