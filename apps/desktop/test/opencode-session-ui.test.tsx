@@ -108,11 +108,21 @@ describe("opencode-session-ui", () => {
       "anthropic/claude-sonnet-5-5",
       "opencode/crouton-alpha-free",
     ]);
-    // The session list says it is OpenCode's too.
+    // The session list says it is OpenCode's too. Projects start folded: unfold them first.
+    const unfold = async () => {
+      const expand = screen.queryByRole("button", { name: "Expand all" });
+      if (expand) {
+        await act(async () => {
+          fireEvent.click(expand);
+        });
+      }
+    };
     await act(async () => {
       await store.refreshHub();
       store.router.push({ name: "hub" });
     });
+    await settleMaybe(() => screen.queryByRole("button", { name: "Expand all" }) !== null);
+    await unfold();
     await settleMaybe(() => document.querySelector('[data-slot="runtime-badge"]') !== null);
     expect(document.querySelector('[data-slot="runtime-badge"]')?.textContent).toBe("OpenCode");
     // In both of the hub's views.
@@ -124,6 +134,7 @@ describe("opencode-session-ui", () => {
         () =>
           (document.querySelector('[data-slot="session-card"]') !== null) === (view === "Cards"),
       );
+      await unfold();
       return document.querySelector('[data-slot="runtime-badge"]')?.textContent ?? null;
     };
     expect([await badgeIn("Cards"), await badgeIn("List")]).toEqual(["OpenCode", "OpenCode"]);
