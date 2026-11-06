@@ -100,7 +100,8 @@ describe("abas: o × de cada aba", () => {
   test("a tab shows its hover and keyboard focus states", async () => {
     await twoTabs();
     const focus = tab("Sessões");
-    expect(focus.className).toContain("hover:");
+    // Issue #488: the hover is the flat tab's own (tab-item's &:hover in styles.css).
+    expect(focus.parentElement?.className).toContain("tab-item");
     expect(focus.parentElement?.className).toContain("has-[[role=tab]:focus-visible]:ring");
   });
 });

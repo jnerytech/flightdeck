@@ -909,9 +909,16 @@ live; the list is the project's, so a session of another project never shows her
   window you already used comes back with its tabs. The account at the foot of the bar is the one
   of the host you are on; with no host open it is the shared account of the online hosts, or "N
   accounts" when they differ.
-- With one area, the tab strip sits in the top bar on the breadcrumb's row; with a split, each
-  area has its own strip. The strip keeps three tools: the active tab's **Actions** menu (move left
-  or right, move to the other area, pin), **New tab** and **Split**.
+- The tabs have a row of their own under the top bar, over each area (with a split, each area has
+  its own). They are flat, as in VS Code: thin lines part them, each is as wide as its title (then
+  the title is cut and its tooltip has it whole), the inactive ones are dimmer, and the active one
+  has the screen's background with an accent line on top. In a window under 600 px tall the one
+  area's tabs share the top bar's row instead, so a small window keeps room for the conversation.
+  The strip keeps three tools: the active tab's **Actions** menu (move left or right, move to the
+  other area, pin), **New tab** and **Split**.
+- While a request waits for you in a session, the session's header, the not-trusted notice and the
+  summary each take one line, so the request is whole on screen; **More actions** and the summary's
+  own button open the rest.
 - **Settings** has a rail of its sections (it takes you to a section and puts the focus there) and
   a search box: typing keeps the sections whose name or settings match.
 - **Costs** shows four tiles above the charts: the estimated cost, the tokens, the cache savings and
@@ -2834,6 +2841,24 @@ second copy anyway** opens it here all the same.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
   badge. The uptime keeps counting while the page is open.
+- **Resources:** a host page panel (hosts that announce `resources`) shows the host's memory and
+  disk as bars, its load, and a table of its sessions and terminals with the biggest memory first:
+  project, memory, CPU and the programs running (names only; never a command line or an
+  environment). Memory or disk at 80% reads **High** and at 90% **Critical**, in words as well as
+  colour. **Leftover processes** lists a `claude` that the host's daemon started for a session that is
+  over (older than a minute, in that session's folder, started while that session lived), with its
+  pid, age and memory; a `claude` the daemon starts for something else (a plugin install, the account
+  query, an action) or a live session's process whose folder was moved is never listed; **End** asks first and ends only that
+  process (the daemon checks again, right before the signal, that it is the same process, by pid and
+  start time, still its own child and still without an owner). A `claude` whose folder cannot be read,
+  or that runs in a folder where a live session is, is never listed: which one is whose cannot be told.
+  A daemon running as pid 1 (a container) lists none. Ending needs a connection from loopback or
+  Tailscale, like the other commands that change the host, and sends SIGTERM to that process only. The
+  panel reads every 5 s while the page is open and the host is online, and the daemon keeps no
+  timer for it. Per-process numbers come from `/proc`, so only Linux hosts have them; macOS and
+  Windows hosts show the memory and disk (and the load, on macOS) and say the processes are not
+  measured. A session is matched to its `claude` by folder and start order, so two sessions in one
+  folder can swap numbers.
 - **Worktrees:** a host page panel (hosts that announce `worktrees`) lists the cards' worktrees
   under `.flightdeck/worktrees` with their size on disk (**unknown** when measuring ran out of
   time, never 0), how long they have been idle, and their card. **Suggested** marks a clean worktree

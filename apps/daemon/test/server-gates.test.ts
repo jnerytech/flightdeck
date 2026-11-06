@@ -29,6 +29,7 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   idle: "idle",
   issues: "issues",
   maintenance: "maintenance",
+  resources: "resources",
   worktrees: "worktrees",
   mcp: "mcp",
   memory: "memory",

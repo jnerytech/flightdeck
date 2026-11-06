@@ -69,6 +69,7 @@ import type { QuotaHistory } from "./quota/history.ts";
 import type { Quota } from "./quota/quota.ts";
 import type { UsageLedger } from "./quota/usage.ts";
 import { localDay } from "./quota/usage.ts";
+import type { Resources } from "./resources/resources.ts";
 import type { Changes } from "./review/changes.ts";
 import type { ReviewComments } from "./review/comments.ts";
 import type { ReviewFiles } from "./review/files.ts";
@@ -204,6 +205,8 @@ export interface ServerOptions {
   central?: Central;
   /** Retention and backups behind the `maintenance.*` commands (phase 7). */
   maintenance?: Maintenance;
+  /** What the host's sessions and terminals cost it, behind `resources.*` (issue #154). */
+  resources?: Resources;
   /** What the cards' worktrees take on the disk, behind `worktree.*` (issue #152). */
   worktrees?: Worktrees;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
@@ -380,6 +383,7 @@ function featuresOf(opts: ServerOptions): string[] {
     // Phase 24: the run.yaml of a card and its processes.
     ...(opts.runenv && opts.board ? ["runenv"] : []),
     ...(opts.maintenance ? ["maintenance"] : []),
+    ...(opts.resources ? ["resources"] : []),
     ...(opts.worktrees ? ["worktrees"] : []),
     ...(opts.quota ? ["quota"] : []),
     ...(opts.account ? ["account"] : []),
@@ -609,6 +613,10 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "maintenance");
   }
 
+  function resources(): Resources {
+    return need(opts, "resources");
+  }
+
   function worktrees(): Worktrees {
     return need(opts, "worktrees");
   }
@@ -777,6 +785,13 @@ export function startServer(opts: ServerOptions): RunningServer {
         }
         return ok(command.type, { claudeSessionId, ...meta });
       }
+      case "resources.get":
+        return ok(command.type, await resources().snapshot());
+      case "resources.endOrphan":
+        // Like the other commands that change the host: not from beyond loopback and Tailscale.
+        requireVaultTransport(ws.data.origin, "resources.endOrphan", opts.log);
+        await resources().endOrphan(command.payload.pid, command.payload.startTicks);
+        return ok(command.type, { ended: true });
       case "worktree.list":
         return ok(command.type, await worktrees().list(command.payload.projectId));
       case "worktree.remove":
