@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { isBranchName } from "@flightdeck/protocol";
 import { git, gitRepo } from "./board-helpers.ts";
 
-/** Names git accepts and refuses: option-looking ones, every rule of git-check-ref-format, accents and emoji. */
+/** Names git accepts and refuses (not `@` and `@{-n}`, which are shorthands of the current branch): option-looking ones, every rule of git-check-ref-format, accents and emoji. */
 const NAMES = [
   "main",
   "master",
@@ -21,7 +21,6 @@ const NAMES = [
   "--",
   "--end-of-options",
   "",
-  "@",
   "a@{b",
   "a..b",
   "..",
@@ -66,6 +65,11 @@ describe("git-ref: a branch name is the one git accepts, and never an option", (
     expect(wrong).toEqual([]);
     // The seed repository is a real one: a valid name is also a name git can create.
     expect(git(repo, "branch", "release/1.2")).toBe("");
+  });
+
+  test("the shorthands of the current branch are not names", () => {
+    expect(isBranchName("@")).toBe(false);
+    expect(isBranchName("@{-1}")).toBe(false);
   });
 
   test("a name that begins with a dash is refused whatever follows it", () => {

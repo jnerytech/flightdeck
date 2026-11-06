@@ -7,6 +7,7 @@ import {
   type AssistantResult,
   AssistantRunPayload,
 } from "./assistant.ts";
+import { isBranchName } from "./git-ref.ts";
 import { type RunConfigInfo, RunState } from "./run.ts";
 
 export const PROTOCOL_VERSION = 1;
@@ -2175,7 +2176,8 @@ export type CostsStatus = z.infer<typeof CostsStatus>;
 
 const ProjectFields = {
   name: z.string().min(1).optional(),
-  baseBranch: z.string().min(1).optional(),
+  /** A branch name git accepts, and never one that starts with `-` (issue #345). */
+  baseBranch: z.string().refine(isBranchName, "not a valid branch name").optional(),
   prProvider: PrProviderKind.optional(),
   /** `null` or blank removes the script. */
   setupScript: z.string().nullable().optional(),
