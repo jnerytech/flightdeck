@@ -1,4 +1,4 @@
-import { realpath } from "node:fs/promises";
+import { lstat, realpath } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative } from "node:path";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
@@ -49,10 +49,15 @@ export interface Located {
   realRoot: string;
 }
 
-/** Where a path would really be: its nearest part that exists, links resolved, and the rest after it. */
+/**
+ * Where a path would really be: its nearest part that exists, links resolved, and the rest after
+ * it. `null` when a part of it is a link that leads nowhere yet: writing through it would create
+ * whatever it names.
+ */
 async function wouldBe(path: string): Promise<string | null> {
   const real = await realpath(path).catch(() => null);
   if (real) return real;
+  if ((await lstat(path).catch(() => null))?.isSymbolicLink()) return null;
   const parent = dirname(path);
   if (parent === path) return null;
   const above = await wouldBe(parent);
@@ -65,7 +70,7 @@ export async function located(root: string, realRoot: string, path: string): Pro
   const real = await realpath(full).catch(() => null);
   // A file not there yet is judged by where it would go: its nearest folder that is there, resolved.
   const where = real ?? (await wouldBe(full));
-  if (where && !isInside(realRoot, where)) {
+  if (!where || !isInside(realRoot, where)) {
     throw new FlightdeckError(
       "forbidden_cwd",
       `${path} points outside the repository`,
@@ -74,7 +79,7 @@ export async function located(root: string, realRoot: string, path: string): Pro
     );
   }
   // A link into `.git` is `.git`.
-  if (where && isGitDir(firstStep(relative(realRoot, where)))) {
+  if (isGitDir(firstStep(relative(realRoot, where)))) {
     throw new FlightdeckError(
       "bad_request",
       `path outside the repository: ${path}`,
