@@ -173,6 +173,25 @@ describe("slot-orphans", () => {
     for (const n of [40, 41, 42, 43]) expect(f.store.has(`${PATH}.wait.${n}`)).toBe(true);
   });
 
+  test("--reap reads the group once: a waiter that exits after the checks is not killed as group 0, and an editor holding slot.ts is not a waiter (#236 review)", async () => {
+    let reads = 0;
+    const f = fake(
+      {
+        [`${PATH}.wait.50`]: holder(50, "racing", "bun run test"),
+        [`${PATH}.wait.51`]: holder(51, "editor", "bun run test"),
+      },
+      { 50: 1, 51: 1 },
+      {
+        // pid 50 answers its group once, then is gone; the reaper's own group is 10.
+        pgid: (pid) => (pid === 50 ? (reads++ === 0 ? 50 : null) : pid),
+        cmdline: (pid) =>
+          pid === 51 ? "vim notes-about-slot.ts" : "bun run scripts/slot.ts bun test",
+      },
+    );
+    expect(await run(f.env, ["--reap"])).toBe(0);
+    expect(f.groups).toEqual([50]);
+  });
+
   test("--status keeps each entry to one line: control characters in a label, a command or a folder become spaces (#236 review)", async () => {
     const f = fake(
       {
