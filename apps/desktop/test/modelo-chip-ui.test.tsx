@@ -134,8 +134,8 @@ describe("modelo-chip: the Model menu", () => {
     ]);
   });
 
-  test("the model in use is the checked one, a version counted with its family", async () => {
-    view({ model: "claude-opus-5-5" });
+  test("the model in use is the checked one: an alias, or a version of its family", async () => {
+    view({ model: "opus" });
     await open();
     expect(rows().map((r) => r.getAttribute("aria-checked"))).toEqual([
       "false",
@@ -143,6 +143,19 @@ describe("modelo-chip: the Model menu", () => {
       "false",
       "false",
     ]);
+  });
+
+  test("a model the session runs by its exact id is the checked one under More models, and none above", async () => {
+    view({ model: "claude-opus-5-5" });
+    await open();
+    expect(rows().map((r) => r.getAttribute("aria-checked"))).toEqual([
+      "false",
+      "false",
+      "false",
+      "false",
+    ]);
+    await openSub("More models");
+    expect(row(/^Opus 5\.5/)?.getAttribute("aria-checked")).toBe("true");
   });
 
   test("picking a model changes it at once and the chip follows", async () => {
@@ -173,10 +186,11 @@ describe("modelo-chip: the Model menu", () => {
     const { models } = view({ model: "claude-opus-5-5" });
     await open();
     await openSub("More models");
-    const versions = rows().filter(
-      (r) => !/^(Default|Opus$|Sonnet$|Haiku$)/.test(r.textContent ?? ""),
-    );
-    expect(versions.map((r) => r.textContent?.replace(/\d$/, ""))).toContain("Opus 5.5");
+    expect(
+      rows()
+        .map((r) => r.textContent ?? "")
+        .filter((text) => /^(Opus 5\.5|Sonnet 5\.5|Haiku 5\.5|Fable 5\.1)/.test(text)),
+    ).toHaveLength(4);
     await click(row(/^Fable 5\.1/));
     expect(models).toEqual(["claude-fable-5-1"]);
     expect(chip()?.textContent).toContain("Fable 5.1");

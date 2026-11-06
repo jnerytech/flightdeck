@@ -11,6 +11,7 @@ import type {
   CommandPayload,
   CommandResults,
   CommandType,
+  EffortLevel,
   EventEnvelope,
   ExternalPermissionFrame,
   ExternalSession,
@@ -2030,6 +2031,12 @@ export class AppStore {
   setModel(model: string | null): Promise<void> {
     return this.onSelected((conn, sessionId) =>
       conn.request("session.setModel", { sessionId, model }),
+    );
+  }
+
+  setEffort(effort: EffortLevel | null): Promise<void> {
+    return this.onSelected((conn, sessionId) =>
+      conn.request("session.setEffort", { sessionId, effort }),
     );
   }
 

@@ -1770,6 +1770,10 @@ export const en: Dictionary = {
     modeMenuTitle: "Mode",
     modeBypassOff: "Turned off on this host",
     modeBypassHow: "Turn it on in the host settings",
+    modelChip: "Model: {model}",
+    modelMenuTitle: "Model",
+    modelMore: "More models",
+    effortMenu: "Effort",
     modeLooser: "Looser than the mode this session started in",
     modelLabel: "Model",
     modelDefault: "Default model",
@@ -1875,6 +1879,22 @@ export const en: Dictionary = {
     effortDefault: "Default effort",
     create: "Create session",
     needFolder: "This host has no allowed folder: add one in its settings",
+  },
+  /** What each model is for, in the Model menu and the tooltip of the chip. */
+  modelExplain: {
+    default: "The model Claude Code picks",
+    opus: "The most capable model; the slowest",
+    sonnet: "Balanced: capable and quick",
+    haiku: "The fastest and lightest",
+    version: "A specific version",
+  },
+  efforts: {
+    default: { name: "Default effort", explain: "The model's own level" },
+    low: { name: "Low", explain: "Fastest, the least thinking" },
+    medium: { name: "Medium", explain: "Balanced" },
+    high: { name: "High", explain: "More thinking, slower" },
+    xhigh: { name: "Extra high", explain: "Much more thinking" },
+    max: { name: "Max", explain: "The most thinking; for the hardest problems" },
   },
   modes: {
     option: "{name}: {description}",

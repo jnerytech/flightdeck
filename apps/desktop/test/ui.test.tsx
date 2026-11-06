@@ -176,6 +176,20 @@ describe("desktop: interface", () => {
     });
     await waitFor(() => expect(runtime.modes).toEqual(["plan"]));
     await waitFor(() => expect(runtime.models).toEqual(["opus"]));
+    // The effort too: the host announces session.effort, so the Model menu has an Effort submenu.
+    await act(async () => {
+      fireEvent.pointerDown(modelChip(), { button: 0, ctrlKey: false, pointerType: "mouse" });
+      fireEvent.click(modelChip());
+    });
+    await act(async () => {
+      const effort = screen.getByRole("menuitem", { name: /^Esforço/ });
+      fireEvent.pointerDown(effort, { button: 0, ctrlKey: false, pointerType: "mouse" });
+      fireEvent.click(effort);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitemradio", { name: /^Alto/ }));
+    });
+    await waitFor(() => expect(runtime.efforts).toEqual(["high"]));
     // The host does not allow bypass: the menu says so and leads to the host's page, where the switch is.
     await openChip();
     await act(async () => {
