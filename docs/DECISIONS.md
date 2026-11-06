@@ -4010,9 +4010,10 @@ OpenCode's review found three highs, fixed before the Rust slice:
 
 - **A link is never followed.** An untracked file is read through `readRegular` (`apps/daemon/src/read-regular.ts`):
   `lstat`, a regular file only, opened with `O_NOFOLLOW | O_NONBLOCK` (where they exist), checked again with `fstat`, and
-  read up to a cap. A link, a pipe or an untracked file over 256 KB is listed like a binary file, without content. The rule
-  is in `untrackedFile`, so the Changes panel takes it too: a link to a file outside the worktree no longer shows its
-  target there either, and a pipe can no longer hang it. Git itself never lists an untracked pipe; the guard is for a file
+  read up to a cap. A link or a pipe is listed like a binary file, without content. The rule is in `untrackedFile`, so
+  the Changes panel takes it too: a link to a file outside the worktree no longer shows its target there either, and a
+  pipe can no longer hang it. The 256 KB size cap is the assistant's only (`workingDiff`'s `maxUntracked`): the panel
+  still shows a large untracked file whole, and its editor says when the file is too large to edit. Git itself never lists an untracked pipe; the guard is for a file
   swapped between the listing and the read.
 - **The rules are read the same way.** `extractRules` is async and reads 64 KB of `CLAUDE.md` and `AGENTS.md` and 1 KB of
   the commitlint config and `.gitmessage`, each only when it is a regular file.

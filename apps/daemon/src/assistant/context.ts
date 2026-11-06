@@ -33,6 +33,8 @@ const TOTAL = 48 * 1024;
 const RULES_MAX = 4096;
 const SMALL_FILE_MAX = 1024;
 const MARKDOWN_MAX = 64 * 1024;
+/** The largest untracked file whose content is read; a larger one is listed like a binary file. */
+const UNTRACKED_MAX = 256 * 1024;
 
 const LOCKFILES = new Set([
   "bun.lock",
@@ -89,10 +91,10 @@ async function changes(
 ): Promise<{ root: string; files: DiffFile[] }> {
   if (source.kind === "card") {
     const { worktree, base } = deps.card(source.cardId);
-    return { root: worktree, files: (await cardDiff(worktree, base)).files };
+    return { root: worktree, files: (await cardDiff(worktree, base, UNTRACKED_MAX)).files };
   }
   const root = await topLevel(await deps.allowed(source.cwd));
-  if (source.kind === "worktree") return { root, files: await workingDiff(root) };
+  if (source.kind === "worktree") return { root, files: await workingDiff(root, UNTRACKED_MAX) };
   const staged = await git(root, ...STAGED);
   return { root, files: parseUnifiedDiff(staged.stdout, true) };
 }
