@@ -7,13 +7,20 @@ import { cn } from "@/lib/utils";
 
 /** An empty list or panel: a large soft icon, one sentence and one action. */
 export function EmptyState(
-  props: Readonly<{ title: string; icon?: LucideIcon; action?: ReactNode }>,
+  props: Readonly<{
+    title: string;
+    icon?: LucideIcon;
+    action?: ReactNode;
+    /** One line under the title on what the empty thing is for. */
+    detail?: string;
+  }>,
 ) {
   const Icon = props.icon;
   return (
     <div className="flex flex-col items-center gap-3 rounded-lg bg-muted/30 p-8 text-center">
       {Icon && <Icon aria-hidden="true" className="size-10 text-muted-foreground/40" />}
       <p className="text-muted-foreground">{props.title}</p>
+      {props.detail && <p className="max-w-prose text-muted-foreground text-sm">{props.detail}</p>}
       {props.action}
     </div>
   );

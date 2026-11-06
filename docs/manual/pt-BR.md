@@ -904,6 +904,13 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   (e **Mostrar menos**) para o resto; o branch escolhido sempre aparece. O nome do projeto dobra
   seus branches (as setas esquerda e direita dobram e desdobram); a dobra é lembrada neste
   computador, e um projeto dobrado que guarda o branch escolhido mostra uma marca no nome.
+  A árvore lista no máximo 5 projetos: os que você **fixou** (o alfinete na linha do projeto), depois
+  os de atividade mais recente, e sempre o projeto do branch escolhido. Abaixo deles, **Todos os
+  projetos (N)** abre a página de Projetos. Com mais de 5 projetos, um campo **Filtrar projetos**
+  reduz a lista pelo nome a todas as combinações (Esc limpa). Com mais de 3 projetos, todos menos o
+  ativo começam dobrados; o que você dobra ou desdobra é lembrado, e um projeto dobrado com uma
+  sessão rodando ou que precisa de você mostra um pontinho no nome. Os alfinetes ficam neste
+  computador.
 - No pé da barra, **Configurações** é um item visível (marcado enquanto as Configurações estão
   abertas), e a conta do Claude (e-mail e plano, lidos do cartão da conta do host; o trilho mostra só
   a inicial) abre um menu. O cabeçalho dele diz o nome do app e a versão. Depois vêm o plano, a conta
@@ -976,6 +983,31 @@ Cada coluna tem a sua cor de fundo e uma linha fina no topo (Backlog neutro, Em 
 Esperando você laranja, Em revisão verde, Concluído apagado), o ícone do status, o número de cards
 numa pílula e um **+** que põe um card direto nessa coluna. Uma coluna vazia mostra uma caixa
 tracejada e discreta que diz "Vazio" e também cria um card quando você a aperta.
+
+### Trabalhar com vários cards
+
+- **Selecionar.** `Ctrl`-clique (`⌘`-clique no Mac) num card para selecioná-lo ou desmarcá-lo;
+  `Shift`-clique seleciona o intervalo desde o último card escolhido, dentro da coluna. O menu do
+  card tem **Selecionar card** para o teclado, e um card selecionado diz "selecionado" a um leitor
+  de tela. `Esc` limpa a seleção. Um filtro esconde cards mas os mantém selecionados; o que você
+  faz então vale só para os cards que aparecem, e a barra diz quantos estão escondidos.
+- **A barra de seleção** acima do board mostra "3 selecionados" com **Mover para…** (uma coluna),
+  **Descartar…** e **Limpar seleção**. Arrastar um card selecionado arrasta a seleção toda para a
+  coluna onde você solta, na ordem do board; solta sobre um card, eles ficam antes dele.
+- **Um card que o host recusa mover** (por exemplo, concluir um que ainda está rodando) fica onde
+  estava, continua selecionado e é citado numa nota com o motivo do host. Os outros se movem.
+- **Descartar…** mostra uma só janela com todos os cards selecionados e diz o que vai junto com
+  cada um: um worktree ou branch perde mudanças não commitadas e commits não enviados; uma sessão é
+  encerrada. Se o host não conseguir descartar um card, a nota diz que ele pode ter ficado
+  parcialmente limpo. Cards que nunca começaram são excluídos; os que começaram são
+  descartados. Cancelar deixa tudo como estava.
+- **Largura das colunas.** A alça na borda direita de uma coluna (arraste-a, ou vá até ela com Tab e
+  use as setas, 20 px por vez, ou Home e End; só a alça da última coluna recebe Tab) define uma só largura para todas, entre 220 e 520 px (260 por
+  padrão), guardada neste computador. O board rola dentro de si, nunca a página.
+- **Contagens.** Cada coluna mostra quantos cards tem; com um filtro ligado ela lê `n / total`, e
+  uma coluna que o filtro esvaziou diz "Nenhuma correspondência" em vez de oferecer um card novo.
+- **Card novo numa coluna.** O botão **Novo card** no fim de uma coluna cria o card ali (aparece ao
+  passar o mouse e ao focar, e sempre numa tela sem ponteiro).
 
 ### Escolher uma pasta
 

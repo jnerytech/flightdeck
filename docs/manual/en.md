@@ -909,6 +909,12 @@ live; the list is the project's, so a session of another project never shows her
   The project's name folds its branches (the arrow keys left and right fold and unfold it); the fold
   is remembered on this computer, and a folded project that holds the picked branch shows a check
   on its name.
+  The tree lists at most 5 projects: the ones you **pinned** (the pin on a project's row), then the
+  most recently active, and always the project of the picked branch. Below them, **All projects (N)**
+  opens the Projects page. With more than 5 projects a **Filter projects** field narrows the list by
+  name to every match (Esc clears it). With more than 3 projects, all but the active one start
+  folded; what you fold or unfold is remembered, and a folded project with a running session or one
+  that needs you shows a dot on its name. Pins are kept on this computer.
 - At the foot of the bar, **Settings** is a visible item (marked while Settings is open), and the Claude
   account (its email and plan, read from the host's account card; the rail shows only its initial)
   opens a menu. Its header names the app and its version. Then come the plan, the account and the id
@@ -979,6 +985,30 @@ Each column has its own tint and a thin line on top (Backlog neutral, In progres
 orange, In review green, Done muted), its status icon, the number of cards as a pill and a **+**
 that adds a card straight into that column. An empty column shows a quiet dashed box that says
 "Empty" and also adds a card when pressed.
+
+### Working with many cards
+
+- **Select.** `Ctrl`-click (`⌘`-click on a Mac) a card to select it or unselect it; `Shift`-click
+  selects the range from the last card you picked, within its column. A card's menu has **Select
+  card** for the keyboard, and a selected card says "selected" to a screen reader. `Esc` clears the
+  selection. A filter hides cards but keeps them selected; what you do then applies only to the
+  cards you can see, and the bar says how many are hidden.
+- **The selection bar** above the board shows "3 selected" with **Move to…** (a column),
+  **Discard…** and **Clear selection**. Dragging a selected card drags the whole selection into the
+  column you drop it on, in the board's order; dropped on a card, they land before it.
+- **A card the host refuses to move** (for example, completing one that is still running) stays
+  where it was, stays selected, and is named in a notice with the host's reason. The others move.
+- **Discard…** shows one dialog with every selected card, and says what goes with each: a
+  worktree or branch loses uncommitted changes and unpushed commits, a session is closed. If the
+  host cannot discard a card, the notice says it may be partly cleaned up. Cards that never started are deleted; started ones are discarded.
+  Cancelling leaves everything as it was.
+- **Column width.** The handle at the right edge of a column (drag it, or Tab to it and press the
+  arrows, 20 px a step, or Home and End; only the last column's handle takes a Tab stop) sets one width for all the columns, between 220 and 520 px (260 by
+  default), and it is kept on this computer. The board scrolls inside itself, never the page.
+- **Counts.** Each column shows how many cards it has; with a filter on it reads `n / total`, and a
+  column the filter emptied says "No matches" instead of offering a new card.
+- **New card in a column.** The **New card** button at the bottom of a column creates the card
+  there (it appears on hover and on focus, and always on a screen without a pointer).
 
 ### Choosing a folder
 

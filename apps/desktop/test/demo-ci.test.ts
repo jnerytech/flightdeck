@@ -152,6 +152,7 @@ describe("demo-prints: axe e CI", () => {
       // Issue #149: an event switched off and a host muted in Settings survive a reload.
       "notify-prefs",
       "activity",
+      "health-fold",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([
