@@ -1,6 +1,8 @@
-import { EditorState } from "@codemirror/state";
+import { HighlightStyle, StreamLanguage, syntaxHighlighting } from "@codemirror/language";
+import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import type { DiffFile } from "@flightdeck/protocol";
+import { tags } from "@lezer/highlight";
 import { useEffect, useRef, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Inline, Stack } from "@/components/layout/stack";
@@ -8,8 +10,23 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "../lib/app-store.ts";
+import { languageFor, loadLanguage } from "../lib/file-language.ts";
 import { useFollow } from "../lib/use-follow.ts";
 import { DiffView } from "./DiffView.tsx";
+
+/** Token colors from the theme's tokens, so both themes keep their contrast. */
+const TOKENS = HighlightStyle.define([
+  { tag: [tags.keyword, tags.operatorKeyword, tags.modifier], color: "var(--client-indigo)" },
+  { tag: [tags.string, tags.special(tags.string), tags.regexp], color: "var(--client-emerald)" },
+  { tag: [tags.number, tags.bool, tags.atom, tags.null], color: "var(--client-amber)" },
+  { tag: [tags.comment, tags.meta], color: "var(--muted-foreground)", fontStyle: "italic" },
+  {
+    tag: [tags.typeName, tags.className, tags.definition(tags.variableName)],
+    color: "var(--client-sky)",
+  },
+  { tag: [tags.tagName, tags.attributeName, tags.propertyName], color: "var(--client-violet)" },
+  { tag: tags.invalid, color: "var(--destructive)" },
+]);
 
 /** The file on its way, refused with the text to show, or its text. */
 type Phase =
@@ -60,11 +77,13 @@ export function FileViewer(
   const text = phase.name === "ready" && !diff ? phase.text : null;
   useEffect(() => {
     if (text === null || !parent.current) return;
+    const language = new Compartment();
     const view = new EditorView({
       parent: parent.current,
       state: EditorState.create({
         doc: text,
         extensions: [
+          language.of([]),
           lineNumbers(),
           EditorState.readOnly.of(true),
           EditorView.editable.of(false),
@@ -72,8 +91,25 @@ export function FileViewer(
         ],
       }),
     });
-    return () => view.destroy();
-  }, [text]);
+    // The language's parser loads on demand; the text shows plain until it arrives.
+    let alive = true;
+    const key = languageFor(path);
+    if (key) {
+      void loadLanguage(key).then((parser) => {
+        if (!alive || !parser) return;
+        view.dispatch({
+          effects: language.reconfigure([
+            StreamLanguage.define(parser),
+            syntaxHighlighting(TOKENS),
+          ]),
+        });
+      });
+    }
+    return () => {
+      alive = false;
+      view.destroy();
+    };
+  }, [text, path]);
 
   return (
     <section aria-label={t("files.viewer", { path })}>
