@@ -3149,6 +3149,8 @@ export const en: Dictionary = {
     emptyHint:
       "Messages between sessions show up here once sessions can message each other, for example in a team.",
     emptyLink: "Open Teams",
+    noMatch: "No message matches the filter.",
+    loading: "Loading messages",
     to: "to",
     open: "Open the session",
     statuses: {

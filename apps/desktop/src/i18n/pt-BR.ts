@@ -3153,6 +3153,8 @@ export const ptBR = {
     emptyHint:
       "As mensagens entre sessões aparecem aqui quando o envio entre elas está ligado, por exemplo num time.",
     emptyLink: "Abrir Times",
+    noMatch: "Nenhuma mensagem corresponde ao filtro.",
+    loading: "Carregando mensagens",
     to: "para",
     open: "Abrir a sessão",
     statuses: {
