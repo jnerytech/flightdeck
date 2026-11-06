@@ -148,9 +148,12 @@ describe("terminal-ui: keys, colors and font", () => {
   });
 
   test("a paste of several lines needs an OK while the program has not turned on bracketed paste (issue #476)", () => {
-    expect([pasteLines("ls"), pasteLines("ls\n"), pasteLines("a\r\nb\r\n"), pasteLines("a\nb\nc")]).toEqual([
-      1, 1, 2, 3,
-    ]);
+    expect([
+      pasteLines("ls"),
+      pasteLines("ls\n"),
+      pasteLines("a\r\nb\r\n"),
+      pasteLines("a\nb\nc"),
+    ]).toEqual([1, 1, 2, 3]);
     expect(pasteNeedsConfirm("a\nb", false)).toBe(true);
     expect(pasteNeedsConfirm("a\r\nb\r\n", false)).toBe(true);
     expect(pasteNeedsConfirm("ls\n", false)).toBe(false);
