@@ -1292,6 +1292,7 @@ export const ptBR = {
     templates: "as tarefas prontas",
     tasks: "os resultados das tarefas",
     logs: "o log do daemon",
+    releases: "as notas de versão do app",
     sleep: "pôr sessões ociosas para dormir",
     resources: "o painel de recursos do host",
     depsCheck: "a verificação das dependências",
@@ -1427,6 +1428,8 @@ export const ptBR = {
     update_manifest_unchecked:
       "O daemon ainda não verificou se há atualização: tente de novo daqui a pouco.",
     update_manifest_no_binary: "A versão {version} não tem binário para {key}.",
+    releases_unavailable:
+      "Não foi possível ler as notas de versão no GitHub: tente de novo mais tarde.",
     perm_rule_other_tool: "Essa regra é de outra ferramenta ({tool}).",
     perm_rule_too_broad:
       "Essa regra também permitiria usos de {tool} de risco {level}, mais do que este pedido: estreite-a.",
