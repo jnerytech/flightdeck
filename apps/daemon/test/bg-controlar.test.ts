@@ -127,6 +127,13 @@ describe("bg-controlar: respawn in a folder not trusted (review of #196)", () =>
     expect(order).toEqual(["prepare /work/app"]);
     expect(cli(fake)).toEqual([["respawn", "7c5dcf5d"]]);
   });
+
+  test("is refused in a trusted worktree: the respawn cannot be given the main checkout to read the configuration from (review of #196)", async () => {
+    const { fake, service } = setup(undefined, () => ({ trusted: true, configRoot: "/work/main" }));
+    const error = await refused(() => service.respawn("7c5dcf5d"));
+    expect(error.reason).toBe("bg_worktree_respawn");
+    expect(cli(fake)).toEqual([]);
+  });
 });
 
 describe("bg-controlar: a message", () => {
