@@ -117,6 +117,18 @@ describe("layout-guards: what the page function finds, named by data-slot path",
     expect(rules()).toEqual(["attention: notice"]);
   });
 
+  test("an alert cut by any edge of the screen is found, with its box; one fully inside is not", () => {
+    const edge = (rect: string) => {
+      page(`<div data-attention data-slot="notice" data-rect="${rect}">careful</div>`);
+      return layoutFindings().map((f) => `${f.rule}: ${f.path} (${f.detail})`);
+    };
+    // The page is 1000 x 700 (beforeEach): left, top, right, bottom.
+    expect(edge("-5,100,300,140")).toEqual(["attention: notice (box -5,100 to 300,140)"]);
+    expect(edge("10,-3,300,40")).toEqual(["attention: notice (box 10,-3 to 300,40)"]);
+    expect(edge("700,100,1010,140")).toEqual(["attention: notice (box 700,100 to 1010,140)"]);
+    expect(edge("10,100,300,140")).toEqual([]);
+  });
+
   test("a bar that grew past its limit is found", () => {
     page('<div class="tab-bar" data-rect="0,0,1000,90"></div>');
     expect(
