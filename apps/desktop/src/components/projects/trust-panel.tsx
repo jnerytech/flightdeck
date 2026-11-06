@@ -147,9 +147,12 @@ export function TrustPanel(
             {t("projectPage.trust.revoke")}
           </ActionButton>
         ) : (
-          <ActionButton variant="outline" onClick={() => setAsking(true)}>
-            {t("projectPage.trust.action")}
-          </ActionButton>
+          // Trusting is for a person who read what the project would load: no listing, no button.
+          load && (
+            <ActionButton variant="outline" onClick={() => setAsking(true)}>
+              {t("projectPage.trust.action")}
+            </ActionButton>
+          )
         )}
       </div>
       {asking && (
