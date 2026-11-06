@@ -113,6 +113,12 @@ function opencodeConfig(text: string): boolean {
   return parts.some((p, i) => p === ".config" && parts[i + 1] === "opencode");
 }
 
+/**
+ * Phase 40: the same test under the name the assistant's repo context uses (fase-39 exports
+ * `credential` itself; both names stay, so the two phases merge without a conflict).
+ */
+export const isCredentialPath = credential;
+
 /** The words of a command, without quotes, split also where a path cannot go on. */
 const words = (command: string) => command.split(/[\s"'`;|&<>()=,]+/).filter((w) => w !== "");
 
