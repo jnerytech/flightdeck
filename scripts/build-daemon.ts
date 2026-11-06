@@ -1,8 +1,7 @@
 #!/usr/bin/env bun
-
+/** Compiles `flightdeckd` into single-file executables for every supported target. */
 import { mkdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-/** Compiles `flightdeckd` into single-file executables for every supported target. */
 import { inSequence } from "@flightdeck/protocol";
 import { parsePublicKey } from "../apps/daemon/src/updates/signature.ts";
 

@@ -1,9 +1,9 @@
-import { inSequence } from "@flightdeck/protocol";
 /**
  * Phase 38: one sync of a linked project with its external board: pull the items, apply them to the
  * cards, settle conflicts (the newest change wins, the loser goes to the card's log), and push the
  * local moves when the board allows it.
  */
+import { inSequence } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import type { Card } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";

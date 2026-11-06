@@ -1,10 +1,9 @@
 #!/usr/bin/env bun
-
-import { resolve } from "node:path";
 /**
  * `bun run release:sign`: signs each daemon of `dist/` with `tauri signer sign`, which writes the
  * `.sig` next to it. The key comes from TAURI_SIGNING_PRIVATE_KEY (and its _PASSWORD).
  */
+import { resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { DAEMONS } from "./lib/release.ts";
 

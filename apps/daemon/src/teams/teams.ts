@@ -1,16 +1,16 @@
-import { inSequence } from "@flightdeck/protocol";
 /**
  * Phase 21: teams. A coordinator session and workers with cards of their own, started together
  * with the instructions of coordination, paused by the plan quota and resumed with it.
  */
 
 import type { Database } from "bun:sqlite";
-import type {
-  MessageInfo,
-  TeamInfo,
-  TeamMember,
-  TeamStatus,
-  TeamsUpdatedFrame,
+import {
+  inSequence,
+  type MessageInfo,
+  type TeamInfo,
+  type TeamMember,
+  type TeamStatus,
+  type TeamsUpdatedFrame,
 } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { FlightdeckError } from "../errors.ts";
