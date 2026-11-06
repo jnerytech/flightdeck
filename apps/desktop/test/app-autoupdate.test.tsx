@@ -84,6 +84,21 @@ for (const [lang, dict] of [
       expect(mem.calls).toEqual(["check", "download", "install"]);
     });
 
+    test("Later puts the ready banner away until the next check", async () => {
+      const mem = setup(lang, { available: "9.9.0" });
+      await start(mem);
+      const banner = () => screen.queryByRole("region", { name: dict.update.label });
+      expect(await seen(() => banner() !== null)).toBe(true);
+      const later = within(banner() as HTMLElement).queryByRole("button", {
+        name: dict.update.later,
+      });
+      expect(later).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(later as HTMLElement);
+      });
+      expect(banner()).toBeNull();
+    });
+
     test("a check that finds the same version again does not download it twice", async () => {
       const mem = setup(lang, { available: "9.9.0" });
       const store = await start(mem);
