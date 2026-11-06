@@ -31,7 +31,7 @@ function BudgetMeter({ run }: Readonly<{ run: WorkflowRun }>) {
 }
 
 /** An open gate, answered here with an optional note. */
-function GateCard(
+export function GateCard(
   props: Readonly<{
     step: StepRun;
     onRespond(step: StepRun, decision: "approve" | "reject", note: string): unknown;
@@ -79,8 +79,12 @@ export function RunTimeline(
     /** HH:MM of an instant (the quota's reset). */
     formatTime(iso: string): string;
     onOpenStep(step: StepRun): void;
-    /** A promise keeps the gate's buttons busy until the answer is in. */
-    onRespond(step: StepRun, decision: "approve" | "reject", note: string): unknown;
+    /**
+     * Answers a waiting gate in its step; a promise keeps the gate's buttons busy until the answer is
+     * in. Left out when the gate is answered elsewhere (the top of the card, issue #227): the step
+     * then only says it waits.
+     */
+    onRespond?(step: StepRun, decision: "approve" | "reject", note: string): unknown;
     /** Estimated cost of the run's sessions (phase 8); `null` when unknown. */
     costUsd?: number | null;
   }>,
@@ -137,7 +141,7 @@ export function RunTimeline(
               ) : (
                 <span className="px-3 text-muted-foreground text-xs">{line}</span>
               )}
-              {step.type === "gate" && step.status === "waiting" && (
+              {step.type === "gate" && step.status === "waiting" && props.onRespond && (
                 <GateCard step={step} onRespond={props.onRespond} />
               )}
             </li>

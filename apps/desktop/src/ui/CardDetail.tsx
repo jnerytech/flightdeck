@@ -20,7 +20,7 @@ import { useSessionState } from "../lib/use-store.ts";
 import { hasFeature } from "../lib/version.ts";
 import { CardDeps } from "./CardDeps.tsx";
 import { RunPanel } from "./RunPanel.tsx";
-import { RunTimeline } from "./RunTimeline.tsx";
+import { GateCard, RunTimeline } from "./RunTimeline.tsx";
 
 const CARDDETAIL_KEYS = ["runs", "personas", "hosts", "cards"] as const;
 
@@ -150,6 +150,18 @@ export const CardDetail = memo(function CardDetail(props: {
             {reasonText(t, card.notice, card.noticeReason, card.noticeParams)}
           </InlineNotice>
         )}
+        {/* Issue #227: a gate waiting for the person is the first thing on the card, not under the form. */}
+        {run?.steps
+          .filter((step) => step.type === "gate" && step.status === "waiting")
+          .map((step) => (
+            <GateCard
+              key={`${step.stepId}/${step.attempt}`}
+              step={step}
+              onRespond={(gate, decision, note) =>
+                store.respondGate(hostId, { runId: run.id, ...gate }, decision, note)
+              }
+            />
+          ))}
         <CardFields
           store={store}
           hostId={hostId}
@@ -213,9 +225,6 @@ export const CardDetail = memo(function CardDetail(props: {
             formatTime={(iso) => store.formatTime(iso)}
             costUsd={runCost}
             onOpenStep={openStep}
-            onRespond={(step, decision, note) =>
-              store.respondGate(hostId, { runId: run.id, ...step }, decision, note)
-            }
           />
         )}
         {withSync && card.externalUrl && (

@@ -1,6 +1,7 @@
 import type { CommandPayload } from "@flightdeck/protocol";
 import { BookOpen, MessagesSquare } from "lucide-react";
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
+import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
@@ -110,17 +111,15 @@ export function rowRoute(row: HubRow): Route {
 }
 
 /** A managed session's conversation; selecting it subscribes to its full event stream. */
-function ManagedSession(
-  props: Readonly<{
-    store: AppStore;
-    state: AppState;
-    hostId: string;
-    sessionId: string;
-    focus: string | null;
-    /** Opens the host's page (the mode menu links to the bypass switch there). */
-    go(route: Route): void;
-  }>,
-) {
+function ManagedSession(props: {
+  store: AppStore;
+  state: AppState;
+  hostId: string;
+  sessionId: string;
+  focus: string | null;
+  /** Opens the host's page (the mode menu links to the bypass switch there). */
+  go(route: Route): void;
+}) {
   const { store, state, hostId, sessionId } = props;
   const host = state.hosts.find((h) => h.id === hostId);
   useEffect(() => {
@@ -281,14 +280,12 @@ function ManagedSession(
 }
 
 /** Adding a host: by hand, or prefilled by a pairing link (saving still needs the click). */
-function AddHost(
-  props: Readonly<{
-    store: AppStore;
-    draft?: HostDraft;
-    empty: boolean;
-    go(r: Route): void;
-  }>,
-) {
+function AddHost(props: {
+  store: AppStore;
+  draft?: HostDraft;
+  empty: boolean;
+  go(r: Route): void;
+}) {
   const [error, setError] = useState<string | null>(null);
   const submit = async (draft: HostDraft) => {
     setError(null);
@@ -344,73 +341,12 @@ function openedSession(route: Route, state: AppState): { id?: string; claude?: s
   return {};
 }
 
-const SESSION_ROUTES: ReadonlySet<string> = new Set([
-  "hub",
-  "home",
-  "session",
-  "external",
-  "new-session",
-  "reader",
-]);
-
-/** The history list on the left and the transcript on the right, or just the loading screen while the host is not online. */
-function HistorySplit(props: {
-  store: ScreenProps["store"];
-  state: ScreenProps["state"];
-  route: Extract<Route, { name: "history" | "reader" }>;
-  detail: ReactNode;
-  density: ScreenProps["density"];
-  go(route: Route): void;
-}) {
-  const { store, state, route, detail, go } = props;
-  const { t } = store.i18n;
-  const hostId =
-    route.name === "history" ? route.host : (route as { target: { hostId: string } }).target.hostId;
-  // A host that is not online yet shows its own loading screen, without the list.
-  if (hostToWait(route) && state.hosts.find((h) => h.id === hostId)?.status !== "online") {
-    return detail;
-  }
-  const opened = route.name === "reader" ? route.target.claudeSessionId : null;
-  return (
-    <SplitView
-      list={
-        <HistoryList
-          key={hostId}
-          store={store}
-          hostId={hostId}
-          initial={
-            route.name === "history" && (route.cwd || route.projectKey || route.day)
-              ? { cwd: route.cwd, projectKey: route.projectKey, day: route.day }
-              : undefined
-          }
-          hostName={state.hosts.find((h) => h.id === hostId)?.name ?? hostId}
-          density={props.density}
-          openId={opened}
-          onOpen={(claudeSessionId) =>
-            go({ name: "reader", target: { hostId, claudeSessionId }, list: "history" })
-          }
-        />
-      }
-      detail={route.name === "reader" ? detail : null}
-      empty={
-        <div className="flex h-full items-center justify-center p-6">
-          <EmptyState icon={BookOpen} title={t("history.pick")} />
-        </div>
-      }
-      onClose={() => go({ name: "history", host: hostId })}
-      labels={{ resize: t("hub.resize"), back: t("hub.back") }}
-      initialWidth={store.listWidth()}
-      onResize={(width) => store.setListWidth(width)}
-    />
-  );
-}
-
 /**
  * The screen of a route. `go` opens another one (the history keeps this one). Sessões and
  * Histórico are three columns: the list stays on the left and the open session, the transcript or
  * the new-session form shows on the right; the others use the whole width.
  */
-export function Screen(props: Readonly<ScreenProps>) {
+export function Screen(props: ScreenProps) {
   const { store, state, go } = props;
   // The click of a measured action ends when its screen is painted.
   useEffect(() => {
@@ -431,20 +367,59 @@ export function Screen(props: Readonly<ScreenProps>) {
     return detail;
   }
 
-  if (route.name === "history" || (route.name === "reader" && route.list === "history")) {
+  const fromHistory =
+    route.name === "history" || (route.name === "reader" && route.list === "history");
+  if (fromHistory) {
+    const hostId =
+      route.name === "history"
+        ? route.host
+        : (route as { target: { hostId: string } }).target.hostId;
+    // A host that is not online yet shows its own loading screen, without the list.
+    if (hostToWait(route) && state.hosts.find((h) => h.id === hostId)?.status !== "online") {
+      return detail;
+    }
+    const opened = route.name === "reader" ? route.target.claudeSessionId : null;
     return (
-      <HistorySplit
-        store={store}
-        state={state}
-        route={route}
-        detail={detail}
-        density={props.density}
-        go={go}
+      <SplitView
+        list={
+          <HistoryList
+            key={hostId}
+            store={store}
+            hostId={hostId}
+            initial={
+              route.name === "history" && (route.cwd || route.projectKey || route.day)
+                ? { cwd: route.cwd, projectKey: route.projectKey, day: route.day }
+                : undefined
+            }
+            hostName={state.hosts.find((h) => h.id === hostId)?.name ?? hostId}
+            density={props.density}
+            openId={opened}
+            onOpen={(claudeSessionId) =>
+              go({ name: "reader", target: { hostId, claudeSessionId }, list: "history" })
+            }
+          />
+        }
+        detail={route.name === "reader" ? detail : null}
+        empty={
+          <div className="flex h-full items-center justify-center p-6">
+            <EmptyState icon={BookOpen} title={t("history.pick")} />
+          </div>
+        }
+        onClose={() => go({ name: "history", host: hostId })}
+        labels={{ resize: t("hub.resize"), back: t("hub.back") }}
+        initialWidth={store.listWidth()}
+        onResize={(width) => store.setListWidth(width)}
       />
     );
   }
 
-  const inSessions = SESSION_ROUTES.has(route.name);
+  const inSessions =
+    route.name === "hub" ||
+    route.name === "home" ||
+    route.name === "session" ||
+    route.name === "external" ||
+    route.name === "new-session" ||
+    route.name === "reader";
   if (!inSessions) return detail;
   // Waiting for a host (a reader or the like) keeps the loading screen as it is.
   if (
@@ -541,11 +516,16 @@ function costsOpener(go: (route: Route) => void): OpenCostSession {
   return opener;
 }
 
-function ScreenLoading(props: Readonly<{ label: string }>) {
+/** What a screen shows instead of itself while it cannot open: the wait, or why it cannot. */
+function ScreenState(props: { children: ReactNode }) {
+  return <div className="p-6">{props.children}</div>;
+}
+
+function ScreenLoading(props: { label: string }) {
   return (
-    <div className="p-6">
+    <ScreenState>
       <LoadingState label={props.label} />
-    </div>
+    </ScreenState>
   );
 }
 
@@ -555,15 +535,62 @@ function LoadingScreen() {
   return <ScreenLoading label={t("states.loading")} />;
 }
 
-/** What the route functions below share: the screen's props and the lookup of a host by id. */
-interface RouteContext {
-  props: ScreenProps;
-  hostOf(id: string): ScreenProps["state"]["hosts"][number] | undefined;
-}
+/** What a route shows on its own; `null` is the Sessões screen with nothing open. */
+function routeScreen(props: ScreenProps): ReactNode {
+  const { route, store, state, go } = props;
+  const hostOf = (id: string) => state.hosts.find((h) => h.id === id);
+  // Screens that ask their host for data on opening wait for it to be online: a route can come
+  // before the connection (a deep link at start-up).
+  const waiting = hostToWait(route);
+  const waitHost = waiting ? hostOf(waiting) : undefined;
+  // Issue #227: once a try has failed, the host is down, not on its way: a spinner there was a dead
+  // end. The host's banner says why and offers to reconnect.
+  if (
+    waitHost &&
+    ((waitHost.status === "offline" && waitHost.retry) || waitHost.status === "unauthorized")
+  ) {
+    return (
+      <ScreenState>
+        <HostOfflineBanner
+          host={waitHost}
+          onReconnect={() => void store.reconnectHost(waitHost.id)}
+        />
+      </ScreenState>
+    );
+  }
+  if (waiting && waitHost?.status !== "online") {
+    const { t } = store.i18n;
+    const label = waitHost ? t("states.connecting", { host: waitHost.name }) : t("states.loading");
+    return <ScreenLoading label={label} />;
+  }
 
-/** The screens that stand on their own (lists, settings pages, the vault); undefined for any other route. */
-function pageScreen(route: Route, { props, hostOf: _hostOf }: RouteContext): ReactNode | undefined {
-  const { store, state, go } = props;
+  if (route.name === "start") return <StartScreen store={store} hosts={state.hosts} go={go} />;
+  if (route.name === "settings") {
+    return (
+      <Settings
+        store={store}
+        settings={state.settings}
+        {...settingsActions(store)}
+        appUpdate={state.appUpdate}
+        theme={props.theme}
+        density={props.density}
+        lang={store.i18n.lang}
+        t={store.i18n.t}
+      />
+    );
+  }
+  if (route.name === "add-host" || state.hosts.length === 0) {
+    const draft = route.name === "add-host" ? route.draft : undefined;
+    return (
+      <AddHost
+        key={route.name === "add-host" ? (route.key ?? 0) : 0}
+        store={store}
+        empty={state.hosts.length === 0}
+        go={go}
+        {...(draft ? { draft } : {})}
+      />
+    );
+  }
   switch (route.name) {
     case "hub":
       return null;
@@ -626,15 +653,6 @@ function pageScreen(route: Route, { props, hostOf: _hostOf }: RouteContext): Rea
           {...(route.rule ? { rule: route.rule } : {})}
         />
       );
-    default:
-      return undefined;
-  }
-}
-
-/** The screens of a session: managed, external, the transcript reader, the host and its projects; undefined for any other route. */
-function sessionScreen(route: Route, { props, hostOf }: RouteContext): ReactNode | undefined {
-  const { store, state, go } = props;
-  switch (route.name) {
     case "session":
       return (
         <ManagedSession
@@ -756,15 +774,6 @@ function sessionScreen(route: Route, { props, hostOf }: RouteContext): ReactNode
         />
       );
     }
-    default:
-      return undefined;
-  }
-}
-
-/** The screens of a project: board, card, agent, automations, actions, terminal and workflows; undefined for any other route. */
-function projectScreen(route: Route, { props }: RouteContext): ReactNode | undefined {
-  const { store, go } = props;
-  switch (route.name) {
     case "board":
       return (
         <BoardView
@@ -851,70 +860,6 @@ function projectScreen(route: Route, { props }: RouteContext): ReactNode | undef
           projectName={route.projectName}
         />
       );
-    default:
-      return undefined;
-  }
-}
-
-/**
- * Screens that ask their host for data on opening wait for it to be online: a route can come
- * before the connection (a deep link at start-up). Null when the route does not wait.
- */
-function connectingScreen(route: Route, { props, hostOf }: RouteContext): ReactNode {
-  const waiting = hostToWait(route);
-  const waitHost = waiting ? hostOf(waiting) : undefined;
-  if (!waiting || waitHost?.status === "online") return null;
-  const { t } = props.store.i18n;
-  const label = waitHost ? t("states.connecting", { host: waitHost.name }) : t("states.loading");
-  return <ScreenLoading label={label} />;
-}
-
-function settingsScreen(props: ScreenProps): ReactNode {
-  const { store, state } = props;
-  return (
-    <Settings
-      store={store}
-      settings={state.settings}
-      {...settingsActions(store)}
-      appUpdate={state.appUpdate}
-      theme={props.theme}
-      density={props.density}
-      lang={store.i18n.lang}
-      t={store.i18n.t}
-    />
-  );
-}
-
-/** The form for a host: a draft handed over by a link, or the first start with no host yet. */
-function addHostScreen(route: Route, props: ScreenProps): ReactNode {
-  const { store, state, go } = props;
-  const adding = route.name === "add-host" ? route : null;
-  const draft = adding?.draft;
-  return (
-    <AddHost
-      key={adding ? (adding.key ?? 0) : 0}
-      store={store}
-      empty={state.hosts.length === 0}
-      go={go}
-      {...(draft ? { draft } : {})}
-    />
-  );
-}
-
-/** What a route shows on its own; `null` is the Sessões screen with nothing open. */
-function routeScreen(props: ScreenProps): ReactNode {
-  const { route, store, state, go } = props;
-  const hostOf = (id: string) => state.hosts.find((h) => h.id === id);
-  const ctx: RouteContext = { props, hostOf };
-  const gate = connectingScreen(route, ctx);
-  if (gate) return gate;
-  if (route.name === "start") return <StartScreen store={store} hosts={state.hosts} go={go} />;
-  if (route.name === "settings") return settingsScreen(props);
-  if (route.name === "add-host" || state.hosts.length === 0) return addHostScreen(route, props);
-  // `null` is an answer (the Sessões screen with nothing open); `undefined` means "not mine".
-  for (const screen of [pageScreen, sessionScreen, projectScreen]) {
-    const page = screen(route, ctx);
-    if (page !== undefined) return page;
   }
   // "home": the selected session, the selected host's new-session form, or the hub.
   const selected = state.selected;
@@ -969,15 +914,13 @@ async function startInBackground(
 }
 
 /** The new-session form of a host; the created session opens. */
-function NewSession(
-  props: Readonly<{
-    store: AppStore;
-    state: AppState;
-    host: HostView;
-    prompt?: string | undefined;
-    persona?: string | undefined;
-  }>,
-) {
+function NewSession(props: {
+  store: AppStore;
+  state: AppState;
+  host: HostView;
+  prompt?: string | undefined;
+  persona?: string | undefined;
+}) {
   const { host } = props;
   const t = useT();
   // The persona the route asked for, else the one chosen, else the folder's client's default.
