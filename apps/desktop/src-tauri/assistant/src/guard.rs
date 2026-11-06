@@ -7,7 +7,7 @@
 use crate::keys::{Refusal, Secret};
 use std::collections::{HashMap, VecDeque};
 use std::future::Future;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
 /// The longest text a call takes, in characters.
@@ -43,7 +43,9 @@ pub const MAX_PROMPT_CHARS: usize = 2 * MAX_INPUT_CHARS;
 
 /// Refuses a prompt over `MAX_PROMPT_CHARS`; the refusal names the text's own cap.
 pub fn check_prompt(text: &str) -> Result<(), Refusal> {
-    let _ = text;
+    if text.chars().count() > MAX_PROMPT_CHARS {
+        return Err(Refusal::new("assistant_too_long").with("max", MAX_INPUT_CHARS.to_string()));
+    }
     Ok(())
 }
 
@@ -256,11 +258,30 @@ pub async fn send(
 /// The cancels kept for calls that have not started yet; the oldest goes first.
 const EARLY_CANCELS: usize = 16;
 
-/// The calls running, by request id, and the ids cancelled before their call started.
+/// The calls running, by request id; the ids cancelled before their call started; and the ids
+/// of the calls that ended, so a cancel that comes too late is not kept for a call to come.
 #[derive(Default)]
 pub struct Calls {
     running: Mutex<HashMap<String, tokio::task::AbortHandle>>,
     cancelled_early: Mutex<VecDeque<String>>,
+    ended: Mutex<VecDeque<String>>,
+}
+
+/// A lock even after a panic elsewhere held it: the maps stay usable, so one bug cannot refuse
+/// every call after it.
+fn locked<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+/// Keeps the last `EARLY_CANCELS` ids, once each.
+fn remember(ids: &mut VecDeque<String>, id: &str) {
+    if ids.iter().any(|kept| kept == id) {
+        return;
+    }
+    if ids.len() >= EARLY_CANCELS {
+        ids.pop_front();
+    }
+    ids.push_back(id.to_string());
 }
 
 /// A call's place in `Calls`. However the wait ends (an answer, a timeout, the wait itself
@@ -274,9 +295,9 @@ struct Place<'a> {
 impl Drop for Place<'_> {
     fn drop(&mut self) {
         self.handle.abort();
-        if let Ok(mut running) = self.calls.running.lock() {
-            running.remove(&self.id);
-        }
+        let mut running = locked(&self.calls.running);
+        running.remove(&self.id);
+        remember(&mut locked(&self.calls.ended), &self.id);
     }
 }
 
@@ -290,13 +311,13 @@ impl Calls {
         T: Send + 'static,
     {
         let (task, place) = {
-            let mut running = self.running.lock().map_err(|_| Refusal::new("assistant_rate_limited"))?;
-            if let Ok(mut early) = self.cancelled_early.lock() {
-                if let Some(at) = early.iter().position(|id| id == request_id) {
-                    early.remove(at);
-                    return Err(Refusal::new("assistant_cancelled"));
-                }
+            let mut running = locked(&self.running);
+            let mut early = locked(&self.cancelled_early);
+            if let Some(at) = early.iter().position(|id| id == request_id) {
+                early.remove(at);
+                return Err(Refusal::new("assistant_cancelled"));
             }
+            drop(early);
             if running.contains_key(request_id) {
                 return Err(Refusal::new("assistant_rate_limited"));
             }
@@ -310,6 +331,8 @@ impl Calls {
         match outcome {
             Err(_) => Err(Refusal::new("assistant_timeout")),
             Ok(Ok(result)) => result,
+            // A panic in the call is a bug, not a cancel the person asked for.
+            Ok(Err(error)) if error.is_panic() => Err(Refusal::new("assistant_bad_output")),
             Ok(Err(_)) => Err(Refusal::new("assistant_cancelled")),
         }
     }
@@ -317,14 +340,11 @@ impl Calls {
     /// Stops a running call; an id with no call yet is kept, so the call it names answers
     /// `assistant_cancelled` when it starts.
     pub fn cancel(&self, request_id: &str) {
-        let Ok(running) = self.running.lock() else { return };
+        let running = locked(&self.running);
         if let Some(handle) = running.get(request_id) {
             handle.abort();
-        } else if let Ok(mut early) = self.cancelled_early.lock() {
-            if early.len() >= EARLY_CANCELS {
-                early.pop_front();
-            }
-            early.push_back(request_id.to_string());
+        } else if !locked(&self.ended).iter().any(|id| id == request_id) {
+            remember(&mut locked(&self.cancelled_early), request_id);
         }
     }
 }

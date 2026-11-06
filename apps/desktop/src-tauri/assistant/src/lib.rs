@@ -113,7 +113,24 @@ pub fn token(value: &str) -> Option<String> {
 
 /// Every reason a refusal of this crate can carry. The app's `ASSISTANT_REASONS` holds them all
 /// (a test there reads this list).
-pub const REASONS: &[&str] = &[];
+pub const REASONS: &[&str] = &[
+    "assistant_auth",
+    "assistant_bad_output",
+    "assistant_cancelled",
+    "assistant_credits",
+    "assistant_key_invalid",
+    "assistant_key_store",
+    "assistant_model_unavailable",
+    "assistant_not_configured",
+    "assistant_offline",
+    "assistant_overloaded",
+    "assistant_rate_limited",
+    "assistant_refused",
+    "assistant_routing_unavailable",
+    "assistant_timeout",
+    "assistant_too_long",
+    "assistant_truncated",
+];
 
 #[cfg(test)]
 mod reasons {
