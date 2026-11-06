@@ -679,22 +679,83 @@ describe("layout-guards: where a session opens (issues #173 and #456)", () => {
   });
 });
 
-import { ratchetScreen } from "../lib/layout-guards.ts";
+import { loadCounts, ratchetScreen } from "../lib/layout-guards.ts";
 
-describe("layout-guards: one screen against a ratchet, as demo:shots runs it (#641)", () => {
-  test("it records what the screen showed, fails a new finding, and lists a baseline key that is gone", () => {
-    const ratchet = {
-      baseline: { "overflow-x|dark en 640x800 board|page > old": true as const },
-      seen: {} as Record<string, string>,
-      gone: [] as string[],
-    };
-    const wide = { rule: "overflow-x" as const, path: "page > table", detail: "76 px past card" };
-    expect(ratchetScreen("dark en 640x800 board", [wide], ratchet)).toEqual([
-      "dark en 640x800 board: overflow-x page > table (76 px past card)",
+describe("layout-guards: one screen against a ratchet of counts, as demo:shots runs it (#641)", () => {
+  const S = "dark en 640x800 board";
+  const wide = (path: string, group: string, detail: string) => ({
+    rule: "overflow-x" as const,
+    path,
+    group,
+    detail,
+  });
+  const fresh = (baseline: Record<string, number> | null) => ({
+    baseline,
+    seen: {} as Record<string, number>,
+    occurrences: {} as Record<string, string>,
+    gone: [] as string[],
+  });
+
+  test("a key counts its findings under the path with no numbers: one more than the baseline fails, naming each", () => {
+    const ratchet = fresh({
+      [`overflow-x|${S}|tab-strip > tab`]: 1,
+      [`overflow-x|${S}|page > old`]: 2,
+      [`overflow-x|${S}|page > two`]: 2,
+    });
+    const failures = ratchetScreen(
+      S,
+      [
+        wide("tab-strip > tab[1]", "tab-strip > tab", "16 px past the right of tab-strip"),
+        wide("tab-strip > tab[2]", "tab-strip > tab", "112 px past the right of tab-strip"),
+        wide("page > two[1]", "page > two", "3 px past the right of page"),
+      ],
+      ratchet,
+    );
+    expect(failures).toEqual([
+      `${S}: overflow-x tab-strip > tab, 2 where the baseline has 1: tab-strip > tab[1] (16 px past the right of tab-strip); tab-strip > tab[2] (112 px past the right of tab-strip)`,
     ]);
     expect(ratchet.seen).toEqual({
-      "overflow-x|dark en 640x800 board|page > table": "76 px past card",
+      [`overflow-x|${S}|tab-strip > tab`]: 2,
+      [`overflow-x|${S}|page > two`]: 1,
     });
-    expect(ratchet.gone).toEqual(["overflow-x|dark en 640x800 board|page > old"]);
+    expect(ratchet.occurrences).toEqual({
+      [`overflow-x|${S}|tab-strip > tab[1]`]: "16 px past the right of tab-strip",
+      [`overflow-x|${S}|tab-strip > tab[2]`]: "112 px past the right of tab-strip",
+      [`overflow-x|${S}|page > two[1]`]: "3 px past the right of page",
+    });
+    // Fewer than the baseline: the file must come down with the fix.
+    expect(ratchet.gone).toEqual([
+      `overflow-x|${S}|page > old: 0 where the baseline has 2: remove it`,
+      `overflow-x|${S}|page > two: 1 where the baseline has 2: lower it`,
+    ]);
+  });
+
+  test("with no baseline a heuristic finding fails nothing, and a contract finding fails anyway", () => {
+    const ratchet = fresh(null);
+    const gap = { rule: "gap" as const, path: "toast", detail: "3 px above status-bar" };
+    expect(ratchetScreen(S, [wide("page > a[1]", "page > a", "9 px"), gap], ratchet)).toEqual([
+      `${S}: gap toast (3 px above status-bar)`,
+    ]);
+    expect(ratchet.gone).toEqual([]);
+  });
+
+  test("the spacing and narrow rules carry the path with no numbers, so the count survives a button added above", () => {
+    page(`
+      <div data-slot="chips" data-rect="0,0,400,30">
+        <span data-slot="badge" data-rect="0,0,60,20">a</span>
+        <span data-slot="badge" data-rect="62,0,120,20">b</span>
+      </div>`);
+    const found = layoutFindings({ spacing: SPACING }).filter((f) => f.rule === "chip-gap");
+    expect(found.map((f) => `${f.path} / ${f.group}`)).toEqual([
+      "chips > badge[2] / chips > badge",
+    ]);
+  });
+
+  test("a baseline of counts loads as counts; an entry that is not a number counts as one", () => {
+    expect(loadCounts(() => null)).toBeNull();
+    expect(loadCounts(() => '{"a|s|p": 3, "b|s|p": "1406 px past its box"}')).toEqual({
+      "a|s|p": 3,
+      "b|s|p": 1,
+    });
   });
 });

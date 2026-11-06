@@ -28,6 +28,8 @@ export interface Finding {
   rule: Rule;
   /** The culprit's nearest `data-slot` names, then its tag and class when it has none. */
   path: string;
+  /** The path with no numbers, for the spacing and narrow rules (#641): their baseline counts by it. */
+  group?: string;
   detail: string;
 }
 
@@ -665,11 +667,20 @@ export function judge(
   return { failures: [...contract, ...fresh.map(say)], fixed };
 }
 
-/** A baseline and what one run did with it: the findings it saw, and the keys it found gone. */
+/** A baseline of counts and what one run did with it (#641). */
 export interface Ratchet {
-  baseline: Baseline | null;
-  seen: Record<string, string>;
+  baseline: Record<string, number> | null;
+  /** Findings per key (rule, screen, path with no numbers): the baseline's format. */
+  seen: Record<string, number>;
+  /** Each finding by its numbered path, with its detail, for a person. */
+  occurrences: Record<string, string>;
+  /** Baseline keys this run saw fewer of, with what to do. */
   gone: string[];
+}
+
+/** A baseline of counts, or `null` when there is none yet; an entry that is not a number counts as one. */
+export function loadCounts(_read: () => string | null): Record<string, number> | null {
+  return {};
 }
 
 /** Judges one screen against a ratchet: records what it saw and what is gone; returns the failures. */
