@@ -77,6 +77,20 @@ describe("selo-barra-loja: the badge follows the bell (issue #233)", () => {
     expect(w.badges).toEqual([2, 2, 0]);
   });
 
+  test("a taskbar that refuses the badge again when the window comes back breaks nothing", async () => {
+    const w = world([entry("e1", false, "g1")]);
+    await w.store.init();
+    let refused = 0;
+    w.mem.platform.setBadge = async () => {
+      refused++;
+      throw new Error("no taskbar");
+    };
+    globalThis.dispatchEvent(new Event("focus"));
+    await settle(() => refused === 1);
+    await Promise.resolve();
+    expect(w.store.getState().inbox).toHaveLength(1);
+  });
+
   test("a start with nothing unread tells nothing", async () => {
     const w = world([entry("e1", true)]);
     await w.store.init();
