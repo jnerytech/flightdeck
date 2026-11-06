@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { startDaemon } from "../src/main.ts";
@@ -153,40 +153,44 @@ describe("opencode-wiring", () => {
     expect(() => REAL_KILL_DEPS.run([process.execPath, "-e", ""])).not.toThrow();
   });
 
-  test.skipIf(process.platform !== "linux")(
-    "at start, a process group an earlier daemon left behind is reaped, even with OpenCode off (issue #250)",
-    async () => {
-      const orphan = Bun.spawn(["sleep", "300"], {
-        detached: true,
-        stdout: "ignore",
-        stderr: "ignore",
+  test("at start, a process group an earlier daemon left behind is reaped, even with OpenCode off (issue #250); outside Linux nothing is known, so nothing is", async () => {
+    const linux = process.platform === "linux";
+    const orphan = Bun.spawn([process.execPath, "-e", "setTimeout(() => {}, 300000)"], {
+      detached: true,
+      stdout: "ignore",
+      stderr: "ignore",
+    });
+    try {
+      const real = procSource();
+      const cmdline = `/proc/${orphan.pid}/cmdline`;
+      await poll(
+        () =>
+          !linux || (existsSync(cmdline) && readFileSync(cmdline, "utf8").includes("setTimeout")),
+        5000,
+      );
+      const identity = await real.identity(orphan.pid);
+      const bootId = await real.bootId();
+      await daemon(null, (dataDir) => {
+        mkdirSync(dataDir, { recursive: true });
+        writeFileSync(
+          join(dataDir, OPENCODE_LEDGER_FILE),
+          JSON.stringify([
+            {
+              pid: orphan.pid,
+              startTicks: identity?.startTicks ?? 0,
+              cmdline: identity?.cmdline ?? "opencode",
+              bootId: bootId ?? "unknown",
+            },
+          ]),
+        );
       });
-      try {
-        const real = procSource("linux");
-        await poll(() => real.identity(orphan.pid)?.cmdline === "sleep 300", 5000);
-        const identity = real.identity(orphan.pid);
-        await daemon(null, (dataDir) => {
-          mkdirSync(dataDir, { recursive: true });
-          writeFileSync(
-            join(dataDir, OPENCODE_LEDGER_FILE),
-            JSON.stringify([
-              {
-                pid: orphan.pid,
-                startTicks: identity?.startTicks,
-                cmdline: identity?.cmdline,
-                bootId: real.bootId(),
-              },
-            ]),
-          );
-        });
-        let gone = false;
-        void orphan.exited.then(() => {
-          gone = true;
-        });
-        expect(await poll(() => gone, 5000)).toBe(true);
-      } finally {
-        orphan.kill("SIGKILL");
-      }
-    },
-  );
+      let gone = false;
+      void orphan.exited.then(() => {
+        gone = true;
+      });
+      expect(await poll(() => gone, linux ? 5000 : 300)).toBe(linux ? true : null);
+    } finally {
+      orphan.kill("SIGKILL");
+    }
+  });
 });

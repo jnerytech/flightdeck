@@ -1,5 +1,6 @@
-import { mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 
 /**
  * A ledger of the process groups the daemon starts for OpenCode (issue #250). After a SIGKILL of
@@ -19,13 +20,15 @@ export interface ProcIdentity {
   pgrp: number;
 }
 
+type Awaitable<T> = T | Promise<T>;
+
 /** The part of the OS the ledger reads, injected so a test needs no real process. */
 export interface ProcSource {
-  identity(pid: number): ProcIdentity | null;
+  identity(pid: number): Awaitable<ProcIdentity | null>;
   /** The processes whose group is `pgid`. */
-  members(pgid: number): Array<{ pid: number; startTicks: number }>;
+  members(pgid: number): Awaitable<Array<{ pid: number; startTicks: number }>>;
   /** This boot's id (`/proc/sys/kernel/random/boot_id`): start ticks mean nothing across boots. */
-  bootId(): string | null;
+  bootId(): Awaitable<string | null>;
 }
 
 export interface LedgerEntry {
@@ -83,71 +86,93 @@ const isEntry = (value: unknown): value is LedgerEntry => {
   );
 };
 
-/** Linux guarantees that a pid is not reused while a process group of that id has members. */
+/**
+ * Linux guarantees that a pid is not reused while a process group of that id has members. The
+ * file is read and written without blocking, one change at a time, so two sessions starting at
+ * once cannot lose an entry.
+ */
 export class ProcessLedger {
+  private queue: Promise<unknown> = Promise.resolve();
+
   constructor(private readonly opts: LedgerOptions) {}
 
-  private read(): LedgerEntry[] {
+  /** Runs `work` after every change asked before it. */
+  private serial<T>(work: () => Promise<T>): Promise<T> {
+    const run = this.queue.then(work, work);
+    this.queue = run.catch(() => undefined);
+    return run;
+  }
+
+  private async read(): Promise<LedgerEntry[]> {
     try {
-      const parsed: unknown = JSON.parse(readFileSync(this.opts.file, "utf8"));
+      const parsed: unknown = JSON.parse(await readFile(this.opts.file, "utf8"));
       return Array.isArray(parsed) ? parsed.filter(isEntry) : [];
     } catch {
       return [];
     }
   }
 
-  private write(entries: LedgerEntry[]): void {
+  private async write(entries: LedgerEntry[]): Promise<void> {
     try {
-      mkdirSync(dirname(this.opts.file), { recursive: true });
+      await mkdir(dirname(this.opts.file), { recursive: true });
       const tmp = `${this.opts.file}.tmp`;
-      writeFileSync(tmp, JSON.stringify(entries));
-      renameSync(tmp, this.opts.file);
+      await writeFile(tmp, JSON.stringify(entries));
+      await rename(tmp, this.opts.file);
     } catch {
       // A ledger that cannot be written only loses the cleanup after a crash; it never stops a session.
     }
   }
 
   /** Writes down a process group the daemon just started, led by `pid`. */
-  add(pid: number): void {
-    const identity = this.opts.proc.identity(pid);
-    const bootId = this.opts.proc.bootId();
-    if (!identity || !bootId) return;
-    const entries = this.read().filter((e) => e.pid !== pid);
-    entries.push({ pid, startTicks: identity.startTicks, cmdline: identity.cmdline, bootId });
-    this.write(entries);
+  add(pid: number): Promise<void> {
+    return this.serial(async () => {
+      const identity = await this.opts.proc.identity(pid);
+      const bootId = await this.opts.proc.bootId();
+      if (!identity || !bootId) return;
+      const entries = (await this.read()).filter((e) => e.pid !== pid);
+      entries.push({ pid, startTicks: identity.startTicks, cmdline: identity.cmdline, bootId });
+      await this.write(entries);
+    });
   }
 
   /** The group's leader ended: whatever is left of its group is killed, and the entry goes. */
-  release(pid: number): void {
-    const entries = this.read();
-    const entry = entries.find((e) => e.pid === pid);
-    if (!entry) return;
-    this.settle(entry);
-    this.write(entries.filter((e) => e.pid !== pid));
+  release(pid: number): Promise<void> {
+    return this.serial(async () => {
+      const entries = await this.read();
+      const entry = entries.find((e) => e.pid === pid);
+      if (!entry) return;
+      await this.settle(entry);
+      await this.write(entries.filter((e) => e.pid !== pid));
+    });
   }
 
   /** At start: kills the groups an earlier daemon left behind that are still alive. */
-  reap(): ReapResult {
-    const entries = this.read();
-    const result: ReapResult = { reaped: [], stale: [] };
-    for (const entry of entries) {
-      (this.settle(entry) ? result.reaped : result.stale).push(entry.pid);
-    }
-    if (entries.length > 0) this.write([]);
-    return result;
+  reap(): Promise<ReapResult> {
+    return this.serial(async () => {
+      const entries = await this.read();
+      const result: ReapResult = { reaped: [], stale: [] };
+      // One group at a time: each look and signal sees the effect of the one before.
+      await inSequence(entries, async (entry) => {
+        ((await this.settle(entry)) ? result.reaped : result.stale).push(entry.pid);
+      });
+      if (entries.length > 0) await this.write([]);
+      return result;
+    });
   }
 
-  get size(): number {
-    return this.read().length;
+  /** How many groups are written down. */
+  count(): Promise<number> {
+    return this.serial(async () => (await this.read()).length);
   }
 
   /** Kills the group of an entry when it is still its own; whether it did. */
-  private settle(entry: LedgerEntry): boolean {
+  private async settle(entry: LedgerEntry): Promise<boolean> {
     const { proc } = this.opts;
-    if (entry.bootId !== proc.bootId()) return false;
+    if (entry.bootId !== (await proc.bootId())) return false;
     // Never the daemon itself or the group it runs in, whatever the file says.
-    if (entry.pid === process.pid || entry.pid === proc.identity(process.pid)?.pgrp) return false;
-    const leader = proc.identity(entry.pid);
+    const own = await proc.identity(process.pid);
+    if (entry.pid === process.pid || entry.pid === own?.pgrp) return false;
+    const leader = await proc.identity(entry.pid);
     let alive: boolean;
     if (leader) {
       // The pid is there: it is ours only if it started when and as it did, leading its own group.
@@ -158,7 +183,7 @@ export class ProcessLedger {
     } else {
       // The leader is gone. While any process holds the group id, the kernel does not hand the pid
       // to another: what belongs to the group and started after the leader is what it left behind.
-      alive = proc.members(entry.pid).some((m) => m.startTicks >= entry.startTicks);
+      alive = (await proc.members(entry.pid)).some((m) => m.startTicks >= entry.startTicks);
     }
     if (!alive) return false;
     try {
@@ -170,50 +195,32 @@ export class ProcessLedger {
   }
 }
 
-/** /proc on Linux; on any other system nothing is known, so nothing is recorded or reaped. */
+/** /proc on Linux, read without blocking; on any other system nothing is known, so nothing is
+ * recorded or reaped. */
 export function procSource(platform: NodeJS.Platform = process.platform): ProcSource {
   if (platform !== "linux") return { identity: () => null, members: () => [], bootId: () => null };
-  const stat = (pid: number) => {
-    try {
-      return parseStat(readFileSync(`/proc/${pid}/stat`, "utf8"));
-    } catch {
-      return null;
-    }
+  const text = (path: string) => readFile(path, "utf8").catch(() => null);
+  const stat = async (pid: number) => {
+    const raw = await text(`/proc/${pid}/stat`);
+    return raw === null ? null : parseStat(raw);
   };
   return {
-    bootId() {
-      try {
-        return readFileSync("/proc/sys/kernel/random/boot_id", "utf8").trim() || null;
-      } catch {
-        return null;
-      }
+    async bootId() {
+      return (await text("/proc/sys/kernel/random/boot_id"))?.trim() || null;
     },
-    identity(pid) {
-      const parsed = stat(pid);
-      if (!parsed) return null;
-      try {
-        const cmdline = readFileSync(`/proc/${pid}/cmdline`, "utf8").replaceAll("\0", " ").trim();
-        return { ...parsed, cmdline };
-      } catch {
-        return null;
-      }
+    async identity(pid) {
+      const parsed = await stat(pid);
+      const raw = parsed ? await text(`/proc/${pid}/cmdline`) : null;
+      if (!parsed || raw === null) return null;
+      return { ...parsed, cmdline: raw.replaceAll("\0", " ").trim() };
     },
-    members(pgid) {
-      const found: Array<{ pid: number; startTicks: number }> = [];
-      let names: string[];
-      try {
-        names = readdirSync("/proc");
-      } catch {
-        return found;
-      }
-      for (const name of names) {
-        if (!/^\d+$/.test(name)) continue;
-        const parsed = stat(Number(name));
-        if (parsed && parsed.pgrp === pgid) {
-          found.push({ pid: Number(name), startTicks: parsed.startTicks });
-        }
-      }
-      return found;
+    async members(pgid) {
+      const names = await readdir("/proc").catch(() => [] as string[]);
+      const pids = names.filter((n) => /^\d+$/.test(n)).map(Number);
+      const stats = await Promise.all(pids.map(async (pid) => ({ pid, parsed: await stat(pid) })));
+      return stats.flatMap(({ pid, parsed }) =>
+        parsed?.pgrp === pgid ? [{ pid, startTicks: parsed.startTicks }] : [],
+      );
     },
   };
 }

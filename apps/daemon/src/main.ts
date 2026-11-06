@@ -669,7 +669,7 @@ async function createOpenCode(
     proc: procSource(),
     killGroup: REAL_KILL_DEPS.killGroup,
   });
-  const left = ledger.reap();
+  const left = await ledger.reap();
   if (left.reaped.length > 0) {
     log(`OpenCode: ${left.reaped.length} process group(s) left by an earlier daemon were ended`);
   }
