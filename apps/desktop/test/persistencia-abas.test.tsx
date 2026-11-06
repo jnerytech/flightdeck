@@ -134,13 +134,21 @@ describe("persistencia-abas", () => {
   test("the store keeps the window as it changes and restores it on the next start", async () => {
     const mem = memoryPlatform(false, "pt-BR");
     const first = new AppStore(mem.platform);
-    first.tabs.open(costs);
+    first.hostTabs.open(costs);
+    first.hostTabs.open({ name: "history", host: "h1" });
     first.workspace.toggleSplit();
-    expect(JSON.parse(mem.items.get(WORKSPACE_KEY) ?? "null")?.split).toBe("vertical");
+    // Each host's window is kept under the host (v2), the shared screens beside them.
+    const kept = JSON.parse(mem.items.get(WORKSPACE_KEY) ?? "null");
+    expect(kept?.v).toBe(2);
+    expect(kept?.hosts?.h1?.split).toBe("vertical");
     const second = new AppStore(mem.platform);
+    expect(second.hostTabs.hostId).toBe("h1");
     expect(second.workspace.split).toBe("vertical");
     expect(second.workspace.areas).toHaveLength(2);
     expect(second.workspace.areas[0]?.tabs.map((tab) => tab.router.current.name)).toEqual([
+      "history",
+    ]);
+    expect(second.hostTabs.shared.tabs.map((tab) => tab.router.current.name)).toEqual([
       "home",
       "costs",
     ]);
@@ -158,7 +166,7 @@ describe("persistencia-abas", () => {
       url: `ws://127.0.0.1:${silent.port}/v1/ws`,
       token: "t",
     });
-    first.tabs.open({ name: "history", host: hostId });
+    first.hostTabs.open({ name: "history", host: hostId });
     first.dispose();
     expect(mem.items.get(HOSTS_KEY)).toContain("pc");
     const second = new AppStore(mem.platform, { baseDelayMs: 10_000, maxDelayMs: 10_000 });
@@ -167,7 +175,9 @@ describe("persistencia-abas", () => {
     await waitFor(() =>
       expect(screen.queryByRole("status", { name: "Conectando a pc…" })).not.toBeNull(),
     );
-    expect(second.workspace.tabs.tabs).toHaveLength(2);
+    // Home stays in the shared set; the host's own tab is the one that was waiting.
+    expect(second.hostTabs.shared.tabs).toHaveLength(1);
+    expect(second.workspace.tabs.tabs).toHaveLength(1);
     second.dispose();
     silent.stop(true);
   });
@@ -176,6 +186,12 @@ describe("persistencia-abas", () => {
     const mem = memoryPlatform(false, "pt-BR");
     mem.items.set(WORKSPACE_KEY, "{oops");
     const store = new AppStore(mem.platform);
-    expect(shape(store.workspace)).toEqual([{ tabs: [["home", false]], active: 0 }]);
+    expect(store.hostTabs.hostId).toBeNull();
+    expect(
+      store.hostTabs.shared.tabs.map((tab): [string, boolean] => [
+        tab.router.current.name,
+        tab.pinned,
+      ]),
+    ).toEqual([["home", true]]);
   });
 });
