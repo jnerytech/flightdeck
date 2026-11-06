@@ -24,7 +24,10 @@ export interface ShardDeps {
 }
 
 /** Names in code-unit order, whatever the locale: the same split on every runner (and what a bare sort() does, said out loud). */
-const byName = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+const byName = (a: string, b: string) => {
+  if (a < b) return -1;
+  return a > b ? 1 : 0;
+};
 
 const TEST_FILE = /(\.|_)(test|spec)\.[cm]?[jt]sx?$/;
 const SHARD = /^([1-9]\d*)\/([1-9]\d*)$/;

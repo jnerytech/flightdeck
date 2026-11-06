@@ -76,6 +76,12 @@ export interface CheckRun {
   conclusion: string | null;
 }
 
+/** A commit status as a check's state: success is ok, pending waits, anything else fails. */
+function statusState(status: string): "ok" | "failing" | "pending" {
+  if (status === "success") return "ok";
+  return status === "pending" ? "pending" : "failing";
+}
+
 /** Whether every required check is green: the newest run of each name, or a commit status. */
 export function checksVerdict(
   required: string[],
@@ -96,7 +102,7 @@ export function checksVerdict(
       if (run.status !== "completed") state = "pending";
       else state = PASSED.has(run.conclusion ?? "") ? "ok" : "failing";
     } else if (status) {
-      state = status === "success" ? "ok" : status === "pending" ? "pending" : "failing";
+      state = statusState(status);
     } else state = "missing";
     if (state !== "ok") {
       verdict.green = false;
@@ -253,7 +259,7 @@ async function openPr(args: string[], deps: PrFlowDeps): Promise<number> {
     "-F",
     `draft=${args.includes("--draft")}`,
     "--jq",
-    '"\\(.number) \\(.html_url)"',
+    String.raw`"\(.number) \(.html_url)"`,
   ]);
   if (created.code !== 0) {
     deps.log(`GitHub refused the PR for ${branch}`);
