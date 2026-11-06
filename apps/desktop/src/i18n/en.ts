@@ -1159,6 +1159,7 @@ export const en: Dictionary = {
       "Allowing a prod tag needs a window of days and hours, and does not apply outside it: use ask.",
   },
   daemonFeature: {
+    assistant: "the AI assistant",
     github: "sign-in with GitHub",
     boardsync: "board sync",
     roi: "the ROI view",
@@ -1706,6 +1707,38 @@ export const en: Dictionary = {
     transcript_not_indexed: "The transcript {id} is not indexed on this host.",
     session_maybe_active:
       "The session may be in use elsewhere: resume it anyway only if you are sure it is not.",
+  },
+  assistantRefusal: {
+    assistant_not_configured: "Choose an AI provider in Settings, Assistant, first.",
+    assistant_empty_input: "Write something first.",
+    assistant_too_long: "The text is too long for the assistant (at most {max} characters).",
+    assistant_secret_found:
+      "Nothing was sent: the text looks like it holds a secret ({labels}). Remove it and try again.",
+    assistant_vault_value:
+      "Nothing was sent: the text holds the value of a vault secret ({names}). Remove it and try again.",
+    assistant_quota_blocked:
+      "The host's Claude plan is at its limit until {until}. Try again then, or choose another provider.",
+    assistant_host_unavailable: "Claude Code on the host cannot answer: {detail}",
+    assistant_auth: "The provider refused the key. Check it in Settings, Assistant.",
+    assistant_credits: "The provider says there is no credit left on this key.",
+    assistant_rate_limited: "Too many requests right now. Wait a moment and try again.",
+    assistant_overloaded: "The provider is overloaded. Try again in a moment.",
+    assistant_routing_unavailable:
+      "No provider of this model on OpenRouter takes the request without collecting data. Turn off the data switch in Settings, or pick another model.",
+    assistant_model_unavailable:
+      "The provider does not offer this model. Pick another one in Settings.",
+    assistant_truncated:
+      "The answer was cut short before it ended. Try again, or use a shorter text.",
+    assistant_refused: "The model declined to answer this text.",
+    assistant_bad_output: "The model gave an answer that cannot be used. Try again.",
+    assistant_placeholders_changed:
+      "The suggestion changed the snippet's variables, so it is not offered. Try again.",
+    assistant_timeout: "The provider took too long to answer.",
+    assistant_cancelled: "Cancelled.",
+    assistant_offline: "The provider cannot be reached. Check the connection.",
+    assistant_no_changes: "There are no changes to describe.",
+    assistant_not_a_repo: "This folder is not a git repository.",
+    assistant_request_id: "Request id: {id}",
   },
   snippetRefusal: {
     name_invalid: "Name must be 1 to 64 characters: letters, numbers, space, . _ -",
