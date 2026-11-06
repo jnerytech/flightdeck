@@ -136,8 +136,15 @@ describe("paleta", () => {
   test("seções na ordem; os locais aparecem e filtram na hora, sem consultar o histórico", async () => {
     const { store } = await setup();
     await openPalette();
-    await settle(() => sections().length === 5);
-    expect(sections()).toEqual(["Sessões ao vivo", "Cards", "Projetos", "Hosts", "Ações"]);
+    await settle(() => sections().length === 6);
+    expect(sections()).toEqual([
+      "Sessões ao vivo",
+      "Cards",
+      "Projetos",
+      "Hosts",
+      "Ações",
+      "Clientes",
+    ]);
     expect(options()).toEqual([
       "Gerenciada",
       "app-a",
@@ -152,10 +159,11 @@ describe("paleta", () => {
       "Mudar para o modo simples",
       "Trocar idioma",
       "Ir para Configurações",
+      "Gerenciar clientes",
     ]);
-    // A section shows eight rows (issue #147): Adicionar um host, the shortcuts and the clients
-    // are behind "mais 3" now that the simple mode has its own action.
-    expect(screen.queryByRole("button", { name: "mais 3" })).not.toBeNull();
+    // A section shows eight rows (issue #147): Adicionar um host and the shortcuts are behind
+    // "mais 2"; the clients have a section of their own, shown whole.
+    expect(screen.queryByRole("button", { name: "mais 2" })).not.toBeNull();
     // No screen for it on this host: no "Ir para Custos".
     expect(options()).not.toContain("Ir para Custos");
 
