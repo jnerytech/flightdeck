@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { posix } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
+import { refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
 
 /** Where workflows live in the repository, read from the base branch only. */
@@ -24,7 +25,16 @@ export function hashOf(source: string): string {
  */
 export async function workflowSources(repo: string, base: string): Promise<WorkflowSource[]> {
   const listed = must(
-    await git(repo, "ls-tree", "-z", "--name-only", base, "--", `${WORKFLOWS_DIR}/`),
+    await git(
+      repo,
+      "ls-tree",
+      "-z",
+      "--name-only",
+      "--end-of-options",
+      refArg(base),
+      "--",
+      `${WORKFLOWS_DIR}/`,
+    ),
     "git ls-tree",
   );
   const paths = listed.stdout
@@ -34,7 +44,10 @@ export async function workflowSources(repo: string, base: string): Promise<Workf
     .sort((a, b) => a.localeCompare(b, "en"));
   const sources: WorkflowSource[] = [];
   await inSequence(paths, async (path) => {
-    const { stdout: source } = must(await git(repo, "show", `${base}:${path}`), "git show");
+    const { stdout: source } = must(
+      await git(repo, "show", "--end-of-options", `${refArg(base)}:${path}`),
+      "git show",
+    );
     sources.push({ name: posix.basename(path, ".yaml"), source, hash: hashOf(source) });
   });
   return sources;

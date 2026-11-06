@@ -1446,6 +1446,7 @@ export const ptBR = {
       "A variável {name} tem quebra de linha ou NUL, que uma ação ssh não envia.",
     review_path_outside: "O caminho {path} está fora do repositório.",
     review_target_invalid: "{target} não é uma sessão nem um card para revisar.",
+    branch_invalid: "{name} não é um nome de branch válido.",
     review_file_missing: "O arquivo {path} não existe.",
     review_file_big: "O arquivo {path} passa de 1 MB: edite fora do Flightdeck.",
     review_file_binary: "O arquivo {path} não é texto.",
