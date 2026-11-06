@@ -517,7 +517,15 @@ export const PermissionRespondPayload = z.object({
   updatedInput: ToolInput.optional(),
   /** Only the request's own suggestions or a project rule; anything else is refused. */
   updatedPermissions: z.array(PermissionUpdate).optional(),
+  /**
+   * The Approve was held its full time (#245, #251): a high-risk request is allowed only with it.
+   * Absent from an older app, which a newer host refuses only for a high-risk allow.
+   */
+  held: z.boolean().optional(),
 });
+
+/** The host refuses a high-risk `permission.respond` allow that does not carry `held: true`. */
+export const FEATURE_HOLD_PROOF = "hold-proof";
 
 // Phase 3: transcripts indexed from ~/.claude/projects (read only).
 export const HistoryOrigin = z.enum(["flightdeck", "external"]);

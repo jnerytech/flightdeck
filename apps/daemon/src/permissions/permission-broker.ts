@@ -11,8 +11,9 @@ import type { PermissionDecision } from "../runtime/types.ts";
 import type { EventStore, PermissionStatus } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
 import type { AutoApproveRequest, AutoDecision } from "./auto-approve.ts";
+import { requireHold } from "./hold.ts";
 import { alwaysAsks, checkUpdates } from "./permission-updates.ts";
-import type { Risk } from "./risk.ts";
+import type { Risk, RiskLevel } from "./risk.ts";
 
 export interface BrokerHooks {
   emit(sessionId: string, event: SessionEvent): void;
@@ -43,6 +44,8 @@ interface Pending {
   toolName: string;
   /** What the CLI offered: the only updates, with project rules, an answer may carry. */
   suggestions: PermissionUpdate[];
+  /** The risk judged when it was asked: a high one is allowed only with the hold. */
+  risk: RiskLevel;
   resolve: (decision: PermissionDecision) => void;
   detach: () => void;
 }
@@ -83,14 +86,15 @@ export class PermissionBroker {
     return new Promise((resolve) => {
       const onAbort = () => this.finish(id, "cancelled");
       signal.addEventListener("abort", onAbort, { once: true });
+      const risk = this.hooks.classify(sessionId, toolName, input);
       this.open.set(id, {
         sessionId,
         toolName,
         suggestions,
+        risk: risk.level,
         resolve,
         detach: () => signal.removeEventListener("abort", onAbort),
       });
-      const risk = this.hooks.classify(sessionId, toolName, input);
       const announce = (plain?: PlainInfo) => {
         // Answered meanwhile (the turn was interrupted): nothing to announce.
         if (!this.open.has(id)) return;
@@ -152,6 +156,8 @@ export class PermissionBroker {
       );
     }
     if (payload.decision === "allow") {
+      // Without the hold a high-risk request stays open, nothing applied.
+      requireHold(pending.risk, payload.held);
       // Refused updates leave the request open, before anything is applied.
       const updates = payload.updatedPermissions ?? [];
       checkUpdates(updates, pending);

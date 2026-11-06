@@ -1237,6 +1237,7 @@ export const ptBR = {
       "Ligar o terminal dá um shell completo neste host: confirme para seguir.",
     central_confirm: "Mexer no ~/.claude/settings.json do host pede a sua confirmação.",
     permission_request_closed: "O pedido de permissão {id} não está aberto.",
+    hold_required: "Um pedido de risco alto só é aprovado segurando o botão.",
     update_needs_service:
       "O daemon não roda como serviço: atualize no host com flightdeckd update --from <binário novo>.",
     update_signature_failed: "Não foi possível verificar a atualização: {why}",

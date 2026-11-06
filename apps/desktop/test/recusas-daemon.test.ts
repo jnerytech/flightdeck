@@ -391,6 +391,7 @@ const REASONS = [
   "terminal_enable_confirm",
   "central_confirm",
   "permission_request_closed",
+  "hold_required",
   "update_needs_service",
   "update_signature_failed",
 ];

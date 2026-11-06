@@ -2174,7 +2174,7 @@ export class AppStore {
     decision: "allow" | "deny",
     answer: Answer = {},
   ): Promise<void> {
-    const { updatedPermissions, message, updatedInput } = answer;
+    const { updatedPermissions, message, updatedInput, held } = answer;
     if (this.unheld(hostId, requestId, decision, answer)) return;
     if (decision === "allow") startMeasure("approve");
     const question = this.vaultQuestions.get(requestId);
@@ -2188,6 +2188,7 @@ export class AppStore {
           ...(updatedPermissions ? { updatedPermissions } : {}),
           ...(message ? { message } : {}),
           ...(updatedInput ? { updatedInput } : {}),
+          ...(decision === "allow" && held ? { held: true } : {}),
         });
       } catch (error) {
         this.fail(error);
@@ -2214,7 +2215,7 @@ export class AppStore {
   }
 
   respond(requestId: string, decision: "allow" | "deny", answer: Answer = {}): Promise<void> {
-    const { updatedPermissions, message, updatedInput } = answer;
+    const { updatedPermissions, message, updatedInput, held } = answer;
     const hostId = this.state.selected?.hostId;
     if (hostId && this.unheld(hostId, requestId, decision, answer)) return Promise.resolve();
     return this.onSelected((conn) =>
@@ -2224,6 +2225,7 @@ export class AppStore {
         ...(message ? { message } : {}),
         ...(updatedPermissions ? { updatedPermissions } : {}),
         ...(updatedInput ? { updatedInput } : {}),
+        ...(decision === "allow" && held ? { held: true } : {}),
       }),
     );
   }

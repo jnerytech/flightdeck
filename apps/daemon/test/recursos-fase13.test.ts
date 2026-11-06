@@ -4,6 +4,7 @@ import type { Issues } from "../src/issues/issues.ts";
 import type { AutoApprover } from "../src/permissions/auto-approve.ts";
 import { startServer } from "../src/server.ts";
 import { newBoard } from "./board-helpers.ts";
+import { BASELINE_FEATURES } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const TOKEN = "recursos-token-0123456789abcdef";
@@ -39,7 +40,7 @@ async function features(parts: {
   await client.request("hello", { token: TOKEN, client: "t" });
   return (
     (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-      (name) => name !== "session.images",
+      (name) => !BASELINE_FEATURES.includes(name),
     ) ?? []
   );
 }

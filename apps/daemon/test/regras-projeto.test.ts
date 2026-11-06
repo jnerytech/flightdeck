@@ -6,7 +6,7 @@ import { ruleString } from "../src/board/project-rules.ts";
 import { excludeLocalSettingsAsync } from "../src/board/worktree.ts";
 import { startServer } from "../src/server.ts";
 import { cardWhen, git, newBoard } from "./board-helpers.ts";
-import { must, poll, tempDir } from "./helpers.ts";
+import { BASELINE_FEATURES, must, poll, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 import { workflowCard } from "./workflow-helpers.ts";
 
@@ -211,7 +211,7 @@ describe("regras-projeto", () => {
     await client.request("hello", { token: TOKEN, client: "t" });
     expect(
       (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toContain("rules");
     expect(await client.data("rules.list", { projectId: project.id })).toEqual({
