@@ -25,7 +25,8 @@ import { WebhooksSection } from "./WebhooksSection.tsx";
 function SettingRow(props: Readonly<{ label: string; children: (id: string) => ReactNode }>) {
   const id = useId();
   return (
-    <div className="flex items-center justify-between gap-4 text-sm">
+    // One label column for every row, so the controls start on one line whatever the label (#588).
+    <div className="setting-row">
       <label htmlFor={id}>{props.label}</label>
       {props.children(id)}
     </div>
@@ -204,7 +205,7 @@ export const Settings = memo(function Settings(props: {
             />
             {t("settings.terminalReader")}
           </label>
-          <small id={readerHint} className="text-muted-foreground text-xs">
+          <small id={readerHint} className="setting-hint">
             {t("settings.terminalReaderHint")}
           </small>
           <SettingRow label={t("settings.language")}>
@@ -264,6 +265,9 @@ export const Settings = memo(function Settings(props: {
             />
             {t("prefs.autostart")}
           </label>
+          {!settings.autostartSupported && (
+            <small className="setting-hint">{t("prefs.unavailable")}</small>
+          )}
           <label className={check}>
             <input
               type="checkbox"
@@ -272,9 +276,6 @@ export const Settings = memo(function Settings(props: {
             />
             {t("setup.restore")}
           </label>
-          {!settings.autostartSupported && (
-            <small className="text-muted-foreground text-xs">{t("prefs.unavailable")}</small>
-          )}
         </Panel>
       ),
     },
