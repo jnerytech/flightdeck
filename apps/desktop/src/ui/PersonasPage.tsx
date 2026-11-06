@@ -9,6 +9,7 @@ import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";
 import type { AppPersona } from "../lib/global-personas.ts";
+import type { Route } from "../lib/router.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
@@ -21,9 +22,13 @@ const originKey = (p: AppPersona) => (p.modified ? "packEdited" : p.scope);
 const PERSONASPAGE_KEYS = ["projects", "hosts"] as const;
 
 /** Phase 20: the personas of the first online host that keeps them, of a project, and the app's. */
-export const PersonasPage = memo(function PersonasPage(props: { store: AppStore }) {
+export const PersonasPage = memo(function PersonasPage(props: {
+  store: AppStore;
+  go(route: Route): void;
+}) {
   const t = useT();
   const { store } = props;
+  const openSettings = () => props.go({ name: "settings", section: "assistant" });
   const state = useStoreSlice(store, PERSONASPAGE_KEYS);
   const host = state.hosts.find(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "personas", false),
@@ -140,6 +145,7 @@ export const PersonasPage = memo(function PersonasPage(props: { store: AppStore 
           hostId={hostId}
           project={project === APP ? "" : project}
           persona={null}
+          onOpenSettings={openSettings}
           onSaved={() => {
             setEditing(null);
             void reload();
@@ -179,6 +185,7 @@ export const PersonasPage = memo(function PersonasPage(props: { store: AppStore 
                   hostId={hostId}
                   project={project === APP ? "" : project}
                   persona={p}
+                  onOpenSettings={openSettings}
                   inPlace
                   onSaved={() => {
                     setEditing(null);
