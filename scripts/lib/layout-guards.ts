@@ -88,7 +88,10 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   const seen = new Set<string>();
   /** A numbered path and the same path with no numbers, which the count baselines key by (#641). */
   const groups = new Map<string, string>();
-  /** `excess` (#637): how many px past its rule's limit, for the spacing and narrow rules. */
+  /**
+   * `excess` (#637): how many px past its rule's limit, for the spacing and narrow rules but
+   * `nested-scroll`, whose hidden px grow with the demo's data (#703 review).
+   */
   const add = (rule: Rule, path: string, detail: string, excess?: number) => {
     const key = `${rule}|${path}`;
     if (seen.has(key)) return;
@@ -512,14 +515,12 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
           "nested-scroll",
           pathOf(el, true),
           `hides ${inner} px, inside ${nameOf(outer)}, which hides ${hides(outer)}`,
-          inner,
         );
       } else if (page > 1) {
         add(
           "nested-scroll",
           pathOf(el, true),
           `hides ${inner} px, inside the page, which hides ${page}`,
-          inner,
         );
       }
     }
@@ -709,7 +710,6 @@ export function judge(
   return { failures: [...contract, ...fresh.map(say)], fixed };
 }
 
-/** A baseline of counts and what one run did with it (#641). */
 /** A key's entry in a count baseline (#637): how many findings, and the worst px past the limit. */
 export type CountEntry = number | { count: number; worst?: number };
 
