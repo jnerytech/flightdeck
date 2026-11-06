@@ -3090,6 +3090,8 @@ export const Command = z.discriminatedUnion("type", [
       archived: z.boolean().optional(),
     }),
   ),
+  /** Issue #255: the last lines of the daemon's own log file, redacted and bounded. */
+  cmd("logs.tail", z.object({ lines: z.number().int().min(1).max(500).optional() }).strict()),
   /** Issue #154: one snapshot of the host's memory, disk and what each session and terminal costs. */
   cmd("resources.get", z.object({}).strict()),
   /** Ends a process the snapshot lists as an orphan; the daemon checks again that it is one. */
@@ -4349,6 +4351,8 @@ export const HostInfoResult = z.object({
   ui: UiSettings.optional(),
   /** Whether a session may start in `bypassPermissions`; absent on a daemon that predates the switch. */
   allowBypassPermissions: z.boolean().optional(),
+  /** Issue #255: where the daemon writes its log; absent when it keeps none. */
+  logPath: z.string().optional(),
   /** Issue #157: minutes idle before a session sleeps; 0 is off; absent on a daemon without it. */
   sleepAfterMinutes: z.number().int().nonnegative().optional(),
   /** The host's keep-awake switch and whether it is holding the computer now; absent before issue #163. */
@@ -4547,6 +4551,8 @@ export type BackupInfo = z.infer<typeof BackupInfo>;
 /** Rows removed (or that would be, with `dryRun`) per table. */
 export const PruneCounts = z.record(z.string(), z.number());
 
+export const LogTail = z.object({ lines: z.array(z.string()), path: z.string() });
+export type LogTail = z.infer<typeof LogTail>;
 /**
  * Issue #154: what the host's work costs it. Executable names only: never a command line or an
  * environment, which can hold secrets.
@@ -4730,6 +4736,7 @@ export interface CommandResults {
   "external.watch": undefined;
   "external.message": undefined;
   "session.meta.set": SessionMeta & { claudeSessionId: string };
+  "logs.tail": LogTail;
   "resources.get": ResourcesSnapshot;
   "resources.endOrphan": { ended: true };
   "worktree.list": WorktreesResult;

@@ -118,6 +118,8 @@ export class ExternalSessions {
     if (!id) return null;
     const at = new Date(this.now()).toISOString();
     const next = nextStatus(event, payload);
+    // The hook's cwd is the session's current folder, which moves with it; the project is the
+    // launch folder's, the one its transcript is filed under, so it is set once (#583).
     const cwd = text(payload.cwd);
     if (!this.get(id)) {
       this.db
@@ -130,7 +132,7 @@ export class ExternalSessions {
     this.db
       .query(
         `UPDATE external_sessions SET cwd = COALESCE(?, cwd), transcript_path = COALESCE(?, transcript_path),
-           project_key = COALESCE(?, project_key), status = COALESCE(?, status), status_reason = ?,
+           project_key = COALESCE(project_key, ?), status = COALESCE(?, status), status_reason = ?,
            last_event_at = ?, ended_at = CASE WHEN ? = 'ended' THEN ? ELSE ended_at END
          WHERE claude_session_id = ?`,
       )

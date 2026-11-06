@@ -152,6 +152,7 @@ const REASONS = [
   "bg_not_found",
   "bg_no_message_path",
   "transport_refused",
+  "trust_root_refused",
   "secret_expired",
   "vault_full",
   "vault_action_unknown",
@@ -411,6 +412,22 @@ describe("recusas-daemon: the daemon's refusals about folders and sessions", () 
       expect(typeof (en.daemonRefusal as Record<string, string>)[reason]).toBe("string");
       expect(typeof (ptBR.daemonRefusal as Record<string, string>)[reason]).toBe("string");
     }
+  });
+
+  test("trusting a project says why it was refused and what to do, never the generic text (#592)", () => {
+    const root = { reason: "trust_root_refused" };
+    const near = { reason: "transport_refused" };
+    expect([
+      refusalText("invalid_state", "raw", enT, root),
+      refusalText("invalid_state", "raw", ptT, root),
+      refusalText("forbidden", "raw", enT, near),
+      refusalText("forbidden", "raw", ptT, near),
+    ]).toEqual([
+      "This folder is an allowed folder that holds several projects, or a folder above one: trust the project's own folder instead.",
+      "Esta pasta é uma pasta permitida com vários projetos, ou fica acima de uma: confie na pasta do próprio projeto.",
+      "This only works over a near connection: this computer (loopback) or Tailscale, which WireGuard encrypts. For a WSL host, add it as ws://localhost:<port> (WSL forwards the port) or by its Tailscale address.",
+      "Isto só funciona por uma conexão próxima: este computador (loopback) ou a Tailscale, que o WireGuard cifra. Para um host WSL, adicione-o como ws://localhost:<porta> (o WSL repassa a porta) ou pelo endereço da Tailscale.",
+    ]);
   });
 
   test("a reason becomes the whole sentence, with its params, in the app's language", () => {
