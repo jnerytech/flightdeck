@@ -15,7 +15,7 @@ import {
   opencodeEnv,
   type PermissionRule,
 } from "./opencode-config.ts";
-import { CONFIG_FILES, globalConfigDir, type ScopeResult } from "./opencode-scope.ts";
+import { CONFIG_FILES, findingText, globalConfigDir, type ScopeResult } from "./opencode-scope.ts";
 import { type PrivateServer, ServeFailed } from "./opencode-serve.ts";
 
 export const PREFLIGHT_CACHE_MS = 10 * 60_000;
@@ -104,9 +104,7 @@ export class OpenCodePreflight {
     const scope = await this.deps.scan();
     if (scope.findings.length > 0) {
       throw this.refuse("opencode_unsafe_global", {
-        found: scope.findings
-          .map((f) => `${f.kind}${f.detail ? ` ${f.detail}` : ""} (${f.path})`)
-          .join("\n"),
+        found: scope.findings.map(findingText).join("\n"),
       });
     }
     const now = (this.deps.now ?? Date.now)();

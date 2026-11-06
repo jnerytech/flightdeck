@@ -1,25 +1,95 @@
-import { forwardRef, type ReactNode } from "react";
+import { MoreHorizontal } from "lucide-react";
+import { createContext, forwardRef, type ReactNode, useContext, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useT } from "@/i18n/context";
+import { useHeight, useWidth } from "@/lib/use-width";
 import { cn } from "@/lib/utils";
 
+/** Below this width of the header's own box it is one line and the actions fold into a menu. */
+const NARROW_HEADER = 560;
+
+/**
+ * Below this height of the session's area it is short (a 720x480 window): the header is one line
+ * and the summary starts folded, so the conversation keeps its room (#232).
+ */
+const SHORT_AREA = 600;
+
+/** Whether the session's area is short; `SessionPane` measures it. */
+export const ShortArea = createContext(false);
+
 /** A session's title, its gray line and its controls, over the timeline. */
-export function SessionHeader(props: {
-  title: ReactNode;
-  subtitle?: ReactNode;
-  controls?: ReactNode;
-  /** A row of its own under the buttons (the persona controls). */
-  extra?: ReactNode;
-}) {
+export function SessionHeader(
+  props: Readonly<{
+    title: ReactNode;
+    subtitle?: ReactNode;
+    controls?: ReactNode;
+    /** A row of its own under the buttons (the persona controls). */
+    extra?: ReactNode;
+    /** The buttons that fold into a "More actions" menu when the header is narrow. */
+    actions?: ReactNode;
+    /** Dialogs of the actions: they stay mounted whether the menu is open or not. */
+    dialogs?: ReactNode;
+    /** The path and cost as one line of text: the tooltip of the title when the header is narrow. */
+    hint?: string;
+  }>,
+) {
+  const t = useT();
+  const box = useRef<HTMLElement>(null);
+  const width = useWidth(box);
+  const short = useContext(ShortArea);
+  const narrow = (width > 0 && width < NARROW_HEADER) || short;
+  if (narrow) {
+    return (
+      <header
+        ref={box}
+        className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-2"
+      >
+        <h2 title={props.hint} className="min-w-0 flex-1 truncate font-semibold text-base">
+          {props.title}
+        </h2>
+        <div data-slot="session-controls" className="flex shrink-0 items-center gap-2">
+          {props.controls}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label={t("session.moreActions")}
+              >
+                <MoreHorizontal aria-hidden="true" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              className="flex w-auto max-w-[calc(100vw-2rem)] flex-col gap-2"
+            >
+              {props.actions}
+              {props.extra}
+            </PopoverContent>
+          </Popover>
+          {props.dialogs}
+        </div>
+      </header>
+    );
+  }
   return (
-    <header className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
+    <header
+      ref={box}
+      className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b px-4 py-3"
+    >
       <div className="min-w-0">
         <h2 className="truncate font-semibold text-base">{props.title}</h2>
         {props.subtitle && (
           <div className="flex flex-col text-muted-foreground text-xs">{props.subtitle}</div>
         )}
       </div>
-      {props.controls && (
+      {(props.controls || props.actions || props.dialogs) && (
         <div data-slot="session-controls" className="flex flex-wrap items-end gap-2">
           {props.controls}
+          {props.actions}
+          {props.dialogs}
         </div>
       )}
       {props.extra && (
@@ -55,13 +125,15 @@ export const Timeline = forwardRef<
 });
 
 /** One message: the user's in a soft bubble on the right, the assistant's plain. */
-export function Message(props: {
-  from: "user" | "assistant";
-  children: ReactNode;
-  className?: string;
-  "data-uuid"?: string;
-  "aria-current"?: "true";
-}) {
+export function Message(
+  props: Readonly<{
+    from: "user" | "assistant";
+    children: ReactNode;
+    className?: string;
+    "data-uuid"?: string;
+    "aria-current"?: "true";
+  }>,
+) {
   return (
     <div
       data-uuid={props["data-uuid"]}
@@ -80,12 +152,18 @@ export function Message(props: {
 }
 
 /** Under the conversation: what waits to go out, the activity line, the box and its state line. */
-export function ComposerDock(props: { children: ReactNode }) {
-  return <div className="composer-dock">{props.children}</div>;
+export function ComposerDock(props: Readonly<{ children: ReactNode }>) {
+  // In a short area the dock's padding and gaps shrink: the conversation keeps its room (#232).
+  const short = useContext(ShortArea);
+  return (
+    <div className="composer-dock" {...(short ? { "data-short": "true" } : {})}>
+      {props.children}
+    </div>
+  );
 }
 
 /** The floating rounded card of the message box and its buttons. */
-export function Composer(props: { children: ReactNode }) {
+export function Composer(props: Readonly<{ children: ReactNode }>) {
   return (
     <div data-slot="composer-card" className="composer-card">
       {props.children}
@@ -94,6 +172,14 @@ export function Composer(props: { children: ReactNode }) {
 }
 
 /** A session pane: header, timeline and composer stacked, filling its column. */
-export function SessionPane(props: { children: ReactNode }) {
-  return <section className="flex h-full min-h-0 flex-col">{props.children}</section>;
+export function SessionPane(props: Readonly<{ children: ReactNode }>) {
+  const box = useRef<HTMLElement>(null);
+  const height = useHeight(box);
+  return (
+    <section ref={box} className="flex h-full min-h-0 flex-col">
+      <ShortArea.Provider value={height > 0 && height < SHORT_AREA}>
+        {props.children}
+      </ShortArea.Provider>
+    </section>
+  );
 }

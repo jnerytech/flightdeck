@@ -5,6 +5,7 @@ import { AskpassPrompt } from "@/components/connections/askpass-prompt";
 import { Notices } from "@/components/feedback/notices";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
+import { TopBarActions, TopBarHost } from "@/components/shell/top-bar";
 import { SnippetUse } from "@/components/snippets/snippet-use";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,10 +13,12 @@ import { TContext } from "@/i18n/context";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import { typing } from "../lib/keys.ts";
+import { pairingErrorText } from "../lib/pairing-text.ts";
 import type { PaletteTarget } from "../lib/palette.ts";
 import type { Route } from "../lib/router.ts";
 import { type ChordState, chordStep, isMac, NO_CHORD } from "../lib/shortcuts.ts";
 import { useStoreState } from "../lib/use-store.ts";
+import { APP_VERSION } from "../lib/version.ts";
 import { Areas } from "./Areas.tsx";
 import { GlobalSearch } from "./GlobalSearch.tsx";
 import { draftFromLink } from "./HostForm.tsx";
@@ -32,6 +35,7 @@ type InPlace =
   | "terminal"
   | "new-terminal"
   | "toggle-theme"
+  | "toggle-ui-mode"
   | "switch-language"
   | "start-card"
   | "snippet"
@@ -75,6 +79,8 @@ function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route 
       return { name: "projects", host: target.hostId };
     case "settings":
       return { name: "settings" };
+    case "add-host":
+      return { name: "add-host" };
     case "costs":
       return { name: "costs" };
     case "go":
@@ -110,9 +116,10 @@ function tabShortcut(store: AppStore, e: KeyboardEvent): boolean {
   return true;
 }
 
-export function App({ store }: { store: AppStore }) {
+export function App({ store }: Readonly<{ store: AppStore }>) {
   const state = useStoreState(store);
   const themeMode = useSyncExternalStore(store.theme.subscribe, () => store.theme.mode);
+  const resolvedTheme = useSyncExternalStore(store.theme.subscribe, () => store.theme.resolved);
   const lang = useSyncExternalStore(store.i18n.subscribe, () => store.i18n.lang);
   const density = useSyncExternalStore(store.density.subscribe, () => store.density.value);
   const { router } = store;
@@ -174,7 +181,10 @@ export function App({ store }: { store: AppStore }) {
         if (store.openRequestLink(url)) return;
         const parsed = parsePairingLink(url);
         if (!parsed.ok) {
-          store.reportError(`Link de pareamento recusado: ${parsed.error}`);
+          const { t } = store.i18n;
+          store.reportError(
+            t("hostForm.pairRefused", { reason: pairingErrorText(t, parsed.error) }),
+          );
           return;
         }
         const { url: wsUrl, name, token } = parsed.value;
@@ -198,6 +208,11 @@ export function App({ store }: { store: AppStore }) {
   // Alt+←/→ and the mouse's back and forward buttons walk the history.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Ctrl+Shift+M: simple mode and the full app, when the host lets the person choose.
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "m") {
+        if (store.toggleUiMode()) e.preventDefault();
+        return;
+      }
       // The go-to chords and `?` (never while typing in a field).
       const step = chordStep(
         chord.current,
@@ -306,6 +321,7 @@ export function App({ store }: { store: AppStore }) {
       else void store.openInTerminal(target.hostId, target.target);
     } else if (target.kind === "new-terminal") void store.openTerminal(target.hostId);
     else if (target.kind === "toggle-theme") store.theme.toggle();
+    else if (target.kind === "toggle-ui-mode") store.toggleUiMode();
     else if (target.kind === "switch-language") {
       store.i18n.setLang(lang === "pt-BR" ? "en" : "pt-BR");
     } else if (target.kind === "switch-client") {
@@ -319,14 +335,12 @@ export function App({ store }: { store: AppStore }) {
     } else if (target.kind === "start-card") {
       void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });
     } else if (target.kind === "shortcuts") setHelp(true);
-    else if (target.kind === "decide-oldest") store.decideOldest(target.decision);
+    else if (target.kind === "decide-oldest") store.decideOldest(target.decision, target.key);
     else go(paletteRoute(target));
   };
 
   // A host set to simple (or chosen so) shows simple mode in place of the full frame.
-  const focusHost =
-    state.hosts.find((h) => h.id === state.selected?.hostId) ??
-    state.hosts.find((h) => h.status === "online");
+  const focusHost = state.hosts.find((h) => h.id === store.uiHostId());
   if (focusHost && store.uiMode(focusHost.id).mode === "simple") {
     return (
       <TContext.Provider value={t}>
@@ -353,6 +367,19 @@ export function App({ store }: { store: AppStore }) {
           }}
           header={
             <>
+              <TopBarHost
+                hosts={state.hosts.map((h) => ({
+                  id: h.id,
+                  name: h.name,
+                  status: h.status,
+                  version: h.hostInfo?.daemonVersion ?? null,
+                }))}
+                currentId={store.uiHostId()}
+                appVersion={APP_VERSION}
+                t={t}
+                onChoose={(hostId) => store.select(hostId, null)}
+                onAdd={() => go({ name: "add-host" })}
+              />
               <Button
                 variant="ghost"
                 size="icon"
@@ -377,8 +404,17 @@ export function App({ store }: { store: AppStore }) {
                 moreLabel={t("shell.breadcrumbMore")}
                 onGo={go}
               />
-              <NotificationBell store={store} inbox={state.inbox} t={t} go={go} />
             </>
+          }
+          actions={
+            <TopBarActions
+              t={t}
+              theme={resolvedTheme}
+              version={APP_VERSION}
+              bell={<NotificationBell store={store} inbox={state.inbox} t={t} go={go} />}
+              onSearch={() => store.openSearch()}
+              onToggleTheme={() => store.theme.toggle()}
+            />
           }
           sidebar={(collapsed) => (
             <Sidebar
@@ -398,6 +434,9 @@ export function App({ store }: { store: AppStore }) {
               onOpenSearch={() => store.openSearch()}
               onNewTab={() => store.tabs.openNextInNewTab()}
               onToggleTheme={() => store.theme.toggle()}
+              {...(focusHost && store.uiMode(focusHost.id).canSwitch
+                ? { onSimpleMode: () => void store.toggleUiMode() }
+                : {})}
             />
           )}
         >

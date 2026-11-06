@@ -1,4 +1,13 @@
 import { z } from "zod";
+import {
+  AssistantCancelPayload,
+  type AssistantContextBundle,
+  AssistantContextPayload,
+  AssistantRecordPayload,
+  type AssistantResult,
+  AssistantRunPayload,
+} from "./assistant.ts";
+import { isBranchName } from "./git-ref.ts";
 import { type RunConfigInfo, RunState } from "./run.ts";
 
 export const PROTOCOL_VERSION = 1;
@@ -317,6 +326,18 @@ export const PermissionUpdate = z.discriminatedUnion("type", [
 ]);
 export type PermissionUpdate = z.infer<typeof PermissionUpdate>;
 
+/** A slash command of a session, as the app lists it after `/`. */
+export const SlashCommandInfo = z.object({
+  /** Without the slash. */
+  name: z.string(),
+  description: z.string(),
+  /** What to type after the name (`<file>`), when the command takes an argument. */
+  argumentHint: z.string().optional(),
+  /** Claude Code's own command, an MCP server's prompt, or a skill (a user, project or plugin one). */
+  kind: z.enum(["builtin", "skill", "mcp"]),
+});
+export type SlashCommandInfo = z.infer<typeof SlashCommandInfo>;
+
 export const SessionEvent = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("session.created"),
@@ -343,6 +364,8 @@ export const SessionEvent = z.discriminatedUnion("type", [
     contextFiles: z.array(z.string()).optional(),
     /** Phase 39: project files left out (too large), by name. */
     contextSkipped: z.array(z.string()).optional(),
+    /** The same commands with a description and a kind; an older daemon sends the names only. */
+    commands: z.array(SlashCommandInfo).optional(),
   }),
   /** `images`: how many came with the message (the bytes stay out of the log). */
   z.object({
@@ -494,7 +517,15 @@ export const PermissionRespondPayload = z.object({
   updatedInput: ToolInput.optional(),
   /** Only the request's own suggestions or a project rule; anything else is refused. */
   updatedPermissions: z.array(PermissionUpdate).optional(),
+  /**
+   * The Approve was held its full time (#245, #251): a high-risk request is allowed only with it.
+   * Absent from an older app, which a newer host refuses only for a high-risk allow.
+   */
+  held: z.boolean().optional(),
 });
+
+/** The host refuses a high-risk `permission.respond` allow that does not carry `held: true`. */
+export const FEATURE_HOLD_PROOF = "hold-proof";
 
 // Phase 3: transcripts indexed from ~/.claude/projects (read only).
 export const HistoryOrigin = z.enum(["flightdeck", "external"]);
@@ -831,6 +862,13 @@ export const DiffFile = z.object({
   /** Not committed yet (tracked change or new file). */
   uncommitted: z.boolean(),
   binary: z.boolean(),
+  /**
+   * The file is listed without content because it is over the daemon's cap (issue #329): a new file
+   * over it, or a diff over it. Absent from a daemon that does not know the marker.
+   */
+  tooLarge: z.boolean().optional(),
+  /** With `tooLarge`: the size of the file (a new one) or of its diff text, in bytes. */
+  bytes: z.number().int().nonnegative().optional(),
   hunks: z.array(DiffHunk),
 });
 export type DiffFile = z.infer<typeof DiffFile>;
@@ -1982,6 +2020,8 @@ export const UsageOrigin = z.enum([
   "workflow",
   "subagent",
   "auto-approve",
+  /** Phase 40: a call of the AI assistant. */
+  "assistant",
 ]);
 export type UsageOrigin = z.infer<typeof UsageOrigin>;
 
@@ -2144,7 +2184,8 @@ export type CostsStatus = z.infer<typeof CostsStatus>;
 
 const ProjectFields = {
   name: z.string().min(1).optional(),
-  baseBranch: z.string().min(1).optional(),
+  /** A branch name git accepts, and never one that starts with `-` (issue #345). */
+  baseBranch: z.string().refine(isBranchName, "not a valid branch name").optional(),
   prProvider: PrProviderKind.optional(),
   /** `null` or blank removes the script. */
   setupScript: z.string().nullable().optional(),
@@ -2810,6 +2851,11 @@ export const Command = z.discriminatedUnion("type", [
     "session.setModel",
     z.object({ sessionId: z.string(), model: z.string().nullable() }).strict(),
   ),
+  /** Changes the effort of a live managed session for its next turn; null is the model's default. */
+  cmd(
+    "session.setEffort",
+    z.object({ sessionId: z.string(), effort: EffortLevel.nullable() }).strict(),
+  ),
   cmd("session.close", SessionIdPayload),
   cmd("session.resume", SessionIdPayload),
   cmd("session.subscribe", SessionSubscribePayload),
@@ -2865,11 +2911,26 @@ export const Command = z.discriminatedUnion("type", [
   cmd("card.get", CardIdPayload),
   cmd("card.stop", CardIdPayload),
   cmd("card.diff", CardIdPayload),
+  /** Phase 40: the AI assistant (feature `assistant`). */
+  cmd("assistant.run", AssistantRunPayload),
+  cmd("assistant.cancel", AssistantCancelPayload),
+  cmd("assistant.context", AssistantContextPayload),
+  cmd("assistant.record", AssistantRecordPayload),
   cmd("card.message", z.object({ cardId: z.string(), text: z.string().min(1) })),
   /** With `description`: the text the person confirmed for the PR, instead of the card's own. */
   cmd(
     "card.pr.create",
-    z.object({ cardId: z.string(), description: z.string().max(8000).optional() }),
+    z.object({
+      cardId: z.string(),
+      description: z.string().max(8000).optional(),
+      /** Phase 40: the title the person confirmed, instead of the card's own. */
+      title: z
+        .string()
+        .min(1)
+        .max(256)
+        .regex(/^[^\r\n]*$/)
+        .optional(),
+    }),
   ),
   /**
    * A session managing the cards of its own project through the flightdeck MCP server. The daemon
@@ -2916,6 +2977,7 @@ export const Command = z.discriminatedUnion("type", [
   /** Phase 9: downloads, verifies and applies the checked update; only with `confirm: true`. */
   cmd("daemon.update.apply", z.object({ confirm: z.boolean().optional() })),
   cmd("daemon.update.check", z.object({}).strict()),
+  cmd("host.updates.set", z.object({ auto: z.boolean() })),
   /** Phase 12: the git snapshots of a Claude session, oldest first. */
   cmd("snapshots.list", z.object({ claudeSessionId: z.string().min(1) })),
   /** Phase 12: the files turn `n` (a `before` snapshot's n) changed, between its trees. */
@@ -3959,6 +4021,13 @@ export const Command = z.discriminatedUnion("type", [
       cardId: z.string(),
       mode: z.enum(["merge", "squash"]).default("merge"),
       confirm: z.boolean().optional(),
+      /** Phase 40: the message the person confirmed, instead of the default one. */
+      message: z
+        .string()
+        .min(1)
+        .max(5000)
+        .regex(/^[^\0]*$/)
+        .optional(),
     }),
   ),
   /** `changes.updated` after each change on disk (500 ms debounce), until `changes.unwatch`. */
@@ -4074,6 +4143,17 @@ export const UpdateStatus = z.object({
 });
 export type UpdateStatus = z.infer<typeof UpdateStatus>;
 
+/** Issue #280: where the daemon's automatic update stands, for the host page. */
+export const AutoUpdateStatus = z.object({
+  enabled: z.boolean(),
+  /** `off`, `current` (nothing newer), `waiting` (the host is busy), `started` or `failed`. */
+  state: z.enum(["off", "current", "waiting", "started", "failed"]),
+  version: z.string().optional(),
+  reason: z.string().optional(),
+  at: z.string().optional(),
+});
+export type AutoUpdateStatus = z.infer<typeof AutoUpdateStatus>;
+
 /** Phase 39: a runtime the host offers besides Claude Code, as discovery found it. */
 export const HostRuntime = z.object({
   kind: SessionRuntime,
@@ -4101,6 +4181,8 @@ export const HostInfoResult = z.object({
   features: z.array(z.string()).optional(),
   /** Phase 9: the last check of the daemon's release manifest; absent when it does not check. */
   update: UpdateStatus.optional(),
+  /** Issue #280: the automatic update; absent on a host that does not offer it (the `autoUpdate` feature). */
+  autoUpdate: AutoUpdateStatus.optional(),
   /** Phase 8: the stable `flightdeckd` (phase 7) when installed; "Abrir no terminal" runs it. */
   flightdeckdPath: z.string().nullable().optional(),
   /** Phase 8: the WSL distro this daemon runs in, `null` outside WSL. */
@@ -4254,6 +4336,7 @@ export interface CommandResults {
   "session.interrupt": undefined;
   "session.setMode": undefined;
   "session.setModel": undefined;
+  "session.setEffort": undefined;
   "session.close": undefined;
   "session.resume": undefined;
   "session.subscribe": SessionSubscribeResult;
@@ -4280,6 +4363,10 @@ export interface CommandResults {
   "card.start": Card;
   "card.stop": Card;
   "card.diff": CardDiff;
+  "assistant.run": AssistantResult;
+  "assistant.cancel": undefined;
+  "assistant.context": AssistantContextBundle;
+  "assistant.record": undefined;
   "card.message": SessionSendResult;
   "card.pr.create": Card;
   "card.manage": Card;
@@ -4297,6 +4384,7 @@ export interface CommandResults {
   "daemon.shutdown": undefined;
   "daemon.update.apply": { started: true };
   "daemon.update.check": UpdateStatus;
+  "host.updates.set": AutoUpdateStatus;
   "snapshots.list": { snapshots: SnapshotInfo[] };
   "snapshots.files": SnapshotFiles;
   "rewind.preview": RewindPreview;
@@ -4906,11 +4994,16 @@ export function parseServerMessage(raw: string): ServerMessage {
 }
 
 export * from "./activity.ts";
+export * from "./assistant.ts";
+export * from "./assistant-prompts.ts";
+export * from "./compare.ts";
+export * from "./git-ref.ts";
 export * from "./pairing.ts";
 export * from "./personas.ts";
 export * from "./question.ts";
 export * from "./refusals.ts";
 export * from "./run.ts";
+export * from "./sequence.ts";
 export * from "./snippets.ts";
 
 /**

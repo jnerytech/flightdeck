@@ -123,4 +123,70 @@ describe("workflows-ui", () => {
     await settle(() => screen.queryByRole("region", { name: "Execução do workflow" }) !== null);
     expect(screen.queryByRole("region", { name: "Execução do workflow" })).not.toBeNull();
   });
+
+  test("Iniciar card from the board menu asks for the workflow (only the trusted ones) and its inputs; Abrir in the toast opens the card", async () => {
+    const plan =
+      "inputs: [task]\nsteps:\n  - id: plan\n    agent: { prompt: 'plano de {{inputs.task}}' }\n";
+    const { board, project } = await online({ plan, outro: FEATURE }, ["plan"]);
+    const card = board.createCard(project.id, { title: "Somar", description: "x" });
+    await click("Abrir board de repo");
+    await settle(() => screen.queryByLabelText("Card Somar") !== null);
+    const trigger = screen.getByRole("button", { name: "Ações de Somar" });
+    await act(async () => {
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
+      fireEvent.click(trigger);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "Iniciar card" }));
+    });
+    const dialog = screen.getByRole("dialog", { name: "Iniciar card" });
+    await settle(
+      () => (within(dialog).getByLabelText("Workflow") as HTMLSelectElement).options.length === 2,
+    );
+    const select = within(dialog).getByLabelText("Workflow") as HTMLSelectElement;
+    expect([...select.options].map((o) => o.textContent)).toEqual([
+      "Nenhum (card simples)",
+      "plan",
+    ]);
+    expect(within(dialog).queryByLabelText("Input task")).toBeNull();
+    await act(async () => {
+      fireEvent.change(select, { target: { value: "plan" } });
+    });
+    await act(async () => {
+      fireEvent.change(within(dialog).getByLabelText("Input task"), {
+        target: { value: "dois números" },
+      });
+    });
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Iniciar" }));
+    });
+    await settle(() => board.getCard(card.id).workflowRunId !== null);
+    expect(board.workflows.getRun(board.getCard(card.id).workflowRunId ?? "").inputs).toEqual({
+      task: "dois números",
+    });
+    await settle(() => (document.body.textContent ?? "").includes("Card iniciado: Somar"));
+    const open = screen.getAllByRole("button", { name: "Abrir" }).at(-1) as HTMLElement;
+    await act(async () => {
+      fireEvent.click(open);
+    });
+    await settle(() => screen.queryByRole("button", { name: "Voltar ao board" }) !== null);
+  });
+
+  test("Cancelar in the Start dialog closes it and starts nothing", async () => {
+    const { board, project } = await online({}, []);
+    const card = board.createCard(project.id, { title: "Somar", description: "x" });
+    await click("Abrir board de repo");
+    await settle(() => screen.queryByLabelText("Card Somar") !== null);
+    const trigger = screen.getByRole("button", { name: "Ações de Somar" });
+    await act(async () => {
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
+      fireEvent.click(trigger);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "Iniciar card" }));
+    });
+    await click("Cancelar");
+    await settle(() => screen.queryByRole("dialog", { name: "Iniciar card" }) === null);
+    expect(board.getCard(card.id).sessionId).toBeNull();
+  });
 });

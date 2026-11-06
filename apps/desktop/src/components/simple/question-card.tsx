@@ -3,19 +3,23 @@ import type { KeyboardEvent } from "react";
 import { HoldButton } from "@/components/approval/hold-button";
 import { Button } from "@/components/ui/button";
 import type { T } from "../../i18n/index.ts";
+import { HIGH_RISK_HOLD_MS } from "../../lib/hold.ts";
 
 /** A permission request as a yes/no question with its consequence (simple mode, phase 33). */
-export function QuestionCard(props: {
-  plain: PlainInfo;
-  t: T;
-  /** The host is locked to simple: no way to full mode. */
-  locked: boolean;
-  onAnswer(decision: "allow" | "deny"): void;
-  onOpenFull(): void;
-  onCopy(text: string): void;
-  /** How long the yes of a high-risk question is held; two seconds. */
-  holdMs?: number;
-}) {
+export function QuestionCard(
+  props: Readonly<{
+    plain: PlainInfo;
+    t: T;
+    /** The host is locked to simple: no way to full mode. */
+    locked: boolean;
+    /** `held`: the yes was held its full time, the proof a high risk needs (#245). */
+    onAnswer(decision: "allow" | "deny", held?: boolean): void;
+    onOpenFull(): void;
+    onCopy(text: string): void;
+    /** How long the yes of a high-risk question is held; two seconds. */
+    holdMs?: number;
+  }>,
+) {
   const { plain, t } = props;
   const sentence = plain.sentence[t.lang];
   const consequence = plain.consequence[t.lang];
@@ -44,6 +48,8 @@ export function QuestionCard(props: {
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    // Ctrl+A or Cmd+A is select-all, and a held key repeats: only a plain press answers (#244).
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
     if (e.key === "a" && !plain.hold) props.onAnswer("allow");
     else if (e.key === "n" || e.key === "Escape") props.onAnswer("deny");
   };
@@ -56,8 +62,8 @@ export function QuestionCard(props: {
           <HoldButton
             label={t("simple.yes")}
             hint={t("simple.holdHint")}
-            holdMs={props.holdMs ?? 2000}
-            onHeld={() => props.onAnswer("allow")}
+            holdMs={props.holdMs ?? HIGH_RISK_HOLD_MS}
+            onHeld={() => props.onAnswer("allow", true)}
           />
         ) : (
           <Button type="button" onClick={() => props.onAnswer("allow")}>

@@ -8,6 +8,7 @@ import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts"
 import { sessionLineText } from "../src/lib/hub.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { unfoldAll } from "./unfold.ts";
 import { waiter } from "./wait.ts";
 
 registerDom();
@@ -161,6 +162,7 @@ describe("resumo-lista", () => {
       fireEvent.click(open as HTMLElement);
     });
     // Asked once the app has the list in front of it: that is when it watches the receptor.
+    await unfoldAll(act);
     await settle(() => screen.queryByRole("listitem", { name: "app-b" }) !== null);
     void hook("ext-2", "PermissionRequest", { tool_name: "Write", tool_input: {} }).catch(() => {});
     await settle(() => row("app-b").includes("esperando"));
@@ -178,6 +180,11 @@ describe("resumo-lista", () => {
       state: "idle",
       tool: null,
       since: managed.updatedAt,
+    });
+    // Every project starts folded, and the history sits behind "N sessões anteriores" (issue #111).
+    await unfoldAll(act);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /sess(?:ões|ão) anterior(?:es)?/ }));
     });
     // And each row shows it.
     expect(row("app-a")).toContain("Pedido: rode os testes · rodando Bash");
@@ -201,6 +208,7 @@ describe("resumo-lista", () => {
     await act(async () => {
       fireEvent.click(open as HTMLElement);
     });
+    await unfoldAll(act);
     await settle(() => row("Viva").includes("ociosa"));
     expect(row("Viva")).toContain("ociosa");
 

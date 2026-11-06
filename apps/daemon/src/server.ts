@@ -1,7 +1,9 @@
 import {
   type AccountUpdated,
   type Ack,
+  ASSISTANT_FEATURE,
   type AskpassRequest,
+  type AutoUpdateStatus,
   type BudgetUpdated,
   type CardUpdated,
   type ChangesUpdated,
@@ -17,6 +19,7 @@ import {
   type ExternalSession,
   type ExternalStatus,
   type ExternalUpdated,
+  FEATURE_HOLD_PROOF,
   type HistoryChanged,
   type HostRuntime,
   type IdleFiredFrame,
@@ -51,6 +54,7 @@ import type { Account } from "./account/account.ts";
 import type { Actions } from "./actions/actions.ts";
 import type { AgentConfig } from "./agentcfg/files.ts";
 import type { McpConfig } from "./agentcfg/mcp.ts";
+import type { AssistantService } from "./assistant/service.ts";
 import type { Automations } from "./automations/automations.ts";
 import type { BgService } from "./bg/service.ts";
 import type { Board } from "./board/board.ts";
@@ -186,10 +190,16 @@ export interface ServerOptions {
   /** CIDR ranges allowed to connect; defaults to loopback only. */
   allowedNetworks?: readonly string[];
   pingIntervalMs?: number;
+  /** The clock behind the heartbeat (`performance.now()` when absent); a test gives its own. */
+  now?: () => number;
+  /** Runs `tick` every `everyMs` and returns the function that stops it (a `setInterval` when absent); a test fires it by hand. */
+  pingTicker?: (tick: () => void, everyMs: number) => () => void;
   /** Transcript index behind the `history.*` commands. */
   history?: HistoryIndexer;
   /** Projects and cards behind the `project.*`, `board.*` and `card.*` commands. */
   board?: Board;
+  /** Phase 40: the AI assistant on this host's `claude`; announced in `host.info` when present. */
+  assistant?: AssistantService;
   /** The run environment of the cards: the run.yaml and the processes (phase 24). */
   runenv?: { configs: RunConfigs; manager: RunManager };
   /** External sessions and their permission requests (phase 5). */
@@ -236,6 +246,11 @@ export interface ServerOptions {
   updater?: DaemonUpdater;
   /** Phase 9: the release manifest check behind `host.info.update`. */
   updates?: UpdateChecker;
+  /** Issue #280: the automatic update (`host.info.autoUpdate`, `host.updates.set`). */
+  autoUpdate?: {
+    status(): AutoUpdateStatus;
+    set(auto: boolean): Promise<AutoUpdateStatus>;
+  };
   /** Called after acking `daemon.shutdown`; without it the command is refused. */
   onShutdown?: () => void;
   /** What `host.info` announces; derived from what this daemon has when absent. */
@@ -330,7 +345,7 @@ interface Connection {
   dropped?: boolean;
   /** Pings sent and not yet answered, by id → send time. */
   pendingPings: Map<string, number>;
-  /** When the last frame of any kind arrived from this client (`performance.now()`). */
+  /** When the last frame of any kind arrived from this client (the heartbeat clock). */
   lastFrameAt: number;
   /** Stops the `sessions.watch` stream, when active. */
   unwatch?: () => void;
@@ -445,19 +460,15 @@ const EXTERNAL_LINE: Record<ExternalStatus, SessionLine["state"]> = {
   ended: "ended",
 };
 
-export function startServer(opts: ServerOptions): RunningServer {
-  const { manager } = opts;
-
-  const unauthorized = (ws: Socket) => ws.close(CLOSE_UNAUTHORIZED, "unauthorized");
-  const authed = new Set<Socket>();
-  let currentToken = opts.token;
-  const startedAt = Date.now();
-  /** What this daemon has, as `host.info` announces it; the app hides what is missing. */
-  const features = [
+/** What this daemon has, as `host.info` announces it; the app hides what is missing. */
+function featuresOf(opts: ServerOptions): string[] {
+  return [
+    // A high-risk permission allow needs `held: true` (issue #251).
+    FEATURE_HOLD_PROOF,
     // The folder picker of the app browses the host's folders with `fs.dirs`.
     ...(opts.fsDirs ? ["fs.dirs", "fs.files"] : []),
     // A live managed session takes a new permission mode and model, and announces its slash commands.
-    ...(opts.sessionSettings ? ["session.settings"] : []),
+    ...(opts.sessionSettings ? ["session.settings", "session.effort"] : []),
     // A message may carry images (`session.send` with `images`).
     "session.images",
     ...(opts.doctor ? ["doctor.run"] : []),
@@ -508,12 +519,38 @@ export function startServer(opts: ServerOptions): RunningServer {
     ...(opts.watch ? ["watch"] : []),
     ...(opts.names ? ["names"] : []),
   ];
+}
+
+export function startServer(opts: ServerOptions): RunningServer {
+  const { manager } = opts;
+
+  const unauthorized = (ws: Socket) => ws.close(CLOSE_UNAUTHORIZED, "unauthorized");
+  /** A service the daemon was started with, or the `feature_off` refusal naming it. */
+  const need = <K extends keyof ServerOptions>(
+    key: K,
+    feature: string = key,
+  ): NonNullable<ServerOptions[K]> => {
+    const value = opts[key];
+    if (!value) throw featureOff(feature);
+    return value as NonNullable<ServerOptions[K]>;
+  };
+  const authed = new Set<Socket>();
+  let currentToken = opts.token;
+  const startedAt = Date.now();
+  const features = featuresOf(opts);
   let pingSeq = 0;
 
   const pingEveryMs = opts.pingIntervalMs ?? PING_INTERVAL_MS;
-  const heartbeat = setInterval(() => {
+  const now = opts.now ?? (() => performance.now());
+  const pingTicker =
+    opts.pingTicker ??
+    ((tick: () => void, everyMs: number) => {
+      const timer = setInterval(tick, everyMs);
+      return () => clearInterval(timer);
+    });
+  const stopHeartbeat = pingTicker(() => {
     for (const ws of authed) {
-      const silentMs = performance.now() - ws.data.lastFrameAt;
+      const silentMs = now() - ws.data.lastFrameAt;
       if (
         ws.data.pendingPings.size >= MAX_MISSED_PINGS &&
         silentMs >= MAX_MISSED_PINGS * pingEveryMs
@@ -522,7 +559,7 @@ export function startServer(opts: ServerOptions): RunningServer {
         continue;
       }
       const id = String(++pingSeq);
-      ws.data.pendingPings.set(id, performance.now());
+      ws.data.pendingPings.set(id, now());
       const { lastRttMs } = ws.data;
       send(ws, { type: "ping", id, ...(lastRttMs !== undefined ? { lastRttMs } : {}) });
     }
@@ -533,7 +570,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     const pong = Pong.safeParse(frame);
     const sentAt = pong.success ? ws.data.pendingPings.get(pong.data.id) : undefined;
     if (sentAt === undefined) return;
-    ws.data.lastRttMs = Math.round(performance.now() - sentAt);
+    ws.data.lastRttMs = Math.round(now() - sentAt);
     ws.data.pendingPings.clear();
   }
 
@@ -567,23 +604,18 @@ export function startServer(opts: ServerOptions): RunningServer {
     send(ws, { type: "ack", id: parsed.data.id, ok: true, data });
   }
 
-  function history(): HistoryIndexer {
-    if (!opts.history) throw featureOff("history");
-    return opts.history;
-  }
+  const history = (): HistoryIndexer => need("history");
 
   /** The indexed folders whose project is `key`; with no way to ask, only a folder key matches. */
   async function foldersOf(index: HistoryIndexer, key: string): Promise<string[]> {
-    const keyOf = opts.projectKeyOf ?? (async (cwd: string) => `host:${opts.hostName}:${cwd}`);
+    const keyOf =
+      opts.projectKeyOf ?? ((cwd: string) => Promise.resolve(`host:${opts.hostName}:${cwd}`));
     const cwds = index.distinctCwds();
     const keys = await Promise.all(cwds.map((cwd) => keyOf(cwd)));
     return cwds.filter((_, i) => keys[i] === key);
   }
 
-  function central() {
-    if (!opts.central) throw featureOff("central");
-    return opts.central;
-  }
+  const central = () => need("central");
 
   /**
    * Phase 5: every session list carries its project group and meta (with the hub on). Phase 8:
@@ -605,20 +637,11 @@ export function startServer(opts: ServerOptions): RunningServer {
     };
   }
 
-  function roi(): RoiSummarizer {
-    if (!opts.roi) throw featureOff("roi");
-    return opts.roi;
-  }
+  const roi = (): RoiSummarizer => need("roi");
 
-  function boardsync(): BoardSyncService {
-    if (!opts.boardsync) throw featureOff("boardsync");
-    return opts.boardsync;
-  }
+  const boardsync = (): BoardSyncService => need("boardsync");
 
-  function github(): GithubService {
-    if (!opts.github) throw featureOff("github");
-    return opts.github;
-  }
+  const github = (): GithubService => need("github");
 
   /**
    * Asks git for the project key of each folder without blocking, so the sync `listed` below reads
@@ -631,82 +654,37 @@ export function startServer(opts: ServerOptions): RunningServer {
     await Promise.all([...new Set(cwds)].map((cwd) => warm(cwd)));
   }
 
-  function vault(): Vault {
-    if (!opts.vault) throw featureOff("vault");
-    return opts.vault;
-  }
+  const vault = (): Vault => need("vault");
 
-  function names(): Names {
-    if (!opts.names) throw featureOff("names");
-    return opts.names;
-  }
+  const names = (): Names => need("names");
 
-  function watching(): PrWatch {
-    if (!opts.watch) throw featureOff("prWatch");
-    return opts.watch;
-  }
+  const watching = (): PrWatch => need("watch", "prWatch");
 
-  function teams(): Teams {
-    if (!opts.teams) throw featureOff("teams");
-    return opts.teams;
-  }
+  const teams = (): Teams => need("teams");
 
-  function messaging(): Messaging {
-    if (!opts.messaging) throw featureOff("messaging");
-    return opts.messaging;
-  }
+  const messaging = (): Messaging => need("messaging");
 
-  function idle(): Idle {
-    if (!opts.idle) throw featureOff("idle");
-    return opts.idle;
-  }
+  const idle = (): Idle => need("idle");
 
-  function actions(): Actions {
-    if (!opts.actions) throw featureOff("actions");
-    return opts.actions;
-  }
+  const actions = (): Actions => need("actions");
 
-  function automations(): Automations {
-    if (!opts.automations) throw featureOff("automations");
-    return opts.automations;
-  }
+  const automations = (): Automations => need("automations");
 
-  function issues(): Issues {
-    if (!opts.issues) throw featureOff("issues");
-    return opts.issues;
-  }
+  const issues = (): Issues => need("issues");
 
-  function autoApprove(): AutoApprover {
-    if (!opts.autoApprove) throw featureOff("autoApprove");
-    return opts.autoApprove;
-  }
+  const autoApprove = (): AutoApprover => need("autoApprove");
 
-  function agentcfg(): AgentConfig {
-    if (!opts.agentcfg) throw featureOff("agentcfg");
-    return opts.agentcfg;
-  }
+  const agentcfg = (): AgentConfig => need("agentcfg");
 
-  function mcp(): McpConfig {
-    if (!opts.mcp) throw featureOff("mcp");
-    return opts.mcp;
-  }
+  const mcp = (): McpConfig => need("mcp");
 
   const projectPath = (projectId: string) => board().getProject(projectId).path;
 
-  function pluginsApi(): Plugins {
-    if (!opts.plugins) throw featureOff("plugins");
-    return opts.plugins;
-  }
+  const pluginsApi = (): Plugins => need("plugins");
 
-  function memory(): ProjectMemory {
-    if (!opts.memory) throw featureOff("memory");
-    return opts.memory;
-  }
+  const memory = (): ProjectMemory => need("memory");
 
-  function rewinder(): Rewinder {
-    if (!opts.rewinder) throw featureOff("rewinder");
-    return opts.rewinder;
-  }
+  const rewinder = (): Rewinder => need("rewinder");
 
   /** `host.info.update` once the daemon has checked its manifest. */
   function updateStatus() {
@@ -739,144 +717,60 @@ export function startServer(opts: ServerOptions): RunningServer {
     return { ...s, ...(summary ? { summary } : {}), ...(meta ? { meta } : {}) };
   }
 
-  function maintenance(): Maintenance {
-    if (!opts.maintenance) throw featureOff("maintenance");
-    return opts.maintenance;
-  }
+  const maintenance = (): Maintenance => need("maintenance");
 
-  function usage(): UsageLedger {
-    if (!opts.usage) throw featureOff("usage");
-    return opts.usage;
-  }
+  const usage = (): UsageLedger => need("usage");
 
-  function account(): Account {
-    if (!opts.account) throw featureOff("account");
-    return opts.account;
-  }
+  const account = (): Account => need("account");
 
-  function quota(): Quota {
-    if (!opts.quota) throw featureOff("quota");
-    return opts.quota;
-  }
+  const quota = (): Quota => need("quota");
 
-  function costs(): Costs {
-    if (!opts.costs) throw featureOff("costs");
-    return opts.costs;
-  }
+  const costs = (): Costs => need("costs");
 
-  function telemetry(): TelemetryStore {
-    if (!opts.telemetry) throw featureOff("telemetry");
-    return opts.telemetry;
-  }
+  const telemetry = (): TelemetryStore => need("telemetry");
 
-  function bg(): BgService {
-    if (!opts.bg) throw featureOff("bg");
-    return opts.bg;
-  }
+  const bg = (): BgService => need("bg");
 
-  function webhook(): WebhookSender {
-    if (!opts.webhook) throw featureOff("webhook");
-    return opts.webhook;
-  }
-  function summary(): SummaryService {
-    if (!opts.summary) throw featureOff("summary");
-    return opts.summary;
-  }
-  function trace(): TraceService {
-    if (!opts.trace) throw featureOff("trace");
-    return opts.trace;
-  }
+  const webhook = (): WebhookSender => need("webhook");
+  const summary = (): SummaryService => need("summary");
+  const trace = (): TraceService => need("trace");
 
-  function optIn(): TelemetryOptIn {
-    if (!opts.telemetryOptIn) throw featureOff("telemetry");
-    return opts.telemetryOptIn;
-  }
+  const optIn = (): TelemetryOptIn => need("telemetryOptIn", "telemetry");
 
-  function budgets(): Budgets {
-    if (!opts.budgets) throw featureOff("budgets");
-    return opts.budgets;
-  }
+  const budgets = (): Budgets => need("budgets");
 
-  function quotaHistory(): QuotaHistory {
-    if (!opts.quotaHistory) throw featureOff("quotaHistory");
-    return opts.quotaHistory;
-  }
+  const quotaHistory = (): QuotaHistory => need("quotaHistory");
 
-  function changes(): Changes {
-    if (!opts.changes) throw featureOff("changes");
-    return opts.changes;
-  }
+  const changes = (): Changes => need("changes");
 
-  function ssh(): SshTargets {
-    if (!opts.ssh) throw featureOff("ssh");
-    return opts.ssh;
-  }
+  const ssh = (): SshTargets => need("ssh");
 
-  function snippets(): Snippets {
-    if (!opts.snippets) throw featureOff("snippets");
-    return opts.snippets;
-  }
+  const snippets = (): Snippets => need("snippets");
 
-  function personaSessions(): OpenSessionPersonas {
-    if (!opts.personaSessions) throw featureOff("personaSessions");
-    return opts.personaSessions;
-  }
+  const personaSessions = (): OpenSessionPersonas => need("personaSessions");
 
-  function personas(): Personas {
-    if (!opts.personas) throw featureOff("personas");
-    return opts.personas;
-  }
+  const personas = (): Personas => need("personas");
 
-  function snippetUse(): SnippetUse {
-    if (!opts.snippetUse) throw featureOff("snippetUse");
-    return opts.snippetUse;
-  }
+  const snippetUse = (): SnippetUse => need("snippetUse");
 
-  function snippetHistory(): HistoryImporter {
-    if (!opts.snippetHistory) throw featureOff("snippetHistory");
-    return opts.snippetHistory;
-  }
+  const snippetHistory = (): HistoryImporter => need("snippetHistory");
 
-  function askpass(): AskpassBroker {
-    if (!opts.askpass) throw featureOff("askpass");
-    return opts.askpass;
-  }
+  const askpass = (): AskpassBroker => need("askpass");
 
-  function sshConnect(): SshConnector {
-    if (!opts.sshConnect) throw featureOff("sshConnect");
-    return opts.sshConnect;
-  }
+  const sshConnect = (): SshConnector => need("sshConnect");
 
-  function sshHostKeys(): HostKeys {
-    if (!opts.sshHostKeys) throw featureOff("sshHostKeys");
-    return opts.sshHostKeys;
-  }
+  const sshHostKeys = (): HostKeys => need("sshHostKeys");
 
-  function sshImport(): SshImporter {
-    if (!opts.sshImport) throw featureOff("sshImport");
-    return opts.sshImport;
-  }
+  const sshImport = (): SshImporter => need("sshImport");
 
-  function review(): ReviewComments {
-    if (!opts.review) throw featureOff("review");
-    return opts.review;
-  }
+  const review = (): ReviewComments => need("review");
 
-  function files(): ReviewFiles {
-    if (!opts.files) throw featureOff("files");
-    return opts.files;
-  }
+  const files = (): ReviewFiles => need("files");
 
   /** A project's folder, with the root of its repository looked up first without waiting for git. */
-  function sessionFiles(): SessionFiles {
-    if (!opts.sessionFiles) throw featureOff("sessionFiles");
-    return opts.sessionFiles;
-  }
+  const sessionFiles = (): SessionFiles => need("sessionFiles");
 
-  function terminals(): TerminalManager {
-    if (!opts.terminals) throw featureOff("terminals");
-    return opts.terminals;
-  }
+  const terminals = (): TerminalManager => need("terminals");
 
   /** The connection's end of its terminals: frames out, and how full its socket is. */
   function terminalSink(ws: Socket): TerminalSink {
@@ -887,14 +781,13 @@ export function startServer(opts: ServerOptions): RunningServer {
     return ws.data.terminalSink;
   }
 
-  function runenv() {
-    if (!opts.runenv) throw featureOff("runEnv");
-    return opts.runenv;
-  }
+  const runenv = () => need("runenv", "runEnv");
 
-  function board(): Board {
-    if (!opts.board) throw featureOff("board");
-    return opts.board;
+  const board = (): Board => need("board");
+
+  function assistant(): AssistantService {
+    if (!opts.assistant) throw featureOff("assistant");
+    return opts.assistant;
   }
 
   function subscribe(ws: Socket, sessionId: string, sinceSeq: number) {
@@ -964,6 +857,9 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "session.setModel":
         await manager.setModel(command.payload.sessionId, command.payload.model);
         return ok(command.type);
+      case "session.setEffort":
+        await manager.setEffort(command.payload.sessionId, command.payload.effort);
+        return ok(command.type);
       case "session.close":
         await manager.close(command.payload.sessionId);
         return ok(command.type);
@@ -983,9 +879,12 @@ export function startServer(opts: ServerOptions): RunningServer {
         return ok(command.type);
       case "permission.respond": {
         // External requests (ids `ext-…`) are held hooks; anything else is a managed session's.
-        const { requestId, decision, message, updatedPermissions, updatedInput } = command.payload;
+        const { requestId, decision, message, updatedPermissions, updatedInput, held } =
+          command.payload;
         const external = opts.central?.permissions;
-        if (!external?.respond(requestId, decision, message, updatedPermissions, updatedInput)) {
+        if (
+          !external?.respond(requestId, decision, message, updatedPermissions, updatedInput, held)
+        ) {
           manager.respondPermission(command.payload);
         }
         return ok(command.type);
@@ -1402,6 +1301,13 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (!opts.updater) throw featureOff("updater");
         return ok(command.type, await opts.updater.apply(command.payload.confirm === true));
       }
+      case "host.updates.set": {
+        // It lets the host download and run a new binary by itself: only from a near connection,
+        // like host.bypass. Turning it off only lowers risk, but it is the same switch.
+        requireVaultTransport(ws.data.origin, "host.updates.set", opts.log);
+        if (!opts.autoUpdate) throw featureOff("autoUpdate");
+        return ok(command.type, await opts.autoUpdate.set(command.payload.auto));
+      }
       case "daemon.update.check": {
         if (!opts.updates) throw featureOff("updater");
         return ok(command.type, await opts.updates.checkNow());
@@ -1470,12 +1376,15 @@ export function startServer(opts: ServerOptions): RunningServer {
             ...(opts.templates ? ["templates"] : []),
             ...(opts.tasks ? ["tasks"] : []),
             ...(opts.opencode?.info().available ? ["opencode"] : []),
+            ...(opts.assistant ? [ASSISTANT_FEATURE] : []),
+            ...(opts.autoUpdate ? ["autoUpdate"] : []),
           ],
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
           ...(opts.ui ? { ui: { ...opts.ui } } : {}),
           ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
           ...(opts.opencode ? { runtimes: [hostRuntime(opts.opencode.info())] } : {}),
           ...updateStatus(),
+          ...(opts.autoUpdate ? { autoUpdate: opts.autoUpdate.status() } : {}),
           ...(opts.terminal ?? {}),
         });
       case "history.list": {
@@ -1920,8 +1829,8 @@ export function startServer(opts: ServerOptions): RunningServer {
       case "card.updateFromBase":
         return ok(command.type, await board().updateFromBase(command.payload.cardId));
       case "card.mergeLocal": {
-        const { cardId, mode, confirm } = command.payload;
-        return ok(command.type, await board().mergeLocal(cardId, mode, confirm === true));
+        const { cardId, mode, confirm, message } = command.payload;
+        return ok(command.type, await board().mergeLocal(cardId, mode, confirm === true, message));
       }
       case "changes.get":
         return ok(command.type, await changes().get(command.payload.target));
@@ -2178,6 +2087,16 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "card.stop":
         return ok(command.type, await board().stopCard(command.payload.cardId));
+      case "assistant.run":
+        return ok(command.type, await assistant().run(command.payload));
+      case "assistant.cancel":
+        assistant().cancel(command.payload.requestId);
+        return ok(command.type);
+      case "assistant.context":
+        return ok(command.type, await assistant().context(command.payload));
+      case "assistant.record":
+        assistant().record(command.payload);
+        return ok(command.type);
       case "card.diff":
         return ok(command.type, await board().diff(command.payload.cardId));
       case "card.message":
@@ -2189,6 +2108,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             ...(command.payload.description === undefined
               ? {}
               : { description: command.payload.description }),
+            ...(command.payload.title === undefined ? {} : { title: command.payload.title }),
           }),
         );
       case "card.manage":
@@ -2276,7 +2196,7 @@ export function startServer(opts: ServerOptions): RunningServer {
             subscriptions: new Map(),
             coalescers: new Set(),
             pendingPings: new Map(),
-            lastFrameAt: performance.now(),
+            lastFrameAt: now(),
             changeWatchers: new Map(),
           },
         });
@@ -2289,7 +2209,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     websocket: {
       drain: drainAll,
       message(ws, raw) {
-        ws.data.lastFrameAt = performance.now();
+        ws.data.lastFrameAt = now();
         let frame: unknown;
         try {
           frame = decode(raw);
@@ -2339,7 +2259,7 @@ export function startServer(opts: ServerOptions): RunningServer {
       for (const ws of authed) ws.close(CLOSE_UNAUTHORIZED, "token rotacionado");
     },
     stop: () => {
-      clearInterval(heartbeat);
+      stopHeartbeat();
       opts.plugins?.close();
       return server.stop(true);
     },

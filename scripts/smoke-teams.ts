@@ -17,6 +17,7 @@ import {
   type ServerMessage,
   type TeamInfo,
 } from "@flightdeck/protocol";
+import { awaitListenUrl } from "./lib/smoke-daemon.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
@@ -136,19 +137,22 @@ class FakeClaude {
       stderr: "ignore",
     });
     this.proc = proc;
-    void (async () => {
-      const decoder = new TextDecoder();
-      for await (const chunk of proc.stdout as ReadableStream<Uint8Array>) {
-        this.buffer += decoder.decode(chunk, { stream: true });
-        for (let end = this.buffer.indexOf("\n"); end >= 0; end = this.buffer.indexOf("\n")) {
-          const line = this.buffer.slice(0, end).trim();
-          this.buffer = this.buffer.slice(end + 1);
-          if (!line) continue;
-          const message = JSON.parse(line) as Record<string, unknown>;
-          this.waiting.get(message.id as number)?.(message);
-        }
+  }
+
+  /** Reads the child's stdout line by line, handing each reply to whoever waits for its id. */
+  private async pump(): Promise<void> {
+    const proc = this.proc as { stdout: ReadableStream<Uint8Array> };
+    const decoder = new TextDecoder();
+    for await (const chunk of proc.stdout) {
+      this.buffer += decoder.decode(chunk, { stream: true });
+      for (let end = this.buffer.indexOf("\n"); end >= 0; end = this.buffer.indexOf("\n")) {
+        const line = this.buffer.slice(0, end).trim();
+        this.buffer = this.buffer.slice(end + 1);
+        if (!line) continue;
+        const message = JSON.parse(line) as Record<string, unknown>;
+        this.waiting.get(message.id as number)?.(message);
       }
-    })();
+    }
   }
 
   private send(message: Record<string, unknown>): void {
@@ -167,6 +171,7 @@ class FakeClaude {
   }
 
   async start(): Promise<void> {
+    void this.pump();
     await this.request("initialize", {
       protocolVersion: "2025-03-26",
       capabilities: {},
@@ -235,16 +240,7 @@ async function startHost(work: string, name: string): Promise<Host> {
   const out: string[] = [];
   void drain(proc.stdout, out);
   void drain(proc.stderr, []);
-  const url = await withTimeout(
-    (async () => {
-      for (;;) {
-        const found = out.join("").match(/listening on (ws:\/\/\S+)/)?.[1];
-        if (found) return found;
-        await Bun.sleep(20);
-      }
-    })(),
-    `${name} anunciar a porta`,
-  );
+  const url = await awaitListenUrl(() => out.join(""));
   const client = new Client(url);
   await client.open(token);
   // The MCP command finds the daemon by the port in its config; the daemon chose its own.

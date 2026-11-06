@@ -4,7 +4,7 @@ English | [Português (Brasil)](pt-BR.md) · [Back to the README](../../README.m
 
 Complete Flightdeck reference, organized by topic. It applies to version 0.19.0. The roadmap is
 in [`docs/SPEC.md`](../SPEC.md), the deviations from the specs in
-[`docs/DECISIONS.md`](../DECISIONS.md) and the interface vocabulary in
+[`docs/decisions/`](../decisions/) (the older ones in [`docs/DECISIONS.md`](../DECISIONS.md)) and the interface vocabulary in
 [`docs/GLOSSARY.md`](../GLOSSARY.md). Those three documents, `docs/TDD.md` and the phase specs
 are written in Portuguese.
 
@@ -474,6 +474,26 @@ saves after you confirm.
 The **Sessions** screen is the app's main one: every Claude Code session of the online hosts in
 one place, grouped by project and ordered by last activity.
 
+- **Project first.** Each project is a group with a bold heading (a folder, its name, a **live/total**
+  chip and one chip per host, which opens that host's page). **Every project starts folded**, showing
+  only its header and the sessions that need you; open one with its arrow, and the choice is
+  remembered per project. **Expand all** and **Collapse all** at the top do it for every project.
+  Opened, a project shows its live sessions first (the ones that need you on top). The
+  ended and history sessions sit behind **N earlier sessions**, newest first. Typing in the filter
+  also matches project names, and any filter (text, origin, state, persona, pinned) opens
+  everything it keeps. A **Hosts** chip only narrows the list to that host: the projects stay as
+  folded or open as you left them. The fold of a project is remembered under a key that does not
+  change when a host goes offline or folders merge. A pinned session always stays with the live ones. **The same project on two
+  hosts is one group** with both host chips, and each row keeps its own host chip. A project
+  without a git remote is matched by its folder name across hosts, but never when one host has two
+  folders with that name: those stay separate groups everywhere. Groups that share a name show a
+  short **path hint** (the folder above the project, for example `work`) beside the heading and in
+  its name for screen readers. A row of **Hosts** chips under
+  the hosts banner shows one host's sessions only (press it again to clear).
+- **Titles.** A session is called by its name, else the title its host gives it (the summary Claude
+  Code wrote, or its first prompt), else the persona with the task, else its folder. System wrappers (`<task-notification>`,
+  "Another Claude session sent a message:", local-command output) never appear in a title.
+
 ### What the list shows
 
 | Origin | Where it comes from |
@@ -524,9 +544,19 @@ A session appears only once. The order of preference is managed, then terminal, 
   here** (on the latest message: it carries the whole conversation so far), **Pin session** and how
   long ago the message was written.
 - The box floats at the bottom as a rounded card. **+** attaches images (when the host supports it).
-  Under the card a status line shows the model and the permission mode, each a picker when the
-  session lets you change it, and a spinner while a turn runs. While a turn runs a line above the
-  box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
+  Under the card a status line shows the model and the permission mode, and a spinner while a turn
+  runs. When the session lets you change them, the mode is a **chip** (for example "Default"):
+  click it, or focus it and press Enter, to open the **Mode** menu with every mode, what it does
+  and its number (press 1 to 4 to pick one). **Shift+Tab** in the box cycles Default, Accept edits
+  and Plan. **Bypass permissions** is in the menu too, but the chip never lands on it by cycling:
+  it asks first, naming the host and the session, and the chip turns red while it is on. On a
+  host where the switch is off (or for a mode looser than the one the session started with) the
+  row is greyed out, says why, and links to the host's settings. The model is a chip too ("Opus
+  5.5 · Medium"): its **Model** menu lists Default, Opus, Sonnet and Haiku with what each is for
+  and its number (press 1 to 4), **More models** has the specific versions, and **Effort** (on a
+  host that supports it) sets Low, Medium, High, Extra high or Max for the next turns, or back to
+  the model's own level. An OpenCode session keeps a plain list of its own models. While a turn
+  runs a line above the box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
   long; the spinner stops moving if your system asks for reduced motion.
 
 ### Claude Code hooks
@@ -992,6 +1022,11 @@ conversation. It is where you check what the agent did and send it back what to 
   - for a card, the diff against its base, with how many commits it is ahead of and behind it;
   - the files with their status and counts, and the diff unified or side by side, with numbered
     lines. A binary file is listed without a diff;
+  - a file that is too large (a diff or a new file over 512 KB) is listed with the **Too large**
+    mark and its size, without content, so the panel does not freeze. The same goes for what
+    passes 4 MB of diff in total: the files after that are only listed. On a host of this machine,
+    **Show in folder** opens the file manager on the file (the editor stays beside it, and refuses
+    what is over 1 MB);
   - it follows the disk live (the host watches the folder, with a 500 ms debounce), and
     **Refresh** reads it again.
 - **Inline comments:**
@@ -1508,8 +1543,11 @@ paths). You can add patterns in the host configuration (`risk.extraHigh`); the b
 be lowered.
 
 - A **High risk** request is red and **Approve** becomes **Hold to approve**: hold the button for 2
-  seconds. The A key does not approve it; N still denies.
-- The tray never approves a high-risk request: it only offers **Open**.
+  seconds. The reason is written under the button (not only in a tooltip). The A key does not
+  approve it; N still denies. The host checks the hold too: it refuses
+  an approval of a high-risk request that does not carry it ("A high-risk request is approved only
+  by holding the button."), so no other client can skip it either.
+- The tray never approves a high-risk request: it offers **Deny** and **Open**.
 - With automatic approval on, an approval that nobody gave by hand shows in the session's
   timeline as "Approved automatically", with who decided and why. A high-risk request or one that
   reaches the network always comes to you.
@@ -1762,7 +1800,7 @@ When Claude, an automation or a workflow runs an action that needs a secret, the
 secrets and the host). **Approve** delivers the secret for that run only; **Deny** fails the run
 at once. An action with `approval: never` runs without a question, `first-per-session` asks once
 and is then remembered until the app restarts, and `always` asks every time. A `run_with_secret`
-is high risk: hold the button for 2 seconds to approve it, and the tray only opens it.
+is high risk: hold the button for 2 seconds to approve it; the tray offers only Deny and Open.
 
 ### Usage rules per secret
 
@@ -1821,8 +1859,16 @@ The bell at the right of the top bar keeps every notification the app sends: a r
 needs you, a session that ended, a budget or quota alert, a PR watch result, a card that was
 unblocked. A badge on the bell counts the unread ones.
 
-- Click the bell to open the panel: newest first, grouped by day (Today, Yesterday, then the date).
-- Click an entry to mark it read and open its screen (a request opens on its card; a quota alert
+- Click the bell to open the panel: unread first, then newest first, in two groups (Today and
+  Earlier). Opening the panel marks nothing as read.
+- An unread row has a dot, a bold title and the word "unread" for a screen reader; a read row has
+  none of them. The badge counts the dots. Each row names the session, card or team and the host,
+  and says what it asks in words ("Asks: which DB to use?"), not the tool's name. A session's
+  repeated requests become one row with a count ("3 times"). A row whose card or request is gone
+  says so and has **Dismiss**.
+- Hover a row (or focus it) for a small **Mark as read** control: it marks that row and opens
+  nothing.
+- Click an entry to mark just it read and open its screen (a request opens on its card; a quota alert
   opens the host). A budget alert opens Costs already filtered by its host and project, or by
   its client; a team alert opens Teams with that team first and marked. A card's entry (a PR watch
   result, an unblocked card) opens the PR in your browser when the card is gone.
@@ -1882,8 +1928,11 @@ suggested model, effort, tools and permission mode, and the instructions of the 
   keeps your version on the host (**Pack, edited**); **Restore original** brings the pack's back.
 - **Host**, **Project** (choose one: its own and the versioned `.flightdeck/personas/*.md`, which
   you **Trust** first) and **Global (this app)**, kept in the app.
-- **New persona** and **Edit** open the editor with a **Preview** of what the session gets. A
-  persona never holds a secret: one is refused with the reason.
+- **New persona** and **Edit** open the editor with a **Preview** of what the session gets. **Edit**
+  opens the form inside the persona's own card, with the first field focused and the card scrolled
+  into view; **New persona** opens it at the top. **Cancel** and **Save** put the scroll back and
+  the focus on the Edit button. **Model** is a choice (**Other…** for free text) and **Tools** a
+  multi-select. A persona never holds a secret: one is refused with the reason.
 - **Publish as agent** writes the persona to `.claude/agents/persona-<id>.md` through the
   agent editor, with confirmation, so it also works for plain `claude`.
 
@@ -2100,9 +2149,12 @@ reports of the Agent SDK), and Anthropic's terms keep a login out of third-party
 
 #### Which account is this host using?
 
-- The card shows the account's email, the organization, the plan (Pro, Max, Team, Enterprise) and
+- The card shows the account's email, the organization, the plan (Pro, Max, Ultra, Team, Enterprise) and
   two bars, **5 hours** and **7 days**, with the percentage used and when each resets (hover for
   the exact time). The 7-day Opus and Sonnet bars show only when the host reports them.
+- The plan comes from the sign-in of `claude` on the host, which keeps it from when you signed in:
+  after a change of plan, sign out and in again there, then press **Refresh**. The bars are read
+  live and are always current.
 - It is read when you open the page and again every 5 minutes while the page stays open, and at
   once when a managed session ends a turn. "Last read 2 min ago" tells how fresh it is. **Refresh**
   reads now; it waits 30 seconds between reads.
@@ -2130,8 +2182,8 @@ same login, so the quota belongs to the host. The daemon keeps the last reading 
 (5 hours, 7 days and any others that come along), and a reading stops being valid when its
 window resets.
 
-- **In the app:** the top of the Sessions screen shows, for each online host, the 5-hour and
-  7-day bars, with the percentage, the reset time and the age of the reading ("read 12 min
+- **In the app:** the top of the Sessions screen shows, for each Claude account, the 5-hour and
+  7-day bars (hosts signed in to the same account share one card, named after all of them), with the percentage, the reset time and the age of the reading ("read 12 min
   ago").
   - The bar turns red from `quota.pauseAt`.
   - Crossing `pauseAt` raises a notification, once per window.
@@ -2191,7 +2243,9 @@ app, cards and workflows, subagents included.
 - **What it shows:**
   - the estimated cost, the tokens and the cache savings (how much less the cache read cost than
     the same volume as normal input);
-  - a per-day chart stacked by project, and the breakdowns by project, model and origin;
+  - a per-day chart stacked by project (Tab reaches the chart, the arrow keys walk the days, and a
+    day says its total in a tooltip on hover or focus), and the breakdowns by project, model and
+    origin;
   - the most expensive sessions, and clicking one opens it;
   - the estimated cost also shows in the session list, the open session, the card and the
     workflow run.
@@ -2563,7 +2617,12 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
 - **Needs you:** in the sidebar, with the count of open requests across all hosts. The screen
   lists the requests, oldest to newest, and the selected request's card sits next to it: **A**
   approves, **N** denies and **Esc** closes the detail. **Open session** takes you to the
-  conversation.
+  conversation. The card takes the focus, so A and N work with no click first, and once a
+  request is answered the next one is chosen, with how many are left. A high-risk request is
+  still approved only by holding the button.
+- **From a notification:** clicking it opens the session with the request's card focused: one
+  key answers it. In the bell, an entry of a request already answered opens its session at that
+  request.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
   badge. The uptime keeps counting while the page is open.
@@ -2596,7 +2655,8 @@ summary` (for example `pc · api · Bash: npm test`).
   on the request's host, without opening the window; Open brings the app to the session, with
   the approval card.
 - Workflow gates appear only with **Open**: they need reading, and the answer is given on the
-  card.
+  card. A high-risk request and a secret request have **Deny** and **Open**: approving them
+  takes the window.
 - Above 10, the last row is **and N more…**, which opens the app.
 - The submenu is rebuilt half a second after the list stops changing.
 - **Request notification:** carries the link `flightdeck://request?host=…&request=…`, which opens
@@ -2800,10 +2860,15 @@ signature (see [Installation](#from-the-release-binaries)).
 
 - **The app:**
   - looks for a new version on open and every 6 h, in the latest release's `latest.json`;
-  - with a new version, shows the banner "Flightdeck X available", with the notes, **Install and
-    restart** and **Later**;
-  - an invalid signature or a broken download shows up in the banner, and nothing is installed;
-  - in **Settings**: **Check for updates now** and **Notify about updates** (on by default).
+  - with **Update automatically** on (the default), it downloads the new version in the
+    background, checks its signature, and then shows the banner "Flightdeck X is ready. Restart
+    to update." with **Restart now** and **Later**. Nothing restarts by itself (#280);
+  - with it off, the banner says "Flightdeck X available", with the notes, **Install and
+    restart** and **Later**, as before;
+  - an invalid signature or a broken download shows up in the banner, and nothing is installed; a
+    failed download is tried again at the next check;
+  - in **Settings**: **Check for updates now**, **Notify about updates** and **Update
+    automatically** (both on by default).
 - **The daemon:**
   - checks `daemon-latest.json` on start, when asked, and every `updates.checkIntervalH` (6 h by
     default);
@@ -2818,13 +2883,19 @@ signature (see [Installation](#from-the-release-binaries)).
     sha256 and the signature, and runs `flightdeckd update --from` outside the service, to
     survive its own stop: a one-off `Flightdeck\update` task on Windows and `systemd-run --user`
     on Linux;
-  - the host shows "updating…" until it reconnects on the new version.
+  - the host shows "updating…" until it reconnects on the new version;
+  - **by itself** (`updates.auto`, on by default; #280): when a check finds a newer version, the
+    daemon applies it only while the host is idle, with no session or run going on, and otherwise
+    waits. It never applies an older version. A failed apply keeps the old binary and is tried
+    again at the next check. The host page has **Update this host automatically** (the same
+    setting, kept by the daemon) and says whether the update is off, current, waiting, started or
+    failed, and why.
 - **Order:** with the app and the daemons both out of date, the banner suggests updating the app
   first.
 
 ```json
 { "updates": { "manifestUrl": "https://github.com/jnerytech/flightdeck/releases/latest/download/daemon-latest.json",
-               "checkIntervalH": 6 } }
+               "checkIntervalH": 6, "auto": true } }
 ```
 
 Only the compiled `flightdeckd` checks GitHub by default. When running from source there is no
@@ -2987,10 +3058,17 @@ how a host looks, not what it can do: the sessions, the permissions and the file
 the chosen folder. Results go to a *Flightdeck results* folder next to your files. Simple mode hides
 things, it does not protect them: a person in full mode can do everything the host allows.
 
-**Switching.** In full mode, open a host's page and use the *Simple mode* panel: *Use simple mode on
-this host* is your own choice, kept in this app. *Make simple mode the default for this host* sets
-what the next person sees. *Lock this host to its mode* removes the switch for everyone: a locked
-host stays in its mode and *Show everything* is not offered. Unlock it from the same panel.
+**Switching.** In full mode, open a host's page and use the *Simple mode* panel. Its first lines say
+which mode the host opens in and whether it is locked. *Default mode* (*Full app* or *Simple mode*)
+sets what the next person sees; *Use simple mode on this host* is your own choice, kept in this app.
+The *Lock this host to its mode* switch removes the choice for everyone (it asks first); a locked
+host stays in its mode. Each change shows a message, and the host's row in the sidebar carries a
+*Simple* badge when it opens in simple mode and a lock when it is locked.
+
+**Getting out of simple mode.** Every simple screen ends its menu with *Full app* (it asks once).
+On a locked host the menu says to ask its admin to unlock it instead. **Ctrl+Shift+M**, the palette
+(*Switch to the full app*) and, in the full app, *Simple mode* in the sidebar's footer switch the
+mode too, keeping your tabs.
 
 **Your own templates.** A host can add tasks as Markdown files in `templates/` inside the daemon's
 data folder: a header with the title, icon, fields, preset and whether to plan first, then one

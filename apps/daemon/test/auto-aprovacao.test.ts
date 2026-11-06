@@ -311,7 +311,7 @@ describe("auto-aprovacao", () => {
       historyExcludes({ dataDir: "/d", history: { excludeCwds: ["/x"] } }).map((p) =>
         p.replaceAll("\\", "/"),
       ),
-    ).toEqual(["/x", "/d/auto-approve"]);
+    ).toEqual(["/x", "/d/auto-approve", "/d/assistant"]);
   });
 
   test("suspensa numa sessão (conteúdo de terceiro): medium vai para você até reativar; sobrevive ao reinício", async () => {

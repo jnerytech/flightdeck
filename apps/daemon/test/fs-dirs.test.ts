@@ -4,11 +4,11 @@ import { dirname, join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { listDirs } from "../src/fs-dirs.ts";
 import { type RunningServer, startServer } from "../src/server.ts";
-import { newManager, poll, tempDir } from "./helpers.ts";
+import { BASELINE_FEATURES, newManager, poll, tempDir } from "./helpers.ts";
 
 /** A root with `code/{app,lib,.git}`, a file, and a sibling folder outside it. */
 function tree() {
-  const base = realpathSync(tempDir("fd-fsdirs-"));
+  const base = realpathSync.native(tempDir("fd-fsdirs-"));
   const root = join(base, "root");
   const outside = join(base, "outside");
   for (const dir of ["code/app", "code/lib", "code/.git", "other"]) {
@@ -199,6 +199,8 @@ describe("fs-dirs: the fs.dirs command", () => {
     });
     stops.push(() => bare.stop());
     const none = await ask(bare, "host.info", {});
-    expect(none?.ok && (none.data as { features: string[] }).features).toEqual(["session.images"]);
+    expect(none?.ok && (none.data as { features: string[] }).features).toEqual([
+      ...BASELINE_FEATURES,
+    ]);
   });
 });

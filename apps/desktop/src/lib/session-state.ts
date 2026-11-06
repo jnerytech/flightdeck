@@ -9,6 +9,7 @@ import type {
   RiskLevel,
   SessionPersona,
   SessionStatus,
+  SlashCommandInfo,
   ToolInput,
 } from "@flightdeck/protocol";
 
@@ -74,6 +75,8 @@ export interface SessionState {
   permissionMode?: PermissionMode;
   /** The slash commands the session has, from `session.init`. */
   slashCommands?: string[];
+  /** The same commands with a description and a kind, from a daemon that sends them. */
+  commands?: SlashCommandInfo[];
   /** The persona the session runs in (phase 20), from how it opened and from what was applied since. */
   persona?: SessionPersona;
   /** Claude Code's id, from `session.init`: "Abrir no terminal" resumes it. */
@@ -106,6 +109,49 @@ export const markGap = (state: SessionState): SessionState => ({
 
 export const endStreaming = (state: SessionState): SessionState => ({ ...state, streaming: "" });
 
+type EventOf<T extends EventEnvelope["event"]["type"]> = Extract<
+  EventEnvelope["event"],
+  { type: T }
+>;
+
+/**
+ * When the turn started. It holds through a permission wait and any other status ends it; a start
+ * that cannot be read as a date is none.
+ */
+function busySinceOf(state: SessionState, status: string, ts: string): number | undefined {
+  const busy = status === "starting" || status === "running";
+  const waiting = status === "awaiting_permission";
+  if (!busy && !waiting) return undefined;
+  const since = state.busySince ?? (busy ? Date.parse(ts) : undefined);
+  return since !== undefined && !Number.isNaN(since) ? since : undefined;
+}
+
+/** The timeline item of a permission request, with the optional parts it carries. */
+function permissionItem(event: EventOf<"permission.requested">, seq: number, at: string): ChatItem {
+  return {
+    kind: "permission",
+    seq,
+    requestId: event.requestId,
+    toolName: event.toolName,
+    input: event.input,
+    ...(event.suggestions ? { suggestions: event.suggestions } : {}),
+    ...(event.risk ? { risk: event.risk } : {}),
+    ...(event.riskReason ? { riskReason: event.riskReason } : {}),
+    ...(event.plain ? { plain: event.plain } : {}),
+    at,
+  };
+}
+
+/** How a permission request ended: the decision and, when there are any, message, auto and answers. */
+function resolutionOf(event: EventOf<"permission.resolved">) {
+  return {
+    decision: event.decision,
+    ...(event.message ? { message: event.message } : {}),
+    ...(event.auto ? { auto: event.auto } : {}),
+    ...(event.answers ? { answers: event.answers } : {}),
+  };
+}
+
 /**
  * Applies one envelope. Persisted events at or below `lastSeq` are duplicates and ignored;
  * ephemeral deltas carry the last persisted seq and only feed the streaming buffer.
@@ -130,29 +176,20 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
         ...(event.resumedFrom ? { resumedFrom: event.resumedFrom } : {}),
         ...(event.persona ? { persona: event.persona } : {}),
       };
-    case "session.status": {
-      const busy = event.status === "starting" || event.status === "running";
-      const waiting = event.status === "awaiting_permission";
-      // The turn's start holds through a permission wait; any other status ends it.
-      const busySince =
-        busy || waiting
-          ? (state.busySince ?? (busy ? Date.parse(envelope.ts) : undefined))
-          : undefined;
+    case "session.status":
       return {
         ...next,
         status: event.status,
         statusReason: event.reason,
-        ...(busySince !== undefined && !Number.isNaN(busySince)
-          ? { busySince }
-          : { busySince: undefined }),
+        busySince: busySinceOf(state, event.status, envelope.ts),
       };
-    }
     case "session.init": {
       const started = {
         ...next,
         model: event.model,
         claudeSessionId: event.claudeSessionId,
         ...(event.slashCommands ? { slashCommands: event.slashCommands } : {}),
+        ...(event.commands ? { commands: event.commands } : {}),
       };
       // Only OpenCode sessions name these; AGENTS.md is the one file there is.
       const sent = (event.contextFiles?.length ?? 0) > 0;
@@ -181,18 +218,7 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
       };
     case "permission.requested":
       return {
-        ...push({
-          kind: "permission",
-          seq,
-          requestId: event.requestId,
-          toolName: event.toolName,
-          input: event.input,
-          ...(event.suggestions ? { suggestions: event.suggestions } : {}),
-          ...(event.risk ? { risk: event.risk } : {}),
-          ...(event.riskReason ? { riskReason: event.riskReason } : {}),
-          ...(event.plain ? { plain: event.plain } : {}),
-          at: envelope.ts,
-        }),
+        ...push(permissionItem(event, seq, envelope.ts)),
         pending: [...state.pending, event.requestId],
       };
     case "permission.resolved":
@@ -201,15 +227,7 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
         pending: state.pending.filter((id) => id !== event.requestId),
         items: state.items.map((item) =>
           item.kind === "permission" && item.requestId === event.requestId
-            ? {
-                ...item,
-                resolution: {
-                  decision: event.decision,
-                  ...(event.message ? { message: event.message } : {}),
-                  ...(event.auto ? { auto: event.auto } : {}),
-                  ...(event.answers ? { answers: event.answers } : {}),
-                },
-              }
+            ? { ...item, resolution: resolutionOf(event) }
             : item,
         ),
       };

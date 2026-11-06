@@ -185,6 +185,18 @@ describe("visual: the prints of a run", () => {
     expect(checkShots(check(io, { complete: false })).problems).toEqual([]);
   });
 
+  test("a run that printed some pairs checks the missing baselines of those pairs only (#291)", () => {
+    const io = memory({
+      "shots/dark-en/hub.png": GRAY,
+      "base/dark-en/hub.png": GRAY,
+      "base/dark-en/gone.png": GRAY,
+      "base/light-en/hub.png": GRAY,
+    });
+    expect(checkShots(check(io, { complete: true, pairs: ["dark-en"] })).problems).toEqual([
+      "dark-en/gone.png: a baseline with no print (a screen that went away? run with --update)",
+    ]);
+  });
+
   test("the diff folder inside the prints is not itself a print", () => {
     const io = memory({
       "shots/light-en/hub.png": GRAY,

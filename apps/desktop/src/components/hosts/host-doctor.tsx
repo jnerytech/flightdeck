@@ -7,7 +7,7 @@ import type { AppStore, HostView } from "@/lib/app-store";
 import { APP_VERSION } from "@/lib/version";
 
 /** The host's self-check: each item with a plain step to fix it when it failed. */
-export function HostDoctor(props: { store: AppStore; host: HostView }) {
+export function HostDoctor(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
   const t = useT();
   const [result, setResult] = useState<DoctorResult | null>(null);

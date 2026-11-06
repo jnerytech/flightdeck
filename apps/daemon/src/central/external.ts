@@ -1,7 +1,12 @@
 import type { Database } from "bun:sqlite";
 import { stat } from "node:fs/promises";
 
-import { type ExternalSession, type ExternalStatus, SessionPersona } from "@flightdeck/protocol";
+import {
+  type ExternalSession,
+  type ExternalStatus,
+  inSequence,
+  SessionPersona,
+} from "@flightdeck/protocol";
 
 // What the daemon keeps is what goes on the wire.
 export type { ExternalSession, ExternalStatus };
@@ -232,8 +237,8 @@ export class ExternalSessions {
         "SELECT * FROM external_sessions WHERE status <> 'ended' AND last_event_at < ?",
       )
       .all(new Date(limit).toISOString());
-    for (const row of quiet) {
-      if ((await mtimeOf(row.transcript_path)) >= limit) continue;
+    await inSequence(quiet, async (row) => {
+      if ((await mtimeOf(row.transcript_path)) >= limit) return;
       this.db
         .query(
           `UPDATE external_sessions SET status = 'ended', status_reason = 'stale', ended_at = ?
@@ -241,7 +246,7 @@ export class ExternalSessions {
         )
         .run(new Date(now).toISOString(), row.claude_session_id);
       this.emit(row.claude_session_id);
-    }
+    });
   }
 
   start(intervalMs: number, timers: Timers = globalThis): void {

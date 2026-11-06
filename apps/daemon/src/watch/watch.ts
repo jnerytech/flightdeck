@@ -184,7 +184,7 @@ export class PrWatcher {
       if (this.enabled(id) && this.status(id).status === "watching") {
         this.looking.add(id);
         try {
-          await this.look(id).catch(() => {});
+          await this.look(id).catch(() => {}); // NOSONAR: watches are looked at one at a time so the PR CLIs are not asked all at once
         } finally {
           this.looking.delete(id);
         }

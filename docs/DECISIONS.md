@@ -1,3 +1,6 @@
+> **Frozen (#304).** New decisions go to a file of their own under `docs/decisions/`, named
+> `<yyyy-mm-dd>-<topic>.md` (see `docs/decisions/README.md`). This file keeps the entries up to then.
+
 # Decisões e divergências da Fase 1
 
 Cada item registra onde a implementação diverge de `docs/SPEC.md` ou completa um ponto que a
@@ -1762,7 +1765,6 @@ What the Phase 13 interface (`risco-ui`, `issues-ui`, `automacoes-ui`, `arena-ui
 - **Version:** 0.13.0 in the protocol, the daemon and the desktop (`tauri.conf.json` reads the desktop's `package.json`).
 - **`scripts/demo-seed.ts` is out of the coverage count:** the `demo-issue-risco` test is the first unit test to load the seed, which put its ping reply and its old-daemon stub (only used by `demo` and `demo:shots`) into the totals. The seed is demo scaffolding, covered by the e2e and the screenshots, so `bunfig.toml` ignores it like the vendored UI.
 
-
 # Phase 14 decisions: the daemon (embedded terminal)
 
 ## Terminal embutido (daemon)
@@ -2467,7 +2469,6 @@ The app side of phase 21: `conversas-ui`, `times-ui`, the relay between hosts, `
 
 - **`smoke:run`:** a real daemon over a real repository whose committed run.yaml runs an echo server that also starts a child that ignores SIGHUP and SIGTERM. Two cards run at once on different blocks, both answer over HTTP, and Stop leaves no server, child or answering port. Its block starts at a random base. Red on the base commit, where `runenv.config` does not exist.
 
-
 # Phase 28 decisions: performance and stack best practices
 
 ## Baseline
@@ -2882,8 +2883,6 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
 - Not done in part 1: the weight scale (vendored buttons), splitting hover motion into per-component
   enter animations. Both go to part 2.
 
-
-
 ## Phase 37: GitHub sign-in and start from a GitHub project
 
 - **The sign-in is the host's `gh`, not an OAuth client of ours.** Issue #16 asks for the device flow, the token in the OS
@@ -3054,7 +3053,6 @@ are out of scope. This supersedes item 4 of the blocking-call audit: the sync fa
   opens a new one; duplicates in an older snapshot fold into one.
 - `session.create` takes no first prompt: the session starts idle and the first message begins
   its first turn. The New session form has a Model select (default, opus, sonnet, haiku).
-
 
 ## Phase 38: board sync with external boards (GitHub Projects first)
 
@@ -3431,7 +3429,6 @@ the range the audit reads, and the css-theme guard pins the fixed state.
 - **Not verified here:** the stderr text of a missing scope and of a rate limit, and the `Status` field name on boards that
   renamed it, come from memory and the fakes; the proof of concept in the spec settles them.
 
-
 ## Team sessions get the flightdeck MCP (v0.36.1, issue #95)
 
 - **Where it is injected.** `ClaudeSdkRuntime.start` is the single place every managed session passes through (coordinator,
@@ -3525,365 +3522,6 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   older rule stays: the card opens the first time a session is seen (it is still a bounded card in the header that pushes the
   conversation down) and is one line after, with the preview. The e2e overlap check holds in both states.
 
-## Phase 39: OpenCode as a second runtime (proof of concept)
-
-Probes on the Pi on 2026-11-04 against `opencode v2.2.5`, with the free default model (`opencode/crouton-alpha-free`), in
-scratch folders; every probe session was deleted afterwards with `opencode session delete`. No credential or auth file was
-read; the service's state file was not opened.
-
-- **ACP over stdio, not the HTTP API.** Every route of the service answers 401 (`{"_tag":"UnauthorizedError"}`) without a
-  token, and the token comes from the pairing flow or the service's own state, which Flightdeck must not read.
-  `opencode acp` needs neither: per the v2 docs (cli/acp) it runs a private server with no network port.
-  `opencode run --format json` streams `step_start`, `text`, `tool_use` and `step_finish` (with `cost` and
-  `tokens { input, output, reasoning, cache { read, write } }`) but cannot answer a permission request.
-- **What `initialize` announces:** `loadSession`, `promptCapabilities { image, embeddedContext }`,
-  `sessionCapabilities { close, delete, fork, list, resume, additionalDirectories }`, `mcpCapabilities { http }`.
-  `session/new` answers the session id and `configOptions` `model` (30 models here), `effort` (`minimal`, `low`, `medium`,
-  `high`, `xhigh`, `max`, `default`) and `mode` (`build`, `plan`).
-- **The tools run in the ACP process**, with its environment: a variable set on `opencode acp` was printed by a shell
-  command of the session.
-- **Permissions.** Without injected rules, `build` allows everything but `.env` reads, so a shell command ran with no
-  request. With `OPENCODE_CONFIG_CONTENT` (not in the v2 docs) holding `*: ask`, either as the v2 `permissions` rule list
-  or the v1 `permission` object, `shell` asked through `session/request_permission` with options `once`, `always`,
-  `reject` (kinds `allow_once`, `allow_always`, `reject_once`), even with a project `opencode.json` allowing `*`.
-- **Tool input arrives late.** `tool_call` (status `pending`) carries `rawInput { cwd }` only; the command is in the next
-  `tool_call_update` (`in_progress`) and in the permission request's `toolCall`.
-- **Turn end and cost.** The `session/prompt` answer is `{ stopReason, usage { inputTokens, outputTokens, totalTokens } }`,
-  after a `usage_update { used, size, cost { amount, currency } }`. The docs say `cost` is the session total; the free model
-  reports 0, so this is checked on a paid model at the real check.
-- **Resume, load, fork, config.** `session/resume` reattached with no replay; `session/load` replayed the conversation;
-  `session/fork { sessionId, cwd, mcpServers }` answered a new id; `session/set_config_option { sessionId, configId, value }`
-  changed `model` and `mode` and answered the new `configOptions`; `session/list { cwd }` answered
-  `{ sessions: [{ sessionId, cwd, title, updatedAt }], nextCursor }`.
-- **`opencode models --standalone`** prints one `provider/model` per line without the background service (about 2 s here).
-- **The id keeps its name.** `claudeSessionId` holds OpenCode's session id for OpenCode sessions; renaming the field would
-  not be additive.
-
-### Phase 39: second probe round and the permission design
-
-Probes on 2026-11-04 with `anthropic/claude-sonnet-5-5` (four short turns, about 0.04 USD) and with
-`opencode api ... --standalone` (no model call). The probe's saved rule and session were deleted afterwards.
-
-- **Own agents in the config content.** `{"agents": {"flightdeck": {"mode": "primary", "permissions": [...]}}}` (v2 shape)
-  defines a real primary agent, `default_agent` selects it, and `{"disabled": true}` removes `build`, `plan`, `explore` and
-  `general`: the ACP `mode` options were exactly `flightdeck` and `flightdeck-plan`, and `set_config_option mode` switched
-  between them. `opencode api GET /api/agent --standalone` resolves the same config (a private server with the caller's
-  environment); `debug` and `api` without `--standalone` ask the background service, which never sees the variable.
-- **Layer order.** A project `opencode.json` with `*: allow` resolved before the agent's own rules, so the agent's `*: ask`
-  is the last match. v2.2.5 appends `browser` and `skill` denies after the agent's rules.
-- **Saved `always` rules beat `ask`.** Answering `always` to `echo fd-one .` saved `{ action: "shell", resource: "echo *" }`
-  for the folder's OpenCode project, and the same command in the next turn ran with no request. `opencode api GET
-  /api/permission/saved --standalone` run in the folder lists exactly that project's rules.
-- **`question` and `subagent` denied:** Sonnet answered "no question tool" and "no subagent tool"; no request came.
-- **Cost is the session total:** `usage_update.cost.amount` went 0.0361, 0.0397, 0.0416, 0.0433 over the four turns; the
-  prompt answer's `usage` is per turn and adds `cachedReadTokens`, `cachedWriteTokens`, `thoughtTokens`.
-- **Decision (maintainer's review): ask cannot be bypassed by construction.** Every OpenCode process runs only
-  Flightdeck's agents (built-ins disabled), its mode is set explicitly, and before every start and resume a preflight
-  checks the resolved rules, the config sources and the project's saved rules; anything that could beat `ask` refuses the
-  session with its reason (`opencode_config_outranks`, `opencode_saved_rules`, `opencode_preflight_failed`) instead of
-  running and detecting afterwards. Flightdeck never deletes a person's saved rules. The tripwire stays as a second line,
-  for a rule saved from OpenCode's own TUI while a session is live.
-- **Residual risk accepted (maintainer).** The preflight checks, then the session runs: a rule saved, or a config file
-  changed, between the check and the first tool call is not seen by the preflight. The tripwire and the live re-checks
-  below are the line for that window.
-
-### Phase 39: the independent review (OpenCode, `flightdeck-handoff/opencode-spec39-review.md`) and a third probe round
-
-Probes on 2026-11-04 in a scratch "hostile" project: a `.opencode/plugins/evil.ts` that writes a marker at import, a
-project `opencode.json` with `permissions *: allow`, an MCP server `evil` (a `touch` command), the policies
-`mcp.use evil allow` and `plugin.use * allow`, an agent named `flightdeck` with `*: allow` (JSON and markdown), a command
-`.opencode/commands/hello.md` with a `` !`touch ...` `` block, and an `AGENTS.md`. Model calls with Sonnet and the free
-default model, a dozen short turns; every probe session was deleted.
-
-Findings:
-
-- **Code loads before any check can refuse.** Each `opencode api ... --standalone` call imported the project plugin
-  (one marker line per call), and `session/new` imported it and started the project MCP server. So any preflight that
-  starts OpenCode in the folder already ran the repo's code.
-- **The review's detection endpoints see nothing.** `GET /api/plugin`, `/api/mcp` and `/api/command` answered empty lists
-  with the plugin, the server and the command all present (built-ins are not listed either).
-- **Inline `plugins: ["-*"]` breaks OpenCode and does not stop the plugin.** It also removed the provider plugins
-  (`session/new` failed with `CatalogNotReady`, "No models are available"), and the plugin's import-time code still ran.
-  `plugin.use * deny` in the inline config did not stop it either.
-- **Inline policies do not outrank the project's.** With the inline `mcp.use * deny` plus `mcp.use flightdeck allow`, the
-  project's server `evil` (allowed by the project's own policy) still started, while an extra server passed through ACP
-  (`other`) was blocked and `flightdeck` started. (A first `--standalone` run without the `mcp` marker was confounded:
-  `--standalone` calls do not start MCP servers.)
-- **`OPENCODE_DISABLE_PROJECT_CONFIG=1`** (found in the binary, not in the docs) removes the project `opencode.json` and
-  `.opencode/` as config sources (`GET /api/config` lists only the global folder and the inline document): no plugin
-  import, no project MCP server, no project command (`/hello` became a plain prompt), our agents intact. It also drops the
-  project's `AGENTS.md` instructions (the model did not see them); an inline `instructions` entry did not bring them back.
-- **Inline agents beat project agents of the same id**, in JSON and in markdown (`.opencode/agents/flightdeck.md`).
-- **Commands.** A prompt `" /hello lead"` (leading space) ran the command's shell block; `"​/hello zw"` (a zero-width
-  space first) did not. Project commands appear in `available_commands_update` (`hello`) next to the built-ins `init`,
-  `review`, `goal`, `compact`.
-- **Outside the folder, `grep`, `glob` and `read` ask** (a request each, with the outside path in `rawInput`).
-- **A plain `reject`** fails the tool ("The user declined this tool call") and ends the turn with `stopReason: cancelled`.
-- **A fork's cost starts fresh:** the fork's first `usage_update` was 0.0018 USD, not the parent's total.
-- **SIGKILL of `opencode acp` took its running shell command with it** on Linux (`sleep 41` gone, no marker). Windows is
-  unverified.
-- **Cost of the preflight:** the three `--standalone` calls in parallel, next to a live `opencode acp`, took 12.4 s on the
-  Pi (all exit 0). An idle `opencode acp` holds about 110 MB of RSS.
-- Other switches in the binary (undocumented): `OPENCODE_CONFIG_DIR`, `OPENCODE_DISABLE_FILEWATCHER`,
-  `OPENCODE_DISABLE_CLAUDE_CODE`, `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS`, `OPENCODE_SERVER_PASSWORD`, `OPENCODE_DB`.
-
-#### ADR 39-1 (B1): code and servers the project loads
-
-- **Context.** OpenCode imports plugins and starts MCP servers from the project's config at session start, before any
-  question; a plugin can answer permissions itself. A preflight that starts OpenCode runs that code too.
-- **Options.**
-  1. *Detect and refuse* through OpenCode (`/api/plugin`, `/api/mcp`): rejected, the endpoints list nothing and asking
-     already ran the code.
-  2. *Inline removal* (`plugins: ["-*"]`, `plugin.use` and `mcp.use` deny policies): rejected, it breaks the providers,
-     does not stop import-time code, and the project's policies win.
-  3. *A file scan in Flightdeck before any OpenCode process* (plugins dirs, `plugins` and `mcp` keys up the folder tree):
-     works, but reimplements OpenCode's discovery, which can drift with a version.
-  4. *`OPENCODE_DISABLE_PROJECT_CONFIG=1` on every OpenCode process Flightdeck starts*, plus a no-process scan of the
-     global and system scopes only: one switch, verified with the markers; the cost is the project's own OpenCode config
-     (models, providers, agents, commands, instructions) being ignored.
-- **Decision: option 4.** Every OpenCode process (ACP, preflight, models) gets `OPENCODE_DISABLE_PROJECT_CONFIG=1` and an
-  environment with every other `OPENCODE_*` removed. Before any of them runs, a scan without OpenCode reads the global
-  config folder (`$XDG_CONFIG_HOME/opencode` or `~/.config/opencode`, computed from the child's environment) and the
-  system scope (`/etc/opencode/`, macOS managed preferences): a `plugins` entry, a file in `plugins/` or `plugin/`, an
-  `mcp` server, or any system or managed config makes OpenCode unavailable on the host, with the reason in `host.info` and
-  in the doctor. Then the preflight checks that `GET /api/config` lists exactly the global folder and the inline document;
-  an unknown source refuses. The session's `AGENTS.md` (the folder's own, text only) is sent as an embedded resource with
-  the first prompt of a new session, so project instructions still reach the model without loading project config.
-- **Consequences.** A repo cannot load code, servers, agents or commands into a Flightdeck OpenCode session. A person who
-  relies on a project `opencode.json` loses it here (the manual says so). The switch is undocumented: `doctor` warns when
-  the installed OpenCode is newer than the last verified version (2.2.5), and the opt-in `smoke:opencode-real` replays the
-  hostile project at each upgrade.
-
-#### ADR 39-2 (B2): commands run shell outside the permission flow
-
-- **Options.** 1. Refuse folders with commands: harsh, and the global and built-in names stay. 2. Neutralize: every text
-  block whose `trimStart()` begins with `/` gets a zero-width space first, in the runtime's `send` (the one place every
-  caller goes through: the app, the queue, messaging). 3. Both.
-- **Decision: option 2,** plus advertising no command (`session.init.slashCommands` is omitted). With ADR 39-1 no project
-  command is loaded; neutralizing also covers global commands and a global command that replaces a built-in name. The
-  built-in `/compact` and friends are not offered in version 1.
-- **Consequence.** The zero-width rule is verified on 2.2.5 only; `smoke:opencode-real` re-checks it.
-
-#### ADR 39-3: nobody but a person approves an OpenCode request in version 1
-
-- **Decision.** For OpenCode sessions the automatic approval (rules and AI judge) is off and `acceptEdits` is not offered
-  (modes: `default`, `plan`, `bypassPermissions` when the host allows it). A shell command that writes a plugin into the
-  global folder cannot be classified reliably, so a person sees every request. Writes into the global OpenCode folder are
-  also `high` risk.
-- **Live re-check.** After every `tool.result` the runtime re-reads the global and system scopes (stat only) and fails the
-  session with `opencode_permissions_overridden` when they changed; a `config_option_update` or `current_mode_update` that
-  leaves the `mode` options other than our two, or the current mode other than the one set, does the same.
-
-#### The review's majors and minors
-
-| Item | Decision |
-| --- | --- |
-| M1 child sessions | Accept. Filter on `_meta["opencode/child-session"]` and the `<childId>:` tool call prefix; a child's permission request is answered `reject` without the broker, also when the session is idle. |
-| M2 `opencode:*` risk | Accept. Every unmapped tool is `high` and network (never automatic, moot with ADR 39-3); `websearch` maps to `WebSearch`; `flightdeck_<tool>` maps to `mcp__flightdeck__<tool>` so `run_with_secret` and `alwaysAsks` apply; `execute` (Code Mode) stays `opencode:execute`. The tool name is ACP's `name` field (probe: `shell`, `grep`, `glob`, `read`). |
-| M3 glob/grep outside | Resolved by probe: both ask outside the folder. Rules unchanged; a fixture pins it. |
-| M4 preflight wiring | Accept. The session manager puts a `preparing` placeholder (with the message queue) in place before the first await, so a second send cannot start a second run; `create`, `resume` and `createResumed` throw the typed refusal; a lazy reattach that fails sets the session to `error` with a `session.error` that carries the reason and its params (an additive field) and drops the queued text with a notice. |
-| M5 preflight cost | Accept, changed. `GET /api/config` replaces `debug config`. A passing preflight is cached 10 minutes per (folder, OpenCode version, config content hash, global scope fingerprint); refusals are not cached. Refusal texts carry the OpenCode version. The saved rules refusal shows the action and at most 40 characters of the resource with secrets masked, and the exact removal command per rule (`opencode api DELETE /api/permission/saved/<id>`, run in the folder). |
-| M6 tripwire | Accept, coarse: trip only on `completed`, only when no permission request carried that `toolCallId`, never after `interrupt()`, never for `read`, `glob` or `grep` inside the folder; the error names the tool and a masked command prefix. No reimplementation of OpenCode's rule matching. |
-| M7 reject | Accept. A deny answers `reject`, which ends the turn (probe) and rejects every other pending request of the session, so the runtime cancels the session's other open broker requests; the app text for a denied OpenCode request says the turn stopped. No feedback field was found in ACP's outcome. On `interrupt` the broker's cancel answers `reject` before `session/cancel`; the turn ends either way, and a test pins it. |
-| M8 fork and costs | Accept the scope cut: no `forkSession` for OpenCode in version 1 (`runtime_unsupported`). A `turn.result` has no `costUsd` when no `usage_update` came. Budgets and alerts do not count OpenCode spend (Later). |
-| M9 transcript features | Accept. Every consumer keyed by `claudeSessionId` that reads Claude transcripts or the history tables (trace, history, review files and changes, telemetry, names, summary, `history.lastActivity`) gets an empty state or `runtime_unsupported` for OpenCode sessions, listed in the SPEC; messaging endpoints leave OpenCode sessions out in version 1. |
-| M10 lifecycle | Accept. POSIX: the child in its own process group and `kill(-pid)`; Windows: `taskkill /PID <pid> /T /F`, behind an injected killer. stderr stays ignored (no pipe to stall). `close()` is idempotent, `session/close` has a 2 s timeout, then stdin closes, then a kill after 3 s, with injected timers. An idle reaper closes the process after 15 minutes without a turn (110 MB each) and the next send resumes with `session/resume` (no replay). `initialize` and `session/new` time out at 30 s and fail the session. |
-| M11 stranded users | Accept for agents: extra visible agents from the global scope are disabled by id in the config content (two passes, cached) instead of refusing. Saved rules: the refusal gives the exact commands; an app action to remove them is Later. |
-| M12 testability | Accept. Synthetic fixtures are allowed for shapes the docs define, each marked with its doc URL; recorded ones are scrubbed (paths, ids, model list). An opt-in `smoke:opencode-real` (never in the suite or CI) runs the hostile project against the real binary at each OpenCode upgrade; `doctor` warns when the version is newer than the verified one. The fake also answers `--version`, `models --standalone` and the three `api ... --standalone` calls. The preload clears `OPENCODE_*` and the `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME` of the test environment. |
-| m1 | `cancelled` maps to `error_during_execution` with `isError`, like the Claude runtime. |
-| m2 | 10 s after `interrupt` with no prompt answer: `session/close`, kill, and a `turn.result` with `isError`. |
-| m3 | No text block when the text is empty and images come. |
-| m4 | ACP stdio MCP entries are `{ name, command, args, env: [{ name, value }] }`; the exact JSON is tested. |
-| m5 | Effort `low` to `max` maps 1:1; the choice is hidden when `session/new` offers no `effort`; a failed `set_config_option` fails the start. |
-| m6 | `models --standalone` runs in a Flightdeck-owned empty folder with the session environment rules (project config off), after the global scan passed. |
-| m7 | `auth_required` becomes `session.error` `opencode_auth_required` ("run `opencode auth login` on the host"). |
-| m8 | Reads of credential paths (the patterns `risk.ts` knows) ask, as extra rules. |
-| m9 | No `session/prompt` before `set_config_option mode` answered with our mode as `currentValue`; a resume sets it again. |
-| m10 | `tool_use` is emitted before `canUseTool` is called; chunks without `messageId` join the current message; an edit result with only a diff falls back to `rawOutput` or a short text. |
-| m11 | Every `OPENCODE_*` of the daemon's environment is removed; the Anthropic key strip stays (OpenCode uses its own stored auth). |
-| m12 | `clientCapabilities: {}` (no `fs`, `terminal`, `elicitation`, `auth`); `_meta` retry and compaction notices keep the turn alive and show nothing. |
-| m13 | The rules are also set as top-level `permissions`; hidden agents are allowed by exact id (`compaction`, `title`, `summary`). |
-| m14 | Session-scoped rules can only come from a plugin or another client; plugins are out (ADR 39-1); another client on the same session is the accepted residual. |
-| m15 | `session.init.tools` carries the names the fixtures show, not `[]`, if the app needs them; checked in `opencode-session-ui`. |
-| m16 | `session/delete` is never called: resume needs the session; stated in the manual. |
-| m17 | Covered by the coarse tripwire (M6): a completed `.env` read without a request trips it. |
-
-- **A parity gap outside this phase.** Claude sessions started by Flightdeck load the project's settings
-  (`settingSources` includes `project`), so a repo's Claude Code hooks and MCP servers run there without a question too.
-  Worth its own issue.
-
-### Phase 39: proof of concept answers 6 and 7 (recorded fixtures)
-
-Recorded on 2026-11-04 with Sonnet into `apps/daemon/test/fixtures/opencode-acp/` (README there), with the shipped config
-and project config off; both sessions deleted afterwards.
-
-- **Tool names and inputs (6).** ACP's `name` is on the first `tool_call` (status `pending`, `rawInput` empty or
-  `{ cwd }`) and on the permission request's `toolCall`; later `tool_call_update`s carry only the `toolCallId`, so the
-  normalizer keeps the name by id. Inputs: `write { path, content }`, `edit { path, oldString, newString }`,
-  `read { path }`, `glob { pattern }`, `grep { pattern }` (a `path` only when outside the folder), `webfetch { url }`,
-  `shell { command, cwd }`, `subagent { agent, description, prompt }`. Reads, globs and greps inside the folder raised no
-  request. Results come as `content` text blocks plus `rawOutput.metadata` (an edit's has the patch).
-- **Child sessions (7),** recorded with a scratch config that allows `subagent`: the child's updates and its permission
-  request carry `_meta["opencode/child-session"] = { id, parentID, depth, title }` and a tool call id
-  `<childSessionId>:<id>`, on the parent's `sessionId`, as the docs say.
-
-### Phase 39: two probes before the runtime (shipped environment)
-
-- **A global `opencode.json` is a config source of its own.** With `XDG_CONFIG_HOME` pointing at a scratch folder holding
-  `opencode/opencode.json`, `/api/config --standalone` listed that file as a `document` with its path, next to the folder
-  (`directory`) and the inline document. The preflight now allows the global folder's config files (the ones the scope
-  scan reads) and nothing else in it; a test pins it.
-- **Saved rules under the shipped environment** (`OPENCODE_DISABLE_PROJECT_CONFIG=1` and the phase's document, free
-  model): an `always` answer saved `shell echo *` for the folder's project, `/api/permission/saved --standalone` with the
-  same environment listed it, and the same command in the next turn ran with no request. So the switch does not change
-  how saved rules apply, and the preflight's check sees them. Rule and session deleted.
-
-### Phase 39: the code review (OpenCode, `flightdeck-handoff/opencode-review-fase39-code.md`, at 10d46fb)
-
-The review read the branch at 10d46fb, before the `opencode-commands`, `opencode-security` and `session-runtime` areas.
-
-- **B1 (no `/` neutralization):** fixed by 825070e (`opencode-commands`). `turn()` prefixes a zero-width space to a text
-  whose `trimStart()` starts with `/`. JavaScript's `trimStart` also removes tab, newline, NBSP, em space and BOM.
-- **B2 (no second line):** fixed by 9b32ac9 (`opencode-security`):
-  - `config_option_update` and `current_mode_update` are checked before normalizing;
-  - the global scope is fingerprinted at connect and again after each completed tool;
-  - the tripwire fires on a completed call with no request for its id.
-  
-  A probe showed that OpenCode sends neither update when Flightdeck sets the mode itself. The field name
-  `currentModeId` is ACP's and unverified on 2.2.5.
-
-Probes for this round (2026-11-05; no credential read; every probe session deleted):
-
-- `Bun.spawn({ detached: true })` puts the child in its own process group, and `process.kill(-pid)` reaches the group's
-  members.
-- A v1 `plugin` key in the global `opencode.json` is read: `/api/config` reports it migrated to `plugins`. Neither it nor a
-  file in the global `tool/` folder was imported by `/api/config` or `session/new`. Both are still treated as code.
-- `session/resume` answers `configOptions`. The `/api/config`, `/api/agent` and `/api/permission/saved` answers were
-  recorded as fixtures (`api-*.json`, `resume.jsonl`).
-- **A symlink inside the folder that points outside is read with no request.** OpenCode's inside-the-folder test is
-  lexical (review M8).
-- With project config off, a project `CLAUDE.md` did not reach the model.
-- With `OPENCODE_DISABLE_CLAUDE_CODE=1` and `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1`, `session/new` never answered (10 s);
-  without them it did at once.
-
-| Item | Decision |
-| --- | --- |
-| M1 leaks on a failed start or a close during start | Accept. No process before the first send. `connect()` checks for a stop after each await and closes a connection that opened late. `fatal()` always closes the connection and aborts the open questions. A failed start runs the preflight once. Tests pin each repro. |
-| M2 close can hang, no forced kill, no process group | Accept. On POSIX the agent leads its own process group (`detached`), and `treeKiller` sends the group SIGTERM, then SIGKILL; it falls back to the process when the group is gone. Windows keeps `taskkill /T /F`. `close()` kills after 3 s, forces 2 s later, and stops waiting 5 s after that. Whether a tool's child survives the stdin-EOF exit is the real check's "daemon stopped during `sleep`". |
-| M3 the read loop dies | Accept. A throwing handler and a message that is not an object are logged, with no text, and skipped. |
-| M4 a stale escalation timer | Accept. A second interrupt does not set a second timer. An escalation is tied to its turn's number and does nothing once that turn ended. |
-| M5 the reaper is not armed without a turn | Accept, by spawning lazily: no process exists until the first send. The manager already ran the preflight for its typed refusal. |
-| M6 the scope scan misses keys and folders | Accept. `plugin` (v1) counts like `plugins`. Both `mcp` forms are read. A `plugins`, `plugin` or `mcp` of an unexpected shape fails closed. `tool/` and `tools/` count as code folders. An allowlist of the global folder was rejected: OpenCode keeps other files there (`tui.json`, agents, commands). Commands are neutralized (ADR 39-2), and global agents are disabled by id. The stronger option, an empty `XDG_CONFIG_HOME` per child, stays open for the maintainer: it costs the person's global models and providers. |
-| M7 the canary's rule is weaker than the preflight's | Accept. The canary uses the preflight's `unexpectedSource`. Only 2.2.5 itself is `verified`. Discovery keeps the executable's size and time, and the preflight refuses `opencode_changed` when they differ: the daemon checks OpenCode again on restart or from the doctor. |
-| M8 lexical "inside the folder" | Accept (confirmed by the probe). `read`, `glob` and `grep` ask in OpenCode. The runtime allows them without a question only when the real path is inside the folder's real path and is not a credential path (`risk.ts`'s `credential`, now exported). A path that does not exist asks. |
-| M9 tests and fixtures | Accept. The recorded `/api/*` and resume answers are fixtures, and a test passes them through the preflight. The preload scrubs `OPENCODE_*` and the XDG config, data, state and cache folders. The events normalizer still returns nothing for `config_option_update`; the runtime checks it before normalizing (B2). |
-| m1 the `--version` env and timeout | Accept: the OpenCode env and 5 s. |
-| m2 prototype keys as tool names | Accept: `Object.hasOwn`. |
-| m3 the risk rule for the global folder is lexical | Reject for v1. A person answers every OpenCode request (ADR 39-3), so it is an extra signal only. The live scope fingerprint catches the write itself. |
-| m4 refusal text | Accept. An unknown plugin entry is named "(unknown entry)", never by its options. Masking also covers runs with `.`, `/`, `+` and `=` padding, and actions too. A saved rule whose id is not plain is left out of the commands. |
-| m5 permission edges | Accept. The question is registered before the card's barrier. A stopped run answers `cancelled` without asking. `close()` aborts the open questions. A request is asked with the fullest input seen for its id. |
-| m6 an interrupt before the turn starts | Accept. It ends the waiting turn as cancelled, with no prompt. On an idle run it changes nothing. |
-| m7 preflight bookkeeping | Accept: concurrent checks of one key share one run. Reject the env parameter: the daemon gives the runtime, the preflight and the scan the same base env (one place in `main.ts`). |
-| m8 Windows paths | Accept: `USERPROFILE` first on Windows. The system and managed folders on Windows and macOS stay "unverified on this OS" in the doctor and the manual. |
-| m9 the real `auth_required` shape | Reject for now. Recording it needs a provider without a login, and changing logins is out of bounds. The message match stays; `smoke:opencode-real` records it when it shows up. |
-| m10 `OPENCODE_API_KEY` stripped | Accept: it passes through (a provider credential, not a switch). |
-| m11 plan mode lets shell ask | Keep. A command still asks a person; the UI text says plan mode blocks edits only. |
-| m12 Claude Code compatibility switches | Reject: setting them made `session/new` hang. `CLAUDE.md` was not read with project config off anyway. |
-| m13 quadratic `linesOf` | Accept: it keeps its scan offset (refactor). |
-| ADR claims with no code | B1, B2 and the typed `session.error` (653014019) now have code. The `preparing` placeholder was not needed: the run's start is synchronous and its preflight runs inside it, so a second send queues on the live run (a test pins one start). The automatic approval gate, the messaging exclusion, `runtime.models`, the doctor row, the UI, the fake `opencode` and both smokes are the remaining areas. |
-- **An empty `XDG_CONFIG_HOME` per OpenCode child (the stronger M6 option): rejected (maintainer).** The person's global
-  config stays: the scope scan and the preflight already refuse global plugins and MCP servers, and losing the person's
-  global models and providers would make the runtime useless for them.
-
-### Phase 39: OpenCode is opt-in per host
-
-- **Decision:** `opencode.enabled` defaults to `false`. Discovery runs the OpenCode binary (`--version`, the canary's
-  `api --standalone`), so a host that turned nothing on runs no third-party program at start. The doctor only looks the
-  binary up (no run) and says how to turn it on (`"opencode": { "enabled": true }` in the host config). With the `fake`
-  runtime (demo, e2e) a fake OpenCode is always offered.
-- **Why not on by default:** it would run OpenCode at every daemon start on every host that has it, and in every test that
-  starts a daemon with the `claude` runtime (the preload's `opencode` sentinel would fail them).
-
-### Phase 39: the session UI
-
-- **`session.summary` carries `runtime`.** The sidebar and the session page read the summary event, not `session.list`,
-  so the event gets an optional `runtime` (set for an OpenCode session only; an older app ignores it). Not in the
-  `opencode-protocol` row; added with `opencode-session-ui`.
-- **Claude Code's panels are dropped by SessionView itself.** An OpenCode session's `claudeSessionId` is OpenCode's
-  `ses_...` id, so "Open in terminal" (`claude --resume`), the timeline (Claude's checkpoints), the persona switch and the
-  recap would act on a Claude session that does not exist. SessionView leaves them out, with the model switch, fork and
-  `acceptEdits`, when `runtime` is `opencode`; the screens keep passing them unchanged.
-- **Effort levels are shown as their ids** (`low` ... `max`), as the arena form already does.
-- **Not done in this area:** the empty states of the hidden panels (they are not drawn, so there is no empty state to
-  show) and axe on the new form, which runs with `demo:shots` at the phase's end (the slot was jammed). No `/` commands
-  needs no UI code: OpenCode's `session.init` has no `slashCommands`.
-
-### Phase 39: the smokes
-
-- **`smoke:opencode` runs in CI** with the other smokes: the daemon in-process, the fake `opencode` first on its PATH. The
-  fake records each ACP request (method and prompt text) in its own log (`FAKE_OPENCODE_ACP_LOG`), which is how the smoke
-  sees the `/` text arrive with a zero-width space, the `session/cancel` and the `session/resume` after the restart.
-- **`smoke:opencode-real` runs the daemon as its own process.** A daemon started inside the smoke names `Bun.main` (the
-  smoke) in the Flightdeck MCP entry it gives OpenCode, so OpenCode ran the smoke a second time as that server, which never
-  answered, and `session/new` timed out after 30 s. A host runs the daemon itself, so nothing changes in the product.
-- **Probe (2026-11-05): the background service loads the project config.** `opencode session list` without
-  `--standalone`, run in the hostile project with `OPENCODE_DISABLE_PROJECT_CONFIG=1`, was answered by the person's
-  `opencode serve --service`, which never sees the caller's variables: the project's plugin and MCP server ran in it (their
-  markers appeared). The same calls with `--standalone`, and `opencode acp`, ran none of them (no marker in a plain folder,
-  a git one, the hostile one and the hostile git one). The daemon only runs `acp` and `--standalone` calls; the smoke's
-  cleanup (`session list` and `session delete`) uses `--standalone` too, and the manual's saved-rule commands carry it.
-- **OpenCode makes a session even when `session/new` times out**, so the real smoke deletes every session of its scratch
-  project at the end instead of the ids it saw.
-- **30 s for each call that boots OpenCode's private server** (`OPENCODE_API_TIMEOUT_MS`: the preflight's three checks,
-  the canary, `models`). The real smoke found it: on the Pi 5 at load 15 to 20, the three checks in parallel took 8 to
-  15 s each, and `/api/agent` passed the old 15 s limit (exit 124), so the session was refused with
-  `opencode_preflight_failed`. It only matters when the host is slow; a session start already waits for the checks.
-  Proposed for phase 40: one private server per preflight (`opencode serve` with Flightdeck's environment, three HTTP
-  GETs) instead of three boots, which would also cut the CPU of every start by about two thirds.
-- **The pure parts** (the hostile project, the options it answers with, the saved rules' ids, `--model`) are in
-  `scripts/lib/opencode-real.ts` with `scripts/test/opencode-real.test.ts` (scope `opencode-real`, not a row of the table).
-
-### Phase 39: the spec-verifier's round (2026-11-05)
-
-Fixed after its report:
-
-- **`AGENTS.md` followed links** (its blocker): a repo's `AGENTS.md` linked to `~/.aws/credentials` would have gone to the
-  model on the first prompt. It is now sent only when its real path is inside the folder's and is not a credential (the
-  check reads, globs and greps already had); otherwise it is skipped and the timeline says so.
-- **The app pieces of the spec:** the model list grouped by provider, in the form and in the live switch of an OpenCode
-  session (the switch had been hidden with a wrong reason: `setModel` works for OpenCode); the badge in the hub's cards and
-  list; the text when a denial stopped the turn; the `AGENTS.md` line or its skipped notice; no Changes, Time, Trace or
-  Messages tab (they read Claude Code's transcript, or messaging, which OpenCode sessions stay out of). The timeline stays,
-  as the spec says: snapshots are taken on every turn edge whatever the runtime, so the git-snapshot rewind works (its fork
-  answers `runtime_unsupported`).
-- **The unsafe scan names what it found** in the doctor's row (CLI and host page), with the paths.
-- **macOS managed preferences** (`/Library/Managed Preferences`, and the user's folder in it) are scanned by default, and
-  any file in the system folder is a finding, not only the three config names.
-
-Decided as they are:
-
-- **The model list is a native select**, grouped by provider; its type-ahead is the search.
-- **Effort is offered for every OpenCode session.** Whether OpenCode offers an `effort` option is known only after
-  `session/new`, after the form; the runtime sets it only when the option exists.
-- **The host page shows OpenCode through the doctor's row** (available, version, reason and findings), not a separate
-  `host.info.runtimes` block.
-- **The scope fingerprint covers the config files and the code folders**, not every file of the global folder. A global
-  agent or command added mid-session changes nothing a running session may do: our agents are inline and beat same-id
-  ones, other agents are disabled at the preflight and a mode switch fails the session, commands are not offered and `/`
-  is neutralized.
-- **The preflight's cache key has no config-content hash:** the content is decided by the checks themselves (the extra
-  agents they disable) from the same folder, OpenCode version and scope fingerprint the key holds.
-- **The usage ledger and the account:** an OpenCode turn's cost goes to `usage.record` like a Claude turn's; the Costs
-  page, budgets and quota for OpenCode stay in phase 40 (the scope cut). `turnEnded` and `divergences()` are skipped by
-  construction (the runtime check in `onTurn`; `usage_entries` come only from Claude transcripts).
-- **`SessionManagerOptions` keeps `runtime` plus `opencode`** rather than a `runtimes` map: there are two runtimes.
-
-The kill check (by hand, 2026-11-05, Sonnet on the Pi): an OpenCode session ran an approved `sleep 287`; the daemon
-stopped with SIGTERM left no `sleep` and no `opencode acp` behind. Killed with SIGKILL, `opencode acp` exited when its
-stdin closed but the `sleep` it started survived (an orphan in its own process group), as any child of a killed process
-does. Under the systemd service the unit's control group is cleaned when it stops or restarts. Proposed for phase 40: a pid
-ledger of OpenCode process groups in the data folder, reaped at the next start.
-
 ## A conversation opens on its latest message (issue #112)
 
 - **The end follows the layout, not only the messages.** Images, code blocks and the summary panel change the height after
@@ -3919,19 +3557,829 @@ ledger of OpenCode process groups in the data folder, reaped at the next start.
   different trees.
 - **Based on `rc/0363`,** which adds `workflow_dispatch` (#129) to the same `on:` block.
 
-## A ledger of OpenCode's process groups (issue #250)
+## The light lane for typecheck and lint
 
-- **Why.** When the daemon is killed with SIGKILL, `opencode acp` exits (its pipe closes) but a command it was running survives as an orphan in the same process group. systemd clears the cgroup on a stop or restart; other setups do not.
-- **How.** `runtime/process-ledger.ts` keeps `opencode-groups.json` in the data folder: the pid, the start time (clock ticks, from `/proc/<pid>/stat`) and the command line of each `opencode acp` the daemon starts, written once the process has answered `initialize` (right after the spawn /proc may still show the parent's command). When the process ends, whatever is left of its group is killed and the entry goes. At the next start, before anything else (even with OpenCode off), every remaining entry is checked and its group killed with SIGKILL.
-- **Pid reuse.** A leader still there is killed only if its start time and command line are the recorded ones and it leads its own group. A leader that is gone leaves its group's members: Linux does not hand a pid to another process while a group of that id has members, so those members, if they started after the leader, are what it left. Anything else is dropped as stale and nothing is signalled.
-- **Elsewhere.** On macOS and Windows `/proc` is not there, so nothing is recorded or reaped (Windows ends the tree with `taskkill` at close, as before). A ledger that cannot be written only loses the cleanup.
-- **Also.** `store.test.ts` now tests the `sessions.runtime` migration on a database from before the column (the old rows are Claude's).
-- **Not covered.** `runCommand`'s short OpenCode commands (`models`, `--version`) are not in the ledger: they have a deadline that ends their group, and live seconds.
+- **Why.** On 2026-11-05 the Pi ran out of memory (148 MB free, load 49) with five or six
+  typechecks running at once outside the slot. One run of `bun run typecheck` was itself three
+  tsc processes at once (`bun run --filter '*'` runs the workspaces in parallel) and then a
+  fourth: measured on the Pi, protocol 0.29 GB, daemon 0.95 GB, desktop 1.46 GB, scripts 1.05 GB.
+- **A lane with two places** (`scripts/lane.ts`, logic in `scripts/lib/lane.ts`). Each place is
+  one of the slot's lock files (`tryAcquire`/`release`), in the temp folder. A third run waits and
+  names the two holders once. It is separate from the heavy slot: a typecheck never waits for a
+  full suite, nor a full suite for a typecheck.
+- **Fail-open and nesting.** A lock that cannot be used runs the command anyway and says so. A
+  call made inside the lane or the heavy slot (`FLIGHTDECK_LANE_HOLDER`, `FLIGHTDECK_SLOT_HOLDER`
+  from #141) runs at once, so a script that runs typecheck inside a slot run never waits for itself.
+- **One project at a time, incremental.** `scripts/typecheck.ts` runs one tsc per project in
+  sequence (protocol, daemon, desktop, scripts), each with `--incremental` and its build info in
+  `node_modules/.cache/tsc/` (ignored, one per checkout). A cold run peaks at 1.48 GB (the desktop
+  project) and took 46 s on the loaded Pi; a run with nothing changed takes 8 s and 0.46 GB. A type
+  error added after a warm run is still reported. One shared tsc for all projects was not tried:
+  it would hold every project's program at once, the opposite of what the lane needs.
+- **The workspaces' own `typecheck` scripts stay** for a run inside one package; a test checks
+  that `PROJECTS` lists every workspace that has one.
 
-## One private OpenCode server per preflight (issue #243)
+## Sonar rules before a push (issue #194)
 
-- **Done.** A preflight (before an OpenCode session starts or resumes, cached 10 minutes) used to run `opencode api GET … --standalone` three times, each booting its own private server (8 to 15 s each on a busy Raspberry Pi 5). It now runs one `opencode serve --port 0 --hostname 127.0.0.1` in the session's folder, with the same environment as before (project config off, our document inline), asks the three routes over HTTP, and ends the server and its process group. `runtime/opencode-serve.ts` does it; the group goes into the #250 ledger once the server says where it listens, and out when it is stopped. The 30 s limit applies to the start and to each route (a timeout, a 500 or a body that is not JSON fails with the route only, never with what OpenCode printed).
-- **A second server only when needed.** The extra-agents check asks `/api/agent` again with a document that disables them; that is a different document, so it is a second server, rare and stopped too.
-- **Password.** `serve` listens on loopback, but loopback is open to every user of the machine: the server gets a random `OPENCODE_SERVER_PASSWORD` per start and the requests carry it (HTTP Basic, user `opencode`). The fake enforces it. **Not verified against the real binary** (this machine has none): the exact name of the variables and the `listening on <url>` line are what OpenCode's `serve` documents as far as we know, and `smoke:opencode` against the real one is the check before the release.
-- **Where it differs from the issue.** The issue asked to run the canary and the model list against the same server, "in its own empty folder". They are not moved: the canary needs a folder holding its own `opencode.json` (that is the proof), the model list runs in Flightdeck's own folder and is cached 5 minutes, and both happen once per discovery or per cache, not per start. The preflight's server runs in the session's folder, not an empty one, because the saved-rules check and the config sources are the folder's.
-- **Measured with the fake** (`FAKE_OPENCODE_BOOT_MS=400`: a busy CPU loop that stands for a boot, machine load average 12 to 19, three runs each): before, three boots of 400 ms of CPU and 3.2 / 2.6 / 2.0 s of wall time for a `check`; after, one boot (400 ms of CPU, 67% less) and 1.4 / 1.4 / 1.4 s. The wall time is mostly Bun starting under load; the three old boots ran in parallel, so the real gain on a loaded machine is the CPU, as the issue said.
+- **Biome stays the linter; `lint:sonar` only mirrors SonarCloud.** `bun run lint:sonar` runs `eslint-plugin-sonarjs` (Sonar's
+  own JS/TS rules) with no other ESLint rule. The rule list is not hand-written: `scripts/lib/sonar-lint.ts` keeps the plugin
+  rules whose Sonar key (`S1234`, from the rule's documentation URL) is active in the project's SonarCloud profile, "Sonar way
+  comprehensive" for TypeScript, snapshotted in `scripts/sonar-profile.json`. Refresh it with
+  `curl 'https://sonarcloud.io/api/rules/search?organization=jnerytech&qprofile=<key>&activation=true&ps=500&repositories=typescript'`
+  when the profile changes (the API is public for a public project; no token).
+- **Coverage of the profile (2026-11-05).** 211 of its 418 TypeScript rules have an ESLint rule: 160 run on syntax alone and 51
+  need the TypeScript program (`--no-types` skips those). The other 207, and the `tssecurity` taint rules (47) and
+  `tsarchitecture` rules (7), have no local equivalent and are reported only by SonarCloud.
+- **New code only.** SonarCloud's gate judges new code, and `main` has far more old findings than a change can fix, so
+  `lint:sonar` keeps the findings on the lines the branch added or changed (`git diff -U0` against the merge-base). `--all` and
+  `--files` check whole files.
+- **NOSONAR works the same on both sides, with one addition.** A `NOSONAR` comment silences the findings of its line, as in
+  SonarCloud. Locally a `NOSONAR` with no reason after it is itself a finding (`nosonar-reason`): a suppression says why.
+- **A workspace of its own.** `typescript-eslint` refuses TypeScript 7 (`typescript-eslint does not support TS 7.0`, tracking issue
+  typescript-eslint#10940), which the repository uses. The linter lives in the `tools/sonar-lint` workspace with its own
+  `typescript@5.9.3`; the app and the daemon keep TypeScript 7. Drop the pin when typescript-eslint supports TS 7.
+- **Not chosen:** a local SonarQube server (too heavy for the Pi) and scanner runs from the machine (they need the token).
+- **CI.** A fast `lint:sonar` job runs on pull requests only, against the merge-base with the target branch.
+
+## Sonar reads the tests and the same coverage as the gate (issue #205)
+
+- **Tests are test code in Sonar.** `sonar.exclusions` no longer lists the tests; `sonar.test.inclusions` (`**/test/**`, `*.test.ts(x)`,
+  `scripts/e2e/**`) marks them, so Sonar runs its test-scope rules on them. In the SonarCloud TypeScript profile 381 rules are
+  main-scope and 37 test-scope; `lint:sonar` runs each set on its kind of file (`testRules` in `scripts/sonar-profile.json`).
+  The first local run found 120 test findings (116 generic assertions); they are fixed, and 4 profile rules still have no ESLint twin.
+- **One list for coverage.** Sonar read 99.4% while the gate says 100% because the two exclusion lists differed (the build config, type
+  declarations and `scripts/e2e` were counted by Sonar only). `scripts/test/sonar-coverage.test.ts` now checks every tracked file:
+  Sonar counts it for coverage exactly when `isCoverageSource` (the gate's rule) does, so the lists cannot drift. The properties file
+  cannot call code, so it keeps its own glob list and the test is what ties it to `scripts/lib/coverage-check.ts`.
+- **Not verified here:** the scanner itself needs the token, so the overlap of `sonar.sources` and `sonar.tests` (with
+  `sonar.test.inclusions` deciding) is proven by the next SonarCloud run on the PR, not locally.
+- **`explicit-test-skip`.** The two tests that returned early on Windows use `test.skipIf(...)`.
+
+## Sonar bugs and vulnerabilities (issue #198)
+
+- **CSS S8776 and S8767 are ignored for `apps/desktop/src/styles.css`, nothing else.** All 31 findings sit inside Tailwind v4
+  `@utility` blocks (checked one by one): `&:hover`, `&[data-columns]` and declarations inside a nested `@media` are valid CSS
+  nesting there, but Sonar's CSS parser treats `@utility` as an unknown at-rule and reports "Missing scoping root" and "Invalid
+  position for declaration". Rewriting them as plain classes would drop the `@utility` variant support (`hover:`, `md:`) the app
+  uses, so the file is exempt through `sonar.issue.ignore.multicriteria` in `sonar-project.properties`, for these two rules only.
+- **Rust S7493 (3) and S4036 / S2245 / S5443 are NOSONAR with a reason.** The Rust calls already run inside `spawn_blocking_result`
+  (the rule cannot see through the helper); the `git` and `bun` scripts take the executable from the developer's `PATH` on purpose;
+  `Math.random()` only picks a spare port; and the "publicly writable directory" is a list of folder names to hide.
+- **Sorts (S2871, 16 sites): code-unit order unless a person reads the order.** A bare `.sort()` orders by UTF-16 code unit; a
+  locale order differs for mixed case and accents, which would change any key built from a sorted list (persisted state, a dedupe
+  key, a fingerprint) after an upgrade. `byCodeUnit` (`packages/protocol/src/compare.ts`) is the explicit, byte-identical
+  comparator and a test pins that a key joined from a mixed-case list is the same as before. `localeCompare(b, "en")` is used only
+  for the three lists a person reads:
+  - `byCodeUnit`: `ssh/import.ts` (import order), `agentcfg/files.ts` (item order), `lib/tabs.ts` (`routeKey`), `smoke-webhook.ts`
+    (keys compared), `lib/client-scope.ts` (project keys), `lib/app-store.ts` x2 (alert key, online-host key), `telemetry/otlp-env.ts`
+    (managed keys compared), `telemetry/store.ts` (project keys), `personas/store.ts` (untrusted ids), `smoke-rules-vault.ts` and
+    `smoke-automation.ts` (outcomes compared), `actions/schema.ts` (secret ids).
+  - `localeCompare(b, "en")`: `roi/summary.ts` (project rows), `lib/trace.ts` (tool names), `ui/ConnectionsPage.tsx` (tag list).
+- **Also fixed in code:** `reduce` has an initial value, `map` callbacks that take an index say so, a float is compared within a tolerance, and the import
+  pattern of `scripts/lib/bundle-reach.ts` no longer backtracks quadratically (30,000 spaces: 1.2 s to milliseconds).
+
+## Harness D1: the commit gate, the test-edit guard and the audit in CI (issue #169)
+
+- **A Claude Code hook, not a git `commit-msg` hook.** A git hook reads the message reliably, but it
+  needs `core.hooksPath`, which is unset; setting it would change all open worktrees and the
+  maintainer's commits at once. The PreToolUse guard is already versioned in `.claude/` and runs
+  in every checkout. It reads the subject from `-m`, `--message`, a `$(cat <<EOF)` heredoc or
+  `-F -` with a heredoc, and finds the commit's directory from each `cd` before it and from
+  `git -C`. Anything else (an editor, `-F file`, a quoted directory, git failing) passes, since
+  the audit and CI still check it.
+- **One base everywhere.** `auditBase` (the merge-base with `origin/main`, then `main`; the last
+  release tag, `v*` and never `fase-N`, when `HEAD` is on `main`, pushed or not) is used by the
+  hook, by `tdd:audit --since auto` and by CI. Measured before turning CI on: all 21 open branches
+  on `origin`, `rc/0363` included, pass it. Without
+  `--since`, `tdd:audit` now means `auto`; before, the bare command that CLAUDE.md suggested
+  exited 2 with a usage line. In a pull request, CI's merge commit has no conventional type, so the
+  audit ignores it.
+- **The waiver is a trailer.** A waiver in `scripts/tdd-audit-waivers.json` is keyed by the full
+  commit hash, which does not exist before the commit. A `TDD-Waiver: <why>` trailer in the
+  message is read by the hook and by `tdd:audit` (`%(trailers:key=TDD-Waiver)`), needs no hash
+  and survives a rebase. The hook logs such a commit as `waived`, so `harness:stats` shows how
+  often the gate is bypassed. The JSON file keeps the waivers made before.
+- **Only the commit's own message is read.** The command is masked (heredoc bodies and quoted
+  text blanked, offsets kept): `git commit` and its `-m`, `--message`, `--trailer` and `-F -` are
+  found only as words of their own segment, and their values are read from the original at the
+  same offsets. A first version read the first `-m` or heredoc anywhere, so a `cat >> f <<EOF`
+  before the commit, a `grep -m 1` or a `-m` in the body became the subject, and a quote inside a
+  `$(cat <<EOF)` body ended the message early.
+- **Not enforced: "the test commit holds only the test".** docs/TDD.md says the stub stays out of
+  the test commit. In practice it goes in: 404 of the last 1,500 `test(...)` commits also change a
+  file under `apps/*/src`, `packages/*/src`, `scripts/lib` or `src-tauri/src` (for example
+  `test(setup-linger)` adds `linger.ts` answering `null`). Blocking it would refuse about one test
+  commit in four. The rule stays as written until the maintainer decides between the text and the
+  practice.
+- **`toMatchSnapshot(` only in the hook.** A new snapshot records its first run, which is the
+  stub's output. The audit does not scan for it, because a snapshot that already exists is allowed;
+  the hook only refuses one being added.
+- **Measured on the Orange Pi** (load around 6): the guard takes 0.04 to 0.1 s on a `git commit` (one
+  `rev-parse`, one `merge-base` and one `log`) and 0.01 to 0.03 s on anything else. `biome-on-edit`
+  takes about 1.9 s per edit, 1.7 s of it in the type-aware `noFloatingPromises` scan.
+- **The decision log** is `<common .git>/flightdeck-hooks.jsonl`: never tracked, one file for the
+  main checkout and its worktrees, rotated to `.jsonl.1` past 1 MB. `bun run harness:stats` gives
+  the calls, blocks and p50/p95 per hook, and the blocks per rule. The `biome-on-edit` numbers
+  decide whether `noFloatingPromises` moves out of the edit hook into the commit gate and CI.
+- **Heavy runs outside the slot are refused.** The guard refuses `bun run test|coverage|e2e|
+  demo:shots|smoke*|build:daemon|build:desktop` and a bare `bun test` unless the segment is
+  `bun run slot -- ...`. A session that runs under a slot holder (`FLIGHTDECK_SLOT_HOLDER` in the
+  hook's environment, #141) passes, since its run is already in the slot. The slot's own child is
+  started by the slot, not by Claude's Bash tool, so the hook never sees it.
+- **Timeouts and fail-open are explicit.** `guard` has `timeout: 10`, `biome-on-edit` 30, both
+  `onFailure: "continue"` (without it, a failing shell-form hook blocks on Windows without Git
+  Bash), and the gate's git calls stop after 2 s. `onFailure: "block"` is never used: the guard
+  imports `scripts/lib`, so a broken edit there would block the edit that repairs it.
+- **Only this project's commits.** The gate checks a commit only when its directory belongs to the
+  main checkout or one of its worktrees (`checkoutRoot`), so `git commit -m init` in a scratch
+  repository passes. The slot guard has no such scope yet: `bun run test` in another project, run
+  from a Flightdeck session, is refused (rare; known limit).
+- **The instructions follow the guard.** CLAUDE.md, TDD.md, `new-phase`, `spec-verifier` and
+  `tauri-rust-reviewer` showed the full suite, the builds, `demo:shots` and `e2e` bare; they now
+  show `bun run slot -- <command>`, and `tdd-area`'s green step runs `test:related`. A
+  `harness-config` case keeps any instruction from showing a command the guard refuses.
+- **Minimum Claude Code version: 2.1.295,** for `onFailure`. Checked on 2.1.318 with `claude -p
+  --debug` in the worktree: the settings load without a validation warning and the guard fires.
+- **The setup is tested.** `harness-config.test.ts` checks that each hook in `settings.json` runs
+  a file that exists, with a timeout and `onFailure`; that the deny list keeps the credentials;
+  that the real `guard.ts` blocks with exit 2 and passes bad input; and that every agent and skill
+  frontmatter parses as YAML. It found two that did not (`tauri-rust-reviewer`, `new-phase`: an
+  unquoted `: ` in the description); Claude Code read them anyway, but a rule's `paths` that does
+  not parse is silently dropped, so the check stays.
+- **`test:related` sees data files.** A test that names a changed path, or one of its folders, as
+  a string literal is related to it (`names .claude/settings.json`). Names with no slash (a root
+  file, a top-level folder) do not count, because tests use `.claude`, `docs` or `CLAUDE.md` as
+  product words; a `*-baseline.json` also counts by its file name, as the ratchets name it.
+- **The hook files stay thin.** `.claude/hooks/*.ts` only read stdin, call `scripts/lib` and exit.
+  They are not under coverage; the rules they apply are, at 100%.
+
+## Harness: decisions on the independent review of the #169 proposal
+
+The review (OpenCode, 2026-11-04) ranked 20 findings. Each one is accepted, deferred to its
+delivery, or rejected:
+
+| Finding | Decision |
+| --- | --- |
+| S2-1 "a test commit holds only tests" | Accepted: never enforced (see D1 above). TDD.md's text against the practice is for the maintainer. |
+| S2-2 D7 under the slot deadlocks | Accepted: D4 and D7 come after #141 (`slot-reentrant`, v0.36.3); the eval's model phase runs outside the slot, `handoff:check` never under it. |
+| S2-3 no waiver path, missing types | Accepted: the `TDD-Waiver:` trailer; `style`, `revert`, `Merge`, `Revert`, `fixup!` and `squash!` pass; a commit with no readable message passes. |
+| S2-4 hook timeouts, onFailure | Accepted: see D1 above. |
+| S2-5 D4 sender-side keyword gate | Accepted: D4 becomes receiver-side. `handoff:check` prints one stamp line (HEAD, four exit codes, time) that the session pastes; the orchestrator or `spec-verifier` checks it for HEAD. A sender hook, if any, comes after S1-1 and only advises. |
+| S2-6 `test:related` misses non-TS changes | Accepted: see D1 above. |
+| S2-9 log volume and rotation | Rejected in part: the log already rotates by `rename`, never truncates, and a lost line is acceptable. Every call is kept: `biome-on-edit`'s latency is what decides S3-6. |
+| S2-10 the gate is a guardrail | Accepted: TDD.md says so; the audit in CI is the wall. |
+| S2-11 `fase-N` tags | Accepted: `--match 'v[0-9]*'`. |
+| S3-1 heavy runs outside the slot | Accepted: see D1 above, with the slot-holder exception. |
+| S3-2 `merge=union` on DECISIONS.md | Rejected: union keeps both sides of a conflict without order, so two branches appending near the same heading can interleave silently. D2b's one file per unit of work removes the conflicts at the root. |
+| S3-3 the setup itself is untested | Accepted: `harness-config.test.ts`. |
+| S3-4 branch-aware push guard | Rejected for now: the orchestrator pushes feature branches from the same checkout, so a rule by branch would block it. It needs a session identity, not a branch. |
+| S1-2 rules lost after `/compact` | Accepted for D5: every rule that guards a non-negotiable stays in the root CLAUDE.md, path-scoped rules are a bonus, and a `SessionStart` hook with `matcher: "compact"` restates the essentials (S3-5). |
+| S1-3 unquoted `paths:` globs | Accepted for D5: list form with quoted patterns; `harness-config` parses every frontmatter. |
+| S1-4 `claude -w` | Accepted: dropped. A dev session starts with `cd ../flightdeck-x && claude`, or moves with `/cd`. |
+| S1-1, S2-7, S2-8, S3-5..S3-9, S4-1..S4-7 | Deferred to their deliveries (D2, D4, D5, D6, D7), where each is decided before the code. |
+
+## Sessions push their own work branches (issue #218, part of #216)
+
+- **The rule moves from "sessions never push" to "sessions push only their own work branches".**
+  The guard (`pushViolation` in `scripts/lib/claude-hooks.ts`) blocks a push to `main` or
+  `rc/*`, a tag (a `refs/tags/` refspec or the name of a local tag), `--tags`, `--all`,
+  `--mirror` and `--follow-tags`. A push with no refspec, or of `HEAD`, means the current branch.
+- **"Own branch" is the branch checked out in that checkout.** Who created a branch is not
+  recorded anywhere; the branch a session works on is. A `--force-with-lease` passes only to it.
+  A bare `--force` (or a `+` refspec) is blocked even there, which is stricter than #218's text:
+  `--force-with-lease` does the same job without overwriting a push someone else made.
+- **The coordinator is exempt through its environment.** `FLIGHTDECK_COORDINATOR=1` in the hook's
+  own environment lets every push through. The coordinator's launch must set it
+  (`start-flightdeck.sh`). A session cannot fake it: a `FLIGHTDECK_COORDINATOR=1 git push`
+  prefix changes the command's environment, not the hook's.
+- **Other repositories are not checked**, the same as the commit gate (`checkoutRoot`).
+- **Limits.** Like the other guard rules, it reads the command's words: `sh -c "git push ..."`, a
+  subshell or `gh` calls that push are not seen. It is a guardrail; branch protection on `main`
+  is the wall.
+- **`findCommit` and `pushViolation` share one parse** (`gitCalls`): the masked segments, each
+  `cd`, `git -C`, and the subcommand's words with their offsets.
+
+## `test:related --fast` for hand-offs (issue #219, part of #216)
+
+- **What `--fast` keeps:** the changed test files, the tests that import a changed file
+  themselves (one step of the import walk), and the tests that name a changed path as a string
+  (`selectByPath`, direct by nature). The changed source files must still be at 100% lines and
+  functions, so a gap the direct tests leave is caught on the Pi.
+- **What it drops:** the tests that reach a changed file only through another module. They run
+  in CI on the pushed branch (#217) and at the coordinator's gate.
+- **Measured** on this tree (tests selected for one changed file, transitive then direct):
+  `packages/protocol/src/index.ts` 688 and 141, `apps/daemon/src/server.ts` 417 and 121,
+  `apps/desktop/src/i18n/en.ts` 359 and 19, `apps/desktop/src/lib/app-store.ts` 345 and 274. A
+  direct set over 60 files still goes through the slot.
+- **The hand-off default** in CLAUDE.md, TDD.md and `tdd-area` is now `bun run test:related --
+  --fast`; the transitive run stays available without the flag.
+
+## Harness D3: the SPEC template, spec:lint and tdd:audit --spec (issue #169)
+
+- **The template keeps the shape the specs settled on** (Goal, Proof of concept first, Design,
+  Tests and criteria since phase 28) and adds what was missing or ad hoc: Non-goals; Protocol,
+  migration and rollback; Acceptance scenarios with the `.feature` each Feature runs as (#131
+  keeps the BDD work itself); Risks; Acceptance criteria and Real checks as their own headings;
+  and a Test file column in the area table. It lives in `docs/templates/SPEC.md`; the specs stay
+  in `docs/` (review S4-7).
+- **The lint reads the sections as an ordered subsequence.** Recent specs put extra headings
+  between them (phase 36's answers and addendum, phase 33's decisions), so extra headings pass and
+  "None." is a valid body (review finding on `spec-lint`). A row's area is kebab-case; its test
+  file is in `apps/*/test`, `packages/*/test` or `scripts/test`, named after the area as
+  docs/TDD.md asks, or is a smoke or a `.feature`; a `-ui` area is tested in `apps/desktop/test`.
+- **From phase 40 on.** The 38 older specs, many in Portuguese and none with the Test file
+  column, are not held to it; a spec can opt in with `<!-- spec-lint -->`. The suite lints every
+  held spec, so CI enforces it without a new step; `bun run spec:lint <spec>` is for the author.
+- **The table and the commits check each other.** `tdd:audit -- --spec <spec>` fails on an area
+  with no `test(<area>)` commit in the range. `new-phase` and `spec-verifier` call it; an older
+  table (no Test file column) yields no areas, so their audits run as before.
+
+## The bell says which notification is unread and what it is about (issue #137)
+
+- **Opening the panel already marked nothing**; the bug was that every row looked the same. An unread row now has a dot (the accent color), a bold title and an "unread" word for assistive technology: icon and weight, not color alone. The badge counts the unread rows, so it always equals the dots.
+- **Rows are named by what they are about.** A notification keeps `subject` (the session, card or team), `host`, `ask` (the request in words: the first question of AskUserQuestion, the command of Bash, the file of an edit, else "Wants to use <tool>") and `group`. Entries saved before this keep their old title and body.
+- **A session's repeated requests collapse** into one row with a count when they share a `group` and the same read state on the same side of midnight; reading one never hides an unread one, and clicking a collapsed row reads every entry it stands for. Today and Earlier replace Today, Yesterday and dates.
+- **A target that is gone** (a card with no pull request to fall back on, or a request no longer open) says so in its row and offers Dismiss, which removes the entries of the row; clicking the row only marks it read.
+
+## Harness D5: rules per area and the SessionStart hook (issue #169)
+
+- **Rules close to the code are a bonus, not the guard.** A session started in the main checkout
+  that edits a sibling worktree loads neither `.claude/rules` nor a nested CLAUDE.md (proof of
+  concept in the proposal), and after `/compact` a path-scoped rule is gone until a matching file
+  is touched again (review S1-2). So every non-negotiable stays in the root CLAUDE.md, which is
+  always loaded; the rules restate the area's own conventions where the code is.
+- **Five rules, quoted list globs.** `ui` (apps/desktop/src), `protocol`, `daemon`, `tests`
+  (`**/test/**`, `**/*.test.ts`, `**/*.test.tsx`) and `scripts`. An unquoted `**` is a YAML alias,
+  and a frontmatter that does not parse makes Claude Code load the rule everywhere (review S1-3);
+  `harness-config.test.ts` parses each frontmatter and checks that every glob matches a tracked
+  file. Checked live with `claude -p` in the worktree and an `InstructionsLoaded` hook: a
+  `scripts/test` file loads `tests` and `scripts`, a daemon file loads `daemon`, nothing else.
+- **No per-package CLAUDE.md.** One mechanism, in one folder, with globs that cut across
+  packages (`tests` covers three).
+- **The SessionStart hook** (`startup|resume|compact`) adds a few lines: the branch, the commits
+  past main, the scopes with a `test(...)` commit so far, the slot's holder (a lock of a dead
+  process counts as free), and after a compact the note about the rules. On the main checkout it
+  points dev work to a worktree. About 0.2 to 0.3 s; any error adds nothing.
+- **Sessions start in their worktree** (`cd ../flightdeck-x && claude`, or `/cd`), not with
+  `claude -w`, which creates its own worktree layout (review S1-4).
+- **Not done, on purpose.** The TDD.md translation (an active file that open branches still
+  touch) and the `lib-purity` ratchet (it would baseline the ratchets themselves, which scan files
+  by design; review S2-12). Functional core, imperative shell is a paragraph in TDD.md and a line
+  in the `scripts` and `daemon` rules.
+
+## Persona editor in place (#134)
+
+- **In place, not a side sheet.** Edit expands the persona's own card into its form where the person is; the first field takes the
+  focus and the form scrolls into view (`block: "nearest"`). A new persona still opens at the top, where the + is. Cancel and Save put
+  the scroll back and focus the Edit button; a saved pack persona changes scope (it becomes the host's copy), so its card is a new
+  one and the button is looked for again by the persona's id after the list reloads.
+- **Model and tools as choices.** The host announces no list of models, so the select offers the aliases (opus, sonnet, haiku) and the
+  ids the pack uses, with "Other…" for free text (a persona whose model is not in the list opens on it). Tools are a multi-select of
+  the tools Claude Code names plus `mcp__flightdeck`, keeping any tool a persona already had that is not in the list.
+
+- **The capacity follows the memory (#216 follow-up).** With 8 Claude sessions (about 3.4 GB)
+  and the bun tests, two tsc runs still pushed the Pi to 1.5 GB free and a memory pressure of
+  14%. The lane now opens one place per 2.5 GB of `MemAvailable`, between 1 and 2, read from
+  `/proc/meminfo` on every try (`lanePlaces`); off Linux it keeps 2, and
+  `FLIGHTDECK_LANE_PLACES` overrides the count. A run already in a place the lane no longer opens
+  finishes normally; only new runs see the smaller lane.
+
+## v0.36.3 review minors (#222): test infrastructure
+
+- **m4, temp-run.** The sweep never throws (the whole of it is guarded, and each pid file is read on its own), sweeps at most one dead folder per process start (the 3 s budget is spent once, and the next start takes the next folder), and clears the read-only attribute before it removes a file (git's objects on Windows). Not done: a CI step that counts the `fd-run-*` folders left after the Windows run (it needs a Windows runner to check), and the `pidAlive` fix for containers that share a TEMP across PID namespaces (the test runs here are not containerised with a shared TEMP; revisit if one appears).
+- **m8, slot.** The nested test starts `process.execPath -e` instead of `echo`, a child under the slot is told `FLIGHTDECK_SLOT_LOCK` (it would otherwise derive another lock from its own temp folder and queue behind its own parent), and the log line is cut to one line instead of carrying a `NOSONAR`.
+- **m10, PR runner: rejected, already covered.** `apps/daemon/test/pr.test.ts` still drives `new GithubCli()` and `new AzureDevOpsCli()` through the default `runCommand` and the fakes' real `.cmd` shim in the status and create tests (the other flow tests use the in-process `fake.run` on purpose, for speed on Windows). The `input` argument is not used by any PR call of the two providers today, so passing it through `run` would test nothing.
+- **m1, ci-branch.** A failed list of the earlier runs stops the script (exit 2, nothing dispatched) instead of reading as "none"; a list that fails while waiting for the new run is one look that failed; a refused dispatch shows gh's stderr (the wrapper keeps it; `spawnExec` drops it); a failed or unreadable look at the run is tried three times and then ends in exit 2 with the reason; a cancelled run exits 2 and says it says nothing about the branch. Not done: two `ci:branch` calls on one branch at the same moment can still pick the same run id (rare, and `gh workflow run` does not print the id on the `gh` versions in use).
+- **m2, ci.yml.** The concurrency key holds `inputs.only`, so a screenshots-only dispatch no longer cancels a full one.
+- **m3, required check names.** Not provable from here (the ruleset's treatment of a skipped duplicate next to a real check of the same name is GitHub's), so the risk is removed instead: a dispatched run's `test` jobs are named `test (<os>) (dispatch)`, which no ruleset requires. Push and pull request runs keep `test (<os>)` exactly.
+- **m11.** The misplaced doc comment of `END_SLACK` is back on it. The restore-at-mount point (a saved `top` clamped by a conversation that has not laid out its images and code yet, which then reads as "at the end") is not reproduced and not changed; it needs a late-growing code block in a browser to show.
+
+## BDD: one English feature per behaviour (issue #131)
+
+The `*.pt.feature` twins are gone. Each behaviour has one English `.feature` (the repo's text is English), and `playwright.config.ts` runs the same features in two projects, `bdd-en` and `bdd-pt` (the app in pt-BR), so a report names the language of each run. The steps are registered once, in English, and look for elements by role and by dictionary key in the language of the run (`c.t(key)`, or the dictionary object); `scripts/test/bdd-guard.test.ts` fails on a new Portuguese twin, a language in a feature's name, a step registered per language, literal UI text in a step (`getByText`, `getByLabel`, `getByRole(..., { name: "…" })`) or an accented letter in a step or feature. Seed data a scenario names uses one name for both languages: the demo's `Write a summary` template has the same title in en and pt-BR, and the approval scenario's session is "BDD approval". The scenarios under `scripts/e2e/bdd/roi/` (parsed only, outside the glob) lost their pt twins too; their parser test still reads Portuguese gherkin, as a parser check. Checked before deleting: each pt feature had the same scenarios and the same step kinds as its English file.
+
+## Harness D6: the reviewer agents and the protocol-surface ratchet (issue #169)
+
+- **Protocol compatibility is a check, not an agent.** `scripts/lib/protocol-surface.ts` reads
+  every exported schema of `packages/protocol` through its JSON Schema (`toJSONSchema`, input
+  side) into one line per command, field (`?` when optional), constant and enum value;
+  discriminated unions are named by their `type`, so reordering members changes nothing. A line of
+  `packages/protocol/surface-baseline.txt` that the code lost fails `protocol-surface.test.ts`: a
+  removed command or field, an optional field made required, a dropped enum value. Additions are
+  free. Checked: making `HelloPayload.protocolVersion` required is reported.
+- **The baseline moves at release only.** It holds main's surface (7,533 lines). The coordinator
+  refreshes it with `bun run scripts/protocol-surface.ts --write` when cutting a release, so a
+  branch that adds to the protocol never touches the file, and a removal between two releases is
+  caught against what the last release shipped.
+- **Two read-only agents, static.** `test-quality-reviewer` reads each `test(x)` and `feat(x)`
+  pair, the red evidence in the message and the stub's tree through `git show`, and looks for tests
+  that cannot fail (passing on the stub, red by error, weakened in the implementation commit,
+  mock-only, hidden waits, vacuous loops); it runs only area tests and never checks out a commit
+  (review S2-7: a fresh worktree has no dependencies). `security-reviewer` follows inputs from
+  their protocol schema to spawns, paths, logs, refusals and the network, and complements the
+  built-in `/security-review`. Both list `Read, Bash` (listing Bash drops Grep and Glob on Linux)
+  and run on sonnet; `harness-config.test.ts` checks it.
+- **No UX reviewer.** `demo:shots` already runs axe in both themes and languages, and the UX
+  sessions read the prints.
+
+## A per-rule open-count ratchet for Sonar (issue #204)
+
+- **`sonar-baseline.json` holds how many findings each rule may still have** across the whole repository, as `lint:sonar --ratchet`
+  counts them (every tracked file, the rules that need no type information, NOSONAR respected). A rule above its number fails;
+  `--ratchet --write` lowers the numbers to today's counts and never raises one; `--ratchet --init` writes them once. It reuses the
+  helpers of the layout ratchet (`overBaseline`, `tightened`, `initialised`).
+- **Typed rules are not in the count.** They need the TypeScript program, which takes minutes over the whole repo on the Pi; they are
+  still checked on the changed lines of every pull request, and SonarCloud counts them all.
+- **CI runs it on pull requests**, after the changed-lines check, so a change that adds a finding of any rule fails there while the
+  old ones are burned down in the batches of #197.
+
+## Layout guards in one module (issue #192)
+
+`scripts/lib/layout-guards.ts` is the one browser function (`layoutFindings`, run in the page) that the e2e `layout` journey and `demo:shots` share, replacing the ad hoc `overflow()` (nearly blind: it skipped everything under an `overflow-hidden` ancestor) and the sideways check each fix had added. Its rules are the precise ones of the UX review: the page scrolls sideways; a box is cut by an ancestor that clips on an axis no ancestor scrolls; content is squeezed under 8 px tall; text is cut with an ellipsis to under 48 px; an alert is off screen; a bar grew; a key region (`sidebar-hosts`, `approval-card`, `board-columns`, `form-actions`, each now carrying its `data-slot`) is smaller than its minimum at 1280 px. Each finding names its culprit by `data-slot` path (`sidebar > sidebar-hosts`), not by class soup. "One word per line", unnamed controls and small targets are not rebuilt: axe covers the last two. The geometry runs on the pt-BR layout journey at 720x480, 1280x800 and 1920x1080 (geometry only, no prints).
+
+Noise: the key-region rules are a contract and always fail. The heuristic rules fail only when new against `scripts/layout-findings-baseline.json`, keyed by rule, screen and path (no text, no pixels), and a baseline entry whose finding is gone fails too, so the file only goes down. **There is no baseline file yet**: until it is committed the heuristic findings fail nothing and the run writes what it saw to `playwright-report/layout-findings.json` (the CI e2e artifact); that file, copied to `scripts/layout-findings-baseline.json`, is the first baseline. Not done: the `?gallery` page of the audit's G5 (the prints folder and visual diff already review; a static index from `demo:shots` is cheaper), and a settle that waits for fonts and equal `scrollHeight` instead of the fixed waits of `open()`.
+
+## Harness D4: the hand-off stamp, checked by the receiver (issue #169)
+
+- **Receiver-side, no hook** (review S2-5, S1-1). The proposal's sender-side gate (a `PreToolUse`
+  hook on `SendMessage` matching "hand-off") depended on an undocumented tool input, matched the
+  repo's own names (`flightdeck-handoff/`) and could be skipped by resending. Instead
+  `bun run handoff:check` runs `typecheck`, `lint`, `tdd:audit` and `test:related` in order (all
+  of them, so one run shows every failure), prints one stamp line
+  (`HANDOFF <branch> <head> typecheck=0 lint=0 audit=0 related=0 <time>`) and keeps it in the
+  worktree's git folder. The session pastes the line in its hand-off; the receiver (the
+  coordinator, or `spec-verifier`) runs `bun run handoff:check -- --verify` in the worktree, which
+  refuses a missing stamp, one for another HEAD, or any check that was not 0.
+- **Never under the slot** (review S2-2): `test:related` takes the slot by itself above 60 files.
+
+## Approve or deny the oldest request from the palette (issue #187)
+
+- **Nothing is answered unseen.** The two palette commands name the request they answer, for
+  example "Approve the oldest request: alfa · Backend tests: Bash: npm test". The line is the same
+  one the Needs you row and the tray show (`pendingText`). So the person reads what they approve
+  before pressing Enter, or A and N.
+- **Some requests open instead.** A workflow gate, a vault request and a high-risk request offer
+  only "Open the oldest request: …", and the command opens it where it is answered:
+  - a gate opens on its card, since a gate is not a permission and the host refuses its id;
+  - a vault request opens to show the secret, and it is never logged as a tray grant;
+  - a high-risk request opens to be held.
+- The tray keeps its own rule: Open only, for gates and high-risk requests. The shared
+  `onTrayAction` also opens a gate if one ever reaches it.
+
+## `git stash` is refused (issue #234)
+
+- **Why.** `refs/stash` belongs to the repository, not to a worktree: every worktree of the main
+  checkout shares one stash list. A `git stash pop` in `rc/0364` applied a stash another session
+  had made in its own worktree.
+- **The rule.** The guard (`commandViolation`) refuses `git stash` with no subcommand or with any
+  but `list` and `show` (push, save, pop, apply, drop, clear, branch), also through `cd` or
+  `git -C`. The reason names the ways out: `git diff > /tmp/<name>.patch` and `git apply`, or a WIP
+  commit on the branch.
+- **In CLAUDE.md, not in `.claude/rules`.** A path-scoped rule loads only when a matching file is
+  touched, and a stash is not about any path; the root CLAUDE.md is always loaded.
+
+## Sessions hub folding minors (issue #241)
+
+- **The cap keeps folded headers.** `capGroups` used to stop at the first group after the cap was spent, so projects folded to nothing
+  after it lost their headers. A project with no rows to draw costs no row: its header stays; one with rows that comes after the cap is
+  left out and counted in "show more", as before.
+- **A Hosts chip does not unfold.** It chooses whose sessions the list is about, not what to look for, so `isSearching` leaves it out
+  (text, origin, state, persona and pinned still open what they keep, and still show the earlier sessions).
+- **The fold key is the project's merged identity** (`foldKey`: the daemon's key for a resolved project, `folder:<name>` for a folder seen
+  on several hosts, the host's folder key when two folders of one host share a name), not the smallest project key among the rows
+  present, which changed when a host went offline. `group.key` still names a real project for the client scope. A fold saved under the
+  old key still counts until the person chooses again; no migration of storage.
+
+## Test tiers by content (issue #261)
+
+- **Why.** The owner asked which tests are unit and which integration. Renaming 800 files into
+  folders would conflict with every open branch, so the tier comes from what a test does, computed
+  on every call (about 100 ms for the tree). No manifest is committed: every PR that adds a test
+  would have to update it, and two such PRs would conflict in it.
+- **The rules** (scripts/lib/test-tiers.ts): a test that starts a process (`Bun.spawn`, `spawnSync`,
+  a fake CLI), a server or a socket (`startServer`, `startDaemon`, `Bun.serve`, a WebSocket,
+  `FrameClient`) is `integration`; one that draws the DOM (`registerDom`, Testing Library) is
+  `component`; the rest is `unit`; `scripts/e2e/*.e2e.ts` and the smokes are `e2e`. Integration
+  wins over component: a screen test against an in-process daemon is heavy. Helpers count function
+  by function, comments stripped: a test that takes only `waitFor` from apps/desktop/test/fixtures.ts
+  is not integration because `daemon()` sits in the same file.
+- **Measured** on the last green main run (Linux, 550 s of test files): unit 249 files 24 s (4%),
+  component 167 files 97 s (18%), integration 386 files 428 s (78%). Today: unit 281,
+  component 180, integration 394, e2e 32 (`bun run test:tiers`).
+- **Use.** `bun run test:related -- --fast --tier unit,component` for a session on the Pi: a test
+  with no tier still runs, the left-out ones are named, and there is no coverage gate (a part of
+  the tiers covers part of a file). CI runs every tier and keeps the one combined 100% gate on
+  Linux. A test checks that every test file of the tree gets a tier.
+
+## GitHub Flow: one PR per branch, a release is a tag on a green main (issue #260)
+
+- **Why.** The owner wants small releases: a batch of 30 branches assembled into an rc conflicted
+  in a dozen places and gated everything on the slowest branch. Each branch now reaches main
+  through its own PR and merges alone when it is green.
+- **One CI trigger per kind of branch.** `push` only on main (what a release tags), `pull_request`
+  for a branch with an open PR (never filtered, so the required checks always report), and
+  `workflow_dispatch` for a branch with no PR yet (`bun run ci:branch` sends it). A work branch no
+  longer runs twice for one commit (on its push and on its PR). A push to main skips only
+  `docs/images/**` (#235).
+- **`bun run pr`** (scripts/lib/pr-flow.ts, through `gh api` only): `open` titles the PR after the
+  issue the branch's subjects name most (or `--issue`) and writes `Closes #N` with the subjects;
+  it opens no second PR for a branch. `next` lists the open PRs in merge order (onto main by number,
+  a stacked PR right after its parent) with what each needs: its parent, a draft, failing, running
+  or missing checks, or the commits it is behind. `update` is GitHub's update-branch. `merge` is the
+  coordinator's (`FLIGHTDECK_COORDINATOR=1`) and merges with a merge commit, pinned to the HEAD it
+  checked, only when the required checks are green there and the PR is not behind main.
+- **The required checks come from the ruleset**, read by REST (`rules/branches/main`), not from a
+  list in the code: the ruleset stays the only place that names them. A check counts as green the
+  way GitHub counts it for a required check: success, skipped or neutral, on the newest run of its
+  name, or a commit status of that name.
+- **Not changed here:** handoff-ci (#221) checks for a push trigger on the branch; with this, a
+  branch with a PR proves itself on its PR run instead, and handoff-ci has to read that run.
+
+## CI in shards, with the required names kept (issue #220, part of #216)
+
+- **Measured first.** On a green run (41960871352) `test (windows-latest)` took 33 minutes (25 of
+  tests, 5 of cargo), `screenshots` 24 and `test (ubuntu-latest)` 15.
+- **Linux stays whole.** Bun's lcov has per-line records but only a per-file function total, so
+  shards cannot be merged for the 100% function gate without weakening it (an inline callback that
+  never runs) or failing hub files every shard imports. `test (ubuntu-latest)` keeps the whole
+  suite, the exact gate and SonarCloud.
+- **Windows in three shards, without its own coverage gate** (the coordinator's choice). Each
+  shard runs `bun test --shard=i/3`; the smokes, cargo, the bundle budget and the performance
+  baseline run in `checks-windows`; Windows no longer repeats typecheck and lint, which are the
+  same code on both systems. What is given up is only Windows' own guarantee that every line runs
+  there (code behind a `skipIf(win32)`); Linux still requires 100%.
+- **The ruleset's names are aggregates.** The main ruleset requires `test (ubuntu-latest)`,
+  `test (windows-latest)`, `screenshots (prints, axe e e2e)` and `SonarCloud Code Analysis`. The
+  Windows and screenshots checks are now small jobs with exactly those names that need their parts
+  and fail unless each succeeded (`if: always()`, so a failed or cancelled part fails them rather
+  than leaving them skipped).
+- **Prints and e2e apart.** `screenshots-prints` and `screenshots-e2e` run side by side; a failed
+  journey's trace and print are now their own `e2e-failures` artifact.
+- **No timings file yet.** `bun test --timings` balances shards by duration, but a committed
+  timings file would be one more file every branch touches; the shard count is tuned from the
+  first runs instead.
+- **`build:desktop` on Windows, found by `checks (windows-latest)`.** `vite.config.ts` imported
+  `entryHtml` from `demo/boot.ts`, whose imports reach `lib/tabs.ts`, which imports the protocol
+  since #198. On Windows Vite does not bundle that workspace package into the config (bun links it
+  through a junction), so Node imports `packages/protocol/src` itself, and its type stripping stops
+  at the parameter property of `PersonaModelError`. `entryHtml` moved to `demo/entry-html.ts`,
+  which imports nothing, and a test keeps every workspace package out of what the config reaches.
+  The `smoke:limits` failure of the first run did not come back on the rerun.
+
+## CI by changed paths (issue #264)
+
+- **Why.** Every PR ran the whole matrix (Windows in three shards, prints, e2e, cargo), so a
+  docs or scripts change waited half an hour for checks that read none of it.
+- **The plan** (scripts/lib/ci-paths.ts, run by the `changes` job against the merge-base with the
+  PR's target): docs and scripts alone run the Linux job (the whole suite with the 100% gate,
+  typecheck, lint, the audit, SonarCloud); `apps/daemon/**` or a smoke adds the Windows shards, the
+  Windows checks and the smokes; `apps/desktop/**`, `packages/**`, `package.json`, `bun.lock`, a
+  bunfig, a tsconfig or `.github/workflows/**` add the prints and e2e; `apps/desktop/src-tauri/**`
+  adds cargo. A push to main, a run by hand, or a diff the job cannot read plans everything, so
+  every commit on main has a full run, and a tag goes only on a commit whose full run is green.
+- **The required names still report.** `test (windows-latest)` and `screenshots (prints, axe e
+  e2e)` are aggregates: they pass when their jobs were skipped by path, but only after checking
+  that the `changes` job itself succeeded, since a failed plan has no outputs and would otherwise
+  read as "skipped".
+- **cargo** (check and test of the shell) runs only when the plan says so, after
+  `Swatinem/rust-cache` (pinned to the v2.9.3 commit). On Windows the app build and the bundle
+  budget run whenever the app or the shell changed, apart from cargo.
+- **e2e in three Playwright shards** (`bun run e2e -- --shard=i/3`), each with its own report and
+  failures artifact; the aggregate fails if any shard failed.
+- **lint:sonar on a PR is the ratchet only** (`lint:sonar (ratchet)`): the changed-lines run was
+  red on every large diff for code smells and is not a required check, so its red X said nothing.
+  The ratchet is green unless a rule's open count goes up. The changed-lines run stays local.
+
+## CI fails fast: a quick first job the heavy jobs need (issue #272)
+
+- **Why.** On 2026-11-05 ratchets (Sonar, layout, no-sync, protocol surface) failed only after
+  the 20-minute jobs. A count that went up now fails the run in minutes.
+- **The `quick` job** (`quick checks`, Linux, 10 minutes at most) runs typecheck, lint, the TDD
+  audit (full history) and `bun run scripts/ci-quick.ts`: every `*-ratchet.test.ts(x)` and
+  `protocol-surface.test.ts`, by name (scripts/lib/ci-quick.ts), in seconds with no coverage. The
+  Linux suite no longer runs typecheck, lint and the audit itself.
+- **Every heavy job needs it:** the Linux suite, the Windows shards and checks, the prints and the
+  e2e shards.
+- **No local Sonar in it** (#283): the `lint:sonar (ratchet)` step it first carried failed once main
+  grew past the baseline, and the user chose SonarCloud's own check on the PR as the only Sonar
+  check. #283 removes the local Sonar from the repository.
+- **A failed quick job fails the required checks, never skips them.** GitHub counts a skipped
+  required check as passed. So `test (ubuntu-latest)` runs on `!cancelled()` and its first step
+  fails unless `changes` and `quick` succeeded. The two aggregates check `quick` before they pass a
+  job group skipped by path. SonarCloud never reports when the suite did not run, so its required
+  check stays missing.
+- **The ruleset is unchanged:** `quick checks` is not a required check, and the four required
+  names stay as they were.
+- **Not in the quick job:** a guard checked inside a heavier test (`layout-guards.test.ts`) stays in
+  the suite. Only a file named `-ratchet` is quick, so a slow test never slips in by itself.
+
+## The hand-off stamp vouches for CI, and a tag needs a green full run (issue #266)
+
+- **What survived of #221.** Its push-trigger requirement and the `gh run list --commit` check
+  died with GitHub Flow (#260). Kept: `test:related` compares with the audit base (origin/main
+  first, the local main only as a fallback), and `handoff:check --base <ref>` for a branch stacked
+  on another.
+- **`ci=` in the stamp.** After the four local checks, `handoff:check` reads the main ruleset's
+  required checks on HEAD (`headCi` in scripts/lib/pr-flow.ts, the same verdict `bun run pr`
+  uses), whatever event ran them: a PR's run or main's push. `0` when green; otherwise `failed`,
+  `pending`, `none` (never run: push the branch, or open its PR) or `unknown` (the ruleset could not
+  be read). `--verify` needs `ci=0` like every other field; `--no-ci` writes `ci=skip`, which
+  vouches for nothing. The stamp's pattern takes word values and still splits its pairs one way
+  only (the #232 ReDoS test keeps it linear).
+- **`bun run pr -- tag vX [--commit <sha>]`** (the coordinator's): a commit on main (main's HEAD by
+  default) is tagged only after its full CI run on main (its push run, which plans everything,
+  #264) completed with success. It refuses a tag that exists, a commit not on main, no run, a run
+  still going or a failed one, and writes nothing then. The tag is pushed alone as `refs/tags/vX`:
+  a push of several tags at once starts no workflow.
+
+## Sessions open their own PRs and turn on auto-merge (issue #271)
+
+- **Why.** The owner decided (2026-11-05) that a session delivers its own work: it pushes its
+  branch, opens the PR and turns on auto-merge, so a green PR no longer waits for the coordinator.
+  The coordinator keeps main, hand merges, tags, releases and the repository settings.
+- **`bun run pr -- auto <n>`** calls GraphQL's `enablePullRequestAutoMerge` with `MERGE` (REST has
+  no auto-merge endpoint). The ruleset's required checks gate the merge, as for `pr merge`. It
+  refuses a draft (GitHub would too). The main ruleset is strict
+  (`strict_required_status_checks_policy`), so GitHub also waits until the PR is up to date, as
+  `pr merge` checks; auto-merge never updates the branch itself (`pr update <n>` does). GitHub
+  refuses auto-merge for a PR that can merge already ("clean status"); `auto` then says the
+  coordinator merges it, since a session does not merge by hand.
+- **Stacked PRs.** Auto-merge onto a branch with no ruleset would merge at once, into the parent.
+  So `auto` refuses a PR onto a branch that `main` does not have yet. The repository does not
+  delete a branch on merge, so GitHub never retargets the child by itself: once `main` has the
+  parent (`compare` says `ahead_by` 0), `auto` moves the PR onto `main` and turns auto-merge on.
+  A compare that fails refuses; it never counts as merged.
+- **The guard** (`prMergeViolation`) blocks `bun run pr -- merge|tag`, `gh pr merge` and a REST
+  `pulls/N/merge` in a session. It reads `FLIGHTDECK_COORDINATOR` from the hook's own environment,
+  so setting it in the command does not pass. `pr merge` refuses without the variable too. Like the
+  other command rules, it reads words outside quotes: a quoted `'…/pulls/12/merge'` path passes.
+  The hook is a guard against slips, not a security boundary.
+- **WIP limit.** At most 2 open branches per session, stated in CLAUDE.md and docs/TDD.md. It is
+  not enforced in code.
+
+## Test isolation (#274)
+
+- **Between files, not between tests.** Bun's preload `beforeAll`/`afterAll` run once for the whole
+  run and `expect.getState().testPath` does not exist in 1.4.4, so the preload has no hook at a file
+  boundary. It registers a `Bun.plugin` `onLoad` for `*.test.ts(x)`: Bun loads a file, runs it, then
+  loads the next, so the load of file N is the end of file N-1. There the preload (`scripts/test/
+  isolation.ts`) restores what a file can leave changed for the next one: `setTimeout`,
+  `clearTimeout`, `setInterval`, `clearInterval`, `setImmediate`, `clearImmediate`, `Date`, `fetch`,
+  the environment, and (once happy-dom is registered) the window size, `localStorage`,
+  `sessionStorage` and `document.body`. The first snapshot is taken at the end of the preload, after
+  the guards, so their PATH, HOME and fetch wrapper are part of the baseline.
+- **The baseline is taken after each file has loaded, not before.** The plugin appends a call to
+  the file's source, so it runs once the file's top-level code has. A helper that sets an env
+  variable (`board-helpers.ts` sets `GIT_AUTHOR_*`) or registers happy-dom (which swaps the timers
+  for its own) when it loads runs once, because Bun caches the module; restoring the state from
+  before the first file would have taken that away from every later file (the first version did:
+  1132 tests failed with `Author identity unknown` in the full run, each green alone). So only what
+  a file's tests and hooks change is put back; what its top-level code set stays.
+- **Named, not silent.** A leak other than the routine browser state (size, storage, body: nearly
+  every UI file leaves some) prints `isolation: <file> left … changed; put back before <next>` on
+  stderr, so the culprit is one line away. The reset is a net, not a licence: fix the file.
+- **Not reset:** location, `matchMedia` (follows the viewport), `process.cwd()`, other globals a file
+  defines, module state and `mock.module` (a file restores its own mocks, see the tests rules).
+- **Sleep ratchet.** `sleep-baseline.json` counts `Bun.sleep`, `Bun.sleepSync`, a promise resolved
+  from a timer and calls of a `sleep`/`delay` helper per test file (the four test folders, test
+  files only: a fake binary sleeps on purpose). A `// timing:` comment on the line above allows a
+  sleep where the clock is under test. It only goes down: a file may not exceed its entry.
+  Baseline when added: 113 files, 251 sleeps.
+
+## One command per release (issue #275)
+
+- **`bun run release vX.Y.Z`** (the coordinator's, `FLIGHTDECK_COORDINATOR=1`; it refuses without
+  it and touches nothing) is a state machine over `origin/main`, so running it again carries on.
+  Main behind the tag: a branch `release-vX` gets `test(versao)` (the version test moves first and
+  must be red), `chore(versao)` (the three packages and `bun.lock`; the test must be green), the
+  protocol-surface check (a lost baseline line stops the release) and, when `--write` changes the
+  baseline, `chore(release)`; then the branch is pushed, a PR is opened (not through `pr open`,
+  which would close the issue of its first commit) and `pr auto` turns on auto-merge. Main at the
+  version: the surface check, `pr tag vX` (so the CI gate of #264 still decides) and
+  `release:close -- vX --apply`. A tag that exists is not made again; the close still runs.
+- **Why a state machine, not one blocking run.** The PR merges when its checks are green, which
+  takes longer than a session should wait; the second run is the "after merge" half of the
+  issue. Logic in `scripts/lib/release-cmd.ts`, effects injected, no test pushes or tags.
+- **The hook guard knows `bun run release`** (#275, from the security review): the command pushes and
+  tags through child processes the hook never sees, and its own check is the same environment flag,
+  which a command can set inline. `prMergeViolation` now blocks `bun run release` and
+  `bun scripts/release-cmd.ts` in a session, like `pr tag`.
+
+## `release:close` closes what a tag shipped (issue #252)
+
+- **What it reads.** The commits of `<previous v* tag>..<tag>` (`--since` names another start). An
+  issue counts when a subject names it (`(#170)`, the repository's habit) or a body line starts with
+  `Closes`, `Fixes` or `Resolves #N`. A number mentioned anywhere else in a body ("the overlay of
+  #233 is deferred") is listed and never touched, and a pull request's number is skipped.
+- **Dry run first.** Without `--apply` it only reads (the issue, its comments, the milestones) and
+  prints what it would do. With `--apply`, each open issue gets "Shipped in <tag>." (once: an
+  existing comment with that text is not repeated), is closed as completed, and goes to Done on the
+  board; an issue already closed only goes to Done. A second run changes nothing.
+- **The milestone** named after the tag is closed when it has no open issue left and no step of the
+  run failed, so a run that failed halfway leaves it open for the retry. One with issues the tag
+  did not ship stays open and says how many.
+- **REST only.** Every call is `gh api` with `-f` fields (no GraphQL), and the board goes through
+  `FLIGHTDECK_BOARD_CMD`, called as `<cmd> <issue> done ""`: the coordinator's `issue-note.sh`,
+  whose REST queue of #242 survives a rate limit. Without it the board is skipped, said once. The
+  coordinator tooling stays outside the repository; the script only knows the command's contract.
+- **Hardening (issue #287, from the security review of #275).** The tag and `--since` must be
+  `vX.Y.Z` (exit 2 otherwise), so neither can reach git as an option or a range. An issue title is
+  printed with its control characters turned into spaces (no escape sequence in a dry run). A
+  session's `bun run release:close ... --apply` (or `bun scripts/release-close.ts ... --apply`) is
+  blocked by the hook guard like `bun run release`: it closes issues on GitHub, so it is the
+  coordinator's; the dry run stays open. `bun run release` takes a tag as already made only when
+  `git ls-remote` lists exactly `refs/tags/<tag>` on origin (a local tag is anyone's, `pr tag` is
+  what gates a tag, and ls-remote matches a suffix, so `x/refs/tags/<tag>` is not it); an origin it
+  cannot ask is an error, not "absent". It reads a version from main only when it is `x.y.z`.
+
+## Risky changes get a security review before the hand-off (issue #273)
+
+- **Why.** On 2026-11-05 six reviews found high findings after the hand-off (keep-awake,
+  worktrees, resources, logs, trust, assistant). The review now comes before it.
+- **The gate** (scripts/lib/security-gate.ts, run by `handoff:check`) reads the added lines of the
+  changed code files (never a test, a fixture or a document) since the audit base or `--base`. A
+  file is risky when they spawn or kill a process (any `spawn…(`, `exec…(`, `.kill(`), delete
+  (`rm(`, `unlink(`, `rm -rf`), name a secret (token, secret, password, credential, API key) or a
+  permission (`chmod`, `chown`, permission, `allowedNetworks`), or when its path is in the vault or
+  pairing code, or when they open a listener or an outbound call (`Bun.serve`, `fetch(`, a
+  WebSocket, `.listen(`). A spawn is also `cp.exec(`, `child_process`, `Bun.$`, `fork(`, `execa(`
+  or `new Worker`, and in Rust and Python `Command::new`, `std::process`, `subprocess.`,
+  `os.system`; deletes and listeners have their Rust and Python forms too. A line that is only a
+  comment and nothing else does not count; a line is never cut, so one with any code is read whole
+  (a glob's `*/` or comment marks in a string cannot hide what it does; `#` is a comment only in
+  `.sh`, `.py` and `.ps1`, since in TypeScript it is a private field). Code is `.[cm]?[jt]sx?`,
+  `.rs`, `.sh`, `.ps1` and `.py`. A mode change counts as a permission change. Some paths are risky
+  whatever they add: the vault and pairing code, the Tauri shell's capabilities and
+  `tauri*.conf.json` (CSP, scopes), `.github/workflows/`, and the files whose contents run as code
+  (`package.json`, `Cargo.toml`, `build.rs`, `bunfig*.toml`, `.claude/settings*.json`,
+  `.claude/hooks/`), and the guards themselves (the gate, the hook rules, the TDD audit, the
+  hand-off check, the hook runner, `bun run pr`, the security-reviewer agent, `.github/actions/`); a pure rename into one counts too. Left as known limits: a
+  risky file moved by rename from a test folder is read by its edited lines only, a mode change on
+  a file with no code extension is not seen, and every `package.json` change asks for a review. Patterns, not a parser: they err toward asking for a review.
+- **It fails closed** (the OpenCode review on #279): a `git diff` or `git log` that fails (an error,
+  an output past 64 MB), or a `--base` that is not a commit, stamps `security=unknown`, never `0`.
+  The diff forces `--src-prefix=a/ --dst-prefix=b/` (a user's `diff.noprefix` or
+  `diff.mnemonicPrefix` would change the headers) with no external diff or text conversion. The
+  diff's file headers are read only before a file's first hunk (an added line can look like one),
+  names come unquoted, and a merge counts by the files it edited itself. The log is in topological
+  order, so "after" follows the history, not the dates, a folded trailer reads as one line, and a
+  user's `log.showSignature` adds nothing to it (`--no-show-signature`).
+  Risky files that no commit of the log touches need a review all the same. `--verify` refuses a
+  stamp with no `security=` or no `ci=`, so a stamp from before the gate does not pass. It is a guard against slips,
+  not a security boundary: the trailer is the session's own word that the review ran. A name git
+  still quotes (one with a quote, a backslash or a control character) is skipped.
+- **The verdict is a commit trailer,** `Security-Reviewed: <summary>`, on a commit at or after the
+  last commit that touched a risky file (an empty `chore(security)` commit is enough). A later
+  risky commit needs a new review. A trailer lives with the branch, so `--verify` and any receiver
+  see it; a line in a message would not. The stamp says `security=0`, `unreviewed` or `unknown`
+  (no base), and only `0` vouches.
+- **The OpenCode review on `pr open`** is the coordinator's tooling: `open` runs the command in
+  `FLIGHTDECK_PR_OPENED` with the PR's number, branch and base. The command comes from the
+  session's own environment, never from the repository: words split on spaces, or a JSON array of
+  strings for a path with spaces (Windows), with no shell. It runs bounded
+  (scripts/lib/bounded-run.ts): its output ignored, since it inherits the environment and what it
+  prints may hold a token, so the failure line says only the exit code (124 past the deadline, 127
+  when it could not start). Past two minutes its whole process group is killed (its tree, with
+  `taskkill /T`, on Windows; an orphan whose parent already died escapes that walk). A hook that
+  fails, cannot start or times out only prints that line: the PR is open either way. On Windows a
+  bare program name may resolve in the current folder first: give the hook an absolute path. Its program is found by Bun's own PATH lookup, not `whichOnPath`: the environment, and the
+  PATH with it, are the session's own. The number, branch and base come last, as positional
+  arguments: a hook script must not read them as options.
+
+
+## DECISIONS.md merges with the union driver (issue #290)
+
+- **Why.** Every parallel PR appends a section at the end of this file, so two PRs added at the same
+  place and conflicted on it (#285 and others, 2026-11-05) although nothing was in dispute.
+  `.gitattributes` now says `docs/DECISIONS.md merge=union`: a merge keeps the lines of both sides.
+  `scripts/test/decisions-union.test.ts` proves it on a temporary repository (two branches that each
+  append a section merge cleanly with both kept; without the rule they conflict) and checks that the
+  rule is in the file.
+- **Only this file.** The recent edits of `docs/DECISIONS.md` all land in its last 130 lines. Those
+  of `docs/GLOSSARY.md` and of both manuals land all over the file (a table row, a feature's
+  section), where a union merge would keep two versions of one edited line side by side with no
+  warning. They keep the normal merge and its conflict.
+- **What union does not do.** Two PRs that edit the *same existing line* of DECISIONS.md both keep
+  their version of it, one after the other: read the merged section once before the hand-off. Add a
+  section, do not rewrite an old one.
+## SonarCloud on the PR is the only Sonar check (issue #283)
+
+- **Why.** The local copy (`bun run lint:sonar`, eslint-plugin-sonarjs in `tools/sonar-lint` with
+  `scripts/sonar-profile.json`, and the per-rule ratchet of `sonar-baseline.json`) missed rules
+  SonarCloud flags: its typed rules were skipped under `--no-types`, and several Sonar rules have
+  no ESLint version at all. Its ratchet also failed a PR once main grew past the baseline. The user
+  chose to remove it rather than strengthen it.
+- **What is gone:** `tools/sonar-lint` (and the `tools/*` workspace), `scripts/lib/sonar-lint.ts`,
+  the profile, the baseline, their tests, the `lint:sonar` script, and the CI steps (the quick
+  job's ratchet went in #278). The earlier entries above that describe them are history.
+- **What stays:** every `// NOSONAR: <reason>` comment, since SonarCloud honours them; and
+  `sonar-coverage.test.ts`, which guards SonarCloud's own configuration (its coverage is read on
+  exactly the files of the 100% gate, and every test file is analysed as test code). Its helpers
+  moved, unchanged, to `scripts/lib/sonar-project.ts`.
+- **For sessions:** no Sonar run before a push. A SonarCloud finding on a PR is fixed in that PR.
+
+## Security gate follow-ups (issue #284)
+
+- **Why.** OpenCode's second review of #279 found four mediums, with no high left.
+- **A deleted file keeps its path, and a rename keeps both.** Deleting a guard file (the hook rules,
+  the gate), or moving the CI out of `.github/workflows/`, is risky by path, like editing one.
+- **Removed lines count.** A removed line that touches a risk area makes its file risky ("removes
+  spawn"). A source file that loses any line and still holds risky code at HEAD (`git show
+  HEAD:<path>`) is risky too ("edits spawn code"): taking a check out in front of a spawn or a
+  delete needs a review as much as adding one. A removal of comments or blank lines only reads
+  nothing, except a lone `/*`: without it the lines after it run, so the file's code is read. A
+  file moved from a test folder into the code is risky ("moved from tests"), even unchanged. Known
+  limits, all needing a deliberate edit: an added lone `*/` can un-comment code that stays as
+  context; a content line that reads `-- "…"` or `++ "…"` looks like a quoted header and blocks the
+  gate (it never lets anything through); the trailer is the session's own word. Removed lines are keyed by the file's old path (`--- a/`), so a file renamed into a test
+  folder or to a non-code extension still counts the checks it lost; the code that stays is read at
+  its new path. A deleted file is not read at HEAD, and a file whose HEAD cannot be read (an error,
+  an output past the buffer) is risky, never taken as empty.
+- **Renames in the log** (the OpenCode review of #286): `git log` detects renames by itself and
+  lists only the new path, so a review after a move away from a risky path could never vouch. The
+  log runs with `--no-renames`, which lists both sides.
+- **Quoted names fail closed.** A name git still quotes with `core.quotepath=off` (a quote, a
+  backslash, a control character) defeats the header parsing, so the gate stamps `unknown`. A path
+  with " b/" inside it is read exactly from `diff --git a/<p> b/<p>` when both halves match (every
+  change but a rename, whose own lines name its paths).
+- **A mode change is a permission change on any file,** with or without a code extension (a script
+  in `bin/` made executable).
+- **runBounded takes its process, timers and kill as deps.** Its tests use a fake process and timer:
+  the deadline, the group kill, the exit before it and a child with no pid run with no real wait.
+  The real calls left (a program that exits, one that does not exist, the system's kill calls) start
+  and end at once.
+
+## The Linux leg in parallel jobs, the suite still whole (issue #293)
+
+- **Why.** `test (ubuntu-latest)` took 12-18 minutes: the coverage suite (8 minutes, one process),
+  then SonarCloud (4), then the smokes and cargo (3 on main), one after another in one job.
+- **The split.** `test-suite` runs `bun run test` (the exact 100% line and function gate) and uploads
+  `coverage/lcov.info`; `sonar` downloads it and runs the scan; `checks-linux` runs the smokes and
+  cargo in parallel with the suite, only when the path plan asks for them. The required check
+  `test (ubuntu-latest)` is an aggregate over the five (the plan, quick, the suite, SonarCloud, the
+  checks), so the ruleset is unchanged; it checks the plan and quick first, since GitHub counts a
+  skipped required check as passed. SonarCloud may be skipped (a dispatch); the checks only when the
+  plan needs no smoke and no cargo.
+- **Why the suite is not sharded** (measured 2026-11-05, three coverage shards on the Pi): lines
+  merge exactly (every file has the same lcov line set in each shard), but bun's lcov counts
+  functions per file without naming them, and even the count varies by process (it counts the
+  functions a process compiled: 271 files differed). 111 of 595 files could not be settled from the
+  counts. Sharding with the exact function gate needs named function data (#296, istanbul maps);
+  the merge logic for that stays on the ci-ubuntu-shards branch.
+
+## Unstable tests are skipped off Ubuntu, in the code (issue #288)
+
+- **The user's call (2026-11-05):** "pode skipar todos, exceto os testes do ubuntu", and "skip tests in
+  the code" when asked how. Windows failed on every PR and on main, and `test (windows-latest)` is a
+  required check, so five tests that bet on the machine blocked every merge. A first version put them
+  on a quarantine list that the required jobs left out by name, with a non-blocking job; it was
+  dropped before it merged, because the skip in the code is simpler (no list, no runner scripts, no
+  job, `ci.yml` unchanged) and keeps the test where its author reads it.
+- **The form:** `test.skipIf(notLinux)(…)` with `// unstable: #<issue> <reason>` on the line or the
+  line above (`scripts/lib/unstable-skip.ts`). The tests are untouched otherwise and still run on
+  Ubuntu under the 100% gate. A skip for a platform *capability* is a different thing and needs no
+  note.
+- **What `skipIf` was before:** the hook never blocked `skipIf` (its markers are `.only(`, `.skip(`,
+  `test.todo(` and `toMatchSnapshot(`), and ten capability skips exist. So nothing was loosened:
+  the new rule *adds* a check for the off-Linux form (an Edit or Write that adds one without the
+  note is blocked), and `.skip`, `.only`, `test.todo` and snapshots stay blocked whatever comment
+  is next to them.
+- **The ratchet** (`unstable-skip-ratchet.test.ts`): every skip off Linux has the note with an issue
+  number and a reason, and there are at most 5 (the five below), the number only lowered. Whether
+  the issue is still open is not checked (the tests touch no network): close #288 only when the
+  last skip is gone.
+- **The five:** hub-list "the render time at 9,090 rows is within 2x…" (a ratio of two wall-clock
+  render times); heartbeat "qualquer quadro do cliente conta como vivo…" (10 ms and 25 ms timers
+  against a 75 ms silence limit); platform "lint barra @tauri-apps/*…" (spawns biome; over 15 s on a
+  loaded Windows runner in three runs); proto-restore "two files that patch HTMLElement.prototype…"
+  (a child `bun test` with the whole preload; over 15 s on Windows); wait "it returns once the window
+  ended…" (counts polls in an 80 ms window). The fixes (counts instead of a ratio, an injected ticker
+  and clock for the heartbeat, a longer hang limit for the two child processes) are parked on the
+  branch `timing-fixes-288` for #288.
+- **Known limits (security-reviewer pass, nothing high):** the hook is a guard against slips, not a
+  boundary. It recognises `notLinux` and `process.platform !== "linux"` (also `'linux'`) on one line;
+  it does not see `!=`, a backtick string, an alias of `notLinux`, `skipIf(true)`, a skip in a helper
+  that is not a `*.test.ts`, or `scripts/test/not-linux.ts` changed to `true`, and it takes any
+  `// unstable: #<n> <word>` on the line (not a lookup of the issue, which needs the network). The
+  ratchet bounds the first kind: it is exactly saturated (at most 5 and the five files named), and
+  it runs in CI over the whole checkout. The hook matcher also covers only Edit, Write and Bash, as
+  before. All of it is how the guard already worked for `skipIf`, which it never blocked.
+
+## Prints and axe in four jobs, one per theme and language (issue #291)
+
+- **Why.** After #293 the one prints and axe job (13-15 minutes) was the longest of a PR, and every
+  merge waits for the screenshots check.
+- **The split.** `screenshots-prints` is a matrix of the two themes and the two languages, with
+  `fail-fast: false`. Each job runs `bun run demo:shots` with `SHOTS_THEME` and `SHOTS_LANG`
+  (`scripts/lib/shots-variants.ts`: all four pairs when unset, so a local run prints them all) and
+  uploads its own `prints-<theme>-<lang>` artifact. A filter that names no known pair refuses the
+  run instead of printing nothing. The required `screenshots (prints, axe e e2e)` aggregate is
+  unchanged: the matrix job's result is every pair's. The filter is checked before Chrome starts. For the visual
+  check a leg is still a complete run of its pair: a baseline with no print is reported inside the
+  folders the leg printed (`pairs`), so no leg turns the check off once it moves to `compare`; only
+  `DEMO_SHOTS` (some screens) does.
+- **Not here: the e2e shards.** Shard 1 takes 7-11 minutes and the others seconds because the
+  journeys are one file whose tests share the seeded demo, the second language relying on the
+  first one's state (`workers: 1`, `fullyParallel: false`). Balancing them means splitting the
+  journeys into independent tests, which is #292, not a one-line change.
+
