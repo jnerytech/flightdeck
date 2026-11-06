@@ -76,6 +76,9 @@ describe("layout", () => {
     expect(status.parentElement?.lastElementChild).toBe(status);
     expect(main.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(status.parentElement?.className ?? "").toContain("grid-rows-[auto_minmax(0,1fr)_auto]");
+    // A window under 600 px tall has no height to spare (the 720x480 floors of #422 and #437): the
+    // wrapper carries the class that hides it there.
+    expect(status.className).toContain("shell-status");
     cleanup();
     shell();
     expect(document.querySelector("[data-slot='shell-status']")).toBeNull();
