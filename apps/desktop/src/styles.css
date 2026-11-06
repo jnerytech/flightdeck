@@ -775,6 +775,46 @@ html:not(:has([data-slot="status-bar"])) {
   overflow-y: auto;
 }
 
+/*
+ * Below 640 px a dialog is a full-screen sheet (#641, responsive spec "Dialogs"): the body
+ * scrolls and the footer stays at the bottom, its buttons stacked with the primary last. A
+ * confirmation (alert-dialog) stays a centered box: a two-line question needs no whole screen.
+ */
+@media (width < 40rem) {
+  [data-slot="dialog-content"] {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: none;
+    max-width: none;
+    margin: 0;
+    border-width: 0;
+    border-radius: 0;
+  }
+  /* A form that holds the fields and the footer (New card) fills the sheet, as the content does. */
+  [data-slot="dialog-content"] > form {
+    display: flex;
+    flex: 1 0 auto;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  [data-slot="dialog-content"] [data-slot="dialog-footer"] {
+    position: sticky;
+    bottom: -1.5rem;
+    flex-direction: column;
+    margin: 0 -1.5rem -1.5rem;
+    margin-top: auto;
+    border-top-width: 1px;
+    background-color: var(--background);
+    /* Room under the stack for a button's reason, which hangs below it. */
+    padding: 1rem 1.5rem 1.5rem;
+  }
+  /* A button with a reason under it is as wide as the others in the stack. */
+  [data-slot="dialog-footer"] .action-button-box > button {
+    flex: 1;
+  }
+}
+
 /* Reduced motion: nothing animates for those who ask. */
 @media (prefers-reduced-motion: reduce) {
   *,
