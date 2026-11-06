@@ -39,7 +39,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   process group, never the holder. `--nice` lowers the command's priority, `--cancel` stops your own waiters and run
   (matched by `FLIGHTDECK_SLOT_LABEL`, never another session's), so nobody needs `pkill -f`.
   `--priority` (for the maintainer's full gate) also lowers the other bun test processes of the
-  user while it runs.
+  user while it runs. What the slot and the light lane start, and every test run (the preload),
+  runs at `oom_score_adj` 1000 on Linux, so the kernel kills a leaking test before any session.
 - Tests for what you changed: `bun run test:related [--base <ref>] [--fast]`. It takes the files
   changed since the merge-base with `main` (or `<ref>`), picks the changed test files plus every
   test that imports a changed file (transitively; with `--fast`, only directly) or names it as a
@@ -54,8 +55,11 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   (processes, a server, real git) and `e2e` (journeys, smokes). On the Pi, a session runs
   `bun run test:related -- --fast --tier unit,component` (a fifth of the suite's time, no coverage
   gate). A PR's CI runs `--pr`: every unit and component test plus the related tests of the other
-  tiers, with 100% on the changed files. Main, the nightly run and a run by hand run the whole suite
-  with the whole-repo 100% gate. `bun run test:tiers` prints the counts.
+  tiers, with 100% on the changed files. Its Windows shard runs the same selection
+  (`test:related -- --pr --list` and `test:shards --files`, #399), and its e2e journeys run when it
+  changes what they read (the screens, the journeys, the demo, the daemon). Main, the nightly run
+  and a run by hand run the whole suite with the whole-repo 100% gate. `bun run test:tiers` prints
+  the counts.
 - Which function a file is missing: `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` runs
   the tests that reach the files (or the ones named after --tests) and lists the functions no test
   called as `file:line`. Bun's coverage only counts them. It instruments in memory, never the sources.

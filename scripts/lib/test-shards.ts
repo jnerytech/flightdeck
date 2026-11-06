@@ -34,6 +34,35 @@ const SHARD = /^([1-9]\d*)\/([1-9]\d*)$/;
 const USAGE =
   "usage: bun run test:shards -- plan|run <i>/<n> [--tier <tier>,...] [--files <list>] [--junit <file>] | record <junit.xml>...";
 const BUN_TEST = ["--config=bunfig.area.toml", "test", "--timeout=15000"];
+/**
+ * The most characters of file arguments one bun test gets (#483). Windows caps a command line at
+ * 32767 characters, and 8191 through a .cmd shim: 1021 files once died with ENAMETOOLONG.
+ */
+export const ARG_BUDGET = 8000;
+
+/** The files in order, cut into batches whose arguments stay within `ARG_BUDGET` characters. */
+export function batches(files: string[], budget = ARG_BUDGET): string[][] {
+  const out: string[][] = [];
+  let batch: string[] = [];
+  let length = 0;
+  for (const file of files) {
+    const cost = file.length + (batch.length > 0 ? 1 : 0);
+    if (batch.length > 0 && length + cost > budget) {
+      out.push(batch);
+      batch = [];
+      length = 0;
+    }
+    length += file.length + (batch.length > 0 ? 1 : 0);
+    batch.push(file);
+  }
+  if (batch.length > 0) out.push(batch);
+  return out;
+}
+
+/** The JUnit file of a batch: the given name for the first, `<name>.<n>.xml` for the next ones. */
+function batchReport(junit: string, index: number): string {
+  return index === 0 ? junit : junit.replace(/(\.xml)?$/, `.${index + 1}$1`);
+}
 
 /** The test files `bun test` runs: `*.test.*`, `*_test.*`, `*.spec.*` and `*_spec.*`, never the mods'. */
 export function testFiles(tracked: string[]): string[] {
@@ -241,12 +270,20 @@ export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
   }
   const at = rest.indexOf("--junit");
   const junit = (at >= 0 ? rest[at + 1] : undefined) ?? `junit-${shard.index}.xml`;
-  return await deps.bun([
-    ...BUN_TEST,
-    "--reporter=junit",
-    `--reporter-outfile=${junit}`,
-    ...mine.map((file) => `./${file}`),
-  ]);
+  const parts = batches(mine.map((file) => `./${file}`));
+  if (parts.length > 1) deps.log(`test-shards: shard ${arg} runs in ${parts.length} batches`);
+  // Every batch runs, so one failure never hides another; the worst exit code is the run's.
+  let worst = 0;
+  for (const [index, part] of parts.entries()) {
+    const code = await deps.bun([
+      ...BUN_TEST,
+      "--reporter=junit",
+      `--reporter-outfile=${batchReport(junit, index)}`,
+      ...part,
+    ]); // NOSONAR: sequential by design: one bun test at a time on the runner
+    worst = Math.max(worst, code);
+  }
+  return worst;
 }
 
 function failed(deps: ShardDeps): number {

@@ -114,7 +114,7 @@ describe("cota-ui", () => {
     await settle(() => card() !== null);
     expect(within(card() as HTMLElement).queryByText("sem leitura ainda")).not.toBeNull();
     expect(within(card() as HTMLElement).queryByRole("heading", { name: "alfa" })).not.toBeNull();
-    expect(within(card() as HTMLElement).queryAllByRole("meter")).toEqual([]);
+    expect(within(card() as HTMLElement).queryAllByRole("meter").length).toBe(0);
     expect(bar("five_hour")).toBeNull();
   });
 

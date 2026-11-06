@@ -50,6 +50,8 @@ export interface SlotEnv {
    * call it makes itself runs at once (see `holder`).
    */
   spawn(command: string[], nice: boolean, asHolder?: boolean): SlotChild;
+  /** Makes this process, and so the command it starts, the OOM killer's first choice (#247). */
+  protect?(): void;
   /** The pid named by `FLIGHTDECK_SLOT_HOLDER` in this process's environment, if any. */
   holder?: number;
   /** Asks a process to stop (SIGTERM). */
@@ -483,6 +485,8 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
     for (const line of status(env, args.maxAgeMs).split("\n")) env.log(line);
     return 0;
   }
+  // Before anything is spawned, so the command and all it starts inherit the score.
+  env.protect?.();
   const state: { signal: number | null; child: SlotChild | null } = { signal: null, child: null };
   const stopListening = env.onSignal((code) => {
     state.signal = code;
