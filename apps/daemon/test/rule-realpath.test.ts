@@ -187,12 +187,16 @@ describe("rule-realpath: realPathOf reads the disk (issue #528)", () => {
       symlinkSync(outside, join(dir, "sub", "out"));
       symlinkSync(join(outside, "nowhere"), join(dir, "dangling"));
       expect(await realPathOf(join(dir, "link.txt"))).toBe(
-        realpathSync(join(outside, "secret.txt")),
+        realpathSync.native(join(outside, "secret.txt")),
       );
-      expect(await realPathOf(join(dir, "plain.txt"))).toBe(realpathSync(join(dir, "plain.txt")));
-      expect(await realPathOf(join(dir, "new.txt"))).toBe(join(realpathSync(dir), "new.txt"));
+      expect(await realPathOf(join(dir, "plain.txt"))).toBe(
+        realpathSync.native(join(dir, "plain.txt")),
+      );
+      expect(await realPathOf(join(dir, "new.txt"))).toBe(
+        join(realpathSync.native(dir), "new.txt"),
+      );
       expect(await realPathOf(join(dir, "sub", "out", "new.txt"))).toBe(
-        join(realpathSync(outside), "new.txt"),
+        join(realpathSync.native(outside), "new.txt"),
       );
       expect(await realPathOf(join(dir, "dangling"))).toBeNull();
     },
