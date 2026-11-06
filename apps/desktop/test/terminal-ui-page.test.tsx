@@ -188,6 +188,31 @@ describe("terminal-ui: the terminal screen", () => {
     expect([store.terminalFont.value, x.terminal.options.fontSize]).toEqual([13, 13]);
   });
 
+  test("pasting several lines into a program without bracketed paste asks first; Cancelar keeps them out (issue #476)", async () => {
+    const { x } = await setup();
+    await settle(() => state("Ao vivo"));
+    const clipboard = navigator.clipboard as unknown as { readText?: () => Promise<string> };
+    const saved = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { ...clipboard, readText: async () => "rm a\nrm b" },
+    });
+    try {
+      await act(async () => void x.chord("V"));
+      await settle(() => screen.queryByRole("alertdialog") !== null);
+      expect(screen.queryByRole("alertdialog", { name: "Colar 2 linhas?" })).not.toBeNull();
+      await click("Cancelar");
+      expect(x.pasted).toEqual([]);
+      await act(async () => void x.chord("V"));
+      await settle(() => screen.queryByRole("alertdialog") !== null);
+      await click("Colar");
+      await settle(() => x.pasted.length > 0);
+    } finally {
+      if (saved) Object.defineProperty(navigator, "clipboard", saved);
+    }
+    expect([x.pasted, screen.queryByRole("alertdialog") === null]).toEqual([["rm a\nrm b"], true]);
+  });
+
   test("screen reader support turns on xterm's screen reader mode; while it is off the terminal says where it is (issue #476)", async () => {
     const { x, store } = await setup();
     await settle(() => state("Ao vivo"));

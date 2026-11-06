@@ -2486,6 +2486,10 @@ export const ptBR = {
     reopen: "Reabrir",
     close: "Fechar terminal",
     closeMessage: "Desanexar deixa o processo rodando no host. Encerrar processo o interrompe.",
+    pasteTitle: "Colar {n} linhas?",
+    pasteMessage:
+      "O programa deste terminal não pediu que o texto colado venha marcado, então cada linha pode rodar como comando assim que chegar.",
+    pasteConfirm: "Colar",
     detach: "Desanexar",
     end: "Encerrar processo",
     searchLabel: "Buscar no terminal",

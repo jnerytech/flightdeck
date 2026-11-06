@@ -15,7 +15,7 @@ paths:
   (`test.skipIf(notLinux)`, `scripts/test/not-linux.ts`), with `// unstable: #<issue> <reason>` on
   its line or the line above. The fix goes to that open issue. The hook, the TDD audit and the
   unstable-skip ratchet (at most 10) check the note, and CI's quick job fails once the issue is
-  closed (#494). `toContain` on something that
+  closed (#494), or on the PR that closes it while the skip is still in (#552). `toContain` on something that
   may be `undefined` takes `?? ""`.
 - Nothing real: the preload puts a sentinel `claude` first on the PATH and points `HOME` at a
   temporary folder. Other CLIs (`gh`, `az`, `ssh`) are fakes on the test PATH, with a `.cmd` twin

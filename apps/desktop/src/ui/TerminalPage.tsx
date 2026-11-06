@@ -17,7 +17,12 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { resolvePath } from "../lib/terminal-paths.ts";
 import { TerminalSession, type TerminalState } from "../lib/terminal-session.ts";
-import { isWindowsHost, TERMINAL_FONT_FAMILY, terminalTheme } from "../lib/terminal-view.ts";
+import {
+  isWindowsHost,
+  pasteLines,
+  TERMINAL_FONT_FAMILY,
+  terminalTheme,
+} from "../lib/terminal-view.ts";
 import { useStoreState } from "../lib/use-store.ts";
 import {
   createXtermScreen,
@@ -50,6 +55,8 @@ export function TerminalPage(
   const [searching, setSearching] = useState(false);
   const [needle, setNeedle] = useState("");
   const [closing, setClosing] = useState(false);
+  /** A paste of several lines waiting for the OK: how many lines, and the answer to give xterm. */
+  const [pasting, setPasting] = useState<{ lines: number; answer(ok: boolean): void } | null>(null);
   /** Where the right button opened the copy and paste menu. */
   const [menu, setMenu] = useState<{ x: number; y: number; canCopy: boolean } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -104,6 +111,17 @@ export function TerminalPage(
         onLink: (uri) => store.openLink(uri),
         onSnippets: () => setPicking(true),
         onPath: (path) => void showPath(store, hostId, path, folder),
+        confirmPaste: (text) =>
+          new Promise<boolean>((resolve) =>
+            setPasting({
+              lines: pasteLines(text),
+              answer: (ok) => {
+                setPasting(null);
+                resolve(ok);
+                xterm.focus();
+              },
+            }),
+          ),
         onZoom: (step) => store.terminalFont.zoom(step),
       });
       const current = new TerminalSession({
@@ -324,6 +342,7 @@ export function TerminalPage(
           </Button>
         </div>
       )}
+      {pasting && <TerminalPasteDialog lines={pasting.lines} onAnswer={pasting.answer} />}
       {closing && (
         <TerminalCloseDialog
           onClose={(kill) => (kill === null ? setClosing(false) : void close(kill))}
@@ -360,6 +379,34 @@ async function showPath(
   const full = cwd ? resolvePath(cwd, path) : path;
   if (store.canOpenPaths(hostId)) await store.revealPath(hostId, full);
   else await store.copyText(full);
+}
+
+/**
+ * The OK before a paste of several lines (#476): the program has not turned on bracketed paste, so
+ * each line may run as a command as soon as it lands. Cancel has the focus: it is the safe answer.
+ */
+export function TerminalPasteDialog(
+  props: Readonly<{ lines: number; onAnswer(ok: boolean): void }>,
+) {
+  const t = useT();
+  return (
+    <AlertDialog open onOpenChange={(open) => !open && props.onAnswer(false)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {t("terminalUi.pasteTitle", { n: String(props.lines) })}
+          </AlertDialogTitle>
+          <AlertDialogDescription>{t("terminalUi.pasteMessage")}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+          <AlertDialogAction onClick={() => props.onAnswer(true)}>
+            {t("terminalUi.pasteConfirm")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }
 
 export function TerminalCloseDialog(props: Readonly<{ onClose(kill: boolean | null): void }>) {

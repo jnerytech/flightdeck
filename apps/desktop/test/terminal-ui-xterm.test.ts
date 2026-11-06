@@ -8,6 +8,7 @@ import {
   type XtermSearch,
   type XtermTerminal,
 } from "../src/lib/xterm-screen.ts";
+import { settleMaybe } from "./wait.ts";
 
 const THEME = {
   background: "#000000",
@@ -33,7 +34,12 @@ function cellsOf(text: string) {
   };
 }
 
-function setup(initial = "", clipboardFails = false, windows = false) {
+function setup(
+  initial = "",
+  clipboardFails = false,
+  windows = false,
+  more: { clip?: string; bracketed?: boolean; confirm?: (text: string) => Promise<boolean> } = {},
+) {
   let selection = initial;
   let onSelection: () => void = () => {};
   const log: string[] = [];
@@ -59,6 +65,7 @@ function setup(initial = "", clipboardFails = false, windows = false) {
     rows: 24,
     options: {},
     unicode: { activeVersion: "6" },
+    modes: { bracketedPasteMode: more.bracketed ?? false },
     loadAddon: (addon) => void addons.push(addon),
     open: () => void log.push("open"),
     write: (bytes, callback) => {
@@ -149,9 +156,10 @@ function setup(initial = "", clipboardFails = false, windows = false) {
       },
       read: async () => {
         if (clipboardFails) throw new Error("denied");
-        return "pasted";
+        return more.clip ?? "pasted";
       },
     },
+    ...(more.confirm ? { confirmPaste: more.confirm } : {}),
     windows,
     onInput: (data) => void inputs.push(data),
     onResize: (cols, rows) => void resizes.push([cols, rows]),
@@ -435,6 +443,28 @@ describe("terminal-ui: the xterm screen", () => {
     expect(links?.map((link) => link.range)).toEqual([
       { start: { x: 4, y: 1 }, end: { x: 11, y: 1 } },
     ]);
+  });
+
+  test("a paste of several lines waits for the OK unless the program turned on bracketed paste (issue #476)", async () => {
+    const asked: string[] = [];
+    const answers = [false, true];
+    const confirm = async (text: string) => {
+      asked.push(text);
+      return answers.shift() ?? false;
+    };
+    const s = setup("", false, false, { clip: "a\nb", confirm });
+    s.screen.paste();
+    await settleMaybe(() => asked.length === 1);
+    s.screen.paste();
+    await settleMaybe(() => s.log.includes("paste:a\nb"));
+    expect([asked, s.log.filter((line) => line.startsWith("paste:"))]).toEqual([
+      ["a\nb", "a\nb"],
+      ["paste:a\nb"],
+    ]);
+    const marked = setup("", false, false, { clip: "a\nb", bracketed: true, confirm });
+    marked.screen.paste();
+    await settleMaybe(() => marked.log.includes("paste:a\nb"));
+    expect([asked.length, marked.log.includes("paste:a\nb")]).toEqual([2, true]);
   });
 
   test("screen reader mode is given to xterm at the start and follows the setting (issue #476)", () => {

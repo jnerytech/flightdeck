@@ -94,29 +94,31 @@ describe("keep-awake: the command that holds the computer awake on each system",
     expect(() => windowsScript(4242.5)).toThrow();
   });
 
-  // unstable: #522 it times out at 15000 ms on the windows-latest runner (shard 2/3), on unrelated PRs
-  test.skip("on Windows the real script holds: it stays alive while the daemon's pid lives, and leaves after it", async () => {
-    const helper = Bun.spawn([process.execPath, "-e", "setTimeout(() => {}, 4000)"], {
-      stdout: "ignore",
-      stderr: "ignore",
-    });
-    const found = holderCommand({
-      platform: "win32",
-      pid: helper.pid,
-      which: (name) => Bun.which(name),
-    });
-    expect("cmd" in found).toBe(true);
-    const holder = spawnHolder("cmd" in found ? found.cmd : []);
-    expect(holder).not.toBeNull();
-    let ended = false;
-    void holder?.exited.then(() => {
-      ended = true;
-    });
-    // Add-Type takes a moment; if SetThreadExecutionState failed, the script would have exited by now.
-    expect(await poll(() => ended, 2500)).toBeNull();
-    await helper.exited;
-    expect(await poll(() => ended, 15_000)).toBe(true);
-  });
+  test.skipIf(process.platform !== "win32")(
+    "on Windows the real script holds: it stays alive while the daemon's pid lives, and leaves after it",
+    async () => {
+      const helper = Bun.spawn([process.execPath, "-e", "setTimeout(() => {}, 4000)"], {
+        stdout: "ignore",
+        stderr: "ignore",
+      });
+      const found = holderCommand({
+        platform: "win32",
+        pid: helper.pid,
+        which: (name) => Bun.which(name),
+      });
+      expect("cmd" in found).toBe(true);
+      const holder = spawnHolder("cmd" in found ? found.cmd : []);
+      expect(holder).not.toBeNull();
+      let ended = false;
+      void holder?.exited.then(() => {
+        ended = true;
+      });
+      // Add-Type takes a moment; if SetThreadExecutionState failed, the script would have exited by now.
+      expect(await poll(() => ended, 2500)).toBeNull();
+      await helper.exited;
+      expect(await poll(() => ended, 15_000)).toBe(true);
+    },
+  );
 
   test("a system without the program, or one that is not known, gives a reason and no command", () => {
     expect(holderCommand(fakeContext({ present: [] }).ctx)).toEqual({ reason: "no-inhibitor" });
