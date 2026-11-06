@@ -17,7 +17,8 @@ function trustLine(state: ProjectTrustState, t: AppStore["i18n"]["t"]): string {
 /** Past this many characters a listed command is shown in a block of its own. */
 const LONG_LINE = 300;
 
-type Loaded = { state: ProjectTrustState; load: ProjectLoad } | "failed" | null;
+/** `load` is null when only the listing was refused (it is for a near connection): the decision is still shown. */
+type Loaded = { state: ProjectTrustState; load: ProjectLoad | null } | "failed" | null;
 
 /**
  * Whether a project's own hooks, MCP servers, settings, agents and skills may load into a session
@@ -44,7 +45,7 @@ export function TrustPanel(
       store.hostCommand(hostId, "project.trust.inspect", { path }),
     ]);
     const state = states?.items[0];
-    setLoaded(state && load ? { state, load } : "failed");
+    setLoaded(state ? { state, load: load ?? null } : "failed");
   }, [store, hostId, path]);
 
   useEffect(() => {
@@ -66,31 +67,36 @@ export function TrustPanel(
   }
   const { state, load } = loaded;
   const more = (n: number) => (n > 0 ? [t("projectPage.trust.omitted", { n })] : []);
-  const groups: Array<[string, string[]]> = [
-    [
-      t("projectPage.trust.hooks"),
-      [
-        ...load.hooks.flatMap((h) => h.commands.map((c) => `${h.event}: ${c}`)),
-        ...more(load.omitted.hooks),
-      ],
-    ],
-    [
-      t("projectPage.trust.mcp"),
-      [...load.mcpServers.map((s) => `${s.name}: ${s.command}`), ...more(load.omitted.mcpServers)],
-    ],
-    [t("projectPage.trust.programs"), load.executables.map((e) => `${e.key}: ${e.command}`)],
-    [t("projectPage.trust.env"), [...load.envKeys, ...more(load.omitted.envKeys)]],
-    [t("projectPage.trust.redirects"), load.redirects.map((r) => `${r.key} = ${r.value}`)],
-    [t("projectPage.trust.plugins"), load.plugins],
-    [t("projectPage.trust.otherKeys"), load.otherKeys],
-    [t("projectPage.trust.extras"), load.extras.map((x) => `${x.file}: ${x.keys.join(", ")}`)],
-    [t("projectPage.trust.allow"), [...load.allowRules, ...more(load.omitted.allowRules)]],
-    [t("projectPage.trust.agents"), load.agents],
-    [t("projectPage.trust.skills"), load.skills],
-    [t("projectPage.trust.commands"), load.commands],
-    [t("projectPage.trust.claudeMd"), load.claudeMd ? ["CLAUDE.md"] : []],
-    [t("projectPage.trust.unreadable"), load.unreadable],
-  ];
+  const groups: Array<[string, string[]]> = !load
+    ? []
+    : [
+        [
+          t("projectPage.trust.hooks"),
+          [
+            ...load.hooks.flatMap((h) => h.commands.map((c) => `${h.event}: ${c}`)),
+            ...more(load.omitted.hooks),
+          ],
+        ],
+        [
+          t("projectPage.trust.mcp"),
+          [
+            ...load.mcpServers.map((s) => `${s.name}: ${s.command}`),
+            ...more(load.omitted.mcpServers),
+          ],
+        ],
+        [t("projectPage.trust.programs"), load.executables.map((e) => `${e.key}: ${e.command}`)],
+        [t("projectPage.trust.env"), [...load.envKeys, ...more(load.omitted.envKeys)]],
+        [t("projectPage.trust.redirects"), load.redirects.map((r) => `${r.key} = ${r.value}`)],
+        [t("projectPage.trust.plugins"), load.plugins],
+        [t("projectPage.trust.otherKeys"), load.otherKeys],
+        [t("projectPage.trust.extras"), load.extras.map((x) => `${x.file}: ${x.keys.join(", ")}`)],
+        [t("projectPage.trust.allow"), [...load.allowRules, ...more(load.omitted.allowRules)]],
+        [t("projectPage.trust.agents"), load.agents],
+        [t("projectPage.trust.skills"), load.skills],
+        [t("projectPage.trust.commands"), load.commands],
+        [t("projectPage.trust.claudeMd"), load.claudeMd ? ["CLAUDE.md"] : []],
+        [t("projectPage.trust.unreadable"), load.unreadable],
+      ];
   const shown = groups.filter(([, items]) => items.length > 0);
   // A command with several lines, or one that does not fit a short line, is shown in a block of
   // its own, whole; a short one stays a line. Either way all of it runs once trusted.
@@ -103,7 +109,9 @@ export function TrustPanel(
       {!state.trusted && <p className="text-sm">{t("projectPage.trust.cost")}</p>}
       <h3 className="font-medium text-sm">{t("projectPage.trust.listing")}</h3>
       {anyLong && <p className="text-sm">{t("projectPage.trust.longWarning")}</p>}
-      {shown.length === 0 ? (
+      {!load ? (
+        <p className="text-sm">{t("projectPage.trust.listingUnavailable")}</p>
+      ) : shown.length === 0 ? (
         <p className="text-sm">{t("projectPage.trust.nothing")}</p>
       ) : (
         <dl className="stack-hair text-sm">
