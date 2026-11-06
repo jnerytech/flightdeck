@@ -89,7 +89,7 @@ export function tauriPlatform(
     revealPath: (path) => call("open_result", { path, reveal: true }),
     // The app's log file, written by the shell's own commands (the webview never sees a path).
     logs: {
-      write: (line) => call("append_log", { line }),
+      write: (lines) => call("append_log", { lines }),
       tail: (lines) => call<string[]>("read_log_tail", { lines }),
       openFolder: () => call("open_logs_dir"),
     },
