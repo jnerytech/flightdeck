@@ -3,10 +3,12 @@
  * editable, and the user's in ~/.claude, read-only. A write asks for confirm and for the hash of
  * the content that was opened, and never lands outside the project.
  */
+
 import { createHash } from "node:crypto";
 import type { Dirent } from "node:fs";
 import { lstat, mkdir, readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join } from "node:path";
+import { byCodeUnit } from "@flightdeck/protocol";
 import { userHome } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
@@ -218,7 +220,7 @@ export class AgentConfig {
               (e) => `${base}skills/${e.name}/SKILL.md`,
             );
     const items: AgentCfgItem[] = [];
-    for (const path of [...paths].sort()) {
+    for (const path of [...paths].sort(byCodeUnit)) {
       const bytes = await readFile(join(root, path)).catch(() => null);
       if (bytes) items.push(this.itemOf(bytes, kind, path, origin));
     }

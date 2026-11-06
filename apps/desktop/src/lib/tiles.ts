@@ -1,3 +1,4 @@
+import type { RiskLevel } from "@flightdeck/protocol";
 import type { HubRow, HubState } from "./hub.ts";
 import { isInside } from "./paths.ts";
 import type { SessionState } from "./session-state.ts";
@@ -99,6 +100,12 @@ export function lastLines(session: SessionState, max = 4): string[] {
 export interface PendingRequest {
   requestId: string;
   toolName: string;
+  /** The daemon's judgement, when it sent one: a high-risk request is held to approve. */
+  risk?: RiskLevel;
+  /** Why the daemon judged it so: the tile holds over what it shows (issue #245). */
+  riskReason?: string;
+  /** The tool's input, for the line of what it would do. */
+  input?: Record<string, unknown>;
 }
 
 /** The first request that still waits for an answer. */
@@ -109,7 +116,14 @@ export function pendingOf(session: SessionState): PendingRequest | null {
       !item.resolution &&
       session.pending.includes(item.requestId)
     ) {
-      return { requestId: item.requestId, toolName: item.toolName };
+      // The risk goes with it: a high-risk request is held to approve on the tile too (#182).
+      return {
+        requestId: item.requestId,
+        toolName: item.toolName,
+        ...(item.risk ? { risk: item.risk } : {}),
+        ...(item.riskReason ? { riskReason: item.riskReason } : {}),
+        ...(item.input ? { input: item.input } : {}),
+      };
     }
   }
   return null;

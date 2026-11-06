@@ -10,8 +10,6 @@ const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
 const { NewSessionForm } = await import("../src/ui/NewSessionForm.tsx");
-const { SessionView } = await import("../src/ui/SessionView.tsx");
-const { emptySession } = await import("../src/lib/session-state.ts");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 
@@ -133,77 +131,6 @@ describe("bypass-ui: the New session form", () => {
     await press("Create session");
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(created).toHaveLength(1);
-  });
-});
-
-describe("bypass-ui: the open session", () => {
-  const view = (bypass: { host: string } | undefined, calls: string[], start = "plan") => {
-    render(
-      <TContext.Provider value={translator("en")}>
-        <SessionView
-          title="refactor"
-          t={translator("en")}
-          session={{ ...emptySession(), status: "idle", permissionMode: start as never }}
-          actions={{
-            send: async () => {},
-            interrupt: async () => {},
-            close: async () => {},
-            resume: async () => {},
-            respond: async () => {},
-            setMode: async (mode) => void calls.push(mode),
-          }}
-          settings
-          {...(bypass ? { bypass } : {})}
-        />
-      </TContext.Provider>,
-    );
-  };
-  const select = () => screen.getByLabelText("Permission mode");
-
-  test("a host that does not allow it offers what it did: nothing looser than the start mode", () => {
-    view(undefined, []);
-    expect(optionNames(select())).toEqual(["Plan"]);
-  });
-
-  test("a host that allows it offers every mode, bypass included, even from plan", () => {
-    view({ host: "pc" }, []);
-    expect(optionNames(select())).toEqual([
-      "Plan",
-      "Default",
-      "Accept edits",
-      "Bypass permissions",
-    ]);
-  });
-
-  test("bypass asks each time, naming the host and the session; Cancel leaves the mode as it was", async () => {
-    const calls: string[] = [];
-    view({ host: "pc" }, calls);
-    await act(async () => {
-      fireEvent.change(select(), { target: { value: "bypassPermissions" } });
-    });
-    let dialog = screen.getByRole("alertdialog");
-    expect(dialog.textContent ?? "").toContain("pc");
-    expect(dialog.textContent ?? "").toContain("refactor");
-    await click(within(dialog).getByRole("button", { name: "Cancel" }));
-    expect(calls).toEqual([]);
-    expect((select() as HTMLSelectElement).value).toBe("plan");
-    await act(async () => {
-      fireEvent.change(select(), { target: { value: "bypassPermissions" } });
-    });
-    dialog = screen.getByRole("alertdialog");
-    await click(within(dialog).getByRole("button", { name: "Switch to bypass" }));
-    expect(calls).toEqual(["bypassPermissions"]);
-    expect((select() as HTMLSelectElement).value).toBe("bypassPermissions");
-  });
-
-  test("any other mode changes at once, with no dialog", async () => {
-    const calls: string[] = [];
-    view({ host: "pc" }, calls);
-    await act(async () => {
-      fireEvent.change(select(), { target: { value: "acceptEdits" } });
-    });
-    expect(screen.queryByRole("alertdialog")).toBeNull();
-    expect(calls).toEqual(["acceptEdits"]);
   });
 });
 

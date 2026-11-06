@@ -6,17 +6,21 @@ import {
   CircleAlert,
   CircleX,
   ExternalLink,
+  Lock,
   type LucideProps,
   MoreHorizontal,
   Plane,
   Plus,
   Search,
+  Sparkles,
   SunMoon,
   TriangleAlert,
 } from "lucide-react";
 import { Children, type ReactNode, useState } from "react";
 import { ClientSwitcher } from "@/components/clients/client-switcher";
+import { IconTip } from "@/components/feedback/icon-tip";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
+import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,60 +86,61 @@ function NavButton(props: {
 }) {
   const railName = props.hint ? `${props.label} (${props.hint})` : props.label;
   return (
-    <button
-      type="button"
-      aria-current={props.active ? "page" : undefined}
-      aria-keyshortcuts={props.keys}
-      className={cn(
-        ITEM,
-        props.collapsed && "justify-center px-0",
-        (props.active || props.strong) && "text-sidebar-foreground",
-        props.active && "nav-active bg-sidebar-accent font-medium",
-      )}
-      aria-label={
-        props.name ?? (props.collapsed ? railName : props.badge ? props.label : undefined)
-      }
-      title={props.collapsed ? railName : undefined}
-      disabled={props.disabled ?? false}
-      onClick={props.onClick}
-    >
-      {props.collapsed && props.attention ? (
-        <span className="relative flex">
-          {props.icon}
+    <IconTip label={props.collapsed ? railName : undefined}>
+      <button
+        type="button"
+        aria-current={props.active ? "page" : undefined}
+        aria-keyshortcuts={props.keys}
+        className={cn(
+          ITEM,
+          props.collapsed && "justify-center px-0",
+          (props.active || props.strong) && "text-sidebar-foreground",
+          props.active && "nav-active bg-sidebar-accent font-medium",
+        )}
+        aria-label={
+          props.name ?? (props.collapsed ? railName : props.badge ? props.label : undefined)
+        }
+        disabled={props.disabled ?? false}
+        onClick={props.onClick}
+      >
+        {props.collapsed && props.attention ? (
+          <span className="relative flex">
+            {props.icon}
+            <span
+              data-attention
+              aria-hidden="true"
+              className="-right-0.5 -top-0.5 absolute size-2 rounded-full bg-primary"
+            />
+          </span>
+        ) : (
+          props.icon
+        )}
+        {!props.collapsed && <span className="min-w-0 flex-1 truncate">{props.label}</span>}
+        {!props.collapsed && props.badge && (
           <span
-            data-attention
+            data-slot="nav-badge"
+            className="rounded bg-sidebar-accent px-1 font-medium text-[10px] text-sidebar-foreground/80 uppercase"
+          >
+            {props.badge}
+          </span>
+        )}
+        {!props.collapsed && props.tail}
+        {!props.collapsed && props.chevron && (
+          <ChevronRight
+            data-slot="nav-chevron"
             aria-hidden="true"
-            className="-right-0.5 -top-0.5 absolute size-2 rounded-full bg-primary"
+            className="size-3.5 shrink-0 text-sidebar-foreground/50"
           />
-        </span>
-      ) : (
-        props.icon
-      )}
-      {!props.collapsed && <span className="min-w-0 flex-1 truncate">{props.label}</span>}
-      {!props.collapsed && props.badge && (
-        <span
-          data-slot="nav-badge"
-          className="rounded bg-sidebar-accent px-1 font-medium text-[10px] text-sidebar-foreground/80 uppercase"
-        >
-          {props.badge}
-        </span>
-      )}
-      {!props.collapsed && props.tail}
-      {!props.collapsed && props.chevron && (
-        <ChevronRight
-          data-slot="nav-chevron"
-          aria-hidden="true"
-          className="size-3.5 shrink-0 text-sidebar-foreground/50"
-        />
-      )}
-      {!props.collapsed && props.external && (
-        <ExternalLink
-          data-slot="nav-external"
-          aria-hidden="true"
-          className="size-3.5 shrink-0 text-sidebar-foreground/50"
-        />
-      )}
-    </button>
+        )}
+        {!props.collapsed && props.external && (
+          <ExternalLink
+            data-slot="nav-external"
+            aria-hidden="true"
+            className="size-3.5 shrink-0 text-sidebar-foreground/50"
+          />
+        )}
+      </button>
+    </IconTip>
   );
 }
 
@@ -240,6 +245,8 @@ export function Sidebar(props: {
   /** The next navigation opens a new tab ("Abrir em nova aba"). */
   onNewTab(): void;
   onToggleTheme(): void;
+  /** Switches to simple mode; absent when the host in view does not let the person choose. */
+  onSimpleMode?(): void;
 }) {
   const { state, t, collapsed, go } = props;
   const badges = {
@@ -285,20 +292,22 @@ export function Sidebar(props: {
   const hostsList = collapsed ? (
     <div className="rail-hosts">
       {state.hosts.map((host) => (
-        <button
-          key={host.id}
-          type="button"
-          aria-label={t("sidebar.openHost", { host: host.name })}
-          title={host.name}
-          aria-current={hereHost === host.id ? "page" : undefined}
-          className={cn(
-            "flex size-8 items-center justify-center rounded-md hover:bg-sidebar-accent",
-            hereHost === host.id && "nav-active bg-sidebar-accent",
-          )}
-          onClick={() => go({ name: "host", host: host.id })}
-        >
-          <HostDot host={host} t={t} />
-        </button>
+        <IconTip key={host.id} label={host.name}>
+          <button
+            type="button"
+            aria-label={t("sidebar.openHost", { host: host.name })}
+            aria-current={hereHost === host.id ? "page" : undefined}
+            className={cn("rail-host", hereHost === host.id && "nav-active bg-sidebar-accent")}
+            onClick={() => go({ name: "host", host: host.id })}
+          >
+            <span data-slot="host-initial" aria-hidden="true" className="rail-host-initial">
+              {[...host.name][0]?.toUpperCase() ?? "?"}
+            </span>
+            <span className="rail-host-status">
+              <HostDot host={host} t={t} />
+            </span>
+          </button>
+        </IconTip>
       ))}
     </div>
   ) : (
@@ -320,6 +329,18 @@ export function Sidebar(props: {
             <HostDot host={host} t={t} />
             <span className="min-w-0 flex-1 truncate">{host.name}</span>
           </button>
+          {host.hostInfo?.ui?.mode === "simple" && (
+            <span data-slot="host-mode-badge" className="host-mode-badge">
+              {t("sidebar.hostSimple")}
+            </span>
+          )}
+          {host.hostInfo?.ui?.locked === true && (
+            <Lock
+              role="img"
+              aria-label={t("sidebar.hostLocked", { host: host.name })}
+              className="size-3.5 shrink-0 text-muted-foreground"
+            />
+          )}
           {requiredMissing(state.deps[host.id]) && (
             <CircleX
               role="img"
@@ -620,14 +641,11 @@ export function Sidebar(props: {
                   <ul className="flex flex-col gap-0.5">
                     {pinned.map((row) => (
                       <li key={row.key}>
-                        <button
-                          type="button"
-                          className={ITEM}
-                          title={`${row.title} · ${row.hostName}`}
-                          onClick={() => go(rowRoute(row))}
-                        >
-                          <span className="min-w-0 flex-1 truncate">{row.title}</span>
-                        </button>
+                        <IconTip label={`${row.title} · ${row.hostName}`}>
+                          <button type="button" className={ITEM} onClick={() => go(rowRoute(row))}>
+                            <span className="min-w-0 flex-1 truncate">{row.title}</span>
+                          </button>
+                        </IconTip>
                       </li>
                     ))}
                   </ul>
@@ -647,11 +665,7 @@ export function Sidebar(props: {
           hint="Ctrl K"
           keys="Control+K"
           onClick={props.onOpenSearch}
-          tail={
-            <kbd className="rounded border bg-background px-1 font-mono text-[11px] text-muted-foreground">
-              Ctrl K
-            </kbd>
-          }
+          tail={<ShortcutKeys keys={["Mod", "K"]} className="text-muted-foreground" />}
         />
         <NavButton
           collapsed={collapsed}
@@ -677,6 +691,14 @@ export function Sidebar(props: {
           label={t("sidebar.theme")}
           onClick={props.onToggleTheme}
         />
+        {props.onSimpleMode && (
+          <NavButton
+            collapsed={collapsed}
+            icon={<Sparkles aria-hidden="true" className={icon} />}
+            label={t("sidebar.simpleMode")}
+            onClick={props.onSimpleMode}
+          />
+        )}
       </div>
       {renaming && (
         <RenameHostDialog

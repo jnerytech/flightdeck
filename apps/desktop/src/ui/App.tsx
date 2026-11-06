@@ -12,6 +12,7 @@ import { TContext } from "@/i18n/context";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import { typing } from "../lib/keys.ts";
+import { pairingErrorText } from "../lib/pairing-text.ts";
 import type { PaletteTarget } from "../lib/palette.ts";
 import type { Route } from "../lib/router.ts";
 import { type ChordState, chordStep, isMac, NO_CHORD } from "../lib/shortcuts.ts";
@@ -32,6 +33,7 @@ type InPlace =
   | "terminal"
   | "new-terminal"
   | "toggle-theme"
+  | "toggle-ui-mode"
   | "switch-language"
   | "start-card"
   | "snippet"
@@ -75,6 +77,8 @@ function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route 
       return { name: "projects", host: target.hostId };
     case "settings":
       return { name: "settings" };
+    case "add-host":
+      return { name: "add-host" };
     case "costs":
       return { name: "costs" };
     case "go":
@@ -174,7 +178,10 @@ export function App({ store }: { store: AppStore }) {
         if (store.openRequestLink(url)) return;
         const parsed = parsePairingLink(url);
         if (!parsed.ok) {
-          store.reportError(`Link de pareamento recusado: ${parsed.error}`);
+          const { t } = store.i18n;
+          store.reportError(
+            t("hostForm.pairRefused", { reason: pairingErrorText(t, parsed.error) }),
+          );
           return;
         }
         const { url: wsUrl, name, token } = parsed.value;
@@ -198,6 +205,11 @@ export function App({ store }: { store: AppStore }) {
   // Alt+←/→ and the mouse's back and forward buttons walk the history.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Ctrl+Shift+M: simple mode and the full app, when the host lets the person choose.
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "m") {
+        if (store.toggleUiMode()) e.preventDefault();
+        return;
+      }
       // The go-to chords and `?` (never while typing in a field).
       const step = chordStep(
         chord.current,
@@ -306,6 +318,7 @@ export function App({ store }: { store: AppStore }) {
       else void store.openInTerminal(target.hostId, target.target);
     } else if (target.kind === "new-terminal") void store.openTerminal(target.hostId);
     else if (target.kind === "toggle-theme") store.theme.toggle();
+    else if (target.kind === "toggle-ui-mode") store.toggleUiMode();
     else if (target.kind === "switch-language") {
       store.i18n.setLang(lang === "pt-BR" ? "en" : "pt-BR");
     } else if (target.kind === "switch-client") {
@@ -319,14 +332,12 @@ export function App({ store }: { store: AppStore }) {
     } else if (target.kind === "start-card") {
       void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });
     } else if (target.kind === "shortcuts") setHelp(true);
-    else if (target.kind === "decide-oldest") store.decideOldest(target.decision);
+    else if (target.kind === "decide-oldest") store.decideOldest(target.decision, target.key);
     else go(paletteRoute(target));
   };
 
   // A host set to simple (or chosen so) shows simple mode in place of the full frame.
-  const focusHost =
-    state.hosts.find((h) => h.id === state.selected?.hostId) ??
-    state.hosts.find((h) => h.status === "online");
+  const focusHost = state.hosts.find((h) => h.id === store.uiHostId());
   if (focusHost && store.uiMode(focusHost.id).mode === "simple") {
     return (
       <TContext.Provider value={t}>
@@ -398,6 +409,9 @@ export function App({ store }: { store: AppStore }) {
               onOpenSearch={() => store.openSearch()}
               onNewTab={() => store.tabs.openNextInNewTab()}
               onToggleTheme={() => store.theme.toggle()}
+              {...(focusHost && store.uiMode(focusHost.id).canSwitch
+                ? { onSimpleMode: () => void store.toggleUiMode() }
+                : {})}
             />
           )}
         >

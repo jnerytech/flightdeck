@@ -30,7 +30,8 @@ function freeName(command: string, taken: Set<string>): string {
       .replace(/[^\p{L}\p{N}._-]/gu, "")
       .slice(0, 40) || "comando";
   let name = base;
-  for (let n = 2; taken.has(name); n++) name = `${base}-${n}`;
+  let n = 2;
+  while (taken.has(name)) name = `${base}-${n++}`;
   taken.add(name);
   return name;
 }

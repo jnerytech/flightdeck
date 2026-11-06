@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { generatedScopeRules, vaultFindings } from "../lib/client-vault.ts";
 import type { Client } from "../lib/clients.ts";
+import { useDraft } from "../lib/use-draft.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
@@ -20,9 +21,9 @@ export function ClientDefaults(props: {
 }) {
   const { store, state, client } = props;
   const { t } = store.i18n;
-  const [persona, setPersona] = useState(client.defaults.persona ?? "");
-  const [tag, setTag] = useState(client.defaults.snippetTag ?? "");
-  const [vaultTag, setVaultTag] = useState(client.defaults.vaultTag ?? "");
+  const [persona, setPersona, savedPersona] = useDraft(client.defaults.persona ?? "");
+  const [tag, setTag, savedTag] = useDraft(client.defaults.snippetTag ?? "");
+  const [vaultTag, setVaultTag, savedVaultTag] = useDraft(client.defaults.vaultTag ?? "");
   const [confirming, setConfirming] = useState(false);
   const scope = store.clientScope();
   const projects = scope.projectKeysOf(client.id);
@@ -56,13 +57,12 @@ export function ClientDefaults(props: {
       <Form
         variant="inline"
         aria-label={t("clients.defaultsOf", { name: client.name })}
-        onSubmit={() =>
-          store.clients.setDefaults(client.id, {
-            persona,
-            snippetTag: tag,
-            vaultTag,
-          })
-        }
+        onSubmit={() => {
+          if (!store.clients.setDefaults(client.id, { persona, snippetTag: tag, vaultTag })) return;
+          savedPersona(persona);
+          savedTag(tag);
+          savedVaultTag(vaultTag);
+        }}
       >
         {host && (
           <PersonaPicker

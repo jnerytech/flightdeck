@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { colorOf, contrast, tokensOf } from "../lib/theme-contrast.ts";
 
@@ -72,6 +72,96 @@ describe("theme-contrast: the dark theme's surfaces and lines (issue #98)", () =
         surface,
         true,
       ]);
+    }
+  });
+});
+
+describe("theme-contrast: the light theme's fields and the status colors (issue #176)", () => {
+  const light = tokensOf(css, ":root");
+  const dark = new Map([...light, ...tokensOf(css, ".dark")]);
+  /** The ratio of two tokens, or 0 when one is not an opaque color (the guard never guesses). */
+  const ratio = (vars: ReadonlyMap<string, string>, a: string, b: string) => {
+    const [x, y] = [colorOf(vars.get(a), vars), colorOf(vars.get(b), vars)];
+    return x && y ? contrast(x, y) : 0;
+  };
+  const SURFACES = ["--background", "--surface-1", "--surface-2", "--sidebar", "--popover"];
+
+  test("a field's edge keeps 3:1 against every light surface (WCAG 1.4.11)", () => {
+    for (const surface of SURFACES) {
+      expect([surface, ratio(light, "--input", surface) >= 3]).toEqual([surface, true]);
+    }
+  });
+
+  test("the text on every light surface keeps AA (4.5:1)", () => {
+    for (const surface of SURFACES) {
+      for (const text of ["--foreground", "--muted-foreground"]) {
+        expect([text, surface, ratio(light, text, surface) >= 4.5]).toEqual([text, surface, true]);
+      }
+    }
+  });
+
+  test("every status color reads as text at AA on every surface, in both themes", () => {
+    const states = ["running", "needs-you", "idle", "ended", "error", "risk"];
+    for (const [theme, vars] of [
+      ["light", light],
+      ["dark", dark],
+    ] as const) {
+      for (const state of states) {
+        for (const surface of ["--background", "--surface-1", "--surface-2", "--sidebar"]) {
+          const ok = ratio(vars, `--status-${state}`, surface) >= 4.5;
+          expect([theme, state, surface, ok]).toEqual([theme, state, surface, true]);
+        }
+      }
+    }
+  });
+});
+
+describe("theme-contrast: fields use the field token (issue #176)", () => {
+  // A token test cannot see a control that draws its edge with the decorative --border: a vault
+  // select did, at 1.14:1 in the light theme.
+  test("every select, input and textarea that draws a border in the app's screens uses border-input", () => {
+    const root = resolve(import.meta.dir, "../../apps/desktop/src");
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = resolve(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (!path.endsWith("components/ui")) walk(path);
+        } else if (entry.name.endsWith(".tsx")) files.push(path);
+      }
+    };
+    walk(root);
+    const offenders: string[] = [];
+    for (const file of files) {
+      const source = readFileSync(file, "utf8");
+      for (const m of source.matchAll(/<(select|input|textarea)\b[^>]*?className="([^"]*)"/gs)) {
+        const classes = (m[2] as string).split(/\s+/);
+        if (classes.includes("border") && !classes.includes("border-input")) {
+          offenders.push(`${file.slice(root.length + 1)}: <${m[1]}>`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe("theme-contrast: the chart's series colours (issue #179)", () => {
+  const light = tokensOf(css, ":root");
+  const dark = new Map([...light, ...tokensOf(css, ".dark")]);
+  test("each series colour keeps 3:1 against the card in both themes, and the five differ", () => {
+    for (const [theme, vars] of [
+      ["light", light],
+      ["dark", dark],
+    ] as const) {
+      const card = colorOf(vars.get("--card"), vars);
+      const seen = new Set<string>();
+      for (const n of [1, 2, 3, 4, 5]) {
+        const color = colorOf(vars.get(`--chart-${n}`), vars);
+        const ok = color !== null && card !== null && contrast(color, card) >= 3;
+        expect([theme, n, ok]).toEqual([theme, n, true]);
+        seen.add(String(color));
+      }
+      expect([theme, seen.size]).toEqual([theme, 5]);
     }
   });
 });

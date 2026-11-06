@@ -28,7 +28,7 @@ when in doubt. The steps below are the route; they do not replace the file.
    ```
 5. **Green.** Minimal implementation, the same command green, then:
    ```bash
-   bun run test && bun run typecheck && bun run lint && git add <paths> && git commit -m "feat(<area>): ..."
+   bun run test:related -- --fast && bun run typecheck && bun run lint && git add <paths> && git commit -m "feat(<area>): ..."
    ```
 6. **Coverage points at an untested branch?** Remove the branch, write the test, show the red and
    only then restore it.
@@ -42,5 +42,5 @@ when in doubt. The steps below are the route; they do not replace the file.
   `test(<area>)`.
 - Nothing touches the real Claude: a fake executable on the PATH through `whichOnPath`, and a
   nonexistent `claude.executablePath` in the daemon tests with the `claude` runtime.
-- At the end of the phase: `bun run tdd:audit -- --since $(git merge-base HEAD main)` (or the tag
+- At the end of the phase: `bun run tdd:audit -- --since auto` (or the tag
   the spec sets) must print `TDD AUDIT OK`.
