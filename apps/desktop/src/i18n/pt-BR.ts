@@ -3671,7 +3671,7 @@ export const ptBR = {
     rootsTitle: "Pastas permitidas",
     rootsList: "Pastas permitidas deste host",
     rootsInput: "Pasta a permitir",
-    rootsPlaceholder: "D:\\repos\\...",
+    rootsPlaceholder: String.raw`D:\repos\...`,
     rootsChoose: "Escolher pasta…",
     needsOnline: "{host} está desconectado: reconecte-o para mudar isto.",
     needsConnection: "{host} ainda não conectou: espere ele responder.",

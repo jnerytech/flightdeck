@@ -3669,7 +3669,7 @@ export const en: Dictionary = {
     rootsTitle: "Allowed folders",
     rootsList: "Allowed folders of this host",
     rootsInput: "Folder to allow",
-    rootsPlaceholder: "D:\\repos\\...",
+    rootsPlaceholder: String.raw`D:\repos\...`,
     rootsChoose: "Choose folder…",
     needsOnline: "{host} is offline: reconnect it to change this.",
     needsConnection: "{host} is not connected yet: wait for it to answer.",

@@ -27,13 +27,15 @@ const Count = ({ n }: { n: number }) =>
  * menu to change it. It is not there while no client exists. A request waiting in another client
  * puts a mark beside it, so a selection never hides what needs the user.
  */
-export function ClientSwitcher(props: {
-  store: AppStore;
-  state: HubRowState & Pick<AppState, "clientList" | "clientSelection">;
-  pending: PendingItem[];
-  collapsed: boolean;
-  go(route: Route): void;
-}) {
+export function ClientSwitcher(
+  props: Readonly<{
+    store: AppStore;
+    state: HubRowState & Pick<AppState, "clientList" | "clientSelection">;
+    pending: PendingItem[];
+    collapsed: boolean;
+    go(route: Route): void;
+  }>,
+) {
   const { store, state, pending, collapsed, go } = props;
   const { t } = store.i18n;
   if (state.clientList.length === 0) return null;

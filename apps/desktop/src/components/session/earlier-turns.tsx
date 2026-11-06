@@ -18,7 +18,9 @@ type Loaded =
  * The turns a session resumed from History already had, read from the host's transcript and put
  * above the new ones. A transcript that cannot be read says why: the pane is never left blank.
  */
-export function EarlierTurns(props: { store: AppStore; hostId: string; claudeSessionId: string }) {
+export function EarlierTurns(
+  props: Readonly<{ store: AppStore; hostId: string; claudeSessionId: string }>,
+) {
   const { store, hostId, claudeSessionId } = props;
   const { t } = store.i18n;
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
@@ -29,11 +31,16 @@ export function EarlierTurns(props: { store: AppStore; hostId: string; claudeSes
       let cursor: string | undefined;
       let more = false;
       while (true) {
-        const answer = await store.hostRequest(hostId, "history.get", {
-          claudeSessionId,
-          limit: HISTORY_PAGE,
-          ...(cursor ? { cursor } : {}),
-        });
+        const answer =
+          await /* NOSONAR: paging: each page is asked for with the cursor of the one before */ store.hostRequest(
+            hostId,
+            "history.get",
+            {
+              claudeSessionId,
+              limit: HISTORY_PAGE,
+              ...(cursor ? { cursor } : {}),
+            },
+          );
         if (!alive) return;
         if (!answer.ok) return setLoaded({ state: "failed", reason: answer.message });
         messages.push(...answer.data.messages.filter((m) => m.kind === "message"));
