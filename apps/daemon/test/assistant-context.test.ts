@@ -3,6 +3,7 @@ import { copyFileSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { SecretScanner } from "@flightdeck/protocol";
 import { type ContextDeps, extractRules, repoContext } from "../src/assistant/context.ts";
+import { workingDiff } from "../src/board/diff.ts";
 import { FlightdeckError } from "../src/errors.ts";
 import { credential, isCredentialPath } from "../src/permissions/risk.ts";
 import { REMOVED_LINE } from "../src/watch/trace.ts";
@@ -227,6 +228,19 @@ describe("assistant-context", () => {
       expect(bundle.diff).toBe("--- keep.ts\n@@ -0,0 +1,1 @@\n+keep");
     },
   );
+
+  // The size cap is the assistant's: the Changes panel still shows a large untracked file, and its
+  // editor says when it is too large to edit.
+  test("the Changes panel reads a large untracked file whole; only the assistant's context caps it", async () => {
+    const { repo } = gitRepo();
+    writeFileSync(join(repo, "large.txt"), `${"l".repeat(300 * 1024)}\n`);
+    const large = (await workingDiff(repo)).find((f) => f.path === "large.txt");
+    expect([large?.binary, large?.additions, large?.hunks[0]?.lines[0]?.text.length]).toEqual([
+      false,
+      1,
+      300 * 1024,
+    ]);
+  });
 
   test.skipIf(!POSIX)(
     "the rules read no link, directory or FIFO, and no more than their cap of a file",

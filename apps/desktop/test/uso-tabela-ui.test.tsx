@@ -113,9 +113,9 @@ describe("uso-tabela-ui: the history list opened from a usage row", () => {
       from: "2026-10-15T00:00:00.000Z",
       to: "2026-10-15T23:59:59.999Z",
     });
-    expect(document.querySelector<HTMLInputElement>("input[aria-label='Pasta']")?.value).toBe(
-      "/home/ana/entrevista",
-    );
+    // The folder field is named by its visible label (#180), not an aria-label.
+    const folder = view.queryByLabelText("Pasta") as HTMLInputElement | null;
+    expect(folder?.value).toBe("/home/ana/entrevista");
 
     // Another usage row opens it again: the filter follows; a plain reopen keeps what is there.
     view.rerender(list({ day: "2026-10-14" }));
