@@ -54,6 +54,32 @@ describe("stale-seeds: a field follows its source until the person edits it", ()
     expect(result.current[0]).toBe("second");
   });
 
+  // #249: CardDetail's fields move onto useDraft, so it says when the source moved under an edit.
+  test("an edit over a source that moved elsewhere is stale, and drop hands the field back", async () => {
+    const { result, rerender } = renderHook(({ source }) => useDraft(source), {
+      initialProps: { source: "a" },
+    });
+    await act(async () => result.current[1]("mine"));
+    expect(result.current[3].stale).toBe(false);
+    rerender({ source: "theirs" });
+    expect([result.current[0], result.current[3].stale]).toEqual(["mine", true]);
+    await act(async () => result.current[3].drop());
+    expect([result.current[0], result.current[3].stale]).toEqual(["theirs", false]);
+  });
+
+  test("a newer edit typed while a save was on its way starts from what the host stored", async () => {
+    const { result, rerender } = renderHook(({ source }) => useDraft(source), {
+      initialProps: { source: "a" },
+    });
+    await act(async () => result.current[1](" sent "));
+    await act(async () => result.current[1]("newer"));
+    await act(async () => result.current[2](" sent ", "sent"));
+    rerender({ source: "sent" });
+    expect([result.current[0], result.current[3].stale]).toEqual(["newer", false]);
+    rerender({ source: "other" });
+    expect(result.current[3].stale).toBe(true);
+  });
+
   test("a card's hours field shows a new estimate made elsewhere", () => {
     const store = new AppStore(memoryPlatform(false, "en").platform);
     const card = { id: "c1", estimateHours: 2 } as Card;
