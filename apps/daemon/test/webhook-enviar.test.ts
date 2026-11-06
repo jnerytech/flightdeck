@@ -194,8 +194,10 @@ describe("webhook-enviar", () => {
     expect((await sender.send(request({ url }), "127.0.0.1")).status).toBe(200);
     expect(lookups).toBe(1);
     expect(calls[0]?.url).toBe("https://93.184.216.34:8443/services/T/B/SECRET?x=1");
-    expect((calls[0]?.init.headers as Record<string, string>).Host).toBe("hooks.example.com:8443");
-    expect((calls[0]?.init as { tls?: unknown }).tls).toEqual({ serverName: "hooks.example.com" });
+    const init = (i: number) =>
+      calls[i]?.init as { headers?: Record<string, string>; tls?: unknown } | undefined;
+    expect(init(0)?.headers?.Host).toBe("hooks.example.com:8443");
+    expect(init(0)?.tls).toEqual({ serverName: "hooks.example.com" });
 
     const v6 = new WebhookSender({
       resolve: async () => ["2606:2800:220:1:248:1893:25c8:1946"],
@@ -206,7 +208,38 @@ describe("webhook-enviar", () => {
     });
     await v6.send(request({ url: "https://ntfy.example.com/" }), "127.0.0.1");
     expect(calls[1]?.url).toBe("https://[2606:2800:220:1:248:1893:25c8:1946]/");
-    expect((calls[1]?.init.headers as Record<string, string>).Host).toBe("ntfy.example.com");
+    expect(init(1)?.headers?.Host).toBe("ntfy.example.com");
+  });
+
+  test("an IPv4 address is preferred to pin, and an address written in the URL gets no TLS server name (#465)", async () => {
+    const calls: Call[] = [];
+    const sender = (addresses: string[]) =>
+      new WebhookSender({
+        resolve: async () => addresses,
+        fetch: (async (url: string, init: RequestInit) => {
+          calls.push({ url, init });
+          return new Response("", { status: 200 });
+        }) as never,
+      });
+    await sender(["2606:2800:220:1:248:1893:25c8:1946", "93.184.216.34"]).send(
+      request({ url: "https://hooks.example.com/x" }),
+      "127.0.0.1",
+    );
+    await sender(["::1", "127.0.0.1"]).send(
+      request({ url: "http://localhost:8080/x" }),
+      "127.0.0.1",
+    );
+    await sender([]).send(request({ url: "https://93.184.216.34/x" }), "127.0.0.1");
+    expect(calls.map((c) => c.url)).toEqual([
+      "https://93.184.216.34/x",
+      "http://127.0.0.1:8080/x",
+      "https://93.184.216.34/x",
+    ]);
+    expect(calls.map((c) => (c.init as { tls?: unknown } | undefined)?.tls)).toEqual([
+      { serverName: "hooks.example.com" },
+      undefined,
+      undefined,
+    ]);
   });
 
   test("an ntfy access token goes as Authorization: Bearer, in that shape only, and in no log line (#263)", async () => {
