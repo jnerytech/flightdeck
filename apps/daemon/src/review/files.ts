@@ -29,12 +29,13 @@ const absent = () => null;
 /** The most entries one folder sends to the explorer; it says the rest were cut. */
 const LIST_CAP = 500;
 
-/** Folders first, then files; numbers in names in their order (`file2` before `file10`). */
+/**
+ * Folders first, then files; numbers in names in their order (`file2` before `file10`), letters
+ * without regard to case first, so two names of one folder never tie.
+ */
 function folderOrder(a: FileEntry, b: FileEntry): number {
   if (a.kind !== b.kind) return a.kind === "dir" ? -1 : 1;
-  const natural = a.name.localeCompare(b.name, "en", { numeric: true, sensitivity: "base" });
-  if (natural !== 0) return natural;
-  return a.name < b.name ? -1 : 1;
+  return a.name.localeCompare(b.name, "en", { numeric: true });
 }
 
 /**

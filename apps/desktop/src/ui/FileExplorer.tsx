@@ -66,11 +66,10 @@ export function FileExplorer(props: Readonly<{ store: AppStore; hostId: string; 
   /** Whether an entry stays under the filter: its name matches, or something open below it does. */
   const kept = (dir: string, entry: FileEntry): boolean => {
     if (needle === "" || entry.name.toLowerCase().includes(needle)) return true;
-    const below = folders[pathOf(dir, entry.name)];
-    if (entry.kind !== "dir" || !open.has(pathOf(dir, entry.name))) return false;
-    return typeof below === "object" && "entries" in below
-      ? below.entries.some((child) => kept(pathOf(dir, entry.name), child))
-      : false;
+    const path = pathOf(dir, entry.name);
+    const below = folders[path];
+    const children = typeof below === "object" && "entries" in below ? below.entries : [];
+    return entry.kind === "dir" && open.has(path) && children.some((child) => kept(path, child));
   };
 
   const row = (dir: string, entry: FileEntry) => {
