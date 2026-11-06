@@ -105,6 +105,8 @@ export function ProjectsPage(
   useEffect(() => {
     void reload();
   }, [reload]);
+  /** What a project added or started from here does: the list is read again. */
+  const reloaded = () => void reload();
 
   const submit = async () => {
     // Blank name and base branch keep the daemon's defaults (folder name, current branch).
@@ -164,24 +166,19 @@ export function ProjectsPage(
             hostName={props.hostName}
             projects={projects}
             onOpenBoard={props.onOpenBoard}
-            onAdded={() => void reload()}
+            onAdded={reloaded}
           />
         )}
         {!loading && !board && list?.projects.length === 0 && (
           <EmptyState
             icon={FolderGit2}
             title={t("states.emptyProjects")}
-            action={<AddProject store={store} hostId={hostId} onAdded={() => void reload()} />}
+            action={<AddProject store={store} hostId={hostId} onAdded={reloaded} />}
           />
         )}
         {!loading && !board && (list?.projects.length ?? 0) > 0 && (
           <div>
-            <AddProject
-              store={store}
-              hostId={hostId}
-              variant="outline"
-              onAdded={() => void reload()}
-            />
+            <AddProject store={store} hostId={hostId} variant="outline" onAdded={reloaded} />
           </div>
         )}
         {!board && (
@@ -215,10 +212,10 @@ export function ProjectsPage(
         )}
         <div className="button-row">
           {host && hasFeature(host.hostInfo?.features, "projects.scan", false) && (
-            <FindProjects store={store} hostId={hostId} onAdded={() => void reload()} />
+            <FindProjects store={store} hostId={hostId} onAdded={reloaded} />
           )}
           {host && hasFeature(host.hostInfo?.features, "github", false) && (
-            <StartFromGithub store={store} hostId={hostId} onStarted={() => void reload()} />
+            <StartFromGithub store={store} hostId={hostId} onStarted={reloaded} />
           )}
         </div>
         <ul aria-label={t("projectsUi.list")} className="flex flex-col gap-2">
