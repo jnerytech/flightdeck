@@ -1289,6 +1289,7 @@ export const ptBR = {
     runEnv: "o ambiente de execução",
     templates: "as tarefas prontas",
     tasks: "os resultados das tarefas",
+    logs: "o log do daemon",
     sleep: "pôr sessões ociosas para dormir",
     resources: "o painel de recursos do host",
     depsCheck: "a verificação das dependências",
@@ -1634,7 +1635,9 @@ export const ptBR = {
     ssh_tag_invalid: "Uma tag é inválida: até 40 caracteres, sem vírgula.",
     vault_rules_invalid: "Algumas regras não valem: corrija o que está marcado.",
     transport_refused:
-      "O cofre só entrega por loopback ou pela Tailscale, que são cifrados pelo WireGuard.",
+      "Isto só funciona por uma conexão próxima: este computador (loopback) ou a Tailscale, que o WireGuard cifra. Para um host WSL, adicione-o como ws://localhost:<porta> (o WSL repassa a porta) ou pelo endereço da Tailscale.",
+    trust_root_refused:
+      "Esta pasta é uma pasta permitida com vários projetos, ou fica acima de uma: confie na pasta do próprio projeto.",
     secret_expired: "O prazo de uso do segredo passou: peça de novo.",
     vault_full:
       "O cofre do daemon está com segredos demais entregues: espere alguns serem usados ou vencerem.",
@@ -1853,6 +1856,7 @@ export const ptBR = {
     preview: "Sugestão da IA",
     before: "Antes",
     after: "Depois",
+    changes: "Alterações",
     accept: "Aceitar",
     acceptAnyway: "Aceitar mesmo assim",
     discard: "Descartar",
@@ -4146,6 +4150,18 @@ export const ptBR = {
     hintGeneric: "Confira se o host está ligado e alcançável, e se o daemon roda lá.",
     hintAddress:
       "Ou o daemon recusou o endereço desta máquina: no host, inclua a rede dela em allowedNetworks (o flightdeckd setup faz isso para o Tailscale).",
+  },
+  diagnostics: {
+    title: "Diagnóstico",
+    hint: "Se algo quebrar, envie o log. As linhas são editadas: nenhum token, chave, link ou valor do cofre é gravado.",
+    openLogs: "Abrir a pasta de logs",
+    copy: "Copiar diagnóstico",
+    copied: "Diagnóstico copiado: cole na sua mensagem.",
+    words: "log logs diagnóstico suporte pasta",
+    hostCopy: "Copiar as últimas linhas de log do host",
+    hostCopied: "{n} linhas de log copiadas.",
+    hostEmpty: "O host ainda não tem linhas de log.",
+    hostHint: "O host guarda o próprio log em {path}.",
   },
   sleep: {
     title: "Dormir sessões ociosas",

@@ -178,6 +178,44 @@ export class SecretScanner {
     }
     return found;
   }
+
+  /**
+   * The text with every secret it holds replaced by `[redacted]`: what a log line goes through so
+   * that no token, key, link or vault value is ever written. A `{{variable}}` stays (it is a place
+   * for a value, not a value), unless `keepPlaceholders` is false: a log has no such places.
+   */
+  redact(text: string, keepPlaceholders = true): string {
+    let clean = text;
+    for (const [, pattern] of SECRET_PATTERNS) {
+      clean = clean.replace(pattern, (hit) =>
+        keepPlaceholders && hit.includes("{{") ? hit : "[redacted]",
+      );
+    }
+    for (const value of this.vaultValues()) {
+      if (value.length >= MIN_VAULT_VALUE) clean = clean.split(value).join("[redacted]");
+    }
+    return clean;
+  }
+}
+
+/** `/home/<name>`, `/Users/<name>` and `C:\\Users\\<name>` (also with the backslashes doubled, as in JSON). */
+const HOME_FOLDER = /(?:\/(?:home|Users)\/|[A-Za-z]:\\{1,2}Users\\{1,2})[^/\\\s"']+/gi;
+
+/**
+ * The text with the user's home folder as `~`: a log is pasted in public issues, and the user's
+ * name is in every path under it. `home`, when known, is replaced whatever it looks like (a name
+ * with spaces, a folder that is not under /home); the usual folders of Linux, macOS and Windows
+ * are replaced either way.
+ */
+export function scrubHome(text: string, home?: string): string {
+  let clean = text;
+  const known = home?.replace(/[/\\]+$/, "") ?? "";
+  if (known.length >= 3) {
+    for (const spelling of new Set([known, known.replaceAll("\\", "\\\\")])) {
+      clean = clean.split(spelling).join("~");
+    }
+  }
+  return clean.replace(HOME_FOLDER, "~");
 }
 
 // -- the model -------------------------------------------------------------------------------

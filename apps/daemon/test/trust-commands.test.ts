@@ -166,4 +166,21 @@ describe("trust-commands: the person sees what a project would load and decides 
     // Revoking a root is harmless and is not refused.
     expect(await refusal("project.trust.set", { path: root, trusted: false })).toBe("ok");
   });
+
+  test("an allowed root that is itself one git repository can be trusted; one that holds another repository cannot (#592)", async () => {
+    const { root, project, refusal } = await daemon();
+    // The person added the project's own folder as the allowed root.
+    mkdirSync(join(root, ".git"));
+    expect(await refusal("project.trust.set", { path: root, trusted: true })).toBe("ok");
+    // A clone inside it makes the root hold more than one project.
+    mkdirSync(join(project, ".git"));
+    expect(await refusal("project.trust.set", { path: root, trusted: true })).toBe(
+      "invalid_state/trust_root_refused",
+    );
+  });
+
+  test("a session opens in a project nobody trusted: untrusted only keeps its own setup from loading (#592)", async () => {
+    const { project, refusal } = await daemon();
+    expect(await refusal("session.create", { cwd: project, prompt: "go" })).toBe("ok");
+  });
 });
