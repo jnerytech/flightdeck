@@ -2250,7 +2250,8 @@ horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janel
   - Cruzar o `pauseAt` gera uma notificação, uma vez por janela.
 - **Na barra superior:** um medidor pequeno mostra a janela mais usada entre os hosts online, com a
   porcentagem (o nome da janela aparece a partir de 960 px de largura). A partir de 80% ele ganha
-  uma marca de alerta na cor de "precisa de você", e em 100% a barra fica vermelha; o nome e a dica
+  uma marca de alerta na cor de "precisa de você", e em 100% (ou a partir do
+  `pauseAt`, como no cartão da conta) a barra fica vermelha; o nome e a dica
   dizem o nível, o host e o tempo que falta. Clicar nele abre a página desse host. Sem leitura, ele
   não aparece.
 - **Só terminal:** os hooks não trazem a cota. Quem usa só sessões do terminal vê barras vazias ou

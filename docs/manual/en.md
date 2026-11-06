@@ -2257,7 +2257,8 @@ window resets.
   - Crossing `pauseAt` raises a notification, once per window.
 - **In the top bar:** a small meter shows the window under most pressure across the online hosts,
   with its percentage (the window's name shows from 960 px wide). From 80% it carries a warning
-  mark in the needs-you colour, and at 100% the bar turns red; its name and tooltip say the level,
+  mark in the needs-you colour, and at 100% (or from `pauseAt`, as the account card) the bar
+  turns red; its name and tooltip say the level,
   the host and the time left. Clicking it opens that host's page. With no reading, it does not
   show.
 - **Terminal only:** the hooks do not carry the quota. Anyone who only uses terminal sessions
