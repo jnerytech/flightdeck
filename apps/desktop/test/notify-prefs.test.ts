@@ -7,7 +7,7 @@ import {
   type NotifyPrefs,
   type NotifySource,
 } from "../src/lib/notify-policy.ts";
-import { playNotifySound } from "../src/lib/notify-sound.ts";
+import { browserSound, playNotifySound } from "../src/lib/notify-sound.ts";
 import type { Platform } from "../src/platform/types.ts";
 
 const NOW = Date.parse("2026-11-04T10:00:00.000Z");
@@ -309,6 +309,40 @@ describe("notify-prefs: the sound plays from the app (issue #149)", () => {
         audio: () => ({ volume: 1, play: () => Promise.reject(new Error("blocked")) }),
       }),
     ).not.toThrow();
+  });
+
+  test("the browser's own audio is built from the globals it has, with one context for every sound", () => {
+    const g = globalThis as unknown as Record<string, unknown>;
+    const kept = { AudioContext: g.AudioContext, Audio: g.Audio };
+    const restore = () => {
+      for (const [key, value] of Object.entries(kept)) {
+        if (value === undefined) delete g[key];
+        else g[key] = value;
+      }
+    };
+    let contexts = 0;
+    try {
+      g.AudioContext = class {
+        constructor() {
+          contexts++;
+        }
+      };
+      g.Audio = class {
+        volume = 1;
+        constructor(readonly url: string) {}
+        play() {}
+      };
+      const deps = browserSound();
+      const first = deps.audioContext?.();
+      expect(deps.audioContext?.()).toBe(first);
+      expect(contexts).toBe(1);
+      expect((deps.audio?.("data:x") as { url: string } | undefined)?.url).toBe("data:x");
+      delete g.AudioContext;
+      delete g.Audio;
+      expect(browserSound()).toEqual({});
+    } finally {
+      restore();
+    }
   });
 });
 
