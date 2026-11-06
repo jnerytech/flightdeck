@@ -22,6 +22,8 @@ import {
   layoutFindings,
   loadBaseline,
   pinnedProblem,
+  SCROLL_SIZES,
+  SINGLE_SCROLL,
   waitForStable,
 } from "../lib/layout-guards.ts";
 
@@ -1284,6 +1286,16 @@ export async function layout(c: Context, problems: string[]) {
   // The geometry guards (issue #192), at three window sizes, on the longest labels (pt-BR). What
   // they find is named by data-slot path; the heuristic rules fail only when new against the baseline.
   if (c.lang === "pt-BR") await geometryGuards(c, screens, problems);
+  // Issue #567: the sidebar scrolls as one area between its fixed header and footer, at the
+  // usual window and at a short one, where it has to scroll at all.
+  for (const size of SCROLL_SIZES) {
+    await c.page.setViewportSize(size);
+    await open(c, { name: "hub" });
+    const found: Finding[] = await c.page.evaluate(layoutFindings, { single: SINGLE_SCROLL });
+    for (const split of found.filter((f) => f.rule === "scroll-split")) {
+      problems.push(`${c.lang} ${size.width}x${size.height}: ${split.path} ${split.detail}`);
+    }
+  }
   for (const viewport of VIEWPORTS) {
     await c.page.setViewportSize(viewport);
     for (const [name, route] of screens) {
