@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { bundleCode } from "../src/teleport/bundle.ts";
 import { git, gitRepo, gitRepoWithOrigin } from "./board-helpers.ts";
@@ -123,6 +123,38 @@ describe("teleport-bundle: the code of a session as one git bundle (#100)", () =
       "teleport_too_large",
       "",
     ]);
+  });
+
+  test("the repository's fsmonitor and external diff never run", async () => {
+    const { repo, folder } = await working();
+    const marks = tempDir("fd-teleport-marks-");
+    const script = async (name: string) => {
+      const path = join(marks, `${name}.sh`);
+      await writeFile(path, `#!/bin/sh\ntouch "${join(marks, name)}"\n`, { mode: 0o755 });
+      return path;
+    };
+    git(repo, "config", "core.fsmonitor", await script("fsmonitor"));
+    git(repo, "config", "diff.external", await script("external"));
+    await bundleCode({ cwd: repo, folder, id: "p", scan: () => [] });
+    const ran = await readdir(marks);
+    expect(ran.filter((name) => !name.endsWith(".sh"))).toEqual([]);
+  });
+
+  test("a secret a commit added and a later one removed is still counted: the bundle carries both", async () => {
+    const { repo, folder } = await working();
+    await writeFile(join(repo, "old.txt"), `token ${TOKEN}\n`);
+    git(repo, "add", "old.txt");
+    git(repo, "commit", "-q", "-m", "feat(x): add");
+    git(repo, "rm", "-q", "old.txt");
+    git(repo, "commit", "-q", "-m", "fix(x): remove");
+    await rm(join(repo, "new.txt"));
+    const code = await bundleCode({
+      cwd: repo,
+      folder,
+      id: "p",
+      scan: (text) => (text.includes("ghp_") ? ["GitHub token"] : []),
+    });
+    expect(code.secrets).toEqual({ lines: 1, labels: ["GitHub token"] });
   });
 
   test("a repository with no index yet still bundles its working tree", async () => {
