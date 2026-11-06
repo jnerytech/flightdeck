@@ -5,7 +5,7 @@ import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { whichOnPath } from "../src/which.ts";
 import { installFakeClaude } from "./fake-claude.ts";
-import { newManager } from "./helpers.ts";
+import { newManager, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const TOKEN = "bg-control-token-0123456789";
@@ -42,7 +42,11 @@ const LOST = {
   state: "stopped",
 };
 
-function setup(channel?: (id: string, text: string) => boolean) {
+function setup(
+  channel?: (id: string, text: string) => boolean,
+  trust?: (cwd: string) => { trusted: boolean; configRoot?: string },
+  prepare?: (cwd: string) => Promise<void>,
+) {
   const fake = installFakeClaude([]);
   cleanups.push(fake.restore);
   fake.setAgents([RUNNING, DONE, LOST]);
@@ -50,6 +54,8 @@ function setup(channel?: (id: string, text: string) => boolean) {
     db: new EventStore(":memory:").db,
     claude: () => whichOnPath("claude"),
     ...(channel ? { channel } : {}),
+    ...(trust ? { trust } : {}),
+    ...(prepare ? { prepare } : {}),
   });
   return { fake, service };
 }
@@ -102,6 +108,34 @@ describe("bg-controlar: stop and restart", () => {
   });
 });
 
+describe("bg-controlar: respawn in a folder not trusted (review of #196)", () => {
+  test("is refused: claude respawn takes no flags, so it cannot be told to leave the project's hooks and servers out", async () => {
+    const { fake, service } = setup(undefined, () => ({ trusted: false }));
+    const error = await refused(() => service.respawn("7c5dcf5d"));
+    expect(error.reason).toBe("bg_untrusted");
+    expect(cli(fake)).toEqual([]);
+  });
+
+  test("runs in a trusted folder, after the folder's boundaries were looked at", async () => {
+    const order: string[] = [];
+    const { fake, service } = setup(
+      undefined,
+      () => ({ trusted: true }),
+      async (cwd) => void order.push(`prepare ${cwd}`),
+    );
+    await service.respawn("7c5dcf5d");
+    expect(order).toEqual(["prepare /work/app"]);
+    expect(cli(fake)).toEqual([["respawn", "7c5dcf5d"]]);
+  });
+
+  test("is refused in a trusted worktree: the respawn cannot be given the main checkout to read the configuration from (review of #196)", async () => {
+    const { fake, service } = setup(undefined, () => ({ trusted: true, configRoot: "/work/main" }));
+    const error = await refused(() => service.respawn("7c5dcf5d"));
+    expect(error.reason).toBe("bg_worktree_respawn");
+    expect(cli(fake)).toEqual([]);
+  });
+});
+
 describe("bg-controlar: a message", () => {
   test("a session with a channel gets it through the channel, and claude is not run", async () => {
     const sent: Array<[string, string]> = [];
@@ -128,6 +162,58 @@ describe("bg-controlar: a message", () => {
     expect(starts(fake)).toEqual([
       ["--resume", "99999999-0000-4000-8000-000000000000", "--bg", "--", "--not-a-flag, continue"],
     ]);
+  });
+
+  test("a session in a folder not trusted is continued without the project's hooks and servers, and one in a card's worktree reads the project's setup", async () => {
+    const untrusted = setup(undefined, () => ({ trusted: false }));
+    await untrusted.service.message("a1b2c3d4", "continue");
+    expect(starts(untrusted.fake)).toEqual([
+      [
+        "--resume",
+        "99999999-0000-4000-8000-000000000000",
+        "--bg",
+        "--setting-sources",
+        "user",
+        "--strict-mcp-config",
+        "--",
+        "continue",
+      ],
+    ]);
+    const asked: string[] = [];
+    const worktree = setup(undefined, (cwd) => {
+      asked.push(cwd);
+      return { trusted: true, configRoot: "/work/main" };
+    });
+    await worktree.service.message("a1b2c3d4", "continue");
+    expect(asked).toEqual(["/work/app"]);
+    expect(starts(worktree.fake)).toEqual([
+      [
+        "--resume",
+        "99999999-0000-4000-8000-000000000000",
+        "--bg",
+        "--project-config-root",
+        "/work/main",
+        "--",
+        "continue",
+      ],
+    ]);
+  });
+
+  test("the folder's git boundaries are looked at before a continued session is told whether it is trusted (review of #196)", async () => {
+    const order: string[] = [];
+    const { service } = setup(
+      undefined,
+      (cwd) => {
+        order.push(`decide ${cwd}`);
+        return { trusted: true };
+      },
+      async (cwd) => {
+        await Promise.resolve();
+        order.push(`prepare ${cwd}`);
+      },
+    );
+    await service.message("a1b2c3d4", "continue");
+    expect(order).toEqual(["prepare /work/app", "decide /work/app"]);
   });
 
   test("one with no Claude session id cannot be continued, and a claude that refuses is reported", async () => {
@@ -180,5 +266,41 @@ describe("bg-controlar: over the protocol", () => {
       expect(ack.ok).toBe(false);
     }
     expect(cli(fake)).toHaveLength(2);
+  });
+});
+
+describe("bg-controlar: a listed session's folder is the listing's word, so it is checked against the allowed roots (issue #415)", () => {
+  const withRoots = (roots: readonly string[]) => {
+    const fake = installFakeClaude([]);
+    cleanups.push(fake.restore);
+    fake.setAgents([RUNNING, DONE, LOST]);
+    const service = new BgService({
+      db: new EventStore(":memory:").db,
+      claude: () => whichOnPath("claude"),
+      trust: () => ({ trusted: true }),
+      allowedRoots: roots,
+    });
+    return { fake, service };
+  };
+
+  test("message and respawn refuse a session whose folder is outside the roots, and run nothing", async () => {
+    const { fake, service } = withRoots([tempDir("fd-bg-roots-")]);
+    for (const run of [
+      () => service.respawn("7c5dcf5d"),
+      () => service.message("a1b2c3d4", "hello"),
+    ]) {
+      const error = await refused(run);
+      expect(error.code).toBe("forbidden_cwd");
+      expect(error.reason).toBe("cwd_outside_roots");
+    }
+    expect(cli(fake)).toEqual([]);
+  });
+
+  test("a session inside a root is continued as before", async () => {
+    const root = tempDir("fd-bg-roots-");
+    const { fake, service } = withRoots([root]);
+    fake.setAgents([{ ...RUNNING, cwd: root }]);
+    await service.respawn("7c5dcf5d");
+    expect(cli(fake)).toEqual([["respawn", "7c5dcf5d"]]);
   });
 });

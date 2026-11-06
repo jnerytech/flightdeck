@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { poll } from "../../daemon/test/helpers.ts";
 import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { unfoldAll } from "./unfold.ts";
 import { waiter } from "./wait.ts";
 
 registerDom();
@@ -52,6 +54,7 @@ async function setup() {
   });
   await settle(() => store.getState().hosts[0]?.sessions.length === 2);
   await sidebar.openHub();
+  await unfoldAll(act);
   await settle(() => screen.queryByRole("listitem", { name: "Beta" }) !== null);
   return { d, store, mem };
 }
@@ -112,9 +115,15 @@ describe("direcao-visual: três colunas", () => {
     expect(alpha.className).not.toContain("min-h-10");
     expect(within(alpha).queryByRole("img", { name: "ociosa" })).not.toBeNull();
     // The host is the same for the whole group: gray, once, in its header.
-    const groupMeta = alpha.closest("section")?.querySelector("[data-slot='group-meta']");
-    expect(groupMeta?.textContent).toContain("alfa");
-    expect(groupMeta?.className ?? "").toContain("text-muted-foreground");
+    // Issue #111: it is a chip in the header (a link to the host page); the origin stays gray text.
+    const section = alpha.closest("section");
+    expect(section?.querySelector("button[aria-label='Abrir o host alfa']")?.textContent).toBe(
+      "alfa",
+    );
+    expect(section?.querySelector("[data-slot='group-meta']")?.textContent).toContain("Flightdeck");
+    expect(section?.querySelector("[data-slot='group-meta']")?.className ?? "").toContain(
+      "text-muted-foreground",
+    );
     expect(within(alpha).queryByText(/^alfa/)).toBeNull();
     const time = alpha.querySelector("time");
     expect(time?.className ?? "").toContain("tabular-nums");
@@ -175,7 +184,7 @@ describe("direcao-visual: três colunas", () => {
 
   test("em Configurações a densidade confortável (40 px) vale para a lista e fica guardada", async () => {
     const { store, mem } = await setup();
-    await click(screen.queryByRole("button", { name: "Configurações" }));
+    await chooseFromAccountMenu("Configurações");
     // Settings is a lazy screen: its chunk may still be loading when the click returns.
     await settle(() => screen.queryByLabelText("Densidade da lista") !== null);
     const select = screen.queryByLabelText("Densidade da lista") as HTMLSelectElement | null;
@@ -196,6 +205,10 @@ describe("direcao-visual: três colunas", () => {
 
   test("J e K movem pela lista, Enter abre e as teclas ficam com o campo quando se digita", async () => {
     const { store } = await setup();
+    // The transcript from the terminal is an earlier session: open it, so all three are listed.
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /sess(?:ões|ão) anterior(?:es)?/ }));
+    });
     // The managed ones and the transcript from the terminal, in the order they are listed.
     const order = [...main().querySelectorAll("li[data-active]")].map((li) =>
       li.getAttribute("aria-label"),
@@ -243,7 +256,7 @@ describe("direcao-visual: três colunas", () => {
     expect(within(main()).queryByText("Escolha uma sessão para ler.")).not.toBeNull();
   });
 
-  test("Histórico de um host que ainda não conectou mostra só o carregamento, sem a lista", async () => {
+  test("a host's History that cannot connect shows the host's offline banner, without the list", async () => {
     const mem = memoryPlatform();
     const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
     cleanups.push(() => store.dispose());
@@ -255,7 +268,9 @@ describe("direcao-visual: três colunas", () => {
     await act(async () => {
       store.router.push({ name: "history", host: hostId });
     });
-    expect(screen.queryByRole("status", { name: "Conectando a longe…" })).not.toBeNull();
+    // Issue #227: after a failed try it is not "connecting" forever, it says the host is offline.
+    await settle(() => screen.queryByRole("region", { name: "Estado da conexão" }) !== null);
+    expect(screen.queryByRole("status", { name: "Conectando a longe…" })).toBeNull();
     expect(within(main()).queryByRole("separator")).toBeNull();
     expect(screen.queryByRole("list", { name: "Sessões do histórico" })).toBeNull();
   });

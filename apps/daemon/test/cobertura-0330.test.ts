@@ -2,11 +2,13 @@
  * Coverage of the branches the no-sync changes left without a test: a read that fails for a reason
  * other than "missing", a file that is not there, a helper nobody passed an override to.
  */
+
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { withIdleQuery } from "../src/account/readers.ts";
+import { refArg } from "../src/board/ref-arg.ts";
 import { excludeLocalSettingsAsync, freshBase } from "../src/board/worktree.ts";
 import { Central } from "../src/central/central.ts";
 import { ProjectKeys } from "../src/central/project-key.ts";
@@ -78,23 +80,23 @@ describe("cobertura-0330: worktree", () => {
 
   test("freshBase: no origin keeps the base; a failed fetch is a notice; a remote ahead wins; level stays local", async () => {
     const { root, repo } = gitRepo();
-    expect(await freshBase(repo, "main")).toEqual({ ref: "main", notice: null });
+    expect(await freshBase(repo, refArg("main"))).toEqual({ ref: "main", notice: null });
     git(repo, "remote", "add", "origin", join(root, "nowhere.git"));
-    const failed = await freshBase(repo, "main");
+    const failed = await freshBase(repo, refArg("main"));
     expect(failed.ref).toBe("main");
     expect(failed.notice).toContain("Could not refresh main from origin");
     const remote = join(root, "remote.git");
     git(root, "init", "-q", "--bare", "-b", "main", "remote.git");
     git(repo, "remote", "set-url", "origin", remote);
     git(repo, "push", "-q", "origin", "main");
-    expect(await freshBase(repo, "main")).toEqual({ ref: "main", notice: null });
+    expect(await freshBase(repo, refArg("main"))).toEqual({ ref: "main", notice: null });
     git(root, "clone", "-q", remote, "other");
     const other = join(root, "other");
     writeFileSync(join(other, "new.txt"), "x\n");
     git(other, "add", ".");
     git(other, "-c", "user.name=t", "-c", "user.email=t@x.invalid", "commit", "-q", "-m", "ahead");
     git(other, "push", "-q", "origin", "main");
-    expect(await freshBase(repo, "main")).toEqual({ ref: "origin/main", notice: null });
+    expect(await freshBase(repo, refArg("main"))).toEqual({ ref: "origin/main", notice: null });
   });
 });
 
@@ -270,7 +272,7 @@ describe("cobertura-0330: project finder, ssh agent", () => {
     const ops = processOps(undefined, undefined, async (ms) => void slept.push(ms));
     expect(await ops.waitForSocket(sock)).toBe(true);
     expect(await ops.waitForSocket(join(dir, "never.sock"))).toBe(false);
-    expect(slept.length).toBe(40);
+    expect(slept).toHaveLength(40);
     symlinkSync(sock, join(dir, "link"));
   });
 });

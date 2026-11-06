@@ -24,7 +24,8 @@ const plan = planCoverageFuncs({
   tests,
   platform: process.platform,
   git: (args) => {
-    const proc = spawnSync("git", args, { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 26 });
+    const options = { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 26 } as const;
+    const proc = spawnSync("git", args, options); // NOSONAR: git and bun come from the PATH of the developer running the script
     return proc.status === 0 ? proc.stdout : null;
   },
   readFile: (path) => readFileSync(resolve(ROOT, path), "utf8"),

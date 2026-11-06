@@ -1,30 +1,46 @@
 import type { ReactNode } from "react";
+import { RuntimeBadge } from "@/components/session/runtime-badge";
 import { type StateTone, StatusDot } from "@/components/status/status-dot";
 import { cn } from "@/lib/utils";
+import type { HubState } from "../../lib/hub.ts";
+
+/** The tone of the dot of each state of a session, in every list that shows them. */
+export const STATE_TONES: Record<HubState, StateTone> = {
+  running: "running",
+  needs_you: "needs-you",
+  idle: "idle",
+  ended: "ended",
+};
 
 /**
  * One session as a card: title (it opens the session), project, host, status, the last line, the
  * cost and the actions menu.
  */
-export function SessionCard(props: {
-  title: string;
-  project: string;
-  host: string;
-  stateLabel: string;
-  tone: StateTone;
-  /** What the session asked and is doing: "Pedido: … · rodando Bash". */
-  line: string;
-  /** The formatted cost, when the host reports one. */
-  cost?: string;
-  costLabel: string;
-  persona?: string | null;
-  /** The session open on the right. */
-  current?: boolean;
-  /** The row the keyboard is on. */
-  active?: boolean;
-  onOpen(): void;
-  actions?: ReactNode;
-}) {
+export function SessionCard(
+  props: Readonly<{
+    title: string;
+    project: string;
+    host: string;
+    stateLabel: string;
+    tone: StateTone;
+    /** What the session asked and is doing: "Pedido: … · rodando Bash". */
+    line: string;
+    /** The formatted cost, when the host reports one. */
+    cost?: string;
+    costLabel: string;
+    persona?: string | null;
+    /** The prompt cache countdown of an idle session, when it is on. */
+    cache?: ReactNode;
+    /** Phase 39: the agent's name when it is not Claude Code ("OpenCode"). */
+    runtime?: string | null;
+    /** The session open on the right. */
+    current?: boolean;
+    /** The row the keyboard is on. */
+    active?: boolean;
+    onOpen(): void;
+    actions?: ReactNode;
+  }>,
+) {
   return (
     <li
       data-slot="session-card"
@@ -40,7 +56,7 @@ export function SessionCard(props: {
         <button
           type="button"
           onClick={props.onOpen}
-          className="min-w-0 flex-1 truncate text-left font-medium"
+          className="min-h-6 min-w-0 flex-1 truncate text-left font-medium"
         >
           {props.title}
         </button>
@@ -53,6 +69,8 @@ export function SessionCard(props: {
         {props.persona && (
           <span className="shrink-0 rounded bg-muted px-1 text-foreground">{props.persona}</span>
         )}
+        {props.cache}
+        {props.runtime && <RuntimeBadge label={props.runtime} />}
         {props.cost !== undefined && (
           <output aria-label={props.costLabel} className="ml-auto shrink-0 tabular-nums">
             {props.cost}

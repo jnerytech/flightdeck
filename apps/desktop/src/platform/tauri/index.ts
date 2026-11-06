@@ -11,6 +11,7 @@ import {
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
+import { badgeRgba } from "../../lib/badge-icon.ts";
 import { type FilePickerWindow, saveWithPicker } from "../save-file.ts";
 import type { GeneratedKey, PickedFile, Platform, TrayAction } from "../types.ts";
 
@@ -25,6 +26,18 @@ export interface BrowserWindow extends FilePickerWindow {
  * src-tauri, everything else through the official Tauri 2 plugins. `call` and `subscribe` stand in
  * for `invoke` and `listen` in tests.
  */
+/**
+ * A command of the AI assistant's Rust side. It rejects with a refusal object `{ reason, params? }`,
+ * which reaches the caller as it came; anything else (Tauri rejects a malformed argument with a plain
+ * string, before the command runs) is `assistant_bad_output`.
+ */
+function shell<T>(call: typeof invoke, command: string, args: Record<string, unknown>): Promise<T> {
+  return call<T>(command, args).catch((error: unknown) => {
+    const reason = (error as { reason?: unknown } | null | undefined)?.reason;
+    return Promise.reject(typeof reason === "string" ? error : { reason: "assistant_bad_output" });
+  });
+}
+
 export function tauriPlatform(
   win: BrowserWindow = window,
   call: typeof invoke = invoke,
@@ -32,7 +45,23 @@ export function tauriPlatform(
 ): Platform {
   /** The update found by the last check, installed by `updater.install`. */
   let pending: Update | null = null;
+  /** The update `updater.download` fetched already (issue #280), installed without a second download. */
+  let downloaded: Update | null = null;
   return {
+    assistant: {
+      supported: true,
+      keyStatus: (provider) =>
+        shell<{ saved: boolean; last4?: string }>(call, "assistant_key_status", { provider }),
+      setKey: (provider, key) =>
+        shell<{ last4: string }>(call, "assistant_key_set", { provider, key }),
+      deleteKey: (provider) => shell(call, "assistant_key_delete", { provider }),
+      test: (provider) => shell(call, "assistant_test", { provider }),
+      models: (provider) => shell(call, "assistant_models", { provider }),
+      run: (request, vaultIds, { provider, denyDataCollection }) =>
+        shell(call, "assistant_run", { provider, request, vaultIds, denyDataCollection }),
+      cancel: (requestId) => shell(call, "assistant_cancel", { requestId }),
+      vaultHits: (text, ids) => shell<string[]>(call, "vault_hits", { text, ids }),
+    },
     storage: win.localStorage,
     secrets: {
       get: (hostId) => call<string | null>("token_get", { hostId }),
@@ -77,7 +106,18 @@ export function tauriPlatform(
       };
     },
     setTrayStatus: (status) => call("tray_set_status", { ...status }),
+    setBadge: async (count) => {
+      await call("set_unread_badge", { rgba: badgeRgba(count) ?? [] });
+    },
     setTrayMenu: (menu) => call("tray_set_menu", { ...menu }),
+    // Issue #402: the tray's Quit asks the app first, so a downloaded update installs on the way out.
+    onQuitRequested(handler) {
+      const unlisten = subscribe("quit-requested", () => handler());
+      return () => void unlisten.then((stop) => stop());
+    },
+    quitNow: async () => {
+      await call("quit_now");
+    },
     // The Rust tray emits `tray-action` for each click in the "Precisa de você" submenu.
     onTrayAction(handler) {
       const unlisten = subscribe<TrayAction>("tray-action", (event) => handler(event.payload));
@@ -120,9 +160,19 @@ export function tauriPlatform(
         return pending ? { version: pending.version, notes: pending.body ?? "" } : null;
       },
       // The plugin checks the signature against plugins.updater.pubkey before installing.
+      download: async () => {
+        if (!pending) throw new Error("no update found to download");
+        await pending.download();
+        downloaded = pending;
+      },
+      installDownloaded: async () => {
+        // Windows' passive installer starts the app again by default (/R, AUTOLAUNCHAPP): Quit means quit.
+        if (downloaded) await downloaded.install({ restartAfterInstall: false });
+      },
       install: async () => {
         if (!pending) throw new Error("no update found to install");
-        await pending.downloadAndInstall();
+        if (downloaded === pending) await pending.install();
+        else await pending.downloadAndInstall();
         await relaunch();
       },
     },

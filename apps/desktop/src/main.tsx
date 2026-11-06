@@ -6,7 +6,7 @@ import { tauriPlatform } from "./platform/tauri/index.ts";
 import { App } from "./ui/App.tsx";
 import "./styles.css";
 
-const store = new AppStore(tauriPlatform());
+const store = new AppStore(tauriPlatform(), { startRoute: { name: "overview" } });
 // The webview's own errors, rejections and console errors go to the app's log file.
 installGlobalLog(
   {

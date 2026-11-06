@@ -26,7 +26,7 @@ import {
 } from "../src/plugins/plugins.ts";
 import { startServer } from "../src/server.ts";
 import { gitRepo, newBoard } from "./board-helpers.ts";
-import { tempDir } from "./helpers.ts";
+import { BASELINE_FEATURES, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const codeOf = async (fn: () => unknown): Promise<string> => {
@@ -1212,13 +1212,13 @@ describe("plugins: protocolo", () => {
     const on = await served();
     expect(
       (await on.client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toContain("plugins");
     const off = await served(false);
     expect(
       (await off.client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).not.toContain("plugins");
     expect(await off.client.request("plugins.list", {})).toMatchObject({
@@ -1328,7 +1328,7 @@ describe("plugins: protocolo", () => {
     await client.request("hello", { token: TOKEN, client: "t" });
     expect(
       (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toContain("plugins");
     await client.data("plugins.pin", { plugin: "deploy-tools@acme", pinned: true });

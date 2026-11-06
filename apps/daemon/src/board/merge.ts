@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { FlightdeckError } from "../errors.ts";
 import { ulid } from "../ulid.ts";
 import { git } from "./command.ts";
+import { HEAD, type Rev, refArg } from "./ref-arg.ts";
 import { must } from "./worktree.ts";
 
 /**
@@ -10,11 +11,18 @@ import { must } from "./worktree.ts";
  */
 export async function aheadBehind(
   worktree: string,
-  base: string,
-  ref = "HEAD",
+  base: Rev,
+  ref: Rev = HEAD,
 ): Promise<{ ahead: number; behind: number }> {
   const counted = must(
-    await git(worktree, "rev-list", "--left-right", "--count", `${base}...${ref}`),
+    await git(
+      worktree,
+      "rev-list",
+      "--left-right",
+      "--count",
+      "--end-of-options",
+      `${refArg(base)}...${refArg(ref)}`,
+    ),
     "git rev-list",
   );
   const [behind, ahead] = counted.stdout.trim().split(/\s+/).map(Number);
@@ -22,8 +30,8 @@ export async function aheadBehind(
 }
 
 /** Merges go into a local branch: a remote ref or a deleted branch is refused. */
-export async function assertLocalBranch(repo: string, base: string): Promise<void> {
-  const local = await git(repo, "show-ref", "--verify", "--quiet", `refs/heads/${base}`);
+export async function assertLocalBranch(repo: string, base: Rev): Promise<void> {
+  const local = await git(repo, "show-ref", "--verify", "--quiet", `refs/heads/${refArg(base)}`);
   if (local.code !== 0) {
     throw new FlightdeckError(
       "invalid_state",
@@ -44,8 +52,8 @@ export async function pendingFiles(cwd: string): Promise<string[]> {
  * Rebases the worktree's branch on `base`, uncommitted changes stashed and put back. On a
  * conflict the rebase is aborted (which restores them) and the error lists the files.
  */
-export async function rebaseOnto(worktree: string, base: string): Promise<void> {
-  const rebase = await git(worktree, "rebase", "--autostash", base);
+export async function rebaseOnto(worktree: string, base: Rev): Promise<void> {
+  const rebase = await git(worktree, "rebase", "--autostash", "--end-of-options", refArg(base));
   if (rebase.code === 0) return;
   const conflicted = await git(worktree, "diff", "--name-only", "--diff-filter=U");
   await git(worktree, "rebase", "--abort");
@@ -69,12 +77,12 @@ async function checkedOutAt(repo: string, branch: string): Promise<string | null
   return null;
 }
 
-async function mergeIn(cwd: string, branch: string, mode: "merge" | "squash", message: string) {
+async function mergeIn(cwd: string, branch: Rev, mode: "merge" | "squash", message: string) {
   if (mode === "merge") {
-    must(await git(cwd, "merge", "--no-ff", "-m", message, branch), "git merge");
+    must(await git(cwd, "merge", "--no-ff", "-m", message, refArg(branch)), "git merge");
     return;
   }
-  must(await git(cwd, "merge", "--squash", branch), "git merge --squash");
+  must(await git(cwd, "merge", "--squash", refArg(branch)), "git merge --squash");
   must(await git(cwd, "commit", "-m", message), "git commit");
 }
 
@@ -87,8 +95,8 @@ async function mergeIn(cwd: string, branch: string, mode: "merge" | "squash", me
  */
 export async function mergeIntoBase(
   repo: string,
-  base: string,
-  branch: string,
+  base: Rev,
+  branch: Rev,
   mode: "merge" | "squash",
   message: string,
 ): Promise<void> {
@@ -98,8 +106,9 @@ export async function mergeIntoBase(
     "--write-tree",
     "--name-only",
     "--no-messages",
-    base,
-    branch,
+    "--end-of-options",
+    refArg(base),
+    refArg(branch),
   );
   if (check.code === 1) {
     const files = check.stdout.split("\n").slice(1).filter(Boolean).join(", ");
@@ -127,7 +136,7 @@ export async function mergeIntoBase(
   }
   // Where card worktrees live: excluded from the repository's status.
   const temporary = join(repo, ".flightdeck", "worktrees", `merge-${ulid().toLowerCase()}`);
-  must(await git(repo, "worktree", "add", "-q", temporary, base), "git worktree add");
+  must(await git(repo, "worktree", "add", "-q", temporary, refArg(base)), "git worktree add");
   try {
     await mergeIn(temporary, branch, mode, message);
   } finally {

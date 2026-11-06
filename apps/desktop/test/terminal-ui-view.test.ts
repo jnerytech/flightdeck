@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  isWindowsHost,
   TERMINAL_FONT_DEFAULT,
   TERMINAL_FONT_FAMILY,
   TERMINAL_FONT_KEY,
@@ -8,6 +9,7 @@ import {
   TerminalFontController,
   terminalKeyAction,
   terminalTheme,
+  terminalWheelAction,
 } from "../src/lib/terminal-view.ts";
 
 const key = (
@@ -40,6 +42,25 @@ describe("terminal-ui: keys, colors and font", () => {
     expect(terminalKeyAction(key("V", { ctrl: true, shift: true }))).toBe("paste");
     expect(terminalKeyAction(key("F", { ctrl: true, shift: true }))).toBe("search");
     expect(terminalKeyAction(key("c", { ctrl: true }))).toBe("pass");
+    // Shift+Enter alone is a new line; with another modifier, or Enter alone, it is not.
+    expect(terminalKeyAction(key("Enter", { shift: true }))).toBe("newline");
+    expect(terminalKeyAction(key("Enter", {}))).toBe("pass");
+    expect(terminalKeyAction(key("Enter", { shift: true, ctrl: true }))).toBe("pass");
+    expect(terminalKeyAction(key("Enter", { shift: true, alt: true }))).toBe("pass");
+    // Ctrl+C is the interrupt; on Windows it copies only while something is selected.
+    expect(terminalKeyAction(key("c", { ctrl: true }), { windows: true, selected: true })).toBe(
+      "copy",
+    );
+    expect(terminalKeyAction(key("c", { ctrl: true }), { windows: true, selected: false })).toBe(
+      "pass",
+    );
+    expect(terminalKeyAction(key("c", { ctrl: true }), { windows: false, selected: true })).toBe(
+      "pass",
+    );
+    expect(terminalKeyAction(key("v", { ctrl: true }), { windows: true, selected: true })).toBe(
+      "pass",
+    );
+    expect(terminalKeyAction(key("c", {}), { windows: true, selected: true })).toBe("pass");
     expect(terminalKeyAction(key("v", { ctrl: true }))).toBe("pass");
     expect(terminalKeyAction(key("C", { ctrl: true, shift: true, alt: true }))).toBe("pass");
     expect(terminalKeyAction(key("C", { shift: true }))).toBe("pass");
@@ -87,5 +108,48 @@ describe("terminal-ui: keys, colors and font", () => {
     expect(
       new TerminalFontController(memoryStorage({ [TERMINAL_FONT_KEY]: "400" }).storage).value,
     ).toBe(24);
+  });
+
+  test("Ctrl with =, +, - or 0 zooms the terminal, with Shift or not, and only with Ctrl alone (issue #476)", () => {
+    expect(terminalKeyAction(key("=", { ctrl: true }))).toBe("zoomIn");
+    expect(terminalKeyAction(key("+", { ctrl: true, shift: true }))).toBe("zoomIn");
+    expect(terminalKeyAction(key("-", { ctrl: true }))).toBe("zoomOut");
+    expect(terminalKeyAction(key("_", { ctrl: true, shift: true }))).toBe("zoomOut");
+    expect(terminalKeyAction(key("0", { ctrl: true }))).toBe("zoomReset");
+    expect(terminalKeyAction(key("="))).toBe("pass");
+    expect(terminalKeyAction(key("-", { ctrl: true, alt: true }))).toBe("pass");
+    expect(terminalKeyAction(key("0", { ctrl: true, meta: true }))).toBe("pass");
+  });
+
+  test("Ctrl+wheel zooms, up in and down out; the wheel alone is left to scroll (issue #476)", () => {
+    expect(terminalWheelAction({ ctrlKey: true, deltaY: -120 })).toBe("zoomIn");
+    expect(terminalWheelAction({ ctrlKey: true, deltaY: 120 })).toBe("zoomOut");
+    expect(terminalWheelAction({ ctrlKey: true, deltaY: 0 })).toBeNull();
+    expect(terminalWheelAction({ ctrlKey: false, deltaY: -120 })).toBeNull();
+  });
+
+  test("a zoom step moves the kept font size by 1 within 10..24, and the reset brings back 13 (issue #476)", () => {
+    const kept = memoryStorage({ [TERMINAL_FONT_KEY]: "23" });
+    const controller = new TerminalFontController(kept.storage);
+    const sizes: number[] = [];
+    for (const step of ["zoomIn", "zoomIn", "zoomOut", "zoomReset"] as const) {
+      controller.zoom(step);
+      sizes.push(controller.value);
+    }
+    expect(sizes).toEqual([24, 24, 23, 13]);
+    expect(kept.items.get(TERMINAL_FONT_KEY)).toBe("13");
+    const smallest = new TerminalFontController(
+      memoryStorage({ [TERMINAL_FONT_KEY]: "10" }).storage,
+    );
+    smallest.zoom("zoomOut");
+    expect(smallest.value).toBe(10);
+  });
+
+  test("the host is Windows when the user agent says so", () => {
+    expect(
+      isWindowsHost("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Edg/130"),
+    ).toBe(true);
+    expect(isWindowsHost("Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36")).toBe(false);
+    expect(isWindowsHost("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)")).toBe(false);
   });
 });

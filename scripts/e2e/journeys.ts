@@ -1,17 +1,32 @@
 /**
- * The e2e journeys (phase 10): fourteen in a real browser against the seeded demo, in both
+ * The e2e journeys (phase 10): twenty in a real browser against the seeded demo, in both
  * languages, and a layout check of the main screens at 1280x800 and 800x600 (nothing sticks out
  * sideways, and the end of the long list shows after scrolling). The runner is `@playwright/test`
- * (scripts/e2e/journeys.e2e.ts); this file holds the journeys themselves.
+ * (scripts/e2e/define-journeys.ts, one file per language); this file holds the journeys themselves.
  */
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { expect, type Page } from "@playwright/test";
 import type { Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
 import type { Route } from "../../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "../demo-seed.ts";
 import { acoesAction, DANGER_SESSION, OVERFLOW_VIEWPORTS, VIEWPORTS } from "../lib/e2e-journeys.ts";
 import { ensureOnline } from "../lib/e2e-online.ts";
+import {
+  BARS,
+  type Finding,
+  findingKey,
+  GUARD_SIZES,
+  judge,
+  KEY_REGIONS,
+  layoutFindings,
+  loadBaseline,
+  waitForStable,
+} from "../lib/layout-guards.ts";
 
 const ALFA = "demo-alfa";
+/** The name of the second demo host, as the sidebar and the forms show it. */
+const BETA = "beta";
 export const WAIT = 15_000;
 /** A session needs the host to start it: on a loaded machine that takes far longer than a click. */
 export const SESSION_WAIT = 60_000;
@@ -26,9 +41,17 @@ export type Context = {
   t: ReturnType<typeof translator>;
 };
 
-/** Opens a screen of the demo; `prefs` stores the theme and language like the prints do. */
-export async function open(c: Context, route: Route, prefs = true) {
-  const query = new URLSearchParams({ route: JSON.stringify(route) });
+/**
+ * Opens a screen of the demo; `prefs` stores the theme and language like the prints do, and `extra`
+ * adds demo switches to the address (`update=<version>` makes the updater offer that version).
+ */
+export async function open(
+  c: Context,
+  route: Route,
+  prefs = true,
+  extra: Record<string, string> = {},
+) {
+  const query = new URLSearchParams({ route: JSON.stringify(route), ...extra });
   if (prefs) {
     query.set("lang", c.lang);
     query.set("theme", "light");
@@ -37,13 +60,22 @@ export async function open(c: Context, route: Route, prefs = true) {
   // connection to heal in seconds.
   query.set("reconnect", "fast");
   await c.page.goto(`${c.url}?${query}`);
-  await c.page.waitForTimeout(1500);
+  // Not a guess: the sidebar's host dots are drawn (the screens with one), the hosts answer, and
+  // then the layout holds still. A screen without a sidebar (simple mode) has no dots to wait for.
+  await c.page
+    .getByRole("img", { name: /^(alfa|beta): / })
+    .first()
+    .waitFor({ timeout: 5000 })
+    .catch(() => undefined);
   await ensureOnline({
     online: () => demoHostsOnline(c),
-    reload: async () => void (await c.page.reload()),
+    reload: async () => {
+      await c.page.reload();
+    },
     sleep: (ms) => c.page.waitForTimeout(ms),
     now: () => Date.now(),
   });
+  await c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000 });
 }
 
 /** The sidebar's dots of the demo hosts a journey uses: none of them reads offline or connecting. */
@@ -92,6 +124,28 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await waitFor(async () => (await row.count()) === 0, "o pedido saiu da fila");
   },
 
+  // 1b. Issue #187 (J4): two requests answered with A and nothing else. Choosing the first puts the
+  // focus on its card, and once it is answered the next one is chosen and focused.
+  "responder-sem-clique": async (c) => {
+    const stamp = Date.now();
+    const first = `J4 primeira ${stamp}`;
+    const second = `J4 segunda ${stamp}`;
+    await createSession(c, "[bash] ls", first);
+    await createSession(c, "[bash] ls", second);
+    await open(c, { name: "needs-you" });
+    const row = (name: string) => c.page.locator("main ul li button", { hasText: name });
+    await row(first).first().click({ timeout: SESSION_WAIT });
+    await row(second).first().waitFor({ timeout: SESSION_WAIT });
+    const focusedCard = () =>
+      c.page.evaluate(() => Boolean(document.activeElement?.closest("fieldset[data-request-id]")));
+    await waitFor(focusedCard, "o card do pedido escolhido tem o foco");
+    await c.page.keyboard.press("a");
+    await waitFor(async () => (await row(first).count()) === 0, "a primeira saiu da fila");
+    await waitFor(focusedCard, "o card do próximo pedido tem o foco");
+    await c.page.keyboard.press("a");
+    await waitFor(async () => (await row(second).count()) === 0, "a segunda saiu da fila");
+  },
+
   // 2. Open a session, send a message and read the fake runtime's answer.
   "sessao-e-mensagem": async (c) => {
     await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
@@ -109,6 +163,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
     await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
     await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+    // Issue #188: the creation says so (the toast is short-lived: look for it first), with a way
+    // to the new card.
+    await c.page
+      .getByText(c.t("kanban.created", { title }), { exact: true })
+      .waitFor({ timeout: WAIT });
     const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
     await tile.waitFor({ timeout: WAIT });
     await tile.getByRole("button", { name: title, exact: true }).click();
@@ -228,12 +287,20 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await open(c, { name: "hub" });
     // A Ctrl+click opens alfa's page in a second tab (Nova aba would open the palette over the bar).
     await c.page
+      .locator("aside")
+      .first()
       .getByRole("button", { name: c.t("sidebar.openHost", { host: "alfa" }) })
       .click({ modifiers: ["Control"] });
-    await waitFor(async () => (await c.page.getByRole("tab").count()) === 2, "duas abas");
+    // The workspace's own tab bar: the host page has tabs of its own (Overview, Usage, Settings).
+    const bar = c.page.getByRole("tablist", { name: c.t("tabs.list"), exact: true });
+    await waitFor(async () => (await bar.getByRole("tab").count()) === 2, "duas abas");
     await c.page.getByRole("button", { name: c.t("tabs.split"), exact: true }).click();
-    await waitFor(async () => (await c.page.getByRole("tablist").count()) === 2, "a tela dividida");
-    // The new area shows alfa's page too: its Novo terminal opens the terminal there.
+    await waitFor(async () => (await bar.count()) === 2, "a tela dividida");
+    // The new area shows alfa's page too: its Novo terminal, in the Settings tab, opens the terminal there.
+    await c.page
+      .getByRole("tab", { name: c.t("hostHome.settings"), exact: true })
+      .last()
+      .click();
     await c.page
       .getByRole("button", { name: c.t("hostTerminal.open"), exact: true })
       .last()
@@ -257,6 +324,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("button", { name: c.t("terminalUi.close"), exact: true }).click();
     await c.page.getByRole("button", { name: c.t("terminalUi.detach"), exact: true }).click();
     const attach = c.t("hostTerminal.attach", { cwd: "" }).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Back on alfa's page, which opens on its Overview: the terminals are in the Settings tab.
+    await c.page
+      .getByRole("tab", { name: c.t("hostHome.settings"), exact: true })
+      .last()
+      .click();
     // The newest live terminal is this run's: one left by a run that failed comes first.
     await c.page
       .getByRole("button", { name: new RegExp(`^${attach}`) })
@@ -360,7 +432,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .waitFor({ timeout: WAIT });
     // Every session of the demo, then only the client's (the demo's sessions are in other projects).
     await open(c, { name: "hub" });
-    const sessions = c.page.getByRole("list").locator("li[aria-label]");
+    // The Sessions page starts with every project folded (issue #241): open them, so the rows are
+    // there to count, and count only the page's own rows (the sidebar has list items too).
+    await c.page.getByRole("button", { name: c.t("hub.expandAll"), exact: true }).click();
+    const sessions = c.page.getByRole("main").locator("li[aria-label]");
     await sessions.first().waitFor({ timeout: WAIT });
     const before = await sessions.count();
     const switcher = (current: string) =>
@@ -401,6 +476,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       tile(title).getByRole("button", { name: c.t("board.cardActions", { title }), exact: true });
     await actions(second).click();
     await c.page.getByRole("menuitem", { name: c.t("board.startCard"), exact: true }).click();
+    // The menu's Start asks for the workflow and persona first (issue #188).
+    await c.page
+      .getByRole("dialog", { name: c.t("board.startCard") })
+      .getByRole("button", { name: c.t("cardUi.start"), exact: true })
+      .click();
     await c.page
       .getByText(c.t("daemonRefusal.card_blocked", { blockers: first }), { exact: true })
       .waitFor({ timeout: WAIT });
@@ -433,10 +513,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByRole("region", { name: c.t("recap.region") })
       .waitFor({ timeout: SESSION_WAIT });
     await waitFor(async () => (await log.evaluate(bottom)) <= 24, "a conversa abriu no fim");
-    // Scrolled up, a message that arrives leaves the view where it was and is counted.
-    await log.evaluate((el) => {
-      el.scrollTop = 300;
-    });
+    // Scrolled up, a message that arrives leaves the view where it was and is counted. The reader
+    // scrolls with the wheel: a position set from a script is not a person leaving the end, and the
+    // view keeps following it (issue #315).
+    await log.hover();
+    await c.page.mouse.wheel(0, -600);
     const jump = c.page.getByRole("button", { name: new RegExp(`^${c.t("session.jumpLatest")}$`) });
     await jump.waitFor({ timeout: WAIT });
     const kept = await log.evaluate((el) => el.scrollTop);
@@ -463,61 +544,188 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.waitForTimeout(500);
     expect(Math.abs((await back.evaluate((el) => el.scrollTop)) - kept)).toBeLessThanOrEqual(2);
   },
+
+  // 16. The first run (issue #184): a pasted link that is not a pairing link is answered in the
+  // app's language, from the catalog.
+  "primeira-vez": async (c) => {
+    await open(c, { name: "add-host" });
+    await c.page
+      .getByLabel(c.t("hostForm.link"), { exact: true })
+      .fill("flightdeck://pc:7420?name=x");
+    await c.page.getByText(c.t("hostForm.pairToken"), { exact: true }).waitFor({ timeout: WAIT });
+    await c.page.getByLabel(c.t("hostForm.link"), { exact: true }).fill("http://pc:7420?token=t");
+    await c.page.getByText(c.t("hostForm.pairScheme"), { exact: true }).waitFor({ timeout: WAIT });
+  },
+
+  // 17. A second host (issue #185): "Add a host" is a command of the palette and opens the form.
+  "segundo-host": async (c) => {
+    await open(c, { name: "hub" });
+    await c.page.keyboard.press("Control+K");
+    await c.page.getByLabel(c.t("searchUi.input"), { exact: true }).fill(c.t("palette.addHost"));
+    await c.page
+      .getByRole("dialog", { name: c.t("searchUi.label") })
+      .getByRole("option", { name: c.t("palette.addHost"), exact: true })
+      .click();
+    await c.page.getByLabel(c.t("hostForm.link"), { exact: true }).waitFor({ timeout: WAIT });
+  },
+
+  // 18. New session (issue #186): the Sessions list starts one, and the form lets the host be chosen.
+  "nova-sessao-host": async (c) => {
+    await open(c, { name: "hub" });
+    // The header of the list; the sidebar has a button of the same name outside <main>.
+    await c.page
+      .getByRole("main")
+      .locator('[data-slot="page-actions"]')
+      .getByRole("button", { name: c.t("sidebar.newSession"), exact: true })
+      .click();
+    const host = c.page.getByLabel(c.t("newSession.host"), { exact: true });
+    await host.waitFor({ timeout: WAIT });
+    await host.selectOption({ label: BETA });
+    await c.page
+      .getByRole("heading", { name: c.t("newSession.title", { host: BETA }) })
+      .waitFor({ timeout: WAIT });
+  },
+
+  // 19. Finishing a card (issue #188): the card menu's Start asks first and can be cancelled;
+  // "Finish…" explains the three ways to Done, closes with Esc, and "Move to Done" moves the card.
+  "finalizar-card": async (c) => {
+    const title = `Finalizar ${c.lang} ${Date.now()}`;
+    const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
+    await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+    await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
+    await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+    await tile.waitFor({ timeout: WAIT });
+    // The menu's Start opens a dialog; Cancel leaves the card alone.
+    await tile
+      .getByRole("button", { name: c.t("board.cardActions", { title }), exact: true })
+      .click();
+    await c.page.getByRole("menuitem", { name: c.t("board.startCard"), exact: true }).click();
+    const start = c.page.getByRole("dialog", { name: c.t("board.startCard") });
+    await start.waitFor({ timeout: WAIT });
+    await start.getByRole("button", { name: c.t("common.cancel"), exact: true }).click();
+    await start.waitFor({ state: "detached", timeout: WAIT });
+    // Finish… on the card's page.
+    await tile.getByRole("button", { name: title, exact: true }).click();
+    const finish = c.page.getByRole("button", { name: c.t("cardUi.finish"), exact: true });
+    await finish.click();
+    const dialog = c.page.getByRole("dialog", { name: c.t("cardUi.finishTitle") });
+    await dialog.getByText(c.t("cardUi.finishMove"), { exact: true }).waitFor({ timeout: WAIT });
+    await dialog.getByText(c.t("cardUi.finishComplete"), { exact: true }).waitFor();
+    await dialog.getByText(c.t("cardUi.finishMerge"), { exact: true }).waitFor();
+    // No worktree yet: the merge is off and says why.
+    await dialog.getByText(c.t("cardUi.finishNeedWorktree"), { exact: true }).waitFor();
+    await c.page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "detached", timeout: WAIT });
+    await finish.click();
+    await dialog.getByRole("button", { name: c.t("cardUi.finishMoveButton"), exact: true }).click();
+    await dialog.waitFor({ state: "detached", timeout: WAIT });
+    await c.page.getByRole("button", { name: c.t("cardUi.finish"), exact: true }).click();
+    await dialog.getByText(c.t("cardUi.alreadyDone"), { exact: true }).waitFor({ timeout: WAIT });
+  },
+
+  // 20. A phone-notice webhook (issue #263): ntfy is a type of its own, a URL that names no topic
+  // is refused with its reason, a topic URL is saved, and the list shows the type and only the
+  // host the notices go to: the topic is a secret and never shown again.
+  "webhook-ntfy": async (c) => {
+    const name = `e2e-ntfy-${c.lang}-${Date.now()}`;
+    const topic = `fd-e2e-${c.lang}-${Date.now()}`;
+    await open(c, { name: "settings" });
+    const form = c.page.getByRole("form", { name: c.t("webhooks.add"), exact: true });
+    await form.waitFor({ timeout: WAIT });
+    await form.getByLabel(c.t("webhooks.name"), { exact: true }).fill(name);
+    await form.getByLabel(c.t("webhooks.type"), { exact: true }).selectOption("ntfy");
+    // The field is a topic URL now, with its help, and the events are the person's pick.
+    const url = form.getByLabel(c.t("webhooks.ntfyUrl"), { exact: true });
+    await url.fill("https://ntfy.sh/");
+    await form.getByText(c.t("webhooks.ntfyHelp"), { exact: true }).waitFor({ timeout: WAIT });
+    await form.getByLabel(c.t("webhooks.kind.needs_you"), { exact: true }).check();
+    await form.getByRole("button", { name: c.t("webhooks.save"), exact: true }).click();
+    await c.page
+      .getByText(c.t("webhooks.errors.invalid_topic"), { exact: true })
+      .waitFor({ timeout: WAIT });
+    await url.fill(`https://ntfy.sh/${topic}`);
+    await form.getByRole("button", { name: c.t("webhooks.save"), exact: true }).click();
+    const row = c.page.locator("li", { hasText: name });
+    await row.waitFor({ timeout: WAIT });
+    await row.getByText(c.t("webhooks.types.ntfy"), { exact: true }).waitFor({ timeout: WAIT });
+    await row
+      .getByText(c.t("webhooks.sendsTo", { host: "ntfy.sh" }), { exact: true })
+      .waitFor({ timeout: WAIT });
+    await waitFor(
+      async () => (await c.page.getByText(topic).count()) === 0,
+      "o tópico não aparece na lista",
+    );
+  },
+
+  // 21. The update card (issue #490): once a new version is downloaded, a card offers to update,
+  // says the sessions are not interrupted, links the release notes and goes away when closed.
+  "update-card": async (c) => {
+    await open(c, { name: "hub" }, true, { update: "9.9.9" });
+    const card = c.page.getByRole("region", { name: c.t("update.cardTitle"), exact: true });
+    await card.waitFor({ timeout: WAIT });
+    await card.getByText(c.t("update.cardReady", { version: "9.9.9" }), { exact: true }).waitFor({
+      timeout: WAIT,
+    });
+    await card.getByText(c.t("update.cardSafe"), { exact: true }).waitFor({ timeout: WAIT });
+    const notes = card.getByRole("link", { name: c.t("update.cardNotes"), exact: true });
+    expect(await notes.getAttribute("href")).toBe(
+      "https://github.com/jnerytech/flightdeck/releases/tag/v9.9.9",
+    );
+    await card.getByRole("button", { name: c.t("update.cardUpdate"), exact: true }).waitFor({
+      timeout: WAIT,
+    });
+    await card.getByRole("button", { name: c.t("update.cardClose"), exact: true }).click();
+    await card.waitFor({ state: "detached", timeout: WAIT });
+  },
+
+  // 22. The status bar (issue #491): it counts the hosts and the terminals, and its keep-awake item
+  // (on or holding the computer awake) opens the host's setting for it.
+  "status-bar": async (c) => {
+    await open(c, { name: "hub" });
+    const bar = c.page.getByRole("region", { name: c.t("statusBar.label"), exact: true });
+    await bar.waitFor({ timeout: WAIT });
+    const pattern = (key: "statusBar.hosts" | "statusBar.terminals") => {
+      const text = c.t(key, { online: "@1", total: "@2", n: "@1" });
+      const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`^${escaped.replace("@1", "\\d+").replace("@2", "\\d+")}$`);
+    };
+    await bar.getByRole("button", { name: pattern("statusBar.hosts") }).waitFor({ timeout: WAIT });
+    await bar
+      .getByRole("button", { name: pattern("statusBar.terminals") })
+      .or(bar.getByRole("button", { name: c.t("statusBar.terminalsOne"), exact: true }))
+      .first()
+      .waitFor({ timeout: WAIT });
+    const awake = (state: "on" | "off" | "holding") =>
+      bar.getByRole("button", { name: c.t(`statusBar.keepAwake.${state}`), exact: true });
+    const holdsOn = awake("on").or(awake("holding"));
+    await holdsOn.first().click({ timeout: WAIT });
+    await c.page
+      .getByRole("tab", { name: c.t("hostHome.settings"), exact: true })
+      .click({ timeout: WAIT });
+    await c.page
+      .getByText(c.t("hostPage.keepAwakeTitle"), { exact: true })
+      .waitFor({ timeout: WAIT });
+  },
 };
 
-/** What sticks out of the window sideways, outside a box that scrolls. */
-async function overflow(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
-    const width = window.innerWidth;
-    const found: string[] = [];
-    if (document.documentElement.scrollWidth > width) found.push("a página rola para o lado");
-    for (const el of document.querySelectorAll<HTMLElement>("body *")) {
-      const box = el.getBoundingClientRect();
-      if (box.width === 0 || box.height === 0 || box.right <= width + 1) continue;
-      let scrolls = false;
-      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
-        const x = getComputedStyle(p).overflowX;
-        if (x === "auto" || x === "scroll" || x === "hidden" || x === "clip") scrolls = true;
-      }
-      const visibility = getComputedStyle(el);
-      if (!scrolls && visibility.display !== "none" && visibility.visibility !== "hidden") {
-        found.push(`${el.tagName.toLowerCase()} ${String(el.className).slice(0, 50)}`);
-      }
-      if (found.length >= 5) break;
-    }
-    return found;
-  });
-}
-
-/** The page never scrolls sideways: when it does, the widest element sticking out is named. */
+/** The page never scrolls sideways: when it does, the guards name the widest element. */
 async function pageScrollsSideways(page: Page): Promise<string | null> {
-  return page.evaluate(() => {
-    const root = document.documentElement;
-    if (root.scrollWidth <= root.clientWidth && document.body.scrollWidth <= root.clientWidth) {
-      return null;
-    }
-    let widest = { name: "?", right: 0 };
-    for (const el of document.querySelectorAll<HTMLElement>("body *")) {
-      const box = el.getBoundingClientRect();
-      if (box.width > 0 && box.right > widest.right) {
-        widest = {
-          name: `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 60)}`,
-          right: box.right,
-        };
-      }
-    }
-    return `scrollWidth ${root.scrollWidth} > ${root.clientWidth}; widest ${widest.name} ends at ${Math.round(widest.right)}`;
-  });
+  const found: Finding[] = await page.evaluate(layoutFindings, {});
+  const sideways = found.find((finding) => finding.rule === "sideways");
+  return sideways ? `${sideways.path}: ${sideways.detail}` : null;
 }
 
-/** The crumbs end before the bell, and what does not fit is cut with an ellipsis (issue #133). */
+/**
+ * The crumbs end inside their own box, so the tabs after it start clear of them, and what does not
+ * fit is cut with an ellipsis (issue #133). The bell moved to the top bar's right side (#282).
+ */
 async function crumbsProblem(page: Page): Promise<string | null> {
   return page.evaluate(() => {
     const slot = document.querySelector<HTMLElement>(".header-crumbs");
     const nav = slot?.querySelector<HTMLElement>("nav");
-    const bell = slot?.lastElementChild as HTMLElement | null;
-    if (!slot || !nav || !bell || bell === nav) return "no breadcrumb";
-    const limit = bell.getBoundingClientRect().left + 1;
+    if (!slot || !nav) return "no breadcrumb";
+    const limit = slot.getBoundingClientRect().right + 1;
     // Where the person is must stay readable: the current step never shrinks to nothing.
     const current = nav.querySelector<HTMLElement>("[aria-current='page']");
     if (current && current.getBoundingClientRect().width < 48) {
@@ -526,7 +734,7 @@ async function crumbsProblem(page: Page): Promise<string | null> {
     for (const el of nav.querySelectorAll<HTMLElement>("li > *")) {
       const box = el.getBoundingClientRect();
       if (box.right > limit)
-        return `a crumb (${el.textContent}) ends at ${Math.round(box.right)}, past the bell at ${Math.round(limit)}`;
+        return `a crumb (${el.textContent}) ends at ${Math.round(box.right)}, past its box at ${Math.round(limit)}`;
       if (el.scrollWidth > el.clientWidth + 1) {
         const style = getComputedStyle(el);
         if (style.textOverflow !== "ellipsis" || style.overflow !== "hidden") {
@@ -538,7 +746,7 @@ async function crumbsProblem(page: Page): Promise<string | null> {
   });
 }
 
-/** The tabs share the strip like a browser's: one width, and not under the minimum. */
+/** Since #488 a tab is as wide as its title, as in VS Code: never under the minimum, never past 13rem. */
 async function tabWidthsProblem(page: Page, minimum: number): Promise<string | null> {
   const widths = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>(".tab-item")].map((tab) =>
@@ -546,9 +754,91 @@ async function tabWidthsProblem(page: Page, minimum: number): Promise<string | n
     ),
   );
   if (widths.length === 0) return "no tabs";
-  if (Math.max(...widths) - Math.min(...widths) > 1) return `widths differ: ${widths.join(", ")}`;
+  if (Math.max(...widths) > 208 + 1) return `a tab is ${Math.max(...widths)}px, past 13rem`;
   if (Math.min(...widths) < minimum) return `a tab is ${Math.min(...widths)}px, under ${minimum}px`;
   return null;
+}
+
+/**
+ * The active tab stands out (#488): only it has the accent line on top, at 3:1 or more against
+ * the tab and the bar in both themes, and it reaches the bar's lower edge so it joins the screen
+ * below. Hovering another tab looks different from the active one.
+ */
+async function activeTabProblem(page: Page): Promise<string | null> {
+  const problems = await page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return ["no canvas to read colours"];
+    const rgb = (color: string) => {
+      ctx.clearRect(0, 0, 1, 1);
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, 1, 1);
+      return [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3);
+    };
+    const luminance = (c: number[]) => {
+      const f = (v: number) => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * f(c[0] ?? 0) + 0.7152 * f(c[1] ?? 0) + 0.0722 * f(c[2] ?? 0);
+    };
+    const ratio = (a: number[], b: number[]) => {
+      const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+      return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
+    };
+    const bar = document.querySelector<HTMLElement>(".tab-bar");
+    if (!bar) return ["no tab bar"];
+    const found: string[] = [];
+    const root = document.documentElement;
+    const wasDark = root.classList.contains("dark");
+    for (const dark of [false, true]) {
+      root.classList.toggle("dark", dark);
+      const theme = dark ? "dark" : "light";
+      const items = [...bar.querySelectorAll<HTMLElement>(".tab-item")];
+      const active = items.find((it) => it.querySelector('[role="tab"][aria-selected="true"]'));
+      const lined = items.filter((it) => {
+        const content = getComputedStyle(it, "::before").content;
+        return content !== "none" && content !== "normal" && content !== "";
+      });
+      if (!active || lined.length !== 1 || lined[0] !== active) {
+        found.push(`${theme}: ${lined.length} tabs have the accent line, not only the active one`);
+        continue;
+      }
+      const line = rgb(getComputedStyle(active, "::before").backgroundColor);
+      for (const [name, el] of [
+        ["tab", active],
+        ["bar", bar],
+      ] as const) {
+        const r = ratio(line, rgb(getComputedStyle(el).backgroundColor));
+        if (r < 3) found.push(`${theme}: the accent line is ${r.toFixed(2)}:1 against the ${name}`);
+      }
+    }
+    root.classList.toggle("dark", wasDark);
+    const active = bar.querySelector<HTMLElement>(
+      '.tab-item:has([role="tab"][aria-selected="true"])',
+    );
+    const gap = active
+      ? bar.getBoundingClientRect().bottom - active.getBoundingClientRect().bottom
+      : 0;
+    if (gap > 0.5)
+      found.push(`the active tab ends ${gap}px above the bar's edge, whose line runs under it`);
+    return found;
+  });
+  const other = page.locator('.tab-item:not(:has([role="tab"][aria-selected="true"]))').first();
+  if (await other.count()) {
+    await other.hover();
+    const [hovered, active] = await page.evaluate(() => [
+      getComputedStyle(document.querySelector(".tab-item:hover") ?? document.body).backgroundColor,
+      getComputedStyle(
+        document.querySelector('.tab-item:has([role="tab"][aria-selected="true"])') ??
+          document.body,
+      ).backgroundColor,
+    ]);
+    if (hovered === active) problems.push("a hovered tab looks like the active one");
+    await page.mouse.move(0, 0);
+  }
+  return problems.length ? problems.join("; ") : null;
 }
 
 /** Twelve tabs, as a window left open for a day, with `first` on screen (the active tab). */
@@ -591,7 +881,12 @@ async function openCrowded(c: Context, first: Route, count = 12) {
   );
   const query = new URLSearchParams({ lang: c.lang, theme: "light", reconnect: "fast" });
   await c.page.goto(`${c.url}?${query}`);
-  await c.page.waitForTimeout(1500);
+  await c.page
+    .getByRole("img", { name: /^(alfa|beta): / })
+    .first()
+    .waitFor({ timeout: 5000 })
+    .catch(() => undefined);
+  await c.page.evaluate(waitForStable, { frames: 3, maxMs: 5000 });
 }
 
 /** After scrolling every box to its end, the last row of the list is on screen (or why not). */
@@ -614,6 +909,46 @@ async function lastRowProblem(page: Page): Promise<string | null> {
     if (box.top >= 0 && box.bottom <= window.innerHeight + 1) return null;
     return `${last.getAttribute("aria-label")} em ${Math.round(box.top)}..${Math.round(box.bottom)} de ${window.innerHeight}`;
   });
+}
+
+/**
+ * The / menu of a session with 100 commands (issue #102): the page does not scroll either way, the
+ * menu takes at most 40% of the window and the message box stays on screen.
+ */
+async function slashMenuProblems(c: Context): Promise<string[]> {
+  await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
+  const box = c.page.getByLabel(c.t("session.message"), { exact: true });
+  // Where the box is with some text and no menu: opening the menu must not move it, nor cover it.
+  await box.fill("x");
+  const before = await box.boundingBox();
+  await box.fill("/");
+  const menu = c.page.getByRole("listbox", { name: c.t("session.snippets") });
+  await menu.waitFor({ timeout: WAIT });
+  const options = await menu.getByRole("option").count();
+  return c.page.evaluate(
+    ({ options: count, label, was }) => {
+      const found: string[] = [];
+      const { innerWidth: width, innerHeight: height } = window;
+      const root = document.documentElement;
+      if (root.scrollWidth > width) found.push("a página rola para o lado com o menu /");
+      if (root.scrollHeight > height) found.push("a página rola para baixo com o menu /");
+      if (count < 100) found.push(`o menu lista só ${count} itens`);
+      const popover = document.querySelector<HTMLElement>(".prompt-menu");
+      const at = popover?.getBoundingClientRect();
+      if (at && at.height > height * 0.4 + 1) {
+        found.push(`o menu ocupa ${Math.round(at.height)} de ${height}`);
+      }
+      const field = document.querySelector<HTMLElement>(`[aria-label="${label}"]`);
+      const box = field?.getBoundingClientRect();
+      if (!box) found.push("a caixa de mensagem sumiu");
+      else if (was && Math.abs(box.top - was.y) > 1)
+        found.push("o menu / mexeu na caixa de mensagem");
+      else if (popover && at && box.top < at.bottom - 1)
+        found.push("o menu / cobre a caixa de mensagem");
+      return found;
+    },
+    { options, label: c.t("session.message"), was: before },
+  );
 }
 
 /**
@@ -676,6 +1011,99 @@ async function recapOverlap(page: Page): Promise<string | null> {
   });
 }
 
+/** The sidebar's hosts section keeps at least a heading and one row on screen (#171). */
+async function hostsProblem(page: Page): Promise<string | null> {
+  const box = await page.locator("[data-slot='sidebar-hosts']").first().boundingBox();
+  const MIN = 96;
+  if (!box || box.height < MIN) {
+    return `a seção Hosts da barra lateral tem ${Math.round(box?.height ?? 0)} px (mínimo ${MIN})`;
+  }
+  return null;
+}
+
+/**
+ * The bell's panel (issue #137): every button of its header and every Dismiss is inside the panel's
+ * box, and the panel does not scroll sideways. A row about a card that is gone is in the list.
+ */
+async function bellPanelProblems(c: Context): Promise<string[]> {
+  const dayStart = new Date().setUTCHours(0, 0, 0, 0);
+  const entry = (id: string, second: number, extra: Record<string, unknown>) => ({
+    id,
+    at: new Date(dayStart + second * 1000).toISOString(),
+    title: "Precisa de você",
+    body: "",
+    read: false,
+    ...extra,
+  });
+  const seed = JSON.stringify([
+    entry("1", 300, {
+      subject: "api · refatorar",
+      host: "alfa",
+      ask: "Pergunta: qual banco usar?",
+    }),
+    entry("2", 200, {
+      subject: "Card B com um nome bem comprido para o painel",
+      host: "alfa",
+      ask: "Quer alterar main.ts",
+      route: { name: "card", host: "demo-alfa", projectId: "gone", cardId: "gone" },
+    }),
+  ]);
+  await c.page.evaluate((value) => localStorage.setItem("flightdeck.inbox", value), seed);
+  await open(c, { name: "hub" });
+  await c.page.getByRole("button", { name: /^(Notifications|Notificações)/ }).click();
+  const dialog = c.page.getByRole("dialog");
+  await dialog.waitFor({ timeout: WAIT });
+  const found = await dialog.evaluate((box) => {
+    const edge = box.getBoundingClientRect();
+    const out: string[] = [];
+    if (box.scrollWidth > box.clientWidth + 1) out.push("o painel rola para o lado");
+    const dismiss = [...box.querySelectorAll<HTMLElement>("button")].filter((b) =>
+      /^(Dismiss|Descartar)$/.test(b.textContent?.trim() ?? ""),
+    );
+    if (dismiss.length === 0) out.push("a linha de um alvo que não existe mais não tem Descartar");
+    const headerButtons = [...(box.querySelector("div")?.querySelectorAll("button") ?? [])];
+    for (const button of [...headerButtons, ...dismiss]) {
+      const at = button.getBoundingClientRect();
+      if (at.width > 0 && (at.left < edge.left - 1 || at.right > edge.right + 1)) {
+        out.push(`o botão "${button.textContent?.trim()}" sai do painel`);
+      }
+    }
+    return out;
+  });
+  await c.page.evaluate(() => localStorage.removeItem("flightdeck.inbox"));
+  return found.map((issue) => `${c.lang} painel do sino: ${issue}`);
+}
+
+/**
+ * A session at a small window (issue #135): the message box is whole inside the window and the
+ * conversation keeps a minimum height, whatever the header and the summary take. 40% of the window
+ * is out of reach at 720x480, where the title bar and the tabs already take about 190 px: the floor
+ * is 150 px (the old three-line header left about 80).
+ */
+const MIN_CONVERSATION = 150;
+
+async function sessionFitsProblems(c: Context): Promise<string[]> {
+  await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
+  await c.page.locator("[data-slot='composer-card']").first().waitFor({ timeout: WAIT });
+  return c.page.evaluate((min) => {
+    const found: string[] = [];
+    const height = window.innerHeight;
+    const card = document.querySelector<HTMLElement>("[data-slot='composer-card']");
+    const at = card?.getBoundingClientRect();
+    if (!at || at.top < 0 || at.bottom > height + 1) {
+      found.push(
+        `a caixa de mensagem sai da janela (${Math.round(at?.bottom ?? -1)} de ${height})`,
+      );
+    }
+    const timeline = document.querySelector<HTMLElement>("[data-slot='timeline']");
+    const room = timeline?.getBoundingClientRect().height ?? 0;
+    if (room < min) {
+      found.push(`a conversa tem só ${Math.round(room)} de ${height}`);
+    }
+    return found;
+  }, MIN_CONVERSATION);
+}
+
 export async function layout(c: Context, problems: string[]) {
   const screens: Array<[string, Route]> = [
     ["hub", { name: "hub" }],
@@ -718,7 +1146,7 @@ export async function layout(c: Context, problems: string[]) {
         );
       }
     }
-    // Equal widths with 12 tabs and with 2, and 12 never under 80px.
+    // Widths that follow the title with 12 tabs and with 2, never under 80px.
     await openCrowded(c, { name: "hub" });
     const crowdedTabs = await tabWidthsProblem(c.page, 80);
     if (crowdedTabs)
@@ -727,22 +1155,34 @@ export async function layout(c: Context, problems: string[]) {
     const fewTabs = await tabWidthsProblem(c.page, 80);
     if (fewTabs) problems.push(`${c.lang} ${viewport.width}x${viewport.height} 2 abas: ${fewTabs}`);
   }
-  // The tab strip starts at the same x whatever the crumbs say ("Hosts > alfa" is wider than "Settings").
+  // Which tab is open shows at a glance (#488), checked with two tabs at 1280x800.
+  await c.page.setViewportSize({ width: 1280, height: 800 });
+  await openCrowded(c, { name: "hub" }, 2);
+  const activeTab = await activeTabProblem(c.page);
+  if (activeTab) problems.push(`${c.lang} 1280x800 aba ativa: ${activeTab}`);
+  // The tab strip starts at the same x whatever the crumbs say ("Hosts > alfa" is wider than
+  // "Settings"); since #488 it has a row of its own over the area.
   const lefts: number[] = [];
   for (const [, route] of screens.filter(([n]) => n === "host" || n === "configuracoes")) {
     await open(c, route);
-    const box = await c.page.locator(".header-tabs").first().boundingBox();
+    const box = await c.page.locator(".tab-bar").first().boundingBox();
     if (box) lefts.push(Math.round(box.x));
   }
   if (new Set(lefts).size > 1) {
     problems.push(`${c.lang}: o início das abas muda com o título (${lefts.join(" ≠ ")})`);
   }
+  // The geometry guards (issue #192), at three window sizes, on the longest labels (pt-BR). What
+  // they find is named by data-slot path; the heuristic rules fail only when new against the baseline.
+  if (c.lang === "pt-BR") await geometryGuards(c, screens, problems);
   for (const viewport of VIEWPORTS) {
     await c.page.setViewportSize(viewport);
     for (const [name, route] of screens) {
       await open(c, route);
       const where = `${c.lang} ${viewport.width}x${viewport.height} ${name}`;
-      for (const issue of await overflow(c.page)) problems.push(`${where}: ${issue}`);
+      const sideways = await pageScrollsSideways(c.page);
+      if (sideways) problems.push(`${where}: ${sideways}`);
+      const hosts = await hostsProblem(c.page);
+      if (hosts) problems.push(`${where}: ${hosts}`);
       if (name === "sessao") {
         // Both states of the card (the first time a session is seen it starts open): the summary
         // never overlaps the conversation, as found and after flipping it.
@@ -760,8 +1200,14 @@ export async function layout(c: Context, problems: string[]) {
         }
       }
     }
+    for (const issue of await sessionFitsProblems(c)) {
+      problems.push(`${c.lang} ${viewport.width}x${viewport.height} sessão: ${issue}`);
+    }
     for (const issue of await folderDialogProblems(c)) {
       problems.push(`${c.lang} ${viewport.width}x${viewport.height} pasta: ${issue}`);
+    }
+    for (const issue of await slashMenuProblems(c)) {
+      problems.push(`${c.lang} ${viewport.width}x${viewport.height} menu /: ${issue}`);
     }
     await open(c, { name: "hub" });
     const hidden = await lastRowProblem(c.page);
@@ -771,9 +1217,105 @@ export async function layout(c: Context, problems: string[]) {
       );
     }
   }
-  // The smallest window the app allows (tauri.conf.json), where the longest labels are tightest.
+  // Issue #173: a session opens at its end and stays there while the page settles, so a pending
+  // request is whole above the composer. Nothing scrolls the page before the measure.
+  await c.page.setViewportSize({ width: 1280, height: 800 });
+  await open(c, { name: "session", host: ALFA, id: c.ids.waitingSession });
+  const pinned = await c.page.evaluate(() => {
+    const box = document.querySelector<HTMLElement>("[data-slot='timeline']");
+    if (!box) return "no timeline";
+    if (box.scrollTop + box.clientHeight < box.scrollHeight - 24) {
+      return `the timeline is not at its end (${Math.round(box.scrollTop + box.clientHeight)} of ${box.scrollHeight})`;
+    }
+    const card = box.querySelector<HTMLElement>("[data-request-id]")?.getBoundingClientRect();
+    const edge = box.getBoundingClientRect();
+    if (card && (card.top < edge.top - 1 || card.bottom > edge.bottom + 1)) {
+      return `the request card (${Math.round(card.top)}..${Math.round(card.bottom)}) is cut by the timeline (${Math.round(edge.top)}..${Math.round(edge.bottom)})`;
+    }
+    return null;
+  });
+  if (pinned) problems.push(`${c.lang} waiting session: ${pinned}`);
+  // Issue #225: in a split, each area's tab bar keeps its height (it grew to half the area). Only
+  // the bars' tablists are counted (a screen may have tabs of its own), and the split is always
+  // closed again, so the next language starts with one area.
+  await c.page.setViewportSize({ width: 1280, height: 800 });
+  await open(c, { name: "hub" });
+  await c.page.keyboard.press("Control+\\");
+  try {
+    await waitFor(
+      async () => (await c.page.locator(".tab-bar [role=tablist]").count()) === 2,
+      "the split window",
+    );
+    const heights = await c.page
+      .locator(".tab-bar")
+      .evaluateAll((bars) => bars.map((bar) => Math.round(bar.getBoundingClientRect().height)));
+    for (const height of heights) {
+      if (height > 40) problems.push(`${c.lang} split: a tab bar is ${height} px tall`);
+    }
+  } finally {
+    await c.page.keyboard.press("Control+\\");
+  }
+  // Issue #175: a Needs you row's detail line is cut inside the row (a button's own style left it
+  // no width, so it ran past the row with no ellipsis).
+  await c.page.setViewportSize({ width: 1280, height: 800 });
+  await open(c, { name: "needs-you" });
+  const wide = await c.page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>("main li > button")]
+      .filter((row) => [...row.children].some((line) => line.clientWidth > row.clientWidth + 1))
+      .map((row) => row.getAttribute("aria-label") ?? ""),
+  );
+  for (const row of wide) problems.push(`${c.lang} needs you: a line runs past its row (${row})`);
+  // The smallest window the app allows (tauri.conf.json): where the menu and the dialog are tightest.
   await c.page.setViewportSize({ width: 720, height: 480 });
+  await open(c, { name: "hub" });
+  const smallHosts = await hostsProblem(c.page);
+  if (smallHosts) problems.push(`${c.lang} 720x480: ${smallHosts}`);
+  for (const issue of await slashMenuProblems(c)) {
+    problems.push(`${c.lang} 720x480 menu /: ${issue}`);
+  }
+  // The smallest window the app allows (tauri.conf.json), where the header and the dialog are tightest.
+  await c.page.setViewportSize({ width: 720, height: 480 });
+  for (const issue of await sessionFitsProblems(c)) {
+    problems.push(`${c.lang} 720x480 sessão: ${issue}`);
+  }
   for (const issue of await folderDialogProblems(c)) {
     problems.push(`${c.lang} 720x480 pasta: ${issue}`);
+  }
+  problems.push(...(await bellPanelProblems(c)));
+}
+
+const BASELINE_FILE = join(import.meta.dirname, "../layout-findings-baseline.json");
+const FINDINGS_FILE = join(process.cwd(), "playwright-report", "layout-findings.json");
+
+/** Every screen at every guard size: findings by data-slot path, judged against the baseline. */
+async function geometryGuards(c: Context, screens: Array<[string, Route]>, problems: string[]) {
+  const baseline = loadBaseline(() =>
+    existsSync(BASELINE_FILE) ? readFileSync(BASELINE_FILE, "utf8") : null,
+  );
+  const seen: Record<string, string> = {};
+  const fixed: string[] = [];
+  for (const size of GUARD_SIZES) {
+    await c.page.setViewportSize(size);
+    for (const [name, route] of screens) {
+      await open(c, route);
+      const screen = `${name}@${size.width}`;
+      const found: Finding[] = await c.page.evaluate(layoutFindings, {
+        // The key regions are a contract at the usual window: the smallest one is #135's business.
+        regions: size.width >= 1280 ? KEY_REGIONS : [],
+        bars: BARS,
+      });
+      for (const finding of found) seen[findingKey(screen, finding)] = finding.detail;
+      const verdict = judge(screen, found, baseline);
+      problems.push(...verdict.failures);
+      fixed.push(...verdict.fixed);
+    }
+  }
+  // What the run saw, for the baseline file (the report folder is an artifact of the CI run).
+  mkdirSync(dirname(FINDINGS_FILE), { recursive: true });
+  writeFileSync(FINDINGS_FILE, JSON.stringify(seen, null, 2));
+  if (fixed.length > 0) {
+    problems.push(
+      `layout-findings-baseline.json holds findings that are gone: remove\n${fixed.join("\n")}`,
+    );
   }
 }

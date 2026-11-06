@@ -1,3 +1,4 @@
+import { byCodeUnit } from "@flightdeck/protocol";
 import { type Route, Router } from "./router.ts";
 
 export interface Tab {
@@ -24,7 +25,8 @@ interface Closed {
 }
 
 /** The route as a string that does not depend on the order of its fields. */
-const routeKey = (route: Route): string => JSON.stringify(route, Object.keys(route).sort());
+const routeKey = (route: Route): string =>
+  JSON.stringify(route, Object.keys(route).sort(byCodeUnit));
 
 const START: Route = { name: "start" };
 
@@ -40,9 +42,11 @@ export class Tabs {
   /** Changes with every change of the tabs or of the route of the active one. */
   version = 0;
   readonly router: Navigation;
-  private closed: Closed[] = [];
+  private readonly closed: Closed[] = [];
   private newTab = false;
   private readonly listeners = new Set<() => void>();
+  /** The tab ids, the most recently active first; kept up to date by `remember`. */
+  private order: string[] = [];
   private readonly unwatch = new Map<string, () => void>();
 
   constructor(
@@ -107,8 +111,16 @@ export class Tabs {
       if (entry.pinned) tabs.pin((tabs.tabs[i] as Tab).id, true);
       (tabs.tabs[i] as Tab).preview = entry.preview === true && !entry.pinned;
     });
+    // Opening them recorded an order of its own: a restored window starts from the strip's.
+    tabs.order = [];
     tabs.activate((tabs.tabs[active] as Tab).id);
     return tabs;
+  }
+
+  /** The tabs, the most recently active first (the rest follow in strip order). */
+  recent(): Tab[] {
+    this.remember();
+    return this.order.map((id) => this.tabs.find((tab) => tab.id === id) as Tab);
   }
 
   get active(): Tab {
@@ -310,7 +322,21 @@ export class Tabs {
     this.tabs = [...this.tabs.slice(0, index), tab, ...this.tabs.slice(index)];
   }
 
+  /** The active tab goes to the front; closed or taken tabs leave; new ones join at the back. */
+  private remember(): void {
+    const present = new Set(this.tabs.map((tab) => tab.id));
+    const kept = this.order.filter((id) => present.has(id) && id !== this.activeId);
+    const known = new Set(kept);
+    const fresh = this.tabs.filter((tab) => tab.id !== this.activeId && !known.has(tab.id));
+    this.order = [
+      ...(present.has(this.activeId) ? [this.activeId] : []),
+      ...kept,
+      ...fresh.map((tab) => tab.id),
+    ];
+  }
+
   private emit(): void {
+    this.remember();
     this.version++;
     for (const listener of this.listeners) listener();
   }

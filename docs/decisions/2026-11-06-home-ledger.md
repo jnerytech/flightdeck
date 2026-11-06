@@ -1,0 +1,5 @@
+# The usage ledger counts the turns that failed and the time the turns took (issue #9)
+
+- **Why.** Home's cards (the next PRs) need failed turns and turn time per day, and they were recorded nowhere. `usage_daily` gains `failed_turns` and `duration_ms`, filled from `turn.result` (`isError`, `durationMs`) by the ledger; the usage rows carry `failedTurns` and `durationMs`, optional so an older daemon still parses.
+- **Unknown is not zero.** The two columns have no default: a day stored before them is NULL, and its row leaves the two fields out. One host without them makes the app's failed turns and success rate unknown ("—"), not zero; the averages use only the turns that were counted. A test upgrades a 0.36.1 database in place and checks that its days survive and new turns add to them.
+- **Ported, not merged.** This is the daemon half of the stranded `home-kpis` family (see `home-followups`), cherry-picked onto current `main` with its tests; the migration is appended after the migrations `main` already has (they are positional).

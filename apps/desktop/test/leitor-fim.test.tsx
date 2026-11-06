@@ -7,6 +7,12 @@ import { waiter } from "./wait.ts";
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
+
+/** The person scrolls: the wheel, then the scroll event the browser sends for it. */
+const personScrolls = (el: Element) => {
+  fireEvent.wheel(el, { deltaY: -120 });
+  fireEvent.scroll(el);
+};
 const screen = liveScreen(within);
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
@@ -106,7 +112,7 @@ describe("leitor-fim", () => {
   test("Carregar anteriores, from the top of what is loaded, leaves the reader on the same message", async () => {
     await openLatest();
     const s = sized({ scroll: 3000, client: 400, top: 100 });
-    await act(async () => void fireEvent.scroll(s.el));
+    await act(async () => void personScrolls(s.el));
     s.size.scroll = 5000;
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Carregar anteriores" }));

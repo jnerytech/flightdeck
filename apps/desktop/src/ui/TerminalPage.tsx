@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { TerminalSession, type TerminalState } from "../lib/terminal-session.ts";
-import { TERMINAL_FONT_FAMILY, terminalTheme } from "../lib/terminal-view.ts";
+import { isWindowsHost, TERMINAL_FONT_FAMILY, terminalTheme } from "../lib/terminal-view.ts";
 import { useStoreState } from "../lib/use-store.ts";
 import {
   createXtermScreen,
@@ -26,15 +26,17 @@ import {
 } from "../lib/xterm-screen.ts";
 
 /** A host's terminal in the app: xterm over a `TerminalSession`, with search and close. */
-export function TerminalPage(props: {
-  store: AppStore;
-  hostId: string;
-  terminalId: string;
-  /** xterm's pieces; the real ones when absent. */
-  deps?: XtermDeps;
-  /** The terminal was closed from here (detached or ended): leave the screen. */
-  onClosed(): void;
-}) {
+export function TerminalPage(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    terminalId: string;
+    /** xterm's pieces; the real ones when absent. */
+    deps?: XtermDeps;
+    /** The terminal was closed from here (detached or ended): leave the screen. */
+    onClosed(): void;
+  }>,
+) {
   const { store, hostId, terminalId } = props;
   const { t } = store.i18n;
   const area = useRef<HTMLDivElement>(null);
@@ -76,8 +78,11 @@ export function TerminalPage(props: {
         theme: terminalTheme(store.theme.resolved),
         fontSize: store.terminalFont.value,
         fontFamily: TERMINAL_FONT_FAMILY,
+        windows: isWindowsHost(navigator.userAgent),
         clipboard: {
-          copy: async (text) => void (await store.copyText(text)),
+          copy: async (text) => {
+            await store.copyText(text);
+          },
           read: () => navigator.clipboard.readText(),
         },
         onInput: (data) => session.current?.input(data),
@@ -86,6 +91,7 @@ export function TerminalPage(props: {
         onFindResults: setResults,
         onLink: (uri) => store.openLink(uri),
         onSnippets: () => setPicking(true),
+        onZoom: (step) => store.terminalFont.zoom(step),
       });
       const current = new TerminalSession({
         terminalId,
@@ -317,7 +323,7 @@ export function TerminalPage(props: {
 }
 
 /** Closing a terminal: detach (the default; the process keeps running on the host) or end it. */
-export function TerminalCloseDialog(props: { onClose(kill: boolean | null): void }) {
+export function TerminalCloseDialog(props: Readonly<{ onClose(kill: boolean | null): void }>) {
   const t = useT();
   const detach = useRef<HTMLButtonElement>(null);
   return (

@@ -6,7 +6,7 @@ import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { whichOnPath } from "../src/which.ts";
 import { installFakeClaude } from "./fake-claude.ts";
-import { newManager } from "./helpers.ts";
+import { BASELINE_FEATURES, newManager } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const TOKEN = "bg-token-0123456789abcdef";
@@ -149,7 +149,7 @@ describe("bg-listar: over the protocol", () => {
     const client = await served(true);
     expect(
       (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toContain("bg");
     const list = await client.data<{ supported: boolean; sessions: unknown[] }>("bg.list", {});

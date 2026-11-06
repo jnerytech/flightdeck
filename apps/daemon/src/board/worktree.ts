@@ -1,9 +1,11 @@
 import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
 import { type CommandResult, git } from "./command.ts";
 import { LOCAL_SETTINGS } from "./project-rules.ts";
+import { assertBranchName, type Rev, refArg } from "./ref-arg.ts";
 
 /** Whether `path` exists, asked without blocking. */
 const exists = (path: string): Promise<boolean> =>
@@ -47,8 +49,8 @@ export const worktreeDir = (repo: string, slug: string) =>
 async function freeSlug(repo: string, base: string): Promise<string> {
   for (let n = 1; ; n++) {
     const slug = n === 1 ? base : `${base}-${n}`;
-    const branch = await git(repo, "show-ref", "--verify", "--quiet", `refs/heads/fd/${slug}`);
-    if (branch.code !== 0 && !(await exists(worktreeDir(repo, slug)))) return slug;
+    const branch = await git(repo, "show-ref", "--verify", "--quiet", `refs/heads/fd/${slug}`); // NOSONAR: each candidate name is tried only after the one before was found taken
+    if (branch.code !== 0 && !(await exists(worktreeDir(repo, slug)))) return slug; // NOSONAR: each candidate name is tried only after the one before was found taken
   }
 }
 
@@ -162,19 +164,20 @@ export async function copyIncluded(
   const copied: string[] = [];
   const skipped: string[] = [];
   let total = 0;
-  for (const path of matching
-    .filter((p) => ignored.has(p))
-    .sort((a, b) => (a < b ? -1 : Number(a > b)))) {
-    const size = (await stat(join(repo, path))).size;
-    if (total + size > limit) {
-      skipped.push(path);
-      continue;
-    }
-    total += size;
-    await mkdir(dirname(join(worktree, path)), { recursive: true });
-    await copyFile(join(repo, path), join(worktree, path));
-    copied.push(path);
-  }
+  await inSequence(
+    matching.filter((p) => ignored.has(p)).sort((a, b) => (a < b ? -1 : Number(a > b))),
+    async (path) => {
+      const size = (await stat(join(repo, path))).size;
+      if (total + size > limit) {
+        skipped.push(path);
+        return;
+      }
+      total += size;
+      await mkdir(dirname(join(worktree, path)), { recursive: true });
+      await copyFile(join(repo, path), join(worktree, path));
+      copied.push(path);
+    },
+  );
   return { copied, skipped };
 }
 
@@ -186,19 +189,22 @@ export async function copyIncluded(
  */
 export async function freshBase(
   repo: string,
-  base: string,
+  base: Rev,
 ): Promise<{ ref: string; notice: string | null }> {
+  // A base is also a refspec here: `a:b` or `+x:refs/heads/y` would write a ref. `HEAD` is the
+  // default of a detached checkout.
+  const safe = base === "HEAD" ? refArg(base) : assertBranchName(base);
   const remotes = (await git(repo, "remote")).stdout.split(/\s+/);
   if (!remotes.includes("origin")) return { ref: base, notice: null };
-  const fetched = await git(repo, "fetch", "origin", base);
+  const fetched = await git(repo, "fetch", "--end-of-options", "origin", base);
   if (fetched.code !== 0) {
     const why = fetched.stderr.trim().split("\n").at(-1) ?? "";
     return { ref: base, notice: `Could not refresh ${base} from origin: ${why}` };
   }
   const remote = `origin/${base}`;
-  const behind = await git(repo, "merge-base", "--is-ancestor", base, remote);
+  const behind = await git(repo, "merge-base", "--is-ancestor", safe, remote);
   const same =
-    (await git(repo, "rev-parse", base)).stdout === (await git(repo, "rev-parse", remote)).stdout;
+    (await git(repo, "rev-parse", safe)).stdout === (await git(repo, "rev-parse", remote)).stdout;
   return { ref: behind.code === 0 && !same ? remote : base, notice: null };
 }
 
@@ -242,7 +248,10 @@ async function create(
   const path = worktreeDir(repo, slug);
   await addExcludeLine(await excludeFileAsync(repo), EXCLUDE_LINE);
   await excludeLocalSettingsAsync(repo);
-  must(await git(repo, "worktree", "add", path, "-b", branch, base), "git worktree add");
+  must(
+    await git(repo, "worktree", "add", path, "-b", refArg(branch), refArg(base)),
+    "git worktree add",
+  );
   const { skipped } = await copyIncluded(repo, path, includeLimit);
   return { slug, branch, path, skipped };
 }

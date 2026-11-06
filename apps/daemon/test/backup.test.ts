@@ -10,7 +10,7 @@ import { Maintenance } from "../src/maintenance/maintenance.ts";
 import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { MIGRATIONS } from "../src/store/migrations.ts";
-import { newManager, tempDir } from "./helpers.ts";
+import { BASELINE_FEATURES, newManager, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const DAY = 86_400_000;
@@ -235,7 +235,7 @@ describe("backup", () => {
     await client.request("hello", { token: TOKEN, client: "t" });
     expect(
       (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toEqual(["maintenance"]);
     const made = await client.data<{ path: string; bytes: number }>("maintenance.backup", {});

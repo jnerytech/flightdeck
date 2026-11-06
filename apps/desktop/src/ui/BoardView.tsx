@@ -1,11 +1,23 @@
 import type { BoardColumn, Card, Project } from "@flightdeck/protocol";
-import { Columns3, ListTodo, Lock, MoreHorizontal, Plus } from "lucide-react";
+import {
+  Circle,
+  CircleAlert,
+  CircleCheck,
+  CircleCheckBig,
+  Columns3,
+  ListTodo,
+  Loader,
+  Lock,
+  type LucideIcon,
+  MoreHorizontal,
+  Plus,
+} from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
 import { BoardSyncControl } from "@/components/board/board-sync";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
-import { Toolbar } from "@/components/layout/stack";
+import { Inline, Toolbar } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { AddProject } from "@/components/projects/add-project";
 import { RoiCard } from "@/components/roi/roi-card";
@@ -26,10 +38,12 @@ import { useT } from "@/i18n/context";
 import { reasonText } from "@/lib/notice-text";
 import { useStoreSlice } from "@/lib/use-store";
 import { cn } from "@/lib/utils";
+import { CardStartDialog } from "../components/board/card-start-dialog.tsx";
 import { AppDialogContent } from "../components/feedback/dialog-content.tsx";
-import type { Key } from "../i18n/index.ts";
+import type { Key, T } from "../i18n/index.ts";
 import { type AppStore, sessionKey } from "../lib/app-store.ts";
 import { boardTitle, COLUMNS, filterCards, positionBefore, projectCards } from "../lib/board.ts";
+import { cardStartBlock } from "../lib/card-start-block.ts";
 import { issueNumber } from "../lib/issues.ts";
 import { statusTone } from "../lib/status.ts";
 import { hasFeature } from "../lib/version.ts";
@@ -37,26 +51,45 @@ import { BoardColumnEmpty } from "./BoardColumnEmpty.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { ExternalSeal, IssuesPanel } from "./IssuesPanel.tsx";
 
-function CardTile(props: {
-  card: Card;
-  /** The name of the workflow the card is running, when known. */
-  workflow?: string;
-  formatTime(iso: string): string;
-  labels: { actions: string; start: string; edit: string; delete: string };
-  /** Phase 31: the titles of the cards it waits for and of those it holds up. */
-  deps: { waiting: string; holding: string };
-  /** The ways to move the card without dragging it, in menu order. */
-  moves: Array<{ key: string; label: string; disabled?: boolean; onSelect(): void }>;
-  onOpen(): void;
-  /** "Iniciar card" from the card's menu, without opening it (phase 10). */
-  onStart(): void;
-  /** Opens the card with its title ready to edit. */
-  onEdit(): void;
-  /** Asks to delete the card (a card that already started is offered Discard instead). */
-  onDelete(): void;
-  onDragStart(): void;
-  onDropOn(): void;
-}) {
+/** The icon of each column's status, drawn in the column's own tone. */
+const COLUMN_ICONS: Record<BoardColumn, LucideIcon> = {
+  backlog: Circle,
+  in_progress: Loader,
+  waiting: CircleAlert,
+  review: CircleCheck,
+  done: CircleCheckBig,
+};
+
+/** Why "Iniciar card" is off (queued or running), else null. */
+function startOffText(block: ReturnType<typeof cardStartBlock>, t: T): string | null {
+  if (block === "queued") return t("board.startQueued");
+  return block === "running" ? t("board.startRunning") : null;
+}
+
+function CardTile(
+  props: Readonly<{
+    card: Card;
+    /** The name of the workflow the card is running, when known. */
+    workflow?: string;
+    formatTime(iso: string): string;
+    labels: { actions: string; start: string; edit: string; delete: string };
+    /** Why "Iniciar card" is off (queued or running), else null. */
+    startOff: string | null;
+    /** Phase 31: the titles of the cards it waits for and of those it holds up. */
+    deps: { waiting: string; holding: string };
+    /** The ways to move the card without dragging it, in menu order. */
+    moves: Array<{ key: string; label: string; disabled?: boolean; onSelect(): void }>;
+    onOpen(): void;
+    /** "Iniciar card" from the card's menu, without opening it (phase 10). */
+    onStart(): void;
+    /** Opens the card with its title ready to edit. */
+    onEdit(): void;
+    /** Asks to delete the card (a card that already started is offered Discard instead). */
+    onDelete(): void;
+    onDragStart(): void;
+    onDropOn(): void;
+  }>,
+) {
   const t = useT();
   const { card } = props;
   /** The workflow (when its run is known) and the branch, when there are any. */
@@ -103,7 +136,9 @@ function CardTile(props: {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem onSelect={props.onStart}>{props.labels.start}</DropdownMenuItem>
+            <DropdownMenuItem disabled={props.startOff !== null} onSelect={props.onStart}>
+              {props.startOff ? `${props.labels.start} · ${props.startOff}` : props.labels.start}
+            </DropdownMenuItem>
             {props.moves.map((move) => (
               <DropdownMenuItem key={move.key} disabled={move.disabled} onSelect={move.onSelect}>
                 {move.label}
@@ -189,8 +224,11 @@ export const BoardView = memo(function BoardView(props: {
   const loading = useMinLoading(project === null);
   /** The new-card dialog. */
   const [creating, setCreating] = useState(false);
+  const [starting, setStarting] = useState<Card | null>(null);
   /** The card whose Delete… is asking for confirmation. */
   const [deleting, setDeleting] = useState<Card | null>(null);
+  /** The column a new card goes to: the one whose + was pressed. */
+  const [createIn, setCreateIn] = useState<BoardColumn>("backlog");
   /** The column a dragged card is over. */
   const [over, setOver] = useState<string | null>(null);
   /** The issues panel (phase 13), on a daemon that announces issues. */
@@ -291,18 +329,28 @@ export const BoardView = memo(function BoardView(props: {
       ?.focus();
   });
 
-  const create = () => {
-    const made = store.hostCommand(hostId, "card.create", {
+  const create = async () => {
+    // The column whose + was pressed is part of the command: one step, nothing to move afterwards.
+    const made = await store.hostCommand(hostId, "card.create", {
       projectId,
       title: title.trim(),
       description,
+      ...(createIn === "backlog" ? {} : { column: createIn }),
     });
+    // Issue #229: only a card that exists closes the dialog; a refused one keeps what was typed
+    // (the banner says why). A made card says so, with a way to open it (issue #188).
+    if (!made) return made;
     close();
+    store.success(t("kanban.created", { title: made.title }), {
+      label: t("kanban.openCard"),
+      run: () => props.onOpenCard(made.id),
+    });
     return made;
   };
   /** Closes the dialog and forgets what was typed. */
   const close = () => {
     setCreating(false);
+    setCreateIn("backlog");
     setTitle("");
     setDescription("");
   };
@@ -362,6 +410,7 @@ export const BoardView = memo(function BoardView(props: {
         )}
         <div
           ref={boardRef}
+          data-slot="board-columns"
           // biome-ignore lint/a11y/noNoninteractiveTabindex: the columns scroll sideways; focus lets the keyboard do it
           tabIndex={0}
           className="grid auto-cols-[minmax(15rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2"
@@ -370,10 +419,8 @@ export const BoardView = memo(function BoardView(props: {
             <section
               key={id}
               aria-label={t(`kanban.columns.${id}` as Key)}
-              className={cn(
-                "flex min-h-32 flex-col gap-2 rounded-lg bg-secondary/50 p-2",
-                over === id && "drop-over",
-              )}
+              data-column={id}
+              className={cn("board-column", over === id && "drop-over")}
               onDragOver={(e) => e.preventDefault()}
               onDragEnter={() => setOver(id)}
               onDragLeave={(e) => {
@@ -384,9 +431,16 @@ export const BoardView = memo(function BoardView(props: {
                 drop(id);
               }}
             >
-              <h3 className="px-1 font-medium text-muted-foreground text-xs">
-                {t(`kanban.columns.${id}` as Key)}
-              </h3>
+              <ColumnHeader
+                id={id}
+                title={t(`kanban.columns.${id}` as Key)}
+                count={all.filter((card) => card.column === id).length}
+                addLabel={t("kanban.addCardTo", { column: t(`kanban.columns.${id}` as Key) })}
+                onAdd={() => {
+                  setCreateIn(id);
+                  setCreating(true);
+                }}
+              />
               <ul className="flex flex-col gap-2">
                 {shown
                   .filter((card) => card.column === id)
@@ -406,6 +460,7 @@ export const BoardView = memo(function BoardView(props: {
                         edit: store.i18n.t("board.edit"),
                         delete: store.i18n.t("board.delete"),
                       }}
+                      startOff={startOffText(cardStartBlock(card), store.i18n.t)}
                       deps={{
                         waiting: titlesOf(card.waitingOn),
                         holding: titlesOf(card.blocking),
@@ -414,9 +469,7 @@ export const BoardView = memo(function BoardView(props: {
                       onOpen={() => props.onOpenCard(card.id)}
                       onEdit={() => props.onOpenCard(card.id, true)}
                       onDelete={() => setDeleting(card)}
-                      onStart={() =>
-                        void store.hostCommand(hostId, "card.start", { cardId: card.id })
-                      }
+                      onStart={() => setStarting(card)}
                       onDragStart={() => {
                         dragging.current = card.id;
                       }}
@@ -428,7 +481,17 @@ export const BoardView = memo(function BoardView(props: {
                   ))}
               </ul>
               {all.every((card) => card.column !== id) && (
-                <BoardColumnEmpty label={t("kanban.addCard")} onAdd={() => setCreating(true)} />
+                <BoardColumnEmpty
+                  label={t("kanban.emptyName", {
+                    empty: t("kanban.empty"),
+                    action: t("kanban.addCard"),
+                  })}
+                  text={t("kanban.empty")}
+                  onAdd={() => {
+                    setCreateIn(id);
+                    setCreating(true);
+                  }}
+                />
               )}
             </section>
           ))}
@@ -464,6 +527,20 @@ export const BoardView = memo(function BoardView(props: {
           onClose={() => setIssuesOpen(false)}
           onProject={setProject}
           onOpenCard={props.onOpenCard}
+        />
+      )}
+      {starting && (
+        <CardStartDialog
+          store={store}
+          hostId={hostId}
+          card={starting}
+          onClose={() => setStarting(null)}
+          onStarted={() =>
+            store.success(t("kanban.started", { title: starting.title }), {
+              label: t("kanban.openCard"),
+              run: () => props.onOpenCard(starting.id),
+            })
+          }
         />
       )}
       <Dialog open={creating} onOpenChange={(open) => (open ? setCreating(true) : close())}>
@@ -508,3 +585,32 @@ export const BoardView = memo(function BoardView(props: {
     </Page>
   );
 });
+
+/** A column's head: its status icon and name, the count as a pill, and a + that adds a card to it. */
+function ColumnHeader(props: {
+  id: BoardColumn;
+  title: string;
+  count: number;
+  addLabel: string;
+  onAdd(): void;
+}) {
+  const Icon = COLUMN_ICONS[props.id];
+  return (
+    <Inline gap={2} className="column-head">
+      <Icon data-slot="column-icon" aria-hidden="true" />
+      <h3 className="column-title">{props.title}</h3>
+      <Badge variant="secondary" className="column-count">
+        {props.count}
+      </Badge>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-6"
+        aria-label={props.addLabel}
+        onClick={props.onAdd}
+      >
+        <Plus aria-hidden="true" />
+      </Button>
+    </Inline>
+  );
+}

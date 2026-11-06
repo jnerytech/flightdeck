@@ -29,6 +29,7 @@ function setup(updater = true, logs = false) {
       appUpdate={{ upToDate: false } as never}
       onCheckUpdate={() => {}}
       onNotifyUpdates={() => {}}
+      onAutoUpdate={() => {}}
       theme="system"
       onTheme={() => {}}
       density="comfortable"
@@ -55,6 +56,7 @@ describe("configuracoes-trilho: the rail and the search", () => {
       "Janela",
       "Atualizações",
       "Atalho global",
+      "Assistente de IA",
       "Webhooks",
     ]);
   });
@@ -118,6 +120,6 @@ describe("configuracoes-trilho: the rail and the search", () => {
     await act(async () => {
       fireEvent.change(search, { target: { value: "" } });
     });
-    expect(items()).toHaveLength(6);
+    expect(items()).toHaveLength(7);
   });
 });

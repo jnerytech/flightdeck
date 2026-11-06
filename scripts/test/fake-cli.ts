@@ -7,12 +7,12 @@ import {
   appendFileSync,
   chmodSync,
   existsSync,
-  mkdtempSync,
+  readdirSync,
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
+import { realTempDir } from "./temp-dir.ts";
 
 export interface FakeRule {
   /** Every one of these must appear among the arguments. */
@@ -47,6 +47,11 @@ export interface FakeCli {
   calls(): string[][];
   /** Working directory of every call, in the same order. */
   cwds(): string[];
+  /**
+   * What every call got on stdin, in the same order: "" for none. Only the in-process `run` sees
+   * it; the fake's process does not read stdin (a caller that leaves the pipe open would hang it).
+   */
+  inputs(): string[];
   respond(rules: FakeRule[]): void;
   /** Answers a call in this process, as the fake's own process would: no process is started. */
   run(cmd: string[], cwd: string, input?: string): Promise<FakeAnswer>;
@@ -58,13 +63,15 @@ const MAIN = join(import.meta.dir, "fake-cli-main.ts");
 
 /**
  * One call of the fake whose state is in `stateDir`: refuses what Bun refuses for a .cmd shim
- * (recording nothing), records the arguments and the working directory, and picks the first rule
- * that matches. The fake's process (fake-cli-main.ts) and its in-process `run` both answer here.
+ * (recording nothing), records the arguments, the working directory and the stdin ("" from the
+ * process, which does not read it), and picks the first rule that matches. The fake's process
+ * (fake-cli-main.ts) and its in-process `run` both answer here.
  */
 export function answerFake(
   stateDir: string,
   args: string[],
   cwd: string,
+  input = "",
 ): FakeAnswer & { rule: FakeRule | null } {
   const { rejectCmdChars } = JSON.parse(readFileSync(join(stateDir, "options.json"), "utf8")) as {
     rejectCmdChars: boolean;
@@ -75,6 +82,7 @@ export function answerFake(
   }
   appendFileSync(join(stateDir, "calls.jsonl"), `${JSON.stringify(args)}\n`);
   appendFileSync(join(stateDir, "cwds.jsonl"), `${JSON.stringify(cwd)}\n`);
+  appendFileSync(join(stateDir, "inputs.jsonl"), `${JSON.stringify(input)}\n`);
   const call = readFileSync(join(stateDir, "calls.jsonl"), "utf8").trim().split(/\r?\n/).length;
   const rules = JSON.parse(readFileSync(join(stateDir, "rules.json"), "utf8")) as FakeRule[];
   const rule = rules.find(
@@ -94,6 +102,57 @@ export function answerFake(
   return { code: rule.code ?? 0, stdout: rule.stdout ?? "", stderr: rule.stderr ?? "", rule };
 }
 
+/**
+ * Kills the fakes of this run still alive (issue #254): every pid a fake recorded under
+ * `<runDir>/fd-fake-*\/pids/`, checked against its command line first so a reused pid is never
+ * hit. Linux only (it reads /proc); elsewhere the fakes' own parent watch and deadline end them.
+ * Returns the pids it killed.
+ */
+/**
+ * The process a fake watches (#254): the caller the shell shim handed over, else its parent. On
+ * Windows the shim runs under Git Bash, whose $PPID is an MSYS pid and names no Windows process
+ * (#392), so the fake watches its parent there.
+ */
+export function fakeCaller(
+  env: Record<string, string | undefined>,
+  platform: string,
+  ppid: number,
+): number {
+  const handed = platform === "win32" ? 0 : Number(env.FLIGHTDECK_FAKE_CALLER);
+  return handed || ppid;
+}
+
+export function reapFakes(runDir: string): number[] {
+  if (process.platform !== "linux") return [];
+  const killed: number[] = [];
+  const entries = (dir: string) => {
+    try {
+      return readdirSync(dir);
+    } catch {
+      return [];
+    }
+  };
+  for (const fake of entries(runDir).filter((name) => name.startsWith("fd-fake-"))) {
+    for (const name of entries(join(runDir, fake, "pids"))) {
+      const pid = Number(name);
+      let cmdline = "";
+      try {
+        cmdline = readFileSync(`/proc/${pid}/cmdline`, "utf8");
+      } catch {
+        continue; // Gone already.
+      }
+      if (!cmdline.includes("fake-cli-main")) continue;
+      try {
+        process.kill(pid, "SIGKILL");
+        killed.push(pid);
+      } catch {
+        // Ended between the check and the kill.
+      }
+    }
+  }
+  return killed;
+}
+
 export interface FakeCliOptions {
   /**
    * Refuses, like Bun does for a Windows .cmd shim, an argument with a newline or one of
@@ -109,9 +168,13 @@ export function installFakeCli(
   env: Record<string, string | undefined> = process.env,
   options: FakeCliOptions = {},
 ): FakeCli {
-  const dir = mkdtempSync(join(tmpdir(), `fd-fake-${name}-`));
+  const dir = realTempDir(`fd-fake-${name}-`);
   const bun = process.execPath;
-  writeFileSync(join(dir, name), `#!/bin/sh\nexec "${bun}" "${MAIN}" "${dir}" "$@"\n`);
+  // The shim hands over its caller, so a fake started after the caller died still knows whom to watch.
+  writeFileSync(
+    join(dir, name),
+    `#!/bin/sh\nFLIGHTDECK_FAKE_CALLER=$PPID exec "${bun}" "${MAIN}" "${dir}" "$@"\n`,
+  );
   chmodSync(join(dir, name), 0o755);
   writeFileSync(
     join(dir, `${name}.cmd`),
@@ -147,11 +210,19 @@ export function installFakeCli(
         .split(/\r?\n/)
         .map((line) => JSON.parse(line) as string);
     },
+    inputs: () => {
+      const log = join(dir, "inputs.jsonl");
+      if (!existsSync(log)) return [];
+      return readFileSync(log, "utf8")
+        .trim()
+        .split(/\r?\n/)
+        .map((line) => JSON.parse(line) as string);
+    },
     respond,
     // The program (cmd[0]) is the fake found on PATH; a rule's delayMs and holdPipesMs are about
     // the process, which this one never starts.
-    run: async (cmd, cwd) => {
-      const { code, stdout, stderr } = answerFake(dir, cmd.slice(1), cwd);
+    run: async (cmd, cwd, input) => {
+      const { code, stdout, stderr } = answerFake(dir, cmd.slice(1), cwd, input);
       return { code, stdout, stderr };
     },
     // Takes out only this fake's folder, so the order of several restores does not matter.

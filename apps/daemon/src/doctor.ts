@@ -1,4 +1,7 @@
 import { loopbackOnly } from "./pairing.ts";
+import { VERIFIED_OPENCODE_VERSION } from "./runtime/opencode-config.ts";
+import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
+import { findingText, type ScopeFinding } from "./runtime/opencode-scope.ts";
 
 type HooksState = "installed" | "absent" | "outdated";
 
@@ -21,6 +24,8 @@ export interface DoctorDeps {
   linger?(): Promise<"on" | "off" | null>;
   /** Template files the host could not load (phase 33); absent when it has no templates. */
   templateProblems?(): Promise<Array<{ file: string; reason: string }>>;
+  /** Phase 39: OpenCode on this host: turned on or not, where it is, what discovery said. */
+  opencode?(): Promise<OpenCodeState>;
   /** The running daemon's version and, when the app told it, the app's: only a running daemon has them. */
   version?: { daemon: string; app?: string };
 }
@@ -37,7 +42,8 @@ export type DoctorCheckId =
   | "version"
   | "templates"
   | "mcp"
-  | "linger";
+  | "linger"
+  | "opencode";
 
 export interface DoctorCheck {
   id: DoctorCheckId;
@@ -55,6 +61,88 @@ const check = (
   detail: string,
   fix?: string,
 ): DoctorCheck => ({ id, name, status, detail, ...(fix ? { fix } : {}) });
+
+export interface OpenCodeState {
+  enabled: boolean;
+  /** The executable on PATH, looked up without running it. */
+  found: string | null;
+  /** What discovery said, when OpenCode is turned on. */
+  info: OpenCodeInfo | null;
+  platform: NodeJS.Platform;
+}
+
+/** Phase 39: the OpenCode row; never a failure (OpenCode is optional). */
+export function opencodeCheck(state: OpenCodeState): DoctorCheck {
+  const { enabled, found, info, platform } = state;
+  if (!enabled) {
+    return found
+      ? check(
+          "opencode",
+          "opencode",
+          "warn",
+          `OpenCode is installed (${found}) but turned off on this host`,
+          'set "opencode": { "enabled": true } in the host config, then restart the daemon',
+        )
+      : check("opencode", "opencode", "ok", "OpenCode is not installed (optional)");
+  }
+  if (!info?.available) {
+    return check(
+      "opencode",
+      "opencode",
+      "warn",
+      `OpenCode is turned on but not available: ${info?.reason ?? "unknown"}${scopeFindings(info?.findings)}`,
+      "see the OpenCode section of the manual for this reason, then restart the daemon",
+    );
+  }
+  const what = `OpenCode ${info.version} (${info.path})`;
+  if (!info.verified) {
+    return check(
+      "opencode",
+      "opencode",
+      "warn",
+      `${what} is not the version Flightdeck verified (${VERIFIED_OPENCODE_VERSION})`,
+    );
+  }
+  // ADR 39-1: the scope scan's folders on Windows and macOS were not checked against OpenCode.
+  return platform === "linux"
+    ? check("opencode", "opencode", "ok", what)
+    : check(
+        "opencode",
+        "opencode",
+        "warn",
+        `${what}; its global and system config folders are unverified on this OS`,
+      );
+}
+
+/** What the scope scan found, for the person to remove: `: kind detail (path); ...`. */
+/** The daemon's check: answering, refusing this machine's address, or not answering at all. */
+function daemonCheck(healthy: boolean, refused: string | null, address: string): DoctorCheck {
+  if (healthy) return check("daemon", "daemon", "ok", `answering on ${address}`);
+  if (refused) {
+    return check(
+      "daemon",
+      "daemon",
+      "fail",
+      `the daemon refused this machine's address (${refused}): add its network to allowedNetworks (or run flightdeckd setup)`,
+      "run: flightdeckd setup (it adds the Tailscale networks), or add the network to allowedNetworks in the config",
+    );
+  }
+  return check(
+    "daemon",
+    "daemon",
+    "fail",
+    `nothing answers on ${address}`,
+    "run: flightdeckd service start (or flightdeckd start, in a terminal, to see the error)",
+  );
+}
+
+/** A template file that could not be loaded, with why. */
+const templateProblem = (p: { file: string; reason: string }) => `${p.file} (${p.reason})`;
+
+function scopeFindings(findings: ScopeFinding[] | undefined): string {
+  if (!findings?.length) return "";
+  return `: ${findings.map(findingText).join("; ")}`;
+}
 
 const minor = (version: string) => version.split(".").slice(0, 2).join(".");
 
@@ -74,6 +162,97 @@ function versionCheck(version: { daemon: string; app?: string }): DoctorCheck {
 
 const SETUP = "run: flightdeckd setup";
 
+/** The project folders: at least one allowed, and each still a folder. */
+function foldersCheck(allowedRoots: string[], gone: string[]): DoctorCheck {
+  if (allowedRoots.length === 0) {
+    return check(
+      "folders",
+      "project folders",
+      "fail",
+      "no folder allowed: no session can start",
+      SETUP,
+    );
+  }
+  if (gone.length > 0) {
+    return check(
+      "folders",
+      "project folders",
+      "fail",
+      `not a folder anymore: ${gone.join(", ")}`,
+      SETUP,
+    );
+  }
+  return check("folders", "project folders", "ok", allowedRoots.join(", "));
+}
+
+function serviceCheck(installed: boolean): DoctorCheck {
+  if (installed) return check("service", "service", "ok", "installed");
+  return check(
+    "service",
+    "service",
+    "fail",
+    "no service installed: the daemon will not start by itself",
+    SETUP,
+  );
+}
+
+function claudeCheck(claude: string | null | undefined): DoctorCheck {
+  if (claude) return check("claude", "claude", "ok", claude);
+  return check(
+    "claude",
+    "claude",
+    "warn",
+    "claude is not on the PATH: sessions cannot start",
+    "install Claude Code, then run: flightdeckd service install",
+  );
+}
+
+function mcpCheck(mcp: { exists: boolean; command: string }): DoctorCheck {
+  if (mcp.exists) return check("mcp", "mcp", "ok", mcp.command);
+  return check(
+    "mcp",
+    "mcp",
+    "warn",
+    `${mcp.command} is gone: sessions start without the team tools (send_to_session, list_sessions)`,
+    SETUP,
+  );
+}
+
+function lingerCheck(linger: "on" | "off"): DoctorCheck {
+  if (linger === "on") return check("linger", "linger", "ok", "on: the daemon starts at boot");
+  return check(
+    "linger",
+    "linger",
+    "fail",
+    "off: the daemon will not start after a reboot (or after WSL restarts) until you log in",
+    "run: sudo loginctl enable-linger $USER",
+  );
+}
+
+function hooksCheck(hooks: string): DoctorCheck {
+  if (hooks === "installed") return check("hooks", "hooks", "ok", "installed");
+  return check(
+    "hooks",
+    "hooks",
+    "warn",
+    `${hooks}: live session status is limited`,
+    "run: flightdeckd hooks install",
+  );
+}
+
+function tailscaleCheck(tailscale: string | null, bind: string): DoctorCheck {
+  if (tailscale && loopbackOnly(bind)) {
+    return check(
+      "tailscale",
+      "tailscale",
+      "warn",
+      `Tailscale is up (${tailscale}) but the daemon listens only on ${bind}: other devices cannot connect`,
+      SETUP,
+    );
+  }
+  return check("tailscale", "tailscale", "ok", tailscale ?? "not in use");
+}
+
 /** Checks what a first run needs, one line per thing, each failure with its fix. */
 export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks: DoctorCheck[] }> {
   let config: Awaited<ReturnType<DoctorDeps["config"]>>;
@@ -85,73 +264,20 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
   }
   const checks = [check("config", "config", "ok", "readable")];
 
-  const found = await Promise.all(config.allowedRoots.map((root) => deps.isDirectory(root)));
+  const found = await Promise.all(config.allowedRoots.map(async (root) => deps.isDirectory(root)));
   const gone = config.allowedRoots.filter((_, index) => !found[index]);
-  if (config.allowedRoots.length === 0) {
-    checks.push(
-      check("folders", "project folders", "fail", "no folder allowed: no session can start", SETUP),
-    );
-  } else if (gone.length) {
-    checks.push(
-      check(
-        "folders",
-        "project folders",
-        "fail",
-        `not a folder anymore: ${gone.join(", ")}`,
-        SETUP,
-      ),
-    );
-  } else {
-    checks.push(check("folders", "project folders", "ok", config.allowedRoots.join(", ")));
-  }
-
-  checks.push(
-    (await deps.serviceInstalled())
-      ? check("service", "service", "ok", "installed")
-      : check(
-          "service",
-          "service",
-          "fail",
-          "no service installed: the daemon will not start by itself",
-          SETUP,
-        ),
-  );
+  checks.push(foldersCheck(config.allowedRoots, gone));
+  checks.push(serviceCheck(await deps.serviceInstalled()));
 
   const address = `${config.bind}:${config.port}`;
   const healthy = await deps.healthy();
   const refused = healthy ? null : ((await deps.refused?.()) ?? null);
-  checks.push(
-    healthy
-      ? check("daemon", "daemon", "ok", `answering on ${address}`)
-      : refused
-        ? check(
-            "daemon",
-            "daemon",
-            "fail",
-            `the daemon refused this machine's address (${refused}): add its network to allowedNetworks (or run flightdeckd setup)`,
-            "run: flightdeckd setup (it adds the Tailscale networks), or add the network to allowedNetworks in the config",
-          )
-        : check(
-            "daemon",
-            "daemon",
-            "fail",
-            `nothing answers on ${address}`,
-            "run: flightdeckd service start (or flightdeckd start, in a terminal, to see the error)",
-          ),
-  );
+  checks.push(daemonCheck(healthy, refused, address));
 
-  const claude = deps.claudePath();
-  checks.push(
-    claude
-      ? check("claude", "claude", "ok", claude)
-      : check(
-          "claude",
-          "claude",
-          "warn",
-          "claude is not on the PATH: sessions cannot start",
-          "install Claude Code, then run: flightdeckd service install",
-        ),
-  );
+  checks.push(claudeCheck(deps.claudePath()));
+
+  const opencode = await deps.opencode?.();
+  if (opencode) checks.push(opencodeCheck(opencode));
 
   const brokenTemplates = (await deps.templateProblems?.()) ?? [];
   if (brokenTemplates.length > 0) {
@@ -160,67 +286,20 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
         "templates",
         "templates",
         "warn",
-        `could not load: ${brokenTemplates.map((p) => `${p.file} (${p.reason})`).join("; ")}`,
+        `could not load: ${brokenTemplates.map(templateProblem).join("; ")}`,
         "fix or remove those files in the templates folder",
       ),
     );
   }
 
   const mcp = await deps.mcp?.();
-  if (mcp) {
-    checks.push(
-      mcp.exists
-        ? check("mcp", "mcp", "ok", mcp.command)
-        : check(
-            "mcp",
-            "mcp",
-            "warn",
-            `${mcp.command} is gone: sessions start without the team tools (send_to_session, list_sessions)`,
-            SETUP,
-          ),
-    );
-  }
+  if (mcp) checks.push(mcpCheck(mcp));
 
   const linger = await deps.linger?.();
-  if (linger) {
-    checks.push(
-      linger === "on"
-        ? check("linger", "linger", "ok", "on: the daemon starts at boot")
-        : check(
-            "linger",
-            "linger",
-            "fail",
-            "off: the daemon will not start after a reboot (or after WSL restarts) until you log in",
-            "run: sudo loginctl enable-linger $USER",
-          ),
-    );
-  }
+  if (linger) checks.push(lingerCheck(linger));
 
-  const hooks = await deps.hooks();
-  checks.push(
-    hooks === "installed"
-      ? check("hooks", "hooks", "ok", "installed")
-      : check(
-          "hooks",
-          "hooks",
-          "warn",
-          `${hooks}: live session status is limited`,
-          "run: flightdeckd hooks install",
-        ),
-  );
-
-  const tailscale = await deps.tailscaleIp();
-  checks.push(
-    tailscale && loopbackOnly(config.bind)
-      ? check(
-          "tailscale",
-          "tailscale",
-          "warn",
-          `Tailscale is up (${tailscale}) but the daemon listens only on ${config.bind}: other devices cannot connect`,
-          SETUP,
-        )
-      : check("tailscale", "tailscale", "ok", tailscale ?? "not in use"),
-  );
+  checks.push(hooksCheck(await deps.hooks()));
+  checks.push(tailscaleCheck(await deps.tailscaleIp(), config.bind));
 
   if (deps.version) checks.push(versionCheck(deps.version));
 

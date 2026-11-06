@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { poll } from "../../daemon/test/helpers.ts";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { uiIdle, waiter } from "./wait.ts";
@@ -75,30 +76,41 @@ describe("direcao-visual: barra lateral", () => {
     expect(inAside().queryByText("Flightdeck")).not.toBeNull();
     expect(aside().querySelector("img, svg[data-logo]")).not.toBeNull();
     const nav = aside().querySelector("nav") as HTMLElement;
-    const items = [...nav.querySelectorAll("button")];
+    // The Machines group holds the hosts, which have their own test below.
+    const items = [...nav.querySelectorAll("button")].filter(
+      (b) =>
+        !b.closest("fieldset")?.getAttribute("aria-label")?.includes("Máquinas") &&
+        // The Setup row (issue #164) has its own tests; it comes and goes with the real state.
+        b.closest('[class~="group/setup"]') === null,
+    );
     expect(items.map((b) => b.textContent?.replace(/\d+$/, ""))).toEqual([
+      // The folding groups by purpose, each with its heading.
+      "Trabalho",
+      "Início",
       "Sessões",
       "Precisa de você",
       "Projetos",
       "Board",
-      // Then the folding groups, each with its heading.
-      "Trabalho",
+      "Automação",
       "Workflows",
+      "Observabilidade",
       "Custos",
+      "Histórico",
       "Biblioteca",
       // The vault is the app's (phase 16), so Cofre shows whatever the hosts offer.
       "Cofre",
-      "Infra",
-      "Histórico",
     ]);
     for (const item of items.filter((b) => b.getAttribute("aria-expanded") === null)) {
       expect(item.querySelector("svg")).not.toBeNull();
     }
     // Search with its shortcut, settings and the theme button close the bar.
     const search = inAside().queryByRole("button", { name: "Buscar no histórico (Ctrl+K)" });
-    expect(search?.querySelector("kbd")?.textContent).toBe("Ctrl K");
-    expect(inAside().queryByRole("button", { name: "Configurações" })).not.toBeNull();
-    expect(inAside().queryByRole("button", { name: "Alternar tema" })).not.toBeNull();
+    expect(search?.querySelector("kbd")?.textContent).toBe("Ctrl+K");
+    expect(
+      inAside()
+        .queryByRole("button", { name: /^Menu da conta de / })
+        ?.getAttribute("data-slot"),
+    ).toBe("account-trigger");
   });
 
   test("o contador de Precisa de você só aparece quando há pedidos", async () => {
@@ -126,12 +138,13 @@ describe("direcao-visual: barra lateral", () => {
     expect(await go("Board")).toBe("projects");
     expect(await go("Workflows")).toBe("projects");
     expect(await go("Abrir Sessões")).toBe("hub");
-    expect(await go("Configurações")).toBe("settings");
+    await chooseFromAccountMenu("Configurações");
+    expect(store.router.current.name).toBe("settings");
   });
 
-  test("Hosts recolhe; cada host tem pontinho de estado, nome e menu", async () => {
+  test("Máquinas recolhe; cada host tem pontinho de estado, nome e menu", async () => {
     const { store } = await setup();
-    const section = inAside().queryByRole("button", { name: "Hosts" });
+    const section = inAside().queryByRole("button", { name: "Máquinas" });
     expect(section?.getAttribute("aria-expanded")).toBe("true");
     expect(inAside().queryByRole("img", { name: "alfa: online" })?.className ?? "").toContain(
       "bg-status-running",
@@ -193,7 +206,7 @@ describe("direcao-visual: barra lateral", () => {
     await click(inAside().queryByRole("button", { name: "Buscar no histórico (Ctrl+K)" }));
     expect(store.getState().searchOpen).toBe(true);
     const before = store.theme.resolved;
-    await click(inAside().queryByRole("button", { name: "Alternar tema" }));
+    await chooseFromAccountMenu("Alternar tema");
     expect(store.theme.resolved).not.toBe(before);
   });
 
@@ -204,11 +217,12 @@ describe("direcao-visual: barra lateral", () => {
     // No visible words: the names move to the buttons' labels and tooltips.
     expect(aside().textContent).not.toContain("Sessões");
     expect(aside().textContent).not.toContain("Hosts");
-    expect(inAside().queryByRole("button", { name: "Abrir Sessões" })?.getAttribute("title")).toBe(
-      "Sessões",
-    );
+    // The names show as real tooltips, never as a native title (issue #165).
+    expect(
+      inAside().queryByRole("button", { name: "Abrir Sessões" })?.getAttribute("title"),
+    ).toBeNull();
     expect(inAside().queryByRole("button", { name: /^Precisa de você/ })).not.toBeNull();
-    expect(inAside().queryByRole("button", { name: "Configurações" })).not.toBeNull();
+    expect(inAside().queryByRole("button", { name: /^Menu da conta de / })).not.toBeNull();
     // A host is just its dot, which still opens the host.
     await click(inAside().queryByRole("button", { name: "Abrir host alfa" }));
     expect(store.router.current.name).toBe("host");
@@ -297,7 +311,8 @@ describe("direcao-visual: lista e detalhe", () => {
 });
 
 describe("direcao-visual: Precisa de você", () => {
-  const rowName = "alfa · Gerenciada: Bash";
+  // The row is named by what it shows: host · session: tool and what it would do (issue #175).
+  const rowName = /^alfa · Gerenciada: Bash/;
 
   test("sem pedidos, o estado vazio tem um ícone grande, uma frase e uma ação", async () => {
     const { store } = await setup();

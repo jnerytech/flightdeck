@@ -6,6 +6,7 @@ import { resolveAllowedCwd } from "../paths.ts";
 import type { Timers } from "../quota/quota.ts";
 import { ulid } from "../ulid.ts";
 import { whichOnPath } from "../which.ts";
+import { folderRemoving } from "../worktrees/locks.ts";
 import type { Pty, PtyFactory } from "./pty.ts";
 import { Ring } from "./ring.ts";
 import { defaultShell } from "./shell.ts";
@@ -78,6 +79,8 @@ export interface TerminalManagerOptions {
   idleMinutes?: number;
   /** The environment terminals inherit; the process's when absent. */
   env?: () => Record<string, string | undefined>;
+  /** The env block of the host's Claude Code settings (issue #486); none when absent. */
+  claudeEnv?: () => Promise<Record<string, string>>;
   /** This daemon's own command line and config, which "Claude aqui" runs `claude` through. */
   claude?: { self: string[]; configFile: string };
   /** Keep the API-key variables (`allowApiKey` of the config); dropped when absent. */
@@ -86,6 +89,8 @@ export interface TerminalManagerOptions {
   which?: (name: string) => string | null;
   timers?: Timers;
   now?: () => number;
+  /** Folders being removed (issue #152): no terminal opens in one. */
+  folderLocks?: { isHeld(cwd: string): boolean };
   /** Open, attach and end, never the content. */
   log?: (message: string) => void;
 }
@@ -253,6 +258,7 @@ export class TerminalManager {
   async open(req: OpenRequest): Promise<TerminalInfo> {
     this.assertOn();
     const cwd = req.internal ? req.cwd : await resolveAllowedCwd(req.cwd, this.opts.allowedRoots);
+    if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
     const max = this.opts.max ?? DEFAULT_MAX;
     if (this.live() >= max) {
       throw new FlightdeckError(
@@ -295,12 +301,22 @@ export class TerminalManager {
           which: this.opts.which ?? whichOnPath,
         });
     }
+    // Issue #486: in Claude Code's fullscreen mode each wheel notch reaches it as one report; 3
+    // lines a notch is how Windows Terminal and VS Code feel. A value the host's environment or
+    // the person's Claude Code settings (where /scroll-speed keeps it) already set is theirs, and
+    // one the request sets wins over all.
+    const kept = await (this.opts.claudeEnv?.() ?? Promise.resolve({} as Record<string, string>));
+    const scrollDefault: Record<string, string> =
+      env.CLAUDE_CODE_SCROLL_SPEED || kept.CLAUDE_CODE_SCROLL_SPEED
+        ? {}
+        : { CLAUDE_CODE_SCROLL_SPEED: "3" };
     let pty: Pty;
     try {
       pty = this.opts.pty({
         argv,
         cwd,
         env: {
+          ...scrollDefault,
           ...buildChildEnv(env, this.opts.allowApiKey ?? false),
           // What is attached is xterm.js. A service has no TERM (or "dumb"), and readline then
           // scrolls a long line sideways instead of wrapping it.
@@ -348,7 +364,7 @@ export class TerminalManager {
   /** The process id of a live terminal, when its PTY has one. */
   pidOf(terminalId: string): number | null {
     const entry = this.entries.get(terminalId);
-    return entry && entry.exitCode === null ? (entry.pty.pid ?? null) : null;
+    return entry?.exitCode === null ? (entry.pty.pid ?? null) : null;
   }
 
   write(terminalId: string, data: string): void {
@@ -567,7 +583,7 @@ export class TerminalManager {
 
   private onExit(id: string, exitCode: number): void {
     const entry = this.entries.get(id);
-    if (!entry || entry.exitCode !== null) return;
+    if (entry?.exitCode !== null) return;
     entry.exitCode = exitCode;
     this.log(`terminal ${id} encerrado (código ${exitCode})`);
     entry.afterExit?.(exitCode);

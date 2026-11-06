@@ -1,7 +1,17 @@
 import type { Platform } from "../platform/types.ts";
 import type { Theme } from "./theme.ts";
 
-export type TerminalKeyAction = "copy" | "paste" | "search" | "snippets" | "pass";
+export type TerminalKeyAction =
+  | "copy"
+  | "paste"
+  | "search"
+  | "snippets"
+  | "newline"
+  | TerminalZoom
+  | "pass";
+
+/** A step of the terminal's zoom: one point bigger, one smaller, or back to the default size. */
+export type TerminalZoom = "zoomIn" | "zoomOut" | "zoomReset";
 
 export interface TerminalKey {
   key: string;
@@ -19,10 +29,57 @@ const KEY_ACTIONS: Record<string, TerminalKeyAction> = {
   " ": "snippets",
 };
 
-/** Ctrl+Shift+C/V/F/Space are the app's; everything else, Ctrl+C included, goes to the process. */
-export function terminalKeyAction(event: TerminalKey): TerminalKeyAction {
-  if (!event.ctrlKey || !event.shiftKey || event.altKey || event.metaKey) return "pass";
+const ZOOM_KEYS: Record<string, TerminalZoom> = {
+  "=": "zoomIn",
+  "+": "zoomIn",
+  "-": "zoomOut",
+  _: "zoomOut",
+  "0": "zoomReset",
+};
+
+/** What Claude Code reads as "a new line, do not submit": ESC then CR, the same as Alt+Enter (what its /terminal-setup binds Shift+Enter to). */
+export const NEWLINE_SEQUENCE = "\u001b\r";
+
+/**
+ * Ctrl+Shift+C/V/F/Space are the app's. Ctrl+C goes to the process (it is the interrupt), except on
+ * Windows while something is selected: there it copies, as in Windows Terminal.
+ */
+export function terminalKeyAction(
+  event: TerminalKey,
+  context: { windows?: boolean; selected?: boolean } = {},
+): TerminalKeyAction {
+  // Shift+Enter alone is a new line in the prompt: xterm would send the same CR as Enter, which submits.
+  if (
+    event.shiftKey &&
+    !event.ctrlKey &&
+    !event.altKey &&
+    !event.metaKey &&
+    event.key === "Enter"
+  ) {
+    return "newline";
+  }
+  if (event.altKey || event.metaKey || !event.ctrlKey) return "pass";
+  // Zoom, as in Windows Terminal and VS Code: Ctrl with =/+, -/_ or 0, Shift or not (#476).
+  const zoom = ZOOM_KEYS[event.key];
+  if (zoom) return zoom;
+  if (!event.shiftKey) {
+    return context.windows && context.selected && event.key.toLowerCase() === "c" ? "copy" : "pass";
+  }
   return KEY_ACTIONS[event.key.toLowerCase()] ?? "pass";
+}
+
+/** Ctrl+wheel zooms the terminal (#476): up is bigger, down smaller; the wheel alone scrolls. */
+export function terminalWheelAction(event: {
+  ctrlKey: boolean;
+  deltaY: number;
+}): TerminalZoom | null {
+  if (!event.ctrlKey || event.deltaY === 0) return null;
+  return event.deltaY < 0 ? "zoomIn" : "zoomOut";
+}
+
+/** Whether the app runs on Windows, from the browser's user agent (WebView2 says so; macOS and Linux do not). */
+export function isWindowsHost(userAgent: string): boolean {
+  return /\bWindows\b/i.test(userAgent);
 }
 
 export interface TerminalColors {
@@ -97,5 +154,11 @@ export class TerminalFontController {
     this.value = clampFont(size);
     this.storage.setItem(TERMINAL_FONT_KEY, String(this.value));
     for (const listener of this.listeners) listener();
+  }
+
+  /** A zoom step from the terminal's keys or wheel: one point either way, or back to the default. */
+  zoom(step: TerminalZoom): void {
+    if (step === "zoomReset") this.set(TERMINAL_FONT_DEFAULT);
+    else this.set(this.value + (step === "zoomIn" ? 1 : -1));
   }
 }

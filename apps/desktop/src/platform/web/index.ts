@@ -24,6 +24,9 @@ const TITLE = "Flightdeck";
  * Browser implementation. Secrets (and the vault's values) stay in memory only: a page has no safe place for tokens, so
  * the web build asks for them again after a reload. Deep links arrive as `#link=<encoded url>`.
  */
+/** The web build has no shell: an API provider is "not configured", as a refusal the app already translates. */
+const NOT_HERE = { reason: "assistant_not_configured" };
+
 export function createWebPlatform(
   win: WebWindow = window as unknown as WebWindow,
   secrets: Map<string, string> = new Map(),
@@ -33,28 +36,41 @@ export function createWebPlatform(
   /** Deep-link handlers, also reached by a click on a notification that carries a link. */
   const linkHandlers = new Set<(url: string) => void>();
   return {
+    assistant: {
+      supported: false,
+      keyStatus: async () => ({ saved: false }),
+      setKey: () => Promise.reject(NOT_HERE),
+      deleteKey: async () => {},
+      test: () => Promise.reject(NOT_HERE),
+      models: async () => [],
+      run: () => Promise.reject(NOT_HERE),
+      cancel: async () => {},
+      vaultHits: async () => [],
+    },
     storage: win.localStorage,
     secrets: {
-      get: async (id) => secrets.get(id) ?? null,
-      set: async (id, value) => {
+      get: (id) => Promise.resolve(secrets.get(id) ?? null),
+      set: (id, value) => {
         secrets.set(id, value);
+        return Promise.resolve();
       },
-      delete: async (id) => {
+      delete: (id) => {
         secrets.delete(id);
+        return Promise.resolve();
       },
     },
     vault: {
-      get: async (id) => vault.get(id) ?? null,
-      set: async (id, value) => {
+      get: (id) => Promise.resolve(vault.get(id) ?? null),
+      set: (id, value) => {
         vault.set(id, value);
+        return Promise.resolve();
       },
-      delete: async (id) => {
+      delete: (id) => {
         vault.delete(id);
+        return Promise.resolve();
       },
-      generateKey: async () => {
-        throw new Error("ssh-keygen needs the desktop app");
-      },
-      pickFile: async () => null,
+      generateKey: () => Promise.reject(new Error("ssh-keygen needs the desktop app")),
+      pickFile: () => Promise.resolve(null),
       removeFile: async () => {},
     },
     async notify({ title, body, link }) {
@@ -71,8 +87,9 @@ export function createWebPlatform(
       }
     },
     isFocused: () => win.document.hasFocus(),
-    async openExternal(url) {
+    openExternal(url) {
       win.open(url, "_blank", "noopener");
+      return Promise.resolve();
     },
     onDeepLink(handler) {
       const check = () => {
@@ -87,13 +104,16 @@ export function createWebPlatform(
         win.removeEventListener("hashchange", check);
       };
     },
-    async setTrayStatus({ count }) {
+    setTrayStatus({ count }) {
       win.document.title = count > 0 ? `(${count}) ${TITLE}` : TITLE;
+      return Promise.resolve();
     },
     // A page has no tray: the badge goes to the title, the submenu nowhere.
     setTrayMenu: noop,
     onTrayAction: () => () => {},
-    autostart: { supported: false, isEnabled: async () => false, setEnabled: noop },
+    onQuitRequested: () => () => {},
+    quitNow: noop,
+    autostart: { supported: false, isEnabled: () => Promise.resolve(false), setEnabled: noop },
     setCloseToTray: noop,
     systemLanguage: () => win.navigator?.language ?? "",
     // A page's chrome belongs to the browser.
@@ -104,17 +124,24 @@ export function createWebPlatform(
       await clipboard.writeText(text);
     },
     saveFile: (name, text) => saveWithPicker(win, name, text),
-    async showMainWindow() {
+    showMainWindow() {
       win.focus?.();
+      return Promise.resolve();
     },
     // A page cannot start programs: "Abrir no terminal" copies the command instead.
     terminal: {
       supported: false,
-      probe: async () => ({ windows: false, wt: false }),
+      probe: () => Promise.resolve({ windows: false, wt: false }),
       open: noop,
     },
     // A page cannot listen to keys while it is not focused.
     globalShortcut: { supported: false, register: noop, unregister: noop },
-    updater: { supported: false, check: async () => null, install: noop },
+    updater: {
+      supported: false,
+      check: () => Promise.resolve(null),
+      download: noop,
+      installDownloaded: noop,
+      install: noop,
+    },
   };
 }

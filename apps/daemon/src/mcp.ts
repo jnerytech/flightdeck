@@ -52,7 +52,8 @@ export interface McpHandle {
 export function daemonUrl(config: { bind: string; port: number }): string {
   const any = config.bind === "0.0.0.0" || config.bind === "::";
   const host = any ? "127.0.0.1" : config.bind;
-  return `ws://${host.includes(":") ? `[${host}]` : host}:${config.port}${WS_PATH}`;
+  const shown = host.includes(":") ? "[" + host + "]" : host;
+  return `ws://${shown}:${config.port}${WS_PATH}`;
 }
 
 /** The daemon protocol, as any client of the app speaks it: `hello`, then commands and acks. */

@@ -7,8 +7,15 @@ import type { ActionSeed } from "./snippets.ts";
 export type Route =
   /** The selected session, the new-session form of the selected host, or the hub. */
   | { name: "home" }
+  /** Home (issue #123): the last seven days of every host in four cards. */
+  | { name: "overview" }
   /** `project`: the hub shows only the sessions of that project, with a chip to clear it. */
-  | { name: "hub"; project?: { hostId: string; projectKey: string; name: string } }
+  | {
+      name: "hub";
+      project?: { hostId: string; projectKey: string; name: string };
+      /** Only the sessions of this host (its name): "See all" from the host page. */
+      host?: string;
+    }
   /** What an area with no tab shows: where to begin. Never kept as a tab. */
   | { name: "start" }
   /** The requests waiting for the user (phase 10). */
@@ -19,12 +26,20 @@ export type Route =
   | { name: "external"; host: string; claudeSessionId: string }
   /** A transcript; `list: "history"` when it was opened from a host's history list. */
   | { name: "reader"; target: ReaderTarget; list?: "history" }
-  | { name: "history"; host: string; cwd?: string; projectKey?: string; day?: string }
+  | {
+      name: "history";
+      host: string;
+      cwd?: string;
+      projectKey?: string;
+      day?: string;
+      from?: string;
+      to?: string;
+    }
   | { name: "host"; host: string }
   /** `focus`: the picker of Board or Workflows (a nav item), not the whole page. */
   | { name: "projects"; host: string; focus?: "board" | "workflows" }
   /** Every project of every host, as cards (issue #9). */
-  | { name: "all-projects" }
+  | { name: "all-projects"; host?: string }
   /** One project: its Board, Sessions, Workflows, Costs and settings (issue #9). */
   | { name: "project"; host: string; projectId: string }
   | { name: "board"; host: string; projectId: string }
@@ -49,9 +64,16 @@ export type Route =
   | { name: "terminal"; host: string; terminalId: string }
   /** A card's running app, in a frame (phase 24); only loopback addresses open. */
   | { name: "preview"; url: string; title: string }
-  | { name: "settings" }
+  /** `section`: the part of Settings to open on (its id, such as "budgets"). */
+  | { name: "settings"; section?: string }
   /** The Custos screen (phase 8, track A). A budget alert opens it for its `host`, `projectKey` or `client`. */
-  | { name: "costs"; host?: string; projectKey?: string; client?: string }
+  | {
+      name: "costs";
+      host?: string;
+      projectKey?: string;
+      client?: string;
+      period?: "today" | "7d" | "30d" | "month";
+    }
   /** The ssh destinos of the host that keeps them (phase 15). */
   /** `connect`: the destino to connect to as soon as the screen opens (from the palette). */
   | { name: "connections"; connect?: string }
@@ -63,6 +85,8 @@ export type Route =
   | { name: "clients" }
   /** The Claude Code plugins (phase 26). */
   | { name: "plugins" }
+  /** The setup checklist (issue #164). */
+  | { name: "setup" }
   /** Phase 21: the messages between sessions. */
   | { name: "conversations" }
   /** Phase 21: the teams of a host; `team` is the one an alert is about. */
@@ -132,6 +156,7 @@ export class Router {
 const NAMES: Record<Route["name"], true> = {
   start: true,
   home: true,
+  overview: true,
   hub: true,
   "needs-you": true,
   session: true,
@@ -159,6 +184,7 @@ const NAMES: Record<Route["name"], true> = {
   personas: true,
   clients: true,
   plugins: true,
+  setup: true,
   conversations: true,
   teams: true,
   vault: true,

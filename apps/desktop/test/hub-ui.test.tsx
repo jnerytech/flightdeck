@@ -17,6 +17,7 @@ import {
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { unfoldAll } from "./unfold.ts";
 import { settle } from "./wait.ts";
 
 registerDom();
@@ -134,6 +135,14 @@ async function setup(platform = memoryPlatform()) {
   await hook("ext-run", "SessionStart", two as string);
   await hook("ext-run", "UserPromptSubmit", two as string, { prompt: "rode" });
   await act(async () => store.router.push({ name: "hub" }));
+  // Every project starts folded and the history is behind "N sessões anteriores": open both, the checks below read all four.
+  await unfoldAll(act);
+  await settle(
+    () => screen.queryByRole("button", { name: /sess(?:ões|ão) anterior(?:es)?/ }) !== null,
+  );
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: /sess(?:ões|ão) anterior(?:es)?/ }));
+  });
   await settle(() => group("central").length === 4);
   // The hooks' states land after the rows: wait for them too, or the checks race the app.
   await settle(
@@ -169,7 +178,8 @@ describe("hub-ui: o que se repete vai para o cabeçalho do grupo", () => {
   test("a host shared by every row of a group is said once, in its header; each row keeps only what differs", async () => {
     await setup();
     const region = screen.getByRole("region", { name: "Projeto central" });
-    const header = region.querySelector("[data-slot='group-meta']");
+    // Issue #111: the host is a chip in the header, a link to the host page.
+    const header = region.querySelector("button[aria-label='Abrir o host alfa']");
     expect(header?.textContent).toBe("alfa");
     for (const title of ["repo-run", "repo-ask", "Gerenciada"]) {
       const meta = (item(title) as HTMLElement).querySelector("[data-slot='row-meta']");
@@ -253,15 +263,15 @@ describe("hub-ui", () => {
     await setup();
     expect(group("central")).toEqual(["repo-ask", "repo-run", "Gerenciada", "Do histórico"]);
     const ask = item("repo-ask") as HTMLElement;
-    // Needs you is an amber dot in a 32 px line, nothing more.
+    // Needs you is an amber question glyph in a 32 px line, nothing more (#146: a shape as well as a colour).
     expect(ask.className).toContain("h-8");
     expect(ask.className).not.toContain("bg-status-needs-you");
     expect(ask.querySelector("svg[data-icon='needs-you']")).toBeNull();
-    expect(badge("repo-ask", "precisa de você")?.className).toContain("bg-status-needs-you");
+    expect(badge("repo-ask", "precisa de você")?.innerHTML).toContain("text-status-needs-you");
     // The host is the same for the whole group: it is in the header, not on the row.
     expect(within(ask).queryByText(/^alfa/)).toBeNull();
-    expect(badge("repo-run", "rodando")?.className).toContain("bg-status-running");
-    expect(badge("Gerenciada", "ociosa")?.className).toContain("bg-status-idle");
+    expect(badge("repo-run", "rodando")?.innerHTML).toContain("border-status-running");
+    expect(badge("Gerenciada", "ociosa")?.innerHTML).toContain("bg-status-idle");
     // Local time of the instant, not UTC: 10:00 UTC is 07:00 in São Paulo.
     expect(item("Do histórico")?.textContent ?? "").toContain("histórico");
     expect(item("Do histórico")?.querySelector("time")?.getAttribute("title")).toBe(
@@ -269,7 +279,7 @@ describe("hub-ui", () => {
     );
     expect(item("Do histórico")?.querySelector("time")?.textContent).toBe("1 de set.");
     expect(item("Do histórico")?.textContent ?? "").not.toContain("10:00");
-    expect(badge("Do histórico", "encerrada")?.className).toContain("bg-status-ended");
+    expect(badge("Do histórico", "encerrada")?.innerHTML).toContain("border-status-ended");
   });
 
   test("as ações ficam num menu no fim da linha, sem ícones soltos: renomear, fixar, arquivar e copiar o comando", async () => {

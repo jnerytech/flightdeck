@@ -6,8 +6,10 @@ import {
   Drama,
   FolderGit2,
   History,
+  House,
   KeyRound,
   Layers,
+  ListChecks,
   type LucideIcon,
   MessagesSquare,
   Network,
@@ -21,6 +23,7 @@ import {
 
 /** The screens the sidebar lists. */
 export type NavKey =
+  | "overview"
   | "sessions"
   | "needs-you"
   | "projects"
@@ -37,10 +40,12 @@ export type NavKey =
   | "history"
   | "host"
   | "plugins"
+  | "setup"
   | "settings";
 
 /** The one icon of each screen the sidebar lists: the sidebar and the tab of that screen both read it. */
 export const NAV_ICONS: Record<NavKey, LucideIcon> = {
+  overview: House,
   sessions: Layers,
   "needs-you": CircleAlert,
   projects: FolderGit2,
@@ -57,5 +62,6 @@ export const NAV_ICONS: Record<NavKey, LucideIcon> = {
   history: History,
   host: Server,
   plugins: Puzzle,
+  setup: ListChecks,
   settings: Settings,
 };

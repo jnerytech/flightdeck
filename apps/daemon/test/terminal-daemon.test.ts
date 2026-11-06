@@ -125,6 +125,37 @@ describe("terminal-daemon", () => {
     expect(asked.ptys.spawned[0]?.env.TERM).toBe("screen");
   });
 
+  // Issue #486: in Claude Code's fullscreen mode each wheel notch reaches it as one report, and it
+  // moves by its own CLAUDE_CODE_SCROLL_SPEED; 3 matches what Windows Terminal and VS Code feel like.
+  test("Claude Code scrolls 3 lines a wheel notch unless the host or the client sets its speed", async () => {
+    const plain = setup();
+    await plain.open();
+    const host = setup({ env: () => ({ SHELL: "/bin/zsh", CLAUDE_CODE_SCROLL_SPEED: "7" }) });
+    await host.open();
+    const asked = setup();
+    await asked.manager.open({
+      cwd: asked.project,
+      cols: 80,
+      rows: 24,
+      env: { CLAUDE_CODE_SCROLL_SPEED: "1" },
+    });
+    expect(
+      [plain, host, asked].map((s) => s.ptys.spawned[0]?.env.CLAUDE_CODE_SCROLL_SPEED),
+    ).toEqual(["3", "7", "1"]);
+  });
+
+  // fd-coordinator's review of #486: /scroll-speed keeps the person's value in the env block of
+  // ~/.claude/settings.json; the daemon's default must never shadow it.
+  test("a speed the person keeps in Claude Code's settings is left to Claude Code, unset by the daemon", async () => {
+    const kept = setup({ claudeEnv: async () => ({ CLAUDE_CODE_SCROLL_SPEED: "5" }) });
+    await kept.open();
+    const other = setup({ claudeEnv: async () => ({ SOMETHING_ELSE: "1" }) });
+    await other.open();
+    expect(
+      [kept, other].map((s) => s.ptys.spawned[0]?.env.CLAUDE_CODE_SCROLL_SPEED ?? "unset"),
+    ).toEqual(["unset", "3"]);
+  });
+
   test("open com command abre esse argv, sem shell; cwd fora de allowedRoots e spawn que falha são recusados", async () => {
     const { manager, ptys, project, root } = setup();
     const info = await manager.open({
@@ -219,7 +250,7 @@ describe("terminal-daemon", () => {
     manager.detach(terminalId, b);
     for (const fill of ["a", "b", "c"]) pty?.emit(fill.repeat(MB));
     const kept = Buffer.from(manager.attach(terminalId, fakeSink()).scrollback, "base64");
-    expect(kept.length).toBe(2 * MB);
+    expect(kept).toHaveLength(2 * MB);
     expect([kept[0], kept[kept.length - 1]]).toEqual(["b".charCodeAt(0), "c".charCodeAt(0)]);
   });
 
@@ -271,7 +302,7 @@ describe("terminal-daemon", () => {
       time.advance(16);
     }
     expect(slow.frames).toEqual([{ type: "terminal.resync", terminalId }]);
-    expect(dataOf(fast.frames).length).toBe(15 * 100 * 1024);
+    expect(dataOf(fast.frames)).toHaveLength(15 * 100 * 1024);
     // Reading never stopped: what comes after is in the scrollback, and the slow one is quiet.
     pty?.emit("FIM\r\n");
     time.advance(16);

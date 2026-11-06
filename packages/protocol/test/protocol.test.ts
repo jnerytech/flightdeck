@@ -1,14 +1,19 @@
 import { describe, expect, test } from "bun:test";
 import {
+  ChangesResult,
   Command,
   type CommandType,
   EventEnvelope,
+  FEATURE_RESUME_OFFER,
   Project,
+  ProjectAddPayload,
+  ProjectUpdatePayload,
   SESSION_IMAGE_MAX_BYTES,
   SESSION_IMAGE_MAX_COUNT,
   SESSION_IMAGE_TYPES,
   ServerMessage,
   SessionEvent,
+  SessionInterruptedResult,
 } from "../src/index.ts";
 
 const validCommands: Record<CommandType, unknown> = {
@@ -25,6 +30,7 @@ const validCommands: Record<CommandType, unknown> = {
   "session.interrupt": { sessionId: "s" },
   "session.close": { sessionId: "s" },
   "session.resume": { sessionId: "s" },
+  "session.interrupted": {},
   "session.subscribe": { sessionId: "s", sinceSeq: 3 },
   "session.unsubscribe": { sessionId: "s" },
   "permission.respond": { requestId: "r", decision: "allow", updatedInput: { a: 1 } },
@@ -60,6 +66,10 @@ const validCommands: Record<CommandType, unknown> = {
   "board.settings": { maxParallelRuns: 3 },
   "roots.add": { path: "/work/new", confirm: true },
   "host.bypass": { allow: true, confirm: true },
+  "host.keepAwake": { enabled: true },
+  "project.trust.state": { paths: ["/work/app"] },
+  "project.trust.inspect": { path: "/work/app" },
+  "project.trust.set": { path: "/work/app", trusted: true },
   "card.manage": { as: { session: "s1" }, action: "move", column: "review" },
   "board.watch": {},
   "card.create": { projectId: "p", title: "t", description: "d" },
@@ -74,6 +84,22 @@ const validCommands: Record<CommandType, unknown> = {
   "card.get": { cardId: "c" },
   "card.stop": { cardId: "c" },
   "card.diff": { cardId: "c" },
+  "assistant.run": {
+    requestId: "r1",
+    kind: "card.title",
+    text: "fix the login bug",
+    language: "en",
+    profile: "quick",
+  },
+  "assistant.cancel": { requestId: "r1" },
+  "assistant.context": { kind: "commit", source: { kind: "card", cardId: "c" } },
+  "assistant.record": {
+    id: "r1",
+    at: "2026-11-05T10:00:00.000Z",
+    provider: "anthropic",
+    model: "claude-haiku-5-5",
+    tokens: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 },
+  },
   "card.message": { cardId: "c", text: "ajuste" },
   "card.pr.create": { cardId: "c" },
   "card.complete": { cardId: "c", confirm: true },
@@ -86,11 +112,16 @@ const validCommands: Record<CommandType, unknown> = {
   "session.meta.set": { claudeSessionId: "c", name: null, pinned: true, archived: false },
   "maintenance.status": {},
   "logs.tail": { lines: 50 },
+  "resources.get": {},
+  "resources.endOrphan": { pid: 1234, startTicks: 99 },
+  "worktree.list": {},
+  "worktree.remove": { items: [{ projectId: "p", path: "/x" }], confirm: true },
   "maintenance.backup": {},
   "maintenance.prune": { dryRun: true },
   "daemon.shutdown": {},
   "daemon.update.apply": { confirm: true },
   "daemon.update.check": {},
+  "host.updates.set": { auto: true },
   "snapshots.list": { claudeSessionId: "c1" },
   "snapshots.files": { claudeSessionId: "c", n: 3 },
   "mcp.status": { sessionId: "s1" },
@@ -350,6 +381,7 @@ const validCommands: Record<CommandType, unknown> = {
   "fs.dirs": { path: "/work", hidden: false },
   "fs.files": { path: "/work", hidden: false },
   "doctor.run": { appVersion: "0.32.0" },
+  "deps.check": {},
   "projects.scan": { depth: 2 },
   "projects.clone": { url: "https://example.com/a/b.git", root: "/work" },
   "roi.summary": { from: "2026-10-01", to: "2026-10-31" },
@@ -361,6 +393,7 @@ const validCommands: Record<CommandType, unknown> = {
   "boardsync.status": { projectId: "p1" },
   "boardsync.syncNow": { projectId: "p1" },
   "boardsync.log": { cardId: "c1" },
+  "runtime.models": { runtime: "opencode" },
   "github.status": {},
   "github.login.start": {},
   "github.login.cancel": {},
@@ -370,6 +403,7 @@ const validCommands: Record<CommandType, unknown> = {
   "github.start": { repo: "acme/app", issue: "7", root: "/work", mode: "card" },
   "session.setMode": { sessionId: "s", permissionMode: "plan" },
   "session.setModel": { sessionId: "s", model: null },
+  "session.setEffort": { sessionId: "s", effort: "high" },
   "session.files": { claudeSessionId: "s" },
   "statusline.get": { claudeSessionId: "s" },
   "terminal.open": { cwd: "/w", command: ["bash", "-l"], cols: 80, rows: 24 },
@@ -488,6 +522,7 @@ const validCommands: Record<CommandType, unknown> = {
   "changes.revert": { target: "card:k", path: "a.ts", confirm: true },
   "changes.undoRevert": { target: "card:k", path: "a.ts", confirm: true },
   "file.read": { target: "session:s", path: "a.ts" },
+  "file.list": { target: "session:s", dir: "" },
   "file.write": { target: "session:s", path: "a.ts", text: "x", expectedHash: "h" },
 };
 
@@ -496,6 +531,22 @@ const validEvents: SessionEvent[] = [
   { type: "session.status", status: "running" },
   { type: "session.status", status: "error", reason: "daemon reiniciado" },
   { type: "session.init", claudeSessionId: "c", model: "m", tools: ["Read"] },
+  {
+    type: "session.init",
+    claudeSessionId: "c",
+    model: "m",
+    tools: ["Read"],
+    slashCommands: ["compact", "plug:skill"],
+    commands: [
+      {
+        name: "compact",
+        description: "Compact the conversation",
+        argumentHint: "",
+        kind: "builtin",
+      },
+      { name: "plug:skill", description: "A plugin skill", kind: "skill" },
+    ],
+  },
   { type: "message.user", text: "oi" },
   {
     type: "message.assistant",
@@ -656,5 +707,132 @@ describe("images in a message", () => {
       text: "x",
       images: 2,
     });
+  });
+});
+
+describe("session.interrupted (issue #150)", () => {
+  const listed = {
+    sessionId: "s",
+    name: null,
+    cwd: "/p",
+    persona: null,
+    interruptedAt: "2026-11-05T10:00:00.000Z",
+    ranMs: 0,
+    lastRequest: null,
+  };
+
+  test("the command takes no payload: an extra key is refused", () => {
+    expect(Command.safeParse({ id: "1", type: "session.interrupted", payload: {} }).success).toBe(
+      true,
+    );
+    expect(
+      Command.safeParse({ id: "1", type: "session.interrupted", payload: { within: 1 } }).success,
+    ).toBe(false);
+  });
+
+  test("the result is a list of sessions, and a negative run time is refused", () => {
+    expect(SessionInterruptedResult.safeParse({ sessions: [listed] }).success).toBe(true);
+    expect(
+      SessionInterruptedResult.safeParse({ sessions: [{ ...listed, ranMs: -1 }] }).success,
+    ).toBe(false);
+    expect(SessionInterruptedResult.safeParse({ sessions: [{ sessionId: "s" }] }).success).toBe(
+      false,
+    );
+  });
+
+  test("the feature a host announces is named resume-offer", () => {
+    expect(FEATURE_RESUME_OFFER).toBe("resume-offer");
+  });
+});
+
+describe("session.init commands (the / menu)", () => {
+  const init = {
+    type: "session.init" as const,
+    claudeSessionId: "c",
+    model: "m",
+    tools: [] as string[],
+    slashCommands: ["compact"],
+  };
+  test("an init with described commands keeps them, and one without stays valid", () => {
+    const commands = [{ name: "compact", description: "Compact", kind: "builtin" as const }];
+    expect(SessionEvent.parse({ ...init, commands })).toEqual({ ...init, commands });
+    expect(SessionEvent.parse(init)).toEqual(init);
+  });
+  test("a command needs a known kind", () => {
+    const commands = [{ name: "x", description: "", kind: "other" }] as unknown;
+    expect(SessionEvent.safeParse({ ...init, commands }).success).toBe(false);
+  });
+});
+
+describe("changes-cap: a file the daemon would not send is listed with a marker and its size", () => {
+  const file = {
+    path: "dump.log",
+    oldPath: null,
+    status: "added" as const,
+    additions: 3,
+    deletions: 0,
+    uncommitted: true,
+    binary: false,
+    hunks: [],
+  };
+  const result = (files: unknown[]) => ({
+    target: "session:s1",
+    root: "/w",
+    base: null,
+    files,
+    position: null,
+  });
+  test("tooLarge and bytes survive a parse", () => {
+    const sent = result([{ ...file, tooLarge: true, bytes: 209_715_200 }]);
+    expect(ChangesResult.parse(sent).files[0]).toEqual({
+      ...file,
+      tooLarge: true,
+      bytes: 209_715_200,
+    });
+  });
+  test("a daemon that does not know the marker still parses: the file is simply not too large", () => {
+    const parsed = ChangesResult.parse(result([file])).files[0];
+    expect(parsed?.tooLarge).toBeUndefined();
+    expect(parsed?.bytes).toBeUndefined();
+  });
+  test("a negative size is refused", () => {
+    expect(ChangesResult.safeParse(result([{ ...file, tooLarge: true, bytes: -1 }])).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("git-ref-protocol: a project's base branch is a branch name", () => {
+  const add = (baseBranch: unknown) => ProjectAddPayload.safeParse({ path: "/w/p", baseBranch });
+  const update = (baseBranch: unknown) =>
+    ProjectUpdatePayload.safeParse({ projectId: "p1", baseBranch });
+  test("a name git accepts is kept, in an add and in an update, and no base at all is fine", () => {
+    expect(add("main").success).toBe(true);
+    expect(add("release/1.2").success).toBe(true);
+    expect(update("feature/ü-é").success).toBe(true);
+    expect(ProjectAddPayload.safeParse({ path: "/w/p" }).success).toBe(true);
+    expect(ProjectUpdatePayload.safeParse({ projectId: "p1" }).success).toBe(true);
+  });
+  test("one that git would read as an option, or that is not a branch name, is refused", () => {
+    for (const bad of ["--output=/tmp/stolen", "-main", "a..b", "a b", "x.lock", ""]) {
+      expect(add(bad).success).toBe(false);
+      expect(update(bad).success).toBe(false);
+    }
+  });
+});
+
+describe("rev-stored-protocol: a project says when its stored base branch is not one", () => {
+  const project = {
+    id: "p",
+    path: "/w/p",
+    name: "p",
+    baseBranch: "--x",
+    prProvider: "none",
+    setupScript: null,
+    promptTemplate: "",
+  };
+  test("baseBranchInvalid survives a parse, and a daemon that never sends it still parses", () => {
+    expect(Project.parse({ ...project, baseBranchInvalid: true }).baseBranchInvalid).toBe(true);
+    expect(Project.parse(project).baseBranchInvalid).toBeUndefined();
   });
 });
