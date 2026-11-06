@@ -1,5 +1,6 @@
 import { SnippetModelError, type SnippetVar } from "@flightdeck/protocol";
 import { useId, useState } from "react";
+import { AssistField } from "@/components/assistant/assist-field";
 import { Form, FormActions } from "@/components/layout/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +72,8 @@ export function SnippetEditor(
     snippet: AppSnippet | null;
     onSaved(): void;
     onClose(): void;
+    /** Opens Settings, section Assistant (the wand found no provider). */
+    onOpenSettings(): void;
     /** The tags a new snippet starts with (the selected client's tag, phase 29). */
     defaultTags?: string;
     /** Offered when the daemon refuses a secret: phase 17's actions take secrets. */
@@ -167,7 +170,27 @@ export function SnippetEditor(
             />
           ))
         : field("text", t("snippets.editor.text"), (fid) => (
-            <Textarea id={fid} value={body} onChange={(e) => setBody(e.target.value)} />
+            <AssistField
+              binding={{
+                controller: store.assistant,
+                kind: "snippet.prompt",
+                fieldHostId: hostId,
+                ...(names.length > 0 ? { context: { variables: names.join(", ") } } : {}),
+                openSettings: props.onOpenSettings,
+              }}
+              value={body}
+              onChange={setBody}
+              t={t}
+            >
+              {(assist) => (
+                <Textarea
+                  id={fid}
+                  {...assist}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                />
+              )}
+            </AssistField>
           ))}
       {names.length > 0 && (
         <div className="flex flex-col gap-1 text-sm">
