@@ -39,8 +39,14 @@ function setup(
   } = {},
 ) {
   const sent: Array<[string, string, unknown]> = [];
+  /** The texts the shell's vault check read. */
+  const checked: string[] = [];
   const fake = fakeAssistant({
     run: () => ({ ...RESULT, provider: "anthropic" }),
+    vaultHits: (text) => {
+      checked.push(text);
+      return [];
+    },
   });
   const items = new Map<string, string>();
   const controller = new AssistantController({
@@ -58,7 +64,7 @@ function setup(
     },
   });
   controller.setPrefs({ confirmedHosts: ["h1", "h2"], ...options.prefs });
-  return { controller, sent, fake };
+  return { controller, sent, fake, checked };
 }
 
 const refusal = (run: () => Promise<unknown>) =>
@@ -84,7 +90,7 @@ describe("assistant-repo-source: a message is written from the card's repo (#162
   });
 
   test("an API provider asks the card's host for the scanned bundle and writes from its diff, rules and history", async () => {
-    const { controller, sent, fake } = setup({ prefs: { provider: "anthropic" } });
+    const { controller, sent, fake, checked } = setup({ prefs: { provider: "anthropic" } });
     await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
     await controller.refreshKeys();
     await controller.run({
@@ -96,13 +102,12 @@ describe("assistant-repo-source: a message is written from the card's repo (#162
     });
     const user = (fake.calls.find((c) => c[0] === "run")?.[1] as { user?: string } | undefined)
       ?.user;
-    const checked = String(fake.calls.find((c) => c[0] === "vaultHits")?.[1] ?? "");
     expect([
       sent,
       user?.includes(BUNDLE.diff) ?? false,
       user?.includes("<rules>") ?? false,
       user?.includes(BUNDLE.recent[0] as string) ?? false,
-      checked.includes(BUNDLE.diff),
+      checked.join("\n").includes(BUNDLE.diff),
     ]).toEqual([
       [["h1", "assistant.context", { kind: "pr", source: SOURCE }]],
       true,
