@@ -1,10 +1,4 @@
 {
-  "nested-scroll|dark en 1024x700 card|page > page-body > timeline": 1,
-  "nested-scroll|dark en 390x844 card|page > page-body > timeline": 1,
-  "nested-scroll|dark en 640x800 card|page > page-body > timeline": 1,
-  "nested-scroll|dark pt-BR 1024x700 card|page > page-body > timeline": 1,
-  "nested-scroll|dark pt-BR 390x844 card|page > page-body > timeline": 1,
-  "nested-scroll|dark pt-BR 640x800 card|page > page-body > timeline": 1,
   "overflow-x|dark en 1024x700 abas-muitas|div.tab-item": 16,
   "overflow-x|dark en 1024x700 custos|scroll-area > scroll-area-viewport > page-body > table.w-full": 1,
   "overflow-x|dark en 390x844 abas-muitas|div.tab-item": 20,
