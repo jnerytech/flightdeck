@@ -132,6 +132,32 @@ describe("persona-names: the daemon records who a team session is (#101)", () =>
   });
 });
 
+describe("persona-names: after a restart (#101)", () => {
+  test("a worker's card still names its team, role and number; a card of no team names none", async () => {
+    const { teams, project, board, store, manager } = await setup();
+    const team = await teams.create({
+      goal: "Implementar o login.",
+      workers: 1,
+      projectId: project.id,
+    });
+    const card = team.members[1]?.cardId as string;
+    const loose = board.createCard(project.id, { title: "solta", description: "" });
+    // A new Teams over the same database: what it knew in memory is gone.
+    const again = new Teams({
+      db: store.db,
+      board,
+      manager,
+      messaging: { stop() {} } as never,
+      host: "pc",
+    });
+    cleanups.push(() => again.stop());
+    expect([again.teamOfCard(card), again.teamOfCard(loose.id)]).toEqual([
+      { name: "Implementar o login.", role: "worker", number: 1 },
+      null,
+    ]);
+  });
+});
+
 describe("persona-names: a name says whether it is the standard one (#101)", () => {
   test("standard until renamed in Flightdeck or titled in Claude Code; a team set on an unnamed session waits", () => {
     const store = new EventStore(":memory:");
