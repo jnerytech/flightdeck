@@ -1,5 +1,6 @@
 import { createInstrumenter as createIstanbulInstrumenter } from "istanbul-lib-instrument";
 import { testArgs } from "../test/timeout.ts";
+import { HEAVY_TESTS, heavyReasonGiven, heavyRunMessage } from "./claude-hooks.ts";
 import { type Plan, SLOT_ABOVE, selectRelated } from "./test-related.ts";
 
 /** The slice of istanbul's file coverage this tool reads. */
@@ -111,11 +112,15 @@ export interface CoveragePlanDeps {
   readFile: (path: string) => string;
   /** Where the preload writes the coverage JSON. */
   out: string;
+  /** The run's environment (#674): a worker's plan over more than 20 test files is refused. */
+  env?: Record<string, string | undefined>;
 }
 
 export interface CoveragePlan extends Plan {
   /** Added to the environment of `command`: the preload reads the files and the output path from it. */
   env: Record<string, string>;
+  /** A worker's plan over more than 20 test files (#674): refused, or let through on a reason. */
+  slotHeavy?: "block" | "waived";
 }
 
 /** The tests that reach `files`, run with the preload that instruments them in memory. */
@@ -126,6 +131,7 @@ export function planCoverageFuncs({
   git,
   readFile,
   out,
+  env,
 }: CoveragePlanDeps): CoveragePlan {
   const fail = (output: string): CoveragePlan => ({ code: 2, output, command: null, env: {} });
   if (files.length === 0) return fail("usage: bun run coverage:funcs <file.ts>...");
@@ -149,6 +155,16 @@ export function planCoverageFuncs({
       env: {},
     };
   }
+  // #674: a worker's run over many test files holds the slot for what the PR's CI does anyway.
+  let slotHeavy: CoveragePlan["slotHeavy"];
+  if (env && !env.FLIGHTDECK_COORDINATOR && related.length > HEAVY_TESTS) {
+    const reason = env.FLIGHTDECK_SLOT_HEAVY;
+    if (reason === undefined || !heavyReasonGiven(reason)) {
+      const what = `\`bun run coverage:funcs\` over ${related.length} test files`;
+      return { ...fail(`coverage:funcs: ${heavyRunMessage(what)}`), slotHeavy: "block" };
+    }
+    slotHeavy = "waived";
+  }
   const run = [
     "bun",
     "--config=bunfig.area.toml",
@@ -162,5 +178,6 @@ export function planCoverageFuncs({
     ].join("\n"),
     command: related.length > SLOT_ABOVE ? ["bun", "run", "slot", "--", ...run] : run,
     env: { COVERAGE_FUNCS_FILES: JSON.stringify(targets), COVERAGE_FUNCS_OUT: out },
+    ...(slotHeavy ? { slotHeavy } : {}),
   };
 }

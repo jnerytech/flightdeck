@@ -391,6 +391,82 @@ export function slotViolation(
   return null;
 }
 
+/** The most test files a worker's coverage:funcs may run (#674). */
+export const HEAVY_TESTS = 20;
+
+/** The forms a worker session runs instead of a full coverage run (#674). */
+export const HEAVY_ALLOWED =
+  "`bun run test:related -- --fast --tier unit,component`; each touched test with `bun --config=bunfig.area.toml test <file>`; or `bun run coverage:funcs <file> --tests <a few tests>`";
+
+/** Whether an override's value is a reason, not a bare switch such as 1 or true (#674). */
+export function heavyReasonGiven(value: string | undefined): boolean {
+  const given = (value ?? "").trim();
+  return given !== "" && !/^(?:1|true|yes)$/i.test(given);
+}
+
+/** The override in front of a command (quoted text is blanked in its words): its value, or undefined. */
+function heavyOverride(command: string): string | undefined {
+  const found = /(?:^|[\s;&|(])FLIGHTDECK_SLOT_HEAVY=(?:"([^"]*)"|'([^']*)'|(\S*))/.exec(command);
+  return found ? (found[1] ?? found[2] ?? found[3] ?? "") : undefined;
+}
+
+/** The full coverage run a command starts, through the slot or not, or null. */
+function heavyRun(command: string): string | null {
+  for (const segment of commandWords(command).split(/[;&|\n]+/)) {
+    const words = segment.trim().split(/\s+/);
+    for (let i = 0; i < words.length; i++) {
+      const heavy = words[i] === "bun" && words[i + 1] === "run" ? heavyScript(words, i + 2) : null;
+      if (heavy) return heavy;
+    }
+  }
+  return null;
+}
+
+/** Whether the script at `at` (with the words after it as its arguments) is a full coverage run. */
+function heavyScript(words: string[], at: number): string | null {
+  const args = words.slice(at + 1);
+  if (words[at] === "test:related") {
+    const light = args.some((a) => a === "--fast" || a === "--tier" || a.startsWith("--tier="));
+    return args.includes("--pr") || !light
+      ? "a plain, --base or --pr `bun run test:related`"
+      : null;
+  }
+  if (words[at] !== "coverage:funcs") return null;
+  const from = args.indexOf("--tests");
+  const given = from < 0 ? 0 : args.slice(from + 1).filter((a) => !a.startsWith("-")).length;
+  return given > HEAVY_TESTS ? `\`bun run coverage:funcs\` over ${given} test files` : null;
+}
+
+/** The refusal of a full coverage run (#674), shared by the hook and coverage:funcs. */
+export function heavyRunMessage(what: string): string {
+  return `${what} holds the slot 12 to 25 minutes for the full coverage run that the PR's CI does anyway (#674). Run instead: ${HEAVY_ALLOWED}. For a real need, put FLIGHTDECK_SLOT_HEAVY="<reason>" in front of the command.`;
+}
+
+/**
+ * Why a worker session's full coverage run is refused (#674): a plain, `--base` or `--pr`
+ * `test:related`, or a `coverage:funcs` over more than 20 given test files, holds the shared slot
+ * for 12 to 25 minutes for what the PR's CI does anyway. The coordinator
+ * (`FLIGHTDECK_COORDINATOR=1` in the hook's environment) and an override with a reason pass.
+ */
+export function heavyRunViolation(
+  command: string,
+  env: Record<string, string | undefined>,
+): string | null {
+  if (env.FLIGHTDECK_COORDINATOR) return null;
+  const what = heavyRun(command);
+  if (!what) return null;
+  const override = heavyOverride(command);
+  if (override === undefined) return heavyRunMessage(what);
+  if (heavyReasonGiven(override)) return null;
+  return `FLIGHTDECK_SLOT_HEAVY needs a reason: give the reason as the value. ${heavyRunMessage(what)}`;
+}
+
+/** Whether a refused heavy run goes ahead on an override that gives its reason (#674). */
+export function heavyRunWaived(command: string): boolean {
+  const override = heavyOverride(command);
+  return heavyRun(command) !== null && override !== undefined && heavyReasonGiven(override);
+}
+
 /** The package scripts that run only through the slot (CLAUDE.md). */
 const HEAVY =
   /^(test|coverage|fast-coverage|e2e|demo:shots|smoke(:[\w-]+)?|build:(daemon|desktop))$/;
