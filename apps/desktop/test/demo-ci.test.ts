@@ -146,6 +146,7 @@ describe("demo-prints: axe e CI", () => {
       "trust-revoke",
       "files-viewer",
       "terminal-copy",
+      "sleep-wake",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([
