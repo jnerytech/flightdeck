@@ -554,6 +554,36 @@ describe("times-ui: the teams of a host", () => {
     expect(store.router.current.name).toBe("add-host");
   });
 
+  test("each member's state and links sit in a fixed column on the right, and its persona row lines up (#594)", async () => {
+    await open();
+    await create("grade", "2");
+    const item = row("grade") as HTMLElement;
+    expect(item).not.toBeNull();
+    const members = [...item.querySelectorAll<HTMLElement>("[data-slot='team-member']")];
+    expect(members.length).toBe(3);
+    const classes = (el: Element | null | undefined) => el?.className.split(" ") ?? [];
+    for (const member of members) {
+      // One grid for every row: the name and chips, then a column of the same width on the right.
+      expect(classes(member.querySelector("[data-slot='member-head']"))).toContain("member-head");
+      expect(classes(member.querySelector("[data-slot='member-end']"))).toContain("member-end");
+      // The persona row: a select of a fixed width and two outline buttons of the same height.
+      expect(classes(member.querySelector("[data-slot='member-persona']"))).toContain(
+        "member-persona",
+      );
+      expect(classes(member.querySelector("[data-slot='persona-field']"))).toContain(
+        "persona-field",
+      );
+    }
+    const change = within(item).queryByRole("button", {
+      name: "Trocar a persona de grade · executora 1",
+    });
+    expect(change?.getAttribute("data-variant") ?? "").toBe("outline");
+    const remove = within(item).queryByRole("button", { name: "Remover grade · executora 1" });
+    expect(remove?.getAttribute("data-variant") ?? "").toBe("outline");
+    // The footer sits on the cards' scale.
+    expect(classes(item.querySelector("[data-slot='team-footer']"))).toContain("team-footer");
+  });
+
   test("a member row links to its session and to its card", async () => {
     const { store, project } = await open();
     await create("links", "1");

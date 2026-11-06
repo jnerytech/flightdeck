@@ -8,6 +8,7 @@ import { GithubPanel } from "@/components/hosts/github-panel";
 import { HostAutoUpdate } from "@/components/hosts/host-auto-update";
 import { hostDownReason } from "@/components/hosts/host-down-reason";
 import { HostHealth } from "@/components/hosts/host-health";
+import { HostLogs } from "@/components/hosts/host-logs";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { HostOverview } from "@/components/hosts/host-overview";
 import { HostResources } from "@/components/hosts/host-resources";
@@ -333,6 +334,7 @@ export function HostPage(
               {host.status === "online" && hasFeature(info?.features, "maintenance", false) && (
                 <MaintenanceSection store={store} hostId={host.id} />
               )}
+              <HostLogs store={store} host={host} />
               <Panel title={t("hostPage.host")}>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={props.onReconnect}>
