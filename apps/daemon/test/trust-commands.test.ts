@@ -86,6 +86,31 @@ describe("trust-commands: the person sees what a project would load and decides 
     expect(gone).toEqual({ path: project, trusted: false, via: null });
   });
 
+  test("revoking says how many live sessions still run with the setup they loaded, until they are restarted (#463)", async () => {
+    const { client, project } = await daemon();
+    await client.data<ProjectTrustState>("project.trust.set", { path: project, trusted: true });
+    const created = await client.data<{ sessionId: string }>("session.create", {
+      cwd: project,
+      prompt: "oi",
+    });
+    const sessionId = created?.sessionId ?? "";
+    const gone = await client.data<ProjectTrustState>("project.trust.set", {
+      path: project,
+      trusted: false,
+    });
+    expect(gone).toEqual({ path: project, trusted: false, via: null, staleSessions: 1 });
+    const state = await client.data<ProjectTrustStates>("project.trust.state", {
+      paths: [project],
+    });
+    expect(state?.items).toEqual([{ path: project, trusted: false, via: null, staleSessions: 1 }]);
+    await client.request("session.close", { sessionId });
+    await client.request("session.resume", { sessionId });
+    const after = await client.data<ProjectTrustStates>("project.trust.state", {
+      paths: [project],
+    });
+    expect(after?.items).toEqual([{ path: project, trusted: false, via: null }]);
+  });
+
   test("inspect lists what the project would load, and never runs it", async () => {
     const { client, project } = await daemon();
     const marker = join(project, "RAN");

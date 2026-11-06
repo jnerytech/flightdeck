@@ -3573,6 +3573,11 @@ export const ptBR = {
       sessionNotice:
         "Esta pasta não tem confiança: os hooks, servidores MCP, configurações, CLAUDE.md, agentes e skills dela não carregaram, e os seus próprios servidores MCP e plugins também não.",
       sessionNoticeShort: "Esta pasta não tem confiança.",
+      revokedNotice:
+        "Confiança removida. Esta sessão continua com os hooks e servidores MCP que já carregou. Reinicie para aplicar.",
+      restart: "Reiniciar sessão",
+      staleCount:
+        "Sessões ativas que ainda rodam com a confiança antiga: {n}. Reinicie para aplicar.",
       review: "Revisar e confiar",
     },
     notHere: "Este projeto não está neste host.",
