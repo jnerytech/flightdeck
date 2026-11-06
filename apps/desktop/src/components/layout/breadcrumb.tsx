@@ -40,7 +40,7 @@ export function Breadcrumb(
               {crumb.label}
             </li>
           ))}
-          <li className="min-w-0 shrink">
+          <li className="min-w-[4rem] shrink">
             <IconTip label={crumbs.map((crumb) => crumb.label).join(" › ")}>
               <span aria-current="page" className="block truncate font-medium">
                 {last.label}
