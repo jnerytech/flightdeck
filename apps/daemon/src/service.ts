@@ -1,4 +1,5 @@
 import { posix, win32 } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 
 /** Unit file location, relative to the user's home. */
 export const SYSTEMD_UNIT_PATH = ".config/systemd/user/flightdeckd.service";
@@ -190,7 +191,7 @@ async function installSystemd(ctx: ServiceContext, config?: string | null): Prom
     };
   }
   await ctx.writeFile(path, unit);
-  for (const cmd of SYSTEMD_INSTALL) await runChecked(ctx, cmd);
+  await inSequence(SYSTEMD_INSTALL, (cmd) => runChecked(ctx, cmd));
   const linger = await ctx.exec(["loginctl", "show-user", ctx.user, "-p", "Linger"]);
   const instructions =
     linger.code === 0 && linger.stdout.trim() === "Linger=yes"
