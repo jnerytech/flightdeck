@@ -59,8 +59,10 @@ describe("sidebar-hosts: the nav and the hosts scroll as one body between a fixe
     const body = view.container.querySelector("[data-slot='sidebar-body']");
     const foot = view.container.querySelector("[data-slot='sidebar-foot']");
     expect(body?.className ?? "").toContain("sidebar-body");
-    expect([!!body?.querySelector("nav"), !!hosts && !!body?.contains(hosts)]).toEqual([true, true]);
-    expect([!!foot, !!foot && !!body?.contains(foot)]).toEqual([true, false]);
+    const navInBody = body?.querySelector("nav") != null;
+    const hostsInBody = !!hosts && !!body?.contains(hosts);
+    const footInBody = !!foot && !!body?.contains(foot);
+    expect([navInBody, hostsInBody, !!foot, footInBody]).toEqual([true, true, true, false]);
     expect(foot?.textContent ?? "").toContain("Settings");
     // No other piece of the sidebar scrolls on its own.
     const scrollers = [...view.container.querySelectorAll("[class*='overflow-y-']")].length;

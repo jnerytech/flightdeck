@@ -20,10 +20,10 @@ import {
   judge,
   KEY_REGIONS,
   layoutFindings,
-  SCROLL_SIZES,
-  SINGLE_SCROLL,
   loadBaseline,
   pinnedProblem,
+  SCROLL_SIZES,
+  SINGLE_SCROLL,
   waitForStable,
 } from "../lib/layout-guards.ts";
 
