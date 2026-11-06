@@ -3091,6 +3091,38 @@ bun run e2e          # as cinco jornadas num navegador de verdade, nos 2 idiomas
 Nada sai da máquina e nenhum dado real é usado. Os scripts usam o Chrome instalado (ou o Edge)
 pelo `playwright-core`; no CI, o job `screenshots` roda os três e publica os prints.
 
+### Logs e diagnóstico
+
+Se algo quebrar, envie o log. O app de desktop guarda o próprio arquivo de log na pasta de logs do
+sistema (no Windows `%LOCALAPPDATA%\dev.flightdeck.app\logs`, no Linux
+`~/.local/share/dev.flightdeck.app/logs`, no macOS `~/Library/Logs/dev.flightdeck.app`), girado aos
+5 MB em 5 arquivos. Ele registra o que acontece com os hosts (conectou, ficou offline), o que um
+host recusou, o resultado das verificações de atualização e os erros e avisos do console do próprio
+app. **Configurações > Diagnóstico** tem **Abrir a pasta de logs** e **Copiar diagnóstico**: o segundo
+copia a versão e o sistema do app, o nome, o estado, a versão e os recursos de cada host (nunca um
+endereço ou token) e as últimas 50 linhas do log, para colar numa mensagem. Nenhum dos dois botões
+existe no navegador.
+
+O daemon também guarda um log, `flightdeckd.log` em `~/.flightdeck/logs` (também girado), e o
+`host.info` diz onde fica. Na página de um host, **Copiar as últimas linhas de log do host** copia
+até 100 delas.
+
+Cada linha é editada antes de ser gravada, pelo mesmo verificador que protege snippets e personas:
+um token (GitHub, Slack, AWS, chaves `sk-`, npm, GitLab, Stripe e Google, JWTs), um cabeçalho
+`Authorization` ou `Cookie`, um nome que contém password, secret, token ou key seguido de `=` ou `:`
+(também dentro de JSON, como `{"apiKey":"…"}` ou `DB_PASSWORD=…`), opções `--password`/`--token`,
+`curl -u`, um bloco inteiro de chave privada, uma senha ou um token numa URL, uma URL de webhook,
+um link assinado e o token de um link de pareamento viram `[redacted]`. Além dos padrões, o host
+nunca grava os próprios tokens (o do protocolo, mesmo depois de um rodízio, e o dos hooks) nem
+qualquer valor que o cofre guarda naquele momento, e o app nunca grava o token de um host nem um
+valor do cofre com 6 caracteres ou mais. É uma lista de padrões, não uma garantia: um segredo
+embrulhado em base64, partido em duas linhas de log, ou um valor curto do cofre (menos de 6
+caracteres) não é pego. A sua pasta pessoal (`/home/<nome>`, `/Users/<nome>`, `C:\Users\<nome>`) é
+gravada como `~`. A pasta de logs é só sua (0700, arquivos 0600) e um link plantado nela nunca é
+seguido. Um host entrega o log (`logs.tail`) e o caminho dele só a conexões de loopback ou Tailscale,
+como o cofre, e nunca mais que os últimos 256 KiB de cada arquivo. Leia as linhas antes de postá-las
+em público.
+
 ### Desempenho
 
 O que mantém o app e o daemon leves, e os números que você mesmo pode ler.

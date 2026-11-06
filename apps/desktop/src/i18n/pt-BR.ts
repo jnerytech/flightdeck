@@ -1289,6 +1289,7 @@ export const ptBR = {
     runEnv: "o ambiente de execução",
     templates: "as tarefas prontas",
     tasks: "os resultados das tarefas",
+    logs: "o log do daemon",
     sleep: "pôr sessões ociosas para dormir",
     resources: "o painel de recursos do host",
     depsCheck: "a verificação das dependências",
@@ -4147,6 +4148,18 @@ export const ptBR = {
     hintGeneric: "Confira se o host está ligado e alcançável, e se o daemon roda lá.",
     hintAddress:
       "Ou o daemon recusou o endereço desta máquina: no host, inclua a rede dela em allowedNetworks (o flightdeckd setup faz isso para o Tailscale).",
+  },
+  diagnostics: {
+    title: "Diagnóstico",
+    hint: "Se algo quebrar, envie o log. As linhas são editadas: nenhum token, chave, link ou valor do cofre é gravado.",
+    openLogs: "Abrir a pasta de logs",
+    copy: "Copiar diagnóstico",
+    copied: "Diagnóstico copiado: cole na sua mensagem.",
+    words: "log logs diagnóstico suporte pasta",
+    hostCopy: "Copiar as últimas linhas de log do host",
+    hostCopied: "{n} linhas de log copiadas.",
+    hostEmpty: "O host ainda não tem linhas de log.",
+    hostHint: "O host guarda o próprio log em {path}.",
   },
   sleep: {
     title: "Dormir sessões ociosas",

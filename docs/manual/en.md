@@ -3098,6 +3098,35 @@ Nothing leaves the machine and no real data is used. The scripts use the install
 Edge) through `playwright-core`; in CI, the `screenshots` job runs all three and publishes the
 screenshots.
 
+### Logs and diagnostics
+
+If something breaks, send the log. The desktop app keeps its own log file in the system's app log
+folder (on Windows `%LOCALAPPDATA%\dev.flightdeck.app\logs`, on Linux
+`~/.local/share/dev.flightdeck.app/logs`, on macOS `~/Library/Logs/dev.flightdeck.app`), rotated at
+5 MB across 5 files. It records what happens to hosts (connected, offline), what a host refused, the
+result of update checks, and the webview's own errors and console warnings. **Settings >
+Diagnostics** has **Open logs folder** and **Copy diagnostics**: the second copies the app's version
+and system, each host's name, state, version and features (never an address or a token), and the
+last 50 log lines, to paste in a message. Neither button exists in a browser.
+
+The daemon keeps its own log file too, `flightdeckd.log` in `~/.flightdeck/logs` (also rotated), and
+`host.info` says where. On a host page, **Copy the host's last log lines** copies up to 100 of them.
+
+Every line is redacted before it is written, by the same scanner that guards snippets and personas:
+a token (GitHub, Slack, AWS, `sk-`, npm, GitLab, Stripe and Google keys, JWTs), an `Authorization`
+or `Cookie` header, a name containing password, secret, token or key followed by `=` or `:` (also
+inside JSON, as in `{"apiKey":"…"}` or `DB_PASSWORD=…`), `--password`/`--token` options, `curl -u`,
+a whole private key block, a password or a token in a URL, a webhook URL, a signed link and a
+pairing link's token become `[redacted]`. Besides the patterns, the host never writes its own
+tokens (the protocol's, even after a rotation, and the hooks') or any value the vault holds at
+that moment, and the app never writes a host's token or a vault value of 6 characters or more.
+It is a pattern list, not a guarantee: a secret wrapped in base64, split over two log lines, or a
+short vault value (under 6 characters) is not caught. Your home folder (`/home/<name>`,
+`/Users/<name>`, `C:\Users\<name>`) is written as `~`. The log folder is private to you (0700, files
+0600) and a link planted in it is never followed. A host gives its log (`logs.tail`) and its path only
+to connections from loopback or Tailscale, like the vault, and never more than the last 256 KiB of
+each file. Read the lines before you post them in public.
+
 ### Performance
 
 What keeps the app and the daemon light, and the numbers you can read yourself.

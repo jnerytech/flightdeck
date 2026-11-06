@@ -1294,6 +1294,7 @@ export const en: Dictionary = {
     runEnv: "the run environment",
     templates: "ready-made tasks",
     tasks: "task results",
+    logs: "the daemon log",
     sleep: "putting idle sessions to sleep",
     resources: "the host resources panel",
     depsCheck: "the dependencies check",
@@ -4138,6 +4139,18 @@ export const en: Dictionary = {
     hintGeneric: "Check that the host is on and reachable, and that the daemon runs there.",
     hintAddress:
       "Or the daemon refused this machine's address: on the host, add its network to allowedNetworks (flightdeckd setup does it for Tailscale).",
+  },
+  diagnostics: {
+    title: "Diagnostics",
+    hint: "If something breaks, send the log. Lines are redacted: no token, key, link or vault value is ever written.",
+    openLogs: "Open logs folder",
+    copy: "Copy diagnostics",
+    copied: "Diagnostics copied: paste them in your message.",
+    words: "log logs diagnostics support folder",
+    hostCopy: "Copy the host's last log lines",
+    hostCopied: "{n} log lines copied.",
+    hostEmpty: "The host has no log lines yet.",
+    hostHint: "The host keeps its own log in {path}.",
   },
   sleep: {
     title: "Sleep idle sessions",

@@ -24,6 +24,7 @@ const BEFORE_THE_SPLIT: Record<string, string> = {
   changes: "changes",
   costs: "costs",
   files: "files",
+  fileLog: "logs",
   github: "github",
   history: "history",
   idle: "idle",

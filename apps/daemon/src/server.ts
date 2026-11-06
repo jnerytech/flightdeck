@@ -53,6 +53,8 @@ import type { GithubService } from "./github/service.ts";
 import type { HistoryIndexer } from "./history/indexer.ts";
 import { type LiveState, sessionLine } from "./history/session-line.ts";
 import type { Issues } from "./issues/issues.ts";
+import type { FileLog } from "./logs/file-log.ts";
+import { logPathFor, tailForOrigin } from "./logs/serve.ts";
 import type { Maintenance } from "./maintenance/maintenance.ts";
 import type { ProjectMemory } from "./memory/memory.ts";
 import type { Idle } from "./messaging/idle.ts";
@@ -211,6 +213,8 @@ export interface ServerOptions {
   central?: Central;
   /** Retention and backups behind the `maintenance.*` commands (phase 7). */
   maintenance?: Maintenance;
+  /** The daemon's own log file, behind `logs.tail` and `host.info.logPath` (issue #255). */
+  fileLog?: FileLog;
   /** What the host's sessions and terminals cost it, behind `resources.*` (issue #154). */
   resources?: Resources;
   /** What the cards' worktrees take on the disk, behind `worktree.*` (issue #152). */
@@ -389,6 +393,7 @@ function featuresOf(opts: ServerOptions): string[] {
     // Phase 24: the run.yaml of a card and its processes.
     ...(opts.runenv && opts.board ? ["runenv"] : []),
     ...(opts.maintenance ? ["maintenance"] : []),
+    ...(opts.fileLog ? ["logs"] : []),
     ...(opts.resources ? ["resources"] : []),
     ...(opts.worktrees ? ["worktrees"] : []),
     ...(opts.quota ? ["quota"] : []),
@@ -621,6 +626,10 @@ export function startServer(opts: ServerOptions): RunningServer {
     return need(opts, "maintenance");
   }
 
+  function fileLog(): FileLog {
+    return need(opts, "fileLog");
+  }
+
   function resources(): Resources {
     return need(opts, "resources");
   }
@@ -826,6 +835,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         }
         return ok(command.type, { claudeSessionId, ...meta });
       }
+      case "logs.tail":
+        return ok(
+          command.type,
+          await tailForOrigin(fileLog(), ws.data.origin, command.payload.lines ?? 100, opts.log),
+        );
       case "resources.get":
         return ok(command.type, await resources().snapshot());
       case "resources.endOrphan":
@@ -982,6 +996,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
           ...(opts.ui ? { ui: { ...opts.ui } } : {}),
           ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
+          ...(opts.fileLog ? logPathFor(opts.fileLog, ws.data.origin) : {}),
           ...(opts.sleep ? { sleepAfterMinutes: opts.sleep.minutes() } : {}),
           ...(opts.keepAwake ? { keepAwake: opts.keepAwake.status() } : {}),
           ...(opts.opencode ? { runtimes: [hostRuntime(opts.opencode.info())] } : {}),
