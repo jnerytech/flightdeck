@@ -158,7 +158,7 @@ describe("state-selectors: an unrelated change of the state does not render the 
       ["UpdateBanner", counted(store), (s) => <UpdateBanner store={s} />],
       ["Notices", counted(store), (s) => <Notices store={s} />],
       ["TeamsPage", counted(store), (s) => <TeamsPage store={s} />],
-      ["PersonasPage", counted(store), (s) => <PersonasPage store={s} />],
+      ["PersonasPage", counted(store), (s) => <PersonasPage store={s} go={noop} />],
     ];
     render(
       <Parent

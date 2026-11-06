@@ -792,7 +792,7 @@ function routeScreen(props: ScreenProps): ReactNode {
     case "conversations":
       return <ConversationsPage store={store} go={go} />;
     case "personas":
-      return <PersonasPage store={store} />;
+      return <PersonasPage store={store} go={go} />;
     case "clients":
       return <ClientsPage store={store} state={state} />;
     case "plugins":
@@ -919,6 +919,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           hostId={route.host}
           cardId={route.cardId}
           edit={route.edit === true}
+          onOpenSettings={() => go({ name: "settings", section: "assistant" })}
           onBack={() => go({ name: "board", host: route.host, projectId: route.projectId })}
         />
       );

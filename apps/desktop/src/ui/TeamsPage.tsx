@@ -68,7 +68,7 @@ function NewTeam(
     if (team) props.onCreated();
   };
   return (
-    <div className="mb-4 flex max-w-xl flex-col gap-3 rounded-lg border p-4 text-sm">
+    <div className="flex max-w-xl flex-col gap-3 rounded-lg border p-4 text-sm">
       <Field label={t("teamsUi.goal")}>
         {(control) => (
           <Textarea {...control} value={goal} onChange={(e) => setGoal(e.target.value)} />

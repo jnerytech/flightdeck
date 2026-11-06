@@ -913,7 +913,10 @@ live; the list is the project's, so a session of another project never shows her
   account (its email and plan, read from the host's account card; the rail shows only its initial)
   opens a menu. Its header names the app and its version. Then come the plan, the account and the id
   of the host whose account it is, each copied when chosen; **Compact rows**, a switch kept on this
-  computer (the same density as in Settings); **Settings**; **Check for updates** (it opens Settings,
+  computer (the same density as in Settings); **Settings**; **What's new** (the highlights of the latest
+  releases, read from GitHub through a host that can; the account row and this item carry a dot, and
+  the row's name says so, after the app was updated, until you open it; full-screen in a narrow
+  window; **View all releases** opens GitHub); **Check for updates** (it opens Settings,
   where the answer shows); **Keyboard shortcuts**; **Toggle theme**; **Manual**; and, for each host
   whose `gh` is signed in to GitHub with a login the app can remove, **Sign out of GitHub** (after a
   confirmation; a login that comes from the daemon's environment is removed there). With several hosts the account of the

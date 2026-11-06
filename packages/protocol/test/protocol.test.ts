@@ -113,6 +113,7 @@ const validCommands: Record<CommandType, unknown> = {
   "session.meta.set": { claudeSessionId: "c", name: null, pinned: true, archived: false },
   "maintenance.status": {},
   "logs.tail": { lines: 50 },
+  "releases.list": { limit: 5 },
   "session.sleep": { sessionId: "s" },
   "host.sleep": { minutes: 30 },
   "resources.get": {},

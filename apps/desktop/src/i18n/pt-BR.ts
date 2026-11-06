@@ -14,6 +14,9 @@ export const ptBR = {
     manyHint: "Uma por host",
     plan: "Plano {plan}",
     version: "Versão {version}",
+    whatsNew: "Novidades",
+    whatsNewBadge: "Novo",
+    menuNew: "Menu da conta de {name}, notas de versão novas",
     copyPlan: "Copiar o plano: {value}",
     copyAccount: "Copiar a conta: {value}",
     copyHost: "Copiar o id do host: {value}",
@@ -1303,6 +1306,7 @@ export const ptBR = {
     templates: "as tarefas prontas",
     tasks: "os resultados das tarefas",
     logs: "o log do daemon",
+    releases: "as notas de versão do app",
     sleep: "pôr sessões ociosas para dormir",
     resources: "o painel de recursos do host",
     depsCheck: "a verificação das dependências",
@@ -1438,6 +1442,8 @@ export const ptBR = {
     update_manifest_unchecked:
       "O daemon ainda não verificou se há atualização: tente de novo daqui a pouco.",
     update_manifest_no_binary: "A versão {version} não tem binário para {key}.",
+    releases_unavailable:
+      "Não foi possível ler as notas de versão no GitHub: tente de novo mais tarde.",
     perm_rule_other_tool: "Essa regra é de outra ferramenta ({tool}).",
     perm_rule_too_broad:
       "Essa regra também permitiria usos de {tool} de risco {level}, mais do que este pedido: estreite-a.",
@@ -2149,6 +2155,19 @@ export const ptBR = {
   },
   toolCall: {
     waiting: "aguardando resultado…",
+  },
+  whatsNew: {
+    title: "Novidades",
+    description: "Os destaques das últimas versões do Flightdeck.",
+    loading: "Lendo as notas de versão…",
+    releases: "Versões",
+    noHighlights: "Esta versão não tem destaques.",
+    none: "Nenhum host conectado consegue ler as notas de versão ainda: conecte um host com um daemon recente, ou abra a página das versões.",
+    retry: "Tentar de novo",
+    viewAll: "Ver todas as versões",
+    open: "No GitHub",
+    openRelease: "Abrir {title} no GitHub",
+    close: "Fechar",
   },
   alwaysAllow: {
     rule: "Regra",
@@ -4091,6 +4110,9 @@ export const ptBR = {
     failed: "Falhou",
     addFolder: "Adicionar pasta",
     groups: { required: "Obrigatórias", optional: "Opcionais", checks: "Verificações" },
+    counts: "OK: {ok} · Avisos: {warn} · Problemas: {error}",
+    okFolded: "{n} sem nada a fazer",
+    okList: "Funcionando",
   },
   hostDeps: {
     installPage: "Página de instalação",
@@ -4223,6 +4245,7 @@ export const ptBR = {
     memoryCol: "Memória",
     cpu: "CPU",
     programs: "Programas",
+    unmeasured: "não medido",
     list: "Sessões e terminais por memória",
     empty: "Nenhuma sessão ou terminal em execução.",
     notMeasured:

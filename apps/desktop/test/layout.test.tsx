@@ -168,6 +168,36 @@ describe("layout", () => {
     );
   });
 
+  test("Page: the body is named page-body, scrolling or filling, so the spacing guard finds its blocks (#588)", () => {
+    render(
+      <Page title="Projeto">
+        <div data-testid="scrolls">a</div>
+      </Page>,
+    );
+    expect(screen.queryByTestId("scrolls")?.parentElement?.getAttribute("data-slot")).toBe(
+      "page-body",
+    );
+    cleanup();
+    render(
+      <Page title="Terminal" fill>
+        <div data-testid="fills">b</div>
+      </Page>,
+    );
+    expect(screen.queryByTestId("fills")?.parentElement?.getAttribute("data-slot")).toBe(
+      "page-body",
+    );
+  });
+
+  test("Page: the body positions what it holds, so an sr-only caption scrolls inside it and cannot stretch the screen (#640)", () => {
+    render(
+      <Page title="Host">
+        <div data-testid="table">table</div>
+      </Page>,
+    );
+    const body = screen.queryByTestId("table")?.parentElement;
+    expect(body?.className.split(" ").includes("relative") ?? false).toBe(true);
+  });
+
   test("Page fill: o corpo é uma coluna flex que ocupa o resto da altura, sem a área de rolagem", () => {
     render(
       <Page title="Terminal" fill>
