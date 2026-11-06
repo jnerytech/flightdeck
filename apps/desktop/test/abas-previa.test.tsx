@@ -24,14 +24,14 @@ describe("abas-previa", () => {
   test("a single click on a sidebar item replaces the preview tab; a used tab is kept", async () => {
     const { store, item, names } = await mount();
     await act(async () => void fireEvent.click(item(/^Vault/)));
-    await act(async () => void fireEvent.click(item(/^Settings/)));
-    expect(names()).toEqual(["settings"]);
+    await act(async () => void fireEvent.click(item(/^Needs you/)));
+    expect(names()).toEqual(["needs-you"]);
     // Working in the screen turns the preview into a regular tab.
     const main = screen.queryByLabelText("Area 1") as HTMLElement;
     await act(async () => void fireEvent.pointerDown(main));
     expect(store.tabs.active.preview).toBe(false);
     await act(async () => void fireEvent.click(item(/^Vault/)));
-    expect(names()).toEqual(["settings", "vault"]);
+    expect(names()).toEqual(["needs-you", "vault"]);
     expect(store.tabs.active.preview).toBe(true);
     store.dispose();
   });
@@ -41,9 +41,9 @@ describe("abas-previa", () => {
     await act(async () => void fireEvent.click(item(/^Vault/)));
     await act(async () => void fireEvent.doubleClick(item(/^Vault/)));
     expect(store.tabs.active.preview).toBe(false);
-    await act(async () => void fireEvent.click(item(/^Settings/)));
-    expect(names()).toEqual(["vault", "settings"]);
-    const tab = screen.queryByRole("tab", { name: /Settings/ }) as HTMLElement;
+    await act(async () => void fireEvent.click(item(/^Needs you/)));
+    expect(names()).toEqual(["vault", "needs-you"]);
+    const tab = screen.queryByRole("tab", { name: /Needs you/ }) as HTMLElement;
     expect(tab.dataset.preview).toBe("true");
     await act(async () => void fireEvent.doubleClick(tab));
     expect(tab.dataset.preview).toBe("false");

@@ -6,6 +6,18 @@
 export const ptBR = {
   inFlight: { stillWorking: "Ainda trabalhando…" },
   nav: { back: "Voltar", forward: "Avançar", overview: "Início" },
+  sidebarAccount: {
+    menu: "Menu da conta de {name}",
+    none: "Conta Claude",
+    unread: "Ainda não lida",
+    many: "{n} contas",
+    manyHint: "Uma por host",
+    plan: "Plano {plan}",
+    signOutGithub: "Sair do GitHub",
+    signOutGithubHost: "Sair do GitHub ({host})",
+    signOutGithubConfirm:
+      "Sair do GitHub em {host}? As sessões de lá perdem o acesso aos seus repositórios até você entrar de novo.",
+  },
   home: {
     title: "Início",
     range: "Últimos 7 dias · todos os hosts",

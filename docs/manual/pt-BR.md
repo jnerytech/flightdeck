@@ -874,10 +874,15 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   adicionar, e depois **SSH**, os destinos SSH salvos). A página aberta tem a linha preenchida e uma
   barra na borda esquerda, os itens com subpáginas terminam em uma seta, as novidades levam um selo
   **Beta** ou **Novo** que some sozinho na versão em que foi marcado para acabar (o Beta de
-  Equipes acaba na 0.39, o Novo de Conversas na 0.38), e o **Manual** no pé abre este manual no navegador (o ícone diz que sai do
-  app). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados (um grupo **Máquinas** dobrado mostra
+  Equipes acaba na 0.39, o Novo de Conversas na 0.38). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados (um grupo **Máquinas** dobrado mostra
   uma marca de aviso no título enquanto uma máquina está offline, sem uma dependência obrigatória ou
   repassando a chave de API), e o trilho estreito de ícones não tem títulos.
+- No pé da barra, **Configurações** é um item visível (marcado enquanto as Configurações estão
+  abertas), e a conta do Claude (e-mail e plano, lidos do cartão da conta do host; o trilho mostra só
+  a inicial) abre um menu com **Configurações**, **Alternar tema**, **Manual** e, para cada host cujo
+  `gh` está conectado ao GitHub com um login que o app pode remover, **Sair do GitHub** (após uma
+  confirmação; um login que vem do ambiente do daemon é removido lá). Com vários hosts aparece a
+  conta do host aberto, e quantas contas há quando diferem; um host offline não mostra nenhuma.
 - O **Início** (primeiro em Trabalho) é uma faixa de quatro cartões com os últimos sete dias de todos
   os hosts online, cada um com um gráfico pequeno: **Gasto** (com o orçamento mensal dos hosts, quando
   há), **Turnos** (ok e com falha), **Tokens** (com o que veio do cache) e o **turno médio** (custo,

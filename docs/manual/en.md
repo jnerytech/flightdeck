@@ -880,10 +880,15 @@ live; the list is the project's, so a session of another project never shows her
   its state dot, health mark and menu, a **+** to add one, then **SSH**, the saved SSH destinations).
   The open page has a filled row and a bar at its left edge, items with sub-pages end in a chevron,
   recent features carry a **Beta** or **New** badge that goes away by itself from the version the
-  badge was set to end at (Teams' Beta ends at 0.39, Conversations' New at 0.38), and **Manual** at the foot opens this manual in
-  the browser (its icon says it leaves the app). A group with nothing to offer is not drawn, the
+  badge was set to end at (Teams' Beta ends at 0.39, Conversations' New at 0.38). A group with nothing to offer is not drawn, the
   folded groups are remembered (a folded **Machines** shows a warning mark on its title while a machine
   is offline, misses a required dependency or forwards its API key), and the narrow icon rail has no headings.
+- At the foot of the bar, **Settings** is a visible item (marked while Settings is open), and the Claude
+  account (its email and plan, read from the host's account card; the rail shows only its initial)
+  opens a menu with **Settings**, **Toggle theme**, **Manual** and, for each host whose `gh` is signed
+  in to GitHub with a login the app can remove, **Sign out of GitHub** (after a confirmation; a login
+  that comes from the daemon's environment is removed there). With several hosts the account of the
+  open host is shown, and how many accounts there are when they differ; an offline host shows none.
 - **Home** (first in Work) is a strip of four cards over the last seven days of every online host,
   each with a sparkline: **Spend** (with the month's host budgets, when set), **Turns** (ok and
   failed), **Tokens** (with what came from the cache) and the **average turn** (cost, time and

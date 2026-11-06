@@ -4,6 +4,18 @@ import type { Dictionary } from "./index.ts";
 export const en: Dictionary = {
   inFlight: { stillWorking: "Still working…" },
   nav: { back: "Back", forward: "Forward", overview: "Home" },
+  sidebarAccount: {
+    menu: "Account menu for {name}",
+    none: "Claude account",
+    unread: "Not read yet",
+    many: "{n} accounts",
+    manyHint: "One per host",
+    plan: "{plan} plan",
+    signOutGithub: "Sign out of GitHub",
+    signOutGithubHost: "Sign out of GitHub ({host})",
+    signOutGithubConfirm:
+      "Sign out of GitHub on {host}? Its sessions lose access to your repositories until you sign in again.",
+  },
   home: {
     title: "Home",
     range: "Last 7 days · all hosts",
