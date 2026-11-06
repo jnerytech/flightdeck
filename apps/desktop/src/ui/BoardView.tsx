@@ -739,7 +739,7 @@ export const BoardView = memo(function BoardView(props: {
               {filtering &&
                 all.some((card) => card.column === id) &&
                 shown.every((card) => card.column !== id) && (
-                  <p className="px-1 text-muted-foreground text-xs">{t("board.noMatches")}</p>
+                  <p className="text-muted-foreground text-xs">{t("board.noMatches")}</p>
                 )}
               <Button
                 variant="secondary"
