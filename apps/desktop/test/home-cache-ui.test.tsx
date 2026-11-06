@@ -46,12 +46,18 @@ function app(platform = memoryPlatform(false, "en").platform, hostCount = 1) {
     mode: { answer: { usd: 2.25, turns: 4 } },
     release: null,
   };
+  /** Every read of a hanging host waits on this one gate, and the release answers with new numbers. */
+  let gate: Promise<void> | null = null;
   store.hostRequest = (async (_hostId: string, command: string) => {
     if (control.mode === "hang") {
-      await new Promise<void>((done) => {
-        control.release = done;
+      gate ??= new Promise<void>((done) => {
+        control.release = () => {
+          control.mode = { answer: { usd: 7.5, turns: 9 } };
+          gate = null;
+          done();
+        };
       });
-      control.mode = { answer: { usd: 7.5, turns: 9 } };
+      await gate;
     }
     if (control.mode === "refuse") return { ok: false, code: "internal", message: "no" };
     const { usd, turns } = control.mode.answer;
@@ -76,7 +82,7 @@ function app(platform = memoryPlatform(false, "en").platform, hostCount = 1) {
   return { view, store, control, platform };
 }
 
-const spend = () => screen.queryByRole("button", { name: "Open Spend" })?.textContent ?? "";
+const spend = (name = "Open Spend") => screen.queryByRole("button", { name })?.textContent ?? "";
 const text = () => document.body.textContent ?? "";
 
 describe("home-cache-ui: Home shows the last numbers at once and reads again in the background (issue #607)", () => {
@@ -174,11 +180,12 @@ describe("home-cache-ui: Home shows the last numbers at once and reads again in 
     for (const lang of ["en", "pt-BR"] as const) {
       const first = app(memoryPlatform(false, lang).platform);
       render(first.view);
-      await waitFor(() => expect(spend()).toContain("2"));
+      const { t } = first.store.i18n;
+      const card = t("home.openCard", { card: t("home.spend") });
+      await waitFor(() => expect(spend(card)).toContain("2"));
       cleanup();
       first.control.mode = "refuse";
       render(first.view);
-      const { t } = first.store.i18n;
       await waitFor(() =>
         expect(text()).toContain(t("home.stale", { hosts: "host1", ago: t("time.now") })),
       );
