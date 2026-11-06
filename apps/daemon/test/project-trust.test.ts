@@ -338,9 +338,11 @@ describe("project-trust: the scope given when trusting is the scope kept (issue 
     trust.trust("/Work/App", "person", "exact");
     expect(trust.isTrusted("/work/app")).toBe(true);
     expect(trust.isTrusted("/work/app/src")).toBe(false);
-    const sensitive = fresh();
-    sensitive.trust.trust("/Work/App", "person", "exact");
-    expect(sensitive.trust.isTrusted("/work/app")).toBe(false);
+    // The same folders with a file system that tells the cases apart (the default is the host's own).
+    const exact = fresh({ sameFolder: (a, b) => a === b });
+    exact.trust.trust("/Work/App", "person", "exact");
+    expect(exact.trust.isTrusted("/work/app")).toBe(false);
+    expect(exact.trust.isTrusted("/Work/App")).toBe(true);
   });
 });
 
