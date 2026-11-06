@@ -1153,7 +1153,8 @@ conversation. It is where you check what the agent did and send it back what to 
   credential shows as **Hidden**. `.git` and links that lead out of the repository never show.
   **Filter by name** keeps the names that match among the folders already open, with the folders
   on their way. A folder with more than 500 entries shows the first ones and says so. A session
-  outside git has no tree: the tab says so.
+  outside git has no tree: the tab says so. A click on a file opens it below the tree, read only,
+  with numbered lines; a file over 1 MB, one that is not text, or a credential says so instead.
 - **Inline comments:**
   - click a line number to comment on it, and shift+click another to extend the range. A removed
     line is commented on its old side;

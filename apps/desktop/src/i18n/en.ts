@@ -2200,6 +2200,9 @@ export const en: Dictionary = {
     loading: "Loading…",
     noMatch: "Nothing matches the filter.",
     truncated: "This folder has more entries than are shown here.",
+    viewer: "File {path}",
+    close: "Close",
+    opening: "Opening…",
   },
   changes: {
     tab: "Changes",
