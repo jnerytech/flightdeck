@@ -22,6 +22,7 @@
   - Fewer fails too, until the count is lowered (or the key removed at 0).
   - Without the file, the findings are only written down: the counts to `screenshots/responsive-findings.json`, and each finding by its numbered path to `responsive-findings-occurrences.json`, both in the CI artifact.
   - The first run found 385 findings with numbered keys such as `button[34]`. A button added above would have renumbered every key below it, so the counts key by the path with no numbers.
+  - Both baselines come only from the CI artifacts (`*-findings.json`), never from a local run. Fonts and the renderer differ between machines, and the counts are exact both ways (#677). A broken file, or an entry that is not a count, fails the prints with the file's name.
 
   The spacing baseline (#588) and this one go through the same `ratchetScreen`.
 - **Contract rules.** The contract rules (`sideways`, the key regions, the gaps) stay at 1280. At a narrow size, the page scrolling sideways is an `overflow-x` finding with a baseline. As a contract rule, it would fail every page today. Axe also stays at 1280.
