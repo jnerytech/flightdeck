@@ -3485,75 +3485,6 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   within 2 s of the last one that acted is ignored, so focus spam cannot storm a host. The listeners are set in `init()` (it
   begins with `dispose()`), not in the constructor, which would be undone by it.
 
-## The host page leads with sessions and projects (issue #110)
-
-- **No second implementation.** The sessions are the Sessions list's own rows (`hubRows`) in its own `SessionCard`, in the list's
-  own order (`hubRowOrder`, now a function of its own); the projects are the Projects list's own `ProjectCardTile` over the same
-  `useProjectCards` data. The host page only filters them to the host and caps them at six; archived sessions stay out.
-- **"See all" carries the host.** Sessions: the hub's host filter is set to the host's name (and saved, like any filter of that
-  list), through a `host` on the `hub` route that the list applies once. Projects: the `all-projects` route takes a host id and
-  shows a chip, with a clear button, instead of a new screen.
-- **Tabs: Overview, Usage, Settings.** Overview has the sessions, the projects, the Claude account and the host information; Usage
-  the quota and the usage table; Settings the allowed folders, bypass, simple mode, doctor, GitHub, daemon update, hooks,
-  telemetry, terminal, maintenance and the host actions. The offline banner, the incompatibility notice and the API-key warning
-  stay above the tabs: they apply whichever tab is open. The usage table was not made collapsible: it has its own tab now.
-- **Tests that used the old single page** now open the Settings tab first where they touch what moved there.
-
-## The host's dependencies (issue #121)
-
-- **One command, the doctor's probes.** `deps.check` (feature `depsCheck`: `deps` already names the cards' dependencies) answers `{ items }`, each with its group, state (`ok`, `outdated`,
-  `missing`, `na`), version, path, the least version, the features that break (ids the app translates) and a fix per OS. Programs are
-  found with `whichOnPath` and asked `--version`; git needs 2.5 for worktrees. Fake CLIs and fakes of the machine drive the tests.
-- **What the first draft left out, on purpose.** Claude Code is found and versioned, not asked whether it is signed in (that is the
-  Claude account card's job and needs a model-free probe of its own); the MCP registration and the telemetry receiver are not rows yet
-  (the MCP entry is now put in every managed session, so there is nothing to register by hand, and the telemetry has its own panel).
-  The service row on Linux needs systemd, the unit and linger, so it says what #106 taught; on macOS it does not apply.
-- **Icon and word, never color alone.** A required one missing is a red cross, an optional one missing or any outdated one an amber
-  warning, OK a green check, not applicable a gray dash; each row and the headline also say it in words. The green is a new token
-  (`--status-ok`) held to the AA contrast test of the other status colors in both themes.
-- **The sidebar.** The host gets a red mark (with a label) when a required dependency is missing or outdated; the app asks each host
-  that announces `depsCheck` once it is connected, and Check again updates the mark.
-- **`flightdeckd doctor`** prints the same grouping after its own checks (`formatDeps`), in English like the rest of the terminal output.
-- **Not in this change:** the link to the manual from each row.
-
-## Health and dependencies in one section, read by itself (issue #121, follow-up)
-
-- **One section, one row component.** The dependencies and the doctor were two panels with two looks; `HostHealth` draws both with the same
-  icon and word (the doctor's ok, warn and fail map to check, warning and cross; "Warning" and "Failed" are new words). A doctor check a
-  dependency already says (Claude Code, the hooks, the folders, the service and its linger) is shown once, as the dependency; the rest
-  (configuration, daemon, Tailscale, templates, team tools, version) are under "Checks". The doctor's own panel and its Check button are gone.
-- **Read by itself.** The app reads `deps.check` and `doctor.run` together when a host connects (which includes the reconnect after a daemon
-  update), when its page opens if the last read is over five minutes old, and on Check again; the time is kept per host and shown as
-  "Checked N min ago". The five minutes bounds the cost of opening the page, not how fresh the sidebar mark is.
-- **One-click only where the app already has the action.** Install hooks and Update daemon ask first (the same confirmations as before) and
-  Add folder takes the person to the allowed folders tab; the first two read the health again, the update through the reconnect. Anything
-  that needs sudo or an installer is a command to copy: the app never runs it, and a test checks that those rows have no action.
-- **Claude Code signed in** is a required row from what the account card already reads (`signed_in`, `api_key` and `third_party` are fine;
-  `signed_out` is missing, with `claude auth login` to copy; unknown, or no claude, is not applicable). No credential file is read.
-
-## The sidebar by purpose (issue #128, from the LiteLLM reference of #122)
-
-- **Five groups, no loose items.** Work (Sessions, Needs you, Projects, Board), Automation (Workflows, Teams, Conversations),
-  Observability (Costs, History), Library (unchanged) and Machines. The Home item of #123 is not drawn: that page does not exist yet.
-  History moved next to Costs because it is a record of what was done, not infrastructure.
-- **Machines replaces Infra and Hosts.** It holds the hosts (dot, name, the required-dependency mark of #121, the version and API-key
-  marks, the menu) with a + in its title, then SSH (what the sidebar called Connections: the saved destinations opened in a terminal).
-  In the icon rail it is the host dots and SSH. A folded state saved for the old `infra` group is simply not read.
-- **The open page** is a filled row plus a 3 px bar of the brand color at its left edge (`nav-active`); `aria-current` stays. Items with
-  sub-pages (Vault, Settings) end in a chevron, Teams carries Beta and Conversations New, and the Needs you count is unchanged.
-- **Manual** is a footer item that opens `docs/manual/<language>.md` on GitHub in the browser; it carries an external-link icon. It is the
-  only item that leaves the app (the issue also named GitHub releases, which the app already reaches from the update banner).
-- **Tests that clicked "Conexões"** now click "SSH"; the screen is still called Connections where its page names it.
-
-## No installer is a download piped into a shell (issue #121, review)
-
-- A fix is now `{ os, command?, url? }`: the package-manager line where one exists (apt, brew, winget, xcode-select) and the official
-  install page. The Azure CLI and Tailscale have no one-line package install on Linux, so there the row has only the page; the old
-  `curl ... | sudo bash` and `curl ... | sh` lines are gone.
-- A test walks every fix of every dependency on the three systems and fails on `| sudo`, `| bash`, `| sh` or `| zsh`. The row shows the
-  command to copy (when there is one) and an Install page button that opens the page in the browser; `flightdeckd doctor` prints
-  `page: <url>` under the command.
-
 ## The rc/0361 gate: three leaks of the machine into the tests
 
 - **The focus ring** (`abas-foco`): the crumb fix moved the tab's ring to the strip with `has-[[role=tab]:focus-visible]` so the outline
@@ -3625,13 +3556,6 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   That is accepted: CI minutes are free for this public repository, and the two runs check
   different trees.
 - **Based on `rc/0363`,** which adds `workflow_dispatch` (#129) to the same `on:` block.
-
-## A folded Machines group keeps a summary mark (issue #208)
-
-- When the Machines group is folded, its per-host markers are hidden. The title now shows a small warning triangle with the name "A
-  machine needs attention" when any host is offline (also unauthorized or incompatible), is missing a required dependency or forwards
-  an API key. Unfolded, the rows carry their own markers and the title shows nothing. The rail has no group titles, so it is
-  unchanged (each host keeps its dot). The version-differs marker is not part of the summary: the issue lists three causes.
 
 ## The light lane for typecheck and lint
 
@@ -4459,10 +4383,3 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   first one's state (`workers: 1`, `fullyParallel: false`). Balancing them means splitting the
   journeys into independent tests, which is #292, not a one-line change.
 
-## Health row follow-ups: focus after Add folder, hooks status after Install hooks (issue #206)
-
-- **Add folder** switches to the Settings tab, and the tab's panel stays mounted but hidden until then, so the old code left the focus
-  on `body`. `HostPage` now counts the asks and, once Settings shows, focuses the folder box (`data-folder-field`) and scrolls it to
-  the middle of the view.
-- **Install hooks** from the Health row runs `hooks.install` itself; the `hooks` state of `HostPage` (read once per host and status)
-  stayed "absent" until a reconnect. `HostHealth` takes `onHooksChanged`, and `HostPage` asks `hooks.status` again.
