@@ -888,6 +888,35 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("button", { name: c.t("terminalUi.close"), exact: true }).click();
     await c.page.getByRole("button", { name: c.t("terminalUi.end"), exact: true }).click();
   },
+
+  // 25. An idle session sleeps from its row's menu and the hub marks it asleep; a message wakes it
+  // from where it was, and the mark goes away (#157).
+  "sleep-wake": async (c) => {
+    // The first idle session of the demo: it answers again after it wakes, so it ends as it began.
+    await open(c, { name: "hub" });
+    await c.page.getByRole("button", { name: c.t("hub.expandAll"), exact: true }).click();
+    const idle = c.page
+      .getByRole("main")
+      .locator("li[aria-label]")
+      .filter({ has: c.page.getByRole("img", { name: c.t("hub.stateDots.idle"), exact: true }) });
+    await idle.first().waitFor({ timeout: SESSION_WAIT });
+    const title = (await idle.first().getAttribute("aria-label")) ?? "";
+    const row = c.page.getByRole("listitem", { name: title, exact: true });
+    const asleep = async () =>
+      (await row.getByText(c.t("hub.asleep"), { exact: true }).count()) > 0;
+    // A fresh page opens no session, so nobody has this one open and it may sleep.
+    await row.getByRole("button", { name: c.t("hub.actions", { title }), exact: true }).click();
+    await c.page.getByRole("menuitem", { name: c.t("hub.sleepNow"), exact: true }).click();
+    await waitFor(asleep, "a sessão dormindo", SESSION_WAIT);
+    // A message to the sleeping session wakes it: the runtime answers again.
+    await row.getByRole("button", { name: title, exact: true }).click();
+    const box = c.page.getByLabel(c.t("session.message"), { exact: true });
+    const message = `acorde ${c.lang} ${Date.now()}`;
+    await box.fill(message);
+    await box.press("Enter");
+    await c.page.getByText(`Echo: ${message}`).first().waitFor({ timeout: SESSION_WAIT });
+    await waitFor(async () => !(await asleep()), "a sessão acordada", SESSION_WAIT);
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */
