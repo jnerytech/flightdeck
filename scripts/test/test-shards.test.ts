@@ -268,6 +268,17 @@ describe("shards: plan and run", () => {
     expect(run.runs[0]?.at(-1)).toBe("./c.test.ts");
   });
 
+  test("--files fails on a listed name that is no tracked test, and an empty shard runs nothing instead of the whole suite (#410 review)", async () => {
+    const typo = fake({ junit: { "sel.txt": "b.test.ts\nnope.test.ts\n" } });
+    expect(await shards(["run", "1/1", "--files", "sel.txt"], typo.deps)).toBe(1);
+    expect(typo.runs).toEqual([]);
+    expect(typo.logs.join("\n")).toContain("nope.test.ts");
+    const empty = fake({ junit: { "sel.txt": "c.test.ts\n" } });
+    expect(await shards(["run", "2/2", "--files", "sel.txt"], empty.deps)).toBe(0);
+    expect(empty.runs).toEqual([]);
+    expect(empty.logs.join("\n")).toContain("no test files");
+  });
+
   test("--files with no list is the usage, exit 2, and nothing runs (#399)", async () => {
     const f = fake();
     expect(await shards(["run", "1/2", "--files"], f.deps)).toBe(2);

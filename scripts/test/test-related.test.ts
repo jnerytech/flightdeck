@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   importsOf,
   keepCoverageProblem,
+  listSelection,
   planRelated,
   resolveImport,
   selectRelated,
@@ -360,6 +361,35 @@ describe("planRelated", () => {
       "apps/daemon/test/u1.test.ts",
     ]);
     expect(plan(["bun.lock"]).files).toBe("all");
+  });
+
+  test("listSelection writes one test file per line, or '*' for the whole suite, and needs a file name (#410 review)", () => {
+    const written: Record<string, string> = {};
+    const write = (path: string, text: string) => {
+      written[path] = text;
+    };
+    expect(
+      listSelection(
+        { code: 0, output: "", command: null, files: ["a.test.ts", "b.test.ts"] },
+        "s.txt",
+        write,
+      ),
+    ).toEqual({ code: 0, line: "test:related: 2 line(s) written to s.txt" });
+    expect(written["s.txt"]).toBe("a.test.ts\nb.test.ts\n");
+    expect(
+      listSelection({ code: 0, output: "", command: null, files: "all" }, "all.txt", write).code,
+    ).toBe(0);
+    expect(written["all.txt"]).toBe("*\n");
+    // A plan that failed writes an empty list and keeps its code.
+    expect(listSelection({ code: 2, output: "", command: null }, "bad.txt", write).code).toBe(2);
+    expect(written["bad.txt"]).toBe("");
+    for (const name of [undefined, "--pr"]) {
+      const r = listSelection({ code: 0, output: "", command: null, files: [] }, name, write);
+      expect(r).toEqual({
+        code: 2,
+        line: "test:related: --list needs a file to write the selection to",
+      });
+    }
   });
 
   test("--pr names how many fast-tier tests run, not each one; it lists the related tests (#309)", () => {

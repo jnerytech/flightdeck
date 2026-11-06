@@ -62,7 +62,11 @@ describe("ci-paths: the rules", () => {
       expect(`${path}: ${ciPlan(PR, [path]).e2e}`).toBe(`${path}: true`);
     }
     expect(ciPlan(PR, ["apps/desktop/src/ui/App.tsx"]).e2e).toBe(true);
-    expect(ciPlan(PR, ["apps/daemon/src/main.ts"]).e2e).toBe(false);
+    // The demo the journeys drive starts the real daemon (scripts/demo-seed.ts, #410 review).
+    expect(ciPlan(PR, ["apps/daemon/src/main.ts"]).e2e).toBe(true);
+    expect(ciPlan(PR, ["apps/daemon/test/workflow-helpers.ts"]).e2e).toBe(true);
+    expect(ciPlan(PR, ["scripts/test/fake-cli.ts"]).e2e).toBe(true);
+    expect(ciPlan(PR, ["scripts/test/slot.test.ts"]).e2e).toBe(false);
     expect(ciPlan(PR, ["scripts/lib/slot.ts"]).e2e).toBe(false);
   });
 
@@ -97,6 +101,15 @@ describe("ci-paths: the rules", () => {
     expect(ciPlan("push", ["docs/TDD.md"])).toEqual(FULL);
     expect(ciPlan("workflow_dispatch", [])).toEqual(FULL);
     expect(ciPlan(PR, null)).toEqual(FULL);
+  });
+
+  test("every file the demo seed imports plans the journeys, so a change the journeys run cannot skip them (#410 review)", () => {
+    const seed = readFileSync(join(ROOT, "scripts/demo-seed.ts"), "utf8");
+    const local = [...seed.matchAll(/from "(\.{1,2}\/[^"]+)"/g)].map((m) =>
+      join("scripts", m[1] ?? "").replaceAll("\\", "/"),
+    );
+    expect(local.length).toBeGreaterThan(3);
+    for (const path of local) expect(`${path}: ${ciPlan(PR, [path]).e2e}`).toBe(`${path}: true`);
   });
 
   test("the plan becomes one GitHub output per job group", () => {

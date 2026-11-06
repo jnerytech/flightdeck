@@ -234,6 +234,18 @@ export function planRelated({
   };
 }
 
+/**
+ * `--list <file>` (#399): writes the plan's selection, one test file per line or `*` for the whole
+ * suite, and gives the exit code and the line to print. A missing file name is the usage (2).
+ */
+export function listSelection(
+  plan: Plan,
+  list: string | undefined,
+  write: (path: string, text: string) => void,
+): { code: number; line: string } {
+  return { code: list ? 0 : plan.code, line: write.name };
+}
+
 /** The tiers a PR runs whole (#309): the cheap base of the pyramid. */
 const FAST_TIERS = new Set(["unit", "component"]);
 
