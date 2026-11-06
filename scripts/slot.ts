@@ -2,15 +2,24 @@
 /**
  * `bun run slot -- <command...>`: runs the command once the full-gate slot is free, so the heavy
  * commands (full suite, e2e, shots, smokes, builds) never overlap. Waiters get the slot in the order
- * they queued. `--status` shows the holder and the waiters with their ages,
+ * they queued. `--status` shows the holder and the waiters with their ages, folders and an ORPHAN
+ * mark, `--reap` stops the waiters whose shell is gone (#236),
  * `--nice` lowers the command's priority, `--priority` lowers the other
  * `bun test` processes of the user while the command runs. The logic is in `lib/slot.ts`; this file is the real
  * files, clock and processes.
  */
-import { linkSync, readdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import {
+  linkSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { constants, getPriority, setPriority, tmpdir, userInfo } from "node:os";
 import { basename, join } from "node:path";
-import { type ProcessInfo, run, type SlotEnv } from "./lib/slot.ts";
+import { type ProcessInfo, type ProcReader, parseStat, run, type SlotEnv } from "./lib/slot.ts";
 
 const LOCK = process.env.FLIGHTDECK_SLOT_LOCK || join(tmpdir(), "flightdeck-slot.lock");
 
@@ -50,6 +59,43 @@ async function userProcesses(): Promise<ProcessInfo[]> {
   }
   return list;
 }
+
+/** The parent and group of a process from /proc/<pid>/stat (Linux only); null when it is gone. */
+function stat(pid: number): { ppid: number; pgid: number } | null {
+  try {
+    return parseStat(readFileSync(`/proc/${pid}/stat`, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+/** The process table from /proc; absent off Linux, where ancestry and orphans are not checked. */
+const proc: ProcReader | undefined =
+  process.platform === "linux"
+    ? {
+        ppid: (pid) => stat(pid)?.ppid ?? null,
+        pgid: (pid) => stat(pid)?.pgid ?? null,
+        cwd: (pid) => {
+          try {
+            return readlinkSync(`/proc/${pid}/cwd`);
+          } catch {
+            return null;
+          }
+        },
+        cmdline: (pid) => {
+          try {
+            return readFileSync(`/proc/${pid}/cmdline`, "utf8").split("\0").filter(Boolean);
+          } catch {
+            return [];
+          }
+        },
+        group: (pgid) =>
+          readdirSync("/proc")
+            .filter((name) => /^\d+$/.test(name))
+            .map(Number)
+            .filter((pid) => stat(pid)?.pgid === pgid),
+      }
+    : undefined;
 
 const env: SlotEnv = {
   fs: {
@@ -91,6 +137,19 @@ const env: SlotEnv = {
     }
   },
   holder: Number(process.env.FLIGHTDECK_SLOT_HOLDER) || undefined,
+  detached: process.env.FLIGHTDECK_SLOT_DETACHED === "1",
+  ...(proc
+    ? {
+        proc,
+        terminateGroup: (pgid: number) => {
+          try {
+            process.kill(-pgid, "SIGTERM");
+          } catch {
+            // Gone already, or not ours.
+          }
+        },
+      }
+    : {}),
   spawn: (command, nice, asHolder) => {
     // What runs under the lock is told whose it is, so a slot call inside it runs at once.
     const child = Bun.spawn(command, {
