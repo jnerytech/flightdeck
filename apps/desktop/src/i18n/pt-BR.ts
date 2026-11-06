@@ -764,6 +764,9 @@ export const ptBR = {
     discardInstead: "Descartar card",
   },
   shell: {
+    quotaLabel: "Cota do plano {state}: {window} em {percent}% em {host}, renova em {remaining}",
+    quotaLabelNoReset: "Cota do plano {state}: {window} em {percent}% em {host}",
+    quotaLevels: { ok: "tranquila", near: "perto do limite", reached: "no limite" },
     host: "Host: {host}",
     noHost: "Nenhum host ainda",
     hostItem: "{host}, {state}",

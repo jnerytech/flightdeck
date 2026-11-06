@@ -2,6 +2,7 @@ import { ChevronsUpDown, CircleAlert, Moon, Plus, Search, Server, Sun } from "lu
 import type { ReactNode } from "react";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { ShortcutKeys } from "@/components/shortcuts/keycap";
+import { Meter } from "@/components/status/meter";
 import { StatusDot } from "@/components/status/status-dot";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +15,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Key, T } from "@/i18n/index";
+import type { AppState } from "@/lib/app-store";
 import { hostDotView } from "@/lib/host-status";
+import { type QuotaGlance, quotaGlance } from "@/lib/quota-glance";
+import type { Route } from "@/lib/router";
 import type { Theme } from "@/lib/theme";
 
 /** A host as the top bar shows it: its name and how its connection is. */
@@ -118,6 +122,8 @@ export function TopBarActions(
     theme: Theme;
     version: string;
     bell: ReactNode;
+    /** The plan quota at a glance (issue #118), first on the right. */
+    quota?: ReactNode;
     onSearch(): void;
     onToggleTheme(): void;
   }>,
@@ -126,6 +132,7 @@ export function TopBarActions(
   const toTheme = props.theme === "dark" ? t("shell.toLight") : t("shell.toDark");
   return (
     <div className="top-bar-actions">
+      {props.quota}
       <Button
         variant="outline"
         size="sm"
@@ -149,5 +156,80 @@ export function TopBarActions(
         <span aria-hidden="true">v{props.version}</span>
       </span>
     </div>
+  );
+}
+
+/**
+ * The plan quota at a glance (issue #118): the window under most pressure across the online hosts,
+ * as a small meter and its percent. Its name says the state in words, the host and when it resets;
+ * near or at the limit a mark shows too, never colour alone. Pressing it opens that host.
+ */
+export function TopBarQuota(
+  props: Readonly<{
+    t: T;
+    glance: QuotaGlance | null;
+    hostName: string;
+    onOpen(hostId: string): void;
+  }>,
+) {
+  const { t, glance } = props;
+  if (!glance) return null;
+  const window = t(`account.windows.${glance.window}` as Key);
+  const vars = {
+    state: t(`shell.quotaLevels.${glance.level}` as Key),
+    window,
+    percent: String(glance.percent),
+    host: props.hostName,
+    remaining: glance.remaining,
+  };
+  const name = glance.remaining ? t("shell.quotaLabel", vars) : t("shell.quotaLabelNoReset", vars);
+  return (
+    <IconTip label={name}>
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={name}
+        data-level={glance.level}
+        className="top-bar-quota"
+        onClick={() => props.onOpen(glance.hostId)}
+      >
+        {glance.level !== "ok" && <CircleAlert aria-hidden="true" data-mark="" />}
+        <span className="top-bar-quota-window">{window}</span>
+        <Meter
+          label={window}
+          value={Math.min(glance.percent, 100)}
+          max={100}
+          hot={glance.level === "reached"}
+          className="h-1.5 w-10 [&::-webkit-meter-bar]:h-1.5"
+        />
+        <span>{glance.percent}%</span>
+      </Button>
+    </IconTip>
+  );
+}
+
+/** Issue #118: the glance of the app's state, in the top bar. */
+export function TopBarQuotaSlot(
+  props: Readonly<{
+    t: T;
+    state: Pick<AppState, "hosts" | "quota">;
+    now: number;
+    go(route: Route): void;
+  }>,
+) {
+  const online = props.state.hosts.filter((host) => host.status === "online");
+  const glance = quotaGlance(
+    props.state.quota,
+    online.map((host) => host.id),
+    props.now,
+  );
+  const host = online.find((h) => h.id === glance?.hostId);
+  return (
+    <TopBarQuota
+      t={props.t}
+      glance={glance}
+      hostName={host?.name ?? ""}
+      onOpen={(hostId) => props.go({ name: "host", host: hostId })}
+    />
   );
 }
