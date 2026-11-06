@@ -41,6 +41,7 @@ const SESSION: TeleportSession = {
 async function setup(
   options: {
     session?: Partial<TeleportSession>;
+    scan?: (text: string) => string[];
     team?: boolean;
     lines?: string[];
     transcript?: "file" | "link" | "outside" | "none" | "gone";
@@ -59,7 +60,7 @@ async function setup(
   const kind = options.transcript ?? "file";
   if (kind === "file") await writeFile(file, `${(options.lines ?? LINES).join("\n")}\n`);
   if (kind === "link") await symlink(outside, file);
-  const timers: Array<{ fn: () => void; ms: number; live: boolean }> = [];
+  const timers: Array<{ fn: () => void; ms: number; live: boolean; unref: boolean }> = [];
   const logs: string[] = [];
   let ids = 0;
   const deps: TeleportDeps = {
@@ -76,17 +77,26 @@ async function setup(
     // A root that does not exist on this host is skipped.
     historyRoots: [join(base, "missing-root"), history],
     dir: join(base, "teleport"),
-    scan: (text) => new SecretScanner().scan(text),
+    scan: options.scan ?? ((text) => new SecretScanner().scan(text)),
     now: () => Date.parse("2026-11-06T12:00:00.000Z"),
     newId: () => `pkg-${++ids}`,
     timers: {
       setTimeout: (fn, ms) => {
-        const timer = { fn, ms, live: true };
+        const timer = {
+          fn,
+          ms,
+          live: true,
+          unref: false,
+          // A package's timer never holds the daemon open.
+          unrefTimer() {
+            timer.unref = true;
+          },
+        };
         timers.push(timer);
-        return timer;
+        return { unref: () => timer.unrefTimer(), timer };
       },
-      clearTimeout: (timer) => {
-        (timer as { live: boolean }).live = false;
+      clearTimeout: (handle) => {
+        (handle as { timer: { live: boolean } }).timer.live = false;
       },
     },
     log: (line) => void logs.push(line),
@@ -256,5 +266,56 @@ describe("teleport-package: the package is read in chunks and does not outlive i
       left,
       await readdir(deps.dir).catch(() => ["no folder"]),
     ]).toEqual([1_800_000, "teleport_not_found", false, [], []]);
+  });
+});
+
+describe("teleport-package: what the security review asked for (#100)", () => {
+  test("the daemon's stop removes every package and clears its timer; a timer never holds the daemon open", async () => {
+    const { packages, deps, timers } = await setup();
+    await packages.prepare("s1");
+    await packages.stop();
+    expect([
+      timers.map((t) => [t.live, t.unref]),
+      await readdir(deps.dir).catch(() => ["no folder"]),
+    ]).toEqual([[[false, true]], []]);
+  });
+
+  test("a session has one package at a time, and the host keeps at most two", async () => {
+    const { packages, deps } = await setup();
+    const first = await packages.prepare("s1");
+    const again = await packages.prepare("s1");
+    const gone = await reason(() => packages.read(first.id, "transcript", 0));
+    const other = { ...deps, session: (id: string) => ({ ...SESSION, id }) };
+    const many = new TeleportPackages(other);
+    await many.prepare("a");
+    await many.prepare("b");
+    expect([
+      gone,
+      (await readdir(deps.dir)).includes(again.id),
+      await reason(() => many.prepare("c")),
+    ]).toEqual(["teleport_not_found", true, "teleport_too_many"]);
+  });
+
+  test("a package that fails half-way leaves nothing on disk", async () => {
+    const { packages, deps } = await setup({
+      scan: () => {
+        throw new Error("scanner broke");
+      },
+    });
+    const failed = await reason(() => packages.prepare("s1"));
+    expect([failed, await readdir(deps.dir).catch(() => [])]).toEqual(["Error: scanner broke", []]);
+  });
+
+  test("a package whose file went or shrank ends the reading instead of failing or looping", async () => {
+    const { packages, deps } = await setup();
+    const shrunk = await packages.prepare("s1");
+    await writeFile(join(deps.dir, shrunk.id, "transcript"), "");
+    const chunk = await packages.read(shrunk.id, "transcript", 0);
+    const removed = await packages.prepare("s1");
+    await rm(join(deps.dir, removed.id), { recursive: true });
+    expect([
+      [chunk.data, chunk.eof],
+      await reason(() => packages.read(removed.id, "transcript", 0)),
+    ]).toEqual([["", true], "teleport_not_found"]);
   });
 });

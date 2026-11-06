@@ -139,6 +139,7 @@ const REASONS = [
   "teleport_unsafe_transcript",
   "teleport_too_large",
   "teleport_not_found",
+  "teleport_too_many",
   "session_ended",
   "session_not_ended",
   "personas_off",
