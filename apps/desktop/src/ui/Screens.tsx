@@ -23,7 +23,7 @@ import type { Density } from "../lib/density.ts";
 import type { HubRow } from "../lib/hub.ts";
 import { actionOfRoute, endMeasure } from "../lib/measures.ts";
 import { newSessionHost } from "../lib/new-session-host.ts";
-import { basename } from "../lib/paths.ts";
+import { basename, trimTrailingSeparators } from "../lib/paths.ts";
 import type { Route } from "../lib/router.ts";
 import { isBusy } from "../lib/status.ts";
 import type { ThemeMode } from "../lib/theme.ts";
@@ -148,7 +148,7 @@ function ManagedSession(
   const cwd = summary?.cwd ?? session.cwd ?? "";
   // The project the folder belongs to, where the person can read what it would load and trust it.
   const owner = state.projects[hostId]?.find((p) => {
-    const root = p.path.replace(/[\\/]+$/, "");
+    const root = trimTrailingSeparators(p.path);
     return cwd === root || cwd.startsWith(`${root}/`) || cwd.startsWith(`${root}\\`);
   });
   const canFork = hasFeature(host?.hostInfo?.features, "checkpoints", false);

@@ -2707,7 +2707,7 @@ numa aba, sem SSH.
   vai para o próximo, Shift+Enter ou **Resultado anterior** para o anterior, Esc ou **Fechar
   busca** fecha. Links na saída abrem no navegador (só `http` e `https`). A fonte é a
   monoespaçada do sistema; o tamanho fica nas Configurações (**Tamanho da fonte do terminal**, de
-  10 a 24).
+  10 a 24). A aba guarda as últimas 10.000 linhas para rolar e buscar.
 - **Desanexar e reabrir:** o terminal sobrevive ao app: guarda os últimos 2 MB de saída, e anexar
   de novo os mostra. Fechar a aba de um terminal pergunta: **Desanexar** (o padrão; o processo
   continua no host) ou **Encerrar processo**. Um terminal desanexado ou encerrado tem **Reabrir**.
