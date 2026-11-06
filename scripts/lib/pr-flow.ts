@@ -174,6 +174,24 @@ async function aheadBy(deps: PrFlowDeps, base: string, head: string): Promise<nu
   return code === 0 && Number.isInteger(ahead) ? ahead : null;
 }
 
+/** What a PR that conflicts with its base needs: GitHub's update-branch cannot resolve it. */
+function conflictText(base: string, head: string): string {
+  return `conflicts with ${base}: merge ${base} into ${head} and resolve them`;
+}
+
+/** Why a PR cannot merge as it is, from GitHub's mergeable state: a conflict with its base, or null. */
+async function conflictProblem(
+  deps: PrFlowDeps,
+  n: number,
+  base: string,
+  head: string,
+): Promise<string | null> {
+  const { code, stdout } = await deps.gh(["api", `${REPO}/pulls/${n}`]);
+  if (code !== 0) return null;
+  const state = (JSON.parse(stdout) as { mergeable_state?: string }).mergeable_state;
+  return state === "dirty" ? conflictText(base, head) : null;
+}
+
 /** How many commits of its base the PR's branch does not have. */
 async function behindBy(deps: PrFlowDeps, base: string, head: string): Promise<number> {
   const { stdout } = await deps.gh([
@@ -309,12 +327,8 @@ async function nextPrs(deps: PrFlowDeps): Promise<number> {
     if (parent) reason = `waits for #${parent.number} (${parent.head})`;
     else if (pr.draft) reason = "a draft";
     else reason = await checksProblem(deps, pr.sha, required);
-    if (!reason) {
-      const behind = await behindBy(deps, pr.base, pr.head);
-      if (behind > 0) {
-        reason = `${behind} commit(s) behind ${pr.base} (bun run pr -- update ${pr.number})`;
-      }
-    }
+    // Behind its base is no reason to wait (the ruleset is not strict, #305); a conflict is.
+    if (!reason) reason = await conflictProblem(deps, pr.number, pr.base, pr.head);
     if (reason) waiting.push(`  #${pr.number} ${pr.head}: ${reason}`);
     else ready.push(`  #${pr.number} ${pr.head}`);
   }
@@ -414,19 +428,24 @@ async function mergePr(n: number, deps: PrFlowDeps): Promise<number> {
     draft: boolean;
     head: { ref: string; sha: string };
     base: { ref: string };
+    mergeable_state?: string;
   };
   let reason: string | null = null;
   if (pr.draft) reason = "a draft";
   else if (pr.base.ref !== MAIN)
     reason = `onto ${pr.base.ref}, not ${MAIN}: merge its parent first`;
   else reason = await checksProblem(deps, pr.head.sha, required);
-  if (!reason) {
-    const behind = await behindBy(deps, MAIN, pr.head.ref);
-    if (behind > 0) reason = `${behind} commit(s) behind ${MAIN}: bun run pr -- update ${n}`;
-  }
+  if (!reason && pr.mergeable_state === "dirty") reason = conflictText(MAIN, pr.head.ref);
   if (reason) {
     deps.log(`#${n} not merged: ${reason}`);
     return 2;
+  }
+  // Behind main merges (#305): a note for a hand merge; main's push CI checks the result.
+  const behind = await behindBy(deps, MAIN, pr.head.ref);
+  if (behind > 0) {
+    deps.log(
+      `#${n} is ${behind} commit(s) behind ${MAIN} (merged anyway; ${MAIN}'s push CI runs on the result)`,
+    );
   }
   const merged = await deps.gh([
     "api",
