@@ -467,18 +467,24 @@ const COVERAGE_SCRIPTS: Record<string, string> = {
   "scripts/coverage-funcs.ts": "coverage:funcs",
 };
 
+/** The flags of `bun` and `bun run` that take the next word as their value. */
+const BUN_VALUE_FLAGS = new Set(["--cwd", "--config", "-c", "--env-file", "--preload", "-r"]);
+
 /**
  * The coverage script a command starts at word `i`, with its arguments: `bun [run] [flags] <name>`
- * (with bun's shorthand) or `npm run <name>`, where the name is the package script or its file
- * (#687). It takes the first such name before a `--`, so a flag's value (`--cwd dir`) hides nothing.
+ * (with bun's shorthand) or `npm run [flags] <name>`, where the name is the package script or its
+ * file (#687). The name is the first word after the flags and their values, so a script file given
+ * to another script (`bun run lint scripts/test-related.ts`) is no run of it.
  */
 function coverageScriptAt(words: string[], i: number): { script: string; args: string[] } | null {
-  if (words[i] !== "bun" && !(words[i] === "npm" && words[i + 1] === "run")) return null;
-  for (let at = i + 1; at < words.length && words[at] !== "--"; at++) {
-    const script = COVERAGE_SCRIPTS[(words[at] as string).replace(/^\.\//, "")];
-    if (script) return { script, args: words.slice(at + 1) };
+  const npm = words[i] === "npm" && words[i + 1] === "run";
+  if (words[i] !== "bun" && !npm) return null;
+  let at = npm ? i + 2 : i + 1;
+  while (at < words.length && (words[at]?.startsWith("-") || (!npm && words[at] === "run"))) {
+    at += BUN_VALUE_FLAGS.has(words[at] as string) ? 2 : 1;
   }
-  return null;
+  const script = COVERAGE_SCRIPTS[(words[at] ?? "").replace(/^\.\//, "")];
+  return script ? { script, args: words.slice(at + 1) } : null;
 }
 
 /**
@@ -497,7 +503,7 @@ function heavyRuns(command: string): Array<{ what: string; override: string | un
     const override = prefixAssignment(segment, "FLIGHTDECK_SLOT_HEAVY");
     // The script's own check reads its environment, which an assignment in the command sets, in
     // front of it or after a wrapper such as `env` or `slot --` (#687).
-    if (words.slice(0, start).some((word) => word.startsWith("FLIGHTDECK_COORDINATOR="))) {
+    if (words.slice(0, start).some((word) => /^["']?FLIGHTDECK_COORDINATOR=/.test(word))) {
       runs.push({
         what: `FLIGHTDECK_COORDINATOR set in the command (only the coordinator's own environment marks the coordinator) with ${found.script}`,
         override,
