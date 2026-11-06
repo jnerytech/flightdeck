@@ -19,6 +19,7 @@ import { ClientSwitcher } from "@/components/clients/client-switcher";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { HostVersionTip, hostVersionText } from "@/components/hosts/host-version";
 import { NAV_ICONS, type NavKey } from "@/components/nav-icons";
+import { ProjectTree } from "@/components/projects/project-tree";
 import { AccountFooter } from "@/components/shell/account-footer";
 import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { ProgressRing } from "@/components/status/progress-ring";
@@ -43,6 +44,7 @@ import { hostDotView } from "../lib/host-status.ts";
 import { hubRows } from "../lib/hub.ts";
 import { activeNav } from "../lib/nav-active.ts";
 import { type NavBadgeKey, navBadge } from "../lib/nav-badges.ts";
+import { activeWorktreeFilter, projectTree } from "../lib/project-tree.ts";
 import type { Route } from "../lib/router.ts";
 import { setupProgress, setupSteps } from "../lib/setup-steps.ts";
 import type { SidebarGroup } from "../lib/sidebar-groups.ts";
@@ -278,7 +280,18 @@ export function Sidebar(
     budgetAlerts(state).length +
     state.loopAlerts.length +
     watchAlerts(state).length;
-  const pinned = hubRows(state).filter((row) => row.pinned && !row.archived);
+  // The sidebar redraws on every store update, streaming events included: the rows and the tree
+  // recompute only when the parts they are made of change.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state
+  const rows = useMemo(
+    () => hubRows(state),
+    [state.hosts, state.hub, state.meta, state.externals, state.names, state.background],
+  );
+  const pinned = rows.filter((row) => row.pinned && !row.archived);
+  const tree = useMemo(
+    () => projectTree({ hosts: state.hosts, projects: state.projects, cards: state.cards }, rows),
+    [state.hosts, state.projects, state.cards, rows],
+  );
   // Who is signed in to GitHub is asked when the account menu opens, not on every render.
   const [githubHosts, setGithubHosts] = useState<GithubHost[]>([]);
   const [signingOut, setSigningOut] = useState<GithubHost | null>(null);
@@ -561,6 +574,16 @@ export function Sidebar(
               label={t("sidebar.projects")}
               onClick={() => go({ name: "all-projects" })}
             />
+            {!collapsed && tree.length > 0 && (
+              <ProjectTree
+                store={props.store}
+                tree={tree}
+                filter={activeWorktreeFilter(state)}
+                stay={here === "sessions"}
+                t={t}
+                go={go}
+              />
+            )}
             <NavButton
               collapsed={collapsed}
               icon={<NavIcon name="board" aria-hidden="true" className={icon} />}

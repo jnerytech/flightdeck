@@ -272,6 +272,88 @@ html:not(:has([data-slot="status-bar"])) {
   bottom: 0.75rem;
 }
 
+/* The sidebar's project tree: the checkouts of each project, one line each with the base below. */
+@utility project-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-left: 1.25rem;
+}
+@utility project-tree-project {
+  display: flex;
+  flex-direction: column;
+}
+@utility project-tree-name {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 1.5rem;
+  padding: 0.25rem 0.5rem 0;
+  border-radius: var(--radius-sm);
+  color: var(--sidebar-foreground);
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0.7;
+  &:hover {
+    opacity: 1;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: -2px;
+  }
+}
+@utility project-tree-more {
+  width: 100%;
+  min-height: 1.5rem;
+  padding: 0 0.5rem;
+  border-radius: var(--radius-md);
+  text-align: left;
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  &:hover {
+    background: var(--sidebar-accent);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: -2px;
+  }
+}
+@utility project-tree-node {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  column-gap: 0.5rem;
+  width: 100%;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-md);
+  text-align: left;
+  font-size: 0.8125rem;
+  color: color-mix(in oklab, var(--sidebar-foreground) 80%, transparent);
+  &:hover {
+    background: var(--sidebar-accent);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
+  }
+}
+@utility project-tree-branch {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@utility project-tree-badge {
+  padding: 0 0.25rem;
+  border-radius: var(--radius-sm);
+  background: var(--muted);
+  font-size: 0.6875rem;
+}
+@utility project-tree-base {
+  grid-column: 2 / 4;
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+}
 /* The summary card under a session's header: the same 16 px from each side as the conversation. */
 @utility recap-slot {
   flex-shrink: 0;

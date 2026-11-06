@@ -900,6 +900,15 @@ live; the list is the project's, so a session of another project never shows her
   badge was set to end at (Teams' Beta ends at 0.39, Conversations' New at 0.38). A group with nothing to offer is not drawn, the
   folded groups are remembered (a folded **Machines** shows a warning mark on its title while a machine
   is offline, misses a required dependency or forwards its API key), and the narrow icon rail has no headings.
+- Under **Projects**, each project of an online host lists its **branches**: the main checkout
+  (badge **primary**, the base branch) and one line per card that has a worktree, each with a state
+  dot, the branch and the base below it. Picking one narrows the board and the Sessions list to
+  that checkout (a chip with the branch clears it); picking it again clears it too. Picked from the Sessions list, it narrows the list in place and does not open the board; from anywhere else it opens the project's board. A pick whose branch, project or host is gone does nothing and shows no chip. The tree comes
+  from what the app already has, with no host change. A project with many worktrees lists the first
+  8 and a button **N more** (and **Show fewer**) for the rest; the picked branch is always listed.
+  The project's name folds its branches (the arrow keys left and right fold and unfold it); the fold
+  is remembered on this computer, and a folded project that holds the picked branch shows a check
+  on its name.
 - At the foot of the bar, **Settings** is a visible item (marked while Settings is open), and the Claude
   account (its email and plan, read from the host's account card; the rail shows only its initial)
   opens a menu. Its header names the app and its version. Then come the plan, the account and the id
