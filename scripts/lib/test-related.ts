@@ -26,8 +26,12 @@ export function resolveImport(from: string, spec: string, known: Set<string>): s
   let base: string;
   if (spec.startsWith(".")) base = posix.join(posix.dirname(from), spec);
   else if (spec.startsWith("@/")) base = `apps/desktop/src/${spec.slice(2)}`;
-  else if (spec === "@flightdeck/protocol") base = "packages/protocol/src/index.ts";
-  else return null;
+  else if (spec.startsWith("@flightdeck/")) {
+    // A workspace package (packages/<name>/src), whole or by subpath: no internal import is lost.
+    const [, name = "", ...sub] = spec.split("/");
+    base =
+      sub.length > 0 ? `packages/${name}/src/${sub.join("/")}` : `packages/${name}/src/index.ts`;
+  } else return null;
   const candidates = [base, `${base}.ts`, `${base}.tsx`, `${base}/index.ts`, `${base}/index.tsx`];
   return candidates.find((path) => known.has(path)) ?? null;
 }
@@ -89,6 +93,13 @@ export interface PlanDeps {
   tiers?: string[];
   /** A test file's tier (lib/test-tiers.ts); undefined for a file it does not classify. */
   tierOf?: (path: string) => string | undefined;
+  /**
+   * `--pr` (#309): every unit and component test, plus the related tests of the other tiers, with
+   * the per-changed-file 100% gate. The full suite runs on main and nightly.
+   */
+  pyramid?: boolean;
+  /** False keeps a big run out of the machine-wide slot (CI has the machine to itself). */
+  slot?: boolean;
 }
 
 export interface Plan {
@@ -109,6 +120,8 @@ export function planRelated({
   fast,
   tiers,
   tierOf = () => undefined,
+  pyramid = false,
+  slot = true,
 }: PlanDeps): Plan {
   // A run of some tiers covers only part of a file: the 100% gate is the full run's (CI).
   const coverageDir = tiers ? undefined : asked;
@@ -116,12 +129,34 @@ export function planRelated({
   const ref = base ?? auditBase(git) ?? git(["merge-base", "HEAD", "main"])?.trim();
   if (!ref) return { code: 2, output: "test:related: no base to compare with", command: null };
   const label = base ?? ref.slice(0, 7);
-  const changed = (git(["diff", "--name-only", `${ref}...HEAD`]) ?? "").split("\n").filter(Boolean);
+  // --no-renames: a renamed file shows its old path as gone, so a renamed test counts as removed.
+  const changed = (git(["diff", "--name-only", "--no-renames", `${ref}...HEAD`]) ?? "")
+    .split("\n")
+    .filter(Boolean);
   const tracked = (git(["ls-files", "*.ts", "*.tsx"]) ?? "").split("\n").filter(Boolean);
   const sources = new Map(tracked.map((path) => [path, readFile(path)]));
   const warnings = changed
     .filter((path) => GLOBAL_FILE.test(path))
     .map((path) => `warning: ${path} affects every test, run the full suite`);
+  // --pr: a file every test reads, or a test that went away, can lower coverage of any file: the
+  // whole suite runs, with its whole-repo gate (#309).
+  if (pyramid) {
+    const removedTest = changed.find((path) => TEST_FILE.test(path) && !sources.has(path));
+    const global = changed.find((path) => GLOBAL_FILE.test(path));
+    const why = global
+      ? `${global} affects every test`
+      : removedTest
+        ? `${removedTest} went away`
+        : null;
+    if (why) {
+      const whole = ["bun", "run", "test"];
+      return {
+        code: 0,
+        output: `test:related --pr: the whole suite runs (${why})`,
+        command: slot ? ["bun", "run", "slot", "--", ...whole] : whole,
+      };
+    }
+  }
   const byImport = selectRelated(changed, sources, { direct: fast });
   const imported = new Set(byImport.map((r) => r.path));
   const selected = [
@@ -133,7 +168,9 @@ export function planRelated({
     const tier = tierOf(path);
     return !tiers || tier === undefined || tiers.includes(tier);
   };
-  const related = selected.filter((r) => kept(r.path));
+  const related = pyramid
+    ? pyramidTests(selected, tracked, tierOf)
+    : selected.filter((r) => kept(r.path));
   const out = new Map<string, number>();
   for (const r of selected.filter((r) => !kept(r.path))) {
     const tier = tierOf(r.path) as string;
@@ -156,16 +193,22 @@ export function planRelated({
     ];
     return { code: 1, output: output.join("\n"), command: null, targets };
   }
-  if (related.length === 0) {
+  if (related.length === 0 && !pyramid) {
     const none = `test:related: no test file is related to the ${changed.length} changed file(s) since ${label}`;
     return { code: 0, output: [none, ...warnings].join("\n"), command: null };
   }
+  const fastTier = related.filter((r) => FAST_TIERS.has(tierOf(r.path) ?? "")).length;
   const output = [
-    fast
-      ? `test:related --fast: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label} (direct importers only; CI runs the rest)`
-      : `test:related: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label}`,
+    pyramid
+      ? `test:related --pr: ${fastTier} fast-tier test file(s) + ${related.length - fastTier} related test file(s) of the other tiers for ${changed.length} changed file(s) since ${label}`
+      : fast
+        ? `test:related --fast: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label} (direct importers only; CI runs the rest)`
+        : `test:related: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label}`,
     ...warnings,
-    ...related.map((r) => `  ${r.path}  ${r.why}`),
+    // --pr lists the related tests; the fast tiers are counted in the header, not listed.
+    ...related
+      .filter((r) => !pyramid || !FAST_TIERS.has(tierOf(r.path) ?? ""))
+      .map((r) => `  ${r.path}  ${r.why}`),
   ].join("\n");
   const run = [
     "bun",
@@ -179,9 +222,27 @@ export function planRelated({
   return {
     code: 0,
     output,
-    command: related.length > SLOT_ABOVE ? ["bun", "run", "slot", "--", ...run] : run,
+    command: slot && related.length > SLOT_ABOVE ? ["bun", "run", "slot", "--", ...run] : run,
     ...(targets ? { targets } : {}),
   };
+}
+
+/** The tiers a PR runs whole (#309): the cheap base of the pyramid. */
+const FAST_TIERS = new Set(["unit", "component"]);
+
+/** `--pr`: every fast-tier test of the tree, and the related tests of the other tiers (or none). */
+function pyramidTests(
+  related: Related[],
+  tracked: string[],
+  tierOf: (path: string) => string | undefined,
+): Related[] {
+  const chosen = new Map(related.map((r) => [r.path, r]));
+  for (const path of tracked) {
+    if (TEST_FILE.test(path) && FAST_TIERS.has(tierOf(path) ?? "") && !chosen.has(path)) {
+      chosen.set(path, { path, why: `${tierOf(path)} tier` });
+    }
+  }
+  return [...chosen.values()].sort((a, b) => (a.path < b.path ? -1 : 1));
 }
 
 /**
@@ -210,4 +271,16 @@ export function selectByPath(changed: string[], sources: Map<string, string>): R
 
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Why a `--keep-coverage` value cannot be the kept coverage folder, or null (#309). */
+export function keepCoverageProblem(root: string, value: string | undefined): string | null {
+  const refuse = `--keep-coverage needs a folder inside the repository, got ${value ?? "nothing"}`;
+  // A flag, a Windows drive path (D:/x, C:x) or a leading slash is never a folder of the repository.
+  if (value === undefined || /^(?:-|[A-Za-z]:|[\\/])/.test(value)) return refuse;
+  const inside = posix.relative(root, posix.resolve(root, value));
+  if (inside === "" || inside === ".." || inside.startsWith("../") || posix.isAbsolute(inside)) {
+    return refuse;
+  }
+  return null;
 }

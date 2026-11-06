@@ -48,6 +48,7 @@ export const ptBR = {
       mcp: "Ferramentas do time",
 
       linger: "Iniciar no boot",
+      opencode: "OpenCode",
     },
     steps: {
       config: "Rode flightdeckd setup no host para refazer a configuração.",
@@ -64,6 +65,8 @@ export const ptBR = {
 
       linger:
         "No host, rode sudo loginctl enable-linger $USER (no WSL, ligue também o systemd em /etc/wsl.conf).",
+      opencode:
+        'O OpenCode é opcional. Para usar, ponha "opencode": { "enabled": true } na configuração do host e reinicie o daemon; a seção OpenCode do manual explica cada motivo.',
     },
   },
   findProjects: {
@@ -309,6 +312,7 @@ export const ptBR = {
     settings: "Horas e valor da hora",
     defaultHours: "Horas por card (padrão deste projeto)",
     saveHours: "Salvar horas",
+    cardHoursInvalid: "Digite um número de horas de 0 a 1000, ou deixe vazio.",
     cardHoursSave: "Salvar as horas do card",
     projectRate: "Valor da hora deste projeto",
     saveRate: "Salvar valor",
@@ -1651,6 +1655,31 @@ export const ptBR = {
     cwd_outside_roots:
       "A pasta {cwd} está fora das pastas permitidas do host. Adicione-a com flightdeckd setup ou em allowedRoots, em ~/.flightdeck/config.json.",
     session_not_found: "A sessão {id} não existe neste host.",
+    runtime_unavailable: "O OpenCode não está disponível neste host.",
+    runtime_unsupported: "Uma sessão do OpenCode não oferece {feature}.",
+    opencode_unsafe_global:
+      "O OpenCode {version} não pode rodar aqui: a configuração global ou do sistema carrega código ou servidores que o Flightdeck não permite ({found}).",
+    opencode_config_outranks:
+      "OpenCode {version}: {what} passaria por cima das perguntas do Flightdeck, então a sessão não foi iniciada.",
+    opencode_saved_rules:
+      'O OpenCode {version} tem regras "sempre" salvas para esta pasta, que pulariam as perguntas do Flightdeck: {rules}. Remova com: {commands}',
+    opencode_preflight_failed:
+      "O OpenCode {version} não conseguiu verificar esta pasta. Tente de novo ou rode flightdeckd doctor.",
+    opencode_changed:
+      "O OpenCode mudou desde que o daemon o verificou. Reinicie o daemon, ou rode flightdeckd doctor, para verificar de novo.",
+    opencode_permissions_overridden:
+      "Algo fora do Flightdeck mudou as regras do OpenCode durante a sessão ({detail}), então a sessão foi parada.",
+    opencode_auth_required:
+      "O OpenCode não tem login neste provedor: rode opencode auth login no host.",
+    opencode_disabled: "O OpenCode está desligado na configuração deste host.",
+    opencode_missing: "O OpenCode não está instalado neste host.",
+    opencode_version_failed: "O OpenCode não informou a versão.",
+    opencode_v1: "Este host tem o OpenCode 1; o Flightdeck precisa do OpenCode 2.",
+    opencode_project_config_not_disabled:
+      "O OpenCode {version} não desligou a configuração do projeto, então o Flightdeck não pode usá-lo com segurança.",
+    opencode_canary_failed: "Não foi possível verificar o OpenCode neste host.",
+    opencode_scope_mismatch:
+      "O OpenCode lê a configuração global de outra pasta, não da que o Flightdeck verificou.",
     session_ended:
       "A sessão não está rodando (terminou ou deu erro): retome-a para mandar uma mensagem.",
     session_not_ended: "A sessão ainda está rodando: não há o que retomar.",
@@ -1727,6 +1756,11 @@ export const ptBR = {
     bypassMessage:
       'Em {host}, "{session}" vai executar tudo sem perguntar antes, a partir de agora, até você voltar o modo. Pode editar e apagar arquivos e rodar comandos.',
     bypassConfirm: "Mudar para ignorar permissões",
+    runtimeOpenCode: "OpenCode",
+    openCodeDenied: "O OpenCode parou este turno porque o pedido foi negado.",
+    contextSent: "As instruções do projeto (AGENTS.md) foram com a primeira mensagem.",
+    contextSkipped:
+      "O AGENTS.md não foi enviado: tem mais de 64 KB, ou aponta para fora da pasta ou para uma credencial.",
     modeLabel: "Modo de permissão",
     modelLabel: "Modelo",
     modelDefault: "Modelo padrão",
@@ -1831,6 +1865,11 @@ export const ptBR = {
     optional: "opcional",
     mode: "Modo de permissão",
     prompt: "Primeiro prompt",
+    agent: "Agente",
+    agentClaude: "Claude Code",
+    agentOpenCode: "OpenCode",
+    effort: "Esforço",
+    effortDefault: "Esforço padrão",
     create: "Criar sessão",
     needFolder: "Este host não tem pasta permitida: acrescente uma nas configurações dele",
   },

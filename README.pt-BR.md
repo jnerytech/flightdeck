@@ -33,6 +33,9 @@ sessões num lugar só, sem abrir cada máquina.
 - Aprove ou negue pedidos de ferramenta pelo app e mande mensagens para sessões do terminal abertas
   com `flightdeckd claude`.
 - Regras de "permitir sempre" gravadas na config local do projeto no Claude Code, nunca na global.
+- Sessões do OpenCode ao lado das do Claude Code, num host que liga o OpenCode (opcional): toda
+  chamada de ferramenta pergunta, a config do OpenCode do próprio projeto é ignorada, e uma checagem
+  prévia recusa uma pasta cuja config ou regras salvas pulariam a pergunta.
 
 **Trabalho**
 
@@ -256,6 +259,11 @@ só. Os hosts são independentes: nada é copiado entre eles.
   ou time (exceções em Configurações), com limites por par e por sessão; um laço pausa o par e
   avisa você. Uma sessão que recebeu conteúdo de terceiros passa essa marca adiante, e a aprovação
   automática fica desligada também em quem recebe dela.
+- **O OpenCode pergunta, por construção.** Uma sessão do OpenCode roda só os agentes do próprio
+  Flightdeck, com a config de projeto desligada; antes de cada início uma checagem prévia recusa o
+  que poderia passar por cima da pergunta (uma camada de config, um agente a mais, uma regra
+  "sempre" salva), e a config global é examinada atrás de plugins e servidores MCP antes de o
+  OpenCode rodar.
 - **Atualizações assinadas.** O app e o daemon só instalam atualizações assinadas com a chave do
   projeto ([`release/flightdeck.pub`](release/flightdeck.pub)). O instalador do Windows em si não
   tem assinatura de código.
