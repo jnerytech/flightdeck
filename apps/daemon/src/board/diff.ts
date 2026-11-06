@@ -85,6 +85,12 @@ async function untrackedFile(worktree: string, path: string, max: number): Promi
   };
 }
 
+/**
+ * The most a file may weigh for the Changes panel to show it (issue #329): a new file over it, or a
+ * diff over it, is listed with the `tooLarge` marker and its size, and without content.
+ */
+export const DIFF_FILE_MAX = 512 * 1024;
+
 /** Git's empty tree: what a repository without commits is compared with. */
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
