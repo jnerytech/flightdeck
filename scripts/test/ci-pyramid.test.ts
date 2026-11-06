@@ -20,8 +20,7 @@ const step = (name: string) => steps.find((s) => s.name === name);
 
 describe("ci-pyramid (#309)", () => {
   test("the full suite also runs every night, on a schedule", () => {
-    const cron = ci.on.schedule?.[0]?.cron ?? "";
-    expect(cron.split(" ")).toHaveLength(5);
+    expect(ci.on.schedule).toEqual([{ cron: "17 4 * * *" }]);
   });
 
   test("on a PR the suite job runs the fast tiers plus the related tests, gated per changed file, and keeps the lcov for SonarCloud", () => {

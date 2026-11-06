@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { importsOf, planRelated, resolveImport, selectRelated } from "../lib/test-related.ts";
+import {
+  importsOf,
+  keepCoverageProblem,
+  planRelated,
+  resolveImport,
+  selectRelated,
+} from "../lib/test-related.ts";
 
 const sources = (files: Record<string, string>) => new Map(Object.entries(files));
 
@@ -56,6 +62,16 @@ describe("resolveImport", () => {
     );
     expect(resolveImport("apps/desktop/test/t.test.tsx", "../src/ui/Card", known)).toBe(
       "apps/desktop/src/ui/Card.tsx",
+    );
+  });
+
+  test("a protocol subpath and any other workspace package resolve too, so no internal import falls out of the graph (#309)", () => {
+    const more = new Set([...known, "packages/protocol/src/run.ts", "packages/other/src/index.ts"]);
+    expect(resolveImport("apps/daemon/src/x.ts", "@flightdeck/protocol/run", more)).toBe(
+      "packages/protocol/src/run.ts",
+    );
+    expect(resolveImport("apps/daemon/src/x.ts", "@flightdeck/other", more)).toBe(
+      "packages/other/src/index.ts",
     );
   });
 
@@ -287,6 +303,70 @@ describe("planRelated", () => {
     expect(plan.code).toBe(0);
     expect(plan.command?.[0]).toBe("bun");
     expect(plan.command?.filter((arg) => arg.endsWith(".test.ts"))).toHaveLength(61);
+  });
+
+  test("--pr runs the whole suite when a file every test reads changed, or a test file went away (#309)", () => {
+    const repo: Record<string, string> = {
+      "apps/daemon/src/a.ts": "export const a = 1;",
+      "apps/daemon/test/a.test.ts": `import "../src/a.ts";`,
+    };
+    const calls: string[][] = [];
+    const git = (changed: string[]) => (args: string[]) => {
+      calls.push(args);
+      return fakeGit(changed, Object.keys(repo))(args);
+    };
+    const tiers = { "apps/daemon/test/a.test.ts": "unit" } as Record<string, string>;
+    for (const changed of [["bun.lock"], ["apps/daemon/test/gone.test.ts"]]) {
+      const plan = planRelated({
+        platform: "linux",
+        git: git(changed),
+        readFile: (path) => repo[path] ?? "",
+        coverageDir: "/tmp/cov",
+        pyramid: true,
+        slot: false,
+        tierOf: (path) => tiers[path],
+      });
+      expect(plan.command).toEqual(["bun", "run", "test"]);
+      expect(plan.targets).toBeUndefined();
+      expect(plan.output).toContain("test:related --pr: the whole suite runs");
+    }
+    // A rename shows its old path as gone, so a renamed test counts as one that went away.
+    expect(calls.find((c) => c[0] === "diff")).toContain("--no-renames");
+  });
+
+  test("--pr names how many fast-tier tests run, not each one; it lists the related tests (#309)", () => {
+    const repo: Record<string, string> = {
+      "apps/daemon/src/a.ts": "export const a = 1;",
+      "apps/daemon/test/int-a.test.ts": `import "../src/a.ts";`,
+      "apps/daemon/test/u1.test.ts": "export {};",
+      "apps/daemon/test/u2.test.ts": "export {};",
+    };
+    const tiers: Record<string, string> = {
+      "apps/daemon/test/int-a.test.ts": "integration",
+      "apps/daemon/test/u1.test.ts": "unit",
+      "apps/daemon/test/u2.test.ts": "unit",
+    };
+    const plan = planRelated({
+      platform: "linux",
+      git: fakeGit(["apps/daemon/src/a.ts"], Object.keys(repo)),
+      readFile: (path) => repo[path] ?? "",
+      coverageDir: "/tmp/cov",
+      pyramid: true,
+      tierOf: (path) => tiers[path],
+    });
+    expect(plan.output).toContain("apps/daemon/test/int-a.test.ts");
+    expect(plan.output).not.toContain("u1.test.ts");
+  });
+
+  test("--keep-coverage needs a folder inside the repository that is not another flag (#309)", () => {
+    const root = "/repo";
+    expect(keepCoverageProblem(root, "coverage")).toBeNull();
+    expect(keepCoverageProblem(root, "..cache/cov")).toBeNull();
+    for (const bad of [undefined, "--pr", "../x", "/tmp/x", "."]) {
+      expect(`${bad}: ${keepCoverageProblem(root, bad) ?? "ok"}`).toContain(
+        "--keep-coverage needs a folder inside the repository",
+      );
+    }
   });
 
   test("a change that reaches every test is flagged", () => {

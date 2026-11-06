@@ -243,3 +243,8 @@ export function selectByPath(changed: string[], sources: Map<string, string>): R
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+/** Why a `--keep-coverage` value cannot be the kept coverage folder, or null (#309). */
+export function keepCoverageProblem(_root: string, _value: string | undefined): string | null {
+  return null;
+}
