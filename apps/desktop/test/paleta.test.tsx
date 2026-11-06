@@ -35,6 +35,12 @@ const inPalette = (role: "listbox" | "option") => {
   return palette ? within(palette).queryAllByRole(role) : [];
 };
 const sections = () => inPalette("listbox").map((list) => list.getAttribute("aria-label") ?? "");
+/**
+ * Every section of the default list is there. The palette fills in as the host's data arrives
+ * (sessions and hosts, then projects, then cards), so a count short of this one is a state it
+ * passes through: a wait for it can be missed by a poll when the machine is busy (issue #492).
+ */
+const listed = () => sections().length === 6;
 const options = () => inPalette("option").map((option) => option.getAttribute("aria-label") ?? "");
 const selected = () =>
   inPalette("option")
@@ -136,7 +142,7 @@ describe("paleta", () => {
   test("seções na ordem; os locais aparecem e filtram na hora, sem consultar o histórico", async () => {
     const { store } = await setup();
     await openPalette();
-    await settle(() => sections().length === 6);
+    await settle(listed);
     expect(sections()).toEqual([
       "Sessões ao vivo",
       "Cards",
@@ -176,7 +182,7 @@ describe("paleta", () => {
   test("numa linha, o título ocupa a largura e o caminho encolhe primeiro (nunca o título quebra)", async () => {
     await setup();
     await openPalette();
-    await settle(() => sections().length === 5);
+    await settle(listed);
     const row = inPalette("option")[0] as HTMLElement;
     // The row's state glyph (issue #147) comes first; the title and the path are its text.
     const [title, detail] = [...row.querySelectorAll("span")].filter(
@@ -191,7 +197,7 @@ describe("paleta", () => {
   test("setas escolhem, Enter abre; Enter sem escolha busca no histórico, que chega depois sem apagar os locais", async () => {
     const { store } = await setup();
     await openPalette();
-    await settle(() => sections().length === 5);
+    await settle(listed);
     expect(selected()).toBeNull();
     await press("ArrowDown");
     expect(selected()).toBe("Gerenciada");
@@ -218,7 +224,7 @@ describe("paleta", () => {
   test("a lista que muda sob o cursor não troca o item escolhido", async () => {
     const { store } = await setup();
     await openPalette();
-    await settle(() => sections().length === 5);
+    await settle(listed);
     await press("ArrowDown");
     expect(selected()).toBe("Gerenciada");
     // A session that sorts before the chosen one arrives (the list updates under the cursor).

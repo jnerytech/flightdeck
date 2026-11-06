@@ -1,3 +1,5 @@
+import { notedIssue } from "./unstable-skip.ts";
+
 export interface Commit {
   hash: string;
   subject: string;
@@ -61,12 +63,15 @@ export function auditCommits(commits: Commit[]): Violation[] {
   return violations;
 }
 
-/** Finds focused, skipped or todo tests left in test files. */
+/** Finds focused, skipped (with no `// unstable: #N` note) or todo tests left in test files. */
 export function findForbiddenMarkers(files: { path: string; content: string }[]): Violation[] {
   const violations: Violation[] = [];
   for (const file of files) {
-    file.content.split("\n").forEach((line, i) => {
+    const lines = file.content.split("\n");
+    lines.forEach((line, i) => {
       for (const { pattern, text } of FORBIDDEN_MARKERS) {
+        // A skip noted under its open issue is allowed (#494); CI checks the issue is still open.
+        if (text === ".skip(" && notedIssue(lines, i) !== null) continue;
         if (line.search(pattern) !== -1) {
           violations.push({
             commit: `${file.path}:${i + 1}`,

@@ -546,6 +546,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
               onOpenSearch={() => store.openSearch()}
               onNewTab={() => store.tabs.openNextInNewTab()}
               onToggleTheme={() => store.theme.toggle()}
+              onShortcuts={() => setHelp(true)}
               {...(focusHost && store.uiMode(focusHost.id).canSwitch
                 ? { onSimpleMode: () => void store.toggleUiMode() }
                 : {})}

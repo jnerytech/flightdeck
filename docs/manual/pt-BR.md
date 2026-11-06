@@ -879,9 +879,13 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   repassando a chave de API), e o trilho estreito de ícones não tem títulos.
 - No pé da barra, **Configurações** é um item visível (marcado enquanto as Configurações estão
   abertas), e a conta do Claude (e-mail e plano, lidos do cartão da conta do host; o trilho mostra só
-  a inicial) abre um menu com **Configurações**, **Alternar tema**, **Manual** e, para cada host cujo
-  `gh` está conectado ao GitHub com um login que o app pode remover, **Sair do GitHub** (após uma
-  confirmação; um login que vem do ambiente do daemon é removido lá). Com vários hosts aparece a
+  a inicial) abre um menu. O cabeçalho dele diz o nome do app e a versão. Depois vêm o plano, a conta
+  e o id do host dessa conta, cada um copiado ao ser escolhido; **Linhas compactas**, uma chave
+  guardada neste computador (a mesma densidade das Configurações); **Configurações**; **Procurar
+  atualizações** (abre as Configurações, onde a resposta aparece); **Atalhos de teclado**; **Alternar
+  tema**; **Manual**; e, para cada host cujo `gh` está conectado ao GitHub com um login que o app pode
+  remover, **Sair do GitHub** (após uma confirmação; um login que vem do ambiente do daemon é removido
+  lá). Com vários hosts aparece a
   conta do host aberto, e quantas contas há quando diferem; um host offline não mostra nenhuma.
 - O **Início** (primeiro em Trabalho) é uma faixa de quatro cartões com os últimos sete dias de todos
   os hosts online, cada um com um gráfico pequeno: **Gasto** (com o orçamento mensal dos hosts, quando
@@ -2701,13 +2705,18 @@ numa aba, sem SSH.
   shell padrão do host (`pwsh` ou `powershell` no Windows; `$SHELL`, `bash` ou `sh` no Linux) na
   primeira pasta permitida. O painel também lista os terminais vivos, cada um com **Abrir**.
 - **Na aba:** copiar e colar com `Ctrl+Shift+C` / `Ctrl+Shift+V` ou com o menu do botão direito
-  (**Copiar**, que precisa de uma seleção, **Colar** e **Selecionar tudo**; `Ctrl+C` vai para o
-  processo). Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
+  (**Copiar**, que precisa de uma seleção, **Colar** e **Selecionar tudo**). No Windows `Ctrl+C`
+  também copia enquanto há algo selecionado, e vai para o processo (a interrupção) quando não há;
+  nos outros sistemas `Ctrl+C` sempre vai para o processo. Um programa que redesenha a tela (o
+  Claude Code) pode soltar uma seleção antes de você chegar em **Copiar**: a última seleção
+  continua copiável até você digitar. Quando o programa toma o mouse para si, segure `Shift` ao
+  arrastar para selecionar. `Shift+Enter` adiciona uma nova linha no prompt do Claude Code em vez
+  de enviá-lo (o mesmo que `Alt+Enter`). Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
   atual em outra cor e sua posição ("2 de 5") ao lado da caixa; Enter ou **Próximo resultado**
   vai para o próximo, Shift+Enter ou **Resultado anterior** para o anterior, Esc ou **Fechar
   busca** fecha. Links na saída abrem no navegador (só `http` e `https`). A fonte é a
   monoespaçada do sistema; o tamanho fica nas Configurações (**Tamanho da fonte do terminal**, de
-  10 a 24).
+  10 a 24). A aba guarda as últimas 10.000 linhas para rolar e buscar.
 - **Desanexar e reabrir:** o terminal sobrevive ao app: guarda os últimos 2 MB de saída, e anexar
   de novo os mostra. Fechar a aba de um terminal pergunta: **Desanexar** (o padrão; o processo
   continua no host) ou **Encerrar processo**. Um terminal desanexado ou encerrado tem **Reabrir**.
@@ -2909,6 +2918,16 @@ encerrada é um anel esmaecido. Passe o mouse para ver o nome.
 - **Teclado:** `J` e `K` movem pela lista, `Enter` abre, `Esc` fecha o detalhe, `A` e `N`
   aprovam e negam, `Ctrl K` abre a paleta, `Alt+←` e `Alt+→` voltam e avançam.
 - **Densidade:** linhas compactas (32 px, o padrão) ou confortáveis (40 px), em Configurações.
+- **Contador do cache do prompt** (Configurações, desligado por padrão): o Claude Code mantém o
+  início da conversa em cache por 5 minutos (1 hora com cache estendido, **Duração do cache** nas
+  Configurações), e responder dentro dessa janela custa menos. Com o contador ligado, uma sessão
+  ociosa na lista de Sessões (linha e cartão) e na linha de estado sob a caixa de mensagem mostra
+  um relógio pequeno com o tempo que resta em `m:ss`, na cor de aviso no último minuto e só o
+  relógio quando o cache esfria (a próxima mensagem
+  reenvia todo o contexto como tokens sem cache). Leitores de tela ouvem "Cache do prompt expira em
+  2 minutos 10 segundos". A aba da sessão leva só o ícone do relógio no canto (o tempo fica na dica),
+  então ela não fica mais larga. A contagem não roda para sessões em andamento ou encerradas, um único
+  relógio de 1 segundo atende todas, e ele para enquanto a janela está escondida.
 - **Tema:** Claro, Escuro e Sistema (o padrão), em Configurações, na barra lateral e na paleta.
   A escolha fica guardada.
 - **Idioma:** o do sistema (`pt-BR` para qualquer `pt-*`, `en` para o resto), trocado em

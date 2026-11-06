@@ -32,6 +32,7 @@ export function fakeXterm() {
     },
     hasSelection: () => selection !== "",
     getSelection: () => selection,
+    onSelectionChange: () => ({ dispose: () => {} }),
     onData: (listener) => {
       onData = listener;
       return { dispose: () => {} };

@@ -13,6 +13,13 @@ export const ptBR = {
     many: "{n} contas",
     manyHint: "Uma por host",
     plan: "Plano {plan}",
+    version: "Versão {version}",
+    copyPlan: "Copiar o plano: {value}",
+    copyAccount: "Copiar a conta: {value}",
+    copyHost: "Copiar o id do host: {value}",
+    compact: "Linhas compactas",
+    checkUpdates: "Procurar atualizações",
+    shortcuts: "Atalhos de teclado",
     signOutGithub: "Sair do GitHub",
     signOutGithubHost: "Sair do GitHub ({host})",
     signOutGithubConfirm:
@@ -970,8 +977,20 @@ export const ptBR = {
     densities: { compact: "Compacta", comfortable: "Confortável" },
     themes: { system: "Sistema", light: "Claro", dark: "Escuro" },
     terminalFont: "Tamanho da fonte do terminal",
+    cacheTimer: "Contador do cache do prompt",
+    cacheTtl: "Duração do cache",
+    cacheTtls: { fiveMinutes: "5 minutos", oneHour: "1 hora" },
     tabOrder: "Ordem do Ctrl+Tab",
     tabOrders: { mru: "Mais recente primeiro", sequential: "Ordem das abas" },
+  },
+  cacheTimer: {
+    expires: "Cache do prompt expira em {time}",
+    cold: "Cache do prompt frio",
+    coldTip: "A próxima mensagem vai reenviar todo o contexto como tokens sem cache",
+    minutes: "{n} minutos",
+    minutesOne: "1 minuto",
+    seconds: "{n} segundos",
+    secondsOne: "1 segundo",
   },
   languages: { "pt-BR": "Português (Brasil)", en: "English" },
   palette: {
@@ -3517,6 +3536,8 @@ export const ptBR = {
       confirm:
         "Confiar em {project} em {host}? Os hooks dele rodam comandos e os servidores MCP dele iniciam programas naquele computador, sem perguntar a você, sempre que uma sessão começa ali. Só faça isso para código que você escreveu ou leu.",
       failed: "Não foi possível ler a configuração deste projeto.",
+      listingUnavailable:
+        "A lista do que este projeto carregaria aparece no computador em que este host roda, ou pela sua rede Tailscale.",
       sessionNotice:
         "Esta pasta não tem confiança: os hooks, servidores MCP, configurações, CLAUDE.md, agentes e skills dela não carregaram, e os seus próprios servidores MCP e plugins também não.",
       sessionNoticeShort: "Esta pasta não tem confiança.",

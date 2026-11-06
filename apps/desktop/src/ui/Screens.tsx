@@ -2,6 +2,7 @@ import type { CommandPayload } from "@flightdeck/protocol";
 import { BookOpen, MessagesSquare } from "lucide-react";
 import { type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
+import { CacheTimer } from "@/components/hub/cache-timer";
 import { SplitView } from "@/components/layout/split-view";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { PersonaPicker } from "@/components/personas/persona-picker";
@@ -22,7 +23,7 @@ import type { Density } from "../lib/density.ts";
 import type { HubRow } from "../lib/hub.ts";
 import { actionOfRoute, endMeasure } from "../lib/measures.ts";
 import { newSessionHost } from "../lib/new-session-host.ts";
-import { basename } from "../lib/paths.ts";
+import { basename, trimTrailingSeparators } from "../lib/paths.ts";
 import type { Route } from "../lib/router.ts";
 import { isBusy } from "../lib/status.ts";
 import type { ThemeMode } from "../lib/theme.ts";
@@ -147,7 +148,7 @@ function ManagedSession(
   const cwd = summary?.cwd ?? session.cwd ?? "";
   // The project the folder belongs to, where the person can read what it would load and trust it.
   const owner = state.projects[hostId]?.find((p) => {
-    const root = p.path.replace(/[\\/]+$/, "");
+    const root = trimTrailingSeparators(p.path);
     return cwd === root || cwd.startsWith(`${root}/`) || cwd.startsWith(`${root}\\`);
   });
   const canFork = hasFeature(host?.hostInfo?.features, "checkpoints", false);
@@ -208,6 +209,9 @@ function ManagedSession(
         scrollKey={sessionKey(hostId, sessionId)}
         session={session}
         actions={store}
+        cache={
+          <CacheTimer store={store} since={summary?.status === "idle" ? summary.updatedAt : null} />
+        }
         {...(pin ? { pin } : {})}
         {...(fork ? { fork } : {})}
         {...(summary?.runtime ? { runtime: summary.runtime } : {})}

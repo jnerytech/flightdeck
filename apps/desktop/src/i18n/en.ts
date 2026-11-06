@@ -11,6 +11,13 @@ export const en: Dictionary = {
     many: "{n} accounts",
     manyHint: "One per host",
     plan: "{plan} plan",
+    version: "Version {version}",
+    copyPlan: "Copy the plan: {value}",
+    copyAccount: "Copy the account: {value}",
+    copyHost: "Copy the host id: {value}",
+    compact: "Compact rows",
+    checkUpdates: "Check for updates",
+    shortcuts: "Keyboard shortcuts",
     signOutGithub: "Sign out of GitHub",
     signOutGithubHost: "Sign out of GitHub ({host})",
     signOutGithubConfirm:
@@ -973,8 +980,20 @@ export const en: Dictionary = {
     densities: { compact: "Compact", comfortable: "Comfortable" },
     themes: { system: "System", light: "Light", dark: "Dark" },
     terminalFont: "Terminal font size",
+    cacheTimer: "Prompt cache timer",
+    cacheTtl: "Cache lifetime",
+    cacheTtls: { fiveMinutes: "5 minutes", oneHour: "1 hour" },
     tabOrder: "Ctrl+Tab order",
     tabOrders: { mru: "Most recently used", sequential: "Tab order" },
+  },
+  cacheTimer: {
+    expires: "Prompt cache expires in {time}",
+    cold: "Prompt cache is cold",
+    coldTip: "The next message will re-send the full context as uncached tokens",
+    minutes: "{n} minutes",
+    minutesOne: "1 minute",
+    seconds: "{n} seconds",
+    secondsOne: "1 second",
   },
   languages: { "pt-BR": "Português (Brasil)", en: "English" },
   palette: {
@@ -3514,6 +3533,8 @@ export const en: Dictionary = {
       confirm:
         "Trust {project} on {host}? Its hooks run commands and its MCP servers start programs on that computer, without asking you, whenever a session starts there. Only do this for code you wrote or have read.",
       failed: "Could not read this project's configuration.",
+      listingUnavailable:
+        "The list of what this project would load is shown on the computer this host runs on, or from your Tailscale network.",
       sessionNotice:
         "This folder is not trusted: its own hooks, MCP servers, settings, CLAUDE.md, agents and skills did not load, and neither did your own MCP servers and plugins.",
       sessionNoticeShort: "This folder is not trusted.",
