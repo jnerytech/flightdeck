@@ -19,6 +19,11 @@ describe("md-size", () => {
     expect(mdLimit("README.md")).toBe(400);
   });
 
+  test("the frozen DECISIONS.md has no cap: decisions.ts pins its content, and new decisions go to docs/decisions/ (#304)", () => {
+    expect(mdLimit("docs/DECISIONS.md")).toBe(Number.POSITIVE_INFINITY);
+    expect(oversized([{ path: "docs/DECISIONS.md", text: lines(5000) }])).toEqual({});
+  });
+
   test("only the files over their limit are counted", () => {
     expect(
       oversized([

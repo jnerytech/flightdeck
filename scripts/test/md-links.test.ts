@@ -58,7 +58,7 @@ describe("md-links", () => {
     const code = new Map([
       [
         "scripts/test/x.test.ts",
-        'read("docs/DECISIONS.md"); read("docs/SPEC-fase-99.md"); // a `docs/...md` placeholder',
+        'read("docs/DECISIONS.md"); read("docs/SPEC-fase-99.md"); // a `docs/...md` placeholder, a docs/SPEC-fase-N.md template',
       ],
     ]);
     expect(missingDocRefs(code, (path) => path === "docs/DECISIONS.md")).toEqual([
@@ -68,7 +68,9 @@ describe("md-links", () => {
 
   test("the repository's own docs have no broken link, and the code names no missing doc", () => {
     const exists = (path: string) => existsSync(join(ROOT, path));
-    expect(brokenLinks(read(tracked("*.md")), exists)).toEqual([]);
+    // A test fixture's Markdown stands for another repository's file: its links point there.
+    const docs = tracked("*.md").filter((path) => !/(^|\/)test\/fixtures\//.test(path));
+    expect(brokenLinks(read(docs), exists)).toEqual([]);
     // Tests name docs paths as fixtures in temporary repositories; one that reads a real doc
     // fails by itself when the doc moves. The other code must name docs that exist.
     const code = tracked("*.ts", "*.tsx", "*.rs", "*.yml", "*.json").filter(
