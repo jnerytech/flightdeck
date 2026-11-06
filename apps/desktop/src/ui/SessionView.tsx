@@ -10,6 +10,8 @@ import {
 import { ArrowDown, AtSign, BookText, CornerDownLeft, Plus, Square, X } from "lucide-react";
 import { memo, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/approval/approval-card";
+import { useWand, type WandBinding } from "@/components/assistant/use-wand";
+import { WandButton, WandPanel } from "@/components/assistant/wand-controls";
 import { ActionButton } from "@/components/feedback/action-button";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { NativeSelect } from "@/components/layout/form";
@@ -325,6 +327,8 @@ interface SessionViewProps {
   models?: readonly string[];
   /** Renders a picker for a folder; `done` gets the path chosen, or null when it was closed. */
   pickPath?: (done: (path: string | null) => void) => ReactNode;
+  /** The AI wand of the message box (phase 40): the assistant and where "no provider" goes. */
+  assist?: WandBinding;
 }
 
 /** How many messages came after the one the reader had seen (none while they are at the end). */
@@ -523,6 +527,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   const jumpKey = missed === 1 ? "session.jumpLatestOne" : "session.jumpLatestMany";
   const { session, actions } = props;
   const [text, setText] = useState("");
+  const wand = useWand(props.assist, text, setText);
   const [closing, setClosing] = useState(false);
   const [picking, setPicking] = useState(false);
   const start = session.permissionMode ?? "default";
@@ -859,6 +864,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
           </div>
         )}
         {working && <ActivityLine activity={activity} t={t} />}
+        {wand && <WandPanel wand={wand} t={t} />}
         <Composer>
           {props.images && (
             <>
@@ -896,6 +902,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
               <AtSign aria-hidden="true" />
             </IconActionButton>
           )}
+          {wand && <WandButton wand={wand} t={t} />}
           <Textarea
             ref={box}
             aria-label={t("session.message")}
@@ -920,6 +927,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
               void attach(Array.from(e.dataTransfer?.files ?? []));
             }}
             onKeyDown={(e) => {
+              if (wand?.onKeyDown(e)) return;
               if (e.key === "Escape" && working) void actions.interrupt();
               if (e.key === "Tab" && e.shiftKey && props.settings && actions.setMode) {
                 // Shift+Tab cycles the permission mode, as in Claude Code; with none to go to, focus moves on.
