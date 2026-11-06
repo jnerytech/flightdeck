@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, waitFor as pollFor, TOKEN } from "./fixtures.ts";
 
@@ -185,5 +186,78 @@ describe("simple-app-flow: the container, end to end on a fake host", () => {
     await click("Show details");
     await waitFor(() => expect(store.uiMode(hostId).mode).toBe("full"));
     expect(store.router.current.name).toBe("session");
+  });
+
+  /** Simple mode on a fresh host, with Settings open. */
+  async function openSettings(mem = memoryPlatform(false, "en")) {
+    const d = makeDaemon(cleanups, { simple: true, ui: { mode: "simple", locked: false } });
+    const server = d.listen();
+    const store = new AppStore(mem.platform, { baseDelayMs: 10, maxDelayMs: 20 });
+    cleanups.push(() => store.dispose());
+    render(<App store={store} />);
+    const hostId = await act(() => store.addHost({ name: "pc", url: server.url, token: TOKEN }));
+    await pollFor(() => store.getState().hosts.find((h) => h.id === hostId)?.hostInfo, "host info");
+    await act(async () => {
+      fireEvent.click(within(nav()).getByRole("button", { name: "Settings" }));
+    });
+    return { store, hostId };
+  }
+
+  test("Given Settings, When the theme is changed and the nav's Full app is cancelled, Then the theme is kept and Simple mode stays", async () => {
+    const { store, hostId } = await openSettings();
+    await act(async () => {
+      fireEvent.change(await waitFor(() => screen.getByRole("combobox", { name: "Theme" }), WAIT), {
+        target: { value: "dark" },
+      });
+    });
+    expect(store.theme.mode).toBe("dark");
+    await act(async () => {
+      fireEvent.click(within(nav()).getByRole("button", { name: "Full app" }));
+    });
+    await click("Cancel");
+    expect(store.uiMode(hostId).mode).toBe("simple");
+  });
+
+  test("Given Settings, When a folder is chosen and added, Then the host lists it among the folders tasks may use", async () => {
+    const mem = memoryPlatform(false, "en");
+    // By its real path: the host lists the folder as `realpathSync.native` gives it, and on a
+    // Windows runner a plain `tmpdir()` is the 8.3 short form (`RUNNER~1`) of that.
+    const extra = join(realTempDir("fd-simple-"), "more");
+    mkdirSync(extra, { recursive: true });
+    expect(realpathSync.native(extra)).toBe(extra);
+    mem.platform.pickFolder = async () => extra;
+    await openSettings(mem);
+    await click("Choose folder…");
+    await waitFor(
+      () =>
+        expect(
+          (screen.getByRole("textbox", { name: "Folder to add" }) as HTMLInputElement).value,
+        ).toBe(extra),
+      WAIT,
+    );
+    await click("Add folder");
+    await waitFor(() => expect(document.body.textContent?.includes(extra)).toBe(true), WAIT);
+  });
+
+  test("Given Settings, When notifications are switched off and Show everything is cancelled then confirmed, Then the app and the mode follow", async () => {
+    const { store, hostId } = await openSettings();
+    const tell = await waitFor(
+      () => screen.getByRole("checkbox", { name: /Tell me when a task needs my answer/ }),
+      WAIT,
+    );
+    await act(async () => {
+      fireEvent.click(tell);
+    });
+    await waitFor(() => expect(store.getState().settings.notifyUpdates).toBe(false));
+    await click("Show everything");
+    await click("Cancel");
+    expect(store.uiMode(hostId).mode).toBe("simple");
+    await click("Show everything");
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("alertdialog")).getByRole("button", { name: "Show everything" }),
+      );
+    });
+    await waitFor(() => expect(store.uiMode(hostId).mode).toBe("full"));
   });
 });

@@ -58,12 +58,17 @@ suite("wait: a wait that runs out of time throws and says what it waited for", (
 
 suite("wait: stays checks that a thing does NOT happen, by watching for the whole window", () => {
   test("it returns once the window ended with the check holding the whole time", async () => {
+    // How many times it looks depends on the machine (a loaded runner may sleep past the whole
+    // window in one go); what it guarantees is one look before the first sleep, one after the last,
+    // and that it did not return before the window ended.
     let n = 0;
+    const started = Date.now();
     await stays(() => {
       n += 1;
       return true;
     }, 80);
-    expect(n).toBeGreaterThan(2);
+    expect(n).toBeGreaterThanOrEqual(2);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(80);
   });
 
   test("it throws the moment the check breaks, naming what was meant to hold", async () => {
