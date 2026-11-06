@@ -456,47 +456,100 @@ function rawSegments(command: string): string[] {
 /** One `NAME=value` env assignment at the start of the text, with the value unquoted (#687). */
 const ASSIGNMENT = /^([A-Za-z_]\w*)=(?:"((?:[^"\\]|\\.)*)"|'([^']*)'|(\S*))(?:\s+|$)/;
 
-/** FLIGHTDECK_SLOT_HEAVY among the env assignments in front of a segment's command, or undefined. */
-function prefixOverride(segment: string): string | undefined {
+/** The value of the env assignment `name` in front of a segment's command, or undefined. */
+function prefixAssignment(segment: string, name: string): string | undefined {
   let rest = segment.trimStart().replace(/^env\s+/, "");
   for (let found = ASSIGNMENT.exec(rest); found; found = ASSIGNMENT.exec(rest)) {
-    if (found[1] === "FLIGHTDECK_SLOT_HEAVY") return found[2] ?? found[3] ?? found[4] ?? "";
+    if (found[1] === name) return found[2] ?? found[3] ?? found[4] ?? "";
     rest = rest.slice(found[0].length);
   }
   return undefined;
 }
 
+/** A segment's words, with a quoted string (and what it touches) kept whole as one word. */
+function shellWords(segment: string): string[] {
+  return segment.match(/(?:"(?:[^"\\]|\\.)*"|'[^']*'|[^\s"'])+/g) ?? [];
+}
+
+/** The coverage scripts by the names a command may give them: the package script or its file. */
+const COVERAGE_SCRIPTS: Record<string, string> = {
+  "test:related": "test:related",
+  "scripts/test-related.ts": "test:related",
+  "coverage:funcs": "coverage:funcs",
+  "scripts/coverage-funcs.ts": "coverage:funcs",
+};
+
+/**
+ * The coverage script a command starts at word `i`, with its arguments: `bun run [flags] <name>`,
+ * `bun [flags] <name>` (bun's shorthand) or `npm run <name>`, where the name is the package script
+ * or its file (#687).
+ */
+function coverageScriptAt(words: string[], i: number): { script: string; args: string[] } | null {
+  let at = i + 1;
+  if (words[i] === "npm") {
+    if (words[at] !== "run") return null;
+    at++;
+  } else if (words[i] === "bun") {
+    if (words[at] === "run") at++;
+  } else return null;
+  while (words[at]?.startsWith("-")) at++;
+  const script = COVERAGE_SCRIPTS[(words[at] ?? "").replace(/^\.\//, "")];
+  return script ? { script, args: words.slice(at + 1) } : null;
+}
+
 /**
  * Every full coverage run a command starts, through the slot or not, each with the override in
  * front of its own segment (#687: an override elsewhere in the command, or in front of another
- * heavy run, does not count).
+ * heavy run, does not count). It reads the first coverage script of each segment only: a run
+ * inside `bash -c`, `xargs` or `$(...)` counts once at most, or not at all when quoted.
  */
 function heavyRuns(command: string): Array<{ what: string; override: string | undefined }> {
   const runs: Array<{ what: string; override: string | undefined }> = [];
   for (const segment of rawSegments(command)) {
-    const words = commandWords(segment).trim().split(/\s+/);
-    const what = words
-      .map((word, i) =>
-        word === "bun" && words[i + 1] === "run" ? heavyScript(words, i + 2) : null,
-      )
-      .find((found) => found !== null);
-    if (what) runs.push({ what, override: prefixOverride(segment) });
+    const words = shellWords(segment);
+    const found = words.map((_, i) => coverageScriptAt(words, i)).find((run) => run !== null);
+    if (!found) continue;
+    const override = prefixAssignment(segment, "FLIGHTDECK_SLOT_HEAVY");
+    // The script's own check reads its environment, which an inline assignment sets (#687).
+    if (prefixAssignment(segment, "FLIGHTDECK_COORDINATOR") !== undefined) {
+      runs.push({
+        what: `FLIGHTDECK_COORDINATOR set in the command (only the coordinator's own environment marks the coordinator) with ${found.script}`,
+        override,
+      });
+      continue;
+    }
+    const what = heavyScript(found.script, found.args);
+    if (what) runs.push({ what, override });
   }
   return runs;
 }
 
-/** Whether the script at `at` (with the words after it as its arguments) is a full coverage run. */
-function heavyScript(words: string[], at: number): string | null {
-  const args = words.slice(at + 1);
-  if (words[at] === "test:related") {
+/** How many test files `--tests` names: Infinity for a glob or a command's output (#687). */
+function testsGiven(args: string[]): number {
+  const joined = args.find((a) => a.startsWith("--tests="));
+  const from = args.indexOf("--tests");
+  const given = joined
+    ? joined.slice("--tests=".length).split(",")
+    : from < 0
+      ? []
+      : args.slice(from + 1).filter((a) => !a.startsWith("-"));
+  // * ? [ $ or ` stand for an unknown number of files, quoted or not: the script takes no glob.
+  const unbounded = given.some((a) => /[*?[$`]/.test(a));
+  return unbounded ? Number.POSITIVE_INFINITY : given.filter((a) => a !== "").length;
+}
+
+/** Whether a coverage script with these arguments is a full coverage run, and how to name it. */
+function heavyScript(script: string, args: string[]): string | null {
+  if (script === "test:related") {
     const light = args.some((a) => a === "--fast" || a === "--tier" || a.startsWith("--tier="));
     return args.includes("--pr") || !light
       ? "a plain, --base or --pr `bun run test:related`"
       : null;
   }
-  if (words[at] !== "coverage:funcs") return null;
-  const from = args.indexOf("--tests");
-  const given = from < 0 ? 0 : args.slice(from + 1).filter((a) => !a.startsWith("-")).length;
+  const given = testsGiven(args);
+  if (given === Number.POSITIVE_INFINITY) {
+    return "`bun run coverage:funcs` over a glob or a command's output after --tests";
+  }
   return given > HEAVY_TESTS ? `\`bun run coverage:funcs\` over ${given} test files` : null;
 }
 
@@ -528,12 +581,24 @@ export function heavyRunWaived(command: string): boolean {
   return runs.length > 0 && runs.every((run) => heavyReasonGiven(run.override));
 }
 
-/** What the guard logs for a call it lets through: one waiver, or one allow (#687). */
+/**
+ * What the guard logs for a call it lets through (#687): its waivers, or one allow, never both, so
+ * harness:stats counts the call once. A call that both waives a heavy run and commits with a
+ * TDD-Waiver logs the two waivers.
+ */
 export function guardAllowLogs(
-  _command: string | undefined,
-  _env: Record<string, string | undefined>,
+  command: string | undefined,
+  env: Record<string, string | undefined>,
 ): Array<{ rule: string | null; decision: "allow" | "waived" }> {
-  return [];
+  const waived: Array<{ rule: string; decision: "waived" }> = [];
+  if (typeof command === "string") {
+    // The coordinator passes the heavy-run rule without an override: there is no waiver to count.
+    if (!env.FLIGHTDECK_COORDINATOR && heavyRunWaived(command)) {
+      waived.push({ rule: "slot-heavy", decision: "waived" });
+    }
+    if (commitWaived(command)) waived.push({ rule: "commit", decision: "waived" });
+  }
+  return waived.length > 0 ? waived : [{ rule: null, decision: "allow" }];
 }
 
 /** The package scripts that run only through the slot (CLAUDE.md). */
