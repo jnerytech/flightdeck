@@ -9,9 +9,9 @@ export interface Related {
 }
 
 const IMPORT = /\b(?:from|import)\s*\(?\s*["']([^"']+)["']/g;
-const TEST_FILE = /\.test\.tsx?$/;
+export const TEST_FILE = /\.test\.tsx?$/;
 /** Files that shape every test run, which the import graph cannot see. */
-const GLOBAL_FILE =
+export const GLOBAL_FILE =
   /^(?:package\.json|bun\.lock|bunfig[\w.]*\.toml|tsconfig[\w.]*\.json|scripts\/test\/preload\.ts|(?:apps|packages)\/[^/]+\/package\.json)$/;
 /** More files than this go through the machine-wide slot. */
 export const SLOT_ABOVE = 60;
