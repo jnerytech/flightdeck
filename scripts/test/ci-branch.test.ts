@@ -54,7 +54,8 @@ function fake(options: {
         }),
       );
     }
-    if (a === "api") return ok(JSON.stringify(options.artifacts ?? ["prints", "relatorio-e2e"]));
+    if (a === "api")
+      return ok(JSON.stringify(options.artifacts ?? ["prints-light-pt-BR", "relatorio-e2e-1"]));
     return { code: 1, stdout: `unexpected: ${args.join(" ")}` };
   };
   return {
@@ -266,9 +267,16 @@ describe("ci.yml: any pushed branch can run the full CI by hand", () => {
 
   test("the test job is skipped when only the screenshots were asked for, and not otherwise", () => {
     expect(workflow.jobs.test?.if).toBe(
-      "github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'",
+      "!cancelled() && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')",
     );
-    expect(workflow.jobs.screenshots?.if).toBeUndefined();
+    // The prints and the e2e journeys follow the path plan only (#264), and a dispatch plans
+    // everything, so they still run on every dispatch (#220 split them into two jobs).
+    expect(workflow.jobs["screenshots-prints"]?.if).toBe(
+      "needs.changes.outputs.screenshots == 'true'",
+    );
+    expect(workflow.jobs["screenshots-e2e"]?.if).toBe(
+      "needs.changes.outputs.screenshots == 'true'",
+    );
   });
 
   test("a dispatched run never cancels the branch's push or pull request run, and skips SonarCloud", () => {
@@ -276,28 +284,29 @@ describe("ci.yml: any pushed branch can run the full CI by hand", () => {
     expect(workflow.concurrency.group).toBe(
       "ci-${{ github.ref }}-${{ github.event_name }}-${{ inputs.only }}",
     );
-    const sonar = workflow.jobs.test?.steps.filter((step) =>
-      step.if?.includes("workflow_dispatch"),
-    );
-    expect(sonar?.length).toBeGreaterThan(0);
-    for (const step of sonar ?? []) {
-      expect(step.if).toContain("github.event_name != 'workflow_dispatch'");
-    }
+    // SonarCloud is its own job since #293, skipped as a whole on a dispatch.
+    expect(workflow.jobs.sonar?.if ?? "").toContain("github.event_name != 'workflow_dispatch'");
   });
 
   test("a dispatched run's test jobs never carry the names the branch rules require (a skipped copy must not stand in for the real check)", () => {
     const name = workflow.jobs.test?.name ?? "";
-    expect(name).toContain("test (${{ matrix.os }})");
+    expect(name).toContain("test (ubuntu-latest)");
     expect(name).toContain("github.event_name == 'workflow_dispatch'");
   });
 
-  test("the screenshots job uploads the prints and the Playwright report, even when a step failed", () => {
-    const uploads = (workflow.jobs.screenshots?.steps ?? []).filter((step) =>
-      step.uses?.startsWith("actions/upload-artifact@"),
-    );
-    expect(uploads.map((step) => [step.with?.name, step.with?.path, step.if])).toEqual([
-      ["relatorio-e2e", "playwright-report", "always()"],
-      ["prints", "apps/desktop/screenshots", "always()"],
+  test("the screenshots jobs upload the prints, the Playwright report and the e2e failures, even when a step failed", () => {
+    const uploads = (key: string) =>
+      (workflow.jobs[key]?.steps ?? [])
+        .filter((step) => step.uses?.startsWith("actions/upload-artifact@"))
+        .map((step) => [step.with?.name, step.with?.path, step.if]);
+    expect(uploads("screenshots-prints")).toEqual([
+      // One per theme and language (#291).
+      ["prints-${{ matrix.theme }}-${{ matrix.lang }}", "apps/desktop/screenshots", "always()"],
+    ]);
+    expect(uploads("screenshots-e2e")).toEqual([
+      // One of each per e2e shard (#264).
+      ["relatorio-e2e-${{ matrix.shard }}", "playwright-report", "always()"],
+      ["e2e-failures-${{ matrix.shard }}", "apps/desktop/screenshots/e2e-failures", "always()"],
     ]);
   });
 
