@@ -43,6 +43,7 @@ function setup(
     download: async () => {
       calls.push("download");
     },
+    installDownloaded: async () => {},
     install: async () => {
       calls.push("install");
       if (opts.installError) throw new Error(opts.installError);
