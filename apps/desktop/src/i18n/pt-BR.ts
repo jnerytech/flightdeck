@@ -1004,6 +1004,9 @@ export const ptBR = {
     densities: { compact: "Compacta", comfortable: "Confortável" },
     themes: { system: "Sistema", light: "Claro", dark: "Escuro" },
     terminalFont: "Tamanho da fonte do terminal",
+    terminalReader: "Suporte a leitor de tela no terminal",
+    terminalReaderHint:
+      "Deixa um leitor de tela ler a saída do terminal. Saída longa demora mais para aparecer.",
     cacheTimer: "Contador do cache do prompt",
     cacheTtl: "Duração do cache",
     cacheTtls: { fiveMinutes: "5 minutos", oneHour: "1 hora" },
@@ -2221,6 +2224,8 @@ export const ptBR = {
     close: "Fechar",
     opening: "Abrindo…",
     showChanges: "Mostrar mudanças",
+    openOutside: "Abrir no app padrão",
+    reveal: "Mostrar na pasta",
     showFile: "Mostrar o arquivo",
     jumpLatestOne: "Ir para a mais recente ({n} mudança nova)",
     jumpLatestMany: "Ir para a mais recente ({n} mudanças novas)",
@@ -2484,6 +2489,8 @@ export const ptBR = {
   terminalUi: {
     sshBadge: "SSH · {name}",
     title: "Terminal",
+    readerHint:
+      "Para um leitor de tela ler a saída, ligue Suporte a leitor de tela no terminal em Configurações.",
     copy: "Copiar",
     paste: "Colar",
     state: {

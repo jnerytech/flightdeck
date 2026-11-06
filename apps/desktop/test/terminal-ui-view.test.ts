@@ -6,7 +6,9 @@ import {
   TERMINAL_FONT_KEY,
   TERMINAL_FONT_MAX,
   TERMINAL_FONT_MIN,
+  TERMINAL_READER_KEY,
   TerminalFontController,
+  TerminalReaderSetting,
   terminalKeyAction,
   terminalTheme,
   terminalWheelAction,
@@ -143,6 +145,20 @@ describe("terminal-ui: keys, colors and font", () => {
     );
     smallest.zoom("zoomOut");
     expect(smallest.value).toBe(10);
+  });
+
+  test("screen reader support is off at first, then kept as it was set (issue #476)", () => {
+    const fresh = memoryStorage();
+    const setting = new TerminalReaderSetting(fresh.storage);
+    expect(setting.value).toBe(false);
+    let told = 0;
+    setting.subscribe(() => told++);
+    setting.set(true);
+    expect([setting.value, fresh.items.get(TERMINAL_READER_KEY), told]).toEqual([true, "on", 1]);
+    setting.set(false);
+    expect(fresh.items.get(TERMINAL_READER_KEY)).toBe("off");
+    const kept = memoryStorage({ [TERMINAL_READER_KEY]: "on" });
+    expect(new TerminalReaderSetting(kept.storage).value).toBe(true);
   });
 
   test("the host is Windows when the user agent says so", () => {

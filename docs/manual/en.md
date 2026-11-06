@@ -1170,7 +1170,8 @@ conversation. It is where you check what the agent did and send it back what to 
   with numbered lines; a file over 1 MB, one that is not text, or a credential says so instead. A
   changed file has **Show changes**: its diff against HEAD, live. While you are at the bottom, the
   newest change scrolls into view as the session edits; scroll up and it stops, and **Jump to
-  latest** (with how many changes came) or a scroll back to the bottom brings it back.
+  latest** (with how many changes came) or a scroll back to the bottom brings it back. On a host of
+  this computer the viewer also has **Open in its app** and **Show in folder**.
 - **Inline comments:**
   - click a line number to comment on it, and shift+click another to extend the range. A removed
     line is commented on its old side;
@@ -2800,7 +2801,10 @@ tab, with no SSH.
   closes. Links in the output open in the browser (`http` and `https` only). The font is the
   system monospace; its size is in Settings (**Terminal font size**, 10 to 24). In the tab,
   `Ctrl+=` (or `Ctrl++`) and `Ctrl+-`, or `Ctrl` with the mouse wheel, make it one point bigger or
-  smaller, and `Ctrl+0` brings back 13; the size is the same setting and is kept. The tab keeps
+  smaller, and `Ctrl+0` brings back 13; the size is the same setting and is kept. For a screen
+  reader (NVDA, Narrator), turn on **Screen reader support in the terminal** in Settings: the
+  terminal then keeps a copy of its output the reader can follow (long output draws more slowly, so
+  it starts off). The tab keeps
   the last 10,000 lines to scroll back to and to search.
 - **Detach and reopen:** a terminal survives the app: it keeps the last 2 MB of output, and
   attaching again shows them. Closing a terminal tab asks: **Detach** (the default; the process
