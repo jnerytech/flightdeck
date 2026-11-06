@@ -1,5 +1,5 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
-import { appendFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { cardDiff, DIFF_FILE_MAX, DIFF_LIMITS, workingDiff } from "../src/board/diff.ts";
 import { git, gitRepo } from "./board-helpers.ts";
@@ -203,5 +203,38 @@ describe("changes-cap: the whole answer has a budget, and a huge diff is not rea
     ).find((f) => f.path === "a.txt");
     expect(file?.tooLarge).toBeUndefined();
     expect(file?.additions).toBe(1);
+  });
+});
+
+describe("changes-cap: a cut diff still says what each file is", () => {
+  test("a rename, a deleted file and a binary change keep their status and counts when git's output is cut", async () => {
+    const { repo } = gitRepo();
+    writeFileSync(join(repo, "a-huge.txt"), lines(10));
+    writeFileSync(join(repo, "moved.txt"), lines(5));
+    writeFileSync(join(repo, "gone.txt"), lines(3));
+    writeFileSync(join(repo, "pic.bin"), Buffer.from([0, 1, 2, 3]));
+    commit(repo, "four");
+    appendFileSync(join(repo, "a-huge.txt"), lines(30_000, "y"));
+    renameSync(join(repo, "moved.txt"), join(repo, "z-moved.txt"));
+    appendFileSync(join(repo, "z-moved.txt"), "mais\n");
+    rmSync(join(repo, "gone.txt"));
+    writeFileSync(join(repo, "pic.bin"), Buffer.from([0, 9, 9, 9, 9]));
+    git(repo, "add", "-A");
+    const files = await workingDiff(repo, DIFF_FILE_MAX, 1e9, { ...big, rawBytes: 512 * 1024 });
+    const by = (path: string) => files.find((f) => f.path === path);
+    expect(by("a-huge.txt")).toMatchObject({
+      status: "modified",
+      additions: 30_000,
+      tooLarge: true,
+    });
+    expect(by("z-moved.txt")).toMatchObject({
+      status: "renamed",
+      oldPath: "moved.txt",
+      additions: 1,
+      deletions: 0,
+    });
+    expect(by("gone.txt")).toMatchObject({ status: "deleted", additions: 0, deletions: 3 });
+    expect(by("pic.bin")).toMatchObject({ binary: true, additions: 0, deletions: 0 });
+    expect(by("pic.bin")?.tooLarge).toBeUndefined();
   });
 });
