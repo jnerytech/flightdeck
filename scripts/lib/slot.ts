@@ -417,7 +417,8 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
   if (args.kind === "cancel") return cancel(env);
   if (args.kind === "reap") return reap(env);
   if (args.kind === "status") {
-    env.log(status(env, args.maxAgeMs));
+    // One log call per line: the real log keeps each call to one line (#372).
+    for (const line of status(env, args.maxAgeMs).split("\n")) env.log(line);
     return 0;
   }
   const state: { signal: number | null; child: SlotChild | null } = { signal: null, child: null };
