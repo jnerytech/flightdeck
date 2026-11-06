@@ -17,3 +17,6 @@
   the cancelled call settles (the provider rejects it); until then other wands read "Another AI request is running".
 - **Esc.** The hook handles Esc from the box (cancel a run, close a preview or a failure); nothing open leaves Esc to the box
   (which still interrupts a running session).
+- **A short window has no toolbar button.** At 720x480 (a pane under 600 px high, `ShortArea`) the extra button narrowed
+  the box, the placeholder wrapped and the conversation fell to 139 px, under the 150 px floor of the layout journey. In
+  a short area the button is not drawn; Ctrl or Cmd+I still reaches the wand, and the preview and Cancel still show.
