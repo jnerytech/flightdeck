@@ -879,6 +879,7 @@ export class AppStore {
       hosts: () =>
         this.state.hosts.map((host) => ({
           id: host.id,
+          name: host.name,
           online: host.status === "online",
           assistant: hasFeature(host.hostInfo?.features, "assistant", false),
         })),

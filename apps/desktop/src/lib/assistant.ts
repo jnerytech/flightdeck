@@ -208,6 +208,11 @@ export class AssistantController {
     return out;
   }
 
+  /** What the person calls a host, for a button that names where the text would go. */
+  hostName(hostId: string): string {
+    return this.deps.hosts().find((host) => host.id === hostId)?.name ?? hostId;
+  }
+
   needsHostConfirm(on: ResolvedProvider): boolean {
     return on.provider === "host" && needsHostConfirm(this.current, on.hostId);
   }
