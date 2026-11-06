@@ -1857,6 +1857,7 @@ export const en: Dictionary = {
     preview: "AI suggestion",
     before: "Before",
     after: "After",
+    changes: "Changes",
     accept: "Accept",
     acceptAnyway: "Accept anyway",
     discard: "Discard",
