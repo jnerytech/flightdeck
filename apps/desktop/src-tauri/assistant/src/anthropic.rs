@@ -5,7 +5,7 @@
 
 use crate::guard::{self, Endpoint, Method, Reply};
 use crate::keys::{Refusal, Secret};
-use crate::{Answer, Call, ModelOption, TestResult};
+use crate::{Answer, Call, ModelOption, TestResult, Usage};
 use serde_json::{json, Value};
 
 pub const VERSION: &str = "2026-10-21";
@@ -28,46 +28,167 @@ pub enum Lookup<'a> {
 }
 
 /// The research's table, for a model when no list is loaded.
-pub fn fallback(_model: &str) -> Option<Capabilities> {
-    None
+pub fn fallback(model: &str) -> Option<Capabilities> {
+    let caps = |disabled, between_tools| {
+        Some(Capabilities { thinking_disabled: disabled, thinking_between_tools: between_tools, effort_low: true })
+    };
+    match model {
+        "claude-haiku-5-5" => caps(true, false),
+        "claude-sonnet-5-5" => caps(false, true),
+        "claude-opus-5-5" | "claude-fable-5-1" => caps(false, false),
+        _ => None,
+    }
 }
 
 /// The body of `POST /v1/messages`.
-pub fn body(call: &Call, _lookup: Lookup) -> Value {
-    json!({ "model": call.model, "temperature": 0 })
+pub fn body(call: &Call, lookup: Lookup) -> Value {
+    let mut body = json!({
+        "model": call.model,
+        "max_tokens": guard::cap_output_tokens(call.max_tokens),
+        "system": call.system,
+        "messages": [{ "role": "user", "content": call.user }],
+    });
+    let caps = match lookup {
+        Lookup::NoList => fallback(call.model),
+        Lookup::Absent => None,
+        Lookup::Listed(caps) => Some(caps.clone()),
+    };
+    if let Some(caps) = caps {
+        if caps.thinking_disabled {
+            body["thinking"] = json!({ "type": "disabled" });
+        } else if caps.thinking_between_tools {
+            body["thinking"] = json!({ "type": "between_tools" });
+        }
+        if caps.effort_low {
+            body["output_config"] = json!({ "effort": "low" });
+        }
+    }
+    body
 }
 
 /// The headers besides the bearer.
 pub fn headers() -> Vec<(&'static str, String)> {
-    Vec::new()
+    vec![("anthropic-version", VERSION.to_string())]
+}
+
+fn bad_output() -> Refusal {
+    Refusal::new("assistant_bad_output")
+}
+
+fn success(reply: &Reply) -> bool {
+    (200..300).contains(&reply.status)
 }
 
 /// A reply of `/v1/messages`: the answer, or what its status and body mean.
-pub fn answer(_reply: &Reply, _key: &Secret, model: &str) -> Result<Answer, Refusal> {
+pub fn answer(reply: &Reply, key: &Secret, model: &str) -> Result<Answer, Refusal> {
+    if !success(reply) {
+        return Err(refusal(reply, key));
+    }
+    let value: Value = serde_json::from_str(&reply.body).map_err(|_| bad_output())?;
+    let text: String = value["content"]
+        .as_array()
+        .map(|blocks| {
+            blocks.iter().filter(|b| b["type"] == "text").filter_map(|b| b["text"].as_str()).collect()
+        })
+        .unwrap_or_default();
+    let stop_reason = value["stop_reason"].as_str().unwrap_or_default().to_string();
+    match stop_reason.as_str() {
+        "max_tokens" => return Err(Refusal::new("assistant_truncated")),
+        "refusal" => return Err(Refusal::new("assistant_refused")),
+        _ => {}
+    }
+    if text.trim().is_empty() {
+        return Err(bad_output());
+    }
+    let count = |field: &str| value["usage"][field].as_u64().unwrap_or(0);
     Ok(Answer {
-        text: String::new(),
-        model: model.to_string(),
+        text,
+        model: value["model"].as_str().unwrap_or(model).to_string(),
         provider: "anthropic",
-        usage: Default::default(),
+        usage: Usage {
+            input_tokens: count("input_tokens"),
+            output_tokens: count("output_tokens"),
+            cache_read_tokens: count("cache_read_input_tokens"),
+            cache_write_tokens: count("cache_creation_input_tokens"),
+        },
         cost_usd: None,
-        stop_reason: String::new(),
+        stop_reason,
         notices: Vec::new(),
     })
 }
 
 /// What an error reply means, with its request id and its message (the key taken out).
-pub fn refusal(_reply: &Reply, _key: &Secret) -> Refusal {
-    Refusal::new("assistant_offline")
+pub fn refusal(reply: &Reply, key: &Secret) -> Refusal {
+    let value: Value = serde_json::from_str(&reply.body).unwrap_or(Value::Null);
+    let detail = value["error"]["message"].as_str().map(|message| crate::scrub(message, key));
+    let request_id = reply
+        .header("request-id")
+        .or_else(|| value["request_id"].as_str())
+        .map(|id| crate::scrub(id, key));
+    let retry_after = reply.header("retry-after");
+    let spend = detail.as_deref().is_some_and(|d| d.to_ascii_lowercase().contains("spend limit"));
+    let reason = match (reply.status, retry_after) {
+        (400, _) if spend => "assistant_credits",
+        (401 | 403, _) => "assistant_auth",
+        (404, _) => "assistant_model_unavailable",
+        (413, _) => "assistant_too_long",
+        (429, None) => "assistant_credits",
+        (429, Some(_)) => "assistant_rate_limited",
+        (500 | 502 | 503 | 529, _) => "assistant_overloaded",
+        _ => "assistant_bad_output",
+    };
+    let mut refused = Refusal::new(reason);
+    if let Some(id) = request_id {
+        refused = refused.with("requestId", id);
+    }
+    if let Some(detail) = detail {
+        refused = refused.with("detail", detail);
+    }
+    if let (429, Some(after)) = (reply.status, retry_after) {
+        refused = refused.with("retryAfter", crate::scrub(after, key));
+    }
+    refused
 }
 
 /// The active models of `GET /v1/models`, grouped by line, with their capabilities.
-pub fn models(_reply: &Reply, _key: &Secret) -> Result<Vec<(ModelOption, Capabilities)>, Refusal> {
-    Ok(Vec::new())
+pub fn models(reply: &Reply, key: &Secret) -> Result<Vec<(ModelOption, Capabilities)>, Refusal> {
+    if !success(reply) {
+        return Err(refusal(reply, key));
+    }
+    let value: Value = serde_json::from_str(&reply.body).map_err(|_| bad_output())?;
+    let data = value["data"].as_array().ok_or_else(bad_output)?;
+    let supported = |model: &Value, path: &[&str]| {
+        path.iter().fold(&model["capabilities"], |at, step| &at[*step])["supported"].as_bool().unwrap_or(false)
+    };
+    Ok(data
+        .iter()
+        .filter(|model| model["lifecycle"] == "active")
+        .filter_map(|model| {
+            let id = model["id"].as_str().filter(|id| guard::check_model(id).is_ok())?;
+            let caps = Capabilities {
+                thinking_disabled: supported(model, &["thinking", "types", "disabled"]),
+                thinking_between_tools: supported(model, &["thinking", "types", "between_tools"]),
+                effort_low: supported(model, &["effort", "low"]),
+            };
+            let option = ModelOption {
+                id: id.to_string(),
+                label: model["display_name"].as_str().unwrap_or(id).to_string(),
+                group: model["line"].as_str().map(str::to_string),
+                supports_effort: Some(caps.effort_low),
+                ..ModelOption::default()
+            };
+            Some((option, caps))
+        })
+        .collect())
 }
 
 /// The key test's result from `GET /v1/models?limit=1`.
-pub fn test_result(_reply: &Reply, _key: &Secret) -> TestResult {
-    TestResult::default()
+pub fn test_result(reply: &Reply, key: &Secret) -> TestResult {
+    if success(reply) {
+        TestResult { ok: true, ..TestResult::default() }
+    } else {
+        TestResult { ok: false, detail: Some(refusal(reply, key).reason.to_string()), ..TestResult::default() }
+    }
 }
 
 pub async fn run(
@@ -78,7 +199,7 @@ pub async fn run(
     lookup: Lookup<'_>,
 ) -> Result<Answer, Refusal> {
     let reply =
-        guard::send(client, endpoint, "/v1/models", Method::Post(body(call, lookup)), key, &headers()).await?;
+        guard::send(client, endpoint, "/v1/messages", Method::Post(body(call, lookup)), key, &headers()).await?;
     answer(&reply, key, call.model)
 }
 
@@ -87,12 +208,12 @@ pub async fn list(
     endpoint: &Endpoint,
     key: &Secret,
 ) -> Result<Vec<(ModelOption, Capabilities)>, Refusal> {
-    let reply = guard::send(client, endpoint, "/v1/models", Method::Get, key, &headers()).await?;
+    let reply = guard::send(client, endpoint, "/v1/models?limit=1000", Method::Get, key, &headers()).await?;
     models(&reply, key)
 }
 
 pub async fn test(client: &reqwest::Client, endpoint: &Endpoint, key: &Secret) -> TestResult {
-    match guard::send(client, endpoint, "/v1/models", Method::Get, key, &headers()).await {
+    match guard::send(client, endpoint, "/v1/models?limit=1", Method::Get, key, &headers()).await {
         Ok(reply) => test_result(&reply, key),
         Err(refused) => TestResult { ok: false, detail: Some(refused.reason.to_string()), ..TestResult::default() },
     }
@@ -101,7 +222,6 @@ pub async fn test(client: &reqwest::Client, endpoint: &Endpoint, key: &Secret) -
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Usage;
     use std::io::{Read, Write};
     use std::net::TcpListener;
     use std::sync::{Arc, Mutex};

@@ -71,6 +71,10 @@ pub struct TestResult {
 }
 
 /// A provider's text with the key, wherever it appears, as `<key>`.
-pub fn scrub(text: &str, _key: &Secret) -> String {
-    text.to_string()
+pub fn scrub(text: &str, key: &Secret) -> String {
+    if key.expose().is_empty() {
+        text.to_string()
+    } else {
+        text.replace(key.expose(), "<key>")
+    }
 }
