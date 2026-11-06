@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
 /** `bun run ci:branch <branch> [--only screenshots]`: the branch must already be on origin (#129). */
-import { spawnExec } from "../apps/daemon/src/exec.ts";
 import { CI_BRANCH_DEFAULTS, ciBranch } from "./lib/ci-branch.ts";
 
 const args = process.argv.slice(2).filter((a) => a !== "--");
@@ -14,7 +13,16 @@ process.exit(
   await ciBranch(
     branch,
     {
-      gh: (cmd) => spawnExec(["gh", ...cmd]),
+      gh: async (cmd) => {
+        // gh writes its errors to stderr: keep them (spawnExec drops them).
+        const proc = Bun.spawn(["gh", ...cmd], { stdout: "pipe", stderr: "pipe", stdin: "ignore" });
+        const [stdout, stderr, code] = await Promise.all([
+          new Response(proc.stdout).text(),
+          new Response(proc.stderr).text(),
+          proc.exited,
+        ]);
+        return { code, stdout, stderr };
+      },
       sleep: (ms) => Bun.sleep(ms),
       now: () => Date.now(),
       log: (message) => console.log(message),

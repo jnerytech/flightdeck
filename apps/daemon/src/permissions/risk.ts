@@ -206,7 +206,8 @@ export class RiskClassifier {
 
   classify(toolName: string, input: Record<string, unknown>, cwd: string): Risk {
     const candidates = this.candidates(toolName, input, cwd);
-    const [level, reason] = candidates.reduce((a, b) => (RANK[b[0]] > RANK[a[0]] ? b : a));
+    const [first, ...rest] = candidates as [Candidate, ...Candidate[]];
+    const [level, reason] = rest.reduce((a, b) => (RANK[b[0]] > RANK[a[0]] ? b : a), first);
     return { level, reason, network: this.network(toolName, input) };
   }
 

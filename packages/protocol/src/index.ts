@@ -311,6 +311,18 @@ export const PermissionUpdate = z.discriminatedUnion("type", [
 ]);
 export type PermissionUpdate = z.infer<typeof PermissionUpdate>;
 
+/** A slash command of a session, as the app lists it after `/`. */
+export const SlashCommandInfo = z.object({
+  /** Without the slash. */
+  name: z.string(),
+  description: z.string(),
+  /** What to type after the name (`<file>`), when the command takes an argument. */
+  argumentHint: z.string().optional(),
+  /** Claude Code's own command, an MCP server's prompt, or a skill (a user, project or plugin one). */
+  kind: z.enum(["builtin", "skill", "mcp"]),
+});
+export type SlashCommandInfo = z.infer<typeof SlashCommandInfo>;
+
 export const SessionEvent = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("session.created"),
@@ -333,6 +345,8 @@ export const SessionEvent = z.discriminatedUnion("type", [
     tools: z.array(z.string()),
     /** The slash commands the session has (`/compact`, a skill, ...), without the slash. */
     slashCommands: z.array(z.string()).optional(),
+    /** The same commands with a description and a kind; an older daemon sends the names only. */
+    commands: z.array(SlashCommandInfo).optional(),
   }),
   /** `images`: how many came with the message (the bytes stay out of the log). */
   z.object({
@@ -4865,6 +4879,7 @@ export function parseServerMessage(raw: string): ServerMessage {
 }
 
 export * from "./activity.ts";
+export * from "./compare.ts";
 export * from "./pairing.ts";
 export * from "./personas.ts";
 export * from "./question.ts";

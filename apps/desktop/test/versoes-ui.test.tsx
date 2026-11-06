@@ -146,7 +146,8 @@ describe("versoes-ui", () => {
     const hosts = within(screen.getByLabelText("Host")).queryAllByRole("option");
     expect(hosts.map((o) => o.textContent)).toEqual(["Todos os hosts"]);
     await openHost();
-    expect(text()).toContain("incompatível: atualize o daemon");
+    // One catalog sentence says what is wrong (issue #181); the daemon's words are under Details.
+    expect(text()).toContain("Versão do host incompatível com este app");
     expect(text()).toContain("flightdeckd update --from");
     expect(text()).toContain("fora do intervalo do daemon [2, 3]");
     expect(screen.queryByLabelText("Hooks do Claude Code")).toBeNull();
@@ -189,8 +190,11 @@ describe("versoes-ui", () => {
       const { store } = await connect(daemon.url, "online");
       await openHost();
       await act(async () => store.i18n.setLang("en"));
-      await waitFor(() => expect(text()).toContain("This host's usage may be going to API credit"));
-      expect(text()).toContain("absent");
+      // The notice comes with the host's info and the hooks status with its own answer: wait for both.
+      await waitFor(() => {
+        expect(text()).toContain("This host's usage may be going to API credit");
+        expect(text()).toContain("absent");
+      });
       expect(text()).not.toContain("ausentes");
       expect(text()).not.toContain("crédito de API");
     });

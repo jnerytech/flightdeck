@@ -139,7 +139,7 @@ process.exit(${code});
       "--",
       "limpe os logs",
     ]);
-    expect(realpathSync(run.cwd)).toBe(realpathSync(h.work));
+    expect(realpathSync.native(run.cwd)).toBe(realpathSync.native(h.work));
     expect(run.config).toBe(h.configFile);
   });
 
@@ -167,7 +167,7 @@ process.exit(${code});
       "--",
       "Corrija a soma.\n\nO total erra.",
     ]);
-    expect(realpathSync(run.cwd)).toBe(realpathSync(h.work));
+    expect(realpathSync.native(run.cwd)).toBe(realpathSync.native(h.work));
     const missing = (await bg.start({ cardId: "nope" }).catch((e) => e)) as FlightdeckError;
     expect(missing.code).toBe("not_found");
     const noCard = service(self).bg;

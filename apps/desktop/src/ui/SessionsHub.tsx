@@ -5,6 +5,13 @@ import { AssignMenu } from "@/components/clients/assign-menu";
 import { ClientChip } from "@/components/clients/client-chip";
 import { HostsBanner } from "@/components/hosts/hosts-banner";
 import { CardGrid } from "@/components/hub/card-grid";
+import {
+  CountChip,
+  FoldAll,
+  HostChip,
+  HostFilterRow,
+  ProjectHeader,
+} from "@/components/hub/project-header";
 import { SessionCard } from "@/components/hub/session-card";
 import { ViewToggle } from "@/components/hub/view-toggle";
 import { NativeSelect } from "@/components/layout/form";
@@ -34,11 +41,14 @@ import {
   capGroups,
   HUB_ROW_CAP,
   type HubFilter,
+  type HubGroupView,
   type HubRow,
   type HubState,
   type HubView,
   hubGroups,
   hubRows,
+  hubView,
+  isSearching,
   sessionLineText,
   sharedMeta,
 } from "../lib/hub.ts";
@@ -145,7 +155,29 @@ export function SessionsHub(props: {
   const allGroups = useMemo(() => hubGroups(rows, filter), [rows, filter]);
   /** How many rows are drawn: the cap, and one more cap for each "show more". */
   const [limit, setLimit] = useState(HUB_ROW_CAP);
-  const { groups, hidden } = useMemo(() => capGroups(allGroups, limit), [allGroups, limit]);
+  // Each project: open when it has live sessions (or a search is on), its history behind a count.
+  const [open, setOpenState] = useState<Record<string, boolean | undefined>>(() => store.hubOpen());
+  /** What the person opened or folded is remembered, per project. */
+  const setOpen = (next: Record<string, boolean | undefined>) => {
+    setOpenState(next);
+    store.saveHubOpen(next);
+  };
+  const [earlierOpen, setEarlierOpen] = useState<Record<string, boolean | undefined>>({});
+  // Any filter narrows the list on purpose: what it keeps is shown, not folded away.
+  const searching = isSearching(filter);
+  const views = useMemo(
+    () => hubView(allGroups, open, earlierOpen, searching),
+    [allGroups, open, earlierOpen, searching],
+  );
+  const { groups, hidden } = useMemo(
+    () =>
+      capGroups(
+        views.map((v) => ({ ...v.group, rows: v.rows })),
+        limit,
+      ),
+    [views, limit],
+  );
+  const viewOf = (key: string): HubGroupView | undefined => views.find((v) => v.group.key === key);
   const scope = store.clientScope();
   // The personas the sessions run in: the Persona filter offers only those.
   const personas = [
@@ -379,6 +411,20 @@ export function SessionsHub(props: {
     <Page title={t("sidebar.sessions")} toolbar={toolbar}>
       <div className="flex flex-col gap-4">
         <HostsBanner hosts={state.hosts} t={store.i18n.t} />
+        <FoldAll
+          expandLabel={t("hub.expandAll")}
+          collapseLabel={t("hub.collapseAll")}
+          onExpand={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, true])))}
+          onCollapse={() => setOpen(Object.fromEntries(allGroups.map((g) => [g.foldKey, false])))}
+        />
+        {state.hosts.length > 1 && (
+          <HostFilterRow
+            label={t("hub.hostsLabel")}
+            hosts={state.hosts.filter((h) => h.status !== "incompatible").map((h) => h.name)}
+            selected={filter.host}
+            onSelect={(host) => set({ host })}
+          />
+        )}
         {only && (
           <div className="filter-chip self-start rounded-full border bg-muted/40 text-xs">
             <span>{t("hub.projectFilter", { name: only.name })}</span>
@@ -414,14 +460,28 @@ export function SessionsHub(props: {
         {groups.map((group) => {
           const shared = sharedMeta(group.rows);
           const clientChip = scope.chipOf(group.key);
+          const groupView = viewOf(group.key);
+          // Two projects with one name tell themselves apart by where they are.
+          const label = group.hint ? `${group.name} (${group.hint})` : group.name;
+          const liveCount = groupView?.live.length ?? 0;
+          // The hosts the project's sessions run on, each one a link to the host page.
+          const hostChips = [
+            ...new Map((groupView?.group.rows ?? group.rows).map((r) => [r.hostId, r.hostName])),
+          ].map(([id, name]) => ({ id, name }));
           return (
             <section
               key={group.key}
-              aria-label={t("hub.project", { name: group.name })}
+              aria-label={t("hub.project", { name: label })}
               className="flex flex-col gap-1"
             >
-              <div className="flex items-baseline gap-2 px-2 text-xs">
-                <h3 className="shrink-0 font-medium text-muted-foreground">{group.name}</h3>
+              <ProjectHeader
+                name={group.name}
+                expanded={groupView?.expanded ?? true}
+                toggleLabel={t("hub.toggleProject", { name: label })}
+                onToggle={() =>
+                  setOpen({ ...open, [group.foldKey]: !(groupView?.expanded ?? false) })
+                }
+              >
                 {clientChip && state.clientSelection === ALL_CLIENTS && (
                   <ClientChip name={clientChip.name} color={clientChip.color} />
                 )}
@@ -433,17 +493,36 @@ export function SessionsHub(props: {
                     name={group.name}
                   />
                 )}
-                {(shared.hostName || shared.origin) && (
+                {group.hint && (
+                  <span data-slot="group-hint" className="min-w-0 truncate text-muted-foreground">
+                    {group.hint}
+                  </span>
+                )}
+                <CountChip
+                  live={liveCount}
+                  total={groupView?.total ?? group.rows.length}
+                  label={t("hub.countChip", {
+                    live: liveCount,
+                    total: groupView?.total ?? group.rows.length,
+                  })}
+                />
+                {hostChips.map((chip) => (
+                  <HostChip
+                    key={chip.id}
+                    name={chip.name}
+                    label={t("hub.openHost", { name: chip.name })}
+                    onOpen={() => store.router.push({ name: "host", host: chip.id })}
+                  />
+                ))}
+                {shared.origin && (
                   <span
                     data-slot="group-meta"
                     className="min-w-0 truncate text-muted-foreground/80"
                   >
-                    {[shared.hostName, shared.origin && t(`hub.originTags.${shared.origin}` as Key)]
-                      .filter(Boolean)
-                      .join(" · ")}
+                    {t(`hub.originTags.${shared.origin}` as Key)}
                   </span>
                 )}
-              </div>
+              </ProjectHeader>
               {view === "cards" ? (
                 <CardGrid>
                   {group.rows.map((row) => (
@@ -474,7 +553,6 @@ export function SessionsHub(props: {
                     const line = sessionLineText(row.summary, store.now(), t);
                     // What the whole group shares is in its header; the row keeps what differs.
                     const rowMeta = [
-                      shared.hostName === null ? row.hostName : null,
                       shared.origin === null ? t(`hub.originTags.${row.origin}` as Key) : null,
                     ]
                       .filter(Boolean)
@@ -509,6 +587,13 @@ export function SessionsHub(props: {
                           </TooltipTrigger>
                           <TooltipContent>{row.title}</TooltipContent>
                         </Tooltip>
+                        {shared.hostName === null && (
+                          <HostChip
+                            name={row.hostName}
+                            label={t("hub.openHost", { name: row.hostName })}
+                            onOpen={() => store.router.push({ name: "host", host: row.hostId })}
+                          />
+                        )}
                         {rowMeta && (
                           <span
                             data-slot="row-meta"
@@ -562,6 +647,21 @@ export function SessionsHub(props: {
                     );
                   })}
                 </ul>
+              )}
+              {groupView?.expanded && !searching && groupView.earlier.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="self-start text-muted-foreground text-xs"
+                  aria-expanded={groupView.earlierShown}
+                  onClick={() =>
+                    setEarlierOpen({ ...earlierOpen, [group.foldKey]: !groupView.earlierShown })
+                  }
+                >
+                  {groupView.earlier.length === 1
+                    ? t("hub.earlierOne")
+                    : t("hub.earlier", { n: groupView.earlier.length })}
+                </Button>
               )}
             </section>
           );
