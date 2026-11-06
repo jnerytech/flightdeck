@@ -225,6 +225,38 @@ describe("assistant-run: nothing is sent when the text holds a secret", () => {
     expect(fake.calls.filter((c) => c[0] === "run")).toEqual([]);
   });
 
+  test("a token shape in the context (the card's title or description) is refused like one in the text, on every path", async () => {
+    const withSecret = { context: { description: "use password=hunter2secret to log in" } };
+    const host = setup();
+    const refused = await refusal(() => host.controller.run(input(withSecret)));
+    expect(refused?.reason).toBe("assistant_secret_found");
+    expect(JSON.stringify(refused)).not.toContain("hunter2secret");
+    expect(host.sent).toEqual([]);
+    const api = setup({ prefs: { provider: "anthropic" } });
+    await api.fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
+    await api.controller.refreshKeys();
+    expect((await refusal(() => api.controller.run(input(withSecret))))?.reason).toBe(
+      "assistant_secret_found",
+    );
+    expect(api.fake.calls.filter((c) => c[0] === "run")).toEqual([]);
+    expect(api.controller.gate.busy()).toBe(false);
+  });
+
+  test("a vault value in the context is found by the shell and refused with the names, on the API path", async () => {
+    const { controller, fake } = setup({
+      prefs: { provider: "anthropic" },
+      secrets: [{ id: "s1", name: "deploy key" }],
+      api: { vaultHits: (text) => (text.includes("VAULT-VALUE") ? ["s1"] : []) },
+    });
+    await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
+    await controller.refreshKeys();
+    const error = await refusal(() =>
+      controller.run(input({ context: { description: "the key is VAULT-VALUE" } })),
+    );
+    expect(error).toEqual({ reason: "assistant_vault_value", params: { names: "deploy key" } });
+    expect(fake.calls.filter((c) => c[0] === "run")).toEqual([]);
+  });
+
   test("an empty text is refused where the kind cannot write from nothing, and a text over the limit always", async () => {
     const { controller } = setup();
     expect(

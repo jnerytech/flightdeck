@@ -193,6 +193,16 @@ describe("assistant-service", () => {
     expect([runtime.completeCalls.length, contexts.length]).toEqual([0, 0]);
   });
 
+  test("a secret in the context (the card's title or description) refuses like one in the text, before any call", async () => {
+    const { svc, runtime, contexts } = service();
+    expect(
+      await reason(svc.run(run({ context: { description: "password=hunter2hunter2" } }))),
+    ).toEqual(["assistant_secret_found", { labels: "senha na linha" }]);
+    expect([runtime.completeCalls.length, contexts.length]).toEqual([0, 0]);
+    await svc.run(run({ context: { description: "sum the items" } }));
+    expect(runtime.completeCalls.length).toBe(1);
+  });
+
   test("a commit message reads the repo; a secret in the diff refuses; the commit notices come with the answer", async () => {
     const secret = service({
       bundle: { ...bundle, diff: "+const token = 'ghp_abcdefghijklmnopqrstuvwxyz0123456789'" },
