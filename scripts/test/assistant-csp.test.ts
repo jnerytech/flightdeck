@@ -28,6 +28,7 @@ const COMMANDS = [
   "vault_remove_file",
   "tray_set_status",
   "tray_set_menu",
+  "set_unread_badge",
   "set_close_to_tray",
   "focus_main",
   "terminal_probe",
