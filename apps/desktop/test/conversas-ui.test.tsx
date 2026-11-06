@@ -184,3 +184,33 @@ describe("conversas-ui: the messages between sessions", () => {
     expect(store.router.current).toMatchObject({ name: "session", id: "s1" });
   });
 });
+
+describe("conversas-ui: the timeline's states (#588)", () => {
+  test("while the hosts answer it says it is loading, not that there are no messages", async () => {
+    const { store } = await open();
+    const real = store.hostCommand.bind(store);
+    store.hostCommand = ((hostId: string, type: string, payload: unknown) =>
+      type === "messages.list"
+        ? new Promise(() => {})
+        : real(hostId, type as never, payload as never)) as typeof store.hostCommand;
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conversas" }));
+    });
+    expect(screen.queryByRole("status", { name: "Carregando mensagens" })).not.toBeNull();
+    expect(screen.queryByText("Nenhuma mensagem") === null).toBe(true);
+  });
+
+  test("a filter that hides every message says so and keeps the Times link out", async () => {
+    const { list } = await open();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conversas" }));
+    });
+    await settle(() => (list()?.children.length ?? 0) === 2);
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Filtrar mensagens"), { target: { value: "zzz" } });
+    });
+    expect(screen.queryByText("Nenhuma mensagem corresponde ao filtro.")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Abrir Times" }) === null).toBe(true);
+    expect(list() === null).toBe(true);
+  });
+});

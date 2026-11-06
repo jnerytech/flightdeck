@@ -3153,6 +3153,8 @@ export const en: Dictionary = {
     emptyHint:
       "Messages between sessions show up here once sessions can message each other, for example in a team.",
     emptyLink: "Open Teams",
+    noMatch: "No message matches the filter.",
+    loading: "Loading messages",
     to: "to",
     open: "Open the session",
     statuses: {
@@ -3494,6 +3496,10 @@ export const en: Dictionary = {
     trustMessage:
       "Trust the workflow {name}? It will be able to run these commands in the cards' worktrees: {commands}.",
     none: "none",
+    loading: "Loading workflows",
+    empty: "No workflows on the base branch yet.",
+    failed:
+      "Could not read the workflows. Check that the host is connected, then open the page again.",
   },
   shortcuts: {
     title: "Keyboard shortcuts",

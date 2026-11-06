@@ -3157,6 +3157,8 @@ export const ptBR = {
     emptyHint:
       "As mensagens entre sessões aparecem aqui quando o envio entre elas está ligado, por exemplo num time.",
     emptyLink: "Abrir Times",
+    noMatch: "Nenhuma mensagem corresponde ao filtro.",
+    loading: "Carregando mensagens",
     to: "para",
     open: "Abrir a sessão",
     statuses: {
@@ -3499,6 +3501,9 @@ export const ptBR = {
     trustMessage:
       "Confiar no workflow {name}? Ele poderá rodar estes comandos na worktree dos cards: {commands}.",
     none: "nenhum",
+    loading: "Carregando workflows",
+    empty: "Nenhum workflow na branch base ainda.",
+    failed: "Não deu para ler os workflows. Veja se o host está conectado e abra a página de novo.",
   },
   shortcuts: {
     title: "Atalhos de teclado",
