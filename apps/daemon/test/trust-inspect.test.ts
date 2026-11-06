@@ -275,6 +275,22 @@ describe("trust-inspect: what a project would load, read without running anythin
     expect(load.unreadable.sort()).toEqual([".claude/agents/gone.md", ".claude/agents/out.md"]);
   });
 
+  test("files past the cap, folders too deep and links to folders are said to be unscanned, so a header after them cannot pass for a clean project (review of #196)", async () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 101; i++) files[`.claude/agents/a${String(i).padStart(3, "0")}.md`] = "x";
+    files[".claude/agents/zzz.md"] = "---\nhooks:\n  Stop: x\n---\n";
+    files[".claude/commands/a/b/c/d/deep.md"] = "---\nhooks:\n  Stop: x\n---\n";
+    files[".claude/skills/real/SKILL.md"] = "---\nhooks:\n  Stop: x\n---\n";
+    const root = repo(files);
+    symlinkSync(join(root, ".claude", "skills", "real"), join(root, ".claude", "skills", "link"));
+    const load = await inspectProject(root);
+    const said = load.unreadable.join("\n");
+    expect(said).toContain(".claude/agents");
+    expect(said).toContain("not scanned");
+    expect(said).toContain(".claude/commands");
+    expect(said).toContain(".claude/skills/link");
+  });
+
   test("an MCP server with neither a command nor a url is listed with an empty command", async () => {
     const root = repo({ ".mcp.json": JSON.stringify({ mcpServers: { odd: { type: "sse" } } }) });
     expect((await inspectProject(root)).mcpServers).toEqual([
