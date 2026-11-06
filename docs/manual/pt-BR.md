@@ -879,9 +879,13 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   repassando a chave de API), e o trilho estreito de ícones não tem títulos.
 - No pé da barra, **Configurações** é um item visível (marcado enquanto as Configurações estão
   abertas), e a conta do Claude (e-mail e plano, lidos do cartão da conta do host; o trilho mostra só
-  a inicial) abre um menu com **Configurações**, **Alternar tema**, **Manual** e, para cada host cujo
-  `gh` está conectado ao GitHub com um login que o app pode remover, **Sair do GitHub** (após uma
-  confirmação; um login que vem do ambiente do daemon é removido lá). Com vários hosts aparece a
+  a inicial) abre um menu. O cabeçalho dele diz o nome do app e a versão. Depois vêm o plano, a conta
+  e o id do host dessa conta, cada um copiado ao ser escolhido; **Linhas compactas**, uma chave
+  guardada neste computador (a mesma densidade das Configurações); **Configurações**; **Procurar
+  atualizações** (abre as Configurações, onde a resposta aparece); **Atalhos de teclado**; **Alternar
+  tema**; **Manual**; e, para cada host cujo `gh` está conectado ao GitHub com um login que o app pode
+  remover, **Sair do GitHub** (após uma confirmação; um login que vem do ambiente do daemon é removido
+  lá). Com vários hosts aparece a
   conta do host aberto, e quantas contas há quando diferem; um host offline não mostra nenhuma.
 - O **Início** (primeiro em Trabalho) é uma faixa de quatro cartões com os últimos sete dias de todos
   os hosts online, cada um com um gráfico pequeno: **Gasto** (com o orçamento mensal dos hosts, quando

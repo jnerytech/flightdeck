@@ -885,9 +885,12 @@ live; the list is the project's, so a session of another project never shows her
   is offline, misses a required dependency or forwards its API key), and the narrow icon rail has no headings.
 - At the foot of the bar, **Settings** is a visible item (marked while Settings is open), and the Claude
   account (its email and plan, read from the host's account card; the rail shows only its initial)
-  opens a menu with **Settings**, **Toggle theme**, **Manual** and, for each host whose `gh` is signed
-  in to GitHub with a login the app can remove, **Sign out of GitHub** (after a confirmation; a login
-  that comes from the daemon's environment is removed there). With several hosts the account of the
+  opens a menu. Its header names the app and its version. Then come the plan, the account and the id
+  of the host whose account it is, each copied when chosen; **Compact rows**, a switch kept on this
+  computer (the same density as in Settings); **Settings**; **Check for updates** (it opens Settings,
+  where the answer shows); **Keyboard shortcuts**; **Toggle theme**; **Manual**; and, for each host
+  whose `gh` is signed in to GitHub with a login the app can remove, **Sign out of GitHub** (after a
+  confirmation; a login that comes from the daemon's environment is removed there). With several hosts the account of the
   open host is shown, and how many accounts there are when they differ; an offline host shows none.
 - **Home** (first in Work) is a strip of four cards over the last seven days of every online host,
   each with a sparkline: **Spend** (with the month's host budgets, when set), **Turns** (ok and
