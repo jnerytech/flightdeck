@@ -134,6 +134,10 @@ describe("abas-muitas: with many tabs the strip stays readable", () => {
     const rows = screen.queryAllByRole("option");
     expect(rows).toHaveLength(N + 1);
     expect(rows.every((row) => row.querySelector("svg[data-icon]") !== null)).toBe(true);
+    // No control inside an option (axe's nested-interactive): the close button sits beside it.
+    expect(rows.every((row) => row.querySelector("button") === null)).toBe(true);
+    // The popover is a dialog named after the list.
+    expect(screen.queryByRole("dialog", { name: "Todas as abas" })).not.toBeNull();
     // The tab on screen is marked for a screen reader, and only it.
     const current = rows.filter((row) => row.getAttribute("aria-current") === "true");
     expect(current).toHaveLength(1);
@@ -164,7 +168,8 @@ describe("abas-muitas: with many tabs the strip stays readable", () => {
   test("a row's close button and Delete on the highlighted row close that tab; the list stays (#576)", async () => {
     const { store } = await openList();
     const rows = screen.queryAllByRole("option");
-    const close = rows[2]?.querySelector<HTMLElement>("button[data-slot='tab-close']") ?? null;
+    const close =
+      rows[2]?.parentElement?.querySelector<HTMLElement>("button[data-slot='tab-close']") ?? null;
     expect(close).not.toBeNull();
     await act(async () => {
       fireEvent.click(close as HTMLElement);
