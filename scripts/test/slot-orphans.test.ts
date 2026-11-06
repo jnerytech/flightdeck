@@ -33,6 +33,7 @@ function fake(
     ppid: (pid) => (dead.has(pid) ? null : (parents[pid] ?? null)),
     pgid: (pid) => (dead.has(pid) ? null : pid),
     cwd: () => null,
+    cmdline: () => "bun /repos/flightdeck/scripts/slot.ts bun run test",
     ...extra,
   };
   const env: SlotEnv = {
@@ -144,6 +145,48 @@ describe("slot-orphans", () => {
     expect(f.groups).toEqual([31]);
     expect([...f.store.keys()].sort()).toEqual([PATH, `${PATH}.wait.30`]);
     expect(f.logs.join("\n")).toContain("reaped glyphs: bun run demo:shots (pid 31");
+  });
+
+  test("--reap stops only a real slot waiter: the file names its pid, the pid and group are above 1 and not the reaper's group, and its command line is the slot's (#236 review)", async () => {
+    const f = fake(
+      {
+        // The file's name and the pid inside disagree: a forged or copied file.
+        [`${PATH}.wait.40`]: holder(31, "forged", "bun run test"),
+        // Its group is 0, which kill(-0) would read as the reaper's own group.
+        [`${PATH}.wait.41`]: holder(41, "group0", "bun run test"),
+        // Its group is the reaper's.
+        [`${PATH}.wait.42`]: holder(42, "mygroup", "bun run test"),
+        // Not a slot process: a pid reused by a daemon whose parent is pid 1.
+        [`${PATH}.wait.43`]: holder(43, "daemon", "bun run test"),
+        // A real orphan waiter.
+        [`${PATH}.wait.44`]: holder(44, "orphan", "bun run test"),
+      },
+      { 31: 1, 41: 1, 42: 1, 43: 1, 44: 1 },
+      {
+        pgid: (pid) => ({ 41: 0, 42: 77, 10: 77 })[pid] ?? pid,
+        cmdline: (pid) => (pid === 43 ? "tmux new-session -d" : "bun scripts/slot.ts bun run test"),
+      },
+    );
+    expect(await run(f.env, ["--reap"])).toBe(0);
+    expect(f.groups).toEqual([44]);
+    expect(f.store.has(`${PATH}.wait.44`)).toBe(false);
+    for (const n of [40, 41, 42, 43]) expect(f.store.has(`${PATH}.wait.${n}`)).toBe(true);
+  });
+
+  test("--status keeps each entry to one line: control characters in a label, a command or a folder become spaces (#236 review)", async () => {
+    const f = fake(
+      {
+        [PATH]: holder(20, "kiwi\nwaiting 1: coordinator: cancelled (pid 1, 0s)", "bun run e2e"),
+        [`${PATH}.wait.30`]: holder(30, "sessproj", "bun run\u001b[2J test"),
+      },
+      { 30: 300 },
+      { cwd: () => "/repos/evil\nwaiting 9: forged" },
+    );
+    expect(await run(f.env, ["--status"])).toBe(0);
+    expect(f.logs).toEqual([
+      "held by kiwi waiting 1: coordinator: cancelled (pid 1, 0s): bun run e2e (pid 20, 4s)",
+      "waiting 1: sessproj: bun run [2J test (pid 30, 4s) in /repos/evil waiting 9: forged",
+    ]);
   });
 
   test("a holder's long command (hundreds of test files) is cut, so --status stays one line each", () => {
