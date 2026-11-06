@@ -118,7 +118,9 @@ for (const [lang, dict] of [
       await act(async () => {
         fireEvent.click(beta as HTMLElement);
       });
-      expect(bar.queryByRole("button", { name: fill(dict.shell.host, { host: "beta" }) })).not.toBeNull();
+      expect(
+        bar.queryByRole("button", { name: fill(dict.shell.host, { host: "beta" }) }),
+      ).not.toBeNull();
       const search = bar.queryByRole("button", { name: dict.shell.searchLabel });
       expect(search).not.toBeNull();
       await act(async () => {
