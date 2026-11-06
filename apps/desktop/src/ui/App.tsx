@@ -141,13 +141,13 @@ function tabAction(store: AppStore, key: string, shift: boolean): (() => void) |
   if (key === "t" && shift) return () => tabs.reopen();
   if (key === "t") {
     return () => {
-      tabs.open({ name: "home" });
+      store.hostTabs.open(store.newTabRoute());
       store.openSearch();
     };
   }
   if (key === "w") return () => store.closeTab(tabs, tabs.activeId);
-  if (key === "Tab") return () => (shift ? tabs.previous() : tabs.next());
-  if (/^[1-9]$/.test(key) && !shift) return () => tabs.goto(Number(key));
+  if (key === "Tab") return () => (shift ? store.hostTabs.previous() : store.hostTabs.next());
+  if (/^[1-9]$/.test(key) && !shift) return () => store.hostTabs.goto(Number(key));
   if ((key === "PageUp" || key === "PageDown") && shift) {
     const step = key === "PageUp" ? -1 : 1;
     return () => {
@@ -304,7 +304,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   const [whatsNew, setWhatsNew] = useState(false);
   const chord = useRef<ChordState>(NO_CHORD);
   // The status bar (issue #491): the terminal tabs open, and the plan usage asked again.
-  const terminalTabs = useSyncExternalStore(store.workspace.subscribe, () =>
+  const terminalTabs = useSyncExternalStore(store.hostTabs.subscribe, () =>
     terminalTabCount(store.workspace),
   );
   const [refreshingQuota, setRefreshingQuota] = useState(false);
@@ -321,7 +321,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
     const found = firstTerminalTab(store.workspace);
     if (!found) return go(hostsRoute(state.hosts, store.uiHostId()));
     store.workspace.focusArea(found.area);
-    store.workspace.tabs.activate(found.id);
+    store.hostTabs.activate(found.id);
   };
 
   // The header's path names the project of a board, a card or workflows: load the host's projects
@@ -353,7 +353,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   const goPreview = useCallback(
     (next: Route) => {
       store.closeSearch();
-      store.tabs.openPreview(next);
+      store.hostTabs.openPreview(next);
     },
     [store],
   );
@@ -408,7 +408,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
     const onNewTab = (e: MouseEvent) => {
       const middle = e.type === "auxclick";
       if (middle ? e.button !== 1 : !(e.ctrlKey || e.metaKey)) return;
-      store.tabs.openNextInNewTab();
+      store.hostTabs.openNextInNewTab();
       if (!middle) return;
       e.preventDefault();
       (e.target as HTMLElement).closest<HTMLElement>("button, a, [role=button]")?.click();
@@ -509,10 +509,13 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
                   status: h.status,
                   version: h.hostInfo?.daemonVersion ?? null,
                 }))}
-                currentId={store.uiHostId()}
+                currentId={store.activeHostId() ?? store.uiHostId()}
                 appVersion={APP_VERSION}
                 t={t}
-                onChoose={(hostId) => store.select(hostId, null)}
+                onChoose={(hostId) => {
+                  store.select(hostId, null);
+                  store.pickHost(hostId);
+                }}
                 onAdd={() => go({ name: "add-host" })}
               />
               <Button
@@ -580,7 +583,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
               onRemoveHost={(id) => void store.removeHost(id)}
               onRenameHost={(id, name) => store.renameHost(id, name)}
               onOpenSearch={() => store.openSearch()}
-              onNewTab={() => store.tabs.openNextInNewTab()}
+              onNewTab={() => store.hostTabs.openNextInNewTab()}
               onToggleTheme={() => store.theme.toggle()}
               onShortcuts={() => setHelp(true)}
               onWhatsNew={() => setWhatsNew(true)}

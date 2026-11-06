@@ -41,8 +41,12 @@ describe("host-tabs-store: each host has its own tabs in the app's store (issue 
     expect(store.hostTabs.onShared).toBe(true);
     expect(store.tabs === store.hostTabs.shared).toBe(true);
     expect(store.router.current).toEqual({ name: "settings" });
-    // The shared tab is pinned, so it sits at the left of every host's row.
-    expect(store.hostTabs.shared.tabs.map((tab) => tab.pinned)).toEqual([true]);
+    // The fresh window's Home and Settings are pinned: they sit at the left of every host's row.
+    expect(store.hostTabs.shared.tabs.map((tab) => tab.router.current.name)).toEqual([
+      "home",
+      "settings",
+    ]);
+    expect(store.hostTabs.shared.tabs.every((tab) => tab.pinned)).toBe(true);
   });
 
   test("the window is kept as a v2 snapshot, with one set per host", () => {

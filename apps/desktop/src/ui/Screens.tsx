@@ -966,7 +966,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           store={store}
           hostId={route.host}
           terminalId={route.terminalId}
-          onClosed={() => store.tabs.close(store.tabs.activeId)}
+          onClosed={() => store.hostTabs.close(store.hostTabs.activeId)}
         />
       );
     case "workflows":

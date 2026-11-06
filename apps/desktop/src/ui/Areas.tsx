@@ -35,7 +35,8 @@ export function Areas(
   const { store, state } = props;
   const { workspace } = store;
   const { t } = store.i18n;
-  useSyncExternalStore(workspace.subscribe, () => workspace.version);
+  const { hostTabs } = store;
+  useSyncExternalStore(hostTabs.subscribe, () => hostTabs.version);
   const { split, fraction } = workspace;
   const box = useRef<HTMLDivElement>(null);
   // Issue #488: each area's tabs have a row of their own, as in VS Code and Orca. In a window under
@@ -112,20 +113,35 @@ export function Areas(
           >
             {inHeader ? (
               createPortal(
-                <TabBar store={store} state={state} tabs={area}>
+                <TabBar
+                  store={store}
+                  state={state}
+                  tabs={area}
+                  {...(i === 0 ? { shared: hostTabs.shared } : {})}
+                >
                   {i === 0 && buttons}
                 </TabBar>,
                 inHeader,
               )
             ) : (
-              <TabBar store={store} state={state} tabs={area}>
+              <TabBar
+                store={store}
+                state={state}
+                tabs={area}
+                {...(i === 0 ? { shared: hostTabs.shared } : {})}
+              >
                 {i === 0 && buttons}
               </TabBar>
             )}
             {/* Screens that are a Page scroll by themselves; the others scroll here. The area is the
                 container its screens lay out against. */}
             <div className="@container min-h-0 flex-1 overflow-y-auto">
-              <Screen {...props.screen} route={area.router.current as Route} />
+              <Screen
+                {...props.screen}
+                route={
+                  (i === 0 && hostTabs.onShared ? hostTabs.shared : area).router.current as Route
+                }
+              />
             </div>
           </section>
         );

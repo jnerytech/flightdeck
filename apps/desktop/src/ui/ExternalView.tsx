@@ -94,7 +94,7 @@ export function ExternalView(
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => store.tabs.show({ name: "terminal", host: hostId, terminalId })}
+                onClick={() => store.hostTabs.show({ name: "terminal", host: hostId, terminalId })}
               >
                 {t("claudeHere.viewTerminal")}
               </Button>

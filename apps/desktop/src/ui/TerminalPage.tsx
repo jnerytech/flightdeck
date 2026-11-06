@@ -256,7 +256,7 @@ export function TerminalPage(
               size="sm"
               variant="outline"
               onClick={() =>
-                store.tabs.show({
+                store.hostTabs.show({
                   name: "external",
                   host: hostId,
                   claudeSessionId: linked.claudeSessionId,
