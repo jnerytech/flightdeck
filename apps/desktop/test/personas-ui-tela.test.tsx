@@ -164,3 +164,21 @@ describe("personas-ui: the library", () => {
     expect(screen.queryByRole("button", { name: "Salvar persona" })).toBeNull();
   });
 });
+
+describe("personas-ui-tela: a persona row (#588)", () => {
+  test("its actions sit beside its name and description, not on a line of their own", async () => {
+    await open();
+    const security = row("Revisor de segurança");
+    const actions = security?.querySelector("[data-slot='persona-actions']");
+    const edit = security
+      ? within(security).queryByRole("button", { name: "Editar Revisor de segurança" })
+      : null;
+    expect({
+      grid: security?.getAttribute("data-slot") ?? null,
+      editInActions: Boolean(actions && edit && actions.contains(edit)),
+      textOutside: Boolean(
+        actions && !actions.contains(security?.querySelector("[data-name]") ?? null),
+      ),
+    }).toEqual({ grid: "persona-row", editInActions: true, textOutside: true });
+  });
+});
