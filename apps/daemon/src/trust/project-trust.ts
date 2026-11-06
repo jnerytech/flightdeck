@@ -129,7 +129,10 @@ export class ProjectTrust {
   }
 
   /** Looks at the folders of the sessions that exist (once each), as the daemon boots. */
-  async prepareSessions(_sessions: ReadonlyArray<{ cwd: string }>): Promise<void> {}
+  async prepareSessions(sessions: ReadonlyArray<{ cwd: string }>): Promise<void> {
+    const folders = new Set(sessions.map((session) => session.cwd));
+    await Promise.all([...folders].map((cwd) => this.prepare(cwd)));
+  }
 
   /** Reads the real paths of the roots, so `via` (synchronous) knows them. */
   async refreshRoots(): Promise<void> {

@@ -1232,9 +1232,7 @@ export async function startDaemon(
   // A session that was open before the restart may be sent a message before anything else looks
   // at its folder: read the git boundaries of every folder first, so the lazy reattach finds them.
   // `prepare` answers every filesystem error itself (a folder it cannot read is a boundary).
-  await Promise.all(
-    [...new Set(manager.list().map((s) => s.cwd))].map((cwd) => projectTrust.prepare(cwd)),
-  );
+  await projectTrust.prepareSessions(manager.list());
   // Phase 40: the AI assistant on this host's claude (the fake runtime answers in the demo).
   const assistant = assistantService({
     runtime,
