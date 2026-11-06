@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import type { PermissionUpdate } from "@flightdeck/protocol";
 import ignore from "ignore";
+import { checkUpdates, rulePaths } from "../src/permissions/permission-updates.ts";
 import { RANK, RiskClassifier } from "../src/permissions/risk.ts";
 import {
   type ClassifyCall,
@@ -146,6 +148,10 @@ describe("rule-risk: a rule that names a folder covers what is inside it (issue 
     expect([unc("//server/share/x"), unc("\\\\server\\share\\x")]).toEqual(["dir", "dir"]);
     const hung = await pathKinds(["a.ts"], "/proj", "/home/me", () => new Promise(() => {}), 5);
     expect(hung("a.ts")).toBe("dir");
+    const broken = await pathKinds(["a.ts"], "/proj", "/home/me", () =>
+      Promise.reject(new Error("EIO")),
+    );
+    expect(broken("a.ts")).toBe("dir");
   });
 
   test("pathKinds looks each path up from the request's folder and the home, and a path it did not look up counts as a folder", async () => {
@@ -171,5 +177,33 @@ describe("rule-risk: a rule that names a folder covers what is inside it (issue 
       "missing",
       "dir",
     ]);
+  });
+});
+
+describe("rule-risk: the exact paths the server looks up, and the check without them (issue #395)", () => {
+  const add = (toolName: string, ruleContent?: string): PermissionUpdate => ({
+    type: "addRules",
+    rules: [{ toolName, ...(ruleContent === undefined ? {} : { ruleContent }) }],
+    behavior: "allow",
+    destination: "localSettings",
+  });
+
+  test("rulePaths lists each path rule's exact paths: no wildcard, no shell rule, no other update", () => {
+    const updates: PermissionUpdate[] = [
+      add("Read", "src/a.ts"),
+      add("Grep", "src/*.ts"),
+      add("Bash", "ls"),
+      add("Write"),
+      { type: "setMode", mode: "acceptEdits", destination: "session" },
+    ];
+    expect(rulePaths(updates)).toEqual(["src/a.ts"]);
+  });
+
+  test("checkUpdates reads a path it was not told about as a folder, so the rule is refused", () => {
+    const request = { toolName: "Read", suggestions: [], risk: "low" as const, classify };
+    expect(() => checkUpdates([add("Read", "/proj/src/a.ts")], request)).toThrow();
+    expect(() =>
+      checkUpdates([add("Read", "/proj/src/a.ts")], { ...request, kind: () => "file" }),
+    ).not.toThrow();
   });
 });
