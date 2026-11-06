@@ -1860,6 +1860,8 @@ export const en: Dictionary = {
     accept: "Accept",
     acceptAnyway: "Accept anyway",
     discard: "Discard",
+    edit: "Edit",
+    retry: "Retry",
     dismiss: "Dismiss",
     stale: "The text changed while this was written.",
   },

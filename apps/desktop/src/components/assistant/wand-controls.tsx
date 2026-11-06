@@ -5,6 +5,7 @@ import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { Inline, Stack } from "@/components/layout/stack";
 import { ShortArea } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import type { T } from "@/i18n/index";
 import { isMac } from "@/lib/shortcuts";
 import { refusalText } from "./refusal-text.ts";
@@ -86,12 +87,28 @@ export function WandPanel(props: { wand: Wand; t: T }) {
         </Stack>
         <Stack gap={1}>
           <span className="text-muted-foreground text-xs">{t("assistantWand.after")}</span>
-          <p className="whitespace-pre-wrap text-sm">{state.proposal}</p>
+          {state.editing ? (
+            <Textarea
+              aria-label={t("assistantWand.after")}
+              value={state.proposal}
+              onChange={(event) => wand.setProposal(event.target.value)}
+            />
+          ) : (
+            <p className="whitespace-pre-wrap text-sm">{state.proposal}</p>
+          )}
         </Stack>
         {state.stale && <p className="text-sm">{t("assistantWand.stale")}</p>}
         <Inline>
           <Button size="sm" autoFocus onClick={wand.accept}>
             {state.stale ? t("assistantWand.acceptAnyway") : t("assistantWand.accept")}
+          </Button>
+          {!state.editing && (
+            <Button variant="outline" size="sm" onClick={wand.edit}>
+              {t("assistantWand.edit")}
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={wand.retry}>
+            {t("assistantWand.retry")}
           </Button>
           <Button variant="outline" size="sm" onClick={wand.discard}>
             {t("assistantWand.discard")}
