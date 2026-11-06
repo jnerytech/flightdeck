@@ -750,6 +750,7 @@ function hostNeedsAttention(host: HostView, deps: DepsResult | undefined): boole
 function HostDot(props: Readonly<{ host: HostView; t: T }>) {
   return (
     <StatusDot
+      dot
       {...hostDotView(props.host.status)}
       label={props.t("sidebar.hostState", {
         host: props.host.name,
