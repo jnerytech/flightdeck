@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { installFakeCli } from "../../../scripts/test/fake-cli.ts";
+import { logLines } from "../../../scripts/test/log-lines.ts";
 import { startDaemon } from "../src/main.ts";
 import { poll, tempDir } from "./helpers.ts";
 
@@ -19,7 +20,7 @@ function sentinelCalls(): string[] {
     .filter((dir) => /fd-(claude|cli)-guard-/.test(dir));
   return dirs.flatMap((dir) => {
     const log = join(dir, "calls.log");
-    return existsSync(log) ? readFileSync(log, "utf8").trim().split("\n") : [];
+    return existsSync(log) ? logLines(readFileSync(log, "utf8")) : [];
   });
 }
 
@@ -30,7 +31,7 @@ function sentinelProbes(): string[] {
     .filter((dir) => /fd-(claude|cli)-guard-/.test(dir));
   return dirs.flatMap((dir) => {
     const log = join(dir, "versions.log");
-    return existsSync(log) ? readFileSync(log, "utf8").trim().split("\n") : [];
+    return existsSync(log) ? logLines(readFileSync(log, "utf8")) : [];
   });
 }
 
