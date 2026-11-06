@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   importsOf,
   keepCoverageProblem,
+  listSelection,
   planRelated,
   resolveImport,
   selectRelated,
@@ -332,6 +333,84 @@ describe("planRelated", () => {
     }
     // A rename shows its old path as gone, so a renamed test counts as one that went away.
     expect(calls.find((c) => c[0] === "diff")).toContain("--no-renames");
+  });
+
+  test("--pr gives its selection as data: the test files it runs, or 'all' when the whole suite runs (#399)", () => {
+    const repo: Record<string, string> = {
+      "apps/daemon/src/a.ts": "export const a = 1;",
+      "apps/daemon/test/int-a.test.ts": `import "../src/a.ts";`,
+      "apps/daemon/test/int-b.test.ts": "export {};",
+      "apps/daemon/test/u1.test.ts": "export {};",
+    };
+    const tiers: Record<string, string> = {
+      "apps/daemon/test/int-a.test.ts": "integration",
+      "apps/daemon/test/int-b.test.ts": "integration",
+      "apps/daemon/test/u1.test.ts": "unit",
+    };
+    const plan = (changed: string[]) =>
+      planRelated({
+        platform: "win32",
+        git: fakeGit(changed, Object.keys(repo)),
+        readFile: (path) => repo[path] ?? "",
+        pyramid: true,
+        slot: false,
+        tierOf: (path) => tiers[path],
+      });
+    expect(plan(["apps/daemon/src/a.ts"]).files).toEqual([
+      "apps/daemon/test/int-a.test.ts",
+      "apps/daemon/test/u1.test.ts",
+    ]);
+    expect(plan(["bun.lock"]).files).toBe("all");
+  });
+
+  test("--pr never selects a mod's test: bun ignores mods/ (they run under claude plugin test), and the Windows shards refuse names they cannot run (#410)", () => {
+    const repo: Record<string, string> = {
+      "apps/daemon/src/a.ts": "export const a = 1;",
+      "apps/daemon/test/u1.test.ts": "export {};",
+      "mods/flightdeck/hooks/register.test.tsx": "export {};",
+    };
+    const tiers: Record<string, string> = {
+      "apps/daemon/test/u1.test.ts": "unit",
+      "mods/flightdeck/hooks/register.test.tsx": "unit",
+    };
+    const plan = planRelated({
+      platform: "win32",
+      git: fakeGit(["apps/daemon/src/a.ts"], Object.keys(repo)),
+      readFile: (path) => repo[path] ?? "",
+      pyramid: true,
+      slot: false,
+      tierOf: (path) => tiers[path],
+    });
+    expect(plan.files).toEqual(["apps/daemon/test/u1.test.ts"]);
+  });
+
+  test("listSelection writes one test file per line, or '*' for the whole suite, and needs a file name (#410 review)", () => {
+    const written: Record<string, string> = {};
+    const write = (path: string, text: string) => {
+      written[path] = text;
+    };
+    expect(
+      listSelection(
+        { code: 0, output: "", command: null, files: ["a.test.ts", "b.test.ts"] },
+        "s.txt",
+        write,
+      ),
+    ).toEqual({ code: 0, line: "test:related: 2 line(s) written to s.txt" });
+    expect(written["s.txt"]).toBe("a.test.ts\nb.test.ts\n");
+    expect(
+      listSelection({ code: 0, output: "", command: null, files: "all" }, "all.txt", write).code,
+    ).toBe(0);
+    expect(written["all.txt"]).toBe("*\n");
+    // A plan that failed writes an empty list and keeps its code.
+    expect(listSelection({ code: 2, output: "", command: null }, "bad.txt", write).code).toBe(2);
+    expect(written["bad.txt"]).toBe("");
+    for (const name of [undefined, "--pr"]) {
+      const r = listSelection({ code: 0, output: "", command: null, files: [] }, name, write);
+      expect(r).toEqual({
+        code: 2,
+        line: "test:related: --list needs a file to write the selection to",
+      });
+    }
   });
 
   test("--pr names how many fast-tier tests run, not each one; it lists the related tests (#309)", () => {

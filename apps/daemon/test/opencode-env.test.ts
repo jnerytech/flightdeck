@@ -9,19 +9,7 @@ import {
 const RULES = [
   { action: "*", resource: "*", effect: "ask" },
 
-  ...[
-    "*/.env*",
-    "*.env",
-    "*/.ssh/*",
-    "*/.aws/*",
-    "*/.config/gh/*",
-    "*/.claude/.credentials.json",
-    "*/.claude.json",
-    "*/.flightdeck/config.json",
-    "*.pem",
-    "*.key",
-    "*/id_*",
-  ].map((resource) => ({ action: "read", resource, effect: "ask" })),
+  ...CREDENTIAL_READS.map((resource) => ({ action: "read", resource, effect: "ask" })),
   { action: "read", resource: "*.env.example", effect: "allow" },
   { action: "question", resource: "*", effect: "deny" },
   { action: "subagent", resource: "*", effect: "deny" },
@@ -29,7 +17,22 @@ const RULES = [
 
 describe("opencode-env", () => {
   test("the rules: everything asks (Flightdeck allows reads inside the folder by real path), question and subagent denied", () => {
-    expect(CREDENTIAL_READS.length).toBe(11);
+    // The ones OpenCode asked about before the lists were shared stay in it.
+    for (const glob of [
+      "*/.env*",
+      "*.env",
+      "*/.ssh/*",
+      "*/.aws/*",
+      "*/.config/gh/*",
+      "*/.claude/.credentials.json",
+      "*/.claude.json",
+      "*/.flightdeck/config.json",
+      "*.pem",
+      "*.key",
+      "*/id_*",
+    ]) {
+      expect(CREDENTIAL_READS, glob).toContain(glob);
+    }
     expect(opencodeRules()).toEqual(RULES as ReturnType<typeof opencodeRules>);
   });
 
