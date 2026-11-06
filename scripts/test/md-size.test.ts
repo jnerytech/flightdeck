@@ -10,13 +10,23 @@ const lines = (n: number) => "x\n".repeat(n);
 
 describe("md-size", () => {
   test("CLAUDE.md files, rules and agents get 150 lines, skills 300, every other doc 400", () => {
-    expect(mdLimit("CLAUDE.md")).toBe(150);
     expect(mdLimit("apps/daemon/CLAUDE.md")).toBe(150);
     expect(mdLimit(".claude/rules/ui.md")).toBe(150);
     expect(mdLimit(".claude/agents/spec-verifier.md")).toBe(150);
     expect(mdLimit(".claude/skills/tdd-area/SKILL.md")).toBe(300);
     expect(mdLimit("docs/SPEC-fase-38.md")).toBe(400);
     expect(mdLimit("README.md")).toBe(400);
+  });
+
+  test("the root CLAUDE.md and the manuals have fixed limits of their own, out of the baseline: they grow by design (#427)", () => {
+    // Lines of the root CLAUDE.md wait for the owner's word; every phase adds to both manuals.
+    expect(mdLimit("CLAUDE.md")).toBe(260);
+    expect(mdLimit("docs/manual/en.md")).toBe(4000);
+    expect(mdLimit("docs/manual/pt-BR.md")).toBe(4000);
+    expect(oversized([{ path: "docs/manual/en.md", text: lines(3999) }])).toEqual({});
+    expect(oversized([{ path: "CLAUDE.md", text: lines(261) }])).toEqual({ "CLAUDE.md": 261 });
+    const baseline = JSON.parse(readFileSync(join(ROOT, "md-size-baseline.json"), "utf8"));
+    expect(Object.keys(baseline)).toEqual(["docs/SPEC-fase-40.md"]);
   });
 
   test("the frozen DECISIONS.md has no cap: decisions.ts pins its content, and new decisions go to docs/decisions/ (#304)", () => {
