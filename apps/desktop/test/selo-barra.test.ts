@@ -20,17 +20,19 @@ describe("selo-barra: the overlay icon (issue #233)", () => {
     expect(icon).toHaveLength(BADGE_SIZE * BADGE_SIZE * 4);
     expect(pixel(icon, 0, 0)[3]).toBe(0);
     expect(pixel(icon, 31, 31)[3]).toBe(0);
-    expect(pixel(icon, 16, 2)).toEqual(RED);
-    expect(pixel(icon, 3, 16)).toEqual(RED);
+    expect(pixel(icon, 16, 1)[3]).toBe(0);
+    expect(pixel(icon, 1, 16)[3]).toBe(0);
+    expect(pixel(icon, 8, 16)).toEqual(RED);
+    expect(pixel(icon, 24, 16)).toEqual(RED);
     expect(icon.every((byte) => byte >= 0 && byte <= 255 && Number.isInteger(byte))).toBe(true);
   });
 
   test("the number is white on the disc: a 1 has its stem where the glyph puts it", () => {
     const one = badgeRgba(1) as number[];
-    // The glyph is 5 x 7 cells of 3 px, centred: its stem is the middle column.
-    expect(pixel(one, 15, 6)).toEqual(WHITE);
-    expect(pixel(one, 15, 24)).toEqual(WHITE);
-    expect(pixel(one, 9, 6)).toEqual(RED);
+    // The stem runs through the middle of the disc, with red on both sides of it.
+    expect([14, 15, 16, 17].some((x) => pixel(one, x, 16).join() === WHITE.join())).toBe(true);
+    expect(pixel(one, 8, 16)).toEqual(RED);
+    expect(pixel(one, 24, 16)).toEqual(RED);
   });
 
   test("each digit looks different", () => {

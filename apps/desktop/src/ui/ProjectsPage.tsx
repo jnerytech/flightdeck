@@ -216,48 +216,77 @@ export function ProjectsPage(
         </div>
         <ul aria-label={t("projectsUi.list")} className="flex flex-col gap-2">
           {(list?.projects ?? []).map((project) => (
-            <li
-              key={project.id}
-              className="flex flex-wrap items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm"
-            >
-              <Button variant="ghost" size="sm" onClick={() => props.onOpenBoard(project.id)}>
-                {t("projectsUi.openBoard", { name: project.name })}
-              </Button>
-              <span className="min-w-0 flex-1 truncate text-muted-foreground text-xs">{`${project.path} · ${project.baseBranch}`}</span>
-              <TerminalButton
-                store={store}
-                hostId={hostId}
-                target={{ cwd: project.path, claudeSessionId: null }}
-                name={project.name}
-              />
-              <Button variant="ghost" size="sm" onClick={() => props.onOpenWorkflows(project)}>
-                {t("projectsUi.workflows", { name: project.name })}
-              </Button>
-              {props.agent && (
-                <Button variant="ghost" size="sm" onClick={() => props.onOpenAgent(project)}>
-                  {t("agent.open", { name: project.name })}
+            <li key={project.id} data-slot="project-row" className="project-row">
+              <div data-slot="project-head" className="project-head">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={t("projectsUi.openBoard", { name: project.name })}
+                  onClick={() => props.onOpenBoard(project.id)}
+                >
+                  {project.name}
                 </Button>
-              )}
-              {props.actions && (
-                <Button variant="ghost" size="sm" onClick={() => props.onOpenActions(project)}>
-                  {t("projectsUi.actions", { name: project.name })}
+                <span data-slot="project-path" className="project-path">
+                  {`${project.path} · ${project.baseBranch}`}
+                </span>
+              </div>
+              <div data-slot="project-actions" className="button-row">
+                <TerminalButton
+                  store={store}
+                  hostId={hostId}
+                  target={{ cwd: project.path, claudeSessionId: null }}
+                  name={project.name}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={t("projectsUi.workflows", { name: project.name })}
+                  onClick={() => props.onOpenWorkflows(project)}
+                >
+                  {t("projectsUi.short.workflows")}
                 </Button>
-              )}
-              {props.automations && (
-                <Button variant="ghost" size="sm" onClick={() => props.onOpenAutomations(project)}>
-                  {t("projectsUi.automations", { name: project.name })}
+                {props.agent && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t("agent.open", { name: project.name })}
+                    onClick={() => props.onOpenAgent(project)}
+                  >
+                    {t("projectsUi.short.agent")}
+                  </Button>
+                )}
+                {props.actions && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t("projectsUi.actions", { name: project.name })}
+                    onClick={() => props.onOpenActions(project)}
+                  >
+                    {t("projectsUi.short.actions")}
+                  </Button>
+                )}
+                {props.automations && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t("projectsUi.automations", { name: project.name })}
+                    onClick={() => props.onOpenAutomations(project)}
+                  >
+                    {t("projectsUi.short.automations")}
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={t("projectsUi.edit", { name: project.name })}
+                  onClick={() => {
+                    setEditing(project.id);
+                    setDraft(fromProject(project));
+                  }}
+                >
+                  {t("projectsUi.short.edit")}
                 </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setEditing(project.id);
-                  setDraft(fromProject(project));
-                }}
-              >
-                {t("projectsUi.edit", { name: project.name })}
-              </Button>
+              </div>
             </li>
           ))}
         </ul>

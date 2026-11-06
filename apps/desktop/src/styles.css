@@ -272,6 +272,88 @@ html:not(:has([data-slot="status-bar"])) {
   bottom: 0.75rem;
 }
 
+/* The sidebar's project tree: the checkouts of each project, one line each with the base below. */
+@utility project-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-left: 1.25rem;
+}
+@utility project-tree-project {
+  display: flex;
+  flex-direction: column;
+}
+@utility project-tree-name {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 1.5rem;
+  padding: 0.25rem 0.5rem 0;
+  border-radius: var(--radius-sm);
+  color: var(--sidebar-foreground);
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0.7;
+  &:hover {
+    opacity: 1;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: -2px;
+  }
+}
+@utility project-tree-more {
+  width: 100%;
+  min-height: 1.5rem;
+  padding: 0 0.5rem;
+  border-radius: var(--radius-md);
+  text-align: left;
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  &:hover {
+    background: var(--sidebar-accent);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: -2px;
+  }
+}
+@utility project-tree-node {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  column-gap: 0.5rem;
+  width: 100%;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-md);
+  text-align: left;
+  font-size: 0.8125rem;
+  color: color-mix(in oklab, var(--sidebar-foreground) 80%, transparent);
+  &:hover {
+    background: var(--sidebar-accent);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
+  }
+}
+@utility project-tree-branch {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@utility project-tree-badge {
+  padding: 0 0.25rem;
+  border-radius: var(--radius-sm);
+  background: var(--muted);
+  font-size: 0.6875rem;
+}
+@utility project-tree-base {
+  grid-column: 2 / 4;
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+}
 /* The summary card under a session's header: the same 16 px from each side as the conversation. */
 @utility recap-slot {
   flex-shrink: 0;
@@ -1059,6 +1141,14 @@ html:not(:has([data-slot="status-bar"])) {
 }
 /* A team member's row (#594): the name and its chips, then a column of one width on every row
    for the session's state and the links, so they line up from row to row. */
+/* An open project's rows and its earlier-sessions button (#588): indented by the header's chevron
+   and gap, so a row's status dot sits under the folder icon. */
+@utility group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-left: 2rem;
+}
 @utility member-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 14rem;
@@ -1387,6 +1477,64 @@ html:not(:has([data-slot="status-bar"])) {
 /* A select in a Settings row: one width for all of them, so the rows line up. */
 @utility setting-select {
   width: 11rem;
+}
+/* A setting's row (#588): one label column for every row, so the controls line up. */
+@utility setting-row {
+  display: grid;
+  grid-template-columns: 12rem minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+}
+/* A project on the Projects page: its name and whole path on one line, its actions on the next (#588). */
+@utility project-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+@utility project-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+@utility project-path {
+  min-width: 0;
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+  overflow-wrap: anywhere;
+}
+/* A message on Conversations: who sent it to whom, its text and the session to open (#588). */
+@utility message-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+@utility message-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+/* The help under a checkbox, indented to its words (the box and the 8 px gap). */
+@utility setting-hint {
+  display: block;
+  padding-left: calc(13px + 0.5rem);
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
 }
 
 @utility header-crumbs {
@@ -2289,6 +2437,17 @@ html:not(:has([data-slot="status-bar"])) {
   flex: 1 1 0%;
   flex-direction: column;
   gap: 0.25rem;
+}
+
+/* Issue #160: a field and its wand button side by side; the field takes the room. */
+@utility assist-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+  & > :first-child {
+    min-width: 0;
+    flex: 1 1 0%;
+  }
 }
 
 /* Issue #490: the update card in the bottom-right corner, above the status bar when there is one. */

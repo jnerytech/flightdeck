@@ -902,6 +902,17 @@ export const ptBR = {
     gateRow: "A etapa “{step}” do workflow espera sua aprovação",
     release: "Soltar o par",
   },
+  projectTree: {
+    more: "mais {n}",
+    fewer: "Mostrar menos",
+    pickedFolded: "Branch escolhida: {branch}",
+    list: "Branches de {name}",
+    node: "{project}: {branch}",
+    primary: "principal",
+    base: "base {name}",
+    filter: "Branch: {branch}",
+    clear: "Limpar o filtro de branch",
+  },
   hub: {
     view: "Visualização",
     viewList: "Lista",
@@ -2125,6 +2136,10 @@ export const ptBR = {
     continueAnyway: "Continuar mesmo assim",
     loadPrevious: "Carregar anteriores",
     tool: "Ferramenta {name}",
+    toolLoading: "Lendo a chamada do transcript…",
+    toolNoResult: "Sem resultado no transcript: ainda rodando, ou interrompida.",
+    toolTruncated: "Cortado em 64 KB.",
+    toolMissing: "Não deu para ler esta chamada do transcript.",
     loading: "Abrindo a sessão…",
     missing: "Esta sessão não está mais em {host}: pode ter sido apagada ou movida.",
     failed: "Não foi possível ler a sessão em {host}.",
@@ -3153,6 +3168,8 @@ export const ptBR = {
     emptyHint:
       "As mensagens entre sessões aparecem aqui quando o envio entre elas está ligado, por exemplo num time.",
     emptyLink: "Abrir Times",
+    noMatch: "Nenhuma mensagem corresponde ao filtro.",
+    loading: "Carregando mensagens",
     to: "para",
     open: "Abrir a sessão",
     statuses: {
@@ -3495,6 +3512,9 @@ export const ptBR = {
     trustMessage:
       "Confiar no workflow {name}? Ele poderá rodar estes comandos na worktree dos cards: {commands}.",
     none: "nenhum",
+    loading: "Carregando workflows",
+    empty: "Nenhum workflow na branch base ainda.",
+    failed: "Não deu para ler os workflows. Veja se o host está conectado e abra a página de novo.",
   },
   shortcuts: {
     title: "Atalhos de teclado",
@@ -3839,6 +3859,13 @@ export const ptBR = {
     actions: "Ações de {name}",
     workflows: "Workflows de {name}",
     edit: "Editar {name}",
+    short: {
+      workflows: "Workflows",
+      agent: "Agente",
+      actions: "Ações",
+      automations: "Automações",
+      edit: "Editar",
+    },
     worktreeIncludeMissing:
       "Este projeto não tem um .worktreeinclude. Liste nele os arquivos que o git ignora e cada worktree precisa (como o .env), um padrão por linha:",
     worktreeIncludeExample: "Exemplo de .worktreeinclude",

@@ -233,7 +233,13 @@ describe("projeto-adicionar: where it is offered", () => {
     render(
       withT(
         store,
-        <BoardView store={store} hostId={hostId} projectId={projectId} onOpenCard={() => {}} />,
+        <BoardView
+          store={store}
+          hostId={hostId}
+          projectId={projectId}
+          onOpenCard={() => {}}
+          onOpenSettings={() => {}}
+        />,
       ),
     );
     await settle(() => screen.queryByRole("button", { name: "Add project" }) !== null);
@@ -318,5 +324,55 @@ describe("projeto-adicionar: where it is offered", () => {
       const route = store.router.current;
       return route.name === "board" && route.projectId !== projectId;
     });
+  });
+});
+
+describe("projeto-adicionar: a project row (#588)", () => {
+  test("the name and the whole path on one line, the actions on the next with short labels", async () => {
+    const { store, hostId, repo } = await online();
+    await act(async () => {
+      await store.hostCommand(hostId, "project.add", { path: repo });
+    });
+    render(
+      withT(
+        store,
+        <ProjectsPage
+          store={store}
+          hostId={hostId}
+          hostName="alfa"
+          onOpenBoard={() => {}}
+          onOpenWorkflows={() => {}}
+          automations
+          onOpenAutomations={() => {}}
+          actions
+          onOpenActions={() => {}}
+          rules={false}
+          agent
+          onOpenAgent={() => {}}
+        />,
+      ),
+    );
+    await settle(() => screen.queryByRole("button", { name: "Open the board of work" }) !== null);
+    const board = screen.queryByRole("button", { name: "Open the board of work" });
+    const head = board?.closest("[data-slot='project-head']") ?? null;
+    expect(head).not.toBeNull();
+    expect(board?.textContent).toBe("work");
+    expect(head?.querySelector("[data-slot='project-path']")?.textContent).toBe(`${repo} · main`);
+    const labels = ["Workflows", "Agent", "Actions", "Automations", "Edit"];
+    const names = [
+      "Workflows of work",
+      "Agent of work",
+      "Actions of work",
+      "Automations of work",
+      "Edit work",
+    ];
+    const shown = names.map((name) => {
+      const button = screen.queryByRole("button", { name });
+      return [
+        button?.textContent ?? null,
+        Boolean(button?.closest("[data-slot='project-actions']")),
+      ];
+    });
+    expect(shown).toEqual(labels.map((label) => [label, true]));
   });
 });

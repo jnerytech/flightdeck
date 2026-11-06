@@ -269,7 +269,8 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
           const under = rectOf(below);
           if (box.right <= under.left || box.left >= under.right) continue;
           const gap = under.top - box.bottom;
-          if (gap < rule.min) {
+          // Half a pixel is rounding (a rem at a fractional zoom), not a gap that went away (#655).
+          if (gap < rule.min - 0.5) {
             add(
               "gap",
               pathOf(el),
@@ -455,6 +456,9 @@ export const GAPS: GapRule[] = [
   { above: '[data-slot="update-card"]', below: '[data-slot="status-bar"]', min: 8 },
 ];
 
+/** The boxes the gap rules measure, as one selector: `waitForStable` waits for them to hold still (#655). */
+export const GAP_BOXES = [...new Set(GAPS.flatMap((rule) => [rule.above, rule.below]))].join(", ");
+
 /** The sidebar scrolls as one area between its fixed header and footer (#567). */
 export const SINGLE_SCROLL = ["sidebar"];
 
@@ -534,14 +538,24 @@ export interface Settled {
  * Runs inside the page (`page.evaluate(waitForStable, options)`): resolves when the fonts are
  * loaded and the page's height has not changed for `frames` frames in a row, or after `maxMs`.
  * It replaces the fixed waits that guards used to take a layout that settles late (issue #192).
+ * `boxes` (a selector, such as `GAP_BOXES`) also waits for those boxes to hold still: a toast
+ * sliding in moves no scroll height, and a gap read mid-slide was 7 px for 12 (issue #655).
  */
 export async function waitForStable(
-  options: { frames?: number; maxMs?: number } = {},
+  options: { frames?: number; maxMs?: number; boxes?: string } = {},
 ): Promise<Settled> {
   const wanted = options.frames ?? 3;
   const until = Date.now() + (options.maxMs ?? 5000);
   await document.fonts?.ready;
-  const height = () => document.documentElement.scrollHeight + document.body.scrollHeight;
+  const boxes = () =>
+    options.boxes
+      ? [...document.querySelectorAll(options.boxes)].map((el) => {
+          const box = el.getBoundingClientRect();
+          return `${box.left},${box.top},${box.right},${box.bottom}`;
+        })
+      : [];
+  const height = () =>
+    [document.documentElement.scrollHeight + document.body.scrollHeight, ...boxes()].join(" ");
   let last = height();
   let still = 0;
   while (Date.now() < until) {

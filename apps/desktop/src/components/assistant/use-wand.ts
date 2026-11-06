@@ -12,6 +12,8 @@ export interface WandBinding {
   kind: AssistantKind;
   fieldHostId?: string;
   cwd?: string;
+  /** What the field's text is written from or checked against (card title: its description). */
+  context?: Record<string, string>;
   /** Opens Settings, section Assistant. */
   openSettings(): void;
 }
@@ -115,6 +117,7 @@ export function useWand(
         requestId,
         kind: binding.kind,
         text,
+        ...(binding.context ? { context: binding.context } : {}),
         ...(binding.fieldHostId ? { fieldHostId: binding.fieldHostId } : {}),
         // The folder is the field host's: another host never gets to see its path.
         ...(binding.cwd && !otherHost(provider, binding.fieldHostId) ? { cwd: binding.cwd } : {}),

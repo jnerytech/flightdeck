@@ -5,7 +5,7 @@ import { memo, useCallback, useEffect, useState } from "react";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
-import { EmptyState } from "@/components/layout/states";
+import { EmptyState, LoadingState } from "@/components/layout/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,7 +57,8 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   const { store } = props;
   const state = useStoreSlice(store, CONVERSATIONSPAGE_KEYS);
   const { t } = store.i18n;
-  const [rows, setRows] = useState<Row[]>([]);
+  /** Null until the hosts first answer. */
+  const [rows, setRows] = useState<Row[] | null>(null);
   const [status, setStatus] = useState<"" | MessageStatus>("");
   const [text, setText] = useState("");
   const hosts = state.hosts.filter(
@@ -92,7 +93,7 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   // A message belongs to the selected client when either of its sessions does.
   const scope = store.clientScope();
   const projectOf = sessionProjectKeys(hubRows(store.getState()));
-  const shown = rows.filter(({ message: m, hostName }) => {
+  const shown = (rows ?? []).filter(({ message: m, hostName }) => {
     const ends = [projectOf.get(m.fromSession) ?? null, projectOf.get(m.toSession) ?? null];
     if (!scope.includesAny(state.clientSelection, ends)) return false;
     if (status && m.status !== status) return false;
@@ -145,7 +146,8 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
         </Toolbar>
       }
     >
-      {shown.length === 0 && (
+      {rows === null && <LoadingState label={t("conversationsUi.loading")} />}
+      {rows?.length === 0 && (
         <EmptyState
           icon={MessagesSquare}
           title={t("conversationsUi.empty")}
@@ -159,38 +161,43 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
           }
         />
       )}
-      <ul aria-label={t("conversationsUi.list")} className="flex max-w-3xl flex-col gap-2">
-        {shown.map((row) => {
-          const m = row.message;
-          return (
-            <li key={m.id} className="flex flex-col gap-1 rounded-lg border bg-card p-3 text-sm">
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <time dateTime={m.createdAt} className="text-muted-foreground tabular-nums">
-                  {store.formatDateTime(m.createdAt)}
-                </time>
-                <span className="font-mono">{`${m.fromHost}/${m.fromSession}`}</span>
-                <span className="text-muted-foreground">{t("conversationsUi.to")}</span>
-                <span className="font-mono">{`${m.toHost}/${m.toSession}`}</span>
-                <Badge variant="outline">{row.hostName}</Badge>
-                {m.teamId && <Badge variant="outline">{m.teamId}</Badge>}
-                <strong className={TONE[m.status]}>
-                  {t(`conversationsUi.statuses.${m.status}`)}
-                </strong>
-              </div>
-              <p className="whitespace-pre-wrap">{m.text}</p>
-              {m.reason && <p className="text-status-error text-xs">{m.reason}</p>}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="self-start"
-                onClick={() => openSession(row)}
-              >
-                {t("conversationsUi.open")}
-              </Button>
-            </li>
-          );
-        })}
-      </ul>
+      {(rows?.length ?? 0) > 0 && shown.length === 0 && (
+        <EmptyState icon={MessagesSquare} title={t("conversationsUi.noMatch")} />
+      )}
+      {shown.length > 0 && (
+        <ul aria-label={t("conversationsUi.list")} className="flex max-w-3xl flex-col gap-2">
+          {shown.map((row) => {
+            const m = row.message;
+            return (
+              <li key={m.id} data-slot="message-row" className="message-row">
+                <div data-slot="message-meta" className="message-meta">
+                  <time dateTime={m.createdAt} className="text-muted-foreground tabular-nums">
+                    {store.formatDateTime(m.createdAt)}
+                  </time>
+                  <span className="font-mono">{`${m.fromHost}/${m.fromSession}`}</span>
+                  <span className="text-muted-foreground">{t("conversationsUi.to")}</span>
+                  <span className="font-mono">{`${m.toHost}/${m.toSession}`}</span>
+                  <Badge variant="outline">{row.hostName}</Badge>
+                  {m.teamId && <Badge variant="outline">{m.teamId}</Badge>}
+                  <strong className={TONE[m.status]}>
+                    {t(`conversationsUi.statuses.${m.status}`)}
+                  </strong>
+                </div>
+                <p className="whitespace-pre-wrap">{m.text}</p>
+                {m.reason && <p className="text-status-error text-xs">{m.reason}</p>}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="self-start"
+                  onClick={() => openSession(row)}
+                >
+                  {t("conversationsUi.open")}
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </Page>
   );
 });

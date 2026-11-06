@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { KpiCard } from "@/components/home/kpi-card";
 import { Page } from "@/components/layout/page";
 import { Grid, Stack } from "@/components/layout/stack";
@@ -180,17 +181,17 @@ export function HomePage(
         <Stack gap={4}>
           <p className="text-muted-foreground text-xs">{t("home.updated", { ago })}</p>
           {stale.length > 0 && (
-            <p aria-live="polite" className="text-sm">
+            <InlineNotice tone="info">
               {t("home.stale", { hosts: stale.map((h) => h.name).join(", "), ago })}
-            </p>
+            </InlineNotice>
           )}
           {silent.length > 0 && (
-            <p aria-live="polite" className="text-sm">
+            <InlineNotice>
               {t("home.partial", { hosts: silent.map((h) => h.name).join(", ") })}
-            </p>
+            </InlineNotice>
           )}
           {kpis.turns.failed === null && (
-            <p className="text-muted-foreground text-sm">{t("home.olderDaemon")}</p>
+            <InlineNotice tone="info">{t("home.olderDaemon")}</InlineNotice>
           )}
           <Grid cols={{ base: 1, sm: 2, xl: 4 }} gap={4}>
             <KpiCard

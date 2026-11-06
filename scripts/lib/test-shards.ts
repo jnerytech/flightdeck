@@ -216,23 +216,7 @@ function filesOption(rest: string[], deps: ShardDeps): Set<string> | "all" | nul
 export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
   const [command, arg, ...rest] = argv;
   const shard = parseShard(arg ?? "");
-  const files = () => {
-    const listed = deps.git(["ls-files"]);
-    return listed === null ? null : testFiles(listed.split("\n").filter(Boolean));
-  };
-  if (command === "record" && argv.length > 1) {
-    const tracked = files();
-    if (tracked === null) return failed(deps);
-    const fresh: Timings = {};
-    for (const path of argv.slice(1)) Object.assign(fresh, parseTimes(deps.readFile(path)));
-    const merged = mergeTimings(deps.readTimings(), fresh, tracked);
-    deps.writeTimings(merged);
-    const timed = tracked.filter((file) => file in fresh).length;
-    deps.log(
-      `test-shards: ${timed} file(s) timed, ${Object.keys(merged).length} in the timing file`,
-    );
-    return 0;
-  }
+  if (command === "record" && argv.length > 1) return record(argv.slice(1), deps);
   const tiers = tierOption(rest);
   const chosen = filesOption(rest, deps);
   if (
@@ -244,22 +228,10 @@ export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
     deps.log(USAGE);
     return 2;
   }
-  const listed = files();
+  const listed = trackedTests(deps);
   if (listed === null) return failed(deps);
-  // A test no tier claims still runs, never silently dropped (the rule of test:related --tier).
-  const tierOf = tiers ? deps.tiers() : {};
-  // A listed name that is no tracked test is a stale or mistyped list: fail rather than guess.
-  if (chosen instanceof Set) {
-    const known = new Set(listed);
-    const unknown = [...chosen].filter((file) => !known.has(file));
-    if (unknown.length > 0) {
-      deps.log(`test-shards: --files names no tracked test file: ${unknown.join(", ")}`);
-      return 1;
-    }
-  }
-  const tracked = listed
-    .filter((file) => !tiers || tierOf[file] === undefined || tiers.includes(tierOf[file]))
-    .filter((file) => chosen === null || chosen === "all" || chosen.has(file));
+  const tracked = selected(listed, tiers, chosen, deps);
+  if (tracked === null) return 1;
   const timings = deps.readTimings();
   const mine = splitShards(tracked, timings, shard.count)[shard.index - 1] ?? [];
   if (command === "plan") {
@@ -278,17 +250,74 @@ export async function shards(argv: string[], deps: ShardDeps): Promise<number> {
   }
   const at = rest.indexOf("--junit");
   const junit = (at >= 0 ? rest[at + 1] : undefined) ?? `junit-${shard.index}.xml`;
+  return runBatches(mine, { shard: arg ?? "", junit }, deps);
+}
+
+/** Every tracked test file, or null when git cannot list the files. */
+function trackedTests(deps: ShardDeps): string[] | null {
+  const listed = deps.git(["ls-files"]);
+  return listed === null ? null : testFiles(listed.split("\n").filter(Boolean));
+}
+
+/** `record <junit.xml>...`: the times of these runs go into the timing file. */
+function record(reports: string[], deps: ShardDeps): number {
+  const tracked = trackedTests(deps);
+  if (tracked === null) return failed(deps);
+  const fresh: Timings = {};
+  for (const path of reports) Object.assign(fresh, parseTimes(deps.readFile(path)));
+  const merged = mergeTimings(deps.readTimings(), fresh, tracked);
+  deps.writeTimings(merged);
+  const timed = tracked.filter((file) => file in fresh).length;
+  deps.log(`test-shards: ${timed} file(s) timed, ${Object.keys(merged).length} in the timing file`);
+  return 0;
+}
+
+/**
+ * The tests a run is about: the tiers asked for, and the files of a selection. Null (after saying
+ * why) when the selection names a file that is no tracked test.
+ */
+function selected(
+  listed: string[],
+  tiers: string[] | null,
+  chosen: Set<string> | "all" | null,
+  deps: ShardDeps,
+): string[] | null {
+  // A test no tier claims still runs, never silently dropped (the rule of test:related --tier).
+  const tierOf = tiers ? deps.tiers() : {};
+  // A listed name that is no tracked test is a stale or mistyped list: fail rather than guess.
+  if (chosen instanceof Set) {
+    const known = new Set(listed);
+    const unknown = [...chosen].filter((file) => !known.has(file));
+    if (unknown.length > 0) {
+      deps.log(`test-shards: --files names no tracked test file: ${unknown.join(", ")}`);
+      return null;
+    }
+  }
+  return listed
+    .filter((file) => !tiers || tierOf[file] === undefined || tiers.includes(tierOf[file]))
+    .filter((file) => chosen === null || chosen === "all" || chosen.has(file));
+}
+
+/** Runs the files in batches of `bun test`; the worst exit code is the run's. */
+async function runBatches(
+  mine: string[],
+  report: { shard: string; junit: string },
+  deps: ShardDeps,
+): Promise<number> {
   const parts = batches(mine.map((file) => `./${file}`));
-  if (parts.length > 1) deps.log(`test-shards: shard ${arg} runs in ${parts.length} batches`);
+  if (parts.length > 1) {
+    deps.log(`test-shards: shard ${report.shard} runs in ${parts.length} batches`);
+  }
   // Every batch runs, so one failure never hides another; the worst exit code is the run's.
   let worst = 0;
   for (const [index, part] of parts.entries()) {
-    const code = await deps.bun([
+    const args = [
       ...bunTest(deps.platform),
       "--reporter=junit",
-      `--reporter-outfile=${batchReport(junit, index)}`,
+      `--reporter-outfile=${batchReport(report.junit, index)}`,
       ...part,
-    ]); // NOSONAR: sequential by design: one bun test at a time on the runner
+    ];
+    const code = await deps.bun(args); // NOSONAR: sequential by design: one bun test at a time on the runner
     worst = Math.max(worst, code);
   }
   return worst;

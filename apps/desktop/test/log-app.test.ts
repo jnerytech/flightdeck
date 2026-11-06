@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { AppLog, diagnosticsText, installGlobalLog } from "../src/lib/app-log.ts";
+import {
+  AppLog,
+  diagnosticsText,
+  installGlobalLog,
+  LOG_BURST,
+  LOG_QUEUE,
+} from "../src/lib/app-log.ts";
 import type { LogSink } from "../src/platform/types.ts";
 
 const NOW = Date.parse("2026-11-05T12:00:00Z");
@@ -14,7 +20,7 @@ const SECRETS = [
 function sink() {
   const written: string[] = [];
   const s: LogSink = {
-    write: async (line) => void written.push(line),
+    write: async (lines) => void written.push(...lines),
     tail: async () => [],
     openFolder: async () => {},
   };
@@ -22,21 +28,23 @@ function sink() {
 }
 
 describe("log-app: the app's log (issue #255)", () => {
-  test("a line carries its time, level and source, on one line", () => {
+  test("a line carries its time, level and source, on one line", async () => {
     const { s, written } = sink();
     const log = new AppLog({ sink: s, now: () => NOW });
     log.log("error", "host", "alfa went offline\nretrying in 5 s");
     log.log("info", "update", "no newer version");
+    await log.flush();
     expect(written).toEqual([
       "2026-11-05T12:00:00.000Z ERROR host alfa went offline retrying in 5 s",
       "2026-11-05T12:00:00.000Z INFO update no newer version",
     ]);
   });
 
-  test("no secret reaches the file or the memory: every line is redacted first", () => {
+  test("no secret reaches the file or the memory: every line is redacted first", async () => {
     const { s, written } = sink();
     const log = new AppLog({ sink: s, now: () => NOW });
     for (const secret of SECRETS) log.log("error", "host", `refused: ${secret}`);
+    await log.flush();
     expect(written).toHaveLength(SECRETS.length);
     expect(log.recent(50)).toHaveLength(SECRETS.length);
     const everything = [...written, ...log.recent(50)].join("\n");
@@ -53,7 +61,9 @@ describe("log-app: the app's log (issue #255)", () => {
   });
 
   test("the last lines are kept in memory, 200 at most, newest last", () => {
-    const log = new AppLog({ now: () => NOW });
+    // A second between lines: under the rate limit (#259), so every line is kept.
+    let clock = NOW;
+    const log = new AppLog({ now: () => (clock += 1000) });
     for (let i = 0; i < 250; i++) log.log("info", "t", `n${i}`);
     expect(log.recent(1000)).toHaveLength(200);
     expect(log.recent(3).map((l) => l.split(" ").pop())).toEqual(["n247", "n248", "n249"]);
@@ -63,8 +73,8 @@ describe("log-app: the app's log (issue #255)", () => {
   test("a message is cut to a sensible size, and a sink that fails does not break the app", async () => {
     const written: string[] = [];
     const failing: LogSink = {
-      write: async (line) => {
-        written.push(line);
+      write: async (lines) => {
+        written.push(...lines);
         throw new Error("disk full");
       },
       tail: async () => [],
@@ -88,7 +98,7 @@ describe("log-app: what the webview reports on its own", () => {
     };
   }
 
-  test("an error, an unhandled rejection and a console error become lines, and it can be taken off", () => {
+  test("an error, an unhandled rejection and a console error become lines, and it can be taken off", async () => {
     const { s, written } = sink();
     const log = new AppLog({ sink: s, now: () => NOW });
     const t = target();
@@ -106,6 +116,7 @@ describe("log-app: what the webview reports on its own", () => {
     (t.listeners.get("unhandledrejection") as (e: unknown) => void)({ reason: new Error("nope") });
     fakeConsole.error("a", { b: 1 });
     fakeConsole.warn("careful");
+    await log.flush();
     expect(written.map((l) => l.replace(/^\S+ /, ""))).toEqual([
       "ERROR window boom (app.js:7)",
       "ERROR rejection nope",
@@ -117,7 +128,174 @@ describe("log-app: what the webview reports on its own", () => {
     off();
     expect(t.listeners.size).toBe(0);
     fakeConsole.error("after");
+    await log.flush();
     expect(written).toHaveLength(4);
+  });
+});
+
+/** A sink whose writes wait until the test releases them, one call per batch (#259). */
+function heldSink() {
+  const calls: string[][] = [];
+  const pending: Array<{ ok: () => void; fail: () => void }> = [];
+  const s: LogSink = {
+    write: (lines) =>
+      new Promise<void>((ok, fail) => {
+        calls.push([...lines]);
+        pending.push({ ok, fail: () => fail(new Error("disk full")) });
+      }),
+    tail: async () => [],
+    openFolder: async () => {},
+  };
+  const release = async (how: "ok" | "fail" = "ok") => {
+    pending.shift()?.[how]();
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+  };
+  return { s, calls, release };
+}
+
+const body = (line: string | undefined) => (line ?? "").replace(/^\S+ /, "");
+
+describe("log-app: a log storm reaches neither the disk nor the IPC whole (issue #259)", () => {
+  test("the first line goes at once; what comes while it is written goes in one next call", async () => {
+    const held = heldSink();
+    const log = new AppLog({ sink: held.s, now: () => NOW });
+    log.log("info", "a", "one");
+    log.log("info", "b", "two");
+    log.log("info", "c", "three");
+    expect(held.calls.map((call) => call.map(body))).toEqual([["INFO a one"]]);
+    await held.release();
+    expect(held.calls.map((call) => call.map(body))).toEqual([
+      ["INFO a one"],
+      ["INFO b two", "INFO c three"],
+    ]);
+  });
+
+  test("a write that fails still lets the lines waiting behind it go", async () => {
+    const held = heldSink();
+    const log = new AppLog({ sink: held.s, now: () => NOW });
+    log.log("info", "a", "one");
+    log.log("info", "b", "two");
+    await held.release("fail");
+    expect(held.calls.map((call) => call.map(body))).toEqual([["INFO a one"], ["INFO b two"]]);
+  });
+
+  test("flush waits for every line to be written, and resolves at once with no sink", async () => {
+    const { s, written } = sink();
+    const log = new AppLog({ sink: s, now: () => NOW });
+    for (const word of ["one", "two", "three"]) log.log("info", word, word);
+    await log.flush();
+    expect(written.map(body)).toEqual(["INFO one one", "INFO two two", "INFO three three"]);
+    const bare = new AppLog({ now: () => NOW });
+    bare.log("info", "t", "x");
+    expect(await bare.flush()).toBeUndefined();
+  });
+
+  test("a source past its rate is cut and counted, without starving the others, and says so when it comes back", async () => {
+    const { s, written } = sink();
+    let clock = NOW;
+    const log = new AppLog({ sink: s, now: () => clock });
+    for (let i = 0; i < LOG_BURST + 30; i++) log.log("error", "console", `storm ${i}`);
+    log.log("warn", "host", "alfa: offline");
+    await log.flush();
+    expect([
+      written.filter((line) => line.includes(" console storm ")).length,
+      log.recent(1000).filter((line) => line.includes(" console storm ")).length,
+      written.some((line) => line.endsWith("WARN host alfa: offline")),
+    ]).toEqual([LOG_BURST, LOG_BURST, true]);
+    clock += 1000;
+    log.log("error", "console", "after the storm");
+    await log.flush();
+    expect(written.slice(-2).map(body)).toEqual([
+      "WARN app-log 30 lines of console dropped by the rate limit",
+      "ERROR console after the storm",
+    ]);
+    // A long quiet refills the source only up to its burst.
+    clock += 3_600_000;
+    const before = written.length;
+    for (let i = 0; i < LOG_BURST + 10; i++) log.log("info", "console", `again ${i}`);
+    await log.flush();
+    expect(written.slice(before).filter((line) => line.includes(" again "))).toHaveLength(
+      LOG_BURST,
+    );
+  });
+
+  test("a sink that cannot keep up holds a bounded queue and counts what it had to drop", async () => {
+    const held = heldSink();
+    const log = new AppLog({ sink: held.s, now: () => NOW });
+    // Each line from its own source: the queue, not the rate limit, is what fills.
+    for (let i = 0; i < LOG_QUEUE + 100; i++) log.log("info", `s${i}`, "x");
+    await held.release();
+    const second = held.calls[1] ?? [];
+    expect([held.calls.length, second.length, body(second[0]), body(second.at(-1))]).toEqual([
+      2,
+      LOG_QUEUE + 1,
+      "WARN app-log 99 lines dropped: the log file could not keep up",
+      `INFO s${LOG_QUEUE} x`,
+    ]);
+  });
+
+  test("a log made inside a log is dropped, not looped: a sink that reports through the console", async () => {
+    const written: string[] = [];
+    const printed: unknown[][] = [];
+    const fakeConsole = {
+      error: (...args: unknown[]) => void printed.push(args),
+      warn: (...args: unknown[]) => void printed.push(args),
+    };
+    let hops = 0;
+    const loud: LogSink = {
+      write: async (lines) => {
+        written.push(...lines);
+        // A sink that complains on the console, which the log forwards back to the sink. The
+        // test stops after a few hops, so the old code fails by assertion, not by the stack.
+        if (hops++ < 5) fakeConsole.error("write saw", lines.length);
+      },
+      tail: async () => [],
+      openFolder: async () => {},
+    };
+    const log = new AppLog({ sink: loud, now: () => NOW });
+    const t = { addEventListener: () => {}, removeEventListener: () => {} };
+    const off = installGlobalLog(t, log, fakeConsole);
+    fakeConsole.error("boom");
+    await log.flush();
+    off();
+    expect([written.map(body), log.recent(50).length, printed.length]).toEqual([
+      ["ERROR console boom"],
+      1,
+      2,
+    ]);
+  });
+
+  test("a scanner value that logs while a line is redacted does not loop either", async () => {
+    const { s, written } = sink();
+    let log: AppLog | null = null;
+    let asked = 0;
+    log = new AppLog({
+      sink: s,
+      now: () => NOW,
+      values: () => {
+        if (asked++ < 5) log?.log("warn", "vault", "read while redacting");
+        return [];
+      },
+    });
+    log.log("info", "t", "x");
+    await log.flush();
+    expect(written.map(body)).toEqual(["INFO t x"]);
+  });
+
+  test("installing twice on the same console forwards each call once", async () => {
+    const { s, written } = sink();
+    const log = new AppLog({ sink: s, now: () => NOW });
+    const t = { addEventListener: () => {}, removeEventListener: () => {} };
+    const fakeConsole = { error: (..._args: unknown[]) => {}, warn: (..._args: unknown[]) => {} };
+    const off = installGlobalLog(t, log, fakeConsole);
+    const again = installGlobalLog(t, log, fakeConsole);
+    fakeConsole.error("once");
+    again();
+    fakeConsole.warn("still on");
+    off();
+    fakeConsole.error("off");
+    await log.flush();
+    expect(written.map(body)).toEqual(["ERROR console once", "WARN console still on"]);
   });
 });
 
@@ -160,7 +338,7 @@ describe("log-segredos-app: the app's log knows the app's own secrets (issue #25
   const HOST_TOKEN = "Zk3fakehosttoken0123456789abcdefghijklmnop";
   const VAULT_VALUE = "Vx9fakevaultvalue0123456789";
 
-  test("values given to the log are removed, read at each line", () => {
+  test("values given to the log are removed, read at each line", async () => {
     const { s, written } = sink();
     let values: string[] = [];
     const log = new AppLog({ sink: s, now: () => NOW, values: () => values });
@@ -168,6 +346,7 @@ describe("log-segredos-app: the app's log knows the app's own secrets (issue #25
     expect(written[0]).toContain(HOST_TOKEN);
     values = [HOST_TOKEN];
     log.log("error", "host", `refused ${HOST_TOKEN}`);
+    await log.flush();
     expect(written[1]).toBe("2026-11-05T12:00:00.000Z ERROR host refused [redacted]");
     expect(log.recent(5).join("\n").split(HOST_TOKEN)).toHaveLength(2);
   });

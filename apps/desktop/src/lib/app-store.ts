@@ -135,6 +135,7 @@ import { externalRequestNotification, summaryNotifications } from "./notify.ts";
 import { pairingErrorText } from "./pairing-text.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
+import type { WorktreeFilter } from "./project-tree.ts";
 import { isHot } from "./quota.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
@@ -182,6 +183,7 @@ import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.t
 import { ThemeController } from "./theme.ts";
 import { loadTileLayout, saveTileLayout, type TileLayout } from "./tiles.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
+import { loadTreeFolded, saveTreeFolded } from "./tree-fold.ts";
 import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
 import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
 import type { ConflictChoice, ImportPreview, ImportResult } from "./vault-backup.ts";
@@ -321,6 +323,8 @@ export interface AppState {
   clientList: Client[];
   /** Phase 36: counts the saves of `store.roi`, so the screens that read its settings render again. */
   roiRevision: number;
+  /** The checkout picked in the sidebar tree: it narrows the board and the Sessions list (issue #116). */
+  worktreeFilter: WorktreeFilter | null;
   /** Phase 29: projects pinned to a client by hand (null: pinned to Unassigned). */
   clientOverrides: Record<string, string | null>;
   /** Phase 29: "all", "unassigned" or a client id; what the work screens show. */
@@ -382,6 +386,7 @@ export type HostCommandType = Extract<
   | `runenv.${string}`
   | "roots.add"
   | "history.get"
+  | "history.tool"
   | "host.bypass"
   | "logs.tail"
   | "host.sleep"
@@ -811,6 +816,37 @@ function sameJson(a: unknown, b: unknown): boolean {
   return a === b || JSON.stringify(a) === JSON.stringify(b);
 }
 
+/**
+ * What the setup checklist asks of a host: its hooks, GitHub only when asked, and its projects when
+ * they are not read yet. The projects are read for the checklist only: the list the screens use
+ * stays unopened, so a screen that reads a project's trust or branch does not change because Setup
+ * looked.
+ */
+function setupWants(
+  features: readonly string[] | undefined,
+  projectsRead: boolean,
+  githubAsked: boolean,
+) {
+  return {
+    hooks: hasFeature(features, "central", false),
+    github: githubAsked && hasFeature(features, "github", false),
+    projects: !projectsRead && hasFeature(features, "workflows", false),
+  };
+}
+
+/** The `permission.respond` request of an answer: only what the person gave goes in, and `held` rides on an allow only. */
+function permissionResponse(requestId: string, decision: "allow" | "deny", answer: Answer) {
+  const { updatedPermissions, message, updatedInput, held } = answer;
+  return {
+    requestId,
+    decision,
+    ...(updatedPermissions ? { updatedPermissions } : {}),
+    ...(message ? { message } : {}),
+    ...(updatedInput ? { updatedInput } : {}),
+    ...(decision === "allow" && held ? { held: true } : {}),
+  };
+}
+
 export class AppStore {
   private state: AppState;
   private readonly listeners = new Set<() => void>();
@@ -947,6 +983,7 @@ export class AppStore {
       projects: {},
       clientList: this.clients.list(),
       roiRevision: 0,
+      worktreeFilter: null,
       clientOverrides: this.clients.overrides(),
       clientSelection: loadSelection(platform.storage, this.clients.list()),
       clientBudgets: [],
@@ -1532,6 +1569,15 @@ export class AppStore {
     saveFolded(this.platform.storage, folded);
   }
 
+  /** The projects folded in the sidebar's tree (`hostId/projectId`); kept across starts. */
+  treeFolded(): string[] {
+    return loadTreeFolded(this.platform.storage);
+  }
+
+  setTreeFolded(folded: readonly string[]): void {
+    saveTreeFolded(this.platform.storage, folded);
+  }
+
   /** Whether a file of the host can be opened here: the app can, and the host runs on this machine. */
   canOpenPaths(hostId: string): boolean {
     const host = this.state.hosts.find((h) => h.id === hostId);
@@ -1672,8 +1718,8 @@ export class AppStore {
     for (const session of sessions) {
       try {
         if (!conn) throw new Error("offline");
-        await conn.request("session.resume", { sessionId: session.sessionId });
-        await conn.request("session.send", { sessionId: session.sessionId, text: CONTINUATION });
+        await conn.request("session.resume", { sessionId: session.sessionId }); // NOSONAR: sequential by design: a session is resumed before it is sent to, one session at a time
+        await conn.request("session.send", { sessionId: session.sessionId, text: CONTINUATION }); // NOSONAR: sequential by design: the continuation goes only after the resume answered
         result[session.sessionId] = { ok: true };
         markHandled(this.platform.storage, hostId, [offerKey(session)]);
       } catch (error) {
@@ -1815,6 +1861,11 @@ export class AppStore {
   /** Keeps a host's projects in the state: the palette lists them, and clients place them. */
   rememberProjects(hostId: string, projects: Project[]): void {
     this.update({ projects: { ...this.state.projects, [hostId]: projects } });
+  }
+
+  /** Picks the checkout the board and the Sessions list narrow to, or clears it. */
+  setWorktreeFilter(filter: WorktreeFilter | null): void {
+    this.update({ worktreeFilter: filter });
   }
 
   /** The key of a project of a host: the daemon's, else the one its folder would have. */
@@ -2261,13 +2312,12 @@ export class AppStore {
   async refreshSetup(hostId: string, options: { github?: boolean } = {}): Promise<void> {
     const host = this.state.hosts.find((h) => h.id === hostId);
     if (host?.status !== "online") return;
-    const features = host.hostInfo?.features;
-    const wantsHooks = hasFeature(features, "central", false);
-    const wantsGithub = options.github === true && hasFeature(features, "github", false);
-    // The projects are read for the checklist only: the list the screens use stays unopened, so a
-    // screen that reads a project's trust or branch does not change because Setup looked.
-    const wantsProjects =
-      hasFeature(features, "workflows", false) && this.state.projects[hostId] === undefined;
+    const wants = setupWants(
+      host.hostInfo?.features,
+      this.state.projects[hostId] !== undefined,
+      options.github === true,
+    );
+    const { hooks: wantsHooks, github: wantsGithub, projects: wantsProjects } = wants;
     if (!wantsHooks && !wantsGithub && !wantsProjects) return;
     const [hooks, github, projects] = await Promise.all([
       wantsHooks ? this.hostRequest(hostId, "hooks.status", {}) : null,
@@ -2432,7 +2482,8 @@ export class AppStore {
   private fail(error: unknown, text?: string, retry?: () => void): void {
     const code = error instanceof RequestError ? error.code : "";
     const message = error instanceof Error ? error.message : String(error);
-    this.appLog.log("error", "refusal", `${code ? `${code}: ` : ""}${text ?? message}`);
+    const prefix = code ? `${code}: ` : "";
+    this.appLog.log("error", "refusal", `${prefix}${text ?? message}`);
     const notice: Notice = { id: ++this.noticeSeq, kind: "error", code, text: text ?? message };
     if (error instanceof RequestError && error.reason) {
       notice.reason = error.reason;
@@ -2541,7 +2592,6 @@ export class AppStore {
     decision: "allow" | "deny",
     answer: Answer = {},
   ): Promise<void> {
-    const { updatedPermissions, message, updatedInput, held } = answer;
     if (this.unheld(hostId, requestId, decision, answer)) return;
     if (decision === "allow") startMeasure("approve");
     const question = this.vaultQuestions.get(requestId);
@@ -2549,14 +2599,9 @@ export class AppStore {
       question(decision === "allow" ? { scope: "once", via: "app" } : null);
     } else {
       try {
-        await this.connections.get(hostId)?.request("permission.respond", {
-          requestId,
-          decision,
-          ...(updatedPermissions ? { updatedPermissions } : {}),
-          ...(message ? { message } : {}),
-          ...(updatedInput ? { updatedInput } : {}),
-          ...(decision === "allow" && held ? { held: true } : {}),
-        });
+        await this.connections
+          .get(hostId)
+          ?.request("permission.respond", permissionResponse(requestId, decision, answer));
       } catch (error) {
         this.fail(error);
       }
@@ -2582,18 +2627,10 @@ export class AppStore {
   }
 
   respond(requestId: string, decision: "allow" | "deny", answer: Answer = {}): Promise<void> {
-    const { updatedPermissions, message, updatedInput, held } = answer;
     const hostId = this.state.selected?.hostId;
     if (hostId && this.unheld(hostId, requestId, decision, answer)) return Promise.resolve();
     return this.onSelected((conn) =>
-      conn.request("permission.respond", {
-        requestId,
-        decision,
-        ...(message ? { message } : {}),
-        ...(updatedPermissions ? { updatedPermissions } : {}),
-        ...(updatedInput ? { updatedInput } : {}),
-        ...(decision === "allow" && held ? { held: true } : {}),
-      }),
+      conn.request("permission.respond", permissionResponse(requestId, decision, answer)),
     );
   }
 

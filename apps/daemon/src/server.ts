@@ -368,6 +368,9 @@ const EXTERNAL_LINE: Record<ExternalStatus, SessionLine["state"]> = {
   ended: "ended",
 };
 
+/** The names a feature adds when the daemon has it. */
+const when = (has: unknown, ...names: string[]): string[] => (has ? names : []);
+
 /** What this daemon has, as `host.info` announces it; the app hides what is missing. */
 function featuresOf(opts: ServerOptions): string[] {
   return [
@@ -376,66 +379,68 @@ function featuresOf(opts: ServerOptions): string[] {
     // The sessions a restart interrupted can be listed (`session.interrupted`, issue #150).
     FEATURE_RESUME_OFFER,
     // The folder picker of the app browses the host's folders with `fs.dirs`.
-    ...(opts.fsDirs ? ["fs.dirs", "fs.files"] : []),
+    ...when(opts.fsDirs, "fs.dirs", "fs.files"),
     // A live managed session takes a new permission mode and model, and announces its slash commands.
-    ...(opts.sessionSettings ? ["session.settings", "session.effort"] : []),
+    ...when(opts.sessionSettings, "session.settings", "session.effort"),
     // A message may carry images (`session.send` with `images`).
     "session.images",
-    ...(opts.doctor ? ["doctor.run"] : []),
-    ...(opts.keepAwake ? ["keepAwake"] : []),
-    ...(opts.deps ? ["depsCheck"] : []),
-    ...(opts.projectTrust ? ["projectTrust"] : []),
-    ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
-    ...(opts.github ? ["github"] : []),
-    ...(opts.boardsync ? ["boardsync"] : []),
-    ...(opts.roi ? ["roi"] : []),
-    ...(opts.central ? ["central"] : []),
-    ...(opts.board ? ["workflows"] : []),
+    ...when(opts.doctor, "doctor.run"),
+    ...when(opts.keepAwake, "keepAwake"),
+    ...when(opts.deps, "depsCheck"),
+    ...when(opts.projectTrust, "projectTrust"),
+    ...when(opts.findProjects, "projects.scan", "projects.clone"),
+    ...when(opts.github, "github"),
+    ...when(opts.boardsync, "boardsync"),
+    ...when(opts.roi, "roi"),
+    ...when(opts.central, "central"),
+    ...when(opts.board, "workflows"),
     // Phase 24: the run.yaml of a card and its processes.
-    ...(opts.runenv && opts.board ? ["runenv"] : []),
-    ...(opts.maintenance ? ["maintenance"] : []),
-    ...(opts.fileLog ? ["logs"] : []),
-    ...(opts.resources ? ["resources"] : []),
-    ...(opts.worktrees ? ["worktrees"] : []),
-    ...(opts.quota ? ["quota"] : []),
-    ...(opts.account ? ["account"] : []),
+    ...when(opts.runenv && opts.board, "runenv"),
+    ...when(opts.maintenance, "maintenance"),
+    ...when(opts.fileLog, "logs"),
+    ...when(opts.resources, "resources"),
+    ...when(opts.worktrees, "worktrees"),
+    ...when(opts.quota, "quota"),
+    ...when(opts.account, "account"),
     // Project rules live in the board's projects.
-    ...(opts.board ? ["rules"] : []),
-    ...(opts.costs ? ["costs"] : []),
-    ...(opts.telemetry ? ["telemetry"] : []),
-    ...(opts.trace ? ["trace"] : []),
-    ...(opts.summary ? ["summary"] : []),
-    ...(opts.webhook ? ["webhook"] : []),
-    ...(opts.bg ? ["bg"] : []),
-    ...(opts.changes ? ["review"] : []),
+    ...when(opts.board, "rules"),
+    ...when(opts.costs, "costs"),
+    ...when(opts.telemetry, "telemetry"),
+    ...when(opts.trace, "trace"),
+    ...when(opts.summary, "summary"),
+    ...when(opts.webhook, "webhook"),
+    ...when(opts.bg, "bg"),
+    ...when(opts.changes, "review"),
     // Issue #506: the file explorer lists the folders of a session's repository.
-    ...(opts.files ? ["file.list"] : []),
+    ...when(opts.files, "file.list"),
+    // Issue #606: a stored tool call opens to its input and result, read from its transcript.
+    ...when(opts.history, "history.tool"),
     // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
-    ...(opts.snapshots && opts.rewinder && opts.forker ? ["checkpoints"] : []),
-    ...(opts.agentcfg && opts.mcp ? ["agentcfg"] : []),
-    ...(opts.memory ? ["memory"] : []),
-    ...(opts.plugins ? ["plugins"] : []),
+    ...when(opts.snapshots && opts.rewinder && opts.forker, "checkpoints"),
+    ...when(opts.agentcfg && opts.mcp, "agentcfg"),
+    ...when(opts.memory, "memory"),
+    ...when(opts.plugins, "plugins"),
     // Phase 13: the arena is the board's; issues and automations are services of their own.
-    ...(opts.board ? ["arena"] : []),
+    ...when(opts.board, "arena"),
     // Phase 31: card dependencies are the board's.
-    ...(opts.board ? ["deps"] : []),
-    ...(opts.issues ? ["issues"] : []),
-    ...(opts.automations ? ["automation"] : []),
-    ...(opts.autoApprove ? ["autoapprove"] : []),
+    ...when(opts.board, "deps"),
+    ...when(opts.issues, "issues"),
+    ...when(opts.automations, "automation"),
+    ...when(opts.autoApprove, "autoapprove"),
     // Phase 15: the app shows Conexões for hosts that keep ssh destinos.
-    ...(opts.ssh ? ["ssh"] : []),
+    ...when(opts.ssh, "ssh"),
     // Phase 17: the actions that use a vault secret without Claude seeing it.
-    ...(opts.actions ? ["actions"] : []),
+    ...when(opts.actions, "actions"),
     // Phase 18: saved commands and prompts of the host and its projects.
-    ...(opts.snippets ? ["snippets"] : []),
+    ...when(opts.snippets, "snippets"),
     // Phase 20: the engineering personas of the host and its projects.
-    ...(opts.personas ? ["personas"] : []),
+    ...when(opts.personas, "personas"),
     // Phase 21: messages between sessions, teams and the standard session names.
-    ...(opts.messaging ? ["messaging"] : []),
-    ...(opts.teams ? ["teams"] : []),
+    ...when(opts.messaging, "messaging"),
+    ...when(opts.teams, "teams"),
     // Phase 22: watching a card's PR and fixing it.
-    ...(opts.watch ? ["watch"] : []),
-    ...(opts.names ? ["names"] : []),
+    ...when(opts.watch, "watch"),
+    ...when(opts.names, "names"),
   ];
 }
 

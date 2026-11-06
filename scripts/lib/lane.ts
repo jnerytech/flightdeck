@@ -79,12 +79,12 @@ export async function runInLane(command: string[], deps: LaneDeps): Promise<numb
     } catch (error) {
       // A lane that cannot be used must not stop the work: run without it.
       deps.log(`light lane: the lock cannot be used (${String(error)}); running without it`);
-      return await deps.spawn(command).wait();
+      return await deps.spawn(command).wait(); // NOSONAR: the loop ends here: the command runs once and its result is returned
     }
     const { place, open, holders } = tried;
     if (place) {
       try {
-        return await deps.spawn(command).wait();
+        return await deps.spawn(command).wait(); // NOSONAR: the loop ends here: the command runs once and its result is returned
       } finally {
         release(place);
       }
@@ -94,6 +94,6 @@ export async function runInLane(command: string[], deps: LaneDeps): Promise<numb
       const who = holders.map(({ holder, lock }) => describeHolder(holder, lock.now()));
       deps.log(`light lane busy (${open} place(s) open): ${who.join("; ")}; waiting`);
     }
-    await deps.sleep(LANE_POLL_MS);
+    await deps.sleep(LANE_POLL_MS); // NOSONAR: sequential by design: a poll waits before it asks again
   }
 }
