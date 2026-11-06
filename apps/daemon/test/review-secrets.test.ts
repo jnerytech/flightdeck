@@ -326,6 +326,22 @@ describe("review-secrets: .git stays out of reach, by any spelling or link (#509
     expect(await Bun.file(join(repo, ".git", "config")).text()).toBe(config);
   });
 
+  test("a file that is not there yet is judged by the folder it would go in: a link into .git or out is refused", async () => {
+    const { repo, files } = setup();
+    await linkDir(join(repo, ".git"), join(repo, "meta"));
+    const outside = tempDir("fd-outside-");
+    await linkDir(outside, join(repo, "away"));
+    const hook = files.write("session:s-1", "meta/hooks/pre-commit", "echo hi\n", "");
+    expect(await outcome(hook)).toEqual({ code: "bad_request", reason: "review_path_outside" });
+    const away = files.write("session:s-1", "away/deep/new.txt", "x\n", "");
+    expect(await outcome(away)).toEqual({ code: "forbidden_cwd", reason: "review_path_link" });
+    const revert = files.revert("session:s-1", "meta/hooks/post-checkout", true);
+    expect(await outcome(revert)).toEqual({ code: "bad_request", reason: "review_path_outside" });
+    // A new file inside the repository is judged the same way and is not refused for it.
+    const fresh = files.write("session:s-1", "new/deep/file.txt", "x\n", "");
+    expect(await outcome(fresh)).toEqual({ code: "file_conflict", reason: "review_file_changed" });
+  });
+
   test("a link into .git is refused like .git itself", async () => {
     const { repo, files } = setup();
     await linkDir(join(repo, ".git"), join(repo, "meta"));
