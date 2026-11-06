@@ -2735,7 +2735,14 @@ Toda tela abre numa aba, como num navegador. Cada aba tem o próprio histórico 
 
 - **Abrir:** o clique normal troca a aba atual. `Ctrl+clique`, o botão do meio do mouse ou **Abrir
   em nova aba** (no menu do host e no menu de uma linha de sessão) abre uma nova. O botão **+** no
-  fim da barra abre uma aba nova na paleta `Ctrl+K`.
+  fim da barra abre uma aba nova na paleta `Ctrl+K`. Uma tela tem uma aba só: um link para uma
+  tela que outra aba já mostra (uma trilha, um link da página, reabrir um terminal rodando) vai
+  para essa aba em vez de abrir uma segunda.
+- **Todas as abas:** passando de oito abas, a seta no fim da barra abre a lista de todas: cada
+  linha tem o ícone da aba, o título numa linha só (o título inteiro na dica), o host e um botão
+  de fechar ao passar o mouse. A aba na tela tem uma barra à esquerda. Digite para filtrar; as
+  setas, `Home` e `End` movem o destaque, `Enter` vai para a aba e `Delete` a fecha. `Esc` ou um
+  clique fora fecha a lista.
 - **A barra:** cada aba mostra o ícone do tipo e o título, e um selo quando uma sessão nela
   precisa de você, está rodando ou respondeu sem nenhuma aba mostrando (**Não lida**). **Fixar**
   deixa a aba à esquerda, só com o ícone. Os botões de fixar, mover e fechar, depois das abas,

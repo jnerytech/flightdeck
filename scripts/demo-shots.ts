@@ -229,6 +229,19 @@ function shots(ids: DemoIds): Shot[] {
         await page.getByRole("button", { name: /^(Todas as abas|All tabs)$/ }).waitFor();
       },
     },
+    // The list of all tabs open over that strip (#576): icons, hosts, the active one marked.
+    {
+      name: "abas-lista",
+      route: { name: "hub" },
+      async prepare(page) {
+        for (let i = 0; i < 20; i++) {
+          await page.keyboard.press("Control+t");
+          await page.keyboard.press("Escape");
+        }
+        await page.getByRole("button", { name: /^(Todas as abas|All tabs)$/ }).click();
+        await page.getByRole("listbox", { name: /^(Todas as abas|All tabs)$/ }).waitFor();
+      },
+    },
     { name: "board", route: { name: "board", host: ALFA, projectId: ids.project } },
     {
       name: "card",

@@ -4,7 +4,6 @@ import {
   ArrowRight,
   BookOpen,
   Bot,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Circle,
@@ -31,6 +30,7 @@ import {
 import { IconTip } from "@/components/feedback/icon-tip";
 import { CacheTimer } from "@/components/hub/cache-timer";
 import { NAV_ICONS } from "@/components/nav-icons";
+import { TabOverflow } from "@/components/tabs/tab-overflow";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -325,20 +325,25 @@ export function TabBar(
         </Button>
       )}
       {compact && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="tab-tool" aria-label={t("tabs.all")}>
-              <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="max-h-96 overflow-y-auto">
-            {tabs.tabs.map((tab) => (
-              <DropdownMenuItem key={tab.id} onSelect={() => tabs.activate(tab.id)}>
-                {title(tab, state, store)}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <TabOverflow
+          t={t}
+          rows={tabs.tabs.map((tab) => {
+            const route = tab.router.current;
+            const kind = tabKind(route);
+            const host = "host" in route ? route.host : undefined;
+            return {
+              id: tab.id,
+              title: title(tab, state, store),
+              host: state.hosts.find((h) => h.id === host)?.name ?? "",
+              icon: ICONS[kind],
+              kind,
+              current: tab.id === tabs.activeId,
+              pinned: tab.pinned,
+            };
+          })}
+          onPick={(id) => tabs.activate(id)}
+          onClose={(id) => store.closeTab(tabs, id)}
+        />
       )}
       {active && (
         <DropdownMenu>
