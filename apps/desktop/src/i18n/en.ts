@@ -787,6 +787,31 @@ export const en: Dictionary = {
     deleteConfirm: "Delete card",
     discardInstead: "Discard card",
   },
+  statusBar: {
+    label: "Status bar",
+    refreshQuota: "Refresh the plan usage",
+    refreshingQuota: "Refreshing the plan usage…",
+    keepAwake: {
+      holding: "Keep awake: holding the computer awake now",
+      on: "Keep awake: on, the computer stays awake while sessions run",
+      off: "Keep awake: off",
+    },
+    keepAwakeShort: { holding: "Awake", on: "Keep awake", off: "Sleep ok" },
+    terminals: "{n} open terminals",
+    terminalsOne: "1 open terminal",
+    hosts: "{online} of {total} hosts online",
+    hostsOne: "{online} of 1 host online",
+    update: {
+      available: "App update {version} available: open Settings",
+      ready: "Restart to finish updating to {version}: open Settings",
+      failed: "The last update check failed: open Settings",
+    },
+    updateShort: {
+      available: "Update {version}",
+      ready: "Restart to update",
+      failed: "Update failed",
+    },
+  },
   shell: {
     quotaLabel: "Plan quota {state}: {window} at {percent}% on {host}, resets in {remaining}",
     quotaLabelNoReset: "Plan quota {state}: {window} at {percent}% on {host}",

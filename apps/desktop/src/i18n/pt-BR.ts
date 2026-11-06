@@ -783,6 +783,31 @@ export const ptBR = {
     deleteConfirm: "Excluir card",
     discardInstead: "Descartar card",
   },
+  statusBar: {
+    label: "Barra de status",
+    refreshQuota: "Atualizar o consumo do plano",
+    refreshingQuota: "Atualizando o consumo do plano…",
+    keepAwake: {
+      holding: "Manter acordado: segurando o computador acordado agora",
+      on: "Manter acordado: ligado, o computador fica acordado enquanto há sessões",
+      off: "Manter acordado: desligado",
+    },
+    keepAwakeShort: { holding: "Acordado", on: "Manter acordado", off: "Pode dormir" },
+    terminals: "{n} terminais abertos",
+    terminalsOne: "1 terminal aberto",
+    hosts: "{online} de {total} hosts online",
+    hostsOne: "{online} de 1 host online",
+    update: {
+      available: "Atualização {version} do app disponível: abrir as Configurações",
+      ready: "Reinicie para terminar de atualizar para {version}: abrir as Configurações",
+      failed: "A última verificação de atualização falhou: abrir as Configurações",
+    },
+    updateShort: {
+      available: "Atualização {version}",
+      ready: "Reiniciar para atualizar",
+      failed: "Falha na atualização",
+    },
+  },
   shell: {
     quotaLabel: "Cota do plano {state}: {window} em {percent}% em {host}, renova em {remaining}",
     quotaLabelNoReset: "Cota do plano {state}: {window} em {percent}% em {host}",
