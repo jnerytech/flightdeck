@@ -4080,6 +4080,9 @@ export const ptBR = {
     failed: "Falhou",
     addFolder: "Adicionar pasta",
     groups: { required: "Obrigatórias", optional: "Opcionais", checks: "Verificações" },
+    counts: "OK: {ok} · Avisos: {warn} · Problemas: {error}",
+    okFolded: "{n} funcionando",
+    okList: "Funcionando",
   },
   hostDeps: {
     installPage: "Página de instalação",

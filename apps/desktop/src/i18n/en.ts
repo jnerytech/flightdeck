@@ -4074,6 +4074,9 @@ export const en: Dictionary = {
     failed: "Failed",
     addFolder: "Add folder",
     groups: { required: "Required", optional: "Optional", checks: "Checks" },
+    counts: "OK: {ok} · Warnings: {warn} · Problems: {error}",
+    okFolded: "{n} working",
+    okList: "Working",
   },
   hostDeps: {
     installPage: "Install page",
