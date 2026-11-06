@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { claudeSettingsEnv } from "../src/terminal/claude-settings-env.ts";
+import { tempDir } from "./helpers.ts";
 
 const dirs: string[] = [];
 afterEach(async () => {
@@ -10,7 +10,7 @@ afterEach(async () => {
 });
 
 async function settingsFile(text: string | null): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), "fd-claude-env-"));
+  const dir = tempDir("fd-claude-env-");
   dirs.push(dir);
   const file = join(dir, "settings.json");
   if (text !== null) await writeFile(file, text);
