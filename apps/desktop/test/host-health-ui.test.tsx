@@ -372,7 +372,12 @@ describe("host-health-ui: the folded list reads as a table and opens from a real
     expect({
       list: /grid-template-columns:[^;]*max-content/.test(utility("dep-compact-list")),
       row: utility("dep-compact").includes("grid-template-columns: subgrid"),
-    }).toEqual({ list: true, row: true });
+      // A webview without subgrid (Chromium before 117) gets fixed columns instead.
+      fallback:
+        /@supports not \(grid-template-columns: subgrid\) \{\s*grid-template-columns: 1rem minmax\(0, 14rem\)/.test(
+          utility("dep-compact"),
+        ),
+    }).toEqual({ list: true, row: true, fallback: true });
   });
 
   test("an optional tool that is not installed is muted, not a green OK, and not counted as OK", () => {
