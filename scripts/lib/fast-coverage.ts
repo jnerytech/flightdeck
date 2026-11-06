@@ -3,10 +3,22 @@
  * at 100% stays so. `fast-coverage-baseline.json` lists those files and only grows, so coverage
  * never moves quietly from the cheap tiers to the slow ones.
  */
+import { byCodeUnit } from "@flightdeck/protocol";
+import { parseLcov } from "./coverage-check.ts";
 
 /** The source files an lcov report covers at 100% lines and functions, sorted. */
-export function fullyCovered(_lcov: string, _sources: readonly string[]): string[] {
-  return [];
+export function fullyCovered(lcov: string, sources: readonly string[]): string[] {
+  const report = parseLcov(lcov);
+  return sources
+    .filter((path) => {
+      const file = report.get(path);
+      return (
+        file !== undefined &&
+        file.functions[0] >= file.functions[1] &&
+        file.lines[0] >= file.lines[1]
+      );
+    })
+    .sort(byCodeUnit);
 }
 
 export interface FastCoverageVerdict {
@@ -18,8 +30,13 @@ export interface FastCoverageVerdict {
 
 /** The fast tiers' covered files against the baseline. */
 export function fastCoverageVerdict(
-  _covered: readonly string[],
-  _baseline: readonly string[],
+  covered: readonly string[],
+  baseline: readonly string[],
 ): FastCoverageVerdict {
-  return { dropped: [], gained: [] };
+  const now = new Set(covered);
+  const listed = new Set(baseline);
+  return {
+    dropped: baseline.filter((path) => !now.has(path)).sort(byCodeUnit),
+    gained: covered.filter((path) => !listed.has(path)).sort(byCodeUnit),
+  };
 }
