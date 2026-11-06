@@ -5,6 +5,10 @@
 pub mod keys;
 pub mod guard;
 pub mod anthropic;
+pub mod openrouter;
+
+#[cfg(test)]
+mod test_server;
 
 use keys::Secret;
 use serde::Serialize;
