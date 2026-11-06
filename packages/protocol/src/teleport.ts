@@ -43,6 +43,7 @@ export const TeleportManifestSchema = z.object({
       branch: z.string().max(255).nullable(),
       head: z.string().regex(/^[0-9a-f]{40,64}$/),
       base: z.string().min(1).max(255),
+      baseSha: z.string().regex(/^[0-9a-f]{40,64}$/),
       ref: z.string().min(1).max(255),
       ahead: Count,
       changed: Count,
@@ -81,6 +82,8 @@ export interface TeleportManifest {
     branch: string | null;
     head: string;
     base: string;
+    /** The commit `base` named on the source: the target checks its origin has it. */
+    baseSha: string;
     ref: string;
     ahead: number;
     changed: number;
