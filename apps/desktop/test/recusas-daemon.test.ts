@@ -144,6 +144,8 @@ const REASONS = [
   "teleport_no_remote",
   "teleport_git",
   "teleport_stopped",
+  "teleport_incomplete",
+  "teleport_corrupt",
   "session_ended",
   "session_not_ended",
   "personas_off",
