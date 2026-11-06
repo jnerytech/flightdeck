@@ -313,6 +313,9 @@ export const KEY_REGIONS: RegionRule[] = [
 ];
 
 /** The floating boxes of the bottom-right corner keep clear of each other and of the status bar (#581). */
+/** The floating boxes the gap rules measure: `waitForStable` waits for them to hold still (#655). */
+export const GAP_BOXES = "";
+
 export const GAPS: GapRule[] = [
   { above: "[data-sonner-toast]", below: '[data-slot="status-bar"]', min: 8 },
   { above: "[data-sonner-toast]", below: '[data-slot="update-card"]', min: 8 },
@@ -380,7 +383,7 @@ export interface Settled {
  * It replaces the fixed waits that guards used to take a layout that settles late (issue #192).
  */
 export async function waitForStable(
-  options: { frames?: number; maxMs?: number } = {},
+  options: { frames?: number; maxMs?: number; boxes?: string } = {},
 ): Promise<Settled> {
   const wanted = options.frames ?? 3;
   const until = Date.now() + (options.maxMs ?? 5000);
