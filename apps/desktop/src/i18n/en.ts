@@ -11,6 +11,13 @@ export const en: Dictionary = {
     many: "{n} accounts",
     manyHint: "One per host",
     plan: "{plan} plan",
+    version: "Version {version}",
+    copyPlan: "Copy the plan: {value}",
+    copyAccount: "Copy the account: {value}",
+    copyHost: "Copy the host id: {value}",
+    compact: "Compact rows",
+    checkUpdates: "Check for updates",
+    shortcuts: "Keyboard shortcuts",
     signOutGithub: "Sign out of GitHub",
     signOutGithubHost: "Sign out of GitHub ({host})",
     signOutGithubConfirm:

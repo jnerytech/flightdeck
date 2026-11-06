@@ -13,6 +13,13 @@ export const ptBR = {
     many: "{n} contas",
     manyHint: "Uma por host",
     plan: "Plano {plan}",
+    version: "Versão {version}",
+    copyPlan: "Copiar o plano: {value}",
+    copyAccount: "Copiar a conta: {value}",
+    copyHost: "Copiar o id do host: {value}",
+    compact: "Linhas compactas",
+    checkUpdates: "Procurar atualizações",
+    shortcuts: "Atalhos de teclado",
     signOutGithub: "Sair do GitHub",
     signOutGithubHost: "Sair do GitHub ({host})",
     signOutGithubConfirm:
