@@ -16,3 +16,6 @@
   `lib/model-menu.ts`. A session that runs a pinned version shows it checked under "More models",
   and no alias above. The names are read from the id (`claude-opus-5-5` is "Opus 5.5"), so a model
   the list does not know still has a readable chip.
+- **A persona's effort is a default, not a cap.** Unlike the persona's permission mode, which only
+  ever lowers the session's, the effort a persona suggests is where the session starts; the person
+  can raise or lower it from the chip. The security review asked for this to be written down.
