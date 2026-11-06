@@ -29,8 +29,8 @@ const ANSWER = {
   notices: [] as string[],
 };
 
-/** The New card dialog of a project's board, with an assistant that answers by the kind it is asked. */
-async function newCardDialog(options: { language?: "en" | "pt-BR"; configured?: boolean } = {}) {
+/** A project's board, with an assistant that answers by the kind it is asked. */
+async function openBoard(options: { language?: "en" | "pt-BR"; configured?: boolean } = {}) {
   const language = options.language ?? "en";
   const t = language === "en" ? en : ptBR;
   const d = makeDaemon(cleanups);
@@ -65,11 +65,39 @@ async function newCardDialog(options: { language?: "en" | "pt-BR"; configured?: 
     store.router.push({ name: "board", host: hostId, projectId: project?.id ?? "" });
   });
   await settle(() => screen.queryByRole("button", { name: t.kanban.newCard }) !== null);
+  return { store, fake, t, hostId, projectId: project?.id ?? "" };
+}
+
+/** The New card dialog of a project's board. */
+async function newCardDialog(options: { language?: "en" | "pt-BR"; configured?: boolean } = {}) {
+  const board = await openBoard(options);
   await act(async () => {
-    fireEvent.click(screen.queryByRole("button", { name: t.kanban.newCard }) as HTMLElement);
+    fireEvent.click(screen.queryByRole("button", { name: board.t.kanban.newCard }) as HTMLElement);
   });
-  expect(screen.queryByRole("dialog", { name: t.kanban.newCard })).not.toBeNull();
-  return { store, fake, t };
+  expect(screen.queryByRole("dialog", { name: board.t.kanban.newCard })).not.toBeNull();
+  return board;
+}
+
+/** The detail of a card with a title and a description, open on its fields. */
+async function cardDetail(
+  options: { language?: "en" | "pt-BR"; configured?: boolean } = {},
+  card = { title: "Ship the cart", description: "Sum the items." },
+) {
+  const board = await openBoard(options);
+  const made = await board.store.hostCommand(board.hostId, "card.create", {
+    projectId: board.projectId,
+    ...card,
+  });
+  await act(async () => {
+    board.store.router.push({
+      name: "card",
+      host: board.hostId,
+      projectId: board.projectId,
+      cardId: made?.id ?? "",
+    });
+  });
+  await settle(() => field(board.t.cardUi.title) !== null);
+  return { ...board, cardId: made?.id ?? "" };
 }
 
 const field = (label: string) => screen.queryByLabelText(label) as HTMLInputElement | null;
@@ -172,5 +200,80 @@ describe("assistant-fields: the New card dialog (issue #160)", () => {
     await type(t.kanban.descriptionLabel, "Somar os itens.");
     expect(screen.queryByRole("button", { name: "Escrever com IA" })).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Melhorar com IA" })).not.toBeNull();
+  });
+});
+
+describe("assistant-fields: the detail of a card (issue #160)", () => {
+  test("the title is improved with the description as context; Accept fills the field and saves nothing", async () => {
+    const { store, fake, t } = await cardDetail(
+      {},
+      { title: "Cart", description: "Sum the items." },
+    );
+    const sent: string[] = [];
+    const real = store.hostCommand.bind(store);
+    store.hostCommand = (async (hostId, type, payload) => {
+      sent.push(type);
+      return real(hostId, type, payload);
+    }) as typeof store.hostCommand;
+    await type(t.cardUi.title, "ship the crat");
+    const wands = screen.queryAllByRole("button", { name: /with AI/ });
+    expect(wands).toHaveLength(2);
+    await act(async () => {
+      fireEvent.click(wands[0] as HTMLElement);
+    });
+    await settle(() => screen.queryByRole("dialog", { name: "AI suggestion" }) !== null);
+    const request = JSON.stringify(asked(fake).at(-1)?.[1]);
+    expect(request).toContain("title of a work card");
+    expect(request).toContain('<context name=\\"description\\">\\nSum the items.');
+    await click("Accept");
+    expect(field(t.cardUi.title)?.value).toBe("Ship the cart");
+    expect(sent).not.toContain("card.update");
+    expect(
+      screen.queryByRole("button", { name: t.cardUi.saveTitle })?.hasAttribute("disabled"),
+    ).toBe(false);
+  });
+
+  test("the description is improved with the title as context, and Save keeps it", async () => {
+    const { store, fake, t } = await cardDetail();
+    const updates: unknown[] = [];
+    const real = store.hostCommand.bind(store);
+    store.hostCommand = (async (hostId, type, payload) => {
+      if (type === "card.update") updates.push(payload);
+      return real(hostId, type, payload);
+    }) as typeof store.hostCommand;
+    await type(t.cardUi.description, "sum the itmes");
+    const wands = screen.queryAllByRole("button", { name: /with AI/ });
+    expect(wands[1]).toBeDefined();
+    await act(async () => {
+      fireEvent.click(wands[1] as HTMLElement);
+    });
+    await settle(() => screen.queryByRole("dialog", { name: "AI suggestion" }) !== null);
+    const request = JSON.stringify(asked(fake).at(-1)?.[1]);
+    expect(request).toContain("description of a work card");
+    expect(request).toContain('<context name=\\"title\\">\\nShip the cart');
+    await click("Accept");
+    expect(field(t.cardUi.description)?.value).toBe("Sum the items; check the totals.");
+    await click(t.cardUi.saveDescription);
+    expect(updates).toEqual([
+      expect.objectContaining({ description: "Sum the items; check the totals." }),
+    ]);
+  });
+
+  test("using the wand in the detail does not leave the screen, and with no provider it opens Settings", async () => {
+    const { store, fake, t } = await cardDetail({ configured: false });
+    await type(t.cardUi.title, "ship the crat");
+    const wand = screen.queryAllByRole("button", { name: /with AI/ })[0];
+    expect(wand).toBeDefined();
+    await act(async () => {
+      fireEvent.click(wand as HTMLElement);
+    });
+    expect(store.router.current).toEqual({ name: "settings", section: "assistant" });
+    expect(asked(fake)).toHaveLength(0);
+  });
+
+  test("it reads in Portuguese", async () => {
+    const { t } = await cardDetail({ language: "pt-BR" });
+    await type(t.cardUi.title, "enviar o carrinho");
+    expect(screen.queryAllByRole("button", { name: "Melhorar com IA" }).length).toBe(2);
   });
 });

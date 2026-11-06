@@ -31,6 +31,8 @@ export const CardDetail = memo(function CardDetail(props: {
   cardId: string;
   /** Opened from the menu's Edit…: the title field takes focus. */
   edit?: boolean;
+  /** Opens Settings, section Assistant (the wand found no provider). */
+  onOpenSettings(): void;
   onBack(): void;
 }) {
   const t = useT();
@@ -168,6 +170,7 @@ export const CardDetail = memo(function CardDetail(props: {
           card={card}
           {...(props.edit !== undefined ? { edit: props.edit } : {})}
           withRoi={withRoi}
+          onOpenSettings={props.onOpenSettings}
         />
         {/* Details, then what the card waits for, then how it runs (issue #174). */}
         {withDeps && (

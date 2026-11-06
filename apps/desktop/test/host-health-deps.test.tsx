@@ -79,10 +79,13 @@ describe("host-health-deps: the dependencies of a host", () => {
     render(view);
     const section = screen.getByRole("region", { name: "Health & dependencies" });
     expect(within(section).getByText("1 required missing")).not.toBeNull();
+    // The groups list what needs the person; what is fine is folded under Working (#640).
     const required = within(section).getByRole("list", { name: "Required" });
-    expect(within(required).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(required).getAllByRole("listitem")).toHaveLength(2);
     const optional = within(section).getByRole("list", { name: "Optional" });
-    expect(within(optional).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(optional).getAllByRole("listitem")).toHaveLength(1);
+    const working = within(section).getByRole("list", { name: "Working" });
+    expect(within(working).getAllByRole("listitem")).toHaveLength(2);
     const row = (name: string) => within(section).getByRole("listitem", { name });
     expect(row("Claude Code").textContent).toContain("OK");
     expect(row("Git").textContent).toContain("Outdated");
