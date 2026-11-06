@@ -910,6 +910,24 @@ export async function layout(c: Context, problems: string[]) {
       );
     }
   }
+  // Issue #173: a session opens at its end and stays there while the page settles, so a pending
+  // request is whole above the composer. Nothing scrolls the page before the measure.
+  await c.page.setViewportSize({ width: 1280, height: 800 });
+  await open(c, { name: "session", host: ALFA, id: c.ids.waitingSession });
+  const pinned = await c.page.evaluate(() => {
+    const box = document.querySelector<HTMLElement>("[data-slot='timeline']");
+    if (!box) return "no timeline";
+    if (box.scrollTop + box.clientHeight < box.scrollHeight - 24) {
+      return `the timeline is not at its end (${Math.round(box.scrollTop + box.clientHeight)} of ${box.scrollHeight})`;
+    }
+    const card = box.querySelector<HTMLElement>("[data-request-id]")?.getBoundingClientRect();
+    const edge = box.getBoundingClientRect();
+    if (card && (card.top < edge.top - 1 || card.bottom > edge.bottom + 1)) {
+      return `the request card (${Math.round(card.top)}..${Math.round(card.bottom)}) is cut by the timeline (${Math.round(edge.top)}..${Math.round(edge.bottom)})`;
+    }
+    return null;
+  });
+  if (pinned) problems.push(`${c.lang} waiting session: ${pinned}`);
   // Issue #225: in a split, each area's tab bar keeps its height (it grew to half the area). Only
   // the bars' tablists are counted (a screen may have tabs of its own), and the split is always
   // closed again, so the next language starts with one area.
