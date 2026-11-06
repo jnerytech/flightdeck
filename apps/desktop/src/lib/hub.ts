@@ -1,5 +1,6 @@
 import type {
   ExternalStatus,
+  HistorySessionSummary,
   SessionLine,
   SessionMeta,
   SessionPersona,
@@ -277,29 +278,44 @@ export function hubRows(state: HubRowState): HubRow[] {
           persona: null,
         };
       });
-    const externals = Object.entries(state.externals)
-      .filter(([key, s]) => key.startsWith(`${host.id}/`) && !seen.has(s.claudeSessionId))
-      .map(([, s]): HubRow => {
-        const { name, ...common } = base(s.claudeSessionId, s.cwd ?? "", s.projectKey);
-        return {
-          ...common,
-          key: `${host.id}/e/${s.claudeSessionId}`,
-          origin: "terminal",
-          sessionId: null,
-          title: rowTitle({
-            name,
-            title: null,
-            persona: s.persona ?? null,
-            request: s.summary?.request ?? null,
-            cwd: s.cwd ?? s.claudeSessionId,
-          }),
-          state: EXTERNAL[s.status],
-          controllable: s.controllable,
-          lastActivity: s.lastEventAt,
-          summary: s.summary ?? null,
+    const terminal = Object.entries(state.externals).filter(
+      ([key, s]) => key.startsWith(`${host.id}/`) && !seen.has(s.claudeSessionId),
+    );
+    // A terminal session sits under its transcript's project, which the history knows; the
+    // terminal's own folder follows the session wherever it went (#583).
+    const transcripts = new Map<string, HistorySessionSummary>();
+    if (terminal.length > 0) {
+      const ids = new Set(terminal.map(([, s]) => s.claudeSessionId));
+      for (const h of data.history)
+        if (ids.has(h.claudeSessionId)) transcripts.set(h.claudeSessionId, h);
+    }
+    const externals = terminal.map(([, s]): HubRow => {
+      const transcript = transcripts.get(s.claudeSessionId);
+      const cwd = transcript?.cwd ?? s.cwd ?? "";
+      const { name, ...common } = base(
+        s.claudeSessionId,
+        cwd,
+        transcript ? transcript.projectKey : s.projectKey,
+      );
+      return {
+        ...common,
+        key: `${host.id}/e/${s.claudeSessionId}`,
+        origin: "terminal",
+        sessionId: null,
+        title: rowTitle({
+          name,
+          title: null,
           persona: s.persona ?? null,
-        };
-      });
+          request: s.summary?.request ?? null,
+          cwd: cwd || s.claudeSessionId,
+        }),
+        state: EXTERNAL[s.status],
+        controllable: s.controllable,
+        lastActivity: s.lastEventAt,
+        summary: s.summary ?? null,
+        persona: s.persona ?? null,
+      };
+    });
     const history = data.history
       .filter((s) => !seen.has(s.claudeSessionId))
       .map((s): HubRow => {
