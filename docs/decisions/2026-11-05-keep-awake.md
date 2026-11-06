@@ -6,3 +6,14 @@
 - **Failure is a reason, not an error**: no inhibitor on the machine, an unknown system, a holder that cannot start or that ended. The status carries the code and the page words it in both languages. After a failure the daemon does not retry until the sessions stop and begin again, so a broken `systemd-inhibit` is not spawned on every status change.
 - **Not done**: the tray tooltip and a status bar segment of the issue (the status bar belongs to #118), and the macOS lid.
 - **WSL holds nothing (review of #163).** A daemon inside WSL has `platform` linux, but an inhibitor there holds the WSL machine only and Windows sleeps anyway. On a WSL kernel (`detectWsl`) the reason is `wsl` and nothing is started; the person turns it on for the Windows host, which is the one that must stay awake. The WSL daemon is a separate daemon with its own sessions, so the Windows daemon's count never includes them.
+
+## Security review (2026-11-06)
+
+- Tests touch nothing real: with the suite's `FLIGHTDECK_SERVICE_GUARD` set, `osPowerContext()`
+  starts no holder (as if no inhibitor could start). Only the keep-awake tests pass their own
+  context or call `spawnHolder`.
+- `host.keepAwake` is open to any authenticated client, with no confirmation and no transport
+  rule, like the host's other switches: its only effect is whether the host may sleep.
+- Left as it is: two `host.keepAwake` calls at the same instant both write the config through the
+  same temporary file, so the file may keep either value. The switch is one person's click, and
+  the next change rewrites it.
