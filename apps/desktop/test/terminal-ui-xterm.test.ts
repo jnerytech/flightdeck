@@ -46,7 +46,7 @@ function setup(initial = "", clipboardFails = false, windows = false) {
   let keyHandler: (event: KeyboardEvent) => boolean = () => true;
   let linkProvider: XtermLinkProvider | null = null;
   const lines: string[] = [];
-  const paths: string[] = [];
+  const paths: Array<[string, unknown]> = [];
   let wheelHandler: (event: WheelEvent) => boolean = () => true;
   const zooms: string[] = [];
   const addons: unknown[] = [];
@@ -158,7 +158,7 @@ function setup(initial = "", clipboardFails = false, windows = false) {
     onSearch: () => void searches++,
     onFindResults: (results) => void found.push(results),
     onLink: (uri) => void linked.push(uri),
-    onPath: (path) => void paths.push(path),
+    onPath: (path, at) => void paths.push([path, at]),
     onZoom: (step) => void zooms.push(step),
   });
   const press = (key: string, ctrl = true, shift = true) =>
@@ -415,7 +415,17 @@ describe("terminal-ui: the xterm screen", () => {
       ["src/a.ts:3", { start: { x: 5, y: 2 }, end: { x: 14, y: 2 } }],
     ]);
     links?.[0]?.activate({} as MouseEvent, "src/a.ts:3");
-    expect(s.paths).toEqual(["src/a.ts"]);
+    expect(s.paths).toEqual([["src/a.ts", { line: 3 }]]);
+  });
+
+  test("a path printed without a line hands on no position (#506)", async () => {
+    const s = setup();
+    s.showLines("wrote ./notes/b.md:4:2 and /x/y.md");
+    for (const link of (await s.linksOn(1)) ?? []) link.activate({} as MouseEvent, link.text);
+    expect(s.paths).toEqual([
+      ["./notes/b.md", { line: 4, col: 2 }],
+      ["/x/y.md", undefined],
+    ]);
   });
 
   test("on a row with wide characters the link still sits over the path's own cells (issue #476)", async () => {

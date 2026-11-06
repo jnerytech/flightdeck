@@ -14,6 +14,15 @@ describe("terminal-paths: file paths in the terminal's output are links (issue #
     expect([first?.start, first?.end]).toEqual([7, 22]);
   });
 
+  test("the line and column printed after a path are read, for a viewer that opens at them (#506)", () => {
+    const found = findPaths("Edited src/app.ts:12:5, ./notes and /x/y.md:7");
+    expect(found.map((one) => [one.path, one.line, one.column])).toEqual([
+      ["src/app.ts", 12, 5],
+      ["./notes", undefined, undefined],
+      ["/x/y.md", 7, undefined],
+    ]);
+  });
+
   test("absolute paths on Windows and elsewhere, without the punctuation after them", () => {
     expect(linked("see C:\\repo\\a.md, then /home/ana/x.log.")).toEqual([
       ["C:\\repo\\a.md", "C:\\repo\\a.md"],
