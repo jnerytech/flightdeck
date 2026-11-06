@@ -263,11 +263,11 @@ describe("hub-ui", () => {
     await setup();
     expect(group("central")).toEqual(["repo-ask", "repo-run", "Gerenciada", "Do histórico"]);
     const ask = item("repo-ask") as HTMLElement;
-    // Needs you is an amber dot in a 32 px line, nothing more.
+    // Needs you is an amber question glyph in a 32 px line, nothing more (#146: a shape as well as a colour).
     expect(ask.className).toContain("h-8");
     expect(ask.className).not.toContain("bg-status-needs-you");
     expect(ask.querySelector("svg[data-icon='needs-you']")).toBeNull();
-    expect(badge("repo-ask", "precisa de você")?.className).toContain("bg-status-needs-you");
+    expect(badge("repo-ask", "precisa de você")?.innerHTML).toContain("text-status-needs-you");
     // The host is the same for the whole group: it is in the header, not on the row.
     expect(within(ask).queryByText(/^alfa/)).toBeNull();
     expect(badge("repo-run", "rodando")?.className).toContain("bg-status-running");
