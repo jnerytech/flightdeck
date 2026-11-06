@@ -9,6 +9,7 @@ interface Step {
   name?: string;
   run?: string;
   if?: string;
+  env?: Record<string, string>;
 }
 const ci = Bun.YAML.parse(readFileSync(join(ROOT, ".github/workflows/ci.yml"), "utf8")) as {
   on: { schedule?: { cron: string }[] };
@@ -26,8 +27,10 @@ describe("ci-pyramid (#309)", () => {
   test("on a PR the suite job runs the fast tiers plus the related tests, gated per changed file, and keeps the lcov for SonarCloud", () => {
     const pr = step("Testes do PR (pirâmide)");
     expect(pr?.if).toBe("github.event_name == 'pull_request'");
+    // The base branch reaches the shell as a quoted variable, never expanded into the line.
+    expect(pr?.env).toEqual({ BASE_REF: "${{ github.base_ref }}" });
     expect(pr?.run).toBe(
-      "bun run test:related -- --pr --base origin/${{ github.base_ref }} --keep-coverage coverage",
+      'bun run test:related -- --pr --base "origin/$BASE_REF" --keep-coverage coverage',
     );
   });
 
