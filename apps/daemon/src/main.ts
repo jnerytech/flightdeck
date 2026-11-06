@@ -1704,6 +1704,8 @@ export async function startDaemon(
         autoUpdater?.stop();
         await manager.shutdown();
         await server.stop();
+        // Issue #100: no package of a transcript outlives the daemon.
+        await teleport.stop();
         history.stop();
         await usageIndex.stop();
         budgets.stop();

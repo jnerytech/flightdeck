@@ -62,6 +62,9 @@ export const TELEPORT_MAX_BYTES = 64 * 1024 * 1024;
 /** One chunk: well under a WebSocket frame once in base64. */
 export const TELEPORT_CHUNK_BYTES = 128 * 1024;
 
+/** Packages a host keeps at once: each holds up to `TELEPORT_MAX_BYTES` on disk. */
+export const TELEPORT_MAX_LIVE = 2;
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PART = "transcript";
 
@@ -92,6 +95,8 @@ export function secretLines(
 export class TeleportPackages {
   private readonly entries = new Map<string, Entry>();
   private readonly pending = new Set<Promise<void>>();
+  /** One package is made at a time: each reads a whole transcript into memory. */
+  private queue: Promise<unknown> = Promise.resolve();
 
   constructor(readonly deps: TeleportDeps) {}
 
@@ -101,7 +106,13 @@ export class TeleportPackages {
     await mkdir(this.deps.dir, { recursive: true, mode: 0o700 });
   }
 
-  async prepare(sessionId: string): Promise<TeleportManifest> {
+  prepare(sessionId: string): Promise<TeleportManifest> {
+    const run = this.queue.then(() => this.make(sessionId));
+    this.queue = run.catch(() => {});
+    return run;
+  }
+
+  private async make(sessionId: string): Promise<TeleportManifest> {
     const session = this.deps.session(sessionId);
     if (session.status !== "idle" && session.status !== "ended") {
       throw refuse("invalid_state", "teleport_busy");
@@ -115,9 +126,31 @@ export class TeleportPackages {
     if (!UUID.test(claudeId)) throw refuse("bad_request", "teleport_unsafe_transcript");
     const file = this.deps.transcriptOf(claudeId);
     if (!file) throw refuse("not_found", "teleport_no_transcript");
+    // A session has one package at a time: a new one replaces the old.
+    for (const [old, entry] of this.entries) {
+      if (entry.manifest.sessionId === sessionId) await this.cancel(old);
+    }
+    if (this.entries.size >= TELEPORT_MAX_LIVE) throw refuse("invalid_state", "teleport_too_many");
     const text = await this.readTranscript(file, claudeId);
     const id = this.deps.newId();
     const folder = join(this.deps.dir, id);
+    try {
+      return await this.store(id, folder, session, claudeId, text);
+    } catch (error) {
+      // Nothing of a package that failed half-way stays on disk.
+      await rm(folder, { recursive: true, force: true });
+      throw error;
+    }
+  }
+
+  private async store(
+    id: string,
+    folder: string,
+    session: TeleportSession,
+    claudeId: string,
+    text: Buffer,
+  ): Promise<TeleportManifest> {
+    const sessionId = session.id;
     await mkdir(folder, { recursive: true, mode: 0o700 });
     await writeFile(join(folder, PART), text, { mode: 0o600 });
     const manifest: TeleportManifest = {
@@ -139,6 +172,8 @@ export class TeleportPackages {
       secrets: secretLines(text.toString("utf8"), this.deps.scan),
     };
     const timer = this.deps.timers.setTimeout(() => this.track(this.drop(id)), TELEPORT_TTL_MS);
+    // A package's timer never holds the daemon open.
+    (timer as { unref?: () => void } | null)?.unref?.();
     this.entries.set(id, { manifest, timer });
     this.deps.log?.(
       `teleport: package ${id} for session ${sessionId}, ${text.byteLength} bytes, ${manifest.secrets.lines} line(s) look like secrets`,
@@ -155,11 +190,16 @@ export class TeleportPackages {
     }
     const length = Math.min(this.deps.chunkBytes ?? TELEPORT_CHUNK_BYTES, size - offset);
     const buffer = Buffer.alloc(length);
-    const handle = await open(join(this.deps.dir, id, PART), "r");
+    // The package may go (its time ran out) between the lookup and the open.
+    const handle = await open(join(this.deps.dir, id, PART), "r").catch(() => {
+      throw refuse("not_found", "teleport_not_found");
+    });
     try {
       const { bytesRead } = await handle.read(buffer, 0, length, offset);
       const next = offset + bytesRead;
-      return { data: buffer.subarray(0, bytesRead).toString("base64"), next, eof: next >= size };
+      // A file that shrank ends the reading: the client never loops on an empty chunk.
+      const eof = next >= size || bytesRead === 0;
+      return { data: buffer.subarray(0, bytesRead).toString("base64"), next, eof };
     } finally {
       await handle.close();
     }
@@ -172,6 +212,14 @@ export class TeleportPackages {
   }
 
   /** Waits for the packages being removed (a test, and the daemon's stop). */
+  /** The daemon stops: every package goes now, and no timer is left. */
+  async stop(): Promise<void> {
+    for (const entry of this.entries.values()) this.deps.timers.clearTimeout(entry.timer);
+    this.entries.clear();
+    await this.idle();
+    await rm(this.deps.dir, { recursive: true, force: true });
+  }
+
   async idle(): Promise<void> {
     await Promise.all([...this.pending]);
   }

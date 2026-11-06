@@ -1842,6 +1842,8 @@ export const en: Dictionary = {
     teleport_too_large: "The transcript is larger than {max} bytes, the most a move takes.",
     teleport_not_found:
       "This move is no longer on the host: it was cancelled or its time ran out. Start it again.",
+    teleport_too_many:
+      "This host is already moving two sessions. Wait for one to finish, or cancel it.",
     runtime_unavailable: "OpenCode is not available on this host.",
     runtime_unsupported: "An OpenCode session does not offer {feature}.",
     opencode_unsafe_global:
