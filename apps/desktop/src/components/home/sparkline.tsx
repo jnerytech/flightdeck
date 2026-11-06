@@ -3,7 +3,7 @@
  * accent; the area is the same color at a low opacity. The label gives the values to a screen
  * reader, which cannot read the shape.
  */
-export function Sparkline(props: { values: number[]; label: string }) {
+export function Sparkline(props: Readonly<{ values: number[]; label: string }>) {
   const width = 100;
   const height = 32;
   const pad = 3;

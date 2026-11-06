@@ -9,7 +9,7 @@ const CHOICES = [0, 15, 30, 60, 240];
  * How long an idle session waits before the host puts it to sleep: off, or 15 minutes to 4 hours.
  * Hidden on a daemon that does not have the switch.
  */
-export function SleepSetting(props: { store: AppStore; host: HostView }) {
+export function SleepSetting(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
   const t = useT();
   const current = host.hostInfo?.sleepAfterMinutes;

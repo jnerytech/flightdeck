@@ -17,7 +17,7 @@ import { TAB_ICONS, TabBadgeGlyph, tabTitle } from "../../ui/TabBar.tsx";
  * cancels. The keys are consumed so the page never sees them. With the "Tab order" setting it
  * stays out of the way and the tabs step in strip order.
  */
-export function TabSwitcherHost(props: { store: AppStore }) {
+export function TabSwitcherHost(props: Readonly<{ store: AppStore }>) {
   const { store } = props;
   const state = useStoreState(store);
   const [switcher, setSwitcher] = useState<SwitcherState | null>(null);

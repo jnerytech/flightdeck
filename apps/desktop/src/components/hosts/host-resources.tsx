@@ -22,14 +22,16 @@ export function levelOf(percent: number): Level {
   return percent >= 90 ? "critical" : percent >= 80 ? "high" : "ok";
 }
 
-function Meter(props: {
-  slot: string;
-  label: string;
-  used: number;
-  total: number;
-  t: T;
-  lang: "en" | "pt-BR";
-}) {
+function Meter(
+  props: Readonly<{
+    slot: string;
+    label: string;
+    used: number;
+    total: number;
+    t: T;
+    lang: "en" | "pt-BR";
+  }>,
+) {
   const { t } = props;
   const ratio = props.total > 0 ? props.used / props.total : 0;
   const percent = Math.round(ratio * 100);
@@ -57,7 +59,7 @@ function Meter(props: {
   );
 }
 
-function Row(props: { row: ResourceRow; t: T; lang: "en" | "pt-BR" }) {
+function Row(props: Readonly<{ row: ResourceRow; t: T; lang: "en" | "pt-BR" }>) {
   const { row, t, lang } = props;
   return (
     <tr data-slot="resources-row" data-id={row.id} className="border-t">
@@ -85,14 +87,16 @@ function Row(props: { row: ResourceRow; t: T; lang: "en" | "pt-BR" }) {
  * while it is on screen, and only a host that announces `resources`; the numbers are names and
  * sizes, never a command line.
  */
-export function HostResources(props: {
-  store: AppStore;
-  host: HostView;
-  /** The panel is on screen: it reads only then. */
-  active?: boolean;
-  /** Test seam: how often it reads, in ms. */
-  everyMs?: number;
-}) {
+export function HostResources(
+  props: Readonly<{
+    store: AppStore;
+    host: HostView;
+    /** The panel is on screen: it reads only then. */
+    active?: boolean;
+    /** Test seam: how often it reads, in ms. */
+    everyMs?: number;
+  }>,
+) {
   const { store, host } = props;
   const t = useT();
   const lang = store.i18n.lang;

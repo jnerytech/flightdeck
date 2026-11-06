@@ -10,13 +10,15 @@ import type { Route } from "../lib/router.ts";
 import { type SetupStep, setupProgress, setupSteps } from "../lib/setup-steps.ts";
 
 /** A list of steps: a check or its number in a circle, one sentence, one action. */
-function StepList(props: {
-  label: string;
-  steps: SetupStep[];
-  /** The step the person should do next, if it is in this list. */
-  current: string | null;
-  go: (route: Route) => void;
-}) {
+function StepList(
+  props: Readonly<{
+    label: string;
+    steps: SetupStep[];
+    /** The step the person should do next, if it is in this list. */
+    current: string | null;
+    go: (route: Route) => void;
+  }>,
+) {
   const t = useT();
   return (
     <Stack as="ol" gap={2} label={props.label}>
@@ -60,15 +62,17 @@ function StepList(props: {
 }
 
 /** The setup checklist: what is done and what is not, from the real state, each with its action. */
-export function SetupPage(props: {
-  store: AppStore;
-  /** The parts of the state the checklist reads. */
-  state: Pick<
-    AppState,
-    "hosts" | "projects" | "cards" | "hub" | "budgets" | "externals" | "setupProbes"
-  >;
-  go: (route: Route) => void;
-}) {
+export function SetupPage(
+  props: Readonly<{
+    store: AppStore;
+    /** The parts of the state the checklist reads. */
+    state: Pick<
+      AppState,
+      "hosts" | "projects" | "cards" | "hub" | "budgets" | "externals" | "setupProbes"
+    >;
+    go: (route: Route) => void;
+  }>,
+) {
   const t = useT();
   const { store, state } = props;
   const notified = useSyncExternalStore(store.setup.subscribe, () => store.setup.notified);
