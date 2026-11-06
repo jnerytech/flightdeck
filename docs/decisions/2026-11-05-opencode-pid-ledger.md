@@ -6,3 +6,11 @@
 - **Elsewhere.** On macOS and Windows `/proc` is not there, so nothing is recorded or reaped (Windows ends the tree with `taskkill` at close, as before). A ledger that cannot be written only loses the cleanup.
 - **Also.** `store.test.ts` now tests the `sessions.runtime` migration on a database from before the column (the old rows are Claude's).
 - **Not covered.** `runCommand`'s short OpenCode commands (`models`, `--version`) are not in the ledger: they have a deadline that ends their group, and live seconds.
+- **Security review (2026-11-06).** The ledger file is the user's to edit, so an entry is read only
+  as `add` writes it: a group id above 1 (0 is the caller's own group, and -1 in `kill(-pid)`
+  reaches every process of the user), a tick count, a command line and the boot id. An entry from
+  another boot is stale, since start ticks begin again at zero. The daemon's own pid and group are
+  never killed. Left as they are for now: the file keeps the default umask (it lives in the
+  daemon's data folder), the password goes to the URL the server printed on its own stdout (always
+  `127.0.0.1`, since the daemon passes `--hostname 127.0.0.1`), and a daemon killed between the
+  spawn and the server's "listening" line leaves that one `opencode serve` group unwritten.
