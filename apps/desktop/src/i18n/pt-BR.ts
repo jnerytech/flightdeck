@@ -4111,7 +4111,9 @@ export const ptBR = {
     addFolder: "Adicionar pasta",
     groups: { required: "Obrigatórias", optional: "Opcionais", checks: "Verificações" },
     counts: "OK: {ok} · Avisos: {warn} · Problemas: {error}",
-    okFolded: "{n} sem nada a fazer",
+    okShow: "Mostrar {n} itens sem nada a fazer",
+    okHide: "Ocultar {n} itens sem nada a fazer",
+    optionalAbsent: "Opcional · não instalado",
     okList: "Funcionando",
   },
   hostDeps: {

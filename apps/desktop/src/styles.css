@@ -2373,27 +2373,52 @@ html:not(:has([data-slot="status-bar"])) {
 /* What is fine, folded: one line per row (#640). */
 @utility health-ok {
   font-size: 0.875rem;
-  /* A target at least 24 px tall (axe target-size); 28 px reads as a row. */
-  & > summary {
-    display: flex;
+  /* The fold's disclosure button (#670): a row-sized target (axe target-size wants 24 px) with a
+     chevron that turns when the list is open. */
+  & > button {
+    display: inline-flex;
     align-items: center;
-    min-height: 1.75rem;
-    cursor: pointer;
+    gap: 0.375rem;
+    min-height: 2rem;
+    padding: 0.25rem 0.5rem;
+    margin-inline-start: -0.5rem;
+    border-radius: var(--radius-md);
     color: var(--muted-foreground);
+    cursor: pointer;
+  }
+  & > button:hover {
+    background-color: var(--accent);
+    color: var(--foreground);
+  }
+  & > button:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  & > button > svg {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    transition: rotate 150ms ease;
+  }
+  & > button[aria-expanded="true"] > svg {
+    rotate: 90deg;
   }
 }
+/* The list owns the columns (icon | name | status | detail) and each row takes them as a subgrid,
+   so every status starts at the same place whatever the name's length (#670). */
 @utility dep-compact-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1rem max-content max-content minmax(0, 1fr);
+  column-gap: 0.75rem;
   list-style: none;
   padding: 0;
   margin: 0.5rem 0 0;
 }
 @utility dep-compact {
   display: grid;
-  grid-template-columns: 1rem minmax(8rem, max-content) max-content minmax(0, 1fr);
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: center;
-  gap: 0.5rem;
   padding: 0.25rem 0;
   border-top: 1px solid var(--border);
   & svg {
