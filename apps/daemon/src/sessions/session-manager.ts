@@ -114,6 +114,12 @@ const ACTIVE: ReadonlySet<SessionStatus> = new Set(["starting", "running", "awai
  * Owns the sessions: starts agent runs, assigns every event a `seq` through the store before
  * fanning it out to subscribers, drives the status machine and the per-session message queue.
  */
+/** What an OpenCode session cannot take, by name: a persona, or a permission mode it lacks. */
+function unsupportedOnOpenCode(persona: unknown, mode: PermissionMode): string | null {
+  if (persona) return "persona";
+  return OPENCODE_UNSUPPORTED_MODES.has(mode) ? mode : null;
+}
+
 export class SessionManager {
   private readonly store: EventStore;
   private readonly broker: PermissionBroker;
@@ -272,11 +278,7 @@ export class SessionManager {
         );
       }
       const mode = payload.permissionMode ?? this.opts.defaultPermissionMode;
-      const unsupported = payload.persona
-        ? "persona"
-        : OPENCODE_UNSUPPORTED_MODES.has(mode)
-          ? mode
-          : null;
+      const unsupported = unsupportedOnOpenCode(payload.persona, mode);
       if (unsupported) {
         throw new FlightdeckError(
           "invalid_state",

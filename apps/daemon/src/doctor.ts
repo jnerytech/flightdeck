@@ -1,7 +1,7 @@
 import { loopbackOnly } from "./pairing.ts";
 import { VERIFIED_OPENCODE_VERSION } from "./runtime/opencode-config.ts";
 import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
-import type { ScopeFinding } from "./runtime/opencode-scope.ts";
+import { findingText, type ScopeFinding } from "./runtime/opencode-scope.ts";
 
 type HooksState = "installed" | "absent" | "outdated";
 
@@ -115,9 +115,33 @@ export function opencodeCheck(state: OpenCodeState): DoctorCheck {
 }
 
 /** What the scope scan found, for the person to remove: `: kind detail (path); ...`. */
+/** The daemon's check: answering, refusing this machine's address, or not answering at all. */
+function daemonCheck(healthy: boolean, refused: string | null, address: string): DoctorCheck {
+  if (healthy) return check("daemon", "daemon", "ok", `answering on ${address}`);
+  if (refused) {
+    return check(
+      "daemon",
+      "daemon",
+      "fail",
+      `the daemon refused this machine's address (${refused}): add its network to allowedNetworks (or run flightdeckd setup)`,
+      "run: flightdeckd setup (it adds the Tailscale networks), or add the network to allowedNetworks in the config",
+    );
+  }
+  return check(
+    "daemon",
+    "daemon",
+    "fail",
+    `nothing answers on ${address}`,
+    "run: flightdeckd service start (or flightdeckd start, in a terminal, to see the error)",
+  );
+}
+
+/** A template file that could not be loaded, with why. */
+const templateProblem = (p: { file: string; reason: string }) => `${p.file} (${p.reason})`;
+
 function scopeFindings(findings: ScopeFinding[] | undefined): string {
   if (!findings?.length) return "";
-  return `: ${findings.map((f) => `${f.kind}${f.detail ? ` ${f.detail}` : ""} (${f.path})`).join("; ")}`;
+  return `: ${findings.map(findingText).join("; ")}`;
 }
 
 const minor = (version: string) => version.split(".").slice(0, 2).join(".");
@@ -184,25 +208,7 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
   const address = `${config.bind}:${config.port}`;
   const healthy = await deps.healthy();
   const refused = healthy ? null : ((await deps.refused?.()) ?? null);
-  checks.push(
-    healthy
-      ? check("daemon", "daemon", "ok", `answering on ${address}`)
-      : refused
-        ? check(
-            "daemon",
-            "daemon",
-            "fail",
-            `the daemon refused this machine's address (${refused}): add its network to allowedNetworks (or run flightdeckd setup)`,
-            "run: flightdeckd setup (it adds the Tailscale networks), or add the network to allowedNetworks in the config",
-          )
-        : check(
-            "daemon",
-            "daemon",
-            "fail",
-            `nothing answers on ${address}`,
-            "run: flightdeckd service start (or flightdeckd start, in a terminal, to see the error)",
-          ),
-  );
+  checks.push(daemonCheck(healthy, refused, address));
 
   const claude = deps.claudePath();
   checks.push(
@@ -227,7 +233,7 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
         "templates",
         "templates",
         "warn",
-        `could not load: ${brokenTemplates.map((p) => `${p.file} (${p.reason})`).join("; ")}`,
+        `could not load: ${brokenTemplates.map(templateProblem).join("; ")}`,
         "fix or remove those files in the templates folder",
       ),
     );
