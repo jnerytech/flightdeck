@@ -50,7 +50,11 @@ async function setup(language: "en" | "pt-BR", status: ExternalStatus | null) {
   }
   render(
     <TContext.Provider value={store.i18n.t}>
-      <TerminalButton store={store} hostId={hostId} target={{ cwd: d.root, claudeSessionId: "abc-123" }} />
+      <TerminalButton
+        store={store}
+        hostId={hostId}
+        target={{ cwd: d.root, claudeSessionId: "abc-123" }}
+      />
     </TContext.Provider>,
   );
   return { ...d, store, hostId };
@@ -83,7 +87,11 @@ describe("terminal-ao-vivo: a session already live in another terminal (#502)", 
     expect(screen.queryByText("Already open in another terminal")).not.toBeNull();
     expect(ptys.spawned).toHaveLength(0);
     await click("View it live here");
-    expect(store.router.current).toEqual({ name: "external", host: hostId, claudeSessionId: "abc-123" });
+    expect(store.router.current).toEqual({
+      name: "external",
+      host: hostId,
+      claudeSessionId: "abc-123",
+    });
     expect(ptys.spawned).toHaveLength(0);
   });
 
