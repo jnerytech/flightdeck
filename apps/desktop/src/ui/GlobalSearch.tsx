@@ -83,10 +83,38 @@ export function GlobalSearch(
   const [limits, setLimits] = useState<Record<string, number>>({});
   const name = (id: string) => hosts.find((h) => h.id === id)?.name ?? id;
   const costs = props.costs && hosts.some((h) => hasFeature(h.hostInfo?.features, "costs", false));
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  /** What had the focus when the palette opened: Esc and a click outside give it back. */
+  const [opener] = useState(() => document.activeElement as HTMLElement | null);
+  /** Leaves without choosing anything: the focus goes back to where the person was. */
+  const dismiss = () => {
+    opener?.focus();
+    props.onClose();
+  };
+  const dismissing = useRef(dismiss);
+  dismissing.current = dismiss;
 
   useEffect(() => {
     void store.loadPalette();
   }, [store]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    // The window is not modal: Esc with the focus on the page behind, or a click there, leaves too.
+    const outside = (e: Event) => {
+      if (!dialogRef.current?.contains(e.target as Node)) dismissing.current();
+    };
+    const onEscape = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") outside(e);
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", onEscape);
+    };
+  }, []);
 
   const sections: PaletteSection[] = actionsOf
     ? [
@@ -188,10 +216,11 @@ export function GlobalSearch(
   return (
     <dialog
       open
-      className="fixed top-20 left-1/2 z-50 m-0 flex max-h-[70vh] w-[min(40rem,92vw)] -translate-x-1/2 flex-col gap-3 overflow-y-auto rounded-xl border bg-popover p-3 text-popover-foreground shadow-lg"
+      ref={dialogRef}
+      className="fixed top-20 left-1/2 z-50 m-0 flex max-h-[70vh] w-[min(40rem,92vw)] -translate-x-1/2 flex-col gap-3 overflow-y-auto overflow-x-hidden rounded-xl border bg-popover p-3 text-popover-foreground shadow-lg"
       aria-label={t("searchUi.label")}
       onKeyDown={(e) => {
-        if (e.key === "Escape") props.onClose();
+        if (e.key === "Escape") dismiss();
       }}
     >
       <form
@@ -201,6 +230,7 @@ export function GlobalSearch(
         }}
       >
         <Input
+          ref={inputRef}
           aria-label={t("searchUi.input")}
           placeholder={t("searchUi.placeholder")}
           value={query}
@@ -248,20 +278,30 @@ export function GlobalSearch(
             ))}
           </ul>
           <ul aria-label={t("searchUi.results")} className="flex flex-col">
-            {search.hits.map((hit) => (
-              <li key={`${hit.hostId}/${hit.claudeSessionId}/${hit.uuid}`}>
-                <button
-                  type="button"
-                  className="flex w-full flex-col gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-accent"
-                  onClick={() => props.onOpenHit(hit)}
-                >
-                  <span className="text-muted-foreground text-xs tabular-nums">
-                    {`${hit.hostName} · ${basename(hit.cwd)} · ${props.store.formatDateTime(hit.ts ?? "")}`}
-                  </span>
-                  <Snippet text={hit.snippet} />
-                </button>
-              </li>
-            ))}
+            {search.hits.map((hit) => {
+              const when = props.store.formatDateTime(hit.ts ?? "");
+              const where = `${hit.hostName} · ${basename(hit.cwd)} · ${when}`;
+              return (
+                <li key={`${hit.hostId}/${hit.claudeSessionId}/${hit.uuid}`}>
+                  <button
+                    type="button"
+                    className="flex w-full min-w-0 flex-col gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-accent"
+                    onClick={() => props.onOpenHit(hit)}
+                  >
+                    {/* A long title or path ends in an ellipsis; the whole text is in the tooltip. */}
+                    <span
+                      title={`${hit.hostName} · ${hit.cwd} · ${when}`}
+                      className="truncate text-muted-foreground text-xs tabular-nums"
+                    >
+                      {where}
+                    </span>
+                    <span title={hit.snippet.replaceAll(/[«»]/g, "")} className="truncate">
+                      <Snippet text={hit.snippet} />
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

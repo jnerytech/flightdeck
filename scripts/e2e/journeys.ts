@@ -198,6 +198,16 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
   // 5. Open the palette, search the history and open the reader.
   "paleta-e-leitor": async (c) => {
     await open(c, { name: "hub" });
+    // The palette leaves on Esc and on a click outside (issue #566).
+    const palette = c.page.getByRole("dialog", { name: c.t("searchUi.label") });
+    await c.page.keyboard.press("Control+K");
+    await palette.waitFor({ timeout: WAIT });
+    await c.page.keyboard.press("Escape");
+    await palette.waitFor({ state: "hidden", timeout: WAIT });
+    await c.page.keyboard.press("Control+K");
+    await palette.waitFor({ timeout: WAIT });
+    await c.page.locator("body").click({ position: { x: 3, y: 3 } });
+    await palette.waitFor({ state: "hidden", timeout: WAIT });
     await c.page.keyboard.press("Control+K");
     const input = c.page.getByLabel(c.t("searchUi.input"), { exact: true });
     await input.fill("revisão do arquivo");
@@ -207,6 +217,8 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByRole("button")
       .first();
     await hit.waitFor({ timeout: WAIT });
+    // Long rows end in an ellipsis: the window never scrolls sideways.
+    expect(await palette.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
     await hit.click();
     await c.page.getByRole("log", { name: c.t("reader.transcript") }).waitFor({ timeout: WAIT });
   },
