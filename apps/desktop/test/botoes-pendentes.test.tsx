@@ -87,8 +87,10 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
   test("Instalar atualização goes busy and installs once", async () => {
     const install = slow();
     const state = {
-      appUpdate: { offer: { version: "1.2.3", notes: "" }, error: null },
+      appUpdate: { offer: { version: "1.2.3", notes: "" }, error: null, ready: null },
       hosts: [],
+      // The manual banner (Install and restart); updating by itself has its own test (#280).
+      settings: { autoUpdate: false },
     };
     const store = {
       i18n: { t },

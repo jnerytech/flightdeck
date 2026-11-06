@@ -76,6 +76,47 @@ for (const [lang, dict] of [
       expect(chosen).toEqual(["b"]);
     });
 
+    test("each host in the menu shows its daemon's version, and one that differs from the app's is marked (#281)", async () => {
+      render(
+        <TopBarHost
+          hosts={[
+            { id: "a", name: "alfa", status: "online", version: "0.37.0" },
+            { id: "b", name: "beta", status: "online", version: "0.36.4" },
+          ]}
+          currentId="a"
+          appVersion="0.37.0"
+          t={t}
+          onChoose={() => undefined}
+          onAdd={() => undefined}
+        />,
+      );
+      await open(
+        screen.queryByRole("button", {
+          name: fill(dict.shell.host, { host: "alfa" }),
+        }) as HTMLElement,
+      );
+      const online = dict.hosts.status.online;
+      expect(
+        screen.queryByRole("menuitemradio", {
+          name: fill(dict.shell.hostItemVersion, {
+            host: "alfa",
+            state: online,
+            version: "0.37.0",
+          }),
+        }),
+      ).not.toBeNull();
+      const beta = screen.queryByRole("menuitemradio", {
+        name: fill(dict.shell.hostItemDiffers, {
+          host: "beta",
+          state: online,
+          version: "0.36.4",
+          app: "0.37.0",
+        }),
+      });
+      expect(beta).not.toBeNull();
+      expect(beta?.textContent ?? "").toContain("v0.36.4");
+    });
+
     test("the menu adds a host too, and with no host the switcher says so", async () => {
       const chosen: string[] = [];
       render(

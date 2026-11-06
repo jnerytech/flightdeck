@@ -300,6 +300,8 @@ export interface AppUpdateState {
   upToDate: boolean;
   /** Why the last check or install failed. */
   error: string | null;
+  /** Issue #280: the version downloaded in the background, ready to install on a restart. */
+  ready: string | null;
 }
 
 /** How often the app looks for its own update while open. */
@@ -467,6 +469,8 @@ export interface Settings {
   shortcutError: string | null;
   /** Phase 9: look for app updates at startup and every 6 h. */
   notifyUpdates: boolean;
+  /** Issue #280: a newer version downloads by itself, to install on a restart (on by default). */
+  autoUpdate: boolean;
   updaterSupported: boolean;
 }
 
@@ -687,6 +691,8 @@ export const PALETTE_RECENTS_KEY = "flightdeck.paletteRecents";
 /** How many used palette entries are kept (the palette shows five). */
 const PALETTE_RECENTS_KEPT = 12;
 export const NOTIFY_UPDATES_KEY = "flightdeck.notifyUpdates";
+/** Issue #280: the app downloads a newer version by itself; "false" turns it off. */
+export const AUTO_UPDATE_KEY = "flightdeck.autoUpdate";
 
 export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
 
@@ -848,7 +854,7 @@ export class AppStore {
       notices: [],
       inbox: [],
       hostsLoaded: false,
-      appUpdate: { offer: null, upToDate: false, error: null },
+      appUpdate: { offer: null, upToDate: false, error: null, ready: null },
       // Defaults: close to tray on, start with Windows off.
       settings: {
         closeToTray: true,
@@ -859,6 +865,7 @@ export class AppStore {
         shortcutProblem: null,
         shortcutError: null,
         notifyUpdates: true,
+        autoUpdate: true,
         updaterSupported: platform.updater.supported,
       },
     };
@@ -1013,18 +1020,27 @@ export class AppStore {
       this.platform.autostart.supported && (await this.platform.autostart.isEnabled());
     const globalShortcut = this.platform.storage.getItem(SHORTCUT_KEY) ?? DEFAULT_SHORTCUT;
     const notifyUpdates = this.platform.storage.getItem(NOTIFY_UPDATES_KEY) !== "false";
+    const autoUpdate = this.platform.storage.getItem(AUTO_UPDATE_KEY) !== "false";
     this.update({
-      settings: { ...this.state.settings, closeToTray, autostart, globalShortcut, notifyUpdates },
+      settings: {
+        ...this.state.settings,
+        closeToTray,
+        autostart,
+        globalShortcut,
+        notifyUpdates,
+        autoUpdate,
+      },
     });
     // Client budgets are looked at every few minutes, and when a host with costs comes online.
     this.clientBudgetTimer = setInterval(
       () => void this.checkClientBudgets(),
       this.options.clientBudgetIntervalMs ?? CLIENT_BUDGET_INTERVAL_MS,
     );
-    if (this.platform.updater.supported && notifyUpdates) {
+    if (this.platform.updater.supported && (notifyUpdates || autoUpdate)) {
       void this.checkAppUpdate();
       this.updateTimer = setInterval(() => {
-        if (this.state.settings.notifyUpdates) void this.checkAppUpdate();
+        const { notifyUpdates, autoUpdate } = this.state.settings;
+        if (notifyUpdates || autoUpdate) void this.checkAppUpdate();
       }, this.options.appUpdateIntervalMs ?? APP_UPDATE_INTERVAL_MS);
     }
     if (this.platform.globalShortcut.supported) await this.registerShortcut(globalShortcut);
@@ -2273,10 +2289,29 @@ export class AppStore {
   async checkAppUpdate(): Promise<void> {
     try {
       const offer = await this.platform.updater.check();
-      this.update({ appUpdate: { offer, upToDate: offer === null, error: null } });
+      this.setAppUpdate({ offer, upToDate: offer === null, error: null });
+      if (offer && this.state.settings.autoUpdate) await this.downloadAppUpdate(offer.version);
     } catch (error) {
       this.setAppUpdate({
         error: this.i18n.t("messages.updateCheckFailed", {
+          error: (error as Error).message ?? String(error),
+        }),
+      });
+    }
+  }
+
+  /**
+   * Issue #280: downloads the version on offer in the background, once; the banner then offers to
+   * restart into it. A failure says why and is tried again at the next check.
+   */
+  private async downloadAppUpdate(version: string): Promise<void> {
+    if (this.state.appUpdate.ready === version) return;
+    try {
+      await this.platform.updater.download();
+      this.setAppUpdate({ ready: version });
+    } catch (error) {
+      this.setAppUpdate({
+        error: this.i18n.t("messages.updateDownloadFailed", {
           error: (error as Error).message ?? String(error),
         }),
       });
@@ -2299,6 +2334,11 @@ export class AppStore {
   /** "Depois": the banner goes until the next check. */
   dismissAppUpdate(): void {
     this.setAppUpdate({ offer: null });
+  }
+
+  setAutoUpdate(enabled: boolean): void {
+    this.platform.storage.setItem(AUTO_UPDATE_KEY, String(enabled));
+    this.update({ settings: { ...this.state.settings, autoUpdate: enabled } });
   }
 
   setNotifyUpdates(enabled: boolean): void {

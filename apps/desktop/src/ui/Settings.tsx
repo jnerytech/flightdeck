@@ -53,6 +53,7 @@ export const Settings = memo(function Settings(props: {
   appUpdate: AppUpdateState;
   onCheckUpdate(): void;
   onNotifyUpdates(enabled: boolean): void;
+  onAutoUpdate(enabled: boolean): void;
   /** Light, dark or the system's (phase 10). */
   theme: ThemeMode;
   onTheme(mode: ThemeMode): void;
@@ -214,6 +215,15 @@ export const Settings = memo(function Settings(props: {
                     onChange={(e) => props.onNotifyUpdates(e.target.checked)}
                   />
                   {t("prefs.notifyUpdates")}
+                </label>
+                <label className={check}>
+                  <input
+                    type="checkbox"
+                    aria-label={t("prefs.autoUpdate")}
+                    checked={settings.autoUpdate}
+                    onChange={(e) => props.onAutoUpdate(e.target.checked)}
+                  />
+                  {t("prefs.autoUpdate")}
                 </label>
                 <Button variant="outline" className="self-start" onClick={props.onCheckUpdate}>
                   {t("prefs.checkNow")}

@@ -368,8 +368,14 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
           header={
             <>
               <TopBarHost
-                hosts={state.hosts}
+                hosts={state.hosts.map((h) => ({
+                  id: h.id,
+                  name: h.name,
+                  status: h.status,
+                  version: h.hostInfo?.daemonVersion ?? null,
+                }))}
                 currentId={store.uiHostId()}
+                appVersion={APP_VERSION}
                 t={t}
                 onChoose={(hostId) => store.select(hostId, null)}
                 onAdd={() => go({ name: "add-host" })}

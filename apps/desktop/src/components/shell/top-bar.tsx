@@ -1,4 +1,4 @@
-import { ChevronsUpDown, Moon, Plus, Search, Sun } from "lucide-react";
+import { ChevronsUpDown, CircleAlert, Moon, Plus, Search, Sun } from "lucide-react";
 import type { ReactNode } from "react";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { ShortcutKeys } from "@/components/shortcuts/keycap";
@@ -22,6 +22,8 @@ export interface TopBarHostItem {
   id: string;
   name: string;
   status: "connecting" | "online" | "offline" | "unauthorized" | "incompatible";
+  /** The daemon's version, once the host has said it (issue #281). */
+  version?: string | null;
 }
 
 /**
@@ -32,6 +34,8 @@ export function TopBarHost(
   props: Readonly<{
     hosts: TopBarHostItem[];
     currentId: string | null;
+    /** The app's version, to mark a daemon on another one (issue #281). */
+    appVersion?: string;
     t: T;
     onChoose(hostId: string): void;
     onAdd(): void;
@@ -57,19 +61,9 @@ export function TopBarHost(
               value={props.currentId ?? ""}
               onValueChange={(id) => props.onChoose(id)}
             >
-              {props.hosts.map((host) => {
-                const state = t(`hosts.status.${host.status}` as Key);
-                return (
-                  <DropdownMenuRadioItem
-                    key={host.id}
-                    value={host.id}
-                    aria-label={t("shell.hostItem", { host: host.name, state })}
-                  >
-                    <StatusDot {...hostDotView(host.status)} label={state} />
-                    {host.name}
-                  </DropdownMenuRadioItem>
-                );
-              })}
+              {props.hosts.map((host) => (
+                <HostItem key={host.id} host={host} appVersion={props.appVersion} t={t} />
+              ))}
             </DropdownMenuRadioGroup>
             <DropdownMenuSeparator />
           </>
@@ -80,6 +74,35 @@ export function TopBarHost(
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** One host of the switcher's menu: its state, and its daemon's version, marked when not the app's. */
+function HostItem(props: Readonly<{ host: TopBarHostItem; appVersion: string | undefined; t: T }>) {
+  const { host, t } = props;
+  const state = t(`hosts.status.${host.status}` as Key);
+  const version = host.version ?? null;
+  const differs =
+    version !== null && props.appVersion !== undefined && version !== props.appVersion;
+  const label =
+    version === null
+      ? t("shell.hostItem", { host: host.name, state })
+      : t(differs ? "shell.hostItemDiffers" : "shell.hostItemVersion", {
+          host: host.name,
+          state,
+          version,
+          app: props.appVersion ?? "",
+        });
+  return (
+    <DropdownMenuRadioItem value={host.id} aria-label={label}>
+      <StatusDot {...hostDotView(host.status)} label={state} />
+      {host.name}
+      {version !== null && (
+        <span className={differs ? "top-bar-host-version-differs" : "top-bar-host-version"}>
+          {differs && <CircleAlert aria-hidden="true" />}v{version}
+        </span>
+      )}
+    </DropdownMenuRadioItem>
   );
 }
 
