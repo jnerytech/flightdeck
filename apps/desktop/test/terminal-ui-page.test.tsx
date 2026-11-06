@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { AppStore } from "../src/lib/app-store.ts";
 import { liveScreen, registerDom } from "./dom.ts";
@@ -18,8 +19,9 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0).reverse()) await fn();
 });
 
-async function setup(listFails = false) {
-  const d = makeDaemon(cleanups, { terminals: true });
+/** `files`: the host reads a terminal's files (#506); without it a path is shown or copied. */
+async function setup(listFails = false, files = true) {
+  const d = makeDaemon(cleanups, { terminals: true, review: files });
   const server = d.listen();
   const mem = memoryPlatform(false, "pt-BR");
   const copied: string[] = [];
@@ -368,7 +370,7 @@ describe("terminal-ui: the terminal screen", () => {
   });
 
   test("a path in the output, on a host of this computer, shows the file in its folder: never opened (issue #476)", async () => {
-    const { x, store, project } = await setup();
+    const { x, store, project } = await setup(false, false);
     await settle(() => state("Ao vivo"));
     const platform = (store as unknown as { platform: Record<string, unknown> }).platform;
     const shown: string[] = [];
@@ -385,7 +387,7 @@ describe("terminal-ui: the terminal screen", () => {
   });
 
   test("a path on a host of another computer is copied, taken from the terminal's folder (issue #476)", async () => {
-    const { x, copied, project } = await setup();
+    const { x, copied, project } = await setup(false, false);
     await settle(() => state("Ao vivo"));
     x.showLines("", "wrote /var/log/out.log and ./notes/b.md");
     await act(async () => {
@@ -399,6 +401,38 @@ describe("terminal-ui: the terminal screen", () => {
     });
     await settle(() => copied.length > 1);
     expect(copied).toEqual(["/var/log/out.log", join(project, "notes", "b.md")]);
+  });
+
+  test("a path:line in the terminal's folder opens in the Files viewer at that line, and Fechar closes it (#506)", async () => {
+    const { x, store, project } = await setup();
+    mkdirSync(join(project, "src"), { recursive: true });
+    writeFileSync(join(project, "src", "app.ts"), "one\ntwo\nthree\n");
+    await settle(() => state("Ao vivo"));
+    const platform = (store as unknown as { platform: Record<string, unknown> }).platform;
+    const shown: string[] = [];
+    platform.revealPath = async (path: string) => void shown.push(path);
+    x.showLines("Edited src/app.ts:2");
+    await act(async () => {
+      await x.clickPath(1);
+    });
+    const atLine = () => document.querySelector(".cm-activeLine")?.textContent === "two";
+    await settle(atLine);
+    const viewer = () => screen.queryByRole("region", { name: "Arquivo src/app.ts" }) !== null;
+    expect([viewer(), atLine(), shown]).toEqual([true, true, []]);
+    await click("Fechar");
+    expect(viewer()).toBe(false);
+  });
+
+  test("a path outside the terminal's folder is still copied, not opened in the viewer (#506)", async () => {
+    const { x, copied } = await setup();
+    await settle(() => state("Ao vivo"));
+    x.showLines("wrote /var/log/out.log");
+    await act(async () => {
+      await x.clickPath(1);
+    });
+    await settle(() => copied.length > 0);
+    const viewer = document.querySelector("[data-slot='terminal-file']") !== null;
+    expect([copied, viewer]).toEqual([["/var/log/out.log"], false]);
   });
 
   test("a click anywhere else closes the right button's menu", async () => {
