@@ -209,7 +209,7 @@ describe("terminal-ui: the terminal screen", () => {
     } finally {
       if (saved) Object.defineProperty(navigator, "clipboard", saved);
     }
-    expect([x.pasted, screen.queryByRole("alertdialog")]).toEqual([["rm a\nrm b"], null]);
+    expect([x.pasted, screen.queryByRole("alertdialog") === null]).toEqual([["rm a\nrm b"], true]);
   });
 
   test("screen reader support turns on xterm's screen reader mode; while it is off the terminal says where it is (issue #476)", async () => {
