@@ -90,6 +90,9 @@ export interface XtermScreen {
   dispose(): void;
 }
 
+/** How many lines the view keeps above the screen; Windows Terminal keeps 9,001. */
+export const SCROLLBACK_LINES = 10_000;
+
 export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions): XtermScreen {
   const terminal = deps.terminal({
     theme: options.theme,
@@ -97,6 +100,8 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     fontFamily: options.fontFamily,
     cursorBlink: true,
     allowProposedApi: true,
+    // Issue #476: a long Claude turn stays in the view and in find (xterm keeps 1,000 by default).
+    scrollback: SCROLLBACK_LINES,
   });
   const fit = deps.fit();
   const search = deps.search();

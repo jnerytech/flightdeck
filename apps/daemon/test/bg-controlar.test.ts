@@ -5,7 +5,7 @@ import { startServer } from "../src/server.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { whichOnPath } from "../src/which.ts";
 import { installFakeClaude } from "./fake-claude.ts";
-import { newManager } from "./helpers.ts";
+import { newManager, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const TOKEN = "bg-control-token-0123456789";
@@ -266,5 +266,41 @@ describe("bg-controlar: over the protocol", () => {
       expect(ack.ok).toBe(false);
     }
     expect(cli(fake)).toHaveLength(2);
+  });
+});
+
+describe("bg-controlar: a listed session's folder is the listing's word, so it is checked against the allowed roots (issue #415)", () => {
+  const withRoots = (roots: readonly string[]) => {
+    const fake = installFakeClaude([]);
+    cleanups.push(fake.restore);
+    fake.setAgents([RUNNING, DONE, LOST]);
+    const service = new BgService({
+      db: new EventStore(":memory:").db,
+      claude: () => whichOnPath("claude"),
+      trust: () => ({ trusted: true }),
+      allowedRoots: roots,
+    });
+    return { fake, service };
+  };
+
+  test("message and respawn refuse a session whose folder is outside the roots, and run nothing", async () => {
+    const { fake, service } = withRoots([tempDir("fd-bg-roots-")]);
+    for (const run of [
+      () => service.respawn("7c5dcf5d"),
+      () => service.message("a1b2c3d4", "hello"),
+    ]) {
+      const error = await refused(run);
+      expect(error.code).toBe("forbidden_cwd");
+      expect(error.reason).toBe("cwd_outside_roots");
+    }
+    expect(cli(fake)).toEqual([]);
+  });
+
+  test("a session inside a root is continued as before", async () => {
+    const root = tempDir("fd-bg-roots-");
+    const { fake, service } = withRoots([root]);
+    fake.setAgents([{ ...RUNNING, cwd: root }]);
+    await service.respawn("7c5dcf5d");
+    expect(cli(fake)).toEqual([["respawn", "7c5dcf5d"]]);
   });
 });
