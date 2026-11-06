@@ -201,6 +201,8 @@ describe("resources-wiring: the machine's own defaults (issue #154)", () => {
 
 describe("resources-wiring: the machine's own page size and clock (F8)", () => {
   test("the /proc reader uses the page size and ticks the machine says, not guesses", async () => {
+    // The fixture is a /proc tree with a symlink for the cwd: Windows cannot make one without a privilege.
+    if (process.platform === "win32") return;
     const { mkdirSync, writeFileSync, rmSync, symlinkSync } = await import("node:fs");
     const { join } = await import("node:path");
     const root = realTempDir("fd-proc-wiring-");
