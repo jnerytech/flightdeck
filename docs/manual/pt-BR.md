@@ -300,7 +300,14 @@ para X** (pergunta antes) e **Adicionar pasta** (abre as Configurações com a c
 hooks** também atualiza o estado dos hooks mostrado nas Configurações). O que precisa de `sudo` ou de instalador só aparece
 para copiar: o app nunca o executa. Um programa que falta mostra a linha do gerenciador de pacotes
 quando há uma (apt, brew, winget) e um botão **Página de instalação** que abre a página oficial; o
-Flightdeck nunca oferece um download enviado direto para um shell. As mesmas conferências rodam no terminal com `flightdeckd doctor`.
+Flightdeck nunca oferece um download enviado direto para um shell. O conselho vale para o sistema em
+que aparece: o **GitHub** conta como desatualizado abaixo do gh 2.31 (o primeiro com `gh project`, de que
+a sincronização do quadro precisa), e no Linux aponta para a página de instalação, porque o pacote apt
+de uma LTS pode ser mais antigo; o **OpenSSH** no Windows diz para rodar a linha do
+`Add-WindowsCapability` em um PowerShell elevado (Executar como administrador); em um Linux sem
+systemd a linha do **serviço** diz que não há serviço para instalar ali e que é para iniciar o
+`flightdeckd` no login com as ferramentas do próprio sistema, em vez de oferecer um comando que
+falha. As mesmas conferências rodam no terminal com `flightdeckd doctor`.
 
 ### Confiar em um projeto
 
