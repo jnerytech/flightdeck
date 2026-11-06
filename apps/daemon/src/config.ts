@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, posix, resolve, win32 } from "node:path";
 import { PermissionMode } from "@flightdeck/protocol";
 import { z } from "zod";
 import { PricingConfig } from "./costs/pricing.ts";
@@ -199,7 +199,10 @@ export function userHome(
   env: Record<string, string | undefined> = process.env,
   platform: string = process.platform,
 ): string {
-  return (platform === "win32" ? env.USERPROFILE : env.HOME) || homedir();
+  const home = platform === "win32" ? env.USERPROFILE : env.HOME;
+  // Only an absolute path: a relative one would resolve against the current folder (#258).
+  const absolute = platform === "win32" ? win32.isAbsolute : posix.isAbsolute;
+  return home && absolute(home) ? home : homedir();
 }
 
 export function defaultConfigPath(): string {
