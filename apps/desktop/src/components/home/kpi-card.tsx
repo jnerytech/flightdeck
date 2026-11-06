@@ -31,7 +31,8 @@ export function KpiCard(
       <span id={`${id}-value`} className="kpi-value">
         {props.value}
       </span>
-      <span id={`${id}-details`} className="kpi-details">
+      {/* The details fill the card, so every card's sparkline sits on its bottom edge (#588). */}
+      <span id={`${id}-details`} className="kpi-details flex-1">
         {props.details}
       </span>
       <Sparkline values={props.series} label={props.seriesLabel} />

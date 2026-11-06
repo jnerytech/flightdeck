@@ -179,6 +179,20 @@ describe("sessoes-projetos-ui: the Sessions page is project first (issue #111)",
     expect(titles()).toEqual([]);
   });
 
+  test("an open project's rows and its earlier-sessions button sit indented under its folder; the chip and fold rows are on the 8 px step (#588)", async () => {
+    setup();
+    await settle(() => screen.queryByRole("heading", { name: "api" }) !== null);
+    await click(screen.getByRole("button", { name: "Mostrar ou esconder api" }));
+    const more = screen.queryByRole("button", { name: "3 sessões anteriores" });
+    expect(more).not.toBeNull();
+    const body = more?.closest("[data-slot='group-body']") ?? null;
+    expect(body?.className.split(" ") ?? []).toContain("group-body");
+    expect(body?.querySelector("li") != null).toBe(true);
+    const classes = (el: Element | null) => el?.className.split(" ") ?? [];
+    const fold = screen.queryByRole("button", { name: "Expandir tudo" })?.parentElement ?? null;
+    expect(classes(fold)).toContain("gap-2");
+  });
+
   test("the choice is remembered per project: what was opened comes back open", async () => {
     const first = setup();
     await settle(() => screen.queryByRole("heading", { name: "api" }) !== null);
