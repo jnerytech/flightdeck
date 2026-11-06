@@ -147,6 +147,27 @@ describe("notify-prefs-ui: the sound (issue #149)", () => {
     expect(store.notifyPrefs.value.sound.volume).toBeCloseTo(0.8);
   });
 
+  test("a file over the cap is refused before it is read", async () => {
+    const { store } = settings();
+    const input = within(panel()).getByLabelText("Choose a sound file") as HTMLInputElement;
+    const big = new File([new Uint8Array(500_000)], "long.wav", { type: "audio/wav" });
+    let read = false;
+    Object.defineProperty(big, "arrayBuffer", {
+      value: () => {
+        read = true;
+        return Promise.resolve(new ArrayBuffer(0));
+      },
+    });
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [big] } });
+    });
+    expect(within(panel()).getByRole("alert").textContent).toBe(
+      "That file is too large to keep (about 400 KB at most).",
+    );
+    expect(read).toBe(false);
+    expect(store.notifyPrefs.value.sound.fileName).toBeNull();
+  });
+
   test("choosing a file keeps it and shows its name; a file that is not audio is refused", async () => {
     const { store } = settings();
     const input = within(panel()).getByLabelText("Choose a sound file") as HTMLInputElement;

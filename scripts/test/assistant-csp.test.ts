@@ -12,7 +12,7 @@ const TAURI = join(ROOT, "apps/desktop/src-tauri");
 const read = (path: string) => readFileSync(path, "utf8");
 
 const CSP =
-  "default-src 'self'; connect-src 'self' ws: wss: ipc: http://ipc.localhost; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-src http://127.0.0.1:* http://localhost:* https://127.0.0.1:* https://localhost:*";
+  "default-src 'self'; connect-src 'self' ws: wss: ipc: http://ipc.localhost; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' data:; frame-src http://127.0.0.1:* http://localhost:* https://127.0.0.1:* https://localhost:*";
 
 const COMMANDS = [
   "token_get",

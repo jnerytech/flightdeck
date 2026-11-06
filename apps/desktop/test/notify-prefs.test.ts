@@ -205,6 +205,33 @@ describe("notify-prefs: kept per computer (issue #149)", () => {
     expect(again.value.sound.fileName).toBeNull();
   });
 
+  test("only a data:audio/ URL is played back from the stored sound file", () => {
+    const kept = memory({ "flightdeck.notifySoundFile": "https://example.com/x.mp3" });
+    expect(new NotifyPreferences(kept.storage).soundFile()).toBeNull();
+    kept.data.set("flightdeck.notifySoundFile", "javascript:alert(1)");
+    expect(new NotifyPreferences(kept.storage).soundFile()).toBeNull();
+    kept.data.set("flightdeck.notifySoundFile", "data:audio/ogg;base64,AAAA");
+    expect(new NotifyPreferences(kept.storage).soundFile()).toBe("data:audio/ogg;base64,AAAA");
+  });
+
+  test("a sound file the storage cannot hold is refused, and the old sound stays", () => {
+    const kept = memory();
+    const p = new NotifyPreferences(kept.storage);
+    p.setSoundFile("ding.mp3", "data:audio/mpeg;base64,AAAA");
+    (kept.storage as { setItem: (key: string, value: string) => void }).setItem = () => {
+      throw new Error("QuotaExceededError");
+    };
+    let result: boolean | "threw";
+    try {
+      result = p.setSoundFile("big.wav", "data:audio/wav;base64,BBBB");
+    } catch {
+      result = "threw";
+    }
+    expect(result).toBe(false);
+    expect(p.value.sound.fileName).toBe("ding.mp3");
+    expect(p.soundFile()).toBe("data:audio/mpeg;base64,AAAA");
+  });
+
   test("a file that is too large to keep is refused, and the old sound stays", () => {
     const p = new NotifyPreferences(memory().storage);
     p.setSoundFile("ding.mp3", "data:audio/mpeg;base64,AAAA");
