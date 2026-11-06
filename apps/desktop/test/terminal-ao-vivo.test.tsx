@@ -105,11 +105,20 @@ describe("terminal-ao-vivo: a session already live in another terminal (#502)", 
     expect(ptys.spawned[0]?.argv).toContain("abc-123");
   });
 
-  test("the outside terminal asks the same before it opens or copies anything", async () => {
-    await setup("pt-BR", "idle");
+  test("the outside terminal asks the same before it copies anything, and a second copy is on purpose", async () => {
+    const { store } = await setup("pt-BR", "idle");
+    const copied: string[] = [];
+    (
+      store as unknown as { platform: { copyText(text: string): Promise<void> } }
+    ).platform.copyText = async (text) => {
+      copied.push(text);
+    };
     await click(/Copiar comando|Abrir no terminal/);
     expect(screen.queryByText("Já aberta em outro terminal")).not.toBeNull();
-    expect(screen.queryByRole("button", { name: "Ver ao vivo aqui" })).not.toBeNull();
+    expect(copied).toEqual([]);
+    await click("Abrir outra cópia mesmo assim");
+    await settle(() => copied.length > 0);
+    expect(copied[0] ?? "").toContain("abc-123");
   });
 
   test("a session that ended elsewhere, or that nobody runs, opens at once", async () => {
