@@ -237,6 +237,48 @@ describe("opencode-ledger: the process groups the daemon starts (issue #250)", (
     expect(killed).toEqual([]);
   });
 
+  test("a ledger that cannot be written loses only the cleanup: add does not throw, and nothing is kept", async () => {
+    const blocker = join(tempDir("fd-ledger-"), "a-file");
+    writeFileSync(blocker, "not a folder");
+    const proc = new FakeProc();
+    proc.start(4242);
+    const ledger = new ProcessLedger({
+      file: join(blocker, "opencode-groups.json"),
+      proc,
+      killGroup: () => {},
+    });
+    expect(
+      await ledger.add(4242).then(
+        () => "added",
+        () => "threw",
+      ),
+    ).toBe("added");
+    expect(await ledger.count()).toBe(0);
+  });
+
+  test("a change that fails does not stop the ones after it", async () => {
+    const { file } = setup();
+    let looks = 0;
+    const flaky: ProcSource = {
+      identity: (pid) => {
+        looks += 1;
+        if (looks === 1) throw new Error("/proc went away");
+        return { startTicks: 1000, cmdline: "opencode acp", pgrp: pid };
+      },
+      members: () => [],
+      bootId: () => "boot-1",
+    };
+    const ledger = new ProcessLedger({ file, proc: flaky, killGroup: () => {} });
+    expect(
+      await ledger.add(4242).then(
+        () => "added",
+        () => "failed",
+      ),
+    ).toBe("failed");
+    await ledger.add(4243);
+    expect(await ledger.count()).toBe(1);
+  });
+
   test("an empty ledger leaves no file behind to read next time", async () => {
     const { file, proc, ledger } = setup();
     proc.start(4242);
@@ -260,6 +302,13 @@ describe("opencode-ledger: what /proc says", () => {
     expect(none.identity(process.pid)).toBeNull();
     expect(none.members(process.pid)).toEqual([]);
     expect(none.bootId()).toBeNull();
+  });
+
+  test("a /proc that cannot be read knows nothing: no process, no group, no boot", async () => {
+    const missing = procSource("linux", join(tempDir("fd-proc-"), "missing"));
+    expect(await missing.members(1)).toEqual([]);
+    expect(await missing.identity(1)).toBeNull();
+    expect(await missing.bootId()).toBeNull();
   });
 
   test("a real group on Linux: a child that leads its own group is written down and reaped after the 'crash'; elsewhere nothing is written down", async () => {
