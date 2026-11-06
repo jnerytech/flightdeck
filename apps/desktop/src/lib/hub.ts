@@ -229,7 +229,10 @@ export function hubRows(state: HubRowState, t?: T): HubRow[] {
         ),
         pinned: meta_.pinned,
         archived: meta_.archived,
-        standardName: standard?.display ?? null,
+        // What the list sorts by: the standard name as the person reads it (#668).
+        standardName: standard
+          ? sessionLabel({ names: standard, personas: state.personas?.[host.id] }, t)
+          : null,
         hostId: host.id,
         hostName: host.name,
         claudeSessionId: id,
