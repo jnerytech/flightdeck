@@ -2,15 +2,18 @@ import {
   ArrowUpCircle,
   CircleAlert,
   Coffee,
+  Ellipsis,
   Moon,
   RefreshCw,
   Server,
   SquareTerminal,
   TriangleAlert,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { IconTip } from "@/components/feedback/icon-tip";
 import { Meter } from "@/components/status/meter";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useBreakpoint } from "@/hooks/use-breakpoint";
 import type { Key, T } from "@/i18n/index";
 import type { AppState } from "@/lib/app-store";
 import { type QuotaGlance, quotaGlance } from "@/lib/quota-glance";
@@ -27,6 +30,23 @@ function Item(
         {props.children}
       </button>
     </IconTip>
+  );
+}
+
+/** A row of the More list on a compact window: the icon and the words the bar has no room for. */
+function MoreRow(
+  props: Readonly<{ name: string; disabled?: boolean; onClick(): void; children: ReactNode }>,
+) {
+  return (
+    <button
+      type="button"
+      disabled={props.disabled}
+      className="status-item justify-start"
+      onClick={props.onClick}
+    >
+      {props.children}
+      <span>{props.name}</span>
+    </button>
   );
 }
 
@@ -114,8 +134,32 @@ export function StatusBar(
   const update = summary.update;
   const version = summary.updateVersion ?? "";
   const UpdateIcon = update === "failed" ? TriangleAlert : ArrowUpCircle;
+  const updateName = update ? t(`statusBar.update.${update}` as Key, { version }) : "";
+  const breakpoint = useBreakpoint();
+  const compact = breakpoint === "compact";
+  /** The More list on a compact window; choosing a row closes it. */
+  const [open, setOpen] = useState(false);
+  const closing = (action: () => void) => () => {
+    setOpen(false);
+    action();
+  };
+  const keepAwake =
+    awake && summary.keepAwakeHostId ? (
+      <Item
+        name={t(`statusBar.keepAwake.${awake}` as Key)}
+        onClick={() => props.onOpenKeepAwake(summary.keepAwakeHostId as string)}
+      >
+        <AwakeIcon aria-hidden="true" />
+        <span className="status-short">{t(`statusBar.keepAwakeShort.${awake}` as Key)}</span>
+      </Item>
+    ) : null;
   return (
-    <section data-slot="status-bar" aria-label={t("statusBar.label")} className="status-bar">
+    <section
+      data-slot="status-bar"
+      data-breakpoint={breakpoint}
+      aria-label={t("statusBar.label")}
+      className="status-bar"
+    >
       <div className="status-bar-group">
         {props.quota && (
           <>
@@ -125,51 +169,87 @@ export function StatusBar(
               hostName={props.quota.hostName}
               onOpen={props.onOpenQuota}
             />
-            <IconTip label={refreshName}>
-              <button
-                type="button"
-                aria-label={refreshName}
-                aria-busy={props.refreshing}
-                disabled={props.refreshing}
-                className="status-item status-refresh"
-                data-busy={props.refreshing}
-                onClick={props.onRefreshQuota}
-              >
-                <RefreshCw aria-hidden="true" />
-              </button>
-            </IconTip>
+            {!compact && (
+              <IconTip label={refreshName}>
+                <button
+                  type="button"
+                  aria-label={refreshName}
+                  aria-busy={props.refreshing}
+                  disabled={props.refreshing}
+                  className="status-item status-refresh"
+                  data-busy={props.refreshing}
+                  onClick={props.onRefreshQuota}
+                >
+                  <RefreshCw aria-hidden="true" />
+                </button>
+              </IconTip>
+            )}
           </>
         )}
       </div>
       <div className="status-bar-group">
-        {update && (
-          <Item
-            name={t(`statusBar.update.${update}` as Key, { version })}
-            onClick={props.onOpenUpdate}
-          >
-            <UpdateIcon aria-hidden="true" data-mark="" />
-            <span>{t(`statusBar.updateShort.${update}` as Key, { version })}</span>
-          </Item>
+        {compact ? (
+          <>
+            {keepAwake}
+            <Popover open={open} onOpenChange={setOpen}>
+              <IconTip label={t("statusBar.more")}>
+                <PopoverTrigger asChild>
+                  <button type="button" aria-label={t("statusBar.more")} className="status-item">
+                    <Ellipsis aria-hidden="true" />
+                  </button>
+                </PopoverTrigger>
+              </IconTip>
+              <PopoverContent
+                side="top"
+                align="end"
+                className="flex w-auto max-w-[calc(100vw-1rem)] flex-col gap-0.5 p-1"
+              >
+                {props.quota && (
+                  <MoreRow
+                    name={refreshName}
+                    disabled={props.refreshing}
+                    onClick={closing(props.onRefreshQuota)}
+                  >
+                    <RefreshCw aria-hidden="true" />
+                  </MoreRow>
+                )}
+                {update && (
+                  <MoreRow name={updateName} onClick={closing(props.onOpenUpdate)}>
+                    <UpdateIcon aria-hidden="true" data-mark="" />
+                  </MoreRow>
+                )}
+                <MoreRow name={terminalsName} onClick={closing(props.onOpenTerminals)}>
+                  <SquareTerminal aria-hidden="true" />
+                </MoreRow>
+                <MoreRow name={hostsName} onClick={closing(props.onOpenHosts)}>
+                  <Server aria-hidden="true" />
+                </MoreRow>
+              </PopoverContent>
+            </Popover>
+          </>
+        ) : (
+          <>
+            {update && (
+              <Item name={updateName} onClick={props.onOpenUpdate}>
+                <UpdateIcon aria-hidden="true" data-mark="" />
+                <span className="status-short">
+                  {t(`statusBar.updateShort.${update}` as Key, { version })}
+                </span>
+              </Item>
+            )}
+            {keepAwake}
+            <Item name={terminalsName} onClick={props.onOpenTerminals}>
+              <SquareTerminal aria-hidden="true" />
+              <output>{summary.terminals}</output>
+            </Item>
+            <Item name={hostsName} onClick={props.onOpenHosts}>
+              <Server aria-hidden="true" />
+              <output>
+                {summary.hostsOnline}/{summary.hostsTotal}
+              </output>
+            </Item>
+          </>
         )}
-        {awake && summary.keepAwakeHostId && (
-          <Item
-            name={t(`statusBar.keepAwake.${awake}` as Key)}
-            onClick={() => props.onOpenKeepAwake(summary.keepAwakeHostId as string)}
-          >
-            <AwakeIcon aria-hidden="true" />
-            <span>{t(`statusBar.keepAwakeShort.${awake}` as Key)}</span>
-          </Item>
-        )}
-        <Item name={terminalsName} onClick={props.onOpenTerminals}>
-          <SquareTerminal aria-hidden="true" />
-          <output>{summary.terminals}</output>
-        </Item>
-        <Item name={hostsName} onClick={props.onOpenHosts}>
-          <Server aria-hidden="true" />
-          <output>
-            {summary.hostsOnline}/{summary.hostsTotal}
-          </output>
-        </Item>
       </div>
     </section>
   );

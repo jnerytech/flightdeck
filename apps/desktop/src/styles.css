@@ -1729,6 +1729,12 @@ html:not(:has([data-slot="status-bar"])) {
   font-size: 0.75rem;
   line-height: 1;
 }
+/* Medium and compact windows (issue #641): the words beside a value go to the tooltip and the name
+   of the button; the icons and values stay, so the items never run into each other. */
+[data-slot="status-bar"]:not([data-breakpoint="wide"])
+  :is(.status-quota-window, .status-quota-reset, .status-short) {
+  display: none;
+}
 @utility status-bar-group {
   display: flex;
   min-width: 0;

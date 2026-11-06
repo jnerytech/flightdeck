@@ -29,6 +29,7 @@ export const JOURNEYS: readonly string[] = [
   "sleep-wake",
   "tab-row",
   "wand-composer",
+  "notify-prefs",
   "activity",
 ];
 

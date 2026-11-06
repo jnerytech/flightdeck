@@ -1,4 +1,4 @@
-import { type AssistantKind, KIND_SPECS } from "@flightdeck/protocol";
+import { type AssistantKind, type CommitSource, KIND_SPECS } from "@flightdeck/protocol";
 import type * as React from "react";
 import { useCallback, useEffect, useReducer, useRef, useSyncExternalStore } from "react";
 import type { AssistantController } from "@/lib/assistant";
@@ -14,6 +14,8 @@ export interface WandBinding {
   cwd?: string;
   /** What the field's text is written from or checked against (card title: its description). */
   context?: Record<string, string>;
+  /** The repo a commit or PR message is written from (issue #162). */
+  source?: CommitSource;
   /** Opens Settings, section Assistant. */
   openSettings(): void;
 }
@@ -121,6 +123,7 @@ export function useWand(
         ...(binding.fieldHostId ? { fieldHostId: binding.fieldHostId } : {}),
         // The folder is the field host's: another host never gets to see its path.
         ...(binding.cwd && !otherHost(provider, binding.fieldHostId) ? { cwd: binding.cwd } : {}),
+        ...(binding.source ? { source: binding.source } : {}),
         provider,
       })
       .then(

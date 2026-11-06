@@ -38,4 +38,8 @@ Rebuilt on today's `main` from the stranded branch `notify-prefs` (4 commits, ab
   the tests and the code follow that.
 - **The taskbar badge** (already on `main`) counts the bell's unread entries, so what the
   preferences keep out of the bell is not counted there either.
-- **Not built:** the e2e journey update; the existing bell journey is unchanged by this work.
+- **The e2e journey** `notify-prefs` (added after the rebuild) switches an event off and mutes a
+  host in Settings, reloads to see both kept, puts them back and sends the test notification. It
+  accepts "Delivered" or "Not displayed": a headless browser may refuse the system notification.
+  The existing bell journey is unchanged by this work. Muting by session and the team folding are
+  not driven end to end (they need a running host with a team, which the demo does not have).

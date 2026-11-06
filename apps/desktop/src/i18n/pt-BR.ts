@@ -790,6 +790,7 @@ export const ptBR = {
   },
   statusBar: {
     label: "Barra de status",
+    more: "Mais itens de status",
     refreshQuota: "Atualizar o consumo do plano",
     refreshingQuota: "Atualizando o consumo do plano…",
     keepAwake: {
@@ -1984,6 +1985,8 @@ export const ptBR = {
     assistant_auth: "O provedor recusou a chave. Confira em Configurações, Assistente.",
     assistant_credits: "O provedor diz que não há mais crédito nesta chave.",
     assistant_rate_limited: "Pedidos demais agora. Espere um pouco e tente de novo.",
+    assistant_repo_other_host:
+      "O host do assistente não é o host deste cartão e não lê o repositório dele. Escolha o host do cartão ou uma chave de API.",
     assistant_overloaded: "O provedor está sobrecarregado. Tente de novo em instantes.",
     assistant_routing_unavailable:
       "Nenhum provedor deste modelo no OpenRouter aceita o pedido sem coletar dados. Desligue a opção de dados em Configurações, ou escolha outro modelo.",
@@ -2376,6 +2379,8 @@ export const ptBR = {
     modeLabel: "Modo do merge",
     modeMerge: "Merge com commit de merge (--no-ff)",
     modeSquash: "Squash (um commit só)",
+    commitMessage: "Mensagem do commit",
+    commitMessageHint: "Vazia: a mensagem padrão, com o título do card.",
     merged: "Card concluído: o trabalho entrou em {base}.",
     prComments: "Comentários do PR",
     prEmpty: "Nenhum comentário no PR.",
@@ -3377,6 +3382,7 @@ export const ptBR = {
     notifyTitle: "PR precisa de você",
     entry: "PR de {card}: {reason}",
     descriptionTitle: "Descrição do PR",
+    prTitle: "Título do PR",
     redactedOne: "{n} linha tirada por parecer um segredo",
     redactedMany: "{n} linhas tiradas por parecerem segredos",
     confirm: "Abrir o PR com este texto",

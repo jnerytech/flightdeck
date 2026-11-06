@@ -184,6 +184,7 @@ describe("assistant-protocol", () => {
       "assistant_request_id",
       "assistant_key_invalid",
       "assistant_key_store",
+      "assistant_repo_other_host",
     ]);
     const sorted = [...ASSISTANT_REASONS].sort();
     expect([refusalTexts("en.ts").sort(), refusalTexts("pt-BR.ts").sort()]).toEqual([

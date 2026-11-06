@@ -1230,7 +1230,9 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
     está em checkout em alguma worktree (em geral o `main` do repositório principal), o merge é
     feito ali, e só se aquela worktree estiver limpa; senão, vai por uma worktree temporária. Um
     conflito recusa e não muda nada. Depois do merge, a worktree e a branch do card somem e o card
-    vai para Concluído.
+    vai para Concluído. O campo **Mensagem do commit** leva a mensagem do merge; vazio, fica a
+    padrão, com o título do card. **Escrever com IA** escreve a mensagem a partir do diff do card,
+    das regras do repositório e dos commits recentes (issue #162).
 - **Comentários do PR:** num card com PR, os comentários de revisão são lidos do GitHub (`gh api`)
   ou do Azure DevOps (`az devops invoke`) a cada consulta do PR, e listados com arquivo, linha,
   autor e estado (resolvido ou não). No GitHub, quem não é dono, membro nem colaborador ganha o
@@ -2270,7 +2272,8 @@ Mais duas coisas vêm junto:
 
 - **Abrir PR** num card mostra antes a **Descrição do PR**, feita das sessões do card, para você
   editar. As linhas que parecem segredo são tiradas e contadas. Nada é aberto até você clicar em
-  **Abrir o PR com este texto**.
+  **Abrir o PR com este texto**. O **Título do PR** começa com o título do card; o título e a
+  descrição têm cada um a varinha, que escreve a partir do repositório do card.
 - **Ctrl+K**: cole o link de um PR (Azure DevOps ou GitHub) e escolha **Abrir o PR do link**. Os
   hosts são consultados: abre o card, se o PR é de um; senão, a conversa da primeira sessão que o
   histórico conhece para ele; senão, uma mensagem diz que nada tem esse PR.
@@ -2452,6 +2455,10 @@ reinício e um botão de atualizar. À direita, cada item abre a sua página:
 Cada item é um botão com as palavras como nome e uma dica, nunca só a cor, e as duas contagens são
 regiões vivas, então o leitor de tela ouve quando mudam.
 Em uma janela com menos de 600 px de altura a barra fica escondida, para deixar a altura para a conversa.
+Em uma janela com menos de 1024 px de largura, as palavras ao lado de um valor vão para a dica e o
+nome do botão (os ícones e os valores ficam). Abaixo de 640 px só a cota e o manter acordado ficam
+na barra; a atualização da cota, a atualização do app, os terminais e os hosts ficam numa lista
+**Mais itens de status** na ponta direita.
 
 ### Fila por cota
 
