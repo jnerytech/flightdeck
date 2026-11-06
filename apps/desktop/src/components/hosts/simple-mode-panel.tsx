@@ -15,7 +15,7 @@ const MODES: readonly UiMode[] = ["full", "simple"];
  * mode, the lock, and a way to open it in simple mode now. Only someone in full mode sees it;
  * hidden on a daemon that predates simple mode.
  */
-export function SimpleModePanel(props: { store: AppStore; host: HostView }) {
+export function SimpleModePanel(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
   const t = useT();
   const [locking, setLocking] = useState(false);

@@ -13,12 +13,14 @@ import { applySuggestion, suggestClients } from "../../lib/client-suggest.ts";
  * What to do with a project no client has: pin it to a client by hand, or make a rule from its
  * owner (a new client, or a rule added to the client that already has the owner's name).
  */
-export function AssignMenu(props: {
-  store: AppStore;
-  state: Pick<AppState, "clientList" | "clientOverrides">;
-  projectKey: string;
-  name: string;
-}) {
+export function AssignMenu(
+  props: Readonly<{
+    store: AppStore;
+    state: Pick<AppState, "clientList" | "clientOverrides">;
+    projectKey: string;
+    name: string;
+  }>,
+) {
   const { store, state, projectKey, name } = props;
   const { t } = store.i18n;
   const [suggestion] = suggestClients([{ key: projectKey, cwds: [] }], {

@@ -7,7 +7,7 @@ import type { AppStore } from "@/lib/app-store";
 import { useDraft } from "@/lib/use-draft";
 
 /** Phase 36: the hours this card is worth, an estimate typed by the person; empty clears it. */
-export function CardHours(props: { store: AppStore; hostId: string; card: Card }) {
+export function CardHours(props: Readonly<{ store: AppStore; hostId: string; card: Card }>) {
   const { store, hostId, card } = props;
   const t = useT();
   const [text, setText, saved] = useDraft(
