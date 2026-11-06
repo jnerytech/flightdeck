@@ -1267,6 +1267,7 @@ export const en: Dictionary = {
     webhook: "webhooks",
     bg: "background sessions",
     projectTrust: "project trust",
+    keepAwake: "keeping the computer awake",
     autoUpdate: "automatic host updates",
   },
   daemonRefusal: {
@@ -3916,6 +3917,23 @@ export const en: Dictionary = {
     bypassAllowMessage:
       "Allow sessions on {host} to run without permission prompts? Claude could then edit and delete files and run commands in any allowed folder without asking. Only do this on a machine and in folders you accept that risk for.",
     bypassTurnOff: "Turn off",
+    keepAwakeTitle: "Keep this computer awake",
+    keepAwakeHint:
+      "While a session of this host runs or waits for your answer, the host asks the computer not to sleep, so approvals and notifications keep working. The screen may still turn off, and closing the lid follows the system's power settings.",
+    keepAwakeOn: "On: the computer stays awake only while sessions run.",
+    keepAwakeOff: "Off: the computer sleeps as the system says.",
+    keepAwakeHeld: "Holding the computer awake now.",
+    keepAwakeTurnOff: "Turn off",
+    keepAwakeTurnOn: "Turn on",
+    keepAwakeReason: {
+      "no-inhibitor":
+        "Nothing on this computer can hold it awake (no systemd-inhibit, caffeinate or PowerShell).",
+      "unsupported-platform": "This system has no way to hold the computer awake.",
+      wsl: "This host runs inside WSL and cannot keep Windows awake. Turn it on for the Windows host.",
+      "start-failed": "The program that holds the computer awake could not start.",
+      ended:
+        "The program that holds the computer awake ended. It starts again with the next session.",
+    },
     rootsHint: "Sessions and projects can only use these folders and the ones inside them.",
     host: "Host",
     nameLabel: "Host name",

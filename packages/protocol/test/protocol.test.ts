@@ -63,6 +63,7 @@ const validCommands: Record<CommandType, unknown> = {
   "board.settings": { maxParallelRuns: 3 },
   "roots.add": { path: "/work/new", confirm: true },
   "host.bypass": { allow: true, confirm: true },
+  "host.keepAwake": { enabled: true },
   "project.trust.state": { paths: ["/work/app"] },
   "project.trust.inspect": { path: "/work/app" },
   "project.trust.set": { path: "/work/app", trusted: true },

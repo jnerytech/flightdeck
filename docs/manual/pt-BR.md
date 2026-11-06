@@ -334,6 +334,24 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
 - A decisão fica no host (`project_trust` no banco dele), por host, e é registrada no log. Um host
   que não anuncia `projectTrust` carrega tudo, como antes.
 
+### Manter o computador acordado
+
+Enquanto uma sessão de um host roda, ou espera a sua resposta, o host pede ao computador dele para
+não dormir, e assim aprovações e avisos continuam chegando e uma execução longa não é pausada por
+uma soneca. A aba **Configurações** do host tem **Manter este computador acordado** para desligar ou ligar de
+novo; a escolha fica na config do host (`keepAwake`, ligado por padrão) e vale na hora. O host solta
+o computador quando a última sessão para e quando o daemon sai.
+
+- Isso impede o computador de dormir por inatividade; a tela ainda pode apagar, e fechar a tampa
+  segue as configurações de energia do sistema.
+- No Linux usa `systemd-inhibit`, no macOS `caffeinate` e no Windows o PowerShell
+  (`SetThreadExecutionState`). Se nenhum deles existe, ou não consegue iniciar, a página diz o motivo
+  e o computador dorme como de costume.
+- Vale para o computador do próprio host: um host em outra máquina mantém aquela máquina acordada,
+  não a sua.
+- Dentro do WSL ele não segura nada: um bloqueio tomado ali não mantém o Windows acordado, então a
+  página diz isso e a chave vale para o host do Windows.
+
 ### Sessões sem pedidos de permissão
 
 Por padrão nenhuma sessão de um host roda em **Ignorar permissões** (toda ferramenta roda sem

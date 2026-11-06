@@ -86,6 +86,7 @@ import { type Prepare, preparePersonas } from "./personas/prepare.ts";
 import { agentPublisher } from "./personas/publish.ts";
 import { Personas } from "./personas/store.ts";
 import { claudeCli, filePins, Plugins, pluginDecisionLog } from "./plugins/plugins.ts";
+import { KeepAwake, osPowerContext, type PowerContext } from "./power/keep-awake.ts";
 import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
@@ -557,7 +558,7 @@ export const EXIT_ALREADY_RUNNING = 3;
 
 export class AlreadyRunningError extends Error {
   constructor(dataDir: string, hint?: string) {
-    super(`já em execução (dataDir ${dataDir})` + (hint ? "; " + hint : ""));
+    super(`já em execução (dataDir ${dataDir})${hint ? `; ${hint}` : ""}`);
   }
 }
 
@@ -754,6 +755,8 @@ export async function startDaemon(
     serviceContext?: (dryRun: boolean) => ServiceContext;
     /** Whether a port is free, for the cards' blocks; the real loopback probe when absent. */
     portProbe?: (port: number) => Promise<boolean>;
+    /** What keeps the computer awake (issue #163); the machine's own when absent. */
+    powerContext?: PowerContext;
   } = {},
 ): Promise<Daemon> {
   const configFile = configPath(args);
@@ -822,6 +825,9 @@ export async function startDaemon(
     pack: packPersonas,
     publisher: agentPublisher(agentcfg),
   });
+  // Holds the computer awake while a session runs or waits for a permission (issue #163).
+  const keepAwake = new KeepAwake(options.powerContext ?? osPowerContext(), config.keepAwake);
+
   // Folders a worktree removal holds: nothing starts in one while it is being removed.
   const folderLocks = new FolderLocks();
 
@@ -841,6 +847,7 @@ export async function startDaemon(
     store,
     runtime,
     risk,
+    onActivity: (active) => keepAwake.update(active),
     trust: projectTrust.sessionTrust.bind(projectTrust),
     prepareTrust: projectTrust.prepare.bind(projectTrust),
     autoApprove,
@@ -1289,6 +1296,15 @@ export async function startDaemon(
         await updateConfigFile(configFile, (raw) => ({ ...raw, allowBypassPermissions: allow }));
       },
     },
+    keepAwake: {
+      status: () => keepAwake.status(),
+      set: async (enabled) => {
+        // The file first: when it cannot be written the switch stays as it was, for the client and the daemon.
+        await updateConfigFile(configFile, (raw) => ({ ...raw, keepAwake: enabled }));
+        config.keepAwake = enabled;
+        keepAwake.setEnabled(enabled);
+      },
+    },
     projectTrust: {
       refresh: projectTrust.refreshRoots.bind(projectTrust),
       state: (paths) =>
@@ -1558,6 +1574,8 @@ export async function startDaemon(
     stop: () => {
       stopped ??= (async () => {
         unwatchFile(configFile, onConfigChange);
+        // First: whatever stops slowly after must not keep the computer awake meanwhile.
+        keepAwake.stop();
         await wsl?.stop();
         automations.stop();
         clearInterval(messagingSweep);
