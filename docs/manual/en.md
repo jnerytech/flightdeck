@@ -909,9 +909,16 @@ live; the list is the project's, so a session of another project never shows her
   window you already used comes back with its tabs. The account at the foot of the bar is the one
   of the host you are on; with no host open it is the shared account of the online hosts, or "N
   accounts" when they differ.
-- With one area, the tab strip sits in the top bar on the breadcrumb's row; with a split, each
-  area has its own strip. The strip keeps three tools: the active tab's **Actions** menu (move left
-  or right, move to the other area, pin), **New tab** and **Split**.
+- The tabs have a row of their own under the top bar, over each area (with a split, each area has
+  its own). They are flat, as in VS Code: thin lines part them, each is as wide as its title (then
+  the title is cut and its tooltip has it whole), the inactive ones are dimmer, and the active one
+  has the screen's background with an accent line on top. In a window under 600 px tall the one
+  area's tabs share the top bar's row instead, so a small window keeps room for the conversation.
+  The strip keeps three tools: the active tab's **Actions** menu (move left or right, move to the
+  other area, pin), **New tab** and **Split**.
+- While a request waits for you in a session, the session's header, the not-trusted notice and the
+  summary each take one line, so the request is whole on screen; **More actions** and the summary's
+  own button open the rest.
 - **Settings** has a rail of its sections (it takes you to a section and puts the focus there) and
   a search box: typing keeps the sections whose name or settings match.
 - **Costs** shows four tiles above the charts: the estimated cost, the tokens, the cache savings and
@@ -1132,6 +1139,11 @@ conversation. It is where you check what the agent did and send it back what to 
     passes 4 MB of diff in total: the files after that are only listed. On a host of this machine,
     **Show in folder** opens the file manager on the file (the editor stays beside it, and refuses
     what is over 1 MB);
+  - a file that may hold a credential (`.env*`, `id_*`, `*.pem`, `*.key`, `.npmrc`, what is in
+    `.ssh` or `.aws`, and the rest of the list the permission rules use) is listed with the
+    **Hidden** mark and no content or counts. The host never reads a new one, and the editor
+    refuses to open or save it, even through a link with another name. A link that leads out of
+    the repository is refused too;
   - it follows the disk live (the host watches the folder, with a 500 ms debounce), and
     **Refresh** reads it again.
 - **Inline comments:**
@@ -1986,6 +1998,27 @@ unblocked. A badge on the bell counts the unread ones.
 - The OS notifications are unchanged. The center only keeps a copy, so one that is never sent
   (the window had focus) is not in it either.
 
+## Setup checklist
+
+A **Setup** row at the top of the sidebar's Work group shows a ring and a count (for example
+`1/4`) while the steps to get going are not all done. It opens the **Setup** screen: a list of
+steps, each with one sentence and one button that opens the screen where it is fixed. A step is
+done when the app can see that it is: it is read from your hosts and the app, never ticked by hand,
+so connecting a host moves the ring at once and removing it moves it back.
+
+- **To get going:** connect a host (one online); install the Claude Code hooks on it (the host page
+  says installed); add a project with a base branch; start a first session or card. The step the
+  screen marks as current (the first one not done) has the filled button.
+- **Worth doing:** sign in to GitHub on the host, check that notifications work (a test
+  notification reached the system once), set a budget, and add a `.worktreeinclude` to a project.
+  The row does not wait for these.
+- A step the host cannot do (it does not announce the feature) is left out, not left undone.
+- The row leaves by itself once the four steps to get going are done. **Hide** (the eye button that
+  shows beside the row, or on the Setup screen) removes it for good; Settings, Window, **Show the
+  setup checklist** brings it back. Simple mode shows none of this.
+- A tool a host lacks (the GitHub CLI, `claude`) gets a quiet card on the Start screen, not a red
+  banner, with a link to how to install it and **Dismiss**.
+
 ## Snippets
 
 **Snippets** are saved commands and prompts. The **Snippets** screen (sidebar, for hosts that keep
@@ -2767,6 +2800,12 @@ checkpoint) gets a companion:
 
 The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
 
+When the session is already live in another terminal (VS Code's, say), **Continue in the terminal**
+and the outside terminal ask first: a second `claude` on the same session would not be seen by the
+first one. Each shows only its own turns, and both write to the same history. **View it live here**
+(the default) opens the session's live view, which follows that terminal's transcript; **Open a
+second copy anyway** opens it here all the same.
+
 ## Daily use
 
 ### Needs you, host page and notifications
@@ -2802,6 +2841,24 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
   badge. The uptime keeps counting while the page is open.
+- **Resources:** a host page panel (hosts that announce `resources`) shows the host's memory and
+  disk as bars, its load, and a table of its sessions and terminals with the biggest memory first:
+  project, memory, CPU and the programs running (names only; never a command line or an
+  environment). Memory or disk at 80% reads **High** and at 90% **Critical**, in words as well as
+  colour. **Leftover processes** lists a `claude` that the host's daemon started for a session that is
+  over (older than a minute, in that session's folder, started while that session lived), with its
+  pid, age and memory; a `claude` the daemon starts for something else (a plugin install, the account
+  query, an action) or a live session's process whose folder was moved is never listed; **End** asks first and ends only that
+  process (the daemon checks again, right before the signal, that it is the same process, by pid and
+  start time, still its own child and still without an owner). A `claude` whose folder cannot be read,
+  or that runs in a folder where a live session is, is never listed: which one is whose cannot be told.
+  A daemon running as pid 1 (a container) lists none. Ending needs a connection from loopback or
+  Tailscale, like the other commands that change the host, and sends SIGTERM to that process only. The
+  panel reads every 5 s while the page is open and the host is online, and the daemon keeps no
+  timer for it. Per-process numbers come from `/proc`, so only Linux hosts have them; macOS and
+  Windows hosts show the memory and disk (and the load, on macOS) and say the processes are not
+  measured. A session is matched to its `claude` by folder and start order, so two sessions in one
+  folder can swap numbers.
 - **Worktrees:** a host page panel (hosts that announce `worktrees`) lists the cards' worktrees
   under `.flightdeck/worktrees` with their size on disk (**unknown** when measuring ran out of
   time, never 0), how long they have been idle, and their card. **Suggested** marks a clean worktree
@@ -3021,7 +3078,9 @@ What keeps the app and the daemon light, and the numbers you can read yourself.
   this documentation). `flightdeckd --version` prints `flightdeckd <version> (protocolo 1)`.
 - **In the app:** the host page shows the daemon version, the app version and the `claude`
   version. A daemon of a different version gets the **≠** badge ("different version from the
-  app's") in the sidebar: it works, but update when you can.
+  app's") in the sidebar: it works, but update when you can. Hovering a host in the sidebar, or
+  moving the keyboard focus to it, shows its daemon's version in a tooltip (in the narrow rail,
+  after its name).
 - **Protocol:** the app sends its protocol version in `hello`. If the daemon does not accept it,
   the host becomes **incompatible: update the daemon**, with the command on the host page. It
   does not try to reconnect and drops out of the lists (sessions, search) until it is updated and

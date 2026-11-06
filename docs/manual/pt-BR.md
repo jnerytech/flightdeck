@@ -904,9 +904,16 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   quando a janela é nova; uma janela que você já usou volta com as abas dela. A conta no pé da
   barra é a do host em que você está; sem host aberto, é a conta que os hosts online dividem, ou
   "N contas" quando diferem.
-- Com uma área, a barra de abas fica na barra do topo, na linha do caminho; com a tela dividida,
-  cada área tem a sua. A barra mantém três ferramentas: o menu de **Ações** da aba ativa (mover
-  para a esquerda ou a direita, mover para a outra área, fixar), **Nova aba** e **Dividir**.
+- As abas têm uma linha própria sob a barra do topo, sobre cada área (com a tela dividida, cada área
+  tem a sua). São planas, como no VS Code: linhas finas as separam, cada uma tem a largura do título
+  (depois o título é cortado e a dica o mostra inteiro), as inativas ficam mais apagadas e a ativa
+  tem o fundo da tela com uma linha de destaque em cima. Numa janela com menos de 600 px de altura,
+  as abas da área única ficam na linha da barra do topo, para a janela pequena ter espaço para a
+  conversa. A barra mantém três ferramentas: o menu de **Ações** da aba ativa (mover para a esquerda
+  ou a direita, mover para a outra área, fixar), **Nova aba** e **Dividir**.
+- Enquanto um pedido espera por você numa sessão, o cabeçalho da sessão, o aviso de pasta sem
+  confiança e o resumo ocupam uma linha cada, para o pedido aparecer inteiro; **Mais ações** e o
+  botão do resumo abrem o resto.
 - As **Configurações** têm um trilho com as suas seções (leva até a seção e põe o foco nela) e uma
   caixa de busca: ao digitar, ficam as seções cujo nome ou configurações combinam.
 - **Custos** mostra quatro blocos acima dos gráficos: o custo estimado, os tokens, a economia do
@@ -1128,6 +1135,11 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
     para o que passa de 4 MB de diff no total: os arquivos seguintes entram só na lista. Num host
     desta máquina, **Mostrar na pasta** abre o gerenciador de arquivos no arquivo (o editor
     segue ao lado, e recusa o que passa de 1 MB);
+  - um arquivo que pode guardar uma credencial (`.env*`, `id_*`, `*.pem`, `*.key`, `.npmrc`, o que
+    está em `.ssh` ou `.aws`, e o resto da lista que as regras de permissão usam) aparece com a
+    marca **Oculto**, sem conteúdo nem contagens. O host nunca lê um arquivo novo desses, e o
+    editor se recusa a abri-lo ou gravá-lo, mesmo por um link com outro nome. Um link que leva
+    para fora do repositório também é recusado;
   - acompanha o disco ao vivo (o host observa a pasta, com debounce de 500 ms), e **Atualizar**
     lê de novo.
 - **Comentários inline:**
@@ -1979,6 +1991,28 @@ PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
 - As notificações do sistema não mudam. A central só guarda uma cópia: uma que nunca é enviada
   (a janela estava em foco) também não entra nela.
 
+## Lista de configuração inicial
+
+Uma linha **Configuração inicial** no topo do grupo Trabalho da barra lateral mostra um anel e uma
+contagem (por exemplo `1/4`) enquanto os passos para começar não estão todos feitos. Ela abre a
+tela de **Configuração inicial**: uma lista de passos, cada um com uma frase e um botão que abre a
+tela onde ele se resolve. Um passo está feito quando o app consegue ver que está: é lido dos seus
+hosts e do app, nunca marcado à mão; conectar um host move o anel na hora e remover o host o move
+de volta.
+
+- **Para começar:** conectar um host (um online); instalar os hooks do Claude Code nele (a página
+  do host diz instalados); adicionar um projeto com um branch base; iniciar uma primeira sessão ou
+  card. O passo que a tela marca como atual (o primeiro não feito) tem o botão cheio.
+- **Vale a pena:** entrar no GitHub no host, conferir se as notificações funcionam (uma notificação
+  de teste chegou ao sistema uma vez), definir um orçamento e adicionar um `.worktreeinclude` a um
+  projeto. A linha não espera por esses.
+- Um passo que o host não pode fazer (ele não anuncia o recurso) fica de fora, não pendente.
+- A linha sai sozinha quando os quatro passos para começar estão feitos. **Esconder** (o botão de
+  olho que aparece ao lado da linha, ou na tela) a remove de vez; Configurações, Janela, **Mostrar a
+  lista de configuração inicial** a traz de volta. O modo simples não mostra nada disso.
+- Uma ferramenta que falta num host (a CLI do GitHub, o `claude`) ganha um cartão discreto na tela
+  inicial, não um banner vermelho, com um link de como instalar e **Dispensar**.
+
 ## Snippets
 
 **Snippets** são comandos e prompts salvos. A tela **Snippets** (barra lateral, para hosts que os
@@ -2765,6 +2799,12 @@ checkpoint) ganha um companheiro:
 
 O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
 
+Quando a sessão já está ao vivo em outro terminal (o do VS Code, por exemplo), **Continuar no
+terminal** e o terminal de fora perguntam antes: um segundo `claude` na mesma sessão não seria
+visto pelo primeiro. Cada um mostra só os próprios turnos, e os dois escrevem no mesmo histórico.
+**Ver ao vivo aqui** (o padrão) abre a visão ao vivo da sessão, que segue a transcrição daquele
+terminal; **Abrir outra cópia mesmo assim** abre aqui do mesmo jeito.
+
 ## Uso diário
 
 ### Precisa de você, página do host e notificações
@@ -2799,6 +2839,24 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude
   ganha um selo ⚠. O tempo no ar continua contando enquanto a página está aberta.
+- **Recursos:** um painel da página do host (hosts que anunciam `resources`) mostra a memória e o
+  disco do host em barras, a carga, e uma tabela das sessões e terminais com a maior memória
+  primeiro: projeto, memória, CPU e os programas rodando (só os nomes; nunca uma linha de comando
+  nem o ambiente). Memória ou disco a 80% diz **Alta** e a 90% **Crítica**, em palavras e em cor.
+  **Processos que sobraram** lista um `claude` que o daemon do host iniciou para uma sessão que
+  já acabou (com mais de um minuto, na pasta dessa sessão, iniciado enquanto ela vivia), com pid,
+  idade e memória; um `claude` que o daemon inicia para outra coisa (instalação de plugin, consulta
+  da conta, uma ação) ou o processo de uma sessão viva cuja pasta foi movida nunca é listado; **Encerrar** pergunta antes e encerra só
+  esse processo (o daemon confere de novo, logo antes do sinal, que é o mesmo processo, por pid e
+  hora de início, ainda filho dele e sem dono). Um `claude` cuja pasta não pode ser lida, ou que roda
+  numa pasta onde há uma sessão viva, nunca é listado: não dá para saber de quem é cada um. Um daemon
+  rodando como pid 1 (um contêiner) não lista nenhum. Encerrar exige conexão por loopback ou
+  Tailscale, como os outros comandos que mudam o host, e manda SIGTERM só àquele processo. O painel lê a cada
+  5 s enquanto a página está aberta e o host está online, e o daemon não mantém timer para isso. Os
+  números por processo vêm de `/proc`, então só hosts Linux os têm; hosts macOS e Windows mostram a
+  memória e o disco (e a carga, no macOS) e dizem que os processos não são medidos. Uma sessão é
+  ligada ao seu `claude` pela pasta e pela ordem de início, então duas sessões na mesma pasta podem
+  trocar os números.
 - **Worktrees:** um painel da página do host (hosts que anunciam `worktrees`) lista as worktrees
   dos cards em `.flightdeck/worktrees` com o tamanho em disco (**desconhecido** quando a medição
   estourou o tempo, nunca 0), há quanto tempo estão paradas e o card de cada uma. **Sugerida** marca
@@ -3014,7 +3072,8 @@ O que mantém o app e o daemon leves, e os números que você mesmo pode ler.
   documentação). `flightdeckd --version` imprime `flightdeckd <versão> (protocolo 1)`.
 - **No app:** a página do host mostra a versão do daemon, a do app e a do `claude`. Um daemon de
   outra versão ganha o selo **≠** ("versão diferente") na barra lateral: funciona, mas atualize
-  quando puder.
+  quando puder. Passar o mouse sobre um host na barra lateral, ou levar o foco do teclado até ele,
+  mostra a versão do daemon numa dica (no trilho estreito, depois do nome).
 - **Protocolo:** o app manda a versão de protocolo dele no `hello`. Se o daemon não a aceita, o
   host fica **incompatível: atualize o daemon**, com o comando na página do host. Ele não tenta
   reconectar e sai das listas (sessões, busca) até ser atualizado e reconectado.

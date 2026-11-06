@@ -171,12 +171,15 @@ export function ChangesPanel(
   const fileRow = (file: DiffFile, root: string) => (
     <li key={`${file.path}:${file.uncommitted}`} className="flex items-center gap-2">
       <span className="font-mono text-xs">{file.path}</span>
-      <span className="text-muted-foreground text-xs tabular-nums">
-        {file.tooLarge && file.additions + file.deletions === 0 && file.bytes !== undefined
-          ? formatBytes(file.bytes)
-          : `+${file.additions} −${file.deletions}`}
-      </span>
+      {!file.secret && (
+        <span className="text-muted-foreground text-xs tabular-nums">
+          {file.tooLarge && file.additions + file.deletions === 0 && file.bytes !== undefined
+            ? formatBytes(file.bytes)
+            : `+${file.additions} −${file.deletions}`}
+        </span>
+      )}
       <Badge variant="outline">{t(`changes.status.${file.status}`)}</Badge>
+      {file.secret && <Badge variant="outline">{t("changes.secret")}</Badge>}
       {file.binary && <Badge variant="outline">{t("changes.binary")}</Badge>}
       {file.tooLarge && <Badge variant="outline">{t("changes.tooLarge")}</Badge>}
       {file.uncommitted && (
@@ -185,7 +188,7 @@ export function ChangesPanel(
         </Badge>
       )}
       <span className="ml-auto flex">
-        {!file.binary && file.status !== "deleted" && (
+        {!file.binary && !file.secret && file.status !== "deleted" && (
           <Button
             variant="ghost"
             size="sm"

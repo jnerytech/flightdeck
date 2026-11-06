@@ -44,6 +44,7 @@ import { RecapPanel } from "./RecapPanel.tsx";
 import { SessionsHub } from "./SessionsHub.tsx";
 import { SessionTabs } from "./SessionTabs.tsx";
 import { SessionView } from "./SessionView.tsx";
+import { SetupPage } from "./SetupPage.tsx";
 import { StartScreen } from "./StartScreen.tsx";
 import { TerminalButton } from "./TerminalButton.tsx";
 import { TerminalPage } from "./TerminalPage.tsx";
@@ -249,6 +250,8 @@ function ManagedSession(
               hostId={hostId}
               announced={hasFeature(host?.hostInfo?.features, "projectTrust", false)}
               cwd={cwd}
+              sessionId={sessionId}
+              {...(summary?.trustStale ? { stale: true } : {})}
               {...(owner
                 ? {
                     onReview: () =>
@@ -593,14 +596,17 @@ function LoadingScreen() {
   return <ScreenLoading label={t("states.loading")} />;
 }
 
-/** What a route shows on its own; `null` is the Sessões screen with nothing open. */
-function routeScreen(props: ScreenProps): ReactNode {
-  const { route, store, state, go } = props;
-  const hostOf = (id: string) => state.hosts.find((h) => h.id === id);
-  // Screens that ask their host for data on opening wait for it to be online: a route can come
-  // before the connection (a deep link at start-up).
+type HostInfo = AppState["hosts"][number];
+
+/**
+ * Screens that ask their host for data on opening wait for it to be online: a route can come
+ * before the connection (a deep link at start-up). `undefined` when there is nothing to wait for.
+ */
+function hostWaitScreen(props: ScreenProps): ReactNode {
+  const { route, store, state } = props;
   const waiting = hostToWait(route);
-  const waitHost = waiting ? hostOf(waiting) : undefined;
+  if (!waiting) return undefined;
+  const waitHost = state.hosts.find((h) => h.id === waiting);
   // Issue #227: once a try has failed, the host is down, not on its way: a spinner there was a dead
   // end. The host's banner says why and offers to reconnect.
   if (
@@ -616,11 +622,122 @@ function routeScreen(props: ScreenProps): ReactNode {
       </ScreenState>
     );
   }
-  if (waiting && waitHost?.status !== "online") {
-    const { t } = store.i18n;
-    const label = waitHost ? t("states.connecting", { host: waitHost.name }) : t("states.loading");
-    return <ScreenLoading label={label} />;
-  }
+  if (waitHost?.status === "online") return undefined;
+  const { t } = store.i18n;
+  const label = waitHost ? t("states.connecting", { host: waitHost.name }) : t("states.loading");
+  return <ScreenLoading label={label} />;
+}
+
+/** A session of another tool on the host: its tabs and its view, with the host's features as switches. */
+function externalScreen(
+  props: ScreenProps,
+  route: Extract<Route, { name: "external" }>,
+  host: HostInfo | undefined,
+): ReactNode {
+  const { store, state, go } = props;
+  const features = host?.hostInfo?.features;
+  const has = (name: string) => hasFeature(features, name, false);
+  return (
+    <SessionTabs
+      key={`${route.host}/${route.claudeSessionId}`}
+      store={store}
+      hostId={route.host}
+      claudeSessionId={route.claudeSessionId}
+      enabled={has("review")}
+      messagingId={has("messaging") ? route.claudeSessionId : null}
+      telemetry={has("telemetry")}
+      trace={has("trace")}
+    >
+      <ExternalView
+        store={store}
+        state={state}
+        hostId={route.host}
+        hostName={host?.name ?? route.host}
+        claudeSessionId={route.claudeSessionId}
+        onResumed={() => go({ name: "home" })}
+        {...(has("snippets")
+          ? {
+              prompts: store.promptSnippets(
+                route.host,
+                state.externals[`${route.host}/${route.claudeSessionId}`]?.cwd ?? "",
+              ),
+            }
+          : {})}
+      />
+    </SessionTabs>
+  );
+}
+
+/** One host's page, with its actions wired to the router and the store. */
+function hostScreen(props: ScreenProps, host: HostInfo): ReactNode {
+  const { store, go } = props;
+  return (
+    <HostPage
+      key={host.id}
+      store={store}
+      host={host}
+      onRename={(name) => store.renameHost(host.id, name)}
+      onReconnect={() => void store.reconnectHost(host.id)}
+      onPairAgain={(input) => store.pairAgain(host.id, input)}
+      onOpenAutoApprovals={() => go({ name: "auto-approvals", host: host.id })}
+      onOpenHistory={(f) => go({ name: "history", host: host.id, ...f })}
+      onOpenSession={(row) => go(rowRoute(row))}
+      onOpenProject={(card) =>
+        go({ name: "project", host: card.hostId, projectId: card.projectId })
+      }
+      onSeeAllSessions={() => {
+        // The hub applies the host for this visit only: the saved filter stays the person's.
+        go({ name: "hub", host: host.name });
+      }}
+      onSeeAllProjects={() => go({ name: "all-projects", host: host.id })}
+      onNewSession={() => go({ name: "new-session", host: host.id })}
+      onRemove={() => {
+        go({ name: "hub" });
+        void store.removeHost(host.id);
+      }}
+    />
+  );
+}
+
+/** A host's projects, with the pages each one opens switched on by the host's features. */
+function projectsScreen(
+  props: ScreenProps,
+  route: Extract<Route, { name: "projects" }>,
+  host: HostInfo | undefined,
+): ReactNode {
+  const { store, go } = props;
+  const has = (name: string) => hasFeature(host?.hostInfo?.features, name, false);
+  const open =
+    (name: "agent" | "workflows" | "automations" | "actions") =>
+    ({ id, name: projectName }: { id: string; name: string }) =>
+      go({ name, host: route.host, projectId: id, projectName });
+  return (
+    <ProjectsPage
+      key={route.host}
+      store={store}
+      hostId={route.host}
+      hostName={host?.name ?? route.host}
+      rules={has("rules")}
+      personas={has("personas")}
+      agent={has("agentcfg")}
+      onOpenAgent={open("agent")}
+      {...(route.focus ? { focus: route.focus } : {})}
+      onOpenBoard={(projectId) => go({ name: "board", host: route.host, projectId })}
+      onOpenWorkflows={open("workflows")}
+      automations={has("automation")}
+      onOpenAutomations={open("automations")}
+      actions={has("actions")}
+      onOpenActions={open("actions")}
+    />
+  );
+}
+
+/** What a route shows on its own; `null` is the Sessões screen with nothing open. */
+function routeScreen(props: ScreenProps): ReactNode {
+  const { route, store, state, go } = props;
+  const hostOf = (id: string) => state.hosts.find((h) => h.id === id);
+  const waitScreen = hostWaitScreen(props);
+  if (waitScreen !== undefined) return waitScreen;
 
   if (route.name === "start") return <StartScreen store={store} hosts={state.hosts} go={go} />;
   if (route.name === "settings") {
@@ -671,6 +788,8 @@ function routeScreen(props: ScreenProps): ReactNode {
       return <ClientsPage store={store} state={state} />;
     case "plugins":
       return <PluginsPage store={store} />;
+    case "setup":
+      return <SetupPage store={store} state={state} go={go} />;
     case "snippets":
       return <SnippetsPage store={store} go={go} />;
     case "connections":
@@ -743,39 +862,7 @@ function routeScreen(props: ScreenProps): ReactNode {
       ) : null;
     }
     case "external":
-      return (
-        <SessionTabs
-          key={`${route.host}/${route.claudeSessionId}`}
-          store={store}
-          hostId={route.host}
-          claudeSessionId={route.claudeSessionId}
-          enabled={hasFeature(hostOf(route.host)?.hostInfo?.features, "review", false)}
-          messagingId={
-            hasFeature(hostOf(route.host)?.hostInfo?.features, "messaging", false)
-              ? route.claudeSessionId
-              : null
-          }
-          telemetry={hasFeature(hostOf(route.host)?.hostInfo?.features, "telemetry", false)}
-          trace={hasFeature(hostOf(route.host)?.hostInfo?.features, "trace", false)}
-        >
-          <ExternalView
-            store={store}
-            state={state}
-            hostId={route.host}
-            hostName={hostOf(route.host)?.name ?? route.host}
-            claudeSessionId={route.claudeSessionId}
-            onResumed={() => go({ name: "home" })}
-            {...(hasFeature(hostOf(route.host)?.hostInfo?.features, "snippets", false)
-              ? {
-                  prompts: store.promptSnippets(
-                    route.host,
-                    state.externals[`${route.host}/${route.claudeSessionId}`]?.cwd ?? "",
-                  ),
-                }
-              : {})}
-          />
-        </SessionTabs>
-      );
+      return externalScreen(props, route, hostOf(route.host));
     case "reader":
       return (
         <TranscriptReader
@@ -791,64 +878,10 @@ function routeScreen(props: ScreenProps): ReactNode {
       return null;
     case "host": {
       const host = hostOf(route.host);
-      if (!host) return null;
-      return (
-        <HostPage
-          key={host.id}
-          store={store}
-          host={host}
-          onRename={(name) => store.renameHost(host.id, name)}
-          onReconnect={() => void store.reconnectHost(host.id)}
-          onPairAgain={(input) => store.pairAgain(host.id, input)}
-          onOpenAutoApprovals={() => go({ name: "auto-approvals", host: host.id })}
-          onOpenHistory={(f) => go({ name: "history", host: host.id, ...f })}
-          onOpenSession={(row) => go(rowRoute(row))}
-          onOpenProject={(card) =>
-            go({ name: "project", host: card.hostId, projectId: card.projectId })
-          }
-          onSeeAllSessions={() => {
-            // The hub applies the host for this visit only: the saved filter stays the person's.
-            go({ name: "hub", host: host.name });
-          }}
-          onSeeAllProjects={() => go({ name: "all-projects", host: host.id })}
-          onNewSession={() => go({ name: "new-session", host: host.id })}
-          onRemove={() => {
-            go({ name: "hub" });
-            void store.removeHost(host.id);
-          }}
-        />
-      );
+      return host ? hostScreen(props, host) : null;
     }
-    case "projects": {
-      const host = hostOf(route.host);
-      return (
-        <ProjectsPage
-          key={route.host}
-          store={store}
-          hostId={route.host}
-          hostName={host?.name ?? route.host}
-          rules={hasFeature(host?.hostInfo?.features, "rules", false)}
-          personas={hasFeature(host?.hostInfo?.features, "personas", false)}
-          agent={hasFeature(host?.hostInfo?.features, "agentcfg", false)}
-          onOpenAgent={({ id, name }) =>
-            go({ name: "agent", host: route.host, projectId: id, projectName: name })
-          }
-          {...(route.focus ? { focus: route.focus } : {})}
-          onOpenBoard={(projectId) => go({ name: "board", host: route.host, projectId })}
-          onOpenWorkflows={({ id, name }) =>
-            go({ name: "workflows", host: route.host, projectId: id, projectName: name })
-          }
-          automations={hasFeature(host?.hostInfo?.features, "automation", false)}
-          onOpenAutomations={({ id, name }) =>
-            go({ name: "automations", host: route.host, projectId: id, projectName: name })
-          }
-          actions={hasFeature(host?.hostInfo?.features, "actions", false)}
-          onOpenActions={({ id, name }) =>
-            go({ name: "actions", host: route.host, projectId: id, projectName: name })
-          }
-        />
-      );
-    }
+    case "projects":
+      return projectsScreen(props, route, hostOf(route.host));
     case "board":
       return (
         <BoardView
@@ -994,8 +1027,8 @@ function NewSession(
     store: AppStore;
     state: AppState;
     host: HostView;
-    prompt?: string | undefined;
-    persona?: string | undefined;
+    prompt?: string;
+    persona?: string;
   }>,
 ) {
   const { host } = props;

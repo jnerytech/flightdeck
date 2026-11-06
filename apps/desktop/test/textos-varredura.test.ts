@@ -17,6 +17,12 @@ const ALLOWED = [
   "Backlog",
   "main",
   "ended",
+  // The products' own names, and a refusal reason code (the screen translates it, it is not shown as is).
+  "Fable 5.1",
+  "Opus 5.5",
+  "Sonnet 5.5",
+  "Haiku 5.5",
+  "assistant_offline",
   "bg-status-error",
   "border border-status-error bg-transparent",
   "border-status-error/40 text-status-error",

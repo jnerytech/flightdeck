@@ -327,6 +327,27 @@ describe("resumo-ui", () => {
 
 // Issue #232: the summary opened in full the first time a session was seen, and in a short window
 // it took the room of the conversation. In a short area it starts folded; a click still opens it.
+// Issue #488: the tab row took 36 px; while a request waits for the person the summary starts as its
+// one line, so the request card stays whole (#173's check).
+describe("resumo-ui: the summary while a request waits", () => {
+  test("a session seen for the first time with a request waiting shows its summary folded", async () => {
+    const { store } = await online("en");
+    const hostId = store.getState().hosts[0]?.id as string;
+    const recap = await store.sessionRecap(hostId, SESSION, {});
+    store.sessionRecap = (async () => recap) as typeof store.sessionRecap;
+    render(
+      <TContext.Provider value={store.i18n.t}>
+        <SessionPane waiting>
+          <RecapPanel store={store} hostId={hostId} claudeSessionId="never-seen-waiting" />
+        </SessionPane>
+      </TContext.Provider>,
+    );
+    await settle(() => screen.queryByRole("region", { name: "Session summary" }) !== null);
+    const toggle = screen.queryByRole("button", { name: "Session summary" });
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false");
+  });
+});
+
 describe("resumo-ui: the summary in a short area", () => {
   const real = globalThis.ResizeObserver;
   afterEach(() => {

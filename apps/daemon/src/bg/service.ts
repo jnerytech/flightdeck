@@ -202,11 +202,11 @@ export class BgService {
 
   /** Starts a background session through `flightdeckd claude --bg`: controllable, with the persona. */
   async start(input: {
-    cwd?: string | undefined;
-    prompt?: string | undefined;
-    cardId?: string | undefined;
-    name?: string | undefined;
-    persona?: string | undefined;
+    cwd?: string;
+    prompt?: string;
+    cardId?: string;
+    name?: string;
+    persona?: string;
   }): Promise<{ id: string }> {
     const { start } = this.opts;
     if (!start) {

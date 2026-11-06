@@ -90,6 +90,8 @@ import { KeepAwake, osPowerContext, type PowerContext } from "./power/keep-awake
 import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
+import type { ProcReader } from "./resources/resources.ts";
+import { createResources } from "./resources/wiring.ts";
 import { Changes } from "./review/changes.ts";
 import { ReviewComments } from "./review/comments.ts";
 import { ReviewFiles } from "./review/files.ts";
@@ -746,6 +748,8 @@ export async function startDaemon(
     onShutdown?: () => void;
     /** The PTY terminals run in; Bun's own when absent (tests inject a fake). */
     pty?: PtyFactory;
+    /** Where `resources.get` reads processes from; the real /proc on Linux when absent (tests inject a fake). */
+    resourcesProc?: ProcReader;
     /** How the project key asks git; the process itself when absent (tests hold it). */
     projectGit?: AsyncGitRunner;
     /** Whether the OS service is installed, for `doctor.run`; the real service manager when absent. */
@@ -1280,6 +1284,12 @@ export async function startDaemon(
     allowApiKey: config.allowApiKey,
     log: logger.log.bind(logger),
   });
+  /** A folder's trust as the clients see it, with the live sessions that still run with the setup they loaded (issue #463). */
+  const trustState = (path: string) => {
+    const via = projectTrust.via(path);
+    const stale = manager.staleSessions(path);
+    return { path, trusted: via !== null, via, ...(stale > 0 ? { staleSessions: stale } : {}) };
+  };
   const server = startServer({
     manager,
     opencode: {
@@ -1309,17 +1319,14 @@ export async function startDaemon(
     },
     projectTrust: {
       refresh: projectTrust.refreshRoots.bind(projectTrust),
-      state: (paths) =>
-        paths.map((path) => {
-          const via = projectTrust.via(path);
-          return { path, trusted: via !== null, via };
-        }),
+      state: (paths) => paths.map(trustState),
       inspect: (path) => inspectProject(path),
       set: (path, trusted) => {
         if (trusted) projectTrust.trust(path);
         else projectTrust.revoke(path);
-        const via = projectTrust.via(path);
-        return { path, trusted: via !== null, via };
+        // The live sessions that loaded the setup say again whether it is still theirs (issue #463).
+        manager.trustChanged();
+        return trustState(path);
       },
     },
     persistRoots: (roots) =>
@@ -1504,6 +1511,13 @@ export async function startDaemon(
     }),
     central,
     maintenance,
+    resources: await createResources({
+      dataDir: config.dataDir,
+      sessions: manager.list.bind(manager),
+      terminals: terminals.list.bind(terminals),
+      pidOf: terminals.pidOf.bind(terminals),
+      ...(options.resourcesProc ? { proc: options.resourcesProc } : {}),
+    }),
     worktrees: createWorktrees({
       board,
       sessions: manager,

@@ -27,7 +27,7 @@ export type SpawnFn = (argv: string[], options: Record<string, unknown>) => Spaw
 export interface SpawnedProcess {
   pid?: number;
   exited: Promise<number>;
-  terminal?: { write(data: string): number; resize(cols: number, rows: number): void } | undefined;
+  terminal?: { write(data: string): number; resize(cols: number, rows: number): void };
   kill(signal?: string): void;
 }
 
