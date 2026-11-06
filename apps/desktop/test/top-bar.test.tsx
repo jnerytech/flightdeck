@@ -9,8 +9,15 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { TopBarActions, TopBarHost } = await import("../src/components/shell/top-bar.tsx");
+const { AppStore } = await import("../src/lib/app-store.ts");
+const { App } = await import("../src/ui/App.tsx");
+const { memoryPlatform, TOKEN } = await import("./fixtures.ts");
+const cleanups: Array<() => void> = [];
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  for (const fn of cleanups.splice(0)) fn();
+});
 
 const HOSTS = [
   { id: "a", name: "alfa", status: "online" as const },
@@ -89,6 +96,35 @@ for (const [lang, dict] of [
         fireEvent.click(add as HTMLElement);
       });
       expect(chosen).toEqual(["add"]);
+    });
+
+    test("in the app, the bar sits across the window: its switcher selects a host, its search opens the palette", async () => {
+      const store = new AppStore(memoryPlatform(false, lang).platform, {
+        baseDelayMs: 60_000,
+        wakeDebounceMs: 0,
+      });
+      cleanups.push(() => store.dispose());
+      render(<App store={store} />);
+      await act(() => store.addHost({ name: "alfa", url: "ws://127.0.0.1:1/v1/ws", token: TOKEN }));
+      await act(() => store.addHost({ name: "beta", url: "ws://127.0.0.1:1/v1/ws", token: TOKEN }));
+      const banner = screen.queryByRole("banner");
+      expect(banner).not.toBeNull();
+      const bar = within(banner as HTMLElement);
+      const switcher = bar.queryByRole("button", { name: dict.shell.noHost });
+      expect(switcher).not.toBeNull();
+      await open(switcher as HTMLElement);
+      const beta = screen.queryByRole("menuitemradio", { name: /^beta, / });
+      expect(beta).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(beta as HTMLElement);
+      });
+      expect(bar.queryByRole("button", { name: fill(dict.shell.host, { host: "beta" }) })).not.toBeNull();
+      const search = bar.queryByRole("button", { name: dict.shell.searchLabel });
+      expect(search).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(search as HTMLElement);
+      });
+      expect(screen.queryByRole("dialog", { name: dict.searchUi.label })).not.toBeNull();
     });
 
     test("search opens the palette, the theme button says what it switches to, and the version shows", async () => {
