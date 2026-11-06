@@ -8,6 +8,7 @@ import {
   spawnHolder,
   windowsScript,
 } from "../src/power/keep-awake.ts";
+import { poll } from "./helpers.ts";
 
 /** A power context that records what was started and killed, and starts nothing real. */
 function fakeContext(over: Partial<PowerContext> & { present?: string[] } = {}) {
@@ -113,11 +114,9 @@ describe("keep-awake: the command that holds the computer awake on each system",
         ended = true;
       });
       // Add-Type takes a moment; if SetThreadExecutionState failed, the script would have exited by now.
-      await Bun.sleep(2500);
-      expect(ended).toBe(false);
+      expect(await poll(() => ended, 2500)).toBeNull();
       await helper.exited;
-      await Promise.race([holder?.exited, Bun.sleep(15_000)]);
-      expect(ended).toBe(true);
+      expect(await poll(() => ended, 15_000)).toBe(true);
     },
   );
 

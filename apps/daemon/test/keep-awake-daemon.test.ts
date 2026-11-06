@@ -115,7 +115,8 @@ describe("keep-awake-daemon: the host announces it, holds while a session runs a
     const info = await client.data<{ keepAwake?: KeepAwakeStatus }>("host.info", {});
     expect(info?.keepAwake?.enabled).toBe(false);
     await client.data("session.create", { cwd: project, prompt: "[tool] escreve" });
-    await Bun.sleep(150);
+    // Nothing may start: a short poll that the inhibitor never comes, not a guessed sleep.
+    expect(await poll(() => power.state.started > 0, 150)).toBeNull();
     expect(power.state.started).toBe(0);
     await client.data("host.keepAwake", { enabled: true });
     await poll(() => power.state.alive === 1, 3000);
