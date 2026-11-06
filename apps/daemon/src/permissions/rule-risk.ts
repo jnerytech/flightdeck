@@ -37,6 +37,8 @@ const NAMES = ["x", ".env", "id_rsa", "x.pem", "x.key", ".ssh", ".aws", "credent
 /** What a `?` may stand for, one character at a time. */
 const CHARS = [..."abcdefghijklmnopqrstuvwxyz0123456789._-"];
 const WILDCARD = /(\*\*\/|\*\*|\*|\?)/;
+/** Whether a pattern has a wildcard at all. */
+const WILD = /[*?]/;
 const MAX_WILDCARDS = 6;
 
 /**
@@ -120,15 +122,21 @@ function pathLevel(
   const call = (path: string) =>
     classify(toolName, Object.fromEntries(keys.map((key) => [key, path])));
   const pattern = readAs(content);
-  const wild = pattern.search(/[*?]/);
-  // Backslashes are an escape in a pattern: this check does not follow them.
-  if (wild !== -1 && pattern.includes("\\")) return "any";
-  const paths = wild === -1 ? [pattern] : instances(pattern);
-  if (paths === null) return "any";
-  if (WRITE_TOOLS.has(toolName) && paths.some(isControl)) return "any";
-  const levels = paths.map(call);
+  // A backslash is a separator on Windows and an escape for the CLI: read the rule both ways, and
+  // the broader reading decides (issue #431). A drive path is not refused for its separators.
+  const readings = pattern.includes("\\")
+    ? [pattern.replaceAll("\\", "/"), pattern.replaceAll("\\", "")]
+    : [pattern];
+  // Removing a backslash can make a parent step (`.\./`): each reading is checked for one.
+  if (readings.some((reading) => reading.includes(".."))) return "any";
+  const wild = readings.some((reading) => WILD.test(reading));
+  const reached = readings.map((reading) => (WILD.test(reading) ? instances(reading) : [reading]));
+  if (reached.includes(null)) return "any";
+  const named = (reached as string[][]).flat();
+  if (WRITE_TOOLS.has(toolName) && named.some(isControl)) return "any";
+  const levels = named.map(call);
   // A pattern that can stand for a credential covers a high-risk call: it is not narrow.
-  if (wild !== -1 && levels.includes("high")) return "any";
+  if (wild && levels.includes("high")) return "any";
   return highest(levels);
 }
 
