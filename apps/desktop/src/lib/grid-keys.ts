@@ -18,9 +18,14 @@ function nextRow(spots: CardSpot[], from: number, direction: 1 | -1): number | n
     beyond[0]?.spot.top ?? here.top,
   );
   const row = beyond.filter(({ spot }) => Math.abs(spot.top - rowTop) <= 1);
-  return row.reduce((best, item) =>
-    Math.abs(item.spot.left - here.left) < Math.abs(best.spot.left - here.left) ? item : best,
-  ).index;
+  const nearest = row.reduce<{ index: number; gap: number }>(
+    (best, item) => {
+      const gap = Math.abs(item.spot.left - here.left);
+      return gap < best.gap ? { index: item.index, gap } : best;
+    },
+    { index: -1, gap: Number.POSITIVE_INFINITY },
+  );
+  return nearest.index;
 }
 
 /**

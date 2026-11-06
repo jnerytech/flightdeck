@@ -42,6 +42,7 @@ function BoardCard(props: Readonly<{ store: AppStore; card: ProjectCard; onOpen(
         aria-describedby={factsId}
         className="card-button rounded-lg border bg-card text-left hover:bg-accent/40 focus-visible:ring-2"
         onClick={props.onOpen}
+        onKeyDown={moveFocus}
       >
         <span className="truncate font-medium">{card.name}</span>
         <span
@@ -62,7 +63,7 @@ function BoardCard(props: Readonly<{ store: AppStore; card: ProjectCard; onOpen(
                   key={id}
                   className={id === "waiting" ? "font-medium text-status-needs-you" : ""}
                 >
-                  {`${t(`kanban.columns.${id}` as Key)} ${card.columns[id]}`}
+                  {t(`kanban.columns.${id}` as Key)} {card.columns[id]}
                   <Pause last={at === filled.length - 1} />
                 </span>
               ))
@@ -102,11 +103,12 @@ function BoardCard(props: Readonly<{ store: AppStore; card: ProjectCard; onOpen(
 }
 
 /** The arrows move the focus between the cards, by where they sit in the grid. */
-function moveFocus(event: KeyboardEvent<HTMLUListElement>) {
+function moveFocus(event: KeyboardEvent<HTMLButtonElement>) {
+  const list = event.currentTarget.closest("ul");
   const cards = [
-    ...event.currentTarget.querySelectorAll<HTMLButtonElement>("button[data-slot='board-card']"),
+    ...(list?.querySelectorAll<HTMLButtonElement>("button[data-slot='board-card']") ?? []),
   ];
-  const from = cards.indexOf(event.target as HTMLButtonElement);
+  const from = cards.indexOf(event.currentTarget);
   if (from < 0) return;
   const spots = cards.map((card) => card.getBoundingClientRect());
   const to = gridStep(spots, from, event.key);
@@ -159,8 +161,7 @@ export function BoardLanding(
       {shown.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("boardLanding.noMatch")}</p>
       ) : (
-        // biome-ignore lint/a11y/noNoninteractiveElementInteractions: the arrows move between the cards' buttons
-        <ul aria-label={t("projectsUi.list")} className="card-grid" onKeyDown={moveFocus}>
+        <ul aria-label={t("projectsUi.list")} className="card-grid">
           {shown.map((card) => (
             <BoardCard
               key={card.projectId}
