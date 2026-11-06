@@ -1011,6 +1011,49 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await waitFor(async () => (await box.inputValue()) === typed, "o texto de volta");
   },
 
+  // 28. Notification preferences (#149): Settings switches an event off and mutes a host, both
+  // survive a reload (they live in the app's own storage), the switches come back on, and the test
+  // notification says whether the system showed it (a headless browser may refuse, so either
+  // answer is right; what matters is that it answers).
+  "notify-prefs": async (c) => {
+    await open(c, { name: "settings" });
+    // Settings has other switches with the same words (Needs you): these two groups are the panel's.
+    const events = c.page.getByRole("group", { name: c.t("notifyPrefs.events"), exact: true });
+    const mutes = c.page.getByRole("group", { name: c.t("notifyPrefs.mute"), exact: true });
+    const box = (group: typeof events, name: string) =>
+      group.getByRole("checkbox", { name, exact: true });
+    const finished = box(events, c.t("notifyPrefs.event.turn-finished"));
+    const muteAlfa = box(mutes, c.t("notifyPrefs.muteHost", { name: "alfa" }));
+    await finished.scrollIntoViewIfNeeded({ timeout: WAIT });
+    if (!(await finished.isChecked())) throw new Error("Turn finished começa ligado");
+    if (await muteAlfa.isChecked()) throw new Error("alfa começa sem silêncio");
+    await finished.uncheck();
+    await muteAlfa.check();
+    // The page is read again from the start: only what was stored can still be set.
+    await open(c, { name: "settings" });
+    await finished.scrollIntoViewIfNeeded({ timeout: WAIT });
+    await waitFor(
+      async () => !(await finished.isChecked()),
+      "Turn finished desligado após recarregar",
+    );
+    await waitFor(async () => await muteAlfa.isChecked(), "alfa silenciado após recarregar");
+    // The other switches were not touched.
+    if (!(await box(events, c.t("notifyPrefs.event.needs-you")).isChecked())) {
+      throw new Error("Needs you mudou sem ninguém pedir");
+    }
+    await finished.check();
+    await muteAlfa.uncheck();
+    await waitFor(
+      async () => (await finished.isChecked()) && !(await muteAlfa.isChecked()),
+      "as chaves de volta",
+    );
+    await c.page.getByRole("button", { name: c.t("notifyPrefs.test"), exact: true }).click();
+    await c.page
+      .getByText(new RegExp(`^(${c.t("notifyPrefs.delivered")}|${c.t("notifyPrefs.notShown")})`))
+      .first()
+      .waitFor({ timeout: WAIT });
+  },
+
   // Issue #151: the Activity board puts the sessions of every host in columns by state. A request
   // is approved from its card, the filters narrow the cards and a card opens its session.
   activity: async (c) => {
@@ -1072,6 +1115,55 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .first()
       .click({ timeout: SESSION_WAIT });
     await needs.waitFor({ state: "detached", timeout: SESSION_WAIT });
+  },
+
+  // Issue #670: the Host page folds the checks with nothing to do behind a button. Enter opens it,
+  // Enter closes it, and a tool that is optional and not installed is not counted as OK.
+  "health-fold": async (c) => {
+    await open(c, { name: "host", host: ALFA });
+    // "Show 16 checks ...": the count is the host's, so the label is matched with a number in it.
+    const pattern = (key: "hostHealth.okShow" | "hostHealth.okHide") =>
+      new RegExp(
+        `^${c
+          .t(key, { n: 99999 })
+          .replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")
+          .replace("99999", "\\d+")}$`,
+      );
+    const fold = c.page.getByRole("button", { name: pattern("hostHealth.okShow") });
+    await fold.waitFor({ timeout: SESSION_WAIT });
+    if ((await fold.getAttribute("aria-expanded")) !== "false")
+      throw new Error("a dobra abriu sozinha");
+    const list = c.page.getByRole("list", { name: c.t("hostHealth.okList"), exact: true });
+    if ((await list.count()) !== 0) throw new Error("a lista apareceu antes de abrir");
+    // The keyboard opens it: Enter on the focused button.
+    await fold.focus();
+    await c.page.keyboard.press("Enter");
+    await list.waitFor({ timeout: WAIT });
+    const hide = c.page.getByRole("button", { name: pattern("hostHealth.okHide") });
+    await hide.waitFor({ timeout: WAIT });
+    if ((await hide.getAttribute("aria-expanded")) !== "true")
+      throw new Error("aria-expanded não abriu");
+    // An optional tool that is not installed says so and does not pass for OK.
+    const optional = list
+      .getByRole("listitem")
+      .filter({ hasText: c.t("hostHealth.optionalAbsent") });
+    for (const row of await optional.all()) {
+      const text = (await row.textContent()) ?? "";
+      if (
+        new RegExp(`\\b${c.t("hostDeps.state.ok")}\\b`).test(
+          text.replace(c.t("hostHealth.optionalAbsent"), ""),
+        )
+      ) {
+        throw new Error(`um opcional ausente aparece como OK: ${text}`);
+      }
+    }
+    // Enter again folds it back.
+    await hide.focus();
+    await c.page.keyboard.press("Enter");
+    await list.waitFor({ state: "detached", timeout: WAIT });
+    await c.page
+      .getByRole("button", { name: pattern("hostHealth.okShow") })
+      .waitFor({ timeout: WAIT });
   },
 };
 

@@ -31,12 +31,33 @@ const TEST_MARKERS = [
   { pattern: /\.toMatchSnapshot\(/g, text: "toMatchSnapshot(" },
 ];
 
-/** Heredoc bodies, which are data, not commands. */
-const HEREDOC_BODY = /<<-?\s*(['"]?)(\w+)\1[^\n]*\n[\s\S]*?\n\s*\2\s*(?=\n|$)/g;
+/** Where a heredoc starts on a line: `<<TAG`, `<<-TAG`, `<<'TAG'` or `<<"TAG"`. */
+const HEREDOC_START = /<<-?[ \t]*(['"]?)(\w+)\1/;
+
+/**
+ * The command without heredoc bodies, which are data, not commands: from `<<TAG` to the line that
+ * holds only TAG. A line scan, not one regex, so a long command cannot make it backtrack (S8786).
+ */
+function withoutHeredocs(command: string): string {
+  const lines = command.split("\n");
+  const kept: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] as string;
+    const start = HEREDOC_START.exec(line);
+    const end = start ? lines.findIndex((l, j) => j > i && l.trim() === start[2]) : -1;
+    if (!start || end < 0) {
+      kept.push(line);
+      continue;
+    }
+    kept.push(line.slice(0, start.index));
+    i = end;
+  }
+  return kept.join("\n");
+}
 
 /** The command without heredoc bodies and quoted text, which are data, not commands. */
 function commandWords(command: string): string {
-  return command.replace(HEREDOC_BODY, "").replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""');
+  return withoutHeredocs(command).replace(/"(?:[^"\\]|\\.)*"|'[^']*'/g, '""');
 }
 
 /** The subcommand and its arguments of each git invocation in a (possibly chained) command. */
@@ -407,7 +428,7 @@ export function heavyReasonGiven(value: string | undefined): boolean {
 
 /** The command's segments, split at ; & | and newlines outside quotes, without heredoc bodies. */
 function rawSegments(command: string): string[] {
-  const text = command.replace(HEREDOC_BODY, "");
+  const text = withoutHeredocs(command);
   const segments: string[] = [];
   let current = "";
   let quote = "";
@@ -446,18 +467,22 @@ function prefixOverride(segment: string): string | undefined {
 }
 
 /**
- * The full coverage run a command starts, through the slot or not, and the override in front of
- * that run's own segment (#687: an override elsewhere in the command does not count), or null.
+ * Every full coverage run a command starts, through the slot or not, each with the override in
+ * front of its own segment (#687: an override elsewhere in the command, or in front of another
+ * heavy run, does not count).
  */
-function heavyRun(command: string): { what: string; override: string | undefined } | null {
+function heavyRuns(command: string): Array<{ what: string; override: string | undefined }> {
+  const runs: Array<{ what: string; override: string | undefined }> = [];
   for (const segment of rawSegments(command)) {
     const words = commandWords(segment).trim().split(/\s+/);
-    for (let i = 0; i < words.length; i++) {
-      const what = words[i] === "bun" && words[i + 1] === "run" ? heavyScript(words, i + 2) : null;
-      if (what) return { what, override: prefixOverride(segment) };
-    }
+    const what = words
+      .map((word, i) =>
+        word === "bun" && words[i + 1] === "run" ? heavyScript(words, i + 2) : null,
+      )
+      .find((found) => found !== null);
+    if (what) runs.push({ what, override: prefixOverride(segment) });
   }
-  return null;
+  return runs;
 }
 
 /** Whether the script at `at` (with the words after it as its arguments) is a full coverage run. */
@@ -491,17 +516,16 @@ export function heavyRunViolation(
   env: Record<string, string | undefined>,
 ): string | null {
   if (env.FLIGHTDECK_COORDINATOR) return null;
-  const heavy = heavyRun(command);
+  const heavy = heavyRuns(command).find((run) => !heavyReasonGiven(run.override));
   if (!heavy) return null;
   if (heavy.override === undefined) return heavyRunMessage(heavy.what);
-  if (heavyReasonGiven(heavy.override)) return null;
   return `FLIGHTDECK_SLOT_HEAVY needs a reason: give the reason as the value. ${heavyRunMessage(heavy.what)}`;
 }
 
 /** Whether a refused heavy run goes ahead on an override that gives its reason (#674). */
 export function heavyRunWaived(command: string): boolean {
-  const heavy = heavyRun(command);
-  return heavy !== null && heavy.override !== undefined && heavyReasonGiven(heavy.override);
+  const runs = heavyRuns(command);
+  return runs.length > 0 && runs.every((run) => heavyReasonGiven(run.override));
 }
 
 /** The package scripts that run only through the slot (CLAUDE.md). */

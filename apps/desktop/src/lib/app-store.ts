@@ -81,6 +81,7 @@ import type {
 import { AppLog } from "./app-log.ts";
 import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
+import { BoardWidth } from "./board-select.ts";
 import { loadLastBoards, saveLastBoard } from "./board-shortcut.ts";
 import { budgetLabel } from "./budgets.ts";
 import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
@@ -193,7 +194,14 @@ import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.t
 import { ThemeController } from "./theme.ts";
 import { loadTileLayout, saveTileLayout, type TileLayout } from "./tiles.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
-import { loadTreeFolded, saveTreeFolded } from "./tree-fold.ts";
+import {
+  loadTreeFolded,
+  loadTreeOpened,
+  loadTreePinned,
+  saveTreeFolded,
+  saveTreeOpened,
+  saveTreePinned,
+} from "./tree-fold.ts";
 import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
 import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
 import type { ConflictChoice, ImportPreview, ImportResult } from "./vault-backup.ts";
@@ -1000,6 +1008,7 @@ export class AppStore {
       browserClockDeps(() => this.now(), typeof document === "undefined" ? undefined : document),
     );
     this.tabOrder = new TabOrderController(platform.storage);
+    this.boardWidth = new BoardWidth(platform.storage);
     this.notifyPrefs = new NotifyPreferences(platform.storage);
     this.i18n = new I18n(platform);
     this.appLog = new AppLog({ sink: platform.logs, values: () => this.scanValues() });
@@ -1074,6 +1083,9 @@ export class AppStore {
   readonly theme: ThemeController;
   /** Phase 40: the AI assistant's preferences, keys state and the wand's requests. */
   readonly assistant: AssistantController;
+  /** Where a wand with no provider sends the person: Settings, section Assistant (issue #162). */
+  readonly openAssistantSettings = (): void =>
+    this.router.push({ name: "settings", section: "assistant" });
   readonly density: DensityController;
   readonly terminalFont: TerminalFontController;
   readonly terminalReader: TerminalReaderSetting;
@@ -1085,6 +1097,8 @@ export class AppStore {
   readonly clock: SharedClock;
   /** How Ctrl+Tab orders the tabs (issue #148). */
   readonly tabOrder: TabOrderController;
+  /** The board columns' width, one for all, kept across starts (issue #161). */
+  readonly boardWidth: BoardWidth;
   /** What the person chose about notifications: events, mutes, team folding, sound (issue #149). */
   readonly notifyPrefs: NotifyPreferences;
   /** Plays the notification sound; tests replace it. */
@@ -1699,6 +1713,24 @@ export class AppStore {
 
   setTreeFolded(folded: readonly string[]): void {
     saveTreeFolded(this.platform.storage, folded);
+  }
+
+  /** The projects the person unfolded against the default fold; kept across starts. */
+  treeOpened(): string[] {
+    return loadTreeOpened(this.platform.storage);
+  }
+
+  setTreeOpened(opened: readonly string[]): void {
+    saveTreeOpened(this.platform.storage, opened);
+  }
+
+  /** The projects pinned to the top of the sidebar's tree on this computer. */
+  treePinned(): string[] {
+    return loadTreePinned(this.platform.storage);
+  }
+
+  setTreePinned(pinned: readonly string[]): void {
+    saveTreePinned(this.platform.storage, pinned);
   }
 
   /** Whether the Activity board shows its Idle column; kept across starts. */
