@@ -1124,6 +1124,11 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
     para o que passa de 4 MB de diff no total: os arquivos seguintes entram só na lista. Num host
     desta máquina, **Mostrar na pasta** abre o gerenciador de arquivos no arquivo (o editor
     segue ao lado, e recusa o que passa de 1 MB);
+  - um arquivo que pode guardar uma credencial (`.env*`, `id_*`, `*.pem`, `*.key`, `.npmrc`, o que
+    está em `.ssh` ou `.aws`, e o resto da lista que as regras de permissão usam) aparece com a
+    marca **Oculto**, sem conteúdo nem contagens. O host nunca lê um arquivo novo desses, e o
+    editor se recusa a abri-lo ou gravá-lo, mesmo por um link com outro nome. Um link que leva
+    para fora do repositório também é recusado;
   - acompanha o disco ao vivo (o host observa a pasta, com debounce de 500 ms), e **Atualizar**
     lê de novo.
 - **Comentários inline:**
