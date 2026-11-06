@@ -357,13 +357,13 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
       const inner = (side: string) =>
         (Number.parseFloat(style.getPropertyValue(`padding-${side}`)) || 0) +
         (Number.parseFloat(style.getPropertyValue(`border-${side}-width`)) || 0);
-      const insets: Array<[string, number]> = [
-        ["left", box.left - edge.left + inner("left")],
+      const left: [string, number] = ["left", box.left - edge.left + inner("left")];
+      const others: Array<[string, number]> = [
         ["right", edge.right - box.right + inner("right")],
         ["top", box.top - edge.top + inner("top")],
         ["bottom", edge.bottom - box.bottom + inner("bottom")],
       ];
-      const [side, px] = insets.reduce((low, next) => (next[1] < low[1] ? next : low));
+      const [side, px] = others.reduce((low, next) => (next[1] < low[1] ? next : low), left);
       if (px < min) {
         add(
           "card-padding",
