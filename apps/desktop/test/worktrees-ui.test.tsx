@@ -451,4 +451,39 @@ describe("worktrees-seguranca-ui: what is removed is what is on the screen (F7)"
       unmount();
     }
   });
+
+  test("a host with no worktrees says so", async () => {
+    const w = setup({ list: { worktrees: [], disks: [] } });
+    render(w.view());
+    await settle(() => (document.body.textContent ?? "").includes("No worktrees under"));
+    expect(rows()).toEqual([]);
+  });
+
+  test("a removal that frees no measurable size still says how many went, and a failure says why", async () => {
+    const w = setup();
+    const merged = "/work/api/.flightdeck/worktrees/merged";
+    w.store.hostCommand = (async (_h: string, type: string) => {
+      if (type === "worktree.list") return LIST;
+      return {
+        removed: [{ path: merged, freedBytes: null }],
+        kept: [
+          {
+            path: "/work/api/.flightdeck/worktrees/fresh",
+            reason: "failed",
+            detail: "git said no",
+          },
+        ],
+      };
+    }) as never;
+    render(w.view());
+    await ready();
+    await click(box("merged"));
+    await click(screen.getByRole("button", { name: "Remove 1 worktree" }));
+    await click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Remove worktrees" }),
+    );
+    const region = () => screen.getByRole("region", { name: "Worktrees" }).textContent ?? "";
+    await settle(() => region().includes("Removed 1 worktrees"));
+    expect(region()).toContain("git said no");
+  });
 });

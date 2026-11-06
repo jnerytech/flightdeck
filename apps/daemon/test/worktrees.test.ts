@@ -311,4 +311,11 @@ describe("worktrees: the size scan", () => {
     expect(await duSize("/w/x", 5, ran({ code: 1 }))).toBeNull();
     expect(await duSize("/w/x", 5, ran({ stdout: "banana" }))).toBeNull();
   });
+
+  test("a du that cannot even be started is null, not an error", async () => {
+    const broken = async () => {
+      throw new Error("spawn du ENOENT");
+    };
+    expect(await duSize("/w/x", 5, broken)).toBeNull();
+  });
 });

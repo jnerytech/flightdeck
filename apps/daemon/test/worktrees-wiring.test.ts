@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { FolderLocks } from "../src/worktrees/locks.ts";
 import { createWorktrees } from "../src/worktrees/wiring.ts";
@@ -96,5 +96,21 @@ describe("worktrees-wiring: the board's cards behind the panel (issue #152)", ()
     const { worktrees, disks } = await w.list();
     expect(worktrees.find((i) => i.path === s.path)?.sizeBytes).toBeGreaterThan(300 * 1024);
     expect(disks[0]?.totalBytes).toBeGreaterThan(0);
+  });
+
+  test("a project whose folder is gone has no disk in the list, and listing does not fail", async () => {
+    const s = await setup();
+    const w = createWorktrees({
+      board: s.board,
+      sessions: { list: () => [] },
+      runs: { state: () => ({ status: "idle" }) },
+      ...quiet,
+    });
+    rmSync(s.project.path, { recursive: true, force: true });
+    const listed = await w.list().then(
+      (result) => result,
+      (error: unknown) => `list failed: ${String(error)}`,
+    );
+    expect(listed).toEqual({ worktrees: [], disks: [] });
   });
 });
