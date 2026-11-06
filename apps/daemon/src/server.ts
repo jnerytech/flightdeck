@@ -12,6 +12,7 @@ import {
   type ExternalSession,
   type ExternalStatus,
   FEATURE_HOLD_PROOF,
+  FEATURE_RESUME_OFFER,
   type HostRuntime,
   type KeepAwakeStatus,
   MIN_PROTOCOL_VERSION,
@@ -358,6 +359,8 @@ function featuresOf(opts: ServerOptions): string[] {
   return [
     // A high-risk permission allow needs `held: true` (issue #251).
     FEATURE_HOLD_PROOF,
+    // The sessions a restart interrupted can be listed (`session.interrupted`, issue #150).
+    FEATURE_RESUME_OFFER,
     // The folder picker of the app browses the host's folders with `fs.dirs`.
     ...(opts.fsDirs ? ["fs.dirs", "fs.files"] : []),
     // A live managed session takes a new permission mode and model, and announces its slash commands.
@@ -679,6 +682,8 @@ export function startServer(opts: ServerOptions): RunningServer {
           sessions: sessions.map((s) => listed(s, s.claudeSessionId, managedLive(s))),
         });
       }
+      case "session.interrupted":
+        return ok(command.type, { sessions: manager.interrupted() });
       case "session.create": {
         // Looked up in git before the session exists, so what names and lists it finds the
         // project already known; the wait is this request's own, the others are served meanwhile.
