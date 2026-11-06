@@ -221,6 +221,11 @@ describe("rule-risk: the exact paths the server looks up, and the check without 
       target: "/proj/new.ts",
     });
     expect(absolute("/proj/new.ts")).toBe("file");
+    // A tool writes `~/x` under its folder, not the home: a rule for the home's ~/x stays a folder.
+    const tilde = await pathKinds(["~/x"], "/proj", "/home/me", async () => "missing", {
+      target: "~/x",
+    });
+    expect(tilde("~/x")).toBe("missing");
   });
 
   test("writeTarget names the file a write tool is about to write, and nothing for a read or a shell", () => {
