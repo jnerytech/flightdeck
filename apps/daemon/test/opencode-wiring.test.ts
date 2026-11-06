@@ -163,23 +163,27 @@ describe("opencode-wiring", () => {
       });
       try {
         const real = procSource("linux");
-        const until = Date.now() + 5000;
-        while (real.identity(orphan.pid)?.cmdline !== "sleep 300" && Date.now() < until) {
-          await Bun.sleep(10);
-        }
+        await poll(() => real.identity(orphan.pid)?.cmdline === "sleep 300", 5000);
         const identity = real.identity(orphan.pid);
         await daemon(null, (dataDir) => {
           mkdirSync(dataDir, { recursive: true });
           writeFileSync(
             join(dataDir, OPENCODE_LEDGER_FILE),
             JSON.stringify([
-              { pid: orphan.pid, startTicks: identity?.startTicks, cmdline: identity?.cmdline },
+              {
+                pid: orphan.pid,
+                startTicks: identity?.startTicks,
+                cmdline: identity?.cmdline,
+                bootId: real.bootId(),
+              },
             ]),
           );
         });
-        expect(await Promise.race([orphan.exited, Bun.sleep(5000).then(() => "alive")])).not.toBe(
-          "alive",
-        );
+        let gone = false;
+        void orphan.exited.then(() => {
+          gone = true;
+        });
+        expect(await poll(() => gone, 5000)).toBe(true);
       } finally {
         orphan.kill("SIGKILL");
       }

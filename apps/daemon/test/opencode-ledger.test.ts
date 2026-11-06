@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -8,7 +8,7 @@ import {
   parseStat,
   procSource,
 } from "../src/runtime/process-ledger.ts";
-import { tempDir } from "./helpers.ts";
+import { poll, tempDir } from "./helpers.ts";
 
 /** A pretend /proc: processes by pid, each with its group and start. */
 class FakeProc implements ProcSource {
@@ -222,7 +222,13 @@ describe("opencode-ledger: the process groups the daemon starts (issue #250)", (
     proc.start(process.pid, { cmdline: "flightdeckd", pgrp: 4000 });
     proc.start(4001, { pgrp: 4000, startTicks: 2000 });
     const own = { startTicks: 1000, cmdline: "flightdeckd", bootId: "boot-1" };
-    writeFileSync(file, JSON.stringify([{ ...own, pid: 4000 }, { ...own, pid: process.pid }]));
+    writeFileSync(
+      file,
+      JSON.stringify([
+        { ...own, pid: 4000 },
+        { ...own, pid: process.pid },
+      ]),
+    );
     expect(make().reap()).toEqual({ reaped: [], stale: [4000, process.pid] });
     // and a daemon that leads its own group
     proc.start(process.pid, { cmdline: "flightdeckd" });
@@ -269,10 +275,7 @@ describe("opencode-ledger: what /proc says", () => {
       const kills: number[] = [];
       try {
         // Just after the spawn the child may still show its parent's command: wait for the exec.
-        const until = Date.now() + 5000;
-        while (real.identity(child.pid)?.cmdline !== "sleep 60" && Date.now() < until) {
-          await Bun.sleep(10);
-        }
+        await poll(() => real.identity(child.pid)?.cmdline === "sleep 60", 5000);
         const identity = real.identity(child.pid);
         expect(identity?.pgrp).toBe(child.pid);
         expect(identity?.cmdline).toBe("sleep 60");
