@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { unfoldAll } from "./unfold.ts";
 
 registerDom();
 // Loaded after the DOM exists: react-dom and Testing Library read it on import.
@@ -154,13 +155,47 @@ describe("desktop: interface", () => {
     await addHost(server.url);
     await newSession("olá");
     await waitFor(() => expect(screen.getAllByText("ociosa").length).toBeGreaterThan(0));
-    await waitFor(() => expect(screen.getByLabelText("Modelo")).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Modelo:/ })).toBeTruthy());
+    const chip = () => screen.getByRole("button", { name: /^Modo de permissão:/ });
+    const openChip = async () =>
+      act(async () => {
+        fireEvent.pointerDown(chip(), { button: 0, ctrlKey: false, pointerType: "mouse" });
+        fireEvent.click(chip());
+      });
+    await openChip();
     await act(async () => {
-      fireEvent.change(screen.getByLabelText("Modo de permissão"), { target: { value: "plan" } });
-      fireEvent.change(screen.getByLabelText("Modelo"), { target: { value: "opus" } });
+      fireEvent.click(screen.getByRole("menuitemradio", { name: /^Planejar/ }));
+    });
+    const modelChip = () => screen.getByRole("button", { name: /^Modelo:/ });
+    await act(async () => {
+      fireEvent.pointerDown(modelChip(), { button: 0, ctrlKey: false, pointerType: "mouse" });
+      fireEvent.click(modelChip());
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitemradio", { name: /^Opus/ }));
     });
     await waitFor(() => expect(runtime.modes).toEqual(["plan"]));
     await waitFor(() => expect(runtime.models).toEqual(["opus"]));
+    // The effort too: the host announces session.effort, so the Model menu has an Effort submenu.
+    await act(async () => {
+      fireEvent.pointerDown(modelChip(), { button: 0, ctrlKey: false, pointerType: "mouse" });
+      fireEvent.click(modelChip());
+    });
+    await act(async () => {
+      const effort = screen.getByRole("menuitem", { name: /^Esforço/ });
+      fireEvent.pointerDown(effort, { button: 0, ctrlKey: false, pointerType: "mouse" });
+      fireEvent.click(effort);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitemradio", { name: /^Alto/ }));
+    });
+    await waitFor(() => expect(runtime.efforts).toEqual(["high"]));
+    // The host does not allow bypass: the menu says so and leads to the host's page, where the switch is.
+    await openChip();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "Ligue nas configurações do host" }));
+    });
+    await waitFor(() => expect(screen.getByText("Sessões sem pedidos de permissão")).toBeTruthy());
   });
 
   test("card de aprovação com diff: permitir e negar com motivo", async () => {
@@ -215,6 +250,7 @@ describe("desktop: interface", () => {
     await sidebar.hostAction("Nova sessão", "meu pc");
     expect(screen.getByRole("button", { name: "Criar sessão" })).toBeTruthy();
     await sidebar.openHub();
+    await unfoldAll(act);
     fireEvent.click(screen.getByRole("button", { name: "minha sessão" }));
     expect(screen.getByRole("heading", { name: "minha sessão" })).toBeTruthy();
 

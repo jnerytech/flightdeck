@@ -127,6 +127,8 @@ export function daemon(
     changesWatch?: WatchFn;
     /** Git snapshots per turn, rewind and fork (phase 12), over this daemon's database. */
     checkpoints?: boolean;
+    /** Phase 39: the host offers OpenCode (a fake runtime and two models). */
+    opencode?: boolean;
     /** The project's MCP servers, CLAUDE.md, agents and skills (phase 12), in this daemon's root. */
     agentcfg?: boolean;
     /** The MCP servers a live session of the fake runtime reports (phase 12). */
@@ -190,6 +192,8 @@ export function daemon(
   const historyRoot = join(root, "claude-projects");
   mkdirSync(historyRoot);
   const history = new HistoryIndexer({ db: store.db, roots: [historyRoot] });
+  /** Phase 39: the fake OpenCode runtime, on a host that has it. */
+  const opencodeRuntime = options.opencode ? new FakeRuntime({ delayMs: 1 }) : undefined;
   const runtime = new FakeRuntime({
     delayMs: 1,
     ...(options.mcpServers ? { mcpServers: options.mcpServers } : {}),
@@ -227,6 +231,7 @@ export function daemon(
         }
       : {}),
     onQuota: (readings) => quota.record(readings),
+    ...(opencodeRuntime ? { opencode: opencodeRuntime } : {}),
     onTurn: (sessionId, cwd, turn) => usage.record(sessionId, cwd, turn),
     store,
     runtime,
@@ -483,6 +488,17 @@ export function daemon(
       ...(roiSummarizer ? { roi: roiSummarizer } : {}),
       rootsPlatform: testRootsPlatform(),
       sessionSettings: true,
+      ...(options.opencode
+        ? {
+            opencode: {
+              info: () => ({ available: true, path: "fake", version: "2.2.5", verified: true }),
+              models: async () => [
+                { id: "anthropic/claude-sonnet-5-5", name: "anthropic/claude-sonnet-5-5" },
+                { id: "opencode/crouton-alpha-free", name: "opencode/crouton-alpha-free" },
+              ],
+            },
+          }
+        : {}),
       bypass: {
         allowed: () => bypass,
         set: (allow) => {
@@ -563,6 +579,7 @@ export function daemon(
     history,
     historyRoot,
     runtime,
+    opencodeRuntime,
     board,
     snapshots,
     mcp,

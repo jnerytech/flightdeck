@@ -39,7 +39,7 @@ describe("atalhos-registro: the registry", () => {
     const ids = SHORTCUTS.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const action of ACTIONS) {
-      expect(SHORTCUTS.filter((s) => s.action === action).length).toBe(1);
+      expect(SHORTCUTS.filter((s) => s.action === action)).toHaveLength(1);
     }
     expect(SHORTCUTS.every((s) => s.keys.length > 0)).toBe(true);
   });

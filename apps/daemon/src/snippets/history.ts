@@ -146,7 +146,8 @@ interface Entry {
 function freeName(taken: Snippet[], base: string): string {
   const names = new Set(taken.map((s) => s.name));
   let name = base;
-  for (let n = 2; names.has(name); n++) name = `${base.slice(0, 60)}-${n}`;
+  let n = 2;
+  while (names.has(name)) name = `${base.slice(0, 60)}-${n++}`;
   return name;
 }
 

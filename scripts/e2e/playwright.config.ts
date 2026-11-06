@@ -17,10 +17,13 @@ const which = (name: string) => whichOnNodePath(name, process.env, process.platf
 const repoRoot = resolve(import.meta.dirname, "../..");
 const { use, outputDir, ...settings } = runnerSettings(process.env, repoRoot);
 
-/** The scenarios of the BDD pilot, one project per language: `bddgen` turns them into tests first. */
-const bdd = (language: "pt" | "en") =>
+/**
+ * The scenarios: one English feature per behaviour, run once per app language (a project each, so a
+ * report names the language). `bddgen` turns the features into tests first, once for each project.
+ */
+const bdd = (language: "pt-BR" | "en") =>
   defineBddConfig({
-    features: `bdd/features/*.${language}.feature`,
+    features: "bdd/features/*.feature",
     steps: ["bdd/fixtures.ts", "bdd/steps.ts"],
     outputDir: `.features-gen/${language}`,
   });
@@ -34,7 +37,7 @@ export default defineConfig({
       testDir: resolve(repoRoot, E2E_TEST_DIR),
       testMatch: E2E_TEST_MATCH,
     },
-    { name: "bdd-pt", testDir: bdd("pt"), timeout: 180_000, use: { locale: "pt-BR", viewport } },
+    { name: "bdd-pt", testDir: bdd("pt-BR"), timeout: 180_000, use: { locale: "pt-BR", viewport } },
     { name: "bdd-en", testDir: bdd("en"), timeout: 180_000, use: { locale: "en", viewport } },
   ],
   outputDir,

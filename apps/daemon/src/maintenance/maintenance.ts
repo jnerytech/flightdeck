@@ -1,6 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { writeFileAtomic } from "../atomic-write.ts";
 import { type BackupInfo, backupNow, keepLast, listBackups } from "./backup.ts";
 import { type PruneCounts, prune, type RetentionPolicy } from "./retention.ts";
 
@@ -131,6 +132,9 @@ export class Maintenance {
   }
 
   private async save(patch: State): Promise<void> {
-    await writeFile(this.file, JSON.stringify({ ...(await this.state()), ...patch }, null, 2));
+    await writeFileAtomic(
+      this.file,
+      JSON.stringify({ ...(await this.state()), ...patch }, null, 2),
+    );
   }
 }

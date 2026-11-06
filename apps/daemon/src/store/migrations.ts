@@ -844,6 +844,14 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE projects ADD COLUMN roi_commits INTEGER NOT NULL DEFAULT 0;
   ALTER TABLE projects ADD COLUMN roi_issues INTEGER NOT NULL DEFAULT 0;
   `,
+  // Phase 39: the agent a session runs on; every session before it is Claude's.
+  `
+  ALTER TABLE sessions ADD COLUMN runtime TEXT NOT NULL DEFAULT 'claude';
+  `,
+  // Phase 40: which provider answered an assistant call; NULL for every other row.
+  `
+  ALTER TABLE usage_entries ADD COLUMN provider TEXT;
+  `,
   // Issue #196: the projects whose own hooks, MCP servers and settings may load in a managed session.
   `
   CREATE TABLE project_trust (

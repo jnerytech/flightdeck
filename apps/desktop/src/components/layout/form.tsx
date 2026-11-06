@@ -144,6 +144,7 @@ export function FormActions(props: {
     <div className="flex flex-col gap-2">
       <div
         data-actions
+        data-slot="form-actions"
         className={cn(
           "flex flex-wrap items-center gap-2",
           variant === "dialog" ? "justify-end" : "justify-start",

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { T } from "../i18n/index.ts";
 import type { Route } from "./router.ts";
 
 export const INBOX_KEY = "flightdeck.inbox";
@@ -18,7 +19,23 @@ export interface InboxEntry {
   route?: Route;
   /** Where a click goes when `route` is a card that is gone: its pull request. */
   fallbackUrl?: string;
+  /** What the notification is about: the session, card or team, named. */
+  subject?: string;
+  /** The host it happened on. */
+  host?: string;
+  /** The request in plain words ("Asks: which DB?"), not the tool's name. */
+  ask?: string;
+  /** Notifications of one thing (one session's questions) share it, so a burst collapses. */
+  group?: string;
   read: boolean;
+}
+
+/** What a notification is about, kept with it so the panel can name it. */
+export interface InboxAbout {
+  subject: string;
+  host: string;
+  ask?: string;
+  group?: string;
 }
 
 /** What a click on an entry does. */
@@ -95,6 +112,10 @@ const Stored = z.array(
     link: z.string().optional(),
     route: z.custom<Route>((v) => typeof v === "object" && v !== null && "name" in v).optional(),
     fallbackUrl: z.string().optional(),
+    subject: z.string().optional(),
+    host: z.string().optional(),
+    ask: z.string().optional(),
+    group: z.string().optional(),
     read: z.boolean(),
   }),
 );
@@ -112,4 +133,80 @@ export function saveInbox(
   list: InboxEntry[],
 ): void {
   storage.setItem(INBOX_KEY, JSON.stringify(list));
+}
+
+/** One line of the panel: the newest of the entries it stands for, and how many there are. */
+export interface InboxRow {
+  entry: InboxEntry;
+  /** The ids of every entry collapsed into the row (the newest first). */
+  ids: string[];
+  count: number;
+}
+
+export type InboxSection = "today" | "earlier";
+
+/**
+ * What the panel draws: Today then Earlier; in each, unread rows first and then by time. Entries of
+ * one `group` that are both unread, or both read, on the same side of midnight collapse into one row.
+ */
+export function inboxRows(
+  list: InboxEntry[],
+  now: Date,
+): Array<{ section: InboxSection; rows: InboxRow[] }> {
+  const today = dayKey(now);
+  const newest = [...list].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+  const sections: Record<InboxSection, InboxRow[]> = { today: [], earlier: [] };
+  const open = new Map<string, InboxRow>();
+  for (const entry of newest) {
+    const section: InboxSection = dayKey(new Date(entry.at)) === today ? "today" : "earlier";
+    const key = entry.group ? `${section}/${entry.read}/${entry.group}` : null;
+    const row = key ? open.get(key) : undefined;
+    if (row) {
+      row.ids.push(entry.id);
+      row.count++;
+      continue;
+    }
+    const made: InboxRow = { entry, ids: [entry.id], count: 1 };
+    if (key) open.set(key, made);
+    sections[section].push(made);
+  }
+  return (["today", "earlier"] as const)
+    .map((section) => ({
+      section,
+      // Unread first; the sort is stable, so each half stays newest first.
+      rows: sections[section].sort((a, b) => Number(a.entry.read) - Number(b.entry.read)),
+    }))
+    .filter((group) => group.rows.length > 0);
+}
+
+/** The badge: the unread rows, which are the dots the panel shows. */
+export function unreadRows(list: InboxEntry[], now: Date): number {
+  return inboxRows(list, now)
+    .flatMap((group) => group.rows)
+    .filter((row) => !row.entry.read).length;
+}
+
+const SHORT = 70;
+const cut = (text: string) => (text.length > SHORT ? `${text.slice(0, SHORT - 1)}…` : text);
+const fileName = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? path;
+
+/** A request in plain words, from the tool and its input. */
+export function describeRequest(
+  toolName: string,
+  input: Record<string, unknown> | undefined,
+  t: T,
+): string {
+  const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+  if (toolName === "AskUserQuestion") {
+    const first = Array.isArray(input?.questions) ? input.questions[0] : undefined;
+    const question = text((first as { question?: unknown } | undefined)?.question);
+    if (question) return t("inbox.asks", { question: cut(question) });
+  }
+  const command = text(input?.command).split("\n")[0] ?? "";
+  if (toolName === "Bash" && command) return t("inbox.runs", { command: cut(command) });
+  const file = text(input?.file_path ?? input?.notebook_path);
+  if (["Edit", "MultiEdit", "Write", "NotebookEdit"].includes(toolName) && file) {
+    return t("inbox.edits", { file: fileName(file) });
+  }
+  return t("inbox.uses", { tool: toolName });
 }

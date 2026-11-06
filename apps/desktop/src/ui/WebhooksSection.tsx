@@ -46,14 +46,13 @@ export function WebhooksSection(props: { store: AppStore }) {
   const t = useT();
   const { store } = props;
   const hosts = useStoreSlice(store, HOSTS).hosts;
-  const [version, setVersion] = useState(0);
+  const [, setVersion] = useState(0);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, string>>({});
   const [removing, setRemoving] = useState<WebhookTarget | null>(null);
   const saving = useBusy();
   const testing = useBusy();
-  void version;
   const targets = store.webhooks.targets.list();
   const canPost = hosts.some(
     (h) => h.status === "online" && hasFeature(h.hostInfo?.features, "webhook", false),

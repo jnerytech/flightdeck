@@ -415,6 +415,22 @@ describe("board-ui", () => {
     expect(dialog()?.textContent ?? "").not.toContain("não enviadas");
   });
 
+  // #249: once the card's conversation shows, the page fills its pane. What was typed and not sent
+  // in the card's fields stays: the body is not mounted again.
+  test("what was typed in the card's title and adjustment stays when the card's session starts", async () => {
+    const { repo } = await setup();
+    await openBoard(repo);
+    await createCard("Rascunho", "faça");
+    await openCard("Rascunho");
+    await type("Título", "Rascunho meu");
+    await type("Ajuste", "meu ajuste");
+    await click("Iniciar");
+    await settle(() => screen.queryByRole("log", { name: "Conversa do card" }) !== null);
+    const value = (label: string) =>
+      (screen.queryByLabelText(label) as HTMLInputElement | null)?.value;
+    expect([value("Título"), value("Ajuste")]).toEqual(["Rascunho meu", "meu ajuste"]);
+  });
+
   test("detalhe: descrição editável, execuções, conversa, ajuste, diff lado a lado ou unificado", async () => {
     const { repo, board } = await setup();
     await openBoard(repo);

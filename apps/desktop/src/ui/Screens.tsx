@@ -117,6 +117,8 @@ function ManagedSession(props: {
   hostId: string;
   sessionId: string;
   focus: string | null;
+  /** Opens the host's page (the mode menu links to the bypass switch there). */
+  go(route: Route): void;
 }) {
   const { store, state, hostId, sessionId } = props;
   const host = state.hosts.find((h) => h.id === hostId);
@@ -127,6 +129,8 @@ function ManagedSession(props: {
   }, [store, state.selected, hostId, sessionId]);
   const summary = host?.sessions.find((s) => s.id === sessionId);
   const session = useSessionState(store, sessionKey(hostId, sessionId));
+  const opencode = summary?.runtime === "opencode";
+  const openCodeModels = useOpenCodeModels(store, hostId, opencode);
   // Estimated cost of the session, once its claudeSessionId is known (phase 8): from its own
   // events, else from the Sessões list.
   const claudeId =
@@ -181,10 +185,13 @@ function ManagedSession(props: {
       store={store}
       hostId={hostId}
       claudeSessionId={claudeId}
-      enabled={hasFeature(host?.hostInfo?.features, "review", false)}
-      messagingId={hasFeature(host?.hostInfo?.features, "messaging", false) ? sessionId : null}
-      telemetry={hasFeature(host?.hostInfo?.features, "telemetry", false)}
-      trace={hasFeature(host?.hostInfo?.features, "trace", false)}
+      // Phase 39: these tabs read Claude Code's transcript, and OpenCode sessions stay out of messaging.
+      enabled={!opencode && hasFeature(host?.hostInfo?.features, "review", false)}
+      messagingId={
+        !opencode && hasFeature(host?.hostInfo?.features, "messaging", false) ? sessionId : null
+      }
+      telemetry={!opencode && hasFeature(host?.hostInfo?.features, "telemetry", false)}
+      trace={!opencode && hasFeature(host?.hostInfo?.features, "trace", false)}
     >
       <SessionView
         t={store.i18n.t}
@@ -198,7 +205,11 @@ function ManagedSession(props: {
         actions={store}
         {...(pin ? { pin } : {})}
         {...(fork ? { fork } : {})}
+        {...(summary?.runtime ? { runtime: summary.runtime } : {})}
+        {...(openCodeModels ? { models: openCodeModels } : {})}
         settings={hasFeature(host?.hostInfo?.features, "session.settings", false)}
+        effort={hasFeature(host?.hostInfo?.features, "session.effort", false)}
+        onOpenHostSettings={() => props.go({ name: "host", host: hostId })}
         {...(host?.hostInfo?.allowBypassPermissions === true
           ? { bypass: { host: host.name } }
           : {})}
@@ -650,6 +661,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           hostId={route.host}
           sessionId={route.id}
           focus={route.focus ?? null}
+          go={go}
         />
       );
     case "new-session": {
@@ -859,12 +871,29 @@ function routeScreen(props: ScreenProps): ReactNode {
         hostId={selected.hostId}
         sessionId={selected.sessionId}
         focus={null}
+        go={go}
       />
     );
   }
   const selectedHost = selected ? hostOf(selected.hostId) : undefined;
   if (selectedHost) return <NewSession store={store} state={state} host={selectedHost} />;
   return null;
+}
+
+/** Phase 39: the host's OpenCode models, for an OpenCode session's live switch; null until known. */
+function useOpenCodeModels(store: AppStore, hostId: string, opencode: boolean): string[] | null {
+  const [models, setModels] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!opencode) return;
+    let live = true;
+    void store.hostRequest(hostId, "runtime.models", { runtime: "opencode" }).then((result) => {
+      if (live) setModels(result.ok ? result.data.models.map((m) => m.id) : []);
+    });
+    return () => {
+      live = false;
+    };
+  }, [store, hostId, opencode]);
+  return opencode ? models : null;
 }
 
 /** "Iniciar em segundo plano": the session runs under Claude Code's supervisor; the hub shows it. */
@@ -935,6 +964,7 @@ function NewSession(props: {
       }
       // The created session opens by itself (AppStore.createSession).
       onCreate={(payload) => {
+        if (payload.runtime === "opencode") return props.store.createSession(host.id, payload);
         if (background) return startInBackground(props.store, host.id, payload, persona);
         const ref = props.store.personaRef(persona);
         return props.store.createSession(host.id, { ...payload, ...(ref ? { persona: ref } : {}) });

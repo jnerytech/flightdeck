@@ -1,4 +1,5 @@
 import {
+  type EffortLevel,
   type PermissionMode,
   type PermissionUpdate,
   SESSION_IMAGE_MAX_BYTES,
@@ -12,9 +13,10 @@ import { ApprovalCard } from "@/components/approval/approval-card";
 import { ActionButton } from "@/components/feedback/action-button";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { NativeSelect } from "@/components/layout/form";
-import { MODELS } from "@/components/personas/model-select";
 import { ActivityLine } from "@/components/session/activity-line";
 import { MessageActions } from "@/components/session/message-actions";
+import { ModeChip } from "@/components/session/mode-chip";
+import { ModelChip } from "@/components/session/model-chip";
 import {
   Composer,
   ComposerDock,
@@ -23,6 +25,7 @@ import {
   SessionPane,
   Timeline,
 } from "@/components/session/parts";
+import { RuntimeBadge } from "@/components/session/runtime-badge";
 import { SessionStatusLine } from "@/components/session/status-line";
 import { WorkingRow } from "@/components/session/working-row";
 import { PromptMenu, type PromptSnippets } from "@/components/snippets/prompt-menu";
@@ -30,22 +33,28 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { translateError } from "../i18n/errors.ts";
 import type { T } from "../i18n/index.ts";
 import { usd } from "../lib/costs.ts";
+import { modeRows, nextMode } from "../lib/mode-menu.ts";
+import type { MenuGroup, MenuItem } from "../lib/prompt-menu.ts";
 import { activityOf } from "../lib/session-activity.ts";
 import { type ImageRefusal, readImage, refuseImage } from "../lib/session-images.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
 import { isBusy } from "../lib/status.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Markdown } from "./Markdown.tsx";
+import { ModelOptions } from "./ModelOptions.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
 
-/** The permission modes a live session can switch between. */
-const MODES = ["plan", "default", "acceptEdits"] as const;
-const ALL_MODES = [...MODES, "bypassPermissions"] as const;
+/** The menu group of each kind of command the daemon names. */
+const GROUP_OF_KIND: Record<"builtin" | "skill" | "mcp", MenuGroup> = {
+  builtin: "commands",
+  skill: "skills",
+  mcp: "mcp",
+};
 
-/** How far from the end still counts as being at the end, in pixels. */
 /** Where each conversation was left (by `scrollKey`), so a tab that comes back is where its reader was. */
 const positions = new Map<string, { top: number; atEnd: boolean; seq: number }>();
 const MAX_POSITIONS = 200;
@@ -59,6 +68,7 @@ function rememberPosition(key: string, top: number, atEnd: boolean, seq: number)
   }
 }
 
+/** How far from the end still counts as being at the end, in pixels. */
 const END_SLACK = 24;
 
 export interface SessionActions {
@@ -68,6 +78,8 @@ export interface SessionActions {
   /** Changes the permission mode / the model (null: the default) of the open session. */
   setMode?(mode: SettableMode): Promise<void>;
   setModel?(model: string | null): Promise<void>;
+  /** Changes the effort of the live session; null is the model's default. */
+  setEffort?(effort: EffortLevel | null): Promise<void>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
   resume(): Promise<void>;
@@ -188,6 +200,8 @@ const TimelineItem = memo(function TimelineItem(props: {
   pin: SessionViewProps["pin"];
   /** Set on the latest assistant message only. */
   fork: SessionViewProps["fork"];
+  /** Phase 39: an OpenCode session's timeline. */
+  opencode: boolean;
 }) {
   const { item } = props;
   switch (item.kind) {
@@ -214,7 +228,21 @@ const TimelineItem = memo(function TimelineItem(props: {
         />
       );
     case "permission":
-      return <PermissionItem {...props} item={item} />;
+      return (
+        <>
+          <PermissionItem {...props} item={item} />
+          {/* OpenCode ends the turn on a reject (ACP's reject carries no message). */}
+          {props.opencode && item.resolution?.decision === "deny" && (
+            <div className="text-muted-foreground text-xs">{props.t("session.openCodeDenied")}</div>
+          )}
+        </>
+      );
+    case "context":
+      return (
+        <div className="text-muted-foreground text-xs">
+          {props.t(item.sent ? "session.contextSent" : "session.contextSkipped")}
+        </div>
+      );
     case "result":
       return <TurnResult item={item} t={props.t} />;
     case "persona":
@@ -229,10 +257,18 @@ const TimelineItem = memo(function TimelineItem(props: {
       return <div className="text-muted-foreground text-xs">{props.t("session.historyGap")}</div>;
     case "error":
       return (
-        <div className="rounded-md border border-status-error/40 p-3 text-sm text-status-error">{`${item.code}: ${item.message}`}</div>
+        <div className="rounded-md border border-status-error/40 p-3 text-sm text-status-error">
+          {errorText(item, props.t)}
+        </div>
       );
   }
 });
+
+/** Phase 39: a session error, as the app's own sentence when it carries a reason the app knows. */
+export function errorText(item: Extract<ChatItem, { kind: "error" }>, t: T): string {
+  const { title, detail } = translateError(item.code, item.message, t, item);
+  return item.reason && !detail ? title : `${item.code}: ${item.message}`;
+}
 
 interface SessionViewProps {
   title: string;
@@ -264,14 +300,55 @@ interface SessionViewProps {
   images?: boolean;
   /** The host announces `session.settings` and the session is a managed one. */
   settings?: boolean;
+  /** Opens the host's page, where the bypass switch is (the mode menu links to it). */
+  onOpenHostSettings?: () => void;
   /** The host lets the session switch to bypassPermissions: its name, for the confirmation. */
   bypass?: { host: string };
   /** Pins or unpins the session; its button sits in each assistant message's action row. */
   pin?: { pinned: boolean; toggle(): void };
   /** Forks the conversation at its latest message; offered on that message only. */
   fork?: () => void;
+  /** Phase 39: the agent; an OpenCode session says so and offers no fork. */
+  runtime?: "claude" | "opencode";
+  /** The host changes the effort of a live session (`session.effort`). */
+  effort?: boolean;
+  /** Phase 39: OpenCode's models, for the live switch of an OpenCode session (none until known). */
+  models?: readonly string[];
   /** Renders a picker for a folder; `done` gets the path chosen, or null when it was closed. */
   pickPath?: (done: (path: string | null) => void) => ReactNode;
+}
+
+/** How many messages came after the one the reader had seen (none while they are at the end). */
+function missedAfter(items: SessionViewProps["session"]["items"], awaySeq: number | null): number {
+  return awaySeq === null ? 0 : items.filter((i) => i.seq > awaySeq).length;
+}
+
+/** The slash commands as menu items: with group and description when the daemon describes them. */
+function commandItemsOf(
+  described: SessionViewProps["session"]["commands"],
+  names: SessionViewProps["session"]["slashCommands"],
+): MenuItem[] {
+  if (!described) return (names ?? []).map((name) => ({ key: `slash:${name}`, name: `/${name}` }));
+  return described.map((command) => ({
+    key: `slash:${command.name}`,
+    name: `/${command.name}`,
+    ...(command.description ? { description: command.description } : {}),
+    group: GROUP_OF_KIND[command.kind],
+  }));
+}
+
+/** The snippets of the host and the commands of the session behind one `/` menu. */
+function offeredPrompts(
+  prompts: PromptSnippets | undefined,
+  slash: SessionViewProps["session"]["slashCommands"],
+  commandItems: MenuItem[],
+): PromptSnippets | undefined {
+  if (!prompts && !slash) return undefined;
+  return {
+    list: async () => [...((await prompts?.list()) ?? []), ...commandItems],
+    fill: async (key) =>
+      key.startsWith("slash:") ? `/${key.slice(6)} ` : (prompts?.fill(key) ?? ""),
+  };
 }
 
 /** Chat history in streaming, tool calls, approval cards, message box and session controls. */
@@ -341,37 +418,44 @@ export function SessionView(props: SessionViewProps) {
   useEffect(() => {
     if (!focusRequestId || cards === 0) return;
     const card = timeline.current?.querySelector(`[data-request-id="${focusRequestId}"]`);
-    card?.scrollIntoView?.({ block: "center" });
+    // The whole card, as little scroll as needed: centered, a tall card near the end was cut.
+    card?.scrollIntoView?.({ block: "nearest" });
   }, [focusRequestId, cards]);
-  const missed = awaySeq === null ? 0 : props.session.items.filter((i) => i.seq > awaySeq).length;
+  const missed = missedAfter(props.session.items, awaySeq);
+  const jumpKey = missed === 1 ? "session.jumpLatestOne" : "session.jumpLatestMany";
   const { session, actions } = props;
   const [text, setText] = useState("");
   const [closing, setClosing] = useState(false);
   const [picking, setPicking] = useState(false);
   const start = session.permissionMode ?? "default";
   const [mode, setMode] = useState<PermissionMode>(start);
-  // As strict as the start mode or stricter; a start mode outside the list (bypass, auto) gets all.
-  const at = MODES.indexOf(start as (typeof MODES)[number]);
-  const limit = at < 0 ? MODES.length : at + 1;
-  // A host that allows bypass lets the person pick any mode, looser than the start included.
-  const offeredModes = props.bypass ? ALL_MODES : MODES.slice(0, limit);
   const [bypassAsk, setBypassAsk] = useState(false);
+  const opencode = props.runtime === "opencode";
+  const fork = opencode ? undefined : props.fork;
+  // OpenCode has no accept-edits mode: the menu lists the others and the numbers follow.
+  const modeMenu = modeRows({ current: mode, start, bypassAllowed: Boolean(props.bypass) }).filter(
+    (row) => !opencode || row.mode !== "acceptEdits",
+  );
+  /** A mode from the menu or Shift+Tab: bypass asks first, any other changes at once. */
+  const chooseMode = (next: SettableMode) => {
+    if (next === "bypassPermissions") {
+      setBypassAsk(true);
+      return;
+    }
+    setMode(next);
+    void actions.setMode?.(next);
+  };
   const [model, setModel] = useState("");
+  const [effort, setEffort] = useState<EffortLevel | null>(null);
   const slash = session.slashCommands;
+  const described = session.commands;
+  // A daemon that describes the commands gives each its group and its description; an older one
+  // gives the names only, and the menu groups them by the shape of the name.
+  const commandItems = useMemo(() => commandItemsOf(described, slash), [described, slash]);
   // Typing `/` offers the snippets and the commands of the session together.
-  const offered: PromptSnippets | undefined = useMemo(
-    () =>
-      props.prompts || slash
-        ? {
-            list: async () => [
-              ...((await props.prompts?.list()) ?? []),
-              ...(slash ?? []).map((name) => ({ key: `slash:${name}`, name: `/${name}` })),
-            ],
-            fill: async (key) =>
-              key.startsWith("slash:") ? `/${key.slice(6)} ` : (props.prompts?.fill(key) ?? ""),
-          }
-        : undefined,
-    [props.prompts, slash],
+  const offered = useMemo(
+    () => offeredPrompts(props.prompts, slash, commandItems),
+    [props.prompts, slash, commandItems],
   );
   const latestAssistant = [...session.items]
     .reverse()
@@ -450,9 +534,9 @@ export function SessionView(props: SessionViewProps) {
   };
 
   const pickers = {
-    ...(props.settings && actions.setModel
+    ...(props.settings && actions.setModel && (!opencode || props.models)
       ? {
-          model: (
+          model: opencode ? (
             <NativeSelect
               compact
               inline
@@ -464,39 +548,37 @@ export function SessionView(props: SessionViewProps) {
               }}
             >
               <option value="">{t("session.modelDefault")}</option>
-              {MODELS.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
+              <ModelOptions models={props.models ?? []} />
             </NativeSelect>
+          ) : (
+            <ModelChip
+              t={t}
+              model={model}
+              current={session.model}
+              effort={effort}
+              effortAvailable={Boolean(props.effort && actions.setEffort)}
+              onPickModel={(value) => {
+                setModel(value);
+                void actions.setModel?.(value || null);
+              }}
+              onPickEffort={(level) => {
+                setEffort(level);
+                void actions.setEffort?.(level);
+              }}
+            />
           ),
         }
       : {}),
     ...(props.settings && actions.setMode
       ? {
           mode: (
-            <NativeSelect
-              compact
-              inline
-              aria-label={t("session.modeLabel")}
-              value={mode}
-              onChange={(e) => {
-                const next = e.target.value as SettableMode;
-                if (next === "bypassPermissions") {
-                  setBypassAsk(true);
-                  return;
-                }
-                setMode(next);
-                void actions.setMode?.(next);
-              }}
-            >
-              {offeredModes.map((value) => (
-                <option key={value} value={value}>
-                  {t(`modes.${value}.name`)}
-                </option>
-              ))}
-            </NativeSelect>
+            <ModeChip
+              t={t}
+              mode={mode}
+              rows={modeMenu}
+              onPick={chooseMode}
+              onOpenHostSettings={props.onOpenHostSettings}
+            />
           ),
         }
       : {}),
@@ -517,48 +599,59 @@ export function SessionView(props: SessionViewProps) {
             )}
           </>
         }
+        hint={[session.cwd, typeof props.costUsd === "number" ? usd(props.costUsd) : null]
+          .filter(Boolean)
+          .join(" · ")}
         controls={
           <>
+            {opencode && (
+              <RuntimeBadge label={t("session.runtimeOpenCode")} slot="session-runtime" />
+            )}
             {session.status && <StatusBadge status={session.status} />}
             {session.statusReason && (
               <span className="text-muted-foreground text-xs">{session.statusReason}</span>
             )}
+          </>
+        }
+        actions={
+          <>
             {props.timeline}
-            {props.terminal}
+            {!opencode && props.terminal}
             {closed ? (
               <ActionButton variant="outline" size="sm" onClick={() => actions.resume()}>
                 {t("session.resume")}
               </ActionButton>
             ) : (
-              <>
-                <ActionButton
-                  variant="outline"
-                  size="sm"
-                  pending={ending}
-                  onClick={() => setClosing(true)}
-                >
-                  {t("session.end")}
-                </ActionButton>
-                {closing && (
-                  <ConfirmDialog
-                    message={t("session.endMessage")}
-                    confirmLabel={t("session.endConfirm")}
-                    destructive
-                    onConfirm={() => {
-                      setClosing(false);
-                      setEnding(true);
-                      void actions.close().finally(() => setEnding(false));
-                    }}
-                    onCancel={() => setClosing(false)}
-                  />
-                )}
-              </>
+              <ActionButton
+                variant="outline"
+                size="sm"
+                pending={ending}
+                onClick={() => setClosing(true)}
+              >
+                {t("session.end")}
+              </ActionButton>
             )}
           </>
         }
-        extra={props.persona}
+        dialogs={
+          closing && (
+            <ConfirmDialog
+              message={t("session.endMessage")}
+              confirmLabel={t("session.endConfirm")}
+              destructive
+              onConfirm={() => {
+                setClosing(false);
+                setEnding(true);
+                void actions.close().finally(() => setEnding(false));
+              }}
+              onCancel={() => setClosing(false)}
+            />
+          )
+        }
+        extra={opencode ? undefined : props.persona}
       />
-      {props.recap}
+      {/* The summary lines up with the header and the conversation (issue #177). */}
+      {!opencode && props.recap && <div className="recap-slot">{props.recap}</div>}
       <div className="pane-fill">
         <Timeline
           ref={timeline}
@@ -590,7 +683,8 @@ export function SessionView(props: SessionViewProps) {
               t={t}
               nowMs={item.kind === "permission" ? (props.nowMs ?? Date.now()) : 0}
               pin={props.pin}
-              fork={item.seq === latestAssistant ? props.fork : undefined}
+              fork={item.seq === latestAssistant ? fork : undefined}
+              opencode={opencode}
             />
           ))}
           {session.streaming && (
@@ -620,14 +714,18 @@ export function SessionView(props: SessionViewProps) {
             }}
           >
             <ArrowDown aria-hidden="true" />
-            {missed === 0
-              ? t("session.jumpLatest")
-              : t(missed === 1 ? "session.jumpLatestOne" : "session.jumpLatestMany", { n: missed })}
+            {missed === 0 ? t("session.jumpLatest") : t(jumpKey, { n: missed })}
           </Button>
         )}
       </div>
       <ComposerDock>
-        <PromptMenu prompts={offered} text={text} label={t("session.snippets")} onFill={setText} />
+        <PromptMenu
+          prompts={offered}
+          text={text}
+          label={t("session.snippets")}
+          onFill={setText}
+          input={box}
+        />
         {queued.length > 0 && (
           <ul aria-label={t("session.queue")} className="composer-images">
             {queued.map((item, at) => (
@@ -758,6 +856,15 @@ export function SessionView(props: SessionViewProps) {
             }}
             onKeyDown={(e) => {
               if (e.key === "Escape" && working) void actions.interrupt();
+              if (e.key === "Tab" && e.shiftKey && props.settings && actions.setMode) {
+                // Shift+Tab cycles the permission mode, as in Claude Code; with none to go to, focus moves on.
+                const next = nextMode(modeMenu, mode);
+                if (next) {
+                  e.preventDefault();
+                  chooseMode(next);
+                }
+                return;
+              }
               if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
               if (e.ctrlKey || e.metaKey) {
                 // Ctrl+Enter breaks the line where the cursor is (a textarea only does it for Shift).
