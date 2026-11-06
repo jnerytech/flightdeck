@@ -85,6 +85,14 @@ describe("notify-prefs-store: the preferences decide what is sent (issue #149)",
     expect(needsYou(w.store.getState())).toHaveLength(1);
   });
 
+  test("a session with no folder belongs to no project, so a muted project does not silence it", () => {
+    const w = world();
+    w.store.notifyPrefs.muteProject("h1/p-api", true);
+    w.summary("s", "running", [], "");
+    w.summary("s", "idle", [], "");
+    expect(w.titles()).toEqual(["alfa · sessao-s: turn finished"]);
+  });
+
   test("a muted project and a muted session are quiet; a session of another project is not", () => {
     const w = world();
     w.store.notifyPrefs.muteProject("h1/p-api", true);
@@ -233,6 +241,26 @@ describe("notify-prefs-store: a team's workers are folded into one message (issu
     for (const id of ["w1", "w2", "w3"]) finishTurn(w, id);
     w.flush();
     expect(w.titles()).toEqual(["Team Alpha: 2 workers finished"]);
+  });
+
+  test("a host whose team list cannot be read still loads, and its workers are plain sessions", async () => {
+    const w = world();
+    const asked: string[] = [];
+    const conn = {
+      request: (type: string) => {
+        asked.push(type);
+        if (type === "host.info")
+          return Promise.resolve({ daemonVersion: "x", features: ["teams"] });
+        return type === "teams.list" ? Promise.reject(new Error("refused")) : Promise.resolve({});
+      },
+    };
+    await (
+      w.store as unknown as { loadHostInfo(id: string, conn: unknown): Promise<void> }
+    ).loadHostInfo("h1", conn);
+    await Promise.resolve();
+    expect(asked).toContain("teams.list");
+    finishTurn(w, "s");
+    expect(w.titles()).toEqual(["alfa · sessao-s: turn finished"]);
   });
 
   test("a closed team stops folding: its sessions are plain ones again", () => {
