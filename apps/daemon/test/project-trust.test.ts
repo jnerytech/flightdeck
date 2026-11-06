@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { EventStore } from "../src/store/event-store.ts";
 import { MIGRATIONS } from "../src/store/migrations.ts";
 import { ProjectTrust } from "../src/trust/project-trust.ts";
-import { tempDir } from "./helpers.ts";
+import { tempDir, waitFor } from "./helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(() => {
@@ -296,5 +296,77 @@ describe("project-trust: trust never reaches a folder the person did not mean (s
     trust.trust(main);
     await trust.prepare(odd);
     expect(trust.sessionTrust(odd)).toEqual({ trusted: false });
+  });
+});
+
+describe("project-trust: two looks at one folder at once end with the later one (issue #415)", () => {
+  test("a scan that finishes last does not overwrite what a scan started after it found", async () => {
+    const main = tempDir("fd-trust-");
+    const odd = join(main, "odd");
+    mkdirSync(odd, { recursive: true });
+    writeFileSync(join(odd, ".git"), "gitdir: unused\n");
+    const answers: Array<(text: string) => void> = [];
+    const { trust } = fresh({
+      readText: () => new Promise<string>((resolveText) => answers.push(resolveText)),
+    });
+    trust.trust(main);
+    const first = trust.prepare(odd);
+    await waitFor(() => answers.length === 1, { label: "first scan reads" });
+    const second = trust.prepare(odd);
+    await waitFor(() => answers.length === 2, { label: "second scan reads" });
+    answers[1]?.(`gitdir: ${join(main, "two", ".git", "worktrees", "odd")}`);
+    await second;
+    answers[0]?.(`gitdir: ${join(main, "one", ".git", "worktrees", "odd")}`);
+    await first;
+    expect(trust.sessionTrust(odd).configRoot).toBe(join(main, "two"));
+  });
+});
+
+describe("project-trust: the scope given when trusting is the scope kept (issue #415)", () => {
+  test("an exact trust covers that folder and not the ones inside it; a tree trust covers both", () => {
+    const { trust } = fresh();
+    trust.trust("/work/exact", "person", "exact");
+    trust.trust("/work/tree", "person", "tree");
+    expect(trust.isTrusted("/work/exact")).toBe(true);
+    expect(trust.isTrusted("/work/exact/src")).toBe(false);
+    expect(trust.isTrusted("/work/tree/src")).toBe(true);
+  });
+
+  test("an exact trust is compared the way the file system compares names", () => {
+    const blind = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+    const { trust } = fresh({ sameFolder: blind });
+    trust.trust("/Work/App", "person", "exact");
+    expect(trust.isTrusted("/work/app")).toBe(true);
+    expect(trust.isTrusted("/work/app/src")).toBe(false);
+    // The same folders with a file system that tells the cases apart (the default is the host's own).
+    const exact = fresh({ sameFolder: (a, b) => a === b });
+    exact.trust.trust("/Work/App", "person", "exact");
+    expect(exact.trust.isTrusted("/work/app")).toBe(false);
+    expect(exact.trust.isTrusted("/Work/App")).toBe(true);
+  });
+});
+
+describe("project-trust: a look that is overtaken still answers for its own caller (issue #415, review)", () => {
+  test("the older of two overlapping scans, finishing first, stores what it found until the newer one stores", async () => {
+    const main = tempDir("fd-trust-");
+    const odd = join(main, "odd");
+    mkdirSync(odd, { recursive: true });
+    writeFileSync(join(odd, ".git"), "gitdir: unused\n");
+    const answers: Array<(text: string) => void> = [];
+    const { trust } = fresh({
+      readText: () => new Promise<string>((resolveText) => answers.push(resolveText)),
+    });
+    trust.trust(main);
+    const first = trust.prepare(odd);
+    await waitFor(() => answers.length === 1, { label: "first scan reads" });
+    const second = trust.prepare(odd);
+    await waitFor(() => answers.length === 2, { label: "second scan reads" });
+    answers[0]?.(`gitdir: ${join(main, "one", ".git", "worktrees", "odd")}`);
+    await first;
+    // The caller of the first look goes on: the folder is a worktree of another checkout, not trusted by prefix.
+    expect(trust.sessionTrust(odd).configRoot).toBe(join(main, "one"));
+    answers[1]?.(`gitdir: ${join(main, "two", ".git", "worktrees", "odd")}`);
+    await second;
+    expect(trust.sessionTrust(odd).configRoot).toBe(join(main, "two"));
   });
 });
