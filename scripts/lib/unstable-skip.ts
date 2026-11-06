@@ -34,6 +34,20 @@ export function unstableSkips(source: string): UnstableSkip[] {
   return skips;
 }
 
+/** The issue numbers the source's unstable-skip notes name (#494): stub. */
+export function skipIssues(source: string): number[] {
+  return source ? [] : [];
+}
+
+/** Which of the issues are closed, or cannot be read (#494): stub. */
+export async function closedSkipIssues(
+  issues: number[],
+  state: (issue: number) => Promise<string | null>,
+): Promise<{ closed: number[]; unknown: number[] }> {
+  await state(issues[0] ?? 0);
+  return { closed: [], unknown: [] };
+}
+
 /** How many of the source's unstable skips have no complete note. */
 export function undocumentedSkips(source: string): number {
   return unstableSkips(source).filter((skip) => !skip.documented).length;

@@ -62,9 +62,15 @@ describe("hook-skip: a test skipped off Linux names the issue that owns its fix"
     expect(edit(old, `${old}\n${bare("it")}`) ?? "").toContain("is blocked");
   });
 
-  test("the comment excuses nothing else: .skip, .only, test.todo and a snapshot stay blocked", () => {
+  test("a flaky test may be skipped on any platform with the note; without it the skip is blocked (#494)", () => {
+    const note = "// unstable: #484 reads the status late on a loaded runner\n";
+    expect(edit("", `${note}describe${SKIP}"x", () => {})`)).toBeNull();
+    expect(edit("", `test${SKIP}"x", () => {}) // unstable: #492 the palette races`)).toBeNull();
+    expect(edit("", `test${SKIP}"x", () => {})`) ?? "").toContain("// unstable: #<issue> <reason>");
+  });
+
+  test("the comment excuses nothing else: .only, test.todo and a snapshot stay blocked", () => {
     const note = "// unstable: #288 wall-clock polls\n";
-    expect(edit("", `${note}describe${SKIP}"x", () => {})`) ?? "").toContain("is blocked");
     expect(edit("", `${note}it${ONLY}"x", () => {})`) ?? "").toContain("is blocked");
     expect(edit("", `${note}test.${"todo"}("x")`) ?? "").toContain("is blocked");
     expect(edit("", `${note}expect(x).${"toMatchSnapshot"}()`) ?? "").toContain("is blocked");
