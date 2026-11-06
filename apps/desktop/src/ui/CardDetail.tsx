@@ -206,6 +206,7 @@ export const CardDetail = memo(function CardDetail(props: {
                 }}
                 arenaStart={arena.start}
                 onDiscarded={props.onBack}
+                onShowDiff={() => setTab("diff")}
               />
               {withWatch && card.prUrl && (
                 <PrWatchPanel store={store} hostId={hostId} cardId={cardId} />

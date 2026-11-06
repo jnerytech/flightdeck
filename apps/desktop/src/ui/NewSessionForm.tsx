@@ -48,6 +48,11 @@ export function NewSessionForm(
     extra?: React.ReactNode;
     /** Told the folder as it is chosen, so what depends on it (a client's persona) can follow. */
     onFolder?(cwd: string): void;
+    /** The hosts a session can start on (online); the form offers a choice when there are two or more. */
+    hosts?: Array<{ id: string; name: string }>;
+    onHost?(hostId: string): void;
+    /** Opens the host's page, where its folders are added. */
+    onAddFolder?(): void;
   }>,
 ) {
   const t = useT();
@@ -140,6 +145,23 @@ export function NewSessionForm(
   return (
     <Form onSubmit={() => submit()} className="mx-auto p-6">
       <h2 className="font-semibold text-xl">{t("newSession.title", { host: props.host.name })}</h2>
+      {props.hosts && props.hosts.length > 1 && props.onHost && (
+        <Field label={t("newSession.host")}>
+          {(control) => (
+            <NativeSelect
+              {...control}
+              value={props.host.id}
+              onChange={(e) => props.onHost?.(e.target.value)}
+            >
+              {props.hosts?.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.name}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+        </Field>
+      )}
       {hasOpenCode && (
         <Field label={t("newSession.agent")}>
           {(control) => (
@@ -279,7 +301,16 @@ export function NewSessionForm(
         submit={t("newSession.create")}
         busy={creating}
         disabled={!root}
-        disabledReason={t("newSession.needFolder")}
+        disabledReason={
+          <span>
+            {t("newSession.needFolder")}{" "}
+            {props.onAddFolder && (
+              <Button type="button" variant="link" onClick={props.onAddFolder}>
+                {t("newSession.addFolder", { host: props.host.name })}
+              </Button>
+            )}
+          </span>
+        }
       />
     </Form>
   );

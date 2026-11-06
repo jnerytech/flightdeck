@@ -2,6 +2,7 @@ import type { TaskFile, TaskResultsResult, Template } from "@flightdeck/protocol
 import { inSequence } from "@flightdeck/protocol";
 import { FolderOpen, Home, LayoutDashboard, Settings as SettingsIcon } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { Notices } from "@/components/feedback/notices";
 import { HomeView } from "@/components/simple/home-view";
 import { SettingsView } from "@/components/simple/settings-view";
 import { TaskView } from "@/components/simple/task-view";
@@ -310,6 +311,7 @@ export function SimpleApp(
           />
         )}
       </main>
+      <Notices store={store} />
     </div>
   );
 }

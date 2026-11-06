@@ -20,6 +20,7 @@ import {
 import type { Density } from "../lib/density.ts";
 import type { HubRow } from "../lib/hub.ts";
 import { actionOfRoute, endMeasure } from "../lib/measures.ts";
+import { newSessionHost } from "../lib/new-session-host.ts";
 import { basename } from "../lib/paths.ts";
 import type { Route } from "../lib/router.ts";
 import { isBusy } from "../lib/status.ts";
@@ -294,10 +295,9 @@ function AddHost(props: {
       url: draftUrl(draft),
       token: draft.token,
     });
-    // The first host opens its own page: that is where it is checked and its folders are chosen.
-    if (result.ok) {
-      props.go(props.empty ? { name: "host", host: result.hostId } : { name: "hub" });
-    } else setError(result.error);
+    // A new host opens its own page: that is where it is checked and its folders are chosen.
+    if (result.ok) props.go({ name: "host", host: result.hostId });
+    else setError(result.error);
   };
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 overflow-y-auto p-6">
@@ -429,7 +429,7 @@ export function Screen(props: ScreenProps) {
     return detail;
   }
   const opened = openedSession(route, state);
-  const firstHost = state.hosts.find((h) => h.status === "online");
+  const firstHost = newSessionHost(state.hosts, state.selected);
   return (
     <SplitView
       list={
@@ -570,6 +570,7 @@ function routeScreen(props: ScreenProps): ReactNode {
       <Settings
         store={store}
         settings={state.settings}
+        section={route.section}
         {...settingsActions(store)}
         appUpdate={state.appUpdate}
         theme={props.theme}
@@ -735,6 +736,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           host={host}
           onRename={(name) => store.renameHost(host.id, name)}
           onReconnect={() => void store.reconnectHost(host.id)}
+          onPairAgain={(input) => store.pairAgain(host.id, input)}
           onOpenAutoApprovals={() => go({ name: "auto-approvals", host: host.id })}
           onOpenHistory={(f) => go({ name: "history", host: host.id, ...f })}
           onRemove={() => {
@@ -935,6 +937,9 @@ function NewSession(props: {
       key={`${host.id}/${props.prompt ?? ""}`}
       store={props.store}
       host={host}
+      hosts={props.state.hosts.filter((h) => h.status === "online")}
+      onHost={(hostId) => props.store.router.push({ name: "new-session", host: hostId })}
+      onAddFolder={() => props.store.router.push({ name: "host", host: host.id })}
       {...(props.prompt ? { prompt: props.prompt } : {})}
       onFolder={setCwd}
       extra={

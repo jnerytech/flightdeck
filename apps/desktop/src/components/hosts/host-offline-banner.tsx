@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useNow } from "@/hooks/use-now";
 import { useT } from "@/i18n/context";
 import type { HostView } from "../../lib/app-store.ts";
@@ -16,12 +17,23 @@ const WSL_SYSTEMD = "systemd=true";
  * At the top of the host page while the host is not online: the state, what failed in plain words,
  * the last try, the countdown to the next one and Reconnect now with its result.
  */
-export function HostOfflineBanner(props: Readonly<{ host: HostView; onReconnect(): void }>) {
+export function HostOfflineBanner(
+  props: Readonly<{
+    host: HostView;
+    onReconnect(): void;
+    /** Tries a new token or pairing link; the error text, or null when it worked. */
+    onPairAgain?(input: string): Promise<string | null>;
+  }>,
+) {
   const t = useT();
   const { host } = props;
   const now = useNow();
   // The time of the last try when Reconnect now was pressed: a later one is its answer.
   const [asked, setAsked] = useState<number | null>(null);
+  const [fresh, setFresh] = useState("");
+  const [pairError, setPairError] = useState<string | null>(null);
+  const [pairing, setPairing] = useState(false);
+  const trying = useRef(false);
   const retry = host.retry;
   const connecting = host.status === "connecting";
   const kind = retry?.kind ?? "refused";
@@ -62,6 +74,39 @@ export function HostOfflineBanner(props: Readonly<{ host: HostView; onReconnect(
             {connecting ? t("hostOffline.reconnecting") : t("hostOffline.reconnectNow")}
           </Button>
         </div>
+        {host.status === "unauthorized" && props.onPairAgain && (
+          <form
+            className="flex flex-wrap items-end gap-2"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              // A second submit before the first state update is seen must not start another try.
+              if (trying.current) return;
+              trying.current = true;
+              setPairing(true);
+              const error =
+                (await props.onPairAgain?.(fresh).catch((e: Error) => e.message)) ?? null;
+              trying.current = false;
+              setPairing(false);
+              setPairError(error);
+              if (error === null) setFresh("");
+            }}
+          >
+            <Input
+              type="password"
+              autoComplete="off"
+              spellCheck={false}
+              aria-label={t("hostOffline.pairLabel")}
+              placeholder={t("hostOffline.pairLabel")}
+              className="w-72"
+              value={fresh}
+              onChange={(e) => setFresh(e.target.value)}
+            />
+            <Button type="submit" size="sm" disabled={pairing || fresh.trim() === ""}>
+              {pairing ? t("hostOffline.pairTesting") : t("hostOffline.pairAgain")}
+            </Button>
+            {pairError && <p role="alert">{pairError}</p>}
+          </form>
+        )}
         {answered && <p>{t("hostOffline.still")}</p>}
         {hint === "linux" && (
           <Stack gap={1}>

@@ -3,6 +3,7 @@ import { Inline, Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "../lib/app-store.ts";
+import { newSessionHost } from "../lib/new-session-host.ts";
 import { basename } from "../lib/paths.ts";
 import type { Route } from "../lib/router.ts";
 
@@ -24,7 +25,7 @@ export function StartScreen(
 ) {
   const t = useT();
   const { hosts, go } = props;
-  const firstHost = hosts.find((host) => host.status === "online");
+  const firstHost = newSessionHost(hosts, props.store.getState().selected);
   const recent = hosts
     .flatMap((host) => host.sessions.map((session) => ({ host: host.id, session })))
     .sort((a, b) => b.session.updatedAt.localeCompare(a.session.updatedAt))
@@ -42,6 +43,9 @@ export function StartScreen(
             >
               {t("sidebar.newSession")}
             </Button>
+          )}
+          {hosts.length === 0 && (
+            <Button onClick={() => go({ name: "add-host" })}>{t("start.addHost")}</Button>
           )}
           <Button variant="outline" onClick={() => go({ name: "hub" })}>
             {t("sidebar.sessions")}
