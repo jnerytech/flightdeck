@@ -80,7 +80,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   `package.json`; never `smoke:real` unless asked).
 - Audit: `bun run tdd:audit` audits from the merge-base with `main` (or from the last tag on
   `main`), the same as `-- --since auto`; `-- --since <tag or commit>` picks the start. CI runs it.
-- Screens: `bun run demo` (two fake hosts and the web entry at http://localhost:1420),
+- Screens: `bun run demo` (two fake hosts and the web entry at http://localhost:1420; `DEMO_PORT` picks
+  another, and the e2e run and `demo:shots` take a free one, so an open demo never blocks them),
   `bun run slot -- bun run demo:shots` (prints in both themes and languages, plus axe),
   `bun run slot -- bun run e2e` (the
   journeys, in both languages, with `@playwright/test`: `E2E_ONLY=a,b` picks journeys, and
