@@ -74,7 +74,9 @@ describe("smoke-daemon: a smoke that collects the output itself", () => {
 describe("smoke-daemon: every smoke waits the same way", () => {
   test("no smoke keeps its own reader of the daemon's announcement, with the generic step limit on it", () => {
     const own = readdirSync(join(ROOT, "scripts"))
-      .filter((name) => /^smoke.*\.ts$/.test(name))
+      // The real-OpenCode smoke reads the daemon's log file and also stops when the daemon exits,
+      // with a 60 s limit of its own (it is not run in CI).
+      .filter((name) => /^smoke.*\.ts$/.test(name) && name !== "smoke-opencode-real.ts")
       .filter((name) => {
         const source = readFileSync(join(ROOT, "scripts", name), "utf8");
         // Its own reader, or its own reading of the `listening on ws://…` line.

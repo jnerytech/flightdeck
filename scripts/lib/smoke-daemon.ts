@@ -60,8 +60,19 @@ export async function readListenUrl(
  * far, and the address is waited for by looking again until the limit.
  */
 export async function awaitListenUrl(
-  _read: () => string,
-  _timeoutMs: number = DAEMON_START_MS,
+  read: () => string,
+  timeoutMs: number = DAEMON_START_MS,
 ): Promise<string> {
-  return "";
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const printed = read();
+    const found = printed.match(/listening on (ws:\/\/\S+)/)?.[1];
+    if (found) return found;
+    if (Date.now() > deadline) {
+      throw new Error(
+        `timeout: daemon anunciar a porta (${timeoutMs} ms; it printed: ${printed.slice(-300) || "nothing"})`,
+      );
+    }
+    await Bun.sleep(20);
+  }
 }
