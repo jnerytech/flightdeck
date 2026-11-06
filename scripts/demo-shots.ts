@@ -4,7 +4,7 @@
  * playwright-core (no browser download); the CI job of the last area uses Chromium instead.
  * Files land in apps/desktop/screenshots/<theme>-<lang>/<screen>.png (ignored by git).
  */
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
@@ -13,13 +13,30 @@ import type { Route } from "../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "./demo-seed.ts";
 import { AXE_RUN_OPTIONS, type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
 import { launchFirst } from "./lib/browser.ts";
-import { type Finding, GAPS, KEY_REGIONS, layoutFindings } from "./lib/layout-guards.ts";
+import {
+  type Baseline,
+  type Finding,
+  findingKey,
+  GAPS,
+  judge,
+  KEY_REGIONS,
+  layoutFindings,
+  loadBaseline,
+  SPACING,
+  SPACING_RULES,
+} from "./lib/layout-guards.ts";
 import { type Rgb, themeProblem } from "./lib/print-theme.ts";
 import { PENDING_SELECTOR } from "./lib/shots-loaded.ts";
 import { pickVariants } from "./lib/shots-variants.ts";
 import { type VisualMode, VOLATILE_RULES } from "./lib/visual.ts";
 
 export const SHOTS_DIR = resolve(import.meta.dir, "../apps/desktop/screenshots");
+/**
+ * The spacing guard's baseline (#588): the findings each print had when the guard came in, keyed by
+ * rule, "theme lang print" and data-slot path. A new one fails; one that is gone must leave the file,
+ * so fixes only push it down. Without the file, the findings are only written down.
+ */
+export const SPACING_BASELINE = resolve(import.meta.dir, "../apps/desktop/spacing-baseline.json");
 
 interface Shot {
   name: string;
@@ -801,6 +818,8 @@ interface PrintSetup {
   dir: string;
   visual: VisualMode;
   log: (msg: string) => void;
+  /** The spacing guard's ratchet (#588): its baseline, and what this run saw and found gone. */
+  spacing: { baseline: Baseline | null; seen: Record<string, string>; gone: string[] };
 }
 
 /** One print and its checks (theme, layout, accessibility); what is wrong goes to `problems`. */
@@ -810,7 +829,7 @@ async function printShot(
   setup: PrintSetup,
   problems: string[],
 ): Promise<void> {
-  const { url, theme, lang, dir, visual, log } = setup;
+  const { url, theme, lang, dir, visual, log, spacing } = setup;
   const page = await context.newPage();
   page.on("pageerror", (error) => log(`erro na página ${shot.name} ${page.url()}: ${error.stack}`));
   // The storage is the context's: a print with no clients clears what an earlier one kept.
@@ -863,12 +882,20 @@ async function printShot(
   const layout: Finding[] = await page.evaluate(layoutFindings, {
     regions: KEY_REGIONS,
     gaps: GAPS,
+    spacing: SPACING,
   });
   for (const finding of layout.filter(blocksPrint)) {
     problems.push(
       `${theme} ${lang} ${shot.name}: ${finding.rule} ${finding.path} (${finding.detail})`,
     );
   }
+  // The spacing guard (#588): judged against its own baseline, which only goes down.
+  const screen = `${theme} ${lang} ${shot.name}`;
+  const spaced = layout.filter((finding) => SPACING_RULES.includes(finding.rule));
+  for (const finding of spaced) spacing.seen[findingKey(screen, finding)] = finding.detail;
+  const verdict = judge(screen, spaced, spacing.baseline);
+  problems.push(...verdict.failures);
+  spacing.gone.push(...verdict.fixed);
   // The same screen, checked for accessibility: serious and critical violations fail.
   await page.addScriptTag({ path: AXE });
   const found = await page.evaluate(
@@ -904,6 +931,11 @@ export async function takeShots(
     chromium.launch({ ...attempt, headless: true, env }),
   );
   const problems: string[] = [];
+  const spacingBaseline = loadBaseline(() =>
+    existsSync(SPACING_BASELINE) ? readFileSync(SPACING_BASELINE, "utf8") : null,
+  );
+  const spacingSeen: Record<string, string> = {};
+  const spacingGone: string[] = [];
   try {
     await inSequence(variants, async ({ theme, lang }) => {
       const dir = join(SHOTS_DIR, `${theme}-${lang}`);
@@ -922,13 +954,37 @@ export async function takeShots(
       });
       await inSequence(
         shots(ids).filter((s) => s.name.includes(process.env.DEMO_SHOTS ?? "")),
-        (shot) => printShot(context, shot, { url, theme, lang, dir, visual, log }, problems),
+        (shot) =>
+          printShot(
+            context,
+            shot,
+            {
+              url,
+              theme,
+              lang,
+              dir,
+              visual,
+              log,
+              spacing: { baseline: spacingBaseline, seen: spacingSeen, gone: spacingGone },
+            },
+            problems,
+          ),
       );
       await context.close();
       log(`prints ${theme} ${lang}`);
     });
   } finally {
     await browser.close();
+    // What the run saw, for the baseline (the screenshots folder is the CI job's artifact), even
+    // when a print crashed or timed out.
+    mkdirSync(SHOTS_DIR, { recursive: true });
+    writeFileSync(join(SHOTS_DIR, "spacing-findings.json"), JSON.stringify(spacingSeen, null, 2));
+    log(`spacing guard: ${Object.keys(spacingSeen).length} findings`);
+  }
+  if (spacingGone.length > 0) {
+    problems.push(
+      `spacing-baseline.json holds findings that are gone: remove\n${spacingGone.join("\n")}`,
+    );
   }
   if (problems.length > 0) {
     throw new Error(

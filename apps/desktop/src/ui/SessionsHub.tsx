@@ -88,6 +88,7 @@ export function SessionsHub(
   }>,
 ) {
   const { store, state } = props;
+  const { t } = store.i18n;
   const [filter, setFilter] = useState<HubFilter>(() => store.hubFilter());
   const [view, setView] = useState<HubView>(() => store.hubView());
   // The project the route asked for. Clearing it here sticks while the hub stays mounted (opening
@@ -165,7 +166,7 @@ export function SessionsHub(
     () =>
       store
         .clientScope()
-        .filter(hubRows(state), state.clientSelection, (row) => row.projectKey)
+        .filter(hubRows(state, t), state.clientSelection, (row) => row.projectKey)
         .filter(
           (row) => !only || (row.hostId === only.hostId && row.projectKey === only.projectKey),
         )
@@ -183,6 +184,8 @@ export function SessionsHub(
       state.externals,
       state.names,
       state.background,
+      state.personas,
+      t,
       picked,
       pickedProject,
       worktrees,
@@ -345,7 +348,6 @@ export function SessionsHub(
       ...(cost === undefined ? {} : { cost: usd(cost) }),
     };
   };
-  const { t } = store.i18n;
   const active = [
     filter.host !== "",
     filter.origin !== "",

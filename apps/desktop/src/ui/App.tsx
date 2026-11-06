@@ -501,6 +501,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
             collapse: t("shell.collapse"),
             expand: t("shell.expand"),
           }}
+          navKey={route}
           header={
             <>
               <TopBarHost

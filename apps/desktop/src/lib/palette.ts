@@ -6,6 +6,7 @@ import type { AppSnippet } from "./global-snippets.ts";
 import { hostStatusView } from "./host-status.ts";
 import { basename, isInside } from "./paths.ts";
 import type { Route } from "./router.ts";
+import { sessionLabel } from "./session-label.ts";
 import { keysLabel, type ShortcutAction, shortcutOf } from "./shortcuts.ts";
 import type { TerminalTarget } from "./terminal.ts";
 import { hasFeature } from "./version.ts";
@@ -187,7 +188,16 @@ export function paletteSections(
             state.hub[host.id]?.managed.find((m) => m.id === s.id)?.claudeSessionId;
           return {
             id: `session:${host.id}/${s.id}`,
-            label: s.name ?? names.get(s.id)?.display ?? basename(s.cwd),
+            label:
+              sessionLabel(
+                {
+                  metaName: state.meta[`${host.id}/${s.id}`]?.name,
+                  createdName: s.name,
+                  names: names.get(s.id),
+                  personas: state.personas?.[host.id],
+                },
+                t,
+              ) ?? basename(s.cwd),
             detail: `${host.name} · ${s.cwd}`,
             target,
             stateKey: stateOf(s.status),
@@ -207,7 +217,15 @@ export function paletteSections(
           const target: PaletteTarget = { kind: "external", hostId: host.id, claudeSessionId: id };
           return {
             id: `external:${key}`,
-            label: state.meta[key]?.name ?? names.get(id)?.display ?? basename(s.cwd ?? id),
+            label:
+              sessionLabel(
+                {
+                  metaName: state.meta[key]?.name,
+                  names: names.get(id),
+                  personas: state.personas?.[host.id],
+                },
+                t,
+              ) ?? basename(s.cwd ?? id),
             detail: `${host.name} · ${t("palette.terminalDetail")}`,
             target,
             stateKey: stateOf(s.status),

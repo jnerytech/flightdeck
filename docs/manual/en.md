@@ -2322,6 +2322,10 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   you add or remove rows (the number of rows is the number of workers, 1 to 8). A worker's
   persona starts as the Developer when the host has it; pick **None** for the plain default. With no choice,
   the model is the persona's. Each member's model shows on its line.
+- **Each member's name** says who it is: the team and the persona in the app's language, such as
+  "md-server · Architect 2" or "md-server · Coordinator"; with no persona, "Worker 2". The name
+  shows in the sessions list, the search and Needs you. A name you gave, or the one Claude Code
+  gave, still wins, and the address for messages does not change.
 - **The coordinator's cycle:**
   1. split the goal into tasks, each with what "done" means;
   2. send one task to each worker, and ask to hear when it goes idle;

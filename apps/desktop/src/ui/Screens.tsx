@@ -804,7 +804,7 @@ function routeScreen(props: ScreenProps): ReactNode {
     case "conversations":
       return <ConversationsPage store={store} go={go} />;
     case "personas":
-      return <PersonasPage store={store} />;
+      return <PersonasPage store={store} go={go} />;
     case "clients":
       return <ClientsPage store={store} state={state} />;
     case "plugins":

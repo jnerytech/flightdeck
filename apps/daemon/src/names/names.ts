@@ -4,6 +4,7 @@
  * numbers come from counters that never go down, so a name is never given twice.
  */
 import type { Database } from "bun:sqlite";
+import type { SessionTeam } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { aliasName, displayName, GENERAL, slug } from "./format.ts";
 
@@ -18,11 +19,15 @@ export interface SessionName {
   persona: string;
   number: number;
   cardNumber: number | null;
+  standard: boolean;
+  team: SessionTeam | null;
 }
 
 export interface NameInput {
   project: string;
   persona?: string | null;
+  /** The team the session works in (issue #101). */
+  team?: SessionTeam | null;
   /** The card the session works for, if any. */
   cardId?: string | null;
 }
@@ -34,6 +39,9 @@ interface Row {
   persona: string;
   number: number;
   card_number: number | null;
+  team: string | null;
+  team_role: string | null;
+  team_number: number | null;
 }
 
 /** Where the counter of the cards' numbers lives, next to the persona counters. */
@@ -54,6 +62,7 @@ export class Names {
     this.db.transaction(() => {
       const cardNumber = input.cardId ? this.cardNumber(input.project, input.cardId) : null;
       this.insert(id, input.project, persona, cardNumber);
+      if (input.team) this.writeTeam(id, input.team);
       const title = this.titleOf(id);
       if (title) this.applyTitle(id, title.title, null);
     })();
@@ -94,6 +103,15 @@ export class Names {
       this.addAlias(id, aliasName(parts));
     })();
     return this.get(id) as SessionName;
+  }
+
+  /**
+   * The team a session works in, its role and number (issue #101): the app names a team session
+   * by its persona from these. The display name and the aliases do not change. A session not named
+   * yet is left alone: its naming reads the team itself.
+   */
+  setTeam(id: string, team: SessionTeam): void {
+    if (this.get(id)) this.writeTeam(id, team);
   }
 
   /** A new display name; the old alias keeps working and the new name adds one if it is free. */
@@ -201,7 +219,25 @@ export class Names {
       persona: row.persona,
       number: row.number,
       cardNumber: row.card_number,
+      // Still the standard name: no rename in Flightdeck and no title from Claude Code.
+      standard: row.display === displayName(this.parts(row)),
+      team:
+        row.team === null
+          ? null
+          : {
+              name: row.team,
+              role: row.team_role === "coordinator" ? "coordinator" : "worker",
+              number: row.team_number,
+            },
     };
+  }
+
+  private writeTeam(id: string, team: SessionTeam): void {
+    this.db
+      .query(
+        "UPDATE session_names SET team = ?, team_role = ?, team_number = ? WHERE session_id = ?",
+      )
+      .run(team.name, team.role, team.number, id);
   }
 
   /** The next value of a counter; it only goes up. */

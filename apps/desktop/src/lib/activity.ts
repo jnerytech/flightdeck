@@ -14,6 +14,7 @@ export const ACTIVITY_KEYS = [
   "externals",
   "hosts",
   "meta",
+  "personas",
   "runs",
   "vaultApprovals",
   "hub",

@@ -68,7 +68,7 @@ import {
 } from "@flightdeck/protocol";
 import { refusalText } from "../i18n/errors.ts";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
-import { I18n, type Key } from "../i18n/index.ts";
+import { I18n, type Key, type T } from "../i18n/index.ts";
 import type {
   AppUpdate,
   Notification,
@@ -153,6 +153,7 @@ import {
 import type { RoiMoney } from "./roi.ts";
 import { RoiSettings } from "./roi-settings.ts";
 import type { Route } from "./router.ts";
+import { sessionLabel } from "./session-label.ts";
 import {
   applyEnvelope,
   emptySession,
@@ -668,75 +669,99 @@ function storedWorkspace(storage: Platform["storage"]): unknown {
 /** The parts of the state the requests waiting for the person are made of. */
 export type NeedsYouState = Pick<
   AppState,
-  "cards" | "externalRequests" | "externals" | "hosts" | "meta" | "runs" | "vaultApprovals"
+  | "cards"
+  | "externalRequests"
+  | "externals"
+  | "hosts"
+  | "meta"
+  | "names"
+  | "personas"
+  | "runs"
+  | "vaultApprovals"
 >;
 
-export function needsYou(state: NeedsYouState): PendingItem[] {
-  const requests: PendingItem[] = state.hosts.flatMap((host) => [
-    ...host.sessions.flatMap((session) =>
-      session.pendingPermissions.map((p) => ({
-        hostId: host.id,
-        hostName: host.name,
-        sessionId: session.id,
-        sessionName: session.name ?? basename(session.cwd),
-        requestId: p.requestId,
-        toolName: p.toolName,
-        createdAt: p.createdAt,
-        ...(p.input ? { input: p.input } : {}),
-        ...(p.risk ? { risk: p.risk } : {}),
-        ...(p.riskReason ? { riskReason: p.riskReason } : {}),
-        cwd: session.cwd,
-      })),
-    ),
-    // Sessions opened in the terminal: the hook holds the request while the app watches.
-    ...Object.entries(state.externalRequests)
-      .filter(([key]) => key.startsWith(`${host.id}/`))
-      .map(([, request]) => {
-        const id = request.claudeSessionId;
-        const session = state.externals[sessionKey(host.id, id)];
-        const name = state.meta[sessionKey(host.id, id)]?.name;
-        return {
+/** `t`: the dictionaries, so a team session is named by its persona (#101); without, as before. */
+export function needsYou(state: NeedsYouState, t?: T): PendingItem[] {
+  const requests: PendingItem[] = state.hosts.flatMap((host) => {
+    const names = state.names?.[host.id] ?? [];
+    const label = (id: string, metaName: string | null | undefined, createdName?: string | null) =>
+      sessionLabel(
+        {
+          metaName,
+          createdName,
+          names: names.find((n) => n.sessionId === id),
+          personas: state.personas?.[host.id],
+        },
+        t,
+      );
+    return [
+      ...host.sessions.flatMap((session) =>
+        session.pendingPermissions.map((p) => ({
           hostId: host.id,
           hostName: host.name,
-          sessionId: id,
-          sessionName: name ?? basename(session?.cwd ?? id),
-          requestId: request.requestId,
-          toolName: request.toolName,
-          createdAt: request.createdAt,
-          external: true,
-          input: request.input,
-          ...(request.risk ? { risk: request.risk } : {}),
-          ...(request.riskReason ? { riskReason: request.riskReason } : {}),
-          cwd: session?.cwd ?? null,
-        };
-      }),
-    // Open gates of the host's workflow runs.
-    ...Object.entries(state.runs)
-      .filter(([key]) => key.startsWith(`${host.id}/`))
-      .flatMap(([, run]) =>
-        run.steps
-          .filter((step) => step.type === "gate" && step.status === "waiting")
-          .map((step) => ({
+          sessionId: session.id,
+          sessionName:
+            label(session.id, state.meta[sessionKey(host.id, session.id)]?.name, session.name) ??
+            basename(session.cwd),
+          requestId: p.requestId,
+          toolName: p.toolName,
+          createdAt: p.createdAt,
+          ...(p.input ? { input: p.input } : {}),
+          ...(p.risk ? { risk: p.risk } : {}),
+          ...(p.riskReason ? { riskReason: p.riskReason } : {}),
+          cwd: session.cwd,
+        })),
+      ),
+      // Sessions opened in the terminal: the hook holds the request while the app watches.
+      ...Object.entries(state.externalRequests)
+        .filter(([key]) => key.startsWith(`${host.id}/`))
+        .map(([, request]) => {
+          const id = request.claudeSessionId;
+          const session = state.externals[sessionKey(host.id, id)];
+          const name = state.meta[sessionKey(host.id, id)]?.name;
+          return {
             hostId: host.id,
             hostName: host.name,
-            sessionId: run.cardId,
-            sessionName: state.cards[sessionKey(host.id, run.cardId)]?.title ?? run.workflowName,
-            requestId: `gate:${run.id}/${step.stepId}/${step.attempt}`,
-            toolName: `gate ${step.stepId}`,
-            createdAt: step.startedAt,
-            gate: {
-              runId: run.id,
-              stepId: step.stepId,
-              attempt: step.attempt,
-              cardId: run.cardId,
-            },
-            gateText: {
-              message: step.message ?? "",
-              ...(step.output ? { output: step.output } : {}),
-            },
-          })),
-      ),
-  ]);
+            sessionId: id,
+            sessionName: label(id, name) ?? basename(session?.cwd ?? id),
+            requestId: request.requestId,
+            toolName: request.toolName,
+            createdAt: request.createdAt,
+            external: true,
+            input: request.input,
+            ...(request.risk ? { risk: request.risk } : {}),
+            ...(request.riskReason ? { riskReason: request.riskReason } : {}),
+            cwd: session?.cwd ?? null,
+          };
+        }),
+      // Open gates of the host's workflow runs.
+      ...Object.entries(state.runs)
+        .filter(([key]) => key.startsWith(`${host.id}/`))
+        .flatMap(([, run]) =>
+          run.steps
+            .filter((step) => step.type === "gate" && step.status === "waiting")
+            .map((step) => ({
+              hostId: host.id,
+              hostName: host.name,
+              sessionId: run.cardId,
+              sessionName: state.cards[sessionKey(host.id, run.cardId)]?.title ?? run.workflowName,
+              requestId: `gate:${run.id}/${step.stepId}/${step.attempt}`,
+              toolName: `gate ${step.stepId}`,
+              createdAt: step.startedAt,
+              gate: {
+                runId: run.id,
+                stepId: step.stepId,
+                attempt: step.attempt,
+                cardId: run.cardId,
+              },
+              gateText: {
+                message: step.message ?? "",
+                ...(step.output ? { output: step.output } : {}),
+              },
+            })),
+        ),
+    ];
+  });
   const known = state.vaultApprovals.filter((item) =>
     state.hosts.some((h) => h.id === item.hostId),
   );
@@ -1386,7 +1411,7 @@ export class AppStore {
   openRequestLink(url: string): boolean {
     const link = parseRequestLink(url);
     if (!link) return false;
-    const item = needsYou(this.state).find(
+    const item = needsYou(this.state, this.i18n.t).find(
       (i) => i.hostId === link.hostId && i.requestId === link.requestId,
     );
     // Already answered: the window still comes up.
@@ -1401,7 +1426,7 @@ export class AppStore {
    * now oldest is opened to be seen, never answered unseen (#245).
    */
   decideOldest(decision: "approve" | "deny", shown: string): void {
-    const item = needsYou(this.state)[0];
+    const item = needsYou(this.state, this.i18n.t)[0];
     if (!item) return;
     if (`${item.hostId}/${item.requestId}` !== shown) {
       this.openRequest(item);
@@ -1445,7 +1470,9 @@ export class AppStore {
       void this.platform.showMainWindow();
       return;
     }
-    const item = needsYou(this.state).find((i) => `${i.hostId}/${i.requestId}` === key);
+    const item = needsYou(this.state, this.i18n.t).find(
+      (i) => `${i.hostId}/${i.requestId}` === key,
+    );
     if (!item) return;
     // The tray never approves a high-risk request: that takes holding the button in the app. A
     // workflow gate is answered on its card, never as a permission (the host refuses its id).
@@ -2603,7 +2630,7 @@ export class AppStore {
 
   /** The daemon's risk of a waiting request: its queue entry, else the session item it is. */
   private riskOf(hostId: string, requestId: string): RiskLevel | undefined {
-    const queued = needsYou(this.state).find(
+    const queued = needsYou(this.state, this.i18n.t).find(
       (item) => item.hostId === hostId && item.requestId === requestId,
     );
     if (queued?.risk) return queued.risk;
@@ -4553,10 +4580,13 @@ export class AppStore {
     const timers = this.options.timers ?? REAL_TIMERS;
     if (this.trayMenuTimer !== null) timers.clearTimeout(this.trayMenuTimer);
     this.trayMenuTimer = null;
-    if (JSON.stringify(trayMenu(needsYou(this.state), this.i18n.t)) === this.trayMenuSent) return;
+    if (
+      JSON.stringify(trayMenu(needsYou(this.state, this.i18n.t), this.i18n.t)) === this.trayMenuSent
+    )
+      return;
     this.trayMenuTimer = timers.setTimeout(() => {
       this.trayMenuTimer = null;
-      const menu = trayMenu(needsYou(this.state), this.i18n.t);
+      const menu = trayMenu(needsYou(this.state, this.i18n.t), this.i18n.t);
       this.trayMenuSent = JSON.stringify(menu);
       void this.platform.setTrayMenu(menu);
     }, TRAY_MENU_DELAY_MS);
@@ -4568,7 +4598,7 @@ export class AppStore {
    */
   private onLanguage(): void {
     this.syncTray();
-    const menu = trayMenu(needsYou(this.state), this.i18n.t);
+    const menu = trayMenu(needsYou(this.state, this.i18n.t), this.i18n.t);
     this.trayMenuSent = JSON.stringify(menu);
     void this.platform.setTrayMenu(menu);
     for (const listener of this.listeners) listener();
