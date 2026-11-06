@@ -636,7 +636,7 @@ export const BoardView = memo(function BoardView(props: {
           // biome-ignore lint/a11y/noNoninteractiveTabindex: the columns scroll sideways; focus lets the keyboard do it
           tabIndex={0}
           style={{ gridAutoColumns: `${width}px` }}
-          className="grid min-h-0 flex-1 grid-flow-col gap-3 overflow-x-auto pb-2 @max-[40rem]:snap-x @max-[40rem]:snap-mandatory"
+          className="grid min-h-64 flex-1 grid-flow-col gap-3 overflow-x-auto pb-2 @max-[40rem]:snap-x @max-[40rem]:snap-mandatory"
           onKeyDown={(e) => {
             // Only the board's own Esc: one that closes a card's menu is the menu's.
             if (e.key !== "Escape" || e.defaultPrevented) return;
