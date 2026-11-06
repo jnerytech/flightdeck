@@ -13,14 +13,16 @@
   is skipped.
 - **Size.** `scripts/lib/md-size.ts` checks the size against `md-size-baseline.json`, using the
   layout ratchet's `overBaseline`. The limits:
-  - 150 lines for `CLAUDE.md` files, `.claude/rules` and `.claude/agents`;
+  - 150 lines for a nested `CLAUDE.md`, `.claude/rules` and `.claude/agents`;
   - 300 for a `SKILL.md`;
   - 400 for every other file.
 
-  The frozen `docs/DECISIONS.md` has no limit, because `decisions.ts` pins its content. The
-  baseline holds today's counts and only goes down: `CLAUDE.md` 219 (over its 150 since the
-  delegation section of #341), `docs/SPEC-fase-40.md` 702, `docs/manual/en.md` 3129 and
-  `docs/manual/pt-BR.md` 3111.
+  Some files get fixed limits of their own, outside the baseline, because they grow by design and
+  a down-only baseline would block them. The root `CLAUDE.md` gets 260 lines (219 today, with
+  lines waiting for the owner's word). Each manual gets 4000 (about 3150 today, and every phase
+  adds to both; they grew 35 lines in the hour this port was open). The frozen
+  `docs/DECISIONS.md` has no limit, because `decisions.ts` pins its content. The baseline holds
+  only `docs/SPEC-fase-40.md` at 702, and only goes down.
 - **Ported on 2026-11-06.** The branch `harness-docs-checks` was written on 2026-11-05 for an
   rc/0365 that was never cut. At that time `DECISIONS.md` and the manuals were capped with
   headroom, waiting for a split. The split happened another way (#304, `docs/decisions/`), so the

@@ -206,8 +206,9 @@ em vez de depender de cuidado.
 - **Docs links and size.** `md-links.test.ts` fails on a relative link to a missing file, on an
   anchor that matches no heading (with GitHub's slugs, accents included), and on a `docs/...md` path
   in the code (not in the tests) that does not exist. `md-size.test.ts` fails on a tracked Markdown
-  file over its line limit (150 for `CLAUDE.md`, `.claude/rules` and `.claude/agents`, 300 for a
-  `SKILL.md`, 400 otherwise) beyond `md-size-baseline.json`, which only goes down. The frozen
+  file over its line limit beyond `md-size-baseline.json`, which only goes down. The limits are
+  150 for a nested `CLAUDE.md`, `.claude/rules` and `.claude/agents`, 300 for a `SKILL.md`, 260
+  for the root `CLAUDE.md`, 4000 for each manual and 400 otherwise. The frozen
   `docs/DECISIONS.md` has no limit.
 
 ## Armadilhas conhecidas
