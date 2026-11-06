@@ -145,7 +145,8 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
     await expectBusyOnce("Enviar", send.calls, () => send.settle(null));
   });
 
-  test("Aprovar and Recusar on a gate share one answer: busy at once, the other off, sent once", async () => {
+  // Issue #182: a gate is answered with the same pair of verbs as a request, Aprovar and Negar.
+  test("Aprovar and Negar on a gate share one answer: busy at once, the other off, sent once", async () => {
     const answer = slow();
     const step = {
       stepId: "revisar",
@@ -174,13 +175,13 @@ describe("botoes-pendentes: a click is answered before the work is done", () => 
     );
     await click(button("Aprovar"));
     expect(button("Aprovar")?.getAttribute("aria-busy")).toBe("true");
-    expect(button("Recusar")?.disabled).toBe(true);
+    expect(button("Negar")?.disabled).toBe(true);
     await click(button("Aprovar"));
-    await click(button("Recusar"));
+    await click(button("Negar"));
     expect(answer.calls).toHaveLength(1);
     await answer.settle();
     expect(button("Aprovar")?.disabled).toBe(false);
-    expect(button("Recusar")?.disabled).toBe(false);
+    expect(button("Negar")?.disabled).toBe(false);
   });
 
   test("Atualizar com a base goes busy and updates once", async () => {

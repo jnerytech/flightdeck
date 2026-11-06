@@ -457,8 +457,10 @@ lugar só, agrupadas por projeto e ordenadas pela última atividade.
   recolhido**, mostrando só o cabeçalho e as sessões que precisam de você; abra um pela seta, e a
   escolha é lembrada por projeto. **Expandir tudo** e **Recolher tudo**, no topo, fazem isso com
   todos. Aberto, o projeto mostra primeiro as sessões ao vivo (as que precisam de você no topo). As sessões encerradas e do histórico ficam atrás de **N sessões anteriores**, da mais
-  nova para a mais antiga. Digitar no filtro também casa com o nome do projeto, e qualquer filtro (texto, host, origem,
-  estado, persona, fixadas) abre tudo o que ele mantém. Uma sessão fixada fica sempre com as ao
+  nova para a mais antiga. Digitar no filtro também casa com o nome do projeto, e qualquer filtro (texto, origem,
+  estado, persona, fixadas) abre tudo o que ele mantém. Um chip de **Hosts** só restringe a lista a
+  esse host: os projetos ficam abertos ou dobrados como você os deixou. A dobra de um projeto é
+  lembrada sob uma chave que não muda quando um host fica offline ou pastas se juntam. Uma sessão fixada fica sempre com as ao
   vivo. **O mesmo projeto em dois hosts é um só grupo**, com os dois chips de host, e cada linha
   mantém o seu chip de host. Um projeto sem remote git é reconhecido pelo nome da pasta entre
   hosts, mas nunca quando um host tem duas pastas com esse nome: essas ficam em grupos separados em

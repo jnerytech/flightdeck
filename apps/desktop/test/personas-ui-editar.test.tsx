@@ -143,19 +143,29 @@ describe("personas-ui-editar: model and tools are choices (issue #134)", () => {
     expect((screen.getByLabelText("Outro modelo") as HTMLInputElement).value).toBe("claude-x-9");
   });
 
-  test("Tools is a multi-select of the known tools; what is picked is what the preview says", async () => {
+  // Issue #237: a native multi-select dropped the other tools on a plain click, so a person who
+  // clicked two tools got one. Each tool is a checkbox with its own label, in a fieldset.
+  test("Tools is a group of checkboxes, one per known tool; each click adds a tool, and the preview says what is picked", async () => {
     await open();
     await click(button("Nova persona"));
-    const tools = screen.getByLabelText("Ferramentas") as HTMLSelectElement;
-    expect(tools.tagName).toBe("SELECT");
-    expect(tools.multiple).toBe(true);
-    expect([...tools.options].map((o) => o.value)).toEqual(
-      expect.arrayContaining(["Read", "Grep", "Glob", "Bash", "Edit", "Write"]),
-    );
-    await act(async () => {
-      for (const option of tools.options) option.selected = ["Read", "Grep"].includes(option.value);
-      fireEvent.change(tools);
-    });
+    const found = screen.queryByRole("group", { name: "Ferramentas" });
+    expect(found).not.toBeNull();
+    const group = found as HTMLElement;
+    for (const name of ["Read", "Grep", "Glob", "Bash", "Edit", "Write"]) {
+      expect([name, within(group).queryByRole("checkbox", { name }) !== null]).toEqual([
+        name,
+        true,
+      ]);
+    }
+    for (const name of ["Read", "Grep"]) {
+      await act(async () => {
+        fireEvent.click(within(group).queryByRole("checkbox", { name }) as HTMLElement);
+      });
+    }
+    for (const name of ["Read", "Grep"]) {
+      const box = within(group).queryByRole("checkbox", { name }) as HTMLInputElement | null;
+      expect([name, box?.checked]).toEqual([name, true]);
+    }
     expect(screen.getByRole("region", { name: "Prévia" }).textContent).toContain(
       "Ferramentas: só Read, Grep, e nenhuma que a sessão não tenha",
     );

@@ -61,6 +61,19 @@ async function newPersona() {
   await fill("Instruções", "Escreva o teste antes do código.");
 }
 
+/** Ticks the tools' checkboxes, one click each (issue #237). */
+async function pickTools(...names: string[]) {
+  const group = screen.queryByRole("group", { name: "Ferramentas" });
+  expect(group).not.toBeNull();
+  for (const name of names) {
+    const box = within(group as HTMLElement).queryByRole("checkbox", { name });
+    expect(box).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(box as HTMLElement);
+    });
+  }
+}
+
 describe("personas-ui: the editor", () => {
   test("the preview says what a session gets: the appended text, model, effort, the tools it restricts and the mode it caps", async () => {
     await open();
@@ -70,11 +83,7 @@ describe("personas-ui: the editor", () => {
     await fill("Modelo", "claude-sonnet-5-5");
     await fill("Esforço", "high");
     // Tools are a multi-select now (issue #134).
-    await act(async () => {
-      const tools = screen.getByLabelText("Ferramentas") as HTMLSelectElement;
-      for (const option of tools.options) option.selected = ["Read", "Grep"].includes(option.value);
-      fireEvent.change(tools);
-    });
+    await pickTools("Read", "Grep");
     await fill("Modo de permissão sugerido", "plan");
     expect(preview()).toContain("claude-sonnet-5-5");
     expect(preview()).toContain("high");
@@ -85,11 +94,7 @@ describe("personas-ui: the editor", () => {
   test("a new persona goes to the host, with what was typed", async () => {
     const { store, hostId } = await open();
     await newPersona();
-    await act(async () => {
-      const tools = screen.getByLabelText("Ferramentas") as HTMLSelectElement;
-      for (const option of tools.options) option.selected = ["Read", "Grep"].includes(option.value);
-      fireEvent.change(tools);
-    });
+    await pickTools("Read", "Grep");
     await click("Salvar persona");
     const listed = await store.hostCommand(hostId, "personas.list", {
       scope: "host",

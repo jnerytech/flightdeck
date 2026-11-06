@@ -105,9 +105,7 @@ describe("fila-pendencias", () => {
   test("clicar no pedido da fila abre a sessão no card de aprovação", async () => {
     const { store, first, hostA } = await fleet();
     render(<App store={store} />);
-    await rtlWaitFor(() =>
-      expect(screen.queryByRole("button", { name: /^Precisa de você ?2$/ })).not.toBeNull(),
-    );
+    await settle(() => screen.queryByRole("button", { name: /^Precisa de você ?2$/ }) !== null);
     // The click shows the card in the queue; "Abrir sessão" opens the session.
     await sidebar.queueItem(/^pc · s-a: Write/);
     const open = screen.queryByRole("button", { name: "Abrir sessão" });
@@ -128,9 +126,7 @@ describe("fila-pendencias", () => {
   test("permitir e negar direto na fila respondem no host de cada pedido", async () => {
     const { store, a, b, first, second, win } = await fleet();
     render(<App store={store} />);
-    await rtlWaitFor(() =>
-      expect(screen.queryByRole("button", { name: /^Precisa de você ?2$/ })).not.toBeNull(),
-    );
+    await settle(() => screen.queryByRole("button", { name: /^Precisa de você ?2$/ }) !== null);
     // Each request shows its card in the queue, where it is answered.
     const inQueue = async (label: string | RegExp, ...buttons: string[]) => {
       await sidebar.queueItem(label);
