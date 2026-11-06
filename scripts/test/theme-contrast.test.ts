@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { colorOf, contrast, tokensOf } from "../lib/theme-contrast.ts";
+import { colorOf, contrast, oklchOf, tokensOf } from "../lib/theme-contrast.ts";
 
 const css = readFileSync(resolve(import.meta.dir, "../../apps/desktop/src/styles.css"), "utf8");
 
@@ -162,6 +162,92 @@ describe("theme-contrast: the chart's series colours (issue #179)", () => {
         seen.add(String(color));
       }
       expect([theme, seen.size]).toEqual([theme, 5]);
+    }
+  });
+});
+
+describe("theme-contrast: warm neutrals (issue #119)", () => {
+  const NEUTRALS = [
+    "--background",
+    "--surface-1",
+    "--surface-2",
+    "--popover",
+    "--foreground",
+    "--muted-foreground",
+    "--border",
+    "--input",
+    "--sidebar",
+    "--sidebar-border",
+  ];
+
+  test("oklchOf reads the parts of a token, through var()", () => {
+    const vars = new Map([
+      ["--a", "oklch(0.5 0.01 75)"],
+      ["--b", "var(--a)"],
+    ]);
+    expect(oklchOf("var(--b)", vars)).toEqual({ l: 0.5, c: 0.01, h: 75 });
+    expect(oklchOf("oklch(1 0 0 / 6%)", vars)).toBeNull();
+    expect(oklchOf(undefined, vars)).toBeNull();
+  });
+
+  test("the surfaces, lines and text of both themes lean warm (hue 50 to 100) with very little chroma", () => {
+    for (const selector of [":root", ".dark"]) {
+      const vars = new Map([...tokensOf(css, ":root"), ...tokensOf(css, selector)]);
+      for (const name of NEUTRALS) {
+        const parts = oklchOf(vars.get(name), vars);
+        // Light lines are translucent black: nothing to read a hue from, and nothing cool either.
+        if (!parts) continue;
+        const where = `${selector} ${name}`;
+        expect([where, (parts.h >= 50 && parts.h <= 100) || parts.c === 0]).toEqual([where, true]);
+        expect([where, parts.c <= 0.02]).toEqual([where, true]);
+      }
+    }
+  });
+});
+
+describe("theme-contrast: the light theme's text (issue #119)", () => {
+  const vars = new Map(tokensOf(css, ":root"));
+  const rgb = (name: string) => {
+    const color = colorOf(vars.get(name), vars);
+    if (!color) throw new Error(`${name} is not an opaque oklch color: ${vars.get(name)}`);
+    return color;
+  };
+
+  test("text keeps AA on every light surface, and muted text has headroom for the 80% it is drawn at", () => {
+    for (const surface of ["--background", "--surface-1", "--surface-2", "--popover"]) {
+      expect([surface, contrast(rgb("--foreground"), rgb(surface)) >= 4.5]).toEqual([
+        surface,
+        true,
+      ]);
+      // `text-muted-foreground/80` blends it toward the surface: 6:1 here keeps 4.5:1 there.
+      expect([surface, contrast(rgb("--muted-foreground"), rgb(surface)) >= 6]).toEqual([
+        surface,
+        true,
+      ]);
+    }
+  });
+});
+
+describe("theme-contrast: the state glyphs keep 3:1 on every surface in both themes (issue #146)", () => {
+  const dark = tokensOf(css, ".dark");
+  const light = tokensOf(css, ":root");
+  const themes = { light, dark: new Map([...light, ...dark]) };
+
+  test("running, needs-you, error and idle are visible on the background, cards, sidebar and popovers", () => {
+    for (const [theme, vars] of Object.entries(themes)) {
+      for (const tone of ["running", "needs-you", "error", "idle"]) {
+        for (const surface of ["--background", "--surface-1", "--surface-2", "--sidebar"]) {
+          const glyph = colorOf(vars.get(`--status-${tone}`), vars);
+          const behind = colorOf(vars.get(surface), vars);
+          if (!glyph || !behind) throw new Error(`${theme} ${tone} ${surface}: not an oklch color`);
+          expect([theme, tone, surface, contrast(glyph, behind) >= 3]).toEqual([
+            theme,
+            tone,
+            surface,
+            true,
+          ]);
+        }
+      }
     }
   });
 });

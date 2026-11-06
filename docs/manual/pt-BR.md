@@ -280,18 +280,28 @@ e retoma cada sessão do último evento visto.
 
 Sem nenhum host, o app mostra quatro passos no lugar das telas de sempre: instalar e iniciar o
 daemon (`flightdeckd setup`), copiar o link de pareamento que ele imprime, colar o link e
-apertar **Testar e adicionar**, e então o app abre a página do próprio host. Ali você aperta
-**Verificar** em **Verificar este host** e libera as pastas de projetos em **Pastas permitidas**.
+apertar **Testar e adicionar**, e então o app abre a página do próprio host. Ali você lê
+**Saúde e dependências** (o app verifica sozinho) e libera as pastas de projetos em **Pastas permitidas**.
 Depois, **Achar meus projetos** (em **Projetos**) preenche o Board sem digitar caminho.
 
 #### Verificar um host
 
-**Verificar este host** (na página do host, para hosts online cujo daemon anuncia `doctor.run`)
-pede ao daemon que se confira: configuração, pastas permitidas, serviço, daemon, Claude Code,
-hooks, Tailscale e a versão do daemon contra a do app. Cada item fica **ok**, **atenção** ou
-**falhou**; cada um que não está **ok** vem com um passo simples para consertar, no idioma do app.
-O daemon segue respondendo enquanto confere (nada trava). As mesmas conferências rodam no
-terminal com `flightdeckd doctor`.
+**Saúde e dependências** (na aba Visão geral do host) é uma seção só para o que o host precisa e
+como ele está. O app lê sozinho quando o host conecta, quando você abre a página do host (se a
+última leitura tem mais de cinco minutos) e depois de uma atualização do daemon, e diz "Verificado
+há 3 min"; **Verificar de novo** lê agora. As dependências são **Obrigatórias** (Claude Code e o
+login dele, git, o serviço que sobe o daemon no boot, uma pasta permitida) e **Opcionais** (GitHub,
+Azure, SSH, Tailscale, PowerShell no Windows, os hooks); as conferências do próprio daemon
+(configuração, daemon, Tailscale, modelos, ferramentas do time, versão contra a do app) ficam em
+**Verificações**. Cada linha tem um ícone e uma palavra (OK, atenção, falhou, desatualizada,
+faltando, não se aplica), o que deixa de funcionar sem ela e um passo simples para consertar. Onde o
+app já tem a ação, a linha tem um botão: **Instalar hooks** (pergunta antes), **Atualizar o daemon
+para X** (pergunta antes) e **Adicionar pasta** (abre as Configurações com a caixa da pasta em foco e à vista; **Instalar
+hooks** também atualiza o estado dos hooks mostrado nas Configurações). O que precisa de `sudo` ou de instalador só aparece
+para copiar: o app nunca o executa. Um programa que falta mostra a linha do gerenciador de pacotes
+quando há uma (apt, brew, winget) e um botão **Página de instalação** que abre a página oficial; o
+Flightdeck nunca oferece um download enviado direto para um shell. As mesmas conferências rodam no terminal com `flightdeckd doctor`.
+
 ### Confiar em um projeto
 
 Um projeto (um repositório) pode trazer configuração própria: hooks que rodam comandos sozinhos,
@@ -826,11 +836,17 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
 
 ### A barra lateral, a barra de abas e as Configurações
 
-- A barra lateral mantém **Sessões**, **Precisa de você**, **Projetos** e **Board** no topo; o
-  resto fica em três grupos que dobram: **Trabalho** (Workflows, Custos, Conversas, Times),
-  **Biblioteca** (Personas, Snippets, Plugins, Cofre) e **Infra** (Conexões, Histórico). Um grupo
-  sem nada a oferecer não aparece, os grupos dobrados são lembrados, e o trilho estreito de ícones
-  não tem títulos.
+- A barra lateral agrupa os itens por finalidade, em cinco grupos que dobram: **Trabalho** (Sessões,
+  Precisa de você, Projetos, Board), **Automação** (Workflows, Times, Conversas),
+  **Observabilidade** (Custos, Histórico), **Biblioteca** (Personas, Snippets, Plugins, Cofre) e
+  **Máquinas** (os hosts, cada um com o pontinho de estado, a marca de saúde e o menu, um **+** para
+  adicionar, e depois **SSH**, os destinos SSH salvos). A página aberta tem a linha preenchida e uma
+  barra na borda esquerda, os itens com subpáginas terminam em uma seta, as novidades levam um selo
+  **Beta** ou **Novo** que some sozinho na versão em que foi marcado para acabar (o Beta de
+  Equipes acaba na 0.39, o Novo de Conversas na 0.38), e o **Manual** no pé abre este manual no navegador (o ícone diz que sai do
+  app). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados (um grupo **Máquinas** dobrado mostra
+  uma marca de aviso no título enquanto uma máquina está offline, sem uma dependência obrigatória ou
+  repassando a chave de API), e o trilho estreito de ícones não tem títulos.
 - Com uma área, a barra de abas fica na barra do topo, na linha do caminho; com a tela dividida,
   cada área tem a sua. A barra mantém três ferramentas: o menu de **Ações** da aba ativa (mover
   para a esquerda ou a direita, mover para a outra área, fixar), **Nova aba** e **Dividir**.
@@ -1893,6 +1909,10 @@ PR vigiado, um card desbloqueado. Um selo no sino conta as não lidas.
   pelo projeto dele, ou pelo cliente; um alerta de time abre Times com esse time em primeiro e
   destacado. A entrada de um card (resultado de um PR vigiado, card desbloqueado) abre o PR no
   navegador quando o card não existe mais.
+- No Windows a contagem de não lidas também aparece no botão do app na barra de tarefas, como um
+  selo vermelho com o número (`9+` acima de nove). É a contagem do sino, linha por linha: cai
+  conforme você lê e some quando a lista está limpa; uma fonte silenciada não gera entrada e não
+  soma nada. Ela volta com a contagem na próxima vez que o app abre.
 - **Marcar todas como lidas** mantém a lista; **Limpar** esvazia. A lista fica neste computador
   (as 500 mais recentes) e sobrevive a um reinício. Esc fecha o painel.
 - As notificações do sistema não mudam. A central só guarda uma cópia: uma que nunca é enviada
@@ -2647,9 +2667,48 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
   aprovado só segurando o botão.
 - **De uma notificação:** o clique abre a sessão com o cartão do pedido em foco: uma tecla
   responde. No sino, a entrada de um pedido já respondido abre a sessão naquele pedido.
+- **Dependências:** a aba Visão geral da página do host tem uma seção **Saúde e dependências** (abaixo) que agrupa o
+  que o host precisa em **Obrigatórias** (Claude Code, git com worktrees, o serviço que sobe o
+  daemon no boot, ao menos uma pasta permitida) e **Opcionais** (as ferramentas do GitHub, do Azure,
+  o SSH e o Tailscale, o PowerShell no Windows, os hooks do Claude Code). Cada linha tem um ícone e
+  uma palavra (check verde OK, alerta âmbar para uma opcional faltando ou desatualizada, cruz
+  vermelha para uma obrigatória faltando, traço cinza quando não se aplica ao sistema do host), a
+  versão encontrada e a mínima, o que deixa de funcionar sem ela, e o comando para instalá-la no
+  sistema daquele host com um botão de **copiar**. **Verificar de novo** pergunta ao host outra vez.
+  O resumo diz "Tudo certo", "Opcionais faltando: N" ou "Obrigatórias faltando: N", e um host com
+  uma obrigatória faltando ganha uma marca vermelha na barra lateral. O `flightdeckd doctor` imprime o mesmo agrupamento no terminal, depois das suas próprias
+  verificações, com a correção para o sistema do host sob cada uma que falta ou está desatualizada.
+- **Layout da página do host:** a página abre nas **Sessões** daquele host (as que precisam de você
+  primeiro, depois as mais recentes; **Ver todas as sessões** abre a lista de Sessões já filtrada
+  pelo host, só nessa visita: o filtro que você salvou para a próxima vez não muda) e nos **Projetos** dele (os mesmos cartões da lista de Projetos; **Ver todos os
+  projetos** abre essa lista filtrada pelo host, com um chip que limpa o filtro). Um host sem
+  nada diz isso e oferece **Nova sessão**. O resto fica em três abas: **Visão geral** (sessões,
+  projetos, a conta do Claude e as informações do host), **Consumo** (cota e a tabela de consumo)
+  e **Configurações** (pastas permitidas, hooks, limpeza de worktrees, telemetria, terminal, manutenção, reconectar e
+  remover). As abas respondem às setas do teclado.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude
   ganha um selo ⚠. O tempo no ar continua contando enquanto a página está aberta.
+- **Worktrees:** um painel da página do host (hosts que anunciam `worktrees`) lista as worktrees
+  dos cards em `.flightdeck/worktrees` com o tamanho em disco (**desconhecido** quando a medição
+  estourou o tempo, nunca 0), há quanto tempo estão paradas e o card de cada uma. **Sugerida** marca
+  uma worktree limpa, sem commits não enviados e sem sessão ao vivo, parada há mais de 7 dias, cujo
+  card está Concluído ou cujo PR foi mesclado, ou que não tem card. Uma worktree com alterações não
+  commitadas, commits que não existem em outro lugar, sessão, terminal ou execução rodando, branch base
+  desconhecido (precisa ser um branch de verdade, não uma tag nem `HEAD`), um branch que não é um
+  `fd/…` do Flightdeck, arquivos ignorados que um build não recria (só `node_modules`, `dist`,
+  `build`, `target`, `coverage`, `.cache`, `.next` e `out`, como pasta na raiz da worktree, não
+  contam, e um arquivo de credencial ignorado, como `.env` ou `*.pem`, sempre conta), alterações que
+  o git esconde do `git status` (`assume-unchanged` ou `skip-worktree`), ou algo que o git não soube
+  responder fica **mantida**: a linha diz por quê e não pode ser marcada. A confirmação diz que as
+  pastas recriáveis saem junto com a worktree. Filtre por Sugeridas,
+  Protegidas ou Sem card, ordene por idade ou tamanho, **Selecionar sugeridas** ou **Selecionar
+  todas que podem sair**, e então **Remover**: a confirmação cita cada branch com o card e a coluna, e o espaço
+  liberado. Só as linhas na tela podem ser marcadas ou removidas. O host trava cada pasta (nada
+  pode começar nela) e confere de novo antes de removê-la (sem force), então uma que mudou nesse
+  meio-tempo é mantida; o branch só é apagado se ainda estiver no commit que foi conferido, senão
+  a pasta sai e o branch fica, e o resultado diz isso. O card, se houver, continua no board sem a worktree. Um disco com menos de
+  10% livre gera aviso. Apagar algo que está mantido continua sendo pelo **Descartar** do card.
 - **Um host desconectado** mostra um aviso no topo da página dele: o estado, o que falhou em
   palavras simples (nada respondeu, sem resposta a tempo, a conexão caiu, o token foi recusado), a
   hora da última tentativa, a contagem até a próxima tentativa automática e **Reconectar agora**,
@@ -2759,9 +2818,11 @@ na bandeja. Para mudar, abra **Configurações → Atalho global**, digite a com
 ### Desenho e navegação
 
 O app segue um desenho só, no estilo do Linear: Inter embutida (sem rede), base de 13 px,
-superfícies em camadas, um único token de destaque e o estado das sessões como um pontinho de
-8 px (rodando em azul, precisa de você em âmbar, ociosa em cinza, encerrada esmaecida, erro em
-vermelho).
+superfícies em camadas, um único token de destaque e o estado das sessões como um glifo num espaço
+de 12 px, com forma além da cor: rodando é um anel azul que gira (parado, com o topo aberto, quando
+o sistema pede menos movimento, e parado enquanto está fora da tela), precisa de você é um ponto de
+interrogação âmbar num balão, erro é um círculo de alerta vermelho, ociosa é um pontinho cinza e
+encerrada é um anel esmaecido. Passe o mouse para ver o nome.
 
 - **Barra lateral:** logo, navegação (Sessões, Precisa de você com o contador, Board, Workflows,
   Custos, Histórico), os hosts, as sessões fixadas e, no rodapé, a busca (`Ctrl K`),
