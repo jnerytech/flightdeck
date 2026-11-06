@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import {
   type AccountUpdated,
   type Ack,
@@ -31,6 +32,8 @@ import {
   type Ping,
   Pong,
   PROTOCOL_VERSION,
+  type ProjectLoad,
+  type ProjectTrustState,
   type QuotaUpdated,
   type RunEnvUpdated,
   type RunUpdated,
@@ -82,7 +85,7 @@ import type { Idle } from "./messaging/idle.ts";
 import type { Messaging } from "./messaging/messages.ts";
 import type { Names } from "./names/names.ts";
 import { DEFAULT_ALLOWED_NETWORKS, ipInNetworks } from "./networks.ts";
-import { resolveAllowedCwd } from "./paths.ts";
+import { isInside, resolveAllowedCwd, rootNames } from "./paths.ts";
 import type { AutoApprover } from "./permissions/auto-approve.ts";
 import type { OpenSessionPersonas } from "./personas/open-session.ts";
 import { preparePersonas } from "./personas/prepare.ts";
@@ -168,6 +171,19 @@ export interface ServerOptions {
   allowedRoots: readonly string[];
   /** The host's switch for sessions without permission prompts: read for `host.info`, set by `host.bypass`. */
   bypass?: { allowed(): boolean; set(allow: boolean): void | Promise<void> };
+  /** Issue #196: the trust of folders and what a project would load; absent, the commands are refused and not announced. */
+  /** Who the peer is, for the origin rules; the socket's own address when absent (tests give theirs). */
+  peerOf?: (
+    req: Request,
+    server: { requestIP(req: Request): { address: string } | null },
+  ) => string;
+  projectTrust?: {
+    /** Reads what `state` and `set` compare with (the roots' real paths) before they answer. */
+    refresh(): Promise<void>;
+    state(paths: string[]): ProjectTrustState[];
+    inspect(path: string): Promise<ProjectLoad>;
+    set(path: string, trusted: boolean): ProjectTrustState;
+  };
   /** Keeps the allowed folders in the config file after `roots.add`. */
   persistRoots?: (roots: readonly string[]) => void | Promise<void>;
   /** What decides the system folders `roots.add` refuses; the process's own when absent (tests give theirs). */
@@ -476,6 +492,7 @@ function featuresOf(opts: ServerOptions): string[] {
     "session.images",
     ...(opts.doctor ? ["doctor.run"] : []),
     ...(opts.deps ? ["depsCheck"] : []),
+    ...(opts.projectTrust ? ["projectTrust"] : []),
     ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
     ...(opts.github ? ["github"] : []),
     ...(opts.boardsync ? ["boardsync"] : []),
@@ -1485,6 +1502,41 @@ export function startServer(opts: ServerOptions): RunningServer {
           ),
         });
       }
+      case "project.trust.state": {
+        if (!opts.projectTrust) throw featureOff("projectTrust");
+        const paths = await Promise.all(
+          command.payload.paths.map((p) => resolveAllowedCwd(p, opts.allowedRoots)),
+        );
+        await opts.projectTrust.refresh();
+        return ok(command.type, { items: opts.projectTrust.state(paths) });
+      }
+      case "project.trust.inspect": {
+        if (!opts.projectTrust) throw featureOff("projectTrust");
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        return ok(command.type, await opts.projectTrust.inspect(path));
+      }
+      case "project.trust.set": {
+        if (!opts.projectTrust) throw featureOff("projectTrust");
+        // Trusting lets the project's own hooks and MCP servers run without a prompt: only from a near
+        // connection, like roots.add and host.bypass. Revoking only lowers risk.
+        if (command.payload.trusted) {
+          requireVaultTransport(ws.data.origin, "project.trust.set", opts.log);
+        }
+        const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
+        // A root, or a folder above one, holds many repos: trusting it would trust every clone inside.
+        if (
+          command.payload.trusted &&
+          (await rootNames(opts.allowedRoots)).some((root) => isInside(path, root))
+        ) {
+          throw new FlightdeckError(
+            "invalid_state",
+            "trusting an allowed root would trust every project inside it",
+            "trust_root_refused",
+          );
+        }
+        await opts.projectTrust.refresh();
+        return ok(command.type, opts.projectTrust.set(path, command.payload.trusted));
+      }
       case "host.bypass": {
         requireVaultTransport(ws.data.origin, "host.bypass", opts.log);
         const { allow, confirm } = command.payload;
@@ -2189,7 +2241,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     port: opts.port,
     fetch(req, srv) {
       // Origin filter before anything else, on every route, before any upgrade.
-      const origin = srv.requestIP(req)?.address ?? "";
+      const origin = opts.peerOf ? opts.peerOf(req, srv) : (srv.requestIP(req)?.address ?? "");
       if (!ipInNetworks(origin, opts.allowedNetworks ?? DEFAULT_ALLOWED_NETWORKS)) {
         // Its own address, so a person told "refused" can add the right network (the doctor reads it).
         return new Response(`forbidden: ${origin}`, { status: 403 });

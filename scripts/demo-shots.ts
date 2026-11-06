@@ -7,6 +7,7 @@
 import { mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { chromium, type Page } from "playwright-core";
 import type { Route } from "../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "./demo-seed.ts";
@@ -717,7 +718,7 @@ export async function takeShots(
   );
   const problems: string[] = [];
   try {
-    for (const { theme, lang } of variants) {
+    await inSequence(variants, async ({ theme, lang }) => {
       const dir = join(SHOTS_DIR, `${theme}-${lang}`);
       mkdirSync(dir, { recursive: true });
       // For the comparison: the same locale, zone and scale on every machine.
@@ -842,7 +843,7 @@ export async function takeShots(
       }
       await context.close();
       log(`prints ${theme} ${lang}`);
-    }
+    });
   } finally {
     await browser.close();
   }

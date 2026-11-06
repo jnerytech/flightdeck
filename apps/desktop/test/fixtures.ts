@@ -61,6 +61,8 @@ import { TelemetryStore } from "../../daemon/src/telemetry/store.ts";
 import { BUILTIN_TEMPLATES } from "../../daemon/src/templates/builtin.ts";
 import { TaskTracker } from "../../daemon/src/templates/tasks.ts";
 import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
+import { inspectProject } from "../../daemon/src/trust/inspect.ts";
+import { ProjectTrust } from "../../daemon/src/trust/project-trust.ts";
 import { Vault } from "../../daemon/src/vault/vault.ts";
 import type { WebhookSender } from "../../daemon/src/webhook/sender.ts";
 import { FakeProvider } from "../../daemon/test/boardsync-fake.ts";
@@ -110,6 +112,8 @@ export function daemon(
     telemetry?: boolean;
     /** Claude Code's background sessions (phase 27): a service for the host to announce and call. */
     bg?: BgService;
+    /** Project trust (#196): the host announces it, over this daemon's database, with nothing trusted yet. */
+    trust?: boolean;
     /** Budgets (phase 8), built over this daemon's database. */
     budgets?: (db: EventStore["db"]) => Budgets;
     /** The quota's samples (phase 8), built over this daemon's database. */
@@ -523,6 +527,7 @@ export function daemon(
       ...(costs ? { costs } : {}),
       ...(telemetry ? { telemetry, telemetryOptIn } : {}),
       ...(options.bg ? { bg: options.bg } : {}),
+      ...(options.trust ? { projectTrust: projectTrustOver(store.db) } : {}),
       ...(budgets ? { budgets } : {}),
       ...(quotaHistory ? { quotaHistory } : {}),
       ...(review ?? {}),
@@ -683,3 +688,23 @@ export function memoryPlatform(focused = false, language = "pt-BR") {
 
 /** A folder every host refuses to allow, on whatever platform the tests run. */
 export const SYSTEM_FOLDER = process.platform === "win32" ? "C:\\Windows" : "/etc";
+
+/** The host's project trust over a database, as the daemon wires it (nothing trusted until the person says so). */
+function projectTrustOver(db: EventStore["db"]) {
+  const trust = new ProjectTrust(db);
+  return {
+    refresh: () => trust.refreshRoots(),
+    state: (paths: string[]) =>
+      paths.map((path) => {
+        const via = trust.via(path);
+        return { path, trusted: via !== null, via };
+      }),
+    inspect: (path: string) => inspectProject(path),
+    set: (path: string, trusted: boolean) => {
+      if (trusted) trust.trust(path);
+      else trust.revoke(path);
+      const via = trust.via(path);
+      return { path, trusted: via !== null, via };
+    },
+  };
+}
