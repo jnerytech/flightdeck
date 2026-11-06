@@ -17,10 +17,11 @@
     - the outermost box past the right of a parent that neither clips nor scrolls, for example a table past its card. A fixed or absolute box and a `display: contents` wrapper are skipped.
   - `nested-scroll`: a box that hides content and scrolls, inside another that does, or inside the page when the page itself scrolls. The detail gives the px each one hides.
   - `header-clipped`: the page header (`data-slot="page-header"`) starts under the tab row (`role="tablist"`), or the page title (`data-slot="page-title"`) is cut.
-- **Ratchet.** The baseline is `apps/desktop/responsive-baseline.json`. Its keys are the rule, `theme lang WxH print` and the path.
-  - A new finding fails the prints.
-  - A key that is gone also fails, until it leaves the file.
-  - Without the file, the findings are only written to `screenshots/responsive-findings.json`, which is in the CI artifact.
+- **Ratchet.** The baseline is `apps/desktop/responsive-baseline.json`. Each key is the rule, `theme lang WxH print` and the path with no numbers; its value is how many findings share it.
+  - More findings than the count fails the prints, naming each one by its numbered path and px.
+  - Fewer fails too, until the count is lowered (or the key removed at 0).
+  - Without the file, the findings are only written down: the counts to `screenshots/responsive-findings.json`, and each finding by its numbered path to `responsive-findings-occurrences.json`, both in the CI artifact.
+  - The first run found 385 findings with numbered keys such as `button[34]`. A button added above would have renumbered every key below it, so the counts key by the path with no numbers.
 
   The spacing baseline (#588) and this one go through the same `ratchetScreen`.
 - **Contract rules.** The contract rules (`sideways`, the key regions, the gaps) stay at 1280. At a narrow size, the page scrolling sideways is an `overflow-x` finding with a baseline. As a contract rule, it would fail every page today. Axe also stays at 1280.
