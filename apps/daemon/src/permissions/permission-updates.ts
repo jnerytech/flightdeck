@@ -76,10 +76,11 @@ function checkRisk(
   request: { risk: RiskLevel; classify: ClassifyCall },
 ): void {
   const level = ruleLevel(rule.toolName, rule.ruleContent, request.classify);
-  if (RANK[level] > RANK[request.risk])
+  // `any`: not shown to be narrow, so no request, held or not, may save it.
+  if (level === "any" || RANK[level] > RANK[request.risk])
     refuse("a regra permitiria mais risco do que este pedido", "perm_rule_too_broad", {
       tool: rule.toolName,
-      level,
+      level: level === "any" ? "high" : level,
     });
 }
 

@@ -380,6 +380,7 @@ export function ApprovalCard(props: {
               toolName={request.toolName}
               input={request.input}
               suggestions={request.suggestions}
+              cwd={request.cwd ?? undefined}
               disabled={pending}
               onAllow={(updates) => respond("allow", undefined, updates)}
             />

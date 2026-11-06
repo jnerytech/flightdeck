@@ -45,7 +45,7 @@ export const READ_TOOLS: Record<string, string[]> = {
   LS: ["path"],
 };
 export const WRITE_TOOLS = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
-const NETWORK_TOOLS = new Set(["WebFetch", "WebSearch"]);
+export const NETWORK_TOOLS = new Set(["WebFetch", "WebSearch"]);
 
 /** Programs that read or run what a pipe hands them. */
 const SHELLS = new Set([
