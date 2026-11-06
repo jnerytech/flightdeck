@@ -16,6 +16,7 @@ import {
   PROTOCOL_VERSION,
   parseServerMessage,
 } from "@flightdeck/protocol";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import { assertBinaryUntouched, installBinaryGuard } from "./test/binary-guard.ts";
 import {
   assertCheckGuardActive,
@@ -104,17 +105,6 @@ class Client {
   }
 }
 
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = /listening on (ws:\/\/\S+)/.exec(buffer);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`daemon saiu sem anunciar a porta: ${buffer}`);
-}
-
 function startDaemon(configPath: string) {
   // `env` explicitly: without it the daemon would get the environment from before the guards.
   return Bun.spawn(
@@ -131,10 +121,10 @@ interface SessionRow {
 async function waitStatus(client: Client, sessionId: string, status: string): Promise<void> {
   const deadline = Date.now() + TIMEOUT_MS;
   for (;;) {
-    const { sessions } = await client.call<{ sessions: SessionRow[] }>("session.list", {}); // NOSONAR: sequential by design: each pass needs the answer of the one before
+    const { sessions } = await client.call<{ sessions: SessionRow[] }>("session.list", {});
     if (sessions.find((s) => s.id === sessionId)?.status === status) return;
     if (Date.now() > deadline) throw new Error(`timeout: sessão ${sessionId} em ${status}`);
-    await Bun.sleep(50); // NOSONAR: poll interval: the wait between looks is the point of this loop
+    await Bun.sleep(50);
   }
 }
 
@@ -181,7 +171,7 @@ async function run(work: string): Promise<void> {
   let backupPath = "";
   let ended = "";
   try {
-    const url = await withTimeout(readListenUrl(daemon.stdout), "daemon anunciar a porta");
+    const url = await readListenUrl(daemon.stdout);
     log(`daemon em ${url}`);
     const client = new Client(url);
     const hello = await client.open(token);
@@ -279,7 +269,7 @@ async function run(work: string): Promise<void> {
   step = "subir de novo e encontrar a sessão";
   daemon = startDaemon(configPath);
   try {
-    const url = await withTimeout(readListenUrl(daemon.stdout), "daemon anunciar a porta");
+    const url = await readListenUrl(daemon.stdout);
     const client = new Client(url);
     await client.open(token);
     const { sessions } = await client.call<{ sessions: SessionRow[] }>("session.list", {});

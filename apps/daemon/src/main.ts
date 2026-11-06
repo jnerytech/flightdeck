@@ -1427,7 +1427,10 @@ export async function startDaemon(
   };
   watchFile(configFile, { interval: options.configWatchMs ?? 2000 }, onConfigChange);
 
-  logger.log(`flightdeckd ${DAEMON_VERSION} listening on ${server.url} (runtime=${runtimeKind})`);
+  // `boot`: milliseconds since the process started, so a slow start shows in a CI log (#347).
+  logger.log(
+    `flightdeckd ${DAEMON_VERSION} listening on ${server.url} (runtime=${runtimeKind}, boot ${Math.round(performance.now())} ms)`,
+  );
   boardLoop.start();
   if (config.allowedRoots.length === 0) {
     logger.error(

@@ -9,6 +9,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, type EventEnvelope, parseServerMessage } from "@flightdeck/protocol";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -89,7 +90,7 @@ async function until(check: () => boolean, what: string): Promise<void> {
   const deadline = Date.now() + TIMEOUT_MS;
   while (!check()) {
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(10); // NOSONAR: poll interval: the wait between looks is the point of this loop
+    await Bun.sleep(10);
   }
 }
 
@@ -134,7 +135,7 @@ async function run(): Promise<void> {
   );
 
   try {
-    const url = await withTimeout(readListenUrl(daemon.stdout), "daemon anunciar a porta");
+    const url = await readListenUrl(daemon.stdout);
     log(`daemon em ${url}`);
 
     step = "hello";
@@ -241,17 +242,6 @@ async function run(): Promise<void> {
       // The SQLite files may still be locked on Windows for a moment; temp dir is fine to keep.
     }
   }
-}
-
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = /listening on (ws:\/\/\S+)/.exec(buffer);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`daemon saiu sem anunciar a porta: ${buffer}`);
 }
 
 try {

@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 /**
  * Usage-rules smoke: a stand-in for Claude calls actions through the MCP of a `--runtime fake`
@@ -10,7 +10,7 @@ import { join, resolve } from "node:path";
  * no secret is in any file, log or reply.
  */
 import { type Ack, byCodeUnit, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
-import { announcedUrl } from "./test/announced-url.ts";
+import { awaitListenUrl } from "./lib/smoke-daemon.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
@@ -246,77 +246,6 @@ class FakeClaude {
   }
 }
 
-/** deploy-staging ran by the allow rule, with no approval asked. */
-function checkStaged(staged: { text: string; error: boolean }, app: App): void {
-  if (staged.error || !staged.text.includes("•••(staging-token)")) {
-    throw new Error(`deploy-staging: ${staged.text}`);
-  }
-  const first = app.requests[0];
-  if (first?.decision !== "allow" || first.ruleId !== "liberar-staging") {
-    throw new Error(`o pedido devia ser allow pela regra: ${JSON.stringify(first)}`);
-  }
-  if (app.gateRefusals !== 0) throw new Error("um pedido allow não devia precisar de aprovação");
-}
-
-/** logs-prod inside the window asked, holding the button; the daemon refused the delivery until the approval. */
-function checkInside(inside: { text: string; error: boolean }, app: App): void {
-  if (inside.error || !inside.text.includes("•••(prod-token)")) {
-    throw new Error(`logs-prod dentro da janela: ${inside.text}`);
-  }
-  const asked = app.requests.at(-1);
-  if (asked?.decision !== "ask" || asked.needsHold !== true || asked.ruleId !== "prod-janela") {
-    throw new Error(
-      `o pedido de prod devia perguntar, segurando o botão: ${JSON.stringify(asked)}`,
-    );
-  }
-  if ((app.gateRefusals as number) !== 1) {
-    throw new Error("a entrega antes da aprovação devia ter sido recusada");
-  }
-}
-
-/** The audit holds the four decisions of the run, and the report comes out as CSV. */
-async function checkAudit(app: App): Promise<void> {
-  const { decisions } = await app.call<{
-    decisions: Array<{
-      outcome: string;
-      requester: string;
-      secretId: string;
-      ruleId: string | null;
-    }>;
-  }>("vault.decisions", {});
-  const outcomes = decisions
-    .map((d) => `${d.requester}:${d.secretId}:${d.outcome}`)
-    .sort(byCodeUnit);
-  const expected = [
-    "automation:staging-token:refused",
-    "claude:prod-token:approved",
-    "claude:prod-token:refused",
-    "claude:staging-token:allowed",
-  ];
-  if (JSON.stringify(outcomes) !== JSON.stringify(expected)) {
-    throw new Error(`auditoria inesperada: ${JSON.stringify(outcomes)}`);
-  }
-  const report = await app.call<{ csv?: string }>("vault.report", { format: "csv" });
-  if (!report.csv?.startsWith("secret,requester,outcome,count")) throw new Error("sem CSV");
-}
-
-/** None of the secrets, in plain, base64 or hex, is in the places a leak would show. */
-function assertNotLeaked(secrets: string[], haystacks: Buffer[]): void {
-  for (const secret of secrets) {
-    for (const needle of [
-      secret,
-      Buffer.from(secret).toString("base64"),
-      Buffer.from(secret).toString("hex"),
-    ]) {
-      if (haystacks.some((hay) => hay.includes(needle))) {
-        throw new Error(
-          "o valor de um segredo apareceu nos logs, no banco ou no que o Claude recebeu",
-        );
-      }
-    }
-  }
-}
-
 async function run(work: string): Promise<void> {
   mkdirSync(work, { recursive: true });
   const token = crypto.randomUUID().replaceAll("-", "");
@@ -350,7 +279,7 @@ async function run(work: string): Promise<void> {
   void drain(daemon.stderr, err);
   let claude: FakeClaude | undefined;
   try {
-    const url = await withTimeout(announcedUrl(out), "daemon anunciar a porta");
+    const url = await awaitListenUrl(() => out.join(""));
     log(`daemon em ${url}`);
     const app = new App(url, vault);
     await app.open(token);
@@ -413,7 +342,14 @@ async function run(work: string): Promise<void> {
 
     step = "deploy-staging com a regra allow roda sem perguntar";
     const staged = await claude.callTool("run_action", { name: "deploy-staging" });
-    checkStaged(staged, app);
+    if (staged.error || !staged.text.includes("•••(staging-token)")) {
+      throw new Error(`deploy-staging: ${staged.text}`);
+    }
+    const first = app.requests[0];
+    if (first?.decision !== "allow" || first.ruleId !== "liberar-staging") {
+      throw new Error(`o pedido devia ser allow pela regra: ${JSON.stringify(first)}`);
+    }
+    if (app.gateRefusals !== 0) throw new Error("um pedido allow não devia precisar de aprovação");
     log("deploy-staging rodou pela regra allow, sem aprovação");
 
     step = "logs-prod fora da janela é negado";
@@ -432,7 +368,17 @@ async function run(work: string): Promise<void> {
       rules: prodRule(allDays),
     });
     const inside = await claude.callTool("run_action", { name: "logs-prod" });
-    checkInside(inside, app);
+    if (inside.error || !inside.text.includes("•••(prod-token)")) {
+      throw new Error(`logs-prod dentro da janela: ${inside.text}`);
+    }
+    const asked = app.requests.at(-1);
+    if (asked?.decision !== "ask" || asked.needsHold !== true || asked.ruleId !== "prod-janela") {
+      throw new Error(
+        `o pedido de prod devia perguntar, segurando o botão: ${JSON.stringify(asked)}`,
+      );
+    }
+    if ((app.gateRefusals as number) !== 1)
+      throw new Error("a entrega antes da aprovação devia ter sido recusada");
     log("logs-prod dentro da janela: o daemon recusou a entrega até a aprovação, e depois rodou");
 
     step = "a automação é negada pelo padrão";
@@ -446,7 +392,28 @@ async function run(work: string): Promise<void> {
     log("a automação foi negada pelo padrão");
 
     step = "a auditoria";
-    await checkAudit(app);
+    const { decisions } = await app.call<{
+      decisions: Array<{
+        outcome: string;
+        requester: string;
+        secretId: string;
+        ruleId: string | null;
+      }>;
+    }>("vault.decisions", {});
+    const outcomes = decisions
+      .map((d) => `${d.requester}:${d.secretId}:${d.outcome}`)
+      .sort(byCodeUnit);
+    const expected = [
+      "automation:staging-token:refused",
+      "claude:prod-token:approved",
+      "claude:prod-token:refused",
+      "claude:staging-token:allowed",
+    ];
+    if (JSON.stringify(outcomes) !== JSON.stringify(expected)) {
+      throw new Error(`auditoria inesperada: ${JSON.stringify(outcomes)}`);
+    }
+    const report = await app.call<{ csv?: string }>("vault.report", { format: "csv" });
+    if (!report.csv?.startsWith("secret,requester,outcome,count")) throw new Error("sem CSV");
     log("a auditoria tem as quatro decisões e o relatório sai em CSV");
     app.close();
     automation.close();
@@ -457,15 +424,25 @@ async function run(work: string): Promise<void> {
   }
 
   step = "procurar os valores nos logs, no banco e no que o Claude recebeu";
-  assertNotLeaked(
-    [staging, prod],
-    [
-      ...filesOf(dataDir),
-      Buffer.from(out.join("")),
-      Buffer.from(err.join("")),
-      Buffer.from(seen.join("\n")),
-    ],
-  );
+  const haystacks = [
+    ...filesOf(dataDir),
+    Buffer.from(out.join("")),
+    Buffer.from(err.join("")),
+    Buffer.from(seen.join("\n")),
+  ];
+  for (const secret of [staging, prod]) {
+    for (const needle of [
+      secret,
+      Buffer.from(secret).toString("base64"),
+      Buffer.from(secret).toString("hex"),
+    ]) {
+      if (haystacks.some((hay) => hay.includes(needle))) {
+        throw new Error(
+          "o valor de um segredo apareceu nos logs, no banco ou no que o Claude recebeu",
+        );
+      }
+    }
+  }
   log(
     `${filesOf(dataDir).length} arquivos do daemon, os logs e o que o Claude recebeu sem os valores`,
   );

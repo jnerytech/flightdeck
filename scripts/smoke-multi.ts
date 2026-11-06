@@ -12,6 +12,7 @@ import {
   parseServerMessage,
   type SessionEventOf,
 } from "@flightdeck/protocol";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -52,7 +53,7 @@ async function until(check: () => boolean, what: string): Promise<void> {
   const deadline = Date.now() + TIMEOUT_MS;
   while (!check()) {
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(10); // NOSONAR: poll interval: the wait between looks is the point of this loop
+    await Bun.sleep(10);
   }
 }
 
@@ -148,23 +149,12 @@ async function startFakeDaemon(name: string): Promise<FakeDaemon> {
     }
   };
   try {
-    const url = await withTimeout(readListenUrl(proc.stdout), `${name} anunciar a porta`);
+    const url = await readListenUrl(proc.stdout);
     return { url, token, project, stop };
   } catch (error) {
     await stop();
     throw error;
   }
-}
-
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = /listening on (ws:\/\/\S+)/.exec(buffer);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`daemon saiu sem anunciar a porta: ${buffer}`);
 }
 
 const summaries = (events: EventEnvelope[], sessionId: string) =>

@@ -8,7 +8,8 @@
  */
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { type Ack, inSequence, parseServerMessage, type RunState } from "@flightdeck/protocol";
+import { type Ack, parseServerMessage, type RunState } from "@flightdeck/protocol";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -40,10 +41,10 @@ async function untilAsync<T>(
 ): Promise<T> {
   const deadline = Date.now() + TIMEOUT_MS;
   for (;;) {
-    const value = await check(); // NOSONAR: sequential by design: each pass needs the answer of the one before
+    const value = await check();
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(50); // NOSONAR: poll interval: the wait between looks is the point of this loop
+    await Bun.sleep(50);
   }
 }
 
@@ -87,17 +88,6 @@ class Client {
   close(): void {
     this.ws.close();
   }
-}
-
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = /listening on (ws:\/\/\S+)/.exec(buffer);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`daemon saiu sem anunciar a porta: ${buffer}`);
 }
 
 /** What each card runs: an echo server on the port it is given, and a child that outlives its signals. */
@@ -149,8 +139,8 @@ async function answers(url: string): Promise<string | null> {
   }
 }
 
-/** The app the cards run: a repository with an echo server and the run.yaml that starts it. */
-function createRepo(work: string): string {
+async function run(work: string): Promise<void> {
+  const token = crypto.randomUUID().replaceAll("-", "");
   const repo = join(work, "app");
   mkdirSync(join(repo, ".flightdeck"), { recursive: true });
   writeFileSync(join(repo, "README.md"), "# app\n");
@@ -169,22 +159,6 @@ ports: [web]
   git(repo, "config", "commit.gpgsign", "false");
   git(repo, "add", ".");
   git(repo, "commit", "-q", "-m", "app");
-  return repo;
-}
-
-/** The two cards got ports, and ports of different blocks (a block is ten ports). */
-function checkPorts(ports: Array<number | undefined>): void {
-  if (!ports[0] || !ports[1] || ports[0] === ports[1]) {
-    throw new Error(`os cards precisam de portas diferentes: ${JSON.stringify(ports)}`);
-  }
-  if (Math.floor((ports[0] ?? 0) / 10) === Math.floor((ports[1] ?? 0) / 10)) {
-    throw new Error(`os cards precisam de blocos diferentes: ${JSON.stringify(ports)}`);
-  }
-}
-
-async function run(work: string): Promise<void> {
-  const token = crypto.randomUUID().replaceAll("-", "");
-  const repo = createRepo(work);
 
   const configPath = join(work, "config.json");
   writeFileSync(
@@ -226,7 +200,7 @@ async function run(work: string): Promise<void> {
 
     step = "dois cards com worktree";
     const cards: Array<{ id: string; worktree: string }> = [];
-    await inSequence(["um", "dois"], async (title) => {
+    for (const title of ["um", "dois"]) {
       const card = await client.call<{ id: string }>("card.create", {
         projectId: project.id,
         title,
@@ -234,28 +208,33 @@ async function run(work: string): Promise<void> {
       });
       await client.call("card.start", { cardId: card.id });
       cards.push({ id: card.id, worktree: "" });
-    });
-    await inSequence(cards, async (card) => {
+    }
+    for (const card of cards) {
       card.worktree = await untilAsync(async () => {
         const got = await client.call<{ worktreePath: string | null }>("card.get", {
           cardId: card.id,
         });
         return got.worktreePath;
       }, "a worktree do card");
-    });
+    }
     log("os dois cards têm worktree");
 
     step = "Run dos dois cards";
     const states: RunState[] = [];
-    await inSequence(cards, async (card) => {
+    for (const card of cards) {
       states.push(await client.call<RunState>("runenv.start", { cardId: card.id }));
-    });
+    }
     const ports = states.map((s) => s.ports.web);
-    checkPorts(ports);
+    if (!ports[0] || !ports[1] || ports[0] === ports[1]) {
+      throw new Error(`os cards precisam de portas diferentes: ${JSON.stringify(ports)}`);
+    }
+    if (Math.floor((ports[0] ?? 0) / 10) === Math.floor((ports[1] ?? 0) / 10)) {
+      throw new Error(`os cards precisam de blocos diferentes: ${JSON.stringify(ports)}`);
+    }
     log(`portas ${ports[0]} e ${ports[1]}`);
 
     step = "os dois respondem ao mesmo tempo";
-    await inSequence(cards.entries(), async ([i, card]) => {
+    for (const [i, card] of cards.entries()) {
       await untilAsync(
         async () => {
           const state = await client.call<RunState>("runenv.get", { cardId: card.id });
@@ -268,27 +247,25 @@ async function run(work: string): Promise<void> {
         "a resposta",
       );
       if (body !== "echo:/ola") throw new Error(`resposta inesperada do card ${i + 1}: ${body}`);
-    });
+    }
     log("os dois servidores respondem, cada um na sua porta");
-    await inSequence(cards, async (card) => {
+    for (const card of cards) {
       const file = join(card.worktree, "pids.json");
       await untilAsync(async () => (existsSync(file) ? true : null), "o pids.json do card");
       const found = JSON.parse(readFileSync(file, "utf8")) as { pid: number; child: number };
       pids.push(found.pid, found.child);
-    });
+    }
 
     step = "Stop encerra tudo";
-    await inSequence(cards, async (card) => {
-      await client.call("runenv.stop", { cardId: card.id });
-    });
+    for (const card of cards) await client.call("runenv.stop", { cardId: card.id });
     await untilAsync(
       async () => (pids.every((pid) => !alive(pid)) ? true : null),
       "os processos e os filhos encerrarem",
     );
-    await inSequence(ports, async (port) => {
+    for (const port of ports) {
       const body = await answers(`http://127.0.0.1:${port}/`);
       if (body !== null) throw new Error(`a porta ${port} ainda responde: ${body}`);
-    });
+    }
     log("os servidores, os filhos e as portas: nada sobrou");
     client.close();
   } finally {

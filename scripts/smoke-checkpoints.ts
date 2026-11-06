@@ -11,6 +11,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage } from "@flightdeck/protocol";
 import { installFakeClaude } from "../apps/daemon/test/fake-claude.ts";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -109,17 +110,6 @@ function git(cwd: string, ...args: string[]): string {
   return proc.stdout.toString();
 }
 
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = /listening on (ws:\/\/\S+)/.exec(buffer);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`daemon saiu sem anunciar a porta: ${buffer}`);
-}
-
 interface Snapshot {
   n: number;
   kind: string;
@@ -185,7 +175,7 @@ async function run(work: string): Promise<void> {
   ]);
   let wrapper: ReturnType<typeof Bun.spawn> | null = null;
   try {
-    const url = await withTimeout(readListenUrl(daemon.stdout), "daemon anunciar a porta");
+    const url = await readListenUrl(daemon.stdout);
     log(`daemon em ${url}`);
     const client = new Client(url);
     await client.open(token);
@@ -200,10 +190,10 @@ async function run(work: string): Promise<void> {
     const waitSnapshots = async (count: number, what: string) => {
       const deadline = Date.now() + TIMEOUT_MS;
       for (;;) {
-        const list = await snapshots(); // NOSONAR: sequential by design: each pass needs the answer of the one before
+        const list = await snapshots();
         if (list.length >= count) return list;
         if (Date.now() > deadline) throw new Error(`timeout: ${what} (${list.length} snapshots)`);
-        await Bun.sleep(50); // NOSONAR: poll interval: the wait between looks is the point of this loop
+        await Bun.sleep(50);
       }
     };
     const statusBefore = git(project, "status", "--porcelain=v1", "--ignored");
@@ -233,8 +223,7 @@ async function run(work: string): Promise<void> {
     if (code !== 0) throw new Error(`flightdeckd claude saiu com ${code}`);
     const all = await waitSnapshots(4, "snapshot depois do segundo turno");
     log(
-      "snapshots: " +
-        all.map((s) => `${s.n} ${s.kind}` + (s.prompt ? " (" + s.prompt + ")" : "")).join(", "),
+      `snapshots: ${all.map((s) => `${s.n} ${s.kind}${s.prompt ? ` (${s.prompt})` : ""}`).join(", ")}`,
     );
     if (text(join(project, "a.txt")) !== "v3\n" || !existsSync(join(project, "b.txt"))) {
       throw new Error("os turnos não deixaram a.txt e b.txt");

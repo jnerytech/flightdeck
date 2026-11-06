@@ -9,6 +9,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -43,10 +44,10 @@ const log = (msg: string) => console.log(`  · ${msg}`);
 async function until<T>(check: () => Promise<T | null | undefined | false>, what: string) {
   const deadline = Date.now() + TIMEOUT_MS;
   for (;;) {
-    const value = await check(); // NOSONAR: sequential by design: each pass needs the answer of the one before
+    const value = await check();
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(50); // NOSONAR: poll interval: the wait between looks is the point of this loop
+    await Bun.sleep(50);
   }
 }
 
@@ -112,17 +113,6 @@ function git(cwd: string, ...args: string[]): string {
   });
   if (proc.exitCode !== 0) throw new Error(`git ${args.join(" ")}: ${proc.stderr.toString()}`);
   return proc.stdout.toString().trim();
-}
-
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = /listening on (ws:\/\/\S+)/.exec(buffer);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`daemon saiu sem anunciar a porta: ${buffer}`);
 }
 
 interface Card {

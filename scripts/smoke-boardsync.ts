@@ -9,6 +9,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage } from "@flightdeck/protocol";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -103,17 +104,6 @@ class Client {
   }
 }
 
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = /listening on (ws:\/\/\S+)/.exec(buffer);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`daemon saiu sem anunciar a porta: ${buffer}`);
-}
-
 function git(cwd: string, ...args: string[]): string {
   const proc = Bun.spawnSync(["git", "-c", "core.autocrlf=false", ...args], {
     cwd,
@@ -159,11 +149,10 @@ function rules(items: BoardItem[], scopes: string[]) {
     },
   });
   const data = (value: unknown) => ({ stdout: JSON.stringify({ data: value }) });
-  const quoted = scopes.map((s) => "'" + s + "'").join(", ");
   return [
     {
       args: ["auth", "status"],
-      stdout: `github.com\n  ✓ Logged in to github.com account octocat (keyring)\n  - Token scopes: ${quoted}\n`,
+      stdout: `github.com\n  ✓ Logged in to github.com account octocat (keyring)\n  - Token scopes: ${scopes.map((s) => `'${s}'`).join(", ")}\n`,
     },
     {
       args: ["api", "graphql"],

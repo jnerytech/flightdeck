@@ -8,6 +8,7 @@
 import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { type Ack, PROTOCOL_VERSION, parseServerMessage } from "@flightdeck/protocol";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import { assertBinaryUntouched, installBinaryGuard } from "./test/binary-guard.ts";
 import {
   assertCheckGuardActive,
@@ -93,17 +94,6 @@ class Client {
   }
 }
 
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = /listening on (ws:\/\/\S+)/.exec(buffer);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`daemon saiu sem anunciar a porta: ${buffer}`);
-}
-
 const sha256 = (data: Uint8Array) => new Bun.CryptoHasher("sha256").update(data).digest("hex");
 
 /** A release server: the manifest and one binary per platform, signed by the test key. */
@@ -164,7 +154,7 @@ async function run(work: string): Promise<void> {
     },
   );
   try {
-    const url = await withTimeout(readListenUrl(daemon.stdout), "daemon anunciar a porta");
+    const url = await readListenUrl(daemon.stdout);
     log(`daemon em ${url}`);
     const client = new Client(url);
     await client.open(token);
@@ -173,9 +163,9 @@ async function run(work: string): Promise<void> {
     const deadline = Date.now() + TIMEOUT_MS;
     let update: { available?: boolean; version?: string } | undefined;
     while (!update?.available && Date.now() < deadline) {
-      const info = await client.send("host.info", {}); // NOSONAR: sequential by design: each pass needs the answer of the one before
+      const info = await client.send("host.info", {});
       update = info.ok ? (info.data as { update?: NonNullable<typeof update> }).update : undefined;
-      if (!update?.available) await Bun.sleep(50); // NOSONAR: poll interval: the wait between looks is the point of this loop
+      if (!update?.available) await Bun.sleep(50);
     }
     if (update?.version !== "9.9.9") throw new Error(`update: ${JSON.stringify(update)}`);
     log(`atualização disponível: ${update.version}`);

@@ -11,6 +11,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
 import { type FakeClaudeEvent, installFakeClaude } from "../apps/daemon/test/fake-claude.ts";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -54,7 +55,7 @@ async function until<T>(check: () => T | null | undefined | false, what: string)
     const value = check();
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(20); // NOSONAR: poll interval: the wait between looks is the point of this loop
+    await Bun.sleep(20);
   }
 }
 
@@ -104,17 +105,6 @@ class Client {
 function git(cwd: string, ...args: string[]): void {
   const proc = Bun.spawnSync(["git", ...args], { cwd, env: process.env, stderr: "pipe" });
   if (proc.exitCode !== 0) throw new Error(`git ${args.join(" ")}: ${proc.stderr.toString()}`);
-}
-
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = /listening on (ws:\/\/\S+)/.exec(buffer);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`daemon saiu sem anunciar a porta: ${buffer}`);
 }
 
 interface External {
@@ -186,7 +176,7 @@ async function run(work: string): Promise<void> {
   ]);
   let wrapper: ReturnType<typeof Bun.spawn> | null = null;
   try {
-    const url = await withTimeout(readListenUrl(daemon.stdout), "daemon anunciar a porta");
+    const url = await readListenUrl(daemon.stdout);
     log(`daemon em ${url}`);
     const client = new Client(url);
     await client.open(token);
@@ -278,14 +268,11 @@ async function run(work: string): Promise<void> {
     const deadline = Date.now() + TIMEOUT_MS;
     let texts: string[] = [];
     while (!texts.some((t) => t.includes(NEW_LINE)) && Date.now() < deadline) {
-      const page =
-        await /* NOSONAR: sequential by design: each pass needs the answer of the one before */ client.call<{
-          messages: Array<{ text: string }>;
-        }>("history.get", {
-          claudeSessionId: SESSION,
-        });
+      const page = await client.call<{ messages: Array<{ text: string }> }>("history.get", {
+        claudeSessionId: SESSION,
+      });
       texts = page.messages.map((m) => m.text);
-      if (!texts.some((t) => t.includes(NEW_LINE))) await Bun.sleep(50); // NOSONAR: poll interval: the wait between looks is the point of this loop
+      if (!texts.some((t) => t.includes(NEW_LINE))) await Bun.sleep(50);
     }
     if (!texts.some((t) => t.includes(NEW_LINE))) throw new Error(`transcript: ${texts}`);
     log("history.changed com a linha nova");

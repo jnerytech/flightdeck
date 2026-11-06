@@ -13,6 +13,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { type Ack, type EventEnvelope, parseServerMessage } from "@flightdeck/protocol";
 import { defaultHistorySources } from "../apps/daemon/src/snippets/history.ts";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -36,14 +37,14 @@ const ROOT = resolve(import.meta.dir, "..");
 const BIN = join(ROOT, "apps/daemon/src/bin.ts");
 
 /** The whole of what runs in the terminal: a fixed script that echoes what it reads. */
-const SCRIPT = String.raw`
+const SCRIPT = `
 console.log("READY");
 process.stdin.setEncoding("utf8");
 let buffer = "";
 process.stdin.on("data", (chunk) => {
   buffer += chunk;
   for (;;) {
-    const end = buffer.search(/[\r\n]/);
+    const end = buffer.search(/[\\r\\n]/);
     if (end < 0) break;
     const line = buffer.slice(0, end);
     buffer = buffer.slice(end + 1);
@@ -75,7 +76,7 @@ async function until<T>(check: () => T | null | undefined | false, what: string)
     const value = check();
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(50); // NOSONAR: poll interval: the wait between looks is the point of this loop
+    await Bun.sleep(50);
   }
 }
 
@@ -137,17 +138,6 @@ class Client {
   }
 }
 
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = /listening on (ws:\/\/\S+)/.exec(buffer);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`daemon saiu sem anunciar a porta: ${buffer}`);
-}
-
 interface Snip {
   id: string;
   name: string;
@@ -164,8 +154,9 @@ interface Candidate {
   flagged: string[];
 }
 
-/** The shell histories the daemon will find: bash, zsh and PowerShell, with a token and a password among them. */
-function writeHistoryFixtures(appData: string): Record<string, string> {
+async function run(work: string): Promise<void> {
+  // Fixture histories, where this daemon will look: the guard's home and a temporary APPDATA.
+  const appData = join(work, "appdata");
   const sources = defaultHistorySources({
     home: home.dir,
     appData,
@@ -191,26 +182,6 @@ function writeHistoryFixtures(appData: string): Record<string, string> {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, content);
   }
-  return fixtures;
-}
-
-/** The project file's command waits for trust and its prompt does not; returns both. */
-function fileSnippets(listed: { snippets: Snip[]; file: { hash: string; trusted: boolean } }) {
-  const byName = Object.fromEntries(listed.snippets.map((s) => [s.name, s]));
-  const tests = byName["testes-rapidos"];
-  const review = byName["revisar-seguranca"];
-  if (!tests || !review || tests.runnable || !review.runnable || listed.file.trusted) {
-    throw new Error(
-      `o comando do arquivo devia esperar confiança e o prompt não: ${JSON.stringify(listed)}`,
-    );
-  }
-  return { tests, review };
-}
-
-async function run(work: string): Promise<void> {
-  // Fixture histories, where this daemon will look: the guard's home and a temporary APPDATA.
-  const appData = join(work, "appdata");
-  const fixtures = writeHistoryFixtures(appData);
   const FIXTURE_COMMANDS = new Set([
     "git status",
     "docker compose up -d",
@@ -275,7 +246,14 @@ async function run(work: string): Promise<void> {
       snippets: Snip[];
       file: { hash: string; trusted: boolean };
     }>("snippets.list", { projectPath: project });
-    const { tests, review } = fileSnippets(listed);
+    const byName = Object.fromEntries(listed.snippets.map((s) => [s.name, s]));
+    const tests = byName["testes-rapidos"];
+    const review = byName["revisar-seguranca"];
+    if (!tests || !review || tests.runnable || !review.runnable || listed.file.trusted) {
+      throw new Error(
+        `o comando do arquivo devia esperar confiança e o prompt não: ${JSON.stringify(listed)}`,
+      );
+    }
     log("o comando do arquivo versionado espera confiança; o prompt não precisa");
 
     step = "colar e rodar no terminal";

@@ -11,6 +11,7 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type TerminalAttachResult } from "@flightdeck/protocol";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -34,7 +35,7 @@ const ROOT = resolve(import.meta.dir, "..");
 const BIN = join(ROOT, "apps/daemon/src/bin.ts");
 
 /** The whole of what runs in the terminal: a fixed script, nothing a user typed. */
-const SCRIPT = String.raw`
+const SCRIPT = `
 const { spawn } = require("node:child_process");
 const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
 console.log("READY pid=" + process.pid + " child=" + child.pid);
@@ -43,7 +44,7 @@ let buffer = "";
 process.stdin.on("data", (chunk) => {
   buffer += chunk;
   for (;;) {
-    const end = buffer.search(/[\r\n]/);
+    const end = buffer.search(/[\\r\\n]/);
     if (end < 0) break;
     const line = buffer.slice(0, end);
     buffer = buffer.slice(end + 1);
@@ -62,7 +63,7 @@ async function until<T>(check: () => T | null | undefined | false, what: string)
     const value = check();
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(50); // NOSONAR: poll interval: the wait between looks is the point of this loop
+    await Bun.sleep(50);
   }
 }
 
@@ -117,17 +118,6 @@ class Client {
   }
 }
 
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = /listening on (ws:\/\/\S+)/.exec(buffer);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`daemon saiu sem anunciar a porta: ${buffer}`);
-}
-
 function alive(pid: number): boolean {
   try {
     process.kill(pid, 0);
@@ -180,7 +170,7 @@ async function run(work: string): Promise<void> {
     step = "saída do processo";
     const seen = (text: string) => client.output.includes(text);
     const first = await until(
-      () => /READY pid=(\d+) child=(\d+)/.exec(client.output),
+      () => client.output.match(/READY pid=(\d+) child=(\d+)/),
       "a primeira linha do processo",
     );
     pids.push(Number(first[1]), Number(first[2]));

@@ -12,6 +12,7 @@ import { join, resolve } from "node:path";
  */
 import { type Ack, byCodeUnit, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
 import { installFakeClaude } from "../apps/daemon/test/fake-claude.ts";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -66,10 +67,10 @@ async function until<T>(
 ): Promise<T> {
   const deadline = Date.now() + TIMEOUT_MS;
   for (;;) {
-    const value = await check(); // NOSONAR: sequential by design: each pass needs the answer of the one before
+    const value = await check();
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(30); // NOSONAR: poll interval: the wait between looks is the point of this loop
+    await Bun.sleep(30);
   }
 }
 
@@ -163,17 +164,6 @@ function git(cwd: string, ...args: string[]): string {
   });
   if (proc.exitCode !== 0) throw new Error(`git ${args.join(" ")}: ${proc.stderr.toString()}`);
   return proc.stdout.toString().trim();
-}
-
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = /listening on (ws:\/\/\S+)/.exec(buffer);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`daemon saiu sem anunciar a porta: ${buffer}`);
 }
 
 const ISSUE = {
@@ -272,7 +262,7 @@ async function run(work: string): Promise<void> {
   ]);
   let wrapper: ReturnType<typeof Bun.spawn> | null = null;
   try {
-    const url = await withTimeout(readListenUrl(daemon.stdout), "daemon anunciar a porta");
+    const url = await readListenUrl(daemon.stdout);
     log(`daemon em ${url}`);
     const client = new Client(url);
     await client.open(token);

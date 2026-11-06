@@ -7,6 +7,7 @@
 import { appendFileSync, mkdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -49,7 +50,7 @@ async function until<T>(check: () => T | null | undefined | false, what: string)
     const value = check();
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`timeout: ${what}`);
-    await Bun.sleep(20); // NOSONAR: poll interval: the wait between looks is the point of this loop
+    await Bun.sleep(20);
   }
 }
 
@@ -98,17 +99,6 @@ class Client {
 
 const line = (uuid: string, cwd: string, text: string, ts: string) =>
   `${JSON.stringify({ type: "user", cwd, uuid, timestamp: ts, message: { role: "user", content: text } })}\n`;
-
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = /listening on (ws:\/\/\S+)/.exec(buffer);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`daemon saiu sem anunciar a porta: ${buffer}`);
-}
 
 async function run(work: string): Promise<void> {
   const projectRoot = join(work, "projects");
@@ -162,7 +152,7 @@ async function run(work: string): Promise<void> {
     { env: process.env, stdout: "pipe", stderr: "inherit" },
   );
   try {
-    const url = await withTimeout(readListenUrl(daemon.stdout), "daemon anunciar a porta");
+    const url = await readListenUrl(daemon.stdout);
     log(`daemon em ${url}`);
     const client = new Client(url);
     await client.open(token);
@@ -171,14 +161,11 @@ async function run(work: string): Promise<void> {
     let listed = 0;
     const deadline = Date.now() + TIMEOUT_MS;
     while (listed < 2 && Date.now() < deadline) {
-      const { sessions } =
-        await /* NOSONAR: sequential by design: each pass needs the answer of the one before */ client.call<{
-          sessions: unknown[];
-        }>("history.list", {
-          limit: 10,
-        });
+      const { sessions } = await client.call<{ sessions: unknown[] }>("history.list", {
+        limit: 10,
+      });
       listed = sessions.length;
-      if (listed < 2) await Bun.sleep(50); // NOSONAR: poll interval: the wait between looks is the point of this loop
+      if (listed < 2) await Bun.sleep(50);
     }
     if (listed !== 2) throw new Error(`esperava 2 sessões indexadas, veio ${listed}`);
     log("dois transcripts indexados");
