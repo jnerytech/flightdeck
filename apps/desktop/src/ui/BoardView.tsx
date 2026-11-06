@@ -1,11 +1,23 @@
 import type { BoardColumn, Card, Project } from "@flightdeck/protocol";
-import { Columns3, ListTodo, Lock, MoreHorizontal, Plus } from "lucide-react";
+import {
+  Circle,
+  CircleAlert,
+  CircleCheck,
+  CircleCheckBig,
+  Columns3,
+  ListTodo,
+  Loader,
+  Lock,
+  type LucideIcon,
+  MoreHorizontal,
+  Plus,
+} from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
 import { BoardSyncControl } from "@/components/board/board-sync";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Page } from "@/components/layout/page";
-import { Toolbar } from "@/components/layout/stack";
+import { Inline, Toolbar } from "@/components/layout/stack";
 import { EmptyState, LoadingState } from "@/components/layout/states";
 import { AddProject } from "@/components/projects/add-project";
 import { RoiCard } from "@/components/roi/roi-card";
@@ -38,6 +50,15 @@ import { hasFeature } from "../lib/version.ts";
 import { BoardColumnEmpty } from "./BoardColumnEmpty.tsx";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { ExternalSeal, IssuesPanel } from "./IssuesPanel.tsx";
+
+/** The icon of each column's status, drawn in the column's own tone. */
+const COLUMN_ICONS: Record<BoardColumn, LucideIcon> = {
+  backlog: Circle,
+  in_progress: Loader,
+  waiting: CircleAlert,
+  review: CircleCheck,
+  done: CircleCheckBig,
+};
 
 /** Why "Iniciar card" is off (queued or running), else null. */
 function startOffText(block: ReturnType<typeof cardStartBlock>, t: T): string | null {
@@ -206,6 +227,8 @@ export const BoardView = memo(function BoardView(props: {
   const [starting, setStarting] = useState<Card | null>(null);
   /** The card whose Delete… is asking for confirmation. */
   const [deleting, setDeleting] = useState<Card | null>(null);
+  /** The column a new card goes to: the one whose + was pressed. */
+  const [createIn, setCreateIn] = useState<BoardColumn>("backlog");
   /** The column a dragged card is over. */
   const [over, setOver] = useState<string | null>(null);
   /** The issues panel (phase 13), on a daemon that announces issues. */
@@ -307,10 +330,12 @@ export const BoardView = memo(function BoardView(props: {
   });
 
   const create = async () => {
+    // The column whose + was pressed is part of the command: one step, nothing to move afterwards.
     const made = await store.hostCommand(hostId, "card.create", {
       projectId,
       title: title.trim(),
       description,
+      ...(createIn === "backlog" ? {} : { column: createIn }),
     });
     // Issue #229: only a card that exists closes the dialog; a refused one keeps what was typed
     // (the banner says why). A made card says so, with a way to open it (issue #188).
@@ -325,6 +350,7 @@ export const BoardView = memo(function BoardView(props: {
   /** Closes the dialog and forgets what was typed. */
   const close = () => {
     setCreating(false);
+    setCreateIn("backlog");
     setTitle("");
     setDescription("");
   };
@@ -393,10 +419,8 @@ export const BoardView = memo(function BoardView(props: {
             <section
               key={id}
               aria-label={t(`kanban.columns.${id}` as Key)}
-              className={cn(
-                "flex min-h-32 flex-col gap-2 rounded-lg bg-secondary/50 p-2",
-                over === id && "drop-over",
-              )}
+              data-column={id}
+              className={cn("board-column", over === id && "drop-over")}
               onDragOver={(e) => e.preventDefault()}
               onDragEnter={() => setOver(id)}
               onDragLeave={(e) => {
@@ -407,9 +431,16 @@ export const BoardView = memo(function BoardView(props: {
                 drop(id);
               }}
             >
-              <h3 className="px-1 font-medium text-muted-foreground text-xs">
-                {t(`kanban.columns.${id}` as Key)}
-              </h3>
+              <ColumnHeader
+                id={id}
+                title={t(`kanban.columns.${id}` as Key)}
+                count={all.filter((card) => card.column === id).length}
+                addLabel={t("kanban.addCardTo", { column: t(`kanban.columns.${id}` as Key) })}
+                onAdd={() => {
+                  setCreateIn(id);
+                  setCreating(true);
+                }}
+              />
               <ul className="flex flex-col gap-2">
                 {shown
                   .filter((card) => card.column === id)
@@ -450,7 +481,17 @@ export const BoardView = memo(function BoardView(props: {
                   ))}
               </ul>
               {all.every((card) => card.column !== id) && (
-                <BoardColumnEmpty label={t("kanban.addCard")} onAdd={() => setCreating(true)} />
+                <BoardColumnEmpty
+                  label={t("kanban.emptyName", {
+                    empty: t("kanban.empty"),
+                    action: t("kanban.addCard"),
+                  })}
+                  text={t("kanban.empty")}
+                  onAdd={() => {
+                    setCreateIn(id);
+                    setCreating(true);
+                  }}
+                />
               )}
             </section>
           ))}
@@ -544,3 +585,32 @@ export const BoardView = memo(function BoardView(props: {
     </Page>
   );
 });
+
+/** A column's head: its status icon and name, the count as a pill, and a + that adds a card to it. */
+function ColumnHeader(props: {
+  id: BoardColumn;
+  title: string;
+  count: number;
+  addLabel: string;
+  onAdd(): void;
+}) {
+  const Icon = COLUMN_ICONS[props.id];
+  return (
+    <Inline gap={2} className="column-head">
+      <Icon data-slot="column-icon" aria-hidden="true" />
+      <h3 className="column-title">{props.title}</h3>
+      <Badge variant="secondary" className="column-count">
+        {props.count}
+      </Badge>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-6"
+        aria-label={props.addLabel}
+        onClick={props.onAdd}
+      >
+        <Plus aria-hidden="true" />
+      </Button>
+    </Inline>
+  );
+}

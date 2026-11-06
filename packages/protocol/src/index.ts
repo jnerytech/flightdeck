@@ -2962,6 +2962,8 @@ export const Command = z.discriminatedUnion("type", [
       projectId: z.string(),
       title: z.string().min(1),
       description: z.string(),
+      /** The column the card is born in; the Backlog when absent (an older daemon ignores it). */
+      column: BoardColumn.optional(),
       ...CardDeps,
     }),
   ),
