@@ -1,4 +1,4 @@
-import type { SessionNameInfo } from "@flightdeck/protocol";
+import { NAME_GENERAL, NAME_NO_PROJECT, type SessionNameInfo } from "@flightdeck/protocol";
 import type { T } from "../i18n/index.ts";
 
 /** What a session may be called, from every place a name comes from. */
@@ -45,19 +45,16 @@ export function sessionLabel(input: LabelInput, t?: T): string | null {
   return names?.display ?? null;
 }
 
-/** What the daemon writes for a session with no persona and one with no project (`format.ts`). */
-const GENERAL = "geral";
-const NO_PROJECT = "sem-projeto";
-
 /**
  * The standard name in the person's language (issue #668), from the parts the daemon built it
  * from: `project · persona · number`, or `· card 42` and the run of the card from the second. A
  * persona the host does not list keeps the slug the daemon gave it.
  */
 function standardLabel(names: SessionNameInfo, personas: LabelInput["personas"], t: T): string {
-  const project = names.project === NO_PROJECT ? t("sessionLabel.noProject") : names.project;
+  const project = names.project === NAME_NO_PROJECT ? t("sessionLabel.noProject") : names.project;
   const listed = personas?.find((p) => p.id === names.persona)?.name;
-  const persona = listed ?? (names.persona === GENERAL ? t("sessionLabel.general") : names.persona);
+  const persona =
+    listed ?? (names.persona === NAME_GENERAL ? t("sessionLabel.general") : names.persona);
   const sequence =
     names.cardNumber === null
       ? [String(names.number)]
