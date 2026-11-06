@@ -123,14 +123,13 @@ function withoutGuards(text: string): string {
 /** The code inside the first `${...}` of a masked template that starts with one. */
 function firstInterpolation(text: string): string {
   let depth = 0;
-  for (let i = 3; i < text.length; i++) {
-    if (text[i] === "{") depth++;
-    if (text[i] === "}") {
-      if (depth === 0) return text.slice(3, i);
-      depth--;
-    }
+  let end = 3;
+  while (end < text.length && !(text[end] === "}" && depth === 0)) {
+    if (text[end] === "{") depth++;
+    if (text[end] === "}") depth--;
+    end++;
   }
-  return text.slice(3);
+  return text.slice(3, end);
 }
 
 /** Whether one masked argument starts with, or is built from, a name that carries a branch in. */
