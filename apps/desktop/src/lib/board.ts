@@ -40,10 +40,10 @@ export function positionBefore(cards: Card[], targetId: string): number {
 
 /** `n` positions that put a group right before `targetId` among `cards` (sorted, without the group), in order. */
 export function positionsBefore(cards: Card[], targetId: string, n: number): number[] {
-  void cards;
-  void targetId;
-  void n;
-  return [];
+  const index = cards.findIndex((card) => card.id === targetId);
+  const target = cards[index]?.position ?? 0;
+  const lower = cards[index - 1]?.position ?? target - 1;
+  return Array.from({ length: n }, (_, i) => lower + ((target - lower) * (i + 1)) / (n + 1));
 }
 
 /** The board's title: "Board of <name>", or the plain "Board" until the project's name is known. */

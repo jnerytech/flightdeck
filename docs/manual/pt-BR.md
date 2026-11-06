@@ -960,6 +960,31 @@ Esperando você laranja, Em revisão verde, Concluído apagado), o ícone do sta
 numa pílula e um **+** que põe um card direto nessa coluna. Uma coluna vazia mostra uma caixa
 tracejada e discreta que diz "Vazio" e também cria um card quando você a aperta.
 
+### Trabalhar com vários cards
+
+- **Selecionar.** `Ctrl`-clique (`⌘`-clique no Mac) num card para selecioná-lo ou desmarcá-lo;
+  `Shift`-clique seleciona o intervalo desde o último card escolhido, dentro da coluna. O menu do
+  card tem **Selecionar card** para o teclado, e um card selecionado diz "selecionado" a um leitor
+  de tela. `Esc` limpa a seleção. Um filtro esconde cards mas os mantém selecionados; o que você
+  faz então vale só para os cards que aparecem, e a barra diz quantos estão escondidos.
+- **A barra de seleção** acima do board mostra "3 selecionados" com **Mover para…** (uma coluna),
+  **Descartar…** e **Limpar seleção**. Arrastar um card selecionado arrasta a seleção toda para a
+  coluna onde você solta, na ordem do board; solta sobre um card, eles ficam antes dele.
+- **Um card que o host recusa mover** (por exemplo, concluir um que ainda está rodando) fica onde
+  estava, continua selecionado e é citado numa nota com o motivo do host. Os outros se movem.
+- **Descartar…** mostra uma só janela com todos os cards selecionados e diz o que vai junto com
+  cada um: um worktree ou branch perde mudanças não commitadas e commits não enviados; uma sessão é
+  encerrada. Se o host não conseguir descartar um card, a nota diz que ele pode ter ficado
+  parcialmente limpo. Cards que nunca começaram são excluídos; os que começaram são
+  descartados. Cancelar deixa tudo como estava.
+- **Largura das colunas.** A alça na borda direita de uma coluna (arraste-a, ou vá até ela com Tab e
+  use as setas, 20 px por vez, ou Home e End; só a alça da última coluna recebe Tab) define uma só largura para todas, entre 220 e 520 px (260 por
+  padrão), guardada neste computador. O board rola dentro de si, nunca a página.
+- **Contagens.** Cada coluna mostra quantos cards tem; com um filtro ligado ela lê `n / total`, e
+  uma coluna que o filtro esvaziou diz "Nenhuma correspondência" em vez de oferecer um card novo.
+- **Card novo numa coluna.** O botão **Novo card** no fim de uma coluna cria o card ali (aparece ao
+  passar o mouse e ao focar, e sempre numa tela sem ponteiro).
+
 ### Escolher uma pasta
 
 **Nova sessão** e o formulário do projeto têm um botão **Procurar…** ao lado da pasta. Ele abre
