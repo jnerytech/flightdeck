@@ -87,6 +87,12 @@ function failureOf(error: unknown): AssistantFailure {
  * vault value in the text refuses the call before anything leaves; a refusal always carries a
  * reason the screen translates.
  */
+/** Everything of a request that leaves the app: the field's text and the context it is written from, names included. */
+const sent = (input: AssistantRunInput): string[] => [
+  input.text,
+  ...Object.entries(input.context ?? {}).flat(),
+];
+
 export class AssistantController {
   readonly gate = new RunGate();
   private current: AssistantPrefs;
@@ -156,7 +162,8 @@ export class AssistantController {
     // A host the person never agreed to is asked in Settings, once: until then no text goes there,
     // whoever calls (the wand checks too, to open Settings).
     if (!provider || this.needsHostConfirm(provider)) throw fail("assistant_not_configured");
-    const found = this.scanner.scan(input.text);
+    // What a field is written from goes out with its text, so it is checked the same way.
+    const found = [...new Set(sent(input).flatMap((text) => this.scanner.scan(text)))];
     if (found.length > 0) throw fail("assistant_secret_found", { labels: found.join(", ") });
     if (!this.gate.acquire(input.requestId)) throw fail("assistant_rate_limited");
     try {
@@ -283,7 +290,7 @@ export class AssistantController {
     });
     const secrets = this.deps.secrets();
     const ids = secrets.map((secret) => secret.id);
-    const hits = await this.deps.api.vaultHits(input.text, ids);
+    const hits = await this.deps.api.vaultHits(sent(input).join("\n"), ids);
     if (hits.length > 0) {
       const names = secrets.filter((secret) => hits.includes(secret.id)).map((s) => s.name);
       throw fail("assistant_vault_value", { names: names.join(", ") });

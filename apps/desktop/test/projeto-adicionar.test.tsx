@@ -233,7 +233,13 @@ describe("projeto-adicionar: where it is offered", () => {
     render(
       withT(
         store,
-        <BoardView store={store} hostId={hostId} projectId={projectId} onOpenCard={() => {}} />,
+        <BoardView
+          store={store}
+          hostId={hostId}
+          projectId={projectId}
+          onOpenCard={() => {}}
+          onOpenSettings={() => {}}
+        />,
       ),
     );
     await settle(() => screen.queryByRole("button", { name: "Add project" }) !== null);
