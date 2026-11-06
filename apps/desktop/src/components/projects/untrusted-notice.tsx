@@ -18,6 +18,10 @@ export function UntrustedNotice(
     cwd: string;
     /** Opens the project's page, where the person can read what it would load and trust it. */
     onReview?: () => void;
+    /** Issue #463: the session loaded the project's setup and its trust was revoked since. */
+    stale?: boolean;
+    /** The session, for restarting it. */
+    sessionId?: string;
   }>,
 ) {
   const { store, hostId, announced, cwd } = props;

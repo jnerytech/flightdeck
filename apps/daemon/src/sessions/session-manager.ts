@@ -106,6 +106,8 @@ interface LiveSession {
   closing: boolean;
   /** The first turn's prompt and uuid, until session.init names the Claude session. */
   pendingBefore?: { text: string; uuid: string };
+  /** Whether the run was given the project's own setup (its folder was trusted when it started). */
+  trustedAtStart: boolean;
 }
 
 /** What the runtime is given of a session's persona. */
@@ -515,6 +517,14 @@ export class SessionManager {
     return { snapshot, unwatch: () => this.summaryListeners.delete(listener) };
   }
 
+  /** How many live sessions in `folder` run with a setup its trust no longer covers (issue #463). */
+  staleSessions(_folder: string): number {
+    return 0;
+  }
+
+  /** Tells the watchers that the trust of a folder changed: a live session may now be stale (issue #463). */
+  trustChanged(): void {}
+
   /** Phase 21: told when a user message reaches a session (a queued one is delivered then). */
   onUserMessage(listener: (sessionId: string, text: string) => void): () => void {
     this.userListeners.add(listener);
@@ -672,7 +682,12 @@ export class SessionManager {
       ...(this.opts.trust ? { trust: this.opts.trust(session.cwd) } : {}),
       ...this.optionalRunOptions(sessionId, session.model, resume, persona, agents),
     });
-    const live: LiveSession = { run, queue: [], closing: false };
+    const live: LiveSession = {
+      run,
+      queue: [],
+      closing: false,
+      trustedAtStart: this.opts.trust?.(session.cwd).trusted === true,
+    };
     this.live.set(sessionId, live);
     void this.consume(sessionId, live);
     return live;

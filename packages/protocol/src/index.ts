@@ -435,6 +435,8 @@ export const SessionEvent = z.discriminatedUnion("type", [
     updatedAt: z.string(),
     /** Phase 39: set for an OpenCode session only. */
     runtime: SessionRuntime.optional(),
+    /** Issue #463: its folder's trust was revoked after the run loaded the project's setup; set when true only. */
+    trustStale: z.boolean().optional(),
   }),
 ]);
 export type SessionEvent = z.infer<typeof SessionEvent>;
@@ -4397,6 +4399,8 @@ export const ProjectTrustState = z.object({
   path: z.string(),
   trusted: z.boolean(),
   via: z.string().nullable(),
+  /** Issue #463: live sessions in the folder that still run with the setup they loaded before the trust was revoked; absent when none. */
+  staleSessions: z.number().int().positive().optional(),
 });
 export type ProjectTrustState = z.infer<typeof ProjectTrustState>;
 export const ProjectTrustStates = z.object({ items: z.array(ProjectTrustState) });
