@@ -41,7 +41,10 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   test that imports a changed file (transitively; with `--fast`, only directly) or names it as a
   path, prints each with the reason, and runs them in one call (through the slot above 60 files). The run also collects coverage and fails unless every
   changed source file is at 100% lines and functions, listing the uncovered `file:line` and the
-  uncalled functions (`bunfig.related.toml`; the same exclusions as the full suite). A change to `package.json`, a `bunfig` or the preload
+  uncalled functions (`bunfig.related.toml`; the same exclusions as the full suite). `--pr` (#309) is what a PR's
+  CI runs: every unit and component test plus the related tests, with the same changed-file gate, or
+  the whole suite when a global file changed or a test went away; `--keep-coverage <dir>` keeps the
+  lcov there. A change to `package.json`, a `bunfig` or the preload
   prints a warning: run the full suite then.
 - Tests by tier (#261, computed from each test's content): `unit`, `component` (the DOM), `integration`
   (processes, a server, real git) and `e2e` (journeys, smokes). On the Pi, a session runs
