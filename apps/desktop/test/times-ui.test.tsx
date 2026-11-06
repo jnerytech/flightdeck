@@ -356,7 +356,8 @@ describe("times-ui: the teams of a host", () => {
       );
     });
     await click("Trocar a persona de t3 · executora 1", row("t3"));
-    await settle(() => (row("t3")?.textContent ?? "").includes("qa"));
+    // The persona shows by its name, not its id (#101).
+    await settle(() => (row("t3")?.textContent ?? "").includes("QA / testes"));
     const members = (await teams())[0]?.members as Array<{ name: string; persona: string | null }>;
     expect(members.find((m) => m.name === "t3 · executora 1")?.persona).toBe("qa");
   });
@@ -570,9 +571,10 @@ describe("times-ui: the teams of a host", () => {
       // One grid for every row: the name and chips, then a column of the same width on the right.
       expect(classes(member.querySelector("[data-slot='member-head']"))).toContain("member-head");
       expect(classes(member.querySelector("[data-slot='member-end']"))).toContain("member-end");
-      // The persona row: a select of a fixed width and two outline buttons of the same height.
+      // The persona row: a select of a fixed width and two outline buttons of the same height, on
+      // the shared field row, lined up by their bottom edges (#101).
       expect(classes(member.querySelector("[data-slot='member-persona']"))).toContain(
-        "member-persona",
+        "field-row-end",
       );
       expect(classes(member.querySelector("[data-slot='persona-field']"))).toContain(
         "persona-field",
