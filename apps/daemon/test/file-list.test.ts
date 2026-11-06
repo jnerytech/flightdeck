@@ -125,6 +125,20 @@ describe("file-list: one folder of the session's repository, for the file explor
     });
   });
 
+  // Windows needs a privilege for a link to a file; a folder junction does not.
+  test.skipIf(process.platform === "win32")(
+    "a link to a file inside the repository is listed as a file",
+    async () => {
+      const { repo, files } = setup();
+      writeFileSync(join(repo, "real.md"), "x\n");
+      await symlink(join(repo, "real.md"), join(repo, "alias.md"));
+      expect(lines((await files.list("session:s-1", "")).entries)).toEqual([
+        "file alias.md",
+        "file real.md",
+      ]);
+    },
+  );
+
   test("a link that leads nowhere is left out, and the rest is listed", async () => {
     const { repo, files } = setup();
     writeFileSync(join(repo, "a.txt"), "x\n");
