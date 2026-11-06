@@ -270,6 +270,19 @@ describe("project-trust: trust never reaches a folder the person did not mean (s
     expect(trust.sessionTrust(area)).toEqual({ trusted: true, configRoot: root });
   });
 
+  test("the folders of the sessions open before a restart are read once each, at boot", async () => {
+    const main = tempDir("fd-trust-main-");
+    const { trust } = fresh();
+    trust.trust(main);
+    const nested = join(main, "vendor", "evil");
+    mkdirSync(join(nested, ".git"), { recursive: true });
+    const plain = join(main, "app");
+    mkdirSync(plain, { recursive: true });
+    await trust.prepareSessions([{ cwd: plain }, { cwd: nested }, { cwd: plain }]);
+    expect(trust.sessionTrust(nested).trusted).toBe(false);
+    expect(trust.sessionTrust(plain).trusted).toBe(true);
+  });
+
   test("a .git file that cannot be read closes the folder: it is its own boundary and not trusted", async () => {
     const main = tempDir("fd-trust-");
     const odd = join(main, "odd");

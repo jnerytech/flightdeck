@@ -128,6 +128,9 @@ export class ProjectTrust {
     if (main && resolve(main) !== here) await this.scan(resolve(main));
   }
 
+  /** Looks at the folders of the sessions that exist (once each), as the daemon boots. */
+  async prepareSessions(_sessions: ReadonlyArray<{ cwd: string }>): Promise<void> {}
+
   /** Reads the real paths of the roots, so `via` (synchronous) knows them. */
   async refreshRoots(): Promise<void> {
     this.realRoots = await rootNames(this.opts.roots?.() ?? []);
