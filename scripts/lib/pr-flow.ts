@@ -3,8 +3,9 @@
  * each merged on its own when its required checks are green on its HEAD. All of it through REST
  * (`gh api`): `open` titles the PR after the branch's issue and closes it, `next` lists the open PRs
  * in the order to merge them (a stacked PR after its parent) with what each still needs, `update`
- * brings a PR up to date with its base, `auto` (any session, #271) turns on GitHub's auto-merge,
- * and `merge` (the coordinator only) merges with a merge commit, never a squash.
+ * brings a PR up to date with its base, `auto` (any session, #271) turns on GitHub's auto-merge
+ * (or, for a PR already clean and green, merges it as auto-merge would, #374), and `merge` (the
+ * coordinator only) merges with a merge commit, never a squash.
  */
 
 export interface GhResult {
@@ -388,9 +389,11 @@ async function autoPr(n: number, deps: PrFlowDeps): Promise<number> {
   if (enabled.code !== 0) {
     const error = graphqlError(enabled.stdout);
     deps.log(`GitHub refused auto-merge for #${n}${error}`);
-    // GitHub turns auto-merge on only for a PR that has to wait; a session never merges by hand.
+    // GitHub turns auto-merge on only for a PR that has to wait (#374): one already clean merges
+    // now, as auto-merge would, under the same checks; any other refusal stays a failure.
     if (/clean status/i.test(error)) {
-      deps.log(`#${n} is already mergeable: the coordinator merges it (bun run pr -- merge ${n})`);
+      deps.log(`#${n} is already mergeable: merging it as auto-merge would`);
+      return mergeChecked(n, deps, true);
     }
     return 1;
   }
@@ -414,6 +417,16 @@ async function mergePr(n: number, deps: PrFlowDeps): Promise<number> {
     deps.log("merging is the coordinator's (FLIGHTDECK_COORDINATOR=1)");
     return 2;
   }
+  return mergeChecked(n, deps, false);
+}
+
+/**
+ * Merges a PR onto main with a merge commit, pinned to the head whose checks were read, only when
+ * every required check of the ruleset is green there. `cleanOnly` (`auto`, #374) also needs GitHub's
+ * state to be exactly clean, the state auto-merge waits for; a hand merge lets a PR behind main
+ * through (#305).
+ */
+async function mergeChecked(n: number, deps: PrFlowDeps, cleanOnly: boolean): Promise<number> {
   const required = await requiredChecks(deps);
   if (!required) {
     deps.log(`the ${MAIN} ruleset's required checks cannot be read`);
@@ -435,7 +448,11 @@ async function mergePr(n: number, deps: PrFlowDeps): Promise<number> {
   else if (pr.base.ref !== MAIN)
     reason = `onto ${pr.base.ref}, not ${MAIN}: merge its parent first`;
   else reason = await checksProblem(deps, pr.head.sha, required);
-  if (!reason && pr.mergeable_state === "dirty") reason = conflictText(MAIN, pr.head.ref);
+  const state = pr.mergeable_state ?? "unknown";
+  if (!reason && cleanOnly && state !== "clean") {
+    reason = `GitHub says ${state}, not clean: run bun run pr -- auto ${n} again`;
+  }
+  if (!reason && state === "dirty") reason = conflictText(MAIN, pr.head.ref);
   if (reason) {
     deps.log(`#${n} not merged: ${reason}`);
     return 2;
