@@ -1,8 +1,11 @@
 #!/usr/bin/env bun
 /**
- * `bun run test:related [--base <ref>] [--fast] [--tier unit,component]`: runs only the tests that
- * reach the files changed since the base (`--fast`: only the tests that import them directly;
- * `--tier`: only those tiers, classified from the code, without the coverage gate), and checks their coverage.
+ * `bun run test:related [--base <ref>] [--fast] [--tier unit,component] [--pr] [--keep-coverage <dir>]`:
+ * runs only the tests that reach the files changed since the base (`--fast`: only the tests that
+ * import them directly; `--tier`: only those tiers, classified from the code, without the coverage
+ * gate; `--pr`: every unit and component test plus the related tests of the other tiers, the PR's
+ * check on CI, #309), and checks the changed files' coverage. `--keep-coverage` writes the lcov
+ * report into that folder and keeps it (SonarCloud reads it).
  */
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -27,13 +30,21 @@ const fast = args.includes("--fast");
 const tierFlag = args.indexOf("--tier");
 const tiers = tierFlag >= 0 ? (args[tierFlag + 1] ?? "").split(",").filter(Boolean) : undefined;
 // The tiers are computed from the code on every call (lib/test-tiers.ts), never read from a file.
-const tierMap: Record<string, string> = tiers ? liveTiers() : {};
+// --pr (#309): the PR's check on CI.
+const pyramid = args.includes("--pr");
+const tierMap: Record<string, string> = tiers || pyramid ? liveTiers() : {};
+const keepFlag = args.indexOf("--keep-coverage");
+const keep = keepFlag >= 0 ? args[keepFlag + 1] : undefined;
 
-const coverageDir = mkdtempSync(join(tmpdir(), "test-related-"));
+const coverageDir = keep ? resolve(ROOT, keep) : mkdtempSync(join(tmpdir(), "test-related-"));
 const plan = planRelated({
   coverageDir,
   fast,
-  ...(tiers ? { tiers, tierOf: (path: string) => tierMap[path] } : {}),
+  ...(tiers ? { tiers } : {}),
+  ...(tiers || pyramid ? { tierOf: (path: string) => tierMap[path] } : {}),
+  pyramid,
+  // CI has the machine to itself: no machine-wide slot there.
+  slot: !process.env.CI,
   base: flag >= 0 ? args[flag + 1] : undefined,
   platform: process.platform,
   git: (gitArgs) => {
@@ -45,7 +56,7 @@ const plan = planRelated({
 });
 (plan.code === 0 ? console.log : console.error)(plan.output);
 if (!plan.command) {
-  rmSync(coverageDir, { recursive: true, force: true });
+  if (!keep) rmSync(coverageDir, { recursive: true, force: true });
   process.exit(plan.code);
 }
 const [cmd = "bun", ...rest] = plan.command;
@@ -86,5 +97,5 @@ if (targets.length > 0) {
     console.log(`\ntest:related: ${targets.length} changed source file(s) fully covered`);
   }
 }
-rmSync(coverageDir, { recursive: true, force: true });
+if (!keep) rmSync(coverageDir, { recursive: true, force: true });
 process.exit(code);

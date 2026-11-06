@@ -116,6 +116,8 @@ export function planRelated({
   fast,
   tiers,
   tierOf = () => undefined,
+  pyramid = false,
+  slot = true,
 }: PlanDeps): Plan {
   // A run of some tiers covers only part of a file: the 100% gate is the full run's (CI).
   const coverageDir = tiers ? undefined : asked;
@@ -140,7 +142,9 @@ export function planRelated({
     const tier = tierOf(path);
     return !tiers || tier === undefined || tiers.includes(tier);
   };
-  const related = selected.filter((r) => kept(r.path));
+  const related = pyramid
+    ? pyramidTests(selected, tracked, tierOf)
+    : selected.filter((r) => kept(r.path));
   const out = new Map<string, number>();
   for (const r of selected.filter((r) => !kept(r.path))) {
     const tier = tierOf(r.path) as string;
@@ -163,14 +167,17 @@ export function planRelated({
     ];
     return { code: 1, output: output.join("\n"), command: null, targets };
   }
-  if (related.length === 0) {
+  if (related.length === 0 && !pyramid) {
     const none = `test:related: no test file is related to the ${changed.length} changed file(s) since ${label}`;
     return { code: 0, output: [none, ...warnings].join("\n"), command: null };
   }
+  const fastTier = related.filter((r) => FAST_TIERS.has(tierOf(r.path) ?? "")).length;
   const output = [
-    fast
-      ? `test:related --fast: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label} (direct importers only; CI runs the rest)`
-      : `test:related: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label}`,
+    pyramid
+      ? `test:related --pr: ${fastTier} fast-tier test file(s) + ${related.length - fastTier} related test file(s) of the other tiers for ${changed.length} changed file(s) since ${label}`
+      : fast
+        ? `test:related --fast: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label} (direct importers only; CI runs the rest)`
+        : `test:related: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label}`,
     ...warnings,
     ...related.map((r) => `  ${r.path}  ${r.why}`),
   ].join("\n");
@@ -186,9 +193,27 @@ export function planRelated({
   return {
     code: 0,
     output,
-    command: related.length > SLOT_ABOVE ? ["bun", "run", "slot", "--", ...run] : run,
+    command: slot && related.length > SLOT_ABOVE ? ["bun", "run", "slot", "--", ...run] : run,
     ...(targets ? { targets } : {}),
   };
+}
+
+/** The tiers a PR runs whole (#309): the cheap base of the pyramid. */
+const FAST_TIERS = new Set(["unit", "component"]);
+
+/** `--pr`: every fast-tier test of the tree, and the related tests of the other tiers (or none). */
+function pyramidTests(
+  related: Related[],
+  tracked: string[],
+  tierOf: (path: string) => string | undefined,
+): Related[] {
+  const chosen = new Map(related.map((r) => [r.path, r]));
+  for (const path of tracked) {
+    if (TEST_FILE.test(path) && FAST_TIERS.has(tierOf(path) ?? "") && !chosen.has(path)) {
+      chosen.set(path, { path, why: `${tierOf(path)} tier` });
+    }
+  }
+  return [...chosen.values()].sort((a, b) => (a.path < b.path ? -1 : 1));
 }
 
 /**
