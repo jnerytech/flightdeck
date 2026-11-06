@@ -37,6 +37,7 @@ function manifest(over: Partial<TeleportManifest> = {}): TeleportManifest {
       branch: "feature",
       head: "a".repeat(40),
       base: "origin/main",
+      baseSha: "b".repeat(40),
       ref: "refs/x",
       ahead: 1,
       changed: 1,
