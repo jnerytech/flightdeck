@@ -24,6 +24,8 @@ export interface AppShellLabels {
  */
 export function AppShell(props: {
   header: ReactNode;
+  /** The top bar's right side, after the tab strip (issue #282). */
+  actions?: ReactNode;
   sidebar: (collapsed: boolean) => ReactNode;
   labels: AppShellLabels;
   children: ReactNode;
@@ -48,6 +50,7 @@ export function AppShell(props: {
         </Button>
         <div className="header-crumbs">{props.header}</div>
         <div ref={setSlot} className="header-tabs" />
+        {props.actions}
       </header>
       <div
         className={cn(
