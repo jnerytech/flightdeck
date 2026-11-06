@@ -86,15 +86,11 @@ function HostItem(props: Readonly<{ host: TopBarHostItem; appVersion: string | u
   const version = host.version ?? null;
   const differs =
     version !== null && props.appVersion !== undefined && version !== props.appVersion;
+  const withVersion = differs ? "shell.hostItemDiffers" : "shell.hostItemVersion";
   const label =
     version === null
       ? t("shell.hostItem", { host: host.name, state })
-      : t(differs ? "shell.hostItemDiffers" : "shell.hostItemVersion", {
-          host: host.name,
-          state,
-          version,
-          app: props.appVersion ?? "",
-        });
+      : t(withVersion, { host: host.name, state, version, app: props.appVersion ?? "" });
   return (
     <DropdownMenuRadioItem value={host.id} aria-label={label}>
       <StatusDot dot {...hostDotView(host.status)} label={state} />
