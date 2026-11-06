@@ -184,7 +184,7 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
     return refusal(() =>
       b.respond(
         { requestId: id, decision: "allow", updatedPermissions: [update] },
-        kind ?? undefined,
+        kind ? { kind } : undefined,
       ),
     );
   };
@@ -442,7 +442,7 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
             held: true,
             updatedPermissions: [rule("Write", ".env")],
           },
-          () => "file",
+          { kind: () => "file" },
         ),
       ),
     ).toBeNull();

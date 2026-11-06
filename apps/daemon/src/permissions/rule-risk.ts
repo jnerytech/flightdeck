@@ -1,4 +1,5 @@
-import { isAbsolute, join, normalize } from "node:path";
+import { isAbsolute, join, normalize, relative } from "node:path";
+import { isInside } from "../paths.ts";
 import {
   NETWORK_TOOLS,
   RANK,
@@ -23,6 +24,22 @@ export type RuleLevel = RiskLevel | "any";
 
 /** What a path a rule names is on disk: a folder rule covers its whole subtree in the CLI (#395). */
 export type PathKind = (path: string) => "dir" | "file" | "missing";
+
+/**
+ * A rule's reading with its fixed leading part (everything before the first wildcard segment)
+ * replaced by its real path, behind any symlink (#528): undefined when no link is on the way,
+ * null when it could not be resolved (the rule is then refused).
+ */
+export type RealPath = (reading: string) => string | null | undefined;
+
+/**
+ * What the disk says about a rule's paths, looked up by the server before the check: their kind
+ * (#395; without it each counts as a folder) and their real path (#528).
+ */
+export interface DiskView {
+  kind?: PathKind;
+  real?: RealPath;
+}
 
 /** What the daemon thinks of one tool call: its own classifier, behind a function. */
 export type ClassifyCall = (toolName: string, input: Record<string, unknown>) => RiskLevel;
@@ -187,10 +204,15 @@ function readingsOf(content: string | undefined): string[] | null {
   return readings.some((reading) => reading.includes("..")) ? null : readings;
 }
 
+/** Every reading of a path rule, as `ruleLevel` asks `real` about them (#528). */
+export function pathReadings(toolName: string, content: string | undefined): string[] {
+  if (!READ_TOOLS[toolName] && !WRITE_TOOLS.has(toolName)) return [];
+  return readingsOf(content) ?? [];
+}
+
 /** The paths a rule names exactly (no wildcard), as `ruleLevel` asks `kind` about them. */
 export function exactPaths(toolName: string, content: string | undefined): string[] {
-  if (!READ_TOOLS[toolName] && !WRITE_TOOLS.has(toolName)) return [];
-  return (readingsOf(content) ?? []).filter((reading) => !WILD.test(reading));
+  return pathReadings(toolName, content).filter((reading) => !WILD.test(reading));
 }
 
 function pathLevel(
@@ -198,17 +220,28 @@ function pathLevel(
   content: string | undefined,
   classify: ClassifyCall,
   kind: PathKind,
+  real: RealPath,
 ): RuleLevel {
   const read = readingsOf(content);
   if (!read) return "any";
+  // A symlink on the way makes the rule reach its real path too (#528): both are rated, and the
+  // real path has the kind of the path it stands for (stat follows the link).
+  const behind = read.map(real);
+  if (behind.includes(null)) return "any";
+  const pairs = read.flatMap((reading, i) => {
+    const to = behind[i];
+    return to
+      ? [[reading, reading] as const, [to, reading] as const]
+      : [[reading, reading] as const];
+  });
   const keys = READ_TOOLS[toolName] ?? ["file_path"];
   const call = (path: string) =>
     classify(toolName, Object.fromEntries(keys.map((key) => [key, path])));
   // The CLI matches a rule the gitignore way: a folder covers everything below it. Only a file on
   // disk is read as itself; a folder, a path ending with a slash, and a path not there yet (it can
   // be made a folder once the rule is saved) are read with their subtree too (issue #395).
-  const readings = read.flatMap((reading) =>
-    !WILD.test(reading) && (reading.endsWith("/") || kind(reading) !== "file")
+  const readings = pairs.flatMap(([reading, of]) =>
+    !WILD.test(reading) && (reading.endsWith("/") || kind(of) !== "file")
       ? [reading, `${reading.replace(/\/+$/, "")}/**`]
       : [reading],
   );
@@ -233,15 +266,34 @@ export function ruleLevel(
   content: string | undefined,
   classify: ClassifyCall,
   kind: PathKind,
+  real: RealPath = () => undefined,
 ): RuleLevel {
   if (SHELL_TOOLS.has(toolName)) return shellLevel(toolName, content, classify);
   if (READ_TOOLS[toolName] || WRITE_TOOLS.has(toolName))
-    return pathLevel(toolName, content, classify, kind);
+    return pathLevel(toolName, content, classify, kind, real);
   // A network tool names a domain: the whole tool would reach any host.
   if (NETWORK_TOOLS.has(toolName)) {
     return content !== undefined && DOMAIN.test(content) ? classify(toolName, {}) : "any";
   }
   return classify(toolName, {});
+}
+
+/** Where a rule's path is: `~` and `~/` under the home, a relative path under the folder. */
+const place = (path: string, cwd: string, home: string) =>
+  normalize(
+    /^~(?=$|\/)/.test(path) ? join(home, path.slice(1)) : isAbsolute(path) ? path : join(cwd, path),
+  );
+
+/** A network path (`//host/share`, `\\host\share`): looking it up would reach another host. */
+const network = (path: string) => /^(?:\/\/|\\\\)/.test(path);
+
+/** A look-up's answer, or `fallback` when it fails or takes longer than `ms`. */
+function within<T, F>(lookup: Promise<T>, ms: number, fallback: F): Promise<T | F> {
+  return new Promise((done) => {
+    const timer = setTimeout(() => done(fallback), ms);
+    timer.unref?.();
+    lookup.then(done, () => done(fallback));
+  });
 }
 
 /** At most this many paths are looked up for one answer: the rest count as folders. */
@@ -264,20 +316,11 @@ export async function pathKinds(
   options: { timeoutMs?: number; target?: string } = {},
 ): Promise<PathKind> {
   const { timeoutMs = LOOKUP_MS, target } = options;
-  const at = (path: string) =>
-    normalize(
-      path.startsWith("~/") ? join(home, path.slice(2)) : isAbsolute(path) ? path : join(cwd, path),
-    );
+  const at = (path: string) => place(path, cwd, home);
   // A tool writes a relative path under its folder: the target never gets the `~/` reading.
   const created =
     target === undefined ? undefined : normalize(isAbsolute(target) ? target : join(cwd, target));
-  const network = (path: string) => /^(?:\/\/|\\\\)/.test(path);
-  const timed = (where: string) =>
-    new Promise<"dir" | "file" | "missing">((resolve) => {
-      const timer = setTimeout(() => resolve("dir"), timeoutMs);
-      timer.unref?.();
-      stat(where).then(resolve, () => resolve("dir"));
-    });
+  const timed = (where: string) => within(stat(where), timeoutMs, "dir" as const);
   const looked = await Promise.all(
     [...new Set(paths)].slice(0, MAX_LOOKUPS).map(async (path) => {
       const where = at(path);
@@ -295,4 +338,52 @@ export function writeTarget(toolName: string, input: Record<string, unknown>): s
   if (!WRITE_TOOLS.has(toolName)) return undefined;
   const file = input.file_path ?? input.notebook_path;
   return typeof file === "string" && file !== "" ? file : undefined;
+}
+
+/**
+ * The real path of each reading's fixed leading part (#528), looked up once with `resolve`
+ * (relative to the request's folder, `~/` to the home). A real path inside the real folder or the
+ * real home is written back under the folder or the home the classifier knows.
+ */
+export async function realPaths(
+  readings: string[],
+  cwd: string,
+  home: string,
+  resolve: (path: string) => Promise<string | null>,
+  options: { timeoutMs?: number } = {},
+): Promise<RealPath> {
+  const { timeoutMs = LOOKUP_MS } = options;
+  const timed = (where: string) => within(resolve(where), timeoutMs, null);
+  const [realCwd, realHome] = await Promise.all([timed(cwd), timed(home)]);
+  const known: Array<[string | null, string]> = [
+    [realCwd, cwd],
+    [realHome, home],
+  ];
+  const back = (path: string) => {
+    for (const [real, name] of known) {
+      if (real !== null && isInside(real, path)) return join(name, relative(real, path));
+    }
+    return path;
+  };
+  const looked = await Promise.all(
+    [...new Set(readings)].slice(0, MAX_LOOKUPS).map(async (reading) => {
+      const segments = reading.split("/");
+      const wild = segments.findIndex((segment) => WILD.test(segment));
+      const fixed = (wild === -1 ? segments : segments.slice(0, wild)).join("/");
+      const rest = wild === -1 ? "" : segments.slice(wild).join("/");
+      const trimmed = fixed.replace(/\/+$/, "");
+      // A leading wildcard starts at the folder itself; a network path is never looked up.
+      if (trimmed === "" || network(reading)) return [reading, undefined] as const;
+      const where = place(trimmed, cwd, home);
+      if (!isAbsolute(where) || network(where)) return [reading, null] as const;
+      const resolved = await timed(where);
+      if (resolved === null) return [reading, null] as const;
+      const real = back(normalize(resolved));
+      if (real === where) return [reading, undefined] as const;
+      return [reading, rest ? `${real.replaceAll("\\", "/")}/${rest}` : real] as const;
+    }),
+  );
+  const reals = new Map<string, string | null | undefined>(looked);
+  // A reading it did not look up (past the cap) is refused.
+  return (reading) => (reals.has(reading) ? reals.get(reading) : null);
 }

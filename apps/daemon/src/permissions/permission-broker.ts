@@ -15,7 +15,7 @@ import { bindInput } from "./bind-input.ts";
 import { requireHold } from "./hold.ts";
 import { alwaysAsks, checkUpdates } from "./permission-updates.ts";
 import type { Risk, RiskLevel } from "./risk.ts";
-import type { PathKind } from "./rule-risk.ts";
+import type { DiskView } from "./rule-risk.ts";
 
 export interface BrokerHooks {
   emit(sessionId: string, event: SessionEvent): void;
@@ -151,7 +151,7 @@ export class PermissionBroker {
     return pending && { toolName: pending.toolName, input: pending.input };
   }
 
-  respond(payload: CommandPayload<"permission.respond">, kind?: PathKind): void {
+  respond(payload: CommandPayload<"permission.respond">, disk: DiskView = {}): void {
     const pending = this.open.get(payload.requestId);
     if (!pending) {
       throw new FlightdeckError(
@@ -170,7 +170,7 @@ export class PermissionBroker {
       checkUpdates(updates, {
         ...pending,
         classify: (tool, input) => this.hooks.classify(pending.sessionId, tool, input).level,
-        ...(kind ? { kind } : {}),
+        ...disk,
       });
       this.finish(
         payload.requestId,

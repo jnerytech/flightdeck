@@ -28,7 +28,7 @@ import type { AutoApproveRequest, AutoApprover } from "../permissions/auto-appro
 import { PermissionBroker } from "../permissions/permission-broker.ts";
 import { parseSuggestions } from "../permissions/permission-updates.ts";
 import { type Risk, RiskClassifier } from "../permissions/risk.ts";
-import { type PathKind, writeTarget } from "../permissions/rule-risk.ts";
+import { type DiskView, writeTarget } from "../permissions/rule-risk.ts";
 import { clampPermissionMode, toolAllowed } from "../personas/model.ts";
 import type { PreparedPersonas } from "../personas/prepare.ts";
 import { type PersonaSnapshot, snapshotOf } from "../personas/snapshot.ts";
@@ -566,9 +566,9 @@ export class SessionManager {
     return target === undefined ? { cwd } : { cwd, target };
   }
 
-  respondPermission(payload: CommandPayload<"permission.respond">, kind?: PathKind): void {
+  respondPermission(payload: CommandPayload<"permission.respond">, disk?: DiskView): void {
     const sessionId = this.broker.sessionOf(payload.requestId);
-    this.broker.respond(payload, kind);
+    this.broker.respond(payload, disk);
     const updates = payload.decision === "allow" ? (payload.updatedPermissions ?? []) : [];
     if (updates.length === 0) return;
     for (const listener of this.updateListeners) listener(sessionId, updates);

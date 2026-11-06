@@ -34,8 +34,9 @@ way we thought Claude Code matches it. Issue #395 asked for a check against the 
   - Refusing every exact rule: it would break the app's default rule.
 - **What stays open.**
   - A file that is replaced by a folder after its rule is saved. That takes an approved delete and
-    an approved write, the same class as a symlink made by an approved Bash call. The follow-up
-    `realpath` work rides on the same injected lookup.
+    an approved write, the same class as a symlink made by an approved Bash call. A link already
+    on disk when the rule is saved is read behind it since #528
+    ([2026-11-06-rule-realpath.md](2026-11-06-rule-realpath.md)).
   - A project-relative rule (`/src`) is looked up from the request's folder, while the CLI reads
     it from the project root. When the two differ, the lookup most often finds nothing there, and
     that refuses the rule (see the next point for when it does not).
