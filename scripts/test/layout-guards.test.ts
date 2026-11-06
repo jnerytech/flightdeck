@@ -283,7 +283,7 @@ describe("layout-guards: what the page function finds, named by data-slot path",
         <div data-slot="card" data-rect="334,0,664,100"></div>
         <div data-slot="card" data-rect="0,112,330,200"></div>
       </div>`);
-    expect(spacing()).toEqual(["card-gap: grid > card (4 px beside card, at least 8)"]);
+    expect(spacing()).toEqual(["card-gap: grid > card[2] (4 px beside card[1], at least 8)"]);
   });
 
   test("spacing (#588): text in a card keeps 8 px of padding, and text that spills its own box is a finding", () => {
@@ -308,7 +308,7 @@ describe("layout-guards: what the page function finds, named by data-slot path",
         <span data-slot="badge" data-rect="128,0,200,20">c</span>
         <span data-slot="badge" data-rect="0,30,60,50">d</span>
       </div>`);
-    expect(spacing()).toEqual(["chip-gap: chips > badge (2 px beside badge, at least 4)"]);
+    expect(spacing()).toEqual(["chip-gap: chips > badge[2] (2 px beside badge[1], at least 4)"]);
   });
 
   test("spacing (#588): two boxes that overlap are a finding, by how far they run into each other", () => {
@@ -317,7 +317,43 @@ describe("layout-guards: what the page function finds, named by data-slot path",
         <span data-slot="badge" data-rect="0,0,60,20">a</span>
         <span data-slot="badge" data-rect="50,0,110,20">b</span>
       </div>`);
-    expect(spacing()).toEqual(["chip-gap: chips > badge (-10 px over badge, at least 4)"]);
+    expect(spacing()).toEqual(["chip-gap: chips > badge[2] (-10 px over badge[1], at least 4)"]);
+  });
+
+  test("spacing (#588): each finding names its element by number, so two tight pairs in a row or two tiles stay two findings", () => {
+    page(`
+      <div data-slot="chips" data-rect="0,0,400,30">
+        <span data-slot="badge" data-rect="0,0,60,20">a</span>
+        <span data-slot="badge" data-rect="62,0,120,20">b</span>
+        <span data-slot="badge" data-rect="140,0,200,20">c</span>
+        <span data-slot="badge" data-rect="202,0,260,20">d</span>
+      </div>
+      <ul data-rect="0,40,800,200">
+        <li data-rect="0,40,390,200"><div data-slot="session-tile" data-rect="0,40,390,200">
+          <span data-rect="8,48,382,60" data-sw="500" data-cw="374">first line</span>
+        </div></li>
+        <li data-rect="400,40,790,200"><div data-slot="session-tile" data-rect="400,40,790,200">
+          <span data-rect="408,48,782,60">short</span>
+          <span data-rect="408,62,782,74" data-sw="600" data-cw="374">second line</span>
+        </div></li>
+      </ul>`);
+    expect(spacing()).toEqual([
+      "text-spill: session-tile[1] > span (126 px past its box)",
+      "text-spill: session-tile[2] > span[2] (226 px past its box)",
+      "chip-gap: chips > badge[2] (2 px beside badge[1], at least 4)",
+      "chip-gap: chips > badge[4] (2 px beside badge[3], at least 4)",
+    ]);
+  });
+
+  test("spacing (#588): card padding counts from where an element's text starts, inside its own padding", () => {
+    page(`
+      <div data-slot="card" data-rect="0,0,400,200">
+        <header data-slot="card-header" style="padding: 12px 24px" data-rect="0,0,400,48">Project configuration</header>
+        <p data-slot="flush" data-rect="0,60,400,80">edge to edge</p>
+      </div>`);
+    expect(spacing()).toEqual([
+      "card-padding: card > flush (0 px from the card's left edge, at least 8)",
+    ]);
   });
 
   test("spacing (#588): the rules are heuristic, judged against a baseline; with none they fail nothing", () => {
@@ -326,22 +362,9 @@ describe("layout-guards: what the page function finds, named by data-slot path",
     expect(judge("dark en projeto", [tight], {}).failures).toEqual([
       "dark en projeto: block-gap page-body > config (3 px)",
     ]);
-    expect(SPACING_RULES).toEqual([
-      "block-gap",
-      "card-gap",
-      "card-padding",
-      "text-spill",
-      "chip-gap",
-    ]);
-    expect(SPACING).toEqual({
-      blocks: '[data-slot="page-body"]',
-      blockMin: 8,
-      card: '[data-slot="card"]',
-      cardMin: 8,
-      padMin: 8,
-      chip: '[data-slot="badge"]',
-      chipMin: 4,
-    });
+    // None of them is in the contract: with no baseline, a finding of each rule fails nothing.
+    const each = SPACING_RULES.map((rule) => ({ rule, path: "page-body > x", detail: "1 px" }));
+    expect(judge("dark en projeto", each, null).failures).toEqual([]);
   });
 
   test("an element with no slot is named by its tag and first class", () => {
