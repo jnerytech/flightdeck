@@ -241,3 +241,31 @@ describe("paleta-mais: the create row (issue #147)", () => {
     );
   });
 });
+
+describe("paleta-mais: the clients have a section of their own (issue #147)", () => {
+  const withClients = () =>
+    state({
+      clientList: [
+        { id: "acme", name: "Acme" },
+        { id: "beta", name: "Beta" },
+      ],
+    } as never);
+
+  test("Manage clients and the client switches are a Clients section after Actions, not actions", () => {
+    const sections = all(withClients());
+    const titles = sections.map((s) => s.title);
+    const at = titles.indexOf(en("palette.sectionClients"));
+    expect(at).toBe(titles.indexOf(en("palette.sectionActions")) + 1);
+    expect(sections[at]?.items.map((i) => i.id)).toEqual([
+      "clients",
+      "client:all",
+      "client:acme",
+      "client:beta",
+      "client:unassigned",
+    ]);
+    // The section is not cut at the cap: a person switches between every client from here.
+    expect(sections[at]?.uncapped).toBe(true);
+    const actions = sections.find((s) => s.title === en("palette.sectionActions"));
+    expect(actions?.items.some((i) => i.id.startsWith("client"))).toBe(false);
+  });
+});
