@@ -113,7 +113,7 @@ export class ReviewFiles {
   }
 
   async read(target: string, path: string): Promise<FileContent> {
-    const { root } = await this.opts.changes.resolve(target);
+    const { root } = await this.opts.changes.resolve(target, { terminal: true });
     // Any target can be read, inside allowedRoots or not, but only inside its own repository.
     const where = await located(root, await realpath(root), path);
     refuseCredential(where, path);
@@ -146,7 +146,7 @@ export class ReviewFiles {
    * natural order. `.git` and links that leave the repository stay out; a credential is marked.
    */
   async list(target: string, dir: string): Promise<FileListing> {
-    const { root } = await this.opts.changes.resolve(target);
+    const { root } = await this.opts.changes.resolve(target, { terminal: true });
     const realRoot = await realpath(root);
     const folder = dir === "" ? realRoot : (await located(root, realRoot, dir)).real;
     // `located` resolved it, so it is there.

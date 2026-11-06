@@ -88,7 +88,8 @@ export class Changes {
     this.timers = opts.timers ?? realTimers;
   }
 
-  async resolve(target: string): Promise<ResolvedTarget> {
+  /** `terminal`: the caller only reads files (`file.read`, `file.list`), the one use of a terminal's folder (#506). */
+  async resolve(target: string, opts: { terminal?: boolean } = {}): Promise<ResolvedTarget> {
     const match = /^(session|card|terminal):(.+)$/.exec(target);
     if (!match)
       throw new FlightdeckError(
@@ -100,6 +101,14 @@ export class Changes {
     const [, kind, id] = match as unknown as [string, "session" | "card" | "terminal", string];
     // A terminal's folder, as the daemon opened it: never a folder the client names (#506).
     if (kind === "terminal") {
+      if (!opts.terminal) {
+        throw new FlightdeckError(
+          "bad_request",
+          `a terminal target only reads files: ${target}`,
+          "review_target_invalid",
+          { target },
+        );
+      }
       const cwd = this.opts.terminals?.cwdOf(id) ?? null;
       if (cwd === null) {
         throw new FlightdeckError(
