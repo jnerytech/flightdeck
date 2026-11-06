@@ -290,4 +290,11 @@ describe("keep-awake: the real context starts a child process and ends it", () =
     expect(ctx.which("a-program-that-is-not-here-anywhere")).toBeNull();
     expect(typeof ctx.wsl).toBe("boolean");
   });
+
+  test("under the test suite's guard the OS context starts no holder: a daemon test never holds the real computer awake", () => {
+    expect(process.env.FLIGHTDECK_SERVICE_GUARD).toBeTruthy();
+    const holder = osPowerContext().hold([process.execPath, "-e", "0"]);
+    holder?.kill();
+    expect(holder).toBeNull();
+  });
 });
