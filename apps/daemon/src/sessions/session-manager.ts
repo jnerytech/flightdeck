@@ -792,7 +792,20 @@ export class SessionManager {
   }
 
   /** Changes the effort of a live managed session, for its next turn; null is the model's default. */
-  async setEffort(_sessionId: string, _effort: EffortLevel | null): Promise<void> {}
+  async setEffort(sessionId: string, effort: EffortLevel | null): Promise<void> {
+    const run = this.live.get(sessionId)?.run;
+    if (!run?.setEffort) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "the session is not alive to change its effort",
+        "effort_set_not_live",
+      );
+    }
+    await run.setEffort(effort ?? undefined);
+    // A session resumed later starts with the effort it was left at (not kept across restarts).
+    if (effort) this.efforts.set(sessionId, effort);
+    else this.efforts.delete(sessionId);
+  }
 
   /** Phase 12: the live status of a managed session's MCP servers, as its runtime reports it. */
   async mcpStatus(sessionId: string): Promise<McpLiveStatus[]> {

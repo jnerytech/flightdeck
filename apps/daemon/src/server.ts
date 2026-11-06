@@ -461,7 +461,7 @@ export function startServer(opts: ServerOptions): RunningServer {
     // The folder picker of the app browses the host's folders with `fs.dirs`.
     ...(opts.fsDirs ? ["fs.dirs", "fs.files"] : []),
     // A live managed session takes a new permission mode and model, and announces its slash commands.
-    ...(opts.sessionSettings ? ["session.settings"] : []),
+    ...(opts.sessionSettings ? ["session.settings", "session.effort"] : []),
     // A message may carry images (`session.send` with `images`).
     "session.images",
     ...(opts.doctor ? ["doctor.run"] : []),

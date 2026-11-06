@@ -390,7 +390,11 @@ export class ClaudeSdkRuntime implements AgentRuntime {
       setPermissionMode: (mode) =>
         (handle.setPermissionMode as NonNullable<QueryHandle["setPermissionMode"]>)(mode),
       setModel: (model) => (handle.setModel as NonNullable<QueryHandle["setModel"]>)(model),
-      setEffort: async (_effort) => {},
+      // The SDK's flag settings layer; null clears it, back to the model's default.
+      setEffort: (effort) =>
+        (handle.applyFlagSettings as NonNullable<QueryHandle["applyFlagSettings"]>)({
+          effortLevel: effort ?? null,
+        }),
       toggleMcpServer: (name, enabled) =>
         (handle.toggleMcpServer as NonNullable<QueryHandle["toggleMcpServer"]>)(name, enabled),
       // Only what the screen shows: the SDK adds server info and configuration.

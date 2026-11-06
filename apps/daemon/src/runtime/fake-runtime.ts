@@ -157,7 +157,9 @@ class FakeRun implements AgentRun {
     this.models.push(model);
   }
 
-  async setEffort(_effort: EffortLevel | undefined): Promise<void> {}
+  async setEffort(effort: EffortLevel | undefined): Promise<void> {
+    this.efforts.push(effort);
+  }
 
   async toggleMcpServer(name: string, enabled: boolean): Promise<void> {
     this.toggles.push({ name, enabled });
