@@ -288,6 +288,24 @@ describe("layout-guards: what the page function finds, named by data-slot path",
     expect(spacing()).toEqual(["card-gap: grid > card[2] (4 px beside card[1], at least 8)"]);
   });
 
+  // The older form, `clip: rect(0 0 0 0)`, is checked in Chrome only: happy-dom does not compute `clip`.
+  test("spacing and narrow (#641): what is hidden for screen readers only (a clipped 1 px box) is no finding", () => {
+    page(`
+      <table data-slot="resources-table" data-rect="0,0,300,200">
+        <thead style="position: absolute; clip-path: inset(50%)" data-rect="0,0,1,1">
+          <tr><th data-rect="0,0,1,1" data-sw="58" data-cw="1">Requests</th></tr>
+        </thead>
+      </table>
+      <div style="position: absolute; clip-path: inset(50%)" data-rect="0,0,1,1">
+        <span data-slot="caption" data-rect="0,0,1,1" data-sw="90" data-cw="1">A caption</span>
+      </div>
+      <div data-slot="card" data-rect="0,300,300,400">
+        <span data-slot="label" style="clip-path: inset(50%)" data-rect="0,300,1,301">flush, but hidden</span>
+      </div>
+      <pre data-slot="seen" data-rect="0,500,300,520" data-sw="400" data-cw="300">a line that spills</pre>`);
+    expect(spacing()).toEqual(["text-spill: seen (100 px past its box)"]);
+  });
+
   test("spacing (#588): text in a card keeps 8 px of padding, and text that spills its own box is a finding", () => {
     page(`
       <div data-slot="card" data-rect="0,0,400,200">
