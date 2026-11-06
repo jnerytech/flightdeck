@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { writeFileAtomic } from "../atomic-write.ts";
 import { type BackupInfo, backupNow, keepLast, listBackups } from "./backup.ts";

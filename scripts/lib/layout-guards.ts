@@ -321,3 +321,27 @@ export async function waitForStable(
   }
   return { stable: false, frames: still };
 }
+
+/**
+ * Runs inside the page (`page.evaluate(pinnedProblem)`): what is wrong with where a session opened
+ * (issue #173), or null. The conversation opens at its end with a pending request whole above the
+ * composer; when that request is taller than the conversation's window, the view stops at the
+ * request's top instead (issue #456), so the question comes first and nothing above it is cut.
+ */
+export function pinnedProblem(): string | null {
+  const box = document.querySelector<HTMLElement>("[data-slot='timeline']");
+  if (!box) return "no timeline";
+  const card = box.querySelector<HTMLElement>("[data-request-id]")?.getBoundingClientRect();
+  const edge = box.getBoundingClientRect();
+  // A request taller than the window is shown from its top: the view stops there, short of the end.
+  const atRequest =
+    card && card.bottom - card.top > edge.bottom - edge.top && Math.abs(card.top - edge.top) <= 1;
+  if (atRequest) return null;
+  if (box.scrollTop + box.clientHeight < box.scrollHeight - 24) {
+    return `the timeline is not at its end (${Math.round(box.scrollTop + box.clientHeight)} of ${box.scrollHeight})`;
+  }
+  if (card && (card.top < edge.top - 1 || card.bottom > edge.bottom + 1)) {
+    return `the request card (${Math.round(card.top)}..${Math.round(card.bottom)}) is cut by the timeline (${Math.round(edge.top)}..${Math.round(edge.bottom)})`;
+  }
+  return null;
+}

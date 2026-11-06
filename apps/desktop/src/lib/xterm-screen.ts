@@ -13,7 +13,12 @@ import {
 export interface XtermTerminal {
   cols: number;
   rows: number;
-  options: { theme?: TerminalColors; fontSize?: number; fontFamily?: string };
+  options: {
+    theme?: TerminalColors;
+    fontSize?: number;
+    fontFamily?: string;
+    screenReaderMode?: boolean;
+  };
   unicode: { activeVersion: string };
   loadAddon(addon: unknown): void;
   open(parent: HTMLElement): void;
@@ -104,6 +109,8 @@ export interface XtermScreenOptions {
   fontSize: number;
   fontFamily: string;
   clipboard: { copy(text: string): Promise<void>; read(): Promise<string> };
+  /** xterm keeps an accessible copy of the output for screen readers (#476). */
+  screenReader?: boolean;
   /** The host is Windows: Ctrl+C copies when there is a selection, and interrupts when there is none. */
   windows?: boolean;
   onInput(data: string): void;
@@ -131,6 +138,7 @@ export interface XtermScreen {
   fit(): void;
   setTheme(theme: TerminalColors): void;
   setFontSize(size: number): void;
+  setScreenReader(on: boolean): void;
   find(text: string, direction: "next" | "previous", incremental?: boolean): boolean;
   clearFind(): void;
   focus(): void;
@@ -155,6 +163,7 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     allowProposedApi: true,
     // Issue #476: a long Claude turn stays in the view and in find (xterm keeps 1,000 by default).
     scrollback: SCROLLBACK_LINES,
+    screenReaderMode: options.screenReader === true,
   });
   const fit = deps.fit();
   const search = deps.search();
@@ -262,6 +271,9 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     fit: () => fit.fit(),
     setTheme: (theme) => {
       terminal.options.theme = theme;
+    },
+    setScreenReader: (on) => {
+      terminal.options.screenReaderMode = on;
     },
     setFontSize: (fontSize) => {
       terminal.options.fontSize = fontSize;

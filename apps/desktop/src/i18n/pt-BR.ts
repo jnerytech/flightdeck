@@ -935,7 +935,10 @@ export const ptBR = {
       idle: "Ociosa",
       ended: "Encerrada",
     },
+    asleep: "Dormindo",
+    sleepNow: "Dormir agora",
     stateDots: {
+      asleep: "dormindo",
       running: "rodando",
       needs_you: "precisa de você",
       idle: "ociosa",
@@ -1001,6 +1004,9 @@ export const ptBR = {
     densities: { compact: "Compacta", comfortable: "Confortável" },
     themes: { system: "Sistema", light: "Claro", dark: "Escuro" },
     terminalFont: "Tamanho da fonte do terminal",
+    terminalReader: "Suporte a leitor de tela no terminal",
+    terminalReaderHint:
+      "Deixa um leitor de tela ler a saída do terminal. Saída longa demora mais para aparecer.",
     cacheTimer: "Contador do cache do prompt",
     cacheTtl: "Duração do cache",
     cacheTtls: { fiveMinutes: "5 minutos", oneHour: "1 hora" },
@@ -1283,6 +1289,7 @@ export const ptBR = {
     runEnv: "o ambiente de execução",
     templates: "as tarefas prontas",
     tasks: "os resultados das tarefas",
+    sleep: "pôr sessões ociosas para dormir",
     resources: "o painel de recursos do host",
     depsCheck: "a verificação das dependências",
     worktrees: "o painel de worktrees",
@@ -2197,6 +2204,15 @@ export const ptBR = {
     loading: "Carregando…",
     noMatch: "Nada corresponde ao filtro.",
     truncated: "Esta pasta tem mais entradas do que as mostradas aqui.",
+    viewer: "Arquivo {path}",
+    close: "Fechar",
+    opening: "Abrindo…",
+    showChanges: "Mostrar mudanças",
+    openOutside: "Abrir no app padrão",
+    reveal: "Mostrar na pasta",
+    showFile: "Mostrar o arquivo",
+    jumpLatestOne: "Ir para a mais recente ({n} mudança nova)",
+    jumpLatestMany: "Ir para a mais recente ({n} mudanças novas)",
   },
   changes: {
     tab: "Mudanças",
@@ -2457,6 +2473,8 @@ export const ptBR = {
   terminalUi: {
     sshBadge: "SSH · {name}",
     title: "Terminal",
+    readerHint:
+      "Para um leitor de tela ler a saída, ligue Suporte a leitor de tela no terminal em Configurações.",
     copy: "Copiar",
     paste: "Colar",
     state: {
@@ -4092,6 +4110,23 @@ export const ptBR = {
     hintGeneric: "Confira se o host está ligado e alcançável, e se o daemon roda lá.",
     hintAddress:
       "Ou o daemon recusou o endereço desta máquina: no host, inclua a rede dela em allowedNetworks (o flightdeckd setup faz isso para o Tailscale).",
+  },
+  sleep: {
+    title: "Dormir sessões ociosas",
+    label: "Dormir sessões ociosas após",
+    hint: "Uma sessão ociosa devolve a memória depois desse tempo. Uma mensagem a acorda de onde estava. Sessões fixadas, de cards e as que você tem abertas ficam acordadas.",
+    off: "Desligado",
+    minutes: "{n} minutos",
+    hour: "1 hora",
+    hours: "{n} horas",
+    result: {
+      slept: "A sessão está dormindo. Uma mensagem a acorda.",
+      already: "A sessão já estava dormindo.",
+      not_idle: "A sessão está trabalhando ou esperando você, então fica acordada.",
+      queued: "Há uma mensagem esperando, então a sessão fica acordada.",
+      subscribed: "Alguém está com a sessão aberta, então ela fica acordada.",
+      kept_awake: "A sessão está fixada ou pertence a um card, então fica acordada.",
+    },
   },
   resources: {
     title: "Recursos",

@@ -188,6 +188,20 @@ describe("terminal-ui: the terminal screen", () => {
     expect([store.terminalFont.value, x.terminal.options.fontSize]).toEqual([13, 13]);
   });
 
+  test("screen reader support turns on xterm's screen reader mode; while it is off the terminal says where it is (issue #476)", async () => {
+    const { x, store } = await setup();
+    await settle(() => state("Ao vivo"));
+    const area = () => document.querySelector<HTMLElement>("[data-terminal-area]");
+    const description = () =>
+      document.getElementById(area()?.getAttribute("aria-describedby") ?? "")?.textContent ?? "";
+    expect(description()).toContain("Suporte a leitor de tela no terminal");
+    act(() => store.terminalReader.set(true));
+    await settle(() => x.terminal.options.screenReaderMode === true);
+    expect([x.terminal.options.screenReaderMode, area()?.hasAttribute("aria-describedby")]).toEqual(
+      [true, false],
+    );
+  });
+
   test("Ctrl+Shift+C copies the selection through the app and Ctrl+Shift+V pastes the clipboard", async () => {
     const { x, copied } = await setup();
     await settle(() => state("Ao vivo"));
