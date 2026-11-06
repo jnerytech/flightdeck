@@ -1168,7 +1168,8 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
   que não é texto ou uma credencial diz isso no lugar. Um arquivo alterado tem **Mostrar mudanças**:
   o diff dele contra o HEAD, ao vivo. Enquanto você está no fim, a mudança mais nova entra na tela
   conforme a sessão edita; role para cima e isso para, e **Ir para a mais recente** (com quantas
-  mudanças chegaram) ou uma rolagem de volta ao fim retoma.
+  mudanças chegaram) ou uma rolagem de volta ao fim retoma. Num host deste computador o visualizador
+  também tem **Abrir no app padrão** e **Mostrar na pasta**.
 - **Comentários inline:**
   - clique no número de uma linha para comentá-la, e com shift em outra para estender o intervalo.
     Uma linha apagada é comentada pelo lado antigo;
