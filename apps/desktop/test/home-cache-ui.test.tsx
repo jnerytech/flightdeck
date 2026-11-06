@@ -59,8 +59,9 @@ function app(platform = memoryPlatform(false, "en").platform, hostCount = 1) {
       });
       await gate;
     }
-    if (control.mode === "refuse") return { ok: false, code: "internal", message: "no" };
-    const { usd, turns } = control.mode.answer;
+    const mode = control.mode as Exclude<Mode, "hang">;
+    if (mode === "refuse") return { ok: false, code: "internal", message: "no" };
+    const { usd, turns } = mode.answer;
     return command === "costs.summary"
       ? { ok: true, data: costsOf(usd) }
       : { ok: true, data: usageOf(turns) };
