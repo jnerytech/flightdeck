@@ -25,8 +25,14 @@ interface Closed {
 }
 
 /** The route as a string that does not depend on the order of its fields. */
+// A key list given to JSON.stringify would drop the nested fields (a reader's target), so the
+// fields are sorted at every level instead.
 const routeKey = (route: Route): string =>
-  JSON.stringify(route, Object.keys(route).sort(byCodeUnit));
+  JSON.stringify(route, (_key, value: unknown) =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => byCodeUnit(a, b)))
+      : value,
+  );
 
 const START: Route = { name: "start" };
 
