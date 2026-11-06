@@ -20,7 +20,7 @@ const LABELS: Record<TelemetryOptInStatus["status"], Key> = {
  * are in the user's settings.json, and the install and remove that edit it, each after a
  * confirmation that names the file.
  */
-export function TelemetrySection(props: { store: AppStore; hostId: string }) {
+export function TelemetrySection(props: Readonly<{ store: AppStore; hostId: string }>) {
   const t = useT();
   const { store, hostId } = props;
   const [info, setInfo] = useState<TelemetryOptInStatus | null>(null);

@@ -18,7 +18,7 @@ import { MessagingRulesSection } from "./MessagingRulesSection.tsx";
 import { WebhooksSection } from "./WebhooksSection.tsx";
 
 /** A setting: its label on the left and its control on the right; the label focuses the control. */
-function SettingRow(props: { label: string; children: (id: string) => ReactNode }) {
+function SettingRow(props: Readonly<{ label: string; children: (id: string) => ReactNode }>) {
   const id = useId();
   return (
     <div className="flex items-center justify-between gap-4 text-sm">

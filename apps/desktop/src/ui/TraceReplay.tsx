@@ -16,12 +16,14 @@ const SPEEDS = [1, 2, 4];
  * The replay: the trace walked one node at a time, with play, pause and a speed, and, when the
  * host keeps checkpoints (phase 12), the files the turn of that step changed.
  */
-export function TraceReplay(props: {
-  store: AppStore;
-  hostId: string;
-  claudeSessionId: string;
-  trace: SessionTrace;
-}) {
+export function TraceReplay(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    claudeSessionId: string;
+    trace: SessionTrace;
+  }>,
+) {
   const t = useT();
   const { store, hostId, claudeSessionId, trace } = props;
   const steps = useMemo(() => flatten(trace.turns), [trace]);
@@ -123,7 +125,7 @@ export function TraceReplay(props: {
               <Stack as="ul" gap={1}>
                 {changed.files.map((file) => (
                   <li key={file.path} className="text-xs">
-                    {`${file.path} · ${t(`trace.${file.change}` as never)}`}
+                    {file.path + " · " + t(`trace.${file.change}` as never)}
                   </li>
                 ))}
                 <li className="text-xs">{`+${changed.insertions} −${changed.deletions}`}</li>

@@ -29,14 +29,16 @@ interface Undo {
  * plain editor and the sessions that wrote each file. It follows the disk through the host's
  * watcher.
  */
-export function ChangesPanel(props: {
-  store: AppStore;
-  hostId: string;
-  /** The review target: "session:" plus the Claude Code id, or "card:" plus the card id. */
-  target: string;
-  /** Something above the files (a card's position against its base, its PR); gets the answer. */
-  extra?: (changes: ChangesResult, refresh: () => Promise<void>) => ReactNode;
-}) {
+export function ChangesPanel(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    /** The review target: "session:" plus the Claude Code id, or "card:" plus the card id. */
+    target: string;
+    /** Something above the files (a card's position against its base, its PR); gets the answer. */
+    extra?: (changes: ChangesResult, refresh: () => Promise<void>) => ReactNode;
+  }>,
+) {
   const t = useT();
   const { store, hostId, target } = props;
   const [changes, setChanges] = useState<ChangesResult | null>(null);
