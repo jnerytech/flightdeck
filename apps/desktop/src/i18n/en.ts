@@ -975,6 +975,7 @@ export const en: Dictionary = {
     noPrMatch: "No card or session has this PR",
     actionsOf: "Actions of {label}",
     sectionActions: "Actions",
+    sectionClients: "Clients",
     sectionRecent: "Recent",
     sectionCreate: "Create",
     createCard: "Create card “{title}” in {project}",

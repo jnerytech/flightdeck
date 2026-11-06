@@ -125,7 +125,8 @@ export function GlobalSearch(
   if (frozen.current === null && !actionsOf) {
     frozen.current = sections.find((section) => section.recent)?.items.map((i) => i.id) ?? [];
   }
-  const capOf = (section: PaletteSection) => limits[section.title] ?? SECTION_CAP;
+  const capOf = (section: PaletteSection) =>
+    section.uncapped ? section.items.length : (limits[section.title] ?? SECTION_CAP);
   const shown = (section: PaletteSection) =>
     actionsOf ? section.items : section.items.slice(0, capOf(section));
   const visible = sections.flatMap(shown);

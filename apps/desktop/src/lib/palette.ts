@@ -88,6 +88,8 @@ export interface PaletteSection {
   items: PaletteItem[];
   /** The recent entries: they take Alt+1 to Alt+6. */
   recent?: true;
+  /** Shown whole, never cut at the section cap (the clients: one switches between all of them). */
+  uncapped?: true;
 }
 
 /** The host and project the palette is narrowed to; both null is no scope. */
@@ -402,6 +404,10 @@ export function paletteSections(
     action("settings", t("palette.goSettings"), { kind: "settings" }, undefined, "go-settings"),
     action("add-host", t("palette.addHost"), { kind: "add-host" }),
     action("shortcuts", t("palette.showShortcuts"), { kind: "shortcuts" }, undefined, "help"),
+  ];
+
+  // The clients have a section of their own, shown whole: one switches between all of them (#147).
+  const clients: PaletteItem[] = [
     action("clients", t("clients.manageShort"), { kind: "clients" }),
     ...((state.clientList ?? []).length === 0
       ? []
@@ -489,6 +495,7 @@ export function paletteSections(
     { title: t("palette.sectionConnections"), items: connections },
     { title: t("palette.sectionSnippets"), items: snippets },
     { title: t("palette.sectionActions"), items: actions },
+    { title: t("palette.sectionClients"), items: clients, uncapped: true as const },
   ].map((section) => ({ ...section, items: section.items.filter(inScope).filter(matches) }));
   // With nothing typed, what was used lately comes first (an entry that is gone is dropped).
   const everything = filtered.flatMap((section) => section.items);

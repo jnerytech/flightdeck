@@ -972,6 +972,7 @@ export const ptBR = {
     noPrMatch: "Nenhum card ou sessão tem esse PR",
     actionsOf: "Ações de {label}",
     sectionActions: "Ações",
+    sectionClients: "Clientes",
     sectionRecent: "Recentes",
     sectionCreate: "Criar",
     createCard: "Criar card “{title}” em {project}",
