@@ -9,7 +9,7 @@ import { tempDir } from "./helpers.ts";
 
 /** The path and folder checks do their file system work without blocking: each one answers with a promise. */
 describe("path checks answer asynchronously", () => {
-  const root = realpathSync(tempDir("fd-async-paths-"));
+  const root = realpathSync.native(tempDir("fd-async-paths-"));
   mkdirSync(join(root, "code"), { recursive: true });
   writeFileSync(join(root, "code", "a.txt"), "x");
 

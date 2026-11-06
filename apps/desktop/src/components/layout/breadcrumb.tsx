@@ -30,6 +30,7 @@ export function Breadcrumb(props: {
         {shown.map((crumb, i) => {
           if (!crumb) return null;
           const isLast = i === shown.length - 1;
+          const currentPage = isLast ? { "aria-current": "page" as const } : {};
           const labelClass = isLast
             ? "block truncate font-medium"
             : "block truncate text-muted-foreground";
@@ -87,11 +88,7 @@ export function Breadcrumb(props: {
                     {crumb.label}
                   </button>
                 ) : (
-                  <span
-                    className={labelClass}
-                    title={crumb.label}
-                    {...(isLast ? { "aria-current": "page" as const } : {})}
-                  >
+                  <span className={labelClass} title={crumb.label} {...currentPage}>
                     {crumb.label}
                   </span>
                 )}

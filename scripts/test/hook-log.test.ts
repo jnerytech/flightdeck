@@ -48,7 +48,7 @@ describe("hook-log", () => {
     ]);
     const small = fakeFs({ "/r/log": 999 });
     appendHookLog("/r/log", entry("guard", 1), small.deps, 1000);
-    expect(small.ops.length).toBe(1);
+    expect(small.ops).toHaveLength(1);
   });
 
   test("the log lives in the common .git of the main checkout and of its worktrees", () => {

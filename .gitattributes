@@ -2,3 +2,4 @@
 *.ico binary
 *.png binary
 apps/daemon/test/fixtures/release/sample.bin binary
+docs/DECISIONS.md merge=union
