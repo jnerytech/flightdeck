@@ -114,8 +114,14 @@ const TOOLS: Record<
   },
 };
 
+/** The hooks' state, as a dependency's: installed is ok, an old one is outdated, anything else is missing. */
+function hooksDepState(state: string): DepResult["state"] {
+  if (state === "installed") return "ok";
+  return state === "outdated" ? "outdated" : "missing";
+}
+
 /** The first `1.2.3` (or `1.2`) in a program's `--version` line. */
-const versionOf = (text: string | null) => /\d+(?:\.\d+)+/.exec(text ?? "")?.[0];
+const versionOf = (text: string | null) => /\d+\.\d+(?:\.\d+)*/.exec(text ?? "")?.[0];
 
 async function tool(env: DepsEnv, id: keyof typeof TOOLS): Promise<DepResult> {
   const spec = TOOLS[id];
@@ -224,7 +230,7 @@ export async function checkDeps(env: DepsEnv): Promise<DepsResult> {
   const hooks: DepResult = {
     id: "hooks",
     group: "optional",
-    state: hooksState === "installed" ? "ok" : hooksState === "outdated" ? "outdated" : "missing",
+    state: hooksDepState(hooksState),
     breaks: ["liveStatus"],
     fix: (["linux", "darwin", "win32"] as Os[]).map((os) => ({
       os,
