@@ -1073,6 +1073,55 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .click({ timeout: SESSION_WAIT });
     await needs.waitFor({ state: "detached", timeout: SESSION_WAIT });
   },
+
+  // Issue #670: the Host page folds the checks with nothing to do behind a button. Enter opens it,
+  // Enter closes it, and a tool that is optional and not installed is not counted as OK.
+  "health-fold": async (c) => {
+    await open(c, { name: "host", host: ALFA });
+    // "Show 16 checks ...": the count is the host's, so the label is matched with a number in it.
+    const pattern = (key: "hostHealth.okShow" | "hostHealth.okHide") =>
+      new RegExp(
+        `^${c
+          .t(key, { n: 99999 })
+          .replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")
+          .replace("99999", "\\d+")}$`,
+      );
+    const fold = c.page.getByRole("button", { name: pattern("hostHealth.okShow") });
+    await fold.waitFor({ timeout: SESSION_WAIT });
+    if ((await fold.getAttribute("aria-expanded")) !== "false")
+      throw new Error("a dobra abriu sozinha");
+    const list = c.page.getByRole("list", { name: c.t("hostHealth.okList"), exact: true });
+    if ((await list.count()) !== 0) throw new Error("a lista apareceu antes de abrir");
+    // The keyboard opens it: Enter on the focused button.
+    await fold.focus();
+    await c.page.keyboard.press("Enter");
+    await list.waitFor({ timeout: WAIT });
+    const hide = c.page.getByRole("button", { name: pattern("hostHealth.okHide") });
+    await hide.waitFor({ timeout: WAIT });
+    if ((await hide.getAttribute("aria-expanded")) !== "true")
+      throw new Error("aria-expanded não abriu");
+    // An optional tool that is not installed says so and does not pass for OK.
+    const optional = list
+      .getByRole("listitem")
+      .filter({ hasText: c.t("hostHealth.optionalAbsent") });
+    for (const row of await optional.all()) {
+      const text = (await row.textContent()) ?? "";
+      if (
+        new RegExp(`\\b${c.t("hostDeps.state.ok")}\\b`).test(
+          text.replace(c.t("hostHealth.optionalAbsent"), ""),
+        )
+      ) {
+        throw new Error(`um opcional ausente aparece como OK: ${text}`);
+      }
+    }
+    // Enter again folds it back.
+    await hide.focus();
+    await c.page.keyboard.press("Enter");
+    await list.waitFor({ state: "detached", timeout: WAIT });
+    await c.page
+      .getByRole("button", { name: pattern("hostHealth.okShow") })
+      .waitFor({ timeout: WAIT });
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */
