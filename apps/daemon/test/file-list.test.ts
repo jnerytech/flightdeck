@@ -133,6 +133,20 @@ describe("file-list: one folder of the session's repository, for the file explor
     expect(lines((await files.list("session:s-1", "")).entries)).toEqual(["file a.txt"]);
   });
 
+  test("a link into .git is neither listed nor opened, and .git spelled otherwise is refused", async () => {
+    const { repo, files } = setup();
+    writeFileSync(join(repo, "a.txt"), "x\n");
+    await linkDir(join(repo, ".git"), join(repo, "meta"));
+    expect(lines((await files.list("session:s-1", "")).entries)).toEqual(["file a.txt"]);
+    for (const dir of ["meta", "./.git", ".GIT"]) {
+      expect({ dir, ...(await outcome(files.list("session:s-1", dir))) }).toEqual({
+        dir,
+        code: "bad_request",
+        reason: "review_path_outside",
+      });
+    }
+  });
+
   test("a folder with more entries than the cap lists the first ones and says it was cut", async () => {
     const { repo, files } = setup();
     mkdirSync(join(repo, "many"));
