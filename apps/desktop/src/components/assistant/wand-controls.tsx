@@ -1,7 +1,9 @@
 import { WandSparkles } from "lucide-react";
+import { useContext } from "react";
 import { Spinner } from "@/components/feedback/busy";
 import { IconActionButton } from "@/components/feedback/icon-action-button";
 import { Inline, Stack } from "@/components/layout/stack";
+import { ShortArea } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
 import type { T } from "@/i18n/index";
 import { isMac } from "@/lib/shortcuts";
@@ -11,6 +13,10 @@ import type { Wand } from "./use-wand.ts";
 /** The wand's button for a toolbar (issue #158). */
 export function WandButton(props: { wand: Wand; t: T }) {
   const { wand, t } = props;
+  // A short window (720x480) keeps its message box as narrow as it was: the conversation keeps its room (#232).
+  // Ctrl+I still reaches the wand there.
+  const short = useContext(ShortArea);
+  if (short) return null;
   const mac = isMac(typeof navigator === "undefined" ? undefined : navigator);
   let label = wand.writes ? t("assistantWand.write") : t("assistantWand.improve");
   if (wand.needsText) label = t("assistantWand.writeFirst");
