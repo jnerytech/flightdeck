@@ -1106,6 +1106,10 @@
   max-width: 40%;
   align-items: center;
   gap: 0.5rem;
+  /* Narrow, the box is 40% of a small window: tighter gaps leave the crumbs their room (#391). */
+  @media (max-width: 959px) {
+    gap: 0.25rem;
+  }
 }
 
 @utility header-tabs {
@@ -1138,6 +1142,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  @media (max-width: 959px) {
+    display: none;
+  }
+}
+
+/* Below 960 px the switcher is only its icon, without the chevron, for the crumbs' room (#391). */
+@utility top-bar-host-chevron {
   @media (max-width: 959px) {
     display: none;
   }
