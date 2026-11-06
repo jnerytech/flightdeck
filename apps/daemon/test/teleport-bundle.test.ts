@@ -95,7 +95,7 @@ describe("teleport-bundle: the code of a session as one git bundle (#100)", () =
       2,
       { lines: 1, labels: ["GitHub token"] },
       true,
-      "1 changed\n",
+      "1 changed",
       true,
       false,
       true,
