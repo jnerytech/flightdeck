@@ -246,10 +246,10 @@ describe("planCoverageFuncs", () => {
     expect(refused.output).toContain("21 test files");
     expect(refused.output).toContain("--tests <a few tests>");
     expect(
-      planCoverageFuncs({ ...wide, env: { FLIGHTDECK_COORDINATOR: "1" } }).command !== null,
-    ).toBe(true);
+      planCoverageFuncs({ ...wide, env: { FLIGHTDECK_COORDINATOR: "1" } }).command,
+    ).not.toBeNull();
     const reason = { FLIGHTDECK_SLOT_HEAVY: "every desktop test reaches the store" };
-    expect(planCoverageFuncs({ ...wide, env: reason }).command !== null).toBe(true);
+    expect(planCoverageFuncs({ ...wide, env: reason }).command).not.toBeNull();
     expect(planCoverageFuncs({ ...wide, env: { FLIGHTDECK_SLOT_HEAVY: "1" } }).code).toBe(2);
   });
 

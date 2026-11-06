@@ -400,7 +400,8 @@ export const HEAVY_ALLOWED =
 
 /** Whether an override's value is a reason, not a bare switch such as 1 or true (#674). */
 export function heavyReasonGiven(value: string | undefined): boolean {
-  return !/^(|1|true|yes)$/i.test((value ?? "").trim());
+  const given = (value ?? "").trim();
+  return given !== "" && !/^(?:1|true|yes)$/i.test(given);
 }
 
 /** The override in front of a command (quoted text is blanked in its words): its value, or undefined. */
@@ -414,20 +415,26 @@ function heavyRun(command: string): string | null {
   for (const segment of commandWords(command).split(/[;&|\n]+/)) {
     const words = segment.trim().split(/\s+/);
     for (let i = 0; i < words.length; i++) {
-      if (words[i] !== "bun" || words[i + 1] !== "run") continue;
-      const args = words.slice(i + 3);
-      const light = args.some((a) => a === "--fast" || a === "--tier" || a.startsWith("--tier="));
-      if (words[i + 2] === "test:related" && (args.includes("--pr") || !light)) {
-        return "a plain, --base or --pr `bun run test:related`";
-      }
-      const at = args.indexOf("--tests");
-      const given = at < 0 ? 0 : args.slice(at + 1).filter((a) => !a.startsWith("-")).length;
-      if (words[i + 2] === "coverage:funcs" && given > HEAVY_TESTS) {
-        return `\`bun run coverage:funcs\` over ${given} test files`;
-      }
+      const heavy = words[i] === "bun" && words[i + 1] === "run" ? heavyScript(words, i + 2) : null;
+      if (heavy) return heavy;
     }
   }
   return null;
+}
+
+/** Whether the script at `at` (with the words after it as its arguments) is a full coverage run. */
+function heavyScript(words: string[], at: number): string | null {
+  const args = words.slice(at + 1);
+  if (words[at] === "test:related") {
+    const light = args.some((a) => a === "--fast" || a === "--tier" || a.startsWith("--tier="));
+    return args.includes("--pr") || !light
+      ? "a plain, --base or --pr `bun run test:related`"
+      : null;
+  }
+  if (words[at] !== "coverage:funcs") return null;
+  const from = args.indexOf("--tests");
+  const given = from < 0 ? 0 : args.slice(from + 1).filter((a) => !a.startsWith("-")).length;
+  return given > HEAVY_TESTS ? `\`bun run coverage:funcs\` over ${given} test files` : null;
 }
 
 /** The refusal of a full coverage run (#674), shared by the hook and coverage:funcs. */
