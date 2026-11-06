@@ -5,7 +5,7 @@ import { AskpassPrompt } from "@/components/connections/askpass-prompt";
 import { Notices } from "@/components/feedback/notices";
 import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
-import { TopBarActions, TopBarHost } from "@/components/shell/top-bar";
+import { TopBarActions, TopBarHost, TopBarQuotaSlot } from "@/components/shell/top-bar";
 import { SnippetUse } from "@/components/snippets/snippet-use";
 import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
 import { Button } from "@/components/ui/button";
@@ -521,6 +521,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
               theme={resolvedTheme}
               version={APP_VERSION}
               bell={<NotificationBell store={store} inbox={state.inbox} t={t} go={go} />}
+              quota={<TopBarQuotaSlot t={t} state={state} now={Date.now()} go={go} />}
               onSearch={() => store.openSearch()}
               onToggleTheme={() => store.theme.toggle()}
             />

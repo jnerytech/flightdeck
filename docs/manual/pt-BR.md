@@ -2288,6 +2288,12 @@ horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janel
   dias (hosts com a mesma conta compartilham um cartão, com o nome de todos), com a porcentagem, a hora de reinício e a idade da leitura ("lida há 12 min").
   - A barra fica vermelha a partir de `quota.pauseAt`.
   - Cruzar o `pauseAt` gera uma notificação, uma vez por janela.
+- **Na barra superior:** um medidor pequeno mostra a janela mais usada entre os hosts online, com a
+  porcentagem (o nome da janela aparece a partir de 960 px de largura). A partir de 80% ele ganha
+  uma marca de alerta na cor de "precisa de você", e em 100% (ou a partir do
+  `pauseAt`, como no cartão da conta) a barra fica vermelha; o nome e a dica
+  dizem o nível, o host e o tempo que falta. Clicar nele abre a página desse host. Sem leitura, ele
+  não aparece.
 - **Só terminal:** os hooks não trazem a cota. Quem usa só sessões do terminal vê barras vazias ou
   antigas até rodar um card ou uma sessão gerenciada no host.
 
