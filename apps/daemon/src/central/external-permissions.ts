@@ -1,6 +1,7 @@
 import type { AutoApproval, ExternalPermissionFrame, PermissionUpdate } from "@flightdeck/protocol";
 import { userHome } from "../config.ts";
 import type { AutoApprover } from "../permissions/auto-approve.ts";
+import { bindInput } from "../permissions/bind-input.ts";
 import { requireHold } from "../permissions/hold.ts";
 import { checkUpdates, parseSuggestions } from "../permissions/permission-updates.ts";
 import { RiskClassifier } from "../permissions/risk.ts";
@@ -30,6 +31,9 @@ export function summarizeInput(input: unknown): Record<string, unknown> {
 
 interface Held {
   frame: ExternalPermissionFrame;
+  /** The whole input that was asked (the frame's is cut for the queue) and where: an answer cannot change it. */
+  input: Record<string, unknown>;
+  cwd: string;
   resolve(body: string): void;
 }
 
@@ -85,7 +89,7 @@ export class ExternalPermissions {
       createdAt: new Date().toISOString(),
     };
     return new Promise((resolve) => {
-      this.held.set(frame.requestId, { frame, resolve });
+      this.held.set(frame.requestId, { frame, input, cwd, resolve });
       // Timeout of the hook or Claude gone: the connection drops.
       signal.addEventListener("abort", () => this.close(frame.requestId, "dropped", ""), {
         once: true,
@@ -118,7 +122,13 @@ export class ExternalPermissions {
       requireHold(held.frame.risk ?? "low", holdProof);
       // Refused updates leave the hook held, before anything is answered.
       const { toolName, suggestions = [] } = held.frame;
-      checkUpdates(updatedPermissions, { toolName, suggestions });
+      bindInput(toolName, held.input, updatedInput);
+      checkUpdates(updatedPermissions, {
+        toolName,
+        suggestions,
+        risk: held.frame.risk ?? "low",
+        classify: (tool, input) => this.risk.classify(tool, input, held.cwd).level,
+      });
     }
     const updates = updatedPermissions.length > 0 ? { updatedPermissions } : {};
     const input = updatedInput ? { updatedInput } : {};

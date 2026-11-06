@@ -8,6 +8,7 @@ export const DAEMON_REASONS = [
   "central_confirm",
   "permission_request_closed",
   "hold_required",
+  "input_changed",
   "update_needs_service",
   "update_signature_failed",
   "messaging_session_missing",
@@ -66,6 +67,7 @@ export const DAEMON_REASONS = [
   "update_manifest_unchecked",
   "update_manifest_no_binary",
   "perm_rule_other_tool",
+  "perm_rule_too_broad",
   "perm_rule_content_invalid",
   "perm_destination_denied",
   "perm_mode_denied",
@@ -452,6 +454,7 @@ export const DAEMON_FEATURES = [
   "runEnv",
   "templates",
   "tasks",
+  "projectTrust",
   "autoUpdate",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];

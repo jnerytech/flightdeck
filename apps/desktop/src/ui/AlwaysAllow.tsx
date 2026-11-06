@@ -4,10 +4,32 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 
-/** The default project rule: the exact command for Bash, the tool's name for the others. */
-export function defaultRule(toolName: string, input: Record<string, unknown>): string {
+/**
+ * The default project rule: the exact command for Bash, the exact file for a tool that names one,
+ * the tool's name for the others. A rule for a whole file tool would cover a credential file, and
+ * the daemon refuses it (issue #384).
+ */
+export function defaultRule(
+  toolName: string,
+  input: Record<string, unknown>,
+  cwd?: string,
+): string {
   const command = input.command;
-  return toolName === "Bash" && typeof command === "string" ? `Bash(${command})` : toolName;
+  if (toolName === "Bash" && typeof command === "string") return `Bash(${command})`;
+  const file = input.file_path ?? input.notebook_path ?? input.path;
+  return typeof file === "string" && file !== "" ? `${toolName}(${ruleFile(file, cwd)})` : toolName;
+}
+
+/**
+ * A file as the CLI reads it in a rule: relative to the folder when it is inside it, `//` and the
+ * path when it is absolute outside it (a single leading `/` would mean the project's root).
+ */
+function ruleFile(path: string, cwd: string | undefined): string {
+  const file = path.replaceAll("\\", "/");
+  const folder = (cwd ?? "").replaceAll("\\", "/").replace(/\/+$/, "");
+  if (folder !== "" && file === folder) return ".";
+  if (folder !== "" && file.startsWith(`${folder}/`)) return file.slice(folder.length + 1);
+  return file.startsWith("/") ? `/${file}` : file;
 }
 
 /** `Bash(npm test:*)` or `Write` as the project rule the daemon validates. */
@@ -28,6 +50,8 @@ export function AlwaysAllow(
     toolName: string;
     input: Record<string, unknown>;
     suggestions: PermissionUpdate[] | undefined;
+    /** The folder the request ran in: a file rule is written relative to it. */
+    cwd?: string | undefined;
     onAllow(updatedPermissions: PermissionUpdate[]): void;
     /** An answer is on its way: nothing here can be pressed. */
     disabled?: boolean;
@@ -74,7 +98,7 @@ export function AlwaysAllow(
         variant="outline"
         size="sm"
         disabled={props.disabled}
-        onClick={() => setRule(defaultRule(props.toolName, props.input))}
+        onClick={() => setRule(defaultRule(props.toolName, props.input, props.cwd))}
       >
         {t("alwaysAllow.project")}
       </Button>
