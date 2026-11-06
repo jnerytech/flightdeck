@@ -39,7 +39,12 @@ function fake(
     fail?: RegExp;
     env?: Record<string, string>;
     /** CI runs of a commit pushed to main, by SHA. */
-    mainRuns?: Record<string, { status: string; conclusion: string | null }[]>;
+    mainRuns?: Record<
+      string,
+      { id?: number; event?: string; status: string; conclusion: string | null }[]
+    >;
+    /** The jobs of a run, by run id. */
+    runJobs?: Record<number, { name: string; conclusion: string | null }[]>;
     /** origin/main's HEAD and the commits on main. */
     mainHead?: string;
     onMain?: string[];
@@ -61,7 +66,8 @@ function fake(
     gh: async (args) => {
       const line = args.join(" ");
       if (opts.fail?.test(line)) return { code: 1, stdout: "" };
-      if (args.includes("-X")) writes.push(line);
+      if (args.includes("-X") || args[0] === "workflow") writes.push(line);
+      if (args[0] === "workflow") return ok("");
       const path = args.find((a) => a.startsWith("repos/")) ?? "";
       if (path === `${R}/rules/branches/main`) {
         return ok(
@@ -135,10 +141,16 @@ function fake(
         const title = opts.issues?.[Number(m[1])];
         return title === undefined ? { code: 1, stdout: "" } : ok(`${title}\n`);
       }
-      m = /actions\/workflows\/ci\.yml\/runs\?head_sha=(\w+)&event=push&branch=main/.exec(path);
+      m = /actions\/workflows\/ci\.yml\/runs\?head_sha=(\w+)&branch=main$/.exec(path);
       if (m) {
         return ok(
           (opts.mainRuns?.[m[1] ?? ""] ?? []).map((r) => `${JSON.stringify(r)}\n`).join(""),
+        );
+      }
+      m = /actions\/runs\/(\d+)\/jobs$/.exec(path);
+      if (m) {
+        return ok(
+          (opts.runJobs?.[Number(m[1])] ?? []).map((j) => `${JSON.stringify(j)}\n`).join(""),
         );
       }
       return { code: 1, stdout: "" };
@@ -707,7 +719,10 @@ describe("pr-flow: the CI of a commit and the release tag (#266)", () => {
   });
 
   const COORDINATOR = { FLIGHTDECK_COORDINATOR: "1" };
-  const released = { status: "completed", conclusion: "success" };
+  // A full run: the schedule's (every 3 hours, #444). A push to main runs a partial one.
+  const released = { id: 1, event: "schedule", status: "completed", conclusion: "success" };
+  const pushGreen = { id: 2, event: "push", status: "completed", conclusion: "success" };
+  const START = "workflow run ci.yml --ref main -f only=all";
 
   test("tag tags main's HEAD after a green full run of it on main, and pushes the tag alone", async () => {
     const f = fake({
@@ -741,8 +756,13 @@ describe("pr-flow: the CI of a commit and the release tag (#266)", () => {
       ],
       [
         { ...base, env: COORDINATOR, mainRuns: {} },
-        ["tag", "v0.36.5"],
-        "no CI run of abc123 on main",
+        ["tag", "v0.36.5", "--commit", "abc123"],
+        "no full green run of abc123 on main",
+      ],
+      [
+        { ...base, env: COORDINATOR, mainRuns: { abc123: [pushGreen] } },
+        ["tag", "v0.36.5", "--commit", "abc123"],
+        "abc123 has no full green run on main",
       ],
       [
         {
@@ -792,7 +812,7 @@ describe("pr-flow: the CI of a commit and the release tag (#266)", () => {
         "tag -a v0.37.0 -m v0.37.0 bump2",
         "push origin refs/tags/v0.37.0",
       ]);
-      expect(f.out()).toContain("head3's CI run on main was cancelled");
+      expect(f.out()).toContain("head3 has no full green run on main");
       expect(f.out()).toContain("v0.37.0 tagged on bump2");
     });
 
@@ -803,7 +823,7 @@ describe("pr-flow: the CI of a commit and the release tag (#266)", () => {
       });
       expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(2);
       expect(f.gitWrites).toEqual([]);
-      expect(f.out()).toContain("no commit with the v0.37.0 bump has a green CI run on main");
+      expect(f.out()).toContain("no commit with the v0.37.0 bump has one");
     });
 
     test("a history that is all bump and has no green run refuses", async () => {
@@ -839,6 +859,74 @@ describe("pr-flow: the CI of a commit and the release tag (#266)", () => {
       const pinned = fake({ ...stacked, mainRuns: { head3: [cancelled], bump2: [released] } });
       expect(await prFlow(["tag", "v0.37.0", "--commit", "head3"], pinned.deps)).toBe(2);
       expect(pinned.gitWrites).toEqual([]);
+    });
+  });
+
+  describe("the gate is a full green run (#444): a push to main runs only a partial one", () => {
+    const stacked = {
+      env: COORDINATOR,
+      mainHead: "head3",
+      onMain: ["head3", "bump2", "old1"],
+      history: ["head3", "bump2", "old1"],
+      versions: { head3: "0.37.0", bump2: "0.37.0", old1: "0.36.9" },
+    };
+
+    test("a green push run is no full run: tag takes the newest commit with the bump and a full green run", async () => {
+      const f = fake({ ...stacked, mainRuns: { head3: [pushGreen], bump2: [released] } });
+      expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(0);
+      expect(f.gitWrites).toEqual([
+        "tag -a v0.37.0 -m v0.37.0 bump2",
+        "push origin refs/tags/v0.37.0",
+      ]);
+      expect(f.out()).toContain("head3 has no full green run on main");
+    });
+
+    test("a dispatch counts as a full run only when its test suite ran and passed", async () => {
+      const full = {
+        id: 7,
+        event: "workflow_dispatch",
+        status: "completed",
+        conclusion: "success",
+      };
+      const screens = {
+        id: 8,
+        event: "workflow_dispatch",
+        status: "completed",
+        conclusion: "success",
+      };
+      const runJobs = {
+        7: [{ name: "test suite (ubuntu-latest) (dispatch)", conclusion: "success" }],
+        8: [{ name: "test suite (ubuntu-latest) (dispatch)", conclusion: "skipped" }],
+      };
+      const ok = fake({ ...stacked, mainRuns: { head3: [full] }, runJobs });
+      expect(await prFlow(["tag", "v0.37.0"], ok.deps)).toBe(0);
+      expect(ok.gitWrites[0]).toBe("tag -a v0.37.0 -m v0.37.0 head3");
+      const partial = fake({ ...stacked, mainRuns: { head3: [screens] }, runJobs });
+      expect(await prFlow(["tag", "v0.37.0"], partial.deps)).toBe(2);
+      expect(partial.gitWrites).toEqual([]);
+    });
+
+    test("with no full green run to tag, it starts one on main, asks to run it again, and tags nothing", async () => {
+      const f = fake({
+        ...stacked,
+        history: ["head3", "bump2"],
+        mainRuns: { head3: [pushGreen], bump2: [pushGreen] },
+      });
+      expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(2);
+      expect(f.gitWrites).toEqual([]);
+      expect(f.writes).toEqual([START]);
+      expect(f.out()).toContain(
+        "a full run of main was started; run pr tag again when it is green",
+      );
+    });
+
+    test("a failed partial run on HEAD is never skipped over, and nothing is started", async () => {
+      const failed = { id: 3, event: "push", status: "completed", conclusion: "failure" };
+      const f = fake({ ...stacked, mainRuns: { head3: [failed], bump2: [released] } });
+      expect(await prFlow(["tag", "v0.37.0"], f.deps)).toBe(2);
+      expect(f.out()).toContain("did not pass");
+      expect(f.gitWrites).toEqual([]);
+      expect(f.writes).toEqual([]);
     });
   });
 
