@@ -16,8 +16,6 @@ const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 const { TooltipProvider } = await import("../src/components/ui/tooltip.tsx");
 
-import type { AppStore } from "../src/lib/app-store.ts";
-
 setDefaultTimeout(30_000);
 afterEach(cleanup);
 
@@ -82,7 +80,7 @@ function setup(lang: "en" | "pt-BR") {
     },
     success: () => {},
     router: { push: () => {} },
-  } as unknown as AppStore;
+  } as unknown as InstanceType<typeof AppStore>;
   return { store, sent, t: translator(lang) };
 }
 
