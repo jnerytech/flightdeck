@@ -264,11 +264,11 @@ jobs:
       # packages over the newer ones the image ships.
       - name: Runner image of the Tauri package cache
         id: tauri-image
-        if: needs.changes.outputs.cargo == 'true'
+        if: needs.quick.outputs.cargo == 'true'
         run: echo "version=$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
 
       - name: Cache of the Tauri system packages
-        if: needs.changes.outputs.cargo == 'true'
+        if: needs.quick.outputs.cargo == 'true'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.cache/tauri-debs
