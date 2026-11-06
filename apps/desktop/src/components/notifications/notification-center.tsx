@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, Undo2 } from "lucide-react";
 import { useId } from "react";
 import { Button } from "@/components/ui/button";
 import { PopoverContent } from "@/components/ui/popover";
@@ -26,6 +26,7 @@ function InboxItem(
     t: T;
     onPick(row: InboxRow): void;
     onMarkRead(row: InboxRow): void;
+    onMarkUnread(row: InboxRow): void;
     onDismiss(row: InboxRow): void;
   }>,
 ) {
@@ -69,6 +70,19 @@ function InboxItem(
           </Button>
         </span>
       )}
+      {!unread && !gone && (
+        <span className="inbox-mark">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6"
+            aria-label={t("inbox.markUnread")}
+            onClick={() => props.onMarkUnread(row)}
+          >
+            <Undo2 aria-hidden="true" />
+          </Button>
+        </span>
+      )}
       {gone && (
         <Button
           variant="outline"
@@ -94,6 +108,7 @@ export function NotificationCenter(
     gone(entry: InboxEntry): boolean;
     onPick(row: InboxRow): void;
     onMarkRead(row: InboxRow): void;
+    onMarkUnread(row: InboxRow): void;
     onDismiss(row: InboxRow): void;
     onMarkAll(): void;
     onClear(): void;
@@ -144,6 +159,7 @@ export function NotificationCenter(
                     t={t}
                     onPick={props.onPick}
                     onMarkRead={props.onMarkRead}
+                    onMarkUnread={props.onMarkUnread}
                     onDismiss={props.onDismiss}
                   />
                 ))}

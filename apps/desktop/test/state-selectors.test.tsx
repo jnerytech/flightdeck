@@ -157,7 +157,7 @@ describe("state-selectors: an unrelated change of the state does not render the 
     const screens: Array<[string, ReturnType<typeof counted>, (s: Store) => ReactNode]> = [
       ["UpdateBanner", counted(store), (s) => <UpdateBanner store={s} />],
       ["Notices", counted(store), (s) => <Notices store={s} />],
-      ["TeamsPage", counted(store), (s) => <TeamsPage store={s} />],
+      ["TeamsPage", counted(store), (s) => <TeamsPage store={s} go={noop} />],
       ["PersonasPage", counted(store), (s) => <PersonasPage store={s} go={noop} />],
     ];
     render(

@@ -2,6 +2,7 @@ import type { TeamInfo, TeamMember, TeamStatus } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import { UsersRound } from "lucide-react";
 import { memo, useCallback, useEffect, useState } from "react";
+import { AssistField } from "@/components/assistant/assist-field";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Field, FieldRow, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -15,13 +16,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useStoreSlice, useStoreState } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";
+import type { Route } from "../lib/router.ts";
 import { useDraft } from "../lib/use-draft.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 /** The form of a new team: the goal, the project, the workers and the coordinator's persona. */
 function NewTeam(
-  props: Readonly<{ store: AppStore; hostId: string; onCreated(): void; onCancel(): void }>,
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    onCreated(): void;
+    onCancel(): void;
+    onOpenSettings(): void;
+  }>,
 ) {
   const { store, hostId } = props;
   const { t } = store.i18n;
@@ -71,7 +79,26 @@ function NewTeam(
     <div className="flex max-w-xl flex-col gap-3 rounded-lg border p-4 text-sm">
       <Field label={t("teamsUi.goal")}>
         {(control) => (
-          <Textarea {...control} value={goal} onChange={(e) => setGoal(e.target.value)} />
+          <AssistField
+            binding={{
+              controller: store.assistant,
+              kind: "team.goal",
+              fieldHostId: hostId,
+              openSettings: props.onOpenSettings,
+            }}
+            value={goal}
+            onChange={setGoal}
+            t={t}
+          >
+            {(assist) => (
+              <Textarea
+                {...control}
+                {...assist}
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+              />
+            )}
+          </AssistField>
         )}
       </Field>
       <Field label={t("teamsUi.name")}>
@@ -516,6 +543,7 @@ export const TeamsPage = memo(function TeamsPage(props: {
   /** An alert opens the host and the team it is about; the team is listed first. */
   host?: string;
   team?: string;
+  go(route: Route): void;
 }) {
   const { store } = props;
   const state = useStoreSlice(store, TEAMSPAGE_KEYS);
@@ -600,6 +628,7 @@ export const TeamsPage = memo(function TeamsPage(props: {
             void load();
           }}
           onCancel={() => setCreating(false)}
+          onOpenSettings={() => props.go({ name: "settings", section: "assistant" })}
         />
       )}
       {teams.length === 0 && !creating && (
