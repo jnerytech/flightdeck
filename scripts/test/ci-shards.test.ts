@@ -102,7 +102,7 @@ describe("ci-shards", () => {
     expect(runs("screenshots-e2e")).toContain("bun run e2e");
     const gate = job("screenshots");
     expect(gate.name).toBe("screenshots (prints, axe e e2e)");
-    expect(gate.needs).toEqual(["changes", "quick", "screenshots-prints", "screenshots-e2e"]);
+    expect(gate.needs).toEqual(["quick", "screenshots-prints", "screenshots-e2e"]);
     expect(gate.if).toBe("always()");
     expect(runs("screenshots")).toContain(
       'test "${{ needs.screenshots-prints.result }}" = success',
