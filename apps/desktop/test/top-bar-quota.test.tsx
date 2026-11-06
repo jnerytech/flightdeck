@@ -82,3 +82,57 @@ for (const [lang, dict] of [
     });
   });
 }
+
+describe("top-bar-quota: the slot in the app's top bar (issue #118)", () => {
+  test("it reads the online hosts' quota, names the host and opens it", async () => {
+    const { TopBarQuotaSlot } = await import("../src/components/shell/top-bar.tsx");
+    const routes: unknown[] = [];
+    const state = {
+      hosts: [
+        { id: "a", name: "alfa", status: "online" },
+        { id: "b", name: "beta", status: "offline" },
+      ],
+      quota: {
+        a: {
+          pauseAt: null,
+          windows: [
+            {
+              window: "seven_day",
+              utilization: 0.35,
+              status: "allowed",
+              resetsAt: null,
+              readAt: "2026-11-06T12:00:00.000Z",
+            },
+          ],
+        },
+        b: {
+          pauseAt: null,
+          windows: [
+            {
+              window: "five_hour",
+              utilization: 0.9,
+              status: "allowed_warning",
+              resetsAt: null,
+              readAt: "2026-11-06T12:00:00.000Z",
+            },
+          ],
+        },
+      },
+    } as never;
+    render(
+      <TopBarQuotaSlot
+        t={translator("en")}
+        state={state}
+        now={Date.UTC(2026, 10, 6, 12)}
+        go={(route) => routes.push(route)}
+      />,
+    );
+    // beta is offline: its 90% is not the glance; alfa's 7 days at 35% is.
+    const button = screen.queryByRole("button", { name: /7 days at 35% on alfa/ });
+    expect(button).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(button as HTMLElement);
+    });
+    expect(routes).toEqual([{ name: "host", host: "a" }]);
+  });
+});
