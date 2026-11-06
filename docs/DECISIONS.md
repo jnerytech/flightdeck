@@ -4369,6 +4369,14 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   They lost their skip and note, and the ratchet maximum went from 5 to 1. Only the heartbeat test is
   still skipped: its fix needs a ticker and a clock injected into `startServer`
   (`performance.now()` and `setInterval` for the ping), so #288 stays open for it.
+- **The fifth is fixed too (issue #288).** `ServerOptions` takes `now` (the heartbeat clock, default
+  `performance.now()`) and `pingTicker` (runs the tick every `pingIntervalMs` and returns its stop,
+  default a `setInterval`). The heartbeat test drives both by hand: before each tick a command
+  arrives and no pong does, eight ticks in a row leave the client connected, then the clock moves to
+  4 intervals minus 1 ms of silence (still connected) and to exactly 4 (closed with 4408). No timer
+  and no wait on the clock. Mutants of the boundary (`>` for `>=`) and of the frame stamp both fail it.
+  The ratchet maximum is 0, so no test is skipped off Linux; the `skipIf(notLinux)` form and its hook
+  check stay for the next unstable test, which must name an issue.
 
 ## A PR behind main merges; only a conflict waits (issue #305)
 
