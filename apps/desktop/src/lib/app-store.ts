@@ -355,6 +355,7 @@ export type HostCommandType = Extract<
   | `run.${string}`
   | `gate.${string}`
   | `maintenance.${string}`
+  | `worktree.${string}`
   | `quota.${string}`
   | `account.${string}`
   | `usage.${string}`
@@ -774,6 +775,8 @@ export class AppStore {
   private trayMenuSent = JSON.stringify(trayMenu([]));
   private trayMenuTimer: unknown = null;
   private offTrayAction: (() => void) | null = null;
+  private offQuit: (() => void) | null = null;
+  private quitting = false;
   private readonly openRequestListeners = new Set<(item: PendingItem) => void>();
 
   private stopWake: (() => void) | null = null;
@@ -1054,6 +1057,8 @@ export class AppStore {
     if (this.platform.globalShortcut.supported) await this.registerShortcut(globalShortcut);
     this.offTrayAction?.();
     this.offTrayAction = this.platform.onTrayAction((action) => this.onTrayAction(action));
+    this.offQuit?.();
+    this.offQuit = this.platform.onQuitRequested(() => void this.quitWithUpdate());
     await inSequence(loadHosts(this.platform.storage), async (config) => {
       this.update({
         hosts: [...this.state.hosts, newHostView(config)],
@@ -2283,6 +2288,8 @@ export class AppStore {
     for (const conn of this.connections.values()) conn.dispose();
     this.connections.clear();
     this.offTrayAction?.();
+    this.offQuit?.();
+    this.offQuit = null;
     this.offTrayAction = null;
     if (this.updateTimer) clearInterval(this.updateTimer);
     this.updateTimer = null;
@@ -2336,6 +2343,24 @@ export class AppStore {
           error: (error as Error).message ?? String(error),
         }),
       });
+    }
+  }
+
+  /**
+   * Issue #402: the tray's Quit. A version downloaded in the background installs on the way out
+   * (no restart), so the next start is on it; then the app asks the shell to exit, also when the
+   * install failed.
+   */
+  private async quitWithUpdate(): Promise<void> {
+    // A second Quit while the first installs waits for it: the same bytes are never installed twice.
+    if (this.quitting) return;
+    this.quitting = true;
+    try {
+      if (this.state.appUpdate.ready) await this.platform.updater.installDownloaded();
+    } catch {
+      // Quitting wins: the update is offered again at the next start.
+    } finally {
+      await this.platform.quitNow();
     }
   }
 

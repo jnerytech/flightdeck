@@ -1,6 +1,10 @@
-/** Tauri commands that may stay synchronous: they touch the tray or window, which need the main thread. */
+/**
+ * Tauri commands that may stay synchronous: they touch the tray or window, which need the main
+ * thread, or end the app (`quit_now`, #402: `exit` only hands the event loop a message).
+ */
 export const SYNC_COMMANDS_ALLOWED = [
   "focus_main",
+  "quit_now",
   "set_close_to_tray",
   "tray_set_menu",
   "tray_set_status",

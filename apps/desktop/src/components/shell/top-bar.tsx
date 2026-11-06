@@ -52,7 +52,7 @@ export function TopBarHost(
             {/* Narrow, the name gives its room to the crumbs: the icon stays, named by the button. */}
             <Server aria-hidden="true" className="top-bar-host-icon" />
             <span className="top-bar-host-name">{current?.name ?? t("shell.noHost")}</span>
-            <ChevronsUpDown aria-hidden="true" />
+            <ChevronsUpDown aria-hidden="true" className="top-bar-host-chevron" />
           </Button>
         </DropdownMenuTrigger>
       </IconTip>

@@ -82,8 +82,8 @@ fn every_limit_is_a_pinned_constant() {
         (100_000, 4096, 100, 2, 20)
     );
     assert_eq!(
-        (BUCKET_WINDOW, CONNECT_TIMEOUT, TOTAL_TIMEOUT, MIN_VAULT_VALUE),
-        (Duration::from_secs(300), Duration::from_secs(10), Duration::from_secs(60), 6)
+        (BUCKET_WINDOW, CONNECT_TIMEOUT, TOTAL_TIMEOUT, MIN_VAULT_VALUE, MAX_DETAIL_CHARS),
+        (Duration::from_secs(300), Duration::from_secs(10), Duration::from_secs(60), 6, 300)
     );
     assert_eq!((ANTHROPIC_BASE, OPENROUTER_BASE), ("https://api.anthropic.com", "https://openrouter.ai"));
 }
@@ -100,7 +100,7 @@ fn the_input_output_and_model_caps_hold() {
         assert_eq!(check_model(id), Ok(()), "{id}");
     }
     let long = "m".repeat(MAX_MODEL_ID + 1);
-    for id in ["", long.as_str(), "a b", "x;rm", "modèle", "a\nb", "a?b=c"] {
+    for id in ["", long.as_str(), "a b", "x;rm", "modèle", "a\nb", "a?b=c", "../x", "/v1/models", "a/../b", "a/.."] {
         assert_eq!(reason(check_model(id)), Some("assistant_model_unavailable"), "{id:?}");
     }
 }
@@ -133,7 +133,7 @@ fn two_calls_run_at_once_and_the_bucket_holds_twenty_per_window() {
 fn a_call_reaches_only_the_two_providers_or_loopback() {
     assert_eq!(Endpoint::anthropic().base(), ANTHROPIC_BASE);
     assert_eq!(Endpoint::openrouter().base(), OPENROUTER_BASE);
-    for url in [ANTHROPIC_BASE, OPENROUTER_BASE, "http://127.0.0.1:4100", "http://localhost:9", "http://[::1]:8080"] {
+    for url in [ANTHROPIC_BASE, OPENROUTER_BASE, "http://127.0.0.1:4100", "http://[::1]:8080"] {
         assert!(Endpoint::with_base(url).is_ok(), "{url}");
     }
     for url in [
@@ -143,11 +143,24 @@ fn a_call_reaches_only_the_two_providers_or_loopback() {
         "https://openrouter.ai/",
         "http://127.0.0.1.evil.example:80",
         "http://10.0.0.1:80",
+        "http://localhost:9",
         "file:///etc/passwd",
         "",
     ] {
         assert!(Endpoint::with_base(url).is_err(), "{url}");
     }
+}
+
+#[test]
+fn a_reply_prints_its_status_and_headers_but_never_its_body() {
+    let reply = Reply {
+        status: 401,
+        headers: vec![("request-id".to_string(), "req_9".to_string())],
+        body: format!("{{\"error\":\"bad key {FAKE_KEY}\"}}"),
+    };
+    let printed = format!("{reply:?}");
+    assert!(printed.contains("401") && printed.contains("req_9"), "{printed}");
+    assert!(!printed.contains("FAKEKEY") && !printed.contains("bad key"), "{printed}");
 }
 
 #[test]
@@ -245,4 +258,77 @@ fn a_call_past_its_limit_times_out_and_a_cancelled_one_answers_cancelled_and_nev
     assert!(!delivered.load(Ordering::SeqCst), "the late answer never ran to the end");
     let fast = rt.block_on(calls.run("fast", Duration::from_secs(1), async { Ok::<_, Refusal>(7) }));
     assert_eq!(fast, Ok(7));
+}
+
+#[test]
+fn a_path_that_does_not_start_with_a_slash_is_refused_before_any_request() {
+    let server = serve(vec!["HTTP/1.1 200 OK\r\ncontent-length: 0\r\nconnection: close\r\n\r\n"]);
+    let key = Secret::new(FAKE_KEY.to_string());
+    // `@127.0.0.1:1/x` would make the base a userinfo and send the key to another host.
+    for path in ["", "@127.0.0.1:1/x", "x"] {
+        let outcome = runtime().block_on(async {
+            let client = client()?;
+            let endpoint = Endpoint::with_base(&server.base)?;
+            send(&client, &endpoint, path, Method::Get, &key, &[]).await.map(|r| r.status)
+        });
+        assert_eq!(reason(outcome), Some("assistant_not_configured"), "{path:?}");
+    }
+    assert!(server.requests().is_empty());
+}
+
+#[test]
+fn a_request_id_is_one_call_a_cancel_may_come_first_and_a_dropped_wait_aborts_the_call() {
+    let calls = Arc::new(Calls::default());
+    let rt = runtime();
+
+    calls.cancel("early");
+    let ran = Arc::new(AtomicBool::new(false));
+    let flag = ran.clone();
+    let early = rt.block_on(calls.run("early", Duration::from_secs(1), async move {
+        flag.store(true, Ordering::SeqCst);
+        Ok::<_, Refusal>(1)
+    }));
+    assert_eq!(reason(early), Some("assistant_cancelled"), "a cancel that came before the call");
+    assert!(!ran.load(Ordering::SeqCst));
+    assert_eq!(rt.block_on(calls.run("early", Duration::from_secs(1), async { Ok::<_, Refusal>(2) })), Ok(2), "once");
+
+    let first_done = Arc::new(AtomicBool::new(false));
+    let flag = first_done.clone();
+    let (runner, other, canceller) = (calls.clone(), calls.clone(), calls.clone());
+    let (first, second) = rt.block_on(async move {
+        let first = tokio::spawn(async move {
+            runner
+                .run("dup", Duration::from_secs(5), async move {
+                    tokio::time::sleep(Duration::from_millis(200)).await;
+                    flag.store(true, Ordering::SeqCst);
+                    Ok::<_, Refusal>("first")
+                })
+                .await
+        });
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        let second = other.run("dup", Duration::from_secs(5), async { Ok::<_, Refusal>("second") }).await;
+        canceller.cancel("dup");
+        let first = first.await.map_err(|_| Refusal::new("join"));
+        tokio::time::sleep(Duration::from_millis(400)).await;
+        (first, second)
+    });
+    assert_eq!(reason(second), Some("assistant_rate_limited"), "an id already running");
+    assert_eq!(first.map(reason), Ok(Some("assistant_cancelled")), "the first is still the one cancel stops");
+    assert!(!first_done.load(Ordering::SeqCst));
+
+    let finished = Arc::new(AtomicBool::new(false));
+    let flag = finished.clone();
+    let gave_up = rt.block_on(async {
+        let wait = calls.run("gone", Duration::from_secs(5), async move {
+            tokio::time::sleep(Duration::from_millis(200)).await;
+            flag.store(true, Ordering::SeqCst);
+            Ok::<_, Refusal>(())
+        });
+        let outer = tokio::time::timeout(Duration::from_millis(30), wait).await;
+        tokio::time::sleep(Duration::from_millis(400)).await;
+        outer.is_err()
+    });
+    assert!(gave_up);
+    assert!(!finished.load(Ordering::SeqCst), "the call of a dropped wait is aborted");
+    assert_eq!(rt.block_on(calls.run("gone", Duration::from_secs(1), async { Ok::<_, Refusal>(3) })), Ok(3), "its id is free");
 }

@@ -146,7 +146,14 @@ describe("recusas-gestao: permission updates", () => {
     ...over,
   });
   const check = (update: unknown, toolName = "Bash") =>
-    refused(() => checkUpdates([update as never], { toolName, suggestions: [] }));
+    refused(() =>
+      checkUpdates([update as never], {
+        toolName,
+        suggestions: [],
+        risk: "high",
+        classify: () => "low",
+      }),
+    );
 
   test("each way an update is refused has its own reason", async () => {
     expect(await check(rule({ rules: [{ toolName: "Read" }] }))).toEqual({

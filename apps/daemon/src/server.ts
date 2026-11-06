@@ -128,6 +128,7 @@ import type { UpdateChecker } from "./updates/check.ts";
 import { requireVaultTransport, type Vault } from "./vault/vault.ts";
 import type { PrWatch } from "./watch/service.ts";
 import type { WebhookSender } from "./webhook/sender.ts";
+import type { Worktrees } from "./worktrees/worktrees.ts";
 import { sendFrame } from "./ws-send.ts";
 
 export const DAEMON_VERSION: string = pkg.version;
@@ -222,6 +223,8 @@ export interface ServerOptions {
   central?: Central;
   /** Retention and backups behind the `maintenance.*` commands (phase 7). */
   maintenance?: Maintenance;
+  /** What the cards' worktrees take on the disk, behind `worktree.*` (issue #152). */
+  worktrees?: Worktrees;
   /** Client protocols accepted, `[min, max]`; `[MIN_PROTOCOL_VERSION, PROTOCOL_VERSION]` by default. */
   protocolRange?: readonly [number, number];
   /** Phase 16: secrets the app hands over for one use (`vault.*`). */
@@ -498,6 +501,7 @@ function featuresOf(opts: ServerOptions): string[] {
     // Phase 24: the run.yaml of a card and its processes.
     ...(opts.runenv && opts.board ? ["runenv"] : []),
     ...(opts.maintenance ? ["maintenance"] : []),
+    ...(opts.worktrees ? ["worktrees"] : []),
     ...(opts.quota ? ["quota"] : []),
     ...(opts.account ? ["account"] : []),
     // Project rules live in the board's projects.
@@ -736,6 +740,8 @@ export function startServer(opts: ServerOptions): RunningServer {
 
   const maintenance = (): Maintenance => need("maintenance");
 
+  const worktrees = (): Worktrees => need("worktrees");
+
   const usage = (): UsageLedger => need("usage");
 
   const account = (): Account => need("account");
@@ -939,6 +945,10 @@ export function startServer(opts: ServerOptions): RunningServer {
         }
         return ok(command.type, { claudeSessionId, ...meta });
       }
+      case "worktree.list":
+        return ok(command.type, await worktrees().list(command.payload.projectId));
+      case "worktree.remove":
+        return ok(command.type, await worktrees().remove(command.payload.items));
       case "maintenance.status":
         return ok(command.type, await maintenance().status());
       case "maintenance.backup":

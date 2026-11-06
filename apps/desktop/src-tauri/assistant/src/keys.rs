@@ -140,7 +140,8 @@ impl SecretStore for MemoryStore {
     }
 }
 
-/// The OS credential store (Windows Credential Manager, macOS Keychain, Secret Service).
+/// The OS credential store: Windows Credential Manager, macOS Keychain, and on Linux the kernel
+/// keyutils store, which a reboot empties (the documented limit of `linux-native`).
 pub struct KeyringStore;
 
 fn entry(account: &str) -> Result<keyring::Entry, StoreError> {

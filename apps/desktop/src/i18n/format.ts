@@ -98,3 +98,16 @@ export function formatSeconds(ms: number, lang: Lang, t: T): string {
     ? `${new Intl.NumberFormat(lang, { maximumFractionDigits: 1, minimumFractionDigits: 1 }).format(ms / 1000)} s`
     : formatDuration(ms, t);
 }
+
+/** A size in bytes as B, KB, MB or GB with the language's separators (one decimal at most). */
+export function formatBytes(bytes: number, lang: Lang): string {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  const number = new Intl.NumberFormat(lang, { maximumFractionDigits: unit === 0 ? 0 : 1 });
+  return `${number.format(value)} ${units[unit]}`;
+}

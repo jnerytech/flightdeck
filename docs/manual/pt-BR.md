@@ -2667,6 +2667,26 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude
   ganha um selo ⚠. O tempo no ar continua contando enquanto a página está aberta.
+- **Worktrees:** um painel da página do host (hosts que anunciam `worktrees`) lista as worktrees
+  dos cards em `.flightdeck/worktrees` com o tamanho em disco (**desconhecido** quando a medição
+  estourou o tempo, nunca 0), há quanto tempo estão paradas e o card de cada uma. **Sugerida** marca
+  uma worktree limpa, sem commits não enviados e sem sessão ao vivo, parada há mais de 7 dias, cujo
+  card está Concluído ou cujo PR foi mesclado, ou que não tem card. Uma worktree com alterações não
+  commitadas, commits que não existem em outro lugar, sessão, terminal ou execução rodando, branch base
+  desconhecido (precisa ser um branch de verdade, não uma tag nem `HEAD`), um branch que não é um
+  `fd/…` do Flightdeck, arquivos ignorados que um build não recria (só `node_modules`, `dist`,
+  `build`, `target`, `coverage`, `.cache`, `.next` e `out`, como pasta na raiz da worktree, não
+  contam, e um arquivo de credencial ignorado, como `.env` ou `*.pem`, sempre conta), alterações que
+  o git esconde do `git status` (`assume-unchanged` ou `skip-worktree`), ou algo que o git não soube
+  responder fica **mantida**: a linha diz por quê e não pode ser marcada. A confirmação diz que as
+  pastas recriáveis saem junto com a worktree. Filtre por Sugeridas,
+  Protegidas ou Sem card, ordene por idade ou tamanho, **Selecionar sugeridas** ou **Selecionar
+  todas que podem sair**, e então **Remover**: a confirmação cita cada branch com o card e a coluna, e o espaço
+  liberado. Só as linhas na tela podem ser marcadas ou removidas. O host trava cada pasta (nada
+  pode começar nela) e confere de novo antes de removê-la (sem force), então uma que mudou nesse
+  meio-tempo é mantida; o branch só é apagado se ainda estiver no commit que foi conferido, senão
+  a pasta sai e o branch fica, e o resultado diz isso. O card, se houver, continua no board sem a worktree. Um disco com menos de
+  10% livre gera aviso. Apagar algo que está mantido continua sendo pelo **Descartar** do card.
 - **Um host desconectado** mostra um aviso no topo da página dele: o estado, o que falhou em
   palavras simples (nada respondeu, sem resposta a tempo, a conexão caiu, o token foi recusado), a
   hora da última tentativa, a contagem até a próxima tentativa automática e **Reconectar agora**,
@@ -2896,7 +2916,8 @@ Authenticode (veja [Instalação](#pelos-binários-da-release)).
   - procura a versão nova ao abrir e a cada 6 h, no `latest.json` da última release;
   - com **Atualizar automaticamente** ligado (o padrão), baixa a versão nova em segundo plano,
     confere a assinatura e então mostra a faixa "O Flightdeck X está pronto. Reinicie para
-    atualizar." com **Reiniciar agora** e **Depois**. Nada reinicia sozinho (#280);
+    atualizar." com **Reiniciar agora** e **Depois**. Nada reinicia sozinho (#280). Sair pela
+    bandeja com uma versão baixada a instala na saída, sem abrir o app de novo (#402);
   - com ele desligado, a faixa diz "Flightdeck X disponível", com as notas, **Instalar e
     reiniciar** e **Depois**, como antes;
   - assinatura inválida ou download quebrado aparecem na faixa, e nada é instalado; um download que
