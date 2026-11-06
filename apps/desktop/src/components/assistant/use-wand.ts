@@ -34,6 +34,8 @@ export interface Wand {
   setProposal(text: string): void;
   /** Sends the same text again. */
   retry(): void;
+  /** Puts back the text from before Accept, while the Undo chip is up. */
+  undo(): void;
   /** Ctrl or Cmd+I (and Esc while there is something to close) in the field: true when the wand took the key. */
   onKeyDown(event: React.KeyboardEvent): boolean;
 }
@@ -63,6 +65,17 @@ export function useWand(
   useEffect(() => {
     dispatch({ type: "field", text: value });
   }, [value]);
+
+  // The Undo chip lasts UNDO_WINDOW_MS after Accept: the reducer takes time from the event, so the timer sends it.
+  const undoUntil = state.kind === "undo" ? state.until : null;
+  useEffect(() => {
+    if (undoUntil === null) return;
+    const timer = setTimeout(
+      () => dispatch({ type: "tick", now: Date.now() }),
+      Math.max(0, undoUntil - Date.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [undoUntil]);
 
   if (!binding || !controller || !enabled) return null;
   const spec = KIND_SPECS[binding.kind];
@@ -117,6 +130,11 @@ export function useWand(
     onChange(state.proposal);
     dispatch({ type: "accept", now: Date.now() });
   };
+  const undo = () => {
+    if (state.kind !== "undo") return;
+    onChange(state.before);
+    dispatch({ type: "undo" });
+  };
   const onKeyDown = (event: React.KeyboardEvent): boolean => {
     if (event.key === "Escape" && state.kind !== "idle" && state.kind !== "undo") {
       if (state.kind === "running") cancel();
@@ -124,7 +142,15 @@ export function useWand(
       return true;
     }
     const modified = (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey;
-    if (!modified || event.key.toLowerCase() !== "i" || event.nativeEvent.isComposing) return false;
+    if (!modified || event.nativeEvent.isComposing) return false;
+    const key = event.key.toLowerCase();
+    // Ctrl or Cmd+Z undoes the Accept while the field still holds it; the browser's own undo is not relied on.
+    if (key === "z" && state.kind === "undo") {
+      event.preventDefault();
+      undo();
+      return true;
+    }
+    if (key !== "i") return false;
     event.preventDefault();
     start();
     return true;
@@ -142,6 +168,7 @@ export function useWand(
     edit: () => dispatch({ type: "edit" }),
     setProposal: (text: string) => dispatch({ type: "proposal", text }),
     retry,
+    undo,
     onKeyDown,
   };
 }

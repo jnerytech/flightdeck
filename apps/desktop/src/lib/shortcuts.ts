@@ -50,6 +50,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   def("help", "general", ["?"], "shortcuts.help", "help"),
   def("toggle-mode", "general", ["Mod", "Shift", "M"], "shortcuts.toggleMode", "toggle-mode"),
   def("next-client", "general", ["Alt", "Shift", "C"], "shortcuts.nextClient", "next-client"),
+  def("assist-field", "general", ["Mod", "I"], "shortcuts.assistField"),
   def("back", "navigation", ["Alt", "←"], "shortcuts.back", "back"),
   def("forward", "navigation", ["Alt", "→"], "shortcuts.forward", "forward"),
   def("go-sessions", "navigation", ["g", "s"], "shortcuts.goSessions", "go-sessions", true),
