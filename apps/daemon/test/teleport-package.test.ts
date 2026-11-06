@@ -439,4 +439,10 @@ describe("teleport-package: a big transcript does not hold the daemon (#100)", (
     });
     expect([paced, pauses > 5]).toEqual([{ lines: 5, labels: ["token"] }, true]);
   });
+
+  test("with its default pace, a text past one slice is scanned to the end", async () => {
+    const big = `${"x".repeat(300 * 1024)}\nkey ${TOKEN}`;
+    const scan = (text: string) => (text.includes("ghp_") ? ["token"] : []);
+    expect(await secretLines(big, scan)).toEqual({ lines: 1, labels: ["token"] });
+  });
 });
