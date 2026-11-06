@@ -78,6 +78,7 @@ import type {
 } from "../platform/types.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { budgetLabel } from "./budgets.ts";
+import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import {
   CLIENT_BUDGET_ALERTS_KEY,
   type ClientBudgetState,
@@ -868,6 +869,10 @@ export class AppStore {
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
     this.setup = new SetupSettings(platform.storage);
+    this.cacheTimer = new CacheTimerSettings(platform.storage);
+    this.clock = new SharedClock(
+      browserClockDeps(() => this.now(), typeof document === "undefined" ? undefined : document),
+    );
     this.tabOrder = new TabOrderController(platform.storage);
     this.i18n = new I18n(platform);
     this.i18n.subscribe(() => this.onLanguage());
@@ -942,6 +947,10 @@ export class AppStore {
   readonly terminalFont: TerminalFontController;
   /** The setup checklist: hidden or not, and whether a test notification ever showed. */
   readonly setup: SetupSettings;
+  /** The prompt cache countdown on idle sessions: off by default (issue #159). */
+  readonly cacheTimer: CacheTimerSettings;
+  /** One 1-second clock for every countdown on screen. */
+  readonly clock: SharedClock;
   /** How Ctrl+Tab orders the tabs (issue #148). */
   readonly tabOrder: TabOrderController;
   /** pt-BR or English, and the translator (phase 10). */
@@ -2209,7 +2218,7 @@ export class AppStore {
    */
   async refreshSetup(hostId: string, options: { github?: boolean } = {}): Promise<void> {
     const host = this.state.hosts.find((h) => h.id === hostId);
-    if (!host || host.status !== "online") return;
+    if (host?.status !== "online") return;
     const features = host.hostInfo?.features;
     const wantsHooks = hasFeature(features, "central", false);
     const wantsGithub = options.github === true && hasFeature(features, "github", false);

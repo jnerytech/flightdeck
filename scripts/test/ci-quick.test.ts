@@ -30,6 +30,19 @@ const runs = (key: string) =>
 const QUICK_PASSED = 'test "${{ needs.quick.result }}" = success';
 
 describe("ci-quick", () => {
+  test("the quick job checks that every unstable skip names an issue still open, with the run's token (#494)", () => {
+    const step = job("quick").steps.find((s) => s.name === "Unstable skips name open issues");
+    expect(step?.run).toBe("bun run scripts/unstable-issues.ts");
+    expect((step as { env?: Record<string, string> } | undefined)?.env).toEqual({
+      GH_TOKEN: "${{ github.token }}",
+    });
+    // The token may read issues in this job only; the rest of the workflow keeps contents: read.
+    expect((job("quick") as { permissions?: Record<string, string> }).permissions).toEqual({
+      contents: "read",
+      issues: "read",
+    });
+  });
+
   test("the quick tests are every ratchet and the protocol surface, in order (#272)", () => {
     expect(
       quickTests([

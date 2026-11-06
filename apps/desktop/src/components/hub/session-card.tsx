@@ -29,6 +29,8 @@ export function SessionCard(
     cost?: string;
     costLabel: string;
     persona?: string | null;
+    /** The prompt cache countdown of an idle session, when it is on. */
+    cache?: ReactNode;
     /** Phase 39: the agent's name when it is not Claude Code ("OpenCode"). */
     runtime?: string | null;
     /** The session open on the right. */
@@ -67,6 +69,7 @@ export function SessionCard(
         {props.persona && (
           <span className="shrink-0 rounded bg-muted px-1 text-foreground">{props.persona}</span>
         )}
+        {props.cache}
         {props.runtime && <RuntimeBadge label={props.runtime} />}
         {props.cost !== undefined && (
           <output aria-label={props.costLabel} className="ml-auto shrink-0 tabular-nums">
