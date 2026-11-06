@@ -12,6 +12,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
 import { type FakeClaudeEvent, installFakeClaude } from "../apps/daemon/test/fake-claude.ts";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -105,17 +106,6 @@ class Client {
 function git(cwd: string, ...args: string[]): void {
   const proc = Bun.spawnSync(["git", ...args], { cwd, env: process.env, stderr: "pipe" });
   if (proc.exitCode !== 0) throw new Error(`git ${args.join(" ")}: ${proc.stderr.toString()}`);
-}
-
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = buffer.match(/listening on (ws:\/\/\S+)/);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`daemon saiu sem anunciar a porta: ${buffer}`);
 }
 
 const events = (all: FakeClaudeEvent[], type: string) => all.filter((e) => e.type === type);
@@ -226,7 +216,7 @@ async function run(work: string): Promise<void> {
     { do: "exit", code: 0 },
   ]);
   try {
-    const url = await withTimeout(readListenUrl(daemon.stdout), "daemon anunciar a porta");
+    const url = await readListenUrl(daemon.stdout);
     log(`daemon em ${url}`);
     const client = new Client(url);
     await client.open(token);

@@ -24,6 +24,7 @@ export type PaletteTarget =
   /** A new embedded terminal (phase 14), in a new tab. */
   | { kind: "new-terminal"; hostId: string }
   | { kind: "settings" }
+  | { kind: "add-host" }
   | { kind: "toggle-theme" }
   | { kind: "toggle-ui-mode" }
   | { kind: "switch-language" }
@@ -37,7 +38,12 @@ export type PaletteTarget =
    * The oldest request waiting for the person, named in the command (issue #187): an ordinary one
    * is answered; a gate, a vault request or a high-risk one is opened to be seen.
    */
-  | { kind: "decide-oldest"; decision: "approve" | "deny" }
+  | {
+      kind: "decide-oldest";
+      decision: "approve" | "deny";
+      /** `host/request` of the one the command named: a different oldest is never answered (#245). */
+      key: string;
+    }
   /** Phase 29: the Clients screen, and a switch of the client the screens show. */
   | { kind: "clients" }
   | { kind: "switch-client"; clientId: string }
@@ -97,7 +103,7 @@ export function paletteSections(
      * The oldest request waiting for the person, as one line, and whether it must be opened to be
      * answered: the approve and deny commands (or Open) show and name it.
      */
-    oldest?: { text: string; opens: boolean };
+    oldest?: { text: string; opens: boolean; key: string };
     /** The mode the window could switch to (none when the host is locked). */
     modeSwitch?: "simple" | "full" | null;
   },
@@ -246,6 +252,7 @@ export function paletteSections(
         action("decide:open", t("palette.openOldest", { what: oldest.text }), {
           kind: "decide-oldest",
           decision: "approve",
+          key: oldest.key,
         }),
       ];
     }
@@ -253,14 +260,14 @@ export function paletteSections(
       action(
         "decide:approve",
         t("palette.approveOldest", { what: oldest.text }),
-        { kind: "decide-oldest", decision: "approve" },
+        { kind: "decide-oldest", decision: "approve", key: oldest.key },
         undefined,
         "A",
       ),
       action(
         "decide:deny",
         t("palette.denyOldest", { what: oldest.text }),
-        { kind: "decide-oldest", decision: "deny" },
+        { kind: "decide-oldest", decision: "deny", key: oldest.key },
         undefined,
         "N",
       ),
@@ -324,6 +331,7 @@ export function paletteSections(
       ? [action("costs", t("palette.goCosts"), { kind: "costs" }, undefined, "go-costs")]
       : []),
     action("settings", t("palette.goSettings"), { kind: "settings" }, undefined, "go-settings"),
+    action("add-host", t("palette.addHost"), { kind: "add-host" }),
     action("shortcuts", t("palette.showShortcuts"), { kind: "shortcuts" }, undefined, "help"),
     action("clients", t("clients.manageShort"), { kind: "clients" }),
     ...((state.clientList ?? []).length === 0

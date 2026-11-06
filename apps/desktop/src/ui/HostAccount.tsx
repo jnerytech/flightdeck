@@ -9,7 +9,9 @@ const COOLDOWN_MS = 30_000;
 const KEYS = ["account"] as const;
 
 /** The account card of one host, wired to the app: it watches the host's account while on screen. */
-export function HostAccount(props: { store: AppStore; host: HostView; cooldownMs?: number }) {
+export function HostAccount(
+  props: Readonly<{ store: AppStore; host: HostView; cooldownMs?: number }>,
+) {
   const { store, host } = props;
   const state = useStoreSlice(store, KEYS).account[host.id];
   const [busy, setBusy] = useState(false);

@@ -13,12 +13,14 @@ const TONE = {
  * an alert (announced at once); the others are a polite status. Do not nest it in another live
  * region, or a screen reader says it twice.
  */
-export function InlineNotice(props: {
-  tone?: keyof typeof TONE;
-  /** So a control can point at the note with aria-describedby. */
-  id?: string;
-  children: ReactNode;
-}) {
+export function InlineNotice(
+  props: Readonly<{
+    tone?: keyof typeof TONE;
+    /** So a control can point at the note with aria-describedby. */
+    id?: string;
+    children: ReactNode;
+  }>,
+) {
   return (
     <p
       id={props.id}

@@ -1,5 +1,6 @@
 import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
 import { type CommandResult, git } from "./command.ts";
@@ -47,8 +48,8 @@ export const worktreeDir = (repo: string, slug: string) =>
 async function freeSlug(repo: string, base: string): Promise<string> {
   for (let n = 1; ; n++) {
     const slug = n === 1 ? base : `${base}-${n}`;
-    const branch = await git(repo, "show-ref", "--verify", "--quiet", `refs/heads/fd/${slug}`);
-    if (branch.code !== 0 && !(await exists(worktreeDir(repo, slug)))) return slug;
+    const branch = await git(repo, "show-ref", "--verify", "--quiet", `refs/heads/fd/${slug}`); // NOSONAR: each candidate name is tried only after the one before was found taken
+    if (branch.code !== 0 && !(await exists(worktreeDir(repo, slug)))) return slug; // NOSONAR: each candidate name is tried only after the one before was found taken
   }
 }
 
@@ -162,19 +163,20 @@ export async function copyIncluded(
   const copied: string[] = [];
   const skipped: string[] = [];
   let total = 0;
-  for (const path of matching
-    .filter((p) => ignored.has(p))
-    .sort((a, b) => (a < b ? -1 : Number(a > b)))) {
-    const size = (await stat(join(repo, path))).size;
-    if (total + size > limit) {
-      skipped.push(path);
-      continue;
-    }
-    total += size;
-    await mkdir(dirname(join(worktree, path)), { recursive: true });
-    await copyFile(join(repo, path), join(worktree, path));
-    copied.push(path);
-  }
+  await inSequence(
+    matching.filter((p) => ignored.has(p)).sort((a, b) => (a < b ? -1 : Number(a > b))),
+    async (path) => {
+      const size = (await stat(join(repo, path))).size;
+      if (total + size > limit) {
+        skipped.push(path);
+        return;
+      }
+      total += size;
+      await mkdir(dirname(join(worktree, path)), { recursive: true });
+      await copyFile(join(repo, path), join(worktree, path));
+      copied.push(path);
+    },
+  );
   return { copied, skipped };
 }
 

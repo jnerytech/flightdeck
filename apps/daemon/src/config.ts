@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, posix, resolve, win32 } from "node:path";
 import { PermissionMode } from "@flightdeck/protocol";
 import { z } from "zod";
 import { PricingConfig } from "./costs/pricing.ts";
@@ -40,6 +40,16 @@ export const Config = z.object({
     .array(z.string().refine((cidr) => parseCidr(cidr) !== null, "CIDR inválido"))
     .default(() => [...DEFAULT_ALLOWED_NETWORKS]),
   runtime: RuntimeKind.default("claude"),
+  /**
+   * Phase 39: OpenCode sessions on this host. Off unless turned on: finding and checking OpenCode
+   * runs its binary, which must be the person's choice (DECISIONS, "opt-in per host").
+   */
+  opencode: z
+    .object({
+      enabled: z.boolean().default(false),
+      executablePath: z.string().min(1).optional(),
+    })
+    .default(() => ({ enabled: false })),
   defaultPermissionMode: PermissionMode.default("default"),
   allowApiKey: z.boolean().default(false),
   /** A session may start in `bypassPermissions`; off until the person turns it on for the host. */
@@ -189,7 +199,10 @@ export function userHome(
   env: Record<string, string | undefined> = process.env,
   platform: string = process.platform,
 ): string {
-  return (platform === "win32" ? env.USERPROFILE : env.HOME) || homedir();
+  const home = platform === "win32" ? env.USERPROFILE : env.HOME;
+  // Only an absolute path: a relative one would resolve against the current folder (#258).
+  const absolute = platform === "win32" ? win32.isAbsolute : posix.isAbsolute;
+  return home && absolute(home) ? home : homedir();
 }
 
 export function defaultConfigPath(): string {

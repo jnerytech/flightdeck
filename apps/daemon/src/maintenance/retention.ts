@@ -75,7 +75,16 @@ export function prune(
       samples,
     ),
   };
-  if (opts.dryRun) return counts;
+  if (!opts.dryRun) deleteExpired(db, { sessions, external, usage, samples });
+  return counts;
+}
+
+/** Deletes what `prune` counted, in one transaction. */
+function deleteExpired(
+  db: Database,
+  cutoffs: Record<"sessions" | "external" | "usage" | "samples", { cutoff: string }>,
+): void {
+  const { sessions, external, usage, samples } = cutoffs;
   db.transaction(() => {
     db.query(`DELETE FROM events WHERE session_id IN (${PRUNABLE_SESSIONS})`).run(sessions);
     db.query(`DELETE FROM permission_requests WHERE session_id IN (${PRUNABLE_SESSIONS})`).run(
@@ -87,5 +96,4 @@ export function prune(
     db.query("DELETE FROM usage_entries WHERE at < $cutoff").run(usage);
     db.query("DELETE FROM quota_samples WHERE taken_at < $cutoff").run(samples);
   })();
-  return counts;
 }

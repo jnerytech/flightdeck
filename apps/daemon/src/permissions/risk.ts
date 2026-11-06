@@ -88,7 +88,7 @@ const PREFIXES = new Set(["command", "nohup", "time", "exec", "builtin", "env", 
  * ~/.config/gh, ~/.claude/.credentials.json, ~/.claude.json, ~/.flightdeck/config.json, .env*,
  * *.pem, *.key and id_*. Compared without case, with either slash.
  */
-function credential(text: string): boolean {
+export function credential(text: string): boolean {
   const parts = text.toLowerCase().replaceAll("\\", "/").split("/");
   const name = parts.at(-1) as string;
   const after = (dir: string, next: string) =>
@@ -106,6 +106,18 @@ function credential(text: string): boolean {
     name.startsWith("id_")
   );
 }
+
+/** Phase 39: OpenCode's global folder (`~/.config/opencode`): a plugin written there runs code. */
+function opencodeConfig(text: string): boolean {
+  const parts = text.toLowerCase().replaceAll("\\", "/").split("/");
+  return parts.some((p, i) => p === ".config" && parts[i + 1] === "opencode");
+}
+
+/**
+ * Phase 40: the same test under the name the assistant's repo context uses (fase-39 exports
+ * `credential` itself; both names stay, so the two phases merge without a conflict).
+ */
+export const isCredentialPath = credential;
 
 /** The words of a command, without quotes, split also where a path cannot go on. */
 const words = (command: string) => command.split(/[\s"'`;|&<>()=,]+/).filter((w) => w !== "");
@@ -164,37 +176,80 @@ function gitCommand(args: string[]): { sub: string; rest: string[] } {
   return { sub: args[i] ?? "", rest: args.slice(i + 1) };
 }
 
+/** A dangerous command: when it applies to a program and its arguments, and what to call it. */
+const DANGEROUS: Array<{
+  when: (prog: string, args: string[]) => boolean;
+  reason: (prog: string) => string;
+}> = [
+  {
+    when: (prog, args) => prog === "rm" && hasFlag(args, "r", ["--recursive", "-recurse"]),
+    reason: () => "rm recursivo",
+  },
+  {
+    when: (prog, args) => prog === "chmod" && hasFlag(args, "r", ["--recursive"]),
+    reason: () => "chmod -R",
+  },
+  {
+    when: (prog, args) =>
+      ["del", "erase", "rd", "rmdir"].includes(prog) && args.some((a) => /^\/s$/i.test(a)),
+    reason: (prog) => `${prog} /s`,
+  },
+  {
+    when: (prog, args) => prog === "format" && /^[a-z]:/i.test(args[0] ?? ""),
+    reason: () => "format de disco",
+  },
+  {
+    when: (prog, args) =>
+      ["remove-item", "ri"].includes(prog) && args.some((a) => /^-r(ec\w*)?$/i.test(a)),
+    reason: () => "Remove-Item -Recurse",
+  },
+  { when: (prog) => ["eval", "iex", "invoke-expression"].includes(prog), reason: (prog) => prog },
+  {
+    when: (prog, args) =>
+      ["pwsh", "powershell"].includes(prog) && args.some((a) => /^-(e|ec|en\w*)$/i.test(a)),
+    reason: () => "-EncodedCommand",
+  },
+];
+
+/** The destructive git subcommands: a forced push, `reset --hard`, `clean -f`. */
+function gitRisks(args: string[]): Candidate[] {
+  const { sub, rest } = gitCommand(args);
+  const force =
+    hasFlag(rest, "f", ["--force"]) ||
+    rest.some((a) => a.startsWith("--force-with-lease") || a.startsWith("+"));
+  const out: Candidate[] = [];
+  if (sub === "push" && force) out.push(["high", "git push forçado"]);
+  if (sub === "reset" && rest.includes("--hard")) out.push(["high", "git reset --hard"]);
+  if (sub === "clean" && hasFlag(rest, "f", ["--force"])) out.push(["high", "git clean -f"]);
+  return out;
+}
+
 /** What one segment of a shell command adds, given whether a pipe feeds it. */
 function segmentRisks(segment: string[], piped: boolean): Candidate[] {
   const { prog, args, sudo } = invocation(segment);
   const out: Candidate[] = [];
   if (sudo) out.push(["high", "sudo"]);
   if (piped && SHELLS.has(prog)) out.push(["high", `pipe para ${prog}`]);
-  if (prog === "rm" && hasFlag(args, "r", ["--recursive", "-recurse"])) {
-    out.push(["high", "rm recursivo"]);
+  for (const rule of DANGEROUS) {
+    if (rule.when(prog, args)) out.push(["high", rule.reason(prog)]);
   }
-  if (prog === "chmod" && hasFlag(args, "r", ["--recursive"])) out.push(["high", "chmod -R"]);
-  if (["del", "erase", "rd", "rmdir"].includes(prog) && args.some((a) => /^\/s$/i.test(a))) {
-    out.push(["high", `${prog} /s`]);
-  }
-  if (prog === "format" && /^[a-z]:/i.test(args[0] ?? "")) out.push(["high", "format de disco"]);
-  if (["remove-item", "ri"].includes(prog) && args.some((a) => /^-r(ec\w*)?$/i.test(a))) {
-    out.push(["high", "Remove-Item -Recurse"]);
-  }
-  if (["eval", "iex", "invoke-expression"].includes(prog)) out.push(["high", prog]);
-  if (["pwsh", "powershell"].includes(prog) && args.some((a) => /^-(e|ec|en\w*)$/i.test(a))) {
-    out.push(["high", "-EncodedCommand"]);
-  }
-  if (prog === "git") {
-    const { sub, rest } = gitCommand(args);
-    const force =
-      hasFlag(rest, "f", ["--force"]) ||
-      rest.some((a) => a.startsWith("--force-with-lease") || a.startsWith("+"));
-    if (sub === "push" && force) out.push(["high", "git push forçado"]);
-    if (sub === "reset" && rest.includes("--hard")) out.push(["high", "git reset --hard"]);
-    if (sub === "clean" && hasFlag(rest, "f", ["--force"])) out.push(["high", "git clean -f"]);
-  }
+  if (prog === "git") out.push(...gitRisks(args));
   return out;
+}
+
+/** An MCP tool from any server: a free command with a secret and a discarded card are high risk. */
+function mcpCandidates(toolName: string, input: Record<string, unknown>): Candidate[] {
+  // Phase 17: a command Claude wrote, with a secret in its environment, from any server.
+  if (toolName.endsWith("__run_with_secret")) {
+    return [["high", "comando livre com segredo no ambiente"]];
+  }
+  // A session throwing its own card away: the worktree and the branch go with it.
+  if (toolName.endsWith("__finish_card") && input.outcome === "discard") {
+    return [["high", "descarta o card, a worktree e a branch"]];
+  }
+  return /delete|drop|destroy/i.test(toolName)
+    ? [["high", "ferramenta MCP destrutiva"]]
+    : [["medium", "ferramenta MCP"]];
 }
 
 export class RiskClassifier {
@@ -211,43 +266,42 @@ export class RiskClassifier {
     return { level, reason, network: this.network(toolName, input) };
   }
 
+  private readCandidates(
+    toolName: string,
+    fields: readonly string[],
+    text: (key: string) => string,
+    cwd: string,
+  ): Candidate[] {
+    const paths = fields.map((f) => text(f) || cwd);
+    // Glob's pattern names files; Grep's searches their contents, so only its `glob` counts.
+    const patterns = [toolName === "Glob" ? text("pattern") : "", text("glob")].filter(
+      (p) => p !== "",
+    );
+    if ([...paths, ...patterns].some(credential)) return [["high", "caminho de credencial"]];
+    return paths.every((p) => this.allowed(p, cwd))
+      ? [["low", "leitura dentro do projeto"]]
+      : [["medium", "leitura fora do cwd e de allowedRoots"]];
+  }
+
   private candidates(toolName: string, input: Record<string, unknown>, cwd: string): Candidate[] {
     const text = (key: string) => (typeof input[key] === "string" ? (input[key] as string) : "");
     if (SHELL_TOOLS.has(toolName)) return this.shell(text("command"), cwd);
     if (toolName === "TodoWrite") return [["low", "lista de tarefas"]];
     const fields = READ_TOOLS[toolName];
-    if (fields) {
-      const paths = fields.map((f) => text(f) || cwd);
-      // Glob's pattern names files; Grep's searches their contents, so only its `glob` counts.
-      const patterns = [toolName === "Glob" ? text("pattern") : "", text("glob")].filter(
-        (p) => p !== "",
-      );
-      if ([...paths, ...patterns].some(credential)) return [["high", "caminho de credencial"]];
-      return paths.every((p) => this.allowed(p, cwd))
-        ? [["low", "leitura dentro do projeto"]]
-        : [["medium", "leitura fora do cwd e de allowedRoots"]];
-    }
+    if (fields) return this.readCandidates(toolName, fields, text, cwd);
     if (WRITE_TOOLS.has(toolName)) {
       const path = text("file_path") || text("notebook_path");
       if (credential(path)) return [["high", "escrita em caminho de credencial"]];
+      if (opencodeConfig(path)) return [["high", "writes OpenCode's configuration"]];
       return this.allowed(path, cwd)
         ? [["medium", "escrita dentro do projeto"]]
         : [["high", "escrita fora do cwd e de allowedRoots"]];
     }
     if (NETWORK_TOOLS.has(toolName)) return [["medium", "acessa a rede"]];
-    if (toolName.startsWith("mcp__")) {
-      // Phase 17: a command Claude wrote, with a secret in its environment, from any server.
-      if (toolName.endsWith("__run_with_secret")) {
-        return [["high", "comando livre com segredo no ambiente"]];
-      }
-      // A session throwing its own card away: the worktree and the branch go with it.
-      if (toolName.endsWith("__finish_card") && input.outcome === "discard") {
-        return [["high", "descarta o card, a worktree e a branch"]];
-      }
-      return /delete|drop|destroy/i.test(toolName)
-        ? [["high", "ferramenta MCP destrutiva"]]
-        : [["medium", "ferramenta MCP"]];
-    }
+    // Phase 39: an OpenCode tool the normalizer could not map (Code Mode, another MCP server).
+    if (toolName.startsWith("opencode:"))
+      return [["high", "an OpenCode tool Flightdeck does not know"]];
+    if (toolName.startsWith("mcp__")) return mcpCandidates(toolName, input);
     return [["medium", "ferramenta que o classificador não conhece"]];
   }
 
@@ -274,12 +328,19 @@ export class RiskClassifier {
       }
     }
     if (words(command).some(credential)) out.push(["high", "caminho de credencial"]);
+    if (words(command).some(opencodeConfig)) out.push(["high", "writes OpenCode's configuration"]);
     if (this.extra.some((re) => re.test(command))) out.push(["high", "padrão de risk.extraHigh"]);
     return out;
   }
 
   private network(toolName: string, input: Record<string, unknown>): boolean {
-    if (NETWORK_TOOLS.has(toolName) || toolName.startsWith("mcp__")) return true;
+    if (
+      NETWORK_TOOLS.has(toolName) ||
+      toolName.startsWith("mcp__") ||
+      toolName.startsWith("opencode:")
+    ) {
+      return true;
+    }
     if (!SHELL_TOOLS.has(toolName)) return false;
     return segments(String(input.command ?? "")).some((segment) => {
       const { prog, args } = invocation(segment);

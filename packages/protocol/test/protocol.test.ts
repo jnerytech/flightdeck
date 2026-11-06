@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  ChangesResult,
   Command,
   type CommandType,
   EventEnvelope,
@@ -74,6 +75,22 @@ const validCommands: Record<CommandType, unknown> = {
   "card.get": { cardId: "c" },
   "card.stop": { cardId: "c" },
   "card.diff": { cardId: "c" },
+  "assistant.run": {
+    requestId: "r1",
+    kind: "card.title",
+    text: "fix the login bug",
+    language: "en",
+    profile: "quick",
+  },
+  "assistant.cancel": { requestId: "r1" },
+  "assistant.context": { kind: "commit", source: { kind: "card", cardId: "c" } },
+  "assistant.record": {
+    id: "r1",
+    at: "2026-11-05T10:00:00.000Z",
+    provider: "anthropic",
+    model: "claude-haiku-5-5",
+    tokens: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 },
+  },
   "card.message": { cardId: "c", text: "ajuste" },
   "card.pr.create": { cardId: "c" },
   "card.complete": { cardId: "c", confirm: true },
@@ -362,6 +379,7 @@ const validCommands: Record<CommandType, unknown> = {
   "boardsync.status": { projectId: "p1" },
   "boardsync.syncNow": { projectId: "p1" },
   "boardsync.log": { cardId: "c1" },
+  "runtime.models": { runtime: "opencode" },
   "github.status": {},
   "github.login.start": {},
   "github.login.cancel": {},
@@ -371,6 +389,7 @@ const validCommands: Record<CommandType, unknown> = {
   "github.start": { repo: "acme/app", issue: "7", root: "/work", mode: "card" },
   "session.setMode": { sessionId: "s", permissionMode: "plan" },
   "session.setModel": { sessionId: "s", model: null },
+  "session.setEffort": { sessionId: "s", effort: "high" },
   "session.files": { claudeSessionId: "s" },
   "statusline.get": { claudeSessionId: "s" },
   "terminal.open": { cwd: "/w", command: ["bash", "-l"], cols: 80, rows: 24 },
@@ -692,5 +711,43 @@ describe("session.init commands (the / menu)", () => {
   test("a command needs a known kind", () => {
     const commands = [{ name: "x", description: "", kind: "other" }] as unknown;
     expect(SessionEvent.safeParse({ ...init, commands }).success).toBe(false);
+  });
+});
+
+describe("changes-cap: a file the daemon would not send is listed with a marker and its size", () => {
+  const file = {
+    path: "dump.log",
+    oldPath: null,
+    status: "added" as const,
+    additions: 3,
+    deletions: 0,
+    uncommitted: true,
+    binary: false,
+    hunks: [],
+  };
+  const result = (files: unknown[]) => ({
+    target: "session:s1",
+    root: "/w",
+    base: null,
+    files,
+    position: null,
+  });
+  test("tooLarge and bytes survive a parse", () => {
+    const sent = result([{ ...file, tooLarge: true, bytes: 209_715_200 }]);
+    expect(ChangesResult.parse(sent).files[0]).toEqual({
+      ...file,
+      tooLarge: true,
+      bytes: 209_715_200,
+    });
+  });
+  test("a daemon that does not know the marker still parses: the file is simply not too large", () => {
+    const parsed = ChangesResult.parse(result([file])).files[0];
+    expect(parsed?.tooLarge).toBeUndefined();
+    expect(parsed?.bytes).toBeUndefined();
+  });
+  test("a negative size is refused", () => {
+    expect(ChangesResult.safeParse(result([{ ...file, tooLarge: true, bytes: -1 }])).success).toBe(
+      false,
+    );
   });
 });

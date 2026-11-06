@@ -235,7 +235,7 @@ export const register: Register = (on) => {
       return done.exitCode === 0
         ? { result: done.stdout }
         : {
-            deny: `flightdeck: ${done.stderr.trim() || `flightdeckd message ${argv[0]} failed`}`,
+            deny: "flightdeck: " + (done.stderr.trim() || `flightdeckd message ${argv[0]} failed`),
           };
     }).catch(($, e, next) =>
       next.called

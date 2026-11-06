@@ -11,6 +11,7 @@ import { join, resolve } from "node:path";
  */
 import { type Ack, byCodeUnit, parseServerMessage } from "@flightdeck/protocol";
 import { Webhooks } from "../apps/desktop/src/lib/webhooks.ts";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
@@ -39,17 +40,6 @@ function withTimeout<T>(promise: Promise<T>, what: string): Promise<T> {
       setTimeout(() => fail(new Error(`timeout: ${what}`)), TIMEOUT_MS),
     ),
   ]);
-}
-
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = buffer.match(/listening on (ws:\/\/\S+)/);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`the daemon exited without announcing its port: ${buffer}`);
 }
 
 class Client {
@@ -137,7 +127,7 @@ async function run(work: string): Promise<void> {
     { env: process.env, stdout: "pipe", stderr: "inherit" },
   );
   try {
-    const client = new Client(await withTimeout(readListenUrl(daemon.stdout), "daemon port"));
+    const client = new Client(await readListenUrl(daemon.stdout));
     await client.open(token);
 
     const store = new Map<string, string>();

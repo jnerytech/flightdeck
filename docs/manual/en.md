@@ -4,7 +4,7 @@ English | [Português (Brasil)](pt-BR.md) · [Back to the README](../../README.m
 
 Complete Flightdeck reference, organized by topic. It applies to version 0.19.0. The roadmap is
 in [`docs/SPEC.md`](../SPEC.md), the deviations from the specs in
-[`docs/DECISIONS.md`](../DECISIONS.md) and the interface vocabulary in
+[`docs/decisions/`](../decisions/) (the older ones in [`docs/DECISIONS.md`](../DECISIONS.md)) and the interface vocabulary in
 [`docs/GLOSSARY.md`](../GLOSSARY.md). Those three documents, `docs/TDD.md` and the phase specs
 are written in Portuguese.
 
@@ -32,6 +32,14 @@ are written in Portuguese.
   - [How it works](#how-it-works)
   - [Why the VS Code extension is left out](#why-the-vs-code-extension-is-left-out)
 - [Approvals and always allow](#approvals-and-always-allow)
+- [OpenCode sessions](#opencode-sessions)
+  - [Turning it on](#turning-it-on)
+  - [Starting one](#starting-one)
+  - [What an OpenCode session asks](#what-an-opencode-session-asks)
+  - [What an OpenCode session does not have yet](#what-an-opencode-session-does-not-have-yet)
+  - [Why the project's own opencode.json is ignored](#why-the-projects-own-opencodejson-is-ignored)
+  - [Removing saved rules](#removing-saved-rules)
+  - [Checking a new OpenCode version](#checking-a-new-opencode-version)
 - [Projects](#projects)
 - [Board](#board)
   - [Registering a project](#registering-a-project)
@@ -536,9 +544,19 @@ A session appears only once. The order of preference is managed, then terminal, 
   here** (on the latest message: it carries the whole conversation so far), **Pin session** and how
   long ago the message was written.
 - The box floats at the bottom as a rounded card. **+** attaches images (when the host supports it).
-  Under the card a status line shows the model and the permission mode, each a picker when the
-  session lets you change it, and a spinner while a turn runs. While a turn runs a line above the
-  box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
+  Under the card a status line shows the model and the permission mode, and a spinner while a turn
+  runs. When the session lets you change them, the mode is a **chip** (for example "Default"):
+  click it, or focus it and press Enter, to open the **Mode** menu with every mode, what it does
+  and its number (press 1 to 4 to pick one). **Shift+Tab** in the box cycles Default, Accept edits
+  and Plan. **Bypass permissions** is in the menu too, but the chip never lands on it by cycling:
+  it asks first, naming the host and the session, and the chip turns red while it is on. On a
+  host where the switch is off (or for a mode looser than the one the session started with) the
+  row is greyed out, says why, and links to the host's settings. The model is a chip too ("Opus
+  5.5 · Medium"): its **Model** menu lists Default, Opus, Sonnet and Haiku with what each is for
+  and its number (press 1 to 4), **More models** has the specific versions, and **Effort** (on a
+  host that supports it) sets Low, Medium, High, Extra high or Max for the next turns, or back to
+  the model's own level. An OpenCode session keeps a plain list of its own models. While a turn
+  runs a line above the box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
   long; the spinner stops moving if your system asks for reduced motion.
 
 ### Claude Code hooks
@@ -665,6 +683,97 @@ Cards run in worktrees, and each worktree has its own `.claude`:
 
 On the Projects screen, **Edit** shows the project's **Rules** section, with a remove button that
 asks for confirmation and preserves the rest of the file.
+
+## OpenCode sessions
+
+A host can also run [OpenCode](https://opencode.ai/v2/docs/) sessions, started from the app, next to
+Claude Code's. Flightdeck talks to OpenCode over the Agent Client Protocol (`opencode acp`), one
+process per live session. It needs OpenCode 2 and was verified with 2.2.5; a newer version runs but
+is shown as not verified. OpenCode is off on every host until you turn it on.
+
+### Turning it on
+
+1. Install OpenCode on the host (its install script puts it in `~/.opencode/bin`) and sign in to a
+   provider with OpenCode's own `opencode auth login`. Flightdeck never reads OpenCode's credentials.
+2. In the host's config, add `"opencode": { "enabled": true }`. If `opencode` is not on the daemon's
+   PATH or in `~/.opencode/bin`, add its path: `"opencode": { "enabled": true, "executablePath": "/path/to/opencode" }`.
+3. Restart the daemon.
+
+At start the daemon runs `opencode --version` and a canary: a harmless `opencode.json` in a folder of
+Flightdeck's own must not be read, which proves the project config is off on that version. If
+something fails, the host lists OpenCode as unavailable with the reason, and `flightdeckd doctor`
+shows it on its OpenCode row. That row never fails the doctor. On Windows and macOS it adds
+"unverified on this OS": the global config paths there were not checked on a real machine yet.
+
+### Starting one
+
+**New session** shows **Agent** only on a host that has OpenCode on. Choose **OpenCode**: the model
+list comes from the host (`opencode models`), **Effort** picks how hard the model works, and the
+permission modes are **Default** and **Plan** (and **Bypass permissions** when the host allows it).
+There is no persona. The models are grouped by provider. The session's page and its row in the
+session list show an **OpenCode** badge. The timeline says when the project's `AGENTS.md` went with
+the first message, or why it did not.
+
+### What an OpenCode session asks
+
+- Every tool call asks you first, as a Claude Code session in Default mode does. Reading, listing
+  and searching files inside the session's folder is allowed without asking, except credential
+  files; a path that leads out of the folder (a link included) asks.
+- Nothing is approved automatically, and the app never answers OpenCode with "always": each answer
+  covers one request.
+- OpenCode's question tool and its subagents are off.
+- A message that starts with `/` is sent as plain text, so OpenCode's commands (its own and a
+  project's) do not run.
+- If something outside Flightdeck changes OpenCode's rules or mode while a session runs (OpenCode's
+  own TUI, a config file edited meanwhile), the session stops with a message saying what changed.
+
+### What an OpenCode session does not have yet
+
+These stay with Claude Code sessions for now: personas, teams and messages between sessions,
+board cards and arena variants, starting in the background, fork, "Open in terminal", the session
+summary, the Changes, Time and Trace tabs (they read Claude Code's transcript), the Accept edits and
+Automatic modes, automatic approval, the Costs page with its budgets and quota, importing
+OpenCode's past sessions into History, and the MCP screen. The timeline stays: its git snapshots
+are taken on every turn, so rewinding files works, and the model can be switched while the session
+runs, from OpenCode's list. Each turn's result line still
+shows the session's cost so far, as OpenCode reports it.
+
+### Why the project's own opencode.json is ignored
+
+A project's `opencode.json` and `.opencode/` folder can allow every tool, load plugins (code that
+runs when OpenCode starts), start MCP servers and define commands, so Flightdeck starts OpenCode with
+the project config off and its own two agents (`flightdeck` and `flightdeck-plan`), with OpenCode's
+built-in agents disabled. The project's `AGENTS.md` is still used: Flightdeck reads it and sends it at
+the start of a new session, labeled "project instructions (AGENTS.md)", up to 64 KB, without following
+its `@` imports.
+
+Your global OpenCode config (`~/.config/opencode`, or `$XDG_CONFIG_HOME/opencode`) is kept, so your
+providers and default model still apply, but the daemon scans it before running OpenCode: a plugin
+(in `plugins` or in the `plugins/`, `plugin/`, `tool/` or `tools/` folders), an enabled MCP server,
+or any system or managed config makes OpenCode unavailable on that host, with the finding named.
+Before each start and resume, a preflight asks OpenCode how it resolved the config for that folder,
+and refuses the session if anything would outrank Flightdeck's questions.
+
+### Removing saved rules
+
+Answering "Always allow" in OpenCode's own TUI saves a rule for that folder's project, and a saved
+rule skips the question. Flightdeck then refuses to start an OpenCode session there, and the
+message lists the rules and the commands that remove them. Flightdeck never removes them itself. In
+that folder, on the host:
+
+```sh
+opencode api GET /api/permission/saved --standalone              # lists the saved rules
+opencode api DELETE /api/permission/saved/<id> --standalone      # removes one by its id
+```
+
+### Checking a new OpenCode version
+
+`bun run smoke:opencode-real [--model <id>]` (from a source checkout on a host with OpenCode signed
+in) runs the real OpenCode against a hostile scratch project: no plugin, MCP server or `/` command
+of the project runs, the first shell command asks, and a saved rule makes the preflight refuse until
+it is removed. It deletes the OpenCode sessions and saved rules it made. Run it after each OpenCode
+upgrade; it is never part of the tests or CI. `bun run smoke:opencode` checks the same path with a
+fake OpenCode.
 
 ## Projects
 
@@ -913,6 +1022,11 @@ conversation. It is where you check what the agent did and send it back what to 
   - for a card, the diff against its base, with how many commits it is ahead of and behind it;
   - the files with their status and counts, and the diff unified or side by side, with numbered
     lines. A binary file is listed without a diff;
+  - a file that is too large (a diff or a new file over 512 KB) is listed with the **Too large**
+    mark and its size, without content, so the panel does not freeze. The same goes for what
+    passes 4 MB of diff in total: the files after that are only listed. On a host of this machine,
+    **Show in folder** opens the file manager on the file (the editor stays beside it, and refuses
+    what is over 1 MB);
   - it follows the disk live (the host watches the folder, with a 500 ms debounce), and
     **Refresh** reads it again.
 - **Inline comments:**
@@ -1430,7 +1544,7 @@ be lowered.
 
 - A **High risk** request is red and **Approve** becomes **Hold to approve**: hold the button for 2
   seconds. The A key does not approve it; N still denies.
-- The tray never approves a high-risk request: it only offers **Open**.
+- The tray never approves a high-risk request: it offers **Deny** and **Open**.
 - With automatic approval on, an approval that nobody gave by hand shows in the session's
   timeline as "Approved automatically", with who decided and why. A high-risk request or one that
   reaches the network always comes to you.
@@ -1683,7 +1797,7 @@ When Claude, an automation or a workflow runs an action that needs a secret, the
 secrets and the host). **Approve** delivers the secret for that run only; **Deny** fails the run
 at once. An action with `approval: never` runs without a question, `first-per-session` asks once
 and is then remembered until the app restarts, and `always` asks every time. A `run_with_secret`
-is high risk: hold the button for 2 seconds to approve it, and the tray only opens it.
+is high risk: hold the button for 2 seconds to approve it; the tray offers only Deny and Open.
 
 ### Usage rules per secret
 
@@ -2123,7 +2237,9 @@ app, cards and workflows, subagents included.
 - **What it shows:**
   - the estimated cost, the tokens and the cache savings (how much less the cache read cost than
     the same volume as normal input);
-  - a per-day chart stacked by project, and the breakdowns by project, model and origin;
+  - a per-day chart stacked by project (Tab reaches the chart, the arrow keys walk the days, and a
+    day says its total in a tooltip on hover or focus), and the breakdowns by project, model and
+    origin;
   - the most expensive sessions, and clicking one opens it;
   - the estimated cost also shows in the session list, the open session, the card and the
     workflow run.
@@ -2495,7 +2611,12 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
 - **Needs you:** in the sidebar, with the count of open requests across all hosts. The screen
   lists the requests, oldest to newest, and the selected request's card sits next to it: **A**
   approves, **N** denies and **Esc** closes the detail. **Open session** takes you to the
-  conversation.
+  conversation. The card takes the focus, so A and N work with no click first, and once a
+  request is answered the next one is chosen, with how many are left. A high-risk request is
+  still approved only by holding the button.
+- **From a notification:** clicking it opens the session with the request's card focused: one
+  key answers it. In the bell, an entry of a request already answered opens its session at that
+  request.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
   badge. The uptime keeps counting while the page is open.
@@ -2548,7 +2669,8 @@ summary` (for example `pc · api · Bash: npm test`).
   on the request's host, without opening the window; Open brings the app to the session, with
   the approval card.
 - Workflow gates appear only with **Open**: they need reading, and the answer is given on the
-  card.
+  card. A high-risk request and a secret request have **Deny** and **Open**: approving them
+  takes the window.
 - Above 10, the last row is **and N more…**, which opens the app.
 - The submenu is rebuilt half a second after the list stops changing.
 - **Request notification:** carries the link `flightdeck://request?host=…&request=…`, which opens

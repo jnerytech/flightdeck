@@ -80,27 +80,46 @@ export const DEFAULT_MAX_AGE_MS = 90 * 60_000;
 export const USAGE =
   "usage: bun run slot -- [--nice] [--priority] <command...> | bun run slot -- --status | bun run slot -- --cancel";
 
-export function parseArgs(argv: string[]): SlotArgs {
-  let rest = argv[0] === "--" ? argv.slice(1) : argv;
-  let nice = false;
-  let priority = false;
-  let asStatus = false;
-  let asCancel = false;
-  let maxAgeMs = DEFAULT_MAX_AGE_MS;
+interface SlotFlags {
+  nice: boolean;
+  priority: boolean;
+  asStatus: boolean;
+  asCancel: boolean;
+  maxAgeMs: number;
+  rest: string[];
+}
+
+/** The leading `--flags` of the command line and what follows them; null when `--max-age` is bad. */
+function readFlags(argv: string[]): SlotFlags | null {
+  const flags: SlotFlags = {
+    nice: false,
+    priority: false,
+    asStatus: false,
+    asCancel: false,
+    maxAgeMs: DEFAULT_MAX_AGE_MS,
+    rest: argv[0] === "--" ? argv.slice(1) : argv,
+  };
   for (;;) {
-    const flag = rest[0];
-    if (flag === "--nice") nice = true;
-    else if (flag === "--priority") priority = true;
-    else if (flag === "--status") asStatus = true;
-    else if (flag === "--cancel") asCancel = true;
+    const flag = flags.rest[0];
+    if (flag === "--nice") flags.nice = true;
+    else if (flag === "--priority") flags.priority = true;
+    else if (flag === "--status") flags.asStatus = true;
+    else if (flag === "--cancel") flags.asCancel = true;
     else if (flag === "--max-age") {
-      const minutes = Number(rest[1]);
-      if (!rest[1] || !(minutes > 0)) return { kind: "usage" };
-      maxAgeMs = minutes * 60_000;
-      rest = rest.slice(1);
+      const minutes = Number(flags.rest[1]);
+      if (!flags.rest[1] || Number.isNaN(minutes) || minutes <= 0) return null;
+      flags.maxAgeMs = minutes * 60_000;
+      flags.rest = flags.rest.slice(1);
     } else break;
-    rest = rest.slice(1);
+    flags.rest = flags.rest.slice(1);
   }
+  return flags;
+}
+
+export function parseArgs(argv: string[]): SlotArgs {
+  const flags = readFlags(argv);
+  if (!flags) return { kind: "usage" };
+  const { nice, priority, asStatus, asCancel, maxAgeMs, rest } = flags;
   if (asCancel)
     return rest.length === 0 && !asStatus && !nice ? { kind: "cancel" } : { kind: "usage" };
   if (asStatus) return rest.length === 0 ? { kind: "status", maxAgeMs } : { kind: "usage" };
@@ -166,6 +185,27 @@ function waiterPath(env: SlotEnv, pid: number): string {
 }
 
 /**
+ * The live waiters, first come first: by the time they queued, then by pid (#372). Dead or
+ * unreadable waiter files count for nothing, and a pid shows once (a waiter file being written
+ * has a staging copy under the same prefix).
+ */
+export function waiters(env: SlotEnv): SlotHolder[] {
+  const byPid = new Map<number, SlotHolder>();
+  for (const path of env.fs.list(`${env.path}.wait.`)) {
+    const waiter = parseHolder(env.fs.read(path));
+    if (waiter && env.alive(waiter.pid)) byPid.set(waiter.pid, waiter);
+  }
+  return [...byPid.values()].sort((a, b) => a.startedAt - b.startedAt || a.pid - b.pid);
+}
+
+/** The live waiters that queued before `me`; the slot is only tried when there are none. */
+function ahead(env: SlotEnv, me: { pid: number; startedAt: number }): SlotHolder[] {
+  return waiters(env).filter(
+    (w) => w.startedAt < me.startedAt || (w.startedAt === me.startedAt && w.pid < me.pid),
+  );
+}
+
+/**
  * Waits for the slot while a waiter file says who is waiting (so `--cancel` can find it); false
  * when `stopped` ended the wait.
  */
@@ -176,6 +216,7 @@ export async function acquire(
   maxAgeMs = DEFAULT_MAX_AGE_MS,
 ): Promise<boolean> {
   const waiting = waiterPath(env, env.pid);
+  const queuedAt = env.now();
   env.fs.remove(waiting);
   env.fs.create(
     waiting,
@@ -183,25 +224,42 @@ export async function acquire(
       pid: env.pid,
       label: env.label,
       command,
-      startedAt: env.now(),
+      startedAt: queuedAt,
     } satisfies SlotHolder),
   );
   try {
-    return await waitForSlot(env, command, stopped, maxAgeMs);
+    return await waitForSlot(env, command, stopped, maxAgeMs, queuedAt);
   } finally {
     env.fs.remove(waiting);
   }
 }
 
-/** Waits for the slot, naming each new holder once. */
+/**
+ * Waits for the slot, naming each new holder once. Only the first live waiter tries the lock, so
+ * the slot goes in queue order, not to whichever poll lands first after a release (#372).
+ */
 async function waitForSlot(
   env: SlotEnv,
   command: string,
   stopped: () => boolean,
   maxAgeMs: number,
+  queuedAt: number,
 ): Promise<boolean> {
   let named = "";
+  let queue = "";
   while (!stopped()) {
+    const before = ahead(env, { pid: env.pid, startedAt: queuedAt });
+    const [first] = before;
+    if (first) {
+      if (`${before.length}@${first.pid}` !== queue) {
+        queue = `${before.length}@${first.pid}`;
+        env.log(
+          `slot queue: ${before.length} waiting before you (first: ${describeHolder(first, env.now())}); waiting`,
+        );
+      }
+      await env.sleep(POLL_MS); // NOSONAR: poll interval: the wait between looks is the point of this loop
+      continue;
+    }
     const attempt = tryAcquire(env, command);
     if (attempt.acquired) return true;
     const { holder } = attempt;
@@ -214,7 +272,7 @@ async function waitForSlot(
         );
       }
     }
-    await env.sleep(POLL_MS);
+    await env.sleep(POLL_MS); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
   return false;
 }
@@ -224,7 +282,17 @@ export function release(env: SlotEnv): void {
   if (parseHolder(env.fs.read(env.path))?.pid === env.pid) env.fs.remove(env.path);
 }
 
+/** Who holds the slot, then each live waiter in queue order with how long it has waited. */
 export function status(env: SlotEnv, maxAgeMs = DEFAULT_MAX_AGE_MS): string {
+  const lines = [holderStatus(env, maxAgeMs)];
+  waiters(env).forEach((waiter, index) => {
+    const command = waiter.command.length > 80 ? `${waiter.command.slice(0, 80)}…` : waiter.command;
+    lines.push(`waiting ${index + 1}: ${describeHolder({ ...waiter, command }, env.now())}`);
+  });
+  return lines.join("\n");
+}
+
+function holderStatus(env: SlotEnv, maxAgeMs: number): string {
   const text = env.fs.read(env.path);
   if (text === null) return "free";
   const holder = parseHolder(text);
@@ -358,10 +426,10 @@ function isBunTest(command: string): boolean {
 async function lowerWhile(env: SlotEnv, finished: { done: boolean }): Promise<void> {
   while (!finished.done) {
     try {
-      await lowerOthers(env);
+      await lowerOthers(env); // NOSONAR: sequential by design: each pass needs the answer of the one before
     } catch {
       // Listing or renicing is best effort: the run itself is not affected.
     }
-    await env.sleep(RENICE_MS);
+    await env.sleep(RENICE_MS); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }

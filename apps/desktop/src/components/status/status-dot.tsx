@@ -23,13 +23,15 @@ const HOLLOW: Record<StateTone, string> = {
  * The state of a session as an 8 px dot; the label is its name for screen readers and a tooltip.
  * Only a running one pulses by default (when motion is allowed); `hollow` draws a ring.
  */
-export function StatusDot(props: {
-  tone: StateTone;
-  label: string;
-  hollow?: boolean;
-  pulse?: boolean;
-  className?: string;
-}) {
+export function StatusDot(
+  props: Readonly<{
+    tone: StateTone;
+    label: string;
+    hollow?: boolean;
+    pulse?: boolean;
+    className?: string;
+  }>,
+) {
   const pulse = props.pulse ?? props.tone === "running";
   return (
     <span

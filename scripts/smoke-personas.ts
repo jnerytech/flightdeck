@@ -14,6 +14,7 @@ import { createServer } from "node:net";
 import { join, resolve } from "node:path";
 import { type Ack, type EventEnvelope, parseServerMessage } from "@flightdeck/protocol";
 import { installFakeClaude } from "../apps/daemon/test/fake-claude.ts";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -118,17 +119,6 @@ class Client {
   close(): void {
     this.ws.close();
   }
-}
-
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = buffer.match(/listening on (ws:\/\/\S+)/);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`daemon saiu sem anunciar a porta: ${buffer}`);
 }
 
 /** The wrapper finds the daemon by the port in the config, so it cannot be 0. */

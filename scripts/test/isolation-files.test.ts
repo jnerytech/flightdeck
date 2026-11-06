@@ -41,7 +41,12 @@ describe("isolation: the preload puts the globals back between two test files", 
         join(dir, "a.test.ts"),
         join(dir, "b.test.ts"),
       ],
-      { cwd: dir, env: { ...process.env, CLAUDECODE: "" }, stdout: "pipe", stderr: "pipe" },
+      {
+        cwd: dir,
+        env: { ...process.env, CLAUDECODE: "", FLIGHTDECK_ISOLATION: "warn" },
+        stdout: "pipe",
+        stderr: "pipe",
+      },
     );
     const [out, err, code] = await Promise.all([
       new Response(proc.stdout).text(),
@@ -52,6 +57,32 @@ describe("isolation: the preload puts the globals back between two test files", 
     expect(log).toContain("4 pass");
     expect(log).toContain(" 0 fail");
     expect(code).toBe(0);
+  }, 60_000);
+
+  test("a file that leaves the environment changed fails the run, naming the file that left it (#301)", async () => {
+    const dir = realTempDir("fd-isolation-fails-");
+    writeFileSync(join(dir, "a.test.ts"), FIXTURE);
+    writeFileSync(join(dir, "b.test.ts"), FIXTURE);
+    const proc = Bun.spawn(
+      [
+        process.execPath,
+        "test",
+        "--preload",
+        PRELOAD,
+        join(dir, "a.test.ts"),
+        join(dir, "b.test.ts"),
+      ],
+      { cwd: dir, env: { ...process.env, CLAUDECODE: "" }, stdout: "pipe", stderr: "pipe" },
+    );
+    const [out, err, code] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+    const log = `${out}${err}`;
+    expect(log).toContain(`isolation: ${join(dir, "a.test.ts")} left`);
+    expect(log).toContain("env.ISOLATION_LEAK");
+    expect(code).not.toBe(0);
   }, 60_000);
 
   test("what a shared helper sets once when it loads is kept for the files after the first that imported it", async () => {

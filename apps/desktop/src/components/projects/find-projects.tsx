@@ -1,4 +1,5 @@
 import type { ProjectsScanResult } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { Search } from "lucide-react";
 import { useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
@@ -18,7 +19,9 @@ import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 
 /** "Find my projects": scan the allowed folders for git repositories, or clone one from a URL. */
-export function FindProjects(props: { store: AppStore; hostId: string; onAdded(): void }) {
+export function FindProjects(
+  props: Readonly<{ store: AppStore; hostId: string; onAdded(): void }>,
+) {
   const { store, hostId } = props;
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -52,7 +55,9 @@ export function FindProjects(props: { store: AppStore; hostId: string; onAdded()
   };
   const addPicked = async () => {
     const added: string[] = [];
-    for (const path of picked) if (await register(path)) added.push(path);
+    await inSequence(picked, async (path) => {
+      if (await register(path)) added.push(path);
+    });
     if (added.length > 0) props.onAdded();
     setScan((now) => now && { ...now, repos: now.repos.filter((r) => !added.includes(r.path)) });
     setPicked((now) => now.filter((path) => !added.includes(path)));

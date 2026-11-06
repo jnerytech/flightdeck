@@ -48,6 +48,7 @@ export const ptBR = {
       mcp: "Ferramentas do time",
 
       linger: "Iniciar no boot",
+      opencode: "OpenCode",
     },
     steps: {
       config: "Rode flightdeckd setup no host para refazer a configuração.",
@@ -64,6 +65,8 @@ export const ptBR = {
 
       linger:
         "No host, rode sudo loginctl enable-linger $USER (no WSL, ligue também o systemd em /etc/wsl.conf).",
+      opencode:
+        'O OpenCode é opcional. Para usar, ponha "opencode": { "enabled": true } na configuração do host e reinicie o daemon; a seção OpenCode do manual explica cada motivo.',
     },
   },
   findProjects: {
@@ -256,6 +259,7 @@ export const ptBR = {
       derivation: "Como foi calculado",
     },
     title: "Retorno sobre o custo",
+    details: "Detalhes",
     period: "Período",
     period7: "7 dias",
     period30: "30 dias",
@@ -309,6 +313,7 @@ export const ptBR = {
     settings: "Horas e valor da hora",
     defaultHours: "Horas por card (padrão deste projeto)",
     saveHours: "Salvar horas",
+    cardHoursInvalid: "Digite um número de horas de 0 a 1000, ou deixe vazio.",
     cardHoursSave: "Salvar as horas do card",
     projectRate: "Valor da hora deste projeto",
     saveRate: "Salvar valor",
@@ -331,6 +336,7 @@ export const ptBR = {
       "Papéis de engenharia que o Claude assume numa sessão, do host {host}, dos projetos e do app.",
     apply: {
       trigger: "Persona",
+      none: "Nenhuma",
       active: "Persona ativa",
       label: "Aplicar nesta sessão (como instrução)",
       apply: "Aplicar",
@@ -702,6 +708,7 @@ export const ptBR = {
     risk: { low: "Risco baixo", medium: "Risco médio", high: "Risco alto" },
     hold: "Segurar para aprovar",
     holdHint: "Risco alto: segure o botão por 2 segundos para aprovar",
+    holdRequired: "Um pedido de risco alto só é aprovado segurando o botão.",
     keysHigh: "Segure o botão para aprovar · N nega · Esc sai",
     autoApproved: "Aprovado automaticamente ({by}): {reason}",
     autoBy: { rule: "regra", ai: "IA", aiModel: "IA, {model}" },
@@ -724,6 +731,8 @@ export const ptBR = {
   board: {
     cardActions: "Ações de {title}",
     startCard: "Iniciar card",
+    startQueued: "o card já está na fila",
+    startRunning: "o card já está rodando",
     moveTo: "Mover para {column}",
     moveUp: "Mover para cima",
     moveDown: "Mover para baixo",
@@ -744,6 +753,7 @@ export const ptBR = {
   },
   start: {
     title: "Nada aberto",
+    addHost: "Adicionar um host",
     subtitle: "Escolha uma tela na barra lateral ou comece por aqui.",
     recent: "Sessões recentes",
     shortcuts: "Atalhos",
@@ -801,6 +811,8 @@ export const ptBR = {
     empty: "Nada espera por você.",
     seeSessions: "Ver as sessões",
     choose: "Escolha um pedido para ver os detalhes.",
+    leftOne: "Resta 1",
+    leftMany: "Restam {n}",
     resize: "Redimensionar a lista",
     back: "Voltar à lista",
     loopTitle: "Laço pausado",
@@ -938,6 +950,7 @@ export const ptBR = {
     snippetDetail: "{type} · {where}",
     connect: "Conectar",
     goSettings: "Ir para Configurações",
+    addHost: "Adicionar um host",
     sectionSessions: "Sessões ao vivo",
     sectionCards: "Cards",
     sectionProjects: "Projetos",
@@ -1148,6 +1161,7 @@ export const ptBR = {
       "Liberar uma tag prod pede uma janela de dias e horas, e não vale fora dela: use ask.",
   },
   daemonFeature: {
+    assistant: "o assistente de IA",
     github: "o login do GitHub",
     boardsync: "a sincronização do quadro",
     roi: "a visão de retorno",
@@ -1652,6 +1666,31 @@ export const ptBR = {
     cwd_outside_roots:
       "A pasta {cwd} está fora das pastas permitidas do host. Adicione-a com flightdeckd setup ou em allowedRoots, em ~/.flightdeck/config.json.",
     session_not_found: "A sessão {id} não existe neste host.",
+    runtime_unavailable: "O OpenCode não está disponível neste host.",
+    runtime_unsupported: "Uma sessão do OpenCode não oferece {feature}.",
+    opencode_unsafe_global:
+      "O OpenCode {version} não pode rodar aqui: a configuração global ou do sistema carrega código ou servidores que o Flightdeck não permite ({found}).",
+    opencode_config_outranks:
+      "OpenCode {version}: {what} passaria por cima das perguntas do Flightdeck, então a sessão não foi iniciada.",
+    opencode_saved_rules:
+      'O OpenCode {version} tem regras "sempre" salvas para esta pasta, que pulariam as perguntas do Flightdeck: {rules}. Remova com: {commands}',
+    opencode_preflight_failed:
+      "O OpenCode {version} não conseguiu verificar esta pasta. Tente de novo ou rode flightdeckd doctor.",
+    opencode_changed:
+      "O OpenCode mudou desde que o daemon o verificou. Reinicie o daemon, ou rode flightdeckd doctor, para verificar de novo.",
+    opencode_permissions_overridden:
+      "Algo fora do Flightdeck mudou as regras do OpenCode durante a sessão ({detail}), então a sessão foi parada.",
+    opencode_auth_required:
+      "O OpenCode não tem login neste provedor: rode opencode auth login no host.",
+    opencode_disabled: "O OpenCode está desligado na configuração deste host.",
+    opencode_missing: "O OpenCode não está instalado neste host.",
+    opencode_version_failed: "O OpenCode não informou a versão.",
+    opencode_v1: "Este host tem o OpenCode 1; o Flightdeck precisa do OpenCode 2.",
+    opencode_project_config_not_disabled:
+      "O OpenCode {version} não desligou a configuração do projeto, então o Flightdeck não pode usá-lo com segurança.",
+    opencode_canary_failed: "Não foi possível verificar o OpenCode neste host.",
+    opencode_scope_mismatch:
+      "O OpenCode lê a configuração global de outra pasta, não da que o Flightdeck verificou.",
     session_ended:
       "A sessão não está rodando (terminou ou deu erro): retome-a para mandar uma mensagem.",
     session_not_ended: "A sessão ainda está rodando: não há o que retomar.",
@@ -1672,6 +1711,38 @@ export const ptBR = {
     transcript_not_indexed: "O transcript {id} não está indexado neste host.",
     session_maybe_active:
       "A sessão pode estar em uso em outro lugar: retome mesmo assim só se tiver certeza de que não está.",
+  },
+  assistantRefusal: {
+    assistant_not_configured: "Escolha antes um provedor de IA em Configurações, Assistente.",
+    assistant_empty_input: "Escreva algo primeiro.",
+    assistant_too_long: "O texto é longo demais para o assistente (no máximo {max} caracteres).",
+    assistant_secret_found:
+      "Nada foi enviado: o texto parece conter um segredo ({labels}). Remova-o e tente de novo.",
+    assistant_vault_value:
+      "Nada foi enviado: o texto contém o valor de um segredo do cofre ({names}). Remova-o e tente de novo.",
+    assistant_quota_blocked:
+      "O plano do Claude no host está no limite até {until}. Tente depois disso, ou escolha outro provedor.",
+    assistant_host_unavailable: "O Claude Code no host não consegue responder: {detail}",
+    assistant_auth: "O provedor recusou a chave. Confira em Configurações, Assistente.",
+    assistant_credits: "O provedor diz que não há mais crédito nesta chave.",
+    assistant_rate_limited: "Pedidos demais agora. Espere um pouco e tente de novo.",
+    assistant_overloaded: "O provedor está sobrecarregado. Tente de novo em instantes.",
+    assistant_routing_unavailable:
+      "Nenhum provedor deste modelo no OpenRouter aceita o pedido sem coletar dados. Desligue a opção de dados em Configurações, ou escolha outro modelo.",
+    assistant_model_unavailable:
+      "O provedor não oferece este modelo. Escolha outro em Configurações.",
+    assistant_truncated:
+      "A resposta foi cortada antes do fim. Tente de novo, ou use um texto mais curto.",
+    assistant_refused: "O modelo se recusou a responder a este texto.",
+    assistant_bad_output: "O modelo deu uma resposta que não dá para usar. Tente de novo.",
+    assistant_placeholders_changed:
+      "A sugestão mudou as variáveis do snippet, então não é oferecida. Tente de novo.",
+    assistant_timeout: "O provedor demorou demais para responder.",
+    assistant_cancelled: "Cancelado.",
+    assistant_offline: "Não foi possível alcançar o provedor. Confira a conexão.",
+    assistant_no_changes: "Não há alterações para descrever.",
+    assistant_not_a_repo: "Esta pasta não é um repositório git.",
+    assistant_request_id: "Id do pedido: {id}",
   },
   snippetRefusal: {
     name_invalid: "Nome de 1 a 64 caracteres: letras, números, espaço, . _ -",
@@ -1728,7 +1799,21 @@ export const ptBR = {
     bypassMessage:
       'Em {host}, "{session}" vai executar tudo sem perguntar antes, a partir de agora, até você voltar o modo. Pode editar e apagar arquivos e rodar comandos.',
     bypassConfirm: "Mudar para ignorar permissões",
+    runtimeOpenCode: "OpenCode",
+    openCodeDenied: "O OpenCode parou este turno porque o pedido foi negado.",
+    contextSent: "As instruções do projeto (AGENTS.md) foram com a primeira mensagem.",
+    contextSkipped:
+      "O AGENTS.md não foi enviado: tem mais de 64 KB, ou aponta para fora da pasta ou para uma credencial.",
     modeLabel: "Modo de permissão",
+    modeChip: "Modo de permissão: {mode}",
+    modeMenuTitle: "Modo",
+    modeBypassOff: "Desligado neste host",
+    modeBypassHow: "Ligue nas configurações do host",
+    modelChip: "Modelo: {model}",
+    modelMenuTitle: "Modelo",
+    modelMore: "Mais modelos",
+    effortMenu: "Esforço",
+    modeLooser: "Mais solto que o modo em que a sessão começou",
     modelLabel: "Modelo",
     modelDefault: "Modelo padrão",
     insertSnippet: "Inserir um snippet",
@@ -1804,6 +1889,11 @@ export const ptBR = {
     continueAnyway: "Continuar mesmo assim",
     loadPrevious: "Carregar anteriores",
     tool: "Ferramenta {name}",
+    loading: "Abrindo a sessão…",
+    missing: "Esta sessão não está mais em {host}: pode ter sido apagada ou movida.",
+    failed: "Não foi possível ler a sessão em {host}.",
+    back: "Voltar às sessões",
+    retry: "Tentar de novo",
     transcript: "Transcript",
   },
   toolCall: {
@@ -1827,34 +1917,63 @@ export const ptBR = {
     optional: "opcional",
     mode: "Modo de permissão",
     prompt: "Primeiro prompt",
+    agent: "Agente",
+    agentClaude: "Claude Code",
+    agentOpenCode: "OpenCode",
+    effort: "Esforço",
+    effortDefault: "Esforço padrão",
     create: "Criar sessão",
-    needFolder: "Este host não tem pasta permitida: acrescente uma nas configurações dele",
+    needFolder: "Este host não tem pasta permitida.",
+    addFolder: "Adicionar uma pasta na página de {host}",
+    host: "Host",
+  },
+  /** What each model is for, in the Model menu and the tooltip of the chip. */
+  modelExplain: {
+    default: "O modelo que o Claude Code escolhe",
+    opus: "O mais capaz; o mais lento",
+    sonnet: "Equilibrado: capaz e rápido",
+    haiku: "O mais rápido e leve",
+    version: "Uma versão específica",
+  },
+  efforts: {
+    default: { name: "Esforço padrão", explain: "O nível do próprio modelo" },
+    low: { name: "Baixo", explain: "O mais rápido, pensa pouco" },
+    medium: { name: "Médio", explain: "Equilibrado" },
+    high: { name: "Alto", explain: "Pensa mais, mais lento" },
+    xhigh: { name: "Muito alto", explain: "Pensa bem mais" },
+    max: { name: "Máximo", explain: "Pensa ao máximo; para os problemas mais difíceis" },
   },
   modes: {
     option: "{name}: {description}",
     default: {
       name: "Padrão",
       description: "pergunta antes de agir",
+      explain: "Pergunta antes de editar arquivos ou rodar comandos",
     },
     acceptEdits: {
       name: "Aceitar edições",
       description: "edita arquivos sem perguntar",
+      explain: "Edita arquivos sem perguntar; ainda pergunta antes de rodar comandos",
     },
     plan: {
       name: "Planejar",
       description: "só lê e propõe um plano",
+      explain: "Só lê e propõe um plano; não muda nada",
     },
     auto: {
       name: "Automático",
       description: "um classificador decide o que segue",
+      explain: "Um classificador decide o que segue",
     },
     dontAsk: {
       name: "Só o permitido",
       description: "nega o que as regras não liberam",
+      explain: "Nega o que as regras não liberam",
     },
     bypassPermissions: {
       name: "Ignorar permissões",
       description: "sem pedidos de permissão",
+      explain: "Executa tudo sem perguntar. Só numa pasta que possa ser descartada",
     },
     bypassWarning:
       "Ignorar permissões: o Claude executa tudo sem pedir aprovação. Use só numa pasta que possa ser descartada.",
@@ -1883,6 +2002,11 @@ export const ptBR = {
     },
     binary: "Binário",
     binaryNote: "Arquivo binário: sem diff.",
+    tooLarge: "Grande demais",
+    tooLargeNote: "Grande demais para mostrar aqui ({size}). Abra no editor ou mostre na pasta.",
+    tooLargeNoteNoSize: "Grande demais para mostrar aqui. Abra no editor ou mostre na pasta.",
+    showInFolder: "Mostrar na pasta",
+    showInFolderLabel: "Mostrar {path} na pasta",
     noLines: "Sem linhas para mostrar.",
     commentLine: "Comentar a linha {line} de {path}",
     commentOldLine: "Comentar a linha antiga {line} de {path}",
@@ -2019,6 +2143,7 @@ export const ptBR = {
     openNamed: "Abrir Claude aqui em {name} (terminal)",
     resume: "Continuar no terminal",
     resumeNamed: "Continuar {name} no terminal",
+    start: "Abrir o terminal",
     asSession: "Ver como sessão",
     viewTerminal: "Ver terminal",
   },
@@ -2521,6 +2646,11 @@ export const ptBR = {
     subtitle: "Uma sessão coordenadora e as executoras, cada uma num card",
     host: "Host",
     noHost: "Nenhum host conectado com times",
+    noHostLink: "Adicionar host",
+    openSession: "Sessão",
+    openSessionOf: "Abrir a sessão de {name}",
+    openCard: "Card",
+    openCardOf: "Abrir o card de {name}",
     list: "Times",
     row: "Time {name}",
     empty: "Nenhum time ainda",
@@ -2543,7 +2673,7 @@ export const ptBR = {
     addMemberButton: "Adicionar",
     projectNeeded: "Escolha um projeto.",
     noProjects: "Este host ainda não tem projetos.",
-    create: "Criar time",
+    create: "Criar e iniciar",
     goalNeeded: "Escreva o objetivo do time.",
     cancel: "Cancelar",
     states: { active: "Ativo", paused: "Pausado", closed: "Encerrado" },
@@ -2926,6 +3056,9 @@ export const ptBR = {
     descriptionLabel: "Descrição do card",
     descriptionPlaceholder: "Descrição",
     newCard: "Novo card",
+    created: "Card criado: {title}",
+    started: "Card iniciado: {title}",
+    openCard: "Abrir",
     columns: {
       backlog: "Backlog",
       in_progress: "Em andamento",
@@ -2938,6 +3071,7 @@ export const ptBR = {
   cardUi: {
     noIssueLink: "Esta issue não tem link para abrir",
     needWorktree: "Inicie o card antes de abrir o PR",
+    notRunning: "O card não está rodando",
     prAlreadyOpen: "O PR já está aberto",
     notFound: "Card não encontrado.",
     cost: "Custo do card",
@@ -2958,6 +3092,18 @@ export const ptBR = {
     stop: "Parar",
     openPr: "Abrir PR",
     complete: "Concluir",
+    finish: "Finalizar…",
+    finishTitle: "Finalizar este card",
+    finishMove: "Só move o card para Concluído. A worktree e a branch continuam como estão.",
+    finishMoveButton: "Mover para Concluído",
+    finishComplete:
+      "Move o card para Concluído e remove a worktree se não houver alterações pendentes.",
+    finishMerge:
+      "Abre as alterações, onde Merge e arquivar leva o trabalho para a branch base e remove a worktree e a branch.",
+    finishMergeButton: "Revisar e mesclar",
+    alreadyDone: "O card já está em Concluído",
+    finishNeedWorktree: "Inicie o card antes: não há trabalho para mesclar",
+    finishHasPr: "O card tem um pull request: mescle por lá",
     discard: "Descartar",
     completeMessage:
       "Concluir este card? A worktree é removida se não houver alterações pendentes.",
@@ -3198,6 +3344,7 @@ export const ptBR = {
     nothingYet: "Nada dito ainda.",
     request: "Pedido",
     asks: "Pede para usar {tool}",
+    openToAnswer: "Abrir para responder",
     open: "Abrir {name}",
     message: "Mensagem para {name}",
     send: "Enviar",
@@ -3346,6 +3493,7 @@ export const ptBR = {
     range: "Intervalo",
   },
   costsUi: {
+    setBudget: "Definir um orçamento",
     title: "Custos",
     subtitle: "equivalente em API, estimado; em assinatura, não é cobrado",
     filters: "Filtros dos custos",
@@ -3411,6 +3559,9 @@ export const ptBR = {
     filter: "Filtrar",
     hideAutomated: "Ocultar execuções automáticas",
     automatedHidden: "{count} execuções automáticas ocultas",
+    emptyAutomated: "{count} execuções automáticas estão ocultas pelo filtro.",
+    emptyFiltered: "Nenhuma sessão atende a estes filtros.",
+    clearFilters: "Limpar os filtros",
     showAutomated: "Mostrar",
     automatedTag: "automática",
     list: "Sessões do histórico",
@@ -3444,6 +3595,13 @@ export const ptBR = {
     submit: "Testar e adicionar",
     missing: "preencha nome, endereço, porta e token",
     badPort: "porta inválida",
+    pairScheme: "Isso não é um link flightdeck://.",
+    pairAddress: "O link não traz o endereço do host.",
+    pairPort: "A porta do link não é válida.",
+    pairToken: "O link não traz o token.",
+    pairRefused: "Link de pareamento recusado. {reason}",
+    probeTimeout:
+      "O host não respondeu a tempo: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor",
     probeRefused: "token recusado: rode flightdeckd pair no host e cole o link novo",
     probeUnreachable:
       "não foi possível conectar: confira se o daemon está rodando e se o endereço confere. No host, rode flightdeckd doctor",
@@ -3452,6 +3610,10 @@ export const ptBR = {
     label: "Estado da conexão",
     title: "Host desconectado",
     connecting: "Conectando…",
+    pairLabel: "Novo link de pareamento ou token",
+    pairGone: "Esse host não está mais na lista.",
+    pairTesting: "Testando…",
+    pairAgain: "Parear de novo",
     unauthorized: "O host recusou o token. Pareie este host de novo.",
     refused: "Nada respondeu em {url}. O daemon provavelmente não está rodando.",
     timeout: "O host não respondeu a tempo. A rede pode estar fora ou o daemon travado.",
@@ -3568,7 +3730,7 @@ export const ptBR = {
     rootsTitle: "Pastas permitidas",
     rootsList: "Pastas permitidas deste host",
     rootsInput: "Pasta a permitir",
-    rootsPlaceholder: "D:\\repos\\...",
+    rootsPlaceholder: String.raw`D:\repos\...`,
     rootsChoose: "Escolher pasta…",
     needsOnline: "{host} está desconectado: reconecte-o para mudar isto.",
     needsConnection: "{host} ainda não conectou: espere ele responder.",

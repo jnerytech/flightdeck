@@ -62,6 +62,16 @@ describe("inicio-tela: the start screen of an empty area", () => {
     ).toHaveLength(4);
   });
 
+  test("with no host at all it offers Adicionar um host, which opens the form", async () => {
+    const routes = show([] as never);
+    const add = screen.queryByRole("button", { name: "Adicionar um host" });
+    expect(add).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(add as HTMLElement);
+    });
+    expect(routes).toEqual([{ name: "add-host" }]);
+  });
+
   test("with no host online there is no new-session button and no recent list", () => {
     show([] as never);
     expect(screen.queryByRole("button", { name: "Nova sessão" })).toBeNull();

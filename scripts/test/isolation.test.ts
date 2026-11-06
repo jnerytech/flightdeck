@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { registerDom } from "../../apps/desktop/test/dom.ts";
-import { captureGlobals, restoreGlobals, type Scope } from "./isolation.ts";
+import { captureGlobals, reportLeak, restoreGlobals, type Scope } from "./isolation.ts";
 
 registerDom();
 
@@ -60,6 +60,16 @@ describe("isolation: what a file leaves in the globals is put back before the ne
     expect(scope.process.env).toEqual({ KEPT: "1", CHANGED: "before" });
   });
 
+  test("a variable the Bun runtime adds on Windows when it spawns is left alone and not named (#301)", () => {
+    // Nothing in the repository sets NoDefaultCurrentDirectoryInExePath: Bun does, at its first spawn.
+    const scope = fakeScope();
+    const snapshot = captureGlobals(scope);
+    scope.process.env.NoDefaultCurrentDirectoryInExePath = "1";
+    scope.process.env.ADDED = "x";
+    expect(restoreGlobals(snapshot, scope)).toEqual(["env.ADDED"]);
+    expect(scope.process.env.NoDefaultCurrentDirectoryInExePath).toBe("1");
+  });
+
   test("a snapshot is a copy: the environment changed after it does not change it", () => {
     const scope = fakeScope();
     const snapshot = captureGlobals(scope);
@@ -91,5 +101,27 @@ describe("isolation: what a file leaves in the globals is put back before the ne
     expect(localStorage.length).toBe(0);
     expect(sessionStorage.length).toBe(0);
     expect(document.body.innerHTML).toBe("");
+  });
+});
+
+describe("isolation: a leak fails the run unless the mode is warn (#301)", () => {
+  test("it throws the line, and in warn mode only prints it", () => {
+    const before = process.env.FLIGHTDECK_ISOLATION;
+    const printed: unknown[] = [];
+    const realError = console.error;
+    try {
+      delete process.env.FLIGHTDECK_ISOLATION;
+      expect(() => reportLeak("isolation: a.test.ts left env.X changed")).toThrow(
+        "isolation: a.test.ts left env.X changed",
+      );
+      process.env.FLIGHTDECK_ISOLATION = "warn";
+      console.error = (line: unknown) => void printed.push(line);
+      reportLeak("isolation: b.test.ts left env.Y changed");
+    } finally {
+      console.error = realError;
+      if (before === undefined) delete process.env.FLIGHTDECK_ISOLATION;
+      else process.env.FLIGHTDECK_ISOLATION = before;
+    }
+    expect(printed).toEqual(["isolation: b.test.ts left env.Y changed"]);
   });
 });

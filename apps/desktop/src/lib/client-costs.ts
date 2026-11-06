@@ -43,6 +43,30 @@ function add<K>(
 
 const byCost = (a: { costUsd: number }, b: { costUsd: number }) => b.costUsd - a.costUsd;
 
+/** Adds one host's totals into the merged ones. */
+function addTotals(into: CostsSummary["totals"], totals: CostsSummary["totals"]): void {
+  into.costUsd += totals.costUsd;
+  into.cacheSavingsUsd += totals.cacheSavingsUsd;
+  into.messages += totals.messages;
+  into.unpricedMessages += totals.unpricedMessages;
+  for (const field of ["input", "output", "cacheRead", "cacheWrite5m", "cacheWrite1h"] as const) {
+    into.tokens[field] += totals.tokens[field];
+  }
+}
+
+/** Adds a model's row; the merged row is priced only if every host priced it. */
+function addModel(
+  models: Map<string, { costUsd: number; tokens: number; priced: boolean }>,
+  m: CostsSummary["byModel"][number],
+): void {
+  const seen = models.get(m.model);
+  models.set(m.model, {
+    costUsd: (seen?.costUsd ?? 0) + m.costUsd,
+    tokens: (seen?.tokens ?? 0) + m.tokens,
+    priced: (seen?.priced ?? true) && m.priced,
+  });
+}
+
 /** The summaries of several hosts as one, and which host each of the top sessions ran on. */
 export function mergeSummaries(
   entries: HostSummary[],
@@ -57,26 +81,12 @@ export function mergeSummaries(
   const models = new Map<string, { costUsd: number; tokens: number; priced: boolean }>();
   const sessions: Array<CostsSummary["topSessions"][number] & { hostId: string }> = [];
   for (const { hostId, summary } of entries) {
-    const { totals } = summary;
-    merged.totals.costUsd += totals.costUsd;
-    merged.totals.cacheSavingsUsd += totals.cacheSavingsUsd;
-    merged.totals.messages += totals.messages;
-    merged.totals.unpricedMessages += totals.unpricedMessages;
-    for (const field of ["input", "output", "cacheRead", "cacheWrite5m", "cacheWrite1h"] as const) {
-      merged.totals.tokens[field] += totals.tokens[field];
-    }
+    addTotals(merged.totals, summary.totals);
     for (const d of summary.byDay) add(days, `${d.day}\t${d.projectKey}`, d.costUsd, d.tokens);
     for (const p of summary.byProject) add(projects, p.projectKey, p.costUsd, p.tokens);
     for (const o of summary.byOrigin) add(origins, o.origin, o.costUsd, o.tokens);
     for (const p of summary.byPersona) add(personas, p.persona, p.costUsd, p.tokens);
-    for (const m of summary.byModel) {
-      const seen = models.get(m.model);
-      models.set(m.model, {
-        costUsd: (seen?.costUsd ?? 0) + m.costUsd,
-        tokens: (seen?.tokens ?? 0) + m.tokens,
-        priced: (seen?.priced ?? true) && m.priced,
-      });
-    }
+    for (const m of summary.byModel) addModel(models, m);
     for (const s of summary.topSessions) sessions.push({ ...s, hostId });
   }
   merged.byDay = [...days]

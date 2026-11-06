@@ -1,4 +1,7 @@
 import { loopbackOnly } from "./pairing.ts";
+import { VERIFIED_OPENCODE_VERSION } from "./runtime/opencode-config.ts";
+import type { OpenCodeInfo } from "./runtime/opencode-discovery.ts";
+import { findingText, type ScopeFinding } from "./runtime/opencode-scope.ts";
 
 type HooksState = "installed" | "absent" | "outdated";
 
@@ -21,6 +24,8 @@ export interface DoctorDeps {
   linger?(): Promise<"on" | "off" | null>;
   /** Template files the host could not load (phase 33); absent when it has no templates. */
   templateProblems?(): Promise<Array<{ file: string; reason: string }>>;
+  /** Phase 39: OpenCode on this host: turned on or not, where it is, what discovery said. */
+  opencode?(): Promise<OpenCodeState>;
   /** The running daemon's version and, when the app told it, the app's: only a running daemon has them. */
   version?: { daemon: string; app?: string };
 }
@@ -37,7 +42,8 @@ export type DoctorCheckId =
   | "version"
   | "templates"
   | "mcp"
-  | "linger";
+  | "linger"
+  | "opencode";
 
 export interface DoctorCheck {
   id: DoctorCheckId;
@@ -55,6 +61,88 @@ const check = (
   detail: string,
   fix?: string,
 ): DoctorCheck => ({ id, name, status, detail, ...(fix ? { fix } : {}) });
+
+export interface OpenCodeState {
+  enabled: boolean;
+  /** The executable on PATH, looked up without running it. */
+  found: string | null;
+  /** What discovery said, when OpenCode is turned on. */
+  info: OpenCodeInfo | null;
+  platform: NodeJS.Platform;
+}
+
+/** Phase 39: the OpenCode row; never a failure (OpenCode is optional). */
+export function opencodeCheck(state: OpenCodeState): DoctorCheck {
+  const { enabled, found, info, platform } = state;
+  if (!enabled) {
+    return found
+      ? check(
+          "opencode",
+          "opencode",
+          "warn",
+          `OpenCode is installed (${found}) but turned off on this host`,
+          'set "opencode": { "enabled": true } in the host config, then restart the daemon',
+        )
+      : check("opencode", "opencode", "ok", "OpenCode is not installed (optional)");
+  }
+  if (!info?.available) {
+    return check(
+      "opencode",
+      "opencode",
+      "warn",
+      `OpenCode is turned on but not available: ${info?.reason ?? "unknown"}${scopeFindings(info?.findings)}`,
+      "see the OpenCode section of the manual for this reason, then restart the daemon",
+    );
+  }
+  const what = `OpenCode ${info.version} (${info.path})`;
+  if (!info.verified) {
+    return check(
+      "opencode",
+      "opencode",
+      "warn",
+      `${what} is not the version Flightdeck verified (${VERIFIED_OPENCODE_VERSION})`,
+    );
+  }
+  // ADR 39-1: the scope scan's folders on Windows and macOS were not checked against OpenCode.
+  return platform === "linux"
+    ? check("opencode", "opencode", "ok", what)
+    : check(
+        "opencode",
+        "opencode",
+        "warn",
+        `${what}; its global and system config folders are unverified on this OS`,
+      );
+}
+
+/** What the scope scan found, for the person to remove: `: kind detail (path); ...`. */
+/** The daemon's check: answering, refusing this machine's address, or not answering at all. */
+function daemonCheck(healthy: boolean, refused: string | null, address: string): DoctorCheck {
+  if (healthy) return check("daemon", "daemon", "ok", `answering on ${address}`);
+  if (refused) {
+    return check(
+      "daemon",
+      "daemon",
+      "fail",
+      `the daemon refused this machine's address (${refused}): add its network to allowedNetworks (or run flightdeckd setup)`,
+      "run: flightdeckd setup (it adds the Tailscale networks), or add the network to allowedNetworks in the config",
+    );
+  }
+  return check(
+    "daemon",
+    "daemon",
+    "fail",
+    `nothing answers on ${address}`,
+    "run: flightdeckd service start (or flightdeckd start, in a terminal, to see the error)",
+  );
+}
+
+/** A template file that could not be loaded, with why. */
+const templateProblem = (p: { file: string; reason: string }) => `${p.file} (${p.reason})`;
+
+function scopeFindings(findings: ScopeFinding[] | undefined): string {
+  if (!findings?.length) return "";
+  return `: ${findings.map(findingText).join("; ")}`;
+}
 
 const minor = (version: string) => version.split(".").slice(0, 2).join(".");
 
@@ -120,25 +208,7 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
   const address = `${config.bind}:${config.port}`;
   const healthy = await deps.healthy();
   const refused = healthy ? null : ((await deps.refused?.()) ?? null);
-  checks.push(
-    healthy
-      ? check("daemon", "daemon", "ok", `answering on ${address}`)
-      : refused
-        ? check(
-            "daemon",
-            "daemon",
-            "fail",
-            `the daemon refused this machine's address (${refused}): add its network to allowedNetworks (or run flightdeckd setup)`,
-            "run: flightdeckd setup (it adds the Tailscale networks), or add the network to allowedNetworks in the config",
-          )
-        : check(
-            "daemon",
-            "daemon",
-            "fail",
-            `nothing answers on ${address}`,
-            "run: flightdeckd service start (or flightdeckd start, in a terminal, to see the error)",
-          ),
-  );
+  checks.push(daemonCheck(healthy, refused, address));
 
   const claude = deps.claudePath();
   checks.push(
@@ -153,6 +223,9 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
         ),
   );
 
+  const opencode = await deps.opencode?.();
+  if (opencode) checks.push(opencodeCheck(opencode));
+
   const brokenTemplates = (await deps.templateProblems?.()) ?? [];
   if (brokenTemplates.length > 0) {
     checks.push(
@@ -160,7 +233,7 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
         "templates",
         "templates",
         "warn",
-        `could not load: ${brokenTemplates.map((p) => `${p.file} (${p.reason})`).join("; ")}`,
+        `could not load: ${brokenTemplates.map(templateProblem).join("; ")}`,
         "fix or remove those files in the templates folder",
       ),
     );

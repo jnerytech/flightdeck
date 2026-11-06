@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import { chmod, copyFile, mkdir, readdir, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { acquireLock } from "../lock.ts";
 import { MIGRATIONS } from "../store/migrations.ts";
 
@@ -119,7 +120,9 @@ export async function restoreBackup(opts: {
       await copyFile(current, beforeRestore);
     }
     await copyFile(opts.file, current);
-    for (const suffix of ["-wal", "-shm"]) await rm(`${current}${suffix}`, { force: true });
+    await inSequence(["-wal", "-shm"], async (suffix) => {
+      await rm(`${current}${suffix}`, { force: true });
+    });
     return { beforeRestore };
   } finally {
     await lock.release();
