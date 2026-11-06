@@ -724,6 +724,8 @@ mod log_tests {
         let lines = vec!["x".to_string(); LOG_MAX_BATCH + 1];
         assert!(append_lines(&dir, &lines, 1 << 20, 3).is_err());
         assert!(!log_path(&dir, 0).exists());
+        // The cap itself is allowed.
+        assert!(append_lines(&dir, &lines[1..], 1 << 20, 3).is_ok());
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -738,6 +740,36 @@ mod log_tests {
             .collect();
         assert_eq!(written, [true, true, true, true, true, true, false, false]);
         assert_eq!(std::fs::metadata(log_path(&dir, 0)).unwrap().len(), 180);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_rotation_whose_last_rename_fails_drops_no_history_however_often_it_is_tried() {
+        let dir = scratch("keep-history");
+        std::fs::create_dir_all(&dir).unwrap();
+        for (n, text) in [(0, "live"), (1, "one"), (2, "two"), (3, "three")] {
+            std::fs::write(log_path(&dir, n), text).unwrap();
+        }
+        // A viewer holds the live file on Windows: only its rename fails.
+        let live = log_path(&dir, 0);
+        let held = |from: &std::path::Path, to: &std::path::Path| {
+            if from == live {
+                Err(std::io::Error::other("held open"))
+            } else {
+                std::fs::rename(from, to)
+            }
+        };
+        for _ in 0..3 {
+            assert!(rotate_logs_with(&dir, 5, &held).is_err());
+        }
+        let slots = |dir: &std::path::Path| -> Vec<Option<String>> {
+            (0..5).map(|n| std::fs::read_to_string(log_path(dir, n)).ok()).collect()
+        };
+        let text = |t: &str| Some(t.to_string());
+        assert_eq!(slots(&dir), [text("live"), None, text("one"), text("two"), text("three")]);
+        // Once the viewer lets go, the rotation fills the free slot and still drops nothing.
+        rotate_logs(&dir, 5).unwrap();
+        assert_eq!(slots(&dir), [None, text("live"), text("one"), text("two"), text("three")]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -758,7 +790,9 @@ mod log_tests {
 
     #[cfg(windows)]
     #[test]
-    fn on_windows_the_files_rotate_while_a_reader_holds_the_live_one() {
+    fn on_windows_the_files_rotate_while_a_reader_that_shares_delete_holds_the_live_one() {
+        // `File::open` shares read, write and delete: a reader like this one does not stop the
+        // rename. One that shares no delete makes it fail; that case is the test above.
         let dir = scratch("held-open");
         append_line(&dir, "before the rotation", 100, 3).unwrap();
         let _reader = std::fs::File::open(log_path(&dir, 0)).unwrap();
