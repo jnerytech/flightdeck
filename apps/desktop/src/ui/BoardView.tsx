@@ -137,7 +137,7 @@ function CardTile(
   const meta = [props.workflow, card.branch].filter(Boolean).join(" · ");
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: Ctrl/Shift-click is the mouse's way to select; the card's menu has Select card for the keyboard
-    <li
+    <li // NOSONAR: Ctrl/Shift-click is the mouse's way to select; the card's menu has Select card for the keyboard
       draggable={!props.locked}
       data-card={card.id}
       data-selected={props.selected ? "true" : undefined}
