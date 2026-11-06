@@ -44,10 +44,11 @@ const TAURI = /^apps\/desktop\/src-tauri\//;
 /**
  * The journeys, their Playwright config and the demo they drive (#399). The demo seed starts the
  * real daemon and uses the scripts' test helpers (fake CLIs, temp folders), so those count too
- * (#410 review); ci-paths.test.ts checks every file the seed imports.
+ * (#410 review); ci-paths.test.ts checks every file the seed imports, and every script file the
+ * journeys import, such as the layout guards (#637).
  */
 const E2E =
-  /^(?:scripts\/e2e\/|scripts\/lib\/(?:e2e|demo)[^/]*\.ts$|scripts\/demo[^/]*\.ts$|playwright[^/]*$|apps\/daemon\/|scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$)/;
+  /^(?:scripts\/e2e\/|scripts\/lib\/(?:(?:e2e|demo)[^/]*|browser|layout-guards)\.ts$|scripts\/demo[^/]*\.ts$|playwright[^/]*$|apps\/daemon\/|scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$)/;
 
 /**
  * demo:shots and what it runs (#637): the demo, the print guards, their ratchets and axe. A change
