@@ -10,6 +10,7 @@ import { ciPlan, FULL, planOutputs } from "../lib/ci-paths.ts";
 const ROOT = resolve(import.meta.dir, "../..");
 
 interface Step {
+  id?: string;
   name?: string;
   run?: string;
   if?: string;
@@ -34,34 +35,70 @@ const runs = (key: string) =>
   job(key)
     .steps.map((s) => s.run ?? "")
     .join("\n");
-const gate = (output: string) => `needs.changes.outputs.${output} == 'true'`;
+const gate = (output: string) => `needs.quick.outputs.${output} == 'true'`;
 const PR = "pull_request";
-const NONE = { windows: false, smokes: false, screenshots: false, cargo: false };
+const NONE = {
+  windows: false,
+  smokes: false,
+  screenshots: false,
+  cargo: false,
+  e2e: false,
+  windowsShards: 1,
+};
 
 describe("ci-paths: the rules", () => {
-  test("docs or scripts only run the Linux tests and lint, nothing else", () => {
+  test("docs only run the Linux tests and lint, nothing else", () => {
     expect(ciPlan(PR, ["docs/TDD.md", "README.md"])).toEqual(NONE);
-    expect(ciPlan(PR, ["scripts/lib/slot.ts", "scripts/test/slot.test.ts"])).toEqual(NONE);
     expect(ciPlan(PR, [])).toEqual(NONE);
   });
 
+  test("scripts add the Windows shards, which run the tests related to them (#399: #383 changed only scripts/test and broke Windows)", () => {
+    const windows = { ...NONE, windows: true };
+    expect(ciPlan(PR, ["scripts/lib/slot.ts", "scripts/test/slot.test.ts"])).toEqual(windows);
+    // A test helper the demo seed loads (fake CLIs) plans the journeys as well (#410 review).
+    expect(ciPlan(PR, ["scripts/test/fake-cli-main.ts"])).toEqual({ ...windows, e2e: true });
+  });
+
+  test("the UI, the journeys, their config or the demo add the e2e journeys (#399)", () => {
+    for (const path of [
+      "scripts/e2e/define-journeys.ts",
+      "scripts/lib/e2e-config.ts",
+      "scripts/lib/e2e-demo.ts",
+      "scripts/demo.ts",
+      "scripts/demo-seed.ts",
+      "playwright.config.ts",
+    ]) {
+      expect(`${path}: ${ciPlan(PR, [path]).e2e}`).toBe(`${path}: true`);
+    }
+    expect(ciPlan(PR, ["apps/desktop/src/ui/App.tsx"]).e2e).toBe(true);
+    // The demo the journeys drive starts the real daemon (scripts/demo-seed.ts, #410 review).
+    expect(ciPlan(PR, ["apps/daemon/src/main.ts"]).e2e).toBe(true);
+    expect(ciPlan(PR, ["apps/daemon/test/workflow-helpers.ts"]).e2e).toBe(true);
+    expect(ciPlan(PR, ["scripts/test/fake-cli.ts"]).e2e).toBe(true);
+    expect(ciPlan(PR, ["scripts/test/slot.test.ts"]).e2e).toBe(false);
+    expect(ciPlan(PR, ["scripts/lib/slot.ts"]).e2e).toBe(false);
+  });
+
   test("the daemon or a smoke adds Windows and the smokes", () => {
-    const daemon = { ...NONE, windows: true, smokes: true };
+    // The demo the journeys drive starts the real daemon, so the daemon plans them too (#410 review).
+    const daemon = { ...NONE, windows: true, smokes: true, e2e: true };
     expect(ciPlan(PR, ["apps/daemon/src/main.ts"])).toEqual(daemon);
-    expect(ciPlan(PR, ["scripts/smoke-limits.ts"])).toEqual(daemon);
+    // A smoke is no part of the demo: Windows and the smokes, not the journeys.
+    expect(ciPlan(PR, ["scripts/smoke-limits.ts"])).toEqual({ ...daemon, e2e: false });
   });
 
   test("the app, the protocol, the dependencies or the workflow run everything but cargo", () => {
-    const all = { ...FULL, cargo: false };
-    for (const path of [
-      "apps/desktop/src/ui/App.tsx",
-      "packages/protocol/src/index.ts",
-      "package.json",
-      "bun.lock",
-      "bunfig.toml",
-      "tsconfig.base.json",
-      ".github/workflows/ci.yml",
-    ]) {
+    // A file every test reads also runs the whole suite on Windows, in three shards (#444).
+    for (const [path, windowsShards] of [
+      ["apps/desktop/src/ui/App.tsx", 1],
+      ["packages/protocol/src/index.ts", 1],
+      ["package.json", 3],
+      ["bun.lock", 3],
+      ["bunfig.toml", 3],
+      ["tsconfig.base.json", 3],
+      [".github/workflows/ci.yml", 1],
+    ] as const) {
+      const all = { ...FULL, cargo: false, windowsShards };
       expect(`${path}: ${JSON.stringify(ciPlan(PR, [path]))}`).toBe(
         `${path}: ${JSON.stringify(all)}`,
       );
@@ -69,7 +106,10 @@ describe("ci-paths: the rules", () => {
   });
 
   test("the Tauri shell runs everything and cargo", () => {
-    expect(ciPlan(PR, ["apps/desktop/src-tauri/src/lib.rs"])).toEqual(FULL);
+    expect(ciPlan(PR, ["apps/desktop/src-tauri/src/lib.rs"])).toEqual({
+      ...FULL,
+      windowsShards: 1,
+    });
   });
 
   test("a push to main, a run by hand or a diff that cannot be read runs everything", () => {
@@ -78,30 +118,67 @@ describe("ci-paths: the rules", () => {
     expect(ciPlan(PR, null)).toEqual(FULL);
   });
 
+  test("every file the demo seed imports plans the journeys, so a change the journeys run cannot skip them (#410 review)", () => {
+    const seed = readFileSync(join(ROOT, "scripts/demo-seed.ts"), "utf8");
+    const local = [...seed.matchAll(/from "(\.{1,2}\/[^"]+)"/g)].map((m) =>
+      join("scripts", m[1] ?? "").replaceAll("\\", "/"),
+    );
+    expect(local.length).toBeGreaterThan(3);
+    for (const path of local) expect(`${path}: ${ciPlan(PR, [path]).e2e}`).toBe(`${path}: true`);
+  });
+
+  test("a PR's Windows tests take one shard, three when the whole suite runs: a file every test reads changed, or a test went away (#444)", () => {
+    expect(ciPlan(PR, ["scripts/lib/slot.ts"]).windowsShards).toBe(1);
+    expect(ciPlan(PR, ["apps/daemon/src/main.ts"]).windowsShards).toBe(1);
+    for (const path of [
+      "bun.lock",
+      "package.json",
+      "bunfig.area.toml",
+      "scripts/test/preload.ts",
+    ]) {
+      expect(`${path}: ${ciPlan(PR, [path]).windowsShards}`).toBe(`${path}: 3`);
+    }
+    const gone = "apps/daemon/test/gone.test.ts";
+    expect(ciPlan(PR, [gone], [gone]).windowsShards).toBe(3);
+    expect(ciPlan(PR, ["apps/daemon/src/gone.ts"], ["apps/daemon/src/gone.ts"]).windowsShards).toBe(
+      1,
+    );
+    expect(ciPlan("push", ["docs/TDD.md"]).windowsShards).toBe(3);
+  });
+
   test("the plan becomes one GitHub output per job group", () => {
     expect(planOutputs({ ...NONE, windows: true })).toBe(
-      "windows=true\nsmokes=false\nscreenshots=false\ncargo=false\n",
+      "windows=true\nsmokes=false\nscreenshots=false\ncargo=false\ne2e=false\nwindows_shards=[1]\n",
     );
+    expect(planOutputs(FULL)).toContain("windows_shards=[1,2,3]\n");
   });
 });
 
 describe("ci-paths: the workflow", () => {
-  test("a changes job computes the plan and every job group reads it", () => {
-    expect(runs("changes")).toContain("bun run scripts/ci-paths.ts");
-    expect(Object.keys(job("changes").outputs ?? {})).toEqual([
+  test("the quick job computes the plan first, and every job group reads it from there (#444: no changes job of its own)", () => {
+    expect(ci.jobs.changes).toBeUndefined();
+    const first = job("quick").steps.findIndex((s) =>
+      (s.run ?? "").includes("bun run scripts/ci-paths.ts"),
+    );
+    const typecheck = job("quick").steps.findIndex((s) => s.name === "Typecheck");
+    expect(first >= 0 && first < typecheck).toBe(true);
+    expect(job("quick").steps[first]?.id).toBe("plan");
+    expect(Object.keys(job("quick").outputs ?? {})).toEqual([
       "windows",
       "smokes",
       "screenshots",
       "cargo",
+      "e2e",
+      "windows_shards",
     ]);
     for (const key of ["test-windows-shard", "checks-windows"]) {
-      expect(job(key).needs).toContain("changes");
+      expect(job(key).needs).toContain("quick");
       expect(job(key).if ?? "").toContain(gate("windows"));
     }
-    for (const key of ["screenshots-prints", "screenshots-e2e"]) {
-      expect(job(key).needs).toContain("changes");
-      expect(job(key).if ?? "").toContain(gate("screenshots"));
-    }
+    expect(job("screenshots-prints").needs).toContain("quick");
+    expect(job("screenshots-prints").if ?? "").toContain(gate("screenshots"));
+    expect(job("screenshots-e2e").needs).toContain("quick");
+    expect(job("screenshots-e2e").if ?? "").toContain(gate("e2e"));
     expect(step("checks-linux", "Smokes")?.if).toBe(gate("smokes"));
   });
 
@@ -190,12 +267,12 @@ describe("ci-paths: the workflow", () => {
       ["test-windows", "windows"],
       ["screenshots", "screenshots"],
     ] as const) {
-      expect(job(key).needs?.[0]).toBe("changes");
+      expect(job(key).needs?.[0]).toBe("quick");
       // A failed plan has no outputs: it must fail the check, never read as "skipped".
       const check = runs(key);
-      const planned = check.indexOf('test "${{ needs.changes.result }}" = success');
+      const planned = check.indexOf('test "${{ needs.quick.result }}" = success');
       expect(planned >= 0 && planned < check.indexOf("skipped by path")).toBe(true);
-      expect(runs(key)).toContain(`if [ "\${{ needs.changes.outputs.${output} }}" != true ]; then`);
+      expect(runs(key)).toContain(`if [ "\${{ needs.quick.outputs.${output} }}" != true ]; then`);
       expect(runs(key)).toContain("skipped by path");
     }
   });

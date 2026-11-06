@@ -39,40 +39,55 @@ describe("ci-pyramid (#309)", () => {
     expect(full?.run).toBe("bun run test");
   });
 
-  test("on a PR the Windows shards run the unit and component tiers; on main, at night and by hand the whole suite (#309 b)", () => {
+  test("on a PR the Windows shards run test:related's PR selection, the related integration and e2e tests included; on main, at night and by hand the whole suite (#309 b, #399)", () => {
     const shard = ci.jobs["test-windows-shard"]?.steps ?? [];
     const pr = shard.find(
-      (s) => s.name === "Testes do PR (shard ${{ matrix.shard }}/3, unit e component)",
+      (s) =>
+        s.name ===
+        "Testes do PR (shard ${{ matrix.shard }}/${{ strategy.job-total }}, seleção do test:related)",
     );
-    const full = shard.find((s) => s.name === "Testes (shard ${{ matrix.shard }}/3)");
+    const full = shard.find(
+      (s) => s.name === "Testes (shard ${{ matrix.shard }}/${{ strategy.job-total }})",
+    );
     expect(pr?.if).toBe("github.event_name == 'pull_request'");
+    expect(pr?.env?.BASE_REF).toBe("${{ github.base_ref }}");
     expect(pr?.run).toBe(
-      "bun run test:shards -- run ${{ matrix.shard }}/3 --tier unit,component --junit junit-${{ matrix.shard }}.xml",
+      [
+        'bun run test:related -- --pr --base "origin/$BASE_REF" --list selection.txt',
+        "bun run test:shards -- run ${{ matrix.shard }}/${{ strategy.job-total }} --files selection.txt --junit junit-${{ matrix.shard }}.xml",
+        "",
+      ].join("\n"),
     );
     expect(full?.if).toBe("github.event_name != 'pull_request'");
     expect(full?.run).toBe(
-      "bun run test:shards -- run ${{ matrix.shard }}/3 --junit junit-${{ matrix.shard }}.xml",
+      "bun run test:shards -- run ${{ matrix.shard }}/${{ strategy.job-total }} --junit junit-${{ matrix.shard }}.xml",
     );
   });
 
-  test("the e2e journeys leave the PR path: they run on main, nightly and by hand (#309 c)", () => {
-    expect(ci.jobs["screenshots-e2e"]?.if).toBe(
-      "needs.changes.outputs.screenshots == 'true' && github.event_name != 'pull_request'",
-    );
+  test("the e2e journeys run when the plan asks for them: on a PR that changes the UI or the journeys, and always on main, nightly and by hand (#309 c, #399)", () => {
+    expect(ci.jobs["screenshots-e2e"]?.if).toBe("needs.quick.outputs.e2e == 'true'");
   });
 
-  test("the screenshots check accepts skipped journeys on a PR only; elsewhere they must pass (#309 c)", () => {
+  test("the screenshots check needs the journeys green when they were planned, and skipped when not (#399)", () => {
     const check = (ci.jobs.screenshots?.steps ?? []).map((s) => s.run ?? "").join("\n");
     expect(check).toContain('test "${{ needs.screenshots-prints.result }}" = success');
-    expect(check).toContain('if [ "${{ github.event_name }}" = pull_request ]; then');
-    expect(check).toContain('test "${{ needs.screenshots-e2e.result }}" = skipped');
+    expect(check).toContain('if [ "${{ needs.quick.outputs.e2e }}" = true ]; then');
     expect(check).toContain('test "${{ needs.screenshots-e2e.result }}" = success');
+    expect(check).toContain('test "${{ needs.screenshots-e2e.result }}" = skipped');
+    expect(check).not.toContain("github.event_name");
+  });
+
+  test("a failing journey gets Playwright's one retry and nothing more: no rerun in the workflow (#399)", () => {
+    const e2e = ci.jobs["screenshots-e2e"];
+    const run = (e2e?.steps ?? []).map((s) => s.run ?? "").join("\n");
+    expect(run).not.toMatch(/--retries|rerun|for attempt|until /);
+    expect((e2e?.steps ?? []).some((s) => "continue-on-error" in s)).toBe(false);
   });
 
   test("the fast-coverage ratchet runs on PRs too, so a drop fails the PR, not main (#309 d, #358)", () => {
     const job = ci.jobs["fast-coverage"];
     expect(job?.name).toBe("fast coverage (ubuntu-latest)");
-    expect(job?.needs).toEqual(["changes", "quick"]);
+    expect(job?.needs).toEqual(["quick"]);
     expect(job?.if ?? "").not.toContain("pull_request");
     expect((job?.steps ?? []).some((s) => s.run === "bun run fast-coverage")).toBe(true);
   });

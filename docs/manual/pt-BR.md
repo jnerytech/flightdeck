@@ -2288,6 +2288,12 @@ horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janel
   dias (hosts com a mesma conta compartilham um cartão, com o nome de todos), com a porcentagem, a hora de reinício e a idade da leitura ("lida há 12 min").
   - A barra fica vermelha a partir de `quota.pauseAt`.
   - Cruzar o `pauseAt` gera uma notificação, uma vez por janela.
+- **Na barra superior:** um medidor pequeno mostra a janela mais usada entre os hosts online, com a
+  porcentagem (o nome da janela aparece a partir de 960 px de largura). A partir de 80% ele ganha
+  uma marca de alerta na cor de "precisa de você", e em 100% (ou a partir do
+  `pauseAt`, como no cartão da conta) a barra fica vermelha; o nome e a dica
+  dizem o nível, o host e o tempo que falta. Clicar nele abre a página desse host. Sem leitura, ele
+  não aparece.
 - **Só terminal:** os hooks não trazem a cota. Quem usa só sessões do terminal vê barras vazias ou
   antigas até rodar um card ou uma sessão gerenciada no host.
 
@@ -3027,6 +3033,23 @@ binário novo.
   `~/.flightdeck/bin/flightdeckd update --from ~/flightdeckd-linux-x64`.
 - **Linux remoto (VPS, Orange Pi):** `scp dist/flightdeckd-linux-arm64 <host>:~/` e, no host,
   `~/.flightdeck/bin/flightdeckd update --from ~/flightdeckd-linux-arm64`.
+
+### Sessões que um reinício interrompeu
+
+Quando o daemon de um host reinicia (uma atualização, um boot, um reinício do serviço), as sessões que
+estavam rodando ficam em `error` com o motivo *o daemon reiniciou*. Quando o app reconecta a um daemon
+que oferece isso, um diálogo, **Retomar as sessões interrompidas**, lista as das últimas 24 horas,
+agrupadas pela pasta do projeto, cada uma com a persona, quanto tempo rodou e o último pedido. Todas
+vêm marcadas. O diálogo diz o que retomar faz: reconecta cada sessão e envia *Continue where you left
+off.*; o pedido original nunca é enviado de novo. **Retomar as escolhidas** retoma as marcadas (cada
+linha termina como *Retomada*, ou como *Não foi possível retomar: <motivo>* com um botão **Tentar de
+novo**, e as outras não são afetadas); **Agora não** fecha o diálogo e ele só volta num próximo
+reinício (a página do host guarda um botão *Retomar as sessões interrompidas (N)* para reabrir);
+**Dispensar todas** descarta a oferta de vez. A página do host também tem uma chave, **Retomar sozinho
+depois de um reinício**, desligada por padrão: ligada, nenhum diálogo aparece, as sessões são retomadas
+na hora e um aviso as lista. Ainda não: um estado *na fila* quando o limite paralelo é atingido, o
+coordenador de um time retomado antes dos seus workers e uma entrada na barra de status para reabrir a
+oferta.
 
 ### Atualização automática assinada
 
