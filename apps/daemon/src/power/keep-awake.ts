@@ -211,11 +211,14 @@ export function spawnHolder(cmd: string[]): Holder | null {
 }
 
 export function osPowerContext(): PowerContext {
+  // The test suite sets the service guard: a daemon a test starts holds nothing, as if no
+  // inhibitor could start; only the keep-awake tests pass their own context or call spawnHolder.
+  const guarded = Boolean(process.env.FLIGHTDECK_SERVICE_GUARD);
   return {
     platform: process.platform,
     pid: process.pid,
     wsl: detectWsl(realWslProbe) !== null,
     which: whichOnPath,
-    hold: spawnHolder,
+    hold: guarded ? () => null : spawnHolder,
   };
 }
