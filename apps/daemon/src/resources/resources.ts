@@ -90,6 +90,134 @@ interface Sample {
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
+/** Every process that could be read, by pid, asked for in batches. */
+async function readStats(proc: ProcReader): Promise<Map<number, ProcStat>> {
+  const stats = new Map<number, ProcStat>();
+  const pids = await proc.pids();
+  for (let from = 0; from < pids.length; from += BATCH) {
+    const batch = await Promise.all(pids.slice(from, from + BATCH).map((pid) => proc.stat(pid)));
+    for (const stat of batch) if (stat) stats.set(stat.pid, stat);
+  }
+  return stats;
+}
+
+/** The processes each parent has. */
+function childrenOf(stats: Map<number, ProcStat>): Map<number, ProcStat[]> {
+  const children = new Map<number, ProcStat[]>();
+  for (const stat of stats.values()) {
+    const siblings = children.get(stat.ppid);
+    if (siblings) siblings.push(stat);
+    else children.set(stat.ppid, [stat]);
+  }
+  return children;
+}
+
+/** A process and everything under it. A pid reused during the scan can make the parents loop: every process is visited once. */
+function treeOf(children: Map<number, ProcStat[]>, root: ProcStat): ProcStat[] {
+  const out: ProcStat[] = [];
+  const seen = new Set<number>();
+  const walk = (node: ProcStat) => {
+    if (seen.has(node.pid)) return;
+    seen.add(node.pid);
+    out.push(node);
+    for (const child of children.get(node.pid) ?? []) walk(child);
+  };
+  walk(root);
+  return out;
+}
+
+/** What a group of processes uses: memory now, and CPU over the window since its last sample. */
+function measureNodes(
+  nodes: ProcStat[],
+  samples: Map<number, { ticks: number; at: number }>,
+  at: number,
+  proc: ProcReader,
+) {
+  let deltaTicks = 0;
+  let known = false;
+  let seconds = 0;
+  for (const node of nodes) {
+    const before = samples.get(node.pid);
+    if (!before) continue;
+    known = true;
+    deltaTicks += Math.max(0, node.cpuTicks - before.ticks);
+    seconds = Math.max(seconds, (at - before.at) / 1000);
+  }
+  const cpuPercent =
+    known && seconds > 0 ? round1((deltaTicks / proc.ticksPerSecond / seconds) * 100) : null;
+  return {
+    rssBytes: nodes.reduce((sum, n) => sum + n.rssPages * proc.pageSize, 0),
+    cpuPercent,
+    processes: nodes.length,
+    names: [...new Set(nodes.map((n) => cleanName(n.name)))],
+  };
+}
+
+/** The roots by the folder they run in, in the order they started; one whose folder is unknown is left out. */
+async function rootsByFolder(
+  roots: ProcStat[],
+  proc: ProcReader,
+): Promise<Map<string, ProcStat[]>> {
+  const byCwd = new Map<string, ProcStat[]>();
+  for (const root of roots) {
+    const cwd = await proc.cwd(root.pid);
+    if (cwd === null) continue;
+    const folder = sameFolder(cwd);
+    byCwd.set(
+      folder,
+      [...(byCwd.get(folder) ?? []), root].sort((a, b) => a.startTicks - b.startTicks),
+    );
+  }
+  return byCwd;
+}
+
+/** Adds `value` to the list under `key`. */
+function push<K, V>(map: Map<K, V[]>, key: K, value: V): void {
+  map.set(key, [...(map.get(key) ?? []), value]);
+}
+
+interface OrphanSearch {
+  /** The session programs the daemon started, by folder. */
+  byCwd: Map<string, ProcStat[]>;
+  /** The folders where an active session lives. */
+  taken: Map<string, unknown>;
+  /** The sessions that are over, by folder. */
+  overByCwd: Map<string, ResourceSession[]>;
+  uptime: number;
+  at: number;
+  proc: ProcReader;
+  tree(root: ProcStat): ProcStat[];
+}
+
+/** The session programs left over from a session that is over (positive evidence only). */
+function findOrphans(search: OrphanSearch): ResourceOrphan[] {
+  const { byCwd, taken, overByCwd, uptime, at, proc, tree } = search;
+  const orphans: ResourceOrphan[] = [];
+  for (const [folder, candidates] of byCwd) {
+    // Where an active session lives, which process is whose cannot be told: none is an orphan.
+    if (taken.has(folder)) continue;
+    for (const root of candidates) {
+      const ageSec = Math.max(0, Math.round(uptime - root.startTicks / proc.ticksPerSecond));
+      if (ageSec < ORPHAN_MIN_AGE_SEC) continue;
+      const startedAt = at - ageSec * 1000;
+      const lived = (overByCwd.get(folder) ?? []).some(
+        (s) =>
+          startedAt >= Date.parse(s.createdAt) - SESSION_SLACK_MS &&
+          startedAt <= Date.parse(s.updatedAt) + SESSION_SLACK_MS,
+      );
+      if (!lived) continue;
+      orphans.push({
+        pid: root.pid,
+        name: cleanName(root.name),
+        rssBytes: tree(root).reduce((sum, n) => sum + n.rssPages * proc.pageSize, 0),
+        ageSec,
+        startTicks: root.startTicks,
+      });
+    }
+  }
+  return orphans;
+}
+
 export class Resources {
   private readonly now: () => number;
   /** CPU time of each process at the last shared snapshot: the only state, and no timer. */
@@ -138,51 +266,10 @@ export class Resources {
     if (!proc) {
       return { ...base, measured: false, reason: "platform", rows: [], orphans: [] };
     }
-    const stats = new Map<number, ProcStat>();
-    const pids = await proc.pids();
-    for (let from = 0; from < pids.length; from += BATCH) {
-      const batch = await Promise.all(pids.slice(from, from + BATCH).map((pid) => proc.stat(pid)));
-      for (const stat of batch) if (stat) stats.set(stat.pid, stat);
-    }
-    const children = new Map<number, ProcStat[]>();
-    for (const stat of stats.values()) {
-      const siblings = children.get(stat.ppid);
-      if (siblings) siblings.push(stat);
-      else children.set(stat.ppid, [stat]);
-    }
-    // A pid reused during the scan can make the parents loop: every process is visited once.
-    const tree = (root: ProcStat): ProcStat[] => {
-      const out: ProcStat[] = [];
-      const seen = new Set<number>();
-      const walk = (node: ProcStat) => {
-        if (seen.has(node.pid)) return;
-        seen.add(node.pid);
-        out.push(node);
-        for (const child of children.get(node.pid) ?? []) walk(child);
-      };
-      walk(root);
-      return out;
-    };
-    const measure = (nodes: ProcStat[]) => {
-      let deltaTicks = 0;
-      let known = false;
-      let seconds = 0;
-      for (const node of nodes) {
-        const before = this.samples.get(node.pid);
-        if (!before) continue;
-        known = true;
-        deltaTicks += Math.max(0, node.cpuTicks - before.ticks);
-        seconds = Math.max(seconds, (at - before.at) / 1000);
-      }
-      const cpuPercent =
-        known && seconds > 0 ? round1((deltaTicks / proc.ticksPerSecond / seconds) * 100) : null;
-      return {
-        rssBytes: nodes.reduce((sum, n) => sum + n.rssPages * proc.pageSize, 0),
-        cpuPercent,
-        processes: nodes.length,
-        names: [...new Set(nodes.map((n) => cleanName(n.name)))],
-      };
-    };
+    const stats = await readStats(proc);
+    const children = childrenOf(stats);
+    const tree = (root: ProcStat) => treeOf(children, root);
+    const measure = (nodes: ProcStat[]) => measureNodes(nodes, this.samples, at, proc);
     const empty = { rssBytes: 0, cpuPercent: null, processes: 0, names: [] as string[] };
 
     const terminals = this.opts.terminals();
@@ -204,21 +291,10 @@ export class Resources {
     const roots = (children.get(this.opts.ownPid) ?? []).filter(
       (stat) => SESSION_PROGRAMS.has(stat.name) && !terminalPids.has(stat.pid),
     );
-    const byCwd = new Map<string, ProcStat[]>();
-    for (const root of roots) {
-      const cwd = await proc.cwd(root.pid);
-      if (cwd === null) continue;
-      const folder = sameFolder(cwd);
-      byCwd.set(
-        folder,
-        [...(byCwd.get(folder) ?? []), root].sort((a, b) => a.startTicks - b.startTicks),
-      );
-    }
+    const byCwd = await rootsByFolder(roots, proc);
     const active = this.opts.sessions().filter((s) => s.active);
     const sessionsByCwd = new Map<string, ResourceSession[]>();
-    for (const session of active) {
-      sessionsByCwd.set(session.cwd, [...(sessionsByCwd.get(session.cwd) ?? []), session]);
-    }
+    for (const session of active) push(sessionsByCwd, session.cwd, session);
     for (const [cwd, sessions] of sessionsByCwd) {
       const candidates = byCwd.get(cwd) ?? [];
       sessions
@@ -236,39 +312,18 @@ export class Resources {
     }
 
     const uptime = await proc.uptimeSec();
-    const orphans: ResourceOrphan[] = [];
     // Positive evidence only: the sessions that are over, by folder. A claude is a leftover when it
     // started during the life of one of them in its folder; a plugin, account or action `claude`,
     // or a live session's process whose folder moved, matches none.
     const overByCwd = new Map<string, ResourceSession[]>();
     for (const session of this.opts.sessions().filter((s) => !s.active)) {
-      overByCwd.set(session.cwd, [...(overByCwd.get(session.cwd) ?? []), session]);
+      push(overByCwd, session.cwd, session);
     }
     // A daemon that is pid 1 (a container) has every stray as a child: it lists none.
-    if (this.opts.ownPid !== 1) {
-      for (const [folder, candidates] of byCwd) {
-        // Where an active session lives, which process is whose cannot be told: none is an orphan.
-        if (sessionsByCwd.has(folder)) continue;
-        for (const root of candidates) {
-          const ageSec = Math.max(0, Math.round(uptime - root.startTicks / proc.ticksPerSecond));
-          if (ageSec < ORPHAN_MIN_AGE_SEC) continue;
-          const startedAt = at - ageSec * 1000;
-          const lived = (overByCwd.get(folder) ?? []).some(
-            (s) =>
-              startedAt >= Date.parse(s.createdAt) - SESSION_SLACK_MS &&
-              startedAt <= Date.parse(s.updatedAt) + SESSION_SLACK_MS,
-          );
-          if (!lived) continue;
-          orphans.push({
-            pid: root.pid,
-            name: cleanName(root.name),
-            rssBytes: tree(root).reduce((sum, n) => sum + n.rssPages * proc.pageSize, 0),
-            ageSec,
-            startTicks: root.startTicks,
-          });
-        }
-      }
-    }
+    const orphans =
+      this.opts.ownPid === 1
+        ? []
+        : findOrphans({ byCwd, taken: sessionsByCwd, overByCwd, uptime, at, proc, tree });
 
     if (keepSamples) {
       this.samples = new Map(

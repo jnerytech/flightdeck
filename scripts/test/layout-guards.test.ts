@@ -3,6 +3,7 @@ import { registerDom } from "../../apps/desktop/test/dom.ts";
 import {
   compareToBaseline,
   findingKey,
+  GAPS,
   layoutFindings,
   pinnedProblem,
 } from "../lib/layout-guards.ts";
@@ -182,6 +183,42 @@ describe("layout-guards: what the page function finds, named by data-slot path",
     ]);
   });
 
+  test("a gap under the floor between two floating boxes that share columns is a finding, named by the upper one (#581)", () => {
+    page(`
+      <ol data-sonner-toaster><li data-sonner-toast data-rect="900,700,1260,760"></li></ol>
+      <section data-slot="update-card" data-rect="940,764,1260,860"></section>
+      <section data-slot="status-bar" data-rect="0,876,1280,900"></section>
+      <div data-slot="far-left" data-rect="0,860,200,875"></div>`);
+    const gaps = [
+      { above: "[data-sonner-toast]", below: '[data-slot="update-card"]', min: 8 },
+      { above: '[data-slot="update-card"]', below: '[data-slot="status-bar"]', min: 8 },
+      { above: '[data-slot="far-left"]', below: '[data-slot="update-card"]', min: 8 },
+    ];
+    expect(layoutFindings({ gaps }).map((f) => `${f.rule}: ${f.path} (${f.detail})`)).toEqual([
+      "gap: li (4 px above update-card, at least 8)",
+    ]);
+  });
+
+  test("a box that overlaps the one it must sit above is a gap finding too; one that is gone is not", () => {
+    page(`
+      <li data-sonner-toast data-rect="900,800,1260,890"></li>
+      <section data-slot="status-bar" data-rect="0,876,1280,900"></section>
+      <li data-sonner-toast style="display: none" data-rect="900,890,1260,900"></li>`);
+    expect(
+      layoutFindings({
+        gaps: [{ above: "[data-sonner-toast]", below: '[data-slot="status-bar"]', min: 8 }],
+      }).map((f) => `${f.rule}: ${f.detail}`),
+    ).toEqual(["gap: -14 px above status-bar, at least 8"]);
+  });
+
+  test("the floating boxes the guards keep apart: the toasts, the update card and the status bar (#581)", () => {
+    expect(GAPS).toEqual([
+      { above: "[data-sonner-toast]", below: '[data-slot="status-bar"]', min: 8 },
+      { above: "[data-sonner-toast]", below: '[data-slot="update-card"]', min: 8 },
+      { above: '[data-slot="update-card"]', below: '[data-slot="status-bar"]', min: 8 },
+    ]);
+  });
+
   test("a region that scrolls as one: a second scroller inside it is a finding, a single one is not (#567)", () => {
     const split = () =>
       layoutFindings({ single: ["sidebar"] })
@@ -239,6 +276,13 @@ import { judge, loadBaseline } from "../lib/layout-guards.ts";
 describe("layout-guards: what the findings mean for the build", () => {
   const clipped = { rule: "clipped" as const, path: "main > card", detail: "cut" };
   const small = { rule: "region-small" as const, path: "approval-card", detail: "400 x 20 px" };
+
+  test("a gap finding fails with no baseline too: it is the contract (#581)", () => {
+    const gap = { rule: "gap" as const, path: "li", detail: "4 px above status-bar, at least 8" };
+    expect(judge("hub@1280", [gap], null).failures).toEqual([
+      "hub@1280: gap li (4 px above status-bar, at least 8)",
+    ]);
+  });
 
   test("a region split into several scroll areas fails with no baseline too: it is the contract (#567)", () => {
     const split = { rule: "scroll-split" as const, path: "sidebar", detail: "2 scroll areas" };

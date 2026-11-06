@@ -5,6 +5,7 @@ import {
   applyDemoPrefs,
   demoPlatform,
   demoStoreOptions,
+  demoToast,
   initialRoute,
   parseDemoHosts,
   seedDemoHosts,
@@ -24,5 +25,6 @@ const store = new AppStore(
 );
 const route = initialRoute(window.location.search);
 if (route) store.router.push(route);
+demoToast(store, window);
 
 createRoot(document.getElementById("root") as HTMLElement).render(<App store={store} />);

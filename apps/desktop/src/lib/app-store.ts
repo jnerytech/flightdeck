@@ -102,6 +102,7 @@ import { DensityController } from "./density.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
 import { HIGH_RISK_HOLD_MS } from "./hold.ts";
+import { HomeCache } from "./home-cache.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostNameError, hostNameError } from "./host-name.ts";
 import type { RetryState } from "./host-offline.ts";
@@ -856,6 +857,7 @@ export class AppStore {
     );
     this.vault = new Vault(platform);
     this.rules = new VaultRules(platform.storage);
+    this.homeCache = new HomeCache(platform.storage);
     this.globalSnippets = new GlobalSnippets(platform);
     this.globalPersonas = new GlobalPersonas(platform);
     this.clients = new Clients(platform, { onChange: () => this.syncClients() });
@@ -3437,6 +3439,8 @@ export class AppStore {
 
   /** Phase 19: each secret's usage rules, kept with the vault. */
   private readonly rules: VaultRules;
+  /** Home's last numbers per host set and period (issue #607). */
+  readonly homeCache: HomeCache;
   /** Phase 18: the global snippets, kept by the app. */
   readonly globalSnippets: GlobalSnippets;
   /** Phase 20: the global personas, kept by the app. */
