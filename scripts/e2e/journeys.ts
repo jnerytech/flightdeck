@@ -114,6 +114,28 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await waitFor(async () => (await row.count()) === 0, "o pedido saiu da fila");
   },
 
+  // 1b. Issue #187 (J4): two requests answered with A and nothing else. Choosing the first puts the
+  // focus on its card, and once it is answered the next one is chosen and focused.
+  "responder-sem-clique": async (c) => {
+    const stamp = Date.now();
+    const first = `J4 primeira ${stamp}`;
+    const second = `J4 segunda ${stamp}`;
+    await createSession(c, "[bash] ls", first);
+    await createSession(c, "[bash] ls", second);
+    await open(c, { name: "needs-you" });
+    const row = (name: string) => c.page.locator("main ul li button", { hasText: name });
+    await row(first).first().click({ timeout: SESSION_WAIT });
+    await row(second).first().waitFor({ timeout: SESSION_WAIT });
+    const focusedCard = () =>
+      c.page.evaluate(() => Boolean(document.activeElement?.closest("fieldset[data-request-id]")));
+    await waitFor(focusedCard, "o card do pedido escolhido tem o foco");
+    await c.page.keyboard.press("a");
+    await waitFor(async () => (await row(first).count()) === 0, "a primeira saiu da fila");
+    await waitFor(focusedCard, "o card do próximo pedido tem o foco");
+    await c.page.keyboard.press("a");
+    await waitFor(async () => (await row(second).count()) === 0, "a segunda saiu da fila");
+  },
+
   // 2. Open a session, send a message and read the fake runtime's answer.
   "sessao-e-mensagem": async (c) => {
     await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });

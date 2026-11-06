@@ -37,7 +37,12 @@ export type PaletteTarget =
    * The oldest request waiting for the person, named in the command (issue #187): an ordinary one
    * is answered; a gate, a vault request or a high-risk one is opened to be seen.
    */
-  | { kind: "decide-oldest"; decision: "approve" | "deny" }
+  | {
+      kind: "decide-oldest";
+      decision: "approve" | "deny";
+      /** `host/request` of the one the command named: a different oldest is never answered (#245). */
+      key: string;
+    }
   /** Phase 29: the Clients screen, and a switch of the client the screens show. */
   | { kind: "clients" }
   | { kind: "switch-client"; clientId: string }
@@ -97,7 +102,7 @@ export function paletteSections(
      * The oldest request waiting for the person, as one line, and whether it must be opened to be
      * answered: the approve and deny commands (or Open) show and name it.
      */
-    oldest?: { text: string; opens: boolean };
+    oldest?: { text: string; opens: boolean; key: string };
     /** The mode the window could switch to (none when the host is locked). */
     modeSwitch?: "simple" | "full" | null;
   },
@@ -246,6 +251,7 @@ export function paletteSections(
         action("decide:open", t("palette.openOldest", { what: oldest.text }), {
           kind: "decide-oldest",
           decision: "approve",
+          key: oldest.key,
         }),
       ];
     }
@@ -253,14 +259,14 @@ export function paletteSections(
       action(
         "decide:approve",
         t("palette.approveOldest", { what: oldest.text }),
-        { kind: "decide-oldest", decision: "approve" },
+        { kind: "decide-oldest", decision: "approve", key: oldest.key },
         undefined,
         "A",
       ),
       action(
         "decide:deny",
         t("palette.denyOldest", { what: oldest.text }),
-        { kind: "decide-oldest", decision: "deny" },
+        { kind: "decide-oldest", decision: "deny", key: oldest.key },
         undefined,
         "N",
       ),

@@ -48,8 +48,12 @@ export type InboxTarget =
 export function inboxTarget(
   entry: InboxEntry,
   cardExists: (route: Extract<Route, { name: "card" }>) => boolean,
+  /** Whether the request of a link still waits; an answered one opens the route kept with it. */
+  requestOpen: (link: string) => boolean = () => true,
 ): InboxTarget | null {
-  if (entry.link) return { kind: "link", link: entry.link };
+  if (entry.link && (!entry.route || requestOpen(entry.link))) {
+    return { kind: "link", link: entry.link };
+  }
   const { route } = entry;
   if (!route) return null;
   if (route.name === "card" && entry.fallbackUrl && !cardExists(route)) {

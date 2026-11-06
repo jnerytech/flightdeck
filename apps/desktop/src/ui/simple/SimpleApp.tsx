@@ -72,7 +72,9 @@ function TaskScreen(props: {
       canOpen={store.canOpenPaths(hostId)}
       onBack={props.onBack}
       onStop={() => void store.hostCommand(hostId, "session.close", { sessionId })}
-      onAnswer={(requestId, decision) => void store.respondTo(hostId, requestId, decision)}
+      onAnswer={(requestId, decision, held) =>
+        void store.respondTo(hostId, requestId, decision, { held })
+      }
       onOpenFull={props.onDetails}
       onCopy={store.copyText.bind(store)}
       onOpenFile={(path) => void store.openPath(hostId, path)}
