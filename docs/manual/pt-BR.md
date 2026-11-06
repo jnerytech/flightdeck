@@ -300,7 +300,14 @@ para X** (pergunta antes) e **Adicionar pasta** (abre as Configurações com a c
 hooks** também atualiza o estado dos hooks mostrado nas Configurações). O que precisa de `sudo` ou de instalador só aparece
 para copiar: o app nunca o executa. Um programa que falta mostra a linha do gerenciador de pacotes
 quando há uma (apt, brew, winget) e um botão **Página de instalação** que abre a página oficial; o
-Flightdeck nunca oferece um download enviado direto para um shell. As mesmas conferências rodam no terminal com `flightdeckd doctor`.
+Flightdeck nunca oferece um download enviado direto para um shell. O conselho vale para o sistema em
+que aparece: o **GitHub** conta como desatualizado abaixo do gh 2.31 (o primeiro com `gh project`, de que
+a sincronização do quadro precisa), e no Linux aponta para a página de instalação, porque o pacote apt
+de uma LTS pode ser mais antigo; o **OpenSSH** no Windows diz para rodar a linha do
+`Add-WindowsCapability` em um PowerShell elevado (Executar como administrador); em um Linux sem
+systemd a linha do **serviço** diz que não há serviço para instalar ali e que é para iniciar o
+`flightdeckd` no login com as ferramentas do próprio sistema, em vez de oferecer um comando que
+falha. As mesmas conferências rodam no terminal com `flightdeckd doctor`.
 
 ### Confiar em um projeto
 
@@ -605,6 +612,12 @@ histórico.
   turno, uma linha acima da caixa diz o que está acontecendo ("Executando um comando", "Editando
   arquivos", "Esperando você") e há quanto tempo; o indicador para de girar se o sistema pedir
   menos movimento.
+- **Esperando num botão:** um botão cujo comando está rodando ignora um segundo clique na hora.
+  Em menos de um décimo de segundo nada muda na tela; até um segundo ele só parece ocupado; a
+  partir de um segundo mostra um indicador girando; depois de três segundos diz também **Ainda
+  trabalhando…** (ou a etapa, quando o comando informa uma). Uma lista ou painel carregando só
+  desenha os marcadores se a espera passar de dois décimos de segundo, então uma carga rápida não
+  pisca.
 
 ### Hooks do Claude Code
 
@@ -861,10 +874,15 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   adicionar, e depois **SSH**, os destinos SSH salvos). A página aberta tem a linha preenchida e uma
   barra na borda esquerda, os itens com subpáginas terminam em uma seta, as novidades levam um selo
   **Beta** ou **Novo** que some sozinho na versão em que foi marcado para acabar (o Beta de
-  Equipes acaba na 0.39, o Novo de Conversas na 0.38), e o **Manual** no pé abre este manual no navegador (o ícone diz que sai do
-  app). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados (um grupo **Máquinas** dobrado mostra
+  Equipes acaba na 0.39, o Novo de Conversas na 0.38). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados (um grupo **Máquinas** dobrado mostra
   uma marca de aviso no título enquanto uma máquina está offline, sem uma dependência obrigatória ou
   repassando a chave de API), e o trilho estreito de ícones não tem títulos.
+- No pé da barra, **Configurações** é um item visível (marcado enquanto as Configurações estão
+  abertas), e a conta do Claude (e-mail e plano, lidos do cartão da conta do host; o trilho mostra só
+  a inicial) abre um menu com **Configurações**, **Alternar tema**, **Manual** e, para cada host cujo
+  `gh` está conectado ao GitHub com um login que o app pode remover, **Sair do GitHub** (após uma
+  confirmação; um login que vem do ambiente do daemon é removido lá). Com vários hosts aparece a
+  conta do host aberto, e quantas contas há quando diferem; um host offline não mostra nenhuma.
 - O **Início** (primeiro em Trabalho) é uma faixa de quatro cartões com os últimos sete dias de todos
   os hosts online, cada um com um gráfico pequeno: **Gasto** (com o orçamento mensal dos hosts, quando
   há), **Turnos** (ok e com falha), **Tokens** (com o que veio do cache) e o **turno médio** (custo,
@@ -2270,6 +2288,12 @@ horas, 7 dias e as outras que vierem), e a leitura deixa de valer quando a janel
   dias (hosts com a mesma conta compartilham um cartão, com o nome de todos), com a porcentagem, a hora de reinício e a idade da leitura ("lida há 12 min").
   - A barra fica vermelha a partir de `quota.pauseAt`.
   - Cruzar o `pauseAt` gera uma notificação, uma vez por janela.
+- **Na barra superior:** um medidor pequeno mostra a janela mais usada entre os hosts online, com a
+  porcentagem (o nome da janela aparece a partir de 960 px de largura). A partir de 80% ele ganha
+  uma marca de alerta na cor de "precisa de você", e em 100% (ou a partir do
+  `pauseAt`, como no cartão da conta) a barra fica vermelha; o nome e a dica
+  dizem o nível, o host e o tempo que falta. Clicar nele abre a página desse host. Sem leitura, ele
+  não aparece.
 - **Só terminal:** os hooks não trazem a cota. Quem usa só sessões do terminal vê barras vazias ou
   antigas até rodar um card ou uma sessão gerenciada no host.
 
@@ -2564,6 +2588,13 @@ Abra **Configurações → Webhooks**.
   - **Discord:** um webhook de canal (`https://discord.com/api/webhooks/...`). O título de uma
     sessão não marca ninguém.
   - **JSON genérico:** seu próprio endereço, com um **segredo de assinatura**.
+  - **ntfy (avisos no celular):** o endereço de um tópico (`https://ntfy.sh/seu-topico`, ou o do
+    seu servidor) e, para um tópico protegido, um **token de acesso** (`tk_...`), guardado no
+    cofre. Instale o app do ntfy no celular e assine o mesmo tópico. *Precisa de você* chega com
+    prioridade alta, o resto com a padrão. Os avisos vão num sentido só: tocar neles não abre nada
+    no Flightdeck. O servidor precisa estar acessível pela internet; um que só existe na sua rede
+    de casa é recusado, como para todo webhook. Escolha um nome de tópico difícil de adivinhar, ou
+    proteja-o com um token: quem souber um tópico público consegue lê-lo.
 - **Eventos:** *precisa de você* (uma permissão ou uma pergunta), *sessão terminou*, *sessão
   falhou*, *alerta de orçamento* e *vigia do PR* (um PR vigiado precisa de você). Cada webhook
   escolhe os que quer.
@@ -2627,14 +2658,19 @@ Toda tela abre numa aba, como num navegador. Cada aba tem o próprio histórico 
   | `Ctrl+T` | aba nova, na paleta |
   | `Ctrl+W` | fecha a aba |
   | `Ctrl+Shift+T` | reabre a última fechada (guarda as últimas 20) |
-  | `Ctrl+Tab` / `Ctrl+Shift+Tab` | próxima e anterior |
+  | `Ctrl+Tab` (segure `Ctrl` e aperte `Tab` de novo para descer) / `Ctrl+Shift+Tab` (subir) | abre o seletor com as abas mais recentes da área com o foco, na anterior; solte o `Ctrl` para ir à selecionada, `Esc` ou sair da janela cancela. Um toque rápido vai à aba anterior, e outro toque volta |
   | `Ctrl+1`…`Ctrl+9` | vai para aquela aba (`Ctrl+9` é a última) |
   | `Ctrl+Shift+PageUp` / `PageDown` | move a aba ativa para a esquerda ou a direita |
   | `Ctrl+Shift+←` / `→` (numa aba com o foco) | move essa aba para a esquerda ou a direita; o leitor de tela ouve a nova posição |
   | `Ctrl+\` | divide a tela ou junta as áreas |
 
-  Na entrada web do demo, o Chromium fica com `Ctrl+T`, `Ctrl+W` e `Ctrl+Shift+T`: lá, use os
-  botões.
+  Em Configurações, Aparência, **Ordem do Ctrl+Tab** escolhe **Mais recente primeiro** (o padrão)
+  ou **Ordem das abas**, em que `Ctrl+Tab` e `Ctrl+Shift+Tab` vão para a próxima e a anterior como
+  antes. O seletor é uma lista para leitores de tela (a aba selecionada é anunciada); a lista não é
+  guardada entre execuções.
+
+  Na entrada web do demo, o Chromium fica com `Ctrl+T`, `Ctrl+W`, `Ctrl+Shift+T` e `Ctrl+Tab`:
+  lá, use os botões.
 - **Guardadas entre aberturas:** as abas, quais estão fixas, a aba ativa, a divisão e o divisor
   voltam quando o app abre de novo. Cada aba volta na sua tela, sem o histórico. O formulário de
   host nunca é guardado, porque pode ter um token. A aba de um host que ainda não conectou mostra
@@ -2812,8 +2848,21 @@ Configurações) e, depois de Enter, **Histórico**.
 - **↑/↓** escolhem, **Enter** abre e **Tab** mostra as ações da entrada (por exemplo, num projeto:
   Abrir board, Workflows, Abrir no terminal). Esc volta das ações para a lista e, dali, fecha.
 - **Ir para Custos** aparece quando o app tem a tela de Custos e algum host anuncia `costs`.
-- Sem nada digitado, uma seção **Recentes** vem primeiro, com as cinco últimas entradas que você
-  abriu (guardadas entre execuções). **Ações** também tem **Ir para Sessões / Precisa de você /
+- A linha em que o teclado está é uma superfície com um aro em volta, nos dois temas. A linha de
+  uma sessão mostra o glifo do estado (rodando, precisa de você, ociosa) e acompanha as mudanças; a
+  de um card tem o ícone do card.
+- Sem nada digitado, uma seção **Recentes** vem primeiro, com até seis das entradas que você abriu
+  (guardadas entre execuções): o que espera por você primeiro, depois o que está rodando, depois o
+  resto. Cada uma mostra **Alt+1** a **Alt+6**, que a abrem com a paleta aberta (fora dela não
+  fazem nada). A ordem fica fixa quando a paleta abre, para as linhas não se mexerem sob o cursor.
+- A paleta abre **restrita ao lugar onde você está**: num board ou card, ao host e ao projeto dele;
+  numa sessão ou na página de um host, ao host. Os filtros aparecem como chips sob o campo; clique
+  num para tirá-lo, ou em **Limpar todos os filtros**. A mudança dura só até a paleta fechar.
+- Texto que não casa com nenhum card termina a lista com **Criar card “texto” em projeto** (o
+  projeto do filtro, ou o único projeto que existe). Colar um link de issue do GitHub ou digitar
+  `#123` num projeto com provedor de issues oferece **Criar card da issue**, que liga a issue.
+- Cada seção mostra oito linhas e depois um botão como **mais 22**; cada clique mostra mais vinte.
+- **Ações** também tem **Ir para Sessões / Precisa de você /
   Projetos**, **Mostrar os atalhos de teclado** e, enquanto um pedido espera por você, **Aprovar o
   pedido mais antigo** e **Negar o pedido mais antigo** (um pedido de risco alto é aberto para ser
   segurado, como na bandeja). Cada comando mostra suas teclas à direita.

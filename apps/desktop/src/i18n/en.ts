@@ -2,7 +2,20 @@ import type { Dictionary } from "./index.ts";
 
 /** English: the same keys as pt-BR.ts (a missing or extra one fails typecheck). */
 export const en: Dictionary = {
+  inFlight: { stillWorking: "Still working…" },
   nav: { back: "Back", forward: "Forward", overview: "Home" },
+  sidebarAccount: {
+    menu: "Account menu for {name}",
+    none: "Claude account",
+    unread: "Not read yet",
+    many: "{n} accounts",
+    manyHint: "One per host",
+    plan: "{plan} plan",
+    signOutGithub: "Sign out of GitHub",
+    signOutGithubHost: "Sign out of GitHub ({host})",
+    signOutGithubConfirm:
+      "Sign out of GitHub on {host}? Its sessions lose access to your repositories until you sign in again.",
+  },
   home: {
     title: "Home",
     range: "Last 7 days · all hosts",
@@ -768,6 +781,9 @@ export const en: Dictionary = {
     discardInstead: "Discard card",
   },
   shell: {
+    quotaLabel: "Plan quota {state}: {window} at {percent}% on {host}, resets in {remaining}",
+    quotaLabelNoReset: "Plan quota {state}: {window} at {percent}% on {host}",
+    quotaLevels: { ok: "fine", near: "near the limit", reached: "limit reached" },
     host: "Host: {host}",
     noHost: "No host yet",
     hostItem: "{host}, {state}",
@@ -957,6 +973,8 @@ export const en: Dictionary = {
     densities: { compact: "Compact", comfortable: "Comfortable" },
     themes: { system: "System", light: "Light", dark: "Dark" },
     terminalFont: "Terminal font size",
+    tabOrder: "Ctrl+Tab order",
+    tabOrders: { mru: "Most recently used", sequential: "Tab order" },
   },
   languages: { "pt-BR": "Português (Brasil)", en: "English" },
   palette: {
@@ -997,7 +1015,18 @@ export const en: Dictionary = {
     noPrMatch: "No card or session has this PR",
     actionsOf: "Actions of {label}",
     sectionActions: "Actions",
+    sectionClients: "Clients",
     sectionRecent: "Recent",
+    sectionCreate: "Create",
+    createCard: "Create card “{title}” in {project}",
+    createCardIssue: "Create card from issue {issue} in {project}",
+    createDetail: "New card",
+    filters: "Filters",
+    filterHost: "host",
+    filterProject: "project",
+    removeFilter: "Remove filter: {what}",
+    clearFilters: "Clear all filters",
+    more: "{n} more",
     goSessions: "Go to Sessions",
     goNeedsYou: "Go to Needs you",
     goProjects: "Go to Projects",
@@ -2271,6 +2300,7 @@ export const en: Dictionary = {
     preview: "preview",
     newTab: "New tab",
     badge: { "needs-you": "Needs you", running: "Running", unread: "Unread" },
+    switcher: { title: "Switch tab", position: "{title}, {n} of {total}" },
     all: "All tabs",
     scrollLeft: "Scroll the tabs left",
     scrollRight: "Scroll the tabs right",
@@ -2631,8 +2661,17 @@ export const en: Dictionary = {
     add: "Add webhook",
     name: "Name",
     type: "Type",
-    types: { slack: "Slack", discord: "Discord", generic: "Generic JSON (signed)" },
+    types: {
+      slack: "Slack",
+      discord: "Discord",
+      generic: "Generic JSON (signed)",
+      ntfy: "ntfy (phone notices)",
+    },
     url: "Webhook URL",
+    ntfyUrl: "Topic URL",
+    ntfyHelp:
+      "Like https://ntfy.sh/your-topic. The server must be reachable from the internet: one only on your home network is not. A tap on the notice opens nothing.",
+    token: "Access token (optional)",
     urlKeep: "Leave empty to keep the current URL",
     signing: "Signing secret",
     scope: "Hosts",
@@ -2669,6 +2708,8 @@ export const en: Dictionary = {
       no_kinds: "Pick at least one event.",
       no_name: "Give it a name.",
       not_found: "That webhook no longer exists.",
+      invalid_topic: "Use the address of one topic, like https://ntfy.sh/your-topic.",
+      invalid_token: "That is not an ntfy access token (letters, digits, - and _).",
     },
   },
   bg: {
@@ -3268,7 +3309,7 @@ export const en: Dictionary = {
     goSettings: "Go to Settings",
     tabNew: "New tab",
     tabClose: "Close the tab",
-    tabNext: "Next tab",
+    tabRecent: "Switch to the previous tab (hold Ctrl and press Tab to cycle)",
     tabNumber: "Go to tab 1 to 9",
     listNext: "Next row",
     listPrevious: "Previous row",
@@ -3722,6 +3763,11 @@ export const en: Dictionary = {
   hostDeps: {
     installPage: "Install page",
     installPageFor: "Open the install page for {name}",
+    fixNote: {
+      elevated: "Run it in an elevated PowerShell (Run as administrator).",
+      noSystemd:
+        "This computer has no systemd, so flightdeckd cannot be installed as a service here. Start it at login with your system's own tools.",
+    },
     check: "Check again",
     checking: "Checking…",
     readFailed: "Could not read the health: {reason}",

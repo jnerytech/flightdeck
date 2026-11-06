@@ -39,7 +39,7 @@ describe("ci-ubuntu-split (#293)", () => {
   test("the suite runs alone, after quick, and hands its lcov report on as an artifact", () => {
     const suite = job("test-suite");
     expect(suite.name).toBe(`test suite (ubuntu-latest)${SUFFIX}`);
-    expect(suite.needs).toEqual(["changes", "quick"]);
+    expect(suite.needs).toEqual(["quick"]);
     expect(suite.if).toBe(DISPATCH);
     expect(runs("test-suite")).toContain("bun run test");
     for (const gone of ["Smokes", "SonarCloud", "cargo check do app"]) {
@@ -76,7 +76,7 @@ describe("ci-ubuntu-split (#293)", () => {
   test("the smokes and cargo run in a Linux checks job, in parallel with the suite", () => {
     const checks = job("checks-linux");
     expect(checks.name).toBe(`checks (ubuntu-latest)${SUFFIX}`);
-    expect(checks.needs).toEqual(["changes", "quick"]);
+    expect(checks.needs).toEqual(["quick"]);
     expect(runs("checks-linux")).toContain("bun run smoke");
     expect(runs("checks-linux")).toContain("cargo check");
   });
@@ -84,26 +84,18 @@ describe("ci-ubuntu-split (#293)", () => {
   test("test (ubuntu-latest) is an aggregate that fails unless changes, quick, the suite, SonarCloud, the fast-coverage ratchet and the checks succeeded", () => {
     const gate = job("test");
     expect(gate.name).toBe(`test (ubuntu-latest)${SUFFIX}`);
-    expect(gate.needs).toEqual([
-      "changes",
-      "quick",
-      "test-suite",
-      "sonar",
-      "fast-coverage",
-      "checks-linux",
-    ]);
+    expect(gate.needs).toEqual(["quick", "test-suite", "sonar", "fast-coverage", "checks-linux"]);
     expect(gate.if).toBe(`!cancelled() && (${DISPATCH})`);
     const check = runs("test");
     // The plan and the quick job first: a failure there must fail the check, never skip it.
     const quick = check.indexOf('test "${{ needs.quick.result }}" = success');
-    expect(check.indexOf('test "${{ needs.changes.result }}" = success')).toBeLessThan(quick);
     expect(quick).toBeLessThan(check.indexOf("needs.test-suite.result"));
     expect(check).toContain('test "${{ needs.test-suite.result }}" = success');
     expect(check).toContain('test "${{ needs.fast-coverage.result }}" = success');
     // SonarCloud skips on a dispatch; the checks skip only when the plan needs no smoke or cargo.
     expect(check).toContain('case "${{ needs.sonar.result }}" in success|skipped)');
     expect(check).toContain('test "${{ needs.checks-linux.result }}" = success');
-    expect(check).toContain("needs.changes.outputs.smokes");
-    expect(check).toContain("needs.changes.outputs.cargo");
+    expect(check).toContain("needs.quick.outputs.smokes");
+    expect(check).toContain("needs.quick.outputs.cargo");
   });
 });

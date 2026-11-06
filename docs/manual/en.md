@@ -311,7 +311,13 @@ first) and **Add folder** (it opens Settings with the folder box focused and in 
 hooks** also refreshes the hooks status shown in Settings). What needs `sudo` or an installer is only shown to copy: the app never
 runs it. A missing program shows the package-manager line where one exists (apt, brew, winget) and
 an **Install page** button that opens the official page; Flightdeck never offers a download piped
-into a shell. The same checks run in a terminal with `flightdeckd doctor`.
+into a shell. The advice is true for the system it is shown for: **GitHub** counts as outdated below
+gh 2.31 (the first with `gh project`, which board sync needs), and on Linux it points to the install
+page because the apt package of an LTS can be older than that; **OpenSSH** on Windows says to run its
+`Add-WindowsCapability` line in an elevated PowerShell (Run as administrator); on a Linux without
+systemd the **service** row says there is no service to install here and to start `flightdeckd` at
+login with the system's own tools, instead of offering a command that fails. The same checks run in
+a terminal with `flightdeckd doctor`.
 
 ### Trusting a project
 
@@ -617,6 +623,11 @@ A session appears only once. The order of preference is managed, then terminal, 
   the model's own level. An OpenCode session keeps a plain list of its own models. While a turn
   runs a line above the box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
   long; the spinner stops moving if your system asks for reduced motion.
+- **Waiting on a button:** a button whose command is running ignores a second click at once. Under a
+  tenth of a second nothing changes on screen; up to one second it only looks busy; from one second
+  it shows a spinner; after three seconds it also says **Still working…** (or the stage, when the
+  command reports one). A list or panel that is loading draws its placeholders only if the wait
+  passes two tenths of a second, so a quick load shows no flicker.
 
 ### Claude Code hooks
 
@@ -869,10 +880,15 @@ live; the list is the project's, so a session of another project never shows her
   its state dot, health mark and menu, a **+** to add one, then **SSH**, the saved SSH destinations).
   The open page has a filled row and a bar at its left edge, items with sub-pages end in a chevron,
   recent features carry a **Beta** or **New** badge that goes away by itself from the version the
-  badge was set to end at (Teams' Beta ends at 0.39, Conversations' New at 0.38), and **Manual** at the foot opens this manual in
-  the browser (its icon says it leaves the app). A group with nothing to offer is not drawn, the
+  badge was set to end at (Teams' Beta ends at 0.39, Conversations' New at 0.38). A group with nothing to offer is not drawn, the
   folded groups are remembered (a folded **Machines** shows a warning mark on its title while a machine
   is offline, misses a required dependency or forwards its API key), and the narrow icon rail has no headings.
+- At the foot of the bar, **Settings** is a visible item (marked while Settings is open), and the Claude
+  account (its email and plan, read from the host's account card; the rail shows only its initial)
+  opens a menu with **Settings**, **Toggle theme**, **Manual** and, for each host whose `gh` is signed
+  in to GitHub with a login the app can remove, **Sign out of GitHub** (after a confirmation; a login
+  that comes from the daemon's environment is removed there). With several hosts the account of the
+  open host is shown, and how many accounts there are when they differ; an offline host shows none.
 - **Home** (first in Work) is a strip of four cards over the last seven days of every online host,
   each with a sparkline: **Spend** (with the month's host budgets, when set), **Turns** (ok and
   failed), **Tokens** (with what came from the cache) and the **average turn** (cost, time and
@@ -2277,6 +2293,12 @@ window resets.
   ago").
   - The bar turns red from `quota.pauseAt`.
   - Crossing `pauseAt` raises a notification, once per window.
+- **In the top bar:** a small meter shows the window under most pressure across the online hosts,
+  with its percentage (the window's name shows from 960 px wide). From 80% it carries a warning
+  mark in the needs-you colour, and at 100% (or from `pauseAt`, as the account card) the bar
+  turns red; its name and tooltip say the level,
+  the host and the time left. Clicking it opens that host's page. With no reading, it does not
+  show.
 - **Terminal only:** the hooks do not carry the quota. Anyone who only uses terminal sessions
   sees empty or stale bars until a card or a managed session runs on the host.
 
@@ -2569,6 +2591,13 @@ Open **Settings → Webhooks**.
   - **Discord:** a channel webhook (`https://discord.com/api/webhooks/...`). Nobody is pinged by a
     session title.
   - **Generic JSON:** your own endpoint, with a **signing secret**.
+  - **ntfy (phone notices):** the address of one topic (`https://ntfy.sh/your-topic`, or your own
+    server's) and, for a protected topic, an **access token** (`tk_...`), kept in the vault. Install
+    the ntfy app on the phone and subscribe to the same topic. *Needs you* arrives with high
+    priority, everything else with the default one. The notices go one way: a tap opens nothing in
+    Flightdeck. The server must be reachable from the internet; one only on your home network is
+    refused, as for every webhook. Pick a topic name nobody would guess, or protect it with a token:
+    anyone who knows a public topic can read it.
 - **Events:** *needs you* (a permission or a question), *session ended*, *session failed*, *budget
   alert* and *PR watch* (a watched PR needs you). Each webhook picks the ones it wants.
 - **Hosts:** *all hosts*, or one. An event from a host goes to the webhooks of all hosts and to that
@@ -2631,14 +2660,19 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
   | `Ctrl+T` | new tab, on the palette |
   | `Ctrl+W` | close the tab |
   | `Ctrl+Shift+T` | reopen the last closed tab (the last 20 are kept) |
-  | `Ctrl+Tab` / `Ctrl+Shift+Tab` | next and previous tab |
+  | `Ctrl+Tab` (hold `Ctrl`, press `Tab` again to go down) / `Ctrl+Shift+Tab` (up) | opens the switcher on the most recently used tabs of the focused area, on the previous one; release `Ctrl` to go to the one selected, `Esc` or leaving the window to cancel. A quick tap goes to the previous tab, and another tap comes back |
   | `Ctrl+1`…`Ctrl+9` | go to that tab (`Ctrl+9` is the last one) |
   | `Ctrl+Shift+PageUp` / `PageDown` | move the active tab left or right |
   | `Ctrl+Shift+←` / `→` (on a focused tab) | move that tab left or right; a screen reader is told its new place |
   | `Ctrl+\` | split the window or join the areas |
 
-  In the demo's web entry, Chromium keeps `Ctrl+T`, `Ctrl+W` and `Ctrl+Shift+T` for itself: use
-  the buttons there.
+  Settings, Appearance, **Ctrl+Tab order** chooses **Most recently used** (the default) or
+  **Tab order**, where `Ctrl+Tab` and `Ctrl+Shift+Tab` step to the next and previous tab as before.
+  The switcher is a list for screen readers (the selected tab is announced); the list is not kept
+  between starts.
+
+  In the demo's web entry, Chromium keeps `Ctrl+T`, `Ctrl+W`, `Ctrl+Shift+T` and `Ctrl+Tab` for
+  itself: use the buttons there.
 - **Kept between starts:** the tabs, which ones are pinned, the active tab, the split and the
   divider come back when the app opens again. Each tab comes back on its screen, without its
   history. The host form is never kept, since it can hold a token. A tab of a host that is not
@@ -2826,8 +2860,21 @@ their English equivalents.
   project: Open board, Workflows, Open in terminal). Esc goes back from the actions to the list
   and, from there, closes.
 - **Go to Costs** appears when the app has the Costs screen and some host announces `costs`.
-- With nothing typed, a **Recent** section comes first with the last five entries you opened
-  (kept between runs). **Actions** also has **Go to Sessions / Needs you / Projects**, **Show the
+- The row the keyboard is on is a surface with a ring around it, in both themes. A session's row
+  shows its state glyph (running, needs you, idle) and follows it as it changes; a card's row
+  has the card icon.
+- With nothing typed, a **Recent** section comes first with up to six of the entries you opened
+  (kept between runs): what waits for you first, then what runs, then the rest. Each shows
+  **Alt+1** to **Alt+6**, which open it while the palette is open (they do nothing outside it).
+  The order is fixed when the palette opens, so rows do not move under the cursor.
+- The palette opens **narrowed to where you are**: on a board or a card, to its host and project;
+  on a session or a host page, to the host. The filters show as chips under the field; click one to
+  remove it, or **Clear all filters**. The change lasts only until the palette closes.
+- Text that matches no card ends the list with **Create card “text” in project** (the scope's
+  project, or the only project there is). Pasting a GitHub issue link or typing `#123` in a
+  project with an issue provider offers **Create card from issue** instead, which links the issue.
+- Each section shows eight rows, then a button such as **22 more**; each press shows twenty more.
+- **Actions** also has **Go to Sessions / Needs you / Projects**, **Show the
   keyboard shortcuts** and, while a request waits for you, **Approve the oldest request** and
   **Deny the oldest request** (a high-risk request is opened to be held, as in the tray). Each
   command shows its keys at the right.
