@@ -929,6 +929,11 @@ export class AppStore {
       options.startRoute,
     );
     this.router = this.hostTabs.router;
+    // A set kept for a host that is not configured any more (removed before, or gone from the list).
+    const configured = new Set(loadHosts(platform.storage).map((host) => host.id));
+    for (const id of Object.keys(this.hostTabs.snapshot().hosts)) {
+      if (!configured.has(id)) this.hostTabs.removeHost(id);
+    }
     this.hostTabs.subscribe(() => {
       platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.hostTabs.snapshot()));
       this.clearShownUnread();
@@ -1299,6 +1304,7 @@ export class AppStore {
   }
 
   async removeHost(hostId: string): Promise<void> {
+    this.hostTabs.removeHost(hostId);
     this.connections.get(hostId)?.dispose();
     this.connections.delete(hostId);
     await this.platform.secrets.delete(hostId);

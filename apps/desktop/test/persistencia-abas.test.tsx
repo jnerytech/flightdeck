@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { seedDemoHosts } from "../src/demo/boot.ts";
 import { HOSTS_KEY } from "../src/lib/hosts.ts";
 import type { Route } from "../src/lib/router.ts";
 import { WORKSPACE_KEY, Workspace } from "../src/lib/workspace.ts";
@@ -133,6 +134,10 @@ describe("persistencia-abas", () => {
 
   test("the store keeps the window as it changes and restores it on the next start", async () => {
     const mem = memoryPlatform(false, "pt-BR");
+    // The host is configured: a kept set of a host that is not does not come back.
+    seedDemoHosts(mem.win.localStorage, mem.tokens, [
+      { id: "h1", name: "alfa", url: "ws://127.0.0.1:1", token: "t" },
+    ]);
     const first = new AppStore(mem.platform);
     first.hostTabs.open(costs);
     first.hostTabs.open({ name: "history", host: "h1" });
