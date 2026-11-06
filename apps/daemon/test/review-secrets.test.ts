@@ -259,6 +259,17 @@ describe("review-secrets: a quoted name in the diff is read as the name (#509)",
     );
   });
 
+  test("a control character git writes in octal comes back as that character", () => {
+    const text = [
+      'diff --git "a/bell\\007.txt" "b/bell\\007.txt"',
+      "@@ -1 +1 @@",
+      "-a",
+      "+b",
+      "",
+    ].join("\n");
+    expect(parseUnifiedDiff(text, true).map((f) => f.path)).toEqual(["bell\u0007.txt"]);
+  });
+
   // Windows refuses a quote in a file name.
   test.skipIf(process.platform === "win32")(
     "a tracked credential file with a quote in its name shows no lines, and its neighbour gets none of them",
