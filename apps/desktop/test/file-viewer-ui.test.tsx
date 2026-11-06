@@ -24,9 +24,10 @@ const ROOT: FileListing = {
   truncated: false,
 };
 
-/** A host whose README has two lines and whose logo is not text. */
-function host() {
+/** A host whose README has two lines and whose logo is not text; `local`: a host of this computer. */
+function host(local = false) {
   const read: string[] = [];
+  const opened: string[] = [];
   const store = {
     hostRequest: async (_host: string, type: string, payload: { path?: string }) => {
       if (type === "file.list") return { ok: true, data: ROOT };
@@ -47,8 +48,17 @@ function host() {
       return { ok: true, data: { target: "session:abc", root: "/r", base: null, files: [] } };
     },
     watchChanges: () => () => {},
+    canOpenPaths: () => local,
+    openPath: async (_host: string, path: string) => {
+      opened.push(`open ${path}`);
+      return true;
+    },
+    revealPath: async (_host: string, path: string) => {
+      opened.push(`reveal ${path}`);
+      return true;
+    },
   } as unknown as AppStore;
-  return { store, read };
+  return { store, read, opened };
 }
 
 const show = async (store: AppStore, language: "en" | "pt-BR" = "en") => {
@@ -95,11 +105,31 @@ describe("file-viewer-ui: a file of the tree, read only, with line numbers (#506
     expect(read).toEqual(["logo.png"]);
   });
 
+  test("on a host of this computer the file opens in its app or shows in its folder; elsewhere neither is offered", async () => {
+    const local = host(true);
+    await show(local.store);
+    await press("README.md");
+    await press("Open in its app");
+    await press("Show in folder");
+    expect(local.opened).toEqual(["open /r/README.md", "reveal /r/README.md"]);
+    cleanup();
+    const remote = host(false);
+    await show(remote.store);
+    await press("README.md");
+    expect(screen.queryByRole("button", { name: "Open in its app" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Show in folder" })).toBeNull();
+  });
+
   test("in Portuguese", async () => {
     const { store } = host();
     await show(store, "pt-BR");
     await press("README.md");
     expect(screen.queryByRole("region", { name: "Arquivo README.md" })).not.toBeNull();
     expect(screen.queryByRole("button", { name: "Fechar" })).not.toBeNull();
+    cleanup();
+    await show(host(true).store, "pt-BR");
+    await press("README.md");
+    expect(screen.queryByRole("button", { name: "Abrir no app padrão" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Mostrar na pasta" })).not.toBeNull();
   });
 });
