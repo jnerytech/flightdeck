@@ -29,6 +29,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { IconTip } from "@/components/feedback/icon-tip";
+import { CacheTimer } from "@/components/hub/cache-timer";
 import { NAV_ICONS } from "@/components/nav-icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,7 +42,14 @@ import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
 import { isProd } from "../lib/ssh.ts";
-import { badgePulses, type TabBadge, type TabKind, tabBadge, tabKind } from "../lib/tab-badge.ts";
+import {
+  badgePulses,
+  type TabBadge,
+  type TabKind,
+  tabBadge,
+  tabIdleSince,
+  tabKind,
+} from "../lib/tab-badge.ts";
 import type { Tab, Tabs } from "../lib/tabs.ts";
 
 const ICONS: Record<TabKind, LucideIcon> = {
@@ -187,6 +195,7 @@ export function TabBar(
             const Icon = ICONS[kind];
             const selected = tab.id === tabs.activeId;
             const badge = tabBadge(tab.router.current, state);
+            const cacheSince = tabIdleSince(tab.router.current, state);
             const badgeWords = badge ? t(`tabs.badge.${badge}`) : "";
             const pinnedLabel = badge ? `${label}, ${badgeWords}` : label;
             const ssh = sshOf(tab, store);
@@ -201,7 +210,7 @@ export function TabBar(
                 {...(tab.pinned ? { "data-pinned": "true" } : {})}
                 {...(dropOn?.id === tab.id ? { "data-drop": dropOn.side } : {})}
                 className={cn(
-                  "tab-item group text-sm has-[[role=tab]:focus-visible]:ring-2 has-[[role=tab]:focus-visible]:ring-ring",
+                  "tab-item group relative text-sm has-[[role=tab]:focus-visible]:ring-2 has-[[role=tab]:focus-visible]:ring-ring",
                   prod && "border-2 border-destructive",
                   dropOn?.id === tab.id &&
                     (dropOn.side === "before"
@@ -278,6 +287,11 @@ export function TabBar(
                     {badge && <TabBadgeGlyph badge={badge} label={t(`tabs.badge.${badge}`)} />}
                   </button>
                 </IconTip>
+                {cacheSince && (
+                  <span className="absolute top-0.5 left-0.5">
+                    <CacheTimer store={store} since={cacheSince} compact />
+                  </span>
+                )}
                 {!tab.pinned && (
                   <button
                     type="button"

@@ -313,6 +313,8 @@ interface SessionViewProps {
   bypass?: { host: string };
   /** Pins or unpins the session; its button sits in each assistant message's action row. */
   pin?: { pinned: boolean; toggle(): void };
+  /** The prompt cache countdown of an idle session, shown next to the model. */
+  cache?: ReactNode;
   /** Forks the conversation at its latest message; offered on that message only. */
   fork?: () => void;
   /** Phase 39: the agent; an OpenCode session says so and offers no fork. */
@@ -962,6 +964,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
           mode={session.permissionMode ?? "default"}
           pickers={pickers}
           working={working}
+          {...(props.cache ? { cache: props.cache } : {})}
         />
       </ComposerDock>
       {picking &&

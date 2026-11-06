@@ -79,6 +79,8 @@ export interface TerminalManagerOptions {
   idleMinutes?: number;
   /** The environment terminals inherit; the process's when absent. */
   env?: () => Record<string, string | undefined>;
+  /** The env block of the host's Claude Code settings (issue #486); none when absent. */
+  claudeEnv?: () => Promise<Record<string, string>>;
   /** This daemon's own command line and config, which "Claude aqui" runs `claude` through. */
   claude?: { self: string[]; configFile: string };
   /** Keep the API-key variables (`allowApiKey` of the config); dropped when absent. */
@@ -299,12 +301,22 @@ export class TerminalManager {
           which: this.opts.which ?? whichOnPath,
         });
     }
+    // Issue #486: in Claude Code's fullscreen mode each wheel notch reaches it as one report; 3
+    // lines a notch is how Windows Terminal and VS Code feel. A value the host's environment or
+    // the person's Claude Code settings (where /scroll-speed keeps it) already set is theirs, and
+    // one the request sets wins over all.
+    const kept = await (this.opts.claudeEnv?.() ?? Promise.resolve({} as Record<string, string>));
+    const scrollDefault: Record<string, string> =
+      env.CLAUDE_CODE_SCROLL_SPEED || kept.CLAUDE_CODE_SCROLL_SPEED
+        ? {}
+        : { CLAUDE_CODE_SCROLL_SPEED: "3" };
     let pty: Pty;
     try {
       pty = this.opts.pty({
         argv,
         cwd,
         env: {
+          ...scrollDefault,
           ...buildChildEnv(env, this.opts.allowApiKey ?? false),
           // What is attached is xterm.js. A service has no TERM (or "dumb"), and readline then
           // scrolls a long line sideways instead of wrapping it.

@@ -16,7 +16,7 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   (open or close a phase); agents `spec-verifier` (checks a phase against its spec),
   `tauri-rust-reviewer` (for changes in `src-tauri`), `test-quality-reviewer` (tests that cannot
   fail) and `security-reviewer` (spawns, paths, secrets, pairing), all read-only; hooks that block wide `git add`, edits of
-  generated files, test edits that add `.only`/`.skip`/`test.todo`/`toMatchSnapshot`, commits
+  generated files, test edits that add `.only`/`test.todo`/`toMatchSnapshot` or an unnoted skip, commits
   that break `type(scope): text` or the TDD order, and heavy runs outside the slot, and that run
   Biome after each edit, in the main checkout and its worktrees. The hook rules live in `scripts/lib/claude-hooks.ts`;
   `bun run harness:stats` shows how often each rule blocked and how long the hooks took. Rules per
@@ -39,7 +39,8 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   process group, never the holder. `--nice` lowers the command's priority, `--cancel` stops your own waiters and run
   (matched by `FLIGHTDECK_SLOT_LABEL`, never another session's), so nobody needs `pkill -f`.
   `--priority` (for the maintainer's full gate) also lowers the other bun test processes of the
-  user while it runs.
+  user while it runs. What the slot and the light lane start, and every test run (the preload),
+  runs at `oom_score_adj` 1000 on Linux, so the kernel kills a leaking test before any session.
 - Tests for what you changed: `bun run test:related [--base <ref>] [--fast]`. It takes the files
   changed since the merge-base with `main` (or `<ref>`), picks the changed test files plus every
   test that imports a changed file (transitively; with `--fast`, only directly) or names it as a
@@ -54,8 +55,12 @@ several hosts. Each host runs `flightdeckd` (Bun + TypeScript, SQLite, WebSocket
   (processes, a server, real git) and `e2e` (journeys, smokes). On the Pi, a session runs
   `bun run test:related -- --fast --tier unit,component` (a fifth of the suite's time, no coverage
   gate). A PR's CI runs `--pr`: every unit and component test plus the related tests of the other
-  tiers, with 100% on the changed files. Main, the nightly run and a run by hand run the whole suite
-  with the whole-repo 100% gate. `bun run test:tiers` prints the counts.
+  tiers, with 100% on the changed files. A push to main runs the same, from the commit before it
+  (#444). The Windows shards run that selection (`test:related -- --pr --list` and
+  `test:shards --files`, #399; three shards above 100 slow-tier files), and the e2e journeys run
+  when the change touches what they read (the screens, the journeys, the demo, the daemon). The
+  schedule (every 3 hours) and a run by hand run the whole suite with the whole-repo 100% gate;
+  `pr tag` tags only a commit with such a full green run. `bun run test:tiers` prints the counts.
 - Which function a file is missing: `bun run coverage:funcs <file.ts>... [--tests <test.ts>...]` runs
   the tests that reach the files (or the ones named after --tests) and lists the functions no test
   called as `file:line`. Bun's coverage only counts them. It instruments in memory, never the sources.
@@ -91,15 +96,18 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   assertion**, commit the test alone (`test(<area>): ...`), minimal implementation, green, full
   suite, commit `feat(<area>): ...`. Every `feat`/`fix` needs a prior `test` with the same scope;
   the commit hook enforces it. For a deliberate exception, end the message with a trailer line
-  `TDD-Waiver: <why>`; `tdd:audit` lists it as waived.
+  `TDD-Waiver: <why>`; `tdd:audit` lists it as waived. A `feat`/`fix` also names its issue (the
+  commit hook refuses one that names none): `(#N)` at the end of the subject, or a `Refs: #N` line.
 - `git add` always with explicit paths, never `-A`, `-u` or `.`, and `git status --short` before
   the commit. No `git commit -a`. No `git stash` (only `list` and `show`): `refs/stash` is shared
   by every worktree, so a pop can apply another session's changes. Keep work aside with
   `git diff > /tmp/<name>.patch` and `git apply`, or a WIP commit on your branch.
-- Forbidden in committed code: `.only`, `.skip`, `test.todo`, `toMatchSnapshot` on the first
-  run, weakening an assertion. The one exception: a test unstable off Ubuntu may be
-  `test.skipIf(notLinux)` with `// unstable: #<issue> <reason>` on its line or the line above (see
-  docs/TDD.md).
+- Forbidden in committed code: `.only`, `test.todo`, `toMatchSnapshot` on the first run,
+  weakening an assertion. The one exception: a flaky test that hurts CI may be skipped
+  (`test.skip`, `it.skip`, `describe.skip`, or `test.skipIf(notLinux)`) with
+  `// unstable: #<issue> <reason>` on its line or the line above, naming the open issue of its fix.
+  There are at most 10, and CI fails once that issue is closed, so the skip comes out with the fix
+  (#494, docs/TDD.md).
 - Tests touch nothing real. The preload replaces `claude` on the PATH with a sentinel and
   `HOME` with a temporary folder, so nothing reads or writes the real `~/.claude`. Other CLIs
   (`gh`, `az`, `ssh`, check commands) are fakes on the test PATH, with a `.cmd` version on

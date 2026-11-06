@@ -153,6 +153,7 @@ import { TelemetryStore } from "./telemetry/store.ts";
 import { BUILTIN_TEMPLATES } from "./templates/builtin.ts";
 import { loadTemplates } from "./templates/files.ts";
 import { TaskTracker } from "./templates/tasks.ts";
+import { claudeSettingsEnv } from "./terminal/claude-settings-env.ts";
 import { terminalEnabled } from "./terminal/policy.ts";
 import { bunPty, type PtyFactory } from "./terminal/pty.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
@@ -1006,6 +1007,7 @@ export async function startDaemon(
     allowApiKey: config.allowApiKey,
     // "Claude aqui" runs this very daemon's `claude`, with this config.
     claude: { self: daemonCommand(process.execPath, Bun.main), configFile },
+    claudeEnv: () => claudeSettingsEnv(claudeSettingsPath()),
     log: (message) => logger.log(message),
   });
   // Phase 23: the events of Claude Code's OTLP exporter, for the sessions of terminals.

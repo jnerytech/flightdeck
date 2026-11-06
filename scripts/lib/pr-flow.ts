@@ -503,25 +503,61 @@ export async function headCi(sha: string, deps: PrFlowDeps): Promise<string> {
 
 const TAG = /^v\d+\.\d+\.\d+(?:-[\w.]+)?$/;
 
-type MainRun = { status: string; conclusion: string | null };
+type MainRun = { id?: number; event?: string; status: string; conclusion: string | null };
 
-/** The full CI runs of a commit of main (its push). */
+/** Every CI run of a commit on main, of any event: a push's, the schedule's, a dispatch's. */
 async function mainRuns(sha: string, deps: PrFlowDeps): Promise<MainRun[]> {
   const listed = await deps.gh([
     "api",
-    `${REPO}/actions/workflows/ci.yml/runs?head_sha=${sha}&event=push&branch=${MAIN}`,
+    `${REPO}/actions/workflows/ci.yml/runs?head_sha=${sha}&branch=${MAIN}`,
     "--jq",
-    ".workflow_runs[] | {status, conclusion}",
+    ".workflow_runs[] | {id, event, status, conclusion}",
   ]);
   return jsonLines<MainRun>(listed.stdout);
 }
 
-/** Why a commit's runs are not a green full run. */
+/**
+ * Whether one of the runs is a full green run (#444): the schedule's (every 3 hours), or a dispatch
+ * whose test suite ran and passed (a screenshots-only dispatch skips it). A push to main runs only
+ * the related selection, so its green is not enough for a release.
+ */
+async function fullGreen(runs: MainRun[], deps: PrFlowDeps): Promise<boolean> {
+  for (const run of runs) {
+    if (run.status !== "completed" || run.conclusion !== "success") continue;
+    if (run.event === "schedule") return true;
+    if (run.event !== "workflow_dispatch" || run.id === undefined) continue;
+    const jobs = await deps.gh([
+      "api",
+      `${REPO}/actions/runs/${run.id}/jobs?per_page=100`,
+      "--jq",
+      ".jobs[] | {name, conclusion}",
+    ]);
+    const list = jsonLines<{ name: string; conclusion: string | null }>(jobs.stdout);
+    if (
+      list.some(
+        (j) => j.name.startsWith("test suite (ubuntu-latest)") && j.conclusion === "success",
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function refuseRuns(sha: string, runs: MainRun[], refuse: (reason: string) => number): number {
-  if (runs.length === 0) return refuse(`no CI run of ${sha} on ${MAIN} (a full run is its push)`);
+  if (runs.length === 0) {
+    return refuse(
+      `no full green run of ${sha} on ${MAIN}: the schedule runs one every 3 hours, or start one (gh workflow run ci.yml --ref ${MAIN} -f only=all)`,
+    );
+  }
   if (runs.some((r) => r.status !== "completed"))
     return refuse(`${sha}'s CI run on ${MAIN} is still running`);
-  return refuse(`${sha}'s CI run on ${MAIN} did not pass`);
+  if (runs.some((r) => !["success", "cancelled", "skipped"].includes(r.conclusion ?? ""))) {
+    return refuse(`${sha}'s CI run on ${MAIN} did not pass`);
+  }
+  return refuse(
+    `${sha} has no full green run on ${MAIN}: the schedule runs one every 3 hours, or start one (gh workflow run ci.yml --ref ${MAIN} -f only=all)`,
+  );
 }
 
 /** The newest first-parent commit of main whose package.json says the tag's version and that has a green run. */
@@ -536,8 +572,7 @@ async function greenWithBump(tag: string, deps: PrFlowDeps): Promise<string | nu
       version = undefined;
     }
     if (version !== tag.slice(1)) return null;
-    const runs = await mainRuns(sha, deps);
-    if (runs.some((r) => r.status === "completed" && r.conclusion === "success")) return sha;
+    if (await fullGreen(await mainRuns(sha, deps), deps)) return sha;
   }
   return null;
 }
@@ -571,22 +606,29 @@ async function tagRelease(args: string[], deps: PrFlowDeps): Promise<number> {
   }
   const runs = await mainRuns(sha, deps);
   let target = sha;
-  if (!runs.some((r) => r.status === "completed" && r.conclusion === "success")) {
-    // A later merge cancels the run of the one before it: without --commit, the newest commit
-    // that has the bump and a green run is the release (#376). A run that failed or is still going
-    // is not skipped over.
-    const cancelled =
-      runs.length > 0 &&
-      runs.every((r) => r.status === "completed" && r.conclusion === "cancelled");
-    if (!cancelled || args.includes("--commit")) return refuseRuns(sha, runs, refuse);
+  if (!(await fullGreen(runs, deps))) {
+    // A run that failed or is still going is never skipped over; --commit asks for that commit.
+    const unsettled = runs.some(
+      (r) =>
+        r.status !== "completed" ||
+        !["success", "cancelled", "skipped"].includes(r.conclusion ?? ""),
+    );
+    if (unsettled || args.includes("--commit")) return refuseRuns(sha, runs, refuse);
+    // Without --commit, the newest commit that has the bump and a full green run is the release
+    // (#376, #444); with none, a full run of main starts, and pr tag runs again when it is green.
     const earlier = await greenWithBump(tag, deps);
     if (!earlier) {
+      const started = await deps.gh(["workflow", "run", "ci.yml", "--ref", MAIN, "-f", "only=all"]);
       return refuse(
-        `${sha}'s CI run on ${MAIN} was cancelled, and no commit with the ${tag} bump has a green CI run on ${MAIN}`,
+        `${sha} has no full green run on ${MAIN}, and no commit with the ${tag} bump has one: ${
+          started.code === 0
+            ? `a full run of ${MAIN} was started; run pr tag again when it is green`
+            : `start one (gh workflow run ci.yml --ref ${MAIN} -f only=all)`
+        }`,
       );
     }
     deps.log(
-      `${sha}'s CI run on ${MAIN} was cancelled: tagging ${earlier}, the newest commit with the ${tag} bump that has a green run`,
+      `${sha} has no full green run on ${MAIN}: tagging ${earlier}, the newest commit with the ${tag} bump that has one`,
     );
     target = earlier;
   }

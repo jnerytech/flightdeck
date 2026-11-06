@@ -78,45 +78,81 @@ async function start(mem: ReturnType<typeof setup>) {
   return store;
 }
 
-const fill = (text: string, vars: Record<string, string>) =>
-  Object.entries(vars).reduce((s, [k, v]) => s.replace(`{${k}}`, v), text);
+/** The update card's words (issue #490), written out so a missing key cannot pass. */
+const CARD = {
+  en: {
+    title: "Update available",
+    ready: "Flightdeck v9.9.0 is ready.",
+    safe: "Your sessions will not be interrupted.",
+    notes: "Release notes",
+    update: "Update",
+    close: "Close the update notice",
+  },
+  "pt-BR": {
+    title: "Atualização disponível",
+    ready: "O Flightdeck v9.9.0 está pronto.",
+    safe: "Suas sessões não serão interrompidas.",
+    notes: "Notas da versão",
+    update: "Atualizar",
+    close: "Fechar o aviso de atualização",
+  },
+} as const;
 
 for (const [lang, dict] of [
   ["en", en],
   ["pt-BR", ptBR],
 ] as const) {
   describe(`app-autoupdate (${lang}): the app updates itself, on by default (issue #280)`, () => {
-    test("a newer version is downloaded in the background, and once ready the banner offers Restart now", async () => {
+    // Issue #490: once ready, a card in the corner (Orca's) replaces the banner.
+    test("a newer version is downloaded in the background, and once ready a card in the corner offers Update", async () => {
       const mem = setup(lang, { available: "9.9.0" });
       await start(mem);
-      const banner = () => screen.queryByRole("region", { name: dict.update.label });
-      expect(await seen(() => banner() !== null && mem.calls.includes("download"))).toBe(true);
+      const words = CARD[lang];
+      const card = () => screen.queryByRole("region", { name: words.title });
+      expect(await seen(() => card() !== null && mem.calls.includes("download"))).toBe(true);
       expect(mem.calls).toEqual(["check", "download"]);
-      expect(banner()?.textContent ?? "").toContain(fill(dict.update.ready, { version: "9.9.0" }));
-      const restart = within(banner() as HTMLElement).queryByRole("button", {
-        name: dict.update.restartNow,
-      });
-      expect(restart).not.toBeNull();
+      expect(card()?.textContent ?? "").toContain(words.ready);
+      expect(card()?.textContent ?? "").toContain(words.safe);
+      expect(card()?.getAttribute("data-slot")).toBe("update-card");
+      // The banner no longer says the ready state.
+      expect(screen.queryByRole("region", { name: dict.update.label })).toBeNull();
+      const update = within(card() as HTMLElement).queryByRole("button", { name: words.update });
+      expect(update).not.toBeNull();
       await act(async () => {
-        fireEvent.click(restart as HTMLElement);
+        fireEvent.click(update as HTMLElement);
       });
       expect(await seen(() => mem.calls.includes("install"))).toBe(true);
       expect(mem.calls).toEqual(["check", "download", "install"]);
     });
 
-    test("Later puts the ready banner away until the next check", async () => {
+    test("the card's Release notes open the version's release page", async () => {
+      const mem = setup(lang, { available: "9.9.0" });
+      const opened: string[] = [];
+      mem.platform.openExternal = async (url: string) => void opened.push(url);
+      await start(mem);
+      const words = CARD[lang];
+      const card = () => screen.queryByRole("region", { name: words.title });
+      expect(await seen(() => card() !== null)).toBe(true);
+      const notes = within(card() as HTMLElement).queryByRole("link", { name: words.notes });
+      expect(notes).not.toBeNull();
+      await act(async () => {
+        fireEvent.click(notes as HTMLElement);
+      });
+      expect(opened).toEqual(["https://github.com/jnerytech/flightdeck/releases/tag/v9.9.0"]);
+    });
+
+    test("the card's close button puts it away until the next check", async () => {
       const mem = setup(lang, { available: "9.9.0" });
       await start(mem);
-      const banner = () => screen.queryByRole("region", { name: dict.update.label });
-      expect(await seen(() => banner() !== null)).toBe(true);
-      const later = within(banner() as HTMLElement).queryByRole("button", {
-        name: dict.update.later,
-      });
-      expect(later).not.toBeNull();
+      const words = CARD[lang];
+      const card = () => screen.queryByRole("region", { name: words.title });
+      expect(await seen(() => card() !== null)).toBe(true);
+      const close = within(card() as HTMLElement).queryByRole("button", { name: words.close });
+      expect(close).not.toBeNull();
       await act(async () => {
-        fireEvent.click(later as HTMLElement);
+        fireEvent.click(close as HTMLElement);
       });
-      expect(banner()).toBeNull();
+      expect(card() === null).toBe(true);
     });
 
     test("Quit with a downloaded update installs it on the way out, then exits (#402)", async () => {
@@ -174,7 +210,8 @@ for (const [lang, dict] of [
       expect(await seen(() => (document.body.textContent ?? "").includes("bad signature"))).toBe(
         true,
       );
-      expect(screen.queryByRole("button", { name: dict.update.restartNow })).toBeNull();
+      // Issue #490: the ready state is the corner card; a failed download shows none.
+      expect(screen.queryByRole("region", { name: CARD[lang].title })).toBeNull();
     });
 
     test("turned off, nothing downloads: the banner offers Install as before", async () => {
