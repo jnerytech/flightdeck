@@ -130,12 +130,15 @@ describe("review-secrets: the diff lists a credential file without its content (
   test("a tracked credential file that changed, or was renamed from one, shows no lines", async () => {
     const { repo } = gitRepo();
     writeFileSync(join(repo, ".env.example"), "TOKEN=old\n");
-    writeFileSync(join(repo, "server.key"), "KEY=old\n");
+    // Ten lines, so one changed line still leaves git calling the move a rename.
+    const key = (second: string) =>
+      ["KEY=old", second, ...Array.from({ length: 8 }, (_, i) => `line ${i + 3}`)].join("\n");
+    writeFileSync(join(repo, "server.key"), `${key("line 2")}\n`);
     git(repo, "add", ".");
     git(repo, "commit", "-q", "-m", "secrets");
     writeFileSync(join(repo, ".env.example"), "TOKEN=changed\n");
     git(repo, "mv", "server.key", "server.txt");
-    writeFileSync(join(repo, "server.txt"), "KEY=moved\n");
+    writeFileSync(join(repo, "server.txt"), `${key("line two")}\n`);
     git(repo, "add", "server.txt");
     const files = await workingDiff(repo);
     expect(files.find((f) => f.path === ".env.example")).toMatchObject({
@@ -143,8 +146,12 @@ describe("review-secrets: the diff lists a credential file without its content (
       secret: true,
       hunks: [],
     });
-    const moved = files.find((f) => f.path === "server.txt" || f.oldPath === "server.key");
-    expect(moved).toMatchObject({ secret: true, hunks: [] });
+    expect(files.find((f) => f.path === "server.txt")).toMatchObject({
+      status: "renamed",
+      oldPath: "server.key",
+      secret: true,
+      hunks: [],
+    });
     expect(JSON.stringify(files)).not.toContain("TOKEN=");
     expect(JSON.stringify(files)).not.toContain("KEY=");
   });
