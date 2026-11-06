@@ -184,6 +184,40 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     expect(box().value).toBe("fix the totl");
   });
 
+  test("a text of several lines is shown as one set of changes: what stayed is muted, what was added and removed is marked", async () => {
+    await make({ run: () => ({ ...ANSWER, text: "Fix the total.\nAnd the cart." }) });
+    type("fix the totl\nand the cart");
+    await click("Improve with AI");
+    const dialog = await screen.findByRole("dialog", { name: "AI suggestion" });
+    const changes = within(dialog).queryByRole("group", { name: "Changes" });
+    expect(changes).not.toBeNull();
+    const marks = (tag: string) =>
+      Array.from((changes as HTMLElement).querySelectorAll(tag)).map((node) => node.textContent);
+    expect(marks("del")).toContain("totl");
+    expect(marks("ins")).toContain("total.");
+    expect(marks("ins")).toContain("And");
+    const kept = Array.from((changes as HTMLElement).querySelectorAll("span.text-muted-foreground"))
+      .map((node) => node.textContent)
+      .join("");
+    expect(kept).toContain("the");
+    expect(kept).not.toContain("total.");
+    expect(within(dialog).queryByText("Before")).toBeNull();
+    expect(box().value).toBe("fix the totl\nand the cart");
+  });
+
+  test("editing a text of several lines goes back to Before and After, with the After to change", async () => {
+    await make({ run: () => ({ ...ANSWER, text: "Fix the total.\nAnd the cart." }) });
+    type("fix the totl\nand the cart");
+    await click("Improve with AI");
+    const dialog = await screen.findByRole("dialog", { name: "AI suggestion" });
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Edit" }));
+    });
+    expect(within(dialog).queryByRole("group", { name: "Changes" })).toBeNull();
+    expect(within(dialog).queryByText("Before")).not.toBeNull();
+    expect(within(dialog).queryByRole("textbox", { name: "After" })).not.toBeNull();
+  });
+
   test("Accept puts the proposal in the box once and closes the preview", async () => {
     const { fake } = await make();
     type("fix the totl");
