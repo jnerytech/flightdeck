@@ -3056,8 +3056,11 @@ signature (see [Installation](#from-the-release-binaries)).
 - **The app:**
   - looks for a new version on open and every 6 h, in the latest release's `latest.json`;
   - with **Update automatically** on (the default), it downloads the new version in the
-    background, checks its signature, and then shows the banner "Flightdeck X is ready. Restart
-    to update." with **Restart now** and **Later**. Nothing restarts by itself (#280). Quitting
+    background, checks its signature, and then shows a card in the bottom-right corner:
+    **Update available**, "Flightdeck vX is ready.", "Your sessions will not be interrupted." (they
+    run in the hosts' daemons), **Release notes** (the version's page on GitHub), one **Update**
+    button and a close button (×) that puts it away until the next check (#490). Nothing restarts
+    by itself (#280). Quitting
     from the tray with a version downloaded installs it on the way out, without starting the app
     again (#402);
   - with it off, the banner says "Flightdeck X available", with the notes, **Install and
