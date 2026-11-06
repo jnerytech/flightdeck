@@ -17,20 +17,22 @@ import { useDraft } from "@/lib/use-draft";
  * elsewhere meanwhile stops a plain Save, says why and offers Use theirs. After a save the field keeps
  * what was sent until the host's update arrives (#249).
  */
-function CardTextField(props: {
-  label: string;
-  saveLabel: string;
-  /** The card's value now. */
-  source: string;
-  multiline?: boolean;
-  autoFocus?: boolean;
-  /** What the host keeps of a sent text (the title is trimmed). */
-  stored(text: string): string;
-  /** Whether the text is worth saving, besides being an edit. */
-  savable(text: string): boolean;
-  /** True once the host took it. */
-  save(stored: string): Promise<unknown>;
-}) {
+function CardTextField(
+  props: Readonly<{
+    label: string;
+    saveLabel: string;
+    /** The card's value now. */
+    source: string;
+    multiline?: boolean;
+    autoFocus?: boolean;
+    /** What the host keeps of a sent text (the title is trimmed). */
+    stored(text: string): string;
+    /** Whether the text is worth saving, besides being an edit. */
+    savable(text: string): boolean;
+    /** True once the host took it. */
+    save(stored: string): Promise<unknown>;
+  }>,
+) {
   const t = useT();
   const { source } = props;
   const [value, setValue, saved, { stale, saving, drop }] = useDraft(source);
@@ -82,14 +84,16 @@ function CardTextField(props: {
 }
 
 /** A card's details: its title, its description and, where the host keeps ROI, its hours. */
-export function CardFields(props: {
-  store: AppStore;
-  hostId: string;
-  card: Card;
-  /** Opened from the menu's Edit…: the title field takes focus. */
-  edit?: boolean;
-  withRoi: boolean;
-}) {
+export function CardFields(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    card: Card;
+    /** Opened from the menu's Edit…: the title field takes focus. */
+    edit?: boolean;
+    withRoi: boolean;
+  }>,
+) {
   const t = useT();
   const { store, hostId, card } = props;
   const update = (patch: { title: string } | { description: string }) =>

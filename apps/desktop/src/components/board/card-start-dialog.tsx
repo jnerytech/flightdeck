@@ -15,14 +15,16 @@ import { hasFeature } from "../../lib/version.ts";
  * (the persona prefilled with the host's suggestion), then Start. Without it the menu started
  * the card with neither, and silently.
  */
-export function CardStartDialog(props: {
-  store: AppStore;
-  hostId: string;
-  card: { id: string; projectId: string; title: string };
-  onClose(): void;
-  /** The card started: the caller tells the person. */
-  onStarted(): void;
-}) {
+export function CardStartDialog(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    card: { id: string; projectId: string; title: string };
+    onClose(): void;
+    /** The card started: the caller tells the person. */
+    onStarted(): void;
+  }>,
+) {
   const t = useT();
   const { store, hostId, card } = props;
   const host = store.getState().hosts.find((h) => h.id === hostId);

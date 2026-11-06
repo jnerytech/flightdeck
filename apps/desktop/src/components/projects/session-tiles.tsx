@@ -34,12 +34,14 @@ const MOVES: Record<string, (at: number, columns: number) => number> = {
 const ANSWERED_IN_SESSION = new Set(["AskUserQuestion", "ExitPlanMode"]);
 
 /** The request a tile waits on: what it would do, and Approve and Deny, or Open for a question. */
-function TileRequest(props: {
-  store: AppStore;
-  hostId: string;
-  pending: NonNullable<ReturnType<typeof pendingOf>>;
-  onOpen(): void;
-}) {
+function TileRequest(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    pending: NonNullable<ReturnType<typeof pendingOf>>;
+    onOpen(): void;
+  }>,
+) {
   const { store, hostId, pending } = props;
   const { t } = store.i18n;
   // One answer at a time: both buttons wait for it (L5).

@@ -7,27 +7,29 @@ import { cn } from "@/lib/utils";
  * One session as a card: title (it opens the session), project, host, status, the last line, the
  * cost and the actions menu.
  */
-export function SessionCard(props: {
-  title: string;
-  project: string;
-  host: string;
-  stateLabel: string;
-  tone: StateTone;
-  /** What the session asked and is doing: "Pedido: … · rodando Bash". */
-  line: string;
-  /** The formatted cost, when the host reports one. */
-  cost?: string;
-  costLabel: string;
-  persona?: string | null;
-  /** Phase 39: the agent's name when it is not Claude Code ("OpenCode"). */
-  runtime?: string | null;
-  /** The session open on the right. */
-  current?: boolean;
-  /** The row the keyboard is on. */
-  active?: boolean;
-  onOpen(): void;
-  actions?: ReactNode;
-}) {
+export function SessionCard(
+  props: Readonly<{
+    title: string;
+    project: string;
+    host: string;
+    stateLabel: string;
+    tone: StateTone;
+    /** What the session asked and is doing: "Pedido: … · rodando Bash". */
+    line: string;
+    /** The formatted cost, when the host reports one. */
+    cost?: string;
+    costLabel: string;
+    persona?: string | null;
+    /** Phase 39: the agent's name when it is not Claude Code ("OpenCode"). */
+    runtime?: string | null;
+    /** The session open on the right. */
+    current?: boolean;
+    /** The row the keyboard is on. */
+    active?: boolean;
+    onOpen(): void;
+    actions?: ReactNode;
+  }>,
+) {
   return (
     <li
       data-slot="session-card"
