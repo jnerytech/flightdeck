@@ -53,7 +53,7 @@ export function PersonaSwitch(
         onClick={() => setOpen(!open)}
       >
         {open ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
-        {current ? `${t("personas.apply.trigger")}: ${current.name}` : t("personas.apply.trigger")}
+        {`${t("personas.apply.trigger")}: ${current ? current.name : t("personas.apply.none")}`}
       </Button>
       {open && (
         <>

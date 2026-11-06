@@ -848,4 +848,8 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE sessions ADD COLUMN runtime TEXT NOT NULL DEFAULT 'claude';
   `,
+  // Phase 40: which provider answered an assistant call; NULL for every other row.
+  `
+  ALTER TABLE usage_entries ADD COLUMN provider TEXT;
+  `,
 ];
