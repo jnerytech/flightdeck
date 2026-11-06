@@ -2082,6 +2082,16 @@ export const en: Dictionary = {
     unifiedLabel: "Unified diff",
     splitLabel: "Side-by-side diff",
   },
+  files: {
+    tab: "Files",
+    region: "Files of the repository",
+    filter: "Filter by name",
+    hidden: "Hidden",
+    changedInside: "has changes",
+    loading: "Loading…",
+    noMatch: "Nothing matches the filter.",
+    truncated: "This folder has more entries than are shown here.",
+  },
   changes: {
     tab: "Changes",
     conversationTab: "Conversation",

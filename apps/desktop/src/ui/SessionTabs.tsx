@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { ChangesPanel } from "./ChangesPanel.tsx";
+import { FileExplorer } from "./FileExplorer.tsx";
 import { SessionFiles } from "./SessionFiles.tsx";
 import { SessionMessages } from "./SessionMessages.tsx";
 import { TempoPanel } from "./TempoPanel.tsx";
@@ -28,17 +29,20 @@ export function SessionTabs(
     telemetry?: boolean;
     /** Phase 25: the host announces `trace`, so the Rastro tab can show the session's tree. */
     trace?: boolean;
+    /** Issue #506: the host announces `file.list`, so the Files tab can show the repository's tree. */
+    files?: boolean;
     children: ReactNode;
   }>,
 ) {
   const t = useT();
-  const [tab, setTab] = useState<"conversation" | "changes" | "messages" | "time" | "trace">(
-    "conversation",
-  );
+  const [tab, setTab] = useState<
+    "conversation" | "changes" | "files" | "messages" | "time" | "trace"
+  >("conversation");
   const changes = props.enabled && !!props.claudeSessionId;
   const time = !!props.telemetry && !!props.claudeSessionId;
   const rastro = !!props.trace && !!props.claudeSessionId;
-  const bar = changes || !!props.messagingId || time || rastro;
+  const files = !!props.files && !!props.claudeSessionId;
+  const bar = changes || files || !!props.messagingId || time || rastro;
   // The same elements with or without the bar: the conversation must keep its place in the tree
   // when the bar shows up (Claude Code names the session a moment after it opens), or what was
   // typed in its box is lost with it.
@@ -64,6 +68,17 @@ export function SessionTabs(
               onClick={() => setTab("changes")}
             >
               {t("changes.tab")}
+            </Button>
+          )}
+          {files && (
+            <Button
+              variant="outline"
+              size="sm"
+              aria-pressed={tab === "files"}
+              className="aria-pressed:bg-accent"
+              onClick={() => setTab("files")}
+            >
+              {t("files.tab")}
             </Button>
           )}
           {time && (
@@ -104,6 +119,15 @@ export function SessionTabs(
       <div hidden={tab !== "conversation"} className="min-h-0 flex-1">
         {props.children}
       </div>
+      {tab === "files" && props.claudeSessionId && (
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          <FileExplorer
+            store={props.store}
+            hostId={props.hostId}
+            target={`session:${props.claudeSessionId}`}
+          />
+        </div>
+      )}
       {(tab === "messages" || tab === "time" || tab === "trace") && (
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {tab === "messages" && props.messagingId && (

@@ -198,6 +198,7 @@ function ManagedSession(
       }
       telemetry={!opencode && hasFeature(host?.hostInfo?.features, "telemetry", false)}
       trace={!opencode && hasFeature(host?.hostInfo?.features, "trace", false)}
+      files={!opencode && hasFeature(host?.hostInfo?.features, "file.list", false)}
     >
       <SessionView
         t={store.i18n.t}
@@ -737,6 +738,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           }
           telemetry={hasFeature(hostOf(route.host)?.hostInfo?.features, "telemetry", false)}
           trace={hasFeature(hostOf(route.host)?.hostInfo?.features, "trace", false)}
+          files={hasFeature(hostOf(route.host)?.hostInfo?.features, "file.list", false)}
         >
           <ExternalView
             store={store}
