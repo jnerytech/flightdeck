@@ -560,8 +560,10 @@ histórico.
 
 - **Grupo:** é o projeto. Vale o `remote.origin.url` do repositório da pasta da sessão,
   normalizado, de modo que SSH e HTTPS do mesmo repositório caem juntos. Worktrees contam como o
-  repositório principal. Sem remoto, vale a raiz do repositório; sem repositório, a pasta.
-- **Linha:** mostra host, origem, estado (rodando, precisa de você, ociosa, encerrada), o selo
+  repositório principal. Sem remoto, vale a raiz do repositório; sem repositório, a pasta. A pasta
+  é aquela em que a sessão começou, onde fica o seu transcript: uma sessão de terminal que depois
+  trabalha em outra pasta continua no seu projeto.
+- **Linha:** mostra host, origem (uma sessão de terminal tem o selo "terminal"), estado (rodando, precisa de você, ociosa, encerrada), o selo
   "controlável" e a hora.
 - **Resumo:** abaixo, uma linha tirada do transcript, sem IA: "Pedido: <primeira linha do último
   prompt, até 80 caracteres>" e o que a sessão faz agora ("rodando Bash", "esperando aprovação de

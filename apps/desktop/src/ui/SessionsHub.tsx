@@ -559,7 +559,8 @@ export function SessionsHub(
                     onOpen={() => store.router.push({ name: "host", host: chip.id })}
                   />
                 ))}
-                {shared.origin && (
+                {/* A terminal session says so on its own row, as a chip (#583). */}
+                {shared.origin && shared.origin !== "terminal" && (
                   <span
                     data-slot="group-meta"
                     className="min-w-0 truncate text-muted-foreground/80"
@@ -601,7 +602,9 @@ export function SessionsHub(
                     const line = sessionLineText(row.summary, store.now(), t);
                     // What the whole group shares is in its header; the row keeps what differs.
                     const rowMeta = [
-                      shared.origin === null ? t(`hub.originTags.${row.origin}` as Key) : null,
+                      shared.origin === null && row.origin !== "terminal"
+                        ? t(`hub.originTags.${row.origin}` as Key)
+                        : null,
                     ]
                       .filter(Boolean)
                       .join(" · ");
@@ -656,6 +659,9 @@ export function SessionsHub(
                           </span>
                         )}
                         {row.asleep && <AsleepMark label={t("hub.asleep")} />}
+                        {row.origin === "terminal" && (
+                          <RuntimeBadge slot="origin-chip" label={t("hub.originTags.terminal")} />
+                        )}
                         {row.runtime && <RuntimeBadge label={t("session.runtimeOpenCode")} />}
                         {row.controllable && (
                           <>

@@ -572,8 +572,9 @@ A session appears only once. The order of preference is managed, then terminal, 
 - **Group:** the project. What counts is the `remote.origin.url` of the repository of the
   session's folder, normalized, so SSH and HTTPS of the same repository land together. Worktrees
   count as the main repository. Without a remote, the repository root counts; without a
-  repository, the folder.
-- **Row:** shows host, origin, state (running, needs you, idle, ended), the "controllable" badge
+  repository, the folder. The folder is the one the session started in, where its transcript is
+  filed: a terminal session that later works in another folder stays in its own project.
+- **Row:** shows host, origin (a terminal session has a "terminal" chip), state (running, needs you, idle, ended), the "controllable" badge
   and the time.
 - **Summary:** below, a line taken from the transcript, with no AI: "Request: <first line of the
   last prompt, up to 80 characters>" and what the session is doing now ("running Bash", "waiting
