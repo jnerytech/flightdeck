@@ -724,12 +724,6 @@ export function Sidebar(props: {
   );
 }
 
-/** Whether a required dependency of the host is missing or outdated (what the sidebar warns about). */
-const requiredMissing = (deps: DepsResult | undefined) =>
-  deps?.items.some(
-    (item) => item.group === "required" && (item.state === "missing" || item.state === "outdated"),
-  ) === true;
-
 /** A machine the person should look at: not connected, a required dependency missing, or its key forwarded. */
 function hostNeedsAttention(host: HostView, deps: DepsResult | undefined): boolean {
   return (
