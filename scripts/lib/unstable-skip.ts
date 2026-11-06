@@ -2,8 +2,10 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
 /**
- * A test skipped off Linux because it is unstable (docs/TDD.md): `test.skipIf(notLinux)(…)` with
- * `// unstable: #<issue> <reason>` on the same line or the line above. The fix goes to that issue.
+ * A test skipped because it is unstable (docs/TDD.md): `test.skipIf(notLinux)(…)`, or on any
+ * platform `test.skip(…)` / `it.skip(…)` / `describe.skip(…)` (#494), with
+ * `// unstable: #<issue> <reason>` on the same line or the line above. The fix goes to that issue,
+ * and CI fails once it is closed, so the skip comes out with the fix.
  */
 export interface UnstableSkip {
   /** 1-based line of the skipIf. */
@@ -16,36 +18,55 @@ export interface UnstableSkip {
 const OFF_LINUX =
   /\b(?:test|it|describe)\.skipIf\(\s*(?:notLinux|process\.platform\s*!==\s*(?:"linux"|'linux'))\s*\)/;
 
+/** A plain skip, on any platform (#494). */
+const PLAIN = /\b(?:test|it|describe)\.skip\(/;
+
 /** The note: an issue number and at least one word of reason. */
-const NOTE = /\/\/ unstable: #\d+ \S/;
+const NOTE = /\/\/ unstable: #(\d+) \S/;
 
 /** A line that is only the note, as the line above a skip. */
-const NOTE_LINE = /^\s*\/\/ unstable: #\d+ \S/;
+const NOTE_LINE = /^\s*\/\/ unstable: #(\d+) \S/;
+
+/** The issue a skip on line `i` (0-based) is noted under: on its line or the line above; null if none. */
+export function notedIssue(lines: string[], i: number): number | null {
+  const match = NOTE.exec(lines[i] ?? "") ?? NOTE_LINE.exec(lines[i - 1] ?? "");
+  return match ? Number(match[1]) : null;
+}
 
 /** The unstable skips of a source, in order. */
 export function unstableSkips(source: string): UnstableSkip[] {
   const lines = source.split("\n");
   const skips: UnstableSkip[] = [];
   lines.forEach((text, i) => {
-    if (!OFF_LINUX.test(text)) return;
-    const documented = NOTE.test(text) || NOTE_LINE.test(lines[i - 1] ?? "");
-    skips.push({ line: i + 1, documented });
+    if (!OFF_LINUX.test(text) && !PLAIN.test(text)) return;
+    skips.push({ line: i + 1, documented: notedIssue(lines, i) !== null });
   });
   return skips;
 }
 
-/** The issue numbers the source's unstable-skip notes name (#494): stub. */
+/** The issue numbers the source's unstable skips are noted under, in order (#494). */
 export function skipIssues(source: string): number[] {
-  return source ? [] : [];
+  const lines = source.split("\n");
+  return unstableSkips(source)
+    .map((skip) => notedIssue(lines, skip.line - 1))
+    .filter((issue): issue is number => issue !== null);
 }
 
-/** Which of the issues are closed, or cannot be read (#494): stub. */
+/**
+ * Which of the issues are closed, or cannot be read (#494): a skip's issue must be open, so the
+ * skip comes out with the fix. `state` gives "open", "closed" or null.
+ */
 export async function closedSkipIssues(
   issues: number[],
   state: (issue: number) => Promise<string | null>,
 ): Promise<{ closed: number[]; unknown: number[] }> {
-  await state(issues[0] ?? 0);
-  return { closed: [], unknown: [] };
+  const result = { closed: [] as number[], unknown: [] as number[] };
+  for (const issue of new Set(issues)) {
+    const now = await state(issue); // NOSONAR: sequential by design: one gh call at a time
+    if (now === null) result.unknown.push(issue);
+    else if (now !== "open") result.closed.push(issue);
+  }
+  return result;
 }
 
 /** How many of the source's unstable skips have no complete note. */
