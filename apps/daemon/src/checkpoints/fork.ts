@@ -33,7 +33,7 @@ export class Forker {
   constructor(
     private readonly opts: {
       runtime: AgentRuntime;
-      manager: Pick<SessionManager, "createResumed">;
+      manager: Pick<SessionManager, "createResumed" | "list">;
       rewinder?: Rewinder;
       /** Reads the personas for the forked session; none when absent. */
       preparePersonas?: Prepare;
@@ -48,6 +48,18 @@ export class Forker {
         "this runtime does not fork sessions",
         "fork_unsupported",
       );
+    // Phase 39: an OpenCode session does not fork in version 1 (the fork runs on the Claude runtime).
+    const opencode = this.opts.manager
+      .list()
+      .some((s) => s.claudeSessionId === request.claudeSessionId && s.runtime === "opencode");
+    if (opencode) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "an OpenCode session does not fork",
+        "runtime_unsupported",
+        { feature: "fork" },
+      );
+    }
     if (request.rewindTurn !== undefined) {
       await this.opts.rewinder?.apply(request.claudeSessionId, request.rewindTurn, true);
     }

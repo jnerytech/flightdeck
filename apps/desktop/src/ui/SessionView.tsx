@@ -24,6 +24,7 @@ import {
   SessionPane,
   Timeline,
 } from "@/components/session/parts";
+import { RuntimeBadge } from "@/components/session/runtime-badge";
 import { SessionStatusLine } from "@/components/session/status-line";
 import { WorkingRow } from "@/components/session/working-row";
 import { PromptMenu, type PromptSnippets } from "@/components/snippets/prompt-menu";
@@ -31,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { translateError } from "../i18n/errors.ts";
 import type { T } from "../i18n/index.ts";
 import { usd } from "../lib/costs.ts";
 import type { MenuGroup, MenuItem } from "../lib/prompt-menu.ts";
@@ -40,6 +42,7 @@ import type { ChatItem, SessionState } from "../lib/session-state.ts";
 import { isBusy } from "../lib/status.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Markdown } from "./Markdown.tsx";
+import { ModelOptions } from "./ModelOptions.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
 
@@ -200,6 +203,8 @@ const TimelineItem = memo(function TimelineItem(props: {
   pin: SessionViewProps["pin"];
   /** Set on the latest assistant message only. */
   fork: SessionViewProps["fork"];
+  /** Phase 39: an OpenCode session's timeline. */
+  opencode: boolean;
 }) {
   const { item } = props;
   switch (item.kind) {
@@ -226,7 +231,21 @@ const TimelineItem = memo(function TimelineItem(props: {
         />
       );
     case "permission":
-      return <PermissionItem {...props} item={item} />;
+      return (
+        <>
+          <PermissionItem {...props} item={item} />
+          {/* OpenCode ends the turn on a reject (ACP's reject carries no message). */}
+          {props.opencode && item.resolution?.decision === "deny" && (
+            <div className="text-muted-foreground text-xs">{props.t("session.openCodeDenied")}</div>
+          )}
+        </>
+      );
+    case "context":
+      return (
+        <div className="text-muted-foreground text-xs">
+          {props.t(item.sent ? "session.contextSent" : "session.contextSkipped")}
+        </div>
+      );
     case "result":
       return <TurnResult item={item} t={props.t} />;
     case "persona":
@@ -241,10 +260,18 @@ const TimelineItem = memo(function TimelineItem(props: {
       return <div className="text-muted-foreground text-xs">{props.t("session.historyGap")}</div>;
     case "error":
       return (
-        <div className="rounded-md border border-status-error/40 p-3 text-sm text-status-error">{`${item.code}: ${item.message}`}</div>
+        <div className="rounded-md border border-status-error/40 p-3 text-sm text-status-error">
+          {errorText(item, props.t)}
+        </div>
       );
   }
 });
+
+/** Phase 39: a session error, as the app's own sentence when it carries a reason the app knows. */
+export function errorText(item: Extract<ChatItem, { kind: "error" }>, t: T): string {
+  const { title, detail } = translateError(item.code, item.message, t, item);
+  return item.reason && !detail ? title : `${item.code}: ${item.message}`;
+}
 
 interface SessionViewProps {
   title: string;
@@ -282,6 +309,10 @@ interface SessionViewProps {
   pin?: { pinned: boolean; toggle(): void };
   /** Forks the conversation at its latest message; offered on that message only. */
   fork?: () => void;
+  /** Phase 39: the agent; an OpenCode session says so and offers no fork. */
+  runtime?: "claude" | "opencode";
+  /** Phase 39: OpenCode's models, for the live switch of an OpenCode session (none until known). */
+  models?: readonly string[];
   /** Renders a picker for a folder; `done` gets the path chosen, or null when it was closed. */
   pickPath?: (done: (path: string | null) => void) => ReactNode;
 }
@@ -406,7 +437,11 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   const [picking, setPicking] = useState(false);
   const start = session.permissionMode ?? "default";
   const [mode, setMode] = useState<PermissionMode>(start);
-  const offeredModes = modesOffered(start, Boolean(props.bypass));
+  const opencode = props.runtime === "opencode";
+  const offeredModes = modesOffered(start, Boolean(props.bypass)).filter(
+    (m) => !opencode || m !== "acceptEdits",
+  );
+  const fork = opencode ? undefined : props.fork;
   const [bypassAsk, setBypassAsk] = useState(false);
   const [model, setModel] = useState("");
   const slash = session.slashCommands;
@@ -496,7 +531,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   };
 
   const pickers = {
-    ...(props.settings && actions.setModel
+    ...(props.settings && actions.setModel && (!opencode || props.models)
       ? {
           model: (
             <NativeSelect
@@ -510,11 +545,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
               }}
             >
               <option value="">{t("session.modelDefault")}</option>
-              {MODELS.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
+              <ModelOptions models={opencode ? (props.models ?? []) : MODELS} />
             </NativeSelect>
           ),
         }
@@ -568,6 +599,9 @@ export function SessionView(props: Readonly<SessionViewProps>) {
           .join(" · ")}
         controls={
           <>
+            {opencode && (
+              <RuntimeBadge label={t("session.runtimeOpenCode")} slot="session-runtime" />
+            )}
             {session.status && <StatusBadge status={session.status} />}
             {session.statusReason && (
               <span className="text-muted-foreground text-xs">{session.statusReason}</span>
@@ -577,7 +611,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
         actions={
           <>
             {props.timeline}
-            {props.terminal}
+            {!opencode && props.terminal}
             {closed ? (
               <ActionButton variant="outline" size="sm" onClick={() => actions.resume()}>
                 {t("session.resume")}
@@ -609,9 +643,9 @@ export function SessionView(props: Readonly<SessionViewProps>) {
             />
           )
         }
-        extra={props.persona}
+        extra={opencode ? undefined : props.persona}
       />
-      {props.recap}
+      {!opencode && props.recap}
       <div className="pane-fill">
         <Timeline
           ref={timeline}
@@ -643,7 +677,8 @@ export function SessionView(props: Readonly<SessionViewProps>) {
               t={t}
               nowMs={item.kind === "permission" ? (props.nowMs ?? Date.now()) : 0}
               pin={props.pin}
-              fork={item.seq === latestAssistant ? props.fork : undefined}
+              fork={item.seq === latestAssistant ? fork : undefined}
+              opencode={opencode}
             />
           ))}
           {session.streaming && (

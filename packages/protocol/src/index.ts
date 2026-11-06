@@ -147,6 +147,10 @@ const ListExtras = {
   summary: SessionLine.optional(),
 };
 
+/** Phase 39: the agent a session runs on. */
+export const SessionRuntime = z.enum(["claude", "opencode"]);
+export type SessionRuntime = z.infer<typeof SessionRuntime>;
+
 export const SessionSummary = z.object({
   id: z.string(),
   name: z.string().nullable(),
@@ -160,6 +164,8 @@ export const SessionSummary = z.object({
   updatedAt: z.string(),
   /** The persona the session was opened with (phase 20). */
   persona: SessionPersona.nullable().optional(),
+  /** Phase 39: `claude` when absent. */
+  runtime: SessionRuntime.optional(),
   ...ListExtras,
 });
 export type SessionSummary = z.infer<typeof SessionSummary>;
@@ -345,6 +351,10 @@ export const SessionEvent = z.discriminatedUnion("type", [
     tools: z.array(z.string()),
     /** The slash commands the session has (`/compact`, a skill, ...), without the slash. */
     slashCommands: z.array(z.string()).optional(),
+    /** Phase 39: project files sent with the first prompt as context (`AGENTS.md`), by name. */
+    contextFiles: z.array(z.string()).optional(),
+    /** Phase 39: project files left out (too large), by name. */
+    contextSkipped: z.array(z.string()).optional(),
     /** The same commands with a description and a kind; an older daemon sends the names only. */
     commands: z.array(SlashCommandInfo).optional(),
   }),
@@ -397,7 +407,14 @@ export const SessionEvent = z.discriminatedUnion("type", [
     costUsd: z.number().nonnegative().optional(),
     usage: Usage.optional(),
   }),
-  z.object({ type: z.literal("session.error"), code: z.string(), message: z.string() }),
+  /** `reason` and `params` (phase 39): a typed refusal the app translates, like a command's. */
+  z.object({
+    type: z.literal("session.error"),
+    code: z.string(),
+    message: z.string(),
+    reason: z.string().optional(),
+    params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  }),
   z.object({
     type: z.literal("session.summary"),
     sessionId: z.string(),
@@ -407,6 +424,8 @@ export const SessionEvent = z.discriminatedUnion("type", [
     /** Open requests, oldest first; the count is its length. */
     pendingPermissions: z.array(PendingPermission),
     updatedAt: z.string(),
+    /** Phase 39: set for an OpenCode session only. */
+    runtime: SessionRuntime.optional(),
   }),
 ]);
 export type SessionEvent = z.infer<typeof SessionEvent>;
@@ -447,6 +466,8 @@ export const SessionCreatePayload = z.object({
   effort: EffortLevel.optional(),
   /** Opens the session in a persona's role (phase 20). */
   persona: PersonaRef.optional(),
+  /** Phase 39: the agent to run; `claude` when absent. */
+  runtime: SessionRuntime.optional(),
 });
 
 /** What a message may carry as images: the types the API reads, five of them, 5 MB each. */
@@ -1466,6 +1487,8 @@ export const DOCTOR_CHECK_IDS = [
   "templates",
   "mcp",
   "linger",
+  /** Phase 39. */
+  "opencode",
 ] as const;
 
 /** One thing `doctor.run` checked; `fix` is what to run, absent when the check passed. */
@@ -3925,6 +3948,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("boardsync.status", z.object({ projectId: z.string().min(1) }).strict()),
   cmd("boardsync.syncNow", z.object({ projectId: z.string().min(1) }).strict()),
   cmd("boardsync.log", z.object({ cardId: z.string().min(1) }).strict()),
+  /** Phase 39: the models a runtime offers (OpenCode's `models`); refused when it is not there. */
+  cmd("runtime.models", z.object({ runtime: z.literal("opencode") }).strict()),
   /** Clones a repository into a folder inside the allowed roots; a refusal carries its reason. */
   cmd(
     "projects.clone",
@@ -4063,6 +4088,19 @@ export const UpdateStatus = z.object({
 });
 export type UpdateStatus = z.infer<typeof UpdateStatus>;
 
+/** Phase 39: a runtime the host offers besides Claude Code, as discovery found it. */
+export const HostRuntime = z.object({
+  kind: SessionRuntime,
+  available: z.boolean(),
+  path: z.string().optional(),
+  version: z.string().optional(),
+  /** False when the version is not the one Flightdeck verified. */
+  verified: z.boolean().optional(),
+  /** Why it is not available (a reason the app translates). */
+  reason: z.string().optional(),
+});
+export type HostRuntime = z.infer<typeof HostRuntime>;
+
 export const HostInfoResult = z.object({
   hostName: z.string(),
   os: z.string(),
@@ -4087,6 +4125,8 @@ export const HostInfoResult = z.object({
   ui: UiSettings.optional(),
   /** Whether a session may start in `bypassPermissions`; absent on a daemon that predates the switch. */
   allowBypassPermissions: z.boolean().optional(),
+  /** Phase 39: the host's other runtimes (OpenCode), each available or not with the reason. */
+  runtimes: z.array(HostRuntime).optional(),
 });
 export type HostInfoResult = z.infer<typeof HostInfoResult>;
 
@@ -4485,6 +4525,7 @@ export interface CommandResults {
   "boardsync.status": BoardSyncStatus;
   "boardsync.syncNow": { status: BoardSyncStatus; report: BoardSyncReport };
   "boardsync.log": { entries: BoardSyncLogEntry[] };
+  "runtime.models": { models: Array<{ id: string; name: string }> };
   "github.status": GithubStatusResult;
   "github.login.start": GithubLoginResult;
   "github.login.cancel": undefined;
