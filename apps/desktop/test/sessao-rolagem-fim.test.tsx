@@ -203,14 +203,14 @@ describe("sessao-rolagem-fim: coming back to a tab", () => {
     expect(screen.queryByRole("button", { name: "Ir para a última" })).not.toBeNull();
   });
 
-  test("a place restored while the content is still short survives: the browser's clamp is not the reader going to the end (#515)", async () => {
-    const first = render(view(items(20), "h/s515"));
-    const s = scroller({ scroll: 2000, client: 400, top: 300 });
-    await act(async () => void personScrolls(s.el));
-    first.unmount();
-    // A layout the browser has at mount: the content is only 500 px tall (the images and code blocks
-    // have not laid out), so it clamps any scrollTop to 100. It is there before the view mounts.
-    const layout = { scroll: 500, client: 400, top: 0 };
+  /**
+   * Runs `body` with the scroller's layout in place before the view mounts, as the browser has it:
+   * the box clamps `scrollTop` to what the content allows.
+   */
+  async function withClampingLayout(
+    layout: { scroll: number; client: number; top: number },
+    body: (box: () => HTMLElement) => Promise<void>,
+  ) {
     const proto = HTMLElement.prototype;
     const saved = ["scrollHeight", "clientHeight", "scrollTop"].map(
       (name) => [name, Object.getOwnPropertyDescriptor(proto, name)] as const,
@@ -239,22 +239,67 @@ describe("sessao-rolagem-fim: coming back to a tab", () => {
       configurable: true,
     });
     try {
-      render(view(items(20), "h/s515"));
-      const box = document.querySelector<HTMLElement>("[tabindex='0'].overflow-y-auto");
-      expect(box).not.toBeNull();
-      // The restore asked for 300 and the clamp gave 100; the browser tells the view so.
-      await act(async () => void fireEvent.scroll(box as HTMLElement));
-      // The code blocks lay out: the content is tall now.
-      layout.scroll = 2000;
-      await grow();
-      expect(layout.top).toBe(300);
-      expect(screen.queryByRole("button", { name: "Ir para a última" })).not.toBeNull();
+      await body(
+        () => document.querySelector<HTMLElement>("[tabindex='0'].overflow-y-auto") as HTMLElement,
+      );
     } finally {
       for (const [name, descriptor] of saved) {
         if (descriptor) Object.defineProperty(proto, name, descriptor);
         else delete (proto as unknown as Record<string, unknown>)[name];
       }
     }
+  }
+
+  test("a place restored while the content is still short survives: the browser's clamp is not the reader going to the end (#515)", async () => {
+    const first = render(view(items(20), "h/s515"));
+    const s = scroller({ scroll: 2000, client: 400, top: 300 });
+    await act(async () => void personScrolls(s.el));
+    first.unmount();
+    // At mount the content is only 500 px tall (the images and code blocks have not laid out), so
+    // the browser clamps the restored 300 to 100.
+    const layout = { scroll: 500, client: 400, top: 0 };
+    await withClampingLayout(layout, async (box) => {
+      render(view(items(20), "h/s515"));
+      // The restore asked for 300 and the clamp gave 100; the browser tells the view so.
+      await act(async () => void fireEvent.scroll(box()));
+      // The code blocks lay out: the content is tall now.
+      layout.scroll = 2000;
+      await grow();
+      expect(layout.top).toBe(300);
+      expect(screen.queryByRole("button", { name: "Ir para a última" })).not.toBeNull();
+    });
+  });
+
+  test("a reader who scrolls before the restore found its height keeps their own place (#515)", async () => {
+    const first = render(view(items(20), "h/s515b"));
+    const s = scroller({ scroll: 2000, client: 400, top: 300 });
+    await act(async () => void personScrolls(s.el));
+    first.unmount();
+    const layout = { scroll: 800, client: 400, top: 0 };
+    await withClampingLayout(layout, async (box) => {
+      render(view(items(20), "h/s515b"));
+      // The reader moves up to 50 by hand, before the content grows.
+      layout.top = 50;
+      await act(async () => void personScrolls(box()));
+      layout.scroll = 2000;
+      await grow();
+      expect(layout.top).toBe(50);
+    });
+  });
+
+  test("a place that fits at the first scroll event is kept as it is (#515)", async () => {
+    const first = render(view(items(20), "h/s515c"));
+    const s = scroller({ scroll: 2000, client: 400, top: 300 });
+    await act(async () => void personScrolls(s.el));
+    first.unmount();
+    const layout = { scroll: 2000, client: 400, top: 0 };
+    await withClampingLayout(layout, async (box) => {
+      render(view(items(20), "h/s515c"));
+      await act(async () => void fireEvent.scroll(box()));
+      layout.scroll = 2600;
+      await grow();
+      expect(layout.top).toBe(300);
+    });
   });
 
   test("a reader who was at the end comes back to the end, even if the content grew meanwhile", async () => {
