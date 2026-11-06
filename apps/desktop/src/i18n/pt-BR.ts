@@ -1779,6 +1779,8 @@ export const ptBR = {
     assistant_not_a_repo: "Esta pasta não é um repositório git.",
     assistant_request_id: "Id do pedido: {id}",
     assistant_key_invalid: "Essa chave não pode ser usada: {why}.",
+    assistant_key_store:
+      "Não deu para acessar o cofre de credenciais do sistema. Tente de novo ou veja se ele está desbloqueado.",
   },
   snippetRefusal: {
     name_invalid: "Nome de 1 a 64 caracteres: letras, números, espaço, . _ -",

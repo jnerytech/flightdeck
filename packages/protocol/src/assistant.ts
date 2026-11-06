@@ -161,6 +161,8 @@ export const ASSISTANT_REASONS = [
   "assistant_request_id",
   /** A key the shell refused to store; `params.why` says how (empty, control, whitespace, length, provider). */
   "assistant_key_invalid",
+  /** The OS credential store failed to read, write or delete a provider key; no params, the keyring's error text never reaches the app. */
+  "assistant_key_store",
 ] as const;
 export type AssistantReason = (typeof ASSISTANT_REASONS)[number];
 
