@@ -140,7 +140,7 @@ export function StartFromGithub(
                   {t("githubStart.searchButton")}
                 </ActionButton>
               </div>
-              {repos && repos.length === 0 && (
+              {repos?.length === 0 && (
                 <p className="text-muted-foreground text-sm">{t("githubStart.noRepos")}</p>
               )}
               {repos && repos.length > 0 && (

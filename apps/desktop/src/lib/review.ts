@@ -49,7 +49,7 @@ export function select(
   line: number,
   extend: boolean,
 ): Selection {
-  if (extend && current && current.path === path && current.side === side) {
+  if (extend && current?.path === path && current.side === side) {
     return {
       path,
       side,

@@ -106,7 +106,7 @@ export class Github {
             String(LIST_LIMIT),
           ],
     );
-    if (!result || result.code !== 0) {
+    if (result?.code !== 0) {
       const detail = result ? detailOf(result) : "";
       throw refuse("repos_failed", `gh could not list the repos: ${detail}`, { detail });
     }
@@ -133,7 +133,7 @@ export class Github {
     if (!/^\d+$/.test(id)) throw refuse("issue_invalid", `${id} is not an issue number`, { id });
     await this.ensureAccess();
     const result = await this.opts.gh(["issue", "view", id, "-R", repo, "--json", GH_FIELDS]);
-    if (!result || result.code !== 0) {
+    if (result?.code !== 0) {
       const detail = result ? detailOf(result) : "";
       if (/could not resolve|not found/i.test(detail)) {
         throw refuse("issue_not_found", `issue ${id} of ${repo} was not found`, { repo, id });
@@ -141,7 +141,7 @@ export class Github {
       throw refuse("issues_failed", `gh could not read the issue: ${detail}`, { detail });
     }
     const me = await this.opts.gh(["api", "user", "--jq", ".login"]);
-    const login = me && me.code === 0 ? me.stdout.trim().toLowerCase() || null : null;
+    const login = me?.code === 0 ? me.stdout.trim().toLowerCase() || null : null;
     return new GithubIssues(repo).toIssue(JSON.parse(result.stdout) as GhIssue, login);
   }
 
@@ -161,7 +161,7 @@ export class Github {
       "--limit",
       String(ISSUE_LIMIT),
     ]);
-    if (!result || result.code !== 0) {
+    if (result?.code !== 0) {
       const detail = result ? detailOf(result) : "";
       if (/could not resolve to a repository|not found/i.test(detail)) {
         throw refuse("repo_not_found", `${repo} was not found on GitHub`, { repo });
@@ -169,7 +169,7 @@ export class Github {
       throw refuse("issues_failed", `gh could not list the issues: ${detail}`, { detail });
     }
     const me = await this.opts.gh(["api", "user", "--jq", ".login"]);
-    const login = me && me.code === 0 ? me.stdout.trim().toLowerCase() || null : null;
+    const login = me?.code === 0 ? me.stdout.trim().toLowerCase() || null : null;
     const provider = new GithubIssues(repo);
     return (JSON.parse(result.stdout || "[]") as GhIssue[]).map((issue) =>
       provider.toIssue(issue, login),

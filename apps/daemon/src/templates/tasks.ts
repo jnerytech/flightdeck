@@ -159,7 +159,7 @@ export class TaskTracker {
     for (const [path, info] of Object.entries(now)) {
       if (!kept.folders.some((folder) => isInside(folder, path))) continue;
       const was = kept.before[path];
-      if (was && was.size === info.size && was.mtimeMs === info.mtimeMs) continue;
+      if (was?.size === info.size && was.mtimeMs === info.mtimeMs) continue;
       files.push({
         path,
         name: relative(join(path, ".."), path),
