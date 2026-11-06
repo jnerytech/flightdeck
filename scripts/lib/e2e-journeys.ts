@@ -28,6 +28,7 @@ export const JOURNEYS: readonly string[] = [
   "terminal-copy",
   "tab-row",
   "wand-composer",
+  "activity",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];

@@ -973,6 +973,60 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("button", { name: c.t("assistantWand.undo"), exact: true }).click();
     await waitFor(async () => (await box.inputValue()) === typed, "o texto de volta");
   },
+
+  // Issue #151: the Activity board puts the sessions of every host in columns by state. A request
+  // is approved from its card, the filters narrow the cards and a card opens its session.
+  activity: async (c) => {
+    // The demo's seeded requests run out, so the journey asks for its own.
+    await createSession(c, "[bash] ls", `Activity e2e ${c.lang} ${Date.now()}`);
+    await open(c, { name: "activity" });
+    const column = (name: string) => c.page.getByRole("region", { name, exact: true });
+    const needs = column(c.t("activityBoard.columns.needs_you"));
+    const cardsIn = (name: string) => column(name).locator("[data-slot='activity-card']");
+    // The request waits in Needs you with its own buttons.
+    const approve = needs.getByRole("button", { name: c.t("activityBoard.approve"), exact: true });
+    await approve.first().waitFor({ timeout: SESSION_WAIT });
+    const waiting = await cardsIn(c.t("activityBoard.columns.needs_you")).count();
+    await approve.first().click();
+    await waitFor(
+      async () => (await cardsIn(c.t("activityBoard.columns.needs_you")).count()) < waiting,
+      "o pedido aprovado saiu de Precisa de você",
+      SESSION_WAIT,
+    );
+    // The search narrows to nothing and back; the line says how many are shown.
+    const shown = c.page.locator("output[class*='activity-shown']");
+    const search = c.page.getByRole("searchbox", {
+      name: c.t("activityBoard.search"),
+      exact: true,
+    });
+    const total = (await shown.textContent()) ?? "";
+    await search.fill("zz-no-such-session-zz");
+    await waitFor(
+      async () => ((await shown.textContent()) ?? "").startsWith("0 "),
+      "nenhum card mostrado",
+    );
+    await search.fill("");
+    await waitFor(
+      async () =>
+        (await shown.textContent()) !== null && !(await shown.textContent())?.startsWith("0 "),
+      "os cards de volta",
+    );
+    if (total === "") throw new Error("a linha de contagem está vazia");
+    // Idle waits for its switch, and a card opens its session.
+    const idle = column(c.t("activityBoard.columns.idle"));
+    if ((await idle.count()) !== 0) throw new Error("Ociosas apareceu sem o botão");
+    await c.page
+      .getByRole("checkbox", { name: c.t("activityBoard.showIdle"), exact: true })
+      .check();
+    await idle.waitFor({ timeout: WAIT });
+    await idle
+      .locator("[data-slot='activity-card'] button")
+      .first()
+      .click({ timeout: SESSION_WAIT });
+    await c.page
+      .getByLabel(c.t("session.message"), { exact: true })
+      .waitFor({ timeout: SESSION_WAIT });
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */
@@ -1408,6 +1462,7 @@ export async function layout(c: Context, problems: string[]) {
     ["board", { name: "board", host: ALFA, projectId: c.ids.project }],
     ["host", { name: "host", host: ALFA }],
     ["custos", { name: "costs" }],
+    ["atividade", { name: "activity" }],
     ["configuracoes", { name: "settings" }],
     ["clientes", { name: "clients" }],
     [
