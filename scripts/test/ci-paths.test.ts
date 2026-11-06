@@ -47,7 +47,8 @@ describe("ci-paths: the rules", () => {
   test("scripts add the Windows shards, which run the tests related to them (#399: #383 changed only scripts/test and broke Windows)", () => {
     const windows = { ...NONE, windows: true };
     expect(ciPlan(PR, ["scripts/lib/slot.ts", "scripts/test/slot.test.ts"])).toEqual(windows);
-    expect(ciPlan(PR, ["scripts/test/fake-cli-main.ts"])).toEqual(windows);
+    // A test helper the demo seed loads (fake CLIs) plans the journeys as well (#410 review).
+    expect(ciPlan(PR, ["scripts/test/fake-cli-main.ts"])).toEqual({ ...windows, e2e: true });
   });
 
   test("the UI, the journeys, their config or the demo add the e2e journeys (#399)", () => {
@@ -71,7 +72,8 @@ describe("ci-paths: the rules", () => {
   });
 
   test("the daemon or a smoke adds Windows and the smokes", () => {
-    const daemon = { ...NONE, windows: true, smokes: true };
+    // The demo the journeys drive starts the real daemon, so the daemon plans them too (#410 review).
+    const daemon = { ...NONE, windows: true, smokes: true, e2e: true };
     expect(ciPlan(PR, ["apps/daemon/src/main.ts"])).toEqual(daemon);
     expect(ciPlan(PR, ["scripts/smoke-limits.ts"])).toEqual(daemon);
   });

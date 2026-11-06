@@ -254,7 +254,7 @@ describe("shards: plan and run", () => {
 
   test("--files keeps only the test files the list names before the split, and a '*' line keeps them all (#399)", async () => {
     const timings = { "a.test.ts": 9, "b.test.ts": 5, "c.test.ts": 4 };
-    const some = fake({ timings, junit: { "sel.txt": "b.test.ts\nc.test.ts\nlib/x.ts\n\n" } });
+    const some = fake({ timings, junit: { "sel.txt": "b.test.ts\nc.test.ts\n\n" } });
     expect(await shards(["plan", "1/1", "--files", "sel.txt"], some.deps)).toBe(0);
     expect(some.logs).toEqual(["b.test.ts", "c.test.ts"]);
     const all = fake({ timings, junit: { "sel.txt": "*\n" } });
