@@ -228,8 +228,16 @@ export function daemon(
         reason: options.keepAwake.reason ?? null,
       }
     : null;
+  // The trust the host announces, shared by the sessions and by the commands, as the daemon wires it.
+  const projectTrust = options.trust ? new ProjectTrust(store.db) : undefined;
   const manager = new SessionManager({
     allowBypass: () => bypass,
+    ...(projectTrust
+      ? {
+          trust: (cwd: string) => projectTrust.sessionTrust(cwd),
+          prepareTrust: (cwd: string) => projectTrust.prepare(cwd),
+        }
+      : {}),
     ...(personaStore ? { personas: personaStore } : {}),
     ...(snapshots
       ? {
@@ -553,7 +561,7 @@ export function daemon(
       ...(costs ? { costs } : {}),
       ...(telemetry ? { telemetry, telemetryOptIn } : {}),
       ...(options.bg ? { bg: options.bg } : {}),
-      ...(options.trust ? { projectTrust: projectTrustOver(store.db) } : {}),
+      ...(projectTrust ? { projectTrust: projectTrustOver(projectTrust, manager) } : {}),
       ...(budgets ? { budgets } : {}),
       ...(quotaHistory ? { quotaHistory } : {}),
       ...(review ?? {}),
@@ -720,21 +728,21 @@ export function memoryPlatform(focused = false, language = "pt-BR") {
 export const SYSTEM_FOLDER = process.platform === "win32" ? "C:\\Windows" : "/etc";
 
 /** The host's project trust over a database, as the daemon wires it (nothing trusted until the person says so). */
-function projectTrustOver(db: EventStore["db"]) {
-  const trust = new ProjectTrust(db);
+function projectTrustOver(trust: ProjectTrust, manager: SessionManager) {
+  const stateOf = (path: string) => {
+    const via = trust.via(path);
+    const stale = manager.staleSessions(path);
+    return { path, trusted: via !== null, via, ...(stale > 0 ? { staleSessions: stale } : {}) };
+  };
   return {
     refresh: () => trust.refreshRoots(),
-    state: (paths: string[]) =>
-      paths.map((path) => {
-        const via = trust.via(path);
-        return { path, trusted: via !== null, via };
-      }),
+    state: (paths: string[]) => paths.map(stateOf),
     inspect: (path: string) => inspectProject(path),
     set: (path: string, trusted: boolean) => {
       if (trusted) trust.trust(path);
       else trust.revoke(path);
-      const via = trust.via(path);
-      return { path, trusted: via !== null, via };
+      manager.trustChanged();
+      return stateOf(path);
     },
   };
 }

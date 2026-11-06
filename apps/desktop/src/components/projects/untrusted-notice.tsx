@@ -18,16 +18,21 @@ export function UntrustedNotice(
     cwd: string;
     /** Opens the project's page, where the person can read what it would load and trust it. */
     onReview?: () => void;
+    /** Issue #463: the session loaded the project's setup and its trust was revoked since. */
+    stale?: boolean;
+    /** The session, for restarting it. */
+    sessionId?: string;
   }>,
 ) {
-  const { store, hostId, announced, cwd } = props;
+  const { store, hostId, announced, cwd, stale, sessionId } = props;
   const { t } = store.i18n;
   const [untrusted, setUntrusted] = useState(false);
+  const [restarting, setRestarting] = useState(false);
   // Issue #422: in a short session area the notice is one line; the project page lists the rest. So
   // while a request waits for the person (#488).
   const short = useTight();
   useEffect(() => {
-    if (!announced) return;
+    if (!announced || stale) return;
     let current = true;
     void store.hostCommand(hostId, "project.trust.state", { paths: [cwd] }).then((answer) => {
       if (current) setUntrusted(answer?.items[0]?.trusted === false);
@@ -35,7 +40,34 @@ export function UntrustedNotice(
     return () => {
       current = false;
     };
-  }, [store, hostId, announced, cwd]);
+  }, [store, hostId, announced, cwd, stale]);
+  // Issue #463: the session loaded the setup before the trust was revoked; it keeps it until it is restarted.
+  if (stale && announced) {
+    const restart = async (id: string) => {
+      setRestarting(true);
+      try {
+        await store.hostCommand(hostId, "session.close", { sessionId: id });
+        await store.hostCommand(hostId, "session.resume", { sessionId: id });
+      } finally {
+        setRestarting(false);
+      }
+    };
+    return (
+      <InlineNotice tone="warn">
+        {t("projectPage.trust.revokedNotice")}{" "}
+        {sessionId && (
+          <Button
+            variant="link"
+            size="sm"
+            disabled={restarting}
+            onClick={() => restart(sessionId).catch(() => undefined)}
+          >
+            {t("projectPage.trust.restart")}
+          </Button>
+        )}
+      </InlineNotice>
+    );
+  }
   if (!untrusted) return null;
   return (
     <InlineNotice>
