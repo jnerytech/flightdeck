@@ -1,6 +1,7 @@
 /** The end-to-end journeys, the languages they run in and the window sizes they are checked at. */
 export const JOURNEYS: readonly string[] = [
   "aprovar-bash-com-a",
+  "responder-sem-clique",
   "sessao-e-mensagem",
   "card-diff",
   "revisao-comentar-e-enviar",
@@ -15,6 +16,10 @@ export const JOURNEYS: readonly string[] = [
   "clientes",
   "dependencias",
   "rolagem-fim",
+  "primeira-vez",
+  "segundo-host",
+  "nova-sessao-host",
+  "finalizar-card",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];

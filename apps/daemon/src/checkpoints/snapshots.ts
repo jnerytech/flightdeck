@@ -8,6 +8,7 @@ import type { Database } from "bun:sqlite";
 import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
 
@@ -117,6 +118,7 @@ async function git(
   args: string[],
   env: Record<string, string> = {},
 ): Promise<{ code: number; stdout: string }> {
+  // git-arg: the checkpoints' own git: refs and trees made by the daemon
   const proc = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
     cwd,
     env: { ...process.env, ...env },
@@ -284,11 +286,12 @@ export class Snapshots {
         (r) => r.ref,
       ),
     );
-    for (const row of gone) {
+    await inSequence(gone, async (row) => {
       if (!kept.has(row.ref) && (await exists(row.repo))) {
+        // git-arg: a ref this daemon made under refs/flightdeck, read back from its own table
         await git(row.repo, ["update-ref", "-d", row.ref]);
       }
-    }
+    });
     return gone.length;
   }
 
@@ -305,10 +308,10 @@ export class Snapshots {
       GIT_OPTIONAL_LOCKS: "0",
     });
     let total = 0;
-    for (const entry of status.split("\0")) {
+    await inSequence(status.split("\0"), async (entry) => {
       const path = join(repo, entry.slice(3));
       if (entry.length > 3) total += (await stat(path).catch(() => null))?.size ?? 0;
-    }
+    });
     return total;
   }
 

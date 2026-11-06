@@ -23,6 +23,7 @@ import type { AppStore } from "../lib/app-store.ts";
 import { costByClient, loadCostsSummary } from "../lib/client-costs.ts";
 import { ALL_CLIENTS } from "../lib/client-scope.ts";
 import {
+  ALL_HOSTS,
   daysBetween,
   PERIODS,
   type Period,
@@ -35,9 +36,6 @@ import { basename } from "../lib/paths.ts";
 import { hasFeature } from "../lib/version.ts";
 import { QuotaCharts } from "./QuotaCharts.tsx";
 import { TimingBreakdown } from "./TimingBreakdown.tsx";
-
-/** The host choice that adds every host up (phase 29). */
-const ALL_HOSTS = "__all__";
 
 const ORIGINS: UsageOrigin[] = ["terminal", "app", "card", "workflow", "subagent"];
 
@@ -58,11 +56,13 @@ const tokensOf = (t: CostsSummary["totals"]["tokens"]) =>
   t.input + t.output + t.cacheRead + t.cacheWrite5m + t.cacheWrite1h;
 
 /** A breakdown as a two-column table. */
-function Breakdown(props: {
-  name: string;
-  /** `id` tells rows apart when two share a label (two projects in folders of the same name). */
-  rows: Array<{ id?: string; label: string; costUsd: number }>;
-}) {
+function Breakdown(
+  props: Readonly<{
+    name: string;
+    /** `id` tells rows apart when two share a label (two projects in folders of the same name). */
+    rows: Array<{ id?: string; label: string; costUsd: number }>;
+  }>,
+) {
   return (
     <section aria-label={props.name}>
       <Panel title={props.name}>
@@ -89,6 +89,14 @@ const COSTSPAGE_KEYS = [
   "clientOverrides",
 ] as const;
 
+/** Which host(s) the screen reads: all of them, the one picked, or the first that has costs. */
+function hostScope(chosen: string, hosts: Array<{ id: string }>) {
+  const acrossHosts = chosen === ALL_HOSTS && hosts.length > 1;
+  if (acrossHosts) return { acrossHosts, hostId: ALL_HOSTS, hostIds: hosts.map((h) => h.id) };
+  const hostId = hosts.some((h) => h.id === chosen) ? chosen : (hosts[0]?.id ?? "");
+  return { acrossHosts, hostId, hostIds: hostId ? [hostId] : [] };
+}
+
 /**
  * Estimated cost of every session of a host (terminal, app, cards and workflows), from the
  * transcripts, in API prices: totals, a daily chart stacked by project, breakdowns, the most
@@ -101,6 +109,8 @@ export const CostsPage = memo(function CostsPage(props: {
   host?: string;
   projectKey?: string;
   client?: string;
+  /** The period it opens on (Home points at the last seven days). */
+  period?: Exclude<Period, "range">;
 }) {
   const t = useT();
   const number = useFormatNumber();
@@ -111,13 +121,7 @@ export const CostsPage = memo(function CostsPage(props: {
   );
   /** The host the user picked; until then (or if it left), the first one that announces costs. */
   const [chosen, setChosen] = useState(props.host ?? "");
-  const acrossHosts = chosen === ALL_HOSTS && hosts.length > 1;
-  const hostId = acrossHosts
-    ? ALL_HOSTS
-    : hosts.some((h) => h.id === chosen)
-      ? chosen
-      : (hosts[0]?.id ?? "");
-  const hostIds = acrossHosts ? hosts.map((h) => h.id) : hostId ? [hostId] : [];
+  const { acrossHosts, hostId, hostIds } = hostScope(chosen, hosts);
   const personaHosts = hosts.filter(
     (h) => hostIds.includes(h.id) && hasFeature(h.hostInfo?.features, "personas", false),
   );
@@ -140,9 +144,9 @@ export const CostsPage = memo(function CostsPage(props: {
     const found = personaHosts.flatMap((h) => state.personas[h.id] ?? []).find((p) => p.id === id);
     return id === null ? t("costsUi.noPersona") : (found?.name ?? id);
   };
-  const [period, setPeriod] = useState<Period>("7d");
+  const [period, setPeriod] = useState<Period>(props.period ?? "7d");
   const today = store.today();
-  const [range, setRange] = useState(periodRange("7d", today));
+  const [range, setRange] = useState(periodRange(props.period ?? "7d", today));
   const [filters, setFilters] = useState<Omit<CostsFilter, "from" | "to">>(
     props.projectKey ? { projectKey: props.projectKey } : {},
   );
@@ -236,11 +240,20 @@ export const CostsPage = memo(function CostsPage(props: {
       title={t("costsUi.title")}
       subtitle={t("costsUi.subtitle")}
       actions={
-        !acrossHosts && (
-          <Button variant="outline" size="sm" onClick={() => void exportCsv()}>
-            {t("costsUi.export")}
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => store.router.push({ name: "settings", section: "budgets" })}
+          >
+            {t("costsUi.setBudget")}
           </Button>
-        )
+          {!acrossHosts && (
+            <Button variant="outline" size="sm" onClick={() => void exportCsv()}>
+              {t("costsUi.export")}
+            </Button>
+          )}
+        </>
       }
       toolbar={
         <Toolbar label={t("costsUi.filters")}>

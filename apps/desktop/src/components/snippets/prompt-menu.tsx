@@ -14,14 +14,16 @@ export interface PromptSnippets {
  * and scrolls inside). The chosen one replaces the text. While it is open the box is its combobox:
  * the arrows, Home, End, Enter and Escape drive the list.
  */
-export function PromptMenu(props: {
-  prompts: PromptSnippets | undefined;
-  text: string;
-  label: string;
-  onFill(text: string): void;
-  /** The message box the menu is for: it gets the keys and the combobox roles while the menu is open. */
-  input?: RefObject<HTMLTextAreaElement | null>;
-}) {
+export function PromptMenu(
+  props: Readonly<{
+    prompts: PromptSnippets | undefined;
+    text: string;
+    label: string;
+    onFill(text: string): void;
+    /** The message box the menu is for: it gets the keys and the combobox roles while the menu is open. */
+    input?: RefObject<HTMLTextAreaElement | null>;
+  }>,
+) {
   const t = useT();
   const id = useId();
   const [items, setItems] = useState<MenuItem[] | null>(null);
@@ -155,6 +157,7 @@ export function PromptMenu(props: {
         })}
       </div>
       {choice?.description && (
+        // testid: a plain paragraph under the options, with no role or name of its own.
         <p
           data-testid="prompt-menu-description"
           className="border-t px-3 py-1.5 text-muted-foreground text-xs"

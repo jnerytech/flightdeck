@@ -7,6 +7,8 @@ export const DAEMON_REASONS = [
   "terminal_enable_confirm",
   "central_confirm",
   "permission_request_closed",
+  "hold_required",
+  "input_changed",
   "update_needs_service",
   "update_signature_failed",
   "messaging_session_missing",
@@ -65,6 +67,7 @@ export const DAEMON_REASONS = [
   "update_manifest_unchecked",
   "update_manifest_no_binary",
   "perm_rule_other_tool",
+  "perm_rule_too_broad",
   "perm_rule_content_invalid",
   "perm_destination_denied",
   "perm_mode_denied",
@@ -338,6 +341,7 @@ export const DAEMON_REASONS = [
   "action_ssh_env_value",
   "review_path_outside",
   "review_target_invalid",
+  "branch_invalid",
   "review_file_missing",
   "review_file_big",
   "review_file_binary",
@@ -368,6 +372,23 @@ export const DAEMON_REASONS = [
   "run_exclusive",
   "run_ports_exhausted",
   "plugin_too_big",
+  // Phase 39: OpenCode sessions and the host's OpenCode.
+  "runtime_unavailable",
+  "runtime_unsupported",
+  "opencode_unsafe_global",
+  "opencode_config_outranks",
+  "opencode_saved_rules",
+  "opencode_preflight_failed",
+  "opencode_changed",
+  "opencode_permissions_overridden",
+  "opencode_auth_required",
+  "opencode_disabled",
+  "opencode_missing",
+  "opencode_version_failed",
+  "opencode_v1",
+  "opencode_project_config_not_disabled",
+  "opencode_canary_failed",
+  "opencode_scope_mismatch",
 ] as const;
 export type DaemonReason = (typeof DAEMON_REASONS)[number];
 
@@ -433,6 +454,11 @@ export const DAEMON_FEATURES = [
   "runEnv",
   "templates",
   "tasks",
+  "depsCheck",
+  "worktrees",
+  "projectTrust",
+  "keepAwake",
+  "autoUpdate",
 ] as const;
 export type DaemonFeature = (typeof DAEMON_FEATURES)[number];
 

@@ -52,10 +52,11 @@ describe("mcp-cards-permissao: discarding a card is always a question", () => {
       requested && "suggestions" in requested ? requested.suggestions : undefined,
     ).toBeUndefined();
     const requestId = (requested as { requestId: string }).requestId;
-    expect(() => b.respond({ requestId, decision: "allow", updatedPermissions: [always] })).toThrow(
-      /sempre pergunta/,
-    );
-    b.respond({ requestId, decision: "allow" });
+    expect(() =>
+      b.respond({ requestId, decision: "allow", held: true, updatedPermissions: [always] }),
+    ).toThrow(/sempre pergunta/);
+    // Discarding a card is high risk: the allow carries the hold (issue #251).
+    b.respond({ requestId, decision: "allow", held: true });
     expect(await pending).toEqual({ behavior: "allow" });
   });
 

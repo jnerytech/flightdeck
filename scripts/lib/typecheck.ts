@@ -1,3 +1,4 @@
+import { inSequence } from "@flightdeck/protocol";
 /**
  * `bun run typecheck`: one tsc run per project, one after the other, each with its incremental
  * build info. `bun run --filter '*' typecheck` ran the three workspaces at once (about 2.7 GB on
@@ -27,10 +28,10 @@ export async function runAll(
   log: (line: string) => void,
 ): Promise<number> {
   let first = 0;
-  for (const command of commands) {
+  await inSequence(commands, async (command) => {
     log(`typecheck ${command[2] ?? command.join(" ")}`);
     const code = await run(command);
     first ||= code;
-  }
+  });
   return first;
 }

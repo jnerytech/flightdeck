@@ -7,14 +7,16 @@ import type { AppStore } from "@/lib/app-store";
 import { useDraft } from "@/lib/use-draft";
 
 /** Phase 36: the hours this card is worth, an estimate typed by the person; empty clears it. */
-export function CardHours(props: { store: AppStore; hostId: string; card: Card }) {
+export function CardHours(props: Readonly<{ store: AppStore; hostId: string; card: Card }>) {
   const { store, hostId, card } = props;
   const t = useT();
   const [text, setText, saved] = useDraft(
     card.estimateHours === null ? "" : String(card.estimateHours),
   );
   const parsed = text.trim() === "" ? null : Number(text);
-  const valid = parsed === null || Number.isFinite(parsed);
+  // What the host takes: empty (no estimate) or a number of hours from 0 to 1000.
+  const valid = parsed === null || (Number.isFinite(parsed) && parsed >= 0 && parsed <= 1000);
+  const current = card.estimateHours === null ? "" : String(card.estimateHours);
   return (
     <Field label={t("roiUi.cardHours")}>
       {(control) => (
@@ -28,8 +30,9 @@ export function CardHours(props: { store: AppStore; hostId: string; card: Card }
           />
           <ActionButton
             variant="outline"
+            disabled={!valid || text === current}
+            {...(valid ? {} : { disabledReason: t("roiUi.cardHoursInvalid") })}
             onClick={async () => {
-              if (!valid) return;
               const sent = text;
               const done = await store.hostCommand(hostId, "card.update", {
                 cardId: card.id,

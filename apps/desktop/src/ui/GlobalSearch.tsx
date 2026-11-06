@@ -1,4 +1,5 @@
 import { type KeyboardEvent, useEffect, useState } from "react";
+import { Keycap } from "@/components/shortcuts/keycap";
 import { Input } from "@/components/ui/input";
 import type { T } from "../i18n/index.ts";
 import {
@@ -19,7 +20,7 @@ import { pendingText } from "../lib/pending-text.ts";
 import { hasFeature } from "../lib/version.ts";
 
 /** Renders a daemon snippet, where every match comes wrapped in `«` and `»`. */
-export function Snippet({ text }: { text: string }) {
+export function Snippet({ text }: Readonly<{ text: string }>) {
   const parts = text.split(/«|»/);
   // A part's position in the text is its key (parts are immutable and ordered).
   let at = 0;
@@ -46,16 +47,18 @@ export function Snippet({ text }: { text: string }) {
  * the history search across every host (Enter with nothing chosen), merged by date as each host
  * answers. Arrows choose, Enter opens, Tab shows the chosen entry's actions.
  */
-export function GlobalSearch(props: {
-  state: AppState;
-  store: AppStore;
-  /** The app has a Custos screen: "Ir para Custos" for hosts that announce `costs`. */
-  costs: boolean;
-  onSearch(query: string): void;
-  onClose(): void;
-  onOpenHit(hit: GlobalHit): void;
-  onGo(target: PaletteTarget): void;
-}) {
+export function GlobalSearch(
+  props: Readonly<{
+    state: AppState;
+    store: AppStore;
+    /** The app has a Custos screen: "Ir para Custos" for hosts that announce `costs`. */
+    costs: boolean;
+    onSearch(query: string): void;
+    onClose(): void;
+    onOpenHit(hit: GlobalHit): void;
+    onGo(target: PaletteTarget): void;
+  }>,
+) {
   const t = props.store.i18n.t;
   const { search, hosts } = props.state;
   const { store } = props;
@@ -176,9 +179,7 @@ export function GlobalSearch(props: {
                 <span className="min-w-0 truncate text-muted-foreground text-xs">
                   {item.detail}
                 </span>
-                {item.shortcut && (
-                  <kbd className="keycap ml-auto shrink-0 bg-muted font-mono">{item.shortcut}</kbd>
-                )}
+                {item.shortcut && <Keycap className="ml-auto shrink-0">{item.shortcut}</Keycap>}
               </button>
             ))}
           </div>
@@ -228,11 +229,18 @@ function modeSwitch(store: AppStore): "simple" | "full" | null {
 }
 
 /** The palette's line for the oldest waiting request, and whether it must be opened to be seen. */
-function oldestOf(items: PendingItem[], t: T): { oldest?: { text: string; opens: boolean } } {
+function oldestOf(
+  items: PendingItem[],
+  t: T,
+): { oldest?: { text: string; opens: boolean; key: string } } {
   const item = items[0];
   if (!item) return {};
   const opens = Boolean(item.gate || item.vault || item.risk === "high");
   return {
-    oldest: { text: `${item.hostName} · ${item.sessionName}: ${pendingText(item, t)}`, opens },
+    oldest: {
+      text: `${item.hostName} · ${item.sessionName}: ${pendingText(item, t)}`,
+      opens,
+      key: `${item.hostId}/${item.requestId}`,
+    },
   };
 }

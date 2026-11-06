@@ -31,6 +31,14 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     wait (the screen stopped changing). `lazy-wait-baseline.json` (a fixed wait before a one-shot
     query, or ending a helper) is empty, and an `act(() => Bun.sleep(…))` is allowed only with a
     `// timing:` comment on the line above saying why the clock is the thing under test.
+    Any other fixed sleep in a test file (`Bun.sleep`, `Bun.sleepSync`, a promise on a timer, a
+    `sleep(` or `delay(` helper) is counted by the sleep ratchet: `sleep-baseline.json` only goes
+    down, so a new test waits on the condition, and a `// timing:` comment on the line above allows
+    a sleep where the clock itself is under test.
+    The preload puts the timers, `Date`, `fetch`, the environment, the window size, the browser
+    storage and the page body back between two test files, and fails the run naming the file that
+    left one changed (`isolation: <file> left … changed`, #301): fix that file, the reset is a net.
+    `FLIGHTDECK_ISOLATION=warn` only prints it.
    - Nada de `toMatchSnapshot` na primeira rodada: ele grava o resultado do stub. Use literais
      escritos à mão (`toBe`, `toMatchInlineSnapshot` com o texto).
    - `toContain` sobre algo que pode ser `undefined`: use `?? ""`.
@@ -52,6 +60,20 @@ tentativa da Fase 2 (branch `fase-2-tentativa-1`).
     controlada com código 1, não crash) e é commitado num `test(<área>)`.
 11. **Proibido:** implementação antes do teste, enfraquecer ou apagar asserção para passar,
     `.only`, `.skip` ou `test.todo` em código commitado.
+    **The one exception: an unstable test is skipped off Ubuntu** (decided 2026-11-05, issue #288).
+    A test that bets on the machine (wall-clock polls, a timer against a limit, a child process on
+    a loaded Windows runner) is written `test.skipIf(notLinux)(…)` (`notLinux` is in
+    `scripts/test/not-linux.ts`; `process.platform !== "linux"` also counts) with
+    `// unstable: #<issue> <reason>` on the same line or the line above. The issue is where the fix
+    goes: a skip is a promise to fix, not a place to leave the test. The test is intact, it still
+    runs on Ubuntu under the 100% coverage gate, and only Windows (and macOS) skip it. No other
+    skip is allowed: `.skip`, `.only`, `test.todo` and a first-run snapshot stay forbidden, and a
+    `skipIf` for a platform *capability* (no 8.3 names, no symlinks) is still fine without a note.
+    The hook knows the two spellings above, one line at a time, and does not look up the issue; the
+    ratchet (at most 5, each with its note) and review hold the rest.
+    `unstable-skip-ratchet.test.ts` checks every such skip has the note, with an issue number and a
+    reason, and that there are at most 5 in the repository (lower the number in that test when one
+    is fixed; never raise it).
 
 A auditoria `bun run tdd:audit -- --since <tag>` confere a ordem dos commits e a ausência de
 testes desligados. With `--spec docs/SPEC-fase-N.md` it also fails on an area of the spec's table
@@ -67,6 +89,9 @@ every push and pull request. The project's PreToolUse hook (`.claude/hooks/guard
   scope, and a `feat(x)`/`fix(x)` with no `test(x)` commit since that base;
 - it refuses an Edit or Write that adds `.only(`, `.skip(`, `test.todo(` or `toMatchSnapshot(` to
   a test file (one that keeps or removes them passes).
+- it refuses an Edit or Write that adds a `skipIf(notLinux)` (or `skipIf(process.platform !==
+  "linux")`) to a test file without `// unstable: #<issue> <reason>` on that line or the line above
+  (one that is already there, or a skip for a platform capability, passes).
 
 For a deliberate exception, end the commit message with a trailer line `TDD-Waiver: <why>` (or
 pass `--trailer "TDD-Waiver: <why>"`). The hook lets the commit through and `tdd:audit` lists it
@@ -105,6 +130,25 @@ hand-off on the files you changed, to close a function gap without bisecting.
 git, readFile })` and the daemon's service contexts do; the entry file or the command handler
 only wires the real ones. The tests then pass fakes instead of `mock.module`, which leaks across
 files. This is a rule, not a style rewrite: React components and Bun idioms stay as they are.
+
+## Test anchors
+
+How a UI test finds what it checks, in this order (issue #168, owner decision). The design rules
+page (`docs/DESIGN.md`) lists the anchors the app owns.
+
+1. **Role and accessible name first**: `getByRole("button", { name })`, `queryByLabelText`. This
+   tests what a person and a screen reader get, and it fails when accessibility breaks.
+2. **`data-slot` for structure that has no role**: regions, cards, panels, and the rows the layout
+   guards measure (`[data-slot=recap]`, `[data-slot=session-tile]`).
+   - The names are stable and listed in `docs/DESIGN.md`.
+   - `Page` and `Section` emit `page` and `section`, so a layout finding always names a region.
+   - The vendored `components/ui` slots (`button`, `dialog-*`) are shadcn's: do not rely on them.
+3. **`data-testid` only as a last resort**, for an element with no role and no slot of its own (an
+   `aria-hidden` line, for example). The line above it carries a `// testid:` comment that says why.
+   - `apps/desktop/testid-baseline.json` holds their count.
+   - `apps/desktop/test/test-anchors.test.tsx` fails on a `data-testid` with no `testid:` comment,
+     and on more of them than the baseline.
+   - The count only goes down: lower the baseline when one goes away.
 
 ## Travas
 
@@ -159,6 +203,13 @@ em vez de depender de cuidado.
   own state. Layout, terminal and keyboard journeys stay plain TypeScript
   (`scripts/e2e/journeys.ts`), and unit tests stay plain bun tests with behavior titles. The
   pilot's measurements are in `docs/DECISIONS.md` ("BDD pilot").
+- **Docs links and size.** `md-links.test.ts` fails on a relative link to a missing file, on an
+  anchor that matches no heading (with GitHub's slugs, accents included), and on a `docs/...md` path
+  in the code (not in the tests) that does not exist. `md-size.test.ts` fails on a tracked Markdown
+  file over its line limit beyond `md-size-baseline.json`, which only goes down. The limits are
+  150 for a nested `CLAUDE.md`, `.claude/rules` and `.claude/agents`, 300 for a `SKILL.md`, 260
+  for the root `CLAUDE.md`, 4000 for each manual and 400 otherwise. The frozen
+  `docs/DECISIONS.md` has no limit.
 
 ## Armadilhas conhecidas
 
@@ -180,6 +231,47 @@ em vez de depender de cuidado.
   (`const real = { ...(await import(path)) }`) and restore it in `afterAll`
   (`mock.module(path, () => real)`), because Bun module mocks outlive their file and later files
   in the same run would draw the stand-in.
+
+## Delivery (GitHub Flow, #260)
+
+- Every branch reaches `main` through its own PR: `bun run pr -- open <branch>` titles it after the
+  branch's issue and closes it. A branch stacked on another opens with `--base <parent>`. When
+  `FLIGHTDECK_PR_OPENED` is set (words split on spaces, or a JSON array of strings for a path with
+  spaces), `open` runs it with the new PR's number, branch and base (the coordinator's tooling
+  queues an OpenCode review there, #273). A hook that fails, or runs past two minutes, leaves the
+  PR open; only its exit code is printed, never its output.
+- A change in a risk area (a spawn or kill, a delete, a secret, a permission, the vault or pairing,
+  read from the added lines of the changed code) needs a security review before the hand-off
+  (#273). Run the `security-reviewer` agent, fix what it finds, and commit its verdict after the
+  last risky commit: `git commit --allow-empty -m "chore(security): security-reviewer verdict (#N)"
+  -m "Security-Reviewed: <its one-line summary>"`. Until then `handoff:check` stamps
+  `security=unreviewed`, which `--verify` refuses; a git that fails stamps `security=unknown`, and a
+  stamp with no `security=` or no `ci=` vouches for nothing.
+- CI runs once per commit: on the PR (`pull_request`), on `main` (`push`), or by hand for a branch
+  with no PR yet (`bun run ci:branch`).
+- CI starts with a quick job (#272): typecheck, lint, the TDD audit and every ratchet test, in
+  minutes. The heavy jobs need it. A new ratchet's test file ends in
+  `-ratchet.test.ts` (or `.tsx`), so the quick job picks it up by itself (scripts/lib/ci-quick.ts).
+- Right after `open`, the session turns on auto-merge: `bun run pr -- auto <n>` (#271). GitHub
+  then merges the PR with a merge commit, never a squash, once the main ruleset's required checks
+  are green on its HEAD, behind `main` or not (#305: the ruleset is not strict, so a merge no
+  longer reruns every other PR's CI; `main`'s push CI checks the merged result). It refuses a
+  draft, and a stacked PR whose parent
+  `main` does not have yet; once the parent is in `main`, it retargets the PR onto `main` first.
+- A session keeps at most 2 branches open (pushed and not merged yet).
+- `bun run pr -- next` lists the open PRs in merge order with what each still needs; a PR that
+  conflicts with its base (GitHub's mergeable state) waits until `main` is merged into it and the
+  conflicts resolved. `bun run pr -- update <n>` brings a PR up to date with its base when there is
+  no conflict. `bun run pr -- merge <n>` (the coordinator only; the guard hook refuses it in a
+  session) merges by hand with a merge commit, under the same conditions; a PR behind `main` merges,
+  with how far behind it is printed as a note.
+- A PR runs only the jobs its paths need (#264, scripts/lib/ci-paths.ts): docs or scripts only run
+  the Linux tests and lint; the daemon or a smoke adds Windows and the smokes; the app, the
+  protocol, the dependencies or the workflow run everything; the Tauri shell adds cargo. A job
+  skipped by path still reports under the ruleset's name. Every push to `main` runs everything.
+- A release is a tag on a green `main`, and on a commit whose full run (its push to `main`) is
+  green; there is no rc branch to assemble. `bun run pr -- tag vX` (the coordinator) tags main's
+  HEAD only after that run passed, and pushes the tag alone as `refs/tags/vX`.
 
 ## Evidência para o /goal
 

@@ -75,5 +75,50 @@ export async function runCommand(
 
 /** `git` from the current PATH, always with an explicit working directory. */
 export function git(cwd: string, ...args: string[]): Promise<CommandResult> {
+  // git-arg: the shared git helper: its callers are what the git-args ratchet checks
   return runCommand([whichOnPath("git") ?? "git", ...args], cwd);
+}
+
+/**
+ * Like `git`, but reads at most `limit` bytes of output: when git writes more it is killed and the
+ * result says `truncated`, with the output cut at its last whole line (a change of 200 MB must not
+ * be held in memory, issue #329).
+ */
+export async function gitLimited(
+  cwd: string,
+  limit: number,
+  ...args: string[]
+): Promise<CommandResult & { truncated: boolean }> {
+  // git-arg: the capped git helper: its callers are what the git-args ratchet checks
+  const proc = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
+    cwd,
+    env: { ...process.env },
+    stdout: "pipe",
+    stderr: "pipe",
+    stdin: "ignore",
+  });
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  let truncated = false;
+  const reader = proc.stdout.getReader();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      size += value.length;
+      if (size > limit) {
+        truncated = true;
+        await reader.cancel();
+        break;
+      }
+    }
+  } finally {
+    // Past the limit, or when reading failed: git does not go on writing to nobody.
+    proc.kill();
+  }
+  const [stderr, code] = await Promise.all([new Response(proc.stderr).text(), proc.exited]);
+  const all = Buffer.concat(chunks);
+  const kept = truncated ? all.subarray(0, all.subarray(0, limit).lastIndexOf(10) + 1) : all;
+  return { code, stdout: kept.toString("utf8"), stderr, truncated };
 }

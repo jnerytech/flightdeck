@@ -1,5 +1,6 @@
 import { ChevronRight, Ellipsis } from "lucide-react";
 import { Fragment } from "react";
+import { IconTip } from "@/components/feedback/icon-tip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,13 +14,15 @@ import type { Route } from "@/lib/router";
 const FOLD_AT = 3;
 
 /** The header's path: the steps above are buttons that go back, the last one says where you are. */
-export function Breadcrumb(props: {
-  crumbs: Crumb[];
-  label: string;
-  /** The name of the menu that holds the steps in between, when there are many. */
-  moreLabel?: string;
-  onGo(route: Route): void;
-}) {
+export function Breadcrumb(
+  props: Readonly<{
+    crumbs: Crumb[];
+    label: string;
+    /** The name of the menu that holds the steps in between, when there are many. */
+    moreLabel?: string;
+    onGo(route: Route): void;
+  }>,
+) {
   const { crumbs } = props;
   const folded = crumbs.length > FOLD_AT;
   const hidden = folded ? crumbs.slice(1, -1) : [];
@@ -79,18 +82,21 @@ export function Breadcrumb(props: {
               {/* The earlier steps give way first (a factor 100 times larger), down to 1rem; then the current one, which keeps 4rem. The floors of three steps and their chevrons (140 px) fit the slot of a 720 px window (156 px). Factors under 1 in total would shrink only that share of the overflow. */}
               <li className={isLast ? "min-w-[4rem] shrink" : "min-w-[1rem] shrink-[100]"}>
                 {crumb.route ? (
-                  <button
-                    type="button"
-                    className="block min-h-6 max-w-full truncate rounded-sm text-muted-foreground leading-6 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                    title={crumb.label}
-                    onClick={() => crumb.route && props.onGo(crumb.route)}
-                  >
-                    {crumb.label}
-                  </button>
+                  <IconTip label={crumb.label}>
+                    <button
+                      type="button"
+                      className="block min-h-6 max-w-full truncate rounded-sm text-muted-foreground leading-6 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                      onClick={() => crumb.route && props.onGo(crumb.route)}
+                    >
+                      {crumb.label}
+                    </button>
+                  </IconTip>
                 ) : (
-                  <span className={labelClass} title={crumb.label} {...currentPage}>
-                    {crumb.label}
-                  </span>
+                  <IconTip label={crumb.label}>
+                    <span className={labelClass} {...currentPage}>
+                      {crumb.label}
+                    </span>
+                  </IconTip>
                 )}
               </li>
             </Fragment>

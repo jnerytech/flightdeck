@@ -326,6 +326,7 @@ describe("assistant-settings-ui: the section in Settings, in both languages", ()
         appUpdate={{ upToDate: false } as never}
         onCheckUpdate={() => {}}
         onNotifyUpdates={() => {}}
+        onAutoUpdate={() => {}}
         theme="system"
         onTheme={() => {}}
         density="comfortable"

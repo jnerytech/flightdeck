@@ -38,6 +38,8 @@ export interface HubRow {
   persona: SessionPersona | null;
   /** Phase 21: `project · persona · number`, on a host with names; null elsewhere. */
   standardName?: string | null;
+  /** Phase 39: set for an OpenCode session only. */
+  runtime?: "opencode";
 }
 
 export interface HubFilter {
@@ -245,6 +247,7 @@ export function hubRows(state: HubRowState): HubRow[] {
         lastActivity: live?.updatedAt ?? s.updatedAt,
         summary: liveLine(s.summary, live),
         persona: s.persona ?? null,
+        ...(s.runtime === "opencode" ? { runtime: "opencode" as const } : {}),
       };
     });
     // Claude Code's background sessions: a session the host has under another origin stays there.
@@ -333,7 +336,18 @@ const matches = (row: HubRow, filter: HubFilter) =>
   (filter.showArchived || !row.archived);
 
 /** Repository name of a group: last path segment of the remote or of the folder. */
-const groupName = (key: string) => basename(key.replace(/^host:[^:]*:/, ""));
+export const groupName = (key: string) => basename(key.replace(/^host:[^:]*:/, ""));
+
+/** The order of a list of sessions: the ones that need you first, then pinned, standard names, latest activity. */
+export function hubRowOrder(a: HubRow, b: HubRow): number {
+  return (
+    Number(b.state === "needs_you") - Number(a.state === "needs_you") ||
+    Number(b.pinned) - Number(a.pinned) ||
+    Number(b.standardName != null) - Number(a.standardName != null) ||
+    (a.standardName ?? "").localeCompare(b.standardName ?? "", undefined, { numeric: true }) ||
+    b.lastActivity.localeCompare(a.lastActivity)
+  );
+}
 
 const isFolderKey = (key: string) => key.startsWith("host:");
 
@@ -397,12 +411,6 @@ export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
     if (list) list.push(row);
     else byKey.set(merged, [row]);
   }
-  const order = (a: HubRow, b: HubRow) =>
-    Number(b.state === "needs_you") - Number(a.state === "needs_you") ||
-    Number(b.pinned) - Number(a.pinned) ||
-    Number(b.standardName != null) - Number(a.standardName != null) ||
-    (a.standardName ?? "").localeCompare(b.standardName ?? "", undefined, { numeric: true }) ||
-    b.lastActivity.localeCompare(a.lastActivity);
   return withHints(
     [...byKey.entries()]
       .map(([merged, list]) => {
@@ -411,7 +419,7 @@ export function hubGroups(rows: HubRow[], filter: HubFilter): HubGroup[] {
         // which a host going offline or a folder merging does not change.
         const keys = list.map((r) => r.projectKey);
         const key = keys.reduce((x, y) => (y < x ? y : x), keys[0] ?? "");
-        return { key, foldKey: merged, name: groupName(key), rows: [...list].sort(order) };
+        return { key, foldKey: merged, name: groupName(key), rows: [...list].sort(hubRowOrder) };
       })
       .sort((a, b) => (b.rows[0]?.lastActivity ?? "").localeCompare(a.rows[0]?.lastActivity ?? "")),
   );

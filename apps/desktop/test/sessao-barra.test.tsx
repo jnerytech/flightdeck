@@ -82,7 +82,7 @@ describe("sessao-barra: the composer toolbar", () => {
     expect(box().value).toBe("olhe @/repo/src ");
   });
 
-  test("a managed session on a host that announces settings has a mode and a model select", async () => {
+  test("a managed session on a host that announces settings has a mode chip and a model select", async () => {
     const calls: string[] = [];
     const a = {
       ...actions,
@@ -97,21 +97,31 @@ describe("sessao-barra: the composer toolbar", () => {
         settings
       />,
     );
-    const mode = screen.queryByLabelText("Modo de permissão") as HTMLSelectElement;
-    expect(mode.value).toBe("default");
-    await act(async () => void fireEvent.change(mode, { target: { value: "plan" } }));
-    const model = screen.queryByLabelText("Modelo") as HTMLSelectElement;
-    await act(async () => void fireEvent.change(model, { target: { value: "opus" } }));
-    await act(async () => void fireEvent.change(model, { target: { value: "" } }));
-    expect(calls).toEqual(["mode:plan", "model:opus", "model:null"]);
+    expect(screen.queryByRole("button", { name: "Modo de permissão: Padrão" })).not.toBeNull();
+    const chip = () => screen.getByRole("button", { name: /^Modelo:/ });
+    const openChip = () =>
+      act(async () => {
+        fireEvent.pointerDown(chip(), { button: 0, ctrlKey: false, pointerType: "mouse" });
+        fireEvent.click(chip());
+      });
+    await openChip();
+    await act(
+      async () => void fireEvent.click(screen.getByRole("menuitemradio", { name: /^Opus/ })),
+    );
+    await openChip();
+    await act(
+      async () =>
+        void fireEvent.click(screen.getByRole("menuitemradio", { name: /^Modelo padrão/ })),
+    );
+    expect(calls).toEqual(["model:opus", "model:null"]);
   });
 
-  test("without settings (an older host, a terminal session) there are no selects", () => {
+  test("without settings (an older host, a terminal session) there is no mode chip and no model select", () => {
     render(
       <SessionView title="s" session={{ ...emptySession(), status: "idle" }} actions={actions} />,
     );
-    expect(screen.queryByLabelText("Modo de permissão")).toBeNull();
-    expect(screen.queryByLabelText("Modelo")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Modo de permissão:/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Modelo:/ })).toBeNull();
   });
 
   test("a daemon that describes the commands gives the groups and the description of the selected one", async () => {
@@ -159,26 +169,5 @@ describe("sessao-barra: the composer toolbar", () => {
     expect(screen.queryByRole("option", { name: "/review" })).toBeNull();
     await act(async () => void fireEvent.click(screen.getByRole("option", { name: "/compact" })));
     expect(box().value).toBe("/compact ");
-  });
-
-  test("the mode select offers only modes as strict as the one the session started with", () => {
-    const options = (permissionMode: "plan" | "default" | "acceptEdits") => {
-      const view = render(
-        <SessionView
-          title="s"
-          session={{ ...emptySession(), status: "idle", permissionMode }}
-          actions={{ ...actions, setMode: async () => {} }}
-          settings
-        />,
-      );
-      const names = [
-        ...(screen.queryByLabelText("Modo de permissão") as HTMLSelectElement).options,
-      ].map((o) => o.value);
-      view.unmount();
-      return names;
-    };
-    expect(options("plan")).toEqual(["plan"]);
-    expect(options("default")).toEqual(["plan", "default"]);
-    expect(options("acceptEdits")).toEqual(["plan", "default", "acceptEdits"]);
   });
 });

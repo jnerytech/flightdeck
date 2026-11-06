@@ -46,11 +46,13 @@ const label = (e: Exception, t: T): string =>
  * for a loop. Each save sends the whole policy the host gave, with one field changed: the daemon
  * puts the default back in any field left out.
  */
-export function MessagingRulesSection(props: {
-  store: AppStore;
-  hostId: string;
-  hostName: string;
-}) {
+export function MessagingRulesSection(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    hostName: string;
+  }>,
+) {
   const t = useT();
   const { store, hostId } = props;
   const [rules, setRules] = useState<Rules | null>(null);

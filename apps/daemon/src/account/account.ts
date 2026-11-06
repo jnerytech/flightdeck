@@ -217,7 +217,9 @@ export class Account {
       status,
       name: auth?.email ?? info?.email ?? null,
       organization: auth?.organization ?? info?.organization ?? null,
-      plan: auth?.plan ?? info?.plan ?? usage?.plan ?? null,
+      // Issue #256: the usage report reads the plan live from the server; claude's sign-in and the
+      // SDK's account info keep the one it had at sign-in (Max after a move to Ultra).
+      plan: usage?.plan ?? auth?.plan ?? info?.plan ?? null,
       provider: auth?.apiProvider ?? info?.apiProvider ?? null,
       windows: [],
       readAt: new Date(this.now()).toISOString(),

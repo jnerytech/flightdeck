@@ -1,8 +1,8 @@
 /**
- * The e2e journeys (phase 10): fourteen in a real browser against the seeded demo, in both
+ * The e2e journeys (phase 10): nineteen in a real browser against the seeded demo, in both
  * languages, and a layout check of the main screens at 1280x800 and 800x600 (nothing sticks out
  * sideways, and the end of the long list shows after scrolling). The runner is `@playwright/test`
- * (scripts/e2e/journeys.e2e.ts); this file holds the journeys themselves.
+ * (scripts/e2e/define-journeys.ts, one file per language); this file holds the journeys themselves.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -25,6 +25,8 @@ import {
 } from "../lib/layout-guards.ts";
 
 const ALFA = "demo-alfa";
+/** The name of the second demo host, as the sidebar and the forms show it. */
+const BETA = "beta";
 export const WAIT = 15_000;
 /** A session needs the host to start it: on a loaded machine that takes far longer than a click. */
 export const SESSION_WAIT = 60_000;
@@ -114,6 +116,28 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await waitFor(async () => (await row.count()) === 0, "o pedido saiu da fila");
   },
 
+  // 1b. Issue #187 (J4): two requests answered with A and nothing else. Choosing the first puts the
+  // focus on its card, and once it is answered the next one is chosen and focused.
+  "responder-sem-clique": async (c) => {
+    const stamp = Date.now();
+    const first = `J4 primeira ${stamp}`;
+    const second = `J4 segunda ${stamp}`;
+    await createSession(c, "[bash] ls", first);
+    await createSession(c, "[bash] ls", second);
+    await open(c, { name: "needs-you" });
+    const row = (name: string) => c.page.locator("main ul li button", { hasText: name });
+    await row(first).first().click({ timeout: SESSION_WAIT });
+    await row(second).first().waitFor({ timeout: SESSION_WAIT });
+    const focusedCard = () =>
+      c.page.evaluate(() => Boolean(document.activeElement?.closest("fieldset[data-request-id]")));
+    await waitFor(focusedCard, "o card do pedido escolhido tem o foco");
+    await c.page.keyboard.press("a");
+    await waitFor(async () => (await row(first).count()) === 0, "a primeira saiu da fila");
+    await waitFor(focusedCard, "o card do próximo pedido tem o foco");
+    await c.page.keyboard.press("a");
+    await waitFor(async () => (await row(second).count()) === 0, "a segunda saiu da fila");
+  },
+
   // 2. Open a session, send a message and read the fake runtime's answer.
   "sessao-e-mensagem": async (c) => {
     await open(c, { name: "session", host: ALFA, id: c.ids.idleSession });
@@ -131,6 +155,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
     await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
     await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+    // Issue #188: the creation says so (the toast is short-lived: look for it first), with a way
+    // to the new card.
+    await c.page
+      .getByText(c.t("kanban.created", { title }), { exact: true })
+      .waitFor({ timeout: WAIT });
     const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
     await tile.waitFor({ timeout: WAIT });
     await tile.getByRole("button", { name: title, exact: true }).click();
@@ -254,10 +283,16 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .first()
       .getByRole("button", { name: c.t("sidebar.openHost", { host: "alfa" }) })
       .click({ modifiers: ["Control"] });
-    await waitFor(async () => (await c.page.getByRole("tab").count()) === 2, "duas abas");
+    // The workspace's own tab bar: the host page has tabs of its own (Overview, Usage, Settings).
+    const bar = c.page.getByRole("tablist", { name: c.t("tabs.list"), exact: true });
+    await waitFor(async () => (await bar.getByRole("tab").count()) === 2, "duas abas");
     await c.page.getByRole("button", { name: c.t("tabs.split"), exact: true }).click();
-    await waitFor(async () => (await c.page.getByRole("tablist").count()) === 2, "a tela dividida");
-    // The new area shows alfa's page too: its Novo terminal opens the terminal there.
+    await waitFor(async () => (await bar.count()) === 2, "a tela dividida");
+    // The new area shows alfa's page too: its Novo terminal, in the Settings tab, opens the terminal there.
+    await c.page
+      .getByRole("tab", { name: c.t("hostHome.settings"), exact: true })
+      .last()
+      .click();
     await c.page
       .getByRole("button", { name: c.t("hostTerminal.open"), exact: true })
       .last()
@@ -281,6 +316,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("button", { name: c.t("terminalUi.close"), exact: true }).click();
     await c.page.getByRole("button", { name: c.t("terminalUi.detach"), exact: true }).click();
     const attach = c.t("hostTerminal.attach", { cwd: "" }).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Back on alfa's page, which opens on its Overview: the terminals are in the Settings tab.
+    await c.page
+      .getByRole("tab", { name: c.t("hostHome.settings"), exact: true })
+      .last()
+      .click();
     // The newest live terminal is this run's: one left by a run that failed comes first.
     await c.page
       .getByRole("button", { name: new RegExp(`^${attach}`) })
@@ -384,7 +424,10 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .waitFor({ timeout: WAIT });
     // Every session of the demo, then only the client's (the demo's sessions are in other projects).
     await open(c, { name: "hub" });
-    const sessions = c.page.getByRole("list").locator("li[aria-label]");
+    // The Sessions page starts with every project folded (issue #241): open them, so the rows are
+    // there to count, and count only the page's own rows (the sidebar has list items too).
+    await c.page.getByRole("button", { name: c.t("hub.expandAll"), exact: true }).click();
+    const sessions = c.page.getByRole("main").locator("li[aria-label]");
     await sessions.first().waitFor({ timeout: WAIT });
     const before = await sessions.count();
     const switcher = (current: string) =>
@@ -425,6 +468,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       tile(title).getByRole("button", { name: c.t("board.cardActions", { title }), exact: true });
     await actions(second).click();
     await c.page.getByRole("menuitem", { name: c.t("board.startCard"), exact: true }).click();
+    // The menu's Start asks for the workflow and persona first (issue #188).
+    await c.page
+      .getByRole("dialog", { name: c.t("board.startCard") })
+      .getByRole("button", { name: c.t("cardUi.start"), exact: true })
+      .click();
     await c.page
       .getByText(c.t("daemonRefusal.card_blocked", { blockers: first }), { exact: true })
       .waitFor({ timeout: WAIT });
@@ -457,10 +505,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByRole("region", { name: c.t("recap.region") })
       .waitFor({ timeout: SESSION_WAIT });
     await waitFor(async () => (await log.evaluate(bottom)) <= 24, "a conversa abriu no fim");
-    // Scrolled up, a message that arrives leaves the view where it was and is counted.
-    await log.evaluate((el) => {
-      el.scrollTop = 300;
-    });
+    // Scrolled up, a message that arrives leaves the view where it was and is counted. The reader
+    // scrolls with the wheel: a position set from a script is not a person leaving the end, and the
+    // view keeps following it (issue #315).
+    await log.hover();
+    await c.page.mouse.wheel(0, -600);
     const jump = c.page.getByRole("button", { name: new RegExp(`^${c.t("session.jumpLatest")}$`) });
     await jump.waitFor({ timeout: WAIT });
     const kept = await log.evaluate((el) => el.scrollTop);
@@ -487,6 +536,85 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.waitForTimeout(500);
     expect(Math.abs((await back.evaluate((el) => el.scrollTop)) - kept)).toBeLessThanOrEqual(2);
   },
+
+  // 16. The first run (issue #184): a pasted link that is not a pairing link is answered in the
+  // app's language, from the catalog.
+  "primeira-vez": async (c) => {
+    await open(c, { name: "add-host" });
+    await c.page
+      .getByLabel(c.t("hostForm.link"), { exact: true })
+      .fill("flightdeck://pc:7420?name=x");
+    await c.page.getByText(c.t("hostForm.pairToken"), { exact: true }).waitFor({ timeout: WAIT });
+    await c.page.getByLabel(c.t("hostForm.link"), { exact: true }).fill("http://pc:7420?token=t");
+    await c.page.getByText(c.t("hostForm.pairScheme"), { exact: true }).waitFor({ timeout: WAIT });
+  },
+
+  // 17. A second host (issue #185): "Add a host" is a command of the palette and opens the form.
+  "segundo-host": async (c) => {
+    await open(c, { name: "hub" });
+    await c.page.keyboard.press("Control+K");
+    await c.page.getByLabel(c.t("searchUi.input"), { exact: true }).fill(c.t("palette.addHost"));
+    await c.page
+      .getByRole("dialog", { name: c.t("searchUi.label") })
+      .getByRole("option", { name: c.t("palette.addHost"), exact: true })
+      .click();
+    await c.page.getByLabel(c.t("hostForm.link"), { exact: true }).waitFor({ timeout: WAIT });
+  },
+
+  // 18. New session (issue #186): the Sessions list starts one, and the form lets the host be chosen.
+  "nova-sessao-host": async (c) => {
+    await open(c, { name: "hub" });
+    // The header of the list; the sidebar has a button of the same name outside <main>.
+    await c.page
+      .getByRole("main")
+      .locator('[data-slot="page-actions"]')
+      .getByRole("button", { name: c.t("sidebar.newSession"), exact: true })
+      .click();
+    const host = c.page.getByLabel(c.t("newSession.host"), { exact: true });
+    await host.waitFor({ timeout: WAIT });
+    await host.selectOption({ label: BETA });
+    await c.page
+      .getByRole("heading", { name: c.t("newSession.title", { host: BETA }) })
+      .waitFor({ timeout: WAIT });
+  },
+
+  // 19. Finishing a card (issue #188): the card menu's Start asks first and can be cancelled;
+  // "Finish…" explains the three ways to Done, closes with Esc, and "Move to Done" moves the card.
+  "finalizar-card": async (c) => {
+    const title = `Finalizar ${c.lang} ${Date.now()}`;
+    const tile = c.page.locator(`li[aria-label="${c.t("kanban.card", { title })}"]`);
+    await open(c, { name: "board", host: ALFA, projectId: c.ids.project });
+    await c.page.getByRole("button", { name: c.t("kanban.newCard"), exact: true }).click();
+    await c.page.getByLabel(c.t("kanban.titleLabel"), { exact: true }).fill(title);
+    await c.page.getByRole("button", { name: c.t("kanban.create"), exact: true }).click();
+    await tile.waitFor({ timeout: WAIT });
+    // The menu's Start opens a dialog; Cancel leaves the card alone.
+    await tile
+      .getByRole("button", { name: c.t("board.cardActions", { title }), exact: true })
+      .click();
+    await c.page.getByRole("menuitem", { name: c.t("board.startCard"), exact: true }).click();
+    const start = c.page.getByRole("dialog", { name: c.t("board.startCard") });
+    await start.waitFor({ timeout: WAIT });
+    await start.getByRole("button", { name: c.t("common.cancel"), exact: true }).click();
+    await start.waitFor({ state: "detached", timeout: WAIT });
+    // Finish… on the card's page.
+    await tile.getByRole("button", { name: title, exact: true }).click();
+    const finish = c.page.getByRole("button", { name: c.t("cardUi.finish"), exact: true });
+    await finish.click();
+    const dialog = c.page.getByRole("dialog", { name: c.t("cardUi.finishTitle") });
+    await dialog.getByText(c.t("cardUi.finishMove"), { exact: true }).waitFor({ timeout: WAIT });
+    await dialog.getByText(c.t("cardUi.finishComplete"), { exact: true }).waitFor();
+    await dialog.getByText(c.t("cardUi.finishMerge"), { exact: true }).waitFor();
+    // No worktree yet: the merge is off and says why.
+    await dialog.getByText(c.t("cardUi.finishNeedWorktree"), { exact: true }).waitFor();
+    await c.page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "detached", timeout: WAIT });
+    await finish.click();
+    await dialog.getByRole("button", { name: c.t("cardUi.finishMoveButton"), exact: true }).click();
+    await dialog.waitFor({ state: "detached", timeout: WAIT });
+    await c.page.getByRole("button", { name: c.t("cardUi.finish"), exact: true }).click();
+    await dialog.getByText(c.t("cardUi.alreadyDone"), { exact: true }).waitFor({ timeout: WAIT });
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */
@@ -496,14 +624,16 @@ async function pageScrollsSideways(page: Page): Promise<string | null> {
   return sideways ? `${sideways.path}: ${sideways.detail}` : null;
 }
 
-/** The crumbs end before the bell, and what does not fit is cut with an ellipsis (issue #133). */
+/**
+ * The crumbs end inside their own box, so the tabs after it start clear of them, and what does not
+ * fit is cut with an ellipsis (issue #133). The bell moved to the top bar's right side (#282).
+ */
 async function crumbsProblem(page: Page): Promise<string | null> {
   return page.evaluate(() => {
     const slot = document.querySelector<HTMLElement>(".header-crumbs");
     const nav = slot?.querySelector<HTMLElement>("nav");
-    const bell = slot?.lastElementChild as HTMLElement | null;
-    if (!slot || !nav || !bell || bell === nav) return "no breadcrumb";
-    const limit = bell.getBoundingClientRect().left + 1;
+    if (!slot || !nav) return "no breadcrumb";
+    const limit = slot.getBoundingClientRect().right + 1;
     // Where the person is must stay readable: the current step never shrinks to nothing.
     const current = nav.querySelector<HTMLElement>("[aria-current='page']");
     if (current && current.getBoundingClientRect().width < 48) {
@@ -512,7 +642,7 @@ async function crumbsProblem(page: Page): Promise<string | null> {
     for (const el of nav.querySelectorAll<HTMLElement>("li > *")) {
       const box = el.getBoundingClientRect();
       if (box.right > limit)
-        return `a crumb (${el.textContent}) ends at ${Math.round(box.right)}, past the bell at ${Math.round(limit)}`;
+        return `a crumb (${el.textContent}) ends at ${Math.round(box.right)}, past its box at ${Math.round(limit)}`;
       if (el.scrollWidth > el.clientWidth + 1) {
         const style = getComputedStyle(el);
         if (style.textOverflow !== "ellipsis" || style.overflow !== "hidden") {
@@ -907,6 +1037,24 @@ export async function layout(c: Context, problems: string[]) {
       );
     }
   }
+  // Issue #173: a session opens at its end and stays there while the page settles, so a pending
+  // request is whole above the composer. Nothing scrolls the page before the measure.
+  await c.page.setViewportSize({ width: 1280, height: 800 });
+  await open(c, { name: "session", host: ALFA, id: c.ids.waitingSession });
+  const pinned = await c.page.evaluate(() => {
+    const box = document.querySelector<HTMLElement>("[data-slot='timeline']");
+    if (!box) return "no timeline";
+    if (box.scrollTop + box.clientHeight < box.scrollHeight - 24) {
+      return `the timeline is not at its end (${Math.round(box.scrollTop + box.clientHeight)} of ${box.scrollHeight})`;
+    }
+    const card = box.querySelector<HTMLElement>("[data-request-id]")?.getBoundingClientRect();
+    const edge = box.getBoundingClientRect();
+    if (card && (card.top < edge.top - 1 || card.bottom > edge.bottom + 1)) {
+      return `the request card (${Math.round(card.top)}..${Math.round(card.bottom)}) is cut by the timeline (${Math.round(edge.top)}..${Math.round(edge.bottom)})`;
+    }
+    return null;
+  });
+  if (pinned) problems.push(`${c.lang} waiting session: ${pinned}`);
   // Issue #225: in a split, each area's tab bar keeps its height (it grew to half the area). Only
   // the bars' tablists are counted (a screen may have tabs of its own), and the split is always
   // closed again, so the next language starts with one area.

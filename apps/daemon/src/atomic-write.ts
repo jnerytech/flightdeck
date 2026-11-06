@@ -54,7 +54,7 @@ export async function writeFileAtomic(
       } catch (error) {
         const code = (error as NodeJS.ErrnoException).code ?? "";
         if (!BUSY.has(code) || attempt >= ATTEMPTS) throw error;
-        await Bun.sleep(25 * attempt);
+        await Bun.sleep(25 * attempt); // NOSONAR: a retry waits before it tries again
       }
     }
   } catch (error) {

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { startServer } from "../src/server.ts";
 import { type SshTargetInput, SshTargets } from "../src/ssh/targets.ts";
 import { EventStore } from "../src/store/event-store.ts";
-import { newManager, workspace } from "./helpers.ts";
+import { BASELINE_FEATURES, newManager, workspace } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const TOKEN = "ssh-targets-token-0123456789abcdef";
@@ -356,7 +356,7 @@ describe("ssh-destinos", () => {
       cleanups.push(() => client.close());
       await client.request("hello", { token: TOKEN, client: "t" });
       return (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       );
     };
     expect(await featuresOf(true)).toEqual(["ssh"]);

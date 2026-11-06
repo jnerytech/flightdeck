@@ -5,6 +5,7 @@ import { stopDemo } from "../lib/e2e-demo.ts";
 import { STATE_DIR } from "./global-setup.ts";
 
 export default async function globalTeardown() {
+  // NOSONAR: async by contract: a throw must reach the caller as a rejection
   stopDemo(
     STATE_DIR,
     {

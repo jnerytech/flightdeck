@@ -11,12 +11,14 @@ export function elapsed(ms: number): string {
  * The last row of a conversation while Claude works: moving dots, how long the turn has run and
  * the tool it is in. `nowMs` fixes the clock (tests); without it the row ticks each second.
  */
-export function WorkingRow(props: {
-  label: string;
-  since: number;
-  tool: string | null;
-  nowMs?: number;
-}) {
+export function WorkingRow(
+  props: Readonly<{
+    label: string;
+    since: number;
+    tool: string | null;
+    nowMs?: number;
+  }>,
+) {
   const [tick, setTick] = useState(() => Date.now());
   useEffect(() => {
     if (props.nowMs !== undefined) return;

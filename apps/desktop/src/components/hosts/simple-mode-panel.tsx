@@ -15,7 +15,7 @@ const MODES: readonly UiMode[] = ["full", "simple"];
  * mode, the lock, and a way to open it in simple mode now. Only someone in full mode sees it;
  * hidden on a daemon that predates simple mode.
  */
-export function SimpleModePanel(props: { store: AppStore; host: HostView }) {
+export function SimpleModePanel(props: Readonly<{ store: AppStore; host: HostView }>) {
   const { store, host } = props;
   const t = useT();
   const [locking, setLocking] = useState(false);
@@ -71,6 +71,8 @@ export function SimpleModePanel(props: { store: AppStore; host: HostView }) {
       <div className="flex flex-wrap items-center gap-3">
         <span className="inline-flex items-center gap-2 text-sm">
           <Switch
+            // 24 px tall by itself: axe's target-size rule asks that of a target with a neighbor close by.
+            className="data-[size=default]:h-6"
             aria-label={t("hostPage.simpleLock")}
             checked={locked}
             onCheckedChange={(next) => (next ? setLocking(true) : void setLocked(false))}
@@ -78,7 +80,14 @@ export function SimpleModePanel(props: { store: AppStore; host: HostView }) {
           {t("hostPage.simpleLock")}
         </span>
         {!locked && (
-          <ActionButton variant="outline" onClick={() => store.setUiChoice(host.id, "simple")}>
+          <ActionButton
+            variant="outline"
+            onClick={() => {
+              // The app shows simple mode for the selected host: this page's host is the one meant.
+              store.select(host.id, null);
+              store.setUiChoice(host.id, "simple");
+            }}
+          >
             {t("hostPage.simpleUse")}
           </ActionButton>
         )}

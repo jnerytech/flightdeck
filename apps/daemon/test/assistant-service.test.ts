@@ -15,7 +15,7 @@ import { FakeRuntime } from "../src/runtime/fake-runtime.ts";
 import type { CompleteOptions, CompleteResult } from "../src/runtime/types.ts";
 import { startServer } from "../src/server.ts";
 import { git, gitRepo } from "./board-helpers.ts";
-import { newManager, tempDir } from "./helpers.ts";
+import { newManager, poll, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 /** A clock the test moves by hand. */
@@ -237,14 +237,13 @@ describe("assistant-service", () => {
     const held = heldRuntime();
     const { svc, time } = service({ runtime: held.runtime });
     const first = svc.run(run({ requestId: "a" }));
-    await Bun.sleep(0);
+    expect(await poll(() => held.pending.length === 1)).toBe(true);
     const second = svc.run(run({ requestId: "b" }));
-    await Bun.sleep(0);
-    expect(held.pending.length).toBe(1);
+    // The second call must not reach the runtime while the first holds it.
+    expect(await poll(() => held.pending.length > 1, 50)).toBeNull();
     held.pending[0]?.answer("first");
     expect((await first).text).toBe("first");
-    await Bun.sleep(0);
-    expect(held.pending.length).toBe(2);
+    expect(await poll(() => held.pending.length === 2)).toBe(true);
     const third = reason(svc.run(run({ requestId: "c" })));
     time.advance(10_000);
     expect(await third).toEqual(["assistant_rate_limited", {}]);
@@ -256,12 +255,12 @@ describe("assistant-service", () => {
     const held = heldRuntime();
     const { svc, time } = service({ runtime: held.runtime });
     const cancelled = reason(svc.run(run({ requestId: "a" })));
-    await Bun.sleep(0);
+    expect(await poll(() => held.pending.length === 1)).toBe(true);
     svc.cancel("a");
     svc.cancel("unknown");
     expect(await cancelled).toEqual(["assistant_cancelled", {}]);
     const slow = reason(svc.run(run({ requestId: "b" })));
-    await Bun.sleep(0);
+    expect(await poll(() => held.pending.length === 2)).toBe(true);
     time.advance(90_000);
     expect(await slow).toEqual(["assistant_timeout", {}]);
   });

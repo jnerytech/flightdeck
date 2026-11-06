@@ -1,6 +1,6 @@
 import type { SessionMeta } from "@flightdeck/protocol";
 import { ListFilter, MoreHorizontal, Radio, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AssignMenu } from "@/components/clients/assign-menu";
 import { ClientChip } from "@/components/clients/client-chip";
 import { HostsBanner } from "@/components/hosts/hosts-banner";
@@ -12,12 +12,12 @@ import {
   HostFilterRow,
   ProjectHeader,
 } from "@/components/hub/project-header";
-import { SessionCard } from "@/components/hub/session-card";
+import { SessionCard, STATE_TONES } from "@/components/hub/session-card";
 import { ViewToggle } from "@/components/hub/view-toggle";
 import { NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Toolbar } from "@/components/layout/stack";
-import type { StateTone } from "@/components/status/status-dot";
+import { RuntimeBadge } from "@/components/session/runtime-badge";
 import { StatusDot } from "@/components/status/status-dot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,17 +53,11 @@ import {
   sharedMeta,
 } from "../lib/hub.ts";
 import { typing } from "../lib/keys.ts";
+import { newSessionHost } from "../lib/new-session-host.ts";
 import { hasFeature } from "../lib/version.ts";
 
 /** How often the hub asks the hosts about their background sessions. */
 const BG_REFRESH_MS = 10_000;
-
-const TONES: Record<HubState, StateTone> = {
-  running: "running",
-  needs_you: "needs-you",
-  idle: "idle",
-  ended: "ended",
-};
 
 /** Native selects: the filters stay light, and keyboard and screen readers work as they are. */
 
@@ -72,16 +66,20 @@ const TONES: Record<HubState, StateTone> = {
  * the history), grouped by project; the ones that need you first, then pinned, then the latest
  * activity. Filters are kept in the app; each row has its actions in a menu.
  */
-export function SessionsHub(props: {
-  store: AppStore;
-  state: AppState;
-  onOpen(row: HubRow): void;
-  /** Whether the row is the session open on the right. */
-  isOpen(row: HubRow): boolean;
-  density: Density;
-  /** Only this project's sessions, with a chip that clears it (from the project page). */
-  project?: { hostId: string; projectKey: string; name: string } | undefined;
-}) {
+export function SessionsHub(
+  props: Readonly<{
+    store: AppStore;
+    state: AppState;
+    onOpen(row: HubRow): void;
+    /** Whether the row is the session open on the right. */
+    isOpen(row: HubRow): boolean;
+    density: Density;
+    /** Only this project's sessions, with a chip that clears it (from the project page). */
+    project?: { hostId: string; projectKey: string; name: string } | undefined;
+    /** Only this host's sessions (its name), set by the route: it applies the host filter once. */
+    host?: string | undefined;
+  }>,
+) {
   const { store, state } = props;
   const [filter, setFilter] = useState<HubFilter>(() => store.hubFilter());
   const [view, setView] = useState<HubView>(() => store.hubView());
@@ -93,6 +91,16 @@ export function SessionsHub(props: {
   useEffect(() => {
     if (props.project) setOnly(props.project);
   }, [askedKey]);
+  // A host asked for by the route ("See all" on its page) becomes the hub's host filter.
+  const askedHost = props.host;
+  const routeHost = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a different host asked for by the route applies
+  useEffect(() => {
+    if (askedHost === undefined) return;
+    // For this visit only: the filter kept for the next one is not rewritten (issue #207).
+    routeHost.current = true;
+    setFilter({ ...store.hubFilter(), host: askedHost });
+  }, [askedHost]);
   const [renaming, setRenaming] = useState<HubRow | null>(null);
   const [name, setName] = useState("");
   // Reload when hosts come online (and say what they offer) or sessions come and go. A host that
@@ -230,7 +238,10 @@ export function SessionsHub(props: {
   const set = (patch: Partial<HubFilter>) => {
     const next = { ...filter, ...patch };
     setFilter(next);
-    store.saveHubFilter(next);
+    // A host that came from the route is not the person's choice: keep what was saved for it,
+    // until they pick a host themselves.
+    if (patch.host !== undefined) routeHost.current = false;
+    store.saveHubFilter(routeHost.current ? { ...next, host: store.hubFilter().host } : next);
   };
   const meta = (row: HubRow, patch: Partial<SessionMeta>) =>
     void store.setMeta(row.hostId, row.claudeSessionId as string, patch);
@@ -300,6 +311,7 @@ export function SessionsHub(props: {
     filter.pinnedOnly,
     filter.showArchived,
   ].filter(Boolean).length;
+  const starter = newSessionHost(state.hosts, state.selected);
   const toolbar = (
     <Toolbar label={t("hub.filters")}>
       <ViewToggle
@@ -408,7 +420,23 @@ export function SessionsHub(props: {
   );
 
   return (
-    <Page title={t("sidebar.sessions")} toolbar={toolbar}>
+    <Page
+      title={t("sidebar.sessions")}
+      toolbar={toolbar}
+      actions={
+        starter && (
+          <Button
+            size="sm"
+            onClick={() => {
+              store.select(starter.id, null);
+              store.router.push({ name: "new-session", host: starter.id });
+            }}
+          >
+            {t("sidebar.newSession")}
+          </Button>
+        )
+      }
+    >
       <div className="flex flex-col gap-4">
         <HostsBanner hosts={state.hosts} t={store.i18n.t} />
         <FoldAll
@@ -532,10 +560,11 @@ export function SessionsHub(props: {
                       project={group.name}
                       host={row.hostName}
                       stateLabel={t(`hub.stateDots.${row.state}` as Key)}
-                      tone={TONES[row.state]}
+                      tone={STATE_TONES[row.state]}
                       line={sessionLineText(row.summary, store.now(), t)}
                       {...cardCost(row)}
                       persona={row.persona?.name ?? null}
+                      runtime={row.runtime ? t("session.runtimeOpenCode") : null}
                       current={props.isOpen(row)}
                       active={listed[cursor]?.key === row.key}
                       onOpen={() => {
@@ -569,7 +598,7 @@ export function SessionsHub(props: {
                         )}
                       >
                         <StatusDot
-                          tone={TONES[row.state]}
+                          tone={STATE_TONES[row.state]}
                           label={t(`hub.stateDots.${row.state}` as Key)}
                         />
                         <Tooltip>
@@ -607,6 +636,7 @@ export function SessionsHub(props: {
                             {row.persona.name}
                           </span>
                         )}
+                        {row.runtime && <RuntimeBadge label={t("session.runtimeOpenCode")} />}
                         {row.controllable && (
                           <>
                             <Radio

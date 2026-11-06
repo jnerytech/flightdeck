@@ -13,6 +13,12 @@ export const TRAY_MENU_DELAY_MS = 500;
 /** The suite's (and the source dictionary's) language when a caller passes none. */
 const PT = translator("pt-BR");
 
+/** What the menu offers for a request: open only, deny and open, or all three. */
+function trayActions(item: PendingItem): Array<"approve" | "deny" | "open"> {
+  if (item.gate) return ["open"];
+  return item.vault || item.risk === "high" ? ["deny", "open"] : ["approve", "deny", "open"];
+}
+
 /** The "Precisa de você" submenu for the open requests, oldest first, in `t`'s language. */
 export function trayMenu(items: PendingItem[], t: T = PT): TrayMenu {
   const more = Math.max(0, items.length - TRAY_MENU_MAX);
@@ -22,7 +28,9 @@ export function trayMenu(items: PendingItem[], t: T = PT): TrayMenu {
         key: `${item.hostId}/${item.requestId}`,
         label: `${item.hostName} · ${item.sessionName} · ${pendingText(item, t)}`,
         // A gate is answered in the app, and a high-risk request is approved by holding a button.
-        actions: item.gate || item.risk === "high" ? ["open"] : ["approve", "deny", "open"],
+        // A vault grant is never approved here (#244): this line cannot show the secret and
+        // parameters. Deny needs no hold, so both still offer it (#245).
+        actions: trayActions(item),
       };
     }),
     more,

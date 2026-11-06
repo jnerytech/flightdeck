@@ -3,7 +3,7 @@
  * (filtered, redacted and within a budget), the repo's own rules about commits, and the style of
  * its recent subjects. Never author names, emails, hashes, or file contents outside the diff.
  */
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { readdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 import type {
   AssistantContextBundle,
@@ -13,8 +13,10 @@ import type {
 } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
 import { cardDiff, parseUnifiedDiff, workingDiff } from "../board/diff.ts";
+import { refArg } from "../board/ref-arg.ts";
 import { FlightdeckError } from "../errors.ts";
 import { isCredentialPath } from "../permissions/risk.ts";
+import { readRegular } from "../read-regular.ts";
 import { REMOVED_LINE } from "../watch/trace.ts";
 
 export interface ContextDeps {
@@ -28,9 +30,12 @@ export interface ContextDeps {
 /** The most of one file's diff, and of the whole diff, that goes to the model (about 20k tokens). */
 const PER_FILE = 6 * 1024;
 const TOTAL = 48 * 1024;
-/** The most of the repo's rules, and of each of its two small files. */
+/** The most of the repo's rules, of each of its two small files, and of a Markdown file that is read. */
 const RULES_MAX = 4096;
 const SMALL_FILE_MAX = 1024;
+const MARKDOWN_MAX = 64 * 1024;
+/** The largest untracked file whose content is read; a larger one is listed like a binary file. */
+const UNTRACKED_MAX = 256 * 1024;
 
 const LOCKFILES = new Set([
   "bun.lock",
@@ -61,12 +66,13 @@ function refuse(
   return new FlightdeckError("invalid_state", message, reason);
 }
 
-/** A file the model is not shown: binary, a lockfile, minified or generated, build output, a credential. */
+/** A file the model is not shown: binary, over the cap, a lockfile, minified or generated, build output, a credential. */
 function hidden(file: DiffFile): boolean {
   const path = file.path.replaceAll("\\", "/");
   const name = basename(path);
   return (
     file.binary ||
+    file.tooLarge === true ||
     LOCKFILES.has(name) ||
     /\.min\.(js|css)$|\.map$|\.generated\./.test(name) ||
     /(^|\/)(dist|build)\//.test(path) ||
@@ -87,15 +93,18 @@ async function changes(
 ): Promise<{ root: string; files: DiffFile[] }> {
   if (source.kind === "card") {
     const { worktree, base } = deps.card(source.cardId);
-    return { root: worktree, files: (await cardDiff(worktree, base)).files };
+    return { root: worktree, files: (await cardDiff(worktree, refArg(base), UNTRACKED_MAX)).files };
   }
   const root = await topLevel(await deps.allowed(source.cwd));
-  if (source.kind === "worktree") return { root, files: await workingDiff(root) };
+  if (source.kind === "worktree") return { root, files: await workingDiff(root, UNTRACKED_MAX) };
   const staged = await git(root, ...STAGED);
   return { root, files: parseUnifiedDiff(staged.stdout, true) };
 }
 
-/** One file's diff as the model reads it, its secret-looking lines taken out. */
+const KEY_BEGIN = /-----BEGIN [A-Z ]*PRIVATE KEY-----/;
+const KEY_END = /-----END [A-Z ]*PRIVATE KEY-----/;
+
+/** One file's diff as the model reads it, its secret-looking lines taken out, and a private key from its BEGIN line to its END line. */
 function render(
   file: DiffFile,
   scanner: ContextDeps["scanner"],
@@ -104,8 +113,11 @@ function render(
   const lines = [`--- ${file.path}`];
   for (const hunk of file.hunks) {
     lines.push(hunk.header);
+    let inKey = false;
     for (const line of hunk.lines) {
-      if (scanner.scan(line.text).length > 0) {
+      const keyLine: boolean = inKey || KEY_BEGIN.test(line.text);
+      inKey = keyLine && !KEY_END.test(line.text);
+      if (keyLine || scanner.scan(line.text).length > 0) {
         redacted++;
         lines.push(`${line.op}${REMOVED_LINE}`);
       } else {
@@ -139,31 +151,33 @@ function blocks(text: string): string[] {
   return out;
 }
 
-function small(path: string): string | null {
-  return existsSync(path) ? readFileSync(path, "utf8").trim().slice(0, SMALL_FILE_MAX) : null;
+/** The start of a regular file as text; null for a link, a folder, a pipe or a missing file. */
+async function head(path: string, max: number): Promise<string | null> {
+  return (await readRegular(path, max))?.toString("utf8") ?? null;
 }
 
-/** The repo's own rules about commits and PRs: from CLAUDE.md, AGENTS.md, commitlint and .gitmessage. */
-export function extractRules(root: string): string {
+/**
+ * The repo's own rules about commits and PRs: from CLAUDE.md, AGENTS.md, commitlint and
+ * .gitmessage. Each is read only when it is a regular file (never through a link), and only its start.
+ */
+export async function extractRules(root: string): Promise<string> {
   const kept: string[] = [];
   let size = 0;
   for (const name of ["CLAUDE.md", "AGENTS.md"]) {
-    const path = join(root, name);
-    if (!existsSync(path)) continue;
-    for (const block of blocks(readFileSync(path, "utf8"))) {
+    const text = await head(join(root, name), MARKDOWN_MAX);
+    for (const block of blocks(text ?? "")) {
       if (size + block.length > RULES_MAX) break;
       kept.push(block);
       size += block.length + 2;
     }
   }
-  const commitlint = readdirSync(root).find((name) => name.startsWith("commitlint.config."));
-  const extra = [
-    commitlint ? small(join(root, commitlint)) : null,
-    small(join(root, ".gitmessage")),
-  ];
-  return [...kept, ...extra.filter((part): part is string => part !== null && part !== "")].join(
-    "\n\n",
-  );
+  const commitlint = (await readdir(root)).find((name) => name.startsWith("commitlint.config."));
+  const extra = await Promise.all([
+    commitlint ? head(join(root, commitlint), SMALL_FILE_MAX) : null,
+    head(join(root, ".gitmessage"), SMALL_FILE_MAX),
+  ]);
+  const small = extra.map((part) => part?.trim() ?? "").filter((part) => part !== "");
+  return [...kept, ...small].join("\n\n");
 }
 
 /** The bundle a commit or PR message is written from. */
@@ -199,10 +213,10 @@ export async function repoContext(
   return {
     stat: stat(files),
     diff: shown.join("\n"),
-    notShown: notShown.sort(),
+    notShown: notShown.sort((a, b) => (a < b ? -1 : Number(a > b))),
     redactedLines: rendered.reduce((sum, f) => sum + f.redacted, 0),
     truncated,
-    rules: extractRules(root),
+    rules: await extractRules(root),
     recent,
     conventional,
   };

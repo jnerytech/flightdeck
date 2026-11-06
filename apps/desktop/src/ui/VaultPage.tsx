@@ -1,3 +1,4 @@
+import { inSequence } from "@flightdeck/protocol";
 import { KeyRound } from "lucide-react";
 import { memo, useEffect, useState } from "react";
 import { Page } from "@/components/layout/page";
@@ -29,20 +30,22 @@ function infoText(info: SecretInfo, fingerprint: (value: string) => string): str
   return info.hint ?? info.names?.join(", ") ?? "";
 }
 
-function SecretRow(props: {
-  secret: SecretMeta;
-  info: SecretInfo;
-  /** The value, while it is revealed. */
-  revealed: string | null;
-  onReveal(): void;
-  onCopy(): void;
-  onRemove(): void;
-  onEdit(): void;
-  /** Phase 19: the secret's usage rules. */
-  onRules(): void;
-  onCopyPublicKey(): void;
-  hostName(id: string): string;
-}) {
+function SecretRow(
+  props: Readonly<{
+    secret: SecretMeta;
+    info: SecretInfo;
+    /** The value, while it is revealed. */
+    revealed: string | null;
+    onReveal(): void;
+    onCopy(): void;
+    onRemove(): void;
+    onEdit(): void;
+    /** Phase 19: the secret's usage rules. */
+    onRules(): void;
+    onCopyPublicKey(): void;
+    hostName(id: string): string;
+  }>,
+) {
   const t = useT();
   const { secret, info } = props;
   const detail = infoText(info, (value) => t("vault.fingerprint", { value }));
@@ -165,10 +168,10 @@ export const VaultPage = memo(function VaultPage(props: {
     let alive = true;
     void (async () => {
       const next: Record<string, SecretInfo> = {};
-      for (const secret of state.secrets) {
+      await inSequence(state.secrets, async (secret) => {
         const value = await store.vault.value(secret.id);
         next[secret.id] = value === null ? {} : await describeSecret(secret.type, value);
-      }
+      });
       if (alive) setInfos(next);
     })();
     return () => {
@@ -180,10 +183,10 @@ export const VaultPage = memo(function VaultPage(props: {
   const selected = selectedClient(state.clientList, state.clientSelection);
   const byClient = selected?.defaults.vaultTag !== undefined;
   const groups = groupSecrets(state.secrets, state.clientList, selected);
-  const groupLabel = (kind: "client" | "none" | "others") =>
-    kind === "client"
-      ? t("clients.vaultGroupClient", { name: selected?.name ?? "" })
-      : t(kind === "none" ? "clients.vaultGroupNone" : "clients.vaultGroupOthers");
+  const groupLabel = (kind: "client" | "none" | "others") => {
+    if (kind === "client") return t("clients.vaultGroupClient", { name: selected?.name ?? "" });
+    return t(kind === "none" ? "clients.vaultGroupNone" : "clients.vaultGroupOthers");
+  };
   return (
     <Page
       title={t("vault.title")}

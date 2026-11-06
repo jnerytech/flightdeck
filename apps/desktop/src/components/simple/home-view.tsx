@@ -41,14 +41,16 @@ const ICONS: Record<string, LucideIcon> = {
 };
 
 /** What a template asks, as a form: one control per field, the start held until it is filled in. */
-function TemplateForm(props: {
-  template: Template;
-  t: T;
-  canPickFolder: boolean;
-  onPickFolder(): Promise<string | null>;
-  onStart(values: Record<string, string>): Promise<void>;
-  onClose(): void;
-}) {
+function TemplateForm(
+  props: Readonly<{
+    template: Template;
+    t: T;
+    canPickFolder: boolean;
+    onPickFolder(): Promise<string | null>;
+    onStart(values: Record<string, string>): Promise<void>;
+    onClose(): void;
+  }>,
+) {
   const { template, t } = props;
   const lang = t.lang;
   const [values, setValues] = useState<Record<string, string>>({});
@@ -130,7 +132,7 @@ function TemplateForm(props: {
 }
 
 /** The first place of simple mode: the templates, what waits for an answer, the recent tasks. */
-export function HomeView(props: HomeViewProps) {
+export function HomeView(props: Readonly<HomeViewProps>) {
   const { t } = props;
   const [chosen, setChosen] = useState<Template | null>(null);
   const waiting = props.tasks.filter((task) => task.state === "waiting");

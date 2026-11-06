@@ -16,6 +16,7 @@ const screen = liveScreen(within);
 const sidebar = sidebarNav({ act, fireEvent, screen });
 const { AppStore } = await import("../src/lib/app-store.ts");
 const { App } = await import("../src/ui/App.tsx");
+const { defaultRule, projectRule } = await import("../src/ui/AlwaysAllow.tsx");
 
 // Real git under the in-process daemon: more than the default 5 s.
 setDefaultTimeout(20_000);
@@ -100,15 +101,54 @@ describe("permitir-ui", () => {
     ]);
   });
 
-  test("nas outras ferramentas a regra padrão é o nome da ferramenta; Cancelar fecha a edição", async () => {
+  test("numa ferramenta de arquivo a regra padrão é a ferramenta e o arquivo, não a ferramenta toda; Cancelar fecha a edição", async () => {
     const { result } = await asking("[tool] z");
     await click("Sempre neste projeto");
-    expect((screen.queryByLabelText("Regra") as HTMLInputElement | null)?.value).toBe("Write");
+    // A rule for the whole tool would cover a credential file: the daemon refuses it (#384).
+    expect((screen.queryByLabelText("Regra") as HTMLInputElement | null)?.value ?? "").toMatch(
+      /^Write\(.*fake\.txt\)$/,
+    );
     await click("Cancelar");
     expect(screen.queryByLabelText("Regra")).toBeNull();
     await click("Sempre neste projeto");
     await click("Salvar regra");
-    expect((await result()) ?? "").toContain('"rules":[{"toolName":"Write"}]');
+    expect((await result()) ?? "").toMatch(
+      /"rules":\[\{"toolName":"Write","ruleContent":".*fake\.txt"\}\]/,
+    );
+  });
+
+  test("a regra padrão de uma ferramenta de arquivo é o arquivo, como o CLI lê um caminho: relativo à pasta, ou //absoluto fora dela", () => {
+    expect(defaultRule("Edit", { file_path: "/p/src/a.ts" }, "/p")).toBe("Edit(src/a.ts)");
+    expect(defaultRule("Edit", { file_path: "/etc/x" }, "/p")).toBe("Edit(//etc/x)");
+    expect(defaultRule("Edit", { file_path: "/pp/a.ts" }, "/p")).toBe("Edit(//pp/a.ts)");
+    expect(defaultRule("Edit", { file_path: "C:\\p\\src\\a.ts" }, "C:\\p")).toBe("Edit(src/a.ts)");
+    expect(defaultRule("NotebookEdit", { notebook_path: "/p/n.ipynb" }, "/p")).toBe(
+      "NotebookEdit(n.ipynb)",
+    );
+    // Grep, Glob and LS name a folder in `path`.
+    expect(defaultRule("Grep", { path: "/p/src", pattern: "x" }, "/p")).toBe("Grep(src)");
+    expect(defaultRule("LS", { path: "/p" }, "/p")).toBe("LS(.)");
+    expect(defaultRule("Edit", { file_path: "a.ts" }, "/p")).toBe("Edit(a.ts)");
+  });
+
+  test("a regra escrita vira uma regra do projeto: com parênteses é a ferramenta e o conteúdo, sem eles a ferramenta toda", () => {
+    const asRule = (rules: Array<{ toolName: string; ruleContent?: string }>) =>
+      ({
+        type: "addRules",
+        rules,
+        behavior: "allow",
+        destination: "localSettings",
+      }) as const;
+    expect(projectRule("Bash(npm test:*)")).toEqual(
+      asRule([{ toolName: "Bash", ruleContent: "npm test:*" }]),
+    );
+    expect(projectRule("  WebFetch ")).toEqual(asRule([{ toolName: "WebFetch" }]));
+  });
+
+  test("sem arquivo nem comando a regra padrão segue sendo o nome da ferramenta, e o Bash a linha exata", () => {
+    expect(defaultRule("WebFetch", { url: "https://example.com" }, "/p")).toBe("WebFetch");
+    expect(defaultRule("Bash", { command: "ls" }, "/p")).toBe("Bash(ls)");
+    expect(defaultRule("Grep", { pattern: "x" }, "/p")).toBe("Grep");
   });
 
   test("regra recusada pelo daemon mostra o erro e o pedido segue aberto", async () => {
