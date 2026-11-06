@@ -15,6 +15,10 @@ export function translateError(
 ): { title: string; detail: string } {
   // A reason the app has a text for is the whole sentence; the message is for logs.
   const reason = why?.reason;
+  // A rule refused for the path it names, not for its risk (#524): it says so.
+  if (reason === "perm_rule_too_broad" && why?.params?.names === "folder") {
+    return { title: t("alwaysAllow.refusedFolder", { tool: String(why.params.tool) }), detail: "" };
+  }
   if (reason && reason in ptBR.daemonRefusal) {
     return { title: t(`daemonRefusal.${reason}` as Key, paramsOf(why, t)), detail: "" };
   }
