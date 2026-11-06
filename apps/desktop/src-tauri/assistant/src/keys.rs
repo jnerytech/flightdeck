@@ -27,13 +27,20 @@ pub enum Provider {
 
 impl Provider {
     /// The provider by its protocol name; anything else is refused.
-    pub fn parse(_name: &str) -> Result<Self, Refusal> {
-        Ok(Provider::Anthropic)
+    pub fn parse(name: &str) -> Result<Self, Refusal> {
+        match name {
+            "anthropic" => Ok(Provider::Anthropic),
+            "openrouter" => Ok(Provider::OpenRouter),
+            _ => Err(invalid("provider")),
+        }
     }
 
     /// The store entry's account name.
     pub fn account(self) -> &'static str {
-        ""
+        match self {
+            Provider::Anthropic => "anthropic",
+            Provider::OpenRouter => "openrouter",
+        }
     }
 }
 
@@ -48,13 +55,13 @@ impl Secret {
 
 impl fmt::Debug for Secret {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
+        f.write_str("<redacted>")
     }
 }
 
 impl fmt::Display for Secret {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
+        f.write_str("<redacted>")
     }
 }
 
@@ -77,6 +84,14 @@ impl Refusal {
     }
 }
 
+fn invalid(why: &str) -> Refusal {
+    Refusal::new("assistant_key_invalid").with("why", why)
+}
+
+fn store_failed(_: StoreError) -> Refusal {
+    Refusal::new("assistant_key_store")
+}
+
 /// The store failed; it carries nothing, so nothing the store says can reach the app or a log.
 #[derive(Debug, PartialEq, Eq)]
 pub struct StoreError;
@@ -95,17 +110,27 @@ pub struct MemoryStore {
     pub failing: bool,
 }
 
+impl MemoryStore {
+    fn entries(&self) -> Result<std::sync::MutexGuard<'_, HashMap<String, String>>, StoreError> {
+        if self.failing {
+            return Err(StoreError);
+        }
+        self.entries.lock().map_err(|_| StoreError)
+    }
+}
+
 impl SecretStore for MemoryStore {
-    fn get(&self, _account: &str) -> Result<Option<Secret>, StoreError> {
-        Ok(None)
+    fn get(&self, account: &str) -> Result<Option<Secret>, StoreError> {
+        Ok(self.entries()?.get(account).map(|key| Secret(key.clone())))
     }
 
-    fn set(&self, _account: &str, _secret: &Secret) -> Result<(), StoreError> {
-        let _ = &self.entries;
+    fn set(&self, account: &str, secret: &Secret) -> Result<(), StoreError> {
+        self.entries()?.insert(account.to_string(), secret.0.clone());
         Ok(())
     }
 
-    fn delete(&self, _account: &str) -> Result<(), StoreError> {
+    fn delete(&self, account: &str) -> Result<(), StoreError> {
+        self.entries()?.remove(account);
         Ok(())
     }
 }
@@ -113,17 +138,28 @@ impl SecretStore for MemoryStore {
 /// The OS credential store (Windows Credential Manager, macOS Keychain, Secret Service).
 pub struct KeyringStore;
 
+fn entry(account: &str) -> Result<keyring::Entry, StoreError> {
+    keyring::Entry::new(SERVICE, account).map_err(|_| StoreError)
+}
+
 impl SecretStore for KeyringStore {
-    fn get(&self, _account: &str) -> Result<Option<Secret>, StoreError> {
-        Ok(None)
+    fn get(&self, account: &str) -> Result<Option<Secret>, StoreError> {
+        match entry(account)?.get_password() {
+            Ok(key) => Ok(Some(Secret(key))),
+            Err(keyring::Error::NoEntry) => Ok(None),
+            Err(_) => Err(StoreError),
+        }
     }
 
-    fn set(&self, _account: &str, _secret: &Secret) -> Result<(), StoreError> {
-        Ok(())
+    fn set(&self, account: &str, secret: &Secret) -> Result<(), StoreError> {
+        entry(account)?.set_password(&secret.0).map_err(|_| StoreError)
     }
 
-    fn delete(&self, _account: &str) -> Result<(), StoreError> {
-        Ok(())
+    fn delete(&self, account: &str) -> Result<(), StoreError> {
+        match entry(account)?.delete_credential() {
+            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+            Err(_) => Err(StoreError),
+        }
     }
 }
 
@@ -140,37 +176,59 @@ pub struct KeyStatus {
 }
 
 /// Whether a key fits one Windows credential entry.
-pub fn fits_store(_key: &str) -> bool {
-    false
+pub fn fits_store(key: &str) -> bool {
+    key.encode_utf16().count() <= STORE_MAX_UTF16
 }
 
 /// The key as stored: trimmed, then refused when empty, with a control character or inner
 /// whitespace, or out of the length limits.
 pub fn check_key(raw: &str) -> Result<Secret, Refusal> {
-    Ok(Secret(raw.to_string()))
+    let key = raw.trim();
+    let chars = key.chars().count();
+    if key.is_empty() {
+        Err(invalid("empty"))
+    } else if key.chars().any(char::is_control) {
+        Err(invalid("control"))
+    } else if key.chars().any(char::is_whitespace) {
+        Err(invalid("whitespace"))
+    } else if !(KEY_MIN_CHARS..=KEY_MAX_CHARS).contains(&chars) || !fits_store(key) {
+        Err(invalid("length"))
+    } else {
+        Ok(Secret(key.to_string()))
+    }
 }
 
 /// The key's last four characters, what Settings shows of a saved key.
-pub fn last4(_secret: &Secret) -> String {
-    String::new()
+pub fn last4(secret: &Secret) -> String {
+    let chars: Vec<char> = secret.0.chars().collect();
+    chars[chars.len().saturating_sub(4)..].iter().collect()
 }
 
-pub fn set_key(_store: &dyn SecretStore, _provider: &str, _key: &str) -> Result<Saved, Refusal> {
-    Ok(Saved { last4: String::new() })
+pub fn set_key(store: &dyn SecretStore, provider: &str, key: &str) -> Result<Saved, Refusal> {
+    let provider = Provider::parse(provider)?;
+    let secret = check_key(key)?;
+    store.set(provider.account(), &secret).map_err(store_failed)?;
+    Ok(Saved { last4: last4(&secret) })
 }
 
-pub fn key_status(_store: &dyn SecretStore, _provider: &str) -> Result<KeyStatus, Refusal> {
-    Ok(KeyStatus { saved: false, last4: None })
+pub fn key_status(store: &dyn SecretStore, provider: &str) -> Result<KeyStatus, Refusal> {
+    let provider = Provider::parse(provider)?;
+    let saved = store.get(provider.account()).map_err(store_failed)?;
+    Ok(KeyStatus { saved: saved.is_some(), last4: saved.as_ref().map(last4) })
 }
 
 /// Deletes the provider's key; a key that is not there is fine.
-pub fn delete_key(_store: &dyn SecretStore, _provider: &str) -> Result<(), Refusal> {
-    Ok(())
+pub fn delete_key(store: &dyn SecretStore, provider: &str) -> Result<(), Refusal> {
+    let provider = Provider::parse(provider)?;
+    store.delete(provider.account()).map_err(store_failed)
 }
 
 /// The provider's key, for a call; `assistant_not_configured` when there is none.
-pub fn read_key(_store: &dyn SecretStore, _provider: Provider) -> Result<Secret, Refusal> {
-    Ok(Secret(String::new()))
+pub fn read_key(store: &dyn SecretStore, provider: Provider) -> Result<Secret, Refusal> {
+    store
+        .get(provider.account())
+        .map_err(store_failed)?
+        .ok_or_else(|| Refusal::new("assistant_not_configured"))
 }
 
 #[cfg(test)]
