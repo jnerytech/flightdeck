@@ -307,3 +307,31 @@ describe("review-secrets: what cannot be read is not there, never an error (#509
     });
   });
 });
+
+describe("review-secrets: .git stays out of reach, by any spelling or link (#509)", () => {
+  test("file.read and file.write refuse .git written with ./, in another case or with a trailing dot", async () => {
+    const { repo, files } = setup();
+    const paths = ["./.git/config", ".//.git/HEAD", ".GIT/config", ".Git/HEAD", ".git./config"];
+    for (const path of paths) {
+      expect({ path, ...(await outcome(files.read("session:s-1", path))) }).toEqual({
+        path,
+        code: "bad_request",
+        reason: "review_path_outside",
+      });
+    }
+    const config = await Bun.file(join(repo, ".git", "config")).text();
+    const hash = new Bun.CryptoHasher("sha256").update(config).digest("hex");
+    const write = files.write("session:s-1", "./.git/config", "[core]\n", hash);
+    expect(await outcome(write)).toEqual({ code: "bad_request", reason: "review_path_outside" });
+    expect(await Bun.file(join(repo, ".git", "config")).text()).toBe(config);
+  });
+
+  test("a link into .git is refused like .git itself", async () => {
+    const { repo, files } = setup();
+    await linkDir(join(repo, ".git"), join(repo, "meta"));
+    expect(await outcome(files.read("session:s-1", "meta/HEAD"))).toEqual({
+      code: "bad_request",
+      reason: "review_path_outside",
+    });
+  });
+});
