@@ -253,6 +253,13 @@ export function Sidebar(
       <nav aria-label={t("sidebarGroups.main")} className="sidebar-nav">
         <NavButton
           collapsed={collapsed}
+          icon={<NavIcon name="overview" aria-hidden="true" className={icon} />}
+          active={here === "overview"}
+          label={t("nav.overview")}
+          onClick={() => go({ name: "overview" })}
+        />
+        <NavButton
+          collapsed={collapsed}
           icon={<NavIcon name="sessions" aria-hidden="true" className={icon} />}
           active={here === "sessions"}
           label={t("sidebar.sessions")}

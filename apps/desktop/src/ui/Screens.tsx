@@ -62,6 +62,7 @@ const ClientsPage = lazyScreen(() => import("./ClientsPage.tsx"), "ClientsPage")
 const ConnectionsPage = lazyScreen(() => import("./ConnectionsPage.tsx"), "ConnectionsPage");
 const ConversationsPage = lazyScreen(() => import("./ConversationsPage.tsx"), "ConversationsPage");
 const CostsPage = lazyScreen(() => import("./CostsPage.tsx"), "CostsPage");
+const HomePage = lazyScreen(() => import("./HomePage.tsx"), "HomePage");
 const HostPage = lazyScreen(() => import("./HostPage.tsx"), "HostPage");
 const PersonasPage = lazyScreen(() => import("./PersonasPage.tsx"), "PersonasPage");
 const PluginsPage = lazyScreen(() => import("./PluginsPage.tsx"), "PluginsPage");
@@ -668,6 +669,8 @@ function routeScreen(props: ScreenProps): ReactNode {
           go={go}
         />
       );
+    case "overview":
+      return <HomePage store={store} state={state} go={go} />;
     case "costs":
       return (
         <CostsPage
