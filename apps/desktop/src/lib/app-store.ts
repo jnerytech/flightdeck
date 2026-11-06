@@ -192,7 +192,14 @@ import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.t
 import { ThemeController } from "./theme.ts";
 import { loadTileLayout, saveTileLayout, type TileLayout } from "./tiles.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
-import { loadTreeFolded, saveTreeFolded } from "./tree-fold.ts";
+import {
+  loadTreeFolded,
+  loadTreeOpened,
+  loadTreePinned,
+  saveTreeFolded,
+  saveTreeOpened,
+  saveTreePinned,
+} from "./tree-fold.ts";
 import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
 import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
 import type { ConflictChoice, ImportPreview, ImportResult } from "./vault-backup.ts";
@@ -1681,6 +1688,24 @@ export class AppStore {
 
   setTreeFolded(folded: readonly string[]): void {
     saveTreeFolded(this.platform.storage, folded);
+  }
+
+  /** The projects the person unfolded against the default fold; kept across starts. */
+  treeOpened(): string[] {
+    return loadTreeOpened(this.platform.storage);
+  }
+
+  setTreeOpened(opened: readonly string[]): void {
+    saveTreeOpened(this.platform.storage, opened);
+  }
+
+  /** The projects pinned to the top of the sidebar's tree on this computer. */
+  treePinned(): string[] {
+    return loadTreePinned(this.platform.storage);
+  }
+
+  setTreePinned(pinned: readonly string[]): void {
+    saveTreePinned(this.platform.storage, pinned);
   }
 
   /** Whether a file of the host can be opened here: the app can, and the host runs on this machine. */
