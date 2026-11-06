@@ -3,6 +3,7 @@ import type { PermissionUpdate } from "@flightdeck/protocol";
 import { FlightdeckError } from "../src/errors.ts";
 import { PermissionBroker } from "../src/permissions/permission-broker.ts";
 import { RiskClassifier } from "../src/permissions/risk.ts";
+import type { PathKind } from "../src/permissions/rule-risk.ts";
 import type { PermissionDecision } from "../src/runtime/types.ts";
 import { EventStore } from "../src/store/event-store.ts";
 import { poll } from "./helpers.ts";
@@ -171,11 +172,20 @@ describe("hold-bypass: an approval is for the exact input that was asked (issue 
 
 describe("hold-bypass: a saved rule never covers more risk than the request it came from (issue #384)", () => {
   /** What a request of this tool and input is allowed to save, from a request that is not held. */
-  const saved = async (tool: string, input: Record<string, unknown>, update: PermissionUpdate) => {
+  // The server looks a rule's exact paths up first (#395); none of these is on disk.
+  const saved = async (
+    tool: string,
+    input: Record<string, unknown>,
+    update: PermissionUpdate,
+    kind: PathKind | null = () => "missing",
+  ) => {
     const { b, ask } = broker();
     const { id } = await ask(tool, input);
     return refusal(() =>
-      b.respond({ requestId: id, decision: "allow", updatedPermissions: [update] }),
+      b.respond(
+        { requestId: id, decision: "allow", updatedPermissions: [update] },
+        kind ?? undefined,
+      ),
     );
   };
   const TOO_BROAD = { code: "invalid_permission_update", reason: "perm_rule_too_broad" } as const;
@@ -365,6 +375,11 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
     }
   });
 
+  test("without the server's look-up, an exact path counts as a folder, so its rule is refused (#395)", async () => {
+    const write = { file_path: `${CWD}/a.txt`, content: "x" };
+    expect(await saved("Write", write, rule("Write", "src/a.ts"), null)).toEqual(TOO_BROAD);
+  });
+
   test("an MCP tool's rule is what the classifier says of the tool: medium from a medium request, and a deleting tool's only from a held one", async () => {
     const mcp = { query: "x" };
     expect(await saved("mcp__db__read", mcp, rule("mcp__db__read"))).toBeNull();
@@ -419,12 +434,16 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
     }
     expect(
       refusal(() =>
-        b.respond({
-          requestId: id,
-          decision: "allow",
-          held: true,
-          updatedPermissions: [rule("Write", ".env")],
-        }),
+        // The server's look-up: .env is a file, or not there yet (#395).
+        b.respond(
+          {
+            requestId: id,
+            decision: "allow",
+            held: true,
+            updatedPermissions: [rule("Write", ".env")],
+          },
+          () => "missing",
+        ),
       ),
     ).toBeNull();
   });

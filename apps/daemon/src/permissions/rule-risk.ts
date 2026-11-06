@@ -1,3 +1,4 @@
+import { isAbsolute, join } from "node:path";
 import {
   NETWORK_TOOLS,
   RANK,
@@ -19,6 +20,9 @@ import {
 
 /** What a rule may cover: a level, or `any` for a rule this check cannot show to be narrow. */
 export type RuleLevel = RiskLevel | "any";
+
+/** What a path a rule names is on disk: a folder rule covers its whole subtree in the CLI (#395). */
+export type PathKind = (path: string) => "dir" | "file" | "missing";
 
 /** What the daemon thinks of one tool call: its own classifier, behind a function. */
 export type ClassifyCall = (toolName: string, input: Record<string, unknown>) => RiskLevel;
@@ -157,23 +161,46 @@ function shellLevel(
     : "any";
 }
 
-function pathLevel(
-  toolName: string,
-  content: string | undefined,
-  classify: ClassifyCall,
-): RuleLevel {
-  if (content === undefined || PATH_SYNTAX.test(content) || content.includes("..")) return "any";
-  const keys = READ_TOOLS[toolName] ?? ["file_path"];
-  const call = (path: string) =>
-    classify(toolName, Object.fromEntries(keys.map((key) => [key, path])));
+/**
+ * How a path rule may be read: its content without the leading `/` of a project path, both ways
+ * when it has a backslash (a separator on Windows, an escape for the CLI, issue #431); null when
+ * this check cannot read it (brackets, braces, `!`, a parent step).
+ */
+function readingsOf(content: string | undefined): string[] | null {
+  if (content === undefined || PATH_SYNTAX.test(content) || content.includes("..")) return null;
   const pattern = readAs(content);
-  // A backslash is a separator on Windows and an escape for the CLI: read the rule both ways, and
-  // the broader reading decides (issue #431). A drive path is not refused for its separators.
+  // A drive path is not refused for its separators.
   const readings = pattern.includes("\\")
     ? [pattern.replaceAll("\\", "/"), pattern.replaceAll("\\", "")]
     : [pattern];
   // Removing a backslash can make a parent step (`.\./`): each reading is checked for one.
-  if (readings.some((reading) => reading.includes(".."))) return "any";
+  return readings.some((reading) => reading.includes("..")) ? null : readings;
+}
+
+/** The paths a rule names exactly (no wildcard), as `ruleLevel` asks `kind` about them. */
+export function exactPaths(toolName: string, content: string | undefined): string[] {
+  if (!READ_TOOLS[toolName] && !WRITE_TOOLS.has(toolName)) return [];
+  return (readingsOf(content) ?? []).filter((reading) => !WILD.test(reading));
+}
+
+function pathLevel(
+  toolName: string,
+  content: string | undefined,
+  classify: ClassifyCall,
+  kind: PathKind,
+): RuleLevel {
+  const read = readingsOf(content);
+  if (!read) return "any";
+  const keys = READ_TOOLS[toolName] ?? ["file_path"];
+  const call = (path: string) =>
+    classify(toolName, Object.fromEntries(keys.map((key) => [key, path])));
+  // The CLI matches a rule the gitignore way: a folder covers everything below it, so a folder on
+  // disk, or a path that ends with a slash, is read with its subtree too (issue #395).
+  const readings = read.flatMap((reading) =>
+    !WILD.test(reading) && (reading.endsWith("/") || kind(reading) === "dir")
+      ? [reading, `${reading.replace(/\/+$/, "")}/**`]
+      : [reading],
+  );
   const wild = readings.some((reading) => WILD.test(reading));
   const reached = readings.map((reading) => (WILD.test(reading) ? instances(reading) : [reading]));
   if (reached.includes(null)) return "any";
@@ -194,13 +221,37 @@ export function ruleLevel(
   toolName: string,
   content: string | undefined,
   classify: ClassifyCall,
+  kind: PathKind,
 ): RuleLevel {
   if (SHELL_TOOLS.has(toolName)) return shellLevel(toolName, content, classify);
   if (READ_TOOLS[toolName] || WRITE_TOOLS.has(toolName))
-    return pathLevel(toolName, content, classify);
+    return pathLevel(toolName, content, classify, kind);
   // A network tool names a domain: the whole tool would reach any host.
   if (NETWORK_TOOLS.has(toolName)) {
     return content !== undefined && DOMAIN.test(content) ? classify(toolName, {}) : "any";
   }
   return classify(toolName, {});
+}
+
+/**
+ * The kind of each exact path a rule names, looked up once with `stat` (relative to the request's
+ * folder, `~/` to the home): a path it did not look up counts as a folder.
+ */
+export async function pathKinds(
+  paths: string[],
+  cwd: string,
+  home: string,
+  stat: (path: string) => Promise<"dir" | "file" | "missing">,
+): Promise<PathKind> {
+  const at = (path: string) =>
+    path.startsWith("~/") ? join(home, path.slice(2)) : isAbsolute(path) ? path : join(cwd, path);
+  const looked = await Promise.all(
+    [...new Set(paths)].map(async (path) => {
+      const where = at(path);
+      // A relative path with no folder to start from is not looked up: it counts as a folder.
+      return [path, isAbsolute(where) ? await stat(where) : "dir"] as const;
+    }),
+  );
+  const kinds = new Map<string, "dir" | "file" | "missing">(looked);
+  return (path) => kinds.get(path) ?? "dir";
 }
