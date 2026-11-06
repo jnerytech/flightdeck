@@ -15,6 +15,7 @@ import { NativeSelect } from "@/components/layout/form";
 import { MODELS } from "@/components/personas/model-select";
 import { ActivityLine } from "@/components/session/activity-line";
 import { MessageActions } from "@/components/session/message-actions";
+import { ModeChip } from "@/components/session/mode-chip";
 import {
   Composer,
   ComposerDock,
@@ -34,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { translateError } from "../i18n/errors.ts";
 import type { T } from "../i18n/index.ts";
 import { usd } from "../lib/costs.ts";
+import { modeRows, nextMode } from "../lib/mode-menu.ts";
 import type { MenuGroup, MenuItem } from "../lib/prompt-menu.ts";
 import { activityOf } from "../lib/session-activity.ts";
 import { type ImageRefusal, readImage, refuseImage } from "../lib/session-images.ts";
@@ -45,15 +47,12 @@ import { ModelOptions } from "./ModelOptions.tsx";
 import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
 
-/** The permission modes a live session can switch between. */
 /** The menu group of each kind of command the daemon names. */
 const GROUP_OF_KIND: Record<"builtin" | "skill" | "mcp", MenuGroup> = {
   builtin: "commands",
   skill: "skills",
   mcp: "mcp",
 };
-const MODES = ["plan", "default", "acceptEdits"] as const;
-const ALL_MODES = [...MODES, "bypassPermissions"] as const;
 
 /** Where each conversation was left (by `scrollKey`), so a tab that comes back is where its reader was. */
 const positions = new Map<string, { top: number; atEnd: boolean; seq: number }>();
@@ -298,6 +297,8 @@ interface SessionViewProps {
   images?: boolean;
   /** The host announces `session.settings` and the session is a managed one. */
   settings?: boolean;
+  /** Opens the host's page, where the bypass switch is (the mode menu links to it). */
+  onOpenHostSettings?: () => void;
   /** The host lets the session switch to bypassPermissions: its name, for the confirmation. */
   bypass?: { host: string };
   /** Pins or unpins the session; its button sits in each assistant message's action row. */
@@ -310,16 +311,6 @@ interface SessionViewProps {
   models?: readonly string[];
   /** Renders a picker for a folder; `done` gets the path chosen, or null when it was closed. */
   pickPath?: (done: (path: string | null) => void) => ReactNode;
-}
-
-/**
- * The modes a session can switch to: as strict as the start mode or stricter (a start mode outside
- * the list, bypass or auto, gets all); a host that allows bypass lets the person pick any mode.
- */
-function modesOffered(start: string, bypassAllowed: boolean) {
-  if (bypassAllowed) return ALL_MODES;
-  const at = MODES.indexOf(start as (typeof MODES)[number]);
-  return MODES.slice(0, at < 0 ? MODES.length : at + 1);
 }
 
 /** How many messages came after the one the reader had seen (none while they are at the end). */
@@ -433,12 +424,22 @@ export function SessionView(props: SessionViewProps) {
   const [picking, setPicking] = useState(false);
   const start = session.permissionMode ?? "default";
   const [mode, setMode] = useState<PermissionMode>(start);
-  const opencode = props.runtime === "opencode";
-  const offeredModes = modesOffered(start, Boolean(props.bypass)).filter(
-    (m) => !opencode || m !== "acceptEdits",
-  );
-  const fork = opencode ? undefined : props.fork;
   const [bypassAsk, setBypassAsk] = useState(false);
+  const opencode = props.runtime === "opencode";
+  const fork = opencode ? undefined : props.fork;
+  // OpenCode has no accept-edits mode: the menu lists the others and the numbers follow.
+  const modeMenu = modeRows({ current: mode, start, bypassAllowed: Boolean(props.bypass) }).filter(
+    (row) => !opencode || row.mode !== "acceptEdits",
+  );
+  /** A mode from the menu or Shift+Tab: bypass asks first, any other changes at once. */
+  const chooseMode = (next: SettableMode) => {
+    if (next === "bypassPermissions") {
+      setBypassAsk(true);
+      return;
+    }
+    setMode(next);
+    void actions.setMode?.(next);
+  };
   const [model, setModel] = useState("");
   const slash = session.slashCommands;
   const described = session.commands;
@@ -549,27 +550,13 @@ export function SessionView(props: SessionViewProps) {
     ...(props.settings && actions.setMode
       ? {
           mode: (
-            <NativeSelect
-              compact
-              inline
-              aria-label={t("session.modeLabel")}
-              value={mode}
-              onChange={(e) => {
-                const next = e.target.value as SettableMode;
-                if (next === "bypassPermissions") {
-                  setBypassAsk(true);
-                  return;
-                }
-                setMode(next);
-                void actions.setMode?.(next);
-              }}
-            >
-              {offeredModes.map((value) => (
-                <option key={value} value={value}>
-                  {t(`modes.${value}.name`)}
-                </option>
-              ))}
-            </NativeSelect>
+            <ModeChip
+              t={t}
+              mode={mode}
+              rows={modeMenu}
+              onPick={chooseMode}
+              onOpenHostSettings={props.onOpenHostSettings}
+            />
           ),
         }
       : {}),
@@ -847,6 +834,15 @@ export function SessionView(props: SessionViewProps) {
             }}
             onKeyDown={(e) => {
               if (e.key === "Escape" && working) void actions.interrupt();
+              if (e.key === "Tab" && e.shiftKey && props.settings && actions.setMode) {
+                // Shift+Tab cycles the permission mode, as in Claude Code; with none to go to, focus moves on.
+                const next = nextMode(modeMenu, mode);
+                if (next) {
+                  e.preventDefault();
+                  chooseMode(next);
+                }
+                return;
+              }
               if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
               if (e.ctrlKey || e.metaKey) {
                 // Ctrl+Enter breaks the line where the cursor is (a textarea only does it for Shift).
