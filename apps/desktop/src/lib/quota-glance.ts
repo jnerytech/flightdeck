@@ -1,6 +1,7 @@
-import type { QuotaState } from "@flightdeck/protocol";
+import type { QuotaState, QuotaWindow } from "@flightdeck/protocol";
+import { isHot } from "./quota";
 
-/** How close the window is to its limit: from 80% near, at 100% reached (the account card's thresholds). */
+/** How close the window is to its limit: from 80% near; reached at 100%, at the host's `pauseAt` or refused. */
 export type QuotaLevel = "ok" | "near" | "reached";
 
 /** The plan window under most pressure across the online hosts (issue #118). */
@@ -23,37 +24,46 @@ export function shortDuration(ms: number): string {
   return `${minutes}m`;
 }
 
-function levelOf(utilization: number): QuotaLevel {
-  if (utilization >= 1) return "reached";
+const RANK: Record<QuotaLevel, number> = { ok: 0, near: 1, reached: 2 };
+
+/** Reached at 100%, or as the account card's red bar (at `pauseAt`, or refused); near from 80%. */
+function levelOf(window: QuotaWindow, utilization: number, pauseAt: number | null): QuotaLevel {
+  if (utilization >= 1 || isHot(window, pauseAt)) return "reached";
   return utilization >= 0.8 ? "near" : "ok";
 }
 
-/** The most used window across the online hosts that report one; `null` while none does. */
+/**
+ * The window under most pressure across the online hosts that report one: the highest level, then
+ * the most used; `null` while none does.
+ */
 export function quotaGlance(
   quota: Record<string, QuotaState | undefined>,
   onlineIds: string[],
   now: number,
 ): QuotaGlance | null {
-  let best: {
-    hostId: string;
-    window: string;
-    utilization: number;
-    resetsAt: string | null;
-  } | null = null;
+  let best: (QuotaGlance & { utilization: number }) | null = null;
   for (const hostId of onlineIds) {
-    for (const w of quota[hostId]?.windows ?? []) {
+    const state = quota[hostId];
+    for (const w of state?.windows ?? []) {
       if (w.utilization === null) continue;
-      if (!best || w.utilization > best.utilization) {
-        best = { hostId, window: w.window, utilization: w.utilization, resetsAt: w.resetsAt };
+      const level = levelOf(w, w.utilization, state?.pauseAt ?? null);
+      const ahead =
+        !best ||
+        RANK[level] > RANK[best.level] ||
+        (RANK[level] === RANK[best.level] && w.utilization > best.utilization);
+      if (ahead) {
+        best = {
+          hostId,
+          window: w.window,
+          utilization: w.utilization,
+          percent: Math.round(w.utilization * 100),
+          remaining: w.resetsAt ? shortDuration(Date.parse(w.resetsAt) - now) : "",
+          level,
+        };
       }
     }
   }
   if (!best) return null;
-  return {
-    hostId: best.hostId,
-    window: best.window,
-    percent: Math.round(best.utilization * 100),
-    remaining: best.resetsAt ? shortDuration(Date.parse(best.resetsAt) - now) : "",
-    level: levelOf(best.utilization),
-  };
+  const { utilization: _, ...glance } = best;
+  return glance;
 }
