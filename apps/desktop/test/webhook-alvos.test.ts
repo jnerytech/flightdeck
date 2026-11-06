@@ -196,3 +196,37 @@ describe("webhook-alvos", () => {
     expect(a.id.length).toBeGreaterThan(8);
   });
 });
+
+describe("webhook-alvos: an ntfy target (#263)", () => {
+  test("it takes a topic URL and an optional token of ntfy's shape, and the token goes to the vault", async () => {
+    const { targets, vault, store } = setup();
+    const added = await targets.add(
+      input({ type: "ntfy", url: "https://ntfy.sh/fd-alerts", signingSecret: "tk_abc-123" }),
+    );
+    expect([added.type, added.urlHost]).toEqual(["ntfy", "ntfy.sh"]);
+    expect(vault.get(`webhook-sign:${added.id}`)).toBe("tk_abc-123");
+    expect([...store.values()].join()).not.toContain("tk_abc");
+    expect(await code(() => targets.add(input({ type: "ntfy", url: "https://ntfy.sh/a/b" })))).toBe(
+      "invalid_topic",
+    );
+    expect(
+      await code(() =>
+        targets.add(input({ type: "ntfy", url: "https://ntfy.sh/ok", signingSecret: "tk bad" })),
+      ),
+    ).toBe("invalid_token");
+    expect(await code(() => targets.update(added.id, { url: "https://ntfy.sh/" }))).toBe(
+      "invalid_topic",
+    );
+    expect(await code(() => targets.update(added.id, { signingSecret: "tk\nx" }))).toBe(
+      "invalid_token",
+    );
+  });
+
+  test("a target made ntfy keeps a URL that is a topic, or is refused", async () => {
+    const { targets } = setup();
+    const slack = await targets.add(input());
+    expect(await code(() => targets.update(slack.id, { type: "ntfy" }))).toBe("invalid_topic");
+    const generic = await targets.add(input({ type: "generic", url: "https://ntfy.sh/alerts" }));
+    expect((await targets.update(generic.id, { type: "ntfy" })).type).toBe("ntfy");
+  });
+});
