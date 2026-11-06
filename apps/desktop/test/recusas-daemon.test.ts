@@ -275,6 +275,7 @@ const REASONS = [
   "review_undo_confirm",
   "review_undo_nothing",
   "review_path_link",
+  "review_file_secret",
   "review_comment_empty",
   "review_side_missing",
   "review_lines_outside",

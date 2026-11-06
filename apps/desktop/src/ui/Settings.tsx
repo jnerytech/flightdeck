@@ -1,4 +1,5 @@
 import { memo, type ReactNode, useEffect, useId, useState, useSyncExternalStore } from "react";
+import { AssistantSettings } from "@/components/assistant/assistant-settings";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -48,7 +49,7 @@ export const Settings = memo(function Settings(props: {
   store: AppStore;
   settings: SettingsState;
   /** The part to open on, by id. */
-  section?: string | undefined;
+  section?: string;
   onCloseToTray(enabled: boolean): void;
   onAutostart(enabled: boolean): void;
   onGlobalShortcut(text: string): void;
@@ -73,6 +74,10 @@ export const Settings = memo(function Settings(props: {
   const terminalFont = useSyncExternalStore(
     props.store.terminalFont.subscribe,
     () => props.store.terminalFont.value,
+  );
+  const setupHidden = useSyncExternalStore(
+    props.store.setup.subscribe,
+    () => props.store.setup.hidden,
   );
   const cacheOn = useSyncExternalStore(
     props.store.cacheTimer.subscribe,
@@ -241,6 +246,14 @@ export const Settings = memo(function Settings(props: {
             />
             {t("prefs.autostart")}
           </label>
+          <label className={check}>
+            <input
+              type="checkbox"
+              checked={!setupHidden}
+              onChange={(e) => props.store.setup.setHidden(!e.target.checked)}
+            />
+            {t("setup.restore")}
+          </label>
           {!settings.autostartSupported && (
             <small className="text-muted-foreground text-xs">{t("prefs.unavailable")}</small>
           )}
@@ -383,6 +396,12 @@ export const Settings = memo(function Settings(props: {
           },
         ]
       : []),
+    {
+      id: "assistant",
+      label: t("settingsRail.assistant"),
+      words: t("settingsRail.words.assistant"),
+      node: <AssistantSettings store={props.store} t={t} />,
+    },
     {
       id: "webhooks",
       label: t("webhooks.title"),

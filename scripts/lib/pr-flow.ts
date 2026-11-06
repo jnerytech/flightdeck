@@ -505,6 +505,14 @@ const TAG = /^v\d+\.\d+\.\d+(?:-[\w.]+)?$/;
 
 type MainRun = { id?: number; event?: string; status: string; conclusion: string | null };
 
+/** A run that finished and did not pass: a cancelled or skipped one (a later merge replaced it) did not fail. */
+function runFailed(run: MainRun): boolean {
+  return (
+    run.status === "completed" &&
+    !["success", "cancelled", "skipped"].includes(run.conclusion ?? "")
+  );
+}
+
 /** Every CI run of a commit on main, of any event: a push's, the schedule's, a dispatch's. */
 async function mainRuns(sha: string, deps: PrFlowDeps): Promise<MainRun[]> {
   const listed = await deps.gh([
@@ -550,11 +558,10 @@ function refuseRuns(sha: string, runs: MainRun[], refuse: (reason: string) => nu
       `no full green run of ${sha} on ${MAIN}: the schedule runs one every 3 hours, or start one (gh workflow run ci.yml --ref ${MAIN} -f only=all)`,
     );
   }
+  // A failure is said before "still running": a failed run settles it whatever else is going.
+  if (runs.some(runFailed)) return refuse(`${sha}'s CI run on ${MAIN} did not pass`);
   if (runs.some((r) => r.status !== "completed"))
     return refuse(`${sha}'s CI run on ${MAIN} is still running`);
-  if (runs.some((r) => !["success", "cancelled", "skipped"].includes(r.conclusion ?? ""))) {
-    return refuse(`${sha}'s CI run on ${MAIN} did not pass`);
-  }
   return refuse(
     `${sha} has no full green run on ${MAIN}: the schedule runs one every 3 hours, or start one (gh workflow run ci.yml --ref ${MAIN} -f only=all)`,
   );
@@ -607,17 +614,16 @@ async function tagRelease(args: string[], deps: PrFlowDeps): Promise<number> {
   const runs = await mainRuns(sha, deps);
   let target = sha;
   if (!(await fullGreen(runs, deps))) {
-    // A run that failed or is still going is never skipped over; --commit asks for that commit.
-    const unsettled = runs.some(
-      (r) =>
-        r.status !== "completed" ||
-        !["success", "cancelled", "skipped"].includes(r.conclusion ?? ""),
-    );
-    if (unsettled || args.includes("--commit")) return refuseRuns(sha, runs, refuse);
+    // A run that failed is never skipped over; --commit asks for exactly that commit.
+    if (runs.some(runFailed) || args.includes("--commit")) return refuseRuns(sha, runs, refuse);
+    // A run that is queued or going has not failed (on a busy main it is HEAD's usual state, #529).
+    const running = runs.some((r) => r.status !== "completed");
     // Without --commit, the newest commit that has the bump and a full green run is the release
     // (#376, #444); with none, a full run of main starts, and pr tag runs again when it is green.
     const earlier = await greenWithBump(tag, deps);
     if (!earlier) {
+      // Still running and nothing earlier is green: wait for it, and start nothing.
+      if (running) return refuseRuns(sha, runs, refuse);
       const started = await deps.gh(["workflow", "run", "ci.yml", "--ref", MAIN, "-f", "only=all"]);
       return refuse(
         `${sha} has no full green run on ${MAIN}, and no commit with the ${tag} bump has one: ${
@@ -627,9 +633,10 @@ async function tagRelease(args: string[], deps: PrFlowDeps): Promise<number> {
         }`,
       );
     }
-    deps.log(
-      `${sha} has no full green run on ${MAIN}: tagging ${earlier}, the newest commit with the ${tag} bump that has one`,
-    );
+    const why = running
+      ? `${sha}'s CI run on ${MAIN} is still running`
+      : `${sha} has no full green run on ${MAIN}`;
+    deps.log(`${why}: tagging ${earlier}, the newest commit with the ${tag} bump that has one`);
     target = earlier;
   }
   if ((await deps.git(["tag", "-a", tag, "-m", tag, target])).code !== 0) {

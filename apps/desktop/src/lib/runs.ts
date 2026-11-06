@@ -20,7 +20,7 @@ export interface BudgetLine {
   text: string;
   /** For the meter; absent when the run has no such limit. */
   value: number;
-  max?: number | undefined;
+  max?: number;
 }
 
 /** Turns, minutes and estimated cost of a run against its limits. */
