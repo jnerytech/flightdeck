@@ -129,7 +129,7 @@ export class AssistantController {
     if (!this.deps.api.supported) return;
     const next = { anthropic: false, openrouter: false };
     for (const provider of KEY_PROVIDERS) {
-      next[provider] = (await this.deps.api.keyStatus(provider)).saved;
+      next[provider] = (await this.deps.api.keyStatus(provider)).saved; // NOSONAR: sequential by design: one key check at a time; there are two providers
     }
     this.saved = next;
     this.emit();

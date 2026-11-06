@@ -54,7 +54,7 @@ export class IdleSleeper {
     for (const session of this.opts.manager.list()) {
       if (session.status !== "idle" || session.asleep) continue;
       if (this.now() - Date.parse(session.updatedAt) < limit) continue;
-      if ((await this.opts.manager.sleep(session.id)) === "slept") slept.push(session.id);
+      if ((await this.opts.manager.sleep(session.id)) === "slept") slept.push(session.id); // NOSONAR: sequential by design: one session goes to sleep at a time
     }
     return slept;
   }

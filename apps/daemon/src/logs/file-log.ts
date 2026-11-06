@@ -100,7 +100,7 @@ export class FileLog {
     if (info === null || !info.isFile() || info.size + incoming <= this.maxBytes) return;
     await rm(`${live}.${this.files - 1}`, { force: true });
     for (let n = this.files - 2; n >= 1; n--) {
-      await rename(`${live}.${n}`, `${live}.${n + 1}`).catch(() => {});
+      await rename(`${live}.${n}`, `${live}.${n + 1}`).catch(() => {}); // NOSONAR: sequential by design: the files shift one by one, the oldest first, so none is overwritten
     }
     await rename(live, `${live}.1`);
   }
@@ -114,7 +114,7 @@ export class FileLog {
     const out: string[] = [];
     for (let n = 0; n < this.files && out.length < wanted; n++) {
       const file = n === 0 ? this.path() : `${this.path()}.${n}`;
-      const body = await readEnd(file);
+      const body = await readEnd(file); // NOSONAR: sequential by design: newest file first, and it stops as soon as there are enough lines
       if (body === null) continue;
       out.unshift(
         ...body
