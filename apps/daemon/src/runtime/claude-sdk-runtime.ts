@@ -297,6 +297,8 @@ export class ClaudeSdkRuntime implements AgentRuntime {
         cwd: opts.cwd,
         maxTurns: 1,
         settingSources: [],
+        // settingSources does not cover .mcp.json, and this runs in the session's folder.
+        strictMcpConfig: true,
         persistSession: false,
         tools: [],
         env: { ...process.env, FLIGHTDECK_MANAGED: "1" },
