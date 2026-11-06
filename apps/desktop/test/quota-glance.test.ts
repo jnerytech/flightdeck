@@ -55,6 +55,23 @@ describe("quota-glance: the plan window under most pressure, for the top bar (is
     );
   });
 
+  test("at the host's pauseAt, or refused by the plan, it is reached, as the account card's red bar", () => {
+    const paused = (u: number) =>
+      quotaGlance({ a: { ...state(reading("five_hour", u, null)), pauseAt: 0.9 } }, ["a"], NOW)
+        ?.level;
+    expect([paused(0.85), paused(0.9)]).toEqual(["near", "reached"]);
+    const refused = { ...reading("seven_day", 0.5, null), status: "rejected" as const };
+    const glance = quotaGlance(
+      {
+        a: state(reading("five_hour", 0.85, null)),
+        b: { windows: [refused], pauseAt: 0.9 },
+      },
+      ["a", "b"],
+      NOW,
+    );
+    expect([glance?.hostId, glance?.window, glance?.level]).toEqual(["b", "seven_day", "reached"]);
+  });
+
   test("the time left is its two largest units, and what has passed is 0m", () => {
     expect(shortDuration(3 * 86_400_000 + 9 * 3_600_000 + 5 * 60_000)).toBe("3d 9h");
     expect(shortDuration(3 * 3_600_000 + 47 * 60_000)).toBe("3h 47m");
