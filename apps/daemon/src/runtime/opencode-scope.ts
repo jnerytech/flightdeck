@@ -7,6 +7,7 @@
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join, relative } from "node:path";
+import { byCodeUnit } from "@flightdeck/protocol";
 
 export type ScopeFindingKind =
   | "plugins_entry"
@@ -69,7 +70,7 @@ export function globalConfigDir(
 }
 
 async function entries(dir: string): Promise<string[]> {
-  return (await readdir(dir).catch(() => [] as string[])).sort();
+  return (await readdir(dir).catch(() => [] as string[])).sort(byCodeUnit);
 }
 
 /** Every file under `dir` (relative paths, sorted), up to the cap. */

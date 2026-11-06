@@ -256,6 +256,7 @@ export const en: Dictionary = {
       derivation: "How it was computed",
     },
     title: "Return on cost",
+    details: "Details",
     period: "Period",
     period7: "7 days",
     period30: "30 days",
@@ -332,6 +333,7 @@ export const en: Dictionary = {
       "Engineering roles Claude takes on in a session, of host {host}, the projects and the app.",
     apply: {
       trigger: "Persona",
+      none: "None",
       active: "Active persona",
       label: "Apply to this session (as an instruction)",
       apply: "Apply",
@@ -1160,6 +1162,7 @@ export const en: Dictionary = {
       "Allowing a prod tag needs a window of days and hours, and does not apply outside it: use ask.",
   },
   daemonFeature: {
+    assistant: "the AI assistant",
     github: "sign-in with GitHub",
     boardsync: "board sync",
     roi: "the ROI view",
@@ -1708,6 +1711,38 @@ export const en: Dictionary = {
     session_maybe_active:
       "The session may be in use elsewhere: resume it anyway only if you are sure it is not.",
   },
+  assistantRefusal: {
+    assistant_not_configured: "Choose an AI provider in Settings, Assistant, first.",
+    assistant_empty_input: "Write something first.",
+    assistant_too_long: "The text is too long for the assistant (at most {max} characters).",
+    assistant_secret_found:
+      "Nothing was sent: the text looks like it holds a secret ({labels}). Remove it and try again.",
+    assistant_vault_value:
+      "Nothing was sent: the text holds the value of a vault secret ({names}). Remove it and try again.",
+    assistant_quota_blocked:
+      "The host's Claude plan is at its limit until {until}. Try again then, or choose another provider.",
+    assistant_host_unavailable: "Claude Code on the host cannot answer: {detail}",
+    assistant_auth: "The provider refused the key. Check it in Settings, Assistant.",
+    assistant_credits: "The provider says there is no credit left on this key.",
+    assistant_rate_limited: "Too many requests right now. Wait a moment and try again.",
+    assistant_overloaded: "The provider is overloaded. Try again in a moment.",
+    assistant_routing_unavailable:
+      "No provider of this model on OpenRouter takes the request without collecting data. Turn off the data switch in Settings, or pick another model.",
+    assistant_model_unavailable:
+      "The provider does not offer this model. Pick another one in Settings.",
+    assistant_truncated:
+      "The answer was cut short before it ended. Try again, or use a shorter text.",
+    assistant_refused: "The model declined to answer this text.",
+    assistant_bad_output: "The model gave an answer that cannot be used. Try again.",
+    assistant_placeholders_changed:
+      "The suggestion changed the snippet's variables, so it is not offered. Try again.",
+    assistant_timeout: "The provider took too long to answer.",
+    assistant_cancelled: "Cancelled.",
+    assistant_offline: "The provider cannot be reached. Check the connection.",
+    assistant_no_changes: "There are no changes to describe.",
+    assistant_not_a_repo: "This folder is not a git repository.",
+    assistant_request_id: "Request id: {id}",
+  },
   snippetRefusal: {
     name_invalid: "Name must be 1 to 64 characters: letters, numbers, space, . _ -",
     needs_run: "A command needs something to run.",
@@ -1769,6 +1804,11 @@ export const en: Dictionary = {
     contextSkipped:
       "AGENTS.md was not sent: it is over 64 KB, or it links out of the folder or to a credential.",
     modeLabel: "Permission mode",
+    modeChip: "Permission mode: {mode}",
+    modeMenuTitle: "Mode",
+    modeBypassOff: "Turned off on this host",
+    modeBypassHow: "Turn it on in the host settings",
+    modeLooser: "Looser than the mode this session started in",
     modelLabel: "Model",
     modelDefault: "Default model",
     insertSnippet: "Insert a snippet",
@@ -1879,26 +1919,32 @@ export const en: Dictionary = {
     default: {
       name: "Default",
       description: "asks before acting",
+      explain: "Asks before it edits files or runs commands",
     },
     acceptEdits: {
       name: "Accept edits",
       description: "edits files without asking",
+      explain: "Edits files without asking; still asks before running commands",
     },
     plan: {
       name: "Plan",
       description: "only reads and proposes a plan",
+      explain: "Only reads and proposes a plan; changes nothing",
     },
     auto: {
       name: "Automatic",
       description: "a classifier decides what goes on",
+      explain: "A classifier decides what goes on",
     },
     dontAsk: {
       name: "Allowed only",
       description: "denies what the rules do not allow",
+      explain: "Denies what the rules do not allow",
     },
     bypassPermissions: {
       name: "Bypass permissions",
       description: "no prompts",
+      explain: "Runs everything without asking. Only in a folder you can throw away",
     },
     bypassWarning:
       "Bypass permissions: Claude runs everything without asking for approval. Use it only in a folder you can throw away.",
@@ -2063,6 +2109,7 @@ export const en: Dictionary = {
     openNamed: "Open Claude here in {name} (terminal)",
     resume: "Continue in the terminal",
     resumeNamed: "Continue {name} in the terminal",
+    start: "Open the terminal",
     asSession: "View as session",
     viewTerminal: "View terminal",
   },
@@ -3450,6 +3497,9 @@ export const en: Dictionary = {
     filter: "Filter",
     hideAutomated: "Hide automated runs",
     automatedHidden: "{count} automated runs hidden",
+    emptyAutomated: "{count} automated runs are hidden by the filter.",
+    emptyFiltered: "No session matches these filters.",
+    clearFilters: "Clear the filters",
     showAutomated: "Show them",
     automatedTag: "automated",
     list: "History sessions",

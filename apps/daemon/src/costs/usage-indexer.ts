@@ -6,7 +6,14 @@ import { localDay } from "../quota/usage.ts";
 import { ulid } from "../ulid.ts";
 
 /** Where the usage of a message came from. */
-export type UsageOrigin = "terminal" | "app" | "card" | "workflow" | "subagent" | "auto-approve";
+export type UsageOrigin =
+  | "terminal"
+  | "app"
+  | "card"
+  | "workflow"
+  | "subagent"
+  | "auto-approve"
+  | "assistant";
 
 /** What a message used, as the price table reads it. */
 export interface UsageTokens {
@@ -210,27 +217,42 @@ export class UsageIndexer {
    * Phase 13: usage the daemon spends itself, with no transcript (the automatic approval's
    * queries run with persistSession false): origin `auto-approve`.
    */
-  record(entry: { at: string; model: string; tokens: UsageTokens; projectPath: string }): void {
+  record(entry: {
+    at: string;
+    model: string;
+    tokens: UsageTokens;
+    projectPath: string;
+    messageId?: string;
+    origin?: UsageOrigin;
+    provider?: string;
+    costUsd?: number;
+  }): void {
     const { tokens } = entry;
+    const origin = entry.origin ?? "auto-approve";
+    // The id is the table's key: a record sent twice (the app's pending queue) is one row.
     this.db
       .query(
-        `INSERT INTO usage_entries (message_id, claude_session_id, at, day, project_key, model,
-           origin, speed, input, output, cache_read, cache_write_5m, cache_write_1h, cost_usd)
-         VALUES (?, NULL, ?, ?, ?, ?, 'auto-approve', ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR IGNORE INTO usage_entries (message_id, claude_session_id, at, day, project_key,
+           model, origin, speed, input, output, cache_read, cache_write_5m, cache_write_1h,
+           cost_usd, provider)
+         VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
-        `auto-approve-${ulid()}`,
+        entry.messageId ?? `${origin}-${ulid()}`,
         entry.at,
         this.day(Date.parse(entry.at)),
         this.opts.projectKey(entry.projectPath),
         entry.model,
+        origin,
         tokens.speed,
         tokens.input,
         tokens.output,
         tokens.cacheRead,
         tokens.cacheWrite5m,
         tokens.cacheWrite1h,
-        this.opts.cost?.(tokens) ?? null,
+        // What the provider billed wins over the table; a model with neither stays unpriced.
+        entry.costUsd ?? this.opts.cost?.(tokens) ?? null,
+        entry.provider ?? null,
       );
   }
 
