@@ -440,7 +440,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: test-timings-windows-${{ matrix.shard }}
-          path: junit-${{ matrix.shard }}.xml
+          path: junit-${{ matrix.shard }}*.xml
           if-no-files-found: ignore
 
   # The rest of the Windows leg: the smokes, the Rust shell, the bundle budget and the

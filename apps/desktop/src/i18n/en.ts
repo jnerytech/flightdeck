@@ -3511,6 +3511,8 @@ export const en: Dictionary = {
       confirm:
         "Trust {project} on {host}? Its hooks run commands and its MCP servers start programs on that computer, without asking you, whenever a session starts there. Only do this for code you wrote or have read.",
       failed: "Could not read this project's configuration.",
+      listingUnavailable:
+        "The list of what this project would load is shown on the computer this host runs on, or from your Tailscale network.",
       sessionNotice:
         "This folder is not trusted: its own hooks, MCP servers, settings, CLAUDE.md, agents and skills did not load, and neither did your own MCP servers and plugins.",
       sessionNoticeShort: "This folder is not trusted.",

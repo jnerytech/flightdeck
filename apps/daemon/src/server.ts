@@ -1001,6 +1001,8 @@ export function startServer(opts: ServerOptions): RunningServer {
       }
       case "project.trust.inspect": {
         if (!opts.projectTrust) throw featureOff("projectTrust");
+        // Commands and server arguments are shown whole, a secret in one included: a near connection only.
+        requireVaultTransport(ws.data.origin, "project.trust.inspect", opts.log);
         const path = await resolveAllowedCwd(command.payload.path, opts.allowedRoots);
         return ok(command.type, await opts.projectTrust.inspect(path));
       }

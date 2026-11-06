@@ -2,7 +2,7 @@
 import type { Database } from "bun:sqlite";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
-import { isInside, rootNames } from "../paths.ts";
+import { isInside, rootNames, samePath } from "../paths.ts";
 
 export type TrustSource = "person" | "migration";
 
@@ -28,6 +28,8 @@ export interface ProjectTrustOptions {
   log?: (line: string) => void;
   /** Reads a `.git` file (a test seam: a file that cannot be read is a boundary, not a crash). */
   readText?: (path: string) => Promise<string>;
+  /** Whether two folders are the same one (case blind where the file system is): a test seam, `samePath` by default. */
+  sameFolder?: (a: string, b: string) => boolean;
 }
 
 interface Row {
@@ -58,6 +60,9 @@ interface Boundary {
 /** The person's decision, per folder, kept by the daemon: off until they say so. */
 export class ProjectTrust {
   private readonly boundaries = new Map<string, Boundary>();
+  /** The ticket of the look whose answer each folder holds: an older one that finishes later stores nothing. */
+  private readonly stored = new Map<string, number>();
+  private scans = 0;
   /** The real paths of the roots (a root named by a symlink is one place under two names), read by `refreshRoots`. */
   private realRoots: string[] = [];
 
@@ -77,7 +82,7 @@ export class ProjectTrust {
     const roots = [...(this.opts.roots?.() ?? []).map((root) => resolve(root)), ...this.realRoots];
     const granting = this.rows()
       .filter((row) => {
-        if (row.scope === "exact") return resolve(row.path) === here;
+        if (row.scope === "exact") return (this.opts.sameFolder ?? samePath)(row.path, here);
         // A root, or a folder that holds one, would trust every clone made inside it.
         if (roots.some((root) => isInside(row.path, root))) return false;
         return isInside(row.path, here);
@@ -90,8 +95,10 @@ export class ProjectTrust {
   trust(path: string, source: TrustSource = "person", scope: "tree" | "exact" = "tree"): void {
     const at = resolve(path);
     const done = this.db
-      .query("INSERT OR IGNORE INTO project_trust (path, trusted_at, source) VALUES (?, ?, ?)")
-      .run(at, (this.opts.now?.() ?? new Date()).toISOString(), source);
+      .query(
+        "INSERT OR IGNORE INTO project_trust (path, trusted_at, source, scope) VALUES (?, ?, ?, ?)",
+      )
+      .run(at, (this.opts.now?.() ?? new Date()).toISOString(), source, scope);
     if (done.changes > 0) this.opts.log?.(`project trust: trusted ${at} (${source})`);
   }
 
@@ -141,7 +148,13 @@ export class ProjectTrust {
 
   private async scan(here: string): Promise<void> {
     // Judged first, stored after: the answer a session was given stays until the new one replaces it.
+    // Two looks at one folder can overlap: the one that started last has read the later state, so it
+    // is the one that is kept, whichever finishes last (issue #415). One that finishes first still
+    // stores, so its caller never goes on with nothing stored; a newer one replaces it.
+    const ticket = ++this.scans;
     const found = await this.boundaryOf(here);
+    if ((this.stored.get(here) ?? 0) > ticket) return;
+    this.stored.set(here, ticket);
     if (found) this.boundaries.set(here, found);
     else this.boundaries.delete(here);
   }
@@ -158,7 +171,9 @@ export class ProjectTrust {
       const text = await (this.opts.readText ?? ((path) => readFile(path, "utf8")))(git).catch(
         () => "",
       );
-      const gitdir = /^gitdir:\s*(.+)$/m.exec(text)?.[1]?.trim();
+      // Read by lines, not by a pattern: `\s*(.+)` backtracks on a long run of spaces.
+      const line = text.split(/\r?\n/).find((entry) => entry.startsWith("gitdir:"));
+      const gitdir = line?.slice("gitdir:".length).trim();
       return { main: gitdir ? this.mainOfGitdir(gitdir, dir) : null };
     }
     return null;

@@ -1431,6 +1431,8 @@ export async function startDaemon(
       channel: (claudeSessionId, text) => messageExternal(central, claudeSessionId, text),
       trust: projectTrust.sessionTrust.bind(projectTrust),
       prepare: projectTrust.prepare.bind(projectTrust),
+      // A listed session's folder is checked against the roots before respawn or message runs in it.
+      allowedRoots: config.allowedRoots,
       // `getCard` refuses a card that does not exist, with the not_found the app knows.
       card: (cardId) => {
         const card = board.getCard(cardId);

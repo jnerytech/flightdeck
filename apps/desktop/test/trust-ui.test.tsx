@@ -40,6 +40,8 @@ function setup(
     state?: ProjectTrustState;
     load?: ProjectLoad;
     fail?: boolean;
+    /** The listing is refused (a connection that is not near), the state is not. */
+    noListing?: boolean;
   } = {},
 ) {
   const store = new AppStore(memoryPlatform(false, options.language ?? "en").platform, {
@@ -54,7 +56,7 @@ function setup(
     sent.push([type, payload]);
     if (options.fail) return null;
     if (type === "project.trust.state") return { items: [state] };
-    if (type === "project.trust.inspect") return options.load ?? LOAD;
+    if (type === "project.trust.inspect") return options.noListing ? null : (options.load ?? LOAD);
     if (type === "project.trust.set") {
       const { trusted, path } = payload as { trusted: boolean; path: string };
       state = trusted ? { path, trusted: true, via: path } : { path, trusted: false, via: null };
@@ -279,6 +281,37 @@ describe("trust-ui: the project page says what a project would load and lets the
     await waitFor(() =>
       expect(screen.queryByText("Could not read this project's configuration.")).not.toBeNull(),
     );
+  });
+
+  test("when only the listing is refused, the state and the way to revoke are still shown (issue #415)", async () => {
+    const { view, sent } = setup({
+      noListing: true,
+      state: { path: "/work/api", trusted: true, via: "/work/api" },
+    });
+    render(view);
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Revoke trust" })).not.toBeNull(),
+    );
+    expect(
+      screen.queryByText(
+        "The list of what this project would load is shown on the computer this host runs on, or from your Tailscale network.",
+      ),
+    ).not.toBeNull();
+    expect(screen.queryByText("Could not read this project's configuration.")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Revoke trust" }));
+    await waitFor(() => expect(sent.some(([type]) => type === "project.trust.set")).toBe(true));
+  });
+
+  test("with no listing there is nothing to read, so there is no way to trust the project (issue #415)", async () => {
+    render(setup({ noListing: true }).view);
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          "The list of what this project would load is shown on the computer this host runs on, or from your Tailscale network.",
+        ),
+      ).not.toBeNull(),
+    );
+    expect(screen.queryByRole("button", { name: "Trust this project" })).toBeNull();
   });
 
   test("in Portuguese too", async () => {
