@@ -8,6 +8,7 @@ import { assertBinaryUntouched, installBinaryGuard } from "./binary-guard.ts";
 import { assertCheckGuardActive, assertNoRefusedChecks, installCheckGuard } from "./check-guard.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./cli-guard.ts";
+import { reapFakes } from "./fake-cli.ts";
 import { installGitEnvGuard } from "./git-env.ts";
 import { assertHomeGuard, installHomeGuard } from "./home-guard.ts";
 import { captureGlobals, installBetweenFiles } from "./isolation.ts";
@@ -28,6 +29,9 @@ setDefaultTimeout(defaultTestTimeoutMs(process.platform));
 // that ends without reaching afterAll.
 const tempRun = installTempRun();
 process.on("exit", () => {
+  // The fake CLIs this run started and something left waiting die with it (#254), before their
+  // state folders go.
+  reapFakes(tempRun.dir);
   removeTempRun(tempRun);
 });
 

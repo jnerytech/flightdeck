@@ -35,30 +35,27 @@ export function createWebPlatform(
   return {
     storage: win.localStorage,
     secrets: {
-      get: async (id) => secrets.get(id) ?? null, // NOSONAR: async by contract: a throw must reach the caller as a rejection
-      set: async (id, value) => {
-        // NOSONAR: async by contract: a throw must reach the caller as a rejection
+      get: (id) => Promise.resolve(secrets.get(id) ?? null),
+      set: (id, value) => {
         secrets.set(id, value);
+        return Promise.resolve();
       },
-      delete: async (id) => {
-        // NOSONAR: async by contract: a throw must reach the caller as a rejection
+      delete: (id) => {
         secrets.delete(id);
+        return Promise.resolve();
       },
     },
     vault: {
-      get: async (id) => vault.get(id) ?? null, // NOSONAR: async by contract: a throw must reach the caller as a rejection
-      set: async (id, value) => {
-        // NOSONAR: async by contract: a throw must reach the caller as a rejection
+      get: (id) => Promise.resolve(vault.get(id) ?? null),
+      set: (id, value) => {
         vault.set(id, value);
+        return Promise.resolve();
       },
-      delete: async (id) => {
-        // NOSONAR: async by contract: a throw must reach the caller as a rejection
+      delete: (id) => {
         vault.delete(id);
+        return Promise.resolve();
       },
-      generateKey: async () => {
-        // NOSONAR: async by contract: a throw must reach the caller as a rejection
-        throw new Error("ssh-keygen needs the desktop app");
-      },
+      generateKey: () => Promise.reject(new Error("ssh-keygen needs the desktop app")),
       pickFile: () => Promise.resolve(null),
       removeFile: async () => {},
     },
@@ -76,9 +73,9 @@ export function createWebPlatform(
       }
     },
     isFocused: () => win.document.hasFocus(),
-    async openExternal(url) {
-      // NOSONAR: async by contract: a throw must reach the caller as a rejection
+    openExternal(url) {
       win.open(url, "_blank", "noopener");
+      return Promise.resolve();
     },
     onDeepLink(handler) {
       const check = () => {
@@ -111,9 +108,9 @@ export function createWebPlatform(
       await clipboard.writeText(text);
     },
     saveFile: (name, text) => saveWithPicker(win, name, text),
-    async showMainWindow() {
-      // NOSONAR: async by contract: a throw must reach the caller as a rejection
+    showMainWindow() {
       win.focus?.();
+      return Promise.resolve();
     },
     // A page cannot start programs: "Abrir no terminal" copies the command instead.
     terminal: {
@@ -123,6 +120,11 @@ export function createWebPlatform(
     },
     // A page cannot listen to keys while it is not focused.
     globalShortcut: { supported: false, register: noop, unregister: noop },
-    updater: { supported: false, check: () => Promise.resolve(null), install: noop },
+    updater: {
+      supported: false,
+      check: () => Promise.resolve(null),
+      download: noop,
+      install: noop,
+    },
   };
 }

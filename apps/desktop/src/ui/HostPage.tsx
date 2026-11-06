@@ -5,9 +5,11 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
 import { BypassSwitch } from "@/components/hosts/bypass-switch";
 import { GithubPanel } from "@/components/hosts/github-panel";
+import { HostAutoUpdate } from "@/components/hosts/host-auto-update";
 import { HostDoctor } from "@/components/hosts/host-doctor";
 import { hostDownReason } from "@/components/hosts/host-down-reason";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
+import { HostVersionLine } from "@/components/hosts/host-version";
 import { HostWorktrees } from "@/components/hosts/host-worktrees";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
 import { FieldRow } from "@/components/layout/form";
@@ -92,7 +94,14 @@ export function HostPage(
   return (
     <Page
       title={host.name}
-      subtitle={host.url}
+      subtitle={
+        <HostVersionLine
+          url={host.url}
+          daemon={info?.daemonVersion ?? null}
+          app={APP_VERSION}
+          t={t}
+        />
+      }
       actions={
         <Button variant="outline" onClick={() => setRenaming(true)}>
           {t("hostPage.rename")}
@@ -170,6 +179,7 @@ export function HostPage(
         {host.status === "online" && hasFeature(info?.features, "github", false) && (
           <GithubPanel store={store} host={host} />
         )}
+        <HostAutoUpdate store={store} host={host} />
         <DaemonUpdate store={store} host={host} />
         {info?.apiKeySanitized === false && (
           <InlineNotice>{t("hostPage.apiKeyForwarded")}</InlineNotice>

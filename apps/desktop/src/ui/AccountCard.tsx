@@ -39,7 +39,7 @@ const PERCENT_COLOR: Partial<Record<QuotaWindow["status"], string>> = {
   rejected: "text-status-error",
 };
 
-const PLANS = ["free", "pro", "max", "team", "enterprise"];
+const PLANS = ["free", "pro", "max", "ultra", "team", "enterprise"];
 
 type Reading = Extract<
   NonNullable<AccountCardProps["state"]>,
@@ -47,12 +47,14 @@ type Reading = Extract<
 >["windows"][number];
 
 /** One window of the plan: its name, the percent used and, when known, when it resets. */
-function WindowMeter(props: {
-  reading: Reading;
-  hostName: string;
-  now: number;
-  formatTime: AccountCardProps["formatTime"];
-}) {
+function WindowMeter(
+  props: Readonly<{
+    reading: Reading;
+    hostName: string;
+    now: number;
+    formatTime: AccountCardProps["formatTime"];
+  }>,
+) {
   const t = useT();
   const { reading, hostName, now, formatTime } = props;
   const label = t(`account.windows.${reading.window}` as Key);
@@ -169,6 +171,7 @@ export function AccountCard(props: Readonly<AccountCardProps>) {
             </span>
           )}
         </div>
+        {plan && <span className="text-muted-foreground text-xs">{t("account.planHint")}</span>}
         {state.organization && (
           <span className="text-muted-foreground text-sm">{state.organization}</span>
         )}

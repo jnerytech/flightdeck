@@ -491,10 +491,11 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .getByRole("region", { name: c.t("recap.region") })
       .waitFor({ timeout: SESSION_WAIT });
     await waitFor(async () => (await log.evaluate(bottom)) <= 24, "a conversa abriu no fim");
-    // Scrolled up, a message that arrives leaves the view where it was and is counted.
-    await log.evaluate((el) => {
-      el.scrollTop = 300;
-    });
+    // Scrolled up, a message that arrives leaves the view where it was and is counted. The reader
+    // scrolls with the wheel: a position set from a script is not a person leaving the end, and the
+    // view keeps following it (issue #315).
+    await log.hover();
+    await c.page.mouse.wheel(0, -600);
     const jump = c.page.getByRole("button", { name: new RegExp(`^${c.t("session.jumpLatest")}$`) });
     await jump.waitFor({ timeout: WAIT });
     const kept = await log.evaluate((el) => el.scrollTop);
@@ -567,14 +568,16 @@ async function pageScrollsSideways(page: Page): Promise<string | null> {
   return sideways ? `${sideways.path}: ${sideways.detail}` : null;
 }
 
-/** The crumbs end before the bell, and what does not fit is cut with an ellipsis (issue #133). */
+/**
+ * The crumbs end inside their own box, so the tabs after it start clear of them, and what does not
+ * fit is cut with an ellipsis (issue #133). The bell moved to the top bar's right side (#282).
+ */
 async function crumbsProblem(page: Page): Promise<string | null> {
   return page.evaluate(() => {
     const slot = document.querySelector<HTMLElement>(".header-crumbs");
     const nav = slot?.querySelector<HTMLElement>("nav");
-    const bell = slot?.lastElementChild as HTMLElement | null;
-    if (!slot || !nav || !bell || bell === nav) return "no breadcrumb";
-    const limit = bell.getBoundingClientRect().left + 1;
+    if (!slot || !nav) return "no breadcrumb";
+    const limit = slot.getBoundingClientRect().right + 1;
     // Where the person is must stay readable: the current step never shrinks to nothing.
     const current = nav.querySelector<HTMLElement>("[aria-current='page']");
     if (current && current.getBoundingClientRect().width < 48) {
@@ -583,7 +586,7 @@ async function crumbsProblem(page: Page): Promise<string | null> {
     for (const el of nav.querySelectorAll<HTMLElement>("li > *")) {
       const box = el.getBoundingClientRect();
       if (box.right > limit)
-        return `a crumb (${el.textContent}) ends at ${Math.round(box.right)}, past the bell at ${Math.round(limit)}`;
+        return `a crumb (${el.textContent}) ends at ${Math.round(box.right)}, past its box at ${Math.round(limit)}`;
       if (el.scrollWidth > el.clientWidth + 1) {
         const style = getComputedStyle(el);
         if (style.textOverflow !== "ellipsis" || style.overflow !== "hidden") {

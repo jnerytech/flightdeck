@@ -20,7 +20,7 @@ import { UNASSIGNED } from "../../lib/clients.ts";
 import { type HubRowState, hubRows } from "../../lib/hub.ts";
 import type { Route } from "../../lib/router.ts";
 
-const Count = ({ n }: { n: number }) =>
+const Count = ({ n }: Readonly<{ n: number }>) =>
   n > 0 ? <span className="ml-auto text-muted-foreground text-xs tabular-nums">{n}</span> : null;
 
 /**
@@ -51,12 +51,13 @@ export function ClientSwitcher(
     counts.othersWaiting > 0 ? t("clients.othersWaiting", { count: counts.othersWaiting }) : "";
   // The rail has no room for the badge: its words go to the name and a dot marks the icon.
   const railMark = collapsed && others !== "";
+  const tipName = railMark ? `${name} (${others})` : name;
 
   return (
     <Inline gap={1}>
       {/* Not modal: a modal menu aria-hides the header and the sidebar, which stay focusable. */}
       <DropdownMenu modal={false}>
-        <IconTip label={collapsed ? (railMark ? `${name} (${others})` : name) : undefined}>
+        <IconTip label={collapsed ? tipName : undefined}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"

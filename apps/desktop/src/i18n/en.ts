@@ -749,6 +749,16 @@ export const en: Dictionary = {
     discardInstead: "Discard card",
   },
   shell: {
+    host: "Host: {host}",
+    noHost: "No host yet",
+    hostItem: "{host}, {state}",
+    hostItemVersion: "{host}, {state}, flightdeckd {version}",
+    hostItemDiffers: "{host}, {state}, flightdeckd {version}, not the app's {app}",
+    search: "Search or jump to…",
+    searchLabel: "Search or jump to… (Ctrl+K)",
+    toDark: "Switch to the dark theme",
+    toLight: "Switch to the light theme",
+    version: "Flightdeck {version}",
     sidebar: "Sidebar",
     breadcrumb: "You are in",
     breadcrumbMore: "Show the steps in between",
@@ -1015,7 +1025,16 @@ export const en: Dictionary = {
     title: "Claude account",
     loading: "Reading the account…",
     offline: "{host} is offline: the account shows again when it is back.",
-    plans: { free: "Free", pro: "Pro", max: "Max", team: "Team", enterprise: "Enterprise" },
+    plans: {
+      free: "Free",
+      pro: "Pro",
+      max: "Max",
+      ultra: "Ultra",
+      team: "Team",
+      enterprise: "Enterprise",
+    },
+    planHint:
+      "From the sign-in of claude on this host. Changed your plan? Sign out and in again there, then Refresh.",
     windows: {
       five_hour: "5 hours",
       seven_day: "7 days",
@@ -1224,6 +1243,7 @@ export const en: Dictionary = {
     summary: "the session summary",
     webhook: "webhooks",
     bg: "background sessions",
+    autoUpdate: "automatic host updates",
   },
   daemonRefusal: {
     account_refresh_too_soon: "The account was read a moment ago: try again in {waitSeconds} s.",
@@ -1235,6 +1255,7 @@ export const en: Dictionary = {
       "Turning the terminal on gives a full shell on this host: confirm it to go on.",
     central_confirm: "Changing the host's ~/.claude/settings.json needs your confirmation.",
     permission_request_closed: "The permission request {id} is not open.",
+    hold_required: "A high-risk request is approved only by holding the button.",
     update_needs_service:
       "The daemon does not run as a service: update on the host with flightdeckd update --from <new binary>.",
     update_signature_failed: "The update could not be verified: {why}",
@@ -1451,6 +1472,7 @@ export const en: Dictionary = {
       "The variable {name} has a line break or NUL, which an ssh action does not send.",
     review_path_outside: "The path {path} is outside the repository.",
     review_target_invalid: "{target} is not a session or a card to review.",
+    branch_invalid: "{name} is not a valid branch name.",
     review_file_missing: "The file {path} does not exist.",
     review_file_big: "The file {path} is over 1 MB: edit it outside Flightdeck.",
     review_file_binary: "The file {path} is not text.",
@@ -2093,11 +2115,22 @@ export const en: Dictionary = {
     },
   },
   update: {
+    ready: "Flightdeck {version} is ready. Restart to update.",
+    restartNow: "Restart now",
     label: "App update",
     available: "Flightdeck {version} available",
     first: "Update the app first, then the hosts' daemons.",
     install: "Install and restart",
     later: "Later",
+  },
+  hostAutoUpdate: {
+    label: "Update this host automatically",
+    off: "Off: this host updates only when you choose to.",
+    current: "On: this host updates by itself when a new version is out, never during a session.",
+    waiting: "Version {version} is ready and waits until no session or run is going on this host.",
+    started: "Updating this host to {version}…",
+    failed:
+      "The update to {version} did not go through: {reason}. The host kept its version and tries again at the next check.",
   },
   daemonUpdate: {
     failed: "The daemon update did not finish: {reason}. On the host, with the new binary:",
@@ -3811,6 +3844,7 @@ export const en: Dictionary = {
     unavailable: "unavailable on this platform",
     updates: "Updates",
     notifyUpdates: "Notify about updates",
+    autoUpdate: "Update automatically",
     checkNow: "Check for updates now",
     upToDate: "You are on the latest version",
     shortcut: "Global shortcut",
@@ -4119,6 +4153,8 @@ export const en: Dictionary = {
       "The terminal did not open: {error}. Use Copy command and paste it into your terminal.",
     updateCheckFailed:
       "could not check for updates: {error}. Check the network and try again in Settings.",
+    updateDownloadFailed:
+      "The new version did not download: {error}. It is tried again at the next check, or install it from Settings.",
     updateInstallFailed:
       "The update was not installed: {error}. Try again; if it repeats, download the new version's installer.",
     daemonUpdateLate: "the daemon did not come back on version {version} in time",

@@ -41,13 +41,15 @@ const template = (kind: Kind, typed: string) =>
   kind === "claudemd" ? "# CLAUDE.md\n" : `---\nname: ${typed.trim()}\n---\n`;
 
 /** One file of the list: its name, its path when that differs, and where it comes from. */
-function FileRow(props: {
-  item: AgentCfgItem;
-  current: boolean;
-  originLabel: string;
-  t: AppStore["i18n"]["t"];
-  onOpen(): void;
-}) {
+function FileRow(
+  props: Readonly<{
+    item: AgentCfgItem;
+    current: boolean;
+    originLabel: string;
+    t: AppStore["i18n"]["t"];
+    onOpen(): void;
+  }>,
+) {
   const { item, current, t } = props;
   const name = item.name ?? item.path;
   return (
@@ -76,13 +78,15 @@ function FileRow(props: {
 }
 
 /** The open file's path and origin, and the button that flips between editing and previewing. */
-function FileHeader(props: {
-  opened: Opened;
-  originLabel: string;
-  preview: boolean;
-  t: AppStore["i18n"]["t"];
-  onTogglePreview(): void;
-}) {
+function FileHeader(
+  props: Readonly<{
+    opened: Opened;
+    originLabel: string;
+    preview: boolean;
+    t: AppStore["i18n"]["t"];
+    onTogglePreview(): void;
+  }>,
+) {
   const { opened, preview, t } = props;
   return (
     <div className="flex flex-wrap items-center gap-2">

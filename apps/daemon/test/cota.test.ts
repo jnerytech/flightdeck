@@ -8,7 +8,7 @@ import { startDaemon } from "../src/main.ts";
 import { Quota, type Timers } from "../src/quota/quota.ts";
 import { normalizeSdkMessage } from "../src/runtime/claude-sdk-runtime.ts";
 import { startServer } from "../src/server.ts";
-import { newManager, poll, record, tempDir } from "./helpers.ts";
+import { BASELINE_FEATURES, newManager, poll, record, tempDir } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 const TOKEN = "quota-token-0123456789abcdef";
@@ -290,7 +290,7 @@ describe("cota", () => {
       cleanups.push(() => client.close());
       await client.request("hello", { token: TOKEN, client: "t" });
       return (await client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       );
     };
     expect(await features(true)).toEqual(["quota"]);

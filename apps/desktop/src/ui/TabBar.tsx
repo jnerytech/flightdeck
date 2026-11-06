@@ -392,7 +392,7 @@ const BADGE_GLYPHS: Record<NonNullable<TabBadge>, { icon: LucideIcon; className:
  * A tab's badge: a glyph named in words (for screen readers and in its tooltip), never a text
  * pill, so the tab's title keeps the width.
  */
-function TabBadgeGlyph(props: { badge: NonNullable<TabBadge>; label: string }) {
+function TabBadgeGlyph(props: Readonly<{ badge: NonNullable<TabBadge>; label: string }>) {
   const glyph = BADGE_GLYPHS[props.badge];
   const Glyph = glyph.icon;
   return (

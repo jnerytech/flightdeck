@@ -16,14 +16,16 @@ import { StatusBadge } from "../../ui/StatusBadge.tsx";
 import { TerminalButton } from "../../ui/TerminalButton.tsx";
 
 /** The card's header actions: back, its state, its issue and synced item, its PR and checks, the terminal. */
-export function CardHeaderActions(props: {
-  store: AppStore;
-  hostId: string;
-  card: Card;
-  session: SessionState | null;
-  withSync: boolean;
-  onBack(): void;
-}) {
+export function CardHeaderActions(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    card: Card;
+    session: SessionState | null;
+    withSync: boolean;
+    onBack(): void;
+  }>,
+) {
   const t = useT();
   const { store, card, session } = props;
   return (
@@ -81,20 +83,22 @@ export type CardTab = "conversation" | "diff";
  * output, a step's conversation or the card's own. It always renders, so the conversation keeps
  * its place in the tree (a draft in its composer survives).
  */
-export function CardWork(props: {
-  store: AppStore;
-  hostId: string;
-  card: Card;
-  tab: CardTab;
-  onTab(tab: CardTab): void;
-  /** The step opened from the timeline, and its session when it has one. */
-  openedStep: StepRun | undefined;
-  stepSession: SessionState | null;
-  /** The card's own session. */
-  session: SessionState | null;
-  alwaysAllow: boolean;
-  withReview: boolean;
-}) {
+export function CardWork(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    card: Card;
+    tab: CardTab;
+    onTab(tab: CardTab): void;
+    /** The step opened from the timeline, and its session when it has one. */
+    openedStep: StepRun | undefined;
+    stepSession: SessionState | null;
+    /** The card's own session. */
+    session: SessionState | null;
+    alwaysAllow: boolean;
+    withReview: boolean;
+  }>,
+) {
   const t = useT();
   const { store, hostId, card, tab, openedStep, stepSession, session } = props;
   const cardId = card.id;
