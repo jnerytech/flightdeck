@@ -97,6 +97,19 @@ describe("ci-paths: the rules", () => {
     expect(ciPlan(PR, ["scripts/lib/slot.ts"]).e2e).toBe(false);
   });
 
+  test("demo:shots and every local file it imports plan the prints, so a change to the print guards runs them (#637)", () => {
+    const shots = readFileSync(join(ROOT, "scripts/demo-shots.ts"), "utf8");
+    const local = [...shots.matchAll(/from "(\.\/[^"]+)"/g)].map((m) =>
+      join("scripts", m[1] ?? "").replaceAll("\\", "/"),
+    );
+    expect(local).toContain("scripts/lib/layout-guards.ts");
+    for (const path of ["scripts/demo.ts", "scripts/demo-shots.ts", ...local]) {
+      expect(`${path}: ${ciPlan(PR, [path]).screenshots}`).toBe(`${path}: true`);
+    }
+    expect(ciPlan(PR, ["scripts/lib/slot.ts"]).screenshots).toBe(false);
+    expect(ciPlan(PR, ["apps/daemon/src/main.ts"]).screenshots).toBe(false);
+  });
+
   test("the daemon or a smoke adds the smokes", () => {
     // The demo the journeys drive starts the real daemon, so the daemon plans them too (#410 review).
     const daemon = { ...NONE, smokes: true, e2e: true };
