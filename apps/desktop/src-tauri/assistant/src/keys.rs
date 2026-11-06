@@ -48,6 +48,11 @@ impl Provider {
 pub struct Secret(String);
 
 impl Secret {
+    /// A value read from a store (a vault value, for `vault_hits`); a key goes through `check_key`.
+    pub fn new(value: String) -> Self {
+        Secret(value)
+    }
+
     pub fn expose(&self) -> &str {
         &self.0
     }

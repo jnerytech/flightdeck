@@ -3,3 +3,4 @@
 //! the guards a compromised webview cannot lift. The app's `#[tauri::command]`s only wrap it.
 
 pub mod keys;
+pub mod guard;
