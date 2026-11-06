@@ -38,17 +38,17 @@ describe("rule-realpath: a rule is rated on the real path behind a symlink too (
     ).toBe("high");
   });
 
-  test("a folder rule whose path is a link to a credential folder covers the credentials", () => {
-    expect(ruleLevel("Read", "docs", classify, folder)).toBe("low");
-    expect(ruleLevel("Read", "docs", classify, folder, linked("docs", "/home/me/.ssh"))).toBe(
-      "any",
-    );
+  test("an exact rule whose path is a link to a credential rates high; a folder rule was refused already (#395)", () => {
+    expect(
+      ruleLevel("Read", "notes.txt", classify, file, linked("notes.txt", "/home/me/.ssh/id_rsa")),
+    ).toBe("high");
+    expect(ruleLevel("Read", "docs", classify, folder)).toBe("any");
   });
 
   test("a wildcard rule whose fixed folder is a link out of the project is not narrow", () => {
-    expect(ruleLevel("Write", "src/gen/*.ts", classify, file)).toBe("medium");
+    expect(ruleLevel("Write", "src/app-*.ts", classify, file)).toBe("medium");
     expect(
-      ruleLevel("Write", "src/gen/*.ts", classify, file, linked("src/gen/*.ts", "/etc/gen/*.ts")),
+      ruleLevel("Write", "src/app-*.ts", classify, file, linked("src/app-*.ts", "/etc/app-*.ts")),
     ).toBe("any");
   });
 
