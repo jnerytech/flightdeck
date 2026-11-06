@@ -1850,6 +1850,8 @@ export const en: Dictionary = {
       "The session's repository has no origin branch to start from: the other host could not fetch the code.",
     teleport_git:
       "Git could not pack the session's code. Try again; if it fails again, check the repository.",
+    teleport_stopped:
+      "The host is stopping, so the session was not packed. Try again once it is back.",
     runtime_unavailable: "OpenCode is not available on this host.",
     runtime_unsupported: "An OpenCode session does not offer {feature}.",
     opencode_unsafe_global:

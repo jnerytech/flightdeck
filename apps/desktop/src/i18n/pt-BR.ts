@@ -1846,6 +1846,8 @@ export const ptBR = {
       "O repositório da sessão não tem uma branch do origin para partir: o outro host não conseguiria buscar o código.",
     teleport_git:
       "O git não conseguiu empacotar o código da sessão. Tente de novo; se falhar outra vez, confira o repositório.",
+    teleport_stopped:
+      "O host está parando, por isso a sessão não foi empacotada. Tente de novo quando ele voltar.",
     runtime_unavailable: "O OpenCode não está disponível neste host.",
     runtime_unsupported: "Uma sessão do OpenCode não oferece {feature}.",
     opencode_unsafe_global:

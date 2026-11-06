@@ -12,7 +12,7 @@ import { killTree, runCommand } from "../board/command.ts";
 import { HEAD, refArg } from "../board/ref-arg.ts";
 import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
-import { secretLines, TELEPORT_MAX_BYTES } from "./package.ts";
+import { secretLines, TELEPORT_MAX_BYTES } from "./secrets.ts";
 
 export interface CodeBundleInput {
   /** The session's folder: anywhere inside the repository. */
@@ -63,8 +63,8 @@ async function git(
   args: string[],
   env: Record<string, string> = {},
 ): Promise<string | null> {
+  // git-arg: a forwarder: every caller passes a checked revision (refArg/HEAD) or a value git gave
   const result = await runCommand(
-    // git-arg: every caller passes a checked revision (refArg/HEAD) or a value git itself gave
     [whichOnPath("git") ?? "git", "-c", "core.hooksPath=/dev/null", ...args],
     cwd,
     undefined,
@@ -132,6 +132,7 @@ export async function bundleCode(input: CodeBundleInput): Promise<CodeBundle> {
   try {
     await must(top, ["bundle", "create", "-q", file, ref, `^${base}`]);
   } finally {
+    // git-arg: the ref is made here, from a package id checked against ID
     await git(top, ["update-ref", "-d", ref]);
   }
   const max = input.maxBytes ?? TELEPORT_MAX_BYTES;
