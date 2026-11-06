@@ -185,6 +185,8 @@ export async function withIdleQuery<T>(
     prompt: idle,
     options: {
       settingSources: [],
+      // settingSources does not cover .mcp.json, and this runs in the folder it was started in.
+      strictMcpConfig: true,
       persistSession: false,
       ...(deps.claudePath ? { pathToClaudeCodeExecutable: deps.claudePath } : {}),
     },
