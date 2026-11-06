@@ -26,7 +26,7 @@ export function ImportPanel(
     });
 
   return (
-    <div className="mb-4 flex flex-col gap-3 rounded-lg border p-4">
+    <div className="flex flex-col gap-3 rounded-lg border p-4">
       {props.entries.length === 0 ? (
         <p>{t("connections.import.empty")}</p>
       ) : (

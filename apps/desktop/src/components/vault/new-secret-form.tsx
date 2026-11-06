@@ -62,7 +62,6 @@ export function NewSecretForm(
   return (
     <Form
       variant="panel"
-      className="mb-4"
       onSubmit={() => {
         if (named && value !== "") saving.run(save);
       }}
