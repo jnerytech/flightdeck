@@ -50,18 +50,35 @@ interface StreamBlock {
   content?: string | { type?: string; text?: string }[];
 }
 
+/** One line of the stream as an object; null when it is not one. */
+function eventOf(line: string): Record<string, unknown> | null {
+  try {
+    return JSON.parse(line);
+  } catch {
+    return null;
+  }
+}
+
+/** The command of a Bash tool call, or null for any other block. */
+function bashCommand(block: StreamBlock): string | null {
+  if (block.type !== "tool_use" || block.name !== "Bash") return null;
+  return typeof block.input?.command === "string" ? block.input.command : null;
+}
+
+/** The text of what a tool answered. */
+function resultText(content: StreamBlock["content"]): string {
+  if (typeof content === "string") return content;
+  return (content ?? []).map((c) => c.text ?? "").join("\n");
+}
+
 /** The Bash steps, cost, turns, denials and error flag of a `claude -p --output-format stream-json` run. */
 export function parseStream(jsonl: string): Transcript {
   const steps: EvalStep[] = [];
   const byId = new Map<string, EvalStep>();
   const out: Transcript = { steps, costUsd: 0, turns: 0, denials: 0, isError: false };
   for (const line of jsonl.split("\n")) {
-    let event: Record<string, unknown>;
-    try {
-      event = JSON.parse(line);
-    } catch {
-      continue;
-    }
+    const event = eventOf(line);
+    if (!event) continue;
     if (event.type === "result") {
       out.costUsd = Number(event.total_cost_usd ?? 0);
       out.turns = Number(event.num_turns ?? 0);
@@ -72,21 +89,14 @@ export function parseStream(jsonl: string): Transcript {
     const blocks = (event.message as { content?: unknown } | undefined)?.content;
     if (!Array.isArray(blocks)) continue;
     for (const block of blocks as StreamBlock[]) {
-      if (
-        block.type === "tool_use" &&
-        block.name === "Bash" &&
-        typeof block.input?.command === "string"
-      ) {
-        const step = { command: block.input.command, output: "" };
+      const command = bashCommand(block);
+      if (command !== null) {
+        const step = { command, output: "" };
         steps.push(step);
         byId.set(block.id ?? "", step);
       } else if (block.type === "tool_result") {
         const step = byId.get(block.tool_use_id ?? "");
-        if (!step) continue;
-        step.output =
-          typeof block.content === "string"
-            ? block.content
-            : (block.content ?? []).map((c) => c.text ?? "").join("\n");
+        if (step) step.output = resultText(block.content);
       }
     }
   }
