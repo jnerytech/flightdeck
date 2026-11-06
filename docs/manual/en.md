@@ -2747,6 +2747,10 @@ tab, with no SSH.
 - **Limits:** 10 live terminals per host (`terminal.max`), and a terminal nobody is attached to is
   ended after 120 minutes (`terminal.idleMinutes`). Terminals do not survive a restart or an
   update of the daemon. Their content never goes to the log or to the database.
+- **Scrolling Claude Code:** in Claude Code's fullscreen mode the wheel goes to Claude Code, which
+  moves by its own `CLAUDE_CODE_SCROLL_SPEED`. Terminals opened by the app set it to 3 lines a
+  notch, as Windows Terminal and VS Code feel, unless the host's environment or Claude Code's
+  settings (where `/scroll-speed` keeps it) already set a speed: then that one is used.
 
 ### Claude here
 
