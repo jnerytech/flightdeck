@@ -1177,7 +1177,8 @@ conversation. It is where you check what the agent did and send it back what to 
     **Refresh** reads it again.
 - **Files tab** (when the host lists files): the session's repository as a tree. Folders come
   first, then files, in natural order (`file2` before `file10`); a folder opens on click and is
-  read once. A changed file carries its status (new, modified, deleted, renamed) from the same diff
+  read when opened, and again when the session writes or removes a file in it (no need to reopen
+  the tab). A changed file carries its status (new, modified, deleted, renamed) from the same diff
   as the Changes tab, live, and every folder above it says **has changes**. A file that may hold a
   credential shows as **Hidden**. `.git` and links that lead out of the repository never show.
   **Filter by name** keeps the names that match among the folders already open, with the folders
@@ -1537,7 +1538,10 @@ exits with code 3.
   is offline, or does not answer within 5 s, shows as "no answer" without blocking the rest.
 - **Reader:** read-only, with the chat's look, loading pages as you scroll. Coming from the
   search, it opens at the hit; otherwise it opens on the latest messages, and "Load earlier" brings
-  the ones before without moving what you are reading.
+  the ones before without moving what you are reading. A tool row (Bash, Read, Grep...) opens with a
+  click, Enter or Space to its whole input (the command, the file, the pattern) and its result, read
+  from the transcript when you open it; an error is red, a result over 64 KB is cut and says so, and
+  a call with no result yet says it is still running or was cut short.
 - **Where a conversation opens:** a session (managed, terminal or from the history) opens on its
   latest message and stays at the end while images, code and panels settle. If you scroll up, it
   stays where you are and the **Jump to latest** button counts the new messages ("3 new"). When you

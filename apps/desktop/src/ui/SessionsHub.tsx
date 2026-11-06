@@ -598,157 +598,160 @@ export function SessionsHub(
                   </span>
                 )}
               </ProjectHeader>
-              {view === "cards" ? (
-                <CardGrid>
-                  {group.rows.map((row) => (
-                    <SessionCard
-                      key={row.key}
-                      title={row.title}
-                      project={group.name}
-                      host={row.hostName}
-                      stateLabel={t(`hub.stateDots.${stateKey(row)}` as Key)}
-                      tone={STATE_TONES[row.state]}
-                      line={sessionLineText(row.summary, store.now(), t)}
-                      {...cardCost(row)}
-                      persona={row.persona?.name ?? null}
-                      asleep={row.asleep ? t("hub.asleep") : null}
-                      cache={cacheOf(row)}
-                      runtime={row.runtime ? t("session.runtimeOpenCode") : null}
-                      current={props.isOpen(row)}
-                      active={listed[cursor]?.key === row.key}
-                      onOpen={() => {
-                        setCursor(listed.findIndex((r) => r.key === row.key));
-                        props.onOpen(row);
-                      }}
-                      actions={rowActions(row)}
-                    />
-                  ))}
-                </CardGrid>
-              ) : (
-                <ul className="flex flex-col">
-                  {group.rows.map((row) => {
-                    const cost = costs[`${row.hostId}/${row.claudeSessionId}`];
-                    const line = sessionLineText(row.summary, store.now(), t);
-                    // What the whole group shares is in its header; the row keeps what differs.
-                    const rowMeta = [
-                      shared.origin === null && row.origin !== "terminal"
-                        ? t(`hub.originTags.${row.origin}` as Key)
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ");
-                    return (
-                      <li
+              {/* The rows sit under the folder icon, the footer with them (#588). */}
+              <div data-slot="group-body" className="group-body">
+                {view === "cards" ? (
+                  <CardGrid>
+                    {group.rows.map((row) => (
+                      <SessionCard
                         key={row.key}
-                        aria-label={row.title}
-                        aria-current={props.isOpen(row) ? "true" : undefined}
-                        data-active={listed[cursor]?.key === row.key}
-                        className={cn(
-                          "group flex items-center gap-x-2 rounded-md px-2 transition-colors duration-150 hover:bg-accent data-[active=true]:bg-accent aria-[current=true]:bg-accent",
-                          props.density === "compact" ? "h-8" : "min-h-10 flex-wrap py-1",
-                        )}
-                      >
-                        <StatusDot
-                          tone={STATE_TONES[row.state]}
-                          label={t(`hub.stateDots.${stateKey(row)}` as Key)}
-                        />
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCursor(listed.findIndex((r) => r.key === row.key));
-                                props.onOpen(row);
-                              }}
-                              className="min-w-0 flex-1 truncate text-left font-medium text-sm"
-                            >
-                              {row.title}
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>{row.title}</TooltipContent>
-                        </Tooltip>
-                        {shared.hostName === null && (
-                          <HostChip
-                            name={row.hostName}
-                            label={t("hub.openHost", { name: row.hostName })}
-                            onOpen={() => store.router.push({ name: "host", host: row.hostId })}
-                          />
-                        )}
-                        {rowMeta && (
-                          <span
-                            data-slot="row-meta"
-                            className="hidden max-w-[40%] min-w-0 shrink-[3] truncate text-muted-foreground text-xs @[20rem]:inline"
-                          >
-                            {rowMeta}
-                          </span>
-                        )}
-                        {row.persona && (
-                          <span className="shrink-0 rounded bg-muted px-1 text-xs">
-                            {row.persona.name}
-                          </span>
-                        )}
-                        {row.asleep && <AsleepMark label={t("hub.asleep")} />}
-                        {row.origin === "terminal" && (
-                          <RuntimeBadge slot="origin-chip" label={t("hub.originTags.terminal")} />
-                        )}
-                        {row.runtime && <RuntimeBadge label={t("session.runtimeOpenCode")} />}
-                        {row.controllable && (
-                          <>
-                            <Radio
-                              aria-hidden="true"
-                              className="size-3 shrink-0 text-muted-foreground"
-                            />
-                            <span className="sr-only">{t("hub.controllable")}</span>
-                          </>
-                        )}
-                        {cost !== undefined && (
-                          <output
-                            aria-label={t("hub.cost", { title: row.title })}
-                            className="shrink-0 text-muted-foreground text-xs tabular-nums"
-                          >
-                            {usd(cost)}
-                          </output>
-                        )}
-                        {cacheOf(row)}
-                        {row.lastActivity && (
-                          <time
-                            dateTime={new Date(row.lastActivity).toISOString()}
-                            title={store.formatDateTime(row.lastActivity)}
-                            className="shrink-0 text-muted-foreground text-xs tabular-nums"
-                          >
-                            {store.formatWhen(row.lastActivity)}
-                          </time>
-                        )}
-                        {rowActions(row)}
-                        <span
-                          data-slot="summary"
+                        title={row.title}
+                        project={group.name}
+                        host={row.hostName}
+                        stateLabel={t(`hub.stateDots.${stateKey(row)}` as Key)}
+                        tone={STATE_TONES[row.state]}
+                        line={sessionLineText(row.summary, store.now(), t)}
+                        {...cardCost(row)}
+                        persona={row.persona?.name ?? null}
+                        asleep={row.asleep ? t("hub.asleep") : null}
+                        cache={cacheOf(row)}
+                        runtime={row.runtime ? t("session.runtimeOpenCode") : null}
+                        current={props.isOpen(row)}
+                        active={listed[cursor]?.key === row.key}
+                        onOpen={() => {
+                          setCursor(listed.findIndex((r) => r.key === row.key));
+                          props.onOpen(row);
+                        }}
+                        actions={rowActions(row)}
+                      />
+                    ))}
+                  </CardGrid>
+                ) : (
+                  <ul className="flex flex-col">
+                    {group.rows.map((row) => {
+                      const cost = costs[`${row.hostId}/${row.claudeSessionId}`];
+                      const line = sessionLineText(row.summary, store.now(), t);
+                      // What the whole group shares is in its header; the row keeps what differs.
+                      const rowMeta = [
+                        shared.origin === null && row.origin !== "terminal"
+                          ? t(`hub.originTags.${row.origin}` as Key)
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ");
+                      return (
+                        <li
+                          key={row.key}
+                          aria-label={row.title}
+                          aria-current={props.isOpen(row) ? "true" : undefined}
+                          data-active={listed[cursor]?.key === row.key}
                           className={cn(
-                            "truncate text-muted-foreground text-xs",
-                            props.density === "compact" ? "sr-only" : "basis-full pl-4",
+                            "group flex items-center gap-x-2 rounded-md px-2 transition-colors duration-150 hover:bg-accent data-[active=true]:bg-accent aria-[current=true]:bg-accent",
+                            props.density === "compact" ? "h-8" : "min-h-10 flex-wrap py-1",
                           )}
                         >
-                          {line}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-              {groupView?.expanded && !searching && groupView.earlier.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="self-start text-muted-foreground text-xs"
-                  aria-expanded={groupView.earlierShown}
-                  onClick={() =>
-                    setEarlierOpen({ ...earlierOpen, [group.foldKey]: !groupView.earlierShown })
-                  }
-                >
-                  {groupView.earlier.length === 1
-                    ? t("hub.earlierOne")
-                    : t("hub.earlier", { n: groupView.earlier.length })}
-                </Button>
-              )}
+                          <StatusDot
+                            tone={STATE_TONES[row.state]}
+                            label={t(`hub.stateDots.${stateKey(row)}` as Key)}
+                          />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCursor(listed.findIndex((r) => r.key === row.key));
+                                  props.onOpen(row);
+                                }}
+                                className="min-w-0 flex-1 truncate text-left font-medium text-sm"
+                              >
+                                {row.title}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>{row.title}</TooltipContent>
+                          </Tooltip>
+                          {shared.hostName === null && (
+                            <HostChip
+                              name={row.hostName}
+                              label={t("hub.openHost", { name: row.hostName })}
+                              onOpen={() => store.router.push({ name: "host", host: row.hostId })}
+                            />
+                          )}
+                          {rowMeta && (
+                            <span
+                              data-slot="row-meta"
+                              className="hidden max-w-[40%] min-w-0 shrink-[3] truncate text-muted-foreground text-xs @[20rem]:inline"
+                            >
+                              {rowMeta}
+                            </span>
+                          )}
+                          {row.persona && (
+                            <span className="shrink-0 rounded bg-muted px-1 text-xs">
+                              {row.persona.name}
+                            </span>
+                          )}
+                          {row.asleep && <AsleepMark label={t("hub.asleep")} />}
+                          {row.origin === "terminal" && (
+                            <RuntimeBadge slot="origin-chip" label={t("hub.originTags.terminal")} />
+                          )}
+                          {row.runtime && <RuntimeBadge label={t("session.runtimeOpenCode")} />}
+                          {row.controllable && (
+                            <>
+                              <Radio
+                                aria-hidden="true"
+                                className="size-3 shrink-0 text-muted-foreground"
+                              />
+                              <span className="sr-only">{t("hub.controllable")}</span>
+                            </>
+                          )}
+                          {cost !== undefined && (
+                            <output
+                              aria-label={t("hub.cost", { title: row.title })}
+                              className="shrink-0 text-muted-foreground text-xs tabular-nums"
+                            >
+                              {usd(cost)}
+                            </output>
+                          )}
+                          {cacheOf(row)}
+                          {row.lastActivity && (
+                            <time
+                              dateTime={new Date(row.lastActivity).toISOString()}
+                              title={store.formatDateTime(row.lastActivity)}
+                              className="shrink-0 text-muted-foreground text-xs tabular-nums"
+                            >
+                              {store.formatWhen(row.lastActivity)}
+                            </time>
+                          )}
+                          {rowActions(row)}
+                          <span
+                            data-slot="summary"
+                            className={cn(
+                              "truncate text-muted-foreground text-xs",
+                              props.density === "compact" ? "sr-only" : "basis-full pl-4",
+                            )}
+                          >
+                            {line}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                {groupView?.expanded && !searching && groupView.earlier.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="self-start text-muted-foreground text-xs"
+                    aria-expanded={groupView.earlierShown}
+                    onClick={() =>
+                      setEarlierOpen({ ...earlierOpen, [group.foldKey]: !groupView.earlierShown })
+                    }
+                  >
+                    {groupView.earlier.length === 1
+                      ? t("hub.earlierOne")
+                      : t("hub.earlier", { n: groupView.earlier.length })}
+                  </Button>
+                )}
+              </div>
             </section>
           );
         })}

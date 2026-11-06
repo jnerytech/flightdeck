@@ -8,6 +8,7 @@ import { FlightdeckError } from "../errors.ts";
 import { promptText } from "../transcript-text.ts";
 import { type HistoryRecord, parseLines } from "./parser.ts";
 import { lastTool, requestLine } from "./session-line.ts";
+import { fileLines, type ToolDetail, toolDetail } from "./tool-detail.ts";
 
 export interface HistoryIndexerOptions {
   db: Database;
@@ -309,6 +310,25 @@ export class HistoryIndexer {
       .query(`${SESSION_SELECT} WHERE s.claude_session_id = ?`)
       .get(claudeSessionId) as SessionRow | null;
     return row ? this.toSession(row) : null;
+  }
+
+  /**
+   * The `index`-th tool call of the message `uuid` with its result (#606), read from the transcript
+   * file the indexer recorded for the session: never a path the client names.
+   */
+  async tool(claudeSessionId: string, uuid: string, index: number): Promise<ToolDetail | null> {
+    const row = this.db
+      .query("SELECT file_path FROM history_sessions WHERE claude_session_id = ?")
+      .get(claudeSessionId) as { file_path: string } | null;
+    if (!row) {
+      throw new FlightdeckError(
+        "not_found",
+        `transcript ${claudeSessionId} not indexed`,
+        "transcript_not_indexed",
+        { id: claudeSessionId },
+      );
+    }
+    return await toolDetail(fileLines(row.file_path), uuid, index);
   }
 
   /** One page of the readable transcript (messages, summaries and system notes). */

@@ -2139,6 +2139,10 @@ export const en: Dictionary = {
     continueAnyway: "Continue anyway",
     loadPrevious: "Load earlier",
     tool: "Tool {name}",
+    toolLoading: "Reading the call from the transcript…",
+    toolNoResult: "No result in the transcript: still running, or cut short.",
+    toolTruncated: "Cut at 64 KB.",
+    toolMissing: "This call could not be read from the transcript.",
     loading: "Opening the session…",
     missing: "This session is not on {host} any more: it may have been deleted or moved.",
     failed: "The session could not be read from {host}.",
@@ -3842,6 +3846,14 @@ export const en: Dictionary = {
     openBoard: "Open the board of {name}",
     workflows: "Workflows of {name}",
     edit: "Edit {name}",
+    /** What a project row shows on its action buttons; the full name above stays their accessible name. */
+    short: {
+      workflows: "Workflows",
+      agent: "Agent",
+      actions: "Actions",
+      automations: "Automations",
+      edit: "Edit",
+    },
     worktreeIncludeMissing:
       "This project has no .worktreeinclude. List in it the files git ignores that every worktree needs (such as .env), one pattern per line:",
     worktreeIncludeExample: "Example .worktreeinclude",

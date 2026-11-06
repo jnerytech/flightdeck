@@ -1141,6 +1141,14 @@ html:not(:has([data-slot="status-bar"])) {
 }
 /* A team member's row (#594): the name and its chips, then a column of one width on every row
    for the session's state and the links, so they line up from row to row. */
+/* An open project's rows and its earlier-sessions button (#588): indented by the header's chevron
+   and gap, so a row's status dot sits under the folder icon. */
+@utility group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-left: 2rem;
+}
 @utility member-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 14rem;
@@ -1477,6 +1485,30 @@ html:not(:has([data-slot="status-bar"])) {
   align-items: center;
   gap: 1rem;
   font-size: 0.875rem;
+}
+/* A project on the Projects page: its name and whole path on one line, its actions on the next (#588). */
+@utility project-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+@utility project-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+@utility project-path {
+  min-width: 0;
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+  overflow-wrap: anywhere;
 }
 /* The help under a checkbox, indented to its words (the box and the 8 px gap). */
 @utility setting-hint {

@@ -68,7 +68,7 @@ export function FoldAll(
   }>,
 ) {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-2">
       <Button variant="ghost" size="sm" onClick={props.onExpand}>
         {props.expandLabel}
       </Button>
@@ -89,7 +89,7 @@ export function HostFilterRow(
   }>,
 ) {
   return (
-    <fieldset aria-label={props.label} className="flex flex-wrap items-center gap-1">
+    <fieldset aria-label={props.label} className="flex flex-wrap items-center gap-2">
       {props.hosts.map((name) => (
         <Button
           key={name}

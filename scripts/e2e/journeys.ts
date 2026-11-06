@@ -888,6 +888,55 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("button", { name: c.t("terminalUi.close"), exact: true }).click();
     await c.page.getByRole("button", { name: c.t("terminalUi.end"), exact: true }).click();
   },
+
+  // 25. The tab row (#488): two tabs, only the active one selected and showing its ×, which the
+  // other shows on hover; closing the active one leaves the other active; in a window under 600 px
+  // tall the tabs share the top bar's row.
+  "tab-row": async (c) => {
+    await open(c, { name: "hub" });
+    await c.page
+      .locator("aside")
+      .first()
+      .getByRole("button", { name: c.t("sidebar.openHost", { host: "alfa" }) })
+      .click({ modifiers: ["Control"] });
+    const bar = c.page.getByRole("tablist", { name: c.t("tabs.list"), exact: true });
+    const tabs = bar.getByRole("tab");
+    await waitFor(async () => (await tabs.count()) === 2, "duas abas");
+    const selected = async () =>
+      (await tabs.evaluateAll((all) => all.map((tab) => tab.getAttribute("aria-selected")))).join();
+    // The × of the nth tab is a sibling of the tab in its item, drawn invisible until it is wanted.
+    const cross = (n: number) =>
+      c.page.locator(".tab-item").nth(n).locator("button[tabindex='-1']");
+    const shown = async (n: number) =>
+      Number(await cross(n).evaluate((el) => getComputedStyle(el).opacity)) > 0.5;
+    const picked = (await selected()).split(",").indexOf("true");
+    if (picked < 0 || (await selected()).split(",").filter((s) => s === "true").length !== 1) {
+      throw new Error(`uma única aba ativa era esperado, veio: ${await selected()}`);
+    }
+    const other = picked === 0 ? 1 : 0;
+    if (!(await shown(picked))) throw new Error("a aba ativa devia mostrar o ×");
+    if (await shown(other)) throw new Error("a aba inativa devia esconder o ×");
+    await tabs.nth(other).hover();
+    await waitFor(() => shown(other), "o × da aba inativa ao passar o mouse");
+    // Another tab becomes the active one.
+    await tabs.nth(other).click();
+    await waitFor(async () => (await selected()).split(",")[other] === "true", "a outra aba ativa");
+    // Closing the active tab leaves the other one, active.
+    await cross(other).click();
+    await waitFor(async () => (await tabs.count()) === 1, "uma aba depois de fechar");
+    if ((await selected()) !== "true") throw new Error("a aba que sobrou devia estar ativa");
+    // In a window under 600 px tall the area's tabs share the top bar's row.
+    // Where the strip sits is read in the page: a locator that finds nothing would wait for the whole test.
+    const inHeader = () =>
+      c.page.evaluate(() => {
+        const strip = document.querySelector('[role="tablist"]');
+        const header = document.querySelector("header");
+        return strip === null || header === null ? null : header.contains(strip);
+      });
+    if ((await inHeader()) !== false) throw new Error("em janela alta as abas têm linha própria");
+    await c.page.setViewportSize({ width: 720, height: 480 });
+    await waitFor(async () => (await inHeader()) === true, "as abas na linha da barra do topo");
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */

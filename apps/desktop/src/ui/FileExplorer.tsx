@@ -1,5 +1,5 @@
 import type { DiffFile, FileEntry, FileListing } from "@flightdeck/protocol";
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Inline, Stack } from "@/components/layout/stack";
 import { TreeBranch, TreeItem } from "@/components/layout/tree";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "../lib/app-store.ts";
+import { affectedDirs } from "../lib/file-changes.ts";
 
 // CodeMirror stays out of the entry chunk (bundle-lazy): the viewer loads on the first open.
 const FileViewer = lazy(() => import("./FileViewer.tsx").then((m) => ({ default: m.FileViewer })));
@@ -50,18 +51,42 @@ export function FileExplorer(props: Readonly<{ store: AppStore; hostId: string; 
     void load("");
   }, [load]);
 
+  /** The folders listed so far, for the live refresh below to read without re-subscribing. */
+  const listed = useRef(folders);
+  listed.current = folders;
+  /** The diff as last seen: what a new one is compared with. */
+  const seen = useRef<DiffFile[]>([]);
+
+  /** Lists a folder again behind the entries on screen: a refusal keeps what was there. */
+  const relist = useCallback(
+    async (dir: string) => {
+      const result = await store.hostRequest(hostId, "file.list", { target, dir });
+      if (result.ok) setFolders((known) => ({ ...known, [dir]: result.data }));
+    },
+    [store, hostId, target],
+  );
+
   // The marks follow the same diff as the Changes tab: read once, then live.
   useEffect(() => {
     void store.hostRequest(hostId, "changes.get", { target }).then((result) => {
       if (!result.ok) return;
+      seen.current = result.data.files;
       setChanges(result.data.files);
       setRoot(result.data.root);
     });
     return store.watchChanges(hostId, target, (update) => {
+      // A file the session writes (or removes) shows in its folder without reopening the tab:
+      // the folders already listed above it are asked again, no other.
+      const dirs = affectedDirs(seen.current, update.files);
+      seen.current = update.files;
+      for (const dir of dirs) {
+        const known = listed.current[dir];
+        if (typeof known === "object" && "entries" in known) void relist(dir);
+      }
       setChanges(update.files);
       setRoot(update.root);
     });
-  }, [store, hostId, target]);
+  }, [store, hostId, target, relist]);
 
   const toggle = (path: string) => {
     const next = new Set(open);
