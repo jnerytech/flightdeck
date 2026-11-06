@@ -2860,10 +2860,15 @@ signature (see [Installation](#from-the-release-binaries)).
 
 - **The app:**
   - looks for a new version on open and every 6 h, in the latest release's `latest.json`;
-  - with a new version, shows the banner "Flightdeck X available", with the notes, **Install and
-    restart** and **Later**;
-  - an invalid signature or a broken download shows up in the banner, and nothing is installed;
-  - in **Settings**: **Check for updates now** and **Notify about updates** (on by default).
+  - with **Update automatically** on (the default), it downloads the new version in the
+    background, checks its signature, and then shows the banner "Flightdeck X is ready. Restart
+    to update." with **Restart now** and **Later**. Nothing restarts by itself (#280);
+  - with it off, the banner says "Flightdeck X available", with the notes, **Install and
+    restart** and **Later**, as before;
+  - an invalid signature or a broken download shows up in the banner, and nothing is installed; a
+    failed download is tried again at the next check;
+  - in **Settings**: **Check for updates now**, **Notify about updates** and **Update
+    automatically** (both on by default).
 - **The daemon:**
   - checks `daemon-latest.json` on start, when asked, and every `updates.checkIntervalH` (6 h by
     default);
@@ -2878,13 +2883,19 @@ signature (see [Installation](#from-the-release-binaries)).
     sha256 and the signature, and runs `flightdeckd update --from` outside the service, to
     survive its own stop: a one-off `Flightdeck\update` task on Windows and `systemd-run --user`
     on Linux;
-  - the host shows "updating…" until it reconnects on the new version.
+  - the host shows "updating…" until it reconnects on the new version;
+  - **by itself** (`updates.auto`, on by default; #280): when a check finds a newer version, the
+    daemon applies it only while the host is idle, with no session or run going on, and otherwise
+    waits. It never applies an older version. A failed apply keeps the old binary and is tried
+    again at the next check. The host page has **Update this host automatically** (the same
+    setting, kept by the daemon) and says whether the update is off, current, waiting, started or
+    failed, and why.
 - **Order:** with the app and the daemons both out of date, the banner suggests updating the app
   first.
 
 ```json
 { "updates": { "manifestUrl": "https://github.com/jnerytech/flightdeck/releases/latest/download/daemon-latest.json",
-               "checkIntervalH": 6 } }
+               "checkIntervalH": 6, "auto": true } }
 ```
 
 Only the compiled `flightdeckd` checks GitHub by default. When running from source there is no
