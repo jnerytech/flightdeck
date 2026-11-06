@@ -9,6 +9,7 @@ import {
   type PathKind,
   pathKinds,
   ruleLevel,
+  writeTarget,
 } from "../src/permissions/rule-risk.ts";
 
 /**
@@ -220,6 +221,14 @@ describe("rule-risk: the exact paths the server looks up, and the check without 
       target: "/proj/new.ts",
     });
     expect(absolute("/proj/new.ts")).toBe("file");
+  });
+
+  test("writeTarget names the file a write tool is about to write, and nothing for a read or a shell", () => {
+    expect(writeTarget("Write", { file_path: "new.ts", content: "x" })).toBe("new.ts");
+    expect(writeTarget("NotebookEdit", { notebook_path: "n.ipynb" })).toBe("n.ipynb");
+    expect(writeTarget("Read", { file_path: "a.ts" })).toBeUndefined();
+    expect(writeTarget("Bash", { command: "touch x" })).toBeUndefined();
+    expect(writeTarget("Write", { file_path: 3 })).toBeUndefined();
   });
 
   test("checkUpdates reads a path it was not told about as a folder, so the rule is refused", () => {
