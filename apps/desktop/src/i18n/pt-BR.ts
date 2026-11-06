@@ -2096,6 +2096,8 @@ export const ptBR = {
   common: {
     cancel: "Cancelar",
     close: "Fechar",
+    /** A wide table's frame (#641): it scrolls sideways by itself. */
+    scrollsSideways: "{name}, rola para os lados",
   },
   session: {
     moreActions: "Mais ações",

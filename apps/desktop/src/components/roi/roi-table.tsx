@@ -1,5 +1,6 @@
 import type { RoiSummaryResult } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { WideTable } from "@/components/layout/wide-table";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { Key } from "@/i18n/index";
@@ -107,63 +108,69 @@ export function RoiTable(
       {rows.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("roiUi.table.empty")}</p>
       ) : (
-        <table aria-label={t("roiUi.tableTitle")} className="w-full text-left text-sm tabular-nums">
-          <thead>
-            <tr>
-              {COLUMNS.map((column) => (
-                <th
-                  key={column}
-                  scope="col"
-                  aria-sort={ariaSort(sort, column)}
-                  className="py-1 pr-3 font-medium"
-                >
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto px-0"
-                    onClick={() => click(column)}
+        // Nine columns that only mean something side by side: they scroll inside the frame (#641).
+        <WideTable name={t("roiUi.tableTitle")}>
+          <table
+            aria-label={t("roiUi.tableTitle")}
+            className="w-full text-left text-sm tabular-nums"
+          >
+            <thead>
+              <tr>
+                {COLUMNS.map((column) => (
+                  <th
+                    key={column}
+                    scope="col"
+                    aria-sort={ariaSort(sort, column)}
+                    className="py-1 pr-3 font-medium"
                   >
-                    {label(column)}
-                  </Button>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {shown.map((row) => (
-              <tr key={row.key} className="border-t">
-                <th scope="row" className="py-1 pr-3 font-normal">
-                  {row.name}
-                </th>
-                <td className="pr-3">{usd(row.figures.costUsd)}</td>
-                <td className="pr-3">{row.figures.cards}</td>
-                <td className="pr-3">{row.figures.prsMerged}</td>
-                <td className="pr-3">{money(row.figures.costPerCard)}</td>
-                <td className="pr-3">{money(row.figures.costPerPr)}</td>
-                <td className="pr-3">{row.figures.hours}</td>
-                <td className="pr-3">{money(row.figures.valueUsd)}</td>
-                <td className="pr-3">
-                  {row.figures.roi === null ? DASH : row.figures.roi.toFixed(1)}
-                </td>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-0"
+                      onClick={() => click(column)}
+                    >
+                      {label(column)}
+                    </Button>
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t font-medium">
-              <th scope="row" className="py-1 pr-3 text-left">
-                {t("roiUi.table.total")}
-              </th>
-              <td className="pr-3">{usd(totals.costUsd)}</td>
-              <td className="pr-3">{totals.cards}</td>
-              <td className="pr-3">{totals.prsMerged}</td>
-              <td className="pr-3">{money(totals.costPerCard)}</td>
-              <td className="pr-3">{money(totals.costPerPr)}</td>
-              <td className="pr-3">{totals.hours}</td>
-              <td className="pr-3">{money(totals.valueUsd)}</td>
-              <td className="pr-3">{totals.roi === null ? DASH : totals.roi.toFixed(1)}</td>
-            </tr>
-          </tfoot>
-        </table>
+            </thead>
+            <tbody>
+              {shown.map((row) => (
+                <tr key={row.key} className="border-t">
+                  <th scope="row" className="py-1 pr-3 font-normal">
+                    {row.name}
+                  </th>
+                  <td className="pr-3">{usd(row.figures.costUsd)}</td>
+                  <td className="pr-3">{row.figures.cards}</td>
+                  <td className="pr-3">{row.figures.prsMerged}</td>
+                  <td className="pr-3">{money(row.figures.costPerCard)}</td>
+                  <td className="pr-3">{money(row.figures.costPerPr)}</td>
+                  <td className="pr-3">{row.figures.hours}</td>
+                  <td className="pr-3">{money(row.figures.valueUsd)}</td>
+                  <td className="pr-3">
+                    {row.figures.roi === null ? DASH : row.figures.roi.toFixed(1)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t font-medium">
+                <th scope="row" className="py-1 pr-3 text-left">
+                  {t("roiUi.table.total")}
+                </th>
+                <td className="pr-3">{usd(totals.costUsd)}</td>
+                <td className="pr-3">{totals.cards}</td>
+                <td className="pr-3">{totals.prsMerged}</td>
+                <td className="pr-3">{money(totals.costPerCard)}</td>
+                <td className="pr-3">{money(totals.costPerPr)}</td>
+                <td className="pr-3">{totals.hours}</td>
+                <td className="pr-3">{money(totals.valueUsd)}</td>
+                <td className="pr-3">{totals.roi === null ? DASH : totals.roi.toFixed(1)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </WideTable>
       )}
     </section>
   );
