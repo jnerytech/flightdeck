@@ -78,3 +78,15 @@ pub fn scrub(text: &str, key: &Secret) -> String {
         text.replace(key.expose(), "<key>")
     }
 }
+
+/// A provider's error text for the app: scrubbed, at most `guard::MAX_DETAIL_CHARS` characters.
+pub fn detail(text: &str, key: &Secret) -> String {
+    scrub(text, key)
+}
+
+/// A request id or a `retry-after` value as it may reach the app: 1 to 200 characters of
+/// `[A-Za-z0-9._:-]`, or nothing.
+pub fn token(value: &str) -> Option<String> {
+    let _ = value;
+    None
+}

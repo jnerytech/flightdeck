@@ -344,6 +344,8 @@ mod tests {
             assert_eq!(refused.reason, *want, "{} {}", sent.status, sent.body);
             assert_eq!(refused.params.get("requestId").map(String::as_str), Some("req_42"));
         }
+        let large = refusal(&cases[5].0, &key());
+        assert_eq!(large.params.get("max").map(String::as_str), Some("100000"), "the strings show {{max}}");
         let limited = refusal(&cases[7].0, &key());
         assert_eq!(limited.params.get("retryAfter").map(String::as_str), Some("30"));
         let forbidden = refusal(&cases[3].0, &key());
@@ -469,6 +471,52 @@ mod tests {
     #[test]
     fn scrub_takes_the_key_out_of_any_text() {
         assert_eq!(crate::scrub(&format!("x {FAKE} y {FAKE}"), &key()), "x <key> y <key>");
+        assert_eq!(crate::scrub(&format!("x{FAKE}y"), &key()), "x<key>y");
         assert_eq!(crate::scrub("nothing here", &key()), "nothing here");
+        assert_eq!(
+            crate::scrub("bad key sk-ant-api03-abc…wxyz and sk-or-v1-au7...890, or SK-ANT-API03-XYZ0123", &key()),
+            "bad key <key> and <key>, or <key>",
+            "a prefix, a masked or a case-changed key"
+        );
+        assert_eq!(crate::scrub("ask-me later", &key()), "ask-me later", "sk- inside a word");
+    }
+
+    #[test]
+    fn a_detail_is_scrubbed_and_capped_and_a_request_id_or_retry_after_is_a_short_token() {
+        let long = "a".repeat(1000);
+        assert_eq!(crate::detail(&long, &key()).chars().count(), crate::guard::MAX_DETAIL_CHARS);
+        assert_eq!(crate::detail(&format!("bad {FAKE}"), &key()), "bad <key>");
+        assert_eq!(crate::token("req_01Ab-2.c:3"), Some("req_01Ab-2.c:3".to_string()));
+        let wide = "r".repeat(201);
+        for bad in ["", "req 1", "req\n<script>", "ré", wide.as_str()] {
+            assert_eq!(crate::token(bad), None, "{bad:?}");
+        }
+        let error = |message: &str| format!(r#"{{"error":{{"message":"{message}"}}}}"#);
+        let odd = refusal(&reply(429, &[("request-id", "req 1<b>"), ("retry-after", "soon!")], &error(&long)), &key());
+        assert_eq!(
+            (odd.reason, odd.params.get("requestId"), odd.params.get("retryAfter")),
+            ("assistant_rate_limited", None, None)
+        );
+        assert_eq!(odd.params.get("detail").map(|d| d.chars().count()), Some(crate::guard::MAX_DETAIL_CHARS));
+    }
+
+    #[test]
+    fn a_run_checks_the_model_and_the_input_before_any_request() {
+        // A port nobody listens on: a request would come back `assistant_offline`.
+        let port = TcpListener::bind("127.0.0.1:0").and_then(|l| l.local_addr()).map(|a| a.port()).unwrap_or(1);
+        let long = "x".repeat(guard::MAX_INPUT_CHARS + 1);
+        let outcome = |call: Call<'_>| {
+            tokio::runtime::Builder::new_current_thread().enable_all().build().map_err(|_| "rt").and_then(|rt| {
+                rt.block_on(async {
+                    let client = guard::client().map_err(|r| r.reason)?;
+                    let endpoint = Endpoint::with_base(&format!("http://127.0.0.1:{port}")).map_err(|r| r.reason)?;
+                    run(&client, &endpoint, &key(), &call, Lookup::NoList).await.map(|a| a.text).map_err(|r| r.reason)
+                })
+            })
+        };
+        assert_eq!(outcome(call("../v1/models")), Err("assistant_model_unavailable"));
+        assert_eq!(outcome(Call { user: &long, ..call("claude-haiku-5-5") }), Err("assistant_too_long"));
+        assert_eq!(outcome(Call { system: &long, ..call("claude-haiku-5-5") }), Err("assistant_too_long"));
+        assert_eq!(outcome(call("claude-haiku-5-5")), Err("assistant_offline"), "the checks pass, the request goes");
     }
 }
