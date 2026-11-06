@@ -75,16 +75,19 @@ describe("board-landing: the Board screen of a host is a grid of project cards",
     expect({
       names: boards().map((b) => b.getAttribute("aria-label")),
       inGrid: api?.closest("ul")?.className.includes("card-grid") ?? false,
-      api: ["Backlog 4", "In progress 2", "Needs you 1", "Done 9", "2 live", "1 needs you"].filter(
-        (part) => !described(api).includes(part),
-      ),
-      docs: described(docs).includes("No cards yet"),
+      // Read as a screen reader hears it: the parts apart, and the sessions that need you not
+      // confused with the board's "Needs you" column.
+      api: [
+        "Backlog 4, In progress 2, Needs you 1, Done 9.",
+        "2 live sessions, 1 session needs you.",
+      ].filter((part) => !described(api).includes(part)),
+      docs: [described(docs).includes("No cards yet."), described(docs).includes("need you")],
       opened,
     }).toEqual({
       names: ["Open the board of api", "Open the board of docs"],
       inGrid: true,
       api: [],
-      docs: true,
+      docs: [true, false],
       opened: ["p-api"],
     });
   });
