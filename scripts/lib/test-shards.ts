@@ -11,6 +11,8 @@ import { TIERS } from "./test-tiers.ts";
 export type Timings = Record<string, number>;
 
 export interface ShardDeps {
+  /** The platform the shard runs on: it picks the per-test timeout. */
+  platform: NodeJS.Platform;
   /** `git <args>` in the repository; null when it fails. */
   git(args: string[]): string | null;
   readTimings(): Timings;
