@@ -73,6 +73,14 @@ export interface ProcReader {
   pgid(pid: number): number | null;
   /** The working folder of a process, or null when it cannot be read. */
   cwd(pid: number): string | null;
+  /** The command line of a process, arguments joined by spaces; "" when it cannot be read. */
+  cmdline(pid: number): string;
+}
+
+/** Text from a lock or waiter file, or from /proc, kept to one plain line: control characters become spaces. */
+function oneLine(text: string): string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point
+  return text.replace(/[\u0000-\u001f\u007f\u2028\u2029]/g, " ");
 }
 
 export type SlotArgs =
@@ -178,7 +186,7 @@ export function describeHolder(holder: SlotHolder, now: number): string {
   else if (minutes > 0) held = `${minutes}m ${seconds % 60}s`;
   // A holder or waiter of hundreds of test files stays one line (#236).
   const command = holder.command.length > 80 ? `${holder.command.slice(0, 80)}…` : holder.command;
-  return `${holder.label}: ${command} (pid ${holder.pid}, ${held})`;
+  return `${oneLine(holder.label)}: ${oneLine(command)} (pid ${holder.pid}, ${held})`;
 }
 
 /**
@@ -311,7 +319,7 @@ export function status(env: SlotEnv, maxAgeMs = DEFAULT_MAX_AGE_MS): string {
   const lines = [holderStatus(env, maxAgeMs)];
   waiters(env).forEach((waiter, index) => {
     // Where the process table can be read: the waiter's folder, and whether its shell is gone (#236).
-    const where = env.proc ? ` in ${env.proc.cwd(waiter.pid) ?? "?"}` : "";
+    const where = env.proc ? ` in ${oneLine(env.proc.cwd(waiter.pid) ?? "?")}` : "";
     const orphan = env.proc?.ppid(waiter.pid) === 1 ? " ORPHAN" : "";
     lines.push(`waiting ${index + 1}: ${describeHolder(waiter, env.now())}${where}${orphan}`);
   });
@@ -364,8 +372,8 @@ export function reap(env: SlotEnv): number {
       env.fs.remove(path);
       continue;
     }
-    if (env.proc?.ppid(waiter.pid) !== 1) continue;
-    const group = env.proc.pgid(waiter.pid) ?? waiter.pid;
+    if (!env.proc || !reapable(env, env.proc, path, waiter.pid)) continue;
+    const group = env.proc.pgid(waiter.pid) ?? 0;
     if (env.terminateGroup) env.terminateGroup(group);
     else env.terminate(waiter.pid);
     env.fs.remove(path);
@@ -374,6 +382,20 @@ export function reap(env: SlotEnv): number {
   }
   if (reaped === 0) env.log("nothing to reap");
   return 0;
+}
+
+/**
+ * Whether the waiter file names a slot waiter that may be stopped by group: the file's name
+ * carries its pid, the pid is above 1 with parent pid 1, its group is above 1 and is not the
+ * reaper's own, and its command line is the slot's (a pid reused by another program is left
+ * alone). Read right before the kill.
+ */
+function reapable(env: SlotEnv, proc: ProcReader, path: string, pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 1 || path !== waiterPath(env, pid)) return false;
+  if (proc.ppid(pid) !== 1) return false;
+  const group = proc.pgid(pid);
+  if (group === null || group <= 1 || group === proc.pgid(env.pid)) return false;
+  return /\bslot\.ts\b/.test(proc.cmdline(pid));
 }
 
 /**

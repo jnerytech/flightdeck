@@ -89,6 +89,13 @@ const proc: ProcReader | undefined =
             return null;
           }
         },
+        cmdline: (pid) => {
+          try {
+            return readFileSync(`/proc/${pid}/cmdline`, "utf8").replaceAll("\0", " ").trim();
+          } catch {
+            return "";
+          }
+        },
       }
     : undefined;
 
