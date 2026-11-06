@@ -2119,6 +2119,9 @@ export const ptBR = {
     loading: "Carregando…",
     noMatch: "Nada corresponde ao filtro.",
     truncated: "Esta pasta tem mais entradas do que as mostradas aqui.",
+    viewer: "Arquivo {path}",
+    close: "Fechar",
+    opening: "Abrindo…",
   },
   changes: {
     tab: "Mudanças",

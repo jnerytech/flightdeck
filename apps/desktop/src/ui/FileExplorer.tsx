@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "../lib/app-store.ts";
+import { FileViewer } from "./FileViewer.tsx";
 
 /** A folder as the explorer has it: on its way, listed, or refused with the text to show. */
 type Folder = "loading" | FileListing | { refused: string };
@@ -26,6 +27,8 @@ export function FileExplorer(props: Readonly<{ store: AppStore; hostId: string; 
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
   const [query, setQuery] = useState("");
   const [changes, setChanges] = useState<DiffFile[]>([]);
+  /** The file open in the viewer. */
+  const [viewing, setViewing] = useState<string | null>(null);
 
   const load = useCallback(
     async (dir: string) => {
@@ -90,9 +93,7 @@ export function FileExplorer(props: Readonly<{ store: AppStore; hostId: string; 
                 <span data-name="">{entry.name}</span>
               </Button>
             ) : (
-              <span data-name="" className="font-mono text-xs">
-                {entry.name}
-              </span>
+              <FileName entry={entry} onOpen={() => setViewing(path)} />
             )}
             {entry.secret && <Badge variant="outline">{t("files.hidden")}</Badge>}
             {mark && <Badge variant="outline">{t(`changes.status.${mark}`)}</Badge>}
@@ -146,7 +147,32 @@ export function FileExplorer(props: Readonly<{ store: AppStore; hostId: string; 
         <Stack as="ul" gap={1}>
           {folder("")}
         </Stack>
+        {viewing && (
+          <FileViewer
+            key={viewing}
+            store={store}
+            hostId={hostId}
+            target={target}
+            path={viewing}
+            onClose={() => setViewing(null)}
+          />
+        )}
       </Stack>
     </section>
+  );
+}
+
+/** A file's name: a button that opens it, or plain text for a credential, which never opens. */
+function FileName(props: Readonly<{ entry: FileEntry; onOpen(): void }>) {
+  const name = (
+    <span data-name="" className="font-mono text-xs">
+      {props.entry.name}
+    </span>
+  );
+  if (props.entry.secret) return name;
+  return (
+    <Button type="button" variant="ghost" size="sm" onClick={props.onOpen}>
+      {name}
+    </Button>
   );
 }
