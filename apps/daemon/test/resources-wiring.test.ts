@@ -165,6 +165,8 @@ describe("resources-wiring: the daemon's own resources (issue #154)", () => {
 
 describe("resources-wiring: the machine's own defaults (issue #154)", () => {
   test("with nothing given it reads the OS memory and the data disk, and ends an orphan with a real SIGTERM", async () => {
+    // Windows has no `sleep`, no load average and no SIGTERM to read back.
+    if (process.platform === "win32") return;
     const child = Bun.spawn(["sleep", "30"]);
     const pid = child.pid;
     const proc = {
