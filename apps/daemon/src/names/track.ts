@@ -33,14 +33,17 @@ export interface TrackOptions {
 }
 
 /**
- * What the history indexer calls with the name Claude Code gave a session (issue #605). Stub for
- * the red test.
+ * What the history indexer calls with the name Claude Code gave a session (issue #605). A session
+ * Flightdeck started is named by its own id; a terminal one, by the Claude id.
  */
 export function adoptTitles(
-  _names: Names,
-  _manager: Pick<TrackOptions["manager"], "list">,
+  names: Names,
+  manager: Pick<TrackOptions["manager"], "list">,
 ): (claudeSessionId: string, title: string, kind: "custom" | "agent") => void {
-  return () => {};
+  return (claudeSessionId, title, kind) => {
+    const managed = manager.list().find((s) => s.claudeSessionId === claudeSessionId);
+    names.adoptTitle(managed?.id ?? claudeSessionId, title, kind);
+  };
 }
 
 /** Naming is auxiliary: a failure must not break the event of the session; the next one tries again. */
