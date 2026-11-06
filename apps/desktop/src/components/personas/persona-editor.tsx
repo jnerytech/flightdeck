@@ -58,8 +58,6 @@ export function PersonaEditor(
     /** The chosen project's path; "" for none. */
     project: string;
     persona: AppPersona | null;
-    /** Shown inside the persona's own card, not above the list. */
-    inPlace?: boolean;
     onSaved(): void;
     onClose(): void;
   }>,
@@ -140,7 +138,6 @@ export function PersonaEditor(
   return (
     <Form
       variant="panel"
-      className={props.inPlace ? undefined : "mb-4"}
       onSubmit={() => {
         if (ready) saving.run(save);
       }}

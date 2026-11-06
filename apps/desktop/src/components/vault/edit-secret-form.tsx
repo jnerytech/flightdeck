@@ -42,7 +42,6 @@ export const EditSecretForm = memo(function EditSecretForm(props: {
   return (
     <Form
       variant="panel"
-      className="mb-4"
       onSubmit={() => {
         if (name.trim() !== "") save();
       }}

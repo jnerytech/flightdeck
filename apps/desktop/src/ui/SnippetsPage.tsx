@@ -176,7 +176,7 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
             : {})}
         />
       )}
-      <div className="mb-4 flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3">
         <Field label={t("snippets.project")}>
           {(control) => (
             <NativeSelect {...control} value={project} onChange={(e) => setProject(e.target.value)}>
@@ -210,7 +210,7 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
         </Field>
       </div>
       {file && (
-        <div className="mb-4 flex flex-col gap-2 rounded-lg border p-3 text-sm">
+        <div className="flex flex-col gap-2 rounded-lg border p-3 text-sm">
           <p className="font-mono">{t("snippets.file.path", { path: file.path })}</p>
           <p>{file.trusted ? t("snippets.file.trusted") : t("snippets.file.untrusted")}</p>
           {!file.trusted && (
