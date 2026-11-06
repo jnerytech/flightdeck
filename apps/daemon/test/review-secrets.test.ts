@@ -1,5 +1,5 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdirSync, renameSync, writeFileSync } from "node:fs";
+import { mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { cardDiff, parseUnifiedDiff, workingDiff } from "../src/board/diff.ts";
@@ -276,4 +276,34 @@ describe("review-secrets: a quoted name in the diff is read as the name (#509)",
       expect(JSON.stringify(files)).not.toContain("KEY=");
     },
   );
+});
+
+describe("review-secrets: what cannot be read is not there, never an error (#509)", () => {
+  test("a comment on a folder finds no lines; a comment whose file became a link out lists as outdated", async () => {
+    const { repo, review } = setup();
+    mkdirSync(join(repo, "folder"));
+    const comment = { target: "session:s-1", side: "new" as const, lineStart: 1, lineEnd: 1 };
+    expect(await outcome(review.add({ ...comment, path: "folder", body: "x" }))).toEqual({
+      code: "bad_request",
+      reason: "review_side_missing",
+    });
+    mkdirSync(join(repo, "docs"));
+    writeFileSync(join(repo, "docs", "a.md"), "one\n");
+    await review.add({ ...comment, path: "docs/a.md", body: "x" });
+    const outside = tempDir("fd-outside-");
+    writeFileSync(join(outside, "a.md"), "one\n");
+    rmSync(join(repo, "docs"), { recursive: true });
+    await linkDir(outside, join(repo, "docs"));
+    expect(await outcome(review.list("session:s-1"))).toEqual({ code: "ok", reason: null });
+    const [listed] = await review.list("session:s-1");
+    expect(listed).toMatchObject({ path: "docs/a.md", outdated: true });
+  });
+
+  test("writing a file that is not there is a conflict, whatever hash comes with it", async () => {
+    const { files } = setup();
+    expect(await outcome(files.write("session:s-1", "new.txt", "x", "0".repeat(64)))).toEqual({
+      code: "file_conflict",
+      reason: "review_file_changed",
+    });
+  });
 });
