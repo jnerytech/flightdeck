@@ -1310,6 +1310,7 @@ export const en: Dictionary = {
   },
   daemonFeature: {
     assistant: "the AI assistant",
+    teleport: "moving a session to another host",
     github: "sign-in with GitHub",
     boardsync: "board sync",
     roi: "the ROI view",

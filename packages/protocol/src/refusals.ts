@@ -449,6 +449,7 @@ export const DAEMON_FEATURES = [
   "terminals",
   "board",
   "assistant",
+  "teleport",
   "snapshots",
   "forker",
   "updater",
