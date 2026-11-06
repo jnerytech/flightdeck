@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { heavyRunViolation, heavyRunWaived } from "../lib/claude-hooks.ts";
+import { guardAllowLogs, heavyRunViolation, heavyRunWaived } from "../lib/claude-hooks.ts";
 
 const worker = (command: string) => heavyRunViolation(command, {});
 const tests = (n: number) =>
@@ -99,5 +99,82 @@ describe("guard: a worker session's full coverage run holds the slot for what CI
       const why = worker(`FLIGHTDECK_SLOT_HEAVY=${value} bun run test:related`) ?? "";
       expect(why).toContain("give the reason as the value");
     }
+  });
+});
+
+describe("guard: the #687 lows", () => {
+  test("other spellings of a full coverage run are refused too", () => {
+    for (const command of [
+      "bun test:related",
+      "bun run --silent test:related",
+      "bun run --bun test:related -- --pr",
+      "npm run test:related",
+      "bun scripts/test-related.ts",
+      "bun run ./scripts/test-related.ts --base main",
+      `bun scripts/coverage-funcs.ts a.ts --tests ${tests(21)}`,
+    ]) {
+      expect(worker(command) ?? `allowed: ${command}`).toContain("holds the slot");
+    }
+    for (const command of [
+      "bun test:related --fast",
+      "bun scripts/test-related.ts --fast --tier unit,component",
+      "bun --config=bunfig.area.toml test apps/desktop/test/a.test.ts",
+      "bun test apps/desktop/test/a.test.ts",
+      `bun scripts/coverage-funcs.ts a.ts --tests ${tests(20)}`,
+    ]) {
+      expect(worker(command)).toBeNull();
+    }
+  });
+
+  test("--tests with a glob, a command's output or more than 20 comma-joined files is refused", () => {
+    for (const command of [
+      "bun run coverage:funcs a.ts --tests 'apps/**/*.test.ts'",
+      "bun run coverage:funcs a.ts --tests apps/desktop/test/*.test.ts",
+      "bun run coverage:funcs a.ts --tests $(git ls-files '*.test.ts')",
+      "bun run coverage:funcs a.ts --tests `git ls-files`",
+      `bun run coverage:funcs a.ts --tests=${tests(21).replaceAll(" ", ",")}`,
+    ]) {
+      expect(worker(command) ?? `allowed: ${command}`).toContain("holds the slot");
+    }
+    expect(worker("bun run coverage:funcs a.ts --tests=a.test.ts,b.test.ts")).toBeNull();
+    expect(worker("bun run coverage:funcs a.ts --tests 'a b.test.ts'")).toBeNull();
+  });
+
+  test("FLIGHTDECK_COORDINATOR set in the command does not make a worker the coordinator", () => {
+    for (const command of [
+      "FLIGHTDECK_COORDINATOR=1 bun run coverage:funcs apps/desktop/src/store.ts",
+      "FLIGHTDECK_COORDINATOR=1 bun run test:related",
+      "env FLIGHTDECK_COORDINATOR=1 bun run slot -- bun run test:related -- --fast",
+    ]) {
+      expect(worker(command) ?? "allowed").toContain("only the coordinator's own environment");
+    }
+    expect(worker("bun run coverage:funcs apps/desktop/src/store.ts")).toBeNull();
+  });
+
+  test("#698 review: a second heavy run with an override only in front of another command is refused", () => {
+    const command =
+      'FLIGHTDECK_SLOT_HEAVY="the full gate" bun run test:related; FLIGHTDECK_SLOT_HEAVY="the second reason" bun run typecheck; bun run test:related -- --pr';
+    expect(worker(command) ?? "allowed").toContain("holds the slot");
+    expect(heavyRunWaived(command)).toBe(false);
+  });
+
+  test("#698 review: a valid first reason and a bare second override still say to give the reason", () => {
+    const why =
+      worker(
+        'FLIGHTDECK_SLOT_HEAVY="the full gate" bun run test:related; FLIGHTDECK_SLOT_HEAVY=1 bun run test:related',
+      ) ?? "";
+    expect(why).toContain("give the reason as the value");
+  });
+
+  test("one guard call logs one entry: a waiver, or an allow (never both); the coordinator logs no waiver", () => {
+    const heavy = 'FLIGHTDECK_SLOT_HEAVY="the full gate" bun run test:related';
+    expect(guardAllowLogs(heavy, {})).toEqual([{ rule: "slot-heavy", decision: "waived" }]);
+    expect(guardAllowLogs(heavy, { FLIGHTDECK_COORDINATOR: "1" })).toEqual([
+      { rule: null, decision: "allow" },
+    ]);
+    expect(guardAllowLogs("bun run typecheck", {})).toEqual([{ rule: null, decision: "allow" }]);
+    expect(guardAllowLogs(undefined, {})).toEqual([{ rule: null, decision: "allow" }]);
+    const commit = 'git commit -m "fix(a): x" -m "TDD-Waiver: made in the rc merge"';
+    expect(guardAllowLogs(commit, {})).toEqual([{ rule: "commit", decision: "waived" }]);
   });
 });

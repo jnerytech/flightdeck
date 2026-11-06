@@ -528,6 +528,14 @@ export function heavyRunWaived(command: string): boolean {
   return runs.length > 0 && runs.every((run) => heavyReasonGiven(run.override));
 }
 
+/** What the guard logs for a call it lets through: one waiver, or one allow (#687). */
+export function guardAllowLogs(
+  _command: string | undefined,
+  _env: Record<string, string | undefined>,
+): Array<{ rule: string | null; decision: "allow" | "waived" }> {
+  return [];
+}
+
 /** The package scripts that run only through the slot (CLAUDE.md). */
 const HEAVY =
   /^(test|coverage|fast-coverage|e2e|demo:shots|smoke(:[\w-]+)?|build:(daemon|desktop))$/;
