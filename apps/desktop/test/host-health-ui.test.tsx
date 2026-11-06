@@ -309,6 +309,10 @@ describe("host-health-ui: a summary, the problems first, the rest folded (#640)"
       summary: fold?.querySelector("summary")?.textContent ?? null,
       open: fold?.open ?? null,
       compact,
-    }).toEqual({ summary: "2 with nothing to do", open: false, compact: ["Claude Code", "Daemon"] });
+    }).toEqual({
+      summary: "2 with nothing to do",
+      open: false,
+      compact: ["Claude Code", "Daemon"],
+    });
   });
 });
