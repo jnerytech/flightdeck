@@ -77,7 +77,7 @@ export class AssistantService {
     const repo = payload.source ? await this.opts.context(payload.source) : undefined;
     const scanned = [
       payload.text,
-      ...Object.values(payload.context ?? {}),
+      ...Object.entries(payload.context ?? {}).flat(),
       repo?.diff ?? "",
       repo?.rules ?? "",
     ];

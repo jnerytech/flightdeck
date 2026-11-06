@@ -87,10 +87,10 @@ function failureOf(error: unknown): AssistantFailure {
  * vault value in the text refuses the call before anything leaves; a refusal always carries a
  * reason the screen translates.
  */
-/** Everything of a request that leaves the app: the field's text and the context it is written from. */
+/** Everything of a request that leaves the app: the field's text and the context it is written from, names included. */
 const sent = (input: AssistantRunInput): string[] => [
   input.text,
-  ...Object.values(input.context ?? {}),
+  ...Object.entries(input.context ?? {}).flat(),
 ];
 
 export class AssistantController {
