@@ -52,6 +52,7 @@ if (commands.build) {
   });
   if (build.exitCode !== 0) {
     await seed.stop();
+    rmSync(outDir, { recursive: true, force: true });
     throw new Error(`the demo build failed (exit ${build.exitCode})`);
   }
   log(`built the web entry in ${Math.round((Date.now() - started) / 1000)} s`);
