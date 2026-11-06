@@ -32,7 +32,8 @@ describe("file-language: which language colors a file in the viewer (#506)", () 
       ),
     );
     expect(names.every(([, name]) => typeof name === "string" && name.length > 0)).toBe(true);
-    expect((await loadLanguage("dockerfile"))?.name).toBe("dockerfile");
+    // The Dockerfile mode has no name of its own; it is a parser all the same.
+    expect(typeof (await loadLanguage("dockerfile"))?.token).toBe("function");
     expect(await loadLanguage("cobol-from-the-future")).toBeNull();
   });
 });
