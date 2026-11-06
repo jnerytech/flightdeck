@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { SessionNameInfo } from "@flightdeck/protocol";
 import { translator } from "../src/i18n/index.ts";
+import { type AppState, needsYou } from "../src/lib/app-store.ts";
+import { hubRows } from "../src/lib/hub.ts";
+import { paletteSections } from "../src/lib/palette.ts";
 import { sessionLabel } from "../src/lib/session-label.ts";
 
 /**
@@ -116,5 +119,73 @@ describe("persona-names: a team session is named by its persona, in the person's
     expect(sessionLabel({ names: older as SessionNameInfo }, translator("pt-BR"))).toBe(
       "repo · geral · 4",
     );
+  });
+});
+
+/** A host with a team worker (s2) and a plain session (s1), both live, the worker waiting on you. */
+const TEAM_STATE = {
+  hosts: [
+    {
+      id: "h1",
+      name: "alfa",
+      status: "online",
+      sessions: [
+        { id: "s1", name: null, cwd: "/p/app", status: "idle", pendingPermissions: [] },
+        {
+          id: "s2",
+          name: "md-server · executora 1",
+          cwd: "/p/app",
+          status: "running",
+          pendingPermissions: [
+            { requestId: "r1", toolName: "Bash", createdAt: "2026-11-06T10:00:00.000Z" },
+          ],
+        },
+      ],
+    },
+  ],
+  sessions: {},
+  hub: {
+    h1: {
+      managed: [{ id: "s2", name: "md-server · executora 1", cwd: "/p/app", status: "waiting" }],
+      history: [],
+    },
+  },
+  externals: {},
+  externalRequests: {},
+  runs: {},
+  vaultApprovals: [],
+  background: {},
+  meta: {},
+  cards: {},
+  projects: {},
+  ssh: {},
+  personas: { h1: [{ id: "qa", name: "Engenheira de QA" }] },
+  names: {
+    h1: [
+      info({ sessionId: "s2" }),
+      info({ sessionId: "s1", display: "app · geral · 1", persona: "geral", team: null }),
+    ],
+  },
+} as unknown as AppState;
+
+describe("persona-names: the same label in the palette, the sessions list and Needs you (#101)", () => {
+  const t = translator("pt-BR");
+  const WORKER = "md-server · Engenheira de QA 1";
+
+  test("the palette names a team session by its persona, and a plain one as before", () => {
+    const live =
+      paletteSections(TEAM_STATE, "", { costs: false, t })
+        .find((section) => section.title === "Sessões ao vivo")
+        ?.items.map((item) => item.label) ?? [];
+    expect(live).toEqual(["app · geral · 1", WORKER]);
+  });
+
+  test("the sessions list titles a team session by its persona", () => {
+    const row = hubRows(TEAM_STATE, t).find((r) => r.sessionId === "s2");
+    expect(row?.title ?? "no row").toBe(WORKER);
+  });
+
+  test("a request waiting in Needs you carries the persona name of its team session", () => {
+    expect(needsYou(TEAM_STATE, t).map((item) => item.sessionName)).toEqual([WORKER]);
   });
 });
