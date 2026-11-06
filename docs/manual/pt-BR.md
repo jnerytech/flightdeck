@@ -1164,7 +1164,9 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
   para fora do repositório nunca aparecem. **Filtrar por nome** mantém os nomes que batem entre as
   pastas já abertas, com as pastas no caminho. Uma pasta com mais de 500 entradas mostra as
   primeiras e avisa. Uma sessão fora do git não tem árvore: a aba diz isso. Um clique num arquivo
-  o abre abaixo da árvore, só para leitura, com as linhas numeradas; um arquivo de mais de 1 MB, um
+  o abre abaixo da árvore, só para leitura, com as linhas numeradas e colorido por token nas
+  linguagens comuns (TypeScript, JavaScript, JSON, Python, Rust, shell, TOML, YAML, CSS, Go, HTML,
+  XML, diffs, Dockerfiles); um arquivo de mais de 1 MB, um
   que não é texto ou uma credencial diz isso no lugar. Um arquivo alterado tem **Mostrar mudanças**:
   o diff dele contra o HEAD, ao vivo. Enquanto você está no fim, a mudança mais nova entra na tela
   conforme a sessão edita; role para cima e isso para, e **Ir para a mais recente** (com quantas
