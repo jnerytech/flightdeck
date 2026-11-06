@@ -60,6 +60,13 @@ function folderTone(
   return BY_PRIORITY.find((tone) => tones.has(tone)) ?? "idle";
 }
 
+/** When a live or recent session inside the folder last changed, in ms (0 when none did). */
+function lastActivity(rows: HubRow[], hostId: string, path: string): number {
+  return rows
+    .filter((row) => row.hostId === hostId && isInside(row.cwd, path))
+    .reduce((newest, row) => Math.max(newest, Date.parse(row.lastActivity) || 0), 0);
+}
+
 /**
  * The projects of the online hosts with their checkouts: the main one first (the base branch, the
  * tone of the live sessions in the project's folder), then one per card that has a worktree.
@@ -83,6 +90,7 @@ export function projectTree(
           projectId: project.id,
           name: project.name,
           path: project.path,
+          lastActivityAt: lastActivity(rows, host.id, project.path),
           nodes: [
             {
               key: `${host.id}/${project.id}/primary`,

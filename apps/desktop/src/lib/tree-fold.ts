@@ -55,49 +55,79 @@ export const FOLD_ABOVE = 3;
 export const TREE_OPENED_KEY = "flightdeck.treeOpened";
 export const TREE_PINNED_KEY = "flightdeck.treePinned";
 
-/** The projects the person unfolded last time, against the default fold. */
-export function loadTreeOpened(_storage: { getItem(key: string): string | null }): string[] {
-  return ["?"];
+/** A stored list of project keys; anything unreadable is none. */
+function loadKeys(storage: { getItem(key: string): string | null }, name: string): string[] {
+  try {
+    const stored = JSON.parse(storage.getItem(name) ?? "[]") as unknown;
+    return Array.isArray(stored)
+      ? stored.filter((key): key is string => typeof key === "string")
+      : [];
+  } catch {
+    return [];
+  }
 }
+
+/** The projects the person unfolded last time, against the default fold. */
+export const loadTreeOpened = (storage: { getItem(key: string): string | null }) =>
+  loadKeys(storage, TREE_OPENED_KEY);
 
 export function saveTreeOpened(
-  _storage: { setItem(key: string, value: string): void },
-  _opened: readonly string[],
-): void {}
-
-/** The projects the person pinned (`hostId/projectId`) on this computer. */
-export function loadTreePinned(_storage: { getItem(key: string): string | null }): string[] {
-  return ["?"];
+  storage: { setItem(key: string, value: string): void },
+  opened: readonly string[],
+): void {
+  storage.setItem(TREE_OPENED_KEY, JSON.stringify(opened));
 }
 
+/** The projects the person pinned (`hostId/projectId`) on this computer. */
+export const loadTreePinned = (storage: { getItem(key: string): string | null }) =>
+  loadKeys(storage, TREE_PINNED_KEY);
+
 export function saveTreePinned(
-  _storage: { setItem(key: string, value: string): void },
-  _pinned: readonly string[],
-): void {}
+  storage: { setItem(key: string, value: string): void },
+  pinned: readonly string[],
+): void {
+  storage.setItem(TREE_PINNED_KEY, JSON.stringify(pinned));
+}
 
 /** The key a project goes by in the stored lists. */
 export const projectKey = (project: Pick<TreeProject, "hostId" | "projectId">) =>
   `${project.hostId}/${project.projectId}`;
+
+/** Most recent first; the quiet ones, and ties, by name. */
+const byRecency = (a: TreeProject, b: TreeProject) =>
+  (b.lastActivityAt ?? 0) - (a.lastActivityAt ?? 0) || a.name.localeCompare(b.name);
 
 /**
  * The projects the tree draws: with no name typed, at most `PROJECT_CAP` (the pinned first, then
  * the most recently active) and always the picked one; with a name typed, every match.
  */
 export function shownProjects(
-  _tree: TreeProject[],
-  _pinned: readonly string[],
-  _query: string,
-  _picked: string | null,
+  tree: TreeProject[],
+  pinned: readonly string[],
+  query: string,
+  picked: string | null,
 ): TreeProject[] {
-  return [];
+  const isPinned = (project: TreeProject) => pinned.includes(projectKey(project));
+  const order = (a: TreeProject, b: TreeProject) =>
+    Number(isPinned(b)) - Number(isPinned(a)) || byRecency(a, b);
+  const text = query.trim().toLowerCase();
+  if (text !== "") {
+    return tree.filter((project) => project.name.toLowerCase().includes(text)).sort(order);
+  }
+  const sorted = [...tree].sort(order);
+  const top = sorted.slice(0, PROJECT_CAP);
+  const extra = sorted.find((project) => projectKey(project) === picked);
+  return extra && !top.includes(extra) ? [...top, extra] : top;
 }
 
 /** Whether a project starts folded: with more than `FOLD_ABOVE` projects, all but the active one. */
-export function foldedByDefault(_total: number, _key: string, _active: string | null): boolean {
-  return false;
+export function foldedByDefault(total: number, key: string, active: string | null): boolean {
+  return total > FOLD_ABOVE && key !== active;
 }
 
 /** The tone that earns a folded project its dot: a needs-you first, then running, else none. */
-export function liveTone(_project: TreeProject): "needs-you" | "running" | null {
-  return null;
+export function liveTone(project: TreeProject): "needs-you" | "running" | null {
+  const tones = project.nodes.map((node) => node.tone);
+  if (tones.includes("needs-you")) return "needs-you";
+  return tones.includes("running") ? "running" : null;
 }
