@@ -48,7 +48,7 @@ export const Settings = memo(function Settings(props: {
   store: AppStore;
   settings: SettingsState;
   /** The part to open on, by id. */
-  section?: string | undefined;
+  section?: string;
   onCloseToTray(enabled: boolean): void;
   onAutostart(enabled: boolean): void;
   onGlobalShortcut(text: string): void;

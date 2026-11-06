@@ -714,16 +714,16 @@ export function needsYou(state: AppState): PendingItem[] {
 /** What goes with an answer to a request, besides allow or deny. */
 export interface Answer {
   /** "Allow in this session" and "always in this project" (phase 7). */
-  updatedPermissions?: PermissionUpdate[] | undefined;
+  updatedPermissions?: PermissionUpdate[];
   /** Why it was denied (phase 10: the card's reason). */
-  message?: string | undefined;
+  message?: string;
   /** The tool's input as the person changed it (the answers of AskUserQuestion). */
-  updatedInput?: Record<string, unknown> | undefined;
+  updatedInput?: Record<string, unknown>;
   /**
    * The Approve was held its full time (#245): a high-risk request is approved only with it, so a
    * screen that forgets the risk cannot approve one with a click.
    */
-  held?: boolean | undefined;
+  held?: boolean;
 }
 
 /** Filters of the per-host history list. */

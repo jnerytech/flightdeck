@@ -25,7 +25,7 @@ export function ProjectsOverview(
     state: Pick<AppState, "projects" | "cards"> & HubRowState;
     onOpen(card: ProjectCard): void;
     /** Only this host's projects (its id), with a chip that clears the filter. */
-    host?: string | undefined;
+    host?: string;
     onClearHost?(): void;
   }>,
 ) {

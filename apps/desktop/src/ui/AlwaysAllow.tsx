@@ -51,7 +51,7 @@ export function AlwaysAllow(
     input: Record<string, unknown>;
     suggestions: PermissionUpdate[] | undefined;
     /** The folder the request ran in: a file rule is written relative to it. */
-    cwd?: string | undefined;
+    cwd?: string;
     onAllow(updatedPermissions: PermissionUpdate[]): void;
     /** An answer is on its way: nothing here can be pressed. */
     disabled?: boolean;
