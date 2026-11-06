@@ -97,6 +97,13 @@ export type AssistantKeyProvider = "anthropic" | "openrouter";
  * Phase 40: the API providers of the AI assistant, which run in the Rust shell. A key goes in once
  * (`setKey`) and is never read back: there is no getter, only its last four characters.
  */
+export interface AssistantRunOptions {
+  /** The API provider the call goes to (the request carries none). */
+  provider: AssistantKeyProvider;
+  /** OpenRouter: only providers that do not collect data; Anthropic ignores it. */
+  denyDataCollection: boolean;
+}
+
 export interface AssistantPlatform {
   /** False in the web build: no credential store and no shell to call a provider. */
   supported: boolean;
@@ -110,7 +117,11 @@ export interface AssistantPlatform {
     isFreeTier?: boolean;
   }>;
   models(provider: AssistantKeyProvider): Promise<ModelOption[]>;
-  run(request: AssistantRequest, vaultIds: string[]): Promise<AssistantResult>;
+  run(
+    request: AssistantRequest,
+    vaultIds: string[],
+    options: AssistantRunOptions,
+  ): Promise<AssistantResult>;
   cancel(requestId: string): Promise<void>;
   /** The ids of the vault values found in `text`, read in the shell: never a value. */
   vaultHits(text: string, ids: string[]): Promise<string[]>;

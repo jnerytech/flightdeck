@@ -145,6 +145,18 @@ describe("assistant-protocol", () => {
     ).toBe("merge");
   });
 
+  test("every reason the Rust crate can refuse with is one the protocol lists, so the app has a text for it", () => {
+    const source = readFileSync(
+      resolve(import.meta.dir, "../../../apps/desktop/src-tauri/assistant/src/lib.rs"),
+      "utf8",
+    );
+    const block = /pub const REASONS: &\[&str\] = &\[([^\]]*)\];/.exec(source)?.[1] ?? "";
+    const rust = [...block.matchAll(/"(\w+)"/g)].map((m) => m[1] as string);
+    expect(rust.length).toBeGreaterThan(10);
+    const known: readonly string[] = ASSISTANT_REASONS;
+    expect(rust.filter((reason) => !known.includes(reason))).toEqual([]);
+  });
+
   test("every refusal names its reason, and the app has a text for each in both languages", () => {
     expect([...ASSISTANT_REASONS]).toEqual([
       "assistant_not_configured",

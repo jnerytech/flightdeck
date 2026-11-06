@@ -124,8 +124,22 @@ describe("assistant-run: a wand's request goes to the provider the person chose"
     });
     expect(request.user).toContain("fix the totl");
     expect(call?.[2]).toEqual(["s1"]);
+    // The provider and the data-collection switch (on by default) go with the call, not in the request.
+    expect(call?.[3]).toEqual({ provider: "anthropic", denyDataCollection: true });
     expect(fake.calls.map((c) => c[0])).toContain("vaultHits");
     expect(result.text).toBe("Fix the total");
+  });
+
+  test("OpenRouter gets the switch 'Only providers that do not collect data' as the person left it", async () => {
+    const { controller, fake } = setup({
+      prefs: { provider: "openrouter", openrouterPrivate: false },
+      api: { run: () => ({ ...RESULT, provider: "openrouter" }) },
+    });
+    await fake.assistant.setKey("openrouter", "sk-or-aaaabbbb");
+    await controller.refreshKeys();
+    await controller.run(input());
+    const call = fake.calls.find((c) => c[0] === "run");
+    expect(call?.[3]).toEqual({ provider: "openrouter", denyDataCollection: false });
   });
 
   test("no provider refuses with assistant_not_configured and calls nothing", async () => {

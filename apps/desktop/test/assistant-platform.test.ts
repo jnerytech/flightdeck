@@ -54,7 +54,9 @@ describe("assistant-platform: the desktop shell holds the keys and runs the API 
       isFreeTier: false,
     });
     expect(await a.models("anthropic")).toEqual([{ id: "claude-haiku-5-5", label: "Haiku 5.5" }]);
-    expect(await a.run(REQUEST, ["v1", "v2"])).toEqual(RESULT);
+    expect(
+      await a.run(REQUEST, ["v1", "v2"], { provider: "anthropic", denyDataCollection: true }),
+    ).toEqual(RESULT);
     await a.cancel("r1");
     expect(await a.vaultHits("text", ["v1", "v2"])).toEqual(["v1"]);
     expect(sent).toEqual([
@@ -63,7 +65,15 @@ describe("assistant-platform: the desktop shell holds the keys and runs the API 
       ["assistant_key_delete", { provider: "openrouter" }],
       ["assistant_test", { provider: "openrouter" }],
       ["assistant_models", { provider: "anthropic" }],
-      ["assistant_run", { request: REQUEST, vaultIds: ["v1", "v2"] }],
+      [
+        "assistant_run",
+        {
+          provider: "anthropic",
+          request: REQUEST,
+          vaultIds: ["v1", "v2"],
+          denyDataCollection: true,
+        },
+      ],
       ["assistant_cancel", { requestId: "r1" }],
       ["vault_hits", { text: "text", ids: ["v1", "v2"] }],
     ]);
@@ -72,8 +82,39 @@ describe("assistant-platform: the desktop shell holds the keys and runs the API 
   test("a refusal of the shell reaches the caller as it came: a reason and its params", async () => {
     const refusal = { reason: "assistant_credits", params: {} };
     const { platform } = desktop({ assistant_run: Object.assign(new Error("x"), refusal) });
-    const error = await platform.assistant.run(REQUEST, []).catch((e: unknown) => e);
+    const error = await platform.assistant
+      .run(REQUEST, [], { provider: "openrouter", denyDataCollection: false })
+      .catch((e: unknown) => e);
     expect((error as { reason?: string }).reason).toBe("assistant_credits");
+  });
+
+  test("a rejection that is not a refusal object (Tauri rejects a malformed argument with a plain string) becomes assistant_bad_output", async () => {
+    const options = { provider: "anthropic", denyDataCollection: true } as const;
+    for (const rejection of [
+      "invalid args `request`: missing field",
+      new Error("boom"),
+      undefined,
+    ]) {
+      const call = (async () => {
+        throw rejection;
+      }) as never;
+      const platform = tauriPlatform({} as never, call);
+      expect(await platform.assistant.run(REQUEST, [], options).catch((e: unknown) => e)).toEqual({
+        reason: "assistant_bad_output",
+      });
+      expect(await platform.assistant.keyStatus("anthropic").catch((e: unknown) => e)).toEqual({
+        reason: "assistant_bad_output",
+      });
+    }
+    // An object with a reason, as the crate's Refusal serializes, passes untouched, params included.
+    const refusal = { reason: "assistant_key_invalid", params: { why: "too short" } };
+    const call = (async () => {
+      throw refusal;
+    }) as never;
+    const platform = tauriPlatform({} as never, call);
+    expect(await platform.assistant.setKey("openrouter", "k").catch((e: unknown) => e)).toEqual(
+      refusal,
+    );
   });
 
   test("there is no way to read a key back", () => {
@@ -105,7 +146,9 @@ describe("assistant-platform: the web build offers no API provider", () => {
         (e: { reason?: string }) => e.reason,
       );
     expect(await refused(() => a.setKey("anthropic", "k"))).toBe("assistant_not_configured");
-    expect(await refused(() => a.run(REQUEST, []))).toBe("assistant_not_configured");
+    expect(
+      await refused(() => a.run(REQUEST, [], { provider: "anthropic", denyDataCollection: true })),
+    ).toBe("assistant_not_configured");
     expect(await refused(() => a.test("anthropic"))).toBe("assistant_not_configured");
   });
 });
@@ -115,7 +158,9 @@ describe("assistant-platform: the fake the tests use logs its calls and never se
     const fake = fakeAssistant({ run: () => RESULT });
     await fake.assistant.setKey("anthropic", "sk-ant-0123456789abcd");
     expect(await fake.assistant.keyStatus("anthropic")).toEqual({ saved: true, last4: "abcd" });
-    expect(await fake.assistant.run(REQUEST, [])).toEqual(RESULT);
+    expect(
+      await fake.assistant.run(REQUEST, [], { provider: "anthropic", denyDataCollection: true }),
+    ).toEqual(RESULT);
     expect(fake.calls.map((c) => c[0])).toEqual(["setKey", "keyStatus", "run"]);
     expect(JSON.stringify(fake.calls.slice(1))).not.toContain("sk-ant-0123456789abcd");
     await fake.assistant.deleteKey("anthropic");

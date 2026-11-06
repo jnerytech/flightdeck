@@ -281,7 +281,7 @@ export class AssistantController {
       const names = secrets.filter((secret) => hits.includes(secret.id)).map((s) => s.name);
       throw fail("assistant_vault_value", { names: names.join(", ") });
     }
-    return this.deps.api.run(request, ids);
+    return this.deps.api.run(request, ids, { provider, denyDataCollection: true });
   }
 
   private emit(): void {

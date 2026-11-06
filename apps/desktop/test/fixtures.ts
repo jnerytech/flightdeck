@@ -75,7 +75,7 @@ import { FakeProvider } from "../../daemon/test/boardsync-fake.ts";
 import { testRootsPlatform } from "../../daemon/test/helpers.ts";
 import { fakePtys } from "../../daemon/test/pty-helpers.ts";
 import { fakeRunHost } from "../../daemon/test/run-helpers.ts";
-import type { AssistantPlatform } from "../src/platform/types.ts";
+import type { AssistantPlatform, AssistantRunOptions } from "../src/platform/types.ts";
 import { createWebPlatform, type WebWindow } from "../src/platform/web/index.ts";
 
 export const TOKEN = "desktop-test-token-0123456789";
@@ -738,6 +738,7 @@ export function fakeAssistant(
     run?: (
       request: AssistantRequest,
       vaultIds: string[],
+      options: AssistantRunOptions,
     ) => AssistantResult | Promise<AssistantResult>;
     test?: (provider: "anthropic" | "openrouter") => ReturnType<AssistantPlatform["test"]>;
     models?: (provider: "anthropic" | "openrouter") => ModelOption[];
@@ -774,9 +775,11 @@ export function fakeAssistant(
       calls.push(["models", provider]);
       return script.models ? script.models(provider) : [];
     },
-    run: async (request, vaultIds) => {
-      calls.push(["run", request, vaultIds]);
-      return script.run ? script.run(request, vaultIds) : refuse("assistant_not_configured");
+    run: async (request, vaultIds, options) => {
+      calls.push(["run", request, vaultIds, options]);
+      return script.run
+        ? script.run(request, vaultIds, options)
+        : refuse("assistant_not_configured");
     },
     cancel: async (requestId) => {
       calls.push(["cancel", requestId]);
