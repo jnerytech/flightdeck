@@ -162,6 +162,97 @@ function versionCheck(version: { daemon: string; app?: string }): DoctorCheck {
 
 const SETUP = "run: flightdeckd setup";
 
+/** The project folders: at least one allowed, and each still a folder. */
+function foldersCheck(allowedRoots: string[], gone: string[]): DoctorCheck {
+  if (allowedRoots.length === 0) {
+    return check(
+      "folders",
+      "project folders",
+      "fail",
+      "no folder allowed: no session can start",
+      SETUP,
+    );
+  }
+  if (gone.length > 0) {
+    return check(
+      "folders",
+      "project folders",
+      "fail",
+      `not a folder anymore: ${gone.join(", ")}`,
+      SETUP,
+    );
+  }
+  return check("folders", "project folders", "ok", allowedRoots.join(", "));
+}
+
+function serviceCheck(installed: boolean): DoctorCheck {
+  if (installed) return check("service", "service", "ok", "installed");
+  return check(
+    "service",
+    "service",
+    "fail",
+    "no service installed: the daemon will not start by itself",
+    SETUP,
+  );
+}
+
+function claudeCheck(claude: string | null | undefined): DoctorCheck {
+  if (claude) return check("claude", "claude", "ok", claude);
+  return check(
+    "claude",
+    "claude",
+    "warn",
+    "claude is not on the PATH: sessions cannot start",
+    "install Claude Code, then run: flightdeckd service install",
+  );
+}
+
+function mcpCheck(mcp: { exists: boolean; command: string }): DoctorCheck {
+  if (mcp.exists) return check("mcp", "mcp", "ok", mcp.command);
+  return check(
+    "mcp",
+    "mcp",
+    "warn",
+    `${mcp.command} is gone: sessions start without the team tools (send_to_session, list_sessions)`,
+    SETUP,
+  );
+}
+
+function lingerCheck(linger: "on" | "off"): DoctorCheck {
+  if (linger === "on") return check("linger", "linger", "ok", "on: the daemon starts at boot");
+  return check(
+    "linger",
+    "linger",
+    "fail",
+    "off: the daemon will not start after a reboot (or after WSL restarts) until you log in",
+    "run: sudo loginctl enable-linger $USER",
+  );
+}
+
+function hooksCheck(hooks: string): DoctorCheck {
+  if (hooks === "installed") return check("hooks", "hooks", "ok", "installed");
+  return check(
+    "hooks",
+    "hooks",
+    "warn",
+    `${hooks}: live session status is limited`,
+    "run: flightdeckd hooks install",
+  );
+}
+
+function tailscaleCheck(tailscale: string | null, bind: string): DoctorCheck {
+  if (tailscale && loopbackOnly(bind)) {
+    return check(
+      "tailscale",
+      "tailscale",
+      "warn",
+      `Tailscale is up (${tailscale}) but the daemon listens only on ${bind}: other devices cannot connect`,
+      SETUP,
+    );
+  }
+  return check("tailscale", "tailscale", "ok", tailscale ?? "not in use");
+}
+
 /** Checks what a first run needs, one line per thing, each failure with its fix. */
 export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks: DoctorCheck[] }> {
   let config: Awaited<ReturnType<DoctorDeps["config"]>>;
@@ -175,53 +266,15 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
 
   const found = await Promise.all(config.allowedRoots.map(async (root) => deps.isDirectory(root)));
   const gone = config.allowedRoots.filter((_, index) => !found[index]);
-  if (config.allowedRoots.length === 0) {
-    checks.push(
-      check("folders", "project folders", "fail", "no folder allowed: no session can start", SETUP),
-    );
-  } else if (gone.length) {
-    checks.push(
-      check(
-        "folders",
-        "project folders",
-        "fail",
-        `not a folder anymore: ${gone.join(", ")}`,
-        SETUP,
-      ),
-    );
-  } else {
-    checks.push(check("folders", "project folders", "ok", config.allowedRoots.join(", ")));
-  }
-
-  checks.push(
-    (await deps.serviceInstalled())
-      ? check("service", "service", "ok", "installed")
-      : check(
-          "service",
-          "service",
-          "fail",
-          "no service installed: the daemon will not start by itself",
-          SETUP,
-        ),
-  );
+  checks.push(foldersCheck(config.allowedRoots, gone));
+  checks.push(serviceCheck(await deps.serviceInstalled()));
 
   const address = `${config.bind}:${config.port}`;
   const healthy = await deps.healthy();
   const refused = healthy ? null : ((await deps.refused?.()) ?? null);
   checks.push(daemonCheck(healthy, refused, address));
 
-  const claude = deps.claudePath();
-  checks.push(
-    claude
-      ? check("claude", "claude", "ok", claude)
-      : check(
-          "claude",
-          "claude",
-          "warn",
-          "claude is not on the PATH: sessions cannot start",
-          "install Claude Code, then run: flightdeckd service install",
-        ),
-  );
+  checks.push(claudeCheck(deps.claudePath()));
 
   const opencode = await deps.opencode?.();
   if (opencode) checks.push(opencodeCheck(opencode));
@@ -240,60 +293,13 @@ export async function runDoctor(deps: DoctorDeps): Promise<{ ok: boolean; checks
   }
 
   const mcp = await deps.mcp?.();
-  if (mcp) {
-    checks.push(
-      mcp.exists
-        ? check("mcp", "mcp", "ok", mcp.command)
-        : check(
-            "mcp",
-            "mcp",
-            "warn",
-            `${mcp.command} is gone: sessions start without the team tools (send_to_session, list_sessions)`,
-            SETUP,
-          ),
-    );
-  }
+  if (mcp) checks.push(mcpCheck(mcp));
 
   const linger = await deps.linger?.();
-  if (linger) {
-    checks.push(
-      linger === "on"
-        ? check("linger", "linger", "ok", "on: the daemon starts at boot")
-        : check(
-            "linger",
-            "linger",
-            "fail",
-            "off: the daemon will not start after a reboot (or after WSL restarts) until you log in",
-            "run: sudo loginctl enable-linger $USER",
-          ),
-    );
-  }
+  if (linger) checks.push(lingerCheck(linger));
 
-  const hooks = await deps.hooks();
-  checks.push(
-    hooks === "installed"
-      ? check("hooks", "hooks", "ok", "installed")
-      : check(
-          "hooks",
-          "hooks",
-          "warn",
-          `${hooks}: live session status is limited`,
-          "run: flightdeckd hooks install",
-        ),
-  );
-
-  const tailscale = await deps.tailscaleIp();
-  checks.push(
-    tailscale && loopbackOnly(config.bind)
-      ? check(
-          "tailscale",
-          "tailscale",
-          "warn",
-          `Tailscale is up (${tailscale}) but the daemon listens only on ${config.bind}: other devices cannot connect`,
-          SETUP,
-        )
-      : check("tailscale", "tailscale", "ok", tailscale ?? "not in use"),
-  );
+  checks.push(hooksCheck(await deps.hooks()));
+  checks.push(tailscaleCheck(await deps.tailscaleIp(), config.bind));
 
   if (deps.version) checks.push(versionCheck(deps.version));
 

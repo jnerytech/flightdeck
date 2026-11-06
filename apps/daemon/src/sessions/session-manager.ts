@@ -257,6 +257,32 @@ export class SessionManager {
     return session;
   }
 
+  /** Phase 39: an OpenCode session is refused before anything is created, so a refusal leaves no session. */
+  private async checkOpenCode(
+    payload: CommandPayload<"session.create">,
+    cwd: string,
+  ): Promise<void> {
+    const opencode = this.opts.opencode;
+    if (!opencode) {
+      throw new FlightdeckError(
+        "invalid_state",
+        "OpenCode is not available on this host",
+        "runtime_unavailable",
+      );
+    }
+    const mode = payload.permissionMode ?? this.opts.defaultPermissionMode;
+    const unsupported = unsupportedOnOpenCode(payload.persona, mode);
+    if (unsupported) {
+      throw new FlightdeckError(
+        "invalid_state",
+        `an OpenCode session does not offer ${unsupported}`,
+        "runtime_unsupported",
+        { feature: unsupported },
+      );
+    }
+    await opencode.preflight?.(cwd);
+  }
+
   /**
    * `unattended` (phase 22) marks a session Flightdeck opens by itself, with no person in it:
    * it never gets to use `run_with_secret`, which is for a person to approve each time.
@@ -267,28 +293,7 @@ export class SessionManager {
   ): Promise<{ sessionId: string }> {
     const cwd = await resolveAllowedCwd(payload.cwd, this.opts.allowedRoots);
     const runtime = payload.runtime ?? "claude";
-    if (runtime === "opencode") {
-      // Phase 39: refused before anything is created, so a refusal leaves no session.
-      const opencode = this.opts.opencode;
-      if (!opencode) {
-        throw new FlightdeckError(
-          "invalid_state",
-          "OpenCode is not available on this host",
-          "runtime_unavailable",
-        );
-      }
-      const mode = payload.permissionMode ?? this.opts.defaultPermissionMode;
-      const unsupported = unsupportedOnOpenCode(payload.persona, mode);
-      if (unsupported) {
-        throw new FlightdeckError(
-          "invalid_state",
-          `an OpenCode session does not offer ${unsupported}`,
-          "runtime_unsupported",
-          { feature: unsupported },
-        );
-      }
-      await opencode.preflight?.(cwd);
-    }
+    if (runtime === "opencode") await this.checkOpenCode(payload, cwd);
     const id = ulid();
     // Resolved by the caller before anything is created, so a missing, untrusted or invalid
     // persona leaves no session. The manager reads no persona file itself.
@@ -614,6 +619,24 @@ export class SessionManager {
     );
   }
 
+  /** What a run is started with only when the session has it: a resume, a model, an effort, a persona, agents. */
+  private optionalRunOptions(
+    sessionId: string,
+    model: string | null,
+    resume: string | undefined,
+    persona: ReturnType<EventStore["sessionPersona"]>,
+    agents: ReturnType<EventStore["sessionAgents"]>,
+  ) {
+    const effort = this.efforts.get(sessionId);
+    return {
+      ...(resume ? { resume } : {}),
+      ...(model ? { model } : {}),
+      ...(effort ? { effort } : {}),
+      ...(persona ? { persona: personaOf(persona) } : {}),
+      ...(agents && Object.keys(agents).length > 0 ? { agents } : {}),
+    };
+  }
+
   private startRun(sessionId: string, resume?: string): LiveSession {
     const session = this.get(sessionId);
     // The persona the session opened with, as it was then: the prompt it appends is in no transcript.
@@ -630,13 +653,7 @@ export class SessionManager {
         FLIGHTDECK_SESSION: sessionId,
       },
       canUseTool: (toolName, input, ctx) => this.canUse(sessionId, persona, toolName, input, ctx),
-      ...(resume ? { resume } : {}),
-      ...(session.model ? { model: session.model } : {}),
-      ...(this.efforts.has(sessionId)
-        ? { effort: this.efforts.get(sessionId) as EffortLevel }
-        : {}),
-      ...(persona ? { persona: personaOf(persona) } : {}),
-      ...(agents && Object.keys(agents).length > 0 ? { agents } : {}),
+      ...this.optionalRunOptions(sessionId, session.model, resume, persona, agents),
     });
     const live: LiveSession = { run, queue: [], closing: false };
     this.live.set(sessionId, live);

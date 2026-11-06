@@ -94,38 +94,15 @@ export class OpenCodeEvents {
   update(update: AcpUpdate): RuntimeEvent[] {
     if (isChild(update)) return [];
     switch (update.sessionUpdate) {
-      case "agent_message_chunk": {
-        const chunk = (update.content as { type?: string; text?: string } | undefined) ?? {};
-        if (chunk.type !== "text" || !chunk.text) return [];
-        const id = typeof update.messageId === "string" ? update.messageId : undefined;
-        const out = id && this.messageId && id !== this.messageId ? this.flush() : [];
-        if (id) this.messageId = id;
-        this.text += chunk.text;
-        return [...out, { type: "message.delta", text: chunk.text }];
-      }
+      case "agent_message_chunk":
+        return this.messageChunk(update);
       case "tool_call": {
         const id = update.toolCallId as string;
         if (update.name) this.names.set(id, update.name);
         return this.flush();
       }
-      case "tool_call_update": {
-        const id = update.toolCallId as string;
-        const out: RuntimeEvent[] = [];
-        const input =
-          update.rawInput && Object.keys(update.rawInput).length > 0 ? update.rawInput : null;
-        if (input) this.inputs.set(id, { ...this.inputs.get(id), ...input });
-        const done = update.status === "completed" || update.status === "failed";
-        if (input || done) out.push(...this.card(id, input ?? {}));
-        if (done) {
-          out.push({
-            type: "tool.result",
-            toolUseId: id,
-            content: truncateToolResult(resultText(update.content)),
-            isError: update.status === "failed",
-          });
-        }
-        return out;
-      }
+      case "tool_call_update":
+        return this.toolCallUpdate(update);
       case "usage_update": {
         const amount = (update.cost as { amount?: unknown } | undefined)?.amount;
         if (typeof amount === "number") this.costUsd = amount;
@@ -134,6 +111,37 @@ export class OpenCodeEvents {
       default:
         return [];
     }
+  }
+
+  /** A piece of the assistant's text: a new message id closes the one before it. */
+  private messageChunk(update: AcpUpdate): RuntimeEvent[] {
+    const chunk = (update.content as { type?: string; text?: string } | undefined) ?? {};
+    if (chunk.type !== "text" || !chunk.text) return [];
+    const id = typeof update.messageId === "string" ? update.messageId : undefined;
+    const out = id && this.messageId && id !== this.messageId ? this.flush() : [];
+    if (id) this.messageId = id;
+    this.text += chunk.text;
+    return [...out, { type: "message.delta", text: chunk.text }];
+  }
+
+  /** A tool call's news: the input as it arrives (its card) and, once it ends, its result. */
+  private toolCallUpdate(update: AcpUpdate): RuntimeEvent[] {
+    const id = update.toolCallId as string;
+    const out: RuntimeEvent[] = [];
+    const input =
+      update.rawInput && Object.keys(update.rawInput).length > 0 ? update.rawInput : null;
+    if (input) this.inputs.set(id, { ...this.inputs.get(id), ...input });
+    const done = update.status === "completed" || update.status === "failed";
+    if (input || done) out.push(...this.card(id, input ?? {}));
+    if (done) {
+      out.push({
+        type: "tool.result",
+        toolUseId: id,
+        content: truncateToolResult(resultText(update.content)),
+        isError: update.status === "failed",
+      });
+    }
+    return out;
   }
 
   /** A permission request's tool call: its card (when not shown yet) and the name and input to ask about. */
