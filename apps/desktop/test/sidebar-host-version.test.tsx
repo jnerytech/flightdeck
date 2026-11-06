@@ -89,6 +89,38 @@ describe("sidebar-host-version: a host says its daemon's version in a real toolt
     expect(await tipOnFocus("Open host alfa")).toBe("alfa");
   });
 
+  test("the row keeps its button, and the keyboard focus on it, when the version arrives", async () => {
+    const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
+    store.i18n.start();
+    const view = (daemonVersion: string | null) => (
+      <Sidebar
+        store={store}
+        state={{ ...store.getState(), hosts: [host(daemonVersion)] } as never}
+        collapsed={false}
+        t={store.i18n.t}
+        go={() => {}}
+        onOpenProjectScreen={() => {}}
+        onNewSession={() => {}}
+        onRemoveHost={() => {}}
+        onRenameHost={() => null}
+        onOpenSearch={() => {}}
+        onNewTab={() => {}}
+        onToggleTheme={() => {}}
+      />
+    );
+    const { rerender } = render(view(null));
+    const before = screen.queryByRole("button", { name: "Open host alfa" });
+    expect(before).not.toBeNull();
+    await act(async () => {
+      before?.focus();
+    });
+    await act(async () => {
+      rerender(view(APP_VERSION));
+    });
+    expect(before?.isConnected).toBe(true);
+    expect(document.activeElement === before).toBe(true);
+  });
+
   test("it reads in Portuguese too", async () => {
     sidebar("0.1.0", false, "pt-BR");
     expect(await tipOnFocus("Abrir host alfa")).toBe(
