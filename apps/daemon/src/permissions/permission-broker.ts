@@ -28,16 +28,11 @@ export interface BrokerHooks {
   plain?(sessionId: string, toolName: string, input: ToolInput, risk: Risk): Promise<PlainInfo>;
 }
 
-/** The `answers` of an answered AskUserQuestion, when every one is a string. */
+/** The `answers` of an answered AskUserQuestion: `bindInput` has already refused any that is not a string. */
 function chosenAnswers(
   input: Record<string, unknown> | undefined,
 ): Record<string, string> | undefined {
-  const answers = input?.answers;
-  if (!answers || typeof answers !== "object") return undefined;
-  const entries = Object.entries(answers);
-  return entries.every(([, value]) => typeof value === "string")
-    ? (answers as Record<string, string>)
-    : undefined;
+  return input?.answers as Record<string, string> | undefined;
 }
 
 interface Pending {
