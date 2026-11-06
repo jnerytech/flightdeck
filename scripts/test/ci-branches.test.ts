@@ -4,8 +4,10 @@ import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 /**
- * #216/#217: every pushed work branch runs the whole CI, so the heavy checks leave the Pi. A push
- * that changes only files no test reads starts no run.
+ * #260 (GitHub Flow): one trigger per kind of branch. A branch with an open PR runs on
+ * `pull_request`, main on `push`, and a branch with no PR yet by hand (`workflow_dispatch`, which
+ * ci:branch sends), so no branch pays for two runs of the same commit. A push to main that changes
+ * only files no test reads starts no run.
  */
 const ROOT = resolve(import.meta.dir, "../..");
 const ci = Bun.YAML.parse(readFileSync(join(ROOT, ".github/workflows/ci.yml"), "utf8")) as {
@@ -14,9 +16,12 @@ const ci = Bun.YAML.parse(readFileSync(join(ROOT, ".github/workflows/ci.yml"), "
 };
 
 describe("ci-branches", () => {
-  test("a push to any branch runs the CI, and a push of tags alone does not", () => {
-    expect(ci.on.push?.branches).toEqual(["**"]);
+  test("one trigger per kind of branch: main on push, a PR on pull_request, a branch with no PR by hand (#260)", () => {
+    expect(ci.on.push?.branches).toEqual(["main"]);
     expect(ci.on.push && "tags" in ci.on.push).toBe(false);
+    expect("pull_request" in ci.on).toBe(true);
+    expect(ci.on.pull_request?.branches).toBeUndefined();
+    expect("workflow_dispatch" in ci.on).toBe(true);
   });
 
   test("pull requests are never filtered by path, so required checks always report", () => {
@@ -24,8 +29,8 @@ describe("ci-branches", () => {
     expect(ci.on.pull_request?.paths).toBeUndefined();
   });
 
-  test("a push that only changes the manual or its images starts no run", () => {
-    expect(ci.on.push?.["paths-ignore"]).toEqual(["docs/manual/**", "docs/images/**"]);
+  test("a push to main that only changes the images starts no run; the manuals run the docs checks (#235)", () => {
+    expect(ci.on.push?.["paths-ignore"]).toEqual(["docs/images/**"]);
   });
 
   test("no test reads a file the push filter skips", () => {

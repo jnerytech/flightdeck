@@ -25,14 +25,17 @@ checkout). Run everything inside the worktree.
    - do the tests cover what the "What must pass" column says ("O que precisa passar" in the
      older, Portuguese specs)? Read the assertions. A test with the right name and a weak
      assertion does not count.
-3. **TDD order:** does `bun run tdd:audit -- --since $(git merge-base HEAD main)` print
-   `TDD AUDIT OK`? First check that `git log --oneline $(git merge-base HEAD main)..HEAD` is not
+3. **TDD order:** does `bun run tdd:audit -- --since auto --spec docs/SPEC-fase-N.md` print
+   `TDD AUDIT OK`? With `--spec`, every area of a template-shaped table (phase 40 on) needs its
+   `test(<area>)` commit; older tables are read as before. First check that `git log --oneline $(git merge-base HEAD main)..HEAD` is not
    empty. With no commits, the audit passes without auditing anything.
-4. **Suite:** `bun run test && bun run typecheck && bun run lint`.
+4. **Suite:** `bun run slot -- bun run test && bun run typecheck && bun run lint`.
 5. **The phase's smoke**, if the spec asks for one: it exists in `package.json` and prints its
    `OK`. Never run `smoke:real` or anything that calls the real Claude.
 6. **Version:** `bun run release:version v0.N.0`.
-7. **Docs:** the README (pt-BR and en), the manual and DECISIONS mention what the phase
+7. **Hand-off stamp:** when the session gave a `HANDOFF` line, `bun run handoff:check -- --verify`
+   in the worktree must print OK for its HEAD.
+8. **Docs:** the README (pt-BR and en), the manual and DECISIONS mention what the phase
    delivers.
 
 For each command, show the exit code (`echo $?` right after it). Do not trust commit messages or

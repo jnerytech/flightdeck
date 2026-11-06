@@ -1,11 +1,13 @@
 import {
   ChevronDown,
   CircleAlert,
+  Lock,
   type LucideProps,
   MoreHorizontal,
   Plane,
   Plus,
   Search,
+  Sparkles,
   SunMoon,
   TriangleAlert,
 } from "lucide-react";
@@ -194,6 +196,8 @@ export function Sidebar(
     /** The next navigation opens a new tab ("Abrir em nova aba"). */
     onNewTab(): void;
     onToggleTheme(): void;
+    /** Switches to simple mode; absent when the host in view does not let the person choose. */
+    onSimpleMode?(): void;
   }>,
 ) {
   const { state, t, collapsed, go } = props;
@@ -396,7 +400,7 @@ export function Sidebar(
         </NavGroup>
       </nav>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div data-slot="sidebar-hosts" className="sidebar-hosts">
         {collapsed ? (
           <div className="flex flex-col items-center gap-1 pt-3">
             {state.hosts.map((host) => (
@@ -405,10 +409,15 @@ export function Sidebar(
                 type="button"
                 aria-label={t("sidebar.openHost", { host: host.name })}
                 title={host.name}
-                className="flex size-8 items-center justify-center rounded-md hover:bg-sidebar-accent"
+                className="rail-host"
                 onClick={() => go({ name: "host", host: host.id })}
               >
-                <HostDot host={host} t={t} />
+                <span data-slot="host-initial" aria-hidden="true" className="rail-host-initial">
+                  {[...host.name][0]?.toUpperCase() ?? "?"}
+                </span>
+                <span className="rail-host-status">
+                  <HostDot host={host} t={t} />
+                </span>
               </button>
             ))}
           </div>
@@ -431,7 +440,7 @@ export function Sidebar(
               }
             />
             {hostsOpen && (
-              <ul className="flex flex-col gap-0.5">
+              <ul data-slot="sidebar-hosts" className="flex flex-col gap-0.5">
                 {state.hosts.map((host) => (
                   <li key={host.id} className="group flex items-center gap-1">
                     <button
@@ -443,6 +452,18 @@ export function Sidebar(
                       <HostDot host={host} t={t} />
                       <span className="min-w-0 flex-1 truncate">{host.name}</span>
                     </button>
+                    {host.hostInfo?.ui?.mode === "simple" && (
+                      <span data-slot="host-mode-badge" className="host-mode-badge">
+                        {t("sidebar.hostSimple")}
+                      </span>
+                    )}
+                    {host.hostInfo?.ui?.locked === true && (
+                      <Lock
+                        role="img"
+                        aria-label={t("sidebar.hostLocked", { host: host.name })}
+                        className="size-3.5 shrink-0 text-muted-foreground"
+                      />
+                    )}
                     {host.hostInfo?.apiKeySanitized === false && (
                       <TriangleAlert
                         role="img"
@@ -572,6 +593,14 @@ export function Sidebar(
           label={t("sidebar.theme")}
           onClick={props.onToggleTheme}
         />
+        {props.onSimpleMode && (
+          <NavButton
+            collapsed={collapsed}
+            icon={<Sparkles aria-hidden="true" className={icon} />}
+            label={t("sidebar.simpleMode")}
+            onClick={props.onSimpleMode}
+          />
+        )}
       </div>
       {renaming && (
         <RenameHostDialog

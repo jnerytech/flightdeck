@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
+import { unfoldAll } from "./unfold.ts";
 import { waiter } from "./wait.ts";
 
 registerDom();
@@ -156,6 +157,7 @@ describe("direcao-visual", () => {
     await act(async () => {
       await store.addHost({ name: "alfa", url: d.listen().url, token: TOKEN });
     });
+    await unfoldAll(act);
     await settle(() => screen.queryByRole("listitem", { name: "Gerenciada" }) !== null);
     const row = screen.queryByRole("listitem", { name: "Gerenciada" }) as HTMLElement;
     const dot = within(row).queryByRole("img", { name: "ociosa" });

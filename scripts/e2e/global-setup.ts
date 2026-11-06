@@ -25,7 +25,8 @@ export default async function globalSetup() {
   rmSync(STATE_DIR, { recursive: true, force: true });
   mkdirSync(STATE_DIR, { recursive: true });
   const options = {
-    env: { ...process.env, E2E_STATE_DIR: STATE_DIR },
+    // FLIGHTDECK_FAKE_SLASH: a long list of slash commands, for the layout check of the / menu.
+    env: { ...process.env, E2E_STATE_DIR: STATE_DIR, FLIGHTDECK_FAKE_SLASH: "100" },
     stdio: "inherit",
     detached: process.platform !== "win32",
   } as const;

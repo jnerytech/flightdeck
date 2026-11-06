@@ -33,6 +33,7 @@ import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import type { T } from "../i18n/index.ts";
 import { usd } from "../lib/costs.ts";
+import type { MenuGroup, MenuItem } from "../lib/prompt-menu.ts";
 import { activityOf } from "../lib/session-activity.ts";
 import { type ImageRefusal, readImage, refuseImage } from "../lib/session-images.ts";
 import type { ChatItem, SessionState } from "../lib/session-state.ts";
@@ -43,10 +44,15 @@ import { StatusBadge } from "./StatusBadge.tsx";
 import { ToolCall } from "./ToolCall.tsx";
 
 /** The permission modes a live session can switch between. */
+/** The menu group of each kind of command the daemon names. */
+const GROUP_OF_KIND: Record<"builtin" | "skill" | "mcp", MenuGroup> = {
+  builtin: "commands",
+  skill: "skills",
+  mcp: "mcp",
+};
 const MODES = ["plan", "default", "acceptEdits"] as const;
 const ALL_MODES = [...MODES, "bypassPermissions"] as const;
 
-/** How far from the end still counts as being at the end, in pixels. */
 /** Where each conversation was left (by `scrollKey`), so a tab that comes back is where its reader was. */
 const positions = new Map<string, { top: number; atEnd: boolean; seq: number }>();
 const MAX_POSITIONS = 200;
@@ -60,6 +66,7 @@ function rememberPosition(key: string, top: number, atEnd: boolean, seq: number)
   }
 }
 
+/** How far from the end still counts as being at the end, in pixels. */
 const END_SLACK = 24;
 
 export interface SessionActions {
@@ -279,6 +286,49 @@ interface SessionViewProps {
   pickPath?: (done: (path: string | null) => void) => ReactNode;
 }
 
+/**
+ * The modes a session can switch to: as strict as the start mode or stricter (a start mode outside
+ * the list, bypass or auto, gets all); a host that allows bypass lets the person pick any mode.
+ */
+function modesOffered(start: string, bypassAllowed: boolean) {
+  if (bypassAllowed) return ALL_MODES;
+  const at = MODES.indexOf(start as (typeof MODES)[number]);
+  return MODES.slice(0, at < 0 ? MODES.length : at + 1);
+}
+
+/** How many messages came after the one the reader had seen (none while they are at the end). */
+function missedAfter(items: SessionViewProps["session"]["items"], awaySeq: number | null): number {
+  return awaySeq === null ? 0 : items.filter((i) => i.seq > awaySeq).length;
+}
+
+/** The slash commands as menu items: with group and description when the daemon describes them. */
+function commandItemsOf(
+  described: SessionViewProps["session"]["commands"],
+  names: SessionViewProps["session"]["slashCommands"],
+): MenuItem[] {
+  if (!described) return (names ?? []).map((name) => ({ key: `slash:${name}`, name: `/${name}` }));
+  return described.map((command) => ({
+    key: `slash:${command.name}`,
+    name: `/${command.name}`,
+    ...(command.description ? { description: command.description } : {}),
+    group: GROUP_OF_KIND[command.kind],
+  }));
+}
+
+/** The snippets of the host and the commands of the session behind one `/` menu. */
+function offeredPrompts(
+  prompts: PromptSnippets | undefined,
+  slash: SessionViewProps["session"]["slashCommands"],
+  commandItems: MenuItem[],
+): PromptSnippets | undefined {
+  if (!prompts && !slash) return undefined;
+  return {
+    list: async () => [...((await prompts?.list()) ?? []), ...commandItems],
+    fill: async (key) =>
+      key.startsWith("slash:") ? `/${key.slice(6)} ` : (prompts?.fill(key) ?? ""),
+  };
+}
+
 /** Chat history in streaming, tool calls, approval cards, message box and session controls. */
 export function SessionView(props: Readonly<SessionViewProps>) {
   const ctx = useT();
@@ -348,7 +398,7 @@ export function SessionView(props: Readonly<SessionViewProps>) {
     const card = timeline.current?.querySelector(`[data-request-id="${focusRequestId}"]`);
     card?.scrollIntoView?.({ block: "center" });
   }, [focusRequestId, cards]);
-  const missed = awaySeq === null ? 0 : props.session.items.filter((i) => i.seq > awaySeq).length;
+  const missed = missedAfter(props.session.items, awaySeq);
   const jumpKey = missed === 1 ? "session.jumpLatestOne" : "session.jumpLatestMany";
   const { session, actions } = props;
   const [text, setText] = useState("");
@@ -356,28 +406,18 @@ export function SessionView(props: Readonly<SessionViewProps>) {
   const [picking, setPicking] = useState(false);
   const start = session.permissionMode ?? "default";
   const [mode, setMode] = useState<PermissionMode>(start);
-  // As strict as the start mode or stricter; a start mode outside the list (bypass, auto) gets all.
-  const at = MODES.indexOf(start as (typeof MODES)[number]);
-  const limit = at < 0 ? MODES.length : at + 1;
-  // A host that allows bypass lets the person pick any mode, looser than the start included.
-  const offeredModes = props.bypass ? ALL_MODES : MODES.slice(0, limit);
+  const offeredModes = modesOffered(start, Boolean(props.bypass));
   const [bypassAsk, setBypassAsk] = useState(false);
   const [model, setModel] = useState("");
   const slash = session.slashCommands;
+  const described = session.commands;
+  // A daemon that describes the commands gives each its group and its description; an older one
+  // gives the names only, and the menu groups them by the shape of the name.
+  const commandItems = useMemo(() => commandItemsOf(described, slash), [described, slash]);
   // Typing `/` offers the snippets and the commands of the session together.
-  const offered: PromptSnippets | undefined = useMemo(
-    () =>
-      props.prompts || slash
-        ? {
-            list: async () => [
-              ...((await props.prompts?.list()) ?? []),
-              ...(slash ?? []).map((name) => ({ key: `slash:${name}`, name: `/${name}` })),
-            ],
-            fill: async (key) =>
-              key.startsWith("slash:") ? `/${key.slice(6)} ` : (props.prompts?.fill(key) ?? ""),
-          }
-        : undefined,
-    [props.prompts, slash],
+  const offered = useMemo(
+    () => offeredPrompts(props.prompts, slash, commandItems),
+    [props.prompts, slash, commandItems],
   );
   const latestAssistant = [...session.items]
     .reverse()
@@ -523,12 +563,19 @@ export function SessionView(props: Readonly<SessionViewProps>) {
             )}
           </>
         }
+        hint={[session.cwd, typeof props.costUsd === "number" ? usd(props.costUsd) : null]
+          .filter(Boolean)
+          .join(" · ")}
         controls={
           <>
             {session.status && <StatusBadge status={session.status} />}
             {session.statusReason && (
               <span className="text-muted-foreground text-xs">{session.statusReason}</span>
             )}
+          </>
+        }
+        actions={
+          <>
             {props.timeline}
             {props.terminal}
             {closed ? (
@@ -536,31 +583,31 @@ export function SessionView(props: Readonly<SessionViewProps>) {
                 {t("session.resume")}
               </ActionButton>
             ) : (
-              <>
-                <ActionButton
-                  variant="outline"
-                  size="sm"
-                  pending={ending}
-                  onClick={() => setClosing(true)}
-                >
-                  {t("session.end")}
-                </ActionButton>
-                {closing && (
-                  <ConfirmDialog
-                    message={t("session.endMessage")}
-                    confirmLabel={t("session.endConfirm")}
-                    destructive
-                    onConfirm={() => {
-                      setClosing(false);
-                      setEnding(true);
-                      void actions.close().finally(() => setEnding(false));
-                    }}
-                    onCancel={() => setClosing(false)}
-                  />
-                )}
-              </>
+              <ActionButton
+                variant="outline"
+                size="sm"
+                pending={ending}
+                onClick={() => setClosing(true)}
+              >
+                {t("session.end")}
+              </ActionButton>
             )}
           </>
+        }
+        dialogs={
+          closing && (
+            <ConfirmDialog
+              message={t("session.endMessage")}
+              confirmLabel={t("session.endConfirm")}
+              destructive
+              onConfirm={() => {
+                setClosing(false);
+                setEnding(true);
+                void actions.close().finally(() => setEnding(false));
+              }}
+              onCancel={() => setClosing(false)}
+            />
+          )
         }
         extra={props.persona}
       />
@@ -631,7 +678,13 @@ export function SessionView(props: Readonly<SessionViewProps>) {
         )}
       </div>
       <ComposerDock>
-        <PromptMenu prompts={offered} text={text} label={t("session.snippets")} onFill={setText} />
+        <PromptMenu
+          prompts={offered}
+          text={text}
+          label={t("session.snippets")}
+          onFill={setText}
+          input={box}
+        />
         {queued.length > 0 && (
           <ul aria-label={t("session.queue")} className="composer-images">
             {queued.map((item, at) => (

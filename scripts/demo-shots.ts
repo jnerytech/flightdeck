@@ -7,14 +7,15 @@
 import { mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
-import { inSequence } from "@flightdeck/protocol";
-import { type BrowserContext, chromium, type Page } from "playwright-core";
+import { chromium, type Page } from "playwright-core";
 import type { Route } from "../apps/desktop/src/lib/router.ts";
 import type { DemoIds } from "./demo-seed.ts";
 import { AXE_RUN_OPTIONS, type AxeViolation, blocking, describeViolation } from "./lib/axe.ts";
 import { launchFirst } from "./lib/browser.ts";
+import { type Finding, KEY_REGIONS, layoutFindings } from "./lib/layout-guards.ts";
 import { type Rgb, themeProblem } from "./lib/print-theme.ts";
 import { PENDING_SELECTOR } from "./lib/shots-loaded.ts";
+import { pickVariants } from "./lib/shots-variants.ts";
 import { type VisualMode, VOLATILE_RULES } from "./lib/visual.ts";
 
 export const SHOTS_DIR = resolve(import.meta.dir, "../apps/desktop/screenshots");
@@ -31,11 +32,75 @@ interface Shot {
   simple?: boolean;
   /** Phase 36: an hourly rate and one person kept in the page's storage before it loads. */
   roi?: boolean;
+  /** Issue #137: notifications kept in the page's storage before it loads (read, unread, collapsed, gone). */
+  inbox?: boolean;
   /** After the screen loads: open the palette, scroll a long list to its end… */
   prepare?(page: Page): Promise<void>;
 }
 
 const ALFA = "demo-alfa";
+
+/** The notifications of the bell's print: today in UTC (the prints' zone), and one three days ago. */
+function demoInbox(lang: string): string {
+  const pt = lang.startsWith("pt");
+  const dayStart = new Date().setUTCHours(0, 0, 0, 0);
+  const today = (second: number) => new Date(dayStart + second * 1000).toISOString();
+  const earlier = new Date(dayStart - 3 * 86_400_000 + 12 * 3_600_000).toISOString();
+  const need = pt ? "Precisa de você" : "Needs you";
+  const ask = (question: string) => (pt ? `Pergunta: ${question}` : `Asks: ${question}`);
+  const entry = (id: string, at: string, extra: Record<string, unknown>) => ({
+    id,
+    at,
+    title: need,
+    body: "",
+    read: false,
+    ...extra,
+  });
+  return JSON.stringify([
+    entry("1", today(300), {
+      subject: "api · refactor",
+      host: "alfa",
+      ask: ask(pt ? "qual banco usar?" : "which DB to use?"),
+      group: "alfa/api",
+    }),
+    entry("2", today(240), {
+      subject: "api · refactor",
+      host: "alfa",
+      ask: ask(pt ? "devo migrar agora?" : "migrate now?"),
+      group: "alfa/api",
+    }),
+    entry("3", today(180), {
+      subject: "api · refactor",
+      host: "alfa",
+      ask: ask(pt ? "qual esquema?" : "which schema?"),
+      group: "alfa/api",
+    }),
+    entry("4", today(120), {
+      subject: "web · tests",
+      host: "alfa",
+      ask: pt ? "Quer executar: bun test" : "Wants to run: bun test",
+      group: "alfa/web",
+    }),
+    entry("5", today(60), {
+      title: pt ? "Card desbloqueado" : "Card unblocked",
+      subject: "Card B",
+      host: "alfa",
+      ask: pt ? "Quer alterar main.ts" : "Wants to change main.ts",
+      route: { name: "card", host: "demo-alfa", projectId: "gone", cardId: "gone" },
+    }),
+    entry("6", today(30), {
+      subject: "docs · notes",
+      host: "alfa",
+      body: pt ? "ociosa" : "idle",
+      read: true,
+    }),
+    entry("7", earlier, {
+      title: pt ? "Orçamento" : "Budget",
+      body: "alfa · 80%",
+      read: true,
+    }),
+  ]);
+}
 
 /** The clients the client prints start with: Acme claims the demo's `github.com/acme/*` projects. */
 const DEMO_CLIENTS = JSON.stringify({
@@ -151,8 +216,8 @@ function shots(ids: DemoIds): Shot[] {
       route: { name: "hub" },
       async prepare(page) {
         for (let i = 0; i < 20; i++) {
-          await page.keyboard.press("Control+t"); // NOSONAR: key presses reach the page in order
-          await page.keyboard.press("Escape"); // NOSONAR: key presses reach the page in order
+          await page.keyboard.press("Control+t");
+          await page.keyboard.press("Escape");
         }
         await page.getByRole("button", { name: /^(Todas as abas|All tabs)$/ }).waitFor();
       },
@@ -222,7 +287,10 @@ function shots(ids: DemoIds): Shot[] {
       name: "abas-divididas",
       route: { name: "hub" },
       prepare: async (page) => {
+        // In the sidebar only: the host page and the project headers have buttons of the same name.
         await page
+          .locator("aside")
+          .first()
           .getByRole("button", { name: /^(Abrir host alfa|Open host alfa)$/ })
           .click({ modifiers: ["Control"] });
         await page.getByRole("button", { name: /^(Dividir a tela|Split the screen)$/ }).click();
@@ -333,6 +401,17 @@ function shots(ids: DemoIds): Shot[] {
           .first()
           .click();
         await page.waitForTimeout(600);
+      },
+    },
+    {
+      // Issue #137: the bell's panel, unread rows with their dots, a session's repeats as one row, a read row and a gone target.
+      name: "sino-painel",
+      inbox: true,
+      route: { name: "hub" },
+      prepare: async (page) => {
+        await page.getByRole("button", { name: /^(Notifications|Notificações)/ }).click();
+        await page.getByRole("dialog").waitFor({ timeout: 8000 });
+        await page.waitForTimeout(400);
       },
     },
     { name: "custos", route: { name: "costs" } },
@@ -600,130 +679,6 @@ function pageBackground(): Rgb {
   return [r, g, b];
 }
 
-interface PrintEnv {
-  theme: "light" | "dark";
-  lang: "pt-BR" | "en";
-  dir: string;
-  url: string;
-  log: (msg: string) => void;
-  visual: VisualMode;
-}
-
-/** One screen in one theme and language: the print, and what the checks on that page found wrong. */
-async function printOne(
-  context: BrowserContext,
-  shot: Shot,
-  { theme, lang, dir, url, log, visual }: PrintEnv,
-): Promise<string[]> {
-  const found: string[] = [];
-  const page = await context.newPage();
-  page.on("pageerror", (error) => log(`erro na página ${shot.name} ${page.url()}: ${error.stack}`));
-  // The storage is the context's: a print with no clients clears what an earlier one kept.
-  await page.addInitScript(
-    (seed) => {
-      try {
-        const keys = ["flightdeck.clients", "flightdeck.clientFilter"];
-        for (const key of [
-          ...keys,
-          "flightdeck.clientBudgetAlerts",
-          "flightdeck.roi",
-          "flightdeck.uiMode",
-        ]) {
-          localStorage.removeItem(key);
-        }
-        if (seed.simple) {
-          localStorage.setItem("flightdeck.uiMode", JSON.stringify({ "demo-alfa": "simple" }));
-        }
-        if (seed.clients) {
-          localStorage.setItem(keys[0] as string, seed.clients.clients);
-          if (seed.clients.selected) {
-            localStorage.setItem(keys[1] as string, seed.clients.selected);
-          }
-        }
-        if (seed.roi) localStorage.setItem("flightdeck.roi", seed.roi);
-      } catch {
-        // No storage, no clients.
-      }
-    },
-    {
-      clients: shot.clients
-        ? { clients: DEMO_CLIENTS, selected: shot.clients.selected ?? "" }
-        : null,
-      roi: shot.roi ? DEMO_ROI : null,
-      simple: shot.simple === true,
-    },
-  );
-  const query = new URLSearchParams({ theme, lang, route: JSON.stringify(shot.route) });
-  await page.goto(`${url}?${query}`);
-  // The hosts connect and the screen loads its data.
-  await page.waitForTimeout(1500);
-  // The host nothing listens on shows as offline (hollow gray), not still connecting.
-  await page
-    .getByRole("img", { name: /^notebook: offline$/ })
-    .first()
-    .waitFor({ timeout: 8000 })
-    .catch(() => undefined);
-  await shot.prepare?.(page).catch(async (error) => {
-    await page.screenshot({ path: join(dir, `${shot.name}-FALHOU.png`) });
-    throw error;
-  });
-  // A skeleton or a busy region is a screen still loading: the print waits for the real one.
-  await page.waitForFunction(
-    (selector) => document.querySelector(selector) === null,
-    PENDING_SELECTOR,
-    { timeout: 15_000 },
-  );
-  if (visual !== "off") await stabilize(page);
-  await page.screenshot({
-    path: join(dir, `${shot.name}.png`),
-    ...(visual === "off" ? {} : { animations: "disabled" as const, caret: "hide" as const }),
-  });
-  // A dark print that came out light is a broken print, not a pretty one.
-  const mismatch = themeProblem(
-    theme,
-    `${theme} ${lang} ${shot.name}`,
-    await page.evaluate(pageBackground),
-  );
-  if (mismatch) found.push(mismatch);
-  // The window never scrolls sideways (issue #103): the widest element is named.
-  const sideways = await page.evaluate(() => {
-    const root = document.documentElement;
-    if (root.scrollWidth <= root.clientWidth) return null;
-    let widest = { name: "?", right: 0 };
-    for (const el of document.querySelectorAll<HTMLElement>("body *")) {
-      const box = el.getBoundingClientRect();
-      if (box.width > 0 && box.right > widest.right) {
-        widest = {
-          name: `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 60)}`,
-          right: box.right,
-        };
-      }
-    }
-    return `scrollWidth ${root.scrollWidth} > ${root.clientWidth}; widest ${widest.name} ends at ${Math.round(widest.right)}`;
-  });
-  if (sideways) found.push(`${theme} ${lang} ${shot.name}: ${sideways}`);
-  // The same screen, checked for accessibility: serious and critical violations fail.
-  await page.addScriptTag({ path: AXE });
-  const violations = await page.evaluate(
-    (options) =>
-      (
-        globalThis as unknown as {
-          axe: {
-            run(options: unknown): Promise<{ violations: AxeViolation[] }>;
-          };
-        }
-      ).axe
-        .run(options)
-        .then((result) => result.violations),
-    AXE_RUN_OPTIONS,
-  );
-  for (const violation of blocking(violations)) {
-    found.push(describeViolation(`${theme} ${lang} ${shot.name}`, violation));
-  }
-  await page.close();
-  return found;
-}
-
 export async function takeShots(
   url: string,
   ids: DemoIds,
@@ -731,36 +686,140 @@ export async function takeShots(
   log: (msg: string) => void,
   visual: VisualMode = "off",
 ): Promise<string> {
+  // All four pairs, or the one a CI job prints (SHOTS_THEME, SHOTS_LANG; #291), refused before
+  // Chrome starts when the filter keeps none.
+  const variants = pickVariants(process.env);
   const browser = await launchFirst((attempt) =>
     chromium.launch({ ...attempt, headless: true, env }),
   );
   const problems: string[] = [];
   try {
-    await inSequence(["light", "dark"] as const, async (theme) => {
-      await inSequence(["pt-BR", "en"] as const, async (lang) => {
-        const dir = join(SHOTS_DIR, `${theme}-${lang}`);
-        mkdirSync(dir, { recursive: true });
-        // For the comparison: the same locale, zone and scale on every machine.
-        const context = await browser.newContext({
-          viewport: { width: 1280, height: 800 },
-          ...(visual === "off"
-            ? {}
-            : {
-                reducedMotion: "reduce" as const,
-                deviceScaleFactor: 1,
-                timezoneId: "UTC",
-                locale: lang,
-              }),
-        });
-        for (const shot of shots(ids).filter((s) =>
-          s.name.includes(process.env.DEMO_SHOTS ?? ""),
-        )) {
-          problems.push(...(await printOne(context, shot, { theme, lang, dir, url, log, visual }))); // NOSONAR: one screen at a time: they share one browser context
-        }
-        await context.close();
-        log(`prints ${theme} ${lang}`);
+    for (const { theme, lang } of variants) {
+      const dir = join(SHOTS_DIR, `${theme}-${lang}`);
+      mkdirSync(dir, { recursive: true });
+      // For the comparison: the same locale, zone and scale on every machine.
+      const context = await browser.newContext({
+        viewport: { width: 1280, height: 800 },
+        ...(visual === "off"
+          ? {}
+          : {
+              reducedMotion: "reduce" as const,
+              deviceScaleFactor: 1,
+              timezoneId: "UTC",
+              locale: lang,
+            }),
       });
-    });
+      for (const shot of shots(ids).filter((s) => s.name.includes(process.env.DEMO_SHOTS ?? ""))) {
+        const page = await context.newPage();
+        page.on("pageerror", (error) =>
+          log(`erro na página ${shot.name} ${page.url()}: ${error.stack}`),
+        );
+        // The storage is the context's: a print with no clients clears what an earlier one kept.
+        await page.addInitScript(
+          (seed) => {
+            try {
+              const keys = ["flightdeck.clients", "flightdeck.clientFilter"];
+              for (const key of [
+                ...keys,
+                "flightdeck.clientBudgetAlerts",
+                "flightdeck.roi",
+                "flightdeck.uiMode",
+                "flightdeck.inbox",
+              ]) {
+                localStorage.removeItem(key);
+              }
+              if (seed.simple) {
+                localStorage.setItem(
+                  "flightdeck.uiMode",
+                  JSON.stringify({ "demo-alfa": "simple" }),
+                );
+              }
+              if (seed.clients) {
+                localStorage.setItem(keys[0] as string, seed.clients.clients);
+                if (seed.clients.selected) {
+                  localStorage.setItem(keys[1] as string, seed.clients.selected);
+                }
+              }
+              if (seed.roi) localStorage.setItem("flightdeck.roi", seed.roi);
+              if (seed.inbox) localStorage.setItem("flightdeck.inbox", seed.inbox);
+            } catch {
+              // No storage, no clients.
+            }
+          },
+          {
+            clients: shot.clients
+              ? { clients: DEMO_CLIENTS, selected: shot.clients.selected ?? "" }
+              : null,
+            roi: shot.roi ? DEMO_ROI : null,
+            inbox: shot.inbox ? demoInbox(lang) : null,
+            simple: shot.simple === true,
+          },
+        );
+        const query = new URLSearchParams({ theme, lang, route: JSON.stringify(shot.route) });
+        await page.goto(`${url}?${query}`);
+        // The hosts connect and the screen loads its data.
+        await page.waitForTimeout(1500);
+        // The host nothing listens on shows as offline (hollow gray), not still connecting.
+        await page
+          .getByRole("img", { name: /^notebook: offline$/ })
+          .first()
+          .waitFor({ timeout: 8000 })
+          .catch(() => undefined);
+        await shot.prepare?.(page).catch(async (error) => {
+          await page.screenshot({ path: join(dir, `${shot.name}-FALHOU.png`) });
+          throw error;
+        });
+        // A skeleton or a busy region is a screen still loading: the print waits for the real one.
+        await page.waitForFunction(
+          (selector) => document.querySelector(selector) === null,
+          PENDING_SELECTOR,
+          { timeout: 15_000 },
+        );
+        if (visual !== "off") await stabilize(page);
+        await page.screenshot({
+          path: join(dir, `${shot.name}.png`),
+          ...(visual === "off" ? {} : { animations: "disabled" as const, caret: "hide" as const }),
+        });
+        // A dark print that came out light is a broken print, not a pretty one.
+        const mismatch = themeProblem(
+          theme,
+          `${theme} ${lang} ${shot.name}`,
+          await page.evaluate(pageBackground),
+        );
+        if (mismatch) problems.push(mismatch);
+        // The window never scrolls sideways (issue #103) and the key regions have room (#192): the
+        // shared guards name the culprit by its data-slot path.
+        const layout: Finding[] = await page.evaluate(layoutFindings, { regions: KEY_REGIONS });
+        for (const finding of layout) {
+          if (finding.rule === "sideways" || finding.rule.startsWith("region-")) {
+            problems.push(
+              `${theme} ${lang} ${shot.name}: ${finding.rule} ${finding.path} (${finding.detail})`,
+            );
+          }
+        }
+        // The same screen, checked for accessibility: serious and critical violations fail.
+        await page.addScriptTag({ path: AXE });
+        const found = await page.evaluate(
+          (options) =>
+            (
+              globalThis as unknown as {
+                axe: {
+                  run(options: unknown): Promise<{ violations: AxeViolation[] }>;
+                };
+              }
+            ).axe
+              .run(options)
+              .then((result) => result.violations),
+          AXE_RUN_OPTIONS,
+        );
+        for (const violation of blocking(found)) {
+          problems.push(describeViolation(`${theme} ${lang} ${shot.name}`, violation));
+        }
+        await page.close();
+      }
+      await context.close();
+      log(`prints ${theme} ${lang}`);
+    }
   } finally {
     await browser.close();
   }

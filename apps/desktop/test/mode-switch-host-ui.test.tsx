@@ -44,40 +44,92 @@ describe("mode-switch-host-ui: the host's own page offers simple mode", () => {
     expect(store.uiMode(hostId).mode).toBe("simple");
   });
 
-  test("Given an unlocked host, When the default is set to simple and the host is locked, Then the host says so", async () => {
-    const { store, hostId } = await hostPage({ mode: "full", locked: false });
-    await click("Make simple mode the default for this host");
-    await waitFor(() =>
-      expect(store.getState().hosts.find((h) => h.id === hostId)?.hostInfo?.ui?.mode).toBe(
-        "simple",
-      ),
-    );
-    await click("Lock this host to its mode");
-    await click("Lock");
-    await waitFor(() =>
-      expect(store.getState().hosts.find((h) => h.id === hostId)?.hostInfo?.ui?.locked).toBe(true),
-    );
-  });
+  const hostUi = (store: InstanceType<typeof AppStore>, hostId: string) =>
+    store.getState().hosts.find((h) => h.id === hostId)?.hostInfo?.ui;
 
-  test("Given a host locked to full, Then the page offers no way into simple mode, only to unlock", async () => {
+  test("Given the panel, Then a state line says which mode the host opens in and whether it is locked", async () => {
     await hostPage({ mode: "full", locked: true });
-    expect(screen.queryByRole("button", { name: "Use simple mode on this host" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Unlock this host's mode" })).not.toBeNull();
+    expect(screen.getByText("This host opens in: Full app")).toBeTruthy();
+    expect(screen.getByText("Lock: on (people stay in the default mode)")).toBeTruthy();
+    cleanup();
+    await hostPage({ mode: "full", locked: false });
+    expect(screen.getByText("This host opens in: Full app")).toBeTruthy();
+    expect(screen.getByText("Lock: off")).toBeTruthy();
   });
 
-  test("Given the lock question, When it is cancelled, Then the host stays unlocked", async () => {
+  test("Given an unlocked host in full mode, When Simple is picked as the default, Then the control, the line and a toast follow, and the person's own view stays", async () => {
     const { store, hostId } = await hostPage({ mode: "full", locked: false });
-    await click("Lock this host to its mode");
+    const group = screen.getByRole("radiogroup", { name: "Default mode" });
+    expect(
+      (within(group).getByRole("radio", { name: "Full app" }) as HTMLInputElement).checked,
+    ).toBe(true);
+    await act(async () => {
+      fireEvent.click(within(group).getByRole("radio", { name: "Simple mode" }));
+    });
+    await waitFor(() => expect(hostUi(store, hostId)?.mode).toBe("simple"));
+    expect(
+      (within(group).getByRole("radio", { name: "Simple mode" }) as HTMLInputElement).checked,
+    ).toBe(true);
+    await waitFor(() => screen.getByText("Simple mode is now the default for pc"));
+    expect(screen.getByText("This host opens in: Simple mode")).toBeTruthy();
+    expect(store.uiMode(hostId).mode).toBe("full");
+  });
+
+  test("Given an unlocked host, When the lock switch is turned on and confirmed, Then the host is locked and says so in a toast and in its sidebar row", async () => {
+    const { store, hostId } = await hostPage({ mode: "full", locked: false });
+    const lock = screen.getByRole("switch", { name: "Lock this host to its mode" });
+    expect(lock.getAttribute("aria-checked")).toBe("false");
+    await act(async () => {
+      fireEvent.click(lock);
+    });
+    await click("Lock");
+    await waitFor(() => expect(hostUi(store, hostId)?.locked).toBe(true));
+    await waitFor(() => screen.getByText("pc is now locked to its mode"));
+    expect(
+      screen
+        .getByRole("switch", { name: "Lock this host to its mode" })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(screen.getByRole("img", { name: "pc: locked to its mode" })).toBeTruthy();
+  });
+
+  test("Given the lock question, When it is cancelled, Then the host stays unlocked and the switch stays off", async () => {
+    const { store, hostId } = await hostPage({ mode: "full", locked: false });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("switch", { name: "Lock this host to its mode" }));
+    });
     await click("Cancel");
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
-    expect(store.getState().hosts.find((h) => h.id === hostId)?.hostInfo?.ui?.locked).toBe(false);
+    expect(hostUi(store, hostId)?.locked).toBe(false);
+    expect(
+      screen
+        .getByRole("switch", { name: "Lock this host to its mode" })
+        .getAttribute("aria-checked"),
+    ).toBe("false");
   });
 
-  test("Given a locked host, When it is unlocked, Then the host says it is open again", async () => {
+  test("Given a host locked to full, Then the page offers no way into simple mode and no choice of default, only the switch to unlock", async () => {
     const { store, hostId } = await hostPage({ mode: "full", locked: true });
-    await click("Unlock this host's mode");
+    expect(screen.queryByRole("button", { name: "Use simple mode on this host" })).toBeNull();
+    expect(
+      screen.getByRole("radiogroup", { name: "Default mode" }).querySelector("input:disabled"),
+    ).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("switch", { name: "Lock this host to its mode" }));
+    });
+    await waitFor(() => expect(hostUi(store, hostId)?.locked).toBe(false));
+    await waitFor(() => screen.getByText("pc is open again: people can choose their mode"));
+  });
+
+  test("Given a host that defaults to simple mode, Then its sidebar row carries a Simple badge", async () => {
+    const { store, hostId } = await hostPage({ mode: "simple", locked: false });
+    await act(async () => {
+      store.setUiChoice(hostId, "full");
+    });
     await waitFor(() =>
-      expect(store.getState().hosts.find((h) => h.id === hostId)?.hostInfo?.ui?.locked).toBe(false),
+      expect(
+        screen.getByText("Simple", { selector: "[data-slot='host-mode-badge']" }),
+      ).toBeTruthy(),
     );
   });
 });

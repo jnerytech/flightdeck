@@ -1,5 +1,0 @@
-{
-  "sonarjs/cognitive-complexity": 5,
-  "sonarjs/max-switch-cases": 1,
-  "sonarjs/no-nested-conditional": 4
-}

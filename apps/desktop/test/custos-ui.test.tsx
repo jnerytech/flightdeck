@@ -323,6 +323,15 @@ describe("custos-ui", () => {
     expect(screen.queryAllByText(/Lido do histórico/).length).toBeGreaterThan(0);
   });
 
+  test("Exportar CSV fica nas ações da página, não na barra de filtros (onde quebrava sozinho numa segunda linha)", async () => {
+    await online();
+    await click("Custos");
+    await settle(() => text("Custo estimado") === "US$ 4.00");
+    const button = screen.queryByRole("button", { name: "Exportar CSV" });
+    expect(button?.closest("[data-slot='page-actions']")).not.toBeNull();
+    expect(button?.closest("[role='toolbar'], [aria-label='Filtros']")).toBeNull();
+  });
+
   test("Exportar CSV salva pelo diálogo do sistema; cancelar não reclama", async () => {
     const { mem, store } = await online();
     await click("Custos");
