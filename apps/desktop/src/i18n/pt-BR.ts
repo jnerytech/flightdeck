@@ -4,7 +4,20 @@
  * Terms follow docs/GLOSSARY.md.
  */
 export const ptBR = {
+  inFlight: { stillWorking: "Ainda trabalhando…" },
   nav: { back: "Voltar", forward: "Avançar", overview: "Início" },
+  sidebarAccount: {
+    menu: "Menu da conta de {name}",
+    none: "Conta Claude",
+    unread: "Ainda não lida",
+    many: "{n} contas",
+    manyHint: "Uma por host",
+    plan: "Plano {plan}",
+    signOutGithub: "Sair do GitHub",
+    signOutGithubHost: "Sair do GitHub ({host})",
+    signOutGithubConfirm:
+      "Sair do GitHub em {host}? As sessões de lá perdem o acesso aos seus repositórios até você entrar de novo.",
+  },
   home: {
     title: "Início",
     range: "Últimos 7 dias · todos os hosts",
@@ -954,6 +967,8 @@ export const ptBR = {
     densities: { compact: "Compacta", comfortable: "Confortável" },
     themes: { system: "Sistema", light: "Claro", dark: "Escuro" },
     terminalFont: "Tamanho da fonte do terminal",
+    tabOrder: "Ordem do Ctrl+Tab",
+    tabOrders: { mru: "Mais recente primeiro", sequential: "Ordem das abas" },
   },
   languages: { "pt-BR": "Português (Brasil)", en: "English" },
   palette: {
@@ -2269,6 +2284,7 @@ export const ptBR = {
     preview: "prévia",
     newTab: "Nova aba",
     badge: { "needs-you": "Precisa de você", running: "Rodando", unread: "Não lida" },
+    switcher: { title: "Trocar de aba", position: "{title}, {n} de {total}" },
     all: "Todas as abas",
     scrollLeft: "Rolar as abas para a esquerda",
     scrollRight: "Rolar as abas para a direita",
@@ -3272,7 +3288,7 @@ export const ptBR = {
     goSettings: "Ir para Configurações",
     tabNew: "Nova aba",
     tabClose: "Fechar a aba",
-    tabNext: "Próxima aba",
+    tabRecent: "Ir para a aba anterior (segure Ctrl e aperte Tab para percorrer)",
     tabNumber: "Ir para a aba 1 a 9",
     listNext: "Próxima linha",
     listPrevious: "Linha anterior",
@@ -3746,6 +3762,11 @@ export const ptBR = {
   hostDeps: {
     installPage: "Página de instalação",
     installPageFor: "Abrir a página de instalação de {name}",
+    fixNote: {
+      elevated: "Execute em um PowerShell elevado (Executar como administrador).",
+      noSystemd:
+        "Este computador não tem systemd, então o flightdeckd não pode ser instalado como serviço aqui. Inicie-o no login com as ferramentas do seu sistema.",
+    },
     check: "Verificar de novo",
     checking: "Verificando…",
     readFailed: "Não foi possível ler a saúde: {reason}",

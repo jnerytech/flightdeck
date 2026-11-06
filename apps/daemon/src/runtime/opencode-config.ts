@@ -4,6 +4,7 @@
  * the only ones; everything asks except reads, globs and greps inside the folder; project config is
  * off (`OPENCODE_DISABLE_PROJECT_CONFIG`, verified on 2.2.5, see DECISIONS).
  */
+import { credentialReadGlobs } from "../permissions/sensitive-paths.ts";
 
 export interface PermissionRule {
   action: string;
@@ -18,20 +19,8 @@ export const FLIGHTDECK_PLAN_AGENT = "flightdeck-plan";
 /** OpenCode's built-in agents that are not ours, disabled in every process. */
 export const BUILT_IN_AGENTS = ["build", "plan", "explore", "general"] as const;
 
-/** Read globs of the credential paths `risk.ts` knows: such a read asks. */
-export const CREDENTIAL_READS: readonly string[] = [
-  "*/.env*",
-  "*.env",
-  "*/.ssh/*",
-  "*/.aws/*",
-  "*/.config/gh/*",
-  "*/.claude/.credentials.json",
-  "*/.claude.json",
-  "*/.flightdeck/config.json",
-  "*.pem",
-  "*.key",
-  "*/id_*",
-];
+/** Read globs of the credential paths the classifier knows (one list, `sensitive-paths.ts`): such a read asks. */
+export const CREDENTIAL_READS: readonly string[] = credentialReadGlobs();
 
 /** The rules of both agents, and the top-level ones. */
 export function opencodeRules(): PermissionRule[] {

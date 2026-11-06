@@ -7,6 +7,7 @@
 import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { guardPath } from "./guard-path.ts";
+import { logLines } from "./log-lines.ts";
 import { realTempDir } from "./temp-dir.ts";
 
 export const GUARDED_CLIS = ["gh", "az", "opencode"] as const;
@@ -60,7 +61,7 @@ export function assertCliGuardActive(guard: CliGuard): void {
 
 /** Lines recorded by the sentinels; empty when no guarded CLI was executed. */
 export function cliCalls(guard: CliGuard): string[] {
-  return existsSync(guard.log) ? readFileSync(guard.log, "utf8").trim().split(/\r?\n/) : [];
+  return existsSync(guard.log) ? logLines(readFileSync(guard.log, "utf8")) : [];
 }
 
 export function assertNoCliCalls(guard: CliGuard): void {

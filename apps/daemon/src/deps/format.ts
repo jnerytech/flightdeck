@@ -28,19 +28,19 @@ const TAG: Record<DepResult["state"], string> = {
 
 const lacking = (item: DepResult) => item.state === "missing" || item.state === "outdated";
 
+/** The headline: what is missing among the required first, then the optional, else all set. */
+function headlineOf(required: number, optional: number): string {
+  if (required > 0) return `${required} required missing`;
+  return optional > 0 ? `${optional} optional missing` : "all set";
+}
+
 /** The dependencies as the lines `flightdeckd doctor` prints: the headline, then Required and Optional. */
 export function formatDeps(deps: DepsResult, os: string): string[] {
   const count = (group: DepResult["group"]) =>
     deps.items.filter((item) => item.group === group && lacking(item)).length;
   const required = count("required");
   const optional = count("optional");
-  const headline =
-    required > 0
-      ? `${required} required missing`
-      : optional > 0
-        ? `${optional} optional missing`
-        : "all set";
-  const lines = [`Dependencies: ${headline}`];
+  const lines = [`Dependencies: ${headlineOf(required, optional)}`];
   for (const [group, title] of [
     ["required", "Required"],
     ["optional", "Optional"],
