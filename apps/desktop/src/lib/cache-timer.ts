@@ -54,6 +54,18 @@ export interface ClockDeps {
   onVisibility(fn: () => void): () => void;
 }
 
+/** What the clock reads of the page: whether it is hidden and when that changes (stub: a page that is never hidden). */
+export interface ClockDocument {
+  hidden: boolean;
+  addEventListener(type: "visibilitychange", fn: () => void): void;
+  removeEventListener(type: "visibilitychange", fn: () => void): void;
+}
+
+/** The clock's dependencies in a browser: real timers and the page's visibility; `doc` is undefined where there is no page (stub: nothing real). */
+export function browserClockDeps(now: () => number, _doc: ClockDocument | undefined): ClockDeps {
+  return { now, every: () => () => {}, hidden: () => false, onVisibility: () => () => {} };
+}
+
 /** One 1-second clock for every timer on screen, stopped while nobody listens or the window is hidden. */
 export class SharedClock {
   private readonly listeners = new Set<() => void>();

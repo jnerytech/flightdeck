@@ -1,5 +1,6 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import {
+  browserClockDeps,
   CACHE_TIMER_KEY,
   CACHE_TTL_KEY,
   CacheTimerSettings,
@@ -9,6 +10,7 @@ import {
   spokenParts,
 } from "../src/lib/cache-timer.ts";
 import type { Platform } from "../src/platform/types.ts";
+import { settle } from "./wait.ts";
 
 const FIVE = 300_000;
 const HOUR = 3_600_000;
@@ -216,5 +218,60 @@ describe("cache-timer: the settings (issue #159)", () => {
     expect(told).toBe(2);
     settings.setEnabled(false);
     expect(kept.data.get(CACHE_TIMER_KEY)).toBe("off");
+  });
+
+  test("the browser's clock: real timers, and the window's visibility when there is a document", () => {
+    const listeners: Array<() => void> = [];
+    const doc = {
+      hidden: true,
+      addEventListener: (type: string, fn: () => void) => {
+        expect(type).toBe("visibilitychange");
+        listeners.push(fn);
+      },
+      removeEventListener: (type: string, fn: () => void) => {
+        expect(type).toBe("visibilitychange");
+        listeners.splice(listeners.indexOf(fn), 1);
+      },
+    };
+    const deps = browserClockDeps(() => 42, doc);
+    expect(deps.now()).toBe(42);
+    expect(deps.hidden()).toBe(true);
+    doc.hidden = false;
+    expect(deps.hidden()).toBe(false);
+    const seen: string[] = [];
+    const stop = deps.onVisibility(() => seen.push("changed"));
+    listeners[0]?.();
+    expect(seen).toEqual(["changed"]);
+    stop();
+    expect(listeners).toHaveLength(0);
+  });
+
+  test("the browser's timer ticks, and stopping it clears that very interval", async () => {
+    const deps = browserClockDeps(() => 0, undefined);
+    const real = globalThis.clearInterval;
+    const cleared: unknown[] = [];
+    const spy = spyOn(globalThis, "clearInterval").mockImplementation((id) => {
+      cleared.push(id);
+      real(id);
+    });
+    try {
+      let ticks = 0;
+      const { every: repeat } = deps;
+      const stop = repeat(() => {
+        ticks++;
+      }, 5);
+      await settle(() => ticks >= 2, 2000, "two ticks");
+      stop();
+      expect(cleared).toHaveLength(1);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("with no document the window is never hidden and nothing is watched", () => {
+    const deps = browserClockDeps(() => 0, undefined);
+    expect(deps.hidden()).toBe(false);
+    const stop = deps.onVisibility(() => {});
+    expect(() => stop()).not.toThrow();
   });
 });
