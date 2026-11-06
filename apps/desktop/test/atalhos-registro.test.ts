@@ -52,6 +52,7 @@ describe("atalhos-registro: the registry", () => {
       ["g", "n"],
       ["g", "p"],
       ["g", "c"],
+      ["g", "a"],
       ["g", ","],
     ]);
     expect(chords.every((c) => c?.chord === true)).toBe(true);
