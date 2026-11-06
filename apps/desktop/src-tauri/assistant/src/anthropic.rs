@@ -120,13 +120,14 @@ pub fn answer(reply: &Reply, key: &Secret, model: &str) -> Result<Answer, Refusa
 /// What an error reply means, with its request id and its message (the key taken out).
 pub fn refusal(reply: &Reply, key: &Secret) -> Refusal {
     let value: Value = serde_json::from_str(&reply.body).unwrap_or(Value::Null);
-    let detail = value["error"]["message"].as_str().map(|message| crate::detail(message, key));
+    let message = value["error"]["message"].as_str().map(|message| crate::scrub(message, key));
     let request_id = reply
         .header("request-id")
         .or_else(|| value["request_id"].as_str())
         .and_then(|id| crate::token(&crate::scrub(id, key)));
     let retry_after = reply.header("retry-after");
-    let spend = detail.as_deref().is_some_and(|d| d.to_ascii_lowercase().contains("spend limit"));
+    let spend = message.as_deref().is_some_and(|m| m.to_ascii_lowercase().contains("spend limit"));
+    let detail = message.map(|m| m.chars().take(guard::MAX_DETAIL_CHARS).collect::<String>());
     let reason = match (reply.status, retry_after) {
         (400, _) if spend => "assistant_credits",
         (401 | 403, _) => "assistant_auth",
