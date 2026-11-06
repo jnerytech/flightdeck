@@ -4,6 +4,7 @@ import type { Board } from "../board/board.ts";
 import { type CommandResult, git as realGit } from "../board/command.ts";
 import { BUILD_LOG_BYTES, type PrComment, type PrProvider, prProvider, tail } from "../board/pr.ts";
 import type { PrProviderKind } from "../board/types.ts";
+import { settled } from "../settled.ts";
 import { SecretScanner } from "../snippets/model.ts";
 import { ulid } from "../ulid.ts";
 import type { CheckRunner } from "../workflows/check-runner.ts";
@@ -167,8 +168,11 @@ export class PrFixer {
   }
 
   /** The watcher's trigger: starts a round, one at a time per card, unless a limit says stop. */
-  async onTrigger(trigger: WatchTrigger): Promise<void> {
-    // NOSONAR: async by contract: a throw must reach the caller as a rejection
+  onTrigger(trigger: WatchTrigger): Promise<void> {
+    return settled(() => this.triggerNow(trigger));
+  }
+
+  private triggerNow(trigger: WatchTrigger): void {
     const { cardId } = trigger;
     const { watcher } = this.opts;
     if (this.running.has(cardId) || !watcher.enabled(cardId)) return;

@@ -3,6 +3,10 @@
  * await: the work runs now, as the body of an async function would, and what it throws reaches
  * the caller as a rejection, never as an exception.
  */
-export function settled<T>(_work: () => T): Promise<Awaited<T>> {
-  return Promise.resolve(undefined as Awaited<T>);
+export function settled<T>(work: () => T): Promise<Awaited<T>> {
+  try {
+    return Promise.resolve(work()) as Promise<Awaited<T>>;
+  } catch (error) {
+    return Promise.reject(error);
+  }
 }
