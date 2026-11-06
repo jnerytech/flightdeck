@@ -163,11 +163,16 @@ export class WebhookTargets {
     const urlHost = patch.url !== undefined ? checkUrl(patch.url) : current.urlHost;
     const type = patch.type ?? current.type;
     // A target made ntfy keeps its URL: that one must be a topic too.
-    const becomesNtfy = type === "ntfy" && current.type !== "ntfy" && patch.url === undefined;
-    const url = becomesNtfy ? await this.platform.vault.get(urlId(id)) : (patch.url ?? null);
+    const becomesNtfy = type === "ntfy" && current.type !== "ntfy";
+    const url =
+      becomesNtfy && patch.url === undefined
+        ? await this.platform.vault.get(urlId(id))
+        : (patch.url ?? null);
     checkNtfy(type, url, patch.signingSecret);
     if (patch.url !== undefined) await this.platform.vault.set(urlId(id), patch.url);
     if (patch.signingSecret) await this.platform.vault.set(signId(id), patch.signingSecret);
+    // Another type's secret is not an ntfy token: it would go out as a Bearer that fails forever.
+    else if (becomesNtfy) await this.platform.vault.delete(signId(id));
     const next: WebhookTarget = {
       ...current,
       ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
