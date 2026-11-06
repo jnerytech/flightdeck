@@ -313,19 +313,25 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   // room in its card and inside its own box. A finding names the element and the px it has.
   const spacing = options.spacing;
   const nameOf = (el: Element) => pathOf(el, true).split(" > ").pop() ?? "";
+  /** Whether this box itself is clipped away on purpose (the sr-only pattern). */
+  const clippedAway = (el: Element) => {
+    const style = getComputedStyle(el);
+    const clip = style.getPropertyValue("clip").replace(/px/g, "");
+    return (
+      style.getPropertyValue("clip-path") === "inset(50%)" ||
+      /^rect\(0[ ,]+0[ ,]+0[ ,]+0\)$/.test(clip)
+    );
+  };
+  /** Each element's answer, since every rule asks for the same ancestors (#677). */
+  const srOnlyOf = new WeakMap<Element, boolean>();
   /** Hidden for screen readers only (#641): it, or a box around it, is clipped away on purpose. */
-  const srOnly = (el: Element) => {
-    for (let at: Element | null = el; at && at !== document.body; at = at.parentElement) {
-      const style = getComputedStyle(at);
-      const clip = style.getPropertyValue("clip").replace(/px/g, "");
-      if (
-        style.getPropertyValue("clip-path") === "inset(50%)" ||
-        /^rect\(0[ ,]+0[ ,]+0[ ,]+0\)$/.test(clip)
-      ) {
-        return true;
-      }
-    }
-    return false;
+  const srOnly = (el: Element): boolean => {
+    if (el === document.body) return false;
+    const known = srOnlyOf.get(el);
+    if (known !== undefined) return known;
+    const answer = clippedAway(el) || (el.parentElement !== null && srOnly(el.parentElement));
+    srOnlyOf.set(el, answer);
+    return answer;
   };
   /** On screen for a person: not hidden, and not hidden for screen readers only. */
   const seenBy = (el: Element) => !hidden(el) && !srOnly(el);
@@ -482,12 +488,12 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     }
   };
   const checkNestedScroll = (shown: Element[]) => {
+    const page = root.scrollHeight - root.clientHeight;
     for (const el of shown) {
       const inner = hides(el);
       if (!inner) continue;
       let outer = el.parentElement;
       while (outer && outer !== document.body && !hides(outer)) outer = outer.parentElement;
-      const page = root.scrollHeight - root.clientHeight;
       if (outer && outer !== document.body) {
         add(
           "nested-scroll",
@@ -617,7 +623,6 @@ export const SCROLL_SIZES: ReadonlyArray<{ width: number; height: number }> = [
   { width: 1280, height: 600 },
 ];
 
-/** The spacing guard's rules (#588): heuristic, judged against a baseline that only goes down. */
 /** The narrow-window rules (#641): a page header, its title and the tab row, by selector. */
 export interface ResponsiveRules {
   header: string;
@@ -635,6 +640,7 @@ export const RESPONSIVE: ResponsiveRules = {
   tabs: '.tab-strip[role="tablist"]',
 };
 
+/** The spacing guard's rules (#588): heuristic, judged against a baseline that only goes down. */
 export const SPACING_RULES: readonly Rule[] = [
   "block-gap",
   "card-gap",
