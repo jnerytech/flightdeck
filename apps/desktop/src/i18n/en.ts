@@ -2098,6 +2098,8 @@ export const en: Dictionary = {
     },
     binary: "Binary",
     binaryNote: "Binary file: no diff.",
+    secret: "Hidden",
+    secretNote: "Hidden: this file may hold a credential, so Flightdeck does not show its content.",
     tooLarge: "Too large",
     tooLargeNote:
       "Too large to show here ({size}). Open it in the editor or show it in its folder.",

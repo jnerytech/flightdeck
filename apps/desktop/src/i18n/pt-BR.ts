@@ -2095,6 +2095,9 @@ export const ptBR = {
     },
     binary: "Binário",
     binaryNote: "Arquivo binário: sem diff.",
+    secret: "Oculto",
+    secretNote:
+      "Oculto: este arquivo pode guardar uma credencial, então o Flightdeck não mostra o conteúdo.",
     tooLarge: "Grande demais",
     tooLargeNote: "Grande demais para mostrar aqui ({size}). Abra no editor ou mostre na pasta.",
     tooLargeNoteNoSize: "Grande demais para mostrar aqui. Abra no editor ou mostre na pasta.",
