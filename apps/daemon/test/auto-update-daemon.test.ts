@@ -93,6 +93,24 @@ describe("auto-update-daemon: the setting, the check hook and what the host repo
     expect(calls).toBe(3);
   });
 
+  test("a hook that throws does not stop the checks", async () => {
+    let calls = 0;
+    const checker = new UpdateChecker({
+      manifestUrl: releaseServer("0.9.0"),
+      checkIntervalH: 6,
+      currentVersion: "0.8.0",
+      onChecked: async () => {
+        calls++;
+        throw new Error("boom");
+      },
+    });
+    cleanups.push(() => checker.stop());
+    await checker.start();
+    await checker.checkNow();
+    expect(calls).toBe(2);
+    expect(checker.status()).toMatchObject({ available: true, version: "0.9.0" });
+  });
+
   test("host.info announces autoUpdate and its state; host.updates.set changes the setting and answers with the state", async () => {
     const { manager } = newManager();
     let auto = true;
