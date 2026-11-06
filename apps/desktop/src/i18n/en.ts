@@ -1256,6 +1256,7 @@ export const en: Dictionary = {
     central_confirm: "Changing the host's ~/.claude/settings.json needs your confirmation.",
     permission_request_closed: "The permission request {id} is not open.",
     hold_required: "A high-risk request is approved only by holding the button.",
+    input_changed: "A request is approved as it was asked: the answer changes what it runs.",
     update_needs_service:
       "The daemon does not run as a service: update on the host with flightdeckd update --from <new binary>.",
     update_signature_failed: "The update could not be verified: {why}",
@@ -1325,6 +1326,8 @@ export const en: Dictionary = {
       "The daemon has not checked for an update yet: try again in a moment.",
     update_manifest_no_binary: "The release {version} has no binary for {key}.",
     perm_rule_other_tool: "That rule belongs to another tool ({tool}).",
+    perm_rule_too_broad:
+      "That rule would also allow {tool} uses of {level} risk, more than this request: narrow it.",
     perm_rule_content_invalid: "The rule's content is not valid: one line, up to 500 characters.",
     perm_destination_denied: "The destination {destination} is not allowed for a rule.",
     perm_mode_denied: "The mode {mode} cannot be set from an answer.",
