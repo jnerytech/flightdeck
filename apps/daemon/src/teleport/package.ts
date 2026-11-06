@@ -152,7 +152,7 @@ export class TeleportPackages {
     const sessionId = session.id;
     await mkdir(folder, { recursive: true, mode: 0o700 });
     await writeFile(join(folder, PART), text, { mode: 0o600 });
-    const secrets = secretLines(text.toString("utf8"), this.deps.scan);
+    const secrets = await secretLines(text.toString("utf8"), this.deps.scan);
     const code = this.deps.code
       ? await this.deps.code({
           cwd: session.cwd,
@@ -208,7 +208,10 @@ export class TeleportPackages {
     const size = entry?.manifest.parts.find((p) => p.name === part)?.size;
     if (size === undefined) throw refuse("not_found", "teleport_not_found");
     if (!Number.isInteger(offset) || offset < 0 || offset > size) {
-      throw refuse("bad_request", "request_invalid");
+      throw new FlightdeckError("bad_request", "bad offset", "request_invalid", {
+        field: "offset",
+        command: "teleport.read",
+      });
     }
     const length = Math.min(this.deps.chunkBytes ?? TELEPORT_CHUNK_BYTES, size - offset);
     const buffer = Buffer.alloc(length);

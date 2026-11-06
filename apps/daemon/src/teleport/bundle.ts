@@ -160,6 +160,6 @@ export async function bundleCode(input: CodeBundleInput): Promise<CodeBundle> {
     base,
     ahead,
     changed: names ? names.split("\n").length : 0,
-    secrets: secretLines(added, input.scan),
+    secrets: await secretLines(added, input.scan),
   };
 }

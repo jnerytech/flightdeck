@@ -12,18 +12,31 @@ export function addSecrets(
   return { lines: a.lines + b.lines, labels: [...new Set([...a.labels, ...b.labels])] };
 }
 
+/** How often the scan gives the event loop back, and how. */
+const DEFAULT_PACE = {
+  every: 256 * 1024,
+  pause: () => new Promise<void>((resolve) => setTimeout(resolve, 0)),
+};
+
 /**
  * The lines of a text that look like secrets, and the kinds found in the order met. The text is
  * walked line by line, never split into an array: a transcript can be 64 MB.
  */
-export function secretLines(
+export async function secretLines(
   text: string,
   scan: (text: string) => string[],
-): TeleportManifest["secrets"] {
+  pace: { every: number; pause(): Promise<void> } = DEFAULT_PACE,
+): Promise<TeleportManifest["secrets"]> {
   const labels: string[] = [];
   let lines = 0;
   let start = 0;
+  let mark = 0;
   while (start <= text.length) {
+    // The scan runs about 20 patterns per line: every slice of text gives the event loop back.
+    if (start - mark >= pace.every) {
+      mark = start;
+      await pace.pause();
+    }
     const end = text.indexOf("\n", start);
     const line = text.slice(start, end === -1 ? text.length : end);
     start = end === -1 ? text.length + 1 : end + 1;
