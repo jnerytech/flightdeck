@@ -1470,6 +1470,21 @@ html:not(:has([data-slot="status-bar"])) {
 @utility setting-select {
   width: 11rem;
 }
+/* A setting's row (#588): one label column for every row, so the controls line up. */
+@utility setting-row {
+  display: grid;
+  grid-template-columns: 12rem minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+}
+/* The help under a checkbox, indented to its words (the box and the 8 px gap). */
+@utility setting-hint {
+  display: block;
+  padding-left: calc(13px + 0.5rem);
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
 
 @utility header-crumbs {
   display: flex;

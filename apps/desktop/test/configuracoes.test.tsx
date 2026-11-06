@@ -68,6 +68,23 @@ describe("configuracoes", () => {
     }
   });
 
+  test("every setting's control starts on one column, whatever its label's length (#588)", async () => {
+    setup();
+    await openSettings();
+    for (const label of ["Tema", "Densidade da lista", "Tamanho da fonte do terminal", "Idioma"]) {
+      const row = (screen.getByLabelText(label) as HTMLInputElement).labels?.[0]?.parentElement;
+      expect(row?.className.split(" ") ?? []).toContain("setting-row");
+    }
+  });
+
+  test("the reason auto-start is off sits under its own checkbox, indented to its words (#588)", async () => {
+    setup("unsupported");
+    await openSettings();
+    const next = checkbox("Iniciar com o Windows").closest("label")?.nextElementSibling ?? null;
+    expect(next?.textContent ?? "").toBe("indisponível nesta plataforma");
+    expect(next?.className.split(" ") ?? []).toContain("setting-hint");
+  });
+
   test("padrões: fechar manda para a bandeja; iniciar com o Windows desligado", async () => {
     const { closeToTray } = setup("supported");
     await openSettings();
