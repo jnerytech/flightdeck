@@ -90,6 +90,13 @@ describe("arvore-projetos-ui: the project tree in the sidebar (issue #116)", () 
     expect(within(nodes[2] as HTMLElement).getByRole("img", { name: "needs you" })).toBeTruthy();
   });
 
+  test("every id in the tree is a plain identifier, so a selector built from it (axe's) needs no escaping", () => {
+    setup();
+    const ids = [...tree().querySelectorAll("[id]")].map((e) => e.id);
+    expect(ids.length).toBeGreaterThan(0);
+    expect(ids.filter((id) => !/^[A-Za-z][\w-]*$/.test(id))).toEqual([]);
+  });
+
   test("picking a node narrows to it and opens the project's board; picking it again clears", async () => {
     const first = setup();
     await act(async () => {
