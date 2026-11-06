@@ -1,4 +1,4 @@
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, join, normalize } from "node:path";
 import {
   NETWORK_TOOLS,
   RANK,
@@ -253,17 +253,22 @@ const LOOKUP_MS = 2000;
  * The kind of each exact path a rule names, looked up once with `stat` (relative to the request's
  * folder, `~/` to the home). A path it did not look up counts as a folder: past the cap, a network
  * path (`//host/share`, which would reach another host), one with no folder to start from, and
- * one whose look-up timed out.
+ * one whose look-up timed out. `target` is the file the request itself writes: missing, it counts
+ * as a file, which it will be once the request is allowed.
  */
 export async function pathKinds(
   paths: string[],
   cwd: string,
   home: string,
   stat: (path: string) => Promise<"dir" | "file" | "missing">,
-  timeoutMs = LOOKUP_MS,
+  options: { timeoutMs?: number; target?: string } = {},
 ): Promise<PathKind> {
+  const { timeoutMs = LOOKUP_MS, target } = options;
   const at = (path: string) =>
-    path.startsWith("~/") ? join(home, path.slice(2)) : isAbsolute(path) ? path : join(cwd, path);
+    normalize(
+      path.startsWith("~/") ? join(home, path.slice(2)) : isAbsolute(path) ? path : join(cwd, path),
+    );
+  const created = target === undefined ? undefined : at(target);
   const network = (path: string) => /^(?:\/\/|\\\\)/.test(path);
   const timed = (where: string) =>
     new Promise<"dir" | "file" | "missing">((resolve) => {
@@ -275,9 +280,17 @@ export async function pathKinds(
     [...new Set(paths)].slice(0, MAX_LOOKUPS).map(async (path) => {
       const where = at(path);
       const plain = isAbsolute(where) && !network(path) && !network(where);
-      return [path, plain ? await timed(where) : "dir"] as const;
+      const kind = plain ? await timed(where) : "dir";
+      return [path, kind === "missing" && where === created ? "file" : kind] as const;
     }),
   );
   const kinds = new Map<string, "dir" | "file" | "missing">(looked);
   return (path) => kinds.get(path) ?? "dir";
+}
+
+/** The file a request is about to write (Write, Edit, MultiEdit, NotebookEdit), or undefined. */
+export function writeTarget(toolName: string, input: Record<string, unknown>): string | undefined {
+  if (!WRITE_TOOLS.has(toolName)) return undefined;
+  const file = input.file_path ?? input.notebook_path;
+  return typeof file === "string" && file !== "" ? file : undefined;
 }

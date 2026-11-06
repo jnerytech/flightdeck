@@ -28,7 +28,7 @@ import type { AutoApproveRequest, AutoApprover } from "../permissions/auto-appro
 import { PermissionBroker } from "../permissions/permission-broker.ts";
 import { parseSuggestions } from "../permissions/permission-updates.ts";
 import { type Risk, RiskClassifier } from "../permissions/risk.ts";
-import type { PathKind } from "../permissions/rule-risk.ts";
+import { type PathKind, writeTarget } from "../permissions/rule-risk.ts";
 import { clampPermissionMode, toolAllowed } from "../personas/model.ts";
 import type { PreparedPersonas } from "../personas/prepare.ts";
 import { type PersonaSnapshot, snapshotOf } from "../personas/snapshot.ts";
@@ -523,10 +523,13 @@ export class SessionManager {
     this.updateListeners.add(listener);
   }
 
-  /** The folder of the session a request is open in; "" when it is not open. */
-  permissionCwd(requestId: string): string {
+  /** The folder of the session a request is open in, and the file it writes; cwd "" when not open. */
+  permissionPlace(requestId: string): { cwd: string; target?: string } {
     const sessionId = this.broker.sessionOf(requestId);
-    return sessionId ? (this.store.getSession(sessionId)?.cwd ?? "") : "";
+    const cwd = sessionId ? (this.store.getSession(sessionId)?.cwd ?? "") : "";
+    const asked = this.broker.askedOf(requestId);
+    const target = asked ? writeTarget(asked.toolName, asked.input) : undefined;
+    return target === undefined ? { cwd } : { cwd, target };
   }
 
   respondPermission(payload: CommandPayload<"permission.respond">, kind?: PathKind): void {

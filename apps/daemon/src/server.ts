@@ -743,10 +743,13 @@ export function startServer(opts: ServerOptions): RunningServer {
         const external = opts.central?.permissions;
         // A rule that names a folder covers all it holds (#395): look its paths up first, only for
         // an allow of a request that is open (an unknown one is refused below anyway).
-        const cwd = external?.cwdOf(requestId) ?? manager.permissionCwd(requestId);
+        // The file the request itself writes counts as one before it exists.
+        const { cwd, target } = external?.placeOf(requestId) ?? manager.permissionPlace(requestId);
         const kind =
           decision === "allow" && cwd
-            ? await pathKinds(rulePaths(updatedPermissions ?? []), cwd, userHome(), statKind)
+            ? await pathKinds(rulePaths(updatedPermissions ?? []), cwd, userHome(), statKind, {
+                ...(target === undefined ? {} : { target }),
+              })
             : undefined;
         if (
           !external?.respond(

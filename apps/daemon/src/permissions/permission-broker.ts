@@ -145,6 +145,12 @@ export class PermissionBroker {
     return this.open.get(requestId)?.sessionId ?? "";
   }
 
+  /** The tool and input of an open request; undefined when it is not open. */
+  askedOf(requestId: string): { toolName: string; input: ToolInput } | undefined {
+    const pending = this.open.get(requestId);
+    return pending && { toolName: pending.toolName, input: pending.input };
+  }
+
   respond(payload: CommandPayload<"permission.respond">, kind?: PathKind): void {
     const pending = this.open.get(payload.requestId);
     if (!pending) {
