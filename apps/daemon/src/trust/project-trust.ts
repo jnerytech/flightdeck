@@ -28,6 +28,8 @@ export interface ProjectTrustOptions {
   log?: (line: string) => void;
   /** Reads a `.git` file (a test seam: a file that cannot be read is a boundary, not a crash). */
   readText?: (path: string) => Promise<string>;
+  /** Whether two folders are the same one (case blind where the file system is): a test seam, `samePath` by default. */
+  sameFolder?: (a: string, b: string) => boolean;
 }
 
 interface Row {

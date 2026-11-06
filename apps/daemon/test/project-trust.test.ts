@@ -321,3 +321,25 @@ describe("project-trust: two looks at one folder at once end with the later one 
     expect(trust.sessionTrust(odd).configRoot).toBe(join(main, "two"));
   });
 });
+
+describe("project-trust: the scope given when trusting is the scope kept (issue #415)", () => {
+  test("an exact trust covers that folder and not the ones inside it; a tree trust covers both", () => {
+    const { trust } = fresh();
+    trust.trust("/work/exact", "person", "exact");
+    trust.trust("/work/tree", "person", "tree");
+    expect(trust.isTrusted("/work/exact")).toBe(true);
+    expect(trust.isTrusted("/work/exact/src")).toBe(false);
+    expect(trust.isTrusted("/work/tree/src")).toBe(true);
+  });
+
+  test("an exact trust is compared the way the file system compares names", () => {
+    const blind = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+    const { trust } = fresh({ sameFolder: blind });
+    trust.trust("/Work/App", "person", "exact");
+    expect(trust.isTrusted("/work/app")).toBe(true);
+    expect(trust.isTrusted("/work/app/src")).toBe(false);
+    const sensitive = fresh();
+    sensitive.trust.trust("/Work/App", "person", "exact");
+    expect(sensitive.trust.isTrusted("/work/app")).toBe(false);
+  });
+});
