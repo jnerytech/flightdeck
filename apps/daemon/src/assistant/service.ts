@@ -75,7 +75,12 @@ export class AssistantService {
       throw refusal("assistant_empty_input");
     }
     const repo = payload.source ? await this.opts.context(payload.source) : undefined;
-    const scanned = [payload.text, repo?.diff ?? "", repo?.rules ?? ""];
+    const scanned = [
+      payload.text,
+      ...Object.values(payload.context ?? {}),
+      repo?.diff ?? "",
+      repo?.rules ?? "",
+    ];
     const found = [...new Set(scanned.flatMap((text) => this.opts.scanner.scan(text)))];
     if (found.length > 0) throw refusal("assistant_secret_found", { labels: found.join(", ") });
     const blocked = this.opts.quota?.blocked();
