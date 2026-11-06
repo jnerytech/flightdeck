@@ -207,9 +207,10 @@ describe("card-messages-ui: a wand with no provider opens Settings (#162)", () =
     expect(store.router.current).toEqual({ name: "settings", section: "assistant" });
   });
 
-  test("the merge's wand, with no provider chosen, sends the person to Settings", async () => {
+  test("the merge's wand, with no provider able to run, sends the person to Settings", async () => {
     const { store, t } = setup("en");
-    store.assistant.setPrefs({ provider: null });
+    // An API provider with no key saved: there is nothing to run on.
+    store.assistant.setPrefs({ provider: "anthropic" });
     const opened: string[] = [];
     (store as unknown as { openAssistantSettings(): void }).openAssistantSettings = () =>
       void opened.push("settings");
