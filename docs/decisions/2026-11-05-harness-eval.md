@@ -22,3 +22,14 @@
   (`harness-eval-2026-11-05.json`).
 - **Opt-in.** It never runs in the suite, in CI or under the slot (the model's turn is not a heavy
   run), and it spends real quota: run it after a harness change, under the quota rule.
+- **Confinement, after the security review of the port (2026-11-06).** The CLI only wires what the
+  lib decides, and the lib is tested. The session's processes, the clone and `bun install` get an
+  allow-listed environment: the PATH, the home, the locale and the temp folders, never a token or
+  key (`GH_TOKEN`, `ANTHROPIC_API_KEY` and the rest), so `claude` must be logged in with its own
+  login, not a key in the environment. Read, Edit and Write are scoped to the clone, the home
+  folder is denied when the clone is outside it, and a git `--output` is denied. The clone, the
+  checkout, the removal of origin and the install must each succeed, and the session never starts
+  in a clone that still lists a remote. Transcripts (only with `--keep`) and the report go to a
+  0700 folder as 0600 files, and the report keeps each step's command, never its output. What
+  stays: the tests the session writes run as you, with the network, so run the eval only on a
+  machine where that is acceptable.
