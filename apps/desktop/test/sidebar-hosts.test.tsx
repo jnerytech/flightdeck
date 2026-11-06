@@ -15,18 +15,18 @@ afterEach(cleanup);
 const css = readFileSync(join(import.meta.dir, "../src/styles.css"), "utf8");
 const block = (name: string) => css.match(new RegExp(`@utility ${name} \\{([^}]*)\\}`))?.[1] ?? "";
 
-describe("sidebar-hosts: the hosts section keeps room when the grouped nav is tall (#171)", () => {
-  test("the nav gives way and scrolls inside itself instead of pushing the hosts out", () => {
-    const nav = block("sidebar-nav");
-    expect(nav).toMatch(/min-height:\s*0/);
-    expect(nav).toMatch(/overflow-y:\s*auto/);
-    expect(nav).toMatch(/flex-shrink:\s*1/);
+describe("sidebar-hosts: the nav and the hosts scroll as one body between a fixed header and footer (#171, #567)", () => {
+  test("the body takes the room left and scrolls; the nav and the hosts inside it do not scroll on their own", () => {
+    const body = block("sidebar-body");
+    expect(body).toMatch(/min-height:\s*0/);
+    expect(body).toMatch(/flex:\s*1 1 0/);
+    expect(body).toMatch(/overflow-y:\s*auto/);
+    expect(/overflow/.test(block("sidebar-nav"))).toBe(false);
+    expect(/overflow/.test(block("sidebar-hosts"))).toBe(false);
   });
 
-  test("the hosts section has a minimum height of its own and scrolls when it has more rows", () => {
-    const hosts = block("sidebar-hosts");
-    expect(hosts).toMatch(/min-height:\s*(?:[6-9]|1\d)(?:\.\d+)?rem/);
-    expect(hosts).toMatch(/overflow-y:\s*auto/);
+  test("the hosts section still has a minimum height of its own (#171)", () => {
+    expect(block("sidebar-hosts")).toMatch(/min-height:\s*(?:[6-9]|1\d)(?:\.\d+)?rem/);
   });
 
   test("the sidebar marks the hosts section so a layout check can measure it", () => {
@@ -55,5 +55,15 @@ describe("sidebar-hosts: the hosts section keeps room when the grouped nav is ta
     const hosts = view.container.querySelector("[data-slot='sidebar-hosts']");
     expect(hosts?.className).toContain("sidebar-hosts");
     expect(hosts?.textContent).toContain("alfa");
+    // #567: the nav and the hosts sit in the one scrolling body; the footer stays outside it.
+    const body = view.container.querySelector("[data-slot='sidebar-body']");
+    const foot = view.container.querySelector("[data-slot='sidebar-foot']");
+    expect(body?.className ?? "").toContain("sidebar-body");
+    expect([!!body?.querySelector("nav"), !!hosts && !!body?.contains(hosts)]).toEqual([true, true]);
+    expect([!!foot, !!foot && !!body?.contains(foot)]).toEqual([true, false]);
+    expect(foot?.textContent ?? "").toContain("Settings");
+    // No other piece of the sidebar scrolls on its own.
+    const scrollers = [...view.container.querySelectorAll("[class*='overflow-y-']")].length;
+    expect(scrollers).toBe(0);
   });
 });
