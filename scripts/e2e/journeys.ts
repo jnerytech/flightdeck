@@ -2,7 +2,7 @@
  * The e2e journeys (phase 10): fourteen in a real browser against the seeded demo, in both
  * languages, and a layout check of the main screens at 1280x800 and 800x600 (nothing sticks out
  * sideways, and the end of the long list shows after scrolling). The runner is `@playwright/test`
- * (scripts/e2e/journeys.e2e.ts); this file holds the journeys themselves.
+ * (scripts/e2e/define-journeys.ts, one file per language); this file holds the journeys themselves.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
