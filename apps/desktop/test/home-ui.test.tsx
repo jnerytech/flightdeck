@@ -180,6 +180,14 @@ describe("home-ui: four cards with the last seven days of every host", () => {
     expect(screen.getByRole("button", { name: "Open Avg cost / turn" }).textContent).toContain("—");
   });
 
+  test("with no turn counted yet the average cost per turn is unknown, never $0", async () => {
+    const { view } = setup({ usage: { days: 7, rows: [] } });
+    render(view);
+    const average = await screen.findByRole("button", { name: "Open Avg cost / turn" });
+    await waitFor(() => expect(average.textContent).toContain("—"));
+    expect(average.textContent).not.toContain("$0");
+  });
+
   test("a turn that takes over a minute is read in minutes, and the numbers follow the language", async () => {
     const { view } = setup({ usage: usage({ failedTurns: 0, durationMs: 360_000 }) });
     render(view);

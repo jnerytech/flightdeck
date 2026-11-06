@@ -32,13 +32,13 @@ function setup(
       },
     ],
   } as never as ReturnType<typeof store.getState>;
-  const view = (collapsed = false) => (
+  const view = (collapsed = false, go: (route: unknown) => void = () => {}) => (
     <Sidebar
       store={store}
       state={state}
       collapsed={collapsed}
       t={store.i18n.t}
-      go={() => {}}
+      go={go}
       {...(route ? { route } : {})}
       {...(appVersion ? { appVersion } : {})}
       onOpenProjectScreen={() => {}}
@@ -100,6 +100,23 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
     expect(listed.at(-1)).toBe("SSH");
     expect(screen.queryByRole("button", { name: "Connections" })).toBeNull();
     expect(within(machines).getByLabelText("alfa: online")).toBeTruthy();
+  });
+
+  test("Home is the first item of Work: it opens Home and is marked while Home is open", () => {
+    const routes: unknown[] = [];
+    const { view } = setup(ALL, undefined, { name: "overview" });
+    const { unmount } = render(view(false, (route) => void routes.push(route)));
+    const home = screen.getByRole("button", { name: "Home" });
+    expect(home.getAttribute("aria-current")).toBe("page");
+    expect(
+      screen.getByRole("button", { name: "Open Sessions" }).getAttribute("aria-current"),
+    ).toBeNull();
+    fireEvent.click(home);
+    expect(routes).toEqual([{ name: "overview" }]);
+    unmount();
+    const other = setup(ALL, undefined, { name: "hub" });
+    render(other.view());
+    expect(screen.getByRole("button", { name: "Home" }).getAttribute("aria-current")).toBeNull();
   });
 
   test("an item the host cannot offer is not listed", () => {
