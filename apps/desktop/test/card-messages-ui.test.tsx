@@ -138,6 +138,19 @@ describe("card-messages-ui: the merge of a card asks for its commit message (#16
     });
   }
 
+  test("a message the person types is sent without its outer blank space", async () => {
+    const { sent } = renderReview("en");
+    await press(screen.queryByRole("button", { name: WORDS.en.merge }));
+    const dialog = screen.queryByRole("alertdialog");
+    const field = screen.queryByLabelText(WORDS.en.message);
+    expect(field).not.toBeNull();
+    await act(async () => {
+      fireEvent.change(field as HTMLElement, { target: { value: "  fix(app): typed  " } });
+    });
+    await press(dialog ? within(dialog).queryByRole("button", { name: WORDS.en.merge }) : null);
+    expect(mergeCall(sent)?.message ?? "no message").toBe("fix(app): typed");
+  });
+
   test("an empty message is not sent: the host keeps its default", async () => {
     const { sent } = renderReview("en");
     await press(screen.queryByRole("button", { name: WORDS.en.merge }));
