@@ -9,6 +9,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { byCodeUnit } from "@flightdeck/protocol";
 import { hasRuntimeCode, isCoverageSource } from "./lib/coverage-check.ts";
 import { fastCoverageVerdict, fullyCovered } from "./lib/fast-coverage.ts";
 import { testTiers } from "./lib/test-tiers.ts";
@@ -25,7 +26,7 @@ const tiers = testTiers(new Map(tracked.map((path) => [path, read(path)])));
 const fast = Object.entries(tiers)
   .filter(([, tier]) => tier === "unit" || tier === "component")
   .map(([path]) => `./${path}`)
-  .sort();
+  .sort(byCodeUnit);
 const sources = tracked
   .filter(isCoverageSource)
   .filter((path) => hasRuntimeCode(read(path), path.endsWith(".tsx") ? "tsx" : "ts"));
