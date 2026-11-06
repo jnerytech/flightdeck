@@ -27,6 +27,7 @@ import type {
 } from "@flightdeck/protocol";
 import { inSequence } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
+import { refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
 import { userHome } from "../config.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -547,12 +548,25 @@ export class Actions {
     project: ActionProject,
   ): Promise<{ found: Found[]; errors: string[]; issues: RuleIssue[] }> {
     const listed = must(
-      await git(project.path, "ls-tree", "--name-only", project.baseBranch, "--", ACTIONS_FILE),
+      await git(
+        project.path,
+        "ls-tree",
+        "--name-only",
+        "--end-of-options",
+        refArg(project.baseBranch),
+        "--",
+        ACTIONS_FILE,
+      ),
       "git ls-tree",
     );
     if (!listed.stdout.trim()) return { found: [], errors: [], issues: [] };
     const shown = must(
-      await git(project.path, "show", `${project.baseBranch}:${ACTIONS_FILE}`),
+      await git(
+        project.path,
+        "show",
+        "--end-of-options",
+        `${refArg(project.baseBranch)}:${ACTIONS_FILE}`,
+      ),
       "git show",
     );
     const { actions, errors, issues } = parseActions(shown.stdout);
