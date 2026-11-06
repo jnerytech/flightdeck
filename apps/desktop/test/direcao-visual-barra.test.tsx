@@ -77,6 +77,7 @@ describe("direcao-visual: barra lateral", () => {
     const nav = aside().querySelector("nav") as HTMLElement;
     const items = [...nav.querySelectorAll("button")];
     expect(items.map((b) => b.textContent?.replace(/\d+$/, ""))).toEqual([
+      "Início",
       "Sessões",
       "Precisa de você",
       "Projetos",

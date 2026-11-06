@@ -52,11 +52,17 @@ const names = (root: HTMLElement) =>
     .map((b) => b.getAttribute("aria-label") ?? b.textContent ?? "");
 
 describe("sidebar-grupos: the bar in groups", () => {
-  test("Sessions, Needs you, Projects and Board stay on top, outside any group", () => {
+  test("Home, Sessions, Needs you, Projects and Board stay on top, outside any group", () => {
     const { view } = setup();
     render(view());
     const top = screen.getByRole("navigation", { name: "Main" });
-    expect(names(top).slice(0, 4)).toEqual(["Open Sessions", "Needs you", "Projects", "Board"]);
+    expect(names(top).slice(0, 5)).toEqual([
+      "Home",
+      "Open Sessions",
+      "Needs you",
+      "Projects",
+      "Board",
+    ]);
   });
 
   test("Work, Library and Infra group the rest, each with its items", () => {
