@@ -75,6 +75,8 @@
 
   /* Reading width; lists have none. */
   --container-reading: 72ch;
+  /* Below this width a table's rows stack as cards (#641). */
+  --container-table: 40rem;
 
   /* Inter for the interface; the system's monospace for commands and code. */
   --font-sans: "Inter Variable", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -2138,6 +2140,117 @@ html:not(:has([data-slot="status-bar"])) {
   color: var(--muted-foreground);
   font-size: 0.75rem;
   overflow-wrap: anywhere;
+}
+/* The host's resources table: rows as cards in a narrow frame, a table from 40 rem (#640, #641). */
+@utility resources-frame {
+  container-type: inline-size;
+}
+@utility resources-table {
+  display: block;
+  width: 100%;
+  font-size: 0.875rem;
+  border-collapse: collapse;
+  & thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  & tbody,
+  & tr {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  & tr {
+    gap: 0.125rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+  }
+  & td {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  & td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    color: var(--color-muted-foreground);
+    font-size: 0.75rem;
+  }
+  & td:first-child {
+    display: block;
+    font-weight: 500;
+  }
+  & td:first-child::before {
+    content: none;
+  }
+  & .resources-num {
+    font-variant-numeric: tabular-nums;
+  }
+  /* --container-table: a container query cannot read a custom property. */
+  @container (width >= 40rem) {
+    display: table;
+    table-layout: fixed;
+    & thead {
+      position: static;
+      width: auto;
+      height: auto;
+      overflow: visible;
+      clip-path: none;
+      display: table-header-group;
+      color: var(--color-muted-foreground);
+      font-size: 0.75rem;
+      text-align: left;
+    }
+    & th {
+      font-weight: 400;
+      padding: 0 0.75rem 0.25rem 0;
+    }
+    & tbody {
+      display: table-row-group;
+    }
+    & tr {
+      display: table-row;
+      padding: 0;
+      border: 0;
+      border-top: 1px solid var(--color-border);
+      border-radius: 0;
+    }
+    & thead tr {
+      border-top: 0;
+    }
+    & td,
+    & td:first-child {
+      display: table-cell;
+      padding: 0.25rem 0.75rem 0.25rem 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    & td::before {
+      content: none;
+    }
+    & th:first-child {
+      width: 35%;
+    }
+    & th:nth-child(2) {
+      width: 25%;
+    }
+    & .resources-num {
+      width: 7rem;
+      text-align: right;
+    }
+  }
+}
+@utility resources-kind {
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
 }
 /* Health's first line: the headline, the counts, when it was read and Check again (#640). */
 @utility health-summary {
