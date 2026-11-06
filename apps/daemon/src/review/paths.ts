@@ -4,13 +4,29 @@ import { FlightdeckError } from "../errors.ts";
 import { isInside } from "../paths.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
 
+/** The first step of a path relative to the repository's root. */
+const firstStep = (inside: string) => inside.split(/[\\/]/)[0] ?? "";
+
+/**
+ * `.git` as a filesystem may take it: in any case (Windows and macOS do not tell them apart) and
+ * with trailing dots or spaces (Windows drops them).
+ */
+const isGitDir = (name: string) => name.replace(/[. ]+$/, "").toLowerCase() === ".git";
+
 /**
  * A file of the review, given relative to the repository: never absolute, never above the root
- * and never inside `.git`. Returns the full path.
+ * and never inside `.git`, however it is spelled (`./.git`, `.GIT`, issue #509). Returns the full
+ * path.
  */
 export function fileInRoot(root: string, path: string): string {
   const segments = path.split(/[\\/]/);
-  if (isAbsolute(path) || segments.includes("..") || segments[0] === ".git" || path === "") {
+  const full = join(root, path);
+  if (
+    isAbsolute(path) ||
+    segments.includes("..") ||
+    isGitDir(firstStep(relative(root, full))) ||
+    path === ""
+  ) {
     throw new FlightdeckError(
       "bad_request",
       `path outside the repository: ${path}`,
@@ -18,7 +34,7 @@ export function fileInRoot(root: string, path: string): string {
       { path },
     );
   }
-  return join(root, path);
+  return full;
 }
 
 /** Lines of a text, without the line breaks (a last empty line does not count). */
@@ -40,6 +56,15 @@ export async function located(root: string, realRoot: string, path: string): Pro
       "forbidden_cwd",
       `${path} points outside the repository`,
       "review_path_link",
+      { path },
+    );
+  }
+  // A link into `.git` is `.git`.
+  if (real && isGitDir(firstStep(relative(realRoot, real)))) {
+    throw new FlightdeckError(
+      "bad_request",
+      `path outside the repository: ${path}`,
+      "review_path_outside",
       { path },
     );
   }
