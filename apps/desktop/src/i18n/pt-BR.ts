@@ -50,6 +50,8 @@ export const ptBR = {
     noCosts: "Sem dados de custo de {hosts}",
     avgBasis: "Só sessões gerenciadas",
     ready: "O Início está pronto.",
+    updated: "Atualizado {ago}",
+    stale: "Mostrando os últimos números de {hosts}: não foi possível atualizar. Atualizado {ago}.",
   },
   hosts: {
     status: {
