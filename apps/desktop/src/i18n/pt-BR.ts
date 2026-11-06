@@ -4091,6 +4091,9 @@ export const ptBR = {
     failed: "Falhou",
     addFolder: "Adicionar pasta",
     groups: { required: "Obrigatórias", optional: "Opcionais", checks: "Verificações" },
+    counts: "OK: {ok} · Avisos: {warn} · Problemas: {error}",
+    okFolded: "{n} sem nada a fazer",
+    okList: "Funcionando",
   },
   hostDeps: {
     installPage: "Página de instalação",
@@ -4223,6 +4226,7 @@ export const ptBR = {
     memoryCol: "Memória",
     cpu: "CPU",
     programs: "Programas",
+    unmeasured: "não medido",
     list: "Sessões e terminais por memória",
     empty: "Nenhuma sessão ou terminal em execução.",
     notMeasured:

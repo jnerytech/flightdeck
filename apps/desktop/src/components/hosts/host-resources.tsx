@@ -68,22 +68,39 @@ function Meter(
 
 function Row(props: Readonly<{ row: ResourceRow; t: T; lang: "en" | "pt-BR" }>) {
   const { row, t, lang } = props;
+  // No process found for it (a session the daemon does not run): a zero would be a guess (#640).
+  const measured = row.processes > 0;
+  const name = row.name ?? row.id;
   return (
-    <tr data-slot="resources-row" data-id={row.id} className="border-t">
-      <td className="py-1 pr-3">
-        <span className="font-medium">{row.name ?? row.id}</span>
-        <span className="ml-2 text-muted-foreground text-xs">
-          {t(`resources.kinds.${row.kind}`)}
-        </span>
+    <tr data-slot="resources-row" data-id={row.id}>
+      <td data-label={t("resources.session")}>
+        <span data-slot="resources-name" title={name}>
+          {name}
+        </span>{" "}
+        <span className="resources-kind">{t(`resources.kinds.${row.kind}`)}</span>
       </td>
-      <td className="py-1 pr-3">{row.cwd ? basename(row.cwd) : "—"}</td>
-      <td className="py-1 pr-3 text-right tabular-nums">{formatBytes(row.rssBytes, lang)}</td>
-      <td className="py-1 pr-3 text-right tabular-nums">
-        {row.cpuPercent === null
+      <td data-label={t("resources.project")} title={row.cwd ?? undefined}>
+        {row.cwd ? basename(row.cwd) : "—"}
+      </td>
+      <td data-label={t("resources.memoryCol")} className="resources-num">
+        {measured ? (
+          formatBytes(row.rssBytes, lang)
+        ) : (
+          <span className="resources-kind">{t("resources.unmeasured")}</span>
+        )}
+      </td>
+      <td data-label={t("resources.cpu")} className="resources-num">
+        {row.cpuPercent === null || !measured
           ? "—"
           : `${new Intl.NumberFormat(lang, { maximumFractionDigits: 1 }).format(row.cpuPercent)}%`}
       </td>
-      <td className="py-1 text-muted-foreground text-xs">{row.names.join(", ")}</td>
+      <td
+        data-label={t("resources.programs")}
+        className="resources-kind"
+        title={row.names.join(", ") || undefined}
+      >
+        {row.names.join(", ") || "—"}
+      </td>
     </tr>
   );
 }
@@ -162,33 +179,31 @@ export function HostResources(
           {note ? (
             <p className="text-muted-foreground text-sm">{t(note)}</p>
           ) : (
-            <table className="w-full text-sm">
-              <caption className="sr-only">{t("resources.list")}</caption>
-              <thead className="text-left text-muted-foreground text-xs">
-                <tr>
-                  <th scope="col" className="pr-3 font-normal">
-                    {t("resources.session")}
-                  </th>
-                  <th scope="col" className="pr-3 font-normal">
-                    {t("resources.project")}
-                  </th>
-                  <th scope="col" className="pr-3 text-right font-normal">
-                    {t("resources.memoryCol")}
-                  </th>
-                  <th scope="col" className="pr-3 text-right font-normal">
-                    {t("resources.cpu")}
-                  </th>
-                  <th scope="col" className="font-normal">
-                    {t("resources.programs")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <Row key={`${row.kind}/${row.id}`} row={row} t={t} lang={lang} />
-                ))}
-              </tbody>
-            </table>
+            // The frame is the table's own size container: below 40 rem (--container-table) the
+            // rows stack as cards, each cell under its column's name (#640, #641).
+            <div data-slot="resources-table" className="resources-frame">
+              <table className="resources-table">
+                <caption className="sr-only">{t("resources.list")}</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">{t("resources.session")}</th>
+                    <th scope="col">{t("resources.project")}</th>
+                    <th scope="col" className="resources-num">
+                      {t("resources.memoryCol")}
+                    </th>
+                    <th scope="col" className="resources-num">
+                      {t("resources.cpu")}
+                    </th>
+                    <th scope="col">{t("resources.programs")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <Row key={`${row.kind}/${row.id}`} row={row} t={t} lang={lang} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
           {snap.orphans.length > 0 && (
             <section aria-label={t("resources.orphans")} className="flex flex-col gap-2">

@@ -267,3 +267,52 @@ describe("host-health-ui: one section for the dependencies and the doctor", () =
     );
   });
 });
+
+describe("host-health-ui: a summary, the problems first, the rest folded (#640)", () => {
+  test("one line counts the rows and holds Check again", () => {
+    render(setup().view);
+    const summary = section().querySelector("[data-slot='health-summary']");
+    expect({
+      text: summary?.textContent?.includes("OK: 2 · Warnings: 2 · Problems: 3") ?? false,
+      check: summary
+        ? within(summary as HTMLElement).queryAllByRole("button", { name: "Check again" }).length
+        : 0,
+    }).toEqual({ text: true, check: 1 });
+  });
+
+  test("the groups list only the rows with a problem, open", () => {
+    render(setup().view);
+    const names = (group: string) =>
+      within(within(section()).getByRole("list", { name: group }))
+        .queryAllByRole("listitem")
+        .map((item) => item.getAttribute("aria-label"));
+    expect({
+      required: names("Required"),
+      optional: names("Optional"),
+      checks: names("Checks"),
+    }).toEqual({
+      required: ["Allowed folders", "Start at boot (service)"],
+      optional: ["Claude Code hooks"],
+      checks: ["Tailscale", "Version"],
+    });
+  });
+
+  test("the rows that are fine are folded in one compact list, closed", () => {
+    render(setup().view);
+    const fold = section().querySelector(
+      "details[data-slot='health-ok']",
+    ) as HTMLDetailsElement | null;
+    const compact = [...(fold?.querySelectorAll("li[data-slot='dep-compact']") ?? [])].map((li) =>
+      li.getAttribute("aria-label"),
+    );
+    expect({
+      summary: fold?.querySelector("summary")?.textContent ?? null,
+      open: fold?.open ?? null,
+      compact,
+    }).toEqual({
+      summary: "2 with nothing to do",
+      open: false,
+      compact: ["Claude Code", "Daemon"],
+    });
+  });
+});
