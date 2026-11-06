@@ -296,7 +296,7 @@ describe("slot: waiting in the queue", () => {
       if (n === 2) f.files.delete(PATH);
     });
     expect(await acquire(f.env, "x", () => false)).toBe(true);
-    expect(f.logs.length).toBe(2);
+    expect(f.logs).toHaveLength(2);
     expect(f.logs[1]).toContain("tbug");
   });
 

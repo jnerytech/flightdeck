@@ -95,8 +95,17 @@ function guardSameKeys(): void {
   });
 }
 
+/**
+ * The window's size members. happy-dom keeps an assigned value in front of its viewport: while one
+ * is set, `setViewport` (and so every media query) stops following the window. Assigning null
+ * through the setter hands the member back to the viewport.
+ */
+const SIZE_MEMBERS = ["innerWidth", "innerHeight", "outerWidth", "outerHeight"] as const;
+
 export function registerDom(): void {
   if (GlobalRegistrator.isRegistered) {
+    // A file that assigned window.innerWidth must not freeze the viewport of the files after it.
+    for (const name of SIZE_MEMBERS) (window as unknown as Record<string, unknown>)[name] = null;
     // Every test file calls this first. The DOM stays for the whole process, so what a file left in
     // the browser storage (a view choice, a stored window) must not reach the next one, whatever
     // order the files run in on the platform.

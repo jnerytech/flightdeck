@@ -235,6 +235,13 @@ export const CostsPage = memo(function CostsPage(props: {
     <Page
       title={t("costsUi.title")}
       subtitle={t("costsUi.subtitle")}
+      actions={
+        !acrossHosts && (
+          <Button variant="outline" size="sm" onClick={() => void exportCsv()}>
+            {t("costsUi.export")}
+          </Button>
+        )
+      }
       toolbar={
         <Toolbar label={t("costsUi.filters")}>
           <NativeSelect
@@ -323,11 +330,6 @@ export const CostsPage = memo(function CostsPage(props: {
               </option>
             ))}
           </NativeSelect>
-          {!acrossHosts && (
-            <Button variant="outline" size="sm" onClick={() => void exportCsv()}>
-              {t("costsUi.export")}
-            </Button>
-          )}
         </Toolbar>
       }
     >

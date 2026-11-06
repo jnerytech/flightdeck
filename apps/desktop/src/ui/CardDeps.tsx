@@ -2,7 +2,7 @@ import type { Card, WorkflowInfo } from "@flightdeck/protocol";
 import { useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
-import { NativeSelect } from "@/components/layout/form";
+import { Field, NativeSelect } from "@/components/layout/form";
 import { Inline, Stack } from "@/components/layout/stack";
 import { Badge } from "@/components/ui/badge";
 import { useT } from "@/i18n/context";
@@ -74,7 +74,9 @@ export function CardDeps(props: {
   const holding = cards.filter((other) => card.blocking.includes(other.id));
   // The blockers of the whole chain that are not satisfied: the rest read as done.
   const waiting = new Set(cards.flatMap((other) => other.waitingOn));
-  const [picked, setPicked] = useState("");
+  const [choice, setPicked] = useState("");
+  // A card no longer offered (just added as a blocker) leaves the picker on its placeholder.
+  const picked = offered.some((other) => other.id === choice) ? choice : "";
   return (
     <Stack gap={3}>
       {card.unblockedAt && (
@@ -107,39 +109,49 @@ export function CardDeps(props: {
           {more > 0 && (
             <p className="text-muted-foreground text-xs">{t("deps.more", { count: more })}</p>
           )}
-          <Inline gap={2}>
-            <NativeSelect
-              inline
-              aria-label={t("deps.addLabel")}
-              value={picked}
-              onChange={(e) => setPicked(e.target.value)}
-            >
-              <option value="">{""}</option>
-              {offered.map((other) => (
-                <option key={other.id} value={other.id}>
-                  {other.title}
-                </option>
-              ))}
-            </NativeSelect>
+          {/* The button lines up with the select, under the label (issue #174). */}
+          <Inline gap={2} className="items-end">
+            <Field label={t("deps.addLabel")}>
+              {(control) => (
+                <NativeSelect
+                  {...control}
+                  inline
+                  disabled={offered.length === 0}
+                  value={picked}
+                  onChange={(e) => setPicked(e.target.value)}
+                >
+                  <option value="">{t("deps.pick")}</option>
+                  {offered.map((other) => (
+                    <option key={other.id} value={other.id}>
+                      {other.title}
+                    </option>
+                  ))}
+                </NativeSelect>
+              )}
+            </Field>
             <ActionButton
               variant="outline"
-              onClick={() =>
-                picked ? update({ blockedBy: [...card.blockedBy, picked] }) : undefined
-              }
+              disabled={!picked}
+              disabledReason={t(offered.length === 0 ? "deps.noneToPick" : "deps.pickFirst")}
+              onClick={() => update({ blockedBy: [...card.blockedBy, picked] })}
             >
               {t("deps.add")}
             </ActionButton>
           </Inline>
           <Inline gap={2}>
-            <NativeSelect
-              inline
-              aria-label={t("deps.whenLabel")}
-              value={card.unblockWhen}
-              onChange={(e) => update({ unblockWhen: e.target.value })}
-            >
-              <option value="done">{t("deps.when.done")}</option>
-              <option value="merged">{t("deps.when.merged")}</option>
-            </NativeSelect>
+            <Field label={t("deps.whenLabel")}>
+              {(control) => (
+                <NativeSelect
+                  {...control}
+                  inline
+                  value={card.unblockWhen}
+                  onChange={(e) => update({ unblockWhen: e.target.value })}
+                >
+                  <option value="done">{t("deps.when.done")}</option>
+                  <option value="merged">{t("deps.when.merged")}</option>
+                </NativeSelect>
+              )}
+            </Field>
             <label className="text-sm">
               <Inline gap={2}>
                 <input
@@ -153,19 +165,23 @@ export function CardDeps(props: {
               </Inline>
             </label>
             {card.autoStart && props.workflows.length > 0 && (
-              <NativeSelect
-                inline
-                aria-label={t("deps.workflowLabel")}
-                value={card.autoStart.workflow ?? ""}
-                onChange={(e) => update({ autoStart: { workflow: e.target.value || null } })}
-              >
-                <option value="">{t("deps.noWorkflow")}</option>
-                {props.workflows.map((w) => (
-                  <option key={w.name} value={w.name}>
-                    {w.name}
-                  </option>
-                ))}
-              </NativeSelect>
+              <Field label={t("deps.workflowLabel")}>
+                {(control) => (
+                  <NativeSelect
+                    {...control}
+                    inline
+                    value={card.autoStart?.workflow ?? ""}
+                    onChange={(e) => update({ autoStart: { workflow: e.target.value || null } })}
+                  >
+                    <option value="">{t("deps.noWorkflow")}</option>
+                    {props.workflows.map((w) => (
+                      <option key={w.name} value={w.name}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                )}
+              </Field>
             )}
           </Inline>
         </Stack>

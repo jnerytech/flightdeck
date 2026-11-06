@@ -28,6 +28,7 @@ seguem esta tabela, e o teste `textos` reprova texto visível fora deles.
 | orçamento de contexto | context budget | O que entra no contexto na partida de uma sessão, fonte por fonte, com uma estimativa de tokens |
 | plugin | plugin | Uma extensão do Claude Code (hooks, monitores, skills, agentes, comandos, MCP); roda código na máquina, por isso se mostra o que instala antes |
 | fixar versão | pin version | Impede a atualização de um plugin até a pessoa soltar |
+| N sessões anteriores | N earlier sessions | O botão de um projeto que guarda as sessões encerradas e do histórico; o projeto abre com as ao vivo |
 | Desenvolvedor | Developer | A persona do pacote que escreve o código; padrão das executoras de um time e sugerida no card |
 | pacote | pack | As personas que vêm prontas com o Flightdeck; editada, vira "Pacote, editada" |
 | Aplicar persona | Apply persona | Manda o papel a uma sessão já aberta, como instrução da conversa; "Voltar ao normal" encerra |

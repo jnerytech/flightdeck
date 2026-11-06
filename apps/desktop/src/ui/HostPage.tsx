@@ -1,13 +1,15 @@
 import type { HooksStatusResult } from "@flightdeck/protocol";
 import { useEffect, useState } from "react";
+import { ActionButton } from "@/components/feedback/action-button";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
 import { BypassSwitch } from "@/components/hosts/bypass-switch";
 import { GithubPanel } from "@/components/hosts/github-panel";
 import { HostDoctor } from "@/components/hosts/host-doctor";
+import { hostDownReason } from "@/components/hosts/host-down-reason";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
-import { Field } from "@/components/layout/form";
+import { Field, FieldRow } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
@@ -97,8 +99,14 @@ export function HostPage(props: {
         {host.status === "incompatible" && (
           <InlineNotice>
             <span className="flex flex-col gap-1">
-              <span>{t("hostPage.incompatible")}</span>
-              <span>{host.incompatibility}</span>
+              {/* Issue #181: one sentence of the catalog; the daemon's own words stay under Details. */}
+              <span>{t("errors.protocol_incompatible")}</span>
+              {host.incompatibility && (
+                <details>
+                  <summary>{t("toast.details")}</summary>
+                  {host.incompatibility}
+                </details>
+              )}
               <span>
                 {t("hostPage.incompatibleFix", { version: APP_VERSION })}{" "}
                 <code className="rounded bg-muted px-1 font-mono text-xs">
@@ -162,14 +170,27 @@ export function HostPage(props: {
                   ? t("hostOffline.title")
                   : t(hooks ? HOOK_LABELS[hooks.status] : "hostPage.hooksAsking")}
               </p>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setConfirming("install")}>
+              {/* Issue #181: nothing to install on a host that does not answer; the row says why. */}
+              <FieldRow>
+                <ActionButton
+                  variant="outline"
+                  size="sm"
+                  disabled={offline}
+                  disabledReason={hostDownReason(host.status, host.name, t)}
+                  onClick={() => setConfirming("install")}
+                >
                   {t("hostPage.install")}
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setConfirming("uninstall")}>
+                </ActionButton>
+                <ActionButton
+                  variant="outline"
+                  size="sm"
+                  disabled={offline}
+                  disabledReason={hostDownReason(host.status, host.name, t)}
+                  onClick={() => setConfirming("uninstall")}
+                >
                   {t("hostPage.uninstall")}
-                </Button>
-              </div>
+                </ActionButton>
+              </FieldRow>
             </Panel>
           </section>
         )}

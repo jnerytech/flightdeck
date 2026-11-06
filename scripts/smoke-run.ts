@@ -183,7 +183,7 @@ ports: [web]
       hooks: { port: 0 },
       terminal: { enabled: true },
       // A block that is not a fixed place: the daemon probes it and takes the next free one.
-      run: { portBase: 30_000 + Math.floor(Math.random() * 20_000) },
+      run: { portBase: 30_000 + Math.floor(Math.random() * 20_000) }, // NOSONAR: a spare-port offset, not a secret
     }),
   );
 
