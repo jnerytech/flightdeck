@@ -752,6 +752,8 @@ export const en: Dictionary = {
     host: "Host: {host}",
     noHost: "No host yet",
     hostItem: "{host}, {state}",
+    hostItemVersion: "{host}, {state}, flightdeckd {version}",
+    hostItemDiffers: "{host}, {state}, flightdeckd {version}, not the app's {app}",
     search: "Search or jump to…",
     searchLabel: "Search or jump to… (Ctrl+K)",
     toDark: "Switch to the dark theme",
