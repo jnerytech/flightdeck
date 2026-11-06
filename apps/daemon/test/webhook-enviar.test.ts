@@ -178,6 +178,30 @@ describe("webhook-enviar", () => {
     expect(calls).toHaveLength(0);
   });
 
+  test("an ntfy access token goes as Authorization: Bearer, in that shape only, and in no log line (#263)", async () => {
+    const { sender, calls, logs } = setup({ answer: new Response("", { status: 500 }) });
+    const token = "tk_AbC123-xyz_SECRETTOKEN";
+    const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+    expect((await sender.send(request({ headers }), "127.0.0.1")).refused).toBeNull();
+    expect(calls[0]?.init.headers).toEqual(headers);
+    const bad = [
+      "Basic dXNlcjpwYXNz",
+      "Bearer ",
+      "Bearer a b",
+      `Bearer ${"t".repeat(201)}`,
+      "Bearer tk\u0007",
+      "bearer tk_x",
+      `Bearer ${token}, Basic x`,
+    ];
+    for (const value of bad) {
+      const refused = (await sender.send(request({ headers: { Authorization: value } }), "127.0.0.1"))
+        .refused;
+      expect(refused, value).toBe("bad_header");
+    }
+    expect(calls).toHaveLength(1);
+    for (const line of logs) expect(line).not.toContain("SECRETTOKEN");
+  });
+
   test("from outside loopback and Tailscale it is refused before anything else, and the URL is in no log line", async () => {
     const { sender, calls, resolved, logs } = setup();
     await expect(sender.send(request(), "8.8.8.8")).rejects.toMatchObject({
