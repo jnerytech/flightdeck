@@ -8,12 +8,10 @@ import type { TreeNode, TreeProject, WorktreeFilter } from "../../lib/project-tr
 import type { Route } from "../../lib/router.ts";
 import { pickedIn, TREE_CAP, visibleNodes } from "../../lib/tree-fold.ts";
 
-const TONE_KEY: Record<StateTone, string> = {
-  running: "running",
-  "needs-you": "needs_you",
-  idle: "idle",
-  ended: "ended",
-  error: "idle",
+/** The dictionary's name of a state dot's tone: an error reads as idle, as the sidebar always did. */
+const toneKey = (tone: StateTone): string => {
+  if (tone === "needs-you") return "needs_you";
+  return tone === "error" ? "idle" : tone;
 };
 
 const same = (a: WorktreeFilter | null, b: WorktreeFilter) =>
@@ -125,7 +123,7 @@ export function ProjectTree(props: {
                       >
                         <StatusDot
                           tone={node.tone}
-                          label={t(`hub.stateDots.${TONE_KEY[node.tone]}` as Key)}
+                          label={t(`hub.stateDots.${toneKey(node.tone)}` as Key)}
                         />
                         <span className="project-tree-branch">{node.branch}</span>
                         {node.kind === "primary" && (
