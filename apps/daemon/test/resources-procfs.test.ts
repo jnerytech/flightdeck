@@ -60,6 +60,8 @@ describe("resources-procfs: the Linux /proc reader (issue #154)", () => {
   });
 
   test("the reader lists the numeric entries, reads a process and its folder, and the uptime", async () => {
+    // The reader is for a Linux /proc, and these tests build it with symlinks a Windows runner may not make.
+    if (process.platform === "win32") return;
     const { root, add } = fakeRoot();
     add(10, stat(10, "bash", 1, 1, 1, 100, 10), "/work/api");
     add(11, stat(11, "claude", 10, 5, 5, 200, 50));
@@ -95,6 +97,8 @@ describe("resources-procfs: the Linux /proc reader (issue #154)", () => {
 
 describe("resources-procfs: nothing that holds arguments or secrets is opened (F6)", () => {
   test("a process with a readable command line and environment shows none of it in a snapshot", async () => {
+    // The reader is for a Linux /proc, and these tests build it with symlinks a Windows runner may not make.
+    if (process.platform === "win32") return;
     const { root, add } = fakeRoot();
     add(100, stat(100, "flightdeckd", 1, 0, 0, 0, 10));
     add(200, stat(200, "claude", 100, 5, 5, 1, 50), "/work/x");
@@ -127,6 +131,8 @@ describe("resources-procfs: nothing that holds arguments or secrets is opened (F
   });
 
   test("with the command line and environment unreadable (folders), stat and the folder still work", async () => {
+    // The reader is for a Linux /proc, and these tests build it with symlinks a Windows runner may not make.
+    if (process.platform === "win32") return;
     const { root, add } = fakeRoot();
     add(300, stat(300, "claude", 1, 1, 1, 1, 7), "/work/y");
     for (const trap of ["cmdline", "environ"]) {
