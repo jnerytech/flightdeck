@@ -246,6 +246,18 @@ describe("home-ui: Home is a screen of the app", () => {
     expect(store.getState().notices).toHaveLength(0);
   });
 
+  test("the line above the cards is a notice block, and each card's details fill it so the sparklines share one line (#588)", async () => {
+    const { view } = setup({ hosts: 2, refuse: "h2:usage.summary" });
+    render(view);
+    const spend = await screen.findByRole("button", { name: "Open Spend" });
+    await waitFor(() => expect(spend.textContent).toContain("$4.50"));
+    const notice = screen.queryByText("Some hosts did not answer: host2.");
+    expect(notice?.getAttribute("role") ?? "").toBe("status");
+    expect(notice?.className.split(" ") ?? []).toContain("border");
+    const details = spend.querySelector(".kpi-details");
+    expect(details?.className.split(" ") ?? []).toContain("flex-1");
+  });
+
   test("a daemon without the Home counters is told, not shown as zero (HK-M2)", async () => {
     const { view } = setup({ usage: usage(null) });
     render(view);

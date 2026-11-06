@@ -382,6 +382,7 @@ export type HostCommandType = Extract<
   | `runenv.${string}`
   | "roots.add"
   | "history.get"
+  | "history.tool"
   | "host.bypass"
   | "logs.tail"
   | "host.sleep"
@@ -809,6 +810,37 @@ function describeError(error: unknown): string {
 /** Whether two values hold the same data (the answers of a host are plain JSON). */
 function sameJson(a: unknown, b: unknown): boolean {
   return a === b || JSON.stringify(a) === JSON.stringify(b);
+}
+
+/**
+ * What the setup checklist asks of a host: its hooks, GitHub only when asked, and its projects when
+ * they are not read yet. The projects are read for the checklist only: the list the screens use
+ * stays unopened, so a screen that reads a project's trust or branch does not change because Setup
+ * looked.
+ */
+function setupWants(
+  features: readonly string[] | undefined,
+  projectsRead: boolean,
+  githubAsked: boolean,
+) {
+  return {
+    hooks: hasFeature(features, "central", false),
+    github: githubAsked && hasFeature(features, "github", false),
+    projects: !projectsRead && hasFeature(features, "workflows", false),
+  };
+}
+
+/** The `permission.respond` request of an answer: only what the person gave goes in, and `held` rides on an allow only. */
+function permissionResponse(requestId: string, decision: "allow" | "deny", answer: Answer) {
+  const { updatedPermissions, message, updatedInput, held } = answer;
+  return {
+    requestId,
+    decision,
+    ...(updatedPermissions ? { updatedPermissions } : {}),
+    ...(message ? { message } : {}),
+    ...(updatedInput ? { updatedInput } : {}),
+    ...(decision === "allow" && held ? { held: true } : {}),
+  };
 }
 
 export class AppStore {
@@ -2261,13 +2293,12 @@ export class AppStore {
   async refreshSetup(hostId: string, options: { github?: boolean } = {}): Promise<void> {
     const host = this.state.hosts.find((h) => h.id === hostId);
     if (host?.status !== "online") return;
-    const features = host.hostInfo?.features;
-    const wantsHooks = hasFeature(features, "central", false);
-    const wantsGithub = options.github === true && hasFeature(features, "github", false);
-    // The projects are read for the checklist only: the list the screens use stays unopened, so a
-    // screen that reads a project's trust or branch does not change because Setup looked.
-    const wantsProjects =
-      hasFeature(features, "workflows", false) && this.state.projects[hostId] === undefined;
+    const wants = setupWants(
+      host.hostInfo?.features,
+      this.state.projects[hostId] !== undefined,
+      options.github === true,
+    );
+    const { hooks: wantsHooks, github: wantsGithub, projects: wantsProjects } = wants;
     if (!wantsHooks && !wantsGithub && !wantsProjects) return;
     const [hooks, github, projects] = await Promise.all([
       wantsHooks ? this.hostRequest(hostId, "hooks.status", {}) : null,
@@ -2432,7 +2463,8 @@ export class AppStore {
   private fail(error: unknown, text?: string, retry?: () => void): void {
     const code = error instanceof RequestError ? error.code : "";
     const message = error instanceof Error ? error.message : String(error);
-    this.appLog.log("error", "refusal", `${code ? `${code}: ` : ""}${text ?? message}`);
+    const prefix = code ? `${code}: ` : "";
+    this.appLog.log("error", "refusal", `${prefix}${text ?? message}`);
     const notice: Notice = { id: ++this.noticeSeq, kind: "error", code, text: text ?? message };
     if (error instanceof RequestError && error.reason) {
       notice.reason = error.reason;
@@ -2541,7 +2573,6 @@ export class AppStore {
     decision: "allow" | "deny",
     answer: Answer = {},
   ): Promise<void> {
-    const { updatedPermissions, message, updatedInput, held } = answer;
     if (this.unheld(hostId, requestId, decision, answer)) return;
     if (decision === "allow") startMeasure("approve");
     const question = this.vaultQuestions.get(requestId);
@@ -2549,14 +2580,9 @@ export class AppStore {
       question(decision === "allow" ? { scope: "once", via: "app" } : null);
     } else {
       try {
-        await this.connections.get(hostId)?.request("permission.respond", {
-          requestId,
-          decision,
-          ...(updatedPermissions ? { updatedPermissions } : {}),
-          ...(message ? { message } : {}),
-          ...(updatedInput ? { updatedInput } : {}),
-          ...(decision === "allow" && held ? { held: true } : {}),
-        });
+        await this.connections
+          .get(hostId)
+          ?.request("permission.respond", permissionResponse(requestId, decision, answer));
       } catch (error) {
         this.fail(error);
       }
@@ -2582,18 +2608,10 @@ export class AppStore {
   }
 
   respond(requestId: string, decision: "allow" | "deny", answer: Answer = {}): Promise<void> {
-    const { updatedPermissions, message, updatedInput, held } = answer;
     const hostId = this.state.selected?.hostId;
     if (hostId && this.unheld(hostId, requestId, decision, answer)) return Promise.resolve();
     return this.onSelected((conn) =>
-      conn.request("permission.respond", {
-        requestId,
-        decision,
-        ...(message ? { message } : {}),
-        ...(updatedPermissions ? { updatedPermissions } : {}),
-        ...(updatedInput ? { updatedInput } : {}),
-        ...(decision === "allow" && held ? { held: true } : {}),
-      }),
+      conn.request("permission.respond", permissionResponse(requestId, decision, answer)),
     );
   }
 

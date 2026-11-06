@@ -413,6 +413,8 @@ function featuresOf(opts: ServerOptions): string[] {
     ...when(opts.changes, "review"),
     // Issue #506: the file explorer lists the folders of a session's repository.
     ...when(opts.files, "file.list"),
+    // Issue #606: a stored tool call opens to its input and result, read from its transcript.
+    ...when(opts.history, "history.tool"),
     // Phase 12: the timeline's snapshots, rewind and fork; the agent's MCP, CLAUDE.md, agents and skills.
     ...when(opts.snapshots && opts.rewinder && opts.forker, "checkpoints"),
     ...when(opts.agentcfg && opts.mcp, "agentcfg"),
