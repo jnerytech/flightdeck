@@ -106,6 +106,8 @@ export const NOTIFY_PREFS_KEY = "flightdeck.notifyPrefs";
 export const NOTIFY_SOUND_KEY = "flightdeck.notifySoundFile";
 /** The largest sound file kept (as a data URL): it lives in the app's own storage. */
 const SOUND_FILE_MAX = 600_000;
+/** The largest file read before it is turned into that data URL (base64 adds a third). */
+export const SOUND_FILE_MAX_BYTES = 440_000;
 
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
@@ -197,13 +199,20 @@ export class NotifyPreferences {
 
   /** The chosen sound file as a data URL, or null. */
   soundFile(): string | null {
-    return this.storage.getItem(NOTIFY_SOUND_KEY) || null;
+    const stored = this.storage.getItem(NOTIFY_SOUND_KEY);
+    // Only what this app wrote: a stored URL of any other kind is never loaded.
+    return stored?.startsWith("data:audio/") ? stored : null;
   }
 
-  /** Keeps a chosen file (null clears it); false when it is too large to keep. */
+  /** Keeps a chosen file (null clears it); false when it is too large to keep or the storage is full. */
   setSoundFile(name: string | null, dataUrl: string | null): boolean {
     if (dataUrl !== null && dataUrl.length > SOUND_FILE_MAX) return false;
-    this.storage.setItem(NOTIFY_SOUND_KEY, dataUrl ?? "");
+    try {
+      this.storage.setItem(NOTIFY_SOUND_KEY, dataUrl ?? "");
+    } catch {
+      // The storage is full: the old sound stays.
+      return false;
+    }
     this.change({
       sound: { ...this.value.sound, fileName: name, ...(name ? { mode: "file" as const } : {}) },
     });

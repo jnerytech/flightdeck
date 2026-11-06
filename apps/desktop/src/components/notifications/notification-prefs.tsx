@@ -6,7 +6,7 @@ import { Panel } from "@/components/layout/panel";
 import { Button } from "@/components/ui/button";
 import type { Key, T } from "../../i18n/index.ts";
 import type { AppStore, HostView } from "../../lib/app-store.ts";
-import { SWITCHABLE, type SwitchableEvent } from "../../lib/notify-policy.ts";
+import { SOUND_FILE_MAX_BYTES, SWITCHABLE, type SwitchableEvent } from "../../lib/notify-policy.ts";
 
 const AUDIO_NAME = /\.(mp3|wav|ogg|m4a|aac|flac)$/i;
 const check = "flex items-center gap-2 text-sm";
@@ -15,12 +15,14 @@ const check = "flex items-center gap-2 text-sm";
  * Settings, Notifications (issue #149): what the person is told about and where, who is muted, the
  * sound and a button that proves the system shows them. The rules themselves are in `notify-policy`.
  */
-export function NotificationPrefs(props: {
-  store: AppStore;
-  hosts: HostView[];
-  projects: Record<string, Project[]>;
-  t: T;
-}) {
+export function NotificationPrefs(
+  props: Readonly<{
+    store: AppStore;
+    hosts: HostView[];
+    projects: Record<string, Project[]>;
+    t: T;
+  }>,
+) {
   const { store, t } = props;
   const prefs = useSyncExternalStore(store.notifyPrefs.subscribe, () => store.notifyPrefs.value);
   const controller = store.notifyPrefs;
@@ -32,6 +34,10 @@ export function NotificationPrefs(props: {
     setProblem(null);
     if (!file.type.startsWith("audio/") && !AUDIO_NAME.test(file.name)) {
       setProblem(t("notifyPrefs.notAudio"));
+      return;
+    }
+    if (file.size > SOUND_FILE_MAX_BYTES) {
+      setProblem(t("notifyPrefs.tooLarge"));
       return;
     }
     void file.arrayBuffer().then((buffer) => {

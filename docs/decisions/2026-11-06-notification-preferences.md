@@ -22,6 +22,14 @@ Rebuilt on today's `main` from the stranded branch `notify-prefs` (4 commits, ab
 - **The sound** is made in the app (a tone from Web Audio, or the chosen file as a data URL kept in
   the app's own storage, about 400 KB at most). It is never played by a host. A browser may refuse to
   play before the person has touched the page; that is silent.
+- **The desktop CSP gains `media-src 'self' data:`** so the webview may play the chosen file (a
+  `data:` URL); without it `default-src 'self'` blocks it and the file mode stays silent. Nothing
+  else is widened: `connect-src` is untouched, and the stored sound is only played back when it is a
+  `data:audio/` URL, a file over about 440 KB is refused before it is read, and a storage that is
+  full refuses the file and keeps the old sound.
+- **Muting also mutes a vault approval's notice.** The approval stays in Needs you, but its
+  notification is silent like any other from a muted source, and the approval's own timer can end
+  while nobody looks. A one-time warning when "Needs you" is switched off is not built.
 - **`platform.notify` now says whether the system showed it** (true/false). The test notification
   uses it for "Delivered" or "Not displayed". The hint names the Windows setting but has no button to
   open it: opening `ms-settings:` would need a capability the shell does not grant.
