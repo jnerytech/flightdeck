@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { EventStore } from "../src/store/event-store.ts";
 import { MIGRATIONS } from "../src/store/migrations.ts";
 import { ProjectTrust } from "../src/trust/project-trust.ts";
-import { tempDir } from "./helpers.ts";
+import { tempDir, waitFor } from "./helpers.ts";
 
 const cleanups: Array<() => unknown> = [];
 afterEach(() => {
@@ -296,5 +296,28 @@ describe("project-trust: trust never reaches a folder the person did not mean (s
     trust.trust(main);
     await trust.prepare(odd);
     expect(trust.sessionTrust(odd)).toEqual({ trusted: false });
+  });
+});
+
+describe("project-trust: two looks at one folder at once end with the later one (issue #415)", () => {
+  test("a scan that finishes last does not overwrite what a scan started after it found", async () => {
+    const main = tempDir("fd-trust-");
+    const odd = join(main, "odd");
+    mkdirSync(odd, { recursive: true });
+    writeFileSync(join(odd, ".git"), "gitdir: unused\n");
+    const answers: Array<(text: string) => void> = [];
+    const { trust } = fresh({
+      readText: () => new Promise<string>((resolveText) => answers.push(resolveText)),
+    });
+    trust.trust(main);
+    const first = trust.prepare(odd);
+    await waitFor(() => answers.length === 1, { label: "first scan reads" });
+    const second = trust.prepare(odd);
+    await waitFor(() => answers.length === 2, { label: "second scan reads" });
+    answers[1]?.(`gitdir: ${join(main, "two", ".git", "worktrees", "odd")}`);
+    await second;
+    answers[0]?.(`gitdir: ${join(main, "one", ".git", "worktrees", "odd")}`);
+    await first;
+    expect(trust.sessionTrust(odd).configRoot).toBe(join(main, "two"));
   });
 });

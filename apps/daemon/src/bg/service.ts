@@ -19,6 +19,8 @@ export interface BgServiceOptions {
   trust?: (cwd: string) => { trusted: boolean; configRoot?: string };
   /** Looks at the folder's git boundaries first, so `trust` can answer from them (a nested clone is not covered). */
   prepare?: (cwd: string) => Promise<void>;
+  /** The folders this host allows: a listed session whose folder is outside them is not touched (issue #415). */
+  allowedRoots?: readonly string[];
 }
 
 /** The listing and the commands are quick; a `claude` that does not answer is as good as none. */

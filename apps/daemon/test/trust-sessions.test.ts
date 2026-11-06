@@ -54,3 +54,26 @@ describe("trust-sessions: every run of a session is told whether its folder is t
     expect(order.slice(0, 2)).toEqual([`prepare ${manager.get(created.sessionId).cwd}`, "decide"]);
   });
 });
+
+describe("trust-sessions: no session exists before its folder's boundaries were looked at (issue #415)", () => {
+  test("a new session and a resumed one are rows only once the trust is prepared", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let asked = 0;
+    const { manager, project, start } = newManager({
+      runtime: new FakeRuntime({ delayMs: 1 }),
+      prepareTrust: async () => {
+        asked++;
+        await gate;
+      },
+    });
+    const creating = start({ cwd: project, prompt: "oi" });
+    await waitFor(() => asked === 1, { label: "prepare asked" });
+    expect(manager.list()).toEqual([]);
+    release();
+    await creating;
+    expect(manager.list()).toHaveLength(1);
+  });
+});
