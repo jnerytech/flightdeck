@@ -55,8 +55,11 @@ function setup(
     session("sleeper", "idle", { asleep: true }),
     session("busy", "running", { asleep: false }),
   ],
+  hubView?: "cards",
 ) {
-  const store = new AppStore(memoryPlatform(false, "en").platform, { baseDelayMs: 600_000 });
+  const mem = memoryPlatform(false, "en");
+  if (hubView) mem.platform.storage.setItem("flightdeck.hubView", hubView);
+  const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   const asked: Array<[string, unknown]> = [];
   store.hostCommand = (async (_h: string, type: string, payload: unknown) => {
@@ -120,6 +123,15 @@ describe("dormindo-ui: asleep sessions in the hub (issue #157)", () => {
     expect(within(rowOf("sleeper")).getByRole("img", { name: "asleep" })).toBeTruthy();
     expect(rowOf("awake").textContent).not.toContain("Asleep");
     expect(rowOf("busy").textContent).not.toContain("Asleep");
+  });
+
+  test("a card of an asleep session says Asleep too, and one of an awake session does not", async () => {
+    const w = setup(undefined, "cards");
+    render(w.view());
+    await unfoldAll(act);
+    await settle(() => screen.queryByRole("listitem", { name: "sleeper" }) !== null);
+    expect(rowOf("sleeper").textContent).toContain("Asleep");
+    expect(rowOf("awake").textContent).not.toContain("Asleep");
   });
 
   test("Sleep now is in the menu of an awake idle session only, and asks the host", async () => {

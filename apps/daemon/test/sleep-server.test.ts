@@ -123,8 +123,8 @@ describe("sleep-main: the config and what the host keeps awake", () => {
     expect(JSON.parse(readFileSync(on.file, "utf8")).sessions.sleepAfterMinutes).toBe(60);
   });
 
-  test("a pinned session is never put to sleep, not even by hand", async () => {
-    const h = await boot();
+  /** A session of the booted daemon, once it is idle. */
+  async function idleSession(h: Awaited<ReturnType<typeof boot>>) {
     const made = await h.client.data<{ sessionId: string }>("session.create", {
       cwd: h.project,
       prompt: "hi",
@@ -140,13 +140,24 @@ describe("sleep-main: the config and what the host keeps awake", () => {
     // Each round asks the daemon over the wire, which paces the loop: no guessed time.
     for (let i = 0; i < 2000 && status !== "idle"; i++) status = (await listed())?.status ?? "";
     expect(status).toBe("idle");
-    await h.client.data("session.meta.set", {
-      claudeSessionId: (await listed())?.claudeSessionId,
-      pinned: true,
-    });
+    return { id, claudeSessionId: (await listed())?.claudeSessionId };
+  }
+
+  test("a pinned session is never put to sleep, not even by hand", async () => {
+    const h = await boot();
+    const { id, claudeSessionId } = await idleSession(h);
+    await h.client.data("session.meta.set", { claudeSessionId, pinned: true });
     expect(
       (await h.client.data<{ result: string }>("session.sleep", { sessionId: id }))?.result,
     ).toBe("kept_awake");
+  });
+
+  test("a session that is neither pinned nor a card's goes to sleep by hand", async () => {
+    const h = await boot();
+    const { id } = await idleSession(h);
+    expect(
+      (await h.client.data<{ result: string }>("session.sleep", { sessionId: id }))?.result,
+    ).toBe("slept");
   });
 });
 
