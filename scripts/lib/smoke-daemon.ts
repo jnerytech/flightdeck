@@ -3,6 +3,9 @@
  * stdout. One place, so every smoke waits the same way and fails with the same words (#347).
  */
 
+/** The line the daemon prints when it is up; the address is what follows `listening on`. */
+const LISTENING = /listening on (ws:\/\/\S+)/;
+
 /**
  * How long a smoke waits for the daemon to announce its port. Measured on 300 daemon starts in ten
  * Windows CI runs (#347): the median is 1.2 s, the 95th percentile 2.3 s, and a run on a degraded
@@ -38,8 +41,8 @@ export async function readListenUrl(
   const announced = (async () => {
     for await (const chunk of stdout) {
       buffer += decoder.decode(chunk, { stream: true });
-      const match = buffer.match(/listening on (ws:\/\/\S+)/);
-      if (match?.[1]) return match[1];
+      const found = LISTENING.exec(buffer)?.[1];
+      if (found) return found;
     }
     throw new Error(
       `daemon saiu sem anunciar a porta (after ${Date.now() - started} ms): ${buffer}`,
@@ -59,20 +62,27 @@ export async function readListenUrl(
  * The same, for a smoke that collects the daemon's output itself: `read` gives what was printed so
  * far, and the address is waited for by looking again until the limit.
  */
-export async function awaitListenUrl(
+export function awaitListenUrl(
   read: () => string,
   timeoutMs: number = DAEMON_START_MS,
 ): Promise<string> {
   const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    const printed = read();
-    const found = printed.match(/listening on (ws:\/\/\S+)/)?.[1];
-    if (found) return found;
-    if (Date.now() > deadline) {
-      throw new Error(
-        `timeout: daemon anunciar a porta (${timeoutMs} ms; it printed: ${printed.slice(-300) || "nothing"})`,
-      );
-    }
-    await Bun.sleep(20);
-  }
+  return new Promise((resolve, reject) => {
+    const look = () => {
+      const printed = read();
+      const found = LISTENING.exec(printed)?.[1];
+      if (found) {
+        resolve(found);
+      } else if (Date.now() > deadline) {
+        reject(
+          new Error(
+            `timeout: daemon anunciar a porta (${timeoutMs} ms; it printed: ${printed.slice(-300) || "nothing"})`,
+          ),
+        );
+      } else {
+        setTimeout(look, 20);
+      }
+    };
+    look();
+  });
 }
