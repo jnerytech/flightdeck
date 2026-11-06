@@ -39,56 +39,83 @@ export type WandEvent =
   | { type: "undo" }
   | { type: "tick"; now: number };
 
+type Running = Extract<WandState, { kind: "running" }>;
+type Preview = Extract<WandState, { kind: "preview" }>;
+
+/** The run an answer or a failure belongs to; null for any other state or another run. */
+function runOf(state: WandState, requestId: string): Running | null {
+  return state.kind === "running" && state.requestId === requestId ? state : null;
+}
+
+const previewOf = (run: Running, text: string, notices: string[]): Preview => ({
+  kind: "preview",
+  original: run.sent,
+  proposal: text,
+  editing: false,
+  stale: run.changed,
+  notices,
+});
+
+/** The message box text changed: what that means depends on what the wand is showing. */
+function fieldChanged(state: WandState, text: string): WandState {
+  if (state.kind === "running") return { ...state, changed: text !== state.sent };
+  if (state.kind === "preview") return { ...state, stale: text !== state.original };
+  if (state.kind === "undo" && text !== state.after) return { kind: "idle" };
+  return state;
+}
+
+/** Accept: the proposal goes in and Undo stays for a while. */
+function accepted(state: WandState, now: number): WandState {
+  if (state.kind !== "preview") return state;
+  return {
+    kind: "undo",
+    before: state.original,
+    after: state.proposal,
+    until: now + UNDO_WINDOW_MS,
+  };
+}
+
+/** Back to idle when the wand is in `kind`; any other state stays as it is. */
+function idleFrom(state: WandState, kind: WandState["kind"]): WandState {
+  return state.kind === kind ? { kind: "idle" } : state;
+}
+
 export function wandReduce(state: WandState, event: WandEvent): WandState {
   switch (event.type) {
     case "start":
       // A run is cancelled before another starts: one at a time.
-      return state.kind === "running"
-        ? state
-        : { kind: "running", requestId: event.requestId, sent: event.text, changed: false };
-    case "answer":
-      if (state.kind !== "running" || state.requestId !== event.requestId) return state;
-      return {
-        kind: "preview",
-        original: state.sent,
-        proposal: event.text,
-        editing: false,
-        stale: state.changed,
-        notices: event.notices,
-      };
-    case "fail":
-      if (state.kind !== "running" || state.requestId !== event.requestId) return state;
+      if (state.kind === "running") return state;
+      return { kind: "running", requestId: event.requestId, sent: event.text, changed: false };
+    case "answer": {
+      const run = runOf(state, event.requestId);
+      return run ? previewOf(run, event.text, event.notices) : state;
+    }
+    case "fail": {
+      if (!runOf(state, event.requestId)) return state;
       return {
         kind: "failed",
         reason: event.reason,
         ...(event.params ? { params: event.params } : {}),
       };
+    }
     case "field":
-      if (state.kind === "running") return { ...state, changed: event.text !== state.sent };
-      if (state.kind === "preview") return { ...state, stale: event.text !== state.original };
-      if (state.kind === "undo" && event.text !== state.after) return { kind: "idle" };
-      return state;
+      return fieldChanged(state, event.text);
     case "cancel":
-      return state.kind === "running" ? { kind: "idle" } : state;
+      return idleFrom(state, "running");
     case "edit":
       return state.kind === "preview" ? { ...state, editing: true } : state;
     case "proposal":
-      return state.kind === "preview" && state.editing ? { ...state, proposal: event.text } : state;
+      if (state.kind !== "preview" || !state.editing) return state;
+      return { ...state, proposal: event.text };
     case "discard":
       return { kind: "idle" };
     case "accept":
-      return state.kind === "preview"
-        ? {
-            kind: "undo",
-            before: state.original,
-            after: state.proposal,
-            until: event.now + UNDO_WINDOW_MS,
-          }
-        : state;
+      return accepted(state, event.now);
     case "undo":
-      return state.kind === "undo" ? { kind: "idle" } : state;
+      return idleFrom(state, "undo");
     case "tick":
-      return state.kind === "undo" && event.now >= state.until ? { kind: "idle" } : state;
+      if (state.kind !== "undo" || event.now < state.until) return state;
+      return { kind: "idle" };
   }
 }
 
