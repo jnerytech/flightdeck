@@ -31,6 +31,17 @@ interface Draft {
 }
 
 /** Date inputs give whole days; the daemon compares ISO timestamps (UTC). */
+/** Why the list is empty once it is read: the hidden automated runs, the filters, or nothing yet. */
+function emptyReason(why: {
+  open: boolean;
+  automated: boolean;
+  filtered: boolean;
+}): "automated" | "filtered" | "nothing" | null {
+  if (!why.open) return null;
+  if (why.automated) return "automated";
+  return why.filtered ? "filtered" : "nothing";
+}
+
 function toFilter(draft: Draft): HistoryFilter {
   return {
     ...(draft.cwd.trim() ? { cwd: draft.cwd.trim() } : {}),
@@ -131,14 +142,11 @@ export function HistoryList(
     onChange: (e: { target: { value: string } }) => setDraft({ ...draft, [key]: e.target.value }),
   });
   /** Why the list is empty, once it is read: the hidden automated runs, the filters, or nothing yet. */
-  const emptyBecause =
-    loading || sessions?.length !== 0
-      ? null
-      : hideAutomated && automatedCount > 0
-        ? "automated"
-        : Object.keys(filter).length > 0
-          ? "filtered"
-          : "nothing";
+  const emptyBecause = emptyReason({
+    open: !loading && sessions?.length === 0,
+    automated: hideAutomated && automatedCount > 0,
+    filtered: Object.keys(filter).length > 0,
+  });
   /** Every filter back to empty, and the list read again without them. */
   const clearFilters = () => {
     const empty: Draft = { cwd: "", projectKey: "", from: "", to: "", origin: "" };

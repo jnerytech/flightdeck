@@ -47,7 +47,14 @@ export interface DaemonUpdaterOptions {
 export class DaemonUpdater {
   constructor(private readonly opts: DaemonUpdaterOptions) {}
 
-  async apply(confirm: boolean): Promise<{ started: true }> {
+  /**
+   * `proceed`, when given, is asked once the binary is downloaded and verified, right before it is
+   * started: false (the host got busy meanwhile) removes the file and refuses with `update_host_busy`.
+   */
+  async apply(
+    confirm: boolean,
+    opts: { proceed?: () => boolean } = {},
+  ): Promise<{ started: true }> {
     if (!confirm)
       throw new FlightdeckError(
         "invalid_state",
@@ -83,6 +90,14 @@ export class DaemonUpdater {
         "update_needs_service",
         "o daemon não roda como serviço: atualize no host com flightdeckd update --from <binário novo>",
         "update_needs_service",
+      );
+    }
+    if (opts.proceed && !opts.proceed()) {
+      await rm(file, { force: true });
+      throw new FlightdeckError(
+        "invalid_state",
+        "o host ficou ocupado enquanto o binário baixava: tenta de novo quando estiver ocioso",
+        "update_host_busy",
       );
     }
     await this.start(platform, file);

@@ -112,6 +112,7 @@ const validCommands: Record<CommandType, unknown> = {
   "daemon.shutdown": {},
   "daemon.update.apply": { confirm: true },
   "daemon.update.check": {},
+  "host.updates.set": { auto: true },
   "snapshots.list": { claudeSessionId: "c1" },
   "snapshots.files": { claudeSessionId: "c", n: 3 },
   "mcp.status": { sessionId: "s1" },

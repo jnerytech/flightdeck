@@ -218,6 +218,13 @@ export function ChangesPanel(
   if (changes === null) {
     return <p className="text-muted-foreground text-sm">{t("changes.loading")}</p>;
   }
+  // A file can be shown in the folder only where the host's paths are the machine's own.
+  const folder = store.canOpenPaths(hostId)
+    ? {
+        onShowInFolder: (file: DiffFile) =>
+          void store.revealPath(hostId, `${changes.root}/${file.path}`),
+      }
+    : {};
   return (
     <section aria-label={t("changes.region")} className="flex flex-col gap-4">
       {props.extra?.(changes, refresh)}
@@ -265,12 +272,7 @@ export function ChangesPanel(
             selection={selection}
             onPick={onPick}
             composer={composer}
-            {...(store.canOpenPaths(hostId)
-              ? {
-                  onShowInFolder: (file: DiffFile) =>
-                    void store.revealPath(hostId, `${changes.root}/${file.path}`),
-                }
-              : {})}
+            {...folder}
           />
         </>
       )}

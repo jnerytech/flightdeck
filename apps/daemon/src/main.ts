@@ -164,6 +164,7 @@ import {
   waitHealthy,
 } from "./update.ts";
 import { DaemonUpdater } from "./updates/apply.ts";
+import { AutoUpdater, autoUpdateOf } from "./updates/auto.ts";
 import { UpdateChecker } from "./updates/check.ts";
 import { addToUserPath, binDir, removeFromUserPath } from "./user-path.ts";
 import { VaultRules } from "./vault/rules-store.ts";
@@ -932,15 +933,18 @@ export async function startDaemon(
     snapshots,
   });
   await maintenance.start();
+  // Issue #280: a newer version is applied by itself, only while nothing runs on the host. Made
+  // after the checker, which tells it after each check.
+  let autoUpdater: AutoUpdater | undefined;
   // Checked in the background: a slow or unreachable release server never delays the boot.
   const updates = config.updates.manifestUrl
     ? new UpdateChecker({
         manifestUrl: config.updates.manifestUrl,
         checkIntervalH: config.updates.checkIntervalH,
         currentVersion: DAEMON_VERSION,
+        onChecked: () => autoUpdater?.checked(),
       })
     : undefined;
-  void updates?.start();
   const updater = updates
     ? new DaemonUpdater({
         manifest: () => updates.latest(),
@@ -948,6 +952,17 @@ export async function startDaemon(
         ctx: osServiceContext(false),
       })
     : undefined;
+  if (updates && updater) {
+    autoUpdater = new AutoUpdater({
+      enabled: () => config.updates.auto,
+      currentVersion: DAEMON_VERSION,
+      latest: updates.latest.bind(updates),
+      idle: () => manager.activeSessionCount() === 0 && board.workflows.activeRuns().length === 0,
+      apply: (proceed) => updater.apply(true, { proceed }),
+      log: logger.log.bind(logger),
+    });
+  }
+  void updates?.start();
   // Real shells behind a PTY, kept across connections; none outlives the daemon.
   const terminals = new TerminalManager({
     pty: options.pty ?? bunPty(),
@@ -1438,6 +1453,7 @@ export async function startDaemon(
       record: decisionLog(join(config.dataDir, "memory-decisions.jsonl")),
     }),
     ...(updater ? { updater } : {}),
+    ...(autoUpdater ? { autoUpdate: autoUpdateOf(autoUpdater, config, configFile) } : {}),
     hostName: config.hostName,
     bind: config.bind,
     port: config.port,
@@ -1504,6 +1520,7 @@ export async function startDaemon(
         await telemetry.stop();
         maintenance.stop();
         updates?.stop();
+        autoUpdater?.stop();
         await manager.shutdown();
         await server.stop();
         history.stop();
