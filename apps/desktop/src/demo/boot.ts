@@ -88,5 +88,17 @@ export function demoStoreOptions(
  * with something that is not a version, the platform is the browser's as it is.
  */
 export function demoPlatform(platform: Platform, search = ""): Platform {
-  return platform;
+  const version = new URLSearchParams(search).get("update");
+  if (!version || !/^\d+\.\d+\.\d+$/.test(version)) return platform;
+  const nothing = () => Promise.resolve();
+  return {
+    ...platform,
+    updater: {
+      supported: true,
+      check: () => Promise.resolve({ version, notes: "" }),
+      download: nothing,
+      installDownloaded: nothing,
+      install: nothing,
+    },
+  };
 }
