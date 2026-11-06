@@ -147,6 +147,30 @@ function autoLine(auto: AutoApproval, t: T): string {
   return t("approval.autoApproved", { by, reason: auto.reason });
 }
 
+/** What the card says once the request is settled: the denial's reason, who approved it, or the decision. */
+function resolutionLine(
+  resolution: { decision: PermissionResolution; message?: string; auto?: AutoApproval },
+  t: T,
+): string {
+  if (resolution.decision === "deny" && resolution.message) {
+    return t("approval.deniedWith", { message: resolution.message });
+  }
+  if (resolution.auto) return autoLine(resolution.auto, t);
+  return t(`approval.resolved.${resolution.decision}` as Key);
+}
+
+/** The card's heading: a question, a plan, or the tool that asks. */
+function CardTitle(props: { asks: boolean; plan: boolean; tool: string; t: T }) {
+  const { asks, plan, tool, t } = props;
+  if (asks) return <strong>{t("approval.askTitle")}</strong>;
+  if (plan) return <strong>{t("approval.planTitle")}</strong>;
+  return (
+    <>
+      {t("approval.title")} <strong>{tool}</strong>
+    </>
+  );
+}
+
 /**
  * The approval card of every session (managed, terminal, card) and of the sidebar's queue: what
  * the tool will do, readable, with Aprovar and Negar together. With the card focused, A approves,
@@ -259,15 +283,7 @@ export function ApprovalCard(props: {
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span>
-          {questions ? (
-            <strong>{t("approval.askTitle")}</strong>
-          ) : plan !== null ? (
-            <strong>{t("approval.planTitle")}</strong>
-          ) : (
-            <>
-              {t("approval.title")} <strong>{request.toolName}</strong>
-            </>
-          )}
+          <CardTitle asks={Boolean(questions)} plan={plan !== null} tool={request.toolName} t={t} />
         </span>
         <span className="flex items-baseline gap-2">
           {request.risk && !asks && (
@@ -293,13 +309,7 @@ export function ApprovalCard(props: {
         <Body view={view} t={t} onCopyPath={props.onCopyPath} />
       )}
       {resolution ? (
-        <p className="text-muted-foreground text-sm">
-          {resolution.decision === "deny" && resolution.message
-            ? t("approval.deniedWith", { message: resolution.message })
-            : resolution.auto
-              ? autoLine(resolution.auto, t)
-              : t(`approval.resolved.${resolution.decision}` as Key)}
-        </p>
+        <p className="text-muted-foreground text-sm">{resolutionLine(resolution, t)}</p>
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2">

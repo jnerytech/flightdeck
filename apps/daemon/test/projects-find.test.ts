@@ -9,7 +9,7 @@ import { newManager, poll, tempDir } from "./helpers.ts";
 
 /** A root with repos at several depths, plus things a scan must not enter or follow. */
 function tree() {
-  const base = realpathSync(tempDir("fd-find-"));
+  const base = realpathSync.native(tempDir("fd-find-"));
   const root = join(base, "code");
   for (const dir of [
     "app/.git",

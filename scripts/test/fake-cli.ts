@@ -3,16 +3,9 @@
  * and a `name.cmd` (Windows), both forwarding to fake-cli-main.ts. Every call is recorded; the
  * answers come from rules that can be swapped while the fake is installed (to simulate a merge).
  */
-import {
-  appendFileSync,
-  chmodSync,
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
+import { appendFileSync, chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
+import { realTempDir } from "./temp-dir.ts";
 
 export interface FakeRule {
   /** Every one of these must appear among the arguments. */
@@ -109,7 +102,7 @@ export function installFakeCli(
   env: Record<string, string | undefined> = process.env,
   options: FakeCliOptions = {},
 ): FakeCli {
-  const dir = mkdtempSync(join(tmpdir(), `fd-fake-${name}-`));
+  const dir = realTempDir(`fd-fake-${name}-`);
   const bun = process.execPath;
   writeFileSync(join(dir, name), `#!/bin/sh\nexec "${bun}" "${MAIN}" "${dir}" "$@"\n`);
   chmodSync(join(dir, name), 0o755);
