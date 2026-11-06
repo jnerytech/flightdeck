@@ -40,7 +40,9 @@ function StepList(props: {
               {t(`setup.step.${step.id}.title` as Key)}
               <span className="sr-only">{`. ${step.done ? t("setup.done") : t("setup.todo")}`}</span>
             </p>
-            <p className="text-muted-foreground text-xs">{t(`setup.step.${step.id}.text` as Key)}</p>
+            <p className="text-muted-foreground text-xs">
+              {t(`setup.step.${step.id}.text` as Key)}
+            </p>
           </div>
           {step.done ? (
             <span className="shrink-0 text-muted-foreground text-xs">{t("setup.done")}</span>
@@ -61,11 +63,7 @@ function StepList(props: {
 }
 
 /** The setup checklist: what is done and what is not, from the real state, each with its action. */
-export function SetupPage(props: {
-  store: AppStore;
-  state: AppState;
-  go: (route: Route) => void;
-}) {
+export function SetupPage(props: { store: AppStore; state: AppState; go: (route: Route) => void }) {
   const t = useT();
   const { store, state } = props;
   const notified = useSyncExternalStore(store.setup.subscribe, () => store.setup.notified);
@@ -98,11 +96,7 @@ export function SetupPage(props: {
           <StepList label={t("setup.optional")} steps={optional} current={null} go={props.go} />
         </Section>
       )}
-      <Button
-        variant="ghost"
-        className="self-start"
-        onClick={() => store.setup.setHidden(true)}
-      >
+      <Button variant="ghost" className="self-start" onClick={() => store.setup.setHidden(true)}>
         {t("setup.hide")}
       </Button>
     </Page>

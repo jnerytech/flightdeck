@@ -1,11 +1,9 @@
 import type { DepsResult } from "@flightdeck/protocol";
 import {
-  BookOpen,
   ChevronDown,
   ChevronRight,
   CircleAlert,
   CircleX,
-  ExternalLink,
   EyeOff,
   Lock,
   type LucideProps,
@@ -14,7 +12,6 @@ import {
   Plus,
   Search,
   Sparkles,
-  SunMoon,
   TriangleAlert,
 } from "lucide-react";
 import { Children, type ReactNode, useId, useMemo, useState, useSyncExternalStore } from "react";

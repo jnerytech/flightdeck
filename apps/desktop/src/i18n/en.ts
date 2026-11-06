@@ -3325,7 +3325,8 @@ export const en: Dictionary = {
     count: "{done}/{total}",
     ring: "{done} of {total} steps done",
     hide: "Hide the setup checklist",
-    subtitle: "What is set up and what is not, read from your hosts and the app. Nothing here is ticked by hand.",
+    subtitle:
+      "What is set up and what is not, read from your hosts and the app. Nothing here is ticked by hand.",
     core: "To get going",
     optional: "Worth doing",
     allDone: "Everything to get going is done. The checklist leaves the sidebar by itself.",

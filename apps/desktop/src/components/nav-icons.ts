@@ -9,6 +9,7 @@ import {
   House,
   KeyRound,
   Layers,
+  ListChecks,
   type LucideIcon,
   MessagesSquare,
   Network,
@@ -17,7 +18,6 @@ import {
   Settings,
   SquareCode,
   UsersRound,
-  ListChecks,
   Workflow,
 } from "lucide-react";
 

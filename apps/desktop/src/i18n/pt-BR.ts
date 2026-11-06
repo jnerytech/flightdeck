@@ -3329,7 +3329,8 @@ export const ptBR = {
     count: "{done}/{total}",
     ring: "{done} de {total} passos feitos",
     hide: "Esconder a lista de configuração inicial",
-    subtitle: "O que está configurado e o que não está, lido dos seus hosts e do app. Nada aqui é marcado à mão.",
+    subtitle:
+      "O que está configurado e o que não está, lido dos seus hosts e do app. Nada aqui é marcado à mão.",
     core: "Para começar",
     optional: "Vale a pena",
     allDone: "Tudo para começar está feito. A lista sai da barra lateral sozinha.",

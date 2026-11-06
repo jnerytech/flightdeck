@@ -12,7 +12,15 @@ export function ProgressRing(props: { done: number; total: number; className?: s
       viewBox="0 0 16 16"
       className={props.className ?? "size-4 shrink-0 -rotate-90"}
     >
-      <circle cx="8" cy="8" r={radius} fill="none" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2" />
+      <circle
+        cx="8"
+        cy="8"
+        r={radius}
+        fill="none"
+        stroke="currentColor"
+        strokeOpacity="0.25"
+        strokeWidth="2"
+      />
       <circle
         cx="8"
         cy="8"

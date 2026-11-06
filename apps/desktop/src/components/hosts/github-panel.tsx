@@ -37,7 +37,7 @@ export function GithubPanel(props: Readonly<{ store: AppStore; host: HostView }>
         }
       });
     });
-  }, [device, refresh, store]);
+  }, [device, refresh, store, host.id]);
 
   const signIn = async () => {
     const started = await store.hostCommand(host.id, "github.login.start", {});
