@@ -64,7 +64,7 @@ fn locked<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 impl Assistant {
     /// Drops a provider's model list, as after its key was saved or deleted.
     fn forget(&self, provider: Provider) {
-        let _ = provider;
+        locked(&self.models).remove(provider.account());
     }
 
     fn client(&self) -> Result<guard::Client, Refusal> {
@@ -102,7 +102,9 @@ enum Known {
 
 /// A request id keys the cancel: the protocol's shape (a UUID fits), nothing a map could choke on.
 fn request_id(id: &str) -> Result<(), Refusal> {
-    let _ = id;
+    if id.len() > 64 || flightdeck_assistant::token(id).is_none() {
+        return Err(Refusal::new("assistant_bad_output"));
+    }
     Ok(())
 }
 
@@ -125,10 +127,17 @@ fn endpoint(provider: Provider) -> Endpoint {
 }
 
 #[tauri::command]
-pub async fn assistant_key_set(provider: String, key: String) -> Result<Saved, Refusal> {
-    spawn_blocking_result(move || Ok(keys::set_key(&KeyringStore, &provider, &key)))
+pub async fn assistant_key_set(
+    state: State<'_, Assistant>,
+    provider: String,
+    key: String,
+) -> Result<Saved, Refusal> {
+    let which = Provider::parse(&provider)?;
+    let saved = spawn_blocking_result(move || Ok(keys::set_key(&KeyringStore, &provider, &key)))
         .await
-        .map_err(|_| store_failed())?
+        .map_err(|_| store_failed())??;
+    state.forget(which);
+    Ok(saved)
 }
 
 #[tauri::command]
@@ -139,10 +148,16 @@ pub async fn assistant_key_status(provider: String) -> Result<KeyStatus, Refusal
 }
 
 #[tauri::command]
-pub async fn assistant_key_delete(provider: String) -> Result<(), Refusal> {
+pub async fn assistant_key_delete(
+    state: State<'_, Assistant>,
+    provider: String,
+) -> Result<(), Refusal> {
+    let which = Provider::parse(&provider)?;
     spawn_blocking_result(move || Ok(keys::delete_key(&KeyringStore, &provider)))
         .await
-        .map_err(|_| store_failed())?
+        .map_err(|_| store_failed())??;
+    state.forget(which);
+    Ok(())
 }
 
 /// Settings' "Test": Anthropic's free model list of one, OpenRouter's key; never the key's label.
@@ -152,8 +167,8 @@ pub async fn assistant_test(
     provider: String,
 ) -> Result<TestResult, Refusal> {
     let provider = Provider::parse(&provider)?;
-    let _permit = state.limits.admit()?;
     let key = key_of(provider).await?;
+    let _permit = state.limits.admit()?;
     let client = state.client()?;
     Ok(match provider {
         Provider::Anthropic => anthropic::test(&client, &endpoint(provider), &key).await,
@@ -175,8 +190,8 @@ pub async fn assistant_models(
     if let Some(options) = cached {
         return Ok(options);
     }
-    let _permit = state.limits.admit()?;
     let key = key_of(provider).await?;
+    let _permit = state.limits.admit()?;
     let client = state.client()?;
     let listing = match provider {
         Provider::Anthropic => {
@@ -203,20 +218,18 @@ pub async fn assistant_run(
     deny_data_collection: bool,
 ) -> Result<Answer, Refusal> {
     let provider = Provider::parse(&provider)?;
-    // The id keys the cancel: the protocol's shape (a UUID fits), nothing a map could choke on.
-    if request.request_id.len() > 64 || flightdeck_assistant::token(&request.request_id).is_none() {
-        return Err(Refusal::new("assistant_bad_output"));
-    }
+    request_id(&request.request_id)?;
     guard::check_model(&request.model)?;
     guard::check_prompt(&request.system)?;
     guard::check_prompt(&request.user)?;
-    let permit = state.limits.admit()?;
     let key = key_of(provider).await?;
     let text = format!("{}\n{}", request.system, request.user);
     let found = hits(text, vault_ids).await?;
     if !found.is_empty() {
         return Err(Refusal::new("assistant_vault_value").with("ids", found.join(",")));
     }
+    // Taken last: a refusal that sends nothing spends no call of the bucket.
+    let permit = state.limits.admit()?;
     let client = state.client()?;
     let known = state.known(provider, &request.model);
     let AssistantRequest { request_id, system, user, model, max_tokens } = request;
@@ -248,6 +261,7 @@ pub async fn assistant_run(
 
 #[tauri::command]
 pub async fn assistant_cancel(state: State<'_, Assistant>, request_id: String) -> Result<(), Refusal> {
+    self::request_id(&request_id)?;
     state.calls.cancel(&request_id);
     Ok(())
 }
@@ -264,7 +278,7 @@ async fn hits(text: String, ids: Vec<String>) -> Result<Vec<String>, Refusal> {
         return Ok(Vec::new());
     }
     if ids.len() > MAX_VAULT_IDS {
-        return Err(Refusal::new("assistant_too_long").with("max", MAX_VAULT_IDS.to_string()));
+        return Err(Refusal::new("assistant_bad_output"));
     }
     spawn_blocking_result(move || {
         let mut values = Vec::new();
