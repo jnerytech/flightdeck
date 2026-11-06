@@ -125,6 +125,8 @@
   --input: oklch(0.62 0.005 75);
   --ring: var(--brand);
   --sidebar: oklch(0.965 0.002 75);
+  /* The scrollbar's thumb (#567): 3:1 against every surface it scrolls over. */
+  --scrollbar-thumb: oklch(0.58 0.01 75);
   --sidebar-foreground: oklch(0.2 0.01 75);
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: oklch(0.99 0 0);
@@ -190,6 +192,7 @@
   --input: oklch(0.6 0.008 75);
   --ring: var(--brand);
   --sidebar: oklch(0.13 0.008 75);
+  --scrollbar-thumb: oklch(0.72 0.008 75);
   --sidebar-foreground: oklch(0.95 0.005 75);
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: oklch(0.16 0.01 75);
@@ -385,6 +388,36 @@
   }
   html:is(.dark) {
     color-scheme: dark;
+  }
+  /* One scrollbar for the whole app (#567): thin, no arrow buttons, a theme thumb that shows on
+     hover. WebView2 (Chromium) takes these only while scrollbar-width and scrollbar-color are
+     unset; once they are set it draws Windows' bar with its arrows again. */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-button {
+    display: none;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background-color: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: padding-box;
+    background-color: transparent;
+  }
+  :hover::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+  }
+  /* Engines without the webkit rules get the standard properties. */
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--scrollbar-thumb) transparent;
+    }
   }
   /* WebView2 on Windows paints a select's popup light in the dark theme even with color-scheme. */
   select option,
@@ -1113,24 +1146,32 @@
   height: 0.5rem;
 }
 
-/* The sidebar's main block and its folding groups. */
-@utility sidebar-nav {
+/* The sidebar's body: the nav, the hosts and the pinned sessions scroll as one area between the
+   fixed header and footer (#567). Its parts keep their own height and never shrink. */
+@utility sidebar-body {
   display: flex;
   min-height: 0;
+  flex: 1 1 0;
   flex-direction: column;
-  flex-shrink: 1;
-  gap: 0.125rem;
+  gap: 0.25rem;
   overflow-y: auto;
-  /* The items keep their size (24 px targets, issue #232): the nav scrolls instead of squeezing them. */
   & > * {
     flex-shrink: 0;
   }
 }
-/* The hosts section: it keeps room for a heading and a row, so the nav above gives way and scrolls. */
+/* The sidebar's main block and its folding groups. */
+@utility sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  /* The items keep their size (24 px targets, issue #232): the body scrolls instead of squeezing them. */
+  & > * {
+    flex-shrink: 0;
+  }
+}
+/* The hosts section keeps room for a heading and a row (#171). */
 @utility sidebar-hosts {
   min-height: 7rem;
-  flex: 1 1 0;
-  overflow-y: auto;
 }
 @utility sidebar-group {
   display: flex;
