@@ -339,6 +339,11 @@ export class SessionManager {
     const permissionMode = clampPermissionMode(resolved?.persona.permissionMode ?? null, asked);
     const persona = resolved ? snapshotOf(resolved.persona, resolved.hash) : null;
     const name = payload.name ?? null;
+    // The folder's git boundaries are looked at before the session exists: a row that exists can be
+    // run by a message that arrives meanwhile, and its trust would be judged without them (#415).
+    await this.opts.prepareTrust?.(cwd);
+    // A removal may have taken the folder while it was looked at.
+    if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
     if (extra.unattended) this.unattended.add(id);
     this.store.createSession({
       id,
@@ -361,7 +366,6 @@ export class SessionManager {
     this.emit(id, { type: "session.status", status: "starting" });
     this.emitSummary(id);
     if (payload.effort) this.efforts.set(id, payload.effort);
-    await this.opts.prepareTrust?.(cwd);
     this.startRun(id);
     if (payload.prompt === undefined) this.setStatus(id, "idle", "no first prompt");
     else this.deliver(id, payload.prompt);
@@ -384,6 +388,8 @@ export class SessionManager {
     if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
     const id = ulid();
     const permissionMode = opts.permissionMode ?? this.opts.defaultPermissionMode;
+    await this.opts.prepareTrust?.(cwd);
+    if (this.opts.folderLocks?.isHeld(cwd)) throw folderRemoving(cwd);
     this.store.createSession({
       id,
       name: opts.name,
@@ -402,7 +408,6 @@ export class SessionManager {
       resumedFrom: opts.claudeSessionId,
     });
     this.emit(id, { type: "session.status", status: "starting" });
-    await this.opts.prepareTrust?.(cwd);
     this.startRun(id, opts.claudeSessionId);
     this.setStatus(id, "idle", "retomada do histórico");
     return { sessionId: id };
