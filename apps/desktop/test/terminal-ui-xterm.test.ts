@@ -3,6 +3,8 @@ import { FIND_DECORATIONS } from "../src/lib/terminal-view.ts";
 import {
   createXtermScreen,
   type XtermDeps,
+  type XtermLink,
+  type XtermLinkProvider,
   type XtermSearch,
   type XtermTerminal,
 } from "../src/lib/xterm-screen.ts";
@@ -14,6 +16,23 @@ const THEME = {
   cursor: "#ffffff",
   selectionBackground: "#333333",
 };
+
+/** Characters a terminal draws two cells wide, as xterm does: the second cell is empty, width 0. */
+const WIDE = new Set(["⏺", "界"]);
+
+/** A row as xterm keeps it: one cell per narrow character, two for a wide one. */
+function cellsOf(text: string) {
+  const cells: Array<{ getChars(): string; getWidth(): number }> = [];
+  for (const char of text) {
+    cells.push({ getChars: () => char, getWidth: () => (WIDE.has(char) ? 2 : 1) });
+    if (WIDE.has(char)) cells.push({ getChars: () => "", getWidth: () => 0 });
+  }
+  return {
+    length: cells.length,
+    getCell: (x: number) => cells[x],
+    translateToString: () => text,
+  };
+}
 
 function setup(
   initial = "",
@@ -31,6 +50,9 @@ function setup(
   let onData: (data: string) => void = () => {};
   let onResize: (size: { cols: number; rows: number }) => void = () => {};
   let keyHandler: (event: KeyboardEvent) => boolean = () => true;
+  let linkProvider: XtermLinkProvider | null = null;
+  const lines: string[] = [];
+  const paths: Array<[string, unknown]> = [];
   let wheelHandler: (event: WheelEvent) => boolean = () => true;
   const zooms: string[] = [];
   const addons: unknown[] = [];
@@ -73,6 +95,18 @@ function setup(
     },
     attachCustomWheelEventHandler: (handler) => {
       wheelHandler = handler;
+    },
+    registerLinkProvider: (provider) => {
+      linkProvider = provider;
+      return { dispose: () => void log.push("off-paths") };
+    },
+    buffer: {
+      active: {
+        getLine: (y) => {
+          const text = lines[y];
+          return text === undefined ? undefined : cellsOf(text);
+        },
+      },
     },
     dispose: () => void log.push("dispose"),
   };
@@ -132,6 +166,7 @@ function setup(
     onSearch: () => void searches++,
     onFindResults: (results) => void found.push(results),
     onLink: (uri) => void linked.push(uri),
+    onPath: (path, at) => void paths.push([path, at]),
     onZoom: (step) => void zooms.push(step),
   });
   const press = (key: string, ctrl = true, shift = true) =>
@@ -157,6 +192,15 @@ function setup(
     },
     press,
     keys: (event: KeyboardEvent) => keyHandler(event),
+    paths,
+    /** The output's rows, from the top of the buffer. */
+    showLines: (...rows: string[]) => void lines.splice(0, lines.length, ...rows),
+    /** The links xterm would ask for on a row (1-based, as xterm counts). */
+    linksOn: (y: number) =>
+      new Promise<XtermLink[] | undefined>((resolve) => {
+        if (!linkProvider) resolve(undefined);
+        else linkProvider.provideLinks(y, resolve);
+      }),
     wheel: (event: WheelEvent) => wheelHandler(event),
     zooms,
     constructed: () => constructed,
@@ -370,6 +414,37 @@ describe("terminal-ui: the xterm screen", () => {
     expect(s.log.slice(-4)).toEqual(["next:hit", "next:miss", "prev:x", "clear"]);
   });
 
+  test("a file path in the output is a link over its own cells; clicking it hands the path on (issue #476)", async () => {
+    const s = setup();
+    s.showLines("nothing here", "see src/a.ts:3 now");
+    expect(await s.linksOn(1)).toBeUndefined();
+    const links = await s.linksOn(2);
+    expect(links?.map((link) => [link.text, link.range])).toEqual([
+      ["src/a.ts:3", { start: { x: 5, y: 2 }, end: { x: 14, y: 2 } }],
+    ]);
+    links?.[0]?.activate({} as MouseEvent, "src/a.ts:3");
+    expect(s.paths).toEqual([["src/a.ts", { line: 3 }]]);
+  });
+
+  test("a path printed without a line hands on no position (#506)", async () => {
+    const s = setup();
+    s.showLines("wrote ./notes/b.md:4:2 and /x/y.md");
+    for (const link of (await s.linksOn(1)) ?? []) link.activate({} as MouseEvent, link.text);
+    expect(s.paths).toEqual([
+      ["./notes/b.md", { line: 4, col: 2 }],
+      ["/x/y.md", undefined],
+    ]);
+  });
+
+  test("on a row with wide characters the link still sits over the path's own cells (issue #476)", async () => {
+    const s = setup();
+    s.showLines("⏺ src/a.ts");
+    const links = await s.linksOn(1);
+    expect(links?.map((link) => link.range)).toEqual([
+      { start: { x: 4, y: 1 }, end: { x: 11, y: 1 } },
+    ]);
+  });
+
   test("a paste of several lines waits for the OK unless the program turned on bracketed paste (issue #476)", async () => {
     const asked: string[] = [];
     const answers = [false, true];
@@ -404,7 +479,7 @@ describe("terminal-ui: the xterm screen", () => {
   test("dispose releases the listeners and xterm", () => {
     const s = setup();
     s.screen.dispose();
-    expect(s.log).toEqual(["off-selection", "off-data", "off-resize", "dispose"]);
+    expect(s.log).toEqual(["off-selection", "off-data", "off-resize", "off-paths", "dispose"]);
   });
 
   test("a clipboard that refuses to copy or to be read leaves the terminal as it was", async () => {

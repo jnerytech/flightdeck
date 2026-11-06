@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
+import { resolvePath } from "../lib/terminal-paths.ts";
 import { TerminalSession, type TerminalState } from "../lib/terminal-session.ts";
 import {
   type FindFlags,
@@ -100,6 +101,8 @@ export function TerminalPage(
       const deps = props.deps ?? (await import("../lib/xterm-deps.ts")).realXtermDeps;
       if (!alive || !parent) return;
       const host = store.terminalHost(hostId);
+      // The terminal's folder, for the relative paths of its output: known once the list answers.
+      let folder: Promise<string | null> = Promise.resolve(null);
       const xterm = createXtermScreen(deps, {
         theme: terminalTheme(store.theme.resolved),
         fontSize: store.terminalFont.value,
@@ -118,6 +121,7 @@ export function TerminalPage(
         onFindResults: setResults,
         onLink: (uri) => store.openLink(uri),
         onSnippets: () => setPicking(true),
+        onPath: (path) => void showPath(store, hostId, path, folder),
         confirmPaste: (text) =>
           new Promise<boolean>((resolve) =>
             setPasting({
@@ -155,7 +159,9 @@ export function TerminalPage(
       );
       await current.start();
       // A "Claude aqui" terminal carries the launch its session in the central also carries.
-      const info = (await host.list().catch(() => [])).find((t) => t.terminalId === terminalId);
+      const listed = host.list().catch(() => []);
+      folder = listed.then((list) => list.find((t) => t.terminalId === terminalId)?.cwd ?? null);
+      const info = (await listed).find((t) => t.terminalId === terminalId);
       if (alive) setLaunchId(info?.launchId ?? null);
     })();
     return () => {
@@ -398,6 +404,23 @@ const FIND_TOGGLES = [
   ["wholeWord", "terminalUi.wholeWord", "ab", "Alt+W"],
   ["regex", "terminalUi.useRegex", ".*", "Alt+R"],
 ] as const;
+
+/**
+ * A path clicked in a terminal's output (#476): on a host of this computer the file is shown in its
+ * folder, never opened or run (the app's own checks refuse links, `..` and shares); on another
+ * host the path is copied. A relative path is taken from the terminal's folder.
+ */
+async function showPath(
+  store: AppStore,
+  hostId: string,
+  path: string,
+  folder: Promise<string | null>,
+): Promise<void> {
+  const cwd = await folder;
+  const full = cwd ? resolvePath(cwd, path) : path;
+  if (store.canOpenPaths(hostId)) await store.revealPath(hostId, full);
+  else await store.copyText(full);
+}
 
 /**
  * The OK before a paste of several lines (#476): the program has not turned on bracketed paste, so
