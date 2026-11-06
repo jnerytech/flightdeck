@@ -108,7 +108,8 @@ function pinned(
   return {
     url: target.toString(),
     headers: { ...headers, Host: url.host },
-    tls: url.protocol === "https:" ? { serverName: name } : null,
+    // SNI carries names only: an address written in the URL is checked as the URL's host.
+    tls: url.protocol === "https:" && isIP(name) === 0 ? { serverName: name } : null,
   };
 }
 
@@ -154,7 +155,9 @@ export class WebhookSender {
     if (addresses.length === 0) return "unresolved";
     const allowed = loopbackOnly ? isLoopback : isPublicAddress;
     if (!addresses.every(allowed)) return "private_address";
-    return { url, address: addresses[0] as string };
+    // IPv4 first: a loopback name answers ::1 too, and the old fetch would have tried both.
+    const address = addresses.find((a) => isIP(a) === 4) ?? (addresses[0] as string);
+    return { url, address };
   }
 
   async send(request: WebhookRequest, origin: string): Promise<WebhookOutcome> {
