@@ -69,7 +69,7 @@ function entriesOf(state: AppState, t: T): Entry[] {
       key: `watch/${alert.hostId}/${alert.cardId}`,
       alert,
     })),
-    ...needsYou(state).map((item) => ({
+    ...needsYou(state, t).map((item) => ({
       kind: "request" as const,
       key: `${item.hostId}/${item.requestId}`,
       item,

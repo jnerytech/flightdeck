@@ -171,7 +171,8 @@ Taken together:
   - filters fold behind a "Filters" button that opens a sheet.
 
 **Page body**
-- The side gutter is 24 px wide, 16 px at medium and 12 px at compact.
+- The side gutter is 24 px wide, 16 px at medium and 12 px at compact, measured on the page's
+  area (its `@container`), not the window: a split pane is narrow in a wide window.
 - The vertical rhythm stays the spacing scale of `2026-11-06-spacing-scale.md`.
 - Forms and reading pages cap at 48 rem. Dashboards and boards use the full width.
 
@@ -214,6 +215,10 @@ Taken together:
   - the body scrolls;
   - the footer buttons stay at the bottom, stacked, primary last.
 - Focus handling does not change.
+- A confirmation (an alert dialog: a short question and two buttons) stays a centered box at
+  every size; it does not need the whole screen.
+- The vendored dialog keeps its classes; the sheet is a rule in `styles.css`, next to the one
+  that centers it. A form that holds the fields and the footer fills the sheet too.
 
 **Popovers and menus**
 - They never exceed `calc(100vw - 2rem)` and flip to stay inside the window.

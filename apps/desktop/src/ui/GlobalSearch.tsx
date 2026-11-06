@@ -135,7 +135,7 @@ export function GlobalSearch(
         globalSnippets: store.globalSnippets.list(),
         recents: frozen.current ?? store.paletteRecents(),
         keepRecentOrder: frozen.current !== null,
-        ...oldestOf(needsYou(props.state), store.i18n.t),
+        ...oldestOf(needsYou(props.state, store.i18n.t), store.i18n.t),
         modeSwitch: modeSwitch(store),
         scope,
       });
