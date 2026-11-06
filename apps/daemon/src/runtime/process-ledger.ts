@@ -24,6 +24,8 @@ export interface ProcSource {
   identity(pid: number): ProcIdentity | null;
   /** The processes whose group is `pgid`. */
   members(pgid: number): Array<{ pid: number; startTicks: number }>;
+  /** This boot's id (`/proc/sys/kernel/random/boot_id`): start ticks mean nothing across boots. */
+  bootId(): string | null;
 }
 
 export interface LedgerEntry {
@@ -151,7 +153,7 @@ export class ProcessLedger {
 
 /** /proc on Linux; on any other system nothing is known, so nothing is recorded or reaped. */
 export function procSource(platform: NodeJS.Platform = process.platform): ProcSource {
-  if (platform !== "linux") return { identity: () => null, members: () => [] };
+  if (platform !== "linux") return { identity: () => null, members: () => [], bootId: () => "" };
   const stat = (pid: number) => {
     try {
       return parseStat(readFileSync(`/proc/${pid}/stat`, "utf8"));
@@ -160,6 +162,7 @@ export function procSource(platform: NodeJS.Platform = process.platform): ProcSo
     }
   };
   return {
+    bootId: () => "",
     identity(pid) {
       const parsed = stat(pid);
       if (!parsed) return null;

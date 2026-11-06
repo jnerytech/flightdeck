@@ -13,6 +13,10 @@ import { tempDir } from "./helpers.ts";
 /** A pretend /proc: processes by pid, each with its group and start. */
 class FakeProc implements ProcSource {
   readonly table = new Map<number, ProcIdentity>();
+  boot: string | null = "boot-1";
+  bootId() {
+    return this.boot;
+  }
   identity(pid: number) {
     return this.table.get(pid) ?? null;
   }
@@ -48,7 +52,7 @@ describe("opencode-ledger: the process groups the daemon starts (issue #250)", (
     ledger.add(4242);
     ledger.add(9999);
     expect(JSON.parse(readFileSync(file, "utf8"))).toEqual([
-      { pid: 4242, startTicks: 1000, cmdline: "opencode acp" },
+      { pid: 4242, startTicks: 1000, cmdline: "opencode acp", bootId: "boot-1" },
     ]);
     expect(ledger.size).toBe(1);
   });
@@ -60,7 +64,7 @@ describe("opencode-ledger: the process groups the daemon starts (issue #250)", (
     proc.start(4242, { startTicks: 2000 });
     ledger.add(4242);
     expect(JSON.parse(readFileSync(file, "utf8"))).toEqual([
-      { pid: 4242, startTicks: 2000, cmdline: "opencode acp" },
+      { pid: 4242, startTicks: 2000, cmdline: "opencode acp", bootId: "boot-1" },
     ]);
   });
 
@@ -174,6 +178,59 @@ describe("opencode-ledger: the process groups the daemon starts (issue #250)", (
     expect(make().reap()).toEqual({ reaped: [], stale: [] });
   });
 
+  test("an entry from another boot is stale: start ticks begin again at zero after a reboot", () => {
+    const { proc, killed, ledger, make } = setup();
+    proc.start(4242);
+    ledger.add(4242);
+    proc.boot = "boot-2";
+    expect(make().reap()).toEqual({ reaped: [], stale: [4242] });
+    expect(killed).toEqual([]);
+  });
+
+  test("no boot id to check against: nothing is written down", () => {
+    const { proc, ledger } = setup();
+    proc.boot = null;
+    proc.start(4242);
+    ledger.add(4242);
+    expect(ledger.size).toBe(0);
+  });
+
+  test("an entry the file could not have from add is dropped unread: pid 0, 1 or negative, a fraction, a negative start, no boot id", () => {
+    const { file, proc, killed, make } = setup();
+    // Each would reach a real group with the earlier checks: pid 1 matches init, pid 0 a group 0 member.
+    proc.start(1, { startTicks: 7, cmdline: "init" });
+    proc.start(77, { pgrp: 0, startTicks: 5 });
+    proc.start(4242);
+    const entry = { startTicks: 0, cmdline: "init", bootId: "boot-1" };
+    writeFileSync(
+      file,
+      JSON.stringify([
+        { ...entry, pid: 1, startTicks: 7 },
+        { ...entry, pid: 0 },
+        { ...entry, pid: -77 },
+        { ...entry, pid: 4242.5 },
+        { pid: 4242, startTicks: -1, cmdline: "opencode acp", bootId: "boot-1" },
+        { pid: 4242, startTicks: 1000, cmdline: "opencode acp" },
+      ]),
+    );
+    expect(make().reap()).toEqual({ reaped: [], stale: [] });
+    expect(killed).toEqual([]);
+  });
+
+  test("the daemon's own group, or its own pid, is never killed", () => {
+    const { file, proc, killed, make } = setup();
+    proc.start(process.pid, { cmdline: "flightdeckd", pgrp: 4000 });
+    proc.start(4001, { pgrp: 4000, startTicks: 2000 });
+    const own = { startTicks: 1000, cmdline: "flightdeckd", bootId: "boot-1" };
+    writeFileSync(file, JSON.stringify([{ ...own, pid: 4000 }, { ...own, pid: process.pid }]));
+    expect(make().reap()).toEqual({ reaped: [], stale: [4000, process.pid] });
+    // and a daemon that leads its own group
+    proc.start(process.pid, { cmdline: "flightdeckd" });
+    writeFileSync(file, JSON.stringify([{ ...own, pid: process.pid }]));
+    expect(make().reap()).toEqual({ reaped: [], stale: [process.pid] });
+    expect(killed).toEqual([]);
+  });
+
   test("an empty ledger leaves no file behind to read next time", () => {
     const { file, proc, ledger } = setup();
     proc.start(4242);
@@ -196,6 +253,7 @@ describe("opencode-ledger: what /proc says", () => {
     const none = procSource("win32");
     expect(none.identity(process.pid)).toBeNull();
     expect(none.members(process.pid)).toEqual([]);
+    expect(none.bootId()).toBeNull();
   });
 
   test.skipIf(process.platform !== "linux")(
