@@ -60,6 +60,7 @@ function host() {
       live?.({
         type: "changes.updated",
         target: "session:abc",
+        position: null,
         root: "/r",
         base: null,
         files: [readme(hunks)],
