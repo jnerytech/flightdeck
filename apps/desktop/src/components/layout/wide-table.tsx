@@ -9,15 +9,14 @@ import { useT } from "@/i18n/context";
 export function WideTable(props: Readonly<{ name: string; children: ReactNode }>) {
   const t = useT();
   return (
-    <div
+    <section
       data-slot="table-wide"
-      role="region"
       aria-label={t("common.scrollsSideways", { name: props.name })}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: a sideways scroller the keyboard must reach (axe scrollable-region-focusable)
       tabIndex={0}
       className="table-wide"
     >
       {props.children}
-    </div>
+    </section>
   );
 }
