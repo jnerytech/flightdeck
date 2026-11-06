@@ -11,6 +11,7 @@ import { HostHealth } from "@/components/hosts/host-health";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { HostOverview } from "@/components/hosts/host-overview";
 import { HostVersionLine } from "@/components/hosts/host-version";
+import { HostWorktrees } from "@/components/hosts/host-worktrees";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
 import { FieldRow } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -275,6 +276,7 @@ export function HostPage(
               {host.status === "online" && hasFeature(info?.features, "github", false) && (
                 <GithubPanel store={store} host={host} />
               )}
+              <HostWorktrees store={store} host={host} />
               <HostAutoUpdate store={store} host={host} />
               <DaemonUpdate store={store} host={host} />
               {showHooks && (
