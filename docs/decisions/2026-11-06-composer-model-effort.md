@@ -1,4 +1,4 @@
-# The model chip and the live effort (issue #109, part b)
+# The model chip and the live effort, part b (issue #109)
 
 - **A new command, `session.setEffort`.** The effort of a running Claude session changes through
   the SDK's flag settings (`applyFlagSettings({ effortLevel })`, `null` clears it), not by
