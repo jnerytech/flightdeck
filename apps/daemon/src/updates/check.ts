@@ -82,6 +82,8 @@ export class UpdateChecker {
     if (!this.stopped) {
       this.timer = this.timers.set(() => void this.check(), this.opts.checkIntervalH * 3_600_000);
     }
+    // The automatic update looks at the host after a check; what it throws never stops the checks.
+    await Promise.resolve(this.opts.onChecked?.()).catch(() => undefined);
   }
 
   private async download(): Promise<DaemonManifest> {

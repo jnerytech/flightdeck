@@ -135,12 +135,12 @@ export const Config = z.object({
         .default(RUNNING_COMPILED ? MANIFEST_URL : null),
       checkIntervalH: z.number().int().min(1).default(6),
       /** Issue #280: the daemon applies a newer version by itself, only while the host is idle. */
-      auto: z.boolean().default(false),
+      auto: z.boolean().default(true),
     })
     .default(() => ({
       manifestUrl: RUNNING_COMPILED ? MANIFEST_URL : null,
       checkIntervalH: 6,
-      auto: false,
+      auto: true,
     })),
   /** Plan quota (phase 7): from `pauseAt` on, new cards wait for the window to reset. */
   quota: z

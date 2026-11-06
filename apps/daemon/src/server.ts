@@ -1301,6 +1301,13 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (!opts.updater) throw featureOff("updater");
         return ok(command.type, await opts.updater.apply(command.payload.confirm === true));
       }
+      case "host.updates.set": {
+        // It lets the host download and run a new binary by itself: only from a near connection,
+        // like host.bypass. Turning it off only lowers risk, but it is the same switch.
+        requireVaultTransport(ws.data.origin, "host.updates.set", opts.log);
+        if (!opts.autoUpdate) throw featureOff("autoUpdate");
+        return ok(command.type, await opts.autoUpdate.set(command.payload.auto));
+      }
       case "daemon.update.check": {
         if (!opts.updates) throw featureOff("updater");
         return ok(command.type, await opts.updates.checkNow());
@@ -1370,12 +1377,14 @@ export function startServer(opts: ServerOptions): RunningServer {
             ...(opts.tasks ? ["tasks"] : []),
             ...(opts.opencode?.info().available ? ["opencode"] : []),
             ...(opts.assistant ? [ASSISTANT_FEATURE] : []),
+            ...(opts.autoUpdate ? ["autoUpdate"] : []),
           ],
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
           ...(opts.ui ? { ui: { ...opts.ui } } : {}),
           ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
           ...(opts.opencode ? { runtimes: [hostRuntime(opts.opencode.info())] } : {}),
           ...updateStatus(),
+          ...(opts.autoUpdate ? { autoUpdate: opts.autoUpdate.status() } : {}),
           ...(opts.terminal ?? {}),
         });
       case "history.list": {

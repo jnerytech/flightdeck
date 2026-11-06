@@ -5,6 +5,7 @@
  * the minisign signature are checked as ever; this class only decides when to start it.
  */
 import type { AutoUpdateStatus, DaemonManifest } from "@flightdeck/protocol";
+import { type Config, updateConfigFile } from "../config.ts";
 import type { Timers } from "../quota/quota.ts";
 import { compareVersions } from "../update.ts";
 
@@ -90,4 +91,20 @@ export class AutoUpdater {
     const latest = this.opts.latest();
     return latest && compareVersions(latest.version, this.opts.currentVersion) > 0 ? latest : null;
   }
+}
+
+/** `host.info.autoUpdate` and `host.updates.set` for the server: the setting is kept in the config file and in the running config. */
+export function autoUpdateOf(auto: AutoUpdater, config: Config, configFile: string) {
+  return {
+    status: auto.status.bind(auto),
+    set: async (on: boolean): Promise<AutoUpdateStatus> => {
+      config.updates.auto = on;
+      await updateConfigFile(configFile, (raw) => ({
+        ...raw,
+        updates: { ...(raw.updates as object | undefined), auto: on },
+      }));
+      await auto.tick();
+      return auto.status();
+    },
+  };
 }
