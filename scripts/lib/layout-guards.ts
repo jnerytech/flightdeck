@@ -19,7 +19,10 @@ export type Rule =
   | "card-gap"
   | "card-padding"
   | "text-spill"
-  | "chip-gap";
+  | "chip-gap"
+  | "overflow-x"
+  | "nested-scroll"
+  | "header-clipped";
 
 export interface Finding {
   rule: Rule;
@@ -391,6 +394,130 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     for (const chips of siblingGroups(spacing.chip)) checkPairs(chips, spacing.chipMin, "chip-gap");
   };
 
+  // 11. Narrow windows (#641), heuristic: nothing runs past the right edge, one scrollbar at a
+  // time, and the page header clear of the tab row. A finding names the element and the px.
+  const narrow = options.responsive;
+  const root = document.documentElement;
+  /** The nearest ancestor with a box of its own: a `display: contents` wrapper has none. */
+  const boxParent = (el: Element) => {
+    let up = el.parentElement;
+    while (up && getComputedStyle(up).display === "contents") up = up.parentElement;
+    return up;
+  };
+  /** How many px a box hides vertically, when it scrolls; 0 when it shows all it holds. */
+  const hides = (el: Element) => {
+    const extra = el.scrollHeight - el.clientHeight;
+    return extra > 1 && scrolls(getComputedStyle(el).overflowY) ? extra : 0;
+  };
+  /** A box that can push the page sideways: not fixed, and no ancestor clips or scrolls it on x. */
+  const canWiden = (el: Element) => {
+    if (getComputedStyle(el).position === "fixed") return false;
+    for (let up = el.parentElement; up && up !== document.body; up = up.parentElement) {
+      if ((getComputedStyle(up).overflowX || "visible") !== "visible") return false;
+    }
+    return true;
+  };
+  const checkOverflowX = (shown: Element[]) => {
+    const extra = root.scrollWidth - root.clientWidth;
+    if (extra > 1) {
+      let widest: Element | null = null;
+      let right = 0;
+      for (const el of shown.filter(canWiden)) {
+        const box = rectOf(el);
+        if (box.width > 0 && box.right > right) {
+          widest = el;
+          right = box.right;
+        }
+      }
+      add(
+        "overflow-x",
+        widest ? pathOf(widest, true) : "page",
+        `the page scrolls ${extra} px sideways; this ends at ${Math.round(right)}`,
+      );
+    }
+    // The outermost box past the right of a parent that neither clips nor scrolls (a table past its card).
+    const past: Element[] = [];
+    for (const el of shown) {
+      if (past.some((outer) => outer.contains(el))) continue;
+      const position = getComputedStyle(el).position;
+      const parent = boxParent(el);
+      if (position === "fixed" || position === "absolute" || !parent || parent === document.body) {
+        continue;
+      }
+      if ((getComputedStyle(parent).overflowX || "visible") !== "visible") continue;
+      const box = rectOf(el);
+      const room = rectOf(parent);
+      if (box.width > 0 && room.width > 0 && box.right - room.right > 1) {
+        past.push(el);
+        add(
+          "overflow-x",
+          pathOf(el, true),
+          `${Math.round(box.right - room.right)} px past the right of ${nameOf(parent)}`,
+        );
+      }
+    }
+  };
+  const checkNestedScroll = (shown: Element[]) => {
+    for (const el of shown) {
+      const inner = hides(el);
+      if (!inner) continue;
+      let outer = el.parentElement;
+      while (outer && outer !== document.body && !hides(outer)) outer = outer.parentElement;
+      const page = root.scrollHeight - root.clientHeight;
+      if (outer && outer !== document.body) {
+        add(
+          "nested-scroll",
+          pathOf(el, true),
+          `hides ${inner} px, inside ${nameOf(outer)}, which hides ${hides(outer)}`,
+        );
+      } else if (page > 1) {
+        add(
+          "nested-scroll",
+          pathOf(el, true),
+          `hides ${inner} px, inside the page, which hides ${page}`,
+        );
+      }
+    }
+  };
+  const checkHeader = (rules: ResponsiveRules) => {
+    const tabs = [...document.querySelectorAll(rules.tabs)].find((el) => !hidden(el));
+    for (const header of document.querySelectorAll(rules.header)) {
+      if (hidden(header)) continue;
+      const box = rectOf(header);
+      const row = tabs ? rectOf(tabs) : null;
+      const under = row ? row.bottom - box.top : 0;
+      if (
+        row &&
+        under > 0.5 &&
+        box.top >= row.top &&
+        box.left < row.right &&
+        row.left < box.right
+      ) {
+        add(
+          "header-clipped",
+          pathOf(header, true),
+          `starts ${Math.round(under)} px under the tab row`,
+        );
+      }
+      for (const title of header.querySelectorAll(rules.title)) {
+        if (!hidden(title) && title.scrollWidth - title.clientWidth > 1) {
+          add(
+            "header-clipped",
+            pathOf(title, true),
+            `cut: ${title.clientWidth} px of ${title.scrollWidth}`,
+          );
+        }
+      }
+    }
+  };
+  const checkNarrow = () => {
+    if (!narrow) return;
+    const shown = [...document.querySelectorAll("body *")].filter((el) => !hidden(el));
+    checkOverflowX(shown);
+    checkNestedScroll(shown);
+    checkHeader(narrow);
+  };
+
   checkSideways();
   for (const el of document.querySelectorAll("body *")) {
     if (hidden(el)) continue;
@@ -408,6 +535,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   checkGaps();
   checkSingleScroll();
   checkSpacing();
+  checkNarrow();
   return found;
 }
 
@@ -474,12 +602,12 @@ export interface ResponsiveRules {
 }
 
 /** The narrow-window rules: heuristic, judged against apps/desktop/responsive-baseline.json. */
-export const RESPONSIVE_RULES: Rule[] = [];
+export const RESPONSIVE_RULES: Rule[] = ["overflow-x", "nested-scroll", "header-clipped"];
 
 export const RESPONSIVE: ResponsiveRules = {
-  header: "[data-none]",
-  title: "[data-none]",
-  tabs: "[data-none]",
+  header: '[data-slot="page-header"]',
+  title: '[data-slot="page-title"]',
+  tabs: '[role="tablist"]',
 };
 
 export const SPACING_RULES: readonly Rule[] = [

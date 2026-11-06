@@ -20,10 +20,10 @@ export function Page(
   return (
     // The page's stable slot: a layout finding inside it names the region (docs/DESIGN.md).
     <section aria-labelledby={id} data-slot="page" className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-col gap-3 border-b px-6 py-4">
+      <div data-slot="page-header" className="flex flex-col gap-3 border-b px-6 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 id={id} className="truncate font-semibold text-xl">
+            <h1 id={id} data-slot="page-title" className="truncate font-semibold text-xl">
               {props.title}
             </h1>
             {props.subtitle && <p className="text-muted-foreground text-sm">{props.subtitle}</p>}
