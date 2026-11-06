@@ -299,22 +299,23 @@ jobs:
           cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 
   # The check the main ruleset requires: it passes only when the plan, the quick job, the suite,
-  # SonarCloud and the checks passed. It runs even when one failed (not on a cancel), and fails at
+  # SonarCloud, the fast-coverage ratchet and the checks passed. It runs even when one failed (not on a cancel), and fails at
   # once: GitHub counts a skipped required check as passed (#272). A dispatched run's jobs have names
   # of their own, so a skipped copy never stands in for the real check.
   test:
     name: test (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
-    needs: [changes, quick, test-suite, sonar, checks-linux]
+    needs: [changes, quick, test-suite, sonar, fast-coverage, checks-linux]
     if: "!cancelled() && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')"
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: The suite, SonarCloud and the checks passed
+      - name: The suite, SonarCloud, the fast-coverage ratchet and the checks passed
         run: |
           test "${{ needs.changes.result }}" = success
           test "${{ needs.quick.result }}" = success
-          echo "suite: ${{ needs.test-suite.result }}, sonar: ${{ needs.sonar.result }}, checks: ${{ needs.checks-linux.result }}"
+          echo "suite: ${{ needs.test-suite.result }}, sonar: ${{ needs.sonar.result }}, fast coverage: ${{ needs.fast-coverage.result }}, checks: ${{ needs.checks-linux.result }}"
           test "${{ needs.test-suite.result }}" = success
+          test "${{ needs.fast-coverage.result }}" = success
           # SonarCloud skips on a dispatch.
           case "${{ needs.sonar.result }}" in success|skipped) ;; *) exit 1 ;; esac
           # The checks skip when the plan asks for no smoke and no cargo.
@@ -323,12 +324,12 @@ jobs:
           fi
 
   # The base of the test pyramid holds (#309): every source fast-coverage-baseline.json lists stays
-  # at 100% from the unit and component tiers alone. On main, nightly and by hand; not a required
-  # check, but a red main blocks `pr tag`.
+  # at 100% from the unit and component tiers alone. On PRs too (#358): a drop fails the PR through
+  # the required test (ubuntu-latest) check, instead of turning main red after the merge.
   fast-coverage:
     name: fast coverage (ubuntu-latest)
     needs: [changes, quick]
-    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')
+    if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
