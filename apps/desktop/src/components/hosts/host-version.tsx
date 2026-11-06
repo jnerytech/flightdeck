@@ -17,16 +17,19 @@ export function hostVersionText(
 /**
  * A host's row in the sidebar says its daemon's version in a real tooltip (issue #281), on hover and
  * on keyboard focus; never a native title. The same words are on the host page and in the switcher.
+ * The wrapper is there before the version is known too: adding it later would put a new button in
+ * the row's place, and the keyboard focus on the old one would be lost.
  */
 export function HostVersionTip(props: Readonly<{ text: string | null; children: ReactElement }>) {
-  if (!props.text) return props.children;
   return (
     <TooltipProvider delayDuration={400}>
-      <Tooltip>
+      <Tooltip {...(props.text ? {} : { open: false })}>
         <TooltipTrigger asChild>{props.children}</TooltipTrigger>
-        <TooltipContent side="right" sideOffset={4}>
-          {props.text}
-        </TooltipContent>
+        {props.text && (
+          <TooltipContent side="right" sideOffset={4}>
+            {props.text}
+          </TooltipContent>
+        )}
       </Tooltip>
     </TooltipProvider>
   );
