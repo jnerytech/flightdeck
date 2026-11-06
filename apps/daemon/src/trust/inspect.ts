@@ -288,12 +288,12 @@ export async function inspectProject(path: string): Promise<ProjectLoad> {
       load.mcpServers.push({ name, file: ".mcp.json", command: show(command) });
     }
   }
-  const keys = [...new Set(load.envKeys)].sort();
+  const keys = [...new Set(load.envKeys)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   load.omitted.envKeys = Math.max(0, keys.length - MAX_ITEMS);
   load.envKeys = keys.slice(0, MAX_ITEMS);
   load.omitted.allowRules = Math.max(0, load.allowRules.length - MAX_ITEMS);
   load.allowRules = load.allowRules.slice(0, MAX_ITEMS);
-  load.otherKeys = [...otherKeys].sort();
+  load.otherKeys = [...otherKeys].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   load.extras = [
     ...(await headers(root, ".claude/agents", false, unreadable)),
     ...(await headers(root, ".claude/skills", true, unreadable)),
