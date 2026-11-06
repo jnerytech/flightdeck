@@ -94,6 +94,31 @@ describe("setup-steps: derived from the real state (issue #164)", () => {
     );
   });
 
+  test("the projects a host answered at connect count while the list itself was never opened", () => {
+    const base = { hosts: [host("h1")] as never };
+    const answered = (projects: object[]) =>
+      done(
+        setupSteps(
+          input({ ...base, probes: { h1: probe({ projects: projects as never }) } as never }),
+        ),
+      );
+    expect(answered([project()])).toContain("project");
+    expect(answered([project({ baseBranch: "" })])).not.toContain("project");
+    expect(answered([])).not.toContain("project");
+    // The opened list wins over the answer given at connect.
+    expect(
+      done(
+        setupSteps(
+          input({
+            ...base,
+            projects: { h1: [project()] } as never,
+            probes: { h1: probe({ projects: [] }) } as never,
+          }),
+        ),
+      ),
+    ).toContain("project");
+  });
+
   test("a first session is any session, terminal session, listed session or started card", () => {
     const base = { hosts: [host("h1")] as never };
     const has = (over: Partial<SetupInput>) =>

@@ -1,4 +1,4 @@
-import type { DepResult } from "@flightdeck/protocol";
+import type { DepResult, Project } from "@flightdeck/protocol";
 import type { Platform } from "../platform/types.ts";
 import type { AppState } from "./app-store.ts";
 import type { Route } from "./router.ts";
@@ -17,6 +17,8 @@ export type SetupStepId =
 export interface SetupProbe {
   hooks: "installed" | "absent" | "outdated" | null;
   github: boolean | null;
+  /** The projects the host listed at connect, read without opening the list (issue #164). */
+  projects?: Project[] | null;
 }
 
 export interface SetupStep {

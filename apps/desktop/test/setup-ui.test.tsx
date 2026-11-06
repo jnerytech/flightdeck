@@ -334,10 +334,6 @@ describe("setup-ui: what the hosts answer (issue #164)", () => {
         ? { ok: true, data: answers[type] }
         : { ok: false, message: "no answer" };
     }) as never;
-    w.store.loadProjects = (async () => {
-      calls.push("loadProjects");
-      return [];
-    }) as never;
     return calls;
   }
 
@@ -348,23 +344,28 @@ describe("setup-ui: what the hosts answer (issue #164)", () => {
     const calls = asked(w, {
       "hooks.status": { status: "installed" },
       "github.status": { installed: true, loggedIn: true },
+      "project.list": { projects: [] },
     });
     await w.store.refreshSetup("h1");
     // `gh auth status` runs on the host: not at every connect, only when the person looks at GitHub.
-    expect(calls.sort()).toEqual(["hooks.status", "loadProjects"]);
-    expect(w.store.getState().setupProbes.h1).toEqual({ hooks: "installed", github: null });
+    expect(calls.sort()).toEqual(["hooks.status", "project.list"]);
+    expect(w.store.getState().setupProbes.h1).toEqual({
+      hooks: "installed",
+      github: null,
+      projects: [],
+    });
+    // The checklist reads the projects without opening the list: screens that show a project's
+    // trust notice appear when the person visits a page that loads it, not because Setup read it.
+    expect(w.store.getState().projects.h1).toBeUndefined();
     await w.store.refreshSetup("h1", { github: true });
-    expect(calls.sort()).toEqual([
-      "github.status",
-      "hooks.status",
-      "hooks.status",
-      "loadProjects",
-      "loadProjects",
-    ]);
-    expect(w.store.getState().setupProbes.h1).toEqual({ hooks: "installed", github: true });
+    expect(w.store.getState().setupProbes.h1).toEqual({
+      hooks: "installed",
+      github: true,
+      projects: [],
+    });
     // The next connect keeps what GitHub said.
     await w.store.refreshSetup("h1");
-    expect(w.store.getState().setupProbes.h1).toEqual({ hooks: "installed", github: true });
+    expect(w.store.getState().setupProbes.h1).toMatchObject({ github: true });
   });
 
   test("an answer that says no, or no answer, is recorded as such", async () => {
@@ -375,10 +376,10 @@ describe("setup-ui: what the hosts answer (issue #164)", () => {
       "github.status": { installed: true, loggedIn: false },
     });
     await w.store.refreshSetup("h1", { github: true });
-    expect(w.store.getState().setupProbes.h1).toEqual({ hooks: "absent", github: false });
+    expect(w.store.getState().setupProbes.h1).toMatchObject({ hooks: "absent", github: false });
     asked(w, {});
     await w.store.refreshSetup("h1", { github: true });
-    expect(w.store.getState().setupProbes.h1).toEqual({ hooks: null, github: null });
+    expect(w.store.getState().setupProbes.h1).toMatchObject({ hooks: null, github: null });
   });
 
   test("a host that does not announce a feature is not asked about it", async () => {
