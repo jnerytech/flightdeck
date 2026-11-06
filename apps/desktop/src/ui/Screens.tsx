@@ -1027,8 +1027,8 @@ function NewSession(
     store: AppStore;
     state: AppState;
     host: HostView;
-    prompt?: string | undefined;
-    persona?: string | undefined;
+    prompt?: string;
+    persona?: string;
   }>,
 ) {
   const { host } = props;
