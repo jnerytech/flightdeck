@@ -194,8 +194,9 @@ describe("webhook-enviar", () => {
       `Bearer ${token}, Basic x`,
     ];
     for (const value of bad) {
-      const refused = (await sender.send(request({ headers: { Authorization: value } }), "127.0.0.1"))
-        .refused;
+      const refused = (
+        await sender.send(request({ headers: { Authorization: value } }), "127.0.0.1")
+      ).refused;
       expect(refused, value).toBe("bad_header");
     }
     expect(calls).toHaveLength(1);
