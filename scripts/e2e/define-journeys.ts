@@ -1,12 +1,14 @@
 /**
- * `bun run e2e`: one test per journey and language, plus the layout check per language. They run
- * in this order in one worker: the journeys share the seeded demo, and the second language relies
- * on the state the first one left (see the notes in the journeys). `E2E_ONLY=a,b` keeps the
- * journeys with those names (and no layout check, which is not a journey).
+ * The journeys of one app language, as Playwright tests: one per journey, plus the layout check.
+ * Each language has a file of its own (`journeys-<language>.e2e.ts`) that calls this: Playwright
+ * keeps a file's tests together on a shard, so one file for both languages put every journey on
+ * shard 1 (#292). They run in one worker: the journeys share the demo of their run, and one that
+ * finds what another language left (a card made by the issue journey) copes with either order.
+ * `E2E_ONLY=a,b` keeps the journeys with those names (and no layout check, which is not a journey).
  */
 import { test } from "@playwright/test";
 import { type Lang, translator } from "../../apps/desktop/src/i18n/index.ts";
-import { JOURNEYS, LANGUAGES, VIEWPORTS } from "../lib/e2e-journeys.ts";
+import { JOURNEYS, VIEWPORTS } from "../lib/e2e-journeys.ts";
 import { type Context, journeys, layout } from "./journeys.ts";
 
 /** The demo's address and ids, which the global setup put in the environment. */
@@ -16,8 +18,8 @@ function demo() {
   return { url, ids: JSON.parse(ids) as Context["ids"] };
 }
 
-for (const language of LANGUAGES) {
-  const lang = language as Lang;
+/** Defines the journeys and the layout check of one app language. */
+export function defineJourneys(lang: Lang): void {
   test.describe(lang, () => {
     test.use({ viewport: VIEWPORTS[0], locale: lang });
 

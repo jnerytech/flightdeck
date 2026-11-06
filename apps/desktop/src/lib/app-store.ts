@@ -39,6 +39,7 @@ import type {
   SessionMeta,
   SessionNameInfo,
   SessionRecap,
+  SessionRuntime,
   SessionStatus,
   SessionSubscribeResult,
   SessionSummary,
@@ -181,6 +182,8 @@ export interface SidebarSession {
   status: SessionStatus;
   pendingPermissions: PendingPermission[];
   updatedAt: string;
+  /** Phase 39: set for an OpenCode session only. */
+  runtime?: SessionRuntime;
 }
 
 export interface HostView extends HostConfig {
@@ -385,6 +388,7 @@ export type HostCommandType = Extract<
   | `pr.${string}`
   | "files.sessions"
   | "fs.dirs"
+  | "runtime.models"
   | "fs.files"
   | "doctor.run"
   | "projects.scan"
@@ -2490,6 +2494,7 @@ export class AppStore {
       status: summary.status,
       pendingPermissions: summary.pendingPermissions,
       updatedAt: summary.updatedAt,
+      ...(summary.runtime ? { runtime: summary.runtime } : {}),
     };
     const prev = host.sessions.find((s) => s.id === next.id);
     this.updateHost(hostId, (h) => ({
