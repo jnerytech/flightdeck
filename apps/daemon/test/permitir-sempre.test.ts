@@ -154,7 +154,14 @@ describe("permitir-sempre", () => {
     const valid = requested?.suggestions?.[0];
     expect(refusal(() => respond([valid, rule({ destination: "userSettings" })]))).not.toBeNull();
     expect(open()).toBe(1);
-    respond([rule({}), rule({ rules: [{ toolName: "Write", ruleContent: "x".repeat(500) }] })]);
+    // A rule for the whole tool covers a credential file: it is refused (#384); one inside the project is not.
+    expect(refusal(() => respond([rule({})]))).toBe(
+      "invalid_permission_update: a regra permitiria mais risco do que este pedido",
+    );
+    respond([
+      rule({ rules: [{ toolName: "Write", ruleContent: `${project}/app-*.txt` }] }),
+      rule({ rules: [{ toolName: "Write", ruleContent: "x".repeat(500) }] }),
+    ]);
     expect((await result())?.content ?? "").toStartWith("arquivo criado: fake.txt; permissões:");
   });
 
@@ -174,7 +181,9 @@ describe("permitir-sempre", () => {
     ).toEqual([{ type: "setMode", mode: "acceptEdits", destination: "session" }]);
     expect(parseSuggestions(undefined)).toEqual([]);
     expect(parseSuggestions({ type: "setMode" })).toEqual([]);
-    expect(() => checkUpdates([], { toolName: "Write", suggestions: [] })).not.toThrow();
+    expect(() =>
+      checkUpdates([], { toolName: "Write", suggestions: [], risk: "high", classify: () => "low" }),
+    ).not.toThrow();
   });
 
   test("pelo protocolo, a recusa volta como invalid_permission_update", async () => {

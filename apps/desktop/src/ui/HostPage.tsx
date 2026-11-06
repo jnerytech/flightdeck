@@ -10,6 +10,7 @@ import { HostDoctor } from "@/components/hosts/host-doctor";
 import { hostDownReason } from "@/components/hosts/host-down-reason";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
 import { HostVersionLine } from "@/components/hosts/host-version";
+import { HostWorktrees } from "@/components/hosts/host-worktrees";
 import { SimpleModePanel } from "@/components/hosts/simple-mode-panel";
 import { FieldRow } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
@@ -146,6 +147,7 @@ export function HostPage(
             onOpenHistory={props.onOpenHistory}
           />
         )}
+        <HostWorktrees store={store} host={host} />
         <Panel title={t("hostPage.info")} label={t("hostPage.info")}>
           {info ? (
             <ul className="flex flex-col gap-1 text-sm">
