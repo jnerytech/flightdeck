@@ -22,7 +22,7 @@ describe("related-auto-base", () => {
       },
       readFile: () => "",
     });
-    expect(calls).toContain(`diff --name-only ${ORIGIN}...HEAD`);
+    expect(calls).toContain(`diff --name-only --no-renames ${ORIGIN}...HEAD`);
     expect(plan.output).toContain(`since ${ORIGIN.slice(0, 7)}`);
   });
 });
