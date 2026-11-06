@@ -904,6 +904,13 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   (e **Mostrar menos**) para o resto; o branch escolhido sempre aparece. O nome do projeto dobra
   seus branches (as setas esquerda e direita dobram e desdobram); a dobra é lembrada neste
   computador, e um projeto dobrado que guarda o branch escolhido mostra uma marca no nome.
+  A árvore lista no máximo 5 projetos: os que você **fixou** (o alfinete na linha do projeto), depois
+  os de atividade mais recente, e sempre o projeto do branch escolhido. Abaixo deles, **Todos os
+  projetos (N)** abre a página de Projetos. Com mais de 5 projetos, um campo **Filtrar projetos**
+  reduz a lista pelo nome a todas as combinações (Esc limpa). Com mais de 3 projetos, todos menos o
+  ativo começam dobrados; o que você dobra ou desdobra é lembrado, e um projeto dobrado com uma
+  sessão rodando ou que precisa de você mostra um pontinho no nome. Os alfinetes ficam neste
+  computador.
 - No pé da barra, **Configurações** é um item visível (marcado enquanto as Configurações estão
   abertas), e a conta do Claude (e-mail e plano, lidos do cartão da conta do host; o trilho mostra só
   a inicial) abre um menu. O cabeçalho dele diz o nome do app e a versão. Depois vêm o plano, a conta
