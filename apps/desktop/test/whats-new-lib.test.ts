@@ -63,4 +63,16 @@ describe("whats-new-lib: a dot after an update, gone once the notes were opened 
     expect(notes.hasNew()).toBe(false);
     expect(() => notes.markSeen()).not.toThrow();
   });
+
+  test("a storage that refuses to read shows no dot and does not stop the app", () => {
+    const unreadable = {
+      getItem: () => {
+        throw new Error("denied");
+      },
+      setItem: () => {},
+    };
+    const notes = new WhatsNew(unreadable, "0.38.0");
+    expect(notes.hasNew()).toBe(false);
+    expect(() => notes.markSeen()).not.toThrow();
+  });
 });
