@@ -24,6 +24,7 @@ export const JOURNEYS: readonly string[] = [
   "update-card",
   "status-bar",
   "trust-revoke",
+  "terminal-copy",
 ];
 
 export const LANGUAGES: readonly string[] = ["pt-BR", "en"];
