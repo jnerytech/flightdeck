@@ -23,6 +23,32 @@ ADR 40-3 and the earlier phase 40 entries, frozen. These cover the crate `flight
   tokens, model ids of at most 100 characters in `[A-Za-z0-9._:/-]`, 2 calls in flight, 20 calls
   per 5 minutes, a 10 s connect and 60 s total timeout, no redirect, no retry, no `Origin`. A vault
   value shorter than 6 characters is not looked for in the text: it would match ordinary words.
-- **A base URL is exactly one of the two providers' or `http://` on loopback.** `Endpoint::with_base`
-  exists for the tests' loopback server; the Tauri commands use only `Endpoint::anthropic()` and
-  `Endpoint::openrouter()`, and no command takes a URL from the webview.
+- **A base URL is exactly one of the two providers' or, in a debug build only, `http://` on
+  `127.0.0.1` or `[::1]`.** `Endpoint::with_base` exists for the tests' loopback server; a release
+  build refuses loopback, so no key goes to a local listener, and `localhost` is refused everywhere
+  (DNS or the hosts file could point it elsewhere). The Tauri commands use only
+  `Endpoint::anthropic()` and `Endpoint::openrouter()`, and no command takes a URL from the webview.
+  A request path must start with `/`, so a path can never turn the base into a userinfo.
+- **Anthropic 502 and 503 are `assistant_overloaded`**, like 500 and 529: the provider is there and
+  cannot answer now, and the person's next step is the same (try again later).
+- **What a provider says reaches the app scrubbed and short.** The key, and any word starting with
+  `sk-` in any case (the shape of both providers' keys, so a prefix, a masked or a case-changed
+  echo too), becomes `<key>`; a `detail` is at most 300 characters; a request id or `retry-after`
+  is passed on only as 1 to 200 characters of `[A-Za-z0-9._:-]`. The provider's request id is the
+  refusal's `requestId` param, which the UI shows with the `assistant_request_id` string (`{id}`).
+  A 413 carries `max`, as the `assistant_too_long` strings expect.
+- **One request id is one call.** A call whose id is already running is `assistant_rate_limited`
+  (so a second call cannot take over the first's cancel). A cancel that arrives before its call
+  starts is kept (the last 16 ids) and that call answers `assistant_cancelled` without running. A
+  wait that is dropped aborts its call and frees the id. So a request id is unique per call (a
+  UUID, never reused, not even after a webview reload). The client never retries (also
+  `reqwest::retry::never()`, so an HTTP/2 build could not resend a POST).
+- **A model id never becomes a path**: besides the character set, an id starting with `/` or with
+  a `..` segment is `assistant_model_unavailable`; a call checks the model and both prompts before
+  any request.
+- **New reasons for the UI branch**: `assistant_key_invalid` (param `why`) and
+  `assistant_key_store` (no params) join `ASSISTANT_REASONS` and both i18n files; whichever of the
+  Rust and UI branches lands second adds a test that every Rust reason is in the list.
+- **Accepted risk: a key in memory is not zeroed** when its `Secret` is dropped. A process that
+  can read the app's memory can also read the keyring as the same user, so `zeroize` would add a
+  dependency without closing a path.

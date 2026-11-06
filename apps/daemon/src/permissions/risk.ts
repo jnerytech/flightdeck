@@ -33,19 +33,19 @@ export function validRegex(source: string): boolean {
   }
 }
 
-const RANK: Record<RiskLevel, number> = { low: 0, medium: 1, high: 2 };
+export const RANK: Record<RiskLevel, number> = { low: 0, medium: 1, high: 2 };
 
 type Candidate = [RiskLevel, string];
 
-const SHELL_TOOLS = new Set(["Bash", "PowerShell"]);
-const READ_TOOLS: Record<string, string[]> = {
+export const SHELL_TOOLS = new Set(["Bash", "PowerShell"]);
+export const READ_TOOLS: Record<string, string[]> = {
   Read: ["file_path"],
   Glob: ["path"],
   Grep: ["path"],
   LS: ["path"],
 };
-const WRITE_TOOLS = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
-const NETWORK_TOOLS = new Set(["WebFetch", "WebSearch"]);
+export const WRITE_TOOLS = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
+export const NETWORK_TOOLS = new Set(["WebFetch", "WebSearch"]);
 
 /** Programs that read or run what a pipe hands them. */
 const SHELLS = new Set([

@@ -1,3 +1,4 @@
+import { inSequence } from "@flightdeck/protocol";
 /**
  * `bun run pr -- <open|next|update|merge> …` (issue #260, GitHub Flow): one PR per branch to main,
  * each merged on its own when its required checks are green on its HEAD. All of it through REST
@@ -321,7 +322,7 @@ async function nextPrs(deps: PrFlowDeps): Promise<number> {
   }
   const ready: string[] = [];
   const waiting: string[] = [];
-  for (const pr of mergeOrder(prs)) {
+  await inSequence(mergeOrder(prs), async (pr) => {
     const parent = prs.find((p) => p.head === pr.base);
     let reason: string | null = null;
     if (parent) reason = `waits for #${parent.number} (${parent.head})`;
@@ -331,7 +332,7 @@ async function nextPrs(deps: PrFlowDeps): Promise<number> {
     if (!reason) reason = await conflictProblem(deps, pr.number, pr.base, pr.head);
     if (reason) waiting.push(`  #${pr.number} ${pr.head}: ${reason}`);
     else ready.push(`  #${pr.number} ${pr.head}`);
-  }
+  });
   if (ready.length > 0) deps.log("ready to merge, in order:");
   for (const line of ready) deps.log(line);
   if (waiting.length > 0) deps.log("not ready:");

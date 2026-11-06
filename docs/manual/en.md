@@ -303,6 +303,37 @@ hooks, Tailscale and the daemon's version against the app's. Every item is **ok*
 **failed**; each one that is not **ok** comes with a plain step to fix it, in the app's language.
 The daemon keeps answering while it checks (nothing blocks). The same checks run in a terminal
 with `flightdeckd doctor`.
+### Trusting a project
+
+A project (a repository) can carry its own configuration: hooks that run commands by themselves,
+MCP servers that start programs, settings with allowed tools, a `CLAUDE.md`, agents, skills and
+commands. In a session Flightdeck starts, that configuration loads **only in a folder you trusted**.
+Folders you were already working in when this arrived (your board projects and the folders of your
+earlier sessions) are trusted; a repository you clone later, or a folder you add, starts untrusted.
+
+- In an untrusted folder the session loads your own settings, not the project's, and **neither your
+  own MCP servers nor your plugins** (Claude Code is told to use only the MCP server Flightdeck
+  gives it). The project's `CLAUDE.md`, agents and skills do not load either. A notice at the top
+  of the session says so, with **Review and trust**.
+- The project page has **Project configuration**: what the project would load, read without
+  running anything (hooks by event and MCP servers with their whole command, in a scrollable block
+  with a warning when a command is long or has several lines; programs the settings run, such as
+  `apiKeyHelper` and `statusLine`; environment variables that redirect traffic or code, with their
+  value, and the names of the others, never their values; plugins; every other settings key
+  present; allowed tools; agents, skills and commands, and the ones whose header carries hooks,
+  servers or tool grants; `CLAUDE.md`; and files that could not be read), the cost of not
+  trusting, and **Trust this project**. It asks first, naming the project and the host, because
+  trusted hooks and MCP servers run commands on that computer without asking you. **Revoke trust**
+  asks nothing. Trusting covers the folders inside the project, not the ones around it.
+- Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
+  project, and a folder that holds your allowed roots cannot be trusted at all. Background
+  sessions follow the same rule as the sessions in the app.
+- A card's worktree always reads its project configuration from the project's main folder, so a
+  branch never brings hooks of its own, trusted or not.
+- Trusting works only from the host's own computer or over Tailscale (like allowing a folder or sessions without prompts); revoking works from anywhere.
+- The decision lives on the host (`project_trust` in its database), per host, and is logged. A
+  host that does not announce `projectTrust` loads everything, as before.
+
 ### Sessions without permission prompts
 
 By default no session of a host can run in **Bypass permissions** (every tool runs without asking).
@@ -2626,6 +2657,26 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
   badge. The uptime keeps counting while the page is open.
+- **Worktrees:** a host page panel (hosts that announce `worktrees`) lists the cards' worktrees
+  under `.flightdeck/worktrees` with their size on disk (**unknown** when measuring ran out of
+  time, never 0), how long they have been idle, and their card. **Suggested** marks a clean worktree
+  with no unpushed commits and no live session, idle for over 7 days, whose card is Done or whose
+  PR merged, or that has no card. A worktree with uncommitted changes, commits that exist nowhere
+  else, a running session, terminal or run, an unknown base branch (it must be a real branch, not
+  a tag or `HEAD`), a branch that is not one of Flightdeck's `fd/…`, ignored files a build does not
+  recreate (only `node_modules`, `dist`, `build`, `target`, `coverage`, `.cache`, `.next` and `out`
+  as a folder at the root of the worktree do not count, and an ignored credential file such as `.env`
+  or `*.pem` always does), edits that git hides from `git status` (`assume-unchanged` or
+  `skip-worktree`), or anything git could not answer about is **kept**: the row says why and cannot
+  be ticked. The confirmation says the rebuildable folders go with the worktree. Filter by Suggested, Protected or No card, sort by age or size, **Select
+  suggested** or **Select all that can go**, then **Remove**: the confirmation names every branch
+  with its card and column, and the space it frees. Only the rows on screen can be ticked or
+  removed. The host holds each folder (nothing can start in it) and checks it again before removing
+  it (without force), so one that changed meanwhile is kept; the branch is deleted only if it is
+  still at the commit that was checked, otherwise the folder goes and the branch stays, and the
+  result says so. The card, if any, stays on the board without its
+  worktree. A disk under 10% free is warned about. Deleting something that is kept still goes through
+  the card's **Discard**.
 - **A host that is offline** shows a banner at the top of its page: the state, what failed in plain
   words (nothing answered, no answer in time, the link dropped, the token refused), the time of the
   last try, a countdown to the next automatic try and **Reconnect now**, which shows its progress
@@ -2860,10 +2911,17 @@ signature (see [Installation](#from-the-release-binaries)).
 
 - **The app:**
   - looks for a new version on open and every 6 h, in the latest release's `latest.json`;
-  - with a new version, shows the banner "Flightdeck X available", with the notes, **Install and
-    restart** and **Later**;
-  - an invalid signature or a broken download shows up in the banner, and nothing is installed;
-  - in **Settings**: **Check for updates now** and **Notify about updates** (on by default).
+  - with **Update automatically** on (the default), it downloads the new version in the
+    background, checks its signature, and then shows the banner "Flightdeck X is ready. Restart
+    to update." with **Restart now** and **Later**. Nothing restarts by itself (#280). Quitting
+    from the tray with a version downloaded installs it on the way out, without starting the app
+    again (#402);
+  - with it off, the banner says "Flightdeck X available", with the notes, **Install and
+    restart** and **Later**, as before;
+  - an invalid signature or a broken download shows up in the banner, and nothing is installed; a
+    failed download is tried again at the next check;
+  - in **Settings**: **Check for updates now**, **Notify about updates** and **Update
+    automatically** (both on by default).
 - **The daemon:**
   - checks `daemon-latest.json` on start, when asked, and every `updates.checkIntervalH` (6 h by
     default);
@@ -2878,13 +2936,19 @@ signature (see [Installation](#from-the-release-binaries)).
     sha256 and the signature, and runs `flightdeckd update --from` outside the service, to
     survive its own stop: a one-off `Flightdeck\update` task on Windows and `systemd-run --user`
     on Linux;
-  - the host shows "updating…" until it reconnects on the new version.
+  - the host shows "updating…" until it reconnects on the new version;
+  - **by itself** (`updates.auto`, on by default; #280): when a check finds a newer version, the
+    daemon applies it only while the host is idle, with no session or run going on, and otherwise
+    waits. It never applies an older version. A failed apply keeps the old binary and is tried
+    again at the next check. The host page has **Update this host automatically** (the same
+    setting, kept by the daemon) and says whether the update is off, current, waiting, started or
+    failed, and why.
 - **Order:** with the app and the daemons both out of date, the banner suggests updating the app
   first.
 
 ```json
 { "updates": { "manifestUrl": "https://github.com/jnerytech/flightdeck/releases/latest/download/daemon-latest.json",
-               "checkIntervalH": 6 } }
+               "checkIntervalH": 6, "auto": true } }
 ```
 
 Only the compiled `flightdeckd` checks GitHub by default. When running from source there is no

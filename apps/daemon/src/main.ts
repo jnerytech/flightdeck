@@ -151,6 +151,8 @@ import { terminalEnabled } from "./terminal/policy.ts";
 import { bunPty, type PtyFactory } from "./terminal/pty.ts";
 import { TerminalManager } from "./terminal/terminal-manager.ts";
 import { TraceService } from "./trace/service.ts";
+import { inspectProject } from "./trust/inspect.ts";
+import { ProjectTrust } from "./trust/project-trust.ts";
 import {
   binaryVersion,
   refusedAddress,
@@ -174,6 +176,8 @@ import { PrWatcher } from "./watch/watch.ts";
 import { WebhookSender } from "./webhook/sender.ts";
 import { whichOnPath } from "./which.ts";
 import { shellCheckRunner } from "./workflows/check-runner.ts";
+import { FolderLocks } from "./worktrees/locks.ts";
+import { createWorktrees } from "./worktrees/wiring.ts";
 import { type WslItem, WslSupervisor } from "./wsl.ts";
 import { detectWsl, readProcVersion } from "./wsl-host.ts";
 
@@ -800,10 +804,27 @@ export async function startDaemon(
     pack: packPersonas,
     publisher: agentPublisher(agentcfg),
   });
+  // Folders a worktree removal holds: nothing starts in one while it is being removed.
+  const folderLocks = new FolderLocks();
+
+  // Whether a folder's own hooks, MCP servers and settings may load in a session (issue #196): only
+  // where the person trusted it (or already worked in it before this existed). A card's worktree is
+  // read from its project's main checkout.
+  const projectTrust = new ProjectTrust(store.db, {
+    roots: () => config.allowedRoots,
+    configRootOf: (cwd) => {
+      const found = board.projectForCwd(cwd);
+      return found?.card ? found.project.path : null;
+    },
+    log: (line) => logger.log(line),
+  });
   const manager = new SessionManager({
+    folderLocks,
     store,
     runtime,
     risk,
+    trust: projectTrust.sessionTrust.bind(projectTrust),
+    prepareTrust: projectTrust.prepare.bind(projectTrust),
     autoApprove,
     allowedRoots: config.allowedRoots,
     defaultPermissionMode: config.defaultPermissionMode,
@@ -862,6 +883,7 @@ export async function startDaemon(
   usageIndex.start();
   const prepare: Prepare = (ref, cwd) => preparePersonas(personaStore, ref, cwd);
   const board = new Board({
+    folderLocks,
     preparePersonas: prepare,
     db: store.db,
     manager,
@@ -950,6 +972,7 @@ export async function startDaemon(
   void updates?.start();
   // Real shells behind a PTY, kept across connections; none outlives the daemon.
   const terminals = new TerminalManager({
+    folderLocks,
     pty: options.pty ?? bunPty(),
     enabled: terminalEnabled(config.bind, config.terminal.enabled),
     allowedRoots: config.allowedRoots,
@@ -1214,6 +1237,10 @@ export async function startDaemon(
   const messagingSweep = setInterval(messaging.sweep.bind(messaging), 5 * 60_000);
   // The wrapper finds the receptor through this file: nothing is served before it is there.
   await central.ready();
+  // A session that was open before the restart may be sent a message before anything else looks
+  // at its folder: read the git boundaries of every folder first, so the lazy reattach finds them.
+  // `prepare` answers every filesystem error itself (a folder it cannot read is a boundary).
+  await projectTrust.prepareSessions(manager.list());
   // Phase 40: the AI assistant on this host's claude (the fake runtime answers in the demo).
   const assistant = assistantService({
     runtime,
@@ -1242,6 +1269,21 @@ export async function startDaemon(
       set: async (allow) => {
         config.allowBypassPermissions = allow;
         await updateConfigFile(configFile, (raw) => ({ ...raw, allowBypassPermissions: allow }));
+      },
+    },
+    projectTrust: {
+      refresh: projectTrust.refreshRoots.bind(projectTrust),
+      state: (paths) =>
+        paths.map((path) => {
+          const via = projectTrust.via(path);
+          return { path, trusted: via !== null, via };
+        }),
+      inspect: (path) => inspectProject(path),
+      set: (path, trusted) => {
+        if (trusted) projectTrust.trust(path);
+        else projectTrust.revoke(path);
+        const via = projectTrust.via(path);
+        return { path, trusted: via !== null, via };
       },
     },
     persistRoots: (roots) =>
@@ -1323,6 +1365,8 @@ export async function startDaemon(
       db: store.db,
       claude: () => config.claude?.executablePath ?? whichOnPath("claude") ?? null,
       channel: (claudeSessionId, text) => messageExternal(central, claudeSessionId, text),
+      trust: projectTrust.sessionTrust.bind(projectTrust),
+      prepare: projectTrust.prepare.bind(projectTrust),
       // `getCard` refuses a card that does not exist, with the not_found the app knows.
       card: (cardId) => {
         const card = board.getCard(cardId);
@@ -1396,6 +1440,14 @@ export async function startDaemon(
     }),
     central,
     maintenance,
+    worktrees: createWorktrees({
+      board,
+      sessions: manager,
+      runs: runManager,
+      terminals,
+      externals: central.external,
+      locks: folderLocks,
+    }),
     ...(updates ? { updates } : {}),
     snapshots,
     rewinder,

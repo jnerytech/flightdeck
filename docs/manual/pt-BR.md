@@ -292,6 +292,38 @@ hooks, Tailscale e a versão do daemon contra a do app. Cada item fica **ok**, *
 **falhou**; cada um que não está **ok** vem com um passo simples para consertar, no idioma do app.
 O daemon segue respondendo enquanto confere (nada trava). As mesmas conferências rodam no
 terminal com `flightdeckd doctor`.
+### Confiar em um projeto
+
+Um projeto (um repositório) pode trazer configuração própria: hooks que rodam comandos sozinhos,
+servidores MCP que iniciam programas, configurações com ferramentas liberadas, um `CLAUDE.md`,
+agentes, skills e comandos. Em uma sessão que o Flightdeck inicia, essa configuração carrega
+**somente em uma pasta em que você confiou**. As pastas em que você já trabalhava quando isso
+chegou (os projetos do quadro e as pastas das suas sessões anteriores) têm confiança; um
+repositório que você clonar depois, ou uma pasta que você adicionar, começa sem confiança.
+
+- Em uma pasta sem confiança a sessão carrega as suas configurações, não as do projeto, e
+  **também não os seus servidores MCP nem os seus plugins** (o Claude Code é instruído a usar só o
+  servidor MCP que o Flightdeck dá). O `CLAUDE.md`, os agentes e as skills do projeto também não
+  carregam. Um aviso no alto da sessão diz isso, com **Revisar e confiar**.
+- A página do projeto tem **Configuração do projeto**: o que o projeto carregaria, lido sem rodar
+  nada (hooks por evento e servidores MCP com o comando inteiro, em um bloco com rolagem e um
+  aviso quando um comando é longo ou tem várias linhas; programas que as configurações executam,
+  como `apiKeyHelper` e `statusLine`; variáveis de ambiente que desviam tráfego ou código, com o
+  valor, e os nomes das outras, nunca os valores; plugins; toda outra chave de configuração
+  presente; ferramentas liberadas; agentes, skills e comandos, e os que trazem hooks, servidores
+  ou permissões de ferramentas no cabeçalho; `CLAUDE.md`; e arquivos que não puderam ser lidos), o custo de não confiar e
+  **Confiar neste projeto**. Ele pergunta antes, citando o projeto e o host, porque hooks e
+  servidores MCP com confiança rodam comandos naquele computador sem perguntar a você. **Revogar a
+  confiança** não pergunta. Confiar vale para as pastas dentro do projeto, não para as ao redor.
+- Confiar em uma pasta não confia na de cima: um clone dentro dela que tem `.git` próprio é outro
+  projeto, e uma pasta que contém as suas raízes liberadas não pode ser confiada. As sessões em
+  segundo plano seguem a mesma regra das sessões do app.
+- O worktree de um card sempre lê a configuração do projeto da pasta principal dele, então uma
+  branch nunca traz hooks próprios, com confiança ou sem.
+- Confiar só funciona a partir do próprio computador do host ou pela Tailscale (como liberar uma pasta ou sessões sem pedidos); revogar funciona de qualquer lugar.
+- A decisão fica no host (`project_trust` no banco dele), por host, e é registrada no log. Um host
+  que não anuncia `projectTrust` carrega tudo, como antes.
+
 ### Sessões sem pedidos de permissão
 
 Por padrão nenhuma sessão de um host roda em **Ignorar permissões** (toda ferramenta roda sem
@@ -2618,6 +2650,26 @@ O terminal de fora ([Abrir no terminal](#abrir-no-terminal)) continua ao lado.
 - **Página do host:** clique no nome do host para ver sistema, versões, sessões ativas, latência
   do heartbeat, renomear, reconectar e remover. Um host que repassa a chave de API ao Claude
   ganha um selo ⚠. O tempo no ar continua contando enquanto a página está aberta.
+- **Worktrees:** um painel da página do host (hosts que anunciam `worktrees`) lista as worktrees
+  dos cards em `.flightdeck/worktrees` com o tamanho em disco (**desconhecido** quando a medição
+  estourou o tempo, nunca 0), há quanto tempo estão paradas e o card de cada uma. **Sugerida** marca
+  uma worktree limpa, sem commits não enviados e sem sessão ao vivo, parada há mais de 7 dias, cujo
+  card está Concluído ou cujo PR foi mesclado, ou que não tem card. Uma worktree com alterações não
+  commitadas, commits que não existem em outro lugar, sessão, terminal ou execução rodando, branch base
+  desconhecido (precisa ser um branch de verdade, não uma tag nem `HEAD`), um branch que não é um
+  `fd/…` do Flightdeck, arquivos ignorados que um build não recria (só `node_modules`, `dist`,
+  `build`, `target`, `coverage`, `.cache`, `.next` e `out`, como pasta na raiz da worktree, não
+  contam, e um arquivo de credencial ignorado, como `.env` ou `*.pem`, sempre conta), alterações que
+  o git esconde do `git status` (`assume-unchanged` ou `skip-worktree`), ou algo que o git não soube
+  responder fica **mantida**: a linha diz por quê e não pode ser marcada. A confirmação diz que as
+  pastas recriáveis saem junto com a worktree. Filtre por Sugeridas,
+  Protegidas ou Sem card, ordene por idade ou tamanho, **Selecionar sugeridas** ou **Selecionar
+  todas que podem sair**, e então **Remover**: a confirmação cita cada branch com o card e a coluna, e o espaço
+  liberado. Só as linhas na tela podem ser marcadas ou removidas. O host trava cada pasta (nada
+  pode começar nela) e confere de novo antes de removê-la (sem force), então uma que mudou nesse
+  meio-tempo é mantida; o branch só é apagado se ainda estiver no commit que foi conferido, senão
+  a pasta sai e o branch fica, e o resultado diz isso. O card, se houver, continua no board sem a worktree. Um disco com menos de
+  10% livre gera aviso. Apagar algo que está mantido continua sendo pelo **Descartar** do card.
 - **Um host desconectado** mostra um aviso no topo da página dele: o estado, o que falhou em
   palavras simples (nada respondeu, sem resposta a tempo, a conexão caiu, o token foi recusado), a
   hora da última tentativa, a contagem até a próxima tentativa automática e **Reconectar agora**,
@@ -2845,11 +2897,16 @@ Authenticode (veja [Instalação](#pelos-binários-da-release)).
 
 - **O app:**
   - procura a versão nova ao abrir e a cada 6 h, no `latest.json` da última release;
-  - com uma versão nova, mostra a faixa "Flightdeck X disponível", com as notas, **Instalar e
-    reiniciar** e **Depois**;
-  - assinatura inválida ou download quebrado aparecem na faixa, e nada é instalado;
-  - em **Configurações**: **Procurar atualização agora** e **Avisar sobre atualizações** (ligado
-    por padrão).
+  - com **Atualizar automaticamente** ligado (o padrão), baixa a versão nova em segundo plano,
+    confere a assinatura e então mostra a faixa "O Flightdeck X está pronto. Reinicie para
+    atualizar." com **Reiniciar agora** e **Depois**. Nada reinicia sozinho (#280). Sair pela
+    bandeja com uma versão baixada a instala na saída, sem abrir o app de novo (#402);
+  - com ele desligado, a faixa diz "Flightdeck X disponível", com as notas, **Instalar e
+    reiniciar** e **Depois**, como antes;
+  - assinatura inválida ou download quebrado aparecem na faixa, e nada é instalado; um download que
+    falhou é tentado de novo na próxima verificação;
+  - em **Configurações**: **Procurar atualização agora**, **Avisar sobre atualizações** e
+    **Atualizar automaticamente** (os dois ligados por padrão).
 - **O daemon:**
   - verifica o `daemon-latest.json` ao subir, quando pedido e a cada `updates.checkIntervalH`
     (6 h por padrão);
@@ -2863,12 +2920,18 @@ Authenticode (veja [Instalação](#pelos-binários-da-release)).
   - o daemon baixa o binário do próprio sistema para `<dataDir>/updates/`, confere o sha256 e a
     assinatura, e roda o `flightdeckd update --from` fora do serviço, para sobreviver à própria
     parada: uma tarefa única `Flightdeck\update` no Windows e `systemd-run --user` no Linux;
-  - o host mostra "atualizando…" até reconectar na versão nova.
+  - o host mostra "atualizando…" até reconectar na versão nova;
+  - **sozinho** (`updates.auto`, ligado por padrão; #280): quando uma verificação acha versão mais
+    nova, o daemon a aplica só com o host ocioso, sem sessão nem execução em andamento, e senão
+    espera. Nunca aplica uma versão mais velha. Uma aplicação que falha mantém o binário antigo e é
+    tentada de novo na próxima verificação. A página do host tem **Atualizar este host
+    automaticamente** (a mesma configuração, guardada pelo daemon) e diz se a atualização está
+    desligada, em dia, esperando, começou ou falhou, e por quê.
 - **Ordem:** com o app e os daemons atrasados, a faixa sugere atualizar primeiro o app.
 
 ```json
 { "updates": { "manifestUrl": "https://github.com/jnerytech/flightdeck/releases/latest/download/daemon-latest.json",
-               "checkIntervalH": 6 } }
+               "checkIntervalH": 6, "auto": true } }
 ```
 
 Só o `flightdeckd` compilado verifica o GitHub por padrão. Rodando do código-fonte não há binário

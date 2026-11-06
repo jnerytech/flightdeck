@@ -109,6 +109,7 @@ async function connect(url: string, opts: { offer?: { version: string; notes: st
       supported: true,
       check: async () => offer,
       download: async () => {},
+      installDownloaded: async () => {},
       install: async () => {},
     };
   }

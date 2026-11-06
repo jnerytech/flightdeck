@@ -11,6 +11,7 @@ import type { PermissionDecision } from "../runtime/types.ts";
 import type { EventStore, PermissionStatus } from "../store/event-store.ts";
 import { ulid } from "../ulid.ts";
 import type { AutoApproveRequest, AutoDecision } from "./auto-approve.ts";
+import { bindInput } from "./bind-input.ts";
 import { requireHold } from "./hold.ts";
 import { alwaysAsks, checkUpdates } from "./permission-updates.ts";
 import type { Risk, RiskLevel } from "./risk.ts";
@@ -27,21 +28,18 @@ export interface BrokerHooks {
   plain?(sessionId: string, toolName: string, input: ToolInput, risk: Risk): Promise<PlainInfo>;
 }
 
-/** The `answers` of an answered AskUserQuestion, when every one is a string. */
+/** The `answers` of an answered AskUserQuestion: `bindInput` has already refused any that is not a string. */
 function chosenAnswers(
   input: Record<string, unknown> | undefined,
 ): Record<string, string> | undefined {
-  const answers = input?.answers;
-  if (!answers || typeof answers !== "object") return undefined;
-  const entries = Object.entries(answers);
-  return entries.every(([, value]) => typeof value === "string")
-    ? (answers as Record<string, string>)
-    : undefined;
+  return input?.answers as Record<string, string> | undefined;
 }
 
 interface Pending {
   sessionId: string;
   toolName: string;
+  /** What was asked: an approval is for exactly this (issue #384). */
+  input: ToolInput;
   /** What the CLI offered: the only updates, with project rules, an answer may carry. */
   suggestions: PermissionUpdate[];
   /** The risk judged when it was asked: a high one is allowed only with the hold. */
@@ -90,6 +88,7 @@ export class PermissionBroker {
       this.open.set(id, {
         sessionId,
         toolName,
+        input,
         suggestions,
         risk: risk.level,
         resolve,
@@ -158,9 +157,13 @@ export class PermissionBroker {
     if (payload.decision === "allow") {
       // Without the hold a high-risk request stays open, nothing applied.
       requireHold(pending.risk, payload.held);
-      // Refused updates leave the request open, before anything is applied.
+      // The answer cannot change what runs, and a saved rule cannot cover more risk than this one.
+      bindInput(pending.toolName, pending.input, payload.updatedInput);
       const updates = payload.updatedPermissions ?? [];
-      checkUpdates(updates, pending);
+      checkUpdates(updates, {
+        ...pending,
+        classify: (tool, input) => this.hooks.classify(pending.sessionId, tool, input).level,
+      });
       this.finish(
         payload.requestId,
         "allow",

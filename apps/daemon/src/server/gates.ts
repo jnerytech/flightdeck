@@ -27,6 +27,7 @@ export const GATES = {
   idle: "idle",
   issues: "issues",
   maintenance: "maintenance",
+  worktrees: "worktrees",
   mcp: "mcp",
   memory: "memory",
   messaging: "messaging",
