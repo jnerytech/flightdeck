@@ -2630,8 +2630,17 @@ export const ptBR = {
     add: "Adicionar webhook",
     name: "Nome",
     type: "Tipo",
-    types: { slack: "Slack", discord: "Discord", generic: "JSON genérico (assinado)" },
+    types: {
+      slack: "Slack",
+      discord: "Discord",
+      generic: "JSON genérico (assinado)",
+      ntfy: "ntfy (avisos no celular)",
+    },
     url: "URL do webhook",
+    ntfyUrl: "URL do tópico",
+    ntfyHelp:
+      "Como https://ntfy.sh/seu-topico. O servidor precisa estar acessível pela internet: um que só existe na sua rede de casa não funciona. Tocar no aviso não abre nada.",
+    token: "Token de acesso (opcional)",
     urlKeep: "Deixe vazio para manter a URL atual",
     signing: "Segredo de assinatura",
     scope: "Hosts",
@@ -2668,6 +2677,8 @@ export const ptBR = {
       no_kinds: "Escolha pelo menos um evento.",
       no_name: "Dê um nome.",
       not_found: "Esse webhook não existe mais.",
+      invalid_topic: "Use o endereço de um tópico, como https://ntfy.sh/seu-topico.",
+      invalid_token: "Isso não é um token de acesso do ntfy (letras, números, - e _).",
     },
   },
   bg: {
