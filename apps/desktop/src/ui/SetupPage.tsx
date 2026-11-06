@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { Page, Section } from "@/components/layout/page";
+import { Stack } from "@/components/layout/stack";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { Key } from "../i18n/index.ts";
@@ -18,24 +19,20 @@ function StepList(props: {
 }) {
   const t = useT();
   return (
-    <ol aria-label={props.label} className="flex flex-col gap-2">
+    <Stack as="ol" gap={2} label={props.label}>
       {props.steps.map((step, index) => (
         <li
           key={step.id}
           aria-current={step.id === props.current ? "step" : undefined}
-          className="flex items-start gap-3 rounded-lg border bg-card p-3 aria-[current=step]:border-ring"
+          className="setup-step aria-[current=step]:border-ring"
         >
           <span
             aria-hidden="true"
-            className={
-              step.done
-                ? "flex size-5 shrink-0 items-center justify-center rounded-full border border-foreground bg-foreground text-background"
-                : "flex size-5 shrink-0 items-center justify-center rounded-full border text-muted-foreground text-xs"
-            }
+            className={step.done ? "setup-mark setup-mark-done" : "setup-mark setup-mark-todo"}
           >
             {step.done ? <Check className="size-3" /> : index + 1}
           </span>
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="setup-step-text">
             <p className="font-medium text-sm">
               {t(`setup.step.${step.id}.title` as Key)}
               <span className="sr-only">{`. ${step.done ? t("setup.done") : t("setup.todo")}`}</span>
@@ -58,12 +55,20 @@ function StepList(props: {
           )}
         </li>
       ))}
-    </ol>
+    </Stack>
   );
 }
 
 /** The setup checklist: what is done and what is not, from the real state, each with its action. */
-export function SetupPage(props: { store: AppStore; state: AppState; go: (route: Route) => void }) {
+export function SetupPage(props: {
+  store: AppStore;
+  /** The parts of the state the checklist reads. */
+  state: Pick<
+    AppState,
+    "hosts" | "projects" | "cards" | "hub" | "budgets" | "externals" | "setupProbes"
+  >;
+  go: (route: Route) => void;
+}) {
   const t = useT();
   const { store, state } = props;
   const notified = useSyncExternalStore(store.setup.subscribe, () => store.setup.notified);

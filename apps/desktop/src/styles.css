@@ -1957,3 +1957,40 @@
   fill: color-mix(in oklab, var(--primary) 12%, transparent);
   stroke: none;
 }
+
+/* The Setup screen's steps: a circle with a check or its number, a title and a sentence, one action. */
+@utility setup-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  padding: 0.75rem;
+}
+@utility setup-mark {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  border: 1px solid var(--color-border);
+}
+@utility setup-mark-done {
+  border-color: var(--color-foreground);
+  background: var(--color-foreground);
+  color: var(--color-background);
+}
+@utility setup-mark-todo {
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+}
+@utility setup-step-text {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0%;
+  flex-direction: column;
+  gap: 0.25rem;
+}

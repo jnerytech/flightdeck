@@ -486,7 +486,7 @@ export function Sidebar(
           onToggle={() => toggle("work")}
         >
           {showSetup && (
-            <div className="group/setup flex items-center">
+            <div className="group/setup host-row">
               <NavButton
                 collapsed={collapsed}
                 icon={<ProgressRing done={progress.done} total={progress.total} />}
