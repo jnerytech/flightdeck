@@ -18,20 +18,22 @@ afterEach(cleanup);
  * links the name to its session, shows the persona's name instead of its slug, keeps the session
  * id behind a copy button, and lines the persona picker up with its buttons.
  */
+const SESSION = "01JABCDEFGHJKMNPQRSTVWXYZ0";
+
 const WORKER: TeamMember = {
   name: "md-server · executora 1",
   role: "worker",
   persona: "qa",
   model: null,
   cardId: "c1",
-  sessionId: "01JABCDEFGHJKMNPQRSTVWXYZ0",
-  address: "pc/01JABCDEFGHJKMNPQRSTVWXYZ0",
+  sessionId: SESSION,
+  address: `pc/${SESSION}`,
   sessionState: "running",
   number: 1,
 };
 
 const NAME: SessionNameInfo = {
-  sessionId: WORKER.sessionId as string,
+  sessionId: SESSION,
   display: "app · qa · card 1",
   alias: "app-qa-card-1",
   aliases: ["app-qa-card-1"],
@@ -103,7 +105,7 @@ describe("persona-names-ui: a team member's row (#101)", () => {
         text.includes(WORKER.name),
         badges.includes(persona),
         badges.includes("qa"),
-        text.includes(WORKER.sessionId as string),
+        text.includes(SESSION),
       ];
       await press(screen.queryByRole("button", { name: label }));
       const route = store.router.current as { name: string; id?: string };
@@ -115,8 +117,8 @@ describe("persona-names-ui: a team member's row (#101)", () => {
         false,
         false,
         "session",
-        WORKER.sessionId,
-        [WORKER.sessionId],
+        SESSION,
+        [SESSION],
       ]);
     });
   }
