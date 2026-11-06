@@ -209,6 +209,27 @@ describe("assistant-settings-ui: the keys", () => {
     expect(document.body.innerHTML).not.toContain("sk-ant-aaaabbbb");
   });
 
+  test("a Test the shell rejects is said in words too", async () => {
+    const mem = memoryPlatform(false, "en");
+    const fake = fakeAssistant({
+      test: async () => {
+        throw { reason: "assistant_timeout" };
+      },
+    });
+    await fake.assistant.setKey("anthropic", "sk-ant-aaaabbbb");
+    mem.platform.assistant = fake.assistant;
+    const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
+    store.i18n.start();
+    seedHosts(store, HOSTS);
+    render(<AssistantSettings store={store} t={store.i18n.t} />);
+    await settle(() => button("Test") !== null);
+    await click(button("Test"));
+    await settle(() => (screen.queryByRole("status")?.textContent ?? "") !== "");
+    expect(screen.queryByRole("status")?.textContent).toBe(
+      store.i18n.t("assistantRefusal.assistant_timeout"),
+    );
+  });
+
   test("a key the shell refuses is explained in words", async () => {
     setup({
       api: {
@@ -282,6 +303,37 @@ describe("assistant-settings-ui: the models and the profiles", () => {
       })[0] as HTMLElement,
     );
     expect(store.assistant.prefs().models.anthropic?.quick).toBeUndefined();
+  });
+
+  test("a list of models that cannot be read says so and offers Try again, which reads it again", async () => {
+    let attempts = 0;
+    const { fake } = setup({
+      api: {
+        models: () => {
+          attempts++;
+          if (attempts === 1) throw { reason: "assistant_offline" };
+          return ANTHROPIC_MODELS;
+        },
+      },
+    });
+    await click(radio("Anthropic (API key)"));
+    await settle(() => screen.queryAllByRole("alert").length > 0);
+    await click(screen.getAllByRole("button", { name: "Try again" })[0] as HTMLElement);
+    await settle(() => screen.queryByRole("combobox", { name: "Quick model" }) !== null);
+    expect(fake.calls.filter((c) => c[0] === "models").length).toBeGreaterThanOrEqual(2);
+  });
+
+  test("a host that was agreed to already is chosen from the picker without asking again", async () => {
+    const { store } = setup();
+    await act(async () => {
+      store.assistant.setPrefs({ confirmedHosts: ["h2"] });
+    });
+    const picker = screen.getByRole("combobox", { name: "Host" }) as HTMLSelectElement;
+    await act(async () => {
+      fireEvent.change(picker, { target: { value: "h2" } });
+    });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(store.assistant.prefs().hostId).toBe("h2");
   });
 
   test("the host provider lists four fixed models and no effort choice", async () => {
