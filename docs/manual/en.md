@@ -2588,6 +2588,13 @@ Open **Settings → Webhooks**.
   - **Discord:** a channel webhook (`https://discord.com/api/webhooks/...`). Nobody is pinged by a
     session title.
   - **Generic JSON:** your own endpoint, with a **signing secret**.
+  - **ntfy (phone notices):** the address of one topic (`https://ntfy.sh/your-topic`, or your own
+    server's) and, for a protected topic, an **access token** (`tk_...`), kept in the vault. Install
+    the ntfy app on the phone and subscribe to the same topic. *Needs you* arrives with high
+    priority, everything else with the default one. The notices go one way: a tap opens nothing in
+    Flightdeck. The server must be reachable from the internet; one only on your home network is
+    refused, as for every webhook. Pick a topic name nobody would guess, or protect it with a token:
+    anyone who knows a public topic can read it.
 - **Events:** *needs you* (a permission or a question), *session ended*, *session failed*, *budget
   alert* and *PR watch* (a watched PR needs you). Each webhook picks the ones it wants.
 - **Hosts:** *all hosts*, or one. An event from a host goes to the webhooks of all hosts and to that
@@ -2650,14 +2657,19 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
   | `Ctrl+T` | new tab, on the palette |
   | `Ctrl+W` | close the tab |
   | `Ctrl+Shift+T` | reopen the last closed tab (the last 20 are kept) |
-  | `Ctrl+Tab` / `Ctrl+Shift+Tab` | next and previous tab |
+  | `Ctrl+Tab` (hold `Ctrl`, press `Tab` again to go down) / `Ctrl+Shift+Tab` (up) | opens the switcher on the most recently used tabs of the focused area, on the previous one; release `Ctrl` to go to the one selected, `Esc` or leaving the window to cancel. A quick tap goes to the previous tab, and another tap comes back |
   | `Ctrl+1`…`Ctrl+9` | go to that tab (`Ctrl+9` is the last one) |
   | `Ctrl+Shift+PageUp` / `PageDown` | move the active tab left or right |
   | `Ctrl+Shift+←` / `→` (on a focused tab) | move that tab left or right; a screen reader is told its new place |
   | `Ctrl+\` | split the window or join the areas |
 
-  In the demo's web entry, Chromium keeps `Ctrl+T`, `Ctrl+W` and `Ctrl+Shift+T` for itself: use
-  the buttons there.
+  Settings, Appearance, **Ctrl+Tab order** chooses **Most recently used** (the default) or
+  **Tab order**, where `Ctrl+Tab` and `Ctrl+Shift+Tab` step to the next and previous tab as before.
+  The switcher is a list for screen readers (the selected tab is announced); the list is not kept
+  between starts.
+
+  In the demo's web entry, Chromium keeps `Ctrl+T`, `Ctrl+W`, `Ctrl+Shift+T` and `Ctrl+Tab` for
+  itself: use the buttons there.
 - **Kept between starts:** the tabs, which ones are pinned, the active tab, the split and the
   divider come back when the app opens again. Each tab comes back on its screen, without its
   history. The host form is never kept, since it can hold a token. A tab of a host that is not
@@ -2845,8 +2857,21 @@ their English equivalents.
   project: Open board, Workflows, Open in terminal). Esc goes back from the actions to the list
   and, from there, closes.
 - **Go to Costs** appears when the app has the Costs screen and some host announces `costs`.
-- With nothing typed, a **Recent** section comes first with the last five entries you opened
-  (kept between runs). **Actions** also has **Go to Sessions / Needs you / Projects**, **Show the
+- The row the keyboard is on is a surface with a ring around it, in both themes. A session's row
+  shows its state glyph (running, needs you, idle) and follows it as it changes; a card's row
+  has the card icon.
+- With nothing typed, a **Recent** section comes first with up to six of the entries you opened
+  (kept between runs): what waits for you first, then what runs, then the rest. Each shows
+  **Alt+1** to **Alt+6**, which open it while the palette is open (they do nothing outside it).
+  The order is fixed when the palette opens, so rows do not move under the cursor.
+- The palette opens **narrowed to where you are**: on a board or a card, to its host and project;
+  on a session or a host page, to the host. The filters show as chips under the field; click one to
+  remove it, or **Clear all filters**. The change lasts only until the palette closes.
+- Text that matches no card ends the list with **Create card “text” in project** (the scope's
+  project, or the only project there is). Pasting a GitHub issue link or typing `#123` in a
+  project with an issue provider offers **Create card from issue** instead, which links the issue.
+- Each section shows eight rows, then a button such as **22 more**; each press shows twenty more.
+- **Actions** also has **Go to Sessions / Needs you / Projects**, **Show the
   keyboard shortcuts** and, while a request waits for you, **Approve the oldest request** and
   **Deny the oldest request** (a high-risk request is opened to be held, as in the tray). Each
   command shows its keys at the right.

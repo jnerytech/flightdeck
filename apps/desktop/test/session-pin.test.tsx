@@ -94,6 +94,40 @@ describe("session-pin: the conversation stays at its end while you follow it", (
     expect(jump()).toBeNull();
   });
 
+  // Issue #456: at 1280x800 in pt-BR the header and the summary left the timeline as tall as the
+  // request card, and pinning the very end put the card's top 17 px above the timeline's.
+  test("pinning the end never cuts a pending request's top: the view stops at the card", async () => {
+    render(<SessionView title="s" session={session(true)} actions={actions} />);
+    const s = scroller({ scroll: 1000, client: 400, top: 600 });
+    // The browser keeps scrollTop between 0 and its end; the boxes follow the scroll.
+    Object.defineProperty(s.el, "scrollTop", {
+      get: () => s.size.top,
+      set: (v: number) => {
+        s.size.top = Math.max(0, Math.min(v, s.size.scroll - s.size.client));
+      },
+      configurable: true,
+    });
+    const BOX_TOP = 415;
+    const CARD_AT = 177; // the card's offset in the content, 17 px above the end's view
+    const CARD_HEIGHT = 260;
+    s.el.getBoundingClientRect = () =>
+      ({ top: BOX_TOP, bottom: BOX_TOP + s.size.client }) as DOMRect;
+    const card = s.el.querySelector<HTMLElement>("[data-request-id]") as HTMLElement;
+    card.getBoundingClientRect = () => {
+      const top = BOX_TOP + CARD_AT - s.size.top;
+      return { top, bottom: top + CARD_HEIGHT } as DOMRect;
+    };
+    await act(async () => void personScrolls(s.el));
+    s.size.scroll = 454;
+    s.size.client = 260;
+    await resized();
+    const box = s.el.getBoundingClientRect();
+    const rect = card.getBoundingClientRect();
+    const whole = rect.top >= box.top && rect.bottom <= box.bottom;
+    expect([Math.round(rect.top), Math.round(rect.bottom), whole]).toEqual([415, 675, true]);
+    expect(jump()).toBeNull();
+  });
+
   test("a size change while reading earlier leaves you where you were", async () => {
     render(<SessionView title="s" session={session(true)} actions={actions} />);
     const s = scroller({ scroll: 1000, client: 400, top: 100 });

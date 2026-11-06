@@ -88,6 +88,8 @@ function NavButton(
   }>,
 ) {
   const railName = props.hint ? `${props.label} (${props.hint})` : props.label;
+  // A badge is announced with the name, so the label alone would read without it.
+  const badgeLabel = props.badge ? props.label : undefined;
   const badgeId = useId();
   return (
     <IconTip label={props.collapsed ? railName : undefined}>
@@ -102,9 +104,7 @@ function NavButton(
           (props.active || props.strong) && "text-sidebar-foreground",
           props.active && "nav-active bg-sidebar-accent font-medium",
         )}
-        aria-label={
-          props.name ?? (props.collapsed ? railName : props.badge ? props.label : undefined)
-        }
+        aria-label={props.name ?? (props.collapsed ? railName : badgeLabel)}
         disabled={props.disabled ?? false}
         onClick={props.onClick}
       >

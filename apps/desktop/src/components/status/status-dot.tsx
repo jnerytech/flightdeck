@@ -72,6 +72,19 @@ const HOLLOW: Record<StateTone, string> = {
   error: "border border-status-error bg-transparent",
 };
 
+/** The classes of the plain dot: its size, its fill (a ring when hollow) and, when asked, the breathing. */
+function dotClass(
+  tone: StateTone,
+  hollow: boolean | undefined,
+  pulse: boolean | undefined,
+): string {
+  return cn(
+    "inline-block size-2 shrink-0 rounded-full",
+    hollow ? HOLLOW[tone] : DOT[tone],
+    pulse && "motion-safe:animate-pulse",
+  );
+}
+
 /**
  * The state of a session as a glyph in a 12 px slot: a spinner while it runs, a question mark when
  * it needs you, an alert on error, a dot when idle and a faded ring when ended. The label is its
@@ -108,11 +121,7 @@ export function StatusDot({
             aria-label={label}
             className={cn(
               dot
-                ? cn(
-                    "inline-block size-2 shrink-0 rounded-full",
-                    hollow ? HOLLOW[tone] : DOT[tone],
-                    pulse && "motion-safe:animate-pulse",
-                  )
+                ? dotClass(tone, hollow, pulse)
                 : "inline-flex size-3 shrink-0 items-center justify-center",
               className,
             )}

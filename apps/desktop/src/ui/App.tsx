@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { TopBarActions, TopBarHost } from "@/components/shell/top-bar";
 import { SnippetUse } from "@/components/snippets/snippet-use";
+import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TContext } from "@/i18n/context";
@@ -38,6 +39,8 @@ type InPlace =
   | "toggle-ui-mode"
   | "switch-language"
   | "start-card"
+  | "create-card"
+  | "create-card-issue"
   | "snippet"
   | "pull-link"
   | "switch-client"
@@ -90,6 +93,29 @@ function paletteRoute(target: Exclude<PaletteTarget, { kind: InPlace }>): Route 
     case "clients":
       return { name: "clients" };
   }
+}
+
+/** A card from an issue the palette named: by its full reference, else by its number in the project. */
+async function createFromIssue(
+  store: AppStore,
+  target: Extract<PaletteTarget, { kind: "create-card-issue" }>,
+) {
+  const issueRef =
+    target.ref ??
+    (target.id
+      ? (
+          await store.hostCommand(target.hostId, "issues.get", {
+            projectId: target.projectId,
+            id: target.id,
+          })
+        )?.ref
+      : undefined);
+  return issueRef
+    ? store.hostCommand(target.hostId, "issues.createCard", {
+        projectId: target.projectId,
+        issueRef,
+      })
+    : null;
 }
 
 /**
@@ -224,6 +250,27 @@ export function runPaletteTarget(
         if (route) ui.go(route);
       });
       return;
+    case "create-card": {
+      // Issue #147: text that matches no card becomes one in the project, and its board opens.
+      const board: Route = { name: "board", host: target.hostId, projectId: target.projectId };
+      void store
+        .hostCommand(target.hostId, "card.create", {
+          projectId: target.projectId,
+          title: target.title,
+          description: "",
+        })
+        .then((card) => {
+          if (card) ui.go(board);
+        });
+      return;
+    }
+    case "create-card-issue": {
+      const board: Route = { name: "board", host: target.hostId, projectId: target.projectId };
+      void createFromIssue(store, target).then((card) => {
+        if (card) ui.go(board);
+      });
+      return;
+    }
     case "start-card":
       void store.hostCommand(target.hostId, "card.start", { cardId: target.cardId });
       return;
@@ -523,6 +570,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
             />
           </div>
           <Notices store={store} />
+          <TabSwitcherHost store={store} />
           {state.closingTerminal && (
             <TerminalCloseDialog onClose={(kill) => void store.finishCloseTerminal(kill)} />
           )}
