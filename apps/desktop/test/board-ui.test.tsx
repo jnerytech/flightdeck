@@ -192,7 +192,7 @@ describe("board-ui", () => {
     await openBoard(repo);
     for (const title of ["A", "B"]) await createCard(title);
     const count = (name: string) =>
-      within(screen.getByRole("region", { name })).getByTestId("column-count").textContent;
+      screen.getByRole("region", { name }).querySelector(".column-count")?.textContent;
     expect(count("Backlog")).toBe("2");
     expect(count("Concluído")).toBe("0");
     for (const name of ["Backlog", "Em andamento", "Esperando você", "Em revisão", "Concluído"]) {
