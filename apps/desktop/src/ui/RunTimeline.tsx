@@ -16,7 +16,7 @@ import { budgetLines, stepDuration, stepUsage } from "../lib/runs.ts";
 const stepKey = (step: StepRun) => `${step.stepId}#${step.attempt}`;
 
 /** Turns, minutes and estimated cost against the run's budget. */
-function BudgetMeter({ run }: { run: WorkflowRun }) {
+function BudgetMeter({ run }: Readonly<{ run: WorkflowRun }>) {
   const t = useT();
   return (
     <section aria-label={t("runUi.budget")} className="flex flex-col gap-1 text-sm">
@@ -31,10 +31,12 @@ function BudgetMeter({ run }: { run: WorkflowRun }) {
 }
 
 /** An open gate, answered here with an optional note. */
-export function GateCard(props: {
-  step: StepRun;
-  onRespond(step: StepRun, decision: "approve" | "reject", note: string): unknown;
-}) {
+export function GateCard(
+  props: Readonly<{
+    step: StepRun;
+    onRespond(step: StepRun, decision: "approve" | "reject", note: string): unknown;
+  }>,
+) {
   const t = useT();
   const { step } = props;
   const [note, setNote] = useState("");
@@ -71,20 +73,22 @@ export function GateCard(props: {
  * A card's workflow run: status, budget and one line per step attempt. Agent and check steps
  * open (their conversation or their output) through `onOpenStep`.
  */
-export function RunTimeline(props: {
-  run: WorkflowRun;
-  /** HH:MM of an instant (the quota's reset). */
-  formatTime(iso: string): string;
-  onOpenStep(step: StepRun): void;
-  /**
-   * Answers a waiting gate in its step; a promise keeps the gate's buttons busy until the answer is
-   * in. Left out when the gate is answered elsewhere (the top of the card, issue #227): the step
-   * then only says it waits.
-   */
-  onRespond?(step: StepRun, decision: "approve" | "reject", note: string): unknown;
-  /** Estimated cost of the run's sessions (phase 8); `null` when unknown. */
-  costUsd?: number | null;
-}) {
+export function RunTimeline(
+  props: Readonly<{
+    run: WorkflowRun;
+    /** HH:MM of an instant (the quota's reset). */
+    formatTime(iso: string): string;
+    onOpenStep(step: StepRun): void;
+    /**
+     * Answers a waiting gate in its step; a promise keeps the gate's buttons busy until the answer is
+     * in. Left out when the gate is answered elsewhere (the top of the card, issue #227): the step
+     * then only says it waits.
+     */
+    onRespond?(step: StepRun, decision: "approve" | "reject", note: string): unknown;
+    /** Estimated cost of the run's sessions (phase 8); `null` when unknown. */
+    costUsd?: number | null;
+  }>,
+) {
   const t = useT();
   const { run } = props;
   return (

@@ -4,6 +4,7 @@ import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "../lib/app-store.ts";
+import { newSessionHost } from "../lib/new-session-host.ts";
 import { basename } from "../lib/paths.ts";
 import type { Route } from "../lib/router.ts";
 
@@ -16,14 +17,16 @@ const SHORTCUTS = [
 ] as const;
 
 /** What an area with no tab shows: where to begin, the latest sessions and the main shortcuts. */
-export function StartScreen(props: {
-  store: AppStore;
-  hosts: AppState["hosts"];
-  go: (route: Route) => void;
-}) {
+export function StartScreen(
+  props: Readonly<{
+    store: AppStore;
+    hosts: AppState["hosts"];
+    go: (route: Route) => void;
+  }>,
+) {
   const t = useT();
   const { hosts, go } = props;
-  const firstHost = hosts.find((host) => host.status === "online");
+  const firstHost = newSessionHost(hosts, props.store.getState().selected);
   const recent = hosts
     .flatMap((host) => host.sessions.map((session) => ({ host: host.id, session })))
     .sort((a, b) => b.session.updatedAt.localeCompare(a.session.updatedAt))
@@ -41,6 +44,9 @@ export function StartScreen(props: {
             >
               {t("sidebar.newSession")}
             </Button>
+          )}
+          {hosts.length === 0 && (
+            <Button onClick={() => go({ name: "add-host" })}>{t("start.addHost")}</Button>
           )}
           <Button variant="outline" onClick={() => go({ name: "hub" })}>
             {t("sidebar.sessions")}

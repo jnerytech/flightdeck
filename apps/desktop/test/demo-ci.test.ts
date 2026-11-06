@@ -136,6 +136,9 @@ describe("demo-prints: axe e CI", () => {
       "clientes",
       "dependencias",
       "rolagem-fim",
+      "primeira-vez",
+      "segundo-host",
+      "nova-sessao-host",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([

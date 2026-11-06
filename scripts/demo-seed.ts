@@ -13,7 +13,7 @@ import { execFileSync } from "node:child_process";
 import { chmodSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
 import { basename, dirname, join, resolve } from "node:path";
-import { type Ack, parseServerMessage } from "@flightdeck/protocol";
+import { type Ack, inSequence, parseServerMessage } from "@flightdeck/protocol";
 import { loadConfig } from "../apps/daemon/src/config.ts";
 import { startDaemon } from "../apps/daemon/src/main.ts";
 import { serializeTemplate } from "../apps/daemon/src/templates/files.ts";
@@ -137,7 +137,7 @@ export interface DemoSeed {
 }
 
 function git(cwd: string, ...args: string[]): void {
-  execFileSync("git", args, { cwd, stdio: "ignore" });
+  execFileSync("git", args, { cwd, stdio: "ignore" }); // NOSONAR: git from the PATH of the developer running the script
 }
 
 function repo(path: string, files: Record<string, string>): string {
@@ -204,10 +204,10 @@ async function until<T>(
 ): Promise<T> {
   const deadline = Date.now() + 20_000;
   for (;;) {
-    const value = await check();
+    const value = await check(); // NOSONAR: sequential by design: each pass needs the answer of the one before
     if (value) return value;
     if (Date.now() > deadline) throw new Error(`demo: tempo esgotado em ${what}`);
-    await Bun.sleep(50);
+    await Bun.sleep(50); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
 }
 
@@ -345,7 +345,10 @@ function writeCostsHistory(dir: string, cwd: string): void {
       );
       writeFileSync(
         join(dir, `${id}.jsonl`),
-        `${[userLine(`${id}-u`, `Tarefa ${n} em ${basename(project)}`, project, at(12)), ...turns].join("\n")}\n`,
+        [
+          userLine(`${id}-u`, `Tarefa ${n} em ${basename(project)}`, project, at(12)),
+          ...turns,
+        ].join("\n") + "\n",
       );
     }
   }
@@ -470,12 +473,10 @@ async function sendTelemetry(
   };
   const token = (JSON.parse(readFileSync(host.config, "utf8")) as { telemetry: { token: string } })
     .telemetry.token;
-  const value = (v: string | number) =>
-    typeof v === "number"
-      ? Number.isInteger(v)
-        ? { intValue: String(v) }
-        : { doubleValue: v }
-      : { stringValue: v };
+  const value = (v: string | number) => {
+    if (typeof v !== "number") return { stringValue: v };
+    return Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v };
+  };
   const body = {
     resourceLogs: [
       {
@@ -716,16 +717,16 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   // cards done (two planned, two unplanned; two as merged PRs); the period before it: two.
   await client.call("project.update", { projectId: project.id, defaultHours: 2 });
   const finished: string[] = [done.id];
-  for (const title of ["Ajustar o rodapé", "Revisar os textos", "Trocar o ícone"]) {
+  await inSequence(["Ajustar o rodapé", "Revisar os textos", "Trocar o ícone"], async (title) => {
     const extra = await card(title, "Entregue na demo.");
     await client.call("card.move", { cardId: extra.id, column: "done" });
     finished.push(extra.id);
-  }
-  for (const title of ["Corrigir o menu", "Limpar o cache"]) {
+  });
+  await inSequence(["Corrigir o menu", "Limpar o cache"], async (title) => {
     const old = await card(title, "Entregue antes.");
     await client.call("card.move", { cardId: old.id, column: "done" });
     finished.push(old.id);
-  }
+  });
   const marks = new Database(join(alfa.dataDir, "flightdeck.db"));
   const nowIso = new Date().toISOString();
   const longAgo = new Date(Date.now() - 40 * 86_400_000).toISOString();
@@ -831,11 +832,14 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
     "Mostre o código:\n```ts\nexport const total = (a: number, b: number) => a + b;\n```",
   );
   for (let turn = 1; turn <= 24; turn++) {
-    await until(async () => (await statusOf(long.sessionId)) === "idle", `turno ${turn}`);
-    await client.call("session.send", {
-      sessionId: long.sessionId,
-      text: `Passo ${turn}: explique o ponto ${turn} da revisão com detalhes suficientes para passar de uma linha na tela.`,
-    });
+    await until(async () => (await statusOf(long.sessionId)) === "idle", `turno ${turn}`); // NOSONAR: the turns of one conversation, each after the last
+    await /* NOSONAR: the turns of one conversation, each after the last */ client.call(
+      "session.send",
+      {
+        sessionId: long.sessionId,
+        text: `Passo ${turn}: explique o ponto ${turn} da revisão com detalhes suficientes para passar de uma linha na tela.`,
+      },
+    );
   }
   await until(async () => (await statusOf(long.sessionId)) === "idle", "última resposta");
   const longClaude = (await until(async () => {
@@ -878,10 +882,10 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
   // Timing for the Tempo tab (the idle session) and for Custos (the session with usage).
   const telemetrySession = (await until(() => claudeOf(idle.sessionId), "id da revisão")) as string;
   const when = Date.now() - 10 * 60_000;
-  for (const id of [telemetrySession, "aaaaaaaa-0000-4000-8000-000000000001"]) {
+  await inSequence([telemetrySession, "aaaaaaaa-0000-4000-8000-000000000001"], async (id) => {
     await sendTelemetry(alfa, id, "demo-prompt-1", when, PROMPT_ONE);
     await sendTelemetry(alfa, id, "demo-prompt-2", when + 60_000, PROMPT_TWO);
-  }
+  });
   // Custos groups the timing by the project of the usage: a reader that comes right after the seed
   // (the tests, the first print) must find the transcripts already read.
   await waitUsageLoaded(async () => {
@@ -945,15 +949,18 @@ export async function seedDemo(log: (msg: string) => void = () => {}): Promise<D
       req.on("error", () => done());
       req.end(JSON.stringify({ session_id: sessionId, hook_event_name: event, cwd: web, ...body }));
     });
-  for (const [id, prompt] of [
-    ["ext-rodando", "suba o servidor de desenvolvimento"],
-    ["ext-edit", "corrija o import quebrado"],
-    ["ext-mcp", "abra uma issue para o bug do login"],
-    ["ext-rm", "limpe os artefatos de build"],
-  ] as const) {
-    await hook(id, "SessionStart", { source: "startup" });
-    await hook(id, "UserPromptSubmit", { prompt });
-  }
+  await inSequence(
+    [
+      ["ext-rodando", "suba o servidor de desenvolvimento"],
+      ["ext-edit", "corrija o import quebrado"],
+      ["ext-mcp", "abra uma issue para o bug do login"],
+      ["ext-rm", "limpe os artefatos de build"],
+    ] as const,
+    async ([id, prompt]) => {
+      await hook(id, "SessionStart", { source: "startup" });
+      await hook(id, "UserPromptSubmit", { prompt });
+    },
+  );
   // Names, so the list tells the terminal sessions apart.
   await client.call("session.meta.set", {
     claudeSessionId: "ext-rodando",

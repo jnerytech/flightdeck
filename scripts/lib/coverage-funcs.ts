@@ -58,7 +58,8 @@ export function formatReport(
       const lines = source.split("\n");
       const shown = missed.map(({ line, name }) => {
         const text = name.startsWith("(anonymous_") ? (lines[line - 1] ?? "").trim() : name;
-        return `  ${file}:${line}  ${text.length > LINE_MAX ? `${text.slice(0, LINE_MAX - 1)}…` : text}`;
+        const cut = text.length > LINE_MAX ? text.slice(0, LINE_MAX - 1) + "…" : text;
+        return `  ${file}:${line}  ${cut}`;
       });
       return [`${file}: ${missed.length} of ${functions(total)} never called`, ...shown].join("\n");
     })
@@ -68,7 +69,7 @@ export function formatReport(
 const slashes = (path: string) => path.replaceAll("\\", "/");
 
 const escaped = (path: string) =>
-  path.replace(/[.*+?^${}()|[\]\\/]/g, (c) => (c === "/" ? "[\\\\/]" : `\\${c}`));
+  path.replace(/[.*+?^${}()|[\]\\/]/g, (c) => (c === "/" ? String.raw`[\\/]` : `\\${c}`));
 
 /**
  * What the preload registers with `Bun.plugin`: a filter for the listed files (any root, either
@@ -82,7 +83,7 @@ export function onLoadFor(
   filter: RegExp;
   load: (path: string) => { contents: string; loader: "ts" | "tsx" } | undefined;
 } {
-  const filter = new RegExp(`(?:^|[\\\\/])(?:${files.map(escaped).join("|")})$`);
+  const filter = new RegExp(String.raw`(?:^|[\\/])(?:${files.map(escaped).join("|")})$`);
   return {
     filter,
     load(path) {

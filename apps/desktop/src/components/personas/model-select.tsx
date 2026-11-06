@@ -4,12 +4,14 @@ import { Field, NativeSelect } from "@/components/layout/form";
 export const MODELS = ["opus", "sonnet", "haiku"] as const;
 
 /** A choice of model; "" is the default, named by `defaultLabel`. */
-export function ModelSelect(props: {
-  label: string;
-  defaultLabel: string;
-  value: string;
-  onChange(value: string): void;
-}) {
+export function ModelSelect(
+  props: Readonly<{
+    label: string;
+    defaultLabel: string;
+    value: string;
+    onChange(value: string): void;
+  }>,
+) {
   return (
     <Field label={props.label}>
       {(control) => (

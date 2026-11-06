@@ -30,7 +30,7 @@ const describeCounts = (counts: PruneCounts, t: T) =>
  * The host's database: size, backups and the retention cleanup (`maintenance.*`). Cleaning up
  * for real asks first; simulating only counts.
  */
-export function MaintenanceSection(props: { store: AppStore; hostId: string }) {
+export function MaintenanceSection(props: Readonly<{ store: AppStore; hostId: string }>) {
   const t = useT();
   const { store, hostId } = props;
   const [status, setStatus] = useState<MaintenanceStatus | null>(null);

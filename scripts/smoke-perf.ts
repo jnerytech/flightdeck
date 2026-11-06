@@ -14,6 +14,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, type EventEnvelope, parseServerMessage } from "@flightdeck/protocol";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -141,7 +142,7 @@ async function run(): Promise<void> {
   );
 
   try {
-    const url = await withTimeout(readListenUrl(daemon.stdout), "the daemon to announce its port");
+    const url = await readListenUrl(daemon.stdout);
     log(`daemon at ${url}`);
 
     step = "hello";
@@ -220,17 +221,6 @@ async function run(): Promise<void> {
       // The SQLite files may still be locked on Windows for a moment; temp dir is fine to keep.
     }
   }
-}
-
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = buffer.match(/listening on (ws:\/\/\S+)/);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`the daemon exited without announcing its port: ${buffer}`);
 }
 
 try {

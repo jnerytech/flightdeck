@@ -55,7 +55,7 @@ import type {
   WatchSettings,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { byCodeUnit, EPHEMERAL_EVENTS } from "@flightdeck/protocol";
+import { byCodeUnit, EPHEMERAL_EVENTS, inSequence, parsePairingLink } from "@flightdeck/protocol";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type {
@@ -117,6 +117,7 @@ import {
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
 import { externalRequestNotification, summaryNotifications } from "./notify.ts";
+import { pairingErrorText } from "./pairing-text.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
 import { isHot } from "./quota.ts";
@@ -519,6 +520,8 @@ export interface Notice {
   hostId?: string;
   /** Runs the refused action again (after the person fixed what it needed). */
   retry?: () => void;
+  /** A success toast's button: where the news leads (Open the card). */
+  link?: { label: string; run: () => void };
 }
 
 /** Phase 21: a pair of sessions a host paused because they kept answering each other. */
@@ -1027,13 +1030,13 @@ export class AppStore {
     if (this.platform.globalShortcut.supported) await this.registerShortcut(globalShortcut);
     this.offTrayAction?.();
     this.offTrayAction = this.platform.onTrayAction((action) => this.onTrayAction(action));
-    for (const config of loadHosts(this.platform.storage)) {
+    await inSequence(loadHosts(this.platform.storage), async (config) => {
       this.update({
         hosts: [...this.state.hosts, newHostView(config)],
       });
       const token = await this.platform.secrets.get(config.id);
       if (token) this.connect(config, token);
-    }
+    });
     this.update({ hostsLoaded: true });
     // Last: the saved hosts must not wait for it.
     if (this.platform.terminal.supported) {
@@ -1088,6 +1091,27 @@ export class AppStore {
     if (error) return error;
     this.updateHost(hostId, (h) => ({ ...h, name: name.trim() }));
     this.persistHosts();
+    return null;
+  }
+
+  /** A new token or pairing link for a host that refused the old one; the error text, or null. */
+  async pairAgain(hostId: string, input: string): Promise<string | null> {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    if (!host) return this.i18n.t("hostOffline.pairGone");
+    const text = input.trim();
+    let token = text;
+    if (text.toLowerCase().startsWith("flightdeck://")) {
+      const parsed = parsePairingLink(text);
+      if (!parsed.ok) return pairingErrorText(this.i18n.t, parsed.error);
+      token = parsed.value.token;
+    }
+    if (!token) return this.i18n.t("hostForm.pairToken");
+    const probe = await probeHost(host.url, token, this.i18n.t);
+    if (!probe.ok) return probe.error;
+    // The host may have been removed while it was tested: keep no secret for it.
+    if (!this.state.hosts.some((h) => h.id === hostId)) return this.i18n.t("hostOffline.pairGone");
+    await this.platform.secrets.set(hostId, token);
+    await this.reconnectHost(hostId);
     return null;
   }
 
@@ -1486,10 +1510,10 @@ export class AppStore {
       .map(async (host) => {
         const conn = this.connections.get(host.id) as HostConnection;
         const projects = await this.loadProjects(host.id);
-        for (const project of projects ?? []) {
+        await inSequence(projects ?? [], async (project) => {
           const board = await quiet(conn.request("board.get", { projectId: project.id }));
           for (const card of cardsIn(board)) this.onCard(host.id, card);
-        }
+        });
       });
     const targets = this.state.hosts
       .filter(
@@ -1733,68 +1757,82 @@ export class AppStore {
     await Promise.all(
       this.state.hosts
         .filter((host) => host.status === "online")
-        .map(async (host) => {
-          const conn = this.connections.get(host.id) as HostConnection;
-          const named = hasFeature(host.hostInfo?.features, "names", false);
-          const withBackground = hasFeature(host.hostInfo?.features, "bg", false);
-          const [managed, history, external, standard, background] = await Promise.all([
-            quiet(conn.request("session.list", {})),
-            quiet(conn.request("history.list", { limit: HISTORY_LIST_LIMIT })),
-            quiet(conn.request("external.list", {})),
-            named ? quiet(conn.request("names.list", {})) : null,
-            withBackground ? quiet(conn.request("bg.list", {})) : null,
-          ]);
-          // Only what differs from what the state holds is replaced, so a refresh that finds the
-          // same lists tells nobody (the screens compare by reference).
-          const meta = { ...this.state.meta };
-          const externals = { ...this.state.externals };
-          let metaChanged = false;
-          let externalsChanged = false;
-          const putMeta = (key: string, value: SessionMeta) => {
-            if (sameJson(meta[key], value)) return;
-            meta[key] = value;
-            metaChanged = true;
-          };
-          for (const s of [...(managed?.sessions ?? []), ...(history?.sessions ?? [])]) {
-            if (s.claudeSessionId && s.meta)
-              putMeta(sessionKey(host.id, s.claudeSessionId), s.meta);
-          }
-          for (const s of external?.sessions ?? []) {
-            const key = sessionKey(host.id, s.claudeSessionId);
-            // A list read before a hook but answered after its frame is older than what the
-            // frame put in the state: it must not undo it.
-            const held = externals[key];
-            const older =
-              held !== undefined && Date.parse(s.lastEventAt) < Date.parse(held.lastEventAt);
-            if (!older && !sameJson(held, s)) {
-              externals[key] = s;
-              externalsChanged = true;
-            }
-            if (s.meta) putMeta(key, s.meta);
-          }
-          // A request that failed (`null`: a busy host, a timeout) says nothing about the list, so
-          // the one the state holds stays; an empty answer is the only way a list empties.
-          const before = this.state.hub[host.id];
-          const lists = {
-            managed: managed ? managed.sessions : (before?.managed ?? []),
-            history: history ? history.sessions : (before?.history ?? []),
-          };
-          const standardNames = standard ? standard.names : (this.state.names[host.id] ?? []);
-          const patch: Partial<AppState> = {};
-          if (!sameJson(this.state.hub[host.id], lists)) {
-            patch.hub = { ...this.state.hub, [host.id]: lists };
-          }
-          if (!sameJson(this.state.names[host.id], standardNames)) {
-            patch.names = { ...this.state.names, [host.id]: standardNames };
-          }
-          if (background && !sameJson(this.state.background[host.id], background)) {
-            patch.background = { ...this.state.background, [host.id]: background };
-          }
-          if (metaChanged) patch.meta = meta;
-          if (externalsChanged) patch.externals = externals;
-          if (Object.keys(patch).length > 0) this.update(patch);
-        }),
+        .map((host) => this.refreshHost(host)),
     );
+  }
+
+  /** The session lists of one online host, read and folded into the state when they changed. */
+  private async refreshHost(host: HostView): Promise<void> {
+    const conn = this.connections.get(host.id) as HostConnection;
+    const named = hasFeature(host.hostInfo?.features, "names", false);
+    const withBackground = hasFeature(host.hostInfo?.features, "bg", false);
+    const [managed, history, external, standard, background] = await Promise.all([
+      quiet(conn.request("session.list", {})),
+      quiet(conn.request("history.list", { limit: HISTORY_LIST_LIMIT })),
+      quiet(conn.request("external.list", {})),
+      named ? quiet(conn.request("names.list", {})) : null,
+      withBackground ? quiet(conn.request("bg.list", {})) : null,
+    ]);
+    const patch: Partial<AppState> = this.changedMeta(host.id, managed, history, external);
+    // A request that failed (`null`: a busy host, a timeout) says nothing about the list, so
+    // the one the state holds stays; an empty answer is the only way a list empties.
+    const before = this.state.hub[host.id];
+    const lists = {
+      managed: managed ? managed.sessions : (before?.managed ?? []),
+      history: history ? history.sessions : (before?.history ?? []),
+    };
+    const standardNames = standard ? standard.names : (this.state.names[host.id] ?? []);
+    if (!sameJson(this.state.hub[host.id], lists)) {
+      patch.hub = { ...this.state.hub, [host.id]: lists };
+    }
+    if (!sameJson(this.state.names[host.id], standardNames)) {
+      patch.names = { ...this.state.names, [host.id]: standardNames };
+    }
+    if (background && !sameJson(this.state.background[host.id], background)) {
+      patch.background = { ...this.state.background, [host.id]: background };
+    }
+    if (Object.keys(patch).length > 0) this.update(patch);
+  }
+
+  /**
+   * The `meta` and `externals` of the state with what the lists say, each only when it differs from
+   * what the state holds, so a refresh that finds the same lists tells nobody (the screens compare
+   * by reference).
+   */
+  private changedMeta(
+    hostId: string,
+    managed: { sessions: Array<{ claudeSessionId: string | null; meta?: SessionMeta }> } | null,
+    history: { sessions: Array<{ claudeSessionId: string | null; meta?: SessionMeta }> } | null,
+    external: { sessions: ExternalSession[] } | null,
+  ): Partial<AppState> {
+    const meta = { ...this.state.meta };
+    const externals = { ...this.state.externals };
+    let metaChanged = false;
+    let externalsChanged = false;
+    const putMeta = (key: string, value: SessionMeta) => {
+      if (sameJson(meta[key], value)) return;
+      meta[key] = value;
+      metaChanged = true;
+    };
+    for (const s of [...(managed?.sessions ?? []), ...(history?.sessions ?? [])]) {
+      if (s.claudeSessionId && s.meta) putMeta(sessionKey(hostId, s.claudeSessionId), s.meta);
+    }
+    for (const s of external?.sessions ?? []) {
+      const key = sessionKey(hostId, s.claudeSessionId);
+      // A list read before a hook but answered after its frame is older than what the
+      // frame put in the state: it must not undo it.
+      const held = externals[key];
+      const older = held !== undefined && Date.parse(s.lastEventAt) < Date.parse(held.lastEventAt);
+      if (!older && !sameJson(held, s)) {
+        externals[key] = s;
+        externalsChanged = true;
+      }
+      if (s.meta) putMeta(key, s.meta);
+    }
+    return {
+      ...(metaChanged ? { meta } : {}),
+      ...(externalsChanged ? { externals } : {}),
+    };
   }
 
   /** Renames, pins or archives a session (managed or external) of a host. */
@@ -1993,9 +2031,12 @@ export class AppStore {
   }
 
   /** A short success toast (copied, saved, started…), already translated. */
-  success(text: string): void {
+  success(text: string, link?: { label: string; run: () => void }): void {
     this.update({
-      notices: [...this.state.notices, { id: ++this.noticeSeq, kind: "success", code: "", text }],
+      notices: [
+        ...this.state.notices,
+        { id: ++this.noticeSeq, kind: "success", code: "", text, ...(link ? { link } : {}) },
+      ],
     });
   }
 
@@ -2399,20 +2440,24 @@ export class AppStore {
         () => {},
       );
     }
-    if (status !== "online") {
-      for (const [key, listeners] of this.terminalListeners) {
-        if (key.startsWith(`${hostId}|`)) for (const listener of listeners) listener.offline();
-      }
+    if (status !== "online") this.tellTerminalsOffline(hostId);
+    if (status === "connecting") this.dropPartialText(hostId);
+  }
+
+  /** The terminals of the host are told it is gone. */
+  private tellTerminalsOffline(hostId: string): void {
+    for (const [key, listeners] of this.terminalListeners) {
+      if (key.startsWith(`${hostId}|`)) for (const listener of listeners) listener.offline();
     }
-    if (status === "connecting") {
-      // Partial text from before the drop will never be completed by a delta; drop it.
-      const sessions = { ...this.state.sessions };
-      for (const key of Object.keys(sessions)) {
-        if (key.startsWith(`${hostId}/`))
-          sessions[key] = endStreaming(sessions[key] as SessionState);
-      }
-      this.update({ sessions });
+  }
+
+  /** Partial text from before the drop will never be completed by a delta; drop it. */
+  private dropPartialText(hostId: string): void {
+    const sessions = { ...this.state.sessions };
+    for (const key of Object.keys(sessions)) {
+      if (key.startsWith(`${hostId}/`)) sessions[key] = endStreaming(sessions[key] as SessionState);
     }
+    this.update({ sessions });
   }
 
   /**
@@ -3057,7 +3102,7 @@ export class AppStore {
     const run = async () => {
       do {
         this.clientBudgetAgain = false;
-        await this.lookAtClientBudgets();
+        await this.lookAtClientBudgets(); // NOSONAR: sequential by design: each pass needs the answer of the one before
       } while (this.clientBudgetAgain);
     };
     this.clientBudgetCheck = run().finally(() => {
@@ -3260,20 +3305,20 @@ export class AppStore {
    */
   async vaultValuesForScan(): Promise<string[]> {
     const pieces: string[] = [];
-    for (const secret of this.vault.list()) {
+    await inSequence(this.vault.list(), async (secret) => {
       const value = await this.vault.value(secret.id);
-      if (value === null) continue;
+      if (value === null) return;
       // A whole value can be long and many-lined: what a history line would carry is one line,
       // and of an env set, one variable's value.
       for (const line of value.split(/\r?\n/)) {
         const assigned =
-          secret.type === "env" ? line.match(/^\s*[A-Za-z_][A-Za-z0-9_]*\s*=(.*)$/) : null;
+          secret.type === "env" ? /^\s*[A-Za-z_][A-Za-z0-9_]*\s*=(.*)$/.exec(line) : null;
         const piece = (assigned ? (assigned[1] as string) : line)
           .trim()
           .replace(/^(["'])(.*)\1$/, "$2");
         if (piece.length >= 6) pieces.push(piece);
       }
-    }
+    });
     return pieces;
   }
 
@@ -3389,9 +3434,9 @@ export class AppStore {
     for (const host of this.state.hosts) {
       if (host.status !== "online" || !hasFeature(host.hostInfo?.features, "watch", false))
         continue;
-      const found = await this.hostCommand(host.id, "watch.byUrl", { url });
+      const found = await this.hostCommand(host.id, "watch.byUrl", { url }); // NOSONAR: hosts are asked in order and the first that knows the address wins
       if (found?.via === "card" && found.trace) {
-        const card = await this.hostCommand(host.id, "card.get", { cardId: found.trace.cardId });
+        const card = await this.hostCommand(host.id, "card.get", { cardId: found.trace.cardId }); // NOSONAR: hosts are asked in order and the first that knows the address wins
         if (card) {
           return { name: "card", host: host.id, projectId: card.projectId, cardId: card.id };
         }
@@ -3512,27 +3557,37 @@ export class AppStore {
   ): Promise<{ ok: true } | Extract<HostResult<never>, { ok: false }>> {
     const secret = this.vault.list().find((s) => s.id === secretId);
     const accepted: string[] = [];
+    let refusal: Extract<HostResult<never>, { ok: false }> | null = null;
     for (const host of this.state.hosts) {
       if (host.status !== "online" || !secret?.allowedHosts.includes(host.id)) continue;
-      const result = await this.hostRequest(host.id, "vault.rules.set", {
-        secretId,
-        tags: secret.tags,
-        rules: this.effectiveVaultRules(secret, rules),
-      });
-      if (!result.ok) {
-        // The hosts that took the refused set go back to the saved one: none keeps rules the
-        // app did not save (they could be looser).
-        const saved = this.rules.get(secretId);
-        for (const hostId of accepted) {
-          await this.hostRequest(hostId, "vault.rules.set", {
+      const result =
+        await /* NOSONAR: stops at the first host that refuses, to put back the ones that accepted */ this.hostRequest(
+          host.id,
+          "vault.rules.set",
+          {
             secretId,
             tags: secret.tags,
-            rules: this.effectiveVaultRules(secret, saved),
-          });
-        }
-        return result;
+            rules: this.effectiveVaultRules(secret, rules),
+          },
+        );
+      if (!result.ok) {
+        refusal = result;
+        break;
       }
       accepted.push(host.id);
+    }
+    if (refusal && secret) {
+      // The hosts that took the refused set go back to the saved one: none keeps rules the
+      // app did not save (they could be looser).
+      const saved = this.rules.get(secretId);
+      await inSequence(accepted, async (hostId) => {
+        await this.hostRequest(hostId, "vault.rules.set", {
+          secretId,
+          tags: secret.tags,
+          rules: this.effectiveVaultRules(secret, saved),
+        });
+      });
+      return refusal;
     }
     this.rules.set(secretId, rules);
     for (const hostId of accepted) {
@@ -3585,51 +3640,62 @@ export class AppStore {
   }
 
   /**
+   * Sends one host the rules of one secret when the scope changed what it holds. Returns the name of
+   * the client whose projects changed while it stays scoped (so a widening is said), else null.
+   */
+  private async pushScopeTo(
+    host: HostView,
+    secret: SecretMeta,
+    rules: unknown[],
+    text: string,
+  ): Promise<string | null> {
+    const key = `${host.id}/${secret.id}`;
+    const before = this.vaultScopeSent.get(key);
+    const scoped = text.includes(SCOPE_RULE_PREFIX);
+    // Nothing of this secret was sent by the scope, and none is now: leave it alone.
+    if (before === undefined ? !scoped : before === text) return null;
+    const result = await this.hostRequest(host.id, "vault.rules.set", {
+      secretId: secret.id,
+      tags: secret.tags,
+      rules,
+    });
+    if (!result.ok) {
+      // Not held in its client on that host: said, not left to be found out.
+      const client = scopingClient(secret, this.state.clientList);
+      this.fail(
+        new Error(result.code),
+        this.i18n.t("clients.scopeRefused", {
+          host: host.name,
+          name: client?.name ?? "",
+          secret: secret.name,
+          message: result.message,
+        }),
+      );
+      return null;
+    }
+    this.vaultScopeSent.set(key, text);
+    if (!scoped || !before?.includes(SCOPE_RULE_PREFIX)) return null;
+    const client = this.state.clientList.find((c) => text.includes(`${SCOPE_RULE_PREFIX}${c.id}:`));
+    return client?.name ?? null;
+  }
+
+  /**
    * Sends the hosts what changed in the rules of scoped secrets: a client's projects came or went,
    * or scope was turned on or off (the own rules go back). A change in the projects of a client
    * that stays scoped says so, so a widening is never silent.
    */
   private async pushVaultScopes(): Promise<void> {
     const changed = new Set<string>();
-    for (const secret of this.vault.list()) {
+    await inSequence(this.vault.list(), async (secret) => {
       const own = this.rules.get(secret.id);
       const rules = this.effectiveVaultRules(secret, own);
       const text = JSON.stringify(rules);
-      for (const host of this.state.hosts) {
-        if (host.status !== "online" || !secret.allowedHosts.includes(host.id)) continue;
-        const key = `${host.id}/${secret.id}`;
-        const before = this.vaultScopeSent.get(key);
-        const scoped = text.includes(SCOPE_RULE_PREFIX);
-        // Nothing of this secret was sent by the scope, and none is now: leave it alone.
-        if (before === undefined ? !scoped : before === text) continue;
-        const result = await this.hostRequest(host.id, "vault.rules.set", {
-          secretId: secret.id,
-          tags: secret.tags,
-          rules,
-        });
-        if (!result.ok) {
-          // Not held in its client on that host: said, not left to be found out.
-          const client = scopingClient(secret, this.state.clientList);
-          this.fail(
-            new Error(result.code),
-            this.i18n.t("clients.scopeRefused", {
-              host: host.name,
-              name: client?.name ?? "",
-              secret: secret.name,
-              message: result.message,
-            }),
-          );
-          continue;
-        }
-        this.vaultScopeSent.set(key, text);
-        if (scoped && before?.includes(SCOPE_RULE_PREFIX)) {
-          const client = this.state.clientList.find((c) =>
-            text.includes(`${SCOPE_RULE_PREFIX}${c.id}:`),
-          );
-          if (client) changed.add(client.name);
-        }
-      }
-    }
+      await inSequence(this.state.hosts, async (host) => {
+        if (host.status !== "online" || !secret.allowedHosts.includes(host.id)) return;
+        const widened = await this.pushScopeTo(host, secret, rules, text);
+        if (widened) changed.add(widened);
+      });
+    });
     for (const name of changed) this.success(this.i18n.t("clients.scopeChanged", { name }));
   }
 
@@ -3702,6 +3768,7 @@ export class AppStore {
 
   /** Approves a request for a secret for the rest of the requester's session (phase 19). */
   async approveVaultForSession(hostId: string, requestId: string): Promise<void> {
+    // NOSONAR: async by contract: a throw must reach the caller as a rejection
     // Only where the rule allows it and no hold is needed: the session approval has no button to
     // hold, so it can never stand in for one.
     const item = this.state.vaultApprovals.find(

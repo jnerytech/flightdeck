@@ -203,11 +203,11 @@ export class TelemetryStore {
        ORDER BY u.at DESC LIMIT 1)`;
     const waits = this.db
       .query<{ projectKey: string; waitMs: number }, []>(
-        `SELECT projectKey, TOTAL(gap) AS waitMs FROM (
+        String.raw`SELECT projectKey, TOTAL(gap) AS waitMs FROM (
            SELECT ${project} AS projectKey, e.name, e.source,
              e.at - LAG(e.at) OVER (PARTITION BY e.claude_session_id ORDER BY e.at, e.id) AS gap
            FROM telemetry_events e)
-         WHERE projectKey IS NOT NULL AND name = 'tool_decision' AND source LIKE 'user\\_%' ESCAPE '\\'
+         WHERE projectKey IS NOT NULL AND name = 'tool_decision' AND source LIKE 'user\_%' ESCAPE '\'
          GROUP BY projectKey`,
       )
       .all();

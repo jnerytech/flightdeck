@@ -26,7 +26,7 @@ const toBase64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 
 /** The public key is stored in the clear in the OpenSSH private key, even with a passphrase. */
 async function sshInfo(value: string): Promise<SecretInfo> {
-  const body = value.match(/-----BEGIN OPENSSH PRIVATE KEY-----([\s\S]*?)-----END/)?.[1];
+  const body = /-----BEGIN OPENSSH PRIVATE KEY-----([\s\S]*?)-----END/.exec(value)?.[1];
   if (!body) return {};
   let bytes: Uint8Array;
   try {
@@ -54,14 +54,14 @@ async function sshInfo(value: string): Promise<SecretInfo> {
 
 function tokenInfo(value: string): SecretInfo {
   if (value.length < MIN_TOKEN_LENGTH) return {};
-  const prefix = value.match(/^[A-Za-z0-9]{2,5}[_-]/)?.[0] ?? value.slice(0, 3);
+  const prefix = /^[A-Za-z0-9]{2,5}[_-]/.exec(value)?.[0] ?? value.slice(0, 3);
   return { hint: `${prefix}…${value.slice(-4)}` };
 }
 
 function envInfo(value: string): SecretInfo {
   const names = value
     .split(/\r?\n/)
-    .map((line) => line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/)?.[1])
+    .map((line) => /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/.exec(line)?.[1])
     .filter((name): name is string => name !== undefined);
   return { names };
 }

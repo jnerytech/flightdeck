@@ -23,13 +23,15 @@ const duration = (ms: number | null) => {
 };
 
 /** The arena's variants side by side: state, duration, cost, files, checks and their diffs. */
-export function ArenaView(props: {
-  arena: Arena;
-  loadDiff(variantId: string): Promise<CardDiff | null>;
-  onChoose(variant: ArenaVariant): void;
-  /** Phase 20: the name of a variant's persona, by its id. */
-  personaName?(id: string): string;
-}) {
+export function ArenaView(
+  props: Readonly<{
+    arena: Arena;
+    loadDiff(variantId: string): Promise<CardDiff | null>;
+    onChoose(variant: ArenaVariant): void;
+    /** Phase 20: the name of a variant's persona, by its id. */
+    personaName?(id: string): string;
+  }>,
+) {
   const t = useT();
   return (
     <section
@@ -43,13 +45,15 @@ export function ArenaView(props: {
   );
 }
 
-function VariantColumn(props: {
-  variant: ArenaVariant;
-  loadDiff(variantId: string): Promise<CardDiff | null>;
-  onChoose(variant: ArenaVariant): void;
-  /** Phase 20: the name of a variant's persona, by its id. */
-  personaName?(id: string): string;
-}) {
+function VariantColumn(
+  props: Readonly<{
+    variant: ArenaVariant;
+    loadDiff(variantId: string): Promise<CardDiff | null>;
+    onChoose(variant: ArenaVariant): void;
+    /** Phase 20: the name of a variant's persona, by its id. */
+    personaName?(id: string): string;
+  }>,
+) {
   const t = useT();
   const { variant } = props;
   const [diff, setDiff] = useState<CardDiff | null>(null);

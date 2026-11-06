@@ -36,18 +36,25 @@ export function joinPath(root: string, sub: string): string {
 }
 
 /** New session on a host: folder inside one of its allowedRoots, name, permission mode, prompt. */
-export function NewSessionForm(props: {
-  host: HostView;
-  /** Lets the folder be browsed on the host; without it the folder is typed. */
-  store?: AppStore;
-  onCreate(payload: CommandPayload<"session.create">): void | Promise<unknown>;
-  /** The first prompt, filled in (a snippet, phase 18). */
-  prompt?: string;
-  /** More fields above Criar sessão: the persona picker (phase 20). */
-  extra?: React.ReactNode;
-  /** Told the folder as it is chosen, so what depends on it (a client's persona) can follow. */
-  onFolder?(cwd: string): void;
-}) {
+export function NewSessionForm(
+  props: Readonly<{
+    host: HostView;
+    /** Lets the folder be browsed on the host; without it the folder is typed. */
+    store?: AppStore;
+    onCreate(payload: CommandPayload<"session.create">): void | Promise<unknown>;
+    /** The first prompt, filled in (a snippet, phase 18). */
+    prompt?: string;
+    /** More fields above Criar sessão: the persona picker (phase 20). */
+    extra?: React.ReactNode;
+    /** Told the folder as it is chosen, so what depends on it (a client's persona) can follow. */
+    onFolder?(cwd: string): void;
+    /** The hosts a session can start on (online); the form offers a choice when there are two or more. */
+    hosts?: Array<{ id: string; name: string }>;
+    onHost?(hostId: string): void;
+    /** Opens the host's page, where its folders are added. */
+    onAddFolder?(): void;
+  }>,
+) {
   const t = useT();
   const roots = props.host.info?.allowedRoots ?? [];
   // The folder picked, else the host's first: its folders may arrive after the form opened.
@@ -138,6 +145,23 @@ export function NewSessionForm(props: {
   return (
     <Form onSubmit={() => submit()} className="mx-auto p-6">
       <h2 className="font-semibold text-xl">{t("newSession.title", { host: props.host.name })}</h2>
+      {props.hosts && props.hosts.length > 1 && props.onHost && (
+        <Field label={t("newSession.host")}>
+          {(control) => (
+            <NativeSelect
+              {...control}
+              value={props.host.id}
+              onChange={(e) => props.onHost?.(e.target.value)}
+            >
+              {props.hosts?.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.name}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+        </Field>
+      )}
       {hasOpenCode && (
         <Field label={t("newSession.agent")}>
           {(control) => (
@@ -277,7 +301,16 @@ export function NewSessionForm(props: {
         submit={t("newSession.create")}
         busy={creating}
         disabled={!root}
-        disabledReason={t("newSession.needFolder")}
+        disabledReason={
+          <span>
+            {t("newSession.needFolder")}{" "}
+            {props.onAddFolder && (
+              <Button type="button" variant="link" onClick={props.onAddFolder}>
+                {t("newSession.addFolder", { host: props.host.name })}
+              </Button>
+            )}
+          </span>
+        }
       />
     </Form>
   );

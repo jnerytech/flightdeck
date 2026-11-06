@@ -36,13 +36,15 @@ function merge(list: HistoryMessage[], page: HistoryMessage[], where: "before" |
 }
 
 /** Read-only transcript from a host's history, in pages, with the chat's look. */
-export function TranscriptReader(props: {
-  store: AppStore;
-  target: ReaderTarget;
-  hostName: string;
-  /** The transcript became a managed session (already selected in the store). */
-  onResumed(): void;
-}) {
+export function TranscriptReader(
+  props: Readonly<{
+    store: AppStore;
+    target: ReaderTarget;
+    hostName: string;
+    /** The transcript became a managed session (already selected in the store). */
+    onResumed(): void;
+  }>,
+) {
   const t = props.store.i18n.t;
   const { store, target } = props;
   const [session, setSession] = useState<HistorySessionSummary | null>(null);
@@ -177,7 +179,8 @@ export function TranscriptReader(props: {
   const gone = session !== null && cwdExists === false;
   const outside = session !== null && !roots.some((root) => isInside(session.cwd, root));
   const blocked = gone || outside;
-  const why = !session ? null : t(gone ? "reader.gone" : "reader.outside", { folder: session.cwd });
+  const whyKey = gone ? "reader.gone" : "reader.outside";
+  const why = session ? t(whyKey, { folder: session.cwd }) : null;
   return (
     <SessionPane>
       <SessionHeader

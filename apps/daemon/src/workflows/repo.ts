@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { posix } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
 import { must } from "../board/worktree.ts";
 
@@ -32,9 +33,9 @@ export async function workflowSources(repo: string, base: string): Promise<Workf
     // Pinned locale: the order must not depend on the host the daemon runs on.
     .sort((a, b) => a.localeCompare(b, "en"));
   const sources: WorkflowSource[] = [];
-  for (const path of paths) {
+  await inSequence(paths, async (path) => {
     const { stdout: source } = must(await git(repo, "show", `${base}:${path}`), "git show");
     sources.push({ name: posix.basename(path, ".yaml"), source, hash: hashOf(source) });
-  }
+  });
   return sources;
 }

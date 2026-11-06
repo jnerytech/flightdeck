@@ -152,6 +152,7 @@ describe("paleta", () => {
       "Mudar para o modo simples",
       "Trocar idioma",
       "Ir para Configurações",
+      "Adicionar um host",
       "Mostrar os atalhos de teclado",
       "Gerenciar clientes",
     ]);

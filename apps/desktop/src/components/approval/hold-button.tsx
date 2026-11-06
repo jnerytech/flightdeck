@@ -6,15 +6,17 @@ import { Button } from "@/components/ui/button";
  * Enter kept down. Letting go, leaving the button or losing focus cancels. A bar fills while it is
  * held. A plain click does nothing.
  */
-export function HoldButton(props: {
-  label: string;
-  holdMs: number;
-  onHeld(): void;
-  /** Off while the last hold is being answered. */
-  disabled?: boolean;
-  /** The tooltip: why the button has to be held. */
-  hint?: string;
-}) {
+export function HoldButton(
+  props: Readonly<{
+    label: string;
+    holdMs: number;
+    onHeld(): void;
+    /** Off while the last hold is being answered. */
+    disabled?: boolean;
+    /** The tooltip: why the button has to be held. */
+    hint?: string;
+  }>,
+) {
   const [holding, setHolding] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 

@@ -17,6 +17,7 @@ import {
   type ServerMessage,
   type TeamInfo,
 } from "@flightdeck/protocol";
+import { awaitListenUrl } from "./lib/smoke-daemon.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
@@ -239,16 +240,7 @@ async function startHost(work: string, name: string): Promise<Host> {
   const out: string[] = [];
   void drain(proc.stdout, out);
   void drain(proc.stderr, []);
-  const url = await withTimeout(
-    (async () => {
-      for (;;) {
-        const found = out.join("").match(/listening on (ws:\/\/\S+)/)?.[1];
-        if (found) return found;
-        await Bun.sleep(20);
-      }
-    })(),
-    `${name} anunciar a porta`,
-  );
+  const url = await awaitListenUrl(() => out.join(""));
   const client = new Client(url);
   await client.open(token);
   // The MCP command finds the daemon by the port in its config; the daemon chose its own.

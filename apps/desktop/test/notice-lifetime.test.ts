@@ -25,6 +25,11 @@ describe("how long a toast stays", () => {
     expect(noticeLifetime(success)).toBe(SUCCESS_TOAST_MS);
   });
 
+  test("a success with a button to press stays as long as an error, so it can be reached", () => {
+    const withLink: Notice = { ...success, link: { label: "Open", run: () => {} } };
+    expect(noticeLifetime(withLink)).toBe(ERROR_TOAST_MS);
+  });
+
   test("an error stays longer, about ten seconds", () => {
     expect(ERROR_TOAST_MS).toBe(10_000);
     expect(noticeLifetime(error)).toBe(ERROR_TOAST_MS);
