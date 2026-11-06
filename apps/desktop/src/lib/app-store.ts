@@ -33,6 +33,7 @@ import type {
   PersonaRef,
   Project,
   QuotaState,
+  ReleaseNote,
   RiskLevel,
   RoiSummaryResult,
   RuleIssue,
@@ -198,6 +199,7 @@ import { type UsageEntry, VaultUsageLog } from "./vault-usage.ts";
 import { APP_VERSION, hasFeature, isNewer } from "./version.ts";
 import { WebhookFeed } from "./webhook-feed.ts";
 import { Webhooks } from "./webhooks.ts";
+import { WhatsNew } from "./whats-new.ts";
 import { WORKSPACE_KEY, Workspace } from "./workspace.ts";
 
 /** What the sidebar knows about a session, straight from `session.summary`. */
@@ -499,6 +501,12 @@ function cardsIn(result: unknown): Card[] {
   const columns = (result as { columns?: Array<{ cards: Card[] }> } | undefined)?.columns ?? [];
   return columns.flatMap((column) => column.cards);
 }
+
+/** What reading the app's release notes came to: the releases, no host that can read them, or a refusal. */
+export type ReleaseNotesResult =
+  | { kind: "ready"; releases: ReleaseNote[] }
+  | { kind: "none" }
+  | { kind: "error"; message: string };
 
 export interface GlobalHit extends HistorySearchHit {
   hostId: string;
@@ -891,6 +899,7 @@ export class AppStore {
     this.vault = new Vault(platform);
     this.rules = new VaultRules(platform.storage);
     this.homeCache = new HomeCache(platform.storage);
+    this.whatsNew = new WhatsNew(platform.storage);
     this.globalSnippets = new GlobalSnippets(platform);
     this.globalPersonas = new GlobalPersonas(platform);
     this.clients = new Clients(platform, { onChange: () => this.syncClients() });
@@ -1499,6 +1508,11 @@ export class AppStore {
 
   inboxClear(): void {
     this.setInbox([]);
+  }
+
+  /** The app's latest releases, read through the first online host that offers them (issue #125). */
+  async releaseNotes(): Promise<ReleaseNotesResult> {
+    return { kind: "none" };
   }
 
   /** Opens a web page (an issue, a PR) in the user's browser; anything but http(s) is refused. */
@@ -3461,6 +3475,8 @@ export class AppStore {
   private readonly rules: VaultRules;
   /** Home's last numbers per host set and period (issue #607). */
   readonly homeCache: HomeCache;
+  /** Whether the release notes of an update were not opened yet (issue #125). */
+  readonly whatsNew: WhatsNew;
   /** Phase 18: the global snippets, kept by the app. */
   readonly globalSnippets: GlobalSnippets;
   /** Phase 20: the global personas, kept by the app. */

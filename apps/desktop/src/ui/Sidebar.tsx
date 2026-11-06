@@ -252,6 +252,8 @@ export function Sidebar(
     onToggleTheme(): void;
     /** Opens the sheet of keyboard shortcuts (the account menu, issue #282). */
     onShortcuts?(): void;
+    /** Opens What's new: the notes of the latest releases (the account menu, issue #125). */
+    onWhatsNew?(): void;
     /** Switches to simple mode; absent when the host in view does not let the person choose. */
     onSimpleMode?(): void;
   }>,
