@@ -144,6 +144,18 @@ describe("terminal-daemon", () => {
     ).toEqual(["3", "7", "1"]);
   });
 
+  // fd-coordinator's review of #486: /scroll-speed keeps the person's value in the env block of
+  // ~/.claude/settings.json; the daemon's default must never shadow it.
+  test("a speed the person keeps in Claude Code's settings is left to Claude Code, unset by the daemon", async () => {
+    const kept = setup({ claudeEnv: async () => ({ CLAUDE_CODE_SCROLL_SPEED: "5" }) });
+    await kept.open();
+    const other = setup({ claudeEnv: async () => ({ SOMETHING_ELSE: "1" }) });
+    await other.open();
+    expect(
+      [kept, other].map((s) => s.ptys.spawned[0]?.env.CLAUDE_CODE_SCROLL_SPEED ?? "unset"),
+    ).toEqual(["unset", "3"]);
+  });
+
   test("open com command abre esse argv, sem shell; cwd fora de allowedRoots e spawn que falha são recusados", async () => {
     const { manager, ptys, project, root } = setup();
     const info = await manager.open({
