@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { FlightdeckError } from "../errors.ts";
 import { ulid } from "../ulid.ts";
 import { git } from "./command.ts";
+import { refArg } from "./ref-arg.ts";
 import { must } from "./worktree.ts";
 
 /**
@@ -14,7 +15,14 @@ export async function aheadBehind(
   ref = "HEAD",
 ): Promise<{ ahead: number; behind: number }> {
   const counted = must(
-    await git(worktree, "rev-list", "--left-right", "--count", `${base}...${ref}`),
+    await git(
+      worktree,
+      "rev-list",
+      "--left-right",
+      "--count",
+      "--end-of-options",
+      `${refArg(base)}...${refArg(ref)}`,
+    ),
     "git rev-list",
   );
   const [behind, ahead] = counted.stdout.trim().split(/\s+/).map(Number);
@@ -23,7 +31,7 @@ export async function aheadBehind(
 
 /** Merges go into a local branch: a remote ref or a deleted branch is refused. */
 export async function assertLocalBranch(repo: string, base: string): Promise<void> {
-  const local = await git(repo, "show-ref", "--verify", "--quiet", `refs/heads/${base}`);
+  const local = await git(repo, "show-ref", "--verify", "--quiet", `refs/heads/${refArg(base)}`);
   if (local.code !== 0) {
     throw new FlightdeckError(
       "invalid_state",
@@ -45,7 +53,7 @@ export async function pendingFiles(cwd: string): Promise<string[]> {
  * conflict the rebase is aborted (which restores them) and the error lists the files.
  */
 export async function rebaseOnto(worktree: string, base: string): Promise<void> {
-  const rebase = await git(worktree, "rebase", "--autostash", base);
+  const rebase = await git(worktree, "rebase", "--autostash", "--end-of-options", refArg(base));
   if (rebase.code === 0) return;
   const conflicted = await git(worktree, "diff", "--name-only", "--diff-filter=U");
   await git(worktree, "rebase", "--abort");
@@ -98,8 +106,9 @@ export async function mergeIntoBase(
     "--write-tree",
     "--name-only",
     "--no-messages",
-    base,
-    branch,
+    "--end-of-options",
+    refArg(base),
+    refArg(branch),
   );
   if (check.code === 1) {
     const files = check.stdout.split("\n").slice(1).filter(Boolean).join(", ");
@@ -127,7 +136,7 @@ export async function mergeIntoBase(
   }
   // Where card worktrees live: excluded from the repository's status.
   const temporary = join(repo, ".flightdeck", "worktrees", `merge-${ulid().toLowerCase()}`);
-  must(await git(repo, "worktree", "add", "-q", temporary, base), "git worktree add");
+  must(await git(repo, "worktree", "add", "-q", temporary, refArg(base)), "git worktree add");
   try {
     await mergeIn(temporary, branch, mode, message);
   } finally {

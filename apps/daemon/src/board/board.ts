@@ -44,6 +44,7 @@ import {
 } from "./merge.ts";
 import { type PrComment, type PrProvider, prMessage, prProvider } from "./pr.ts";
 import { addRules, LOCAL_SETTINGS, readRules, removeRule, ruleString } from "./project-rules.ts";
+import { assertBranchName } from "./ref-arg.ts";
 import { runSetup } from "./setup.ts";
 import type {
   BoardColumn,
@@ -416,7 +417,9 @@ export class Board {
       id: ulid(),
       path,
       name: input.name?.trim() || basename(path),
-      baseBranch: input.baseBranch?.trim() || head.stdout.trim(),
+      baseBranch: input.baseBranch?.trim()
+        ? assertBranchName(input.baseBranch.trim())
+        : head.stdout.trim(),
       prProvider: input.prProvider ?? "none",
       setupScript: script(input.setupScript),
       promptTemplate: input.promptTemplate ?? DEFAULT_PROMPT_TEMPLATE,
@@ -451,7 +454,9 @@ export class Board {
     const next: Project = {
       ...current,
       ...(patch.name?.trim() ? { name: patch.name.trim() } : {}),
-      ...(patch.baseBranch?.trim() ? { baseBranch: patch.baseBranch.trim() } : {}),
+      ...(patch.baseBranch?.trim()
+        ? { baseBranch: assertBranchName(patch.baseBranch.trim()) }
+        : {}),
       ...(patch.prProvider ? { prProvider: patch.prProvider } : {}),
       ...(patch.setupScript !== undefined ? { setupScript: script(patch.setupScript) } : {}),
       ...(patch.promptTemplate !== undefined ? { promptTemplate: patch.promptTemplate } : {}),

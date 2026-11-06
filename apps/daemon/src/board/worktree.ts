@@ -5,6 +5,7 @@ import { FlightdeckError } from "../errors.ts";
 import { whichOnPath } from "../which.ts";
 import { type CommandResult, git } from "./command.ts";
 import { LOCAL_SETTINGS } from "./project-rules.ts";
+import { refArg } from "./ref-arg.ts";
 
 /** Whether `path` exists, asked without blocking. */
 const exists = (path: string): Promise<boolean> =>
@@ -190,9 +191,10 @@ export async function freshBase(
   repo: string,
   base: string,
 ): Promise<{ ref: string; notice: string | null }> {
+  refArg(base);
   const remotes = (await git(repo, "remote")).stdout.split(/\s+/);
   if (!remotes.includes("origin")) return { ref: base, notice: null };
-  const fetched = await git(repo, "fetch", "origin", base);
+  const fetched = await git(repo, "fetch", "--end-of-options", "origin", base);
   if (fetched.code !== 0) {
     const why = fetched.stderr.trim().split("\n").at(-1) ?? "";
     return { ref: base, notice: `Could not refresh ${base} from origin: ${why}` };
@@ -244,7 +246,7 @@ async function create(
   const path = worktreeDir(repo, slug);
   await addExcludeLine(await excludeFileAsync(repo), EXCLUDE_LINE);
   await excludeLocalSettingsAsync(repo);
-  must(await git(repo, "worktree", "add", path, "-b", branch, base), "git worktree add");
+  must(await git(repo, "worktree", "add", path, "-b", branch, refArg(base)), "git worktree add");
   const { skipped } = await copyIncluded(repo, path, includeLimit);
   return { slug, branch, path, skipped };
 }
