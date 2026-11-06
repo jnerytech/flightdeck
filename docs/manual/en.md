@@ -1232,7 +1232,9 @@ conversation. It is where you check what the agent did and send it back what to 
     the base is checked out in some worktree (usually `main` in the main repository), the merge
     happens there, and only if that worktree is clean; otherwise it goes through a temporary
     worktree. A conflict refuses and changes nothing. After the merge, the card's worktree and
-    branch go away and the card moves to Done.
+    branch go away and the card moves to Done. The **Commit message** field takes the message
+    of the merge; empty keeps the default, with the card's title. **Write with AI** writes it
+    from the card's diff, the repository's rules and its recent commits (issue #162).
 - **PR comments:** for a card with a PR, the review comments are read from GitHub (`gh api`) or
   Azure DevOps (`az devops invoke`) with each poll of the PR, and listed with file, line, author
   and resolved state. On GitHub, an author who is not the owner, a member or a collaborator gets
@@ -2271,7 +2273,8 @@ Two more things come with it:
 
 - **Open PR** on a card first shows the **PR description**, made from the card's sessions, to edit.
   Lines that look like a secret are taken out and counted. Nothing is opened until you click **Open
-  the PR with this text**.
+  the PR with this text**. The **PR title** starts from the card's title; the title and the description each have
+  the wand, which writes from the card's repository.
 - **Ctrl+K**: paste a PR link (Azure DevOps or GitHub) and choose **Open the PR from the link**. The
   hosts are asked: the card opens if the PR is from one; otherwise the transcript of the first
   session the history knows for it; otherwise a message says nothing has it.
