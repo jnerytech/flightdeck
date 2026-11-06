@@ -3627,6 +3627,8 @@ The first version could delete work. What changed, each with a test that fails w
 - **Tests added for guards the review found removable:** a live session of every state, a queued card, `createResumed`, a second removal of
   the same folder (the lock is a set, not a counter, so that refusal is what keeps the first release from freeing the second),
   an unreadable tip, and `detach` told to keep the branch only when the ref stayed.
+- **A project whose folder is gone** no longer fails the whole list: a git that cannot be spawned (its `cwd` does not exist)
+  answers like a git that failed (code 127), so that project shows nothing and the others still list.
 - **Not done:** N4 (a workflow waiting at a gate, board operations outside a run, a worktree being made have no blocker; processes outside
   Flightdeck cannot be seen), N7's second race (an outside `git checkout --detach` plus a commit after the last look), F8 (case-insensitive
   `samePath` for the worktrees folder), `-z` for the list, and scanning once per project.

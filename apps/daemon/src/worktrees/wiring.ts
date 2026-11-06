@@ -49,7 +49,11 @@ export async function gitWithin(
   deadlineMs: number,
   run: typeof runCommand = runCommand,
 ): Promise<CommandResult> {
-  const out = await run([whichOnPath("git") ?? "git", ...args], cwd, undefined, deadlineMs);
+  // A folder that is gone makes the spawn itself fail: that is a git that said nothing, not a
+  // reason to fail the whole list.
+  const out = await run([whichOnPath("git") ?? "git", ...args], cwd, undefined, deadlineMs).catch(
+    (error: unknown): CommandResult => ({ code: 127, stdout: "", stderr: String(error) }),
+  );
   return out.timedOut ? { ...out, code: out.code === 0 ? 124 : out.code } : out;
 }
 
