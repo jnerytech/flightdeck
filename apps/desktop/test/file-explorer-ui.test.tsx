@@ -7,6 +7,7 @@ registerDom();
 const { act, cleanup, fireEvent, render, within } = await import("@testing-library/react");
 const screen = liveScreen(within);
 const { FileExplorer } = await import("../src/ui/FileExplorer.tsx");
+const { SessionTabs } = await import("../src/ui/SessionTabs.tsx");
 const { TContext } = await import("../src/i18n/context.tsx");
 const { translator } = await import("../src/i18n/index.ts");
 
@@ -57,10 +58,10 @@ function host(refuse = false) {
         if (refuse) {
           return {
             ok: false,
-            code: "not_found",
-            message: "gone",
-            reason: "review_file_missing",
-            params: { path: payload.dir },
+            code: "bad_request",
+            message: "not a repository",
+            reason: "repo_not_git",
+            params: { path: "/home/u/notes" },
           };
         }
         return { ok: true, data: TREE[payload.dir ?? ""] };
@@ -183,7 +184,7 @@ describe("file-explorer-ui: the session's files as a tree (#506)", () => {
     expect(screen.queryByText("Nothing matches the filter.")).not.toBeNull();
   });
 
-  test("in Portuguese, and a folder the host refuses says why", async () => {
+  test("in Portuguese, and a session outside git says why", async () => {
     const ok = host();
     await show(ok.store, "pt-BR");
     expect(screen.queryByRole("region", { name: "Arquivos do repositório" })).not.toBeNull();
@@ -192,6 +193,30 @@ describe("file-explorer-ui: the session's files as a tree (#506)", () => {
     cleanup();
     const refused = host(true);
     await show(refused.store);
-    expect(screen.queryByRole("alert")?.textContent ?? "").toContain("gone");
+    expect(screen.queryByRole("alert")?.textContent ?? "").toBe(
+      "/home/u/notes is not a git repository.",
+    );
+  });
+
+  test("the session's Files tab is there when the host lists files, and opens the tree", async () => {
+    const tabs = (files: boolean) => (
+      <TContext.Provider value={translator("en")}>
+        <SessionTabs
+          store={host().store}
+          hostId="h"
+          claudeSessionId="abc"
+          enabled={false}
+          files={files}
+        >
+          <p>conversation</p>
+        </SessionTabs>
+      </TContext.Provider>
+    );
+    render(tabs(false));
+    expect(screen.queryByRole("button", { name: "Files" })).toBeNull();
+    cleanup();
+    render(tabs(true));
+    await toggle("Files");
+    expect(screen.queryByRole("region", { name: "Files of the repository" })).not.toBeNull();
   });
 });
