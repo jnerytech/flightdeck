@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { readFile, realpath } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import { inSequence } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { git } from "../board/command.ts";
@@ -7,6 +7,7 @@ import { refArg } from "../board/ref-arg.ts";
 import { type Central, messageExternal } from "../central/central.ts";
 import { FlightdeckError } from "../errors.ts";
 import { credential } from "../permissions/sensitive-paths.ts";
+import { readRegular } from "../read-regular.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import { ulid } from "../ulid.ts";
 import type { Changes, ResolvedTarget } from "./changes.ts";
@@ -145,7 +146,9 @@ export class ReviewComments {
     const where = await located(resolved.root, await realpath(resolved.root), path);
     refuseCredential(where, path);
     if (side === "new") {
-      return where.real ? readFile(where.real, "utf8").then(linesOf, () => null) : null;
+      // Opened without following a link, as `file.read` does: one swapped in after the check is not read.
+      const bytes = where.real ? await readRegular(where.real, Number.POSITIVE_INFINITY) : null;
+      return bytes ? linesOf(bytes.toString("utf8")) : null;
     }
     const object = `${refArg(resolved.base ?? "HEAD")}:${path.replaceAll("\\", "/")}`;
     const shown = await git(resolved.root, "show", "--end-of-options", object);
