@@ -1,6 +1,12 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { DepsResult, KeepAwakeStatus } from "@flightdeck/protocol";
+import type {
+  AssistantRequest,
+  AssistantResult,
+  DepsResult,
+  KeepAwakeStatus,
+  ModelOption,
+} from "@flightdeck/protocol";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import type { Account } from "../../daemon/src/account/account.ts";
 import { Actions } from "../../daemon/src/actions/actions.ts";
@@ -69,6 +75,7 @@ import { FakeProvider } from "../../daemon/test/boardsync-fake.ts";
 import { testRootsPlatform } from "../../daemon/test/helpers.ts";
 import { fakePtys } from "../../daemon/test/pty-helpers.ts";
 import { fakeRunHost } from "../../daemon/test/run-helpers.ts";
+import type { AssistantPlatform, AssistantRunOptions } from "../src/platform/types.ts";
 import { createWebPlatform, type WebWindow } from "../src/platform/web/index.ts";
 
 export const TOKEN = "desktop-test-token-0123456789";
@@ -228,8 +235,16 @@ export function daemon(
         reason: options.keepAwake.reason ?? null,
       }
     : null;
+  // The trust the host announces, shared by the sessions and by the commands, as the daemon wires it.
+  const projectTrust = options.trust ? new ProjectTrust(store.db) : undefined;
   const manager = new SessionManager({
     allowBypass: () => bypass,
+    ...(projectTrust
+      ? {
+          trust: (cwd: string) => projectTrust.sessionTrust(cwd),
+          prepareTrust: (cwd: string) => projectTrust.prepare(cwd),
+        }
+      : {}),
     ...(personaStore ? { personas: personaStore } : {}),
     ...(snapshots
       ? {
@@ -553,7 +568,7 @@ export function daemon(
       ...(costs ? { costs } : {}),
       ...(telemetry ? { telemetry, telemetryOptIn } : {}),
       ...(options.bg ? { bg: options.bg } : {}),
-      ...(options.trust ? { projectTrust: projectTrustOver(store.db) } : {}),
+      ...(projectTrust ? { projectTrust: projectTrustOver(projectTrust, manager) } : {}),
       ...(budgets ? { budgets } : {}),
       ...(quotaHistory ? { quotaHistory } : {}),
       ...(review ?? {}),
@@ -719,22 +734,110 @@ export function memoryPlatform(focused = false, language = "pt-BR") {
 /** A folder every host refuses to allow, on whatever platform the tests run. */
 export const SYSTEM_FOLDER = process.platform === "win32" ? "C:\\Windows" : "/etc";
 
+type AssistantCall = [string, ...unknown[]];
+
+/**
+ * A fake `Platform.assistant`: it logs every call, keeps only the last four characters of a key and
+ * answers what the test scripts. Install it with `platform.assistant = fake.assistant`.
+ */
+export function fakeAssistant(
+  script: {
+    supported?: boolean;
+    run?: (
+      request: AssistantRequest,
+      vaultIds: string[],
+      options: AssistantRunOptions,
+    ) => AssistantResult | Promise<AssistantResult>;
+    test?: (provider: "anthropic" | "openrouter") => ReturnType<AssistantPlatform["test"]>;
+    models?: (provider: "anthropic" | "openrouter") => ModelOption[];
+    vaultHits?: (text: string, ids: string[]) => string[];
+    setKey?: (provider: "anthropic" | "openrouter") => void;
+  } = {},
+) {
+  const calls: AssistantCall[] = [];
+  const keys = new Map<string, string>();
+  const refuse = (reason: string) => Promise.reject({ reason });
+  const assistant: AssistantPlatform = {
+    supported: script.supported ?? true,
+    keyStatus: async (provider) => {
+      calls.push(["keyStatus", provider]);
+      const last4 = keys.get(provider);
+      return last4 ? { saved: true, last4 } : { saved: false };
+    },
+    setKey: async (provider, key) => {
+      // The key itself is not logged: a test that prints the calls never prints it.
+      calls.push(["setKey", provider]);
+      script.setKey?.(provider);
+      keys.set(provider, key.slice(-4));
+      return { last4: key.slice(-4) };
+    },
+    deleteKey: async (provider) => {
+      calls.push(["deleteKey", provider]);
+      keys.delete(provider);
+    },
+    test: async (provider) => {
+      calls.push(["test", provider]);
+      return script.test ? script.test(provider) : { ok: true };
+    },
+    models: async (provider) => {
+      calls.push(["models", provider]);
+      return script.models ? script.models(provider) : [];
+    },
+    run: async (request, vaultIds, options) => {
+      calls.push(["run", request, vaultIds, options]);
+      return script.run
+        ? script.run(request, vaultIds, options)
+        : refuse("assistant_not_configured");
+    },
+    cancel: async (requestId) => {
+      calls.push(["cancel", requestId]);
+    },
+    vaultHits: async (text, ids) => {
+      calls.push(["vaultHits", ids]);
+      return script.vaultHits ? script.vaultHits(text, ids) : [];
+    },
+  };
+  return { assistant, calls };
+}
+
+/**
+ * Hosts in the store's state, as a connected app would hold them: online (or not) and announcing
+ * the given features. The state is private to the store; a test that needs hosts it did not
+ * connect puts them there.
+ */
+export function seedHosts(
+  store: object,
+  hosts: Array<{ id: string; name: string; online?: boolean; features?: string[] }>,
+): void {
+  const hidden = store as { state: Record<string, unknown>; getState(): Record<string, unknown> };
+  hidden.state = {
+    ...hidden.getState(),
+    hosts: hosts.map((host) => ({
+      id: host.id,
+      name: host.name,
+      status: host.online === false ? "offline" : "online",
+      hostInfo: { daemonVersion: "x", features: host.features ?? [] },
+      sessions: [],
+    })),
+  };
+}
+
 /** The host's project trust over a database, as the daemon wires it (nothing trusted until the person says so). */
-function projectTrustOver(db: EventStore["db"]) {
-  const trust = new ProjectTrust(db);
+function projectTrustOver(trust: ProjectTrust, manager: SessionManager) {
+  const stateOf = (path: string) => {
+    const via = trust.via(path);
+    const stale = manager.staleSessions(path);
+    return { path, trusted: via !== null, via, ...(stale > 0 ? { staleSessions: stale } : {}) };
+  };
   return {
     refresh: () => trust.refreshRoots(),
-    state: (paths: string[]) =>
-      paths.map((path) => {
-        const via = trust.via(path);
-        return { path, trusted: via !== null, via };
-      }),
+    state: (paths: string[]) => paths.map(stateOf),
     inspect: (path: string) => inspectProject(path),
     set: (path: string, trusted: boolean) => {
       if (trusted) trust.trust(path);
       else trust.revoke(path);
-      const via = trust.via(path);
-      return { path, trusted: via !== null, via };
+      manager.trustChanged();
+      return stateOf(path);
     },
   };
 }

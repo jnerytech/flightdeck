@@ -83,6 +83,20 @@ describe("pr-runner: a provider given a command runner starts no process", () =>
     ]);
   });
 
+  test("gh: the review threads query goes on stdin, where a .cmd wrapper cannot mangle it (#222)", async () => {
+    const threads = { data: { repository: { pullRequest: { reviewThreads: { nodes: [] } } } } };
+    const gh = fake("gh", [
+      { args: ["api", "--paginate"], stdout: "[[]]" },
+      { args: ["pr", "view", "reviews"], stdout: JSON.stringify({ reviews: [] }) },
+      { args: ["api", "graphql"], stdout: JSON.stringify(threads) },
+    ]);
+    const provider = new GithubCli({ run: gh.run });
+    expect(await provider.comments({ cwd: tempDir(), url: GH_URL })).toEqual([]);
+    const at = gh.calls().findIndex((call) => call.includes("graphql"));
+    expect(gh.calls()[at]).toContain("query=@-");
+    expect(gh.inputs()[at] ?? "").toContain("reviewThreads(first: 100)");
+  });
+
   test("a runner that is not given leaves the CLI to its own process, found on PATH", async () => {
     const az = fake("az", [
       { args: ["pr", "show"], stdout: JSON.stringify({ status: "completed" }) },
@@ -96,5 +110,16 @@ describe("pr-runner: a provider given a command runner starts no process", () =>
     expect(status).toEqual({ state: "merged", checks: null });
     expect(started.count()).toBe(2);
     expect(az.calls()).toHaveLength(2);
+  });
+
+  test("a runner that is not given leaves gh to its own process, found on PATH", async () => {
+    const gh = fake("gh", [
+      { args: ["view", "state,statusCheckRollup"], stdout: JSON.stringify({ state: "MERGED" }) },
+    ]);
+    const started = spawns();
+    const status = await new GithubCli().status({ cwd: tempDir(), url: GH_URL });
+    expect(status).toEqual({ state: "merged", checks: null });
+    expect(started.count()).toBe(1);
+    expect(gh.calls()).toHaveLength(1);
   });
 });

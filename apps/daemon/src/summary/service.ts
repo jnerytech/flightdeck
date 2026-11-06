@@ -15,7 +15,7 @@ export class SummaryService {
 
   async get(
     claudeSessionId: string,
-    extra: { question?: string | undefined; state?: string | undefined } = {},
+    extra: { question?: string; state?: string } = {},
   ): Promise<SessionRecap> {
     const row = this.opts.db
       .query<{ path: string | null }, [string]>(

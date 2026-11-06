@@ -15,10 +15,11 @@ import { git } from "../board/command.ts";
 import { refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
 import { FlightdeckError } from "../errors.ts";
-import { isInside, resolveAllowedCwd } from "../paths.ts";
+import { resolveAllowedCwd } from "../paths.ts";
+import { readRegularSized } from "../read-regular.ts";
 import { ulid } from "../ulid.ts";
 import type { Changes } from "./changes.ts";
-import { fileInRoot } from "./paths.ts";
+import { type Located, located, refuseCredential } from "./paths.ts";
 
 export interface ReviewFilesOptions {
   changes: Changes;
@@ -72,14 +73,18 @@ export class ReviewFiles {
 
   async read(target: string, path: string): Promise<FileContent> {
     const { root } = await this.opts.changes.resolve(target);
-    const full = fileInRoot(root, path);
-    const bytes = await bytesOrNull(full);
-    if (!bytes) {
+    // Any target can be read, inside allowedRoots or not, but only inside its own repository.
+    const where = await located(root, await realpath(root), path);
+    refuseCredential(where, path);
+    // The resolved path, opened without following a link: one swapped in after the check is refused.
+    const read = where.real ? await readRegularSized(where.real, MAX_BYTES + 1) : null;
+    if (!read) {
       throw new FlightdeckError("not_found", `${path} does not exist`, "review_file_missing", {
         path,
       });
     }
-    if (bytes.length > MAX_BYTES) {
+    const bytes = read.data;
+    if (read.size > MAX_BYTES) {
       throw new FlightdeckError(
         "bad_request",
         `${path} is over 1 MB: edit it outside Flightdeck`,
@@ -102,7 +107,9 @@ export class ReviewFiles {
     text: string,
     expectedHash: string,
   ): Promise<Omit<FileContent, "text">> {
-    const full = await this.writable(target, path);
+    const where = await this.writable(target, path);
+    refuseCredential(where, path);
+    const { full } = where;
     const bytes = Buffer.from(text, "utf8");
     if (bytes.length > MAX_BYTES) {
       throw new FlightdeckError("bad_request", "the text is over 1 MB", "review_text_big");
@@ -137,7 +144,7 @@ export class ReviewFiles {
       );
     }
     const { root, base } = await this.opts.changes.resolve(target);
-    const full = await this.writable(target, path);
+    const { full } = await this.writable(target, path);
     await this.pruneTrash();
     let copy: string | null = null;
     if (await exists(full)) {
@@ -189,7 +196,7 @@ export class ReviewFiles {
         { path },
       );
     }
-    const full = await this.writable(target, path);
+    const { full } = await this.writable(target, path);
     if (undo.copy) {
       await mkdir(dirname(full), { recursive: true });
       await copyFile(undo.copy, full);
@@ -222,19 +229,8 @@ export class ReviewFiles {
    * A file that may be changed: the repository inside allowedRoots, and the file itself (links
    * resolved) still inside the repository.
    */
-  private async writable(target: string, path: string): Promise<string> {
+  private async writable(target: string, path: string): Promise<Located> {
     const { root } = await this.opts.changes.resolve(target);
-    const realRoot = await resolveAllowedCwd(root, this.opts.allowedRoots);
-    const full = fileInRoot(root, path);
-    const real = await realpath(full).catch(() => null);
-    if (real && !isInside(realRoot, real)) {
-      throw new FlightdeckError(
-        "forbidden_cwd",
-        `${path} points outside the repository`,
-        "review_path_link",
-        { path },
-      );
-    }
-    return full;
+    return located(root, await resolveAllowedCwd(root, this.opts.allowedRoots), path);
   }
 }

@@ -1,9 +1,9 @@
 import type { SessionRecap } from "@flightdeck/protocol";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Panel } from "@/components/layout/panel";
 import { Stack } from "@/components/layout/stack";
-import { ShortArea } from "@/components/session/parts";
+import { useTight } from "@/components/session/parts";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { useStoreSlice } from "@/lib/use-store";
@@ -89,7 +89,8 @@ export function RecapPanel(
   const [firstSeen] = useState(() => !SEEN.has(seenKey));
   // In a short area (a 720x480 window) it starts folded even then: the conversation needs the
   // room (#232). Once the person opens or folds it, their choice holds.
-  const short = useContext(ShortArea);
+  // So while a request waits for the person (#488): the request card needs the room.
+  const short = useTight();
   const [chosen, setOpen] = useState<boolean | null>(null);
   const open = chosen ?? (firstSeen && !short);
   useEffect(() => {

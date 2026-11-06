@@ -660,12 +660,12 @@ export class Board {
     cardId: string,
     input: {
       variants: Array<{
-        model?: string | undefined;
-        effort?: EffortLevel | undefined;
-        persona?: PersonaRef | undefined;
+        model?: string;
+        effort?: EffortLevel;
+        persona?: PersonaRef;
       }>;
-      workflow?: string | undefined;
-      inputs?: Record<string, string> | undefined;
+      workflow?: string;
+      inputs?: Record<string, string>;
     },
   ): Promise<Arena> {
     const card = this.getCard(cardId);
@@ -854,13 +854,13 @@ export class Board {
   updateCard(
     id: string,
     patch: {
-      title?: string | undefined;
-      description?: string | undefined;
+      title?: string;
+      description?: string;
       /** Phase 36: `null` removes the estimate. */
-      estimateHours?: number | null | undefined;
-      blockedBy?: string[] | undefined;
-      unblockWhen?: UnblockWhen | undefined;
-      autoStart?: { workflow: string | null } | null | undefined;
+      estimateHours?: number | null;
+      blockedBy?: string[];
+      unblockWhen?: UnblockWhen;
+      autoStart?: { workflow: string | null } | null;
     },
   ): Card {
     const card = this.getCard(id);
@@ -1074,10 +1074,7 @@ export class Board {
    * Phase 22: a run with a prompt of its own (it waits in the same queue, quota and budgets as
    * any run), in a session nobody sits in; settled when its first turn ends.
    */
-  async fixCard(
-    id: string,
-    opts: { prompt: string; persona?: PersonaRef | undefined },
-  ): Promise<FixResult> {
+  async fixCard(id: string, opts: { prompt: string; persona?: PersonaRef }): Promise<FixResult> {
     const settled = new Promise<FixResult>((resolve) => this.fixes.set(id, resolve));
     try {
       await this.startCard(id, {
@@ -1121,12 +1118,12 @@ export class Board {
   async startCard(
     id: string,
     options: {
-      workflow?: string | undefined;
-      inputs?: Record<string, string> | undefined;
+      workflow?: string;
+      inputs?: Record<string, string>;
       /** The persona to open the session in; else the default of the card's column. */
-      persona?: PersonaRef | undefined;
+      persona?: PersonaRef;
       /** Phase 22 (`fixCard`): the run's prompt, instead of the card's description. */
-      fix?: { prompt: string } | undefined;
+      fix?: { prompt: string };
     } = {},
   ): Promise<Card> {
     const card = this.getCard(id);

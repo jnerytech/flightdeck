@@ -31,12 +31,12 @@ export type AutomationEvent =
 
 export interface AutomationInput {
   projectId: string;
-  id?: string | undefined;
+  id?: string;
   name: string;
   trigger: Automation["trigger"];
   action: Automation["action"];
-  maxRunsPerDay?: number | undefined;
-  allowExternalAuthors?: boolean | undefined;
+  maxRunsPerDay?: number;
+  allowExternalAuthors?: boolean;
 }
 
 export interface AutomationsOptions {
@@ -49,9 +49,9 @@ export interface AutomationsOptions {
   /** `YYYY-MM-DD` of an instant, for the daily limit; the host's time zone when absent. */
   day?: (ms: number) => string;
   /** The scheduler's interval (a minute when absent). */
-  tickMs?: number | undefined;
+  tickMs?: number;
   /** The issue search's interval (5 minutes when absent). */
-  pollMs?: number | undefined;
+  pollMs?: number;
   log?: (message: string) => void;
 }
 

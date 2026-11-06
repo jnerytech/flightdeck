@@ -113,6 +113,8 @@ const validCommands: Record<CommandType, unknown> = {
   "maintenance.status": {},
   "session.sleep": { sessionId: "s" },
   "host.sleep": { minutes: 30 },
+  "resources.get": {},
+  "resources.endOrphan": { pid: 1234, startTicks: 99 },
   "worktree.list": {},
   "worktree.remove": { items: [{ projectId: "p", path: "/x" }], confirm: true },
   "maintenance.backup": {},

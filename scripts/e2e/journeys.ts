@@ -41,9 +41,17 @@ export type Context = {
   t: ReturnType<typeof translator>;
 };
 
-/** Opens a screen of the demo; `prefs` stores the theme and language like the prints do. */
-export async function open(c: Context, route: Route, prefs = true) {
-  const query = new URLSearchParams({ route: JSON.stringify(route) });
+/**
+ * Opens a screen of the demo; `prefs` stores the theme and language like the prints do, and `extra`
+ * adds demo switches to the address (`update=<version>` makes the updater offer that version).
+ */
+export async function open(
+  c: Context,
+  route: Route,
+  prefs = true,
+  extra: Record<string, string> = {},
+) {
+  const query = new URLSearchParams({ route: JSON.stringify(route), ...extra });
   if (prefs) {
     query.set("lang", c.lang);
     query.set("theme", "light");
@@ -649,6 +657,27 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       "o tópico não aparece na lista",
     );
   },
+
+  // 21. The update card (issue #490): once a new version is downloaded, a card offers to update,
+  // says the sessions are not interrupted, links the release notes and goes away when closed.
+  "update-card": async (c) => {
+    await open(c, { name: "hub" }, true, { update: "9.9.9" });
+    const card = c.page.getByRole("region", { name: c.t("update.cardTitle"), exact: true });
+    await card.waitFor({ timeout: WAIT });
+    await card.getByText(c.t("update.cardReady", { version: "9.9.9" }), { exact: true }).waitFor({
+      timeout: WAIT,
+    });
+    await card.getByText(c.t("update.cardSafe"), { exact: true }).waitFor({ timeout: WAIT });
+    const notes = card.getByRole("link", { name: c.t("update.cardNotes"), exact: true });
+    expect(await notes.getAttribute("href")).toBe(
+      "https://github.com/jnerytech/flightdeck/releases/tag/v9.9.9",
+    );
+    await card.getByRole("button", { name: c.t("update.cardUpdate"), exact: true }).waitFor({
+      timeout: WAIT,
+    });
+    await card.getByRole("button", { name: c.t("update.cardClose"), exact: true }).click();
+    await card.waitFor({ state: "detached", timeout: WAIT });
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */
@@ -688,7 +717,7 @@ async function crumbsProblem(page: Page): Promise<string | null> {
   });
 }
 
-/** The tabs share the strip like a browser's: one width, and not under the minimum. */
+/** Since #488 a tab is as wide as its title, as in VS Code: never under the minimum, never past 13rem. */
 async function tabWidthsProblem(page: Page, minimum: number): Promise<string | null> {
   const widths = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>(".tab-item")].map((tab) =>
@@ -696,9 +725,91 @@ async function tabWidthsProblem(page: Page, minimum: number): Promise<string | n
     ),
   );
   if (widths.length === 0) return "no tabs";
-  if (Math.max(...widths) - Math.min(...widths) > 1) return `widths differ: ${widths.join(", ")}`;
+  if (Math.max(...widths) > 208 + 1) return `a tab is ${Math.max(...widths)}px, past 13rem`;
   if (Math.min(...widths) < minimum) return `a tab is ${Math.min(...widths)}px, under ${minimum}px`;
   return null;
+}
+
+/**
+ * The active tab stands out (#488): only it has the accent line on top, at 3:1 or more against
+ * the tab and the bar in both themes, and it reaches the bar's lower edge so it joins the screen
+ * below. Hovering another tab looks different from the active one.
+ */
+async function activeTabProblem(page: Page): Promise<string | null> {
+  const problems = await page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return ["no canvas to read colours"];
+    const rgb = (color: string) => {
+      ctx.clearRect(0, 0, 1, 1);
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, 1, 1);
+      return [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3);
+    };
+    const luminance = (c: number[]) => {
+      const f = (v: number) => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * f(c[0] ?? 0) + 0.7152 * f(c[1] ?? 0) + 0.0722 * f(c[2] ?? 0);
+    };
+    const ratio = (a: number[], b: number[]) => {
+      const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+      return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
+    };
+    const bar = document.querySelector<HTMLElement>(".tab-bar");
+    if (!bar) return ["no tab bar"];
+    const found: string[] = [];
+    const root = document.documentElement;
+    const wasDark = root.classList.contains("dark");
+    for (const dark of [false, true]) {
+      root.classList.toggle("dark", dark);
+      const theme = dark ? "dark" : "light";
+      const items = [...bar.querySelectorAll<HTMLElement>(".tab-item")];
+      const active = items.find((it) => it.querySelector('[role="tab"][aria-selected="true"]'));
+      const lined = items.filter((it) => {
+        const content = getComputedStyle(it, "::before").content;
+        return content !== "none" && content !== "normal" && content !== "";
+      });
+      if (!active || lined.length !== 1 || lined[0] !== active) {
+        found.push(`${theme}: ${lined.length} tabs have the accent line, not only the active one`);
+        continue;
+      }
+      const line = rgb(getComputedStyle(active, "::before").backgroundColor);
+      for (const [name, el] of [
+        ["tab", active],
+        ["bar", bar],
+      ] as const) {
+        const r = ratio(line, rgb(getComputedStyle(el).backgroundColor));
+        if (r < 3) found.push(`${theme}: the accent line is ${r.toFixed(2)}:1 against the ${name}`);
+      }
+    }
+    root.classList.toggle("dark", wasDark);
+    const active = bar.querySelector<HTMLElement>(
+      '.tab-item:has([role="tab"][aria-selected="true"])',
+    );
+    const gap = active
+      ? bar.getBoundingClientRect().bottom - active.getBoundingClientRect().bottom
+      : 0;
+    if (gap > 0.5)
+      found.push(`the active tab ends ${gap}px above the bar's edge, whose line runs under it`);
+    return found;
+  });
+  const other = page.locator('.tab-item:not(:has([role="tab"][aria-selected="true"]))').first();
+  if (await other.count()) {
+    await other.hover();
+    const [hovered, active] = await page.evaluate(() => [
+      getComputedStyle(document.querySelector(".tab-item:hover") ?? document.body).backgroundColor,
+      getComputedStyle(
+        document.querySelector('.tab-item:has([role="tab"][aria-selected="true"])') ??
+          document.body,
+      ).backgroundColor,
+    ]);
+    if (hovered === active) problems.push("a hovered tab looks like the active one");
+    await page.mouse.move(0, 0);
+  }
+  return problems.length ? problems.join("; ") : null;
 }
 
 /** Twelve tabs, as a window left open for a day, with `first` on screen (the active tab). */
@@ -1006,7 +1117,7 @@ export async function layout(c: Context, problems: string[]) {
         );
       }
     }
-    // Equal widths with 12 tabs and with 2, and 12 never under 80px.
+    // Widths that follow the title with 12 tabs and with 2, never under 80px.
     await openCrowded(c, { name: "hub" });
     const crowdedTabs = await tabWidthsProblem(c.page, 80);
     if (crowdedTabs)
@@ -1015,11 +1126,17 @@ export async function layout(c: Context, problems: string[]) {
     const fewTabs = await tabWidthsProblem(c.page, 80);
     if (fewTabs) problems.push(`${c.lang} ${viewport.width}x${viewport.height} 2 abas: ${fewTabs}`);
   }
-  // The tab strip starts at the same x whatever the crumbs say ("Hosts > alfa" is wider than "Settings").
+  // Which tab is open shows at a glance (#488), checked with two tabs at 1280x800.
+  await c.page.setViewportSize({ width: 1280, height: 800 });
+  await openCrowded(c, { name: "hub" }, 2);
+  const activeTab = await activeTabProblem(c.page);
+  if (activeTab) problems.push(`${c.lang} 1280x800 aba ativa: ${activeTab}`);
+  // The tab strip starts at the same x whatever the crumbs say ("Hosts > alfa" is wider than
+  // "Settings"); since #488 it has a row of its own over the area.
   const lefts: number[] = [];
   for (const [, route] of screens.filter(([n]) => n === "host" || n === "configuracoes")) {
     await open(c, route);
-    const box = await c.page.locator(".header-tabs").first().boundingBox();
+    const box = await c.page.locator(".tab-bar").first().boundingBox();
     if (box) lefts.push(Math.round(box.x));
   }
   if (new Set(lefts).size > 1) {
