@@ -1242,6 +1242,7 @@ export const en: Dictionary = {
     summary: "the session summary",
     webhook: "webhooks",
     bg: "background sessions",
+    autoUpdate: "automatic host updates",
   },
   daemonRefusal: {
     account_refresh_too_soon: "The account was read a moment ago: try again in {waitSeconds} s.",

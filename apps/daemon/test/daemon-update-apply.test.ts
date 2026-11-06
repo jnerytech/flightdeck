@@ -142,6 +142,18 @@ describe("daemon-update-apply", () => {
     ]);
   });
 
+  test("a host that got busy while the binary downloaded is not updated: nothing starts, the file is removed, and a later try goes through (#280)", async () => {
+    const { updates, calls, files } = updater(release());
+    const busy = await updates
+      .apply(true, { proceed: () => false })
+      .catch((e: FlightdeckError) => e);
+    expect((busy as FlightdeckError).reason).toBe("update_host_busy");
+    expect(files()).toEqual([]);
+    expect(calls.some((c) => c[0] === "systemd-run")).toBe(false);
+    expect(await code(updates.apply(true, { proceed: () => true }))).toBe("ok");
+    expect(calls.at(-1)?.[0]).toBe("systemd-run");
+  });
+
   test("Windows: tarefa de execução única Flightdeck\\update, que roda o update e se apaga", async () => {
     const { updates, calls, dataDir } = updater(release(), { platform: "win32" });
     expect(await code(updates.apply(true))).toBe("ok");

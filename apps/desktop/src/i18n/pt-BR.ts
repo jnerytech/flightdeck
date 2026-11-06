@@ -1237,6 +1237,7 @@ export const ptBR = {
     summary: "o resumo da sessão",
     webhook: "os webhooks",
     bg: "sessões em segundo plano",
+    autoUpdate: "atualização automática do host",
   },
   daemonRefusal: {
     account_refresh_too_soon: "A conta foi lida há pouco: tente de novo em {waitSeconds} s.",
