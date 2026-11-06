@@ -64,6 +64,11 @@ export interface SlotEnv {
   proc?: ProcReader;
   /** Stops a whole process group (SIGTERM to -pgid), for `--reap`. */
   terminateGroup?(pgid: number): void;
+  /**
+   * FLIGHTDECK_SLOT_DETACHED=1: the run was detached on purpose (nohup, setsid, a launcher that
+   * exits at once), so a gone parent does not make it give up its place (#236).
+   */
+  detached?: boolean;
 }
 
 export interface ProcReader {
@@ -73,8 +78,20 @@ export interface ProcReader {
   pgid(pid: number): number | null;
   /** The working folder of a process, or null when it cannot be read. */
   cwd(pid: number): string | null;
-  /** The command line of a process, arguments joined by spaces; "" when it cannot be read. */
-  cmdline(pid: number): string;
+  /** The arguments of a process, program first; empty when they cannot be read. */
+  cmdline(pid: number): string[];
+  /** Every live process of a process group. */
+  group(pgid: number): number[];
+}
+
+/** A slot process: bun or node running scripts/slot.ts, not a program that only names the file. */
+function isSlotProcess(argv: string[]): boolean {
+  const program = (argv[0] ?? "")
+    .split(/[\\/]/)
+    .pop()
+    ?.replace(/\.exe$/, "");
+  if (program !== "bun" && program !== "node") return false;
+  return argv.slice(1, 3).some((arg) => /(?:^|[\\/])scripts[\\/]slot\.ts$/.test(arg));
 }
 
 /** Text from a lock or waiter file, or from /proc, kept to one plain line: control characters become spaces. */
@@ -141,9 +158,17 @@ function readFlags(argv: string[]): SlotFlags | null {
   return flags;
 }
 
-/** The parent and the process group from a /proc/<pid>/stat line; null when it does not read. */
+/**
+ * The parent and the process group from a /proc/<pid>/stat line; null when it does not read. The
+ * command name sits in parentheses and may hold spaces or parentheses itself, so the fields start
+ * after the last ")".
+ */
 export function parseStat(text: string): { ppid: number; pgid: number } | null {
-  return text ? null : null;
+  const close = text.lastIndexOf(")");
+  if (close < 0) return null;
+  const [, ppid = "", pgid = ""] = text.slice(close + 2).split(" ");
+  if (!/^\d+$/.test(ppid) || !/^\d+$/.test(pgid)) return null;
+  return { ppid: Number(ppid), pgid: Number(pgid) };
 }
 
 export function parseArgs(argv: string[]): SlotArgs {
@@ -371,6 +396,8 @@ export function cancel(env: SlotEnv): number {
  */
 export function reap(env: SlotEnv): number {
   let reaped = 0;
+  // Two orphan waiters of one group are stopped by one signal to it.
+  const stopped = new Set<number>();
   for (const path of env.fs.list(`${env.path}.wait.`)) {
     const waiter = parseHolder(env.fs.read(path));
     if (!waiter || !env.alive(waiter.pid)) {
@@ -379,8 +406,11 @@ export function reap(env: SlotEnv): number {
     }
     const group = env.proc ? reapableGroup(env, env.proc, path, waiter.pid) : null;
     if (group === null) continue;
-    if (env.terminateGroup) env.terminateGroup(group);
-    else env.terminate(waiter.pid);
+    if (!stopped.has(group)) {
+      stopped.add(group);
+      if (env.terminateGroup) env.terminateGroup(group);
+      else env.terminate(waiter.pid);
+    }
     env.fs.remove(path);
     env.log(`reaped ${describeHolder(waiter, env.now())}`);
     reaped += 1;
@@ -391,17 +421,21 @@ export function reap(env: SlotEnv): number {
 
 /**
  * The process group to stop for a waiter file, or null when it names no slot waiter that may be
- * stopped: the file's name carries its pid, the pid is above 1 with parent pid 1, its command line
- * runs scripts/slot.ts (a pid reused by another program is left alone), and its group, read once
- * right before the kill, is above 1 and not the reaper's own.
+ * stopped: the file's name carries its pid, the pid is above 1, its group, read once right before
+ * the kill, is above 1 and not the reaper's own, and every member of that group is an orphan slot
+ * process (parent pid 1, bun or node running scripts/slot.ts) other than the holder. So a group
+ * shared with the holder, a shell or a live run is never stopped (#388 review).
  */
 function reapableGroup(env: SlotEnv, proc: ProcReader, path: string, pid: number): number | null {
   if (!Number.isInteger(pid) || pid <= 1 || path !== waiterPath(env, pid)) return null;
-  if (proc.ppid(pid) !== 1) return null;
-  if (!/(?:^|[\s/\\])scripts[\\/]slot\.ts\b/.test(proc.cmdline(pid))) return null;
   const group = proc.pgid(pid);
   if (group === null || group <= 1 || group === proc.pgid(env.pid)) return null;
-  return group;
+  const holder = parseHolder(env.fs.read(env.path))?.pid;
+  const members = proc.group(group);
+  if (!members.includes(pid)) return null;
+  const orphanWaiter = (member: number) =>
+    member !== holder && proc.ppid(member) === 1 && isSlotProcess(proc.cmdline(member));
+  return members.every(orphanWaiter) ? group : null;
 }
 
 /**
@@ -465,7 +499,9 @@ export async function run(env: SlotEnv, argv: string[]): Promise<number> {
     // A waiter whose launching shell is gone would hold its place for nobody: it gives up (#236).
     const parent = env.proc?.ppid(env.pid) ?? null;
     const orphaned = () =>
-      parent !== null && (parent <= 1 || !env.alive(parent) || env.proc?.ppid(env.pid) !== parent);
+      !env.detached &&
+      parent !== null &&
+      (parent === 1 || !env.alive(parent) || env.proc?.ppid(env.pid) !== parent);
     if (orphaned()) {
       env.log(ORPHANED);
       return 1;
