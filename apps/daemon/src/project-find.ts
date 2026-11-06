@@ -80,7 +80,7 @@ async function scanRoot(state: ScanState, root: string, depth: number): Promise<
         break;
       }
       state.opened++;
-      next.push(...(await openFolder(state, dir, root)));
+      next.push(...(await openFolder(state, dir, root))); // NOSONAR: folders are opened in order, so the cap cuts the same ones every time
     }
     level = next;
   }

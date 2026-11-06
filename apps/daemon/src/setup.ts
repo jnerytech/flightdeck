@@ -1,5 +1,6 @@
 import { access, chmod, copyFile, mkdir, readFile } from "node:fs/promises";
 import { dirname, posix, resolve, win32 } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { loadConfig, updateConfigFile } from "./config.ts";
 import { compareVersions, swapBinary } from "./update.ts";
 import { WSL_PORT_OFFSET } from "./wsl-host.ts";
@@ -137,11 +138,11 @@ export function createPrompt(
 /** The folders of `--yes` mode: the ones given plus the config's, each one checked. */
 async function yesFolders(deps: SetupDeps, current: string[], given: string[]): Promise<string[]> {
   const roots = [...current];
-  for (const answer of given) {
+  await inSequence(given, async (answer) => {
     const { path, error } = await checkFolder(deps, answer);
     if (error) throw new Error(error);
     add(deps, roots, path);
-  }
+  });
   if (!roots.length) throw new Error("no project folder: pass --folders <a,b>");
   return roots;
 }
