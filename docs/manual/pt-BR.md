@@ -2847,7 +2847,8 @@ Authenticode (veja [Instalação](#pelos-binários-da-release)).
   - procura a versão nova ao abrir e a cada 6 h, no `latest.json` da última release;
   - com **Atualizar automaticamente** ligado (o padrão), baixa a versão nova em segundo plano,
     confere a assinatura e então mostra a faixa "O Flightdeck X está pronto. Reinicie para
-    atualizar." com **Reiniciar agora** e **Depois**. Nada reinicia sozinho (#280);
+    atualizar." com **Reiniciar agora** e **Depois**. Nada reinicia sozinho (#280). Sair pela
+    bandeja com uma versão baixada a instala na saída, sem abrir o app de novo (#402);
   - com ele desligado, a faixa diz "Flightdeck X disponível", com as notas, **Instalar e
     reiniciar** e **Depois**, como antes;
   - assinatura inválida ou download quebrado aparecem na faixa, e nada é instalado; um download que

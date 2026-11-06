@@ -612,6 +612,31 @@ fn tray_set_menu(
     Ok(())
 }
 
+/// Issue #402: how long Quit waits for the app (it may be installing a downloaded update) before
+/// the shell exits anyway. An emit succeeds even with no page listening (before the app has started,
+/// or after it crashed), so this wait is also what such a Quit costs: kept short.
+const QUIT_GRACE: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// The tray's Quit: the app is asked first and calls `quit_now` when it is done; if the event cannot
+/// be sent at all the shell exits at once, and otherwise after `QUIT_GRACE` at the latest.
+fn request_quit(app: &tauri::AppHandle) {
+    if app.emit("quit-requested", ()).is_err() {
+        app.exit(0);
+        return;
+    }
+    let handle = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(QUIT_GRACE);
+        handle.exit(0);
+    });
+}
+
+/// Issue #402: the app finished what Quit asked of it (an update installed, or nothing to do).
+#[tauri::command]
+fn quit_now(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
 /// Approve and deny go to the frontend, which answers without showing the window; open shows it.
 fn on_tray_action(app: &tauri::AppHandle, id: &str) {
     let Some((action, key)) = id
@@ -735,7 +760,7 @@ fn build_tray(app: &tauri::App) -> tauri::Result<TrayState> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "open" => bring_to_front(app),
-            "quit" => app.exit(0),
+            "quit" => request_quit(app),
             id => on_tray_action(app, id),
         })
         .on_tray_icon_event(|tray, event| {
@@ -839,7 +864,8 @@ pub fn run() {
             set_close_to_tray,
             focus_main,
             terminal_probe,
-            terminal_open
+            terminal_open,
+            quit_now
         ])
         .run(tauri::generate_context!())
         .expect("error while running Flightdeck");
