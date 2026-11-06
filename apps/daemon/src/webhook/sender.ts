@@ -81,6 +81,8 @@ const isLoopback = (address: string): boolean => {
 const LOOPBACK_NAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const MAX_BODY = 100_000;
 const HEADER_OK = /^(?:content-type|x-flightdeck-[a-z0-9-]+)$/i;
+/** An ntfy access token (#263): the one `Authorization` that goes out, and only in this shape. */
+const BEARER = /^Bearer [A-Za-z0-9_-]{1,200}$/;
 // biome-ignore lint/suspicious/noControlCharactersInRegex: header values must not carry control characters
 const CONTROL = /[\u0000-\u001f\u007f]/;
 
@@ -108,7 +110,8 @@ export class WebhookSender {
   private async check(request: WebhookRequest): Promise<string | null> {
     if (Buffer.byteLength(request.body) > MAX_BODY) return "body_too_large";
     for (const [name, value] of Object.entries(request.headers)) {
-      if (!HEADER_OK.test(name) || CONTROL.test(value)) return "bad_header";
+      const allowed = /^authorization$/i.test(name) ? BEARER.test(value) : HEADER_OK.test(name);
+      if (!allowed || CONTROL.test(value)) return "bad_header";
     }
     let url: URL;
     try {
