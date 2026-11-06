@@ -74,3 +74,17 @@ ADR 40-3 and the earlier phase 40 entries, frozen. These cover the crate `flight
   part wraps the text with its context; the refusal still names the text's cap of 100 000.
   `REASONS` in the crate's `lib.rs` lists every reason the crate refuses with, and the UI branch
   checks each against `ASSISTANT_REASONS`.
+- **What the commands' guards are for (review of 2026-11-06).** The vault check takes its ids from
+  the webview, so it guards against a person's accident (a secret pasted into the text), not a
+  compromised webview, which can already read a vault value through `vault_get`. The same holds
+  for `denyDataCollection` (on by default in the app) and for `vault_hits`, which answers only
+  whether a text holds a value. A request id, in `assistant_run` and `assistant_cancel` alike,
+  must be 1 to 64 characters of `[A-Za-z0-9._:-]`. More than 200 vault ids is
+  `assistant_bad_output`. The limits are taken after the key and the vault check, so a refusal
+  that sends nothing spends no call of the bucket. A saved or deleted key drops that provider's
+  model list. Tauri itself refuses a malformed argument with a plain string before a command
+  runs, so the platform layer maps any rejection that is not an object to
+  `assistant_bad_output`. In a release build (`panic = "abort"`) a panic in a call ends the app;
+  `assistant_bad_output` for a panicking task holds only in tests and debug builds, so the code
+  of a call keeps to the no-`unwrap` rule, and `tauri-release` now scans every Rust file of the
+  app and of the crate.
