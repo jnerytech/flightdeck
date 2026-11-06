@@ -156,12 +156,25 @@ describe("desktop: interface", () => {
     await newSession("olá");
     await waitFor(() => expect(screen.getAllByText("ociosa").length).toBeGreaterThan(0));
     await waitFor(() => expect(screen.getByLabelText("Modelo")).toBeTruthy());
+    const chip = () => screen.getByRole("button", { name: /^Modo de permissão:/ });
+    const openChip = async () =>
+      act(async () => {
+        fireEvent.pointerDown(chip(), { button: 0, ctrlKey: false, pointerType: "mouse" });
+        fireEvent.click(chip());
+      });
+    await openChip();
     await act(async () => {
-      fireEvent.change(screen.getByLabelText("Modo de permissão"), { target: { value: "plan" } });
+      fireEvent.click(screen.getByRole("menuitemradio", { name: /^Planejar/ }));
       fireEvent.change(screen.getByLabelText("Modelo"), { target: { value: "opus" } });
     });
     await waitFor(() => expect(runtime.modes).toEqual(["plan"]));
     await waitFor(() => expect(runtime.models).toEqual(["opus"]));
+    // The host does not allow bypass: the menu says so and leads to the host's page, where the switch is.
+    await openChip();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "Ligue nas configurações do host" }));
+    });
+    await waitFor(() => expect(screen.getByText("Sessões sem pedidos de permissão")).toBeTruthy());
   });
 
   test("card de aprovação com diff: permitir e negar com motivo", async () => {
