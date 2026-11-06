@@ -4,6 +4,7 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions, NativeSelect } from "@/components/layout/form";
 import { Page } from "@/components/layout/page";
 import { Panel } from "@/components/layout/panel";
+import { NotificationPrefs } from "@/components/notifications/notification-prefs";
 import { DiagnosticsPanel } from "@/components/settings/diagnostics-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -277,6 +278,19 @@ export const Settings = memo(function Settings(props: {
             {t("setup.restore")}
           </label>
         </Panel>
+      ),
+    },
+    {
+      id: "notifications",
+      label: t("prefs.notifications"),
+      words: t("settingsRail.words.notifications"),
+      node: (
+        <NotificationPrefs
+          store={props.store}
+          hosts={state.hosts}
+          projects={state.projects}
+          t={t}
+        />
       ),
     },
     ...(settings.updaterSupported

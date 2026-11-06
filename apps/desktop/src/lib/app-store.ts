@@ -51,6 +51,7 @@ import type {
   SettableMode,
   Snippet,
   SshTarget,
+  TeamInfo,
   TeamsUpdatedFrame,
   TerminalInfo,
   VaultRequestFrame,
@@ -71,7 +72,6 @@ import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key, type T } from "../i18n/index.ts";
 import type {
   AppUpdate,
-  Notification,
   Platform,
   TrayAction,
   TrayStatus,
@@ -122,20 +122,26 @@ import {
 } from "./hub.ts";
 import {
   addEntry,
-  type InboxAbout,
   type InboxEntry,
   loadInbox,
   markAllRead,
   markRead,
+  markUnread,
   saveInbox,
   unreadRows,
 } from "./inbox.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
 import { sameNotice } from "./notice-lifetime.ts";
-import { externalRequestNotification, summaryNotifications } from "./notify.ts";
+import {
+  type AboutNotification,
+  externalRequestNotification,
+  summaryNotifications,
+} from "./notify.ts";
+import { decide, NotifyPreferences, type NotifySource } from "./notify-policy.ts";
+import { browserSound, playNotifySound } from "./notify-sound.ts";
 import { pairingErrorText } from "./pairing-text.ts";
-import { basename } from "./paths.ts";
+import { basename, isInside } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
 import { isHot } from "./quota.ts";
@@ -886,6 +892,16 @@ export class AppStore {
   private noticeSeq = 0;
   /** Quota windows already notified, by host, window and reset. */
   private readonly quotaNotified = new Set<string>();
+  /** The sessions that belong to a team, by session key (issue #149: workers are folded). */
+  private readonly teamOf = new Map<
+    string,
+    { hostId: string; team: string; name: string; worker: boolean }
+  >();
+  /** Workers' finished turns waiting to be folded into one message per team. */
+  private readonly folding = new Map<
+    string,
+    { name: string; hostId: string; items: Array<{ n: AboutNotification; source: NotifySource }> }
+  >();
   private readonly historyListeners = new Set<(hostId: string, change: HistoryChanged) => void>();
   /** Who watches each review target's diff (phase 11), by `hostId|target`. */
   private readonly terminalListeners = new Map<string, Set<TerminalListener>>();
@@ -966,6 +982,7 @@ export class AppStore {
       browserClockDeps(() => this.now(), typeof document === "undefined" ? undefined : document),
     );
     this.tabOrder = new TabOrderController(platform.storage);
+    this.notifyPrefs = new NotifyPreferences(platform.storage);
     this.i18n = new I18n(platform);
     this.appLog = new AppLog({ sink: platform.logs, values: () => this.scanValues() });
     this.i18n.subscribe(() => this.onLanguage());
@@ -1050,6 +1067,11 @@ export class AppStore {
   readonly clock: SharedClock;
   /** How Ctrl+Tab orders the tabs (issue #148). */
   readonly tabOrder: TabOrderController;
+  /** What the person chose about notifications: events, mutes, team folding, sound (issue #149). */
+  readonly notifyPrefs: NotifyPreferences;
+  /** Plays the notification sound; tests replace it. */
+  soundPlayer: () => void = () =>
+    playNotifySound(this.notifyPrefs.value.sound, this.notifyPrefs.soundFile(), browserSound());
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
   /** The app's log: what happens to hosts, refusals and updates goes through it (issue #255). */
@@ -1471,11 +1493,15 @@ export class AppStore {
 
   /** Sends an OS notification and keeps it in the notification center. */
   private notifyUser(
-    notification: Notification & { about?: InboxAbout },
+    notification: AboutNotification,
     route?: Route,
     fallbackUrl?: string | null,
+    source?: NotifySource,
   ): void {
-    const { about, ...n } = notification;
+    const { about, event, ...n } = notification;
+    const prefs = this.notifyPrefs.value;
+    const decision = decide(prefs, source ?? { event: event ?? "other" }, this.now());
+    if (!decision.bell && !decision.os) return;
     const entry: InboxEntry = {
       id: crypto.randomUUID(),
       at: new Date().toISOString(),
@@ -1489,8 +1515,9 @@ export class AppStore {
       ...(about?.group ? { group: about.group } : {}),
       read: false,
     };
-    this.setInbox(addEntry(this.state.inbox, entry));
-    void this.platform.notify(n);
+    if (decision.bell) this.setInbox(addEntry(this.state.inbox, entry));
+    if (decision.os) void this.platform.notify(n);
+    if (decision.sound && prefs.sound.mode !== "off") this.soundPlayer();
   }
 
   /** The bell's unread count as a taskbar badge, told only when it changes. */
@@ -1514,6 +1541,40 @@ export class AppStore {
     this.update({ inbox });
     this.syncBadge();
     saveInbox(this.platform.storage, inbox);
+  }
+
+  /** Sends a notification of the app's own and says whether the system showed it. */
+  async sendTestNotification(): Promise<"delivered" | "blocked"> {
+    const { t } = this.i18n;
+    const shown = await this.platform.notify({
+      title: t("notify.testTitle"),
+      body: t("notify.testBody"),
+    });
+    if (shown) this.soundPlayer();
+    return shown ? "delivered" : "blocked";
+  }
+
+  /** Remembers which sessions are workers of which team, for folding their notifications. */
+  rememberTeam(hostId: string, team: TeamInfo): void {
+    for (const [key, known] of this.teamOf) {
+      if (known.hostId === hostId && known.team === team.id) this.teamOf.delete(key);
+    }
+    if (team.state === "closed") return;
+    for (const member of team.members) {
+      if (!member.sessionId) continue;
+      this.teamOf.set(sessionKey(hostId, member.sessionId), {
+        hostId,
+        team: team.id,
+        name: team.name,
+        worker: member.role === "worker",
+      });
+    }
+  }
+
+  /** Marks entries unread again, for the person to come back to. */
+  inboxMarkUnread(ids: string | string[]): void {
+    const wanted = new Set(typeof ids === "string" ? [ids] : ids);
+    this.setInbox([...wanted].reduce((list, id) => markUnread(list, id), this.state.inbox));
   }
 
   /** Marks entries read: the one of a click, or every entry a collapsed row stands for. */
@@ -2854,6 +2915,7 @@ export class AppStore {
       },
       // Phase 19: a security warning stays on screen until closed, and the OS shows it too.
       onTeams: (frame) => {
+        this.rememberTeam(config.id, frame.team);
         for (const listener of this.teamListeners) listener(config.id, frame);
         if (frame.reason) {
           this.notifyUser(
@@ -3009,6 +3071,13 @@ export class AppStore {
     }
     if (hasFeature(hostInfo?.features, "teams", false)) {
       void conn.request("teams.watch", {}).catch(() => null);
+      // The sessions that belong to teams, so the workers' notifications can be folded.
+      void conn
+        .request("teams.list", {})
+        .then((result) => {
+          for (const team of result.teams) this.rememberTeam(hostId, team);
+        })
+        .catch(() => null);
     }
     if (hasFeature(hostInfo?.features, "messaging", false)) {
       void conn.request("messages.watch", {}).catch(() => null);
@@ -3144,14 +3213,88 @@ export class AppStore {
     const focused = this.platform.isFocused();
     const t = this.i18n.t;
     const names = { subject: next.name ?? basename(next.cwd), host: host.name, group: key };
+    const project = this.sessionProject(hostId, next.cwd);
+    const team = this.teamOf.get(key);
     for (const n of summaryNotifications(prev, next, label, focused, linkFor, t, names)) {
+      const source: NotifySource = {
+        event: n.event ?? "other",
+        hostId,
+        session: key,
+        ...(project ? { project } : {}),
+        ...(team?.worker ? { worker: true } : {}),
+      };
+      // A worker's finished turn waits a moment to be told with its team's others.
+      if (team && decide(this.notifyPrefs.value, source, this.now()).fold) {
+        this.foldWorker(`${hostId}/${team.team}`, team.name, hostId, { n, source });
+        continue;
+      }
       // A request's entry keeps its session too: once answered, the bell opens it at that request.
       const requestId = n.link ? parseRequestLink(n.link)?.requestId : undefined;
       this.notifyUser(
         n,
         requestId ? { name: "session", host: hostId, id: next.id, focus: requestId } : undefined,
+        undefined,
+        source,
       );
     }
+  }
+
+  /** `hostId/projectId` of the project whose folder holds `cwd`, if any. */
+  private sessionProject(hostId: string, cwd: string | null | undefined): string | undefined {
+    const project = cwd
+      ? (this.state.projects[hostId] ?? []).find((p) => isInside(cwd, p.path))
+      : undefined;
+    return project ? `${hostId}/${project.id}` : undefined;
+  }
+
+  /** How long workers of one team finishing are gathered into one message. */
+  private static readonly FOLD_MS = 10_000;
+
+  private foldWorker(
+    teamKey: string,
+    name: string,
+    hostId: string,
+    item: { n: AboutNotification; source: NotifySource },
+  ): void {
+    const pending = this.folding.get(teamKey);
+    if (pending) {
+      pending.items.push(item);
+      return;
+    }
+    this.folding.set(teamKey, { name, hostId, items: [item] });
+    this.later(() => this.flushFold(teamKey), AppStore.FOLD_MS);
+  }
+
+  private flushFold(teamKey: string): void {
+    const pending = this.folding.get(teamKey);
+    this.folding.delete(teamKey);
+    const [first] = pending?.items ?? [];
+    if (!pending || !first) return;
+    if (pending.items.length === 1) {
+      // Alone, a worker is told as itself (not folded: it has nothing to fold with).
+      this.notifyUser(first.n, undefined, undefined, { ...first.source, worker: false });
+      return;
+    }
+    const t = this.i18n.t;
+    this.notifyUser(
+      {
+        event: "turn-finished",
+        title: t("notify.teamDone", { team: pending.name, n: pending.items.length }),
+        body: t("notify.teamDoneBody"),
+        about: {
+          subject: pending.name,
+          host: first.n.about?.host ?? pending.hostId,
+          group: teamKey,
+        },
+      },
+      { name: "teams", host: pending.hostId, team: teamKey.split("/")[1] ?? "" },
+      undefined,
+      {
+        event: "turn-finished",
+        hostId: pending.hostId,
+        ...(first.source.project ? { project: first.source.project } : {}),
+      },
+    );
   }
 
   /** The sessions an area shows right now (the active tab of each area), by session key. */
@@ -3219,8 +3362,24 @@ export class AppStore {
           },
           this.i18n.t,
         ),
+        undefined,
+        undefined,
+        {
+          event: "needs-you",
+          hostId,
+          session: sessionKey(hostId, frame.claudeSessionId),
+          ...this.projectOf(
+            hostId,
+            this.state.externals[sessionKey(hostId, frame.claudeSessionId)]?.cwd,
+          ),
+        },
       );
     }
+  }
+
+  private projectOf(hostId: string, cwd: string | null | undefined): { project?: string } {
+    const project = this.sessionProject(hostId, cwd);
+    return project ? { project } : {};
   }
 
   /** A terminal session's name for a notification: the one given to it, else its folder or its id. */
@@ -3268,6 +3427,8 @@ export class AppStore {
           body: t("notify.quotaBody", { host: host.name, window: label, percent }),
         },
         { name: "host", host: hostId },
+        undefined,
+        { event: "budget-quota", hostId },
       );
     }
   }
@@ -3698,6 +3859,8 @@ export class AppStore {
           }),
         },
         { name: "costs", client: clientId },
+        undefined,
+        { event: "budget-quota" },
       );
     }
   }
@@ -3962,6 +4125,11 @@ export class AppStore {
           ? { name: "card", host: hostId, projectId: card.projectId, cardId: card.id }
           : undefined,
         card?.prUrl,
+        {
+          event: "pr-watch",
+          hostId,
+          ...(card ? { project: `${hostId}/${card.projectId}` } : {}),
+        },
       );
     }
   }
@@ -4417,6 +4585,7 @@ export class AppStore {
         what: free ? "run_with_secret" : item.toolName,
         host: item.hostName,
       }),
+      event: "needs-you",
     });
     return new Promise((resolve) => {
       // Phase 19: unanswered when the daemon gives up on it, it is denied and leaves the queue.
@@ -4491,6 +4660,8 @@ export class AppStore {
         host: hostId,
         ...(update.budget.projectKey ? { projectKey: update.budget.projectKey } : {}),
       },
+      undefined,
+      { event: "budget-quota", hostId },
     );
   }
 
