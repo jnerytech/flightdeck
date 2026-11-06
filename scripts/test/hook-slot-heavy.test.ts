@@ -58,6 +58,38 @@ describe("guard: a worker session's full coverage run holds the slot for what CI
     expect(heavyRunWaived("bun run test:related -- --fast")).toBe(false);
   });
 
+  test("#687: the override counts only as an env prefix of the heavy run itself, never elsewhere in the command", () => {
+    for (const command of [
+      'FLIGHTDECK_SLOT_HEAVY="the full gate" bun run typecheck && bun run test:related',
+      "echo FLIGHTDECK_SLOT_HEAVY=reason; bun run test:related",
+      "bun run test:related # FLIGHTDECK_SLOT_HEAVY=reason",
+      'git commit -m "FLIGHTDECK_SLOT_HEAVY=reason" && bun run test:related',
+      "bun run test:related FLIGHTDECK_SLOT_HEAVY=reason",
+      // An escaped quote does not end the string: its ; is no separator.
+      'git commit -m "a \\"quote\\"; FLIGHTDECK_SLOT_HEAVY=reason bun run x" && bun run test:related',
+      // An escaped quote outside quotes opens no string: the ; still splits.
+      'FLIGHTDECK_SLOT_HEAVY=\\"reason-long; bun run test:related',
+    ]) {
+      expect(worker(command) ?? `allowed: ${command}`).toContain("holds the slot");
+      expect(heavyRunWaived(command)).toBe(false);
+    }
+    for (const command of [
+      "cd ../flightdeck-x && FLIGHTDECK_SLOT_HEAVY='the full gate' bun run slot -- bun run test:related",
+      'CI=1 FLIGHTDECK_SLOT_HEAVY="every desktop test reaches the store" bun run test:related',
+      'env FLIGHTDECK_SLOT_HEAVY="the full gate" bun run test:related',
+    ]) {
+      expect(worker(command)).toBeNull();
+      expect(heavyRunWaived(command)).toBe(true);
+    }
+  });
+
+  test("#687: a placeholder is no reason either (0, no, false, n, -, x)", () => {
+    for (const value of ["0", "no", "false", "n", "-", "x"]) {
+      const why = worker(`FLIGHTDECK_SLOT_HEAVY=${value} bun run test:related`) ?? "";
+      expect(why).toContain("give the reason as the value");
+    }
+  });
+
   test("an override with no reason (1, true) is refused, and says to give the reason", () => {
     for (const value of ["1", "true", '""']) {
       const why = worker(`FLIGHTDECK_SLOT_HEAVY=${value} bun run test:related`) ?? "";
