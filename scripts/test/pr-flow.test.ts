@@ -245,6 +245,19 @@ describe("pr-flow: the pure parts", () => {
     const skipped = green().map((r) => ({ ...r, conclusion: "skipped" }));
     expect(checksVerdict(REQUIRED, skipped, []).green).toBe(true);
   });
+
+  test("a commit status stands in for a missing run: pending waits, any other state that is not success fails", () => {
+    const noSonar = green().filter((r) => r.name !== "SonarCloud Code Analysis");
+    const status = (state: string) => [{ context: "SonarCloud Code Analysis", state }];
+    expect(checksVerdict(REQUIRED, noSonar, status("pending"))).toMatchObject({
+      green: false,
+      pending: ["SonarCloud Code Analysis"],
+    });
+    expect(checksVerdict(REQUIRED, noSonar, status("failure"))).toMatchObject({
+      green: false,
+      failing: ["SonarCloud Code Analysis"],
+    });
+  });
 });
 
 describe("pr-flow: open", () => {
