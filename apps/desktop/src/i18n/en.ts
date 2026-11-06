@@ -2122,6 +2122,15 @@ export const en: Dictionary = {
     install: "Install and restart",
     later: "Later",
   },
+  hostAutoUpdate: {
+    label: "Update this host automatically",
+    off: "Off: this host updates only when you choose to.",
+    current: "On: this host updates by itself when a new version is out, never during a session.",
+    waiting: "Version {version} is ready and waits until no session or run is going on this host.",
+    started: "Updating this host to {version}…",
+    failed:
+      "The update to {version} did not go through: {reason}. The host kept its version and tries again at the next check.",
+  },
   daemonUpdate: {
     failed: "The daemon update did not finish: {reason}. On the host, with the new binary:",
     binary: "<new binary>",
