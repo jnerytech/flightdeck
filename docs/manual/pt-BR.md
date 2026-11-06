@@ -2769,7 +2769,10 @@ numa aba, sem SSH.
   de enviá-lo (o mesmo que `Alt+Enter`). Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
   atual em outra cor e sua posição ("2 de 5") ao lado da caixa; Enter ou **Próximo resultado**
   vai para o próximo, Shift+Enter ou **Resultado anterior** para o anterior, Esc ou **Fechar
-  busca** fecha. Links na saída abrem no navegador (só `http` e `https`). A fonte é a
+  busca** fecha. Links na saída abrem no navegador (só `http` e `https`). Caminhos de arquivo na
+  saída também são links: os absolutos (`C:\repo\a.md`, `/home/ana/x.log`) e os relativos com pasta
+  e extensão (`src/app.ts:12`), lidos a partir da pasta do terminal. Num host deste computador o
+  clique mostra o arquivo na pasta (nunca o abre nem o executa); em outro host copia o caminho. A fonte é a
   monoespaçada do sistema; o tamanho fica nas Configurações (**Tamanho da fonte do terminal**, de
   10 a 24). A aba guarda as últimas 10.000 linhas para rolar e buscar.
 - **Desanexar e reabrir:** o terminal sobrevive ao app: guarda os últimos 2 MB de saída, e anexar

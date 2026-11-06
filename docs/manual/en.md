@@ -2770,7 +2770,11 @@ tab, with no SSH.
   `Alt+Enter`). Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
   in another color and its position ("2 of 5") beside the box; Enter or **Next match** goes to
   the next one, Shift+Enter or **Previous match** to the previous, Esc or **Close search**
-  closes. Links in the output open in the browser (`http` and `https` only). The font is the
+  closes. Links in the output open in the browser (`http` and `https` only). File paths in the
+  output are links too: absolute ones (`C:\repo\a.md`, `/home/ana/x.log`) and relative ones with a
+  folder and an extension (`src/app.ts:12`), taken from the terminal's folder. On a host of this
+  computer a click shows the file in its folder (it never opens or runs it); on another host it
+  copies the path. The font is the
   system monospace; its size is in Settings (**Terminal font size**, 10 to 24). The tab keeps
   the last 10,000 lines to scroll back to and to search.
 - **Detach and reopen:** a terminal survives the app: it keeps the last 2 MB of output, and

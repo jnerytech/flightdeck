@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
+import { resolvePath } from "../lib/terminal-paths.ts";
 import { TerminalSession, type TerminalState } from "../lib/terminal-session.ts";
 import { isWindowsHost, TERMINAL_FONT_FAMILY, terminalTheme } from "../lib/terminal-view.ts";
 import { useStoreState } from "../lib/use-store.ts";
@@ -74,6 +75,11 @@ export function TerminalPage(
       const deps = props.deps ?? (await import("../lib/xterm-deps.ts")).realXtermDeps;
       if (!alive || !parent) return;
       const host = store.terminalHost(hostId);
+      // The terminal's folder, for the relative paths of its output: known once the list answers.
+      let folderKnown: (cwd: string | null) => void = () => {};
+      const folder = new Promise<string | null>((resolve) => {
+        folderKnown = resolve;
+      });
       const xterm = createXtermScreen(deps, {
         theme: terminalTheme(store.theme.resolved),
         fontSize: store.terminalFont.value,
@@ -91,6 +97,7 @@ export function TerminalPage(
         onFindResults: setResults,
         onLink: (uri) => store.openLink(uri),
         onSnippets: () => setPicking(true),
+        onPath: (path) => void showPath(store, hostId, path, folder),
       });
       const current = new TerminalSession({
         terminalId,
@@ -117,6 +124,7 @@ export function TerminalPage(
       await current.start();
       // A "Claude aqui" terminal carries the launch its session in the central also carries.
       const info = (await host.list().catch(() => [])).find((t) => t.terminalId === terminalId);
+      folderKnown(info?.cwd ?? null);
       if (alive) setLaunchId(info?.launchId ?? null);
     })();
     return () => {
@@ -322,6 +330,23 @@ export function TerminalPage(
 }
 
 /** Closing a terminal: detach (the default; the process keeps running on the host) or end it. */
+/**
+ * A path clicked in a terminal's output (#476): on a host of this computer the file is shown in its
+ * folder, never opened or run (the app's own checks refuse links, `..` and shares); on another
+ * host the path is copied. A relative path is taken from the terminal's folder.
+ */
+async function showPath(
+  store: AppStore,
+  hostId: string,
+  path: string,
+  folder: Promise<string | null>,
+): Promise<void> {
+  const cwd = await folder;
+  const full = cwd ? resolvePath(cwd, path) : path;
+  if (store.canOpenPaths(hostId)) await store.revealPath(hostId, full);
+  else await store.copyText(full);
+}
+
 export function TerminalCloseDialog(props: Readonly<{ onClose(kill: boolean | null): void }>) {
   const t = useT();
   const detach = useRef<HTMLButtonElement>(null);
