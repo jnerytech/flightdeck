@@ -468,21 +468,17 @@ const COVERAGE_SCRIPTS: Record<string, string> = {
 };
 
 /**
- * The coverage script a command starts at word `i`, with its arguments: `bun run [flags] <name>`,
- * `bun [flags] <name>` (bun's shorthand) or `npm run <name>`, where the name is the package script
- * or its file (#687).
+ * The coverage script a command starts at word `i`, with its arguments: `bun [run] [flags] <name>`
+ * (with bun's shorthand) or `npm run <name>`, where the name is the package script or its file
+ * (#687). It takes the first such name before a `--`, so a flag's value (`--cwd dir`) hides nothing.
  */
 function coverageScriptAt(words: string[], i: number): { script: string; args: string[] } | null {
-  let at = i + 1;
-  if (words[i] === "npm") {
-    if (words[at] !== "run") return null;
-    at++;
-  } else if (words[i] === "bun") {
-    if (words[at] === "run") at++;
-  } else return null;
-  while (words[at]?.startsWith("-")) at++;
-  const script = COVERAGE_SCRIPTS[(words[at] ?? "").replace(/^\.\//, "")];
-  return script ? { script, args: words.slice(at + 1) } : null;
+  if (words[i] !== "bun" && !(words[i] === "npm" && words[i + 1] === "run")) return null;
+  for (let at = i + 1; at < words.length && words[at] !== "--"; at++) {
+    const script = COVERAGE_SCRIPTS[(words[at] as string).replace(/^\.\//, "")];
+    if (script) return { script, args: words.slice(at + 1) };
+  }
+  return null;
 }
 
 /**
@@ -495,11 +491,13 @@ function heavyRuns(command: string): Array<{ what: string; override: string | un
   const runs: Array<{ what: string; override: string | undefined }> = [];
   for (const segment of rawSegments(command)) {
     const words = shellWords(segment);
-    const found = words.map((_, i) => coverageScriptAt(words, i)).find((run) => run !== null);
-    if (!found) continue;
+    const start = words.findIndex((_, i) => coverageScriptAt(words, i) !== null);
+    if (start < 0) continue;
+    const found = coverageScriptAt(words, start) as { script: string; args: string[] };
     const override = prefixAssignment(segment, "FLIGHTDECK_SLOT_HEAVY");
-    // The script's own check reads its environment, which an inline assignment sets (#687).
-    if (prefixAssignment(segment, "FLIGHTDECK_COORDINATOR") !== undefined) {
+    // The script's own check reads its environment, which an assignment in the command sets, in
+    // front of it or after a wrapper such as `env` or `slot --` (#687).
+    if (words.slice(0, start).some((word) => word.startsWith("FLIGHTDECK_COORDINATOR="))) {
       runs.push({
         what: `FLIGHTDECK_COORDINATOR set in the command (only the coordinator's own environment marks the coordinator) with ${found.script}`,
         override,
@@ -512,15 +510,17 @@ function heavyRuns(command: string): Array<{ what: string; override: string | un
   return runs;
 }
 
-/** How many test files `--tests` names: Infinity for a glob or a command's output (#687). */
+/** How many test files every `--tests` names: Infinity for a glob or a command's output (#687). */
 function testsGiven(args: string[]): number {
-  const joined = args.find((a) => a.startsWith("--tests="));
-  const from = args.indexOf("--tests");
-  const given = joined
-    ? joined.slice("--tests=".length).split(",")
-    : from < 0
-      ? []
-      : args.slice(from + 1).filter((a) => !a.startsWith("-"));
+  const given: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i] as string;
+    if (arg.startsWith("--tests=")) given.push(...arg.slice("--tests=".length).split(","));
+    if (arg !== "--tests") continue;
+    while (i + 1 < args.length && !(args[i + 1] as string).startsWith("-")) {
+      given.push(args[++i] as string);
+    }
+  }
   // * ? [ $ or ` stand for an unknown number of files, quoted or not: the script takes no glob.
   const unbounded = given.some((a) => /[*?[$`]/.test(a));
   return unbounded ? Number.POSITIVE_INFINITY : given.filter((a) => a !== "").length;
