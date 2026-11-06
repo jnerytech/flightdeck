@@ -561,7 +561,9 @@ jobs:
   screenshots-e2e:
     name: e2e journeys ${{ matrix.shard }}/3
     needs: [changes, quick]
-    if: needs.changes.outputs.screenshots == 'true'
+    # Off the PR path (#309): the journeys run on main, nightly and by hand; a PR gates on the
+    # unit and component tiers and the prints.
+    if: needs.changes.outputs.screenshots == 'true' && github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:
@@ -635,4 +637,9 @@ jobs:
           fi
           echo "prints: ${{ needs.screenshots-prints.result }}, e2e: ${{ needs.screenshots-e2e.result }}"
           test "${{ needs.screenshots-prints.result }}" = success
-          test "${{ needs.screenshots-e2e.result }}" = success
+          # The journeys skip a PR (#309); everywhere else they must pass.
+          if [ "${{ github.event_name }}" = pull_request ]; then
+            test "${{ needs.screenshots-e2e.result }}" = skipped
+          else
+            test "${{ needs.screenshots-e2e.result }}" = success
+          fi
