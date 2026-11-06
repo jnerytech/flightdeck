@@ -1,6 +1,6 @@
 import { realpath, stat } from "node:fs/promises";
-import { homedir } from "node:os";
 import { posix, resolve, win32 } from "node:path";
+import { userHome } from "./config.ts";
 import { FlightdeckError } from "./errors.ts";
 import { isInside } from "./paths.ts";
 
@@ -82,7 +82,7 @@ export async function addAllowedRoot(
   path: string,
   confirm: boolean,
   persist?: (roots: readonly string[]) => void | Promise<void>,
-  platform: PlatformInfo = { platform: process.platform, env: process.env, home: homedir() },
+  platform: PlatformInfo = { platform: process.platform, env: process.env, home: userHome() },
 ): Promise<string[]> {
   if (!confirm) {
     throw new FlightdeckError(
