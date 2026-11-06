@@ -24,13 +24,14 @@ export function UntrustedNotice(
     sessionId?: string;
   }>,
 ) {
-  const { store, hostId, announced, cwd } = props;
+  const { store, hostId, announced, cwd, stale, sessionId } = props;
   const { t } = store.i18n;
   const [untrusted, setUntrusted] = useState(false);
+  const [restarting, setRestarting] = useState(false);
   // Issue #422: in a short session area the notice is one line; the project page lists the rest.
   const short = useContext(ShortArea);
   useEffect(() => {
-    if (!announced) return;
+    if (!announced || stale) return;
     let current = true;
     void store.hostCommand(hostId, "project.trust.state", { paths: [cwd] }).then((answer) => {
       if (current) setUntrusted(answer?.items[0]?.trusted === false);
@@ -38,7 +39,31 @@ export function UntrustedNotice(
     return () => {
       current = false;
     };
-  }, [store, hostId, announced, cwd]);
+  }, [store, hostId, announced, cwd, stale]);
+  // Issue #463: the session loaded the setup before the trust was revoked; it keeps it until it is restarted.
+  if (stale && announced) {
+    const restart = async (id: string) => {
+      setRestarting(true);
+      await store.hostCommand(hostId, "session.close", { sessionId: id });
+      await store.hostCommand(hostId, "session.resume", { sessionId: id });
+      setRestarting(false);
+    };
+    return (
+      <InlineNotice tone="warn">
+        {t("projectPage.trust.revokedNotice")}{" "}
+        {sessionId && (
+          <Button
+            variant="link"
+            size="sm"
+            disabled={restarting}
+            onClick={() => void restart(sessionId)}
+          >
+            {t("projectPage.trust.restart")}
+          </Button>
+        )}
+      </InlineNotice>
+    );
+  }
   if (!untrusted) return null;
   return (
     <InlineNotice>

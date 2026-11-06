@@ -188,6 +188,8 @@ export interface SidebarSession {
   updatedAt: string;
   /** Phase 39: set for an OpenCode session only. */
   runtime?: SessionRuntime;
+  /** Issue #463: its folder's trust was revoked after the run loaded the project's setup. */
+  trustStale?: boolean;
 }
 
 export interface HostView extends HostConfig {
@@ -425,6 +427,7 @@ export type HostCommandType = Extract<
   | "task.results"
   | "task.preview"
   | "session.close"
+  | "session.resume"
   | `mcp.${string}`
   | `agentcfg.${string}`
   | `issues.${string}`
@@ -2781,6 +2784,7 @@ export class AppStore {
       pendingPermissions: summary.pendingPermissions,
       updatedAt: summary.updatedAt,
       ...(summary.runtime ? { runtime: summary.runtime } : {}),
+      ...(summary.trustStale ? { trustStale: true } : {}),
     };
     const prev = host.sessions.find((s) => s.id === next.id);
     this.updateHost(hostId, (h) => ({

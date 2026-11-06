@@ -245,6 +245,8 @@ function ManagedSession(
               hostId={hostId}
               announced={hasFeature(host?.hostInfo?.features, "projectTrust", false)}
               cwd={cwd}
+              sessionId={sessionId}
+              {...(summary?.trustStale ? { stale: true } : {})}
               {...(owner
                 ? {
                     onReview: () =>
