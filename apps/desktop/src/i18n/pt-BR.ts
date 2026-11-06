@@ -1218,6 +1218,7 @@ export const ptBR = {
     summary: "o resumo da sessão",
     webhook: "os webhooks",
     bg: "sessões em segundo plano",
+    projectTrust: "a confiança em projetos",
   },
   daemonRefusal: {
     account_refresh_too_soon: "A conta foi lida há pouco: tente de novo em {waitSeconds} s.",
