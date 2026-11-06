@@ -49,8 +49,12 @@ const SCRIPTS = /^scripts\//;
 const E2E =
   /^(?:scripts\/e2e\/|scripts\/lib\/(?:e2e|demo)[^/]*\.ts$|scripts\/demo[^/]*\.ts$|playwright[^/]*$|apps\/daemon\/|scripts\/test\/(?![^/]*\.test\.ts$)[^/]+\.ts$)/;
 
-/** Above this many selected test files a PR's Windows tests take three shards (#444): stub. */
-export const WINDOWS_SPLIT_ABOVE = 0;
+/**
+ * Above this many selected integration and e2e test files, a PR's Windows tests take three shards
+ * (#444, #483). Every PR selects the ~600 fast-tier tests, which one shard runs in minutes; a PR on
+ * a widely imported file adds hundreds of slow ones (about 420 of #479's 1021).
+ */
+export const WINDOWS_SPLIT_ABOVE = 100;
 
 export function ciPlan(
   event: string,
@@ -69,7 +73,12 @@ export function ciPlan(
     screenshots: everything,
     cargo: any(TAURI),
     e2e: everything || any(E2E),
-    windowsShards: any(GLOBAL_FILE) || removed.some((path) => TEST_FILE.test(path)) ? 3 : 1,
+    windowsShards:
+      any(GLOBAL_FILE) ||
+      removed.some((path) => TEST_FILE.test(path)) ||
+      selected > WINDOWS_SPLIT_ABOVE
+        ? 3
+        : 1,
   };
 }
 
