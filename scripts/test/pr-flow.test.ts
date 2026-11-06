@@ -147,7 +147,8 @@ function fake(
           (opts.mainRuns?.[m[1] ?? ""] ?? []).map((r) => `${JSON.stringify(r)}\n`).join(""),
         );
       }
-      m = /actions\/runs\/(\d+)\/jobs$/.exec(path);
+      // One page of up to 100 jobs: the default 30 could leave the suite's job unread (#444 review).
+      m = /actions\/runs\/(\d+)\/jobs\?per_page=100$/.exec(path);
       if (m) {
         return ok(
           (opts.runJobs?.[Number(m[1])] ?? []).map((j) => `${JSON.stringify(j)}\n`).join(""),
