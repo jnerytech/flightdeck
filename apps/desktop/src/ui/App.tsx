@@ -12,6 +12,7 @@ import { SnippetUse } from "@/components/snippets/snippet-use";
 import { TabSwitcherHost } from "@/components/tabs/tab-switcher";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { WhatsNewDialog } from "@/components/whatsnew/whats-new-dialog";
 import { TContext } from "@/i18n/context";
 import type { AppStore, PendingItem } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
@@ -300,6 +301,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
   const { t } = store.i18n;
   // The `?` sheet, and the first key of a go-to chord waiting for its second.
   const [help, setHelp] = useState(false);
+  const [whatsNew, setWhatsNew] = useState(false);
   const chord = useRef<ChordState>(NO_CHORD);
   // The status bar (issue #491): the terminal tabs open, and the plan usage asked again.
   const terminalTabs = useSyncExternalStore(store.workspace.subscribe, () =>
@@ -581,6 +583,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
               onNewTab={() => store.tabs.openNextInNewTab()}
               onToggleTheme={() => store.theme.toggle()}
               onShortcuts={() => setHelp(true)}
+              onWhatsNew={() => setWhatsNew(true)}
               {...(focusHost && store.uiMode(focusHost.id).canSwitch
                 ? { onSimpleMode: () => void store.toggleUiMode() }
                 : {})}
@@ -633,6 +636,7 @@ export function App({ store }: Readonly<{ store: AppStore }>) {
               onClose={() => store.chooseSnippet(null)}
             />
           )}
+          {whatsNew && <WhatsNewDialog store={store} onClose={() => setWhatsNew(false)} />}
           {help && (
             <ShortcutsSheet
               store={store}

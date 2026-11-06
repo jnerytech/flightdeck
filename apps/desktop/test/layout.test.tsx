@@ -168,6 +168,26 @@ describe("layout", () => {
     );
   });
 
+  test("Page: the body is named page-body, scrolling or filling, so the spacing guard finds its blocks (#588)", () => {
+    render(
+      <Page title="Projeto">
+        <div data-testid="scrolls">a</div>
+      </Page>,
+    );
+    expect(screen.queryByTestId("scrolls")?.parentElement?.getAttribute("data-slot")).toBe(
+      "page-body",
+    );
+    cleanup();
+    render(
+      <Page title="Terminal" fill>
+        <div data-testid="fills">b</div>
+      </Page>,
+    );
+    expect(screen.queryByTestId("fills")?.parentElement?.getAttribute("data-slot")).toBe(
+      "page-body",
+    );
+  });
+
   test("Page: the body positions what it holds, so an sr-only caption scrolls inside it and cannot stretch the screen (#640)", () => {
     render(
       <Page title="Host">
