@@ -616,7 +616,8 @@ export function startServer(opts: ServerOptions): RunningServer {
 
   /** The indexed folders whose project is `key`; with no way to ask, only a folder key matches. */
   async function foldersOf(index: HistoryIndexer, key: string): Promise<string[]> {
-    const keyOf = opts.projectKeyOf ?? (async (cwd: string) => `host:${opts.hostName}:${cwd}`);
+    const keyOf =
+      opts.projectKeyOf ?? ((cwd: string) => Promise.resolve(`host:${opts.hostName}:${cwd}`));
     const cwds = index.distinctCwds();
     const keys = await Promise.all(cwds.map((cwd) => keyOf(cwd)));
     return cwds.filter((_, i) => keys[i] === key);

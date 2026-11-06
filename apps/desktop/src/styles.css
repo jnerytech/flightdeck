@@ -1120,6 +1120,72 @@
   }
 }
 
+/* The top bar's host switcher (issue #282): a fixed share of the crumbs' box, the name cut with a tooltip. */
+@utility top-bar-host {
+  max-width: 10rem;
+  min-width: 0;
+  flex: none;
+  gap: 0.25rem;
+  padding-inline: 0.5rem;
+  font-weight: 600;
+}
+
+@utility top-bar-host-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The top bar's right side: search, theme, the bell and the version, never wrapping. */
+@utility top-bar-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* The search looks like a field that opens the palette; narrow, only its icon stays. */
+@utility top-bar-search {
+  width: 14rem;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  color: var(--color-muted-foreground);
+  font-weight: 400;
+  @media (max-width: 959px) {
+    width: auto;
+    padding-inline: 0.5rem;
+  }
+}
+
+@utility top-bar-search-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  @media (max-width: 959px) {
+    display: none;
+  }
+}
+
+@utility top-bar-search-keys {
+  @media (max-width: 959px) {
+    display: none;
+  }
+}
+
+@utility top-bar-version {
+  padding-inline: 0.25rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  @media (max-width: 959px) {
+    display: none;
+  }
+}
+
 /* A tab bar keeps its height wherever it sits: in a split area's column it must not grow (issue #225). */
 @utility tab-bar {
   display: flex;

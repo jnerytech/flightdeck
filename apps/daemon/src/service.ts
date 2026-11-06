@@ -1,4 +1,5 @@
 import { posix, win32 } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 
 /** Unit file location, relative to the user's home. */
 export const SYSTEMD_UNIT_PATH = ".config/systemd/user/flightdeckd.service";
@@ -21,8 +22,11 @@ function requireAbsolute(command: string[]): void {
 }
 
 /** systemd quoting: arguments with spaces or quotes go inside double quotes. */
-const systemdQuote = (arg: string) =>
-  /[\s"\\]/.test(arg) ? `"${arg.replace(/(["\\])/g, String.raw`\$1`)}"` : arg;
+const systemdQuote = (arg: string) => {
+  if (!/[\s"\\]/.test(arg)) return arg;
+  const escaped = arg.replace(/(["\\])/g, String.raw`\$1`);
+  return `"${escaped}"`;
+};
 
 /** What the service passes after the daemon command: `start`, plus `--config` when given. */
 const startArgs = (config?: string | null) => ["start", ...(config ? ["--config", config] : [])];
@@ -187,7 +191,7 @@ async function installSystemd(ctx: ServiceContext, config?: string | null): Prom
     };
   }
   await ctx.writeFile(path, unit);
-  for (const cmd of SYSTEMD_INSTALL) await runChecked(ctx, cmd);
+  await inSequence(SYSTEMD_INSTALL, (cmd) => runChecked(ctx, cmd));
   const linger = await ctx.exec(["loginctl", "show-user", ctx.user, "-p", "Linger"]);
   const instructions =
     linger.code === 0 && linger.stdout.trim() === "Linger=yes"

@@ -81,10 +81,17 @@ describe("ci-ubuntu-split (#293)", () => {
     expect(runs("checks-linux")).toContain("cargo check");
   });
 
-  test("test (ubuntu-latest) is an aggregate that fails unless changes, quick, the suite, SonarCloud and the checks succeeded", () => {
+  test("test (ubuntu-latest) is an aggregate that fails unless changes, quick, the suite, SonarCloud, the fast-coverage ratchet and the checks succeeded", () => {
     const gate = job("test");
     expect(gate.name).toBe(`test (ubuntu-latest)${SUFFIX}`);
-    expect(gate.needs).toEqual(["changes", "quick", "test-suite", "sonar", "checks-linux"]);
+    expect(gate.needs).toEqual([
+      "changes",
+      "quick",
+      "test-suite",
+      "sonar",
+      "fast-coverage",
+      "checks-linux",
+    ]);
     expect(gate.if).toBe(`!cancelled() && (${DISPATCH})`);
     const check = runs("test");
     // The plan and the quick job first: a failure there must fail the check, never skip it.
@@ -92,6 +99,7 @@ describe("ci-ubuntu-split (#293)", () => {
     expect(check.indexOf('test "${{ needs.changes.result }}" = success')).toBeLessThan(quick);
     expect(quick).toBeLessThan(check.indexOf("needs.test-suite.result"));
     expect(check).toContain('test "${{ needs.test-suite.result }}" = success');
+    expect(check).toContain('test "${{ needs.fast-coverage.result }}" = success');
     // SonarCloud skips on a dispatch; the checks skip only when the plan needs no smoke or cargo.
     expect(check).toContain('case "${{ needs.sonar.result }}" in success|skipped)');
     expect(check).toContain('test "${{ needs.checks-linux.result }}" = success');

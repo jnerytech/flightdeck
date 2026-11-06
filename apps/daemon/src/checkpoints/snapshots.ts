@@ -287,6 +287,7 @@ export class Snapshots {
     );
     await inSequence(gone, async (row) => {
       if (!kept.has(row.ref) && (await exists(row.repo))) {
+        // git-arg: a ref this daemon made under refs/flightdeck, read back from its own table
         await git(row.repo, ["update-ref", "-d", row.ref]);
       }
     });

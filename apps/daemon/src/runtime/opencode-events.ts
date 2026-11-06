@@ -43,6 +43,12 @@ export function isChild(item: {
 }
 
 /** The text blocks of a tool's content; a diff alone becomes `[diff <path>]`. */
+/** How a turn ended: success, a cancel as an execution error, or the stop reason as it came. */
+function turnSubtype(success: boolean, stopReason: string): string {
+  if (success) return "success";
+  return stopReason === "cancelled" ? "error_during_execution" : stopReason;
+}
+
 function resultText(content: unknown): string {
   const blocks = Array.isArray(content) ? (content as Array<Record<string, unknown>>) : [];
   const texts = blocks.flatMap((block) => {
@@ -88,38 +94,15 @@ export class OpenCodeEvents {
   update(update: AcpUpdate): RuntimeEvent[] {
     if (isChild(update)) return [];
     switch (update.sessionUpdate) {
-      case "agent_message_chunk": {
-        const chunk = (update.content as { type?: string; text?: string } | undefined) ?? {};
-        if (chunk.type !== "text" || !chunk.text) return [];
-        const id = typeof update.messageId === "string" ? update.messageId : undefined;
-        const out = id && this.messageId && id !== this.messageId ? this.flush() : [];
-        if (id) this.messageId = id;
-        this.text += chunk.text;
-        return [...out, { type: "message.delta", text: chunk.text }];
-      }
+      case "agent_message_chunk":
+        return this.messageChunk(update);
       case "tool_call": {
         const id = update.toolCallId as string;
         if (update.name) this.names.set(id, update.name);
         return this.flush();
       }
-      case "tool_call_update": {
-        const id = update.toolCallId as string;
-        const out: RuntimeEvent[] = [];
-        const input =
-          update.rawInput && Object.keys(update.rawInput).length > 0 ? update.rawInput : null;
-        if (input) this.inputs.set(id, { ...this.inputs.get(id), ...input });
-        const done = update.status === "completed" || update.status === "failed";
-        if (input || done) out.push(...this.card(id, input ?? {}));
-        if (done) {
-          out.push({
-            type: "tool.result",
-            toolUseId: id,
-            content: truncateToolResult(resultText(update.content)),
-            isError: update.status === "failed",
-          });
-        }
-        return out;
-      }
+      case "tool_call_update":
+        return this.toolCallUpdate(update);
       case "usage_update": {
         const amount = (update.cost as { amount?: unknown } | undefined)?.amount;
         if (typeof amount === "number") this.costUsd = amount;
@@ -128,6 +111,37 @@ export class OpenCodeEvents {
       default:
         return [];
     }
+  }
+
+  /** A piece of the assistant's text: a new message id closes the one before it. */
+  private messageChunk(update: AcpUpdate): RuntimeEvent[] {
+    const chunk = (update.content as { type?: string; text?: string } | undefined) ?? {};
+    if (chunk.type !== "text" || !chunk.text) return [];
+    const id = typeof update.messageId === "string" ? update.messageId : undefined;
+    const out = id && this.messageId && id !== this.messageId ? this.flush() : [];
+    if (id) this.messageId = id;
+    this.text += chunk.text;
+    return [...out, { type: "message.delta", text: chunk.text }];
+  }
+
+  /** A tool call's news: the input as it arrives (its card) and, once it ends, its result. */
+  private toolCallUpdate(update: AcpUpdate): RuntimeEvent[] {
+    const id = update.toolCallId as string;
+    const out: RuntimeEvent[] = [];
+    const input =
+      update.rawInput && Object.keys(update.rawInput).length > 0 ? update.rawInput : null;
+    if (input) this.inputs.set(id, { ...this.inputs.get(id), ...input });
+    const done = update.status === "completed" || update.status === "failed";
+    if (input || done) out.push(...this.card(id, input ?? {}));
+    if (done) {
+      out.push({
+        type: "tool.result",
+        toolUseId: id,
+        content: truncateToolResult(resultText(update.content)),
+        isError: update.status === "failed",
+      });
+    }
+    return out;
   }
 
   /** A permission request's tool call: its card (when not shown yet) and the name and input to ask about. */
@@ -151,11 +165,7 @@ export class OpenCodeEvents {
       ...this.flush(),
       {
         type: "turn.result",
-        subtype: success
-          ? "success"
-          : result.stopReason === "cancelled"
-            ? "error_during_execution"
-            : result.stopReason,
+        subtype: turnSubtype(success, result.stopReason),
         isError: !success,
         durationMs,
         ...(this.costUsd !== undefined ? { costUsd: this.costUsd } : {}),

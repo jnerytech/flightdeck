@@ -91,17 +91,27 @@ export function restoreGlobals(snapshot: Snapshot, scope: Scope = globalThis): s
 const ROUTINE = new Set([...SIZE_MEMBERS, "localStorage", "sessionStorage", "document.body"]);
 
 /**
+ * A leak fails the run (#301): the line is thrown while the next file loads, so the run exits with 1
+ * and names the file that left it. `FLIGHTDECK_ISOLATION=warn` only prints it, for the test of the
+ * reset itself.
+ */
+export function reportLeak(line: string): void {
+  if (process.env.FLIGHTDECK_ISOLATION === "warn") console.error(line);
+  else throw new Error(line);
+}
+
+/**
  * Before each test file loads (Bun runs files one after the other: load, run, next), puts the
  * globals back as the last file's top-level code left them. That is the baseline, taken right after a
  * file has loaded (a call appended to its source): a helper that sets an environment variable or
  * registers happy-dom when it loads runs once, and the files after the first that imported it
  * still need what it set. Only what the tests and hooks of a file change is put back. A leak other
- * than the routine browser state is named on stderr with the file that left it, so the culprit is
- * one line away.
+ * than the routine browser state is put back and then fails the run, naming the file that left it,
+ * so the culprit is one line away.
  */
 export function installBetweenFiles(
   snapshot: Snapshot,
-  warn: (line: string) => void = (line) => console.error(line),
+  report: (line: string) => void = reportLeak,
 ): void {
   let baseline = snapshot;
   let previous = "";
@@ -115,7 +125,7 @@ export function installBetweenFiles(
       build.onLoad({ filter: /\.test\.tsx?$/ }, async (args) => {
         const leaked = restoreGlobals(baseline).filter((name) => !ROUTINE.has(name));
         if (previous && leaked.length > 0) {
-          warn(
+          report(
             `isolation: ${previous} left ${leaked.join(", ")} changed; put back before ${args.path}`,
           );
         }
