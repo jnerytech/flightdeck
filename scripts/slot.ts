@@ -19,7 +19,7 @@ import {
 } from "node:fs";
 import { constants, getPriority, setPriority, tmpdir, userInfo } from "node:os";
 import { basename, join } from "node:path";
-import { type ProcessInfo, type ProcReader, run, type SlotEnv } from "./lib/slot.ts";
+import { type ProcessInfo, type ProcReader, parseStat, run, type SlotEnv } from "./lib/slot.ts";
 
 const LOCK = process.env.FLIGHTDECK_SLOT_LOCK || join(tmpdir(), "flightdeck-slot.lock");
 
@@ -60,11 +60,10 @@ async function userProcesses(): Promise<ProcessInfo[]> {
   return list;
 }
 
-/** The fields of /proc/<pid>/stat after the command name: state, ppid, pgrp, ... (Linux only). */
-function statFields(pid: number): string[] | null {
+/** The parent and group of a process from /proc/<pid>/stat (Linux only); null when it is gone. */
+function stat(pid: number): { ppid: number; pgid: number } | null {
   try {
-    const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
-    return stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+    return parseStat(readFileSync(`/proc/${pid}/stat`, "utf8"));
   } catch {
     return null;
   }
@@ -74,14 +73,8 @@ function statFields(pid: number): string[] | null {
 const proc: ProcReader | undefined =
   process.platform === "linux"
     ? {
-        ppid: (pid) => {
-          const fields = statFields(pid);
-          return fields ? Number(fields[1]) : null;
-        },
-        pgid: (pid) => {
-          const fields = statFields(pid);
-          return fields ? Number(fields[2]) : null;
-        },
+        ppid: (pid) => stat(pid)?.ppid ?? null,
+        pgid: (pid) => stat(pid)?.pgid ?? null,
         cwd: (pid) => {
           try {
             return readlinkSync(`/proc/${pid}/cwd`);
@@ -91,11 +84,16 @@ const proc: ProcReader | undefined =
         },
         cmdline: (pid) => {
           try {
-            return readFileSync(`/proc/${pid}/cmdline`, "utf8").replaceAll("\0", " ").trim();
+            return readFileSync(`/proc/${pid}/cmdline`, "utf8").split("\0").filter(Boolean);
           } catch {
-            return "";
+            return [];
           }
         },
+        group: (pgid) =>
+          readdirSync("/proc")
+            .filter((name) => /^\d+$/.test(name))
+            .map(Number)
+            .filter((pid) => stat(pid)?.pgid === pgid),
       }
     : undefined;
 
@@ -139,6 +137,7 @@ const env: SlotEnv = {
     }
   },
   holder: Number(process.env.FLIGHTDECK_SLOT_HOLDER) || undefined,
+  detached: process.env.FLIGHTDECK_SLOT_DETACHED === "1",
   ...(proc
     ? {
         proc,
