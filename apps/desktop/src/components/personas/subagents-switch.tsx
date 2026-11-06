@@ -29,7 +29,7 @@ export function SubagentsSwitch(
     if (saved) setMode(saved.personaSubagents);
   };
   return (
-    <div className="mb-4 flex flex-col gap-1 text-sm">
+    <div className="flex flex-col gap-1 text-sm">
       <label htmlFor={`${id}-subagents`}>{t("personas.subagents.label")}</label>
       <select
         id={`${id}-subagents`}

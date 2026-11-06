@@ -75,9 +75,9 @@ export function createWebPlatform(
     },
     async notify({ title, body, link }) {
       const api = win.Notification;
-      if (!api) return;
+      if (!api) return false;
       const permission = api.permission === "granted" ? "granted" : await api.requestPermission();
-      if (permission !== "granted") return;
+      if (permission !== "granted") return false;
       const shown = new api(title, { body }) as { onclick?: (() => void) | null };
       if (link) {
         shown.onclick = () => {
@@ -85,6 +85,7 @@ export function createWebPlatform(
           for (const handler of linkHandlers) handler(link);
         };
       }
+      return true;
     },
     isFocused: () => win.document.hasFocus(),
     openExternal(url) {

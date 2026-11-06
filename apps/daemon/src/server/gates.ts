@@ -38,6 +38,7 @@ export const GATES = {
   personas: "personas",
   plugins: "plugins",
   quota: "quota",
+  releases: "releases",
   quotaHistory: "quotaHistory",
   review: "review",
   rewinder: "rewinder",

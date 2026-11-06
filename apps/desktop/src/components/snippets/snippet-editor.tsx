@@ -139,7 +139,6 @@ export function SnippetEditor(
   return (
     <Form
       variant="panel"
-      className="mb-4"
       onSubmit={() => {
         if (ready) saving.run(save);
       }}

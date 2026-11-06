@@ -913,7 +913,10 @@ live; the list is the project's, so a session of another project never shows her
   account (its email and plan, read from the host's account card; the rail shows only its initial)
   opens a menu. Its header names the app and its version. Then come the plan, the account and the id
   of the host whose account it is, each copied when chosen; **Compact rows**, a switch kept on this
-  computer (the same density as in Settings); **Settings**; **Check for updates** (it opens Settings,
+  computer (the same density as in Settings); **Settings**; **What's new** (the highlights of the latest
+  releases, read from GitHub through a host that can; the account row and this item carry a dot, and
+  the row's name says so, after the app was updated, until you open it; full-screen in a narrow
+  window; **View all releases** opens GitHub); **Check for updates** (it opens Settings,
   where the answer shows); **Keyboard shortcuts**; **Toggle theme**; **Manual**; and, for each host
   whose `gh` is signed in to GitHub with a login the app can remove, **Sign out of GitHub** (after a
   confirmation; a login that comes from the daemon's environment is removed there). With several hosts the account of the
@@ -2043,8 +2046,33 @@ unblocked. A badge on the bell counts the unread ones.
   count the next time the app starts.
 - **Mark all as read** keeps the list; **Clear** empties it. The list is kept on this computer
   (the newest 500) and survives a restart. Esc closes the panel.
-- The OS notifications are unchanged. The center only keeps a copy, so one that is never sent
-  (the window had focus) is not in it either.
+- A read row has **Mark as unread** (hover or focus it) to come back to it later.
+- The OS notifications are sent as before unless you tune them (below). The center only keeps a
+  copy, so one that is never sent (the window had focus) is not in it either.
+
+### Tuning notifications
+
+**Settings, Notifications** (kept on this computer, honoured after a restart):
+
+- **Show notifications** is the master switch for the system notifications and the sound; the
+  bell keeps its entries. Below it, one switch per event: **Needs you** (a permission or a
+  question), **Turn finished**, **Session failed** (a turn that ends in an error), **PR watch**
+  and **Budget and quota**. An event that is off sends nothing, not even a bell entry.
+- **Mute** a host, a project, or one session (the menu of a row on the Sessions list: **Mute
+  notifications**, or **Snooze notifications for 1 hour**). A muted source sends no system
+  notification, no sound and no bell entry. It still shows in **Needs you** and in the sidebar's
+  count: a blocked permission is state, not an interruption. The muted sessions are listed there
+  with a button to unmute them; a snooze ends by itself.
+- **Fold a team's finished workers into one message** (on by default): workers of a team that
+  finish within ten seconds send one notification, "Team Alpha: 3 workers finished". A worker's
+  permission request still notifies at once, since someone has to answer it; the coordinator
+  notifies like any session.
+- **Sound**: off, the system default (a short tone made by the app) or a file you choose (MP3,
+  WAV, OGG, M4A, AAC or FLAC, up to about 400 KB), with a volume. It plays from the app, never from
+  a host.
+- **Send test notification** shows one and says **Delivered** or **Not displayed**; when the system
+  did not show it, it names the Windows setting (Settings, System, Notifications, Flightdeck).
+- Simple mode keeps its single switch and none of these controls.
 
 ## Setup checklist
 
@@ -2308,6 +2336,10 @@ Claude Code sessions can message each other through Flightdeck, on the same host
   you add or remove rows (the number of rows is the number of workers, 1 to 8). A worker's
   persona starts as the Developer when the host has it; pick **None** for the plain default. With no choice,
   the model is the persona's. Each member's model shows on its line.
+- **Each member's name** says who it is: the team and the persona in the app's language, such as
+  "md-server · Architect 2" or "md-server · Coordinator"; with no persona, "Worker 2". The name
+  shows in the sessions list, the search and Needs you. A name you gave, or the one Claude Code
+  gave, still wins, and the address for messages does not change.
 - **The coordinator's cycle:**
   1. split the goal into tasks, each with what "done" means;
   2. send one task to each worker, and ask to hear when it goes idle;

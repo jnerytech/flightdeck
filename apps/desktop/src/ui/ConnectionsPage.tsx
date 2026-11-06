@@ -207,7 +207,7 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
       }
     >
       {error && (
-        <p role="alert" className="mb-4 text-destructive text-sm">
+        <p role="alert" className="text-destructive text-sm">
           {error}
         </p>
       )}
@@ -219,7 +219,7 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
         />
       )}
       {importMessage.length > 0 && (
-        <div role="status" className="mb-4 text-sm">
+        <div role="status" className="text-sm">
           {importMessage.map((line) => (
             <p key={line}>{line}</p>
           ))}
@@ -239,7 +239,7 @@ export const ConnectionsPage = memo(function ConnectionsPage(props: {
           onClose={() => setEditing(null)}
         />
       )}
-      <div className="mb-4 flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3">
         <Field label={t("connections.search")}>
           {(control) => (
             <Input

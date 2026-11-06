@@ -44,6 +44,7 @@ import {
   expandHome,
   generateToken,
   loadConfig,
+  RELEASES_URL,
   RuntimeKind,
   updateConfigFile,
   userHome,
@@ -92,6 +93,7 @@ import { KeepAwake, osPowerContext, type PowerContext } from "./power/keep-awake
 import { QuotaHistory } from "./quota/history.ts";
 import { Quota } from "./quota/quota.ts";
 import { UsageLedger } from "./quota/usage.ts";
+import { ReleaseFeed } from "./releases/releases.ts";
 import type { ProcReader } from "./resources/resources.ts";
 import { createResources } from "./resources/wiring.ts";
 import { Changes } from "./review/changes.ts";
@@ -1236,6 +1238,8 @@ export async function startDaemon(
       const card = cardOf(sessionId);
       return card ? (teams?.personaOfCard(card) ?? null) : null;
     },
+    // Issue #101: a worker's session is named with its team, role and number from the start.
+    ...(teams ? { teamOfCard: teams.teamOfCard.bind(teams) } : {}),
   };
   await warmKnown(nameOptions);
   const stopNames = trackNames(nameOptions);
@@ -1573,6 +1577,7 @@ export async function startDaemon(
     central,
     maintenance,
     fileLog,
+    releases: new ReleaseFeed({ url: RELEASES_URL }),
     resources: await createResources({
       dataDir: config.dataDir,
       sessions: manager.list.bind(manager),

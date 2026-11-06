@@ -41,8 +41,18 @@ export function HostOverview(
   }, [store]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state, not all of it
   const rows = useMemo(
-    () => hostSessionRows(hubRows(state), host.id),
-    [host.id, state.hosts, state.hub, state.meta, state.externals, state.names, state.background],
+    () => hostSessionRows(hubRows(state, t), host.id),
+    [
+      host.id,
+      state.hosts,
+      state.hub,
+      state.meta,
+      state.externals,
+      state.names,
+      state.background,
+      state.personas,
+      t,
+    ],
   );
   const projects = hostProjectCards(useProjectCards(store, state), host.id);
   return (
