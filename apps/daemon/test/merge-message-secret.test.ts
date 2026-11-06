@@ -51,4 +51,28 @@ describe("merge-message-secret: what goes public is scanned (issue #681)", () =>
     const refused = await refusal(ctx.board.createPr(ctx.cardId, { description: `uses ${TOKEN}` }));
     expect(refused.code).toBe("pr_secret");
   });
+
+  test("the default PR title and body come from the card: a secret in either is refused too, before anything is pushed", async () => {
+    const ctx = await board();
+    ctx.store.db.query("UPDATE cards SET title = ? WHERE id = ?").run(`Fix ${TOKEN}`, ctx.cardId);
+    const title = await refusal(ctx.board.createPr(ctx.cardId));
+    expect(title.code).toBe("pr_title_secret");
+    expect(title.message).not.toContain(TOKEN);
+    ctx.store.db
+      .query("UPDATE cards SET title = 'Integrar', description = ? WHERE id = ?")
+      .run(`Uses ${TOKEN}`, ctx.cardId);
+    const body = await refusal(ctx.board.createPr(ctx.cardId));
+    expect(body.code).toBe("pr_secret");
+    expect(body.message).not.toContain(TOKEN);
+  });
+
+  test("the default merge message comes from the card's title: a secret in it is refused, in a squash and in a merge", async () => {
+    const ctx = await board();
+    ctx.store.db.query("UPDATE cards SET title = ? WHERE id = ?").run(`Fix ${TOKEN}`, ctx.cardId);
+    for (const mode of ["squash", "merge"] as const) {
+      const refused = await refusal(ctx.board.mergeLocal(ctx.cardId, mode, true));
+      expect(refused.code).toBe("merge_message_secret");
+      expect(refused.message).not.toContain(TOKEN);
+    }
+  });
 });
