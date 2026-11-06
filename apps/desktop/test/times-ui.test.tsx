@@ -605,6 +605,11 @@ describe("times-ui: the teams of a host", () => {
       store.router.push({ name: "teams" });
     });
     const again = row("links") as HTMLElement;
+    await settle(
+      () =>
+        within(again).queryByRole("button", { name: "Abrir o card de links · executora 1" }) !==
+        null,
+    );
     await click("Abrir o card de links · executora 1", again);
     expect(store.router.current).toMatchObject({
       name: "card",
