@@ -1,5 +1,6 @@
 import { EditorState } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
+import type { DiffFile } from "@flightdeck/protocol";
 import { useEffect, useRef, useState } from "react";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Inline, Stack } from "@/components/layout/stack";
@@ -7,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "../lib/app-store.ts";
+import { useFollow } from "../lib/use-follow.ts";
+import { DiffView } from "./DiffView.tsx";
 
 /** The file on its way, refused with the text to show, or its text. */
 type Phase =
@@ -24,6 +27,8 @@ export function FileViewer(
     hostId: string;
     target: string;
     path: string;
+    /** The file's changes against HEAD, live from the Changes tab's diff; absent when unchanged. */
+    diff?: DiffFile | undefined;
     onClose(): void;
   }>,
 ) {
@@ -31,6 +36,10 @@ export function FileViewer(
   const { store, hostId, target, path } = props;
   const [phase, setPhase] = useState<Phase>({ name: "opening" });
   const parent = useRef<HTMLDivElement>(null);
+  const [showDiff, setShowDiff] = useState(false);
+  // The newest hunk stays in view while the session edits, until the person scrolls up (#315).
+  const follow = useFollow(props.diff?.hunks.length ?? 0);
+  const diff = showDiff ? props.diff : undefined;
 
   useEffect(() => {
     let alive = true;
@@ -48,7 +57,7 @@ export function FileViewer(
     };
   }, [store, hostId, target, path, t]);
 
-  const text = phase.name === "ready" ? phase.text : null;
+  const text = phase.name === "ready" && !diff ? phase.text : null;
   useEffect(() => {
     if (text === null || !parent.current) return;
     const view = new EditorView({
@@ -71,15 +80,40 @@ export function FileViewer(
       <Stack gap={2}>
         <Inline gap={2}>
           <span className="font-mono text-sm">{path}</span>
+          {props.diff && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-pressed={showDiff}
+              onClick={() => setShowDiff(!showDiff)}
+            >
+              {showDiff ? t("files.showFile") : t("files.showChanges")}
+            </Button>
+          )}
           <Button type="button" variant="outline" size="sm" onClick={props.onClose}>
             {t("files.close")}
           </Button>
         </Inline>
+        {diff && (
+          <div data-follow="" ref={follow.box} onScroll={follow.onScroll} className="diff-follow">
+            <DiffView files={[diff]} mode="unified" selection={null} composer={null} />
+          </div>
+        )}
+        {diff && follow.missed > 0 && (
+          <Button type="button" variant="outline" size="sm" onClick={follow.jump}>
+            {t(follow.missed === 1 ? "files.jumpLatestOne" : "files.jumpLatestMany", {
+              n: follow.missed,
+            })}
+          </Button>
+        )}
         {phase.name === "opening" && (
           <p className="text-muted-foreground text-sm">{t("files.opening")}</p>
         )}
         {phase.name === "refused" && <InlineNotice>{phase.message}</InlineNotice>}
-        {phase.name === "ready" && <div ref={parent} className="rounded-md border text-sm" />}
+        {phase.name === "ready" && !diff && (
+          <div ref={parent} className="rounded-md border text-sm" />
+        )}
       </Stack>
     </section>
   );

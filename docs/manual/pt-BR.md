@@ -1165,7 +1165,10 @@ Toda sessão (gerenciada ou do terminal) e todo card tem uma aba **Mudanças**, 
   pastas já abertas, com as pastas no caminho. Uma pasta com mais de 500 entradas mostra as
   primeiras e avisa. Uma sessão fora do git não tem árvore: a aba diz isso. Um clique num arquivo
   o abre abaixo da árvore, só para leitura, com as linhas numeradas; um arquivo de mais de 1 MB, um
-  que não é texto ou uma credencial diz isso no lugar.
+  que não é texto ou uma credencial diz isso no lugar. Um arquivo alterado tem **Mostrar mudanças**:
+  o diff dele contra o HEAD, ao vivo. Enquanto você está no fim, a mudança mais nova entra na tela
+  conforme a sessão edita; role para cima e isso para, e **Ir para a mais recente** (com quantas
+  mudanças chegaram) ou uma rolagem de volta ao fim retoma.
 - **Comentários inline:**
   - clique no número de uma linha para comentá-la, e com shift em outra para estender o intervalo.
     Uma linha apagada é comentada pelo lado antigo;

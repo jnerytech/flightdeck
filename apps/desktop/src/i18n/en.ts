@@ -2207,6 +2207,10 @@ export const en: Dictionary = {
     viewer: "File {path}",
     close: "Close",
     opening: "Opening…",
+    showChanges: "Show changes",
+    showFile: "Show the file",
+    jumpLatestOne: "Jump to latest ({n} new change)",
+    jumpLatestMany: "Jump to latest ({n} new changes)",
   },
   changes: {
     tab: "Changes",
