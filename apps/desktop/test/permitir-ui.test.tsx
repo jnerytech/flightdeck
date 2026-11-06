@@ -117,13 +117,24 @@ describe("permitir-ui", () => {
     );
   });
 
-  test("numa ferramenta sem arquivo a regra padrão segue sendo o nome da ferramenta", () => {
-    expect(defaultRule("WebFetch", { url: "https://example.com" })).toBe("WebFetch");
-    expect(defaultRule("Bash", { command: "ls" })).toBe("Bash(ls)");
-    expect(defaultRule("Edit", { file_path: "/p/a.ts" })).toBe("Edit(/p/a.ts)");
-    expect(defaultRule("NotebookEdit", { notebook_path: "/p/n.ipynb" })).toBe(
-      "NotebookEdit(/p/n.ipynb)",
+  test("a regra padrão de uma ferramenta de arquivo é o arquivo, como o CLI lê um caminho: relativo à pasta, ou //absoluto fora dela", () => {
+    expect(defaultRule("Edit", { file_path: "/p/src/a.ts" }, "/p")).toBe("Edit(src/a.ts)");
+    expect(defaultRule("Edit", { file_path: "/etc/x" }, "/p")).toBe("Edit(//etc/x)");
+    expect(defaultRule("Edit", { file_path: "/pp/a.ts" }, "/p")).toBe("Edit(//pp/a.ts)");
+    expect(defaultRule("Edit", { file_path: "C:\\p\\src\\a.ts" }, "C:\\p")).toBe("Edit(src/a.ts)");
+    expect(defaultRule("NotebookEdit", { notebook_path: "/p/n.ipynb" }, "/p")).toBe(
+      "NotebookEdit(n.ipynb)",
     );
+    // Grep, Glob and LS name a folder in `path`.
+    expect(defaultRule("Grep", { path: "/p/src", pattern: "x" }, "/p")).toBe("Grep(src)");
+    expect(defaultRule("LS", { path: "/p" }, "/p")).toBe("LS(.)");
+    expect(defaultRule("Edit", { file_path: "a.ts" }, "/p")).toBe("Edit(a.ts)");
+  });
+
+  test("sem arquivo nem comando a regra padrão segue sendo o nome da ferramenta, e o Bash a linha exata", () => {
+    expect(defaultRule("WebFetch", { url: "https://example.com" }, "/p")).toBe("WebFetch");
+    expect(defaultRule("Bash", { command: "ls" }, "/p")).toBe("Bash(ls)");
+    expect(defaultRule("Grep", { pattern: "x" }, "/p")).toBe("Grep");
   });
 
   test("regra recusada pelo daemon mostra o erro e o pedido segue aberto", async () => {

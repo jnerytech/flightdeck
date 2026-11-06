@@ -193,9 +193,55 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
     expect(await saved("Bash", { command: "ls" }, rule("Bash"))).toEqual(TOO_BROAD);
   });
 
-  test("a prefix on a bare program that has a destructive form is refused: git, rm, chmod, sudo", async () => {
-    for (const content of ["git:*", "git *", "rm:*", "chmod:*", "sudo:*", "pwsh:*"]) {
-      expect(await saved("Bash", { command: "ls" }, rule("Bash", content))).toEqual(TOO_BROAD);
+  test("an open shell rule is saved only for a few read-only forms; any other program is refused, whatever it does today", async () => {
+    const programs = [
+      // destructive forms
+      "git:*",
+      "git *",
+      "rm:*",
+      "chmod:*",
+      "sudo:*",
+      "pwsh:*",
+      // programs that read what the classifier calls a credential, or write outside the project
+      "cat:*",
+      "head:*",
+      "cp:*",
+      "tee:*",
+      "echo:*",
+      "mv:*",
+      "dd:*",
+      "find:*",
+      // wrappers that run another program
+      "env:*",
+      "xargs:*",
+      "timeout:*",
+      "nohup:*",
+      "time:*",
+      // git subcommands that change things
+      "git branch:*",
+      "git checkout:*",
+      "git config:*",
+      "git rebase:*",
+      "git push:*",
+      // a wildcard that is not a trailing one
+      "*",
+      "* *",
+      "* -rf /",
+      "r*",
+      "g*",
+      "su*",
+      "git p*",
+      "git * origin",
+      "git * --force",
+      // an open rule with shell syntax in its prefix
+      "git status; rm -rf x:*",
+      "git status && x:*",
+      "npm test | sh:*",
+    ];
+    for (const content of programs) {
+      expect(await saved("Bash", { command: "ls" }, rule("Bash", content)), content).toEqual(
+        TOO_BROAD,
+      );
     }
   });
 
@@ -206,32 +252,104 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
     );
   });
 
-  test("a narrow rule is saved: an exact command, a subcommand prefix, a build script", async () => {
+  test("a narrow rule is saved: an exact command, a read-only git form, a test or a build script", async () => {
     for (const content of [
       "ls",
-      "git status:*",
-      "npm test:*",
-      "npm run build:*",
       "git log --oneline",
+      "git status:*",
+      "git diff:*",
+      "git log:*",
+      "git show:*",
+      "npm test:*",
+      "bun test:*",
+      "pnpm test *",
+      "npm run build:*",
+      "bun run lint:*",
     ]) {
-      expect(await saved("Bash", { command: "ls" }, rule("Bash", content))).toBeNull();
+      expect(await saved("Bash", { command: "ls" }, rule("Bash", content)), content).toBeNull();
     }
   });
 
-  test("a write rule: a blanket one and one that reaches a credential or outside the project are refused", async () => {
-    const input = { file_path: `${CWD}/a.txt`, content: "x" };
-    expect(await saved("Write", input, rule("Write"))).toEqual(TOO_BROAD);
-    expect(await saved("Write", input, rule("Write", "/home/u/.ssh/**"))).toEqual(TOO_BROAD);
-    expect(await saved("Write", input, rule("Write", "/etc/**"))).toEqual(TOO_BROAD);
-    expect(await saved("Write", input, rule("Write", `${CWD}/src/**`))).toBeNull();
-    expect(await saved("Write", input, rule("Write", `${CWD}/a.txt`))).toBeNull();
+  test("a file rule that can match a credential is refused: the wildcard is read as every file it could match", async () => {
+    const write = { file_path: `${CWD}/a.txt`, content: "x" };
+    const read = { file_path: `${CWD}/a.txt` };
+    const writes = [
+      "", // blanket, below
+      "**",
+      "*",
+      "src/**",
+      `${CWD}/src/**`,
+      ".en*",
+      "src/.en?",
+      "src/*key",
+      "src/.e*",
+      "src/.en[v]",
+      "{src,~/.ssh}/**",
+      "!src/a.ts",
+      "src/../../etc/x",
+      "/home/u/.ssh/**",
+      "/etc/**",
+      "//etc/*.conf",
+      "~/**",
+    ];
+    for (const content of writes) {
+      const update = content === "" ? rule("Write") : rule("Write", content);
+      expect(await saved("Write", write, update), `Write(${content})`).toEqual(TOO_BROAD);
+    }
+    const reads = [
+      "",
+      "~/**",
+      "//home/**",
+      "/**",
+      "~/.s*/**",
+      "~/.aw?/credentials",
+      "src/.e*",
+      "src/*key",
+      "/home/u/.aws/**",
+      "**",
+    ];
+    for (const content of reads) {
+      const update = content === "" ? rule("Read") : rule("Read", content);
+      expect(await saved("Read", read, update), `Read(${content})`).toEqual(TOO_BROAD);
+    }
   });
 
-  test("a read rule: a blanket one reaches credentials and is refused, one inside the project is saved", async () => {
-    const input = { file_path: `${CWD}/a.txt` };
-    expect(await saved("Read", input, rule("Read"))).toEqual(TOO_BROAD);
-    expect(await saved("Read", input, rule("Read", "/home/u/.aws/**"))).toEqual(TOO_BROAD);
-    expect(await saved("Read", input, rule("Read", `${CWD}/**`))).toBeNull();
+  test("a file rule that cannot reach a credential is saved: an exact file, a folder's extension", async () => {
+    const write = { file_path: `${CWD}/a.txt`, content: "x" };
+    for (const content of [
+      `${CWD}/a.txt`,
+      "src/a.ts",
+      "src/*.ts",
+      "src/**/*.ts",
+      `${CWD}/src/**/*.ts`,
+      "/src/*.ts", // project-root relative, as the CLI reads a leading slash
+    ]) {
+      expect(await saved("Write", write, rule("Write", content)), content).toBeNull();
+    }
+    for (const content of ["docs/**/*.md", "src/*.md"]) {
+      expect(await saved("Read", { file_path: `${CWD}/a.txt` }, rule("Read", content))).toBeNull();
+    }
+  });
+
+  test("a network rule names a domain: the whole tool would reach any host", async () => {
+    const fetch = { url: "https://example.com" };
+    expect(await saved("WebFetch", fetch, rule("WebFetch"))).toEqual(TOO_BROAD);
+    expect(await saved("WebSearch", { query: "x" }, rule("WebSearch"))).toEqual(TOO_BROAD);
+    expect(await saved("WebFetch", fetch, rule("WebFetch", "domain:example.com"))).toBeNull();
+  });
+
+  test("a held high-risk request is held to the same shapes: an open rule of any program is still refused", async () => {
+    const { b, ask } = broker();
+    const { id } = await ask("Bash", { command: "rm -rf build" });
+    for (const content of ["rm:*", "Bash", "*"]) {
+      const update = content === "Bash" ? rule("Bash") : rule("Bash", content);
+      expect(
+        refusal(() =>
+          b.respond({ requestId: id, decision: "allow", held: true, updatedPermissions: [update] }),
+        ),
+        content,
+      ).toEqual(TOO_BROAD);
+    }
   });
 
   test("the request's own suggestions are not judged again: the CLI offered them", async () => {
