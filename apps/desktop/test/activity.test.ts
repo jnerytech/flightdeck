@@ -123,6 +123,19 @@ describe("activity board: every session across the hosts by state (issue #151)",
     expect(run({ text: "fix", project: "web" })).toEqual([[], 0, 3]);
   });
 
+  test("a Windows folder is named by its last part, and two hosts keep one entry per name", () => {
+    const state = activityState(
+      [
+        { id: "win", status: "running", agoMs: MIN, cwd: "C:\\work\\api" },
+        { id: "nix", status: "running", agoMs: MIN, cwd: "/work/api", host: "h2" },
+      ],
+      base,
+    );
+    const { columns } = activityBoard(state, NOW, NO_ACTIVITY_FILTER, false);
+    expect(columns.working.map((card) => card.project)).toEqual(["api", "api"]);
+    expect(activityOptions(state).projects).toEqual(["api"]);
+  });
+
   test("the options of the filters are the hosts, projects and personas that exist", () => {
     const state = activityState(
       [

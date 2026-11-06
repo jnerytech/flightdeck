@@ -30,6 +30,8 @@ export function ActivityBoard(props: {
   onOpen(row: HubRow, newTab: boolean): void;
   /** Test seam: the hold time of a high-risk approval. */
   holdMs?: number;
+  /** Test seam: how often the board reads the clock again. */
+  tickMs?: number;
 }) {
   const { store } = props;
   const state = useStoreSlice(store, ACTIVITY_KEYS);

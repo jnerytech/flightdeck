@@ -48,6 +48,7 @@ function setup(_specs: Specs, options: { language?: "en" | "pt-BR"; platform?: n
           go={() => {}}
           onOpen={(row: HubRow, newTab: boolean) => void opened.push([row.title, newTab])}
           holdMs={30}
+          tickMs={20}
         />
       </TContext.Provider>
     );
@@ -214,6 +215,27 @@ describe("activity-ui: the Activity board (issue #151)", () => {
     });
     await settle(() => w.responded.length === 1);
     expect(w.responded[0]).toEqual(["h1", "r-ask", "allow"]);
+  });
+
+  test("a card that asks shows what it would run, where, and how risky it is, before Approve", () => {
+    const specs: Specs = [
+      { id: "ask", status: "awaiting_permission", agoMs: MIN, risk: "high", cwd: "/work/api" },
+    ];
+    const w = setup(specs);
+    render(w.view(specs));
+    const text = card("Needs you", "ask").textContent ?? "";
+    expect(text).toContain("Bash: npm test");
+    expect(text).toContain("/work/api");
+    expect(text).toContain("High risk");
+  });
+
+  test("the board keeps the time: a turn that ages out of Done moves to Idle without any other change", async () => {
+    const w = setup(SPECS);
+    render(w.view(SPECS));
+    expect(cardsOf("Done")).toEqual(["Tidy up"]);
+    w.store.now = () => NOW + 3 * HOUR;
+    await settle(() => cardsOf("Done").length === 0);
+    expect(cardsOf("Done")).toEqual([]);
   });
 
   test("the store takes the hold as the proof: a held approval of a high-risk request is not refused", async () => {
