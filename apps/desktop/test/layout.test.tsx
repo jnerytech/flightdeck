@@ -277,6 +277,48 @@ describe("layout", () => {
     expect(body?.className.split(" ").includes("relative") ?? false).toBe(true);
   });
 
+  test("Page: the side gutter is 12 px, 16 px from a 640 px area and 24 px from a 1024 px one (its area, not the window: a split pane is narrow), in the header and both bodies (#641)", () => {
+    const gutters = (el: Element | null | undefined) =>
+      ["px-3", "@min-[40rem]:px-4", "@min-[64rem]:px-6", "px-6"].filter((c) =>
+        (el?.className.split(" ") ?? []).includes(c),
+      );
+    render(
+      <Page title="Scrolls" toolbar={<span data-testid="tools">tools</span>}>
+        <div data-testid="scrolling">body</div>
+      </Page>,
+    );
+    expect(gutters(screen.queryByTestId("tools")?.parentElement)).toEqual([
+      "px-3",
+      "@min-[40rem]:px-4",
+      "@min-[64rem]:px-6",
+    ]);
+    expect(gutters(screen.queryByTestId("scrolling")?.parentElement)).toEqual([
+      "px-3",
+      "@min-[40rem]:px-4",
+      "@min-[64rem]:px-6",
+    ]);
+    cleanup();
+    render(
+      <Page title="Fills" fill>
+        <div data-testid="filling">body</div>
+      </Page>,
+    );
+    expect(gutters(screen.queryByTestId("filling")?.parentElement)).toEqual([
+      "px-3",
+      "@min-[40rem]:px-4",
+      "@min-[64rem]:px-6",
+    ]);
+  });
+
+  test("Page: a long title wraps to two lines, then truncates, and keeps its full text in title (#641)", () => {
+    render(<Page title="Board of a project with a very long name indeed">body</Page>);
+    const h1 = screen.queryByRole("heading", { level: 1 });
+    const classes = h1?.className.split(" ") ?? [];
+    expect(classes.includes("line-clamp-2")).toBe(true);
+    expect(classes.includes("truncate")).toBe(false);
+    expect(h1?.getAttribute("title")).toBe("Board of a project with a very long name indeed");
+  });
+
   test("Page fill: o corpo é uma coluna flex que ocupa o resto da altura, sem a área de rolagem", () => {
     render(
       <Page title="Terminal" fill>
