@@ -80,9 +80,11 @@ export class Webhooks {
     if (!send || !target || !secrets) return { status: null };
     const message = await formatWebhook(target.type, event, {
       ...(secrets.signingSecret ? { signingSecret: secrets.signingSecret } : {}),
+      url: secrets.url,
       now: this.now,
     });
-    const response = await send({ url: secrets.url, headers: message.headers, body: message.body });
+    const url = message.url ?? secrets.url;
+    const response = await send({ url, headers: message.headers, body: message.body });
     return { status: response.status, retryAfterMs: response.retryAfterMs };
   }
 

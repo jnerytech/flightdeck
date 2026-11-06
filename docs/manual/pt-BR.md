@@ -2588,6 +2588,13 @@ Abra **Configurações → Webhooks**.
   - **Discord:** um webhook de canal (`https://discord.com/api/webhooks/...`). O título de uma
     sessão não marca ninguém.
   - **JSON genérico:** seu próprio endereço, com um **segredo de assinatura**.
+  - **ntfy (avisos no celular):** o endereço de um tópico (`https://ntfy.sh/seu-topico`, ou o do
+    seu servidor) e, para um tópico protegido, um **token de acesso** (`tk_...`), guardado no
+    cofre. Instale o app do ntfy no celular e assine o mesmo tópico. *Precisa de você* chega com
+    prioridade alta, o resto com a padrão. Os avisos vão num sentido só: tocar neles não abre nada
+    no Flightdeck. O servidor precisa estar acessível pela internet; um que só existe na sua rede
+    de casa é recusado, como para todo webhook. Escolha um nome de tópico difícil de adivinhar, ou
+    proteja-o com um token: quem souber um tópico público consegue lê-lo.
 - **Eventos:** *precisa de você* (uma permissão ou uma pergunta), *sessão terminou*, *sessão
   falhou*, *alerta de orçamento* e *vigia do PR* (um PR vigiado precisa de você). Cada webhook
   escolhe os que quer.
@@ -2841,8 +2848,21 @@ Configurações) e, depois de Enter, **Histórico**.
 - **↑/↓** escolhem, **Enter** abre e **Tab** mostra as ações da entrada (por exemplo, num projeto:
   Abrir board, Workflows, Abrir no terminal). Esc volta das ações para a lista e, dali, fecha.
 - **Ir para Custos** aparece quando o app tem a tela de Custos e algum host anuncia `costs`.
-- Sem nada digitado, uma seção **Recentes** vem primeiro, com as cinco últimas entradas que você
-  abriu (guardadas entre execuções). **Ações** também tem **Ir para Sessões / Precisa de você /
+- A linha em que o teclado está é uma superfície com um aro em volta, nos dois temas. A linha de
+  uma sessão mostra o glifo do estado (rodando, precisa de você, ociosa) e acompanha as mudanças; a
+  de um card tem o ícone do card.
+- Sem nada digitado, uma seção **Recentes** vem primeiro, com até seis das entradas que você abriu
+  (guardadas entre execuções): o que espera por você primeiro, depois o que está rodando, depois o
+  resto. Cada uma mostra **Alt+1** a **Alt+6**, que a abrem com a paleta aberta (fora dela não
+  fazem nada). A ordem fica fixa quando a paleta abre, para as linhas não se mexerem sob o cursor.
+- A paleta abre **restrita ao lugar onde você está**: num board ou card, ao host e ao projeto dele;
+  numa sessão ou na página de um host, ao host. Os filtros aparecem como chips sob o campo; clique
+  num para tirá-lo, ou em **Limpar todos os filtros**. A mudança dura só até a paleta fechar.
+- Texto que não casa com nenhum card termina a lista com **Criar card “texto” em projeto** (o
+  projeto do filtro, ou o único projeto que existe). Colar um link de issue do GitHub ou digitar
+  `#123` num projeto com provedor de issues oferece **Criar card da issue**, que liga a issue.
+- Cada seção mostra oito linhas e depois um botão como **mais 22**; cada clique mostra mais vinte.
+- **Ações** também tem **Ir para Sessões / Precisa de você /
   Projetos**, **Mostrar os atalhos de teclado** e, enquanto um pedido espera por você, **Aprovar o
   pedido mais antigo** e **Negar o pedido mais antigo** (um pedido de risco alto é aberto para ser
   segurado, como na bandeja). Cada comando mostra suas teclas à direita.
