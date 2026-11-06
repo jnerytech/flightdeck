@@ -1,4 +1,4 @@
-import type { PermissionMode, SettableMode } from "@flightdeck/protocol";
+import { clampPermissionMode, type PermissionMode, type SettableMode } from "@flightdeck/protocol";
 
 /** Why a mode cannot be picked: the host's bypass switch is off, or it is looser than the start mode. */
 export type ModeBlock = "bypassOff" | "looserThanStart";
@@ -17,20 +17,17 @@ export const MENU_MODES: readonly SettableMode[] = [
   "bypassPermissions",
 ];
 
-/** From the strictest to the loosest: a session may not be made looser than it started (the daemon's rule). */
-const STRICTNESS: readonly SettableMode[] = ["plan", "default", "acceptEdits", "bypassPermissions"];
-
 export function modeRows(opts: {
   current: PermissionMode;
   start: PermissionMode;
   bypassAllowed: boolean;
 }): ModeRow[] {
-  const startAt = STRICTNESS.indexOf(opts.start as SettableMode);
   return MENU_MODES.map((mode) => {
     let blocked: ModeBlock | null = null;
     if (!opts.bypassAllowed) {
       if (mode === "bypassPermissions") blocked = "bypassOff";
-      else if (startAt >= 0 && STRICTNESS.indexOf(mode) > startAt) blocked = "looserThanStart";
+      // The daemon's rule: only the start mode itself or a stricter one (clampPermissionMode).
+      else if (clampPermissionMode(mode, opts.start) !== mode) blocked = "looserThanStart";
     }
     return { mode, current: mode === opts.current, blocked };
   });
