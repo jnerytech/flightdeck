@@ -37,11 +37,13 @@ function freeName(command: string, taken: Set<string>): string {
 }
 
 /** A history line that cannot be picked: its command in gray, or which kinds of secret hid it. */
-function HiddenLine(props: {
-  command: string | null;
-  kinds: string[];
-  t: ReturnType<typeof useT>;
-}) {
+function HiddenLine(
+  props: Readonly<{
+    command: string | null;
+    kinds: string[];
+    t: ReturnType<typeof useT>;
+  }>,
+) {
   if (props.command !== null) {
     return <span className="font-mono text-muted-foreground">{props.command}</span>;
   }

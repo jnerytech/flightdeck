@@ -19,19 +19,21 @@ const SHORT_AREA = 600;
 export const ShortArea = createContext(false);
 
 /** A session's title, its gray line and its controls, over the timeline. */
-export function SessionHeader(props: {
-  title: ReactNode;
-  subtitle?: ReactNode;
-  controls?: ReactNode;
-  /** A row of its own under the buttons (the persona controls). */
-  extra?: ReactNode;
-  /** The buttons that fold into a "More actions" menu when the header is narrow. */
-  actions?: ReactNode;
-  /** Dialogs of the actions: they stay mounted whether the menu is open or not. */
-  dialogs?: ReactNode;
-  /** The path and cost as one line of text: the tooltip of the title when the header is narrow. */
-  hint?: string;
-}) {
+export function SessionHeader(
+  props: Readonly<{
+    title: ReactNode;
+    subtitle?: ReactNode;
+    controls?: ReactNode;
+    /** A row of its own under the buttons (the persona controls). */
+    extra?: ReactNode;
+    /** The buttons that fold into a "More actions" menu when the header is narrow. */
+    actions?: ReactNode;
+    /** Dialogs of the actions: they stay mounted whether the menu is open or not. */
+    dialogs?: ReactNode;
+    /** The path and cost as one line of text: the tooltip of the title when the header is narrow. */
+    hint?: string;
+  }>,
+) {
   const t = useT();
   const box = useRef<HTMLElement>(null);
   const width = useWidth(box);
@@ -123,13 +125,15 @@ export const Timeline = forwardRef<
 });
 
 /** One message: the user's in a soft bubble on the right, the assistant's plain. */
-export function Message(props: {
-  from: "user" | "assistant";
-  children: ReactNode;
-  className?: string;
-  "data-uuid"?: string;
-  "aria-current"?: "true";
-}) {
+export function Message(
+  props: Readonly<{
+    from: "user" | "assistant";
+    children: ReactNode;
+    className?: string;
+    "data-uuid"?: string;
+    "aria-current"?: "true";
+  }>,
+) {
   return (
     <div
       data-uuid={props["data-uuid"]}
@@ -148,7 +152,7 @@ export function Message(props: {
 }
 
 /** Under the conversation: what waits to go out, the activity line, the box and its state line. */
-export function ComposerDock(props: { children: ReactNode }) {
+export function ComposerDock(props: Readonly<{ children: ReactNode }>) {
   // In a short area the dock's padding and gaps shrink: the conversation keeps its room (#232).
   const short = useContext(ShortArea);
   return (
@@ -159,7 +163,7 @@ export function ComposerDock(props: { children: ReactNode }) {
 }
 
 /** The floating rounded card of the message box and its buttons. */
-export function Composer(props: { children: ReactNode }) {
+export function Composer(props: Readonly<{ children: ReactNode }>) {
   return (
     <div data-slot="composer-card" className="composer-card">
       {props.children}
@@ -168,7 +172,7 @@ export function Composer(props: { children: ReactNode }) {
 }
 
 /** A session pane: header, timeline and composer stacked, filling its column. */
-export function SessionPane(props: { children: ReactNode }) {
+export function SessionPane(props: Readonly<{ children: ReactNode }>) {
   const box = useRef<HTMLElement>(null);
   const height = useHeight(box);
   return (
