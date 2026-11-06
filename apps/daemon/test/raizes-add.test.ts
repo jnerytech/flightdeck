@@ -39,7 +39,7 @@ const refusal = (ack: Record<string, unknown>) =>
 describe("roots.add", () => {
   test("adds the folder to the live list, keeps it, and answers the list", async () => {
     const { client, roots, saved, root } = await serve();
-    const vault = realpathSync(tempDir("fd-vault-"));
+    const vault = realpathSync.native(tempDir("fd-vault-"));
     const ack = await client.request("roots.add", { path: vault, confirm: true });
     expect(ack.ok).toBe(true);
     expect((ack.data as { allowedRoots: string[] }).allowedRoots).toEqual([root, vault]);
@@ -49,7 +49,7 @@ describe("roots.add", () => {
 
   test("a session can start in the new folder at once", async () => {
     const { client } = await serve();
-    const vault = realpathSync(tempDir("fd-vault-"));
+    const vault = realpathSync.native(tempDir("fd-vault-"));
     const before = refusal(await client.request("fs.dirs", { path: vault }));
     expect(before.reason).toBe("cwd_outside_roots");
     await client.request("roots.add", { path: vault, confirm: true });
@@ -92,7 +92,7 @@ describe("roots.add", () => {
   });
 
   test("the system-folder rule reads the platform it was given: that home's secret folders are refused", async () => {
-    const home = realpathSync(tempDir("fd-home-"));
+    const home = realpathSync.native(tempDir("fd-home-"));
     const secret = join(home, ".ssh");
     mkdirSync(secret);
     const plain = await serve();

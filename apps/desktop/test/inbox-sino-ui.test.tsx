@@ -73,6 +73,12 @@ describe("inbox-sino-ui: which notification is unread, and what each one is abou
     );
   });
 
+  test("the panel is a dialog named by its title, so a screen reader says what opened (axe aria-dialog-name)", async () => {
+    await setup([ASK("a", 10)]);
+    const panel = await open();
+    expect(screen.getByRole("dialog", { name: "Notificações" })).toBe(panel);
+  });
+
   test("opening the panel marks nothing as read", async () => {
     const { store } = await setup([ASK("1", 30), ASK("2", 20, { subject: "Sessão B" })]);
     await open();

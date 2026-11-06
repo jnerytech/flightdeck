@@ -1762,7 +1762,6 @@ What the Phase 13 interface (`risco-ui`, `issues-ui`, `automacoes-ui`, `arena-ui
 - **Version:** 0.13.0 in the protocol, the daemon and the desktop (`tauri.conf.json` reads the desktop's `package.json`).
 - **`scripts/demo-seed.ts` is out of the coverage count:** the `demo-issue-risco` test is the first unit test to load the seed, which put its ping reply and its old-daemon stub (only used by `demo` and `demo:shots`) into the totals. The seed is demo scaffolding, covered by the e2e and the screenshots, so `bunfig.toml` ignores it like the vendored UI.
 
-
 # Phase 14 decisions: the daemon (embedded terminal)
 
 ## Terminal embutido (daemon)
@@ -2467,7 +2466,6 @@ The app side of phase 21: `conversas-ui`, `times-ui`, the relay between hosts, `
 
 - **`smoke:run`:** a real daemon over a real repository whose committed run.yaml runs an echo server that also starts a child that ignores SIGHUP and SIGTERM. Two cards run at once on different blocks, both answer over HTTP, and Stop leaves no server, child or answering port. Its block starts at a random base. Red on the base commit, where `runenv.config` does not exist.
 
-
 # Phase 28 decisions: performance and stack best practices
 
 ## Baseline
@@ -2882,8 +2880,6 @@ Command: `bun run build:desktop && bun run perf:baseline --out perf-baseline`, o
 - Not done in part 1: the weight scale (vendored buttons), splitting hover motion into per-component
   enter animations. Both go to part 2.
 
-
-
 ## Phase 37: GitHub sign-in and start from a GitHub project
 
 - **The sign-in is the host's `gh`, not an OAuth client of ours.** Issue #16 asks for the device flow, the token in the OS
@@ -3054,7 +3050,6 @@ are out of scope. This supersedes item 4 of the blocking-call audit: the sync fa
   opens a new one; duplicates in an older snapshot fold into one.
 - `session.create` takes no first prompt: the session starts idle and the first message begins
   its first turn. The New session form has a Model select (default, opus, sonnet, haiku).
-
 
 ## Phase 38: board sync with external boards (GitHub Projects first)
 
@@ -3430,7 +3425,6 @@ the range the audit reads, and the css-theme guard pins the fixed state.
   next sync; after five in a row a single `push_gave_up` entry is written and the card is left alone.
 - **Not verified here:** the stderr text of a missing scope and of a rate limit, and the `Status` field name on boards that
   renamed it, come from memory and the fakes; the proof of concept in the spec settles them.
-
 
 ## Team sessions get the flightdeck MCP (v0.36.1, issue #95)
 
@@ -3952,6 +3946,466 @@ Noise: the key-region rules are a contract and always fail. The heuristic rules 
   on several hosts, the host's folder key when two folders of one host share a name), not the smallest project key among the rows
   present, which changed when a host went offline. `group.key` still names a real project for the client scope. A fold saved under the
   old key still counts until the person chooses again; no migration of storage.
+
+## Test tiers by content (issue #261)
+
+- **Why.** The owner asked which tests are unit and which integration. Renaming 800 files into
+  folders would conflict with every open branch, so the tier comes from what a test does, computed
+  on every call (about 100 ms for the tree). No manifest is committed: every PR that adds a test
+  would have to update it, and two such PRs would conflict in it.
+- **The rules** (scripts/lib/test-tiers.ts): a test that starts a process (`Bun.spawn`, `spawnSync`,
+  a fake CLI), a server or a socket (`startServer`, `startDaemon`, `Bun.serve`, a WebSocket,
+  `FrameClient`) is `integration`; one that draws the DOM (`registerDom`, Testing Library) is
+  `component`; the rest is `unit`; `scripts/e2e/*.e2e.ts` and the smokes are `e2e`. Integration
+  wins over component: a screen test against an in-process daemon is heavy. Helpers count function
+  by function, comments stripped: a test that takes only `waitFor` from apps/desktop/test/fixtures.ts
+  is not integration because `daemon()` sits in the same file.
+- **Measured** on the last green main run (Linux, 550 s of test files): unit 249 files 24 s (4%),
+  component 167 files 97 s (18%), integration 386 files 428 s (78%). Today: unit 281,
+  component 180, integration 394, e2e 32 (`bun run test:tiers`).
+- **Use.** `bun run test:related -- --fast --tier unit,component` for a session on the Pi: a test
+  with no tier still runs, the left-out ones are named, and there is no coverage gate (a part of
+  the tiers covers part of a file). CI runs every tier and keeps the one combined 100% gate on
+  Linux. A test checks that every test file of the tree gets a tier.
+
+## GitHub Flow: one PR per branch, a release is a tag on a green main (issue #260)
+
+- **Why.** The owner wants small releases: a batch of 30 branches assembled into an rc conflicted
+  in a dozen places and gated everything on the slowest branch. Each branch now reaches main
+  through its own PR and merges alone when it is green.
+- **One CI trigger per kind of branch.** `push` only on main (what a release tags), `pull_request`
+  for a branch with an open PR (never filtered, so the required checks always report), and
+  `workflow_dispatch` for a branch with no PR yet (`bun run ci:branch` sends it). A work branch no
+  longer runs twice for one commit (on its push and on its PR). A push to main skips only
+  `docs/images/**` (#235).
+- **`bun run pr`** (scripts/lib/pr-flow.ts, through `gh api` only): `open` titles the PR after the
+  issue the branch's subjects name most (or `--issue`) and writes `Closes #N` with the subjects;
+  it opens no second PR for a branch. `next` lists the open PRs in merge order (onto main by number,
+  a stacked PR right after its parent) with what each needs: its parent, a draft, failing, running
+  or missing checks, or the commits it is behind. `update` is GitHub's update-branch. `merge` is the
+  coordinator's (`FLIGHTDECK_COORDINATOR=1`) and merges with a merge commit, pinned to the HEAD it
+  checked, only when the required checks are green there and the PR is not behind main.
+- **The required checks come from the ruleset**, read by REST (`rules/branches/main`), not from a
+  list in the code: the ruleset stays the only place that names them. A check counts as green the
+  way GitHub counts it for a required check: success, skipped or neutral, on the newest run of its
+  name, or a commit status of that name.
+- **Not changed here:** handoff-ci (#221) checks for a push trigger on the branch; with this, a
+  branch with a PR proves itself on its PR run instead, and handoff-ci has to read that run.
+
+## CI in shards, with the required names kept (issue #220, part of #216)
+
+- **Measured first.** On a green run (41960871352) `test (windows-latest)` took 33 minutes (25 of
+  tests, 5 of cargo), `screenshots` 24 and `test (ubuntu-latest)` 15.
+- **Linux stays whole.** Bun's lcov has per-line records but only a per-file function total, so
+  shards cannot be merged for the 100% function gate without weakening it (an inline callback that
+  never runs) or failing hub files every shard imports. `test (ubuntu-latest)` keeps the whole
+  suite, the exact gate and SonarCloud.
+- **Windows in three shards, without its own coverage gate** (the coordinator's choice). Each
+  shard runs `bun test --shard=i/3`; the smokes, cargo, the bundle budget and the performance
+  baseline run in `checks-windows`; Windows no longer repeats typecheck and lint, which are the
+  same code on both systems. What is given up is only Windows' own guarantee that every line runs
+  there (code behind a `skipIf(win32)`); Linux still requires 100%.
+- **The ruleset's names are aggregates.** The main ruleset requires `test (ubuntu-latest)`,
+  `test (windows-latest)`, `screenshots (prints, axe e e2e)` and `SonarCloud Code Analysis`. The
+  Windows and screenshots checks are now small jobs with exactly those names that need their parts
+  and fail unless each succeeded (`if: always()`, so a failed or cancelled part fails them rather
+  than leaving them skipped).
+- **Prints and e2e apart.** `screenshots-prints` and `screenshots-e2e` run side by side; a failed
+  journey's trace and print are now their own `e2e-failures` artifact.
+- **No timings file yet.** `bun test --timings` balances shards by duration, but a committed
+  timings file would be one more file every branch touches; the shard count is tuned from the
+  first runs instead.
+- **`build:desktop` on Windows, found by `checks (windows-latest)`.** `vite.config.ts` imported
+  `entryHtml` from `demo/boot.ts`, whose imports reach `lib/tabs.ts`, which imports the protocol
+  since #198. On Windows Vite does not bundle that workspace package into the config (bun links it
+  through a junction), so Node imports `packages/protocol/src` itself, and its type stripping stops
+  at the parameter property of `PersonaModelError`. `entryHtml` moved to `demo/entry-html.ts`,
+  which imports nothing, and a test keeps every workspace package out of what the config reaches.
+  The `smoke:limits` failure of the first run did not come back on the rerun.
+
+## CI by changed paths (issue #264)
+
+- **Why.** Every PR ran the whole matrix (Windows in three shards, prints, e2e, cargo), so a
+  docs or scripts change waited half an hour for checks that read none of it.
+- **The plan** (scripts/lib/ci-paths.ts, run by the `changes` job against the merge-base with the
+  PR's target): docs and scripts alone run the Linux job (the whole suite with the 100% gate,
+  typecheck, lint, the audit, SonarCloud); `apps/daemon/**` or a smoke adds the Windows shards, the
+  Windows checks and the smokes; `apps/desktop/**`, `packages/**`, `package.json`, `bun.lock`, a
+  bunfig, a tsconfig or `.github/workflows/**` add the prints and e2e; `apps/desktop/src-tauri/**`
+  adds cargo. A push to main, a run by hand, or a diff the job cannot read plans everything, so
+  every commit on main has a full run, and a tag goes only on a commit whose full run is green.
+- **The required names still report.** `test (windows-latest)` and `screenshots (prints, axe e
+  e2e)` are aggregates: they pass when their jobs were skipped by path, but only after checking
+  that the `changes` job itself succeeded, since a failed plan has no outputs and would otherwise
+  read as "skipped".
+- **cargo** (check and test of the shell) runs only when the plan says so, after
+  `Swatinem/rust-cache` (pinned to the v2.9.3 commit). On Windows the app build and the bundle
+  budget run whenever the app or the shell changed, apart from cargo.
+- **e2e in three Playwright shards** (`bun run e2e -- --shard=i/3`), each with its own report and
+  failures artifact; the aggregate fails if any shard failed.
+- **lint:sonar on a PR is the ratchet only** (`lint:sonar (ratchet)`): the changed-lines run was
+  red on every large diff for code smells and is not a required check, so its red X said nothing.
+  The ratchet is green unless a rule's open count goes up. The changed-lines run stays local.
+
+## CI fails fast: a quick first job the heavy jobs need (issue #272)
+
+- **Why.** On 2026-11-05 ratchets (Sonar, layout, no-sync, protocol surface) failed only after
+  the 20-minute jobs. A count that went up now fails the run in minutes.
+- **The `quick` job** (`quick checks`, Linux, 10 minutes at most) runs typecheck, lint, the TDD
+  audit (full history) and `bun run scripts/ci-quick.ts`: every `*-ratchet.test.ts(x)` and
+  `protocol-surface.test.ts`, by name (scripts/lib/ci-quick.ts), in seconds with no coverage. The
+  Linux suite no longer runs typecheck, lint and the audit itself.
+- **Every heavy job needs it:** the Linux suite, the Windows shards and checks, the prints and the
+  e2e shards.
+- **No local Sonar in it** (#283): the `lint:sonar (ratchet)` step it first carried failed once main
+  grew past the baseline, and the user chose SonarCloud's own check on the PR as the only Sonar
+  check. #283 removes the local Sonar from the repository.
+- **A failed quick job fails the required checks, never skips them.** GitHub counts a skipped
+  required check as passed. So `test (ubuntu-latest)` runs on `!cancelled()` and its first step
+  fails unless `changes` and `quick` succeeded. The two aggregates check `quick` before they pass a
+  job group skipped by path. SonarCloud never reports when the suite did not run, so its required
+  check stays missing.
+- **The ruleset is unchanged:** `quick checks` is not a required check, and the four required
+  names stay as they were.
+- **Not in the quick job:** a guard checked inside a heavier test (`layout-guards.test.ts`) stays in
+  the suite. Only a file named `-ratchet` is quick, so a slow test never slips in by itself.
+
+## The hand-off stamp vouches for CI, and a tag needs a green full run (issue #266)
+
+- **What survived of #221.** Its push-trigger requirement and the `gh run list --commit` check
+  died with GitHub Flow (#260). Kept: `test:related` compares with the audit base (origin/main
+  first, the local main only as a fallback), and `handoff:check --base <ref>` for a branch stacked
+  on another.
+- **`ci=` in the stamp.** After the four local checks, `handoff:check` reads the main ruleset's
+  required checks on HEAD (`headCi` in scripts/lib/pr-flow.ts, the same verdict `bun run pr`
+  uses), whatever event ran them: a PR's run or main's push. `0` when green; otherwise `failed`,
+  `pending`, `none` (never run: push the branch, or open its PR) or `unknown` (the ruleset could not
+  be read). `--verify` needs `ci=0` like every other field; `--no-ci` writes `ci=skip`, which
+  vouches for nothing. The stamp's pattern takes word values and still splits its pairs one way
+  only (the #232 ReDoS test keeps it linear).
+- **`bun run pr -- tag vX [--commit <sha>]`** (the coordinator's): a commit on main (main's HEAD by
+  default) is tagged only after its full CI run on main (its push run, which plans everything,
+  #264) completed with success. It refuses a tag that exists, a commit not on main, no run, a run
+  still going or a failed one, and writes nothing then. The tag is pushed alone as `refs/tags/vX`:
+  a push of several tags at once starts no workflow.
+
+## Sessions open their own PRs and turn on auto-merge (issue #271)
+
+- **Why.** The owner decided (2026-11-05) that a session delivers its own work: it pushes its
+  branch, opens the PR and turns on auto-merge, so a green PR no longer waits for the coordinator.
+  The coordinator keeps main, hand merges, tags, releases and the repository settings.
+- **`bun run pr -- auto <n>`** calls GraphQL's `enablePullRequestAutoMerge` with `MERGE` (REST has
+  no auto-merge endpoint). The ruleset's required checks gate the merge, as for `pr merge`. It
+  refuses a draft (GitHub would too). The main ruleset is strict
+  (`strict_required_status_checks_policy`), so GitHub also waits until the PR is up to date, as
+  `pr merge` checks; auto-merge never updates the branch itself (`pr update <n>` does). GitHub
+  refuses auto-merge for a PR that can merge already ("clean status"); `auto` then says the
+  coordinator merges it, since a session does not merge by hand.
+- **Stacked PRs.** Auto-merge onto a branch with no ruleset would merge at once, into the parent.
+  So `auto` refuses a PR onto a branch that `main` does not have yet. The repository does not
+  delete a branch on merge, so GitHub never retargets the child by itself: once `main` has the
+  parent (`compare` says `ahead_by` 0), `auto` moves the PR onto `main` and turns auto-merge on.
+  A compare that fails refuses; it never counts as merged.
+- **The guard** (`prMergeViolation`) blocks `bun run pr -- merge|tag`, `gh pr merge` and a REST
+  `pulls/N/merge` in a session. It reads `FLIGHTDECK_COORDINATOR` from the hook's own environment,
+  so setting it in the command does not pass. `pr merge` refuses without the variable too. Like the
+  other command rules, it reads words outside quotes: a quoted `'…/pulls/12/merge'` path passes.
+  The hook is a guard against slips, not a security boundary.
+- **WIP limit.** At most 2 open branches per session, stated in CLAUDE.md and docs/TDD.md. It is
+  not enforced in code.
+
+## Test isolation (#274)
+
+- **Between files, not between tests.** Bun's preload `beforeAll`/`afterAll` run once for the whole
+  run and `expect.getState().testPath` does not exist in 1.4.4, so the preload has no hook at a file
+  boundary. It registers a `Bun.plugin` `onLoad` for `*.test.ts(x)`: Bun loads a file, runs it, then
+  loads the next, so the load of file N is the end of file N-1. There the preload (`scripts/test/
+  isolation.ts`) restores what a file can leave changed for the next one: `setTimeout`,
+  `clearTimeout`, `setInterval`, `clearInterval`, `setImmediate`, `clearImmediate`, `Date`, `fetch`,
+  the environment, and (once happy-dom is registered) the window size, `localStorage`,
+  `sessionStorage` and `document.body`. The first snapshot is taken at the end of the preload, after
+  the guards, so their PATH, HOME and fetch wrapper are part of the baseline.
+- **The baseline is taken after each file has loaded, not before.** The plugin appends a call to
+  the file's source, so it runs once the file's top-level code has. A helper that sets an env
+  variable (`board-helpers.ts` sets `GIT_AUTHOR_*`) or registers happy-dom (which swaps the timers
+  for its own) when it loads runs once, because Bun caches the module; restoring the state from
+  before the first file would have taken that away from every later file (the first version did:
+  1132 tests failed with `Author identity unknown` in the full run, each green alone). So only what
+  a file's tests and hooks change is put back; what its top-level code set stays.
+- **Named, not silent.** A leak other than the routine browser state (size, storage, body: nearly
+  every UI file leaves some) prints `isolation: <file> left … changed; put back before <next>` on
+  stderr, so the culprit is one line away. The reset is a net, not a licence: fix the file.
+- **Not reset:** location, `matchMedia` (follows the viewport), `process.cwd()`, other globals a file
+  defines, module state and `mock.module` (a file restores its own mocks, see the tests rules).
+- **Sleep ratchet.** `sleep-baseline.json` counts `Bun.sleep`, `Bun.sleepSync`, a promise resolved
+  from a timer and calls of a `sleep`/`delay` helper per test file (the four test folders, test
+  files only: a fake binary sleeps on purpose). A `// timing:` comment on the line above allows a
+  sleep where the clock is under test. It only goes down: a file may not exceed its entry.
+  Baseline when added: 113 files, 251 sleeps.
+
+## One command per release (issue #275)
+
+- **`bun run release vX.Y.Z`** (the coordinator's, `FLIGHTDECK_COORDINATOR=1`; it refuses without
+  it and touches nothing) is a state machine over `origin/main`, so running it again carries on.
+  Main behind the tag: a branch `release-vX` gets `test(versao)` (the version test moves first and
+  must be red), `chore(versao)` (the three packages and `bun.lock`; the test must be green), the
+  protocol-surface check (a lost baseline line stops the release) and, when `--write` changes the
+  baseline, `chore(release)`; then the branch is pushed, a PR is opened (not through `pr open`,
+  which would close the issue of its first commit) and `pr auto` turns on auto-merge. Main at the
+  version: the surface check, `pr tag vX` (so the CI gate of #264 still decides) and
+  `release:close -- vX --apply`. A tag that exists is not made again; the close still runs.
+- **Why a state machine, not one blocking run.** The PR merges when its checks are green, which
+  takes longer than a session should wait; the second run is the "after merge" half of the
+  issue. Logic in `scripts/lib/release-cmd.ts`, effects injected, no test pushes or tags.
+- **The hook guard knows `bun run release`** (#275, from the security review): the command pushes and
+  tags through child processes the hook never sees, and its own check is the same environment flag,
+  which a command can set inline. `prMergeViolation` now blocks `bun run release` and
+  `bun scripts/release-cmd.ts` in a session, like `pr tag`.
+
+## `release:close` closes what a tag shipped (issue #252)
+
+- **What it reads.** The commits of `<previous v* tag>..<tag>` (`--since` names another start). An
+  issue counts when a subject names it (`(#170)`, the repository's habit) or a body line starts with
+  `Closes`, `Fixes` or `Resolves #N`. A number mentioned anywhere else in a body ("the overlay of
+  #233 is deferred") is listed and never touched, and a pull request's number is skipped.
+- **Dry run first.** Without `--apply` it only reads (the issue, its comments, the milestones) and
+  prints what it would do. With `--apply`, each open issue gets "Shipped in <tag>." (once: an
+  existing comment with that text is not repeated), is closed as completed, and goes to Done on the
+  board; an issue already closed only goes to Done. A second run changes nothing.
+- **The milestone** named after the tag is closed when it has no open issue left and no step of the
+  run failed, so a run that failed halfway leaves it open for the retry. One with issues the tag
+  did not ship stays open and says how many.
+- **REST only.** Every call is `gh api` with `-f` fields (no GraphQL), and the board goes through
+  `FLIGHTDECK_BOARD_CMD`, called as `<cmd> <issue> done ""`: the coordinator's `issue-note.sh`,
+  whose REST queue of #242 survives a rate limit. Without it the board is skipped, said once. The
+  coordinator tooling stays outside the repository; the script only knows the command's contract.
+- **Hardening (issue #287, from the security review of #275).** The tag and `--since` must be
+  `vX.Y.Z` (exit 2 otherwise), so neither can reach git as an option or a range. An issue title is
+  printed with its control characters turned into spaces (no escape sequence in a dry run). A
+  session's `bun run release:close ... --apply` (or `bun scripts/release-close.ts ... --apply`) is
+  blocked by the hook guard like `bun run release`: it closes issues on GitHub, so it is the
+  coordinator's; the dry run stays open. `bun run release` takes a tag as already made only when
+  `git ls-remote` lists exactly `refs/tags/<tag>` on origin (a local tag is anyone's, `pr tag` is
+  what gates a tag, and ls-remote matches a suffix, so `x/refs/tags/<tag>` is not it); an origin it
+  cannot ask is an error, not "absent". It reads a version from main only when it is `x.y.z`.
+
+## Risky changes get a security review before the hand-off (issue #273)
+
+- **Why.** On 2026-11-05 six reviews found high findings after the hand-off (keep-awake,
+  worktrees, resources, logs, trust, assistant). The review now comes before it.
+- **The gate** (scripts/lib/security-gate.ts, run by `handoff:check`) reads the added lines of the
+  changed code files (never a test, a fixture or a document) since the audit base or `--base`. A
+  file is risky when they spawn or kill a process (any `spawn…(`, `exec…(`, `.kill(`), delete
+  (`rm(`, `unlink(`, `rm -rf`), name a secret (token, secret, password, credential, API key) or a
+  permission (`chmod`, `chown`, permission, `allowedNetworks`), or when its path is in the vault or
+  pairing code, or when they open a listener or an outbound call (`Bun.serve`, `fetch(`, a
+  WebSocket, `.listen(`). A spawn is also `cp.exec(`, `child_process`, `Bun.$`, `fork(`, `execa(`
+  or `new Worker`, and in Rust and Python `Command::new`, `std::process`, `subprocess.`,
+  `os.system`; deletes and listeners have their Rust and Python forms too. A line that is only a
+  comment and nothing else does not count; a line is never cut, so one with any code is read whole
+  (a glob's `*/` or comment marks in a string cannot hide what it does; `#` is a comment only in
+  `.sh`, `.py` and `.ps1`, since in TypeScript it is a private field). Code is `.[cm]?[jt]sx?`,
+  `.rs`, `.sh`, `.ps1` and `.py`. A mode change counts as a permission change. Some paths are risky
+  whatever they add: the vault and pairing code, the Tauri shell's capabilities and
+  `tauri*.conf.json` (CSP, scopes), `.github/workflows/`, and the files whose contents run as code
+  (`package.json`, `Cargo.toml`, `build.rs`, `bunfig*.toml`, `.claude/settings*.json`,
+  `.claude/hooks/`), and the guards themselves (the gate, the hook rules, the TDD audit, the
+  hand-off check, the hook runner, `bun run pr`, the security-reviewer agent, `.github/actions/`); a pure rename into one counts too. Left as known limits: a
+  risky file moved by rename from a test folder is read by its edited lines only, a mode change on
+  a file with no code extension is not seen, and every `package.json` change asks for a review. Patterns, not a parser: they err toward asking for a review.
+- **It fails closed** (the OpenCode review on #279): a `git diff` or `git log` that fails (an error,
+  an output past 64 MB), or a `--base` that is not a commit, stamps `security=unknown`, never `0`.
+  The diff forces `--src-prefix=a/ --dst-prefix=b/` (a user's `diff.noprefix` or
+  `diff.mnemonicPrefix` would change the headers) with no external diff or text conversion. The
+  diff's file headers are read only before a file's first hunk (an added line can look like one),
+  names come unquoted, and a merge counts by the files it edited itself. The log is in topological
+  order, so "after" follows the history, not the dates, a folded trailer reads as one line, and a
+  user's `log.showSignature` adds nothing to it (`--no-show-signature`).
+  Risky files that no commit of the log touches need a review all the same. `--verify` refuses a
+  stamp with no `security=` or no `ci=`, so a stamp from before the gate does not pass. It is a guard against slips,
+  not a security boundary: the trailer is the session's own word that the review ran. A name git
+  still quotes (one with a quote, a backslash or a control character) is skipped.
+- **The verdict is a commit trailer,** `Security-Reviewed: <summary>`, on a commit at or after the
+  last commit that touched a risky file (an empty `chore(security)` commit is enough). A later
+  risky commit needs a new review. A trailer lives with the branch, so `--verify` and any receiver
+  see it; a line in a message would not. The stamp says `security=0`, `unreviewed` or `unknown`
+  (no base), and only `0` vouches.
+- **The OpenCode review on `pr open`** is the coordinator's tooling: `open` runs the command in
+  `FLIGHTDECK_PR_OPENED` with the PR's number, branch and base. The command comes from the
+  session's own environment, never from the repository: words split on spaces, or a JSON array of
+  strings for a path with spaces (Windows), with no shell. It runs bounded
+  (scripts/lib/bounded-run.ts): its output ignored, since it inherits the environment and what it
+  prints may hold a token, so the failure line says only the exit code (124 past the deadline, 127
+  when it could not start). Past two minutes its whole process group is killed (its tree, with
+  `taskkill /T`, on Windows; an orphan whose parent already died escapes that walk). A hook that
+  fails, cannot start or times out only prints that line: the PR is open either way. On Windows a
+  bare program name may resolve in the current folder first: give the hook an absolute path. Its program is found by Bun's own PATH lookup, not `whichOnPath`: the environment, and the
+  PATH with it, are the session's own. The number, branch and base come last, as positional
+  arguments: a hook script must not read them as options.
+
+
+## DECISIONS.md merges with the union driver (issue #290)
+
+- **Why.** Every parallel PR appends a section at the end of this file, so two PRs added at the same
+  place and conflicted on it (#285 and others, 2026-11-05) although nothing was in dispute.
+  `.gitattributes` now says `docs/DECISIONS.md merge=union`: a merge keeps the lines of both sides.
+  `scripts/test/decisions-union.test.ts` proves it on a temporary repository (two branches that each
+  append a section merge cleanly with both kept; without the rule they conflict) and checks that the
+  rule is in the file.
+- **Only this file.** The recent edits of `docs/DECISIONS.md` all land in its last 130 lines. Those
+  of `docs/GLOSSARY.md` and of both manuals land all over the file (a table row, a feature's
+  section), where a union merge would keep two versions of one edited line side by side with no
+  warning. They keep the normal merge and its conflict.
+- **What union does not do.** Two PRs that edit the *same existing line* of DECISIONS.md both keep
+  their version of it, one after the other: read the merged section once before the hand-off. Add a
+  section, do not rewrite an old one.
+## SonarCloud on the PR is the only Sonar check (issue #283)
+
+- **Why.** The local copy (`bun run lint:sonar`, eslint-plugin-sonarjs in `tools/sonar-lint` with
+  `scripts/sonar-profile.json`, and the per-rule ratchet of `sonar-baseline.json`) missed rules
+  SonarCloud flags: its typed rules were skipped under `--no-types`, and several Sonar rules have
+  no ESLint version at all. Its ratchet also failed a PR once main grew past the baseline. The user
+  chose to remove it rather than strengthen it.
+- **What is gone:** `tools/sonar-lint` (and the `tools/*` workspace), `scripts/lib/sonar-lint.ts`,
+  the profile, the baseline, their tests, the `lint:sonar` script, and the CI steps (the quick
+  job's ratchet went in #278). The earlier entries above that describe them are history.
+- **What stays:** every `// NOSONAR: <reason>` comment, since SonarCloud honours them; and
+  `sonar-coverage.test.ts`, which guards SonarCloud's own configuration (its coverage is read on
+  exactly the files of the 100% gate, and every test file is analysed as test code). Its helpers
+  moved, unchanged, to `scripts/lib/sonar-project.ts`.
+- **For sessions:** no Sonar run before a push. A SonarCloud finding on a PR is fixed in that PR.
+
+## Security gate follow-ups (issue #284)
+
+- **Why.** OpenCode's second review of #279 found four mediums, with no high left.
+- **A deleted file keeps its path, and a rename keeps both.** Deleting a guard file (the hook rules,
+  the gate), or moving the CI out of `.github/workflows/`, is risky by path, like editing one.
+- **Removed lines count.** A removed line that touches a risk area makes its file risky ("removes
+  spawn"). A source file that loses any line and still holds risky code at HEAD (`git show
+  HEAD:<path>`) is risky too ("edits spawn code"): taking a check out in front of a spawn or a
+  delete needs a review as much as adding one. A removal of comments or blank lines only reads
+  nothing, except a lone `/*`: without it the lines after it run, so the file's code is read. A
+  file moved from a test folder into the code is risky ("moved from tests"), even unchanged. Known
+  limits, all needing a deliberate edit: an added lone `*/` can un-comment code that stays as
+  context; a content line that reads `-- "…"` or `++ "…"` looks like a quoted header and blocks the
+  gate (it never lets anything through); the trailer is the session's own word. Removed lines are keyed by the file's old path (`--- a/`), so a file renamed into a test
+  folder or to a non-code extension still counts the checks it lost; the code that stays is read at
+  its new path. A deleted file is not read at HEAD, and a file whose HEAD cannot be read (an error,
+  an output past the buffer) is risky, never taken as empty.
+- **Renames in the log** (the OpenCode review of #286): `git log` detects renames by itself and
+  lists only the new path, so a review after a move away from a risky path could never vouch. The
+  log runs with `--no-renames`, which lists both sides.
+- **Quoted names fail closed.** A name git still quotes with `core.quotepath=off` (a quote, a
+  backslash, a control character) defeats the header parsing, so the gate stamps `unknown`. A path
+  with " b/" inside it is read exactly from `diff --git a/<p> b/<p>` when both halves match (every
+  change but a rename, whose own lines name its paths).
+- **A mode change is a permission change on any file,** with or without a code extension (a script
+  in `bin/` made executable).
+- **runBounded takes its process, timers and kill as deps.** Its tests use a fake process and timer:
+  the deadline, the group kill, the exit before it and a child with no pid run with no real wait.
+  The real calls left (a program that exits, one that does not exist, the system's kill calls) start
+  and end at once.
+
+## The Linux leg in parallel jobs, the suite still whole (issue #293)
+
+- **Why.** `test (ubuntu-latest)` took 12-18 minutes: the coverage suite (8 minutes, one process),
+  then SonarCloud (4), then the smokes and cargo (3 on main), one after another in one job.
+- **The split.** `test-suite` runs `bun run test` (the exact 100% line and function gate) and uploads
+  `coverage/lcov.info`; `sonar` downloads it and runs the scan; `checks-linux` runs the smokes and
+  cargo in parallel with the suite, only when the path plan asks for them. The required check
+  `test (ubuntu-latest)` is an aggregate over the five (the plan, quick, the suite, SonarCloud, the
+  checks), so the ruleset is unchanged; it checks the plan and quick first, since GitHub counts a
+  skipped required check as passed. SonarCloud may be skipped (a dispatch); the checks only when the
+  plan needs no smoke and no cargo.
+- **Why the suite is not sharded** (measured 2026-11-05, three coverage shards on the Pi): lines
+  merge exactly (every file has the same lcov line set in each shard), but bun's lcov counts
+  functions per file without naming them, and even the count varies by process (it counts the
+  functions a process compiled: 271 files differed). 111 of 595 files could not be settled from the
+  counts. Sharding with the exact function gate needs named function data (#296, istanbul maps);
+  the merge logic for that stays on the ci-ubuntu-shards branch.
+
+## Unstable tests are skipped off Ubuntu, in the code (issue #288)
+
+- **The user's call (2026-11-05):** "pode skipar todos, exceto os testes do ubuntu", and "skip tests in
+  the code" when asked how. Windows failed on every PR and on main, and `test (windows-latest)` is a
+  required check, so five tests that bet on the machine blocked every merge. A first version put them
+  on a quarantine list that the required jobs left out by name, with a non-blocking job; it was
+  dropped before it merged, because the skip in the code is simpler (no list, no runner scripts, no
+  job, `ci.yml` unchanged) and keeps the test where its author reads it.
+- **The form:** `test.skipIf(notLinux)(…)` with `// unstable: #<issue> <reason>` on the line or the
+  line above (`scripts/lib/unstable-skip.ts`). The tests are untouched otherwise and still run on
+  Ubuntu under the 100% gate. A skip for a platform *capability* is a different thing and needs no
+  note.
+- **What `skipIf` was before:** the hook never blocked `skipIf` (its markers are `.only(`, `.skip(`,
+  `test.todo(` and `toMatchSnapshot(`), and ten capability skips exist. So nothing was loosened:
+  the new rule *adds* a check for the off-Linux form (an Edit or Write that adds one without the
+  note is blocked), and `.skip`, `.only`, `test.todo` and snapshots stay blocked whatever comment
+  is next to them.
+- **The ratchet** (`unstable-skip-ratchet.test.ts`): every skip off Linux has the note with an issue
+  number and a reason, and there are at most 5 (the five below), the number only lowered. Whether
+  the issue is still open is not checked (the tests touch no network): close #288 only when the
+  last skip is gone.
+- **The five:** hub-list "the render time at 9,090 rows is within 2x…" (a ratio of two wall-clock
+  render times); heartbeat "qualquer quadro do cliente conta como vivo…" (10 ms and 25 ms timers
+  against a 75 ms silence limit); platform "lint barra @tauri-apps/*…" (spawns biome; over 15 s on a
+  loaded Windows runner in three runs); proto-restore "two files that patch HTMLElement.prototype…"
+  (a child `bun test` with the whole preload; over 15 s on Windows); wait "it returns once the window
+  ended…" (counts polls in an 80 ms window). The fixes (counts instead of a ratio, an injected ticker
+  and clock for the heartbeat, a longer hang limit for the two child processes) are parked on the
+  branch `timing-fixes-288` for #288.
+- **Known limits (security-reviewer pass, nothing high):** the hook is a guard against slips, not a
+  boundary. It recognises `notLinux` and `process.platform !== "linux"` (also `'linux'`) on one line;
+  it does not see `!=`, a backtick string, an alias of `notLinux`, `skipIf(true)`, a skip in a helper
+  that is not a `*.test.ts`, or `scripts/test/not-linux.ts` changed to `true`, and it takes any
+  `// unstable: #<n> <word>` on the line (not a lookup of the issue, which needs the network). The
+  ratchet bounds the first kind: it is exactly saturated (at most 5 and the five files named), and
+  it runs in CI over the whole checkout. The hook matcher also covers only Edit, Write and Bash, as
+  before. All of it is how the guard already worked for `skipIf`, which it never blocked.
+- **Four of the five are fixed (issue #288, 2026-11-05).** The hub-list ratio failed on Ubuntu CI too
+  (249 ms against 229), so the skip off Linux did not save it. Now: hub-list compares counts (rows
+  drawn, React commits, reads of the history) at 690 and at 9,090 rows, with no clock; wait-stays
+  asserts at least two looks and that it returned no earlier than its window (`Date.now()` is what
+  `stays` itself loops on); platform lint and proto-restore keep a 90 s limit that only bounds a hang.
+  They lost their skip and note, and the ratchet maximum went from 5 to 1. Only the heartbeat test is
+  still skipped: its fix needs a ticker and a clock injected into `startServer`
+  (`performance.now()` and `setInterval` for the ping), so #288 stays open for it.
+- **The fifth is fixed too (issue #288).** `ServerOptions` takes `now` (the heartbeat clock, default
+  `performance.now()`) and `pingTicker` (runs the tick every `pingIntervalMs` and returns its stop,
+  default a `setInterval`). The heartbeat test drives both by hand: before each tick a command
+  arrives and no pong does, eight ticks in a row leave the client connected, then the clock moves to
+  4 intervals minus 1 ms of silence (still connected) and to exactly 4 (closed with 4408). No timer
+  and no wait on the clock. Mutants of the boundary (`>` for `>=`) and of the frame stamp both fail it.
+  The ratchet maximum is 0, so no test is skipped off Linux; the `skipIf(notLinux)` form and its hook
+  check stay for the next unstable test, which must name an issue.
+
+## A PR behind main merges; only a conflict waits (issue #305)
+
+- **Why.** With the ruleset strict, every merge made each other PR behind, and each of them reran
+  its whole CI before it could merge. The coordinator turned the up-to-date rule off: a green PR
+  now auto-merges behind `main`, and `main`'s push CI (and `pr tag`, which needs a green full run
+  on main) still catch a combined break.
+- **`bun run pr` follows.** `pr next` lists a PR behind `main` as ready, and `pr merge` merges it,
+  printing how far behind it is as a note for the coordinator's hand merges. What still blocks is a
+  conflict, read from GitHub's `mergeable_state` (`dirty`): the message says to merge `main` into
+  the branch and resolve it, since GitHub's update-branch cannot resolve a conflict.
+- The #271 entry above describes the strict ruleset; it is history.
+## Prints and axe in four jobs, one per theme and language (issue #291)
+
+- **Why.** After #293 the one prints and axe job (13-15 minutes) was the longest of a PR, and every
+  merge waits for the screenshots check.
+- **The split.** `screenshots-prints` is a matrix of the two themes and the two languages, with
+  `fail-fast: false`. Each job runs `bun run demo:shots` with `SHOTS_THEME` and `SHOTS_LANG`
+  (`scripts/lib/shots-variants.ts`: all four pairs when unset, so a local run prints them all) and
+  uploads its own `prints-<theme>-<lang>` artifact. A filter that names no known pair refuses the
+  run instead of printing nothing. The required `screenshots (prints, axe e e2e)` aggregate is
+  unchanged: the matrix job's result is every pair's. The filter is checked before Chrome starts. For the visual
+  check a leg is still a complete run of its pair: a baseline with no print is reported inside the
+  folders the leg printed (`pairs`), so no leg turns the check off once it moves to `compare`; only
+  `DEMO_SHOTS` (some screens) does.
+- **Not here: the e2e shards.** Shard 1 takes 7-11 minutes and the others seconds because the
+  journeys are one file whose tests share the seeded demo, the second language relying on the
+  first one's state (`workers: 1`, `fullyParallel: false`). Balancing them means splitting the
+  journeys into independent tests, which is #292, not a one-line change.
 
 ## Approval safety, second pass (issue #245)
 
