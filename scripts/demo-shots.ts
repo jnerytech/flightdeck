@@ -222,6 +222,11 @@ async function openHostSettings(page: Page): Promise<void> {
   await page.waitForTimeout(300);
 }
 
+/** The names of the prints, in order (#677: the narrow list is checked against them). Stub. */
+export function shotNames(): string[] {
+  return [];
+}
+
 function shots(ids: DemoIds): Shot[] {
   return [
     { name: "hub", route: { name: "hub" } },
