@@ -153,6 +153,7 @@ describe("demo-prints: axe e CI", () => {
       "notify-prefs",
       "activity",
       "health-fold",
+      "project-tree-cap",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([
