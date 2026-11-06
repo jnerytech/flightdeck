@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Page } from "@/components/layout/page";
 import { SnippetPicker } from "@/components/snippets/snippet-picker";
 import {
@@ -63,6 +63,11 @@ export function TerminalPage(
       launchId !== null && key.startsWith(`${hostId}/`) && external.launchId === launchId,
   )?.[1];
   const font = useSyncExternalStore(store.terminalFont.subscribe, () => store.terminalFont.value);
+  const reader = useSyncExternalStore(
+    store.terminalReader.subscribe,
+    () => store.terminalReader.value,
+  );
+  const readerHint = useId();
   const theme = useSyncExternalStore(store.theme.subscribe, () => store.theme.resolved);
 
   useEffect(() => {
@@ -77,6 +82,7 @@ export function TerminalPage(
       const xterm = createXtermScreen(deps, {
         theme: terminalTheme(store.theme.resolved),
         fontSize: store.terminalFont.value,
+        screenReader: store.terminalReader.value,
         fontFamily: TERMINAL_FONT_FAMILY,
         windows: isWindowsHost(navigator.userAgent),
         clipboard: {
@@ -148,6 +154,7 @@ export function TerminalPage(
   };
 
   useEffect(() => screen.current?.setFontSize(font), [font]);
+  useEffect(() => screen.current?.setScreenReader(reader), [reader]);
   useEffect(() => screen.current?.setTheme(terminalTheme(theme)), [theme]);
 
   const close = async (kill: boolean) => {
@@ -253,6 +260,8 @@ export function TerminalPage(
         data-terminal-area
         role="application"
         aria-label={t("terminalUi.title")}
+        // While xterm keeps no copy for screen readers, the terminal says where to turn it on (#476).
+        aria-describedby={reader ? undefined : readerHint}
         className="min-h-80 w-full flex-1"
         onContextMenu={(e) => {
           e.preventDefault();
@@ -263,6 +272,11 @@ export function TerminalPage(
           });
         }}
       />
+      {!reader && (
+        <p id={readerHint} hidden>
+          {t("terminalUi.readerHint")}
+        </p>
+      )}
       {menu && (
         <div
           ref={menuRef}

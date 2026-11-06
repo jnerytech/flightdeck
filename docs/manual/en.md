@@ -2800,7 +2800,10 @@ tab, with no SSH.
   closes. Links in the output open in the browser (`http` and `https` only). The font is the
   system monospace; its size is in Settings (**Terminal font size**, 10 to 24). In the tab,
   `Ctrl+=` (or `Ctrl++`) and `Ctrl+-`, or `Ctrl` with the mouse wheel, make it one point bigger or
-  smaller, and `Ctrl+0` brings back 13; the size is the same setting and is kept. The tab keeps
+  smaller, and `Ctrl+0` brings back 13; the size is the same setting and is kept. For a screen
+  reader (NVDA, Narrator), turn on **Screen reader support in the terminal** in Settings: the
+  terminal then keeps a copy of its output the reader can follow (long output draws more slowly, so
+  it starts off). The tab keeps
   the last 10,000 lines to scroll back to and to search.
 - **Detach and reopen:** a terminal survives the app: it keeps the last 2 MB of output, and
   attaching again shows them. Closing a terminal tab asks: **Detach** (the default; the process
