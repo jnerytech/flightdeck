@@ -34,7 +34,7 @@ export type ClassifyCall = (toolName: string, input: Record<string, unknown>) =>
 const OPEN_SHELL = [
   /^git status$/,
   /^(?:npm|pnpm|yarn|bun) test$/,
-  /^(?:npm|pnpm|yarn|bun) run [A-Za-z0-9_][\w:-]*$/,
+  /^(?:npm|pnpm|yarn|bun) run \w[\w:-]*$/,
 ];
 /** Syntax that makes a prefix more than one command, or hides one. */
 const SHELL_SYNTAX = /[;&|<>$`()\n\\"']/;
