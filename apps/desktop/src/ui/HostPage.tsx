@@ -5,6 +5,7 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { AllowedFolders } from "@/components/hosts/allowed-folders";
 import { BypassSwitch } from "@/components/hosts/bypass-switch";
 import { GithubPanel } from "@/components/hosts/github-panel";
+import { HostAutoUpdate } from "@/components/hosts/host-auto-update";
 import { hostDownReason } from "@/components/hosts/host-down-reason";
 import { HostHealth } from "@/components/hosts/host-health";
 import { HostOfflineBanner } from "@/components/hosts/host-offline-banner";
@@ -275,6 +276,7 @@ export function HostPage(
               {host.status === "online" && hasFeature(info?.features, "github", false) && (
                 <GithubPanel store={store} host={host} />
               )}
+              <HostAutoUpdate store={store} host={host} />
               <DaemonUpdate store={store} host={host} />
               {showHooks && (
                 <section aria-label={t("hostPage.hooks")}>

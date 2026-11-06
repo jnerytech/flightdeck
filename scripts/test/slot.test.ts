@@ -445,6 +445,25 @@ describe("slot: running a command", () => {
     expect(f.spawned).toEqual([]);
   });
 
+  test("--status logs the holder and each waiter as lines of their own, since a log line is kept to one line (#372)", async () => {
+    const f = fake({
+      files: {
+        [PATH]: held(theirs),
+        [`${PATH}.wait.30`]: JSON.stringify({
+          ...theirs,
+          pid: 30,
+          label: "userhome",
+          startedAt: 2000,
+        }),
+      },
+    });
+    expect(await run(f.env, ["--status"])).toBe(0);
+    expect(f.logs).toEqual([
+      "held by kiwi: bun run e2e (pid 20, 4s)",
+      "waiting 1: userhome: bun run e2e (pid 30, 3s)",
+    ]);
+  });
+
   test("no command prints the usage and exits with 2", async () => {
     const f = fake();
     expect(await run(f.env, [])).toBe(2);
