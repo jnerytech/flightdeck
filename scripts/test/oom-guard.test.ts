@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { OOM_SCORE_ADJ, offerToOomKiller } from "../lib/oom-guard.ts";
 
 describe("oom-guard", () => {
@@ -29,10 +29,11 @@ describe("oom-guard", () => {
     expect(offerToOomKiller({ platform: "linux", write: refuse })).toBe(false);
   });
 
-  test.skipIf(process.platform !== "linux")(
-    "the preload already made this test run the OOM killer's first choice",
-    () => {
-      expect(readFileSync("/proc/self/oom_score_adj", "utf8").trim()).toBe("1000");
-    },
-  );
+  test("the preload already made this test run the OOM killer's first choice (on Linux; elsewhere there is no score to set)", () => {
+    if (process.platform !== "linux") {
+      expect(existsSync("/proc/self/oom_score_adj")).toBe(false);
+      return;
+    }
+    expect(readFileSync("/proc/self/oom_score_adj", "utf8").trim()).toBe("1000");
+  });
 });
