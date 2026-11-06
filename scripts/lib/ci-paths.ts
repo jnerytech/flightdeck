@@ -56,7 +56,7 @@ const E2E =
  * imports.
  */
 const SHOTS =
-  /^scripts\/(?:demo[^/]*\.ts|lib\/(?:axe|browser|layout-[^/]*|print-theme|shots-[^/]*|visual)\.ts)$/;
+  /^scripts\/(?:demo[^/]*\.ts|lib\/(?:axe|browser|layout-guards|print-theme|shots-[^/]*|visual)\.ts)$/;
 
 /**
  * Above this many selected integration and e2e test files, a PR's Windows tests take three shards
