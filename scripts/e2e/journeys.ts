@@ -1,5 +1,5 @@
 /**
- * The e2e journeys (phase 10): nineteen in a real browser against the seeded demo, in both
+ * The e2e journeys (phase 10): twenty in a real browser against the seeded demo, in both
  * languages, and a layout check of the main screens at 1280x800 and 800x600 (nothing sticks out
  * sideways, and the end of the long list shows after scrolling). The runner is `@playwright/test`
  * (scripts/e2e/define-journeys.ts, one file per language); this file holds the journeys themselves.
@@ -614,6 +614,40 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await dialog.waitFor({ state: "detached", timeout: WAIT });
     await c.page.getByRole("button", { name: c.t("cardUi.finish"), exact: true }).click();
     await dialog.getByText(c.t("cardUi.alreadyDone"), { exact: true }).waitFor({ timeout: WAIT });
+  },
+
+  // 20. A phone-notice webhook (issue #263): ntfy is a type of its own, a URL that names no topic
+  // is refused with its reason, a topic URL is saved, and the list shows the type and only the
+  // host the notices go to: the topic is a secret and never shown again.
+  "webhook-ntfy": async (c) => {
+    const name = `e2e-ntfy-${c.lang}-${Date.now()}`;
+    const topic = `fd-e2e-${c.lang}-${Date.now()}`;
+    await open(c, { name: "settings" });
+    const form = c.page.getByRole("form", { name: c.t("webhooks.add"), exact: true });
+    await form.waitFor({ timeout: WAIT });
+    await form.getByLabel(c.t("webhooks.name"), { exact: true }).fill(name);
+    await form.getByLabel(c.t("webhooks.type"), { exact: true }).selectOption("ntfy");
+    // The field is a topic URL now, with its help, and the events are the person's pick.
+    const url = form.getByLabel(c.t("webhooks.ntfyUrl"), { exact: true });
+    await url.fill("https://ntfy.sh/");
+    await form.getByText(c.t("webhooks.ntfyHelp"), { exact: true }).waitFor({ timeout: WAIT });
+    await form.getByLabel(c.t("webhooks.kind.needs_you"), { exact: true }).check();
+    await form.getByRole("button", { name: c.t("webhooks.save"), exact: true }).click();
+    await c.page
+      .getByText(c.t("webhooks.errors.invalid_topic"), { exact: true })
+      .waitFor({ timeout: WAIT });
+    await url.fill(`https://ntfy.sh/${topic}`);
+    await form.getByRole("button", { name: c.t("webhooks.save"), exact: true }).click();
+    const row = c.page.locator("li", { hasText: name });
+    await row.waitFor({ timeout: WAIT });
+    await row.getByText(c.t("webhooks.types.ntfy"), { exact: true }).waitFor({ timeout: WAIT });
+    await row
+      .getByText(c.t("webhooks.sendsTo", { host: "ntfy.sh" }), { exact: true })
+      .waitFor({ timeout: WAIT });
+    await waitFor(
+      async () => (await c.page.getByText(topic).count()) === 0,
+      "o tópico não aparece na lista",
+    );
   },
 };
 
