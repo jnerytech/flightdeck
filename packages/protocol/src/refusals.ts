@@ -454,6 +454,7 @@ export const DAEMON_FEATURES = [
   "runEnv",
   "templates",
   "tasks",
+  "depsCheck",
   "worktrees",
   "projectTrust",
   "autoUpdate",

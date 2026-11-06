@@ -174,6 +174,12 @@ function showSection(title: RegExp): (page: Page) => Promise<void> {
   };
 }
 
+/** The host page's Settings tab, where its configuration sections (folders, terminal, telemetry…) are. */
+async function openHostSettings(page: Page): Promise<void> {
+  await page.getByRole("tab", { name: /^(Configurações|Settings)$/ }).click();
+  await page.waitForTimeout(300);
+}
+
 function shots(ids: DemoIds): Shot[] {
   return [
     { name: "hub", route: { name: "hub" } },
@@ -303,6 +309,7 @@ function shots(ids: DemoIds): Shot[] {
       name: "terminal",
       route: { name: "host", host: ALFA },
       prepare: async (page) => {
+        await openHostSettings(page);
         await page.getByRole("button", { name: /^(Novo terminal|New terminal)$/ }).click();
         await page.getByText(/^(Ao vivo|Live)$/).waitFor({ timeout: 15_000 });
         await page.locator(".xterm").first().click();
@@ -499,7 +506,10 @@ function shots(ids: DemoIds): Shot[] {
     {
       name: "host-telemetria",
       route: { name: "host", host: ALFA },
-      prepare: showSection(/^(Telemetria|Telemetry)$/),
+      prepare: async (page) => {
+        await openHostSettings(page);
+        await showSection(/^(Telemetria|Telemetry)$/)(page);
+      },
     },
     { name: "configuracoes", route: { name: "settings" } },
     // The sections below the first screen of Settings, the host page and the vault: their rows of
@@ -518,12 +528,24 @@ function shots(ids: DemoIds): Shot[] {
       // Issue #38: the allowed-folders row, its input and its button on one line.
       name: "host-pastas",
       route: { name: "host", host: ALFA },
-      prepare: showSection(/^(Allowed folders|Pastas permitidas)$/),
+      prepare: async (page) => {
+        await openHostSettings(page);
+        await showSection(/^(Allowed folders|Pastas permitidas)$/)(page);
+      },
+    },
+    {
+      // The host's Health & dependencies section, scrolled into view so its colors can be judged.
+      name: "host-saude",
+      route: { name: "host", host: ALFA },
+      prepare: showSection(/^(Health & dependencies|Saúde e dependências)$/),
     },
     {
       name: "host-manutencao",
       route: { name: "host", host: ALFA },
-      prepare: showSection(/^(Maintenance|Manutenção)$/),
+      prepare: async (page) => {
+        await openHostSettings(page);
+        await showSection(/^(Maintenance|Manutenção)$/)(page);
+      },
     },
     {
       name: "cofre-backup",

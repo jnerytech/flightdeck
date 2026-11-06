@@ -291,18 +291,28 @@ requests show up as inline cards with **Approve** and **Deny**. The app reconnec
 
 With no host yet, the app shows four steps instead of the usual screens: install and start the
 daemon (`flightdeckd setup`), copy the pairing link it prints, paste it and press **Test and
-add**, and then the app opens the host's own page. There you press **Check** in **Check this
-host** and add the project folders in **Allowed folders**. **Find my projects** (in **Projects**)
+add**, and then the app opens the host's own page. There you read **Health & dependencies**
+(the app checks by itself) and add the project folders in **Allowed folders**. **Find my projects** (in **Projects**)
 then fills the Board without typing a path.
 
 #### Checking a host
 
-**Check this host** (on the host's page, online hosts with a daemon that announces `doctor.run`)
-asks the daemon to check itself: configuration, allowed folders, service, daemon, Claude Code,
-hooks, Tailscale and the daemon's version against the app's. Every item is **ok**, **warning** or
-**failed**; each one that is not **ok** comes with a plain step to fix it, in the app's language.
-The daemon keeps answering while it checks (nothing blocks). The same checks run in a terminal
-with `flightdeckd doctor`.
+**Health & dependencies** (on the host's Overview tab) is one section for what the host needs and how
+it is doing. The app reads it by itself when the host connects, when you open the host's page (if
+the last reading is over five minutes old) and after a daemon update, and says "Checked 3 min
+ago"; **Check again** reads it now. The dependencies come in **Required** (Claude Code and its
+sign-in, git, the service that starts the daemon at boot, an allowed folder) and **Optional**
+(GitHub, Azure, SSH, Tailscale, PowerShell on Windows, the hooks); the checks of the daemon itself
+(configuration, daemon, Tailscale, templates, team tools, version against the app's) are under
+**Checks**. Every row has an icon and a word (OK, warning, failed, outdated, missing, not
+applicable), what stops working without it and a plain step to fix it. Where the app already has the
+action, the row has a button: **Install hooks** (it asks first), **Update daemon to X** (it asks
+first) and **Add folder** (it opens Settings with the folder box focused and in view; **Install
+hooks** also refreshes the hooks status shown in Settings). What needs `sudo` or an installer is only shown to copy: the app never
+runs it. A missing program shows the package-manager line where one exists (apt, brew, winget) and
+an **Install page** button that opens the official page; Flightdeck never offers a download piped
+into a shell. The same checks run in a terminal with `flightdeckd doctor`.
+
 ### Trusting a project
 
 A project (a repository) can carry its own configuration: hooks that run commands by themselves,
@@ -835,10 +845,15 @@ live; the list is the project's, so a session of another project never shows her
 
 ### The sidebar, the tab strip and Settings
 
-- The sidebar keeps **Sessions**, **Needs you**, **Projects** and **Board** on top; the rest is in
-  three folding groups: **Work** (Workflows, Costs, Conversations, Teams), **Library** (Personas,
-  Snippets, Plugins, Vault) and **Infra** (Connections, History). A group with nothing to offer is
-  not drawn, the folded groups are remembered, and the narrow icon rail has no headings.
+- The sidebar groups its items by purpose, in five folding groups: **Work** (Home, Sessions, Needs you,
+  Projects, Board), **Automation** (Workflows, Teams, Conversations), **Observability** (Costs,
+  History), **Library** (Personas, Snippets, Plugins, Vault) and **Machines** (the hosts, each with
+  its state dot, health mark and menu, a **+** to add one, then **SSH**, the saved SSH destinations).
+  The open page has a filled row and a bar at its left edge, items with sub-pages end in a chevron,
+  recent features carry a **Beta** or **New** badge that goes away by itself from the version the
+  badge was set to end at (Teams' Beta ends at 0.39, Conversations' New at 0.38). A group with nothing to offer is not drawn, the
+  folded groups are remembered (a folded **Machines** shows a warning mark on its title while a machine
+  is offline, misses a required dependency or forwards its API key), and the narrow icon rail has no headings.
 - At the foot of the bar, **Settings** is a visible item (marked while Settings is open), and the Claude
   account (its email and plan, read from the host's account card; the rail shows only its initial)
   opens a menu with **Settings**, **Toggle theme**, **Manual** and, for each host whose `gh` is signed
@@ -1926,6 +1941,10 @@ unblocked. A badge on the bell counts the unread ones.
   opens the host). A budget alert opens Costs already filtered by its host and project, or by
   its client; a team alert opens Teams with that team first and marked. A card's entry (a PR watch
   result, an unblocked card) opens the PR in your browser when the card is gone.
+- On Windows the unread count also shows on the app's taskbar button, as a red badge with the number
+  (`9+` past nine). It is the bell's count, row for row, so it falls as you read and goes when the
+  list is clear; a source you muted sends no entry and so adds nothing. It comes back with the
+  count the next time the app starts.
 - **Mark all as read** keeps the list; **Clear** empties it. The list is kept on this computer
   (the newest 500) and survives a restart. Esc closes the panel.
 - The OS notifications are unchanged. The center only keeps a copy, so one that is never sent
@@ -2677,6 +2696,25 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
 - **From a notification:** clicking it opens the session with the request's card focused: one
   key answers it. In the bell, an entry of a request already answered opens its session at that
   request.
+- **Dependencies:** the host page's Overview tab has a **Health & dependencies** section (below) that groups what
+  the host needs into **Required** (Claude Code, git with worktrees, the service that starts the
+  daemon at boot, at least one allowed folder) and **Optional** (the GitHub, Azure, SSH and
+  Tailscale tools, PowerShell on Windows, the Claude Code hooks). Each row has an icon and a word
+  (green check OK, amber warning for an optional one missing or outdated, red cross for a required one
+  missing, gray dash when it does not apply to the host's system), the version found and the least
+  one, what stops working without it, and the command to install it on that host's system with a
+  **copy** button. **Check again** asks the host again. The headline says "All set", "N optional
+  missing" or "N required missing", and a host with a required one missing shows a red mark in the
+  sidebar. `flightdeckd doctor` prints the same grouping in the terminal after its own checks, with the
+  fix for the host's system under each one that is missing or outdated.
+- **Host page layout:** the page opens on that host's **Sessions** (the ones that need you
+  first, then the latest; **See all sessions** opens the Sessions list already filtered by the host, for that visit only: the filter you saved for the next time is not changed)
+  and its **Projects** (the same cards as the Projects list; **See all projects** opens that list
+  filtered by the host, with a chip that clears the filter). A host with none says so and offers
+  **New session**. The rest is on three tabs: **Overview** (sessions, projects, the Claude account
+  and the host information), **Usage** (quota and the usage table) and **Settings** (allowed
+  folders, hooks, worktrees clean-up, telemetry, terminal, maintenance, reconnect and remove). The tabs answer to the
+  arrow keys.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
   badge. The uptime keeps counting while the page is open.
@@ -2803,8 +2841,11 @@ combination and click **Save shortcut**.
 ### Design and navigation
 
 The app follows a single design, in the style of Linear: bundled Inter (no network), a 13 px
-base, layered surfaces, a single accent token and the session state as an 8 px dot (running in
-blue, needs you in amber, idle in gray, ended faded, error in red).
+base, layered surfaces, a single accent token and the session state as a glyph in a 12 px slot,
+a shape as well as a colour: running is a blue ring that turns (still, with its top open, when
+the system asks for reduced motion, and stopped while it is off screen), needs you an amber
+question mark in a bubble, error a red alert circle, idle a small gray dot and ended a faded ring.
+Hover one for its name.
 
 - **Sidebar:** logo, navigation (Sessions, Needs you with its counter, Board, Workflows, Costs,
   History), the hosts, the pinned sessions and, at the bottom, search (`Ctrl K`), Settings and
