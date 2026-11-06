@@ -1,4 +1,4 @@
-# Answering a request with one key (issue #187, journey J4)
+# Answering a request with one key, journey J4 (issue #187)
 
 - **The card takes the focus where the request is announced.** A notification opens the session
   with `focus` on the request; `SessionView` scrolls to the card and focuses it once, so a card that
