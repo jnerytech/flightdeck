@@ -357,9 +357,10 @@ export function TabBar(
             };
           })}
           onPick={(id) => store.hostTabs.activate(id)}
-          onClose={(id) =>
-            store.closeTab(shared?.tabs.some((tab) => tab.id === id) ? shared : tabs, id)
-          }
+          onClose={(id) => {
+            const tab = row.find((candidate) => candidate.id === id);
+            if (tab) store.closeTab(setOf(tab), id);
+          }}
         />
       )}
       {active && (
