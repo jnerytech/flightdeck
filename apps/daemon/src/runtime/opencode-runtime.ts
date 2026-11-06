@@ -112,6 +112,8 @@ export interface OpenCodeRuntimeOptions {
   timers?: Timers;
   mcpServer?: FlightdeckMcpServer;
   idleMs?: number;
+  /** The ledger of the process groups started, reaped at the next start (issue #250). */
+  ledger?: { add(pid: number): void; release(pid: number): void };
 }
 
 /** The real kill of a process tree: a detached run and a signal to a process group. */
@@ -217,6 +219,8 @@ class Connection {
       timers: deps.timers,
     });
     void this.proc.exited.then((code) => {
+      // Whatever the process left running in its group goes with it.
+      deps.runtime.ledger?.release(this.proc.pid);
       if (!this.closing) deps.onExit(code);
     });
   }
@@ -224,6 +228,8 @@ class Connection {
   async open(o: { resume?: string; mode: string; model?: string; effort?: string }): Promise<void> {
     const { cwd, mcpServers } = this.deps;
     await this.client.request("initialize", { protocolVersion: 1, clientCapabilities: {} });
+    // Written down once it answers: the process has surely exec'd by then, so /proc names it.
+    this.deps.runtime.ledger?.add(this.proc.pid);
     let options: ConfigOption[];
     if (o.resume) {
       const resumed = await this.client.request<{ configOptions?: ConfigOption[] }>(

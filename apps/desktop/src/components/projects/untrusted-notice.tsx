@@ -9,15 +9,17 @@ import { ShortArea } from "../session/parts.tsx";
  * MCP servers, settings, CLAUDE.md, agents and skills, and also the person's own MCP servers and
  * plugins (issue #196). Nothing when the folder is trusted or the host does not announce it.
  */
-export function UntrustedNotice(props: {
-  store: AppStore;
-  hostId: string;
-  /** The host announces projectTrust. */
-  announced: boolean;
-  cwd: string;
-  /** Opens the project's page, where the person can read what it would load and trust it. */
-  onReview?: () => void;
-}) {
+export function UntrustedNotice(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    /** The host announces projectTrust. */
+    announced: boolean;
+    cwd: string;
+    /** Opens the project's page, where the person can read what it would load and trust it. */
+    onReview?: () => void;
+  }>,
+) {
   const { store, hostId, announced, cwd } = props;
   const { t } = store.i18n;
   const [untrusted, setUntrusted] = useState(false);

@@ -148,11 +148,9 @@ export function planRelated({
   if (pyramid) {
     const removedTest = changed.find((path) => TEST_FILE.test(path) && !sources.has(path));
     const global = changed.find((path) => GLOBAL_FILE.test(path));
-    const why = global
-      ? `${global} affects every test`
-      : removedTest
-        ? `${removedTest} went away`
-        : null;
+    let why: string | null = null;
+    if (global) why = `${global} affects every test`;
+    else if (removedTest) why = `${removedTest} went away`;
     if (why) {
       const whole = ["bun", "run", "test"];
       return {
@@ -205,12 +203,14 @@ export function planRelated({
     return { code: 0, output: [none, ...warnings].join("\n"), command: null };
   }
   const fastTier = related.filter((r) => FAST_TIERS.has(tierOf(r.path) ?? "")).length;
+  let header = `test:related: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label}`;
+  if (pyramid) {
+    header = `test:related --pr: ${fastTier} fast-tier test file(s) + ${related.length - fastTier} related test file(s) of the other tiers for ${changed.length} changed file(s) since ${label}`;
+  } else if (fast) {
+    header = `test:related --fast: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label} (direct importers only; CI runs the rest)`;
+  }
   const output = [
-    pyramid
-      ? `test:related --pr: ${fastTier} fast-tier test file(s) + ${related.length - fastTier} related test file(s) of the other tiers for ${changed.length} changed file(s) since ${label}`
-      : fast
-        ? `test:related --fast: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label} (direct importers only; CI runs the rest)`
-        : `test:related: ${related.length} test file(s) for ${changed.length} changed file(s) since ${label}`,
+    header,
     ...warnings,
     // --pr lists the related tests; the fast tiers are counted in the header, not listed.
     ...related
@@ -295,7 +295,7 @@ export function selectByPath(changed: string[], sources: Map<string, string>): R
 }
 
 function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 /** Why a `--keep-coverage` value cannot be the kept coverage folder, or null (#309). */

@@ -21,7 +21,7 @@ export interface DepsEnv {
 type Os = "linux" | "darwin" | "win32";
 type Fix = DepResult["fix"];
 
-type OsFix = { command?: string; url?: string };
+type OsFix = { command?: string; url?: string; note?: "elevated" | "noSystemd" };
 
 /** The fix per operating system: a package-manager command where one exists, and the install page. */
 const fixes = (linux: OsFix, darwin: OsFix, win32: OsFix): Fix => [
@@ -34,6 +34,9 @@ const CLAUDE_INSTALL = {
   command: "npm install -g @anthropic-ai/claude-code",
   url: "https://docs.anthropic.com/en/docs/claude-code/setup",
 };
+
+/** The least gh that has `gh project`, which board sync stands on (v2.31.0, "a new suite of project commands"). */
+const GH_MIN = "2.31.0";
 
 /** The least git that has `git worktree`: what every card, project and diff stands on. */
 const GIT_MIN = "2.5.0";
@@ -68,11 +71,13 @@ const TOOLS: Record<
   gh: {
     group: "optional",
     breaks: ["github", "pullRequests", "boardSync"],
+    // The apt package of an LTS can be older than the gh that has `gh project`: Linux gets the page.
     fix: fixes(
-      { command: "sudo apt install gh", url: GH_PAGE },
+      { url: GH_PAGE },
       { command: "brew install gh", url: GH_PAGE },
       { command: "winget install --id GitHub.cli", url: GH_PAGE },
     ),
+    min: GH_MIN,
   },
   az: {
     group: "optional",
@@ -93,6 +98,7 @@ const TOOLS: Record<
       {
         command: "Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0",
         url: SSH_PAGE,
+        note: "elevated",
       },
     ),
   },
@@ -108,8 +114,14 @@ const TOOLS: Record<
   },
 };
 
+/** The hooks' state, as a dependency's: installed is ok, an old one is outdated, anything else is missing. */
+function hooksDepState(state: string): DepResult["state"] {
+  if (state === "installed") return "ok";
+  return state === "outdated" ? "outdated" : "missing";
+}
+
 /** The first `1.2.3` (or `1.2`) in a program's `--version` line. */
-const versionOf = (text: string | null) => /\d+(?:\.\d+)+/.exec(text ?? "")?.[0];
+const versionOf = (text: string | null) => /\d+\.\d+(?:\.\d+)*/.exec(text ?? "")?.[0];
 
 async function tool(env: DepsEnv, id: keyof typeof TOOLS): Promise<DepResult> {
   const spec = TOOLS[id];
@@ -150,10 +162,14 @@ async function service(env: DepsEnv): Promise<DepResult> {
   const path = await env.which("systemctl");
   const linger = await env.linger();
   const ok = path !== null && installed && linger !== "off";
+  // Without systemd there is no service to install: say so instead of offering a command that fails.
+  if (path === null) {
+    return { ...base, state: "missing", fix: [{ os: "linux", note: "noSystemd" }] };
+  }
   return {
     ...base,
     state: ok ? "ok" : "missing",
-    ...(path ? { path } : {}),
+    path,
     fix: [
       {
         os: "linux",
@@ -185,6 +201,12 @@ async function signedIn(env: DepsEnv, noClaude: boolean): Promise<DepResult> {
   };
 }
 
+/** The hooks as a dependency: installed is ok, an old one is outdated, anything else is missing. */
+function hooksDepState(hooks: string): DepResult["state"] {
+  if (hooks === "installed") return "ok";
+  return hooks === "outdated" ? "outdated" : "missing";
+}
+
 async function powershell(env: DepsEnv): Promise<DepResult> {
   const base = {
     id: "pwsh" as const,
@@ -214,7 +236,7 @@ export async function checkDeps(env: DepsEnv): Promise<DepsResult> {
   const hooks: DepResult = {
     id: "hooks",
     group: "optional",
-    state: hooksState === "installed" ? "ok" : hooksState === "outdated" ? "outdated" : "missing",
+    state: hooksDepState(hooksState),
     breaks: ["liveStatus"],
     fix: (["linux", "darwin", "win32"] as Os[]).map((os) => ({
       os,

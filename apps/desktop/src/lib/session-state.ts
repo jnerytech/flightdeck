@@ -152,6 +152,60 @@ function resolutionOf(event: EventOf<"permission.resolved">) {
   };
 }
 
+/** The session opened: where, in which mode, and whether it came from a transcript or a persona. */
+function sessionCreated(next: SessionState, event: EventOf<"session.created">): SessionState {
+  return {
+    ...next,
+    cwd: event.cwd,
+    permissionMode: event.permissionMode,
+    ...(event.resumedFrom ? { resumedFrom: event.resumedFrom } : {}),
+    ...(event.persona ? { persona: event.persona } : {}),
+  };
+}
+
+/** The runtime is up: its model and commands, and, for OpenCode, a line about AGENTS.md. */
+function sessionInit(
+  next: SessionState,
+  event: EventOf<"session.init">,
+  seq: number,
+): SessionState {
+  const started = {
+    ...next,
+    model: event.model,
+    claudeSessionId: event.claudeSessionId,
+    ...(event.slashCommands ? { slashCommands: event.slashCommands } : {}),
+    ...(event.commands ? { commands: event.commands } : {}),
+  };
+  // Only OpenCode sessions name these; AGENTS.md is the one file there is.
+  const sent = (event.contextFiles?.length ?? 0) > 0;
+  if (!sent && (event.contextSkipped?.length ?? 0) === 0) return started;
+  return { ...started, items: [...started.items, { kind: "context", seq, sent }] };
+}
+
+/** The timeline item of a turn's end. */
+function resultItem(event: EventOf<"turn.result">, seq: number): ChatItem {
+  return {
+    kind: "result",
+    seq,
+    subtype: event.subtype,
+    isError: event.isError,
+    durationMs: event.durationMs,
+    ...(event.costUsd !== undefined ? { costUsd: event.costUsd } : {}),
+  };
+}
+
+/** The timeline item of an error, with the reason and params the app translates. */
+function errorItem(event: EventOf<"session.error">, seq: number): ChatItem {
+  return {
+    kind: "error",
+    seq,
+    code: event.code,
+    message: event.message,
+    ...(event.reason ? { reason: event.reason } : {}),
+    ...(event.params ? { params: event.params } : {}),
+  };
+}
+
 /**
  * Applies one envelope. Persisted events at or below `lastSeq` are duplicates and ignored;
  * ephemeral deltas carry the last persisted seq and only feed the streaming buffer.
@@ -169,13 +223,7 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
     case "session.summary":
       return state;
     case "session.created":
-      return {
-        ...next,
-        cwd: event.cwd,
-        permissionMode: event.permissionMode,
-        ...(event.resumedFrom ? { resumedFrom: event.resumedFrom } : {}),
-        ...(event.persona ? { persona: event.persona } : {}),
-      };
+      return sessionCreated(next, event);
     case "session.status":
       return {
         ...next,
@@ -183,19 +231,8 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
         statusReason: event.reason,
         busySince: busySinceOf(state, event.status, envelope.ts),
       };
-    case "session.init": {
-      const started = {
-        ...next,
-        model: event.model,
-        claudeSessionId: event.claudeSessionId,
-        ...(event.slashCommands ? { slashCommands: event.slashCommands } : {}),
-        ...(event.commands ? { commands: event.commands } : {}),
-      };
-      // Only OpenCode sessions name these; AGENTS.md is the one file there is.
-      const sent = (event.contextFiles?.length ?? 0) > 0;
-      if (!sent && (event.contextSkipped?.length ?? 0) === 0) return started;
-      return { ...started, items: [...started.items, { kind: "context", seq, sent }] };
-    }
+    case "session.init":
+      return sessionInit(next, event, seq);
     case "message.user":
       return push({
         kind: "user",
@@ -232,17 +269,7 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
         ),
       };
     case "turn.result":
-      return {
-        ...push({
-          kind: "result",
-          seq,
-          subtype: event.subtype,
-          isError: event.isError,
-          durationMs: event.durationMs,
-          ...(event.costUsd !== undefined ? { costUsd: event.costUsd } : {}),
-        }),
-        streaming: "",
-      };
+      return { ...push(resultItem(event, seq)), streaming: "" };
     // Applying or leaving a persona is marked on the timeline, next to the role message.
     case "persona.applied":
     case "persona.cleared": {
@@ -256,13 +283,6 @@ export function applyEnvelope(state: SessionState, envelope: EventEnvelope): Ses
       return event.type === "persona.applied" ? { ...rest, persona: event.persona } : rest;
     }
     default:
-      return push({
-        kind: "error",
-        seq,
-        code: event.code,
-        message: event.message,
-        ...(event.reason ? { reason: event.reason } : {}),
-        ...(event.params ? { params: event.params } : {}),
-      });
+      return push(errorItem(event, seq));
   }
 }

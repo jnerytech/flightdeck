@@ -34,7 +34,9 @@ describe("estados-vazios", () => {
 
   test("an empty board column offers a button that adds a card", () => {
     let added = 0;
-    const { getByRole } = render(<BoardColumnEmpty label="Adicionar card" onAdd={() => added++} />);
+    const { getByRole } = render(
+      <BoardColumnEmpty label="Adicionar card" text="Vazio" onAdd={() => added++} />,
+    );
     fireEvent.click(getByRole("button", { name: "Adicionar card" }));
     expect(added).toBe(1);
   });

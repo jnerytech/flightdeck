@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
@@ -32,13 +33,13 @@ function setup(
       },
     ],
   } as never as ReturnType<typeof store.getState>;
-  const view = (collapsed = false) => (
+  const view = (collapsed = false, go: (route: unknown) => void = () => {}) => (
     <Sidebar
       store={store}
       state={state}
       collapsed={collapsed}
       t={store.i18n.t}
-      go={() => {}}
+      go={go}
       {...(route ? { route } : {})}
       {...(appVersion ? { appVersion } : {})}
       onOpenProjectScreen={() => {}}
@@ -76,7 +77,7 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
       ).toBeTruthy();
     }
     expect(groups.slice(0, 4).map((g) => names(g).slice(1))).toEqual([
-      ["Open Sessions", "Needs you", "Projects", "Board"],
+      ["Home", "Open Sessions", "Needs you", "Projects", "Board"],
       ["Workflows", "Teams", "Conversations"],
       ["Costs", "History"],
       ["Personas", "Snippets", "Plugins", "Vault"],
@@ -102,11 +103,34 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
     expect(within(machines).getByLabelText("alfa: online")).toBeTruthy();
   });
 
+  test("Home is the first item of Work: it opens Home and is marked while Home is open", () => {
+    const routes: unknown[] = [];
+    const { view } = setup(ALL, undefined, { name: "overview" });
+    const { unmount } = render(view(false, (route) => void routes.push(route)));
+    const home = screen.getByRole("button", { name: "Home" });
+    expect(home.getAttribute("aria-current")).toBe("page");
+    expect(
+      screen.getByRole("button", { name: "Open Sessions" }).getAttribute("aria-current"),
+    ).toBeNull();
+    fireEvent.click(home);
+    expect(routes).toEqual([{ name: "overview" }]);
+    unmount();
+    const other = setup(ALL, undefined, { name: "hub" });
+    render(other.view());
+    expect(screen.getByRole("button", { name: "Home" }).getAttribute("aria-current")).toBeNull();
+  });
+
   test("an item the host cannot offer is not listed", () => {
     const { view } = setup([]);
     render(view());
     const work = screen.getByRole("group", { name: "Work" }) as HTMLElement;
-    expect(names(work).slice(1)).toEqual(["Open Sessions", "Needs you", "Projects", "Board"]);
+    expect(names(work).slice(1)).toEqual([
+      "Home",
+      "Open Sessions",
+      "Needs you",
+      "Projects",
+      "Board",
+    ]);
     const automation = screen.getByRole("group", { name: "Automation" }) as HTMLElement;
     expect(names(automation).slice(1)).toEqual(["Workflows"]);
     expect(screen.queryByRole("button", { name: "Teams" })).toBeNull();
@@ -237,14 +261,11 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
     expect(slot("Teams")).toBeNull();
   });
 
-  test("the manual is an external link, with its icon, and it opens the manual of the app's language", async () => {
+  test("the manual is in the account menu, and it opens the manual of the app's language", async () => {
     const { view, opened } = setup();
     render(view());
-    const manual = screen.getByRole("button", { name: "Manual" });
-    expect(manual.querySelector("[data-slot='nav-external']")).not.toBeNull();
-    await act(async () => {
-      fireEvent.click(manual);
-    });
+    expect(screen.queryByRole("button", { name: "Manual" })).toBeNull();
+    await chooseFromAccountMenu("Manual");
     expect(opened).toHaveLength(1);
     expect(opened[0]).toMatch(/docs\/manual\/en\.md$/);
   });

@@ -13,6 +13,7 @@ import {
   type ExternalStatus,
   FEATURE_HOLD_PROOF,
   type HostRuntime,
+  type KeepAwakeStatus,
   MIN_PROTOCOL_VERSION,
   Pong,
   PROTOCOL_VERSION,
@@ -146,6 +147,8 @@ export interface ServerOptions {
   allowedRoots: readonly string[];
   /** The host's switch for sessions without permission prompts: read for `host.info`, set by `host.bypass`. */
   bypass?: { allowed(): boolean; set(allow: boolean): void | Promise<void> };
+  /** Keeps the computer awake while sessions run (issue #163): its status for `host.info`, and the switch for `host.keepAwake`. */
+  keepAwake?: { status(): KeepAwakeStatus; set(enabled: boolean): void | Promise<void> };
   /** Issue #196: the trust of folders and what a project would load; absent, the commands are refused and not announced. */
   /** Who the peer is, for the origin rules; the socket's own address when absent (tests give theirs). */
   peerOf?: (
@@ -362,6 +365,7 @@ function featuresOf(opts: ServerOptions): string[] {
     // A message may carry images (`session.send` with `images`).
     "session.images",
     ...(opts.doctor ? ["doctor.run"] : []),
+    ...(opts.keepAwake ? ["keepAwake"] : []),
     ...(opts.deps ? ["depsCheck"] : []),
     ...(opts.projectTrust ? ["projectTrust"] : []),
     ...(opts.findProjects ? ["projects.scan", "projects.clone"] : []),
@@ -917,6 +921,7 @@ export function startServer(opts: ServerOptions): RunningServer {
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
           ...(opts.ui ? { ui: { ...opts.ui } } : {}),
           ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
+          ...(opts.keepAwake ? { keepAwake: opts.keepAwake.status() } : {}),
           ...(opts.opencode ? { runtimes: [hostRuntime(opts.opencode.info())] } : {}),
           ...updateStatus(),
           ...(opts.autoUpdate ? { autoUpdate: opts.autoUpdate.status() } : {}),
@@ -1014,6 +1019,11 @@ export function startServer(opts: ServerOptions): RunningServer {
         }
         await opts.bypass.set(allow);
         return ok(command.type, { allowBypassPermissions: allow });
+      }
+      case "host.keepAwake": {
+        if (!opts.keepAwake) throw featureOff("keepAwake");
+        await opts.keepAwake.set(command.payload.enabled);
+        return ok(command.type, opts.keepAwake.status());
       }
       case "board.settings": {
         const { maxParallelRuns } = command.payload;

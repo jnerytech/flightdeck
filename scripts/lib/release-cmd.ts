@@ -38,11 +38,14 @@ const SURFACE = ["run", "scripts/protocol-surface.ts"];
 const VERSION = /^\d+\.\d+\.\d+$/;
 const TAG = /^v(\d+\.\d+\.\d+)$/;
 
-const reEscape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const reEscape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 
 /** `package.json` with its own `"version": "<from>"` moved to `<to>`. */
 export function bumpPackageJson(text: string, from: string, to: string): string {
-  return text.replace(new RegExp(`^(\\s*"version": ")${reEscape(from)}(")`, "m"), `$1${to}$2`);
+  return text.replace(
+    new RegExp(String.raw`^(\s*"version": ")${reEscape(from)}(")`, "m"),
+    `$1${to}$2`,
+  );
 }
 
 /** `bun.lock` with the version of the three workspaces moved to `<to>`; no package changes. */
@@ -173,7 +176,7 @@ async function prepare(run: Run, from: string): Promise<number> {
     "-f",
     `body=The version of protocol, daemon and desktop goes from ${from} to ${run.version}, with the protocol surface baseline. Made by bun run release ${run.tag}.`,
     "--jq",
-    '"\\(.number) \\(.html_url)"',
+    String.raw`"\(.number) \(.html_url)"`,
   ]);
   const number = Number(created.stdout.trim().split(" ")[0]);
   if (created.code !== 0 || !Number.isInteger(number)) {

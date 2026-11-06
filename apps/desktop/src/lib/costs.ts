@@ -21,6 +21,9 @@ export function daysBetween(from: string, to: string): string[] {
   return days;
 }
 
+/** The host choice that adds every host up (phase 29); a route can carry it too. */
+export const ALL_HOSTS = "__all__";
+
 export type Period = "today" | "7d" | "30d" | "month" | "range";
 
 export const PERIODS: readonly Period[] = ["today", "7d", "30d", "month", "range"];

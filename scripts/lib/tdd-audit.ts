@@ -67,7 +67,7 @@ export function findForbiddenMarkers(files: { path: string; content: string }[])
   for (const file of files) {
     file.content.split("\n").forEach((line, i) => {
       for (const { pattern, text } of FORBIDDEN_MARKERS) {
-        if (line.match(pattern)) {
+        if (line.search(pattern) !== -1) {
           violations.push({
             commit: `${file.path}:${i + 1}`,
             scope: "-",

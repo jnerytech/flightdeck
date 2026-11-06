@@ -157,7 +157,7 @@ export function testEditViolation(
     tool === "Write" ? [readFile(file) ?? "", input.content] : [input.old_string, input.new_string];
   if (typeof before !== "string" || typeof after !== "string") return null;
   const added = TEST_MARKERS.find(
-    ({ pattern }) => (after.match(pattern)?.length ?? 0) > (before.match(pattern)?.length ?? 0),
+    ({ pattern }) => [...after.matchAll(pattern)].length > [...before.matchAll(pattern)].length,
   );
   if (!added) {
     if (undocumentedSkips(after) <= undocumentedSkips(before)) return null;
@@ -228,7 +228,7 @@ const COMMIT_TYPES = [
   "style",
   "revert",
 ];
-const SUBJECT = new RegExp(`^(${COMMIT_TYPES.join("|")})(?:\\(([^)]+)\\))?!?: \\S`);
+const SUBJECT = new RegExp(String.raw`^(${COMMIT_TYPES.join("|")})(?:\(([^)]+)\))?!?: \S`);
 const HEREDOC = /<<-?\s*(['"]?)(\w+)\1[^\n]*\n([\s\S]*?)\n\s*\2[ \t]*(?=\n|\)|$)/g;
 const WAIVER = /^TDD-Waiver:[ \t]*\S/m;
 

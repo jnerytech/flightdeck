@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { DepsResult } from "@flightdeck/protocol";
+import type { DepsResult, KeepAwakeStatus } from "@flightdeck/protocol";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import type { Account } from "../../daemon/src/account/account.ts";
 import { Actions } from "../../daemon/src/actions/actions.ts";
@@ -172,6 +172,8 @@ export function daemon(
     roi?: boolean | { signals: ConstructorParameters<typeof RoiSummarizer>[0]["signals"] };
     /** The host's switch for sessions without permission prompts (bypass-ui): on from the start. */
     bypass?: boolean;
+    /** The host's keep-awake status (issue #163): announced with `host.info`, switched by `host.keepAwake`. */
+    keepAwake?: { held?: boolean; reason?: KeepAwakeStatus["reason"] };
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
@@ -218,6 +220,14 @@ export function daemon(
       })
     : undefined;
   let bypass = options.bypass === true;
+  let awake: KeepAwakeStatus | null = options.keepAwake
+    ? {
+        enabled: true,
+        held: options.keepAwake.held === true,
+        method: options.keepAwake.held === true ? "systemd-inhibit" : null,
+        reason: options.keepAwake.reason ?? null,
+      }
+    : null;
   const manager = new SessionManager({
     allowBypass: () => bypass,
     ...(personaStore ? { personas: personaStore } : {}),
@@ -514,6 +524,22 @@ export function daemon(
           bypass = allow;
         },
       },
+      ...(awake
+        ? {
+            keepAwake: {
+              status: () => awake as KeepAwakeStatus,
+              set: (enabled: boolean) => {
+                const was = awake as KeepAwakeStatus;
+                awake = {
+                  ...was,
+                  enabled,
+                  held: enabled && was.held,
+                  method: enabled ? was.method : null,
+                };
+              },
+            },
+          }
+        : {}),
       manager,
       history,
       board,
@@ -614,6 +640,10 @@ export function daemon(
     boardSyncStore,
     keys,
     doctorAsked,
+    /** Changes what the host says about keep-awake from now on (the page must read it again). */
+    setKeepAwake: (change: Partial<KeepAwakeStatus>) => {
+      if (awake) awake = { ...awake, ...change };
+    },
   };
 }
 

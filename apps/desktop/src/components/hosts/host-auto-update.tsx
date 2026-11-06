@@ -4,6 +4,16 @@ import { Stack } from "@/components/layout/stack";
 import type { AppStore, HostView } from "@/lib/app-store";
 import { hasFeature } from "@/lib/version";
 
+/** What the daemon says about its automatic update: waiting, started, failed, or just up to date or off. */
+function updateLine(t: AppStore["i18n"]["t"], status: AutoUpdateStatus, version: string): string {
+  if (status.state === "waiting") return t("hostAutoUpdate.waiting", { version });
+  if (status.state === "started") return t("hostAutoUpdate.started", { version });
+  if (status.state === "failed") {
+    return t("hostAutoUpdate.failed", { version, reason: status.reason ?? "" });
+  }
+  return t(status.enabled ? "hostAutoUpdate.current" : "hostAutoUpdate.off");
+}
+
 /**
  * Issue #280: the host's automatic update, on the host page. The switch is the daemon's own
  * setting (`host.updates.set`); the line under it says what the daemon is doing about it.
@@ -17,14 +27,7 @@ export function HostAutoUpdate(props: Readonly<{ store: AppStore; host: HostView
   if (!hasFeature(host.hostInfo?.features, "autoUpdate", false) || !reported) return null;
   const status = answered ?? reported;
   const version = status.version ?? "";
-  const line =
-    status.state === "waiting"
-      ? t("hostAutoUpdate.waiting", { version })
-      : status.state === "started"
-        ? t("hostAutoUpdate.started", { version })
-        : status.state === "failed"
-          ? t("hostAutoUpdate.failed", { version, reason: status.reason ?? "" })
-          : t(status.enabled ? "hostAutoUpdate.current" : "hostAutoUpdate.off");
+  const line = updateLine(t, status, version);
   return (
     <Stack gap={1}>
       <label className="flex items-center gap-2 text-sm">

@@ -300,7 +300,14 @@ para X** (pergunta antes) e **Adicionar pasta** (abre as Configurações com a c
 hooks** também atualiza o estado dos hooks mostrado nas Configurações). O que precisa de `sudo` ou de instalador só aparece
 para copiar: o app nunca o executa. Um programa que falta mostra a linha do gerenciador de pacotes
 quando há uma (apt, brew, winget) e um botão **Página de instalação** que abre a página oficial; o
-Flightdeck nunca oferece um download enviado direto para um shell. As mesmas conferências rodam no terminal com `flightdeckd doctor`.
+Flightdeck nunca oferece um download enviado direto para um shell. O conselho vale para o sistema em
+que aparece: o **GitHub** conta como desatualizado abaixo do gh 2.31 (o primeiro com `gh project`, de que
+a sincronização do quadro precisa), e no Linux aponta para a página de instalação, porque o pacote apt
+de uma LTS pode ser mais antigo; o **OpenSSH** no Windows diz para rodar a linha do
+`Add-WindowsCapability` em um PowerShell elevado (Executar como administrador); em um Linux sem
+systemd a linha do **serviço** diz que não há serviço para instalar ali e que é para iniciar o
+`flightdeckd` no login com as ferramentas do próprio sistema, em vez de oferecer um comando que
+falha. As mesmas conferências rodam no terminal com `flightdeckd doctor`.
 
 ### Confiar em um projeto
 
@@ -333,6 +340,24 @@ repositório que você clonar depois, ou uma pasta que você adicionar, começa 
 - Confiar só funciona a partir do próprio computador do host ou pela Tailscale (como liberar uma pasta ou sessões sem pedidos); revogar funciona de qualquer lugar.
 - A decisão fica no host (`project_trust` no banco dele), por host, e é registrada no log. Um host
   que não anuncia `projectTrust` carrega tudo, como antes.
+
+### Manter o computador acordado
+
+Enquanto uma sessão de um host roda, ou espera a sua resposta, o host pede ao computador dele para
+não dormir, e assim aprovações e avisos continuam chegando e uma execução longa não é pausada por
+uma soneca. A aba **Configurações** do host tem **Manter este computador acordado** para desligar ou ligar de
+novo; a escolha fica na config do host (`keepAwake`, ligado por padrão) e vale na hora. O host solta
+o computador quando a última sessão para e quando o daemon sai.
+
+- Isso impede o computador de dormir por inatividade; a tela ainda pode apagar, e fechar a tampa
+  segue as configurações de energia do sistema.
+- No Linux usa `systemd-inhibit`, no macOS `caffeinate` e no Windows o PowerShell
+  (`SetThreadExecutionState`). Se nenhum deles existe, ou não consegue iniciar, a página diz o motivo
+  e o computador dorme como de costume.
+- Vale para o computador do próprio host: um host em outra máquina mantém aquela máquina acordada,
+  não a sua.
+- Dentro do WSL ele não segura nada: um bloqueio tomado ali não mantém o Windows acordado, então a
+  página diz isso e a chave vale para o host do Windows.
 
 ### Sessões sem pedidos de permissão
 
@@ -587,6 +612,12 @@ histórico.
   turno, uma linha acima da caixa diz o que está acontecendo ("Executando um comando", "Editando
   arquivos", "Esperando você") e há quanto tempo; o indicador para de girar se o sistema pedir
   menos movimento.
+- **Esperando num botão:** um botão cujo comando está rodando ignora um segundo clique na hora.
+  Em menos de um décimo de segundo nada muda na tela; até um segundo ele só parece ocupado; a
+  partir de um segundo mostra um indicador girando; depois de três segundos diz também **Ainda
+  trabalhando…** (ou a etapa, quando o comando informa uma). Uma lista ou painel carregando só
+  desenha os marcadores se a espera passar de dois décimos de segundo, então uma carga rápida não
+  pisca.
 
 ### Hooks do Claude Code
 
@@ -836,17 +867,39 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
 
 ### A barra lateral, a barra de abas e as Configurações
 
-- A barra lateral agrupa os itens por finalidade, em cinco grupos que dobram: **Trabalho** (Sessões,
+- A barra lateral agrupa os itens por finalidade, em cinco grupos que dobram: **Trabalho** (Início, Sessões,
   Precisa de você, Projetos, Board), **Automação** (Workflows, Times, Conversas),
   **Observabilidade** (Custos, Histórico), **Biblioteca** (Personas, Snippets, Plugins, Cofre) e
   **Máquinas** (os hosts, cada um com o pontinho de estado, a marca de saúde e o menu, um **+** para
   adicionar, e depois **SSH**, os destinos SSH salvos). A página aberta tem a linha preenchida e uma
   barra na borda esquerda, os itens com subpáginas terminam em uma seta, as novidades levam um selo
   **Beta** ou **Novo** que some sozinho na versão em que foi marcado para acabar (o Beta de
-  Equipes acaba na 0.39, o Novo de Conversas na 0.38), e o **Manual** no pé abre este manual no navegador (o ícone diz que sai do
-  app). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados (um grupo **Máquinas** dobrado mostra
+  Equipes acaba na 0.39, o Novo de Conversas na 0.38). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados (um grupo **Máquinas** dobrado mostra
   uma marca de aviso no título enquanto uma máquina está offline, sem uma dependência obrigatória ou
   repassando a chave de API), e o trilho estreito de ícones não tem títulos.
+- No pé da barra, **Configurações** é um item visível (marcado enquanto as Configurações estão
+  abertas), e a conta do Claude (e-mail e plano, lidos do cartão da conta do host; o trilho mostra só
+  a inicial) abre um menu com **Configurações**, **Alternar tema**, **Manual** e, para cada host cujo
+  `gh` está conectado ao GitHub com um login que o app pode remover, **Sair do GitHub** (após uma
+  confirmação; um login que vem do ambiente do daemon é removido lá). Com vários hosts aparece a
+  conta do host aberto, e quantas contas há quando diferem; um host offline não mostra nenhuma.
+- O **Início** (primeiro em Trabalho) é uma faixa de quatro cartões com os últimos sete dias de todos
+  os hosts online, cada um com um gráfico pequeno: **Gasto** (com o orçamento mensal dos hosts, quando
+  há), **Turnos** (ok e com falha), **Tokens** (com o que veio do cache) e o **turno médio** (custo,
+  tempo e taxa de sucesso). Gasto, Tokens e o turno médio abrem Custos nos mesmos sete dias (em todos
+  os hosts quando vários têm custos); Turnos abre o Histórico do host, nos mesmos dias, quando há um
+  host online, e Custos em todos eles quando há vários (o Histórico é de um host). Um host que não
+  tem custos mostra "—" em Gasto e Tokens, não US$ 0, e o cartão o cita; o custo médio conta só
+  sessões gerenciadas, ao contrário do Gasto, que lê todas as transcrições, e o cartão diz isso.
+  Enquanto os hosts ainda estão conectando na abertura, o Início diz "Conectando aos seus hosts…"
+  numa região viva, e "O Início está pronto." é anunciado quando os números chegam. Os turnos com falha e o tempo do turno são contados pelo daemon a partir
+  desta versão: um host com daemon mais antigo mostra "—" em vez de um zero inventado, e os dias
+  anteriores à atualização são desconhecidos (o tempo médio e a taxa de sucesso usam só os turnos
+  que foram contados). O Início lê de novo a cada minuto e quando a janela volta ao foco; um host
+  que não responde é citado sob o título e os outros continuam contando. O app abre no Início
+  quando a janela é nova; uma janela que você já usou volta com as abas dela. A conta no pé da
+  barra é a do host em que você está; sem host aberto, é a conta que os hosts online dividem, ou
+  "N contas" quando diferem.
 - Com uma área, a barra de abas fica na barra do topo, na linha do caminho; com a tela dividida,
   cada área tem a sua. A barra mantém três ferramentas: o menu de **Ações** da aba ativa (mover
   para a esquerda ou a direita, mover para a outra área, fixar), **Nova aba** e **Dividir**.
@@ -860,6 +913,10 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
 Cada projeto (um repositório git do host) tem um board com cinco colunas: Backlog, Em andamento,
 Esperando você, Em revisão e Concluído. Um card vira uma branch `fd/<slug>`, uma worktree e uma
 sessão; o card anda sozinho conforme a sessão e o PR, e também pode ser arrastado à mão.
+Cada coluna tem a sua cor de fundo e uma linha fina no topo (Backlog neutro, Em andamento âmbar,
+Esperando você laranja, Em revisão verde, Concluído apagado), o ícone do status, o número de cards
+numa pílula e um **+** que põe um card direto nessa coluna. Uma coluna vazia mostra uma caixa
+tracejada e discreta que diz "Vazio" e também cria um card quando você a aperta.
 
 ### Escolher uma pasta
 
