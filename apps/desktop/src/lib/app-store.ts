@@ -1047,9 +1047,11 @@ export class AppStore {
     return this.hostTabs.workspace ?? this.noHost;
   }
 
-  /** The tabs in use: the shared ones while a shared tab is active, else the host's focused area. */
+  /** The tabs in use: the shared ones while a shared tab is active or with no host, else the host's focused area. */
   get tabs(): Tabs {
-    return this.hostTabs.onShared ? this.hostTabs.shared : this.workspace.tabs;
+    return this.hostTabs.onShared || !this.hostTabs.workspace
+      ? this.hostTabs.shared
+      : this.workspace.tabs;
   }
 
   /** When the page last asked each host for an update check on its own. */
