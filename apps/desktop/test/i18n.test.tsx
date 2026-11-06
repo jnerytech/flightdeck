@@ -225,8 +225,8 @@ describe("i18n", () => {
     const prev = { status: "running" as const, pendingPermissions: [] };
     const next = { status: "idle" as const, pendingPermissions: pending(1) };
     expect(summaryNotifications(prev, next, "pc · api", false, undefined, enT)).toEqual([
-      { title: "pc · api: needs you", body: "Allow Bash?" },
-      { title: "pc · api: turn finished", body: "idle" },
+      { event: "needs-you", title: "pc · api: needs you", body: "Allow Bash?" },
+      { event: "turn-finished", title: "pc · api: turn finished", body: "idle" },
     ]);
   });
 

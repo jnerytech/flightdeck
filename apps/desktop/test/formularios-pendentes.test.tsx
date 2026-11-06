@@ -161,6 +161,7 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
           persona={null}
           onSaved={() => {}}
           onClose={() => {}}
+          onOpenSettings={() => {}}
         />
       </TContext.Provider>,
     );
@@ -187,6 +188,7 @@ describe("formularios-pendentes: a form answers Enter before the work is done", 
           snippet={null}
           onSaved={() => {}}
           onClose={() => {}}
+          onOpenSettings={() => {}}
         />
       </TContext.Provider>,
     );

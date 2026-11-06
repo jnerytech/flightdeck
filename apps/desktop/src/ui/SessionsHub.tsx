@@ -1,6 +1,6 @@
 import type { SessionMeta } from "@flightdeck/protocol";
 import { ListFilter, MoreHorizontal, Radio, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { AssignMenu } from "@/components/clients/assign-menu";
 import { ClientChip } from "@/components/clients/client-chip";
 import { HostsBanner } from "@/components/hosts/hosts-banner";
@@ -88,6 +88,7 @@ export function SessionsHub(
   }>,
 ) {
   const { store, state } = props;
+  const { t } = store.i18n;
   const [filter, setFilter] = useState<HubFilter>(() => store.hubFilter());
   const [view, setView] = useState<HubView>(() => store.hubView());
   // The project the route asked for. Clearing it here sticks while the hub stays mounted (opening
@@ -165,7 +166,7 @@ export function SessionsHub(
     () =>
       store
         .clientScope()
-        .filter(hubRows(state), state.clientSelection, (row) => row.projectKey)
+        .filter(hubRows(state, t), state.clientSelection, (row) => row.projectKey)
         .filter(
           (row) => !only || (row.hostId === only.hostId && row.projectKey === only.projectKey),
         )
@@ -183,6 +184,8 @@ export function SessionsHub(
       state.externals,
       state.names,
       state.background,
+      state.personas,
+      t,
       picked,
       pickedProject,
       worktrees,
@@ -277,6 +280,12 @@ export function SessionsHub(
   const meta = (row: HubRow, patch: Partial<SessionMeta>) =>
     void store.setMeta(row.hostId, row.claudeSessionId as string, patch);
 
+  // The row menu reads the mutes: a change of them draws it again.
+  useSyncExternalStore(store.notifyPrefs.subscribe, () => store.notifyPrefs.value);
+  /** The key notifications use for this session: the host's own id, else the Claude one. */
+  const sessionKeyOf = (row: HubRow) => `${row.hostId}/${row.sessionId ?? row.claudeSessionId}`;
+  const isMuted = (row: HubRow) =>
+    store.notifyPrefs.value.mutedSessions.includes(sessionKeyOf(row));
   /** The row's actions menu, the same in a line and on a card. */
   const rowActions = (row: HubRow) =>
     row.claudeSessionId && (
@@ -318,6 +327,18 @@ export function SessionsHub(
           <DropdownMenuItem onSelect={() => meta(row, { pinned: !row.pinned })}>
             {row.pinned ? t("hub.unpin") : t("hub.pin")}
           </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => store.notifyPrefs.muteSession(sessionKeyOf(row), !isMuted(row))}
+          >
+            {isMuted(row) ? t("notifyPrefs.unmuteSession") : t("notifyPrefs.mutedLabel")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() =>
+              store.notifyPrefs.snooze(sessionKeyOf(row), store.now() + 3_600_000, store.now())
+            }
+          >
+            {t("notifyPrefs.snooze")}
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => meta(row, { archived: !row.archived })}>
             {row.archived ? t("hub.unarchive") : t("hub.archive")}
           </DropdownMenuItem>
@@ -345,7 +366,6 @@ export function SessionsHub(
       ...(cost === undefined ? {} : { cost: usd(cost) }),
     };
   };
-  const { t } = store.i18n;
   const active = [
     filter.host !== "",
     filter.origin !== "",

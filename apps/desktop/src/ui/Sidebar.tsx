@@ -286,8 +286,17 @@ export function Sidebar(
   // recompute only when the parts they are made of change.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the rows read these parts of the state
   const rows = useMemo(
-    () => hubRows(state),
-    [state.hosts, state.hub, state.meta, state.externals, state.names, state.background],
+    () => hubRows(state, t),
+    [
+      state.hosts,
+      state.hub,
+      state.meta,
+      state.externals,
+      state.names,
+      state.background,
+      state.personas,
+      t,
+    ],
   );
   const pinned = rows.filter((row) => row.pinned && !row.archived);
   const tree = useMemo(

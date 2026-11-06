@@ -775,6 +775,46 @@ html:not(:has([data-slot="status-bar"])) {
   overflow-y: auto;
 }
 
+/*
+ * Below 640 px a dialog is a full-screen sheet (#641, responsive spec "Dialogs"): the body
+ * scrolls and the footer stays at the bottom, its buttons stacked with the primary last. A
+ * confirmation (alert-dialog) stays a centered box: a two-line question needs no whole screen.
+ */
+@media (width < 40rem) {
+  [data-slot="dialog-content"] {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: none;
+    max-width: none;
+    margin: 0;
+    border-width: 0;
+    border-radius: 0;
+  }
+  /* A form that holds the fields and the footer (New card) fills the sheet, as the content does. */
+  [data-slot="dialog-content"] > form {
+    display: flex;
+    flex: 1 0 auto;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  [data-slot="dialog-content"] [data-slot="dialog-footer"] {
+    position: sticky;
+    bottom: -1.5rem;
+    flex-direction: column;
+    margin: 0 -1.5rem -1.5rem;
+    margin-top: auto;
+    border-top-width: 1px;
+    background-color: var(--background);
+    /* Room under the stack for a button's reason, which hangs below it. */
+    padding: 1rem 1.5rem 1.5rem;
+  }
+  /* A button with a reason under it is as wide as the others in the stack. */
+  [data-slot="dialog-footer"] .action-button-box > button {
+    flex: 1;
+  }
+}
+
 /* Reduced motion: nothing animates for those who ask. */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -1057,6 +1097,10 @@ html:not(:has([data-slot="status-bar"])) {
   overflow: hidden;
   font-size: 0.8125rem;
   line-height: 1.4;
+  /* A line with no spaces (a long path) breaks at the edge instead of being cut there (#588). */
+  & > span {
+    overflow-wrap: anywhere;
+  }
 }
 @utility session-tile-request {
   display: flex;
@@ -1170,13 +1214,7 @@ html:not(:has([data-slot="status-bar"])) {
   justify-content: flex-end;
   gap: 0.5rem;
 }
-/* The persona picker and its two buttons on one baseline: the select keeps one width. */
-@utility member-persona {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.5rem;
-}
+/* The persona picker keeps one width on the shared field row (#101). */
 @utility persona-field {
   width: 14rem;
 }
@@ -2373,32 +2411,67 @@ html:not(:has([data-slot="status-bar"])) {
 /* What is fine, folded: one line per row (#640). */
 @utility health-ok {
   font-size: 0.875rem;
-  /* A target at least 24 px tall (axe target-size); 28 px reads as a row. */
-  & > summary {
-    display: flex;
+  /* The fold's disclosure button (#670): a row-sized target (axe target-size wants 24 px) with a
+     chevron that turns when the list is open. */
+  & > button {
+    display: inline-flex;
     align-items: center;
-    min-height: 1.75rem;
-    cursor: pointer;
+    gap: 0.375rem;
+    min-height: 2rem;
+    padding: 0.25rem 0.5rem;
+    margin-inline-start: -0.5rem;
+    border-radius: var(--radius-md);
     color: var(--muted-foreground);
+    cursor: pointer;
+  }
+  & > button:hover {
+    background-color: var(--accent);
+    color: var(--foreground);
+  }
+  & > button:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  & > button > svg {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    transition: rotate 150ms ease;
+  }
+  & > button[aria-expanded="true"] > svg {
+    rotate: 90deg;
   }
 }
+/* The list owns the columns (icon | name | status | detail) and each row takes them as a subgrid,
+   so every status starts at the same place whatever the name's length (#670). */
 @utility dep-compact-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1rem max-content max-content minmax(0, 1fr);
+  column-gap: 0.75rem;
   list-style: none;
   padding: 0;
   margin: 0.5rem 0 0;
 }
 @utility dep-compact {
   display: grid;
-  grid-template-columns: 1rem minmax(8rem, max-content) max-content minmax(0, 1fr);
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: center;
-  gap: 0.5rem;
   padding: 0.25rem 0;
   border-top: 1px solid var(--border);
   & svg {
     width: 1rem;
     height: 1rem;
+  }
+  /* A webview without subgrid (Chromium before 117): fixed columns, the name truncated. */
+  @supports not (grid-template-columns: subgrid) {
+    grid-template-columns: 1rem minmax(0, 14rem) 11rem minmax(0, 1fr);
+    column-gap: 0.75rem;
+    & > span:nth-of-type(1) {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 }
 @utility dep-compact-found {

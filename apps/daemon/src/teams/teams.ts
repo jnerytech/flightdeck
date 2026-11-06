@@ -7,6 +7,7 @@ import type { Database } from "bun:sqlite";
 import {
   inSequence,
   type MessageInfo,
+  type SessionTeam,
   type TeamInfo,
   type TeamMember,
   type TeamStatus,
@@ -49,6 +50,8 @@ export interface TeamsOptions {
   names?: {
     get(sessionId: string): unknown;
     setPersona(sessionId: string, persona: string | null): unknown;
+    /** Issue #101: the team, role and number a session's name carries. */
+    setTeam?(sessionId: string, team: SessionTeam): unknown;
   };
   clock?: () => number;
   /** Starts the coordinator session; phase 20 passes the persona on. */
@@ -101,6 +104,16 @@ interface StoredMember {
   model?: string | null;
   cardId: string | null;
   sessionId: string | null;
+  /** A worker's number in the team (issue #101); absent from a team saved before. */
+  number?: number | null;
+}
+
+/** A worker's number: the one it was stored with, or (a team saved before #101) its name's. */
+function numberOf(member: StoredMember): number | null {
+  if (member.role !== "worker") return null;
+  if (typeof member.number === "number") return member.number;
+  const parsed = /executora (\d+)$/.exec(member.name)?.[1];
+  return parsed ? Number(parsed) : null;
 }
 
 interface Row {
@@ -143,6 +156,8 @@ export class Teams {
   private readonly unsubscribe: Array<() => void> = [];
   /** The persona each worker card was started with, for the standard names. */
   private readonly cardPersonas = new Map<string, string>();
+  /** The team, role and number each worker card was started with (issue #101). */
+  private readonly cardTeams = new Map<string, SessionTeam>();
   private blocked: boolean;
 
   constructor(private readonly opts: TeamsOptions) {
@@ -196,6 +211,7 @@ export class Teams {
       sessionId,
       address: sessionId ? `${this.opts.host}/${sessionId}` : null,
       sessionState: state,
+      number: numberOf(stored),
     };
   }
 
@@ -274,6 +290,22 @@ export class Teams {
     return found.id;
   }
 
+  /**
+   * The team a worker's card works in, its role and number (issue #101): known before the card
+   * starts, so its session is named with it from the first moment, and read from the stored teams
+   * after a restart.
+   */
+  teamOfCard(cardId: string): SessionTeam | null {
+    const known = this.cardTeams.get(cardId);
+    if (known) return known;
+    const rows = this.opts.db.query("SELECT * FROM teams").all() as Row[];
+    for (const row of rows) {
+      const member = this.stored(row).find((m) => m.cardId === cardId);
+      if (member) return { name: label(row.name), role: member.role, number: numberOf(member) };
+    }
+    return null;
+  }
+
   /** The persona a worker's card was started with; the standard name reads it. */
   personaOfCard(cardId: string): string | null {
     return this.cardPersonas.get(cardId) ?? null;
@@ -286,6 +318,7 @@ export class Teams {
     persona: string | null,
     coordinator: string | null,
     model: string | null = null,
+    number: number | null = null,
   ): Promise<StoredMember> {
     const brief: TeamBrief = { ...team, workers: [] };
     const card = this.opts.board.createCard(team.projectId, {
@@ -296,10 +329,11 @@ export class Teams {
     });
     // Before the card starts: its session is named with this persona from the first moment.
     if (persona) this.cardPersonas.set(card.id, persona);
+    this.cardTeams.set(card.id, { name: label(team.name), role: "worker", number });
     await (this.opts.startWorker
       ? this.opts.startWorker(card.id, persona, model)
       : this.opts.board.startCard(card.id));
-    return { name, role: "worker", persona, model, cardId: card.id, sessionId: null };
+    return { name, role: "worker", persona, model, cardId: card.id, sessionId: null, number };
   }
 
   async create(input: NewTeam): Promise<TeamInfo> {
@@ -364,6 +398,7 @@ export class Teams {
       model: coordinatorModel,
     });
     if (coordinatorPersona) this.opts.names?.setPersona(sessionId, coordinatorPersona);
+    this.opts.names?.setTeam?.(sessionId, { name: label(name), role: "coordinator", number: null });
     const address = `${this.opts.host}/${sessionId}`;
     const members: StoredMember[] = [
       {
@@ -383,6 +418,7 @@ export class Teams {
           workerPersonas[i] ?? null,
           address,
           input.workerModels?.[i] ?? null,
+          i + 1,
         ),
       );
     });
@@ -532,7 +568,7 @@ export class Teams {
     spec: { persona: string | null; model: string | null } = { persona: null, model: null },
   ) {
     const members = this.stored(this.row(row.id));
-    const taken = members.flatMap((m) => /executora (\d+)$/.exec(m.name)?.[1] ?? []).map(Number);
+    const taken = members.flatMap((m) => numberOf(m) ?? []);
     const team = {
       name: row.name,
       goal: this.row(row.id).goal,
@@ -549,6 +585,7 @@ export class Teams {
           spec.persona,
           coordinator?.address ?? null,
           spec.model,
+          number,
         );
       members.push(added);
       this.save(row.id, { members: JSON.stringify(members) });

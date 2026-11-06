@@ -6,6 +6,10 @@ import {
   GAPS,
   layoutFindings,
   pinnedProblem,
+  RESPONSIVE,
+  RESPONSIVE_RULES,
+  SPACING,
+  SPACING_RULES,
 } from "../lib/layout-guards.ts";
 
 registerDom();
@@ -71,6 +75,19 @@ beforeEach(() => {
         },
       });
     }
+  }
+  // The widths too (#588): the text-spill rule reads both on a block, where happy-dom answers 0.
+  for (const [name, read] of [
+    ["clientWidth", (el: Element) => num(el, "data-cw", 0)],
+    ["scrollWidth", (el: Element) => num(el, "data-sw", num(el, "data-cw", 0))],
+  ] as const) {
+    saved.set(`H:${name}`, Object.getOwnPropertyDescriptor(htmlProto, name));
+    Object.defineProperty(htmlProto, name, {
+      configurable: true,
+      get(this: Element) {
+        return read(this);
+      },
+    });
   }
   window.innerWidth = 1000;
   window.innerHeight = 700;
@@ -238,6 +255,224 @@ describe("layout-guards: what the page function finds, named by data-slot path",
         <div data-slot="sidebar-body" data-rect="0,40,240,500" style="overflow-y: auto"></div>
       </aside>`);
     expect(split()).toEqual([]);
+  });
+
+  const spacing = () =>
+    layoutFindings({ spacing: SPACING })
+      .filter((f) => SPACING_RULES.includes(f.rule))
+      .map((f) => `${f.rule}: ${f.path} (${f.detail})`);
+
+  test("spacing (#588): the page body's blocks sit at least 8 px apart, stacked or side by side", () => {
+    page(`
+      <div data-slot="page-body" data-rect="0,0,1000,800">
+        <div data-slot="links" data-rect="0,0,1000,100"></div>
+        <div data-slot="config" data-rect="0,103,1000,300"></div>
+        <div data-slot="left" data-rect="0,320,495,500"></div>
+        <div data-slot="right" data-rect="500,320,1000,500"></div>
+        <div data-slot="after" data-rect="0,524,1000,600"></div>
+        <div data-slot="gone" style="display: none" data-rect="0,600,1000,601"></div>
+      </div>`);
+    expect(spacing()).toEqual([
+      "block-gap: page-body > config (3 px under links, at least 8)",
+      "block-gap: page-body > right (5 px beside left, at least 8)",
+    ]);
+  });
+
+  test("spacing (#588): sibling cards keep 8 px between them; a card and its own content are not siblings", () => {
+    page(`
+      <div data-slot="grid" data-rect="0,0,1000,400">
+        <div data-slot="card" data-rect="0,0,330,100"><div data-slot="card-content" data-rect="16,16,314,84"></div></div>
+        <div data-slot="card" data-rect="334,0,664,100"></div>
+        <div data-slot="card" data-rect="0,112,330,200"></div>
+      </div>`);
+    expect(spacing()).toEqual(["card-gap: grid > card[2] (4 px beside card[1], at least 8)"]);
+  });
+
+  // The older form, `clip: rect(0 0 0 0)`, is checked in Chrome only: happy-dom does not compute `clip`.
+  test("spacing and narrow (#641): what is hidden for screen readers only (a clipped 1 px box) is no finding", () => {
+    page(`
+      <table data-slot="resources-table" data-rect="0,0,300,200">
+        <thead style="position: absolute; clip-path: inset(50%)" data-rect="0,0,1,1">
+          <tr><th data-rect="0,0,1,1" data-sw="58" data-cw="1">Requests</th></tr>
+        </thead>
+      </table>
+      <div style="position: absolute; clip-path: inset(50%)" data-rect="0,0,1,1">
+        <span data-slot="caption" data-rect="0,0,1,1" data-sw="90" data-cw="1">A caption</span>
+      </div>
+      <div data-slot="card" data-rect="0,300,300,400">
+        <span data-slot="label" style="clip-path: inset(50%)" data-rect="0,300,1,301">flush, but hidden</span>
+      </div>
+      <pre data-slot="seen" data-rect="0,500,300,520" data-sw="400" data-cw="300">a line that spills</pre>`);
+    expect(spacing()).toEqual(["text-spill: seen (100 px past its box)"]);
+  });
+
+  test("spacing (#588): text in a card keeps 8 px of padding, and text that spills its own box is a finding", () => {
+    page(`
+      <div data-slot="card" data-rect="0,0,400,200">
+        <p data-slot="title" data-rect="24,24,376,44">Hooks</p>
+        <code data-slot="hook-command" data-rect="4,60,396,80">bun run a-very-long-command</code>
+        <span data-slot="cut" style="overflow-x: hidden" data-rect="24,90,376,110" data-sw="500" data-cw="352">x</span>
+        <pre data-slot="spill" data-rect="24,120,376,140" data-sw="600" data-cw="352">long line</pre>
+      </div>`);
+    expect(spacing()).toEqual([
+      "text-spill: card > spill (248 px past its box)",
+      "card-padding: card > hook-command (4 px from the card's left edge, at least 8)",
+    ]);
+  });
+
+  test("spacing (#588): chips in a row keep 4 px between them, and a row under another its own gap", () => {
+    page(`
+      <div data-slot="chips" data-rect="0,0,400,60">
+        <span data-slot="badge" data-rect="0,0,60,20">a</span>
+        <span data-slot="badge" data-rect="62,0,120,20">b</span>
+        <span data-slot="badge" data-rect="128,0,200,20">c</span>
+        <span data-slot="badge" data-rect="0,30,60,50">d</span>
+      </div>`);
+    expect(spacing()).toEqual(["chip-gap: chips > badge[2] (2 px beside badge[1], at least 4)"]);
+  });
+
+  test("spacing (#588): two boxes that overlap are a finding, by how far they run into each other", () => {
+    page(`
+      <div data-slot="chips" data-rect="0,0,400,30">
+        <span data-slot="badge" data-rect="0,0,60,20">a</span>
+        <span data-slot="badge" data-rect="50,0,110,20">b</span>
+      </div>`);
+    expect(spacing()).toEqual(["chip-gap: chips > badge[2] (-10 px over badge[1], at least 4)"]);
+  });
+
+  test("spacing (#588): each finding names its element by number, so two tight pairs in a row or two tiles stay two findings", () => {
+    page(`
+      <div data-slot="chips" data-rect="0,0,400,30">
+        <span data-slot="badge" data-rect="0,0,60,20">a</span>
+        <span data-slot="badge" data-rect="62,0,120,20">b</span>
+        <span data-slot="badge" data-rect="140,0,200,20">c</span>
+        <span data-slot="badge" data-rect="202,0,260,20">d</span>
+      </div>
+      <ul data-rect="0,40,800,200">
+        <li data-rect="0,40,390,200"><div data-slot="session-tile" data-rect="0,40,390,200">
+          <span data-rect="8,48,382,60" data-sw="500" data-cw="374">first line</span>
+        </div></li>
+        <li data-rect="400,40,790,200"><div data-slot="session-tile" data-rect="400,40,790,200">
+          <span data-rect="408,48,782,60">short</span>
+          <span data-rect="408,62,782,74" data-sw="600" data-cw="374">second line</span>
+        </div></li>
+      </ul>`);
+    expect(spacing()).toEqual([
+      "text-spill: session-tile[1] > span (126 px past its box)",
+      "text-spill: session-tile[2] > span[2] (226 px past its box)",
+      "chip-gap: chips > badge[2] (2 px beside badge[1], at least 4)",
+      "chip-gap: chips > badge[4] (2 px beside badge[3], at least 4)",
+    ]);
+  });
+
+  test("spacing (#588): card padding counts from where an element's text starts, inside its own padding", () => {
+    page(`
+      <div data-slot="card" data-rect="0,0,400,200">
+        <header data-slot="card-header" style="padding: 12px 24px" data-rect="0,0,400,48">Project configuration</header>
+        <p data-slot="flush" data-rect="0,60,400,80">edge to edge</p>
+      </div>`);
+    expect(spacing()).toEqual([
+      "card-padding: card > flush (0 px from the card's left edge, at least 8)",
+    ]);
+  });
+
+  test("spacing (#588): the rules are heuristic, judged against a baseline; with none they fail nothing", () => {
+    const tight = { rule: "block-gap" as const, path: "page-body > config", detail: "3 px" };
+    expect(judge("dark en projeto", [tight], null).failures).toEqual([]);
+    expect(judge("dark en projeto", [tight], {}).failures).toEqual([
+      "dark en projeto: block-gap page-body > config (3 px)",
+    ]);
+    // None of them is in the contract: with no baseline, a finding of each rule fails nothing.
+    const each = SPACING_RULES.map((rule) => ({ rule, path: "page-body > x", detail: "1 px" }));
+    expect(judge("dark en projeto", each, null).failures).toEqual([]);
+  });
+
+  const narrow = () =>
+    layoutFindings({ responsive: RESPONSIVE })
+      .filter((f) => RESPONSIVE_RULES.includes(f.rule))
+      .map((f) => `${f.rule}: ${f.path} (${f.detail})`);
+
+  test("narrow (#641): a page that scrolls sideways, and the outermost box past the right of its parent, by how far", () => {
+    document.documentElement.setAttribute("data-sw", "720");
+    document.documentElement.setAttribute("data-cw", "640");
+    try {
+      page(`
+        <div data-slot="page-body" data-rect="0,0,640,800">
+          <div data-slot="card" data-rect="16,16,624,200">
+            <div data-slot="table" data-rect="16,40,700,180">
+              <div data-slot="row" data-rect="16,40,720,60">a row</div>
+            </div>
+          </div>
+          <div data-slot="code" style="overflow-x: auto" data-rect="16,220,624,300">
+            <pre data-rect="16,220,900,300">a long line that scrolls in its own box</pre>
+          </div>
+          <div data-slot="menu" style="position: fixed" data-rect="500,0,800,100">a popover</div>
+          <ul data-rect="16,320,624,420">
+            <li style="display: contents"><div data-slot="tile" data-rect="16,320,320,420">a tile</div></li>
+          </ul>
+        </div>`);
+      expect(narrow()).toEqual([
+        "overflow-x: page-body > card > table > row (the page scrolls 80 px sideways; this ends at 720)",
+        "overflow-x: page-body > card > table (76 px past the right of card)",
+      ]);
+    } finally {
+      document.documentElement.removeAttribute("data-sw");
+      document.documentElement.removeAttribute("data-cw");
+    }
+  });
+
+  test("narrow (#641): a box that scrolls inside another that scrolls is two scrollbars; one with nothing to hide is not", () => {
+    page(`
+      <div data-slot="scroll-area-viewport" style="overflow-y: auto" data-rect="0,0,640,800" data-ch="800" data-sh="1600">
+        <div data-slot="timeline" style="overflow-y: auto" data-rect="0,100,640,500" data-ch="400" data-sh="900">x</div>
+        <div data-slot="list" style="overflow-y: auto" data-rect="0,520,640,800" data-ch="280" data-sh="280">y</div>
+      </div>
+      <div data-slot="side" style="overflow-y: auto" data-rect="640,0,800,800" data-ch="800" data-sh="1200">z</div>`);
+    expect(narrow()).toEqual([
+      "nested-scroll: scroll-area-viewport > timeline (hides 500 px, inside scroll-area-viewport, which hides 800)",
+    ]);
+    // The page itself scrolling is the outer scrollbar too.
+    document.documentElement.setAttribute("data-sh", "1000");
+    document.documentElement.setAttribute("data-ch", "800");
+    try {
+      page(
+        '<div data-slot="timeline" style="overflow-y: auto" data-rect="0,100,640,500" data-ch="400" data-sh="900">x</div>',
+      );
+      expect(narrow()).toEqual([
+        "nested-scroll: timeline (hides 500 px, inside the page, which hides 200)",
+      ]);
+    } finally {
+      document.documentElement.removeAttribute("data-sh");
+      document.documentElement.removeAttribute("data-ch");
+    }
+  });
+
+  test("narrow (#641): a page header that starts under the tab row, and a title cut short, are findings", () => {
+    page(`
+      <div role="tablist" data-rect="0,0,640,40"></div>
+      <section data-slot="page" data-rect="0,32,640,800">
+        <div data-slot="page-header" data-rect="0,32,640,100">
+          <h1 data-slot="page-title" data-rect="24,48,400,76" data-sw="520" data-cw="376">A very long project name</h1>
+        </div>
+      </section>`);
+    expect(narrow()).toEqual([
+      "header-clipped: page > page-header (starts 8 px under the tab row)",
+      "header-clipped: page > page-header > page-title (cut: 376 px of 520)",
+    ]);
+    page(`
+      <div role="tablist" data-rect="0,0,640,40"></div>
+      <section data-slot="page" data-rect="0,40,640,800">
+        <div data-slot="page-header" data-rect="0,40,640,100">
+          <h1 data-slot="page-title" data-rect="24,56,400,84" data-sw="376" data-cw="376">Short</h1>
+        </div>
+      </section>`);
+    expect(narrow()).toEqual([]);
+  });
+
+  test("narrow (#641): the rules are heuristic, judged against their baseline; with none they fail nothing", () => {
+    const each = RESPONSIVE_RULES.map((rule) => ({ rule, path: "page > x", detail: "1 px" }));
+    expect(each.length).toBe(3);
+    expect(judge("dark en 640x800 board", each, null).failures).toEqual([]);
   });
 
   test("an element with no slot is named by its tag and first class", () => {
@@ -459,5 +694,86 @@ describe("layout-guards: where a session opens (issues #173 and #456)", () => {
   test("no timeline is named as such", () => {
     document.body.innerHTML = "";
     expect(pinnedProblem()).toBe("no timeline");
+  });
+});
+
+import { loadCounts, ratchetScreen } from "../lib/layout-guards.ts";
+
+describe("layout-guards: one screen against a ratchet of counts, as demo:shots runs it (#641)", () => {
+  const S = "dark en 640x800 board";
+  const wide = (path: string, group: string, detail: string) => ({
+    rule: "overflow-x" as const,
+    path,
+    group,
+    detail,
+  });
+  const fresh = (baseline: Record<string, number> | null) => ({
+    baseline,
+    seen: {} as Record<string, number>,
+    occurrences: {} as Record<string, string>,
+    gone: [] as string[],
+  });
+
+  test("a key counts its findings under the path with no numbers: one more than the baseline fails, naming each", () => {
+    const ratchet = fresh({
+      [`overflow-x|${S}|tab-strip > tab`]: 1,
+      [`overflow-x|${S}|page > old`]: 2,
+      [`overflow-x|${S}|page > two`]: 2,
+    });
+    const failures = ratchetScreen(
+      S,
+      [
+        wide("tab-strip > tab[1]", "tab-strip > tab", "16 px past the right of tab-strip"),
+        wide("tab-strip > tab[2]", "tab-strip > tab", "112 px past the right of tab-strip"),
+        wide("page > two[1]", "page > two", "3 px past the right of page"),
+      ],
+      ratchet,
+    );
+    expect(failures).toEqual([
+      `${S}: overflow-x tab-strip > tab, 2 where the baseline has 1: tab-strip > tab[1] (16 px past the right of tab-strip); tab-strip > tab[2] (112 px past the right of tab-strip)`,
+    ]);
+    expect(ratchet.seen).toEqual({
+      [`overflow-x|${S}|tab-strip > tab`]: 2,
+      [`overflow-x|${S}|page > two`]: 1,
+    });
+    expect(ratchet.occurrences).toEqual({
+      [`overflow-x|${S}|tab-strip > tab[1]`]: "16 px past the right of tab-strip",
+      [`overflow-x|${S}|tab-strip > tab[2]`]: "112 px past the right of tab-strip",
+      [`overflow-x|${S}|page > two[1]`]: "3 px past the right of page",
+    });
+    // Fewer than the baseline: the file must come down with the fix.
+    expect(ratchet.gone).toEqual([
+      `overflow-x|${S}|page > old: 0 where the baseline has 2: remove it`,
+      `overflow-x|${S}|page > two: 1 where the baseline has 2: lower it`,
+    ]);
+  });
+
+  test("with no baseline a heuristic finding fails nothing, and a contract finding fails anyway", () => {
+    const ratchet = fresh(null);
+    const gap = { rule: "gap" as const, path: "toast", detail: "3 px above status-bar" };
+    expect(ratchetScreen(S, [wide("page > a[1]", "page > a", "9 px"), gap], ratchet)).toEqual([
+      `${S}: gap toast (3 px above status-bar)`,
+    ]);
+    expect(ratchet.gone).toEqual([]);
+  });
+
+  test("the spacing and narrow rules carry the path with no numbers, so the count survives a button added above", () => {
+    page(`
+      <div data-slot="chips" data-rect="0,0,400,30">
+        <span data-slot="badge" data-rect="0,0,60,20">a</span>
+        <span data-slot="badge" data-rect="62,0,120,20">b</span>
+      </div>`);
+    const found = layoutFindings({ spacing: SPACING }).filter((f) => f.rule === "chip-gap");
+    expect(found.map((f) => `${f.path} / ${f.group}`)).toEqual([
+      "chips > badge[2] / chips > badge",
+    ]);
+  });
+
+  test("a baseline of counts loads as counts; an entry that is not a number counts as one", () => {
+    expect(loadCounts(() => null)).toBeNull();
+    expect(loadCounts(() => '{"a|s|p": 3, "b|s|p": "1406 px past its box"}')).toEqual({
+      "a|s|p": 3,
+      "b|s|p": 1,
+    });
   });
 });

@@ -54,6 +54,7 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
   const [editing, setEditing] = useState<AppSnippet | "new" | null>(null);
   const [importing, setImporting] = useState(false);
   const [importingFile, setImportingFile] = useState(false);
+  const openSettings = () => props.go({ name: "settings", section: "assistant" });
 
   useEffect(() => {
     if (hostId) void store.loadProjects(hostId);
@@ -162,6 +163,7 @@ export const SnippetsPage = memo(function SnippetsPage(props: {
             void reload();
           }}
           onClose={() => setEditing(null)}
+          onOpenSettings={openSettings}
           {...(actionsProject && hostId
             ? {
                 onMakeAction: ({ name, command }: { name: string; command: string }) =>

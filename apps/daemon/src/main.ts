@@ -1238,6 +1238,8 @@ export async function startDaemon(
       const card = cardOf(sessionId);
       return card ? (teams?.personaOfCard(card) ?? null) : null;
     },
+    // Issue #101: a worker's session is named with its team, role and number from the start.
+    ...(teams ? { teamOfCard: teams.teamOfCard.bind(teams) } : {}),
   };
   await warmKnown(nameOptions);
   const stopNames = trackNames(nameOptions);

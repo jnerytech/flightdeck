@@ -787,12 +787,13 @@ function routeScreen(props: ScreenProps): ReactNode {
           store={store}
           {...(route.host ? { host: route.host } : {})}
           {...(route.team ? { team: route.team } : {})}
+          go={go}
         />
       );
     case "conversations":
       return <ConversationsPage store={store} go={go} />;
     case "personas":
-      return <PersonasPage store={store} />;
+      return <PersonasPage store={store} go={go} />;
     case "clients":
       return <ClientsPage store={store} state={state} />;
     case "plugins":
