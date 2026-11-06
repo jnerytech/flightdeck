@@ -1004,6 +1004,9 @@ export const ptBR = {
     densities: { compact: "Compacta", comfortable: "Confortável" },
     themes: { system: "Sistema", light: "Claro", dark: "Escuro" },
     terminalFont: "Tamanho da fonte do terminal",
+    terminalReader: "Suporte a leitor de tela no terminal",
+    terminalReaderHint:
+      "Deixa um leitor de tela ler a saída do terminal. Saída longa demora mais para aparecer.",
     cacheTimer: "Contador do cache do prompt",
     cacheTtl: "Duração do cache",
     cacheTtls: { fiveMinutes: "5 minutos", oneHour: "1 hora" },
@@ -1841,9 +1844,25 @@ export const ptBR = {
     session_maybe_active:
       "A sessão pode estar em uso em outro lugar: retome mesmo assim só se tiver certeza de que não está.",
   },
+  assistantWand: {
+    improve: "Melhorar com IA",
+    write: "Escrever com IA",
+    writeFirst: "Escreva algo primeiro",
+    busy: "Outro pedido de IA está em andamento",
+    running: "Trabalhando no seu texto…",
+    preview: "Sugestão da IA",
+    before: "Antes",
+    after: "Depois",
+    accept: "Aceitar",
+    acceptAnyway: "Aceitar mesmo assim",
+    discard: "Descartar",
+    dismiss: "Dispensar",
+    stale: "O texto mudou enquanto isto era escrito.",
+  },
   assistantSettings: {
     title: "Assistente de IA",
     hint: "Uma varinha nos campos de texto melhora o que você escreveu, ou escreve quando consegue. Nada muda até você aceitar.",
+    setupNotice: "Escolha um provedor de IA para usar a varinha nos campos de texto.",
     wand: "Mostrar a varinha",
     provider: "Provedor",
     host: "Claude Code em um host",
@@ -2470,6 +2489,8 @@ export const ptBR = {
   terminalUi: {
     sshBadge: "SSH · {name}",
     title: "Terminal",
+    readerHint:
+      "Para um leitor de tela ler a saída, ligue Suporte a leitor de tela no terminal em Configurações.",
     copy: "Copiar",
     paste: "Colar",
     state: {
@@ -2481,6 +2502,10 @@ export const ptBR = {
     reopen: "Reabrir",
     close: "Fechar terminal",
     closeMessage: "Desanexar deixa o processo rodando no host. Encerrar processo o interrompe.",
+    pasteTitle: "Colar {n} linhas?",
+    pasteMessage:
+      "O programa deste terminal não pediu que o texto colado venha marcado, então cada linha pode rodar como comando assim que chegar.",
+    pasteConfirm: "Colar",
     detach: "Desanexar",
     end: "Encerrar processo",
     searchLabel: "Buscar no terminal",

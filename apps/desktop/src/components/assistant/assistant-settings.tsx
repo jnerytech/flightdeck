@@ -71,6 +71,11 @@ export function AssistantSettings(props: { store: AppStore; t: T }) {
   const [confirming, setConfirming] = useState<{ hostId: string; provider: boolean } | null>(null);
   const [advanced, setAdvanced] = useState(false);
   const pickerId = useId();
+  // A wand that found no provider sent the person here: say why, once.
+  const [setupNotice] = useState(() => store.assistant.wantsSetup());
+  useEffect(() => {
+    if (setupNotice) store.assistant.setupShown();
+  }, [setupNotice, store]);
   const models = useModels(store, prefs.provider);
   void keys;
 
@@ -130,6 +135,11 @@ export function AssistantSettings(props: { store: AppStore; t: T }) {
     prefs.provider === "host" ? HOST_MODELS : models.options;
   return (
     <Panel title={t("assistantSettings.title")}>
+      {setupNotice && (
+        <p role="note" className="text-sm">
+          {t("assistantSettings.setupNotice")}
+        </p>
+      )}
       <p className="text-muted-foreground text-xs">{t("assistantSettings.hint")}</p>
       <label className="flex items-center gap-2 text-sm">
         <input

@@ -2,6 +2,7 @@ import {
   FIND_DECORATIONS,
   type FindDecorations,
   NEWLINE_SEQUENCE,
+  pasteNeedsConfirm,
   type TerminalColors,
   type TerminalZoom,
   terminalKeyAction,
@@ -12,8 +13,15 @@ import {
 export interface XtermTerminal {
   cols: number;
   rows: number;
-  options: { theme?: TerminalColors; fontSize?: number; fontFamily?: string };
+  options: {
+    theme?: TerminalColors;
+    fontSize?: number;
+    fontFamily?: string;
+    screenReaderMode?: boolean;
+  };
   unicode: { activeVersion: string };
+  /** What the program turned on; a bracketed paste reaches it marked, so its lines do not run. */
+  modes: { bracketedPasteMode: boolean };
   loadAddon(addon: unknown): void;
   open(parent: HTMLElement): void;
   write(data: Uint8Array, callback?: () => void): void;
@@ -65,11 +73,15 @@ export interface XtermScreenOptions {
   fontSize: number;
   fontFamily: string;
   clipboard: { copy(text: string): Promise<void>; read(): Promise<string> };
+  /** xterm keeps an accessible copy of the output for screen readers (#476). */
+  screenReader?: boolean;
   /** The host is Windows: Ctrl+C copies when there is a selection, and interrupts when there is none. */
   windows?: boolean;
   onInput(data: string): void;
   onResize(cols: number, rows: number): void;
   onSearch(): void;
+  /** A paste of several lines that would run as it lands: true to paste it anyway (#476). */
+  confirmPaste?(text: string): Promise<boolean>;
   /** Ctrl+=, Ctrl+-, Ctrl+0 or Ctrl+wheel asked for a zoom step (#476). */
   onZoom?(step: TerminalZoom): void;
   /** The matches of the find bar changed (typing, next, previous). */
@@ -87,6 +99,7 @@ export interface XtermScreen {
   fit(): void;
   setTheme(theme: TerminalColors): void;
   setFontSize(size: number): void;
+  setScreenReader(on: boolean): void;
   find(text: string, direction: "next" | "previous", incremental?: boolean): boolean;
   clearFind(): void;
   focus(): void;
@@ -111,6 +124,7 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     allowProposedApi: true,
     // Issue #476: a long Claude turn stays in the view and in find (xterm keeps 1,000 by default).
     scrollback: SCROLLBACK_LINES,
+    screenReaderMode: options.screenReader === true,
   });
   const fit = deps.fit();
   const search = deps.search();
@@ -131,7 +145,11 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
   };
   const paste = () => {
     options.clipboard.read().then(
-      (text) => terminal.paste(text),
+      async (text) => {
+        const ask = pasteNeedsConfirm(text, terminal.modes.bracketedPasteMode);
+        if (ask && options.confirmPaste && !(await options.confirmPaste(text))) return;
+        terminal.paste(text);
+      },
       () => {},
     );
   };
@@ -192,6 +210,9 @@ export function createXtermScreen(deps: XtermDeps, options: XtermScreenOptions):
     fit: () => fit.fit(),
     setTheme: (theme) => {
       terminal.options.theme = theme;
+    },
+    setScreenReader: (on) => {
+      terminal.options.screenReaderMode = on;
     },
     setFontSize: (fontSize) => {
       terminal.options.fontSize = fontSize;

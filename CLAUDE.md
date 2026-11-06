@@ -106,8 +106,8 @@ The full rules are in [docs/TDD.md](docs/TDD.md). Read it before starting an are
   weakening an assertion. The one exception: a flaky test that hurts CI may be skipped
   (`test.skip`, `it.skip`, `describe.skip`, or `test.skipIf(notLinux)`) with
   `// unstable: #<issue> <reason>` on its line or the line above, naming the open issue of its fix.
-  There are at most 10, and CI fails once that issue is closed, so the skip comes out with the fix
-  (#494, docs/TDD.md).
+  There are at most 10, and CI fails once that issue is closed, or on the PR that closes it while
+  the skip is still in (#552), so the skip comes out with the fix (#494, docs/TDD.md).
 - Tests touch nothing real. The preload replaces `claude` on the PATH with a sentinel and
   `HOME` with a temporary folder, so nothing reads or writes the real `~/.claude`. Other CLIs
   (`gh`, `az`, `ssh`, check commands) are fakes on the test PATH, with a `.cmd` version on

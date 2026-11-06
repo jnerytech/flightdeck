@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Page } from "@/components/layout/page";
 import { SnippetPicker } from "@/components/snippets/snippet-picker";
 import {
@@ -16,7 +16,12 @@ import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "../lib/app-store.ts";
 import { TerminalSession, type TerminalState } from "../lib/terminal-session.ts";
-import { isWindowsHost, TERMINAL_FONT_FAMILY, terminalTheme } from "../lib/terminal-view.ts";
+import {
+  isWindowsHost,
+  pasteLines,
+  TERMINAL_FONT_FAMILY,
+  terminalTheme,
+} from "../lib/terminal-view.ts";
 import { useStoreState } from "../lib/use-store.ts";
 import {
   createXtermScreen,
@@ -49,6 +54,8 @@ export function TerminalPage(
   const [searching, setSearching] = useState(false);
   const [needle, setNeedle] = useState("");
   const [closing, setClosing] = useState(false);
+  /** A paste of several lines waiting for the OK: how many lines, and the answer to give xterm. */
+  const [pasting, setPasting] = useState<{ lines: number; answer(ok: boolean): void } | null>(null);
   /** Where the right button opened the copy and paste menu. */
   const [menu, setMenu] = useState<{ x: number; y: number; canCopy: boolean } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -63,6 +70,11 @@ export function TerminalPage(
       launchId !== null && key.startsWith(`${hostId}/`) && external.launchId === launchId,
   )?.[1];
   const font = useSyncExternalStore(store.terminalFont.subscribe, () => store.terminalFont.value);
+  const reader = useSyncExternalStore(
+    store.terminalReader.subscribe,
+    () => store.terminalReader.value,
+  );
+  const readerHint = useId();
   const theme = useSyncExternalStore(store.theme.subscribe, () => store.theme.resolved);
 
   useEffect(() => {
@@ -77,6 +89,7 @@ export function TerminalPage(
       const xterm = createXtermScreen(deps, {
         theme: terminalTheme(store.theme.resolved),
         fontSize: store.terminalFont.value,
+        screenReader: store.terminalReader.value,
         fontFamily: TERMINAL_FONT_FAMILY,
         windows: isWindowsHost(navigator.userAgent),
         clipboard: {
@@ -91,6 +104,17 @@ export function TerminalPage(
         onFindResults: setResults,
         onLink: (uri) => store.openLink(uri),
         onSnippets: () => setPicking(true),
+        confirmPaste: (text) =>
+          new Promise<boolean>((resolve) =>
+            setPasting({
+              lines: pasteLines(text),
+              answer: (ok) => {
+                setPasting(null);
+                resolve(ok);
+                xterm.focus();
+              },
+            }),
+          ),
         onZoom: (step) => store.terminalFont.zoom(step),
       });
       const current = new TerminalSession({
@@ -148,6 +172,7 @@ export function TerminalPage(
   };
 
   useEffect(() => screen.current?.setFontSize(font), [font]);
+  useEffect(() => screen.current?.setScreenReader(reader), [reader]);
   useEffect(() => screen.current?.setTheme(terminalTheme(theme)), [theme]);
 
   const close = async (kill: boolean) => {
@@ -253,6 +278,8 @@ export function TerminalPage(
         data-terminal-area
         role="application"
         aria-label={t("terminalUi.title")}
+        // While xterm keeps no copy for screen readers, the terminal says where to turn it on (#476).
+        aria-describedby={reader ? undefined : readerHint}
         className="min-h-80 w-full flex-1"
         onContextMenu={(e) => {
           e.preventDefault();
@@ -263,6 +290,11 @@ export function TerminalPage(
           });
         }}
       />
+      {!reader && (
+        <p id={readerHint} hidden>
+          {t("terminalUi.readerHint")}
+        </p>
+      )}
       {menu && (
         <div
           ref={menuRef}
@@ -302,6 +334,7 @@ export function TerminalPage(
           </Button>
         </div>
       )}
+      {pasting && <TerminalPasteDialog lines={pasting.lines} onAnswer={pasting.answer} />}
       {closing && (
         <TerminalCloseDialog
           onClose={(kill) => (kill === null ? setClosing(false) : void close(kill))}
@@ -323,6 +356,34 @@ export function TerminalPage(
 }
 
 /** Closing a terminal: detach (the default; the process keeps running on the host) or end it. */
+/**
+ * The OK before a paste of several lines (#476): the program has not turned on bracketed paste, so
+ * each line may run as a command as soon as it lands. Cancel has the focus: it is the safe answer.
+ */
+export function TerminalPasteDialog(
+  props: Readonly<{ lines: number; onAnswer(ok: boolean): void }>,
+) {
+  const t = useT();
+  return (
+    <AlertDialog open onOpenChange={(open) => !open && props.onAnswer(false)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {t("terminalUi.pasteTitle", { n: String(props.lines) })}
+          </AlertDialogTitle>
+          <AlertDialogDescription>{t("terminalUi.pasteMessage")}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+          <AlertDialogAction onClick={() => props.onAnswer(true)}>
+            {t("terminalUi.pasteConfirm")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 export function TerminalCloseDialog(props: Readonly<{ onClose(kill: boolean | null): void }>) {
   const t = useT();
   const detach = useRef<HTMLButtonElement>(null);

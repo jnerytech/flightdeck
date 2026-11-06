@@ -175,7 +175,7 @@ import {
   terminalLaunch,
 } from "./terminal.ts";
 import type { TerminalHost } from "./terminal-session.ts";
-import { TerminalFontController } from "./terminal-view.ts";
+import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
 import { loadTileLayout, saveTileLayout, type TileLayout } from "./tiles.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
@@ -889,6 +889,7 @@ export class AppStore {
     });
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
+    this.terminalReader = new TerminalReaderSetting(platform.storage);
     this.setup = new SetupSettings(platform.storage);
     this.cacheTimer = new CacheTimerSettings(platform.storage);
     this.clock = new SharedClock(
@@ -968,6 +969,7 @@ export class AppStore {
   readonly assistant: AssistantController;
   readonly density: DensityController;
   readonly terminalFont: TerminalFontController;
+  readonly terminalReader: TerminalReaderSetting;
   /** The setup checklist: hidden or not, and whether a test notification ever showed. */
   readonly setup: SetupSettings;
   /** The prompt cache countdown on idle sessions: off by default (issue #159). */

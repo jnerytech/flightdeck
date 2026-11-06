@@ -2797,13 +2797,19 @@ tab, with no SSH.
   `Shift+Enter` adds a new line in a Claude Code prompt instead of sending it (the same as
   `Alt+Enter`). If grey blocks of an old screen stay behind in Claude Code's side panel, that is
   Claude Code leaving cells uncleared (the same happens in other terminals): `Ctrl+L` or resizing
-  the pane makes it repaint. Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
+  the pane makes it repaint. Pasting several lines into a program that has not asked for pasted
+  text to be marked (bracketed paste; a plain shell prompt, for example) asks first, since each line
+  could run as a command as it lands; Cancel has the focus. Claude Code asks for the marking, so a
+  paste into it goes straight in. Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
   in another color and its position ("2 of 5") beside the box; Enter or **Next match** goes to
   the next one, Shift+Enter or **Previous match** to the previous, Esc or **Close search**
   closes. Links in the output open in the browser (`http` and `https` only). The font is the
   system monospace; its size is in Settings (**Terminal font size**, 10 to 24). In the tab,
   `Ctrl+=` (or `Ctrl++`) and `Ctrl+-`, or `Ctrl` with the mouse wheel, make it one point bigger or
-  smaller, and `Ctrl+0` brings back 13; the size is the same setting and is kept. The tab keeps
+  smaller, and `Ctrl+0` brings back 13; the size is the same setting and is kept. For a screen
+  reader (NVDA, Narrator), turn on **Screen reader support in the terminal** in Settings: the
+  terminal then keeps a copy of its output the reader can follow (long output draws more slowly, so
+  it starts off). The tab keeps
   the last 10,000 lines to scroll back to and to search.
 - **Detach and reopen:** a terminal survives the app: it keeps the last 2 MB of output, and
   attaching again shows them. Closing a terminal tab asks: **Detach** (the default; the process

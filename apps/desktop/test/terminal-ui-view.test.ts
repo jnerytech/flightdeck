@@ -1,12 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import {
   isWindowsHost,
+  pasteLines,
+  pasteNeedsConfirm,
   TERMINAL_FONT_DEFAULT,
   TERMINAL_FONT_FAMILY,
   TERMINAL_FONT_KEY,
   TERMINAL_FONT_MAX,
   TERMINAL_FONT_MIN,
+  TERMINAL_READER_KEY,
   TerminalFontController,
+  TerminalReaderSetting,
   terminalKeyAction,
   terminalTheme,
   terminalWheelAction,
@@ -143,6 +147,33 @@ describe("terminal-ui: keys, colors and font", () => {
     );
     smallest.zoom("zoomOut");
     expect(smallest.value).toBe(10);
+  });
+
+  test("a paste of several lines needs an OK while the program has not turned on bracketed paste (issue #476)", () => {
+    expect([
+      pasteLines("ls"),
+      pasteLines("ls\n"),
+      pasteLines("a\r\nb\r\n"),
+      pasteLines("a\nb\nc"),
+    ]).toEqual([1, 1, 2, 3]);
+    expect(pasteNeedsConfirm("a\nb", false)).toBe(true);
+    expect(pasteNeedsConfirm("a\r\nb\r\n", false)).toBe(true);
+    expect(pasteNeedsConfirm("ls\n", false)).toBe(false);
+    expect(pasteNeedsConfirm("a\nb", true)).toBe(false);
+  });
+
+  test("screen reader support is off at first, then kept as it was set (issue #476)", () => {
+    const fresh = memoryStorage();
+    const setting = new TerminalReaderSetting(fresh.storage);
+    expect(setting.value).toBe(false);
+    let told = 0;
+    setting.subscribe(() => told++);
+    setting.set(true);
+    expect([setting.value, fresh.items.get(TERMINAL_READER_KEY), told]).toEqual([true, "on", 1]);
+    setting.set(false);
+    expect(fresh.items.get(TERMINAL_READER_KEY)).toBe("off");
+    const kept = memoryStorage({ [TERMINAL_READER_KEY]: "on" });
+    expect(new TerminalReaderSetting(kept.storage).value).toBe(true);
   });
 
   test("the host is Windows when the user agent says so", () => {

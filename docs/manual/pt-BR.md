@@ -2798,13 +2798,19 @@ numa aba, sem SSH.
   arrastar para selecionar. `Shift+Enter` adiciona uma nova linha no prompt do Claude Code em vez
   de enviá-lo (o mesmo que `Alt+Enter`). Se blocos cinza de uma tela antiga ficarem no painel
   lateral do Claude Code, é o Claude Code deixando células sem limpar (acontece também em outros
-  terminais): `Ctrl+L` ou redimensionar o painel faz ele redesenhar. Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
+  terminais): `Ctrl+L` ou redimensionar o painel faz ele redesenhar. Colar várias linhas num programa que não pediu que o texto colado venha
+  marcado (bracketed paste; um prompt de shell comum, por exemplo) pergunta antes, já que cada linha
+  pode rodar como comando assim que chega; Cancelar fica com o foco. O Claude Code pede a marcação,
+  então colar nele entra direto. Buscar com `Ctrl+Shift+F`: os resultados ficam destacados enquanto você digita, o
   atual em outra cor e sua posição ("2 de 5") ao lado da caixa; Enter ou **Próximo resultado**
   vai para o próximo, Shift+Enter ou **Resultado anterior** para o anterior, Esc ou **Fechar
   busca** fecha. Links na saída abrem no navegador (só `http` e `https`). A fonte é a
   monoespaçada do sistema; o tamanho fica nas Configurações (**Tamanho da fonte do terminal**, de
   10 a 24). Na aba, `Ctrl+=` (ou `Ctrl++`) e `Ctrl+-`, ou `Ctrl` com a roda do mouse, aumentam ou
-  diminuem um ponto, e `Ctrl+0` volta para 13; o tamanho é a mesma configuração e fica guardado. A
+  diminuem um ponto, e `Ctrl+0` volta para 13; o tamanho é a mesma configuração e fica guardado. Para
+  um leitor de tela (NVDA, Narrador), ligue **Suporte a leitor de tela no terminal** nas
+  Configurações: o terminal passa a manter uma cópia da saída que o leitor acompanha (saída longa
+  demora mais para aparecer, por isso começa desligado). A
   aba guarda as últimas 10.000 linhas para rolar e buscar.
 - **Desanexar e reabrir:** o terminal sobrevive ao app: guarda os últimos 2 MB de saída, e anexar
   de novo os mostra. Fechar a aba de um terminal pergunta: **Desanexar** (o padrão; o processo

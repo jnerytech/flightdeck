@@ -1007,6 +1007,9 @@ export const en: Dictionary = {
     densities: { compact: "Compact", comfortable: "Comfortable" },
     themes: { system: "System", light: "Light", dark: "Dark" },
     terminalFont: "Terminal font size",
+    terminalReader: "Screen reader support in the terminal",
+    terminalReaderHint:
+      "Lets a screen reader read the terminal's output. Long output draws more slowly.",
     cacheTimer: "Prompt cache timer",
     cacheTtl: "Cache lifetime",
     cacheTtls: { fiveMinutes: "5 minutes", oneHour: "1 hour" },
@@ -1845,9 +1848,25 @@ export const en: Dictionary = {
     session_maybe_active:
       "The session may be in use elsewhere: resume it anyway only if you are sure it is not.",
   },
+  assistantWand: {
+    improve: "Improve with AI",
+    write: "Write with AI",
+    writeFirst: "Write something first",
+    busy: "Another AI request is running",
+    running: "Working on your text…",
+    preview: "AI suggestion",
+    before: "Before",
+    after: "After",
+    accept: "Accept",
+    acceptAnyway: "Accept anyway",
+    discard: "Discard",
+    dismiss: "Dismiss",
+    stale: "The text changed while this was written.",
+  },
   assistantSettings: {
     title: "AI assistant",
     hint: "A small wand on text fields improves what you wrote, or writes it when it can. Nothing changes until you accept it.",
+    setupNotice: "Choose an AI provider to use the wand on text fields.",
     wand: "Show the wand",
     provider: "Provider",
     host: "Claude Code on a host",
@@ -2471,6 +2490,8 @@ export const en: Dictionary = {
   terminalUi: {
     sshBadge: "SSH · {name}",
     title: "Terminal",
+    readerHint:
+      "For a screen reader to read the output, turn on Screen reader support in the terminal in Settings.",
     copy: "Copy",
     paste: "Paste",
     state: {
@@ -2482,6 +2503,10 @@ export const en: Dictionary = {
     reopen: "Reopen",
     close: "Close terminal",
     closeMessage: "Detach keeps the process running on the host. End process stops it.",
+    pasteTitle: "Paste {n} lines?",
+    pasteMessage:
+      "The program in this terminal has not asked for pasted text to be marked, so each line may run as a command as soon as it lands.",
+    pasteConfirm: "Paste",
     detach: "Detach",
     end: "End process",
     searchLabel: "Search in the terminal",

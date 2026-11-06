@@ -162,3 +162,43 @@ export class TerminalFontController {
     else this.set(this.value + (step === "zoomIn" ? 1 : -1));
   }
 }
+
+/** How many lines a paste holds; one line break at the very end does not make another. */
+export function pasteLines(text: string): number {
+  return text.replace(/(\r\n|\r|\n)$/, "").split(/\r\n|\r|\n/).length;
+}
+
+/**
+ * Whether a paste needs the person's OK first (#476): several lines while the program has not
+ * turned on bracketed paste, so each line would run as a command as soon as it lands. Windows
+ * Terminal and VS Code warn the same way.
+ */
+export function pasteNeedsConfirm(text: string, bracketed: boolean): boolean {
+  return !bracketed && pasteLines(text) > 1;
+}
+
+export const TERMINAL_READER_KEY = "flightdeck.terminal-reader";
+
+/**
+ * Whether the terminal speaks to screen readers (#476): xterm's screen reader mode, which keeps an
+ * accessible copy of the output. Off at first (long output draws more slowly), kept across starts.
+ */
+export class TerminalReaderSetting {
+  value: boolean;
+  private readonly listeners = new Set<() => void>();
+
+  constructor(private readonly storage: Platform["storage"]) {
+    this.value = storage.getItem(TERMINAL_READER_KEY) === "on";
+  }
+
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  set(on: boolean): void {
+    this.value = on;
+    this.storage.setItem(TERMINAL_READER_KEY, on ? "on" : "off");
+    for (const listener of this.listeners) listener();
+  }
+}
