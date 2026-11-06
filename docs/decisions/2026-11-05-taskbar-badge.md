@@ -11,3 +11,7 @@
 - **Other systems.** `setOverlayIcon` exists on Windows only; the command does nothing elsewhere, and a browser has no `setBadge`.
 - **Not verified here:** the Rust was written without a toolchain on this machine (no `cargo`); CI builds it and `badge_tests` runs there.
   Reviewed by the Tauri reviewer agent, whose notes are in the hand-off.
+- **Ported onto main (2026-11-06).** Reviewed again against the pinned tauri 2.12.5: `set_overlay_icon`
+  (Windows only) and `Image::new_owned` exist with no extra cargo feature; the size check is enough
+  (tao checks again); no capability, config or lock file changes. `set_unread_badge` stays synchronous
+  like the other window commands (blocking-audit list).
