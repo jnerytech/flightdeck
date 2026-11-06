@@ -374,7 +374,8 @@ export function slotViolation(
 }
 
 /** The package scripts that run only through the slot (CLAUDE.md). */
-const HEAVY = /^(test|coverage|e2e|demo:shots|smoke(:[\w-]+)?|build:(daemon|desktop))$/;
+const HEAVY =
+  /^(test|coverage|fast-coverage|e2e|demo:shots|smoke(:[\w-]+)?|build:(daemon|desktop))$/;
 
 /**
  * Why a `bun run pr -- merge|tag`, a `gh pr merge` or a REST merge is blocked (#271): sessions

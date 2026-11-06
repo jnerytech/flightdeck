@@ -116,6 +116,8 @@ function ManagedSession(props: {
   hostId: string;
   sessionId: string;
   focus: string | null;
+  /** Opens the host's page (the mode menu links to the bypass switch there). */
+  go(route: Route): void;
 }) {
   const { store, state, hostId, sessionId } = props;
   const host = state.hosts.find((h) => h.id === hostId);
@@ -200,6 +202,7 @@ function ManagedSession(props: {
         {...(summary?.runtime ? { runtime: summary.runtime } : {})}
         {...(openCodeModels ? { models: openCodeModels } : {})}
         settings={hasFeature(host?.hostInfo?.features, "session.settings", false)}
+        onOpenHostSettings={() => props.go({ name: "host", host: hostId })}
         {...(host?.hostInfo?.allowBypassPermissions === true
           ? { bypass: { host: host.name } }
           : {})}
@@ -637,6 +640,7 @@ function routeScreen(props: ScreenProps): ReactNode {
           hostId={route.host}
           sessionId={route.id}
           focus={route.focus ?? null}
+          go={go}
         />
       );
     case "new-session": {
@@ -846,6 +850,7 @@ function routeScreen(props: ScreenProps): ReactNode {
         hostId={selected.hostId}
         sessionId={selected.sessionId}
         focus={null}
+        go={go}
       />
     );
   }
