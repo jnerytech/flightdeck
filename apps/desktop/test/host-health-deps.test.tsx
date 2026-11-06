@@ -84,6 +84,9 @@ describe("host-health-deps: the dependencies of a host", () => {
     expect(within(required).getAllByRole("listitem")).toHaveLength(2);
     const optional = within(section).getByRole("list", { name: "Optional" });
     expect(within(optional).getAllByRole("listitem")).toHaveLength(1);
+    // The fold opens from its button (#670); before it, it was a <details> that held the list.
+    const fold = within(section).queryByRole("button", { name: /with nothing to do/ });
+    if (fold) fireEvent.click(fold);
     const working = within(section).getByRole("list", { name: "Working" });
     expect(within(working).getAllByRole("listitem")).toHaveLength(2);
     const row = (name: string) => within(section).getByRole("listitem", { name });

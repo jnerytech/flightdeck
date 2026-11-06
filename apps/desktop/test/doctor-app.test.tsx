@@ -51,6 +51,9 @@ describe("doctor-app: the check of a host, in its page", () => {
       "listitem",
     );
     expect(items).toHaveLength(1);
+    // The fold opens from its button (#670); before it, it was a <details> that held the list.
+    const fold = within(section).queryByRole("button", { name: /sem nada a fazer/ });
+    if (fold) fireEvent.click(fold);
     const working = within(within(section).getByRole("list", { name: "Funcionando" })).getAllByRole(
       "listitem",
     );
