@@ -165,6 +165,17 @@ test("a fake answers in process as its process does: output, code, the call and 
   fake.restore();
 });
 
+test('in process, a fake records what each call got on stdin, and "" for none (#222)', async () => {
+  const env: Record<string, string | undefined> = { PATH: "" };
+  const fake = installFakeCli("gh", [{ args: ["api"], stdout: "{}" }], env);
+  const cwd = realTempDir("fd-fake-run-");
+  const bin = join(fake.dir, "gh");
+  await fake.run([bin, "api", "graphql"], cwd, "query { x }");
+  await fake.run([bin, "api", "repos"], cwd);
+  expect(fake.inputs()).toEqual(["query { x }", ""]);
+  fake.restore();
+});
+
 test("in process, a fake refuses what Bun refuses for a .cmd shim and records nothing", async () => {
   const env: Record<string, string | undefined> = { PATH: "" };
   const fake = installFakeCli("az", [{ args: [], stdout: "ok\n" }], env);

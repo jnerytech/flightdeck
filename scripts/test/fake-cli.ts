@@ -47,6 +47,11 @@ export interface FakeCli {
   calls(): string[][];
   /** Working directory of every call, in the same order. */
   cwds(): string[];
+  /**
+   * What every call got on stdin, in the same order: "" for none. Only the in-process `run` sees
+   * it; the fake's process does not read stdin (a caller that leaves the pipe open would hang it).
+   */
+  inputs(): string[];
   respond(rules: FakeRule[]): void;
   /** Answers a call in this process, as the fake's own process would: no process is started. */
   run(cmd: string[], cwd: string, input?: string): Promise<FakeAnswer>;
@@ -58,13 +63,15 @@ const MAIN = join(import.meta.dir, "fake-cli-main.ts");
 
 /**
  * One call of the fake whose state is in `stateDir`: refuses what Bun refuses for a .cmd shim
- * (recording nothing), records the arguments and the working directory, and picks the first rule
- * that matches. The fake's process (fake-cli-main.ts) and its in-process `run` both answer here.
+ * (recording nothing), records the arguments, the working directory and the stdin ("" from the
+ * process, which does not read it), and picks the first rule that matches. The fake's process
+ * (fake-cli-main.ts) and its in-process `run` both answer here.
  */
 export function answerFake(
   stateDir: string,
   args: string[],
   cwd: string,
+  input = "",
 ): FakeAnswer & { rule: FakeRule | null } {
   const { rejectCmdChars } = JSON.parse(readFileSync(join(stateDir, "options.json"), "utf8")) as {
     rejectCmdChars: boolean;
@@ -75,6 +82,7 @@ export function answerFake(
   }
   appendFileSync(join(stateDir, "calls.jsonl"), `${JSON.stringify(args)}\n`);
   appendFileSync(join(stateDir, "cwds.jsonl"), `${JSON.stringify(cwd)}\n`);
+  appendFileSync(join(stateDir, "inputs.jsonl"), `${JSON.stringify(input)}\n`);
   const call = readFileSync(join(stateDir, "calls.jsonl"), "utf8").trim().split(/\r?\n/).length;
   const rules = JSON.parse(readFileSync(join(stateDir, "rules.json"), "utf8")) as FakeRule[];
   const rule = rules.find(
@@ -202,11 +210,19 @@ export function installFakeCli(
         .split(/\r?\n/)
         .map((line) => JSON.parse(line) as string);
     },
+    inputs: () => {
+      const log = join(dir, "inputs.jsonl");
+      if (!existsSync(log)) return [];
+      return readFileSync(log, "utf8")
+        .trim()
+        .split(/\r?\n/)
+        .map((line) => JSON.parse(line) as string);
+    },
     respond,
     // The program (cmd[0]) is the fake found on PATH; a rule's delayMs and holdPipesMs are about
     // the process, which this one never starts.
-    run: async (cmd, cwd) => {
-      const { code, stdout, stderr } = answerFake(dir, cmd.slice(1), cwd);
+    run: async (cmd, cwd, input) => {
+      const { code, stdout, stderr } = answerFake(dir, cmd.slice(1), cwd, input);
       return { code, stdout, stderr };
     },
     // Takes out only this fake's folder, so the order of several restores does not matter.
