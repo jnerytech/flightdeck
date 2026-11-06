@@ -22,7 +22,7 @@ import { summarizeInput } from "../central/external-permissions.ts";
 import { userHome } from "../config.ts";
 import { API_KEY_VARS, buildChildEnv } from "../env.ts";
 import { FlightdeckError } from "../errors.ts";
-import { resolveAllowedCwd } from "../paths.ts";
+import { isInside, resolveAllowedCwd } from "../paths.ts";
 import type { AutoApproveRequest, AutoApprover } from "../permissions/auto-approve.ts";
 import { PermissionBroker } from "../permissions/permission-broker.ts";
 import { parseSuggestions } from "../permissions/permission-updates.ts";
@@ -517,13 +517,26 @@ export class SessionManager {
     return { snapshot, unwatch: () => this.summaryListeners.delete(listener) };
   }
 
-  /** How many live sessions in `folder` run with a setup its trust no longer covers (issue #463). */
-  staleSessions(_folder: string): number {
-    return 0;
+  /** Whether a live run was given the project's setup and its folder is no longer trusted (issue #463). */
+  private stale(sessionId: string, live: LiveSession): boolean {
+    return live.trustedAtStart && this.opts.trust?.(this.get(sessionId).cwd).trusted === false;
   }
 
-  /** Tells the watchers that the trust of a folder changed: a live session may now be stale (issue #463). */
-  trustChanged(): void {}
+  /** How many live sessions in `folder` run with a setup its trust no longer covers (issue #463). */
+  staleSessions(folder: string): number {
+    const here = resolve(folder);
+    return [...this.live].filter(
+      ([id, live]) => isInside(here, resolve(this.get(id).cwd)) && this.stale(id, live),
+    ).length;
+  }
+
+  /**
+   * Tells the watchers that the trust of a folder changed: every live session that loaded a setup
+   * says again whether it is stale now (a revoked trust marks it, a trust given again clears it).
+   */
+  trustChanged(): void {
+    for (const [id, live] of this.live) if (live.trustedAtStart) this.emitSummary(id);
+  }
 
   /** Phase 21: told when a user message reaches a session (a queued one is delivered then). */
   onUserMessage(listener: (sessionId: string, text: string) => void): () => void {
@@ -549,7 +562,13 @@ export class SessionManager {
       pendingPermissions: this.pendingPermissions(sessionId),
       updatedAt: session.updatedAt,
       ...(session.runtime === "opencode" ? { runtime: "opencode" as const } : {}),
+      ...(this.isStale(sessionId) ? { trustStale: true as const } : {}),
     });
+  }
+
+  private isStale(sessionId: string): boolean {
+    const live = this.live.get(sessionId);
+    return live !== undefined && this.stale(sessionId, live);
   }
 
   private emitSummary(sessionId: string): void {

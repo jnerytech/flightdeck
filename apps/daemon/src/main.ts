@@ -1278,6 +1278,12 @@ export async function startDaemon(
     allowApiKey: config.allowApiKey,
     log: logger.log.bind(logger),
   });
+  /** A folder's trust as the clients see it, with the live sessions that still run with the setup they loaded (issue #463). */
+  const trustState = (path: string) => {
+    const via = projectTrust.via(path);
+    const stale = manager.staleSessions(path);
+    return { path, trusted: via !== null, via, ...(stale > 0 ? { staleSessions: stale } : {}) };
+  };
   const server = startServer({
     manager,
     opencode: {
@@ -1307,17 +1313,14 @@ export async function startDaemon(
     },
     projectTrust: {
       refresh: projectTrust.refreshRoots.bind(projectTrust),
-      state: (paths) =>
-        paths.map((path) => {
-          const via = projectTrust.via(path);
-          return { path, trusted: via !== null, via };
-        }),
+      state: (paths) => paths.map(trustState),
       inspect: (path) => inspectProject(path),
       set: (path, trusted) => {
         if (trusted) projectTrust.trust(path);
         else projectTrust.revoke(path);
-        const via = projectTrust.via(path);
-        return { path, trusted: via !== null, via };
+        // The live sessions that loaded the setup say again whether it is still theirs (issue #463).
+        manager.trustChanged();
+        return trustState(path);
       },
     },
     persistRoots: (roots) =>
