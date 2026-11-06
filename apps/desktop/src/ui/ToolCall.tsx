@@ -1,6 +1,6 @@
 import { ChevronRight } from "lucide-react";
+import { ToolCallBody } from "@/components/session/tool-call-body";
 import { useT } from "@/i18n/context";
-import { cn } from "@/lib/utils";
 import { inputSummary } from "../lib/tool-input.ts";
 
 /** Collapsed tool call: name and input summary; expands to the full input and its result. */
@@ -24,21 +24,7 @@ export function ToolCall(
           {inputSummary(props.input)}
         </span>
       </summary>
-      <pre className="overflow-x-auto border-t bg-muted p-3 font-mono text-xs">
-        {JSON.stringify(props.input, null, 2)}
-      </pre>
-      {props.result ? (
-        <pre
-          className={cn(
-            "overflow-x-auto border-t p-3 font-mono text-xs",
-            props.result.isError && "text-status-error",
-          )}
-        >
-          {props.result.content}
-        </pre>
-      ) : (
-        <p className="border-t px-3 py-2 text-muted-foreground text-xs">{t("toolCall.waiting")}</p>
-      )}
+      <ToolCallBody input={props.input} result={props.result} waiting={t("toolCall.waiting")} />
     </details>
   );
 }

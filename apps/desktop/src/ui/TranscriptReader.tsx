@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import type { AppStore } from "../lib/app-store.ts";
 import { basename, isInside } from "../lib/paths.ts";
 import { messageParts } from "../lib/tool-line.ts";
+import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { Markdown } from "./Markdown.tsx";
 
@@ -66,6 +67,18 @@ export function TranscriptReader(
   const [cwdExists, setCwdExists] = useState<boolean | null>(null);
   const [allowing, setAllowing] = useState(false);
   const host = useStoreState(store).hosts.find((h) => h.id === target.hostId);
+  // Issue #606: a host that answers history.tool opens a stored tool call to its input and result.
+  const toolLoad = (uuid: string, index: number) =>
+    hasFeature(host?.hostInfo?.features, "history.tool", false)
+      ? async () => {
+          const result = await store.hostRequest(target.hostId, "history.tool", {
+            claudeSessionId: target.claudeSessionId,
+            uuid,
+            index,
+          });
+          return result.ok ? (result.data?.tool ?? null) : null;
+        }
+      : undefined;
   const roots = host?.info?.allowedRoots ?? [];
   const [copied, setCopied] = useState(false);
 
@@ -333,7 +346,7 @@ export function TranscriptReader(
               className={cn(focused && "ring-2 ring-ring")}
             >
               {m.role === "assistant"
-                ? messageParts(m.text).map((part, index) =>
+                ? messageParts(m.text).map((part, index, parts) =>
                     part.kind === "tool" ? (
                       <ToolRow
                         // biome-ignore lint/suspicious/noArrayIndexKey: the parts of a stored message do not move
@@ -341,6 +354,10 @@ export function TranscriptReader(
                         name={part.name}
                         input={part.input}
                         label={t("reader.tool", { name: part.name })}
+                        load={toolLoad(
+                          m.uuid,
+                          parts.slice(0, index).filter((p) => p.kind === "tool").length,
+                        )}
                       />
                     ) : (
                       // biome-ignore lint/suspicious/noArrayIndexKey: same

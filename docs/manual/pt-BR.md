@@ -1517,7 +1517,10 @@ código 3.
   responde em 5 s, aparece como "sem resposta" sem travar o resto.
 - **Leitor:** somente leitura, com o visual do chat, carregando páginas conforme a rolagem. Vindo
   da busca, abre no ponto do acerto; fora isso, abre nas últimas mensagens, e "Carregar anteriores"
-  traz as de antes sem mexer no que você está lendo.
+  traz as de antes sem mexer no que você está lendo. Uma linha de ferramenta (Bash, Read, Grep...) abre
+  com um clique, Enter ou Espaço na entrada inteira (o comando, o arquivo, o padrão) e no resultado,
+  lidos do transcript quando você abre; um erro fica em vermelho, um resultado acima de 64 KB é
+  cortado e avisa, e uma chamada ainda sem resultado diz que está rodando ou foi interrompida.
 - **Onde a conversa abre:** uma sessão (gerenciada, de terminal ou do histórico) abre na última
   mensagem e fica no fim enquanto imagens, código e painéis se ajeitam. Se você rolar para cima, ela
   fica onde você está e o botão **Ir para a última** conta as mensagens novas ("3 novas"). Ao voltar

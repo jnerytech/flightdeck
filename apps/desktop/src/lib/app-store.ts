@@ -379,6 +379,7 @@ export type HostCommandType = Extract<
   | `runenv.${string}`
   | "roots.add"
   | "history.get"
+  | "history.tool"
   | "host.bypass"
   | "host.sleep"
   | "session.sleep"

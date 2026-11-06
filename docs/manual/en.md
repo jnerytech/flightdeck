@@ -1521,7 +1521,10 @@ exits with code 3.
   is offline, or does not answer within 5 s, shows as "no answer" without blocking the rest.
 - **Reader:** read-only, with the chat's look, loading pages as you scroll. Coming from the
   search, it opens at the hit; otherwise it opens on the latest messages, and "Load earlier" brings
-  the ones before without moving what you are reading.
+  the ones before without moving what you are reading. A tool row (Bash, Read, Grep...) opens with a
+  click, Enter or Space to its whole input (the command, the file, the pattern) and its result, read
+  from the transcript when you open it; an error is red, a result over 64 KB is cut and says so, and
+  a call with no result yet says it is still running or was cut short.
 - **Where a conversation opens:** a session (managed, terminal or from the history) opens on its
   latest message and stays at the end while images, code and panels settle. If you scroll up, it
   stays where you are and the **Jump to latest** button counts the new messages ("3 new"). When you
