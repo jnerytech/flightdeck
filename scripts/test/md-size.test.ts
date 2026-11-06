@@ -37,11 +37,11 @@ describe("md-size", () => {
   test("only the files over their limit are counted", () => {
     expect(
       oversized([
-        { path: "CLAUDE.md", text: lines(151) },
+        { path: "apps/daemon/CLAUDE.md", text: lines(151) },
         { path: "docs/a.md", text: lines(400) },
         { path: "docs/b.md", text: `${lines(400)}x` },
       ]),
-    ).toEqual({ "CLAUDE.md": 151, "docs/b.md": 401 });
+    ).toEqual({ "apps/daemon/CLAUDE.md": 151, "docs/b.md": 401 });
   });
 
   test("no tracked Markdown file is over its limit beyond md-size-baseline.json", () => {
