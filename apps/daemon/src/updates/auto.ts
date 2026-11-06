@@ -6,6 +6,7 @@
  */
 import type { AutoUpdateStatus, DaemonManifest } from "@flightdeck/protocol";
 import { type Config, updateConfigFile } from "../config.ts";
+import { FlightdeckError } from "../errors.ts";
 import { realTimers, type Timers } from "../quota/quota.ts";
 import { compareVersions } from "../update.ts";
 
@@ -73,9 +74,18 @@ export class AutoUpdater {
       this.started = { version, at };
       this.opts.log?.(`auto update: ${version} is being applied (the host is idle)`);
     } catch (error) {
-      const reason = (error as Error).message;
-      this.failed = { version, reason, at };
-      this.opts.log?.(`auto update: ${version} failed, the current version stays: ${reason}`);
+      const reason = error instanceof FlightdeckError ? error.reason : undefined;
+      if (reason === "update_host_busy") {
+        // A session started while the binary downloaded: nothing was started, look again later.
+        this.opts.log?.(`auto update: ${version} waits, the host got busy while it downloaded`);
+        this.timer = this.timers.set(() => void this.tick(), this.opts.retryMs ?? 60_000);
+      } else {
+        // The status goes to every client: a code; the message (it may name a path) goes to the log.
+        this.failed = { version, reason: reason ?? "update_failed", at };
+        this.opts.log?.(
+          `auto update: ${version} failed, the current version stays: ${(error as Error).message}`,
+        );
+      }
     } finally {
       this.applying = false;
     }
@@ -98,11 +108,12 @@ export function autoUpdateOf(auto: AutoUpdater, config: Config, configFile: stri
   return {
     status: auto.status.bind(auto),
     set: async (on: boolean): Promise<AutoUpdateStatus> => {
-      config.updates.auto = on;
+      // The file first: a write that fails leaves the running setting as the file has it.
       await updateConfigFile(configFile, (raw) => ({
         ...raw,
         updates: { ...(raw.updates as object | undefined), auto: on },
       }));
+      config.updates.auto = on;
       await auto.tick();
       return auto.status();
     },
