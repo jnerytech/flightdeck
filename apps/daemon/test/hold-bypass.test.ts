@@ -356,7 +356,6 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
       `${CWD}/a.txt`,
       "src/a.ts",
       "src/app-*.ts",
-      "src/**/app-*.ts",
       "/src/app-*.ts", // project-root relative, as the CLI reads a leading slash
     ]) {
       expect(await saved("Write", write, rule("Write", content)), content).toBeNull();
@@ -392,6 +391,34 @@ describe("hold-bypass: a saved rule never covers more risk than the request it c
     ]) {
       expect(await saved("WebFetch", fetch, rule("WebFetch", content)), content).toEqual(TOO_BROAD);
     }
+  });
+
+  test("a held request that writes a credential saves that file, and never a pattern that could match one", async () => {
+    const { b, ask } = broker();
+    const { id } = await ask("Write", { file_path: `${CWD}/.env`, content: "x" });
+    for (const content of ["src/*.ts", "src/*/.env", "*", "src/**"]) {
+      expect(
+        refusal(() =>
+          b.respond({
+            requestId: id,
+            decision: "allow",
+            held: true,
+            updatedPermissions: [rule("Write", content)],
+          }),
+        ),
+        content,
+      ).toEqual(TOO_BROAD);
+    }
+    expect(
+      refusal(() =>
+        b.respond({
+          requestId: id,
+          decision: "allow",
+          held: true,
+          updatedPermissions: [rule("Write", ".env")],
+        }),
+      ),
+    ).toBeNull();
   });
 
   test("a held high-risk request is held to the same shapes: an open rule of any program is still refused", async () => {

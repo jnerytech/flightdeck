@@ -87,10 +87,12 @@ describe("regras-projeto", () => {
     const { repo, manager, store, asking, allow } = await setup();
     const { requestId } = await asking("Novo");
     await allow(requestId, [rule("git status:*")]);
-    expect(readJson(join(repo, SETTINGS))).toEqual({ permissions: { allow: ["Bash(git status:*)"] } });
+    expect(readJson(join(repo, SETTINGS))).toEqual({
+      permissions: { allow: ["Bash(git status:*)"] },
+    });
     const { sessionId } = await manager.create({ cwd: repo, prompt: "[bash] fora" });
     await poll(() => store.pendingPermissions(sessionId).length > 0, 3000);
-    await allow(store.pendingPermissions(sessionId)[0]?.id ?? "", [rule("git diff:*")]);
+    await allow(store.pendingPermissions(sessionId)[0]?.id ?? "", [rule("npm test:*")]);
     expect(readJson(join(repo, SETTINGS)).permissions.allow).toEqual(["Bash(git status:*)"]);
   });
 
