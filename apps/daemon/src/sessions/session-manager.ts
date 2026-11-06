@@ -23,7 +23,7 @@ import { summarizeInput } from "../central/external-permissions.ts";
 import { userHome } from "../config.ts";
 import { API_KEY_VARS, buildChildEnv } from "../env.ts";
 import { FlightdeckError } from "../errors.ts";
-import { resolveAllowedCwd } from "../paths.ts";
+import { isInside, resolveAllowedCwd } from "../paths.ts";
 import type { AutoApproveRequest, AutoApprover } from "../permissions/auto-approve.ts";
 import { PermissionBroker } from "../permissions/permission-broker.ts";
 import { parseSuggestions } from "../permissions/permission-updates.ts";
@@ -119,6 +119,8 @@ interface LiveSession {
   closing: boolean;
   /** The first turn's prompt and uuid, until session.init names the Claude session. */
   pendingBefore?: { text: string; uuid: string };
+  /** Whether the run was given the project's own setup (its folder was trusted when it started). */
+  trustedAtStart: boolean;
 }
 
 /** What the runtime is given of a session's persona. */
@@ -571,6 +573,27 @@ export class SessionManager {
     return { snapshot, unwatch: () => this.summaryListeners.delete(listener) };
   }
 
+  /** Whether a live run was given the project's setup and its folder is no longer trusted (issue #463). */
+  private stale(sessionId: string, live: LiveSession): boolean {
+    return live.trustedAtStart && this.opts.trust?.(this.get(sessionId).cwd).trusted === false;
+  }
+
+  /** How many live sessions in `folder` run with a setup its trust no longer covers (issue #463). */
+  staleSessions(folder: string): number {
+    const here = resolve(folder);
+    return [...this.live].filter(
+      ([id, live]) => isInside(here, resolve(this.get(id).cwd)) && this.stale(id, live),
+    ).length;
+  }
+
+  /**
+   * Tells the watchers that the trust of a folder changed: every live session that loaded a setup
+   * says again whether it is stale now (a revoked trust marks it, a trust given again clears it).
+   */
+  trustChanged(): void {
+    for (const [id, live] of this.live) if (live.trustedAtStart) this.emitSummary(id);
+  }
+
   /** Phase 21: told when a user message reaches a session (a queued one is delivered then). */
   onUserMessage(listener: (sessionId: string, text: string) => void): () => void {
     this.userListeners.add(listener);
@@ -595,7 +618,13 @@ export class SessionManager {
       pendingPermissions: this.pendingPermissions(sessionId),
       updatedAt: session.updatedAt,
       ...(session.runtime === "opencode" ? { runtime: "opencode" as const } : {}),
+      ...(this.isStale(sessionId) ? { trustStale: true as const } : {}),
     });
+  }
+
+  private isStale(sessionId: string): boolean {
+    const live = this.live.get(sessionId);
+    return live !== undefined && this.stale(sessionId, live);
   }
 
   private emitSummary(sessionId: string): void {
@@ -728,7 +757,12 @@ export class SessionManager {
       ...(this.opts.trust ? { trust: this.opts.trust(session.cwd) } : {}),
       ...this.optionalRunOptions(sessionId, session.model, resume, persona, agents),
     });
-    const live: LiveSession = { run, queue: [], closing: false };
+    const live: LiveSession = {
+      run,
+      queue: [],
+      closing: false,
+      trustedAtStart: this.opts.trust?.(session.cwd).trusted === true,
+    };
     this.live.set(sessionId, live);
     void this.consume(sessionId, live);
     return live;

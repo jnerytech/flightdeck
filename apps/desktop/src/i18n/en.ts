@@ -2289,6 +2289,13 @@ export const en: Dictionary = {
     asSession: "View as session",
     viewTerminal: "View terminal",
   },
+  liveElsewhere: {
+    title: "Already open in another terminal",
+    message:
+      "This session is open in another terminal. Opening it here starts a second copy that the other one will not see: each shows only its own turns, and both write to the same history.",
+    view: "View it live here",
+    anyway: "Open a second copy anyway",
+  },
   hostTerminal: {
     title: "Terminal",
     open: "New terminal",
@@ -3563,6 +3570,10 @@ export const en: Dictionary = {
       sessionNotice:
         "This folder is not trusted: its own hooks, MCP servers, settings, CLAUDE.md, agents and skills did not load, and neither did your own MCP servers and plugins.",
       sessionNoticeShort: "This folder is not trusted.",
+      revokedNotice:
+        "Trust removed. This session still runs with the hooks and MCP servers it loaded. Restart it to apply.",
+      restart: "Restart session",
+      staleCount: "Live sessions still running with the old trust: {n}. Restart them to apply.",
       review: "Review and trust",
     },
     sessionsHint: "The sessions of every project",
