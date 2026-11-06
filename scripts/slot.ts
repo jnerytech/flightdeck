@@ -2,15 +2,24 @@
 /**
  * `bun run slot -- <command...>`: runs the command once the full-gate slot is free, so the heavy
  * commands (full suite, e2e, shots, smokes, builds) never overlap. Waiters get the slot in the order
- * they queued. `--status` shows the holder and the waiters with their ages,
+ * they queued. `--status` shows the holder and the waiters with their ages, folders and an ORPHAN
+ * mark, `--reap` stops the waiters whose shell is gone (#236),
  * `--nice` lowers the command's priority, `--priority` lowers the other
  * `bun test` processes of the user while the command runs. The logic is in `lib/slot.ts`; this file is the real
  * files, clock and processes.
  */
-import { linkSync, readdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import {
+  linkSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { constants, getPriority, setPriority, tmpdir, userInfo } from "node:os";
 import { basename, join } from "node:path";
-import { type ProcessInfo, run, type SlotEnv } from "./lib/slot.ts";
+import { type ProcessInfo, type ProcReader, run, type SlotEnv } from "./lib/slot.ts";
 
 const LOCK = process.env.FLIGHTDECK_SLOT_LOCK || join(tmpdir(), "flightdeck-slot.lock");
 
@@ -50,6 +59,38 @@ async function userProcesses(): Promise<ProcessInfo[]> {
   }
   return list;
 }
+
+/** The fields of /proc/<pid>/stat after the command name: state, ppid, pgrp, ... (Linux only). */
+function statFields(pid: number): string[] | null {
+  try {
+    const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+    return stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+  } catch {
+    return null;
+  }
+}
+
+/** The process table from /proc; absent off Linux, where ancestry and orphans are not checked. */
+const proc: ProcReader | undefined =
+  process.platform === "linux"
+    ? {
+        ppid: (pid) => {
+          const fields = statFields(pid);
+          return fields ? Number(fields[1]) : null;
+        },
+        pgid: (pid) => {
+          const fields = statFields(pid);
+          return fields ? Number(fields[2]) : null;
+        },
+        cwd: (pid) => {
+          try {
+            return readlinkSync(`/proc/${pid}/cwd`);
+          } catch {
+            return null;
+          }
+        },
+      }
+    : undefined;
 
 const env: SlotEnv = {
   fs: {
@@ -91,6 +132,18 @@ const env: SlotEnv = {
     }
   },
   holder: Number(process.env.FLIGHTDECK_SLOT_HOLDER) || undefined,
+  ...(proc
+    ? {
+        proc,
+        terminateGroup: (pgid: number) => {
+          try {
+            process.kill(-pgid, "SIGTERM");
+          } catch {
+            // Gone already, or not ours.
+          }
+        },
+      }
+    : {}),
   spawn: (command, nice, asHolder) => {
     // What runs under the lock is told whose it is, so a slot call inside it runs at once.
     const child = Bun.spawn(command, {
