@@ -3902,6 +3902,7 @@ export const ptBR = {
   /** The Board screen of a host: its projects as cards (#669). */
   boardLanding: {
     noCards: "Nenhum card ainda",
+    sessionsNeedYou: { one: "{n} sessão precisa de você", other: "{n} sessões precisam de você" },
     whatIs: "Um board guarda os cards de um projeto, do backlog ao feito, e as sessões que trabalham neles.",
     filter: "Filtrar projetos",
     noMatch: "Nenhum projeto corresponde ao filtro.",

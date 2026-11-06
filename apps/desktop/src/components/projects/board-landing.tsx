@@ -21,6 +21,11 @@ import { AddProject } from "./add-project.tsx";
 /** Past this many projects the landing offers a filter box. */
 const FILTER_FROM = 7;
 
+/** What a screen reader hears between two facts; the eye has the gap. */
+function Pause(props: Readonly<{ last?: boolean }>) {
+  return <span className="sr-only">{props.last ? ". " : ", "}</span>;
+}
+
 /** One project of the landing: a single button that opens its board, described by its counts. */
 function BoardCard(props: Readonly<{ store: AppStore; card: ProjectCard; onOpen(): void }>) {
   const { store, card } = props;
@@ -52,19 +57,29 @@ function BoardCard(props: Readonly<{ store: AppStore; card: ProjectCard; onOpen(
             {filled.length === 0 ? (
               <span className="text-muted-foreground">{t("boardLanding.noCards")}</span>
             ) : (
-              filled.map(({ id }) => (
+              filled.map(({ id }, at) => (
                 <span
                   key={id}
                   className={id === "waiting" ? "font-medium text-status-needs-you" : ""}
-                >{`${t(`kanban.columns.${id}` as Key)} ${card.columns[id]}`}</span>
+                >
+                  {`${t(`kanban.columns.${id}` as Key)} ${card.columns[id]}`}
+                  <Pause last={at === filled.length - 1} />
+                </span>
               ))
             )}
+            {filled.length === 0 && <Pause last />}
           </span>
           <span className="facts-wrap text-sm">
-            <span>{t("projectsOverview.live", { n: card.liveSessions })}</span>
-            <span className={card.needsYou > 0 ? "font-medium text-status-needs-you" : ""}>
-              {t("projectsOverview.needsYou", { n: card.needsYou })}
+            <span>
+              {t("projectsOverview.live", { n: card.liveSessions })}
+              <Pause last={card.needsYou === 0} />
             </span>
+            {card.needsYou > 0 && (
+              <span className="font-medium text-status-needs-you">
+                {t("boardLanding.sessionsNeedYou", { n: card.needsYou })}
+                <Pause last />
+              </span>
+            )}
           </span>
           <span className="row-spread text-muted-foreground text-xs">
             <span title={card.lastActivity ? store.formatDateTime(card.lastActivity) : ""}>
