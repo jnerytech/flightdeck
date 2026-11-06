@@ -130,6 +130,18 @@ for (const [lang, dict] of [
       expect(mem.calls).toEqual(["check", "download", "installDownloaded", "quitNow"]);
     });
 
+    test("a second Quit while the first installs does not install twice (#402)", async () => {
+      const mem = setup(lang, { available: "9.9.0" });
+      await start(mem);
+      expect(await seen(() => mem.calls.includes("download"))).toBe(true);
+      await act(async () => {
+        mem.quit.ask?.();
+        mem.quit.ask?.();
+      });
+      expect(await seen(() => mem.calls.includes("quitNow"))).toBe(true);
+      expect(mem.calls.filter((c) => c === "installDownloaded")).toEqual(["installDownloaded"]);
+    });
+
     test("Quit with nothing downloaded exits at once, and a failed install still exits (#402)", async () => {
       const none = setup(lang, { available: null });
       await start(none);

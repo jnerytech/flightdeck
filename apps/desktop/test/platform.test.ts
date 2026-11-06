@@ -64,8 +64,10 @@ mock.module("@tauri-apps/plugin-updater", () => ({
       download: async () => {
         updaterCalls.push("download");
       },
-      install: async () => {
-        updaterCalls.push("install");
+      install: async (options?: { restartAfterInstall?: boolean }) => {
+        updaterCalls.push(
+          options?.restartAfterInstall === false ? "install without restart" : "install",
+        );
       },
     },
 }));
@@ -365,7 +367,8 @@ describe("platform", () => {
     expect(updaterCalls).toEqual([]);
     await platform.updater.download();
     await platform.updater.installDownloaded();
-    expect(updaterCalls).toEqual(["download", "install"]);
+    // Windows' installer starts the app again unless told not to: Quit means quit.
+    expect(updaterCalls).toEqual(["download", "install without restart"]);
   });
 
   test("tauri: a version downloaded in the background installs without a second download (#280)", async () => {
