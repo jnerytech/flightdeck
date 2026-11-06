@@ -781,13 +781,6 @@ describe("rev-stored-protocol: a project says when its stored base branch is not
     prProvider: "none",
     setupScript: null,
     promptTemplate: "",
-    worktreeInclude: false,
-    autoApprove: {},
-    issues: null,
-    personaByColumn: {},
-    personaSubagents: "inherit",
-    defaultHours: null,
-    roiSignals: {},
   };
   test("baseBranchInvalid survives a parse, and a daemon that never sends it still parses", () => {
     expect(Project.parse({ ...project, baseBranchInvalid: true }).baseBranchInvalid).toBe(true);
