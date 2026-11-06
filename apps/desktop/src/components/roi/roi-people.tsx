@@ -15,7 +15,7 @@ const REFRESH_MS = 30_000;
  * the app keeps; the table is a view, not a score: people are listed by name and the page says that
  * hosts are not people and that cost and delivery are only correlated.
  */
-export function RoiPeople(props: { store: AppStore }) {
+export function RoiPeople(props: Readonly<{ store: AppStore }>) {
   const { store } = props;
   const t = useT();
   // The people are the app's own settings: a person added or removed shows at once.
@@ -72,11 +72,13 @@ export function RoiPeople(props: { store: AppStore }) {
   return (
     <section aria-label={t("roiUi.people.title")} className="flex flex-col gap-2">
       <h2 className="font-medium text-sm">{t("roiUi.people.title")}</h2>
-      {rows.length === 0 ? (
+      {rows.length === 0 && (
         <p className="text-muted-foreground text-sm">{t("roiUi.people.empty")}</p>
-      ) : answers === null ? (
+      )}
+      {rows.length > 0 && answers === null && (
         <p className="text-muted-foreground text-sm">{t("roiUi.loading")}</p>
-      ) : (
+      )}
+      {rows.length > 0 && answers !== null && (
         <>
           <table
             aria-label={t("roiUi.people.title")}

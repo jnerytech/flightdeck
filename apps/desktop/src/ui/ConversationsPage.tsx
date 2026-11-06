@@ -1,4 +1,5 @@
 import type { MessageInfo, MessageStatus } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { MessagesSquare } from "lucide-react";
 import { memo, useCallback, useEffect, useState } from "react";
 import { NativeSelect } from "@/components/layout/form";
@@ -67,8 +68,8 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
   const load = useCallback(async () => {
     const found = new Map<string, Row>();
     const ids = hostKey.split("|");
-    for (const host of store.getState().hosts) {
-      if (!ids.includes(host.id)) continue;
+    await inSequence(store.getState().hosts, async (host) => {
+      if (!ids.includes(host.id)) return;
       const result = await store.hostCommand(host.id, "messages.list", {});
       for (const message of result?.messages ?? []) {
         // A relayed message is on both daemons: the recipient's copy has the final state.
@@ -77,7 +78,7 @@ export const ConversationsPage = memo(function ConversationsPage(props: {
           found.set(message.id, { hostId: host.id, hostName: host.name, message });
         }
       }
-    }
+    });
     setRows(
       [...found.values()].sort((a, b) => b.message.createdAt.localeCompare(a.message.createdAt)),
     );

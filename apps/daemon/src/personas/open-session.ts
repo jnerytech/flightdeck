@@ -84,6 +84,7 @@ export class OpenSessionPersonas {
   }
 
   async clear(request: SwitchTarget & { language?: Language }): Promise<PersonaSwitchResult> {
+    // NOSONAR: async by contract: a throw must reach the caller as a rejection
     const target = this.target(request);
     const applied = target.managed
       ? this.opts.manager.appliedPersona(target.id)

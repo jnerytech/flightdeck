@@ -11,6 +11,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
+import { awaitListenUrl } from "./lib/smoke-daemon.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
@@ -258,16 +259,7 @@ async function run(work: string): Promise<void> {
   void drain(daemon.stderr, err);
   let claude: FakeClaude | undefined;
   try {
-    const url = await withTimeout(
-      (async () => {
-        for (;;) {
-          const found = out.join("").match(/listening on (ws:\/\/\S+)/)?.[1];
-          if (found) return found;
-          await Bun.sleep(20);
-        }
-      })(),
-      "daemon anunciar a porta",
-    );
+    const url = await awaitListenUrl(() => out.join(""));
     log(`daemon em ${url}`);
     const app = new App(url, vault);
     await app.open(token);

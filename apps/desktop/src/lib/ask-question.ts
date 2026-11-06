@@ -41,6 +41,12 @@ export function parseQuestions(input: Record<string, unknown>): AskQuestion[] | 
 }
 
 /** The `answers` map the tool expects: question text to the chosen labels (joined by ", ") or the Other text. */
+/** What one question answers with: the labels and the Other text, or for a single choice the text alone. */
+function answerParts(multiSelect: boolean, labels: string[], other: string): string[] {
+  if (multiSelect) return [...labels, ...(other ? [other] : [])];
+  return other ? [other] : labels.slice(0, 1);
+}
+
 export function buildAnswers(
   questions: AskQuestion[],
   picks: Record<string, AskPick>,
@@ -50,11 +56,7 @@ export function buildAnswers(
     const pick = picks[question];
     const other = pick?.other.trim() ?? "";
     // A single choice with an Other text answers with the text alone.
-    const parts = multiSelect
-      ? [...(pick?.labels ?? []), ...(other ? [other] : [])]
-      : other
-        ? [other]
-        : (pick?.labels ?? []).slice(0, 1);
+    const parts = answerParts(multiSelect, pick?.labels ?? [], other);
     if (parts.length === 0) return null;
     answers[question] = parts.join(", ");
   }

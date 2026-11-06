@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  ChangesResult,
   Command,
   type CommandType,
   EventEnvelope,
@@ -711,5 +712,43 @@ describe("session.init commands (the / menu)", () => {
   test("a command needs a known kind", () => {
     const commands = [{ name: "x", description: "", kind: "other" }] as unknown;
     expect(SessionEvent.safeParse({ ...init, commands }).success).toBe(false);
+  });
+});
+
+describe("changes-cap: a file the daemon would not send is listed with a marker and its size", () => {
+  const file = {
+    path: "dump.log",
+    oldPath: null,
+    status: "added" as const,
+    additions: 3,
+    deletions: 0,
+    uncommitted: true,
+    binary: false,
+    hunks: [],
+  };
+  const result = (files: unknown[]) => ({
+    target: "session:s1",
+    root: "/w",
+    base: null,
+    files,
+    position: null,
+  });
+  test("tooLarge and bytes survive a parse", () => {
+    const sent = result([{ ...file, tooLarge: true, bytes: 209_715_200 }]);
+    expect(ChangesResult.parse(sent).files[0]).toEqual({
+      ...file,
+      tooLarge: true,
+      bytes: 209_715_200,
+    });
+  });
+  test("a daemon that does not know the marker still parses: the file is simply not too large", () => {
+    const parsed = ChangesResult.parse(result([file])).files[0];
+    expect(parsed?.tooLarge).toBeUndefined();
+    expect(parsed?.bytes).toBeUndefined();
+  });
+  test("a negative size is refused", () => {
+    expect(ChangesResult.safeParse(result([{ ...file, tooLarge: true, bytes: -1 }])).success).toBe(
+      false,
+    );
   });
 });

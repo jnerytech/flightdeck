@@ -10,6 +10,7 @@ import { PrDescriptionDialog } from "@/components/watch/pr-description-dialog";
 import { useT } from "@/i18n/context";
 import type { AppStore } from "@/lib/app-store";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.tsx";
+import { CardFinishDialog } from "./card-finish.tsx";
 
 interface Confirming {
   kind: "complete" | "discard";
@@ -26,7 +27,7 @@ export interface CardRunFeatures {
 
 /**
  * How a card runs: the workflow and its inputs, the persona it starts in, and its actions (start,
- * in the background, stop, open the PR, complete, discard). Complete and discard ask first.
+ * in the background, stop, open the PR, finish, discard). Complete and discard ask first.
  */
 export function CardRunForm(props: {
   store: AppStore;
@@ -39,6 +40,8 @@ export function CardRunForm(props: {
   arenaStart: ReactNode;
   /** The card was discarded: the screen goes back. */
   onDiscarded(): void;
+  /** Finish… chose to merge: the screen shows the card's diff, where the merge is. */
+  onShowDiff(): void;
 }) {
   const t = useT();
   const { store, hostId, card, features } = props;
@@ -50,6 +53,7 @@ export function CardRunForm(props: {
   const suggested = useSuggestedPersona(store, hostId, "dev");
   const persona = picked ?? suggested;
   const [confirming, setConfirming] = useState<Confirming | null>(null);
+  const [finishing, setFinishing] = useState(false);
   /** Phase 22: the PR description offered for the person to edit, before the PR opens. */
   const [draft, setDraft] = useState<{ text: string; redacted: number } | null>(null);
   const chosen = props.workflows.find((w) => w.name === workflow);
@@ -158,6 +162,8 @@ export function CardRunForm(props: {
           )}
           <ActionButton
             variant="outline"
+            disabled={!card.sessionId && !card.queued}
+            disabledReason={t("cardUi.notRunning")}
             onClick={() => store.hostCommand(hostId, "card.stop", { cardId })}
           >
             {t("cardUi.stop")}
@@ -170,11 +176,8 @@ export function CardRunForm(props: {
           >
             {t("cardUi.openPr")}
           </ActionButton>
-          <Button
-            variant="outline"
-            onClick={() => setConfirming({ kind: "complete", warning: null })}
-          >
-            {t("cardUi.complete")}
+          <Button variant="outline" onClick={() => setFinishing(true)}>
+            {t("cardUi.finish")}
           </Button>
           {props.arenaStart}
           <Button variant="destructive" onClick={() => void askDiscard()}>
@@ -191,6 +194,16 @@ export function CardRunForm(props: {
             setDraft(null);
             await store.hostCommand(hostId, "card.pr.create", { cardId, description });
           }}
+        />
+      )}
+      {finishing && (
+        <CardFinishDialog
+          store={store}
+          hostId={hostId}
+          card={card}
+          onClose={() => setFinishing(false)}
+          onComplete={() => setConfirming({ kind: "complete", warning: null })}
+          onMerge={props.onShowDiff}
         />
       )}
       {confirming && (

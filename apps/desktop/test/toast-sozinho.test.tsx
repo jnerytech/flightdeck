@@ -27,6 +27,22 @@ describe("toast-sozinho: a toast that nobody closes leaves by itself", () => {
     store.dispose();
   });
 
+  test("a success with a link shows its action, which runs it", async () => {
+    const store = new AppStore(memoryPlatform(false, "en-US").platform, { baseDelayMs: 60_000 });
+    render(<App store={store} />);
+    const opened: string[] = [];
+    await act(async () => {
+      store.success("Card created", { label: "Open", run: () => opened.push("card") });
+    });
+    const settle = waiter(5000);
+    await settle(() => screen.queryByRole("button", { name: "Open" }) !== null);
+    await act(async () => {
+      fireEvent.click(screen.queryByRole("button", { name: "Open" }) as HTMLElement);
+    });
+    expect(opened).toEqual(["card"]);
+    store.dispose();
+  });
+
   test("Details shows the host's own message under the translated title, and hides it again", async () => {
     const store = new AppStore(memoryPlatform(false, "en-US").platform, { baseDelayMs: 60_000 });
     render(<App store={store} />);

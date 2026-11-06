@@ -53,7 +53,8 @@ export function validateWatchDraft(draft: WatchDraft, t: T): string | null {
     [draft.dailyUsd, t("watchSettingsUi.daily")],
   ] as const) {
     const value = limit(text);
-    if (value !== null && !(value > 0)) return t("watchSettingsUi.badLimit", { label });
+    if (value !== null && (Number.isNaN(value) || value <= 0))
+      return t("watchSettingsUi.badLimit", { label });
   }
   if (!checkLines(draft.checks).every(isWatchCheck)) return t("watchSettingsUi.badCheck");
   return null;

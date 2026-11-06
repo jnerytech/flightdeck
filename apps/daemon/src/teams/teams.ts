@@ -4,12 +4,13 @@
  */
 
 import type { Database } from "bun:sqlite";
-import type {
-  MessageInfo,
-  TeamInfo,
-  TeamMember,
-  TeamStatus,
-  TeamsUpdatedFrame,
+import {
+  inSequence,
+  type MessageInfo,
+  type TeamInfo,
+  type TeamMember,
+  type TeamStatus,
+  type TeamsUpdatedFrame,
 } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { FlightdeckError } from "../errors.ts";
@@ -319,7 +320,9 @@ export class Teams {
           : undefined),
     );
     const workerPersonas: Array<string | null> = [];
-    for (const p of input.workerPersonas ?? []) workerPersonas.push(await this.checkPersona(p));
+    await inSequence(input.workerPersonas ?? [], async (p) => {
+      workerPersonas.push(await this.checkPersona(p));
+    });
     const coordinatorModel = input.coordinatorModel ?? null;
     const name = input.name ?? input.goal.slice(0, 40);
     const checks = input.checks ?? [];
@@ -372,7 +375,7 @@ export class Teams {
         sessionId,
       },
     ];
-    for (const [i, workerName] of workerNames.entries()) {
+    await inSequence(workerNames.entries(), async ([i, workerName]) => {
       members.push(
         await this.startWorker(
           team,
@@ -382,7 +385,7 @@ export class Teams {
           input.workerModels?.[i] ?? null,
         ),
       );
-    }
+    });
     this.opts.db
       .query(
         `INSERT INTO teams (id, name, project_id, goal, coordinator, members, checks, state,
@@ -539,13 +542,14 @@ export class Teams {
     for (let i = 0; i < count; i++) {
       const number = Math.max(0, ...taken) + 1;
       taken.push(number);
-      const added = await this.startWorker(
-        team,
-        `${label(row.name)} · executora ${number}`,
-        spec.persona,
-        coordinator?.address ?? null,
-        spec.model,
-      );
+      const added =
+        await /* NOSONAR: workers start one at a time: each takes its own worktree and a free slot */ this.startWorker(
+          team,
+          `${label(row.name)} · executora ${number}`,
+          spec.persona,
+          coordinator?.address ?? null,
+          spec.model,
+        );
       members.push(added);
       this.save(row.id, { members: JSON.stringify(members) });
       const asked = [

@@ -12,7 +12,7 @@ import { QuestionCard } from "./question-card.tsx";
 export interface TaskViewHandlers {
   onBack(): void;
   onStop(): void;
-  onAnswer(requestId: string, decision: "allow" | "deny"): void;
+  onAnswer(requestId: string, decision: "allow" | "deny", held?: boolean): void;
   onOpenFull(): void;
   onCopy(text: string): void;
   onOpenFile(path: string): void;
@@ -33,13 +33,15 @@ function sizeText(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function FileRow(props: {
-  file: TaskFile;
-  t: T;
-  canOpen: boolean;
-  onOpen(): void;
-  onReveal(): void;
-}) {
+function FileRow(
+  props: Readonly<{
+    file: TaskFile;
+    t: T;
+    canOpen: boolean;
+    onOpen(): void;
+    onReveal(): void;
+  }>,
+) {
   const { file, t } = props;
   return (
     <li className="task-file">
@@ -138,7 +140,11 @@ export function TaskView(
           plain={question.plain}
           t={t}
           locked={props.locked}
-          onAnswer={(decision) => props.onAnswer(question.requestId, decision)}
+          onAnswer={(decision, held) =>
+            held
+              ? props.onAnswer(question.requestId, decision, true)
+              : props.onAnswer(question.requestId, decision)
+          }
           onOpenFull={props.onOpenFull}
           onCopy={props.onCopy}
         />
@@ -228,13 +234,15 @@ export function TaskView(
   );
 }
 
-function FilesBlock(props: {
-  results: TaskResultsResult | null;
-  t: T;
-  canOpen: boolean;
-  onOpen(file: TaskFile): void;
-  onReveal(file: TaskFile): void;
-}) {
+function FilesBlock(
+  props: Readonly<{
+    results: TaskResultsResult | null;
+    t: T;
+    canOpen: boolean;
+    onOpen(file: TaskFile): void;
+    onReveal(file: TaskFile): void;
+  }>,
+) {
   const { t, results } = props;
   if (!results) return null;
   if (results.files.length === 0)

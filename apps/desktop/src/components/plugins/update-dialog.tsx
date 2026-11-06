@@ -21,13 +21,15 @@ const KINDS = ["hooks", "monitors", "skills", "agents", "commands", "mcpServers"
  * Phase 26: an update, with what changes in what the plugin installs. Confirming repeats the hash
  * of the new content; what the CLI then leaves is hashed again, and undone if it differs.
  */
-export function UpdateDialog(props: {
-  store: AppStore;
-  hostId: string;
-  plugin: { id: string; name: string };
-  onClose(): void;
-  onDone(): void;
-}) {
+export function UpdateDialog(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    plugin: { id: string; name: string };
+    onClose(): void;
+    onDone(): void;
+  }>,
+) {
   const t = useT();
   const { store, hostId, plugin } = props;
   const [preview, setPreview] = useState<PluginUpdatePreview | null | undefined>(undefined);

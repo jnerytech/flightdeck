@@ -26,13 +26,14 @@ import type {
   VaultUsed,
   VaultVerdict,
 } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
 import { must } from "../board/worktree.ts";
 import { FlightdeckError } from "../errors.ts";
 import { ulid } from "../ulid.ts";
 import { Decisions } from "../vault/decisions.ts";
 import { toCsv } from "../vault/report.ts";
-import { decideRequest, requesterOf } from "../vault/requests.ts";
+import { decideRequest, type RequestDecision, requesterOf } from "../vault/requests.ts";
 import {
   evaluate,
   localTime,
@@ -149,6 +150,15 @@ interface Ask {
     project?: string;
     session?: string;
   };
+}
+
+/** The secret names of a free command without repeats; one that is not a valid name is refused. */
+function freeSecretIds(secrets: string[]): string[] {
+  const ids = [...new Set(secrets)];
+  for (const id of ids)
+    if (!SECRET_ID.test(id))
+      throw bad(`invalid secret name: ${id}`, "action_secret_name_invalid", { secret: id });
+  return ids;
 }
 
 /** A request waiting for the app. */
@@ -426,6 +436,19 @@ export class Actions {
     return this.execute(found, params, secrets, input.requestedBy, ids, keyId);
   }
 
+  /** Another host is a phase 15 destino of that name: the command runs there with sh -c. */
+  private freeRemote(host: string | undefined): string | null {
+    const remote = host !== undefined && host !== "local" ? host : null;
+    if (remote && !this.opts.ssh) {
+      throw invalid(
+        `host ${remote} is an ssh destination, and this daemon runs no commands on destinations`,
+        "action_ssh_host_unsupported",
+        { host: remote },
+      );
+    }
+    return remote;
+  }
+
   /**
    * A command Claude wrote, with the secrets in its environment (`deploy-token` is
    * `DEPLOY_TOKEN`). It is never automatic: the request carries `always`, with the exact command,
@@ -439,19 +462,8 @@ export class Actions {
     session?: string;
   }): Promise<ActionResult> {
     const requester = this.permit(input.requestedBy);
-    // Another host is a phase 15 destino of that name: the command runs there with sh -c.
-    const remote = input.host !== undefined && input.host !== "local" ? input.host : null;
-    if (remote && !this.opts.ssh) {
-      throw invalid(
-        `host ${remote} is an ssh destination, and this daemon runs no commands on destinations`,
-        "action_ssh_host_unsupported",
-        { host: remote },
-      );
-    }
-    const ids = [...new Set(input.secrets)];
-    for (const id of ids)
-      if (!SECRET_ID.test(id))
-        throw bad(`invalid secret name: ${id}`, "action_secret_name_invalid", { secret: id });
+    const remote = this.freeRemote(input.host);
+    const ids = freeSecretIds(input.secrets);
     const line = remote ? null : await shellLine(input.command, process.platform);
     const keyId = remote ? (this.opts.sshKey?.(remote) ?? null) : null;
     try {
@@ -674,12 +686,12 @@ export class Actions {
   /** The values, by id. The user's own run finds them delivered; anyone else's is asked of the app. */
   private async collect(ids: string[], ask: Ask): Promise<Record<string, string>> {
     const secrets: Record<string, string> = {};
-    for (const id of ids) {
+    await inSequence(ids, async (id) => {
       secrets[id] =
         ask.requester === "you"
           ? this.opts.vault.take(id, `${ask.purposeBase}:you`)
           : await this.request(id, { ...ask, requester: this.permit(ask.requester) });
-    }
+    });
     return secrets;
   }
 
@@ -735,6 +747,81 @@ export class Actions {
     return { verdict, rememberedKey: key, remembered: false };
   }
 
+  /** Writes the request to the audit log and raises the alerts; throws when the rules deny the use. */
+  private recordUse(
+    requestId: string,
+    secretId: string,
+    ask: Ask & { requester: VaultDaemonRequester },
+    verdict: RequestDecision,
+  ): void {
+    const isNew = this.audit.isNew(secretId, ask.requester);
+    const rule = this.opts.rules?.rulesFor(secretId).find((r) => r.id === verdict.ruleId);
+    this.audit.insert({
+      id: requestId,
+      atMs: this.ms(),
+      secretId,
+      requester: ask.requester,
+      purpose: ask.use.purpose,
+      action: ask.use.action ?? null,
+      host: this.opts.hostName ?? "",
+      project: ask.use.project ?? null,
+      session: ask.use.session ?? null,
+      ruleId: verdict.ruleId,
+      decision: verdict.decision,
+      outcome: verdict.granted ? "pending" : "refused",
+      approver: null,
+      window: rule?.window ? JSON.stringify(rule.window) : null,
+      reason: verdict.reason,
+    });
+    if (isNew) {
+      this.alert(
+        "new-requester",
+        secretId,
+        ask.requester,
+        `${ask.requester} usou o segredo ${secretId} pela primeira vez`,
+      );
+    }
+    if (verdict.granted) return;
+    if (verdict.limited) this.alert("limit", secretId, ask.requester, `${verdict.reason}`);
+    throw invalid(`use denied: ${verdict.reason}`, "action_use_denied", { detail: verdict.reason });
+  }
+
+  /** Closes the audit row of a granted request once the secret arrived, and remembers a session approval. */
+  private recordDelivery(
+    requestId: string,
+    verdict: Extract<RequestDecision, { granted: true }>,
+    waiting: Waiting,
+    decided: { remembered: boolean; rememberedKey: string | null } | null,
+  ): void {
+    let approver: "app" | "rule" | "session" | "tray" | null = waiting.approved?.by ?? null;
+    if (verdict.decision === "allow") approver = "rule";
+    if (decided?.remembered) approver = "session";
+    this.audit.finish(requestId, verdict.decision === "allow" ? "allowed" : "approved", approver);
+    if (waiting.approved?.scope === "session" && decided?.rememberedKey) {
+      this.approvedSessions.add(decided.rememberedKey);
+    }
+  }
+
+  /** The error a failed wait becomes: a refusal, an expiry, or the error itself. Closes the audit row. */
+  private failure(error: unknown, requestId: string, secretId: string, waiting: Waiting): unknown {
+    if (waiting.denied) {
+      this.audit.finish(requestId, "denied", null);
+      return invalid(`the app refused secret ${secretId}`, "action_secret_refused", {
+        secret: secretId,
+      });
+    }
+    if (waiting.expired) {
+      this.audit.finish(requestId, "expired", null);
+      return invalid(
+        `the request for secret ${secretId} expired unanswered and was denied`,
+        "action_secret_expired",
+        { secret: secretId },
+      );
+    }
+    this.audit.finish(requestId, "failed", null);
+    return error;
+  }
+
   /** Asks the app for one secret, for this request only, and waits for the delivery or the no. */
   private async request(
     secretId: string,
@@ -744,43 +831,7 @@ export class Actions {
     const requestId = ulid();
     const decided = rules ? this.decide(secretId, ask) : null;
     const verdict = decided?.verdict;
-    if (rules && decided && verdict) {
-      const isNew = this.audit.isNew(secretId, ask.requester);
-      const rule = rules.rulesFor(secretId).find((r) => r.id === verdict.ruleId);
-      this.audit.insert({
-        id: requestId,
-        atMs: this.ms(),
-        secretId,
-        requester: ask.requester,
-        purpose: ask.use.purpose,
-        action: ask.use.action ?? null,
-        host: this.opts.hostName ?? "",
-        project: ask.use.project ?? null,
-        session: ask.use.session ?? null,
-        ruleId: verdict.ruleId,
-        decision: verdict.decision,
-        outcome: verdict.granted ? "pending" : "refused",
-        approver: null,
-        window: rule?.window ? JSON.stringify(rule.window) : null,
-        reason: verdict.reason,
-      });
-      if (isNew) {
-        this.alert(
-          "new-requester",
-          secretId,
-          ask.requester,
-          `${ask.requester} usou o segredo ${secretId} pela primeira vez`,
-        );
-      }
-      if (!verdict.granted) {
-        if (verdict.limited) {
-          this.alert("limit", secretId, ask.requester, `${verdict.reason}`);
-        }
-        throw invalid(`use denied: ${verdict.reason}`, "action_use_denied", {
-          detail: verdict.reason,
-        });
-      }
-    }
+    if (rules && decided && verdict) this.recordUse(requestId, secretId, ask, verdict);
     if (this.listeners.size === 0) {
       this.audit.finish(requestId, "failed", null);
       throw invalid(
@@ -832,41 +883,10 @@ export class Actions {
     });
     try {
       const secret = await value;
-      if (rules && verdict?.granted) {
-        const approver = decided?.remembered
-          ? "session"
-          : verdict.decision === "allow"
-            ? "rule"
-            : (waiting.approved?.by ?? null);
-        this.audit.finish(
-          requestId,
-          verdict.decision === "allow" ? "allowed" : "approved",
-          approver,
-        );
-        if (waiting.approved?.scope === "session" && decided?.rememberedKey) {
-          this.approvedSessions.add(decided.rememberedKey);
-        }
-      }
+      if (rules && verdict?.granted) this.recordDelivery(requestId, verdict, waiting, decided);
       return secret;
     } catch (error) {
-      if (waiting.denied) {
-        this.audit.finish(requestId, "denied", null);
-        throw invalid(`the app refused secret ${secretId}`, "action_secret_refused", {
-          secret: secretId,
-        });
-      }
-      if (waiting.expired) {
-        this.audit.finish(requestId, "expired", null);
-        throw invalid(
-          `the request for secret ${secretId} expired unanswered and was denied`,
-          "action_secret_expired",
-          {
-            secret: secretId,
-          },
-        );
-      }
-      this.audit.finish(requestId, "failed", null);
-      throw error;
+      throw this.failure(error, requestId, secretId, waiting);
     } finally {
       clearTimeout(timer);
       this.pending.delete(requestId);

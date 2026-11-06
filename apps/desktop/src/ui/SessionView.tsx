@@ -1,7 +1,7 @@
 import {
   type EffortLevel,
+  inSequence,
   type PermissionMode,
-  type PermissionUpdate,
   SESSION_IMAGE_MAX_BYTES,
   SESSION_IMAGE_MAX_COUNT,
   type SessionImage,
@@ -35,6 +35,7 @@ import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { translateError } from "../i18n/errors.ts";
 import type { T } from "../i18n/index.ts";
+import type { Answer } from "../lib/app-store.ts";
 import { usd } from "../lib/costs.ts";
 import { modeRows, nextMode } from "../lib/mode-menu.ts";
 import type { MenuGroup, MenuItem } from "../lib/prompt-menu.ts";
@@ -83,26 +84,22 @@ export interface SessionActions {
   interrupt(): Promise<void>;
   close(): Promise<void>;
   resume(): Promise<void>;
-  respond(
-    requestId: string,
-    decision: "allow" | "deny",
-    message?: string,
-    updatedPermissions?: PermissionUpdate[],
-    updatedInput?: Record<string, unknown>,
-  ): Promise<void>;
+  respond(requestId: string, decision: "allow" | "deny", answer?: Answer): Promise<void>;
 }
 
 type Item<K extends ChatItem["kind"]> = Extract<ChatItem, { kind: K }>;
 
-function AssistantMessage(props: {
-  item: Item<"assistant">;
-  toolResults: SessionState["toolResults"];
-  t: T;
-  actions: SessionActions;
-  pin: SessionViewProps["pin"];
-  /** Only the latest message offers Fork. */
-  fork: SessionViewProps["fork"];
-}) {
+function AssistantMessage(
+  props: Readonly<{
+    item: Item<"assistant">;
+    toolResults: SessionState["toolResults"];
+    t: T;
+    actions: SessionActions;
+    pin: SessionViewProps["pin"];
+    /** Only the latest message offers Fork. */
+    fork: SessionViewProps["fork"];
+  }>,
+) {
   const text = props.item.blocks
     .flatMap((block) => (block.type === "text" ? [block.text] : []))
     .join("\n\n");
@@ -135,14 +132,16 @@ function AssistantMessage(props: {
   );
 }
 
-function PermissionItem(props: {
-  item: Item<"permission">;
-  cwd: string | null;
-  actions: SessionActions;
-  alwaysAllow: boolean;
-  t: T;
-  nowMs: number;
-}) {
+function PermissionItem(
+  props: Readonly<{
+    item: Item<"permission">;
+    cwd: string | null;
+    actions: SessionActions;
+    alwaysAllow: boolean;
+    t: T;
+    nowMs: number;
+  }>,
+) {
   const { item, actions } = props;
   return (
     <ApprovalCard
@@ -161,14 +160,19 @@ function PermissionItem(props: {
       {...(actions.copyText ? { onCopyPath: (path: string) => void actions.copyText?.(path) } : {})}
       alwaysAllow={props.alwaysAllow}
       {...(item.resolution ? { resolution: item.resolution } : {})}
-      onRespond={(decision, message, updates, updatedInput) =>
-        actions.respond(item.requestId, decision, message, updates, updatedInput)
+      onRespond={(decision, message, updates, updatedInput, held) =>
+        actions.respond(item.requestId, decision, {
+          message,
+          updatedPermissions: updates,
+          updatedInput,
+          held,
+        })
       }
     />
   );
 }
 
-function TurnResult(props: { item: Item<"result">; t: T }) {
+function TurnResult(props: Readonly<{ item: Item<"result">; t: T }>) {
   const { item } = props;
   const cost = item.costUsd !== undefined ? ` · US$ ${item.costUsd.toFixed(4)}` : "";
   const key = item.isError ? "session.turnFailed" : "session.turnDone";
@@ -352,7 +356,7 @@ function offeredPrompts(
 }
 
 /** Chat history in streaming, tool calls, approval cards, message box and session controls. */
-export function SessionView(props: SessionViewProps) {
+export function SessionView(props: Readonly<SessionViewProps>) {
   const ctx = useT();
   const t = props.t ?? ctx;
   const { focusRequestId } = props;
@@ -415,11 +419,20 @@ export function SessionView(props: SessionViewProps) {
     for (const child of Array.from(box.children)) observer.observe(child);
     return () => observer.disconnect();
   }, [cards]);
+  // The request the screen was opened for: in view, and once found, focused, so A and N answer it
+  // with no click first (#187). Only once: a card arriving later never takes the focus from the box.
+  const focusedFor = useRef<string | null>(null);
   useEffect(() => {
     if (!focusRequestId || cards === 0) return;
-    const card = timeline.current?.querySelector(`[data-request-id="${focusRequestId}"]`);
+    const card = timeline.current?.querySelector<HTMLElement>(
+      `[data-request-id="${focusRequestId}"]`,
+    );
     // The whole card, as little scroll as needed: centered, a tall card near the end was cut.
     card?.scrollIntoView?.({ block: "nearest" });
+    if (card && focusedFor.current !== focusRequestId) {
+      focusedFor.current = focusRequestId;
+      card.focus({ preventScroll: true });
+    }
   }, [focusRequestId, cards]);
   const missed = missedAfter(props.session.items, awaySeq);
   const jumpKey = missed === 1 ? "session.jumpLatestOne" : "session.jumpLatestMany";
@@ -485,14 +498,14 @@ export function SessionView(props: SessionViewProps) {
     let have = attached.length;
     const taken: SessionImage[] = [];
     let turned: ImageRefusal | null = null;
-    for (const file of images) {
+    await inSequence(images, async (file) => {
       const why = refuseImage(file, have);
       if (why) turned = why;
       else {
         taken.push(await readImage(file));
         have++;
       }
-    }
+    });
     setRefusal(turned);
     if (taken.length > 0) setAttached((before) => [...before, ...taken]);
   };
