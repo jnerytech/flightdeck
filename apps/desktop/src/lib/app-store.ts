@@ -3809,16 +3809,16 @@ export class AppStore {
   }
 
   /** Approves a request for a secret for the rest of the requester's session (phase 19). */
-  async approveVaultForSession(hostId: string, requestId: string): Promise<void> {
-    // NOSONAR: async by contract: a throw must reach the caller as a rejection
+  approveVaultForSession(hostId: string, requestId: string): Promise<void> {
     // Only where the rule allows it and no hold is needed: the session approval has no button to
     // hold, so it can never stand in for one.
     const item = this.state.vaultApprovals.find(
       (i) => i.hostId === hostId && i.requestId === requestId,
     );
     // A high-risk request (a free command, a rule that needs the hold) never gets it (#244).
-    if (!item?.vaultOnce || item.risk === "high") return;
+    if (!item?.vaultOnce || item.risk === "high") return Promise.resolve();
     this.vaultQuestions.get(requestId)?.({ scope: "session", via: "app" });
+    return Promise.resolve();
   }
 
   /** The policy of the options, or the one that puts action requests to the user. */

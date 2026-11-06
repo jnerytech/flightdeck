@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type FakeRule, installFakeCli, reapFakes } from "./fake-cli.ts";
+import { type FakeRule, fakeCaller, installFakeCli, reapFakes } from "./fake-cli.ts";
 import { realTempDir } from "./temp-dir.ts";
 import { pidAlive, within } from "./temp-run.ts";
 
@@ -55,6 +55,14 @@ async function orphanedFake(dir: string, until: "started" | "ended"): Promise<nu
 }
 
 describe("fake-orphans", () => {
+  test("a fake watches the caller its shell shim handed over, except on Windows, where Git Bash's $PPID is not a Windows pid (#392)", () => {
+    expect(fakeCaller({ FLIGHTDECK_FAKE_CALLER: "4321" }, "linux", 77)).toBe(4321);
+    expect(fakeCaller({ FLIGHTDECK_FAKE_CALLER: "4321" }, "darwin", 77)).toBe(4321);
+    expect(fakeCaller({ FLIGHTDECK_FAKE_CALLER: "4321" }, "win32", 77)).toBe(77);
+    expect(fakeCaller({}, "linux", 77)).toBe(77);
+    expect(fakeCaller({ FLIGHTDECK_FAKE_CALLER: "x" }, "linux", 77)).toBe(77);
+  });
+
   test("a fake whose caller is gone stops waiting within a second", async () => {
     const dir = fakeDir([WAITING]);
     const pid = await orphanedFake(dir, "started");
@@ -95,15 +103,20 @@ describe("fake-orphans", () => {
   test("at the end of a run the leftover fakes are killed, and a reused pid is left alone (on Linux; elsewhere nothing is swept)", async () => {
     // A run folder of this test's own, so the sweep never reaches another test's fakes.
     const run = realTempDir("fd-reap-");
-    const before = process.env.TMPDIR;
-    process.env.TMPDIR = run;
+    // os.tmpdir() reads TMPDIR on POSIX and TEMP/TMP on Windows (#392): point all three at it.
+    const vars = ["TMPDIR", "TEMP", "TMP"] as const;
+    const before = vars.map((name) => process.env[name]);
+    for (const name of vars) process.env[name] = run;
     let dir: string;
     let staleDir: string;
     try {
       dir = fakeDir([WAITING]);
       staleDir = fakeDir([]);
     } finally {
-      process.env.TMPDIR = before;
+      vars.forEach((name, i) => {
+        if (before[i] === undefined) delete process.env[name];
+        else process.env[name] = before[i];
+      });
     }
     expect(dir.startsWith(run)).toBe(true);
     const fake = Bun.spawn([process.execPath, MAIN, dir, "auth", "login"], {

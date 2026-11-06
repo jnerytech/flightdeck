@@ -3,6 +3,7 @@ import {
   type Ack,
   ASSISTANT_FEATURE,
   type AskpassRequest,
+  type AutoUpdateStatus,
   type BudgetUpdated,
   type CardUpdated,
   type ChangesUpdated,
@@ -245,6 +246,11 @@ export interface ServerOptions {
   updater?: DaemonUpdater;
   /** Phase 9: the release manifest check behind `host.info.update`. */
   updates?: UpdateChecker;
+  /** Issue #280: the automatic update (`host.info.autoUpdate`, `host.updates.set`). */
+  autoUpdate?: {
+    status(): AutoUpdateStatus;
+    set(auto: boolean): Promise<AutoUpdateStatus>;
+  };
   /** Called after acking `daemon.shutdown`; without it the command is refused. */
   onShutdown?: () => void;
   /** What `host.info` announces; derived from what this daemon has when absent. */
@@ -1295,6 +1301,13 @@ export function startServer(opts: ServerOptions): RunningServer {
         if (!opts.updater) throw featureOff("updater");
         return ok(command.type, await opts.updater.apply(command.payload.confirm === true));
       }
+      case "host.updates.set": {
+        // It lets the host download and run a new binary by itself: only from a near connection,
+        // like host.bypass. Turning it off only lowers risk, but it is the same switch.
+        requireVaultTransport(ws.data.origin, "host.updates.set", opts.log);
+        if (!opts.autoUpdate) throw featureOff("autoUpdate");
+        return ok(command.type, await opts.autoUpdate.set(command.payload.auto));
+      }
       case "daemon.update.check": {
         if (!opts.updates) throw featureOff("updater");
         return ok(command.type, await opts.updates.checkNow());
@@ -1364,12 +1377,14 @@ export function startServer(opts: ServerOptions): RunningServer {
             ...(opts.tasks ? ["tasks"] : []),
             ...(opts.opencode?.info().available ? ["opencode"] : []),
             ...(opts.assistant ? [ASSISTANT_FEATURE] : []),
+            ...(opts.autoUpdate ? ["autoUpdate"] : []),
           ],
           ...(opts.terminals ? { terminal: opts.terminals.settings() } : {}),
           ...(opts.ui ? { ui: { ...opts.ui } } : {}),
           ...(opts.bypass ? { allowBypassPermissions: opts.bypass.allowed() } : {}),
           ...(opts.opencode ? { runtimes: [hostRuntime(opts.opencode.info())] } : {}),
           ...updateStatus(),
+          ...(opts.autoUpdate ? { autoUpdate: opts.autoUpdate.status() } : {}),
           ...(opts.terminal ?? {}),
         });
       case "history.list": {

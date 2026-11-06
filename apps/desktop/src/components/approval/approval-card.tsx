@@ -5,7 +5,14 @@ import type {
   RiskLevel,
 } from "@flightdeck/protocol";
 import { Copy } from "lucide-react";
-import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { ActionButton } from "@/components/feedback/action-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -142,12 +149,10 @@ function savedAnswers(input: Record<string, unknown>): Record<string, string> | 
 
 /** "Aprovado automaticamente (regra): motivo": who decided, and why. */
 function autoLine(auto: AutoApproval, t: T): string {
-  const by =
-    auto.by === "ai"
-      ? auto.model
-        ? t("approval.autoBy.aiModel", { model: auto.model })
-        : t("approval.autoBy.ai")
-      : t("approval.autoBy.rule");
+  let by = t("approval.autoBy.rule");
+  if (auto.by === "ai") {
+    by = auto.model ? t("approval.autoBy.aiModel", { model: auto.model }) : t("approval.autoBy.ai");
+  }
   return t("approval.autoApproved", { by, reason: auto.reason });
 }
 
@@ -172,6 +177,91 @@ function CardTitle(props: Readonly<{ asks: boolean; plan: boolean; tool: string;
     <>
       {t("approval.title")} <strong>{tool}</strong>
     </>
+  );
+}
+
+/** The plan as Markdown, or what the tool will do (a given body, else the readable view). */
+function PlanOrBody(
+  props: Readonly<{
+    plan: string | null;
+    body: ReactNode | undefined;
+    view: ReturnType<typeof approvalView>;
+    t: T;
+    onCopyPath: ((path: string) => void) | undefined;
+  }>,
+) {
+  if (props.plan !== null) return <Markdown text={props.plan} />;
+  return props.body ?? <Body view={props.view} t={props.t} onCopyPath={props.onCopyPath} />;
+}
+
+/**
+ * The buttons that answer a request: the reason form once Deny was pressed, Send for a question,
+ * else Approve (held when high risk) and Deny, the same as every screen (issue #182).
+ */
+function AnswerButtons(
+  props: Readonly<{
+    t: T;
+    pending: boolean;
+    high: boolean;
+    plan: boolean;
+    holdMs: number | undefined;
+    denying: boolean;
+    reason: string;
+    reasonRef: RefObject<HTMLInputElement | null>;
+    onReason(reason: string): void;
+    onDenying(denying: boolean): void;
+    onDeny(): void;
+    /** The answers of a question, once all are given. */
+    answers: Record<string, string> | null;
+    asks: boolean;
+    onSendAnswers(): void;
+    onApprove(held: boolean): unknown;
+  }>,
+) {
+  const { t, pending } = props;
+  if (props.denying) {
+    return (
+      <>
+        <Input
+          ref={props.reasonRef}
+          aria-label={t("approval.reason")}
+          placeholder={t("approval.reason")}
+          value={props.reason}
+          onChange={(e) => props.onReason(e.target.value)}
+          className="w-56"
+        />
+        <ActionButton variant="destructive" pending={pending} onClick={props.onDeny}>
+          {t("approval.deny")}
+        </ActionButton>
+        <Button variant="ghost" disabled={pending} onClick={() => props.onDenying(false)}>
+          {t("approval.cancel")}
+        </Button>
+      </>
+    );
+  }
+  if (props.asks) {
+    return (
+      <>
+        <ActionButton pending={pending} disabled={!props.answers} onClick={props.onSendAnswers}>
+          {t("approval.question.send")}
+        </ActionButton>
+        <Button variant="outline" disabled={pending} onClick={() => props.onDenying(true)}>
+          {t("approval.deny")}
+        </Button>
+      </>
+    );
+  }
+  return (
+    <ApprovalActions
+      risk={props.high ? "high" : undefined}
+      pending={pending}
+      {...(props.holdMs !== undefined ? { holdMs: props.holdMs } : {})}
+      {...(props.plan
+        ? { labels: { approve: t("approval.plan.approve"), deny: t("approval.plan.keep") } }
+        : {})}
+      onApprove={props.onApprove}
+      onDeny={() => props.onDenying(true)}
+    />
   );
 }
 
@@ -316,69 +406,36 @@ export function ApprovalCard(
           disabled={Boolean(resolution) || pending}
           onChange={(question, pick) => setPicks((all) => ({ ...all, [question]: pick }))}
         />
-      ) : plan !== null ? (
-        <Markdown text={plan} />
       ) : (
-        (props.body ?? <Body view={view} t={t} onCopyPath={props.onCopyPath} />)
+        <PlanOrBody plan={plan} body={props.body} view={view} t={t} onCopyPath={props.onCopyPath} />
       )}
       {resolution ? (
         <p className="text-muted-foreground text-sm">{resolutionLine(resolution, t)}</p>
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2">
-            {denying ? (
-              <>
-                <Input
-                  ref={reasonRef}
-                  aria-label={t("approval.reason")}
-                  placeholder={t("approval.reason")}
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  className="w-56"
-                />
-                <ActionButton variant="destructive" pending={pending} onClick={deny}>
-                  {t("approval.deny")}
-                </ActionButton>
-                <Button variant="ghost" disabled={pending} onClick={() => setDenying(false)}>
-                  {t("approval.cancel")}
-                </Button>
-              </>
-            ) : questions ? (
-              <>
-                <ActionButton
-                  pending={pending}
-                  disabled={!answers}
-                  onClick={() =>
-                    answers &&
-                    respond("allow", undefined, undefined, answeredInput(request.input, answers))
-                  }
-                >
-                  {t("approval.question.send")}
-                </ActionButton>
-                <Button variant="outline" disabled={pending} onClick={() => setDenying(true)}>
-                  {t("approval.deny")}
-                </Button>
-              </>
-            ) : (
-              // Issue #182: the same Approve (held when high risk) and Deny as every screen.
-              <ApprovalActions
-                risk={high ? "high" : undefined}
-                pending={pending}
-                {...(props.holdMs !== undefined ? { holdMs: props.holdMs } : {})}
-                {...(plan !== null
-                  ? {
-                      labels: {
-                        approve: t("approval.plan.approve"),
-                        deny: t("approval.plan.keep"),
-                      },
-                    }
-                  : {})}
-                onApprove={(held) =>
-                  held ? respond("allow", undefined, undefined, undefined, true) : respond("allow")
-                }
-                onDeny={() => setDenying(true)}
-              />
-            )}
+            <AnswerButtons
+              t={t}
+              pending={pending}
+              high={high}
+              plan={plan !== null}
+              holdMs={props.holdMs}
+              denying={denying}
+              reason={reason}
+              reasonRef={reasonRef}
+              onReason={setReason}
+              onDenying={setDenying}
+              onDeny={deny}
+              answers={answers}
+              asks={questions !== null}
+              onSendAnswers={() =>
+                answers &&
+                respond("allow", undefined, undefined, answeredInput(request.input, answers))
+              }
+              onApprove={(held) =>
+                held ? respond("allow", undefined, undefined, undefined, true) : respond("allow")
+              }
+            />
             {props.actions}
           </div>
           {props.alwaysAllow && !high && !questions && plan === null && (

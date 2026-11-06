@@ -2977,6 +2977,7 @@ export const Command = z.discriminatedUnion("type", [
   /** Phase 9: downloads, verifies and applies the checked update; only with `confirm: true`. */
   cmd("daemon.update.apply", z.object({ confirm: z.boolean().optional() })),
   cmd("daemon.update.check", z.object({}).strict()),
+  cmd("host.updates.set", z.object({ auto: z.boolean() })),
   /** Phase 12: the git snapshots of a Claude session, oldest first. */
   cmd("snapshots.list", z.object({ claudeSessionId: z.string().min(1) })),
   /** Phase 12: the files turn `n` (a `before` snapshot's n) changed, between its trees. */
@@ -4142,6 +4143,17 @@ export const UpdateStatus = z.object({
 });
 export type UpdateStatus = z.infer<typeof UpdateStatus>;
 
+/** Issue #280: where the daemon's automatic update stands, for the host page. */
+export const AutoUpdateStatus = z.object({
+  enabled: z.boolean(),
+  /** `off`, `current` (nothing newer), `waiting` (the host is busy), `started` or `failed`. */
+  state: z.enum(["off", "current", "waiting", "started", "failed"]),
+  version: z.string().optional(),
+  reason: z.string().optional(),
+  at: z.string().optional(),
+});
+export type AutoUpdateStatus = z.infer<typeof AutoUpdateStatus>;
+
 /** Phase 39: a runtime the host offers besides Claude Code, as discovery found it. */
 export const HostRuntime = z.object({
   kind: SessionRuntime,
@@ -4169,6 +4181,8 @@ export const HostInfoResult = z.object({
   features: z.array(z.string()).optional(),
   /** Phase 9: the last check of the daemon's release manifest; absent when it does not check. */
   update: UpdateStatus.optional(),
+  /** Issue #280: the automatic update; absent on a host that does not offer it (the `autoUpdate` feature). */
+  autoUpdate: AutoUpdateStatus.optional(),
   /** Phase 8: the stable `flightdeckd` (phase 7) when installed; "Abrir no terminal" runs it. */
   flightdeckdPath: z.string().nullable().optional(),
   /** Phase 8: the WSL distro this daemon runs in, `null` outside WSL. */
@@ -4370,6 +4384,7 @@ export interface CommandResults {
   "daemon.shutdown": undefined;
   "daemon.update.apply": { started: true };
   "daemon.update.check": UpdateStatus;
+  "host.updates.set": AutoUpdateStatus;
   "snapshots.list": { snapshots: SnapshotInfo[] };
   "snapshots.files": SnapshotFiles;
   "rewind.preview": RewindPreview;

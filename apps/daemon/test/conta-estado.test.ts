@@ -64,6 +64,24 @@ function setup(readers: Partial<AccountReaders>) {
 }
 
 describe("conta-estado: status for each fixture", () => {
+  // Issue #256: claude's sign-in keeps the plan it had then; the usage report reads it live from
+  // the server, so a plan changed since (Max to Ultra) shows at once and never falls back.
+  test("the plan comes from the live usage report first, over the one cached at sign-in", async () => {
+    const { account } = setup({
+      status: async () => auth({ plan: "max" }),
+      sdk: async () => ({ info: info({ plan: "max" }), usage: { ...usage, plan: "ultra" } }),
+    });
+    expect((await account.readNow()).plan).toBe("ultra");
+  });
+
+  test("without a usage report the plan is the sign-in's, as before", async () => {
+    const { account } = setup({
+      status: async () => auth({ plan: "max" }),
+      sdk: async () => ({ info: info({ plan: "pro" }), usage: noUsage }),
+    });
+    expect((await account.readNow()).plan).toBe("max");
+  });
+
   test("claude.ai sign-in is signed_in with name, organization, plan and provider", async () => {
     const { account } = setup({});
     const state = await account.readNow();
@@ -175,7 +193,8 @@ describe("conta-estado: status for each fixture", () => {
     const state = await account.readNow();
     expect(state.name).toBe("status@example.com");
     expect(state.organization).toBe("From SDK");
-    expect(state.plan).toBe("pro");
+    // The plan is the exception: the live usage report's wins (issue #256).
+    expect(state.plan).toBe("team");
   });
 
   test("the plan falls back to the usage report's", async () => {

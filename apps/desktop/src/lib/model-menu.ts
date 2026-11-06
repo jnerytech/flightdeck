@@ -15,7 +15,7 @@ export const MORE_MODELS: readonly string[] = [
 ];
 
 const FAMILIES = "opus|sonnet|haiku|fable";
-const VERSIONED = new RegExp(`^claude-(${FAMILIES})-(\\d+)(?:-(\\d{1,2}))?(?:-\\d{8})?$`);
+const VERSIONED = new RegExp(String.raw`^claude-(${FAMILIES})-(\d+)(?:-(\d{1,2}))?(?:-\d{8})?$`);
 const ALIAS = new RegExp(`^(${FAMILIES})$`);
 const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
@@ -27,7 +27,8 @@ export function modelName(model: string | null | undefined): string | null {
   const versioned = VERSIONED.exec(id);
   if (versioned) {
     const [, family = "", major = "", minor] = versioned;
-    return `${capital(family)} ${minor ? `${major}.${minor}` : major}`;
+    const version = minor ? `${major}.${minor}` : major;
+    return `${capital(family)} ${version}`;
   }
   return ALIAS.test(id) ? capital(id) : model;
 }
