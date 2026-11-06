@@ -943,7 +943,7 @@ export async function startDaemon(
       currentVersion: DAEMON_VERSION,
       latest: updates.latest.bind(updates),
       idle: () => manager.activeSessionCount() === 0 && board.workflows.activeRuns().length === 0,
-      apply: () => updater.apply(true),
+      apply: (proceed) => updater.apply(true, { proceed }),
       log: logger.log.bind(logger),
     });
   }

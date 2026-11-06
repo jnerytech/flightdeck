@@ -17,8 +17,11 @@ export interface AutoUpdaterOptions {
   latest(): DaemonManifest | null;
   /** Whether nothing runs on the host right now. */
   idle(): boolean;
-  /** `DaemonUpdater.apply` with the confirmation the setting stands for. */
-  apply(): Promise<unknown>;
+  /**
+   * `DaemonUpdater.apply` with the confirmation the setting stands for. `proceed` is asked once the
+   * binary is downloaded and verified, right before it is started: false when the host got busy.
+   */
+  apply(proceed: () => boolean): Promise<unknown>;
   /** How long a waiting update waits before it looks at the host again. */
   retryMs?: number;
   now?: () => number;
@@ -66,7 +69,7 @@ export class AutoUpdater {
     this.applying = true;
     const at = new Date((this.opts.now ?? Date.now)()).toISOString();
     try {
-      await this.opts.apply();
+      await this.opts.apply(() => this.opts.idle());
       this.started = { version, at };
       this.opts.log?.(`auto update: ${version} is being applied (the host is idle)`);
     } catch (error) {

@@ -47,7 +47,10 @@ export interface DaemonUpdaterOptions {
 export class DaemonUpdater {
   constructor(private readonly opts: DaemonUpdaterOptions) {}
 
-  async apply(confirm: boolean): Promise<{ started: true }> {
+  async apply(
+    confirm: boolean,
+    _opts: { proceed?: () => boolean } = {},
+  ): Promise<{ started: true }> {
     if (!confirm)
       throw new FlightdeckError(
         "invalid_state",

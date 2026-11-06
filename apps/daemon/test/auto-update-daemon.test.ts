@@ -164,7 +164,7 @@ describe("auto-update-daemon: the setting, the check hook and what the host repo
     ).toContain("sha256");
     const info = await client.data<Info>("host.info", {});
     expect(info?.autoUpdate?.state).toBe("failed");
-    expect(info?.autoUpdate?.reason).toContain("sha256");
+    expect(info?.autoUpdate?.reason).toBe("update_signature_failed");
   });
 
   test("with updates.auto false nothing is applied, and the host says so; turning it on later applies at once", async () => {

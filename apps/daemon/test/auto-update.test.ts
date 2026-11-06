@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { DaemonManifest } from "@flightdeck/protocol";
+import { FlightdeckError } from "../src/errors.ts";
 import { AutoUpdater } from "../src/updates/auto.ts";
 
 const manifest = (version: string): DaemonManifest => ({
@@ -24,6 +25,7 @@ function setup(
     applyError: null as Error | null,
   };
   const applied: string[] = [];
+  const proceeds: Array<() => boolean> = [];
   const lines: string[] = [];
   const timers: Array<{ fn: () => void; ms: number; cleared: boolean }> = [];
   const auto = new AutoUpdater({
@@ -31,7 +33,8 @@ function setup(
     currentVersion: opts.current ?? "0.37.0",
     latest: () => state.latest,
     idle: () => state.idle,
-    apply: async () => {
+    apply: async (proceed) => {
+      proceeds.push(proceed);
       applied.push(state.latest?.version ?? "?");
       if (state.applyError) throw state.applyError;
       return { started: true };
@@ -51,7 +54,7 @@ function setup(
     log: (line) => lines.push(line),
   });
   const waiting = () => timers.filter((t) => !t.cleared);
-  return { auto, state, applied, lines, timers, waiting };
+  return { auto, state, applied, proceeds, lines, timers, waiting };
 }
 
 describe("auto-update: the daemon applies a newer version by itself, only when the host is idle (#280)", () => {
@@ -114,23 +117,58 @@ describe("auto-update: the daemon applies a newer version by itself, only when t
     }
   });
 
-  test("a failed apply keeps the old version, is reported, and is tried again only after the next check", async () => {
+  test("a failed apply keeps the old version, is reported by its reason code only, and is tried again only after the next check", async () => {
     const t = setup();
-    t.state.applyError = new Error("o sha256 do arquivo baixado não confere com o manifesto");
+    t.state.applyError = new FlightdeckError(
+      "update_verification_failed",
+      "o sha256 do arquivo baixado não confere com o manifesto: /home/dev/.flightdeck/updates/x",
+      "update_signature_failed",
+    );
     await t.auto.tick();
+    // The status goes to every client: a code, never the message with the path in it.
     expect(t.auto.status()).toEqual({
       enabled: true,
       state: "failed",
       version: "0.38.0",
-      reason: "o sha256 do arquivo baixado não confere com o manifesto",
+      reason: "update_signature_failed",
       at: "2026-11-06T14:02:00.000Z",
     });
-    expect(t.lines.join("\n")).toContain("0.38.0");
+    expect(t.lines.join("\n")).toContain("o sha256 do arquivo baixado");
     // Looking again does not download the same thing over and over.
     await t.auto.tick();
     expect(t.applied).toEqual(["0.38.0"]);
     t.state.applyError = null;
     await t.auto.checked();
+    expect(t.applied).toEqual(["0.38.0", "0.38.0"]);
+    expect(t.auto.status().state).toBe("started");
+  });
+
+  test("an error with no reason code is reported as update_failed", async () => {
+    const t = setup();
+    t.state.applyError = new Error("systemd-run: /home/dev/x: not found");
+    await t.auto.tick();
+    expect(t.auto.status()).toMatchObject({ state: "failed", reason: "update_failed" });
+  });
+
+  test("the apply is told to stop before it starts the binary when the host is no longer idle, and then the update waits instead of failing", async () => {
+    const t = setup();
+    t.state.applyError = new FlightdeckError(
+      "invalid_state",
+      "the host got busy",
+      "update_host_busy",
+    );
+    await t.auto.tick();
+    expect(t.proceeds[0]?.()).toBe(true);
+    t.state.idle = false;
+    expect(t.proceeds[0]?.()).toBe(false);
+    expect(t.auto.status()).toEqual({ enabled: true, state: "waiting", version: "0.38.0" });
+    expect(t.waiting().map((x) => x.ms)).toEqual([60_000]);
+    // Idle again: the next look applies it.
+    t.state.idle = true;
+    t.state.applyError = null;
+    t.waiting()[0]?.fn();
+    await Promise.resolve();
+    await Promise.resolve();
     expect(t.applied).toEqual(["0.38.0", "0.38.0"]);
     expect(t.auto.status().state).toBe("started");
   });
