@@ -274,10 +274,9 @@ describe("ci.yml: any pushed branch can run the full CI by hand", () => {
     expect(workflow.jobs["screenshots-prints"]?.if).toBe(
       "needs.changes.outputs.screenshots == 'true'",
     );
-    // The journeys leave the PR path (#309): main, nightly and dispatch only.
-    expect(workflow.jobs["screenshots-e2e"]?.if).toBe(
-      "needs.changes.outputs.screenshots == 'true' && github.event_name != 'pull_request'",
-    );
+    // The journeys follow their own plan (#399): always on main, nightly and dispatch, and on a PR
+    // that changes what they read.
+    expect(workflow.jobs["screenshots-e2e"]?.if).toBe("needs.changes.outputs.e2e == 'true'");
   });
 
   test("a dispatched run never cancels the branch's push or pull request run, and skips SonarCloud", () => {

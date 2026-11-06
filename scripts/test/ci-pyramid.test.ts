@@ -51,6 +51,7 @@ describe("ci-pyramid (#309)", () => {
       [
         'bun run test:related -- --pr --base "origin/$BASE_REF" --list selection.txt',
         "bun run test:shards -- run ${{ matrix.shard }}/3 --files selection.txt --junit junit-${{ matrix.shard }}.xml",
+        "",
       ].join("\n"),
     );
     expect(full?.if).toBe("github.event_name != 'pull_request'");
