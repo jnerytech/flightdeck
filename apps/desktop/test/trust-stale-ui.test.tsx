@@ -53,6 +53,23 @@ describe("trust-stale-ui: a live session says its trust was revoked and offers t
     ]);
   });
 
+  test("when the restart fails the button is usable again", async () => {
+    const { store } = setup("en", false);
+    const answer = store.hostCommand;
+    store.hostCommand = (async (host: string, type: string, payload: unknown) => {
+      if (type === "session.close") throw new Error("host went away");
+      return answer.call(store, host, type as never, payload as never);
+    }) as never;
+    render(notice(store, { stale: true }));
+    const button = await screen.findByRole("button", { name: "Restart session" });
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(
+        (screen.getByRole("button", { name: "Restart session" }) as HTMLButtonElement).disabled,
+      ).toBe(false),
+    );
+  });
+
   test("in Portuguese too", async () => {
     const { store } = setup("pt-BR", false);
     render(notice(store, { stale: true }));
@@ -69,9 +86,7 @@ describe("trust-stale-ui: a live session says its trust was revoked and offers t
   test("a session that is not stale shows the notice it always did", async () => {
     const { store } = setup("en", false);
     render(notice(store));
-    await waitFor(() =>
-      expect(screen.queryByText(/This folder is not trusted/)).not.toBeNull(),
-    );
+    await waitFor(() => expect(screen.queryByText(/This folder is not trusted/)).not.toBeNull());
     expect(screen.queryByRole("button", { name: "Restart session" })).toBeNull();
   });
 });
