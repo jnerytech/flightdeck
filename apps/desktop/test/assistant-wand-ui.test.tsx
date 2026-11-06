@@ -549,9 +549,13 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
   });
 
   test("Try with sends the text the failed run had, not what the box holds by now", async () => {
+    let first = true;
     const { store, fake } = await make({
-      run: (request) => {
-        if (JSON.stringify(request).includes("fix the totl")) throw { reason: "assistant_credits" };
+      run: () => {
+        if (first) {
+          first = false;
+          throw { reason: "assistant_credits" };
+        }
         return { ...ANSWER, text: "Fixed." };
       },
     });
