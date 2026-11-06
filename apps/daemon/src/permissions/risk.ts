@@ -83,14 +83,86 @@ const SINKS = new Set(["/dev/null", "/dev/stdout", "/dev/stderr", "nul", "$null"
 /** What may come before the program and is not it. */
 const PREFIXES = new Set(["command", "nohup", "time", "exec", "builtin", "env", "xargs"]);
 
+/** Files that hold a token, a password or a history of commands (issue #439). */
+export const SECRET_NAMES: ReadonlySet<string> = new Set([
+  ".npmrc",
+  ".netrc",
+  "_netrc",
+  ".pypirc",
+  ".git-credentials",
+  ".pgpass",
+  ".vault-token",
+  ".boto",
+  ".s3cfg",
+  ".my.cnf",
+  ".mylogin.cnf",
+  ".htpasswd",
+  ".terraformrc",
+  "credentials.tfrc.json",
+  ".dockercfg",
+  "auth.json",
+  "wallet.dat",
+  "authorized_keys",
+  ".bash_history",
+  ".zsh_history",
+  ".psql_history",
+  ".mysql_history",
+  ".python_history",
+  ".node_repl_history",
+  ".rediscli_history",
+  ".sqlite_history",
+  "fish_history",
+  "consolehost_history.txt",
+]);
+/** Key and certificate stores, and state that holds secrets. */
+export const SECRET_EXTENSIONS: readonly string[] = [
+  ".pfx",
+  ".p12",
+  ".ppk",
+  ".ovpn",
+  ".keystore",
+  ".jks",
+  ".kdbx",
+  ".keytab",
+  ".tfstate",
+  ".tfstate.backup",
+];
+/** Folders whose files are all secrets. */
+export const SECRET_DIRS: readonly string[] = [".gnupg", ".kube", ".azure", ".oci"];
+/** A folder and a name in it (or a folder inside it) that hold secrets. */
+export const SECRET_PAIRS: ReadonlyArray<readonly [string, string]> = [
+  [".docker", "config.json"],
+  [".config", "gcloud"],
+  [".config", "rclone"],
+  [".config", "helm"],
+  [".config", "doctl"],
+  [".config", "glab-cli"],
+  [".config", "containers"],
+  [".cargo", "credentials"],
+  [".cargo", "credentials.toml"],
+  [".m2", "settings.xml"],
+  [".m2", "settings-security.xml"],
+  [".gradle", "gradle.properties"],
+  [".terraform.d", "credentials.tfrc.json"],
+  [".gem", "credentials"],
+  ["github cli", "hosts.yml"],
+];
+
 /**
  * Whether a path (or a glob, or a word of a command) names a credential: ~/.ssh, ~/.aws,
  * ~/.config/gh, ~/.claude/.credentials.json, ~/.claude.json, ~/.flightdeck/config.json, .env*,
- * *.pem, *.key and id_*. Compared without case, with either slash.
+ * *.pem, *.key and id_*, and (issue #439) .npmrc, .netrc, .pypirc, .pgpass, .git-credentials,
+ * authorized_keys, shell history, ~/.gnupg, ~/.kube, ~/.azure, ~/.docker/config.json,
+ * ~/.config/gcloud and the key stores *.pfx, *.p12, *.keystore, *.jks and *.kdbx. Compared without case, with either slash.
  */
 export function credential(text: string): boolean {
-  const parts = text.toLowerCase().replaceAll("\\", "/").split("/");
-  const name = parts.at(-1) as string;
+  // An empty or a `.` segment (`a//b`, `a/./b`, a trailing slash) is not a step of the path.
+  const parts = text
+    .toLowerCase()
+    .replaceAll("\\", "/")
+    .split("/")
+    .filter((part) => part !== "" && part !== ".");
+  const name = parts.at(-1) ?? "";
   const after = (dir: string, next: string) =>
     parts.some((p, i) => p === dir && parts[i + 1] === next);
   return (
@@ -103,7 +175,11 @@ export function credential(text: string): boolean {
     name.startsWith(".env") ||
     name.endsWith(".pem") ||
     name.endsWith(".key") ||
-    name.startsWith("id_")
+    name.startsWith("id_") ||
+    SECRET_NAMES.has(name) ||
+    SECRET_EXTENSIONS.some((extension) => name.endsWith(extension)) ||
+    SECRET_DIRS.some((dir) => parts.includes(dir)) ||
+    SECRET_PAIRS.some(([dir, next]) => after(dir, next))
   );
 }
 
