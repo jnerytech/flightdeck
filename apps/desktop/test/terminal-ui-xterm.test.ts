@@ -3,6 +3,8 @@ import { FIND_DECORATIONS } from "../src/lib/terminal-view.ts";
 import {
   createXtermScreen,
   type XtermDeps,
+  type XtermLink,
+  type XtermLinkProvider,
   type XtermSearch,
   type XtermTerminal,
 } from "../src/lib/xterm-screen.ts";
@@ -25,6 +27,9 @@ function setup(initial = "", clipboardFails = false, windows = false) {
   let onData: (data: string) => void = () => {};
   let onResize: (size: { cols: number; rows: number }) => void = () => {};
   let keyHandler: (event: KeyboardEvent) => boolean = () => true;
+  let linkProvider: XtermLinkProvider | null = null;
+  const lines: string[] = [];
+  const paths: string[] = [];
   const addons: unknown[] = [];
   const callbacks: Array<() => void> = [];
   const links: Array<(uri: string) => void> = [];
@@ -61,6 +66,18 @@ function setup(initial = "", clipboardFails = false, windows = false) {
     },
     attachCustomKeyEventHandler: (handler) => {
       keyHandler = handler;
+    },
+    registerLinkProvider: (provider) => {
+      linkProvider = provider;
+      return { dispose: () => void log.push("off-paths") };
+    },
+    buffer: {
+      active: {
+        getLine: (y) => {
+          const text = lines[y];
+          return text === undefined ? undefined : { translateToString: () => text };
+        },
+      },
     },
     dispose: () => void log.push("dispose"),
   };
@@ -119,6 +136,7 @@ function setup(initial = "", clipboardFails = false, windows = false) {
     onSearch: () => void searches++,
     onFindResults: (results) => void found.push(results),
     onLink: (uri) => void linked.push(uri),
+    onPath: (path) => void paths.push(path),
   });
   const press = (key: string, ctrl = true, shift = true) =>
     keyHandler({
@@ -143,6 +161,15 @@ function setup(initial = "", clipboardFails = false, windows = false) {
     },
     press,
     keys: (event: KeyboardEvent) => keyHandler(event),
+    paths,
+    /** The output's rows, from the top of the buffer. */
+    showLines: (...rows: string[]) => void lines.splice(0, lines.length, ...rows),
+    /** The links xterm would ask for on a row (1-based, as xterm counts). */
+    linksOn: (y: number) =>
+      new Promise<XtermLink[] | undefined>((resolve) => {
+        if (!linkProvider) resolve(undefined);
+        else linkProvider.provideLinks(y, resolve);
+      }),
     constructed: () => constructed,
     searches: () => searches,
     findOptions,
@@ -323,10 +350,22 @@ describe("terminal-ui: the xterm screen", () => {
     expect(s.log.slice(-4)).toEqual(["next:hit", "next:miss", "prev:x", "clear"]);
   });
 
+  test("a file path in the output is a link over its own cells; clicking it hands the path on (issue #476)", async () => {
+    const s = setup();
+    s.showLines("nothing here", "see src/a.ts:3 now");
+    expect(await s.linksOn(1)).toBeUndefined();
+    const links = await s.linksOn(2);
+    expect(links?.map((link) => [link.text, link.range])).toEqual([
+      ["src/a.ts:3", { start: { x: 5, y: 2 }, end: { x: 14, y: 2 } }],
+    ]);
+    links?.[0]?.activate({} as MouseEvent, "src/a.ts:3");
+    expect(s.paths).toEqual(["src/a.ts"]);
+  });
+
   test("dispose releases the listeners and xterm", () => {
     const s = setup();
     s.screen.dispose();
-    expect(s.log).toEqual(["off-selection", "off-data", "off-resize", "dispose"]);
+    expect(s.log).toEqual(["off-selection", "off-data", "off-resize", "off-paths", "dispose"]);
   });
 
   test("a clipboard that refuses to copy or to be read leaves the terminal as it was", async () => {
