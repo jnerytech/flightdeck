@@ -2569,6 +2569,13 @@ Open **Settings → Webhooks**.
   - **Discord:** a channel webhook (`https://discord.com/api/webhooks/...`). Nobody is pinged by a
     session title.
   - **Generic JSON:** your own endpoint, with a **signing secret**.
+  - **ntfy (phone notices):** the address of one topic (`https://ntfy.sh/your-topic`, or your own
+    server's) and, for a protected topic, an **access token** (`tk_...`), kept in the vault. Install
+    the ntfy app on the phone and subscribe to the same topic. *Needs you* arrives with high
+    priority, everything else with the default one. The notices go one way: a tap opens nothing in
+    Flightdeck. The server must be reachable from the internet; one only on your home network is
+    refused, as for every webhook. Pick a topic name nobody would guess, or protect it with a token:
+    anyone who knows a public topic can read it.
 - **Events:** *needs you* (a permission or a question), *session ended*, *session failed*, *budget
   alert* and *PR watch* (a watched PR needs you). Each webhook picks the ones it wants.
 - **Hosts:** *all hosts*, or one. An event from a host goes to the webhooks of all hosts and to that

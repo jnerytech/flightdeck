@@ -2564,6 +2564,13 @@ Abra **Configurações → Webhooks**.
   - **Discord:** um webhook de canal (`https://discord.com/api/webhooks/...`). O título de uma
     sessão não marca ninguém.
   - **JSON genérico:** seu próprio endereço, com um **segredo de assinatura**.
+  - **ntfy (avisos no celular):** o endereço de um tópico (`https://ntfy.sh/seu-topico`, ou o do
+    seu servidor) e, para um tópico protegido, um **token de acesso** (`tk_...`), guardado no
+    cofre. Instale o app do ntfy no celular e assine o mesmo tópico. *Precisa de você* chega com
+    prioridade alta, o resto com a padrão. Os avisos vão num sentido só: tocar neles não abre nada
+    no Flightdeck. O servidor precisa estar acessível pela internet; um que só existe na sua rede
+    de casa é recusado, como para todo webhook. Escolha um nome de tópico difícil de adivinhar, ou
+    proteja-o com um token: quem souber um tópico público consegue lê-lo.
 - **Eventos:** *precisa de você* (uma permissão ou uma pergunta), *sessão terminou*, *sessão
   falhou*, *alerta de orçamento* e *vigia do PR* (um PR vigiado precisa de você). Cada webhook
   escolhe os que quer.
