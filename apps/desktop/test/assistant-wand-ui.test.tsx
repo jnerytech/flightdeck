@@ -466,6 +466,101 @@ describe("assistant-wand-ui: the wand on the message box (issue #158)", () => {
     expect(alert.textContent).toContain("The provider says there is no credit left on this key.");
   });
 
+  test("a failure offers each other provider that could run, by name, and a click sends the same text there", async () => {
+    let failing = true;
+    const { store, fake } = await make({
+      run: () => {
+        if (failing) throw { reason: "assistant_credits" };
+        return { ...ANSWER, text: "Fix the total." };
+      },
+    });
+    await fake.assistant.setKey("openrouter", "sk-or-ccccdddd");
+    await store.assistant.refreshKeys();
+    seedHosts(store, [{ id: "h1", name: "alfa", features: ["assistant"] }]);
+    store.assistant.confirmHost("h1");
+    const toHost = spyOn(store, "hostRequest").mockResolvedValue({
+      ok: true,
+      data: { ...ANSWER, text: "Fix the total, from alfa." },
+    } as never);
+    type("fix the totl");
+    await click("Improve with AI");
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).queryByRole("button", { name: "Try with alfa" })).not.toBeNull();
+    expect(
+      within(alert).queryByRole("button", { name: "Try with OpenRouter (API key)" }),
+    ).not.toBeNull();
+    expect(within(alert).queryByRole("button", { name: /Try with Anthropic/ })).toBeNull();
+    failing = false;
+    await act(async () => {
+      fireEvent.click(within(alert).getByRole("button", { name: "Try with OpenRouter (API key)" }));
+    });
+    await screen.findByRole("dialog", { name: "AI suggestion" });
+    const last = asked(fake).at(-1);
+    expect(last?.[3]).toMatchObject({ provider: "openrouter" });
+    expect(JSON.stringify(last?.[1])).toContain("fix the totl");
+    expect(toHost).not.toHaveBeenCalled();
+    expect(box().value).toBe("fix the totl");
+  });
+
+  test("Try with a host sends the same text to that host, and nowhere else", async () => {
+    const { store, fake } = await make({
+      run: () => {
+        throw { reason: "assistant_credits" };
+      },
+    });
+    seedHosts(store, [{ id: "h1", name: "alfa", features: ["assistant"] }]);
+    store.assistant.confirmHost("h1");
+    const toHost = spyOn(store, "hostRequest").mockResolvedValue({
+      ok: true,
+      data: { ...ANSWER, text: "Fix the total, from alfa." },
+    } as never);
+    type("fix the totl");
+    await click("Improve with AI");
+    const alert = await screen.findByRole("alert");
+    const tryAlfa = within(alert).queryByRole("button", { name: "Try with alfa" });
+    expect(tryAlfa).not.toBeNull();
+    await act(async () => {
+      fireEvent.click(tryAlfa as HTMLElement);
+    });
+    const dialog = await screen.findByRole("dialog", { name: "AI suggestion" });
+    expect(dialog.textContent).toContain("Fix the total, from alfa.");
+    expect(toHost.mock.calls.map((call) => [call[0], call[1]])).toEqual([["h1", "assistant.run"]]);
+    expect(asked(fake)).toHaveLength(1);
+  });
+
+  test("a host the person never agreed to, or no other provider at all, offers no Try with", async () => {
+    const { store } = await make({
+      run: () => {
+        throw { reason: "assistant_credits" };
+      },
+    });
+    seedHosts(store, [{ id: "h1", name: "alfa", features: ["assistant"] }]);
+    type("fix the totl");
+    await click("Improve with AI");
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).queryByRole("button", { name: /Try with/ })).toBeNull();
+    expect(within(alert).queryByRole("button", { name: "Dismiss" })).not.toBeNull();
+  });
+
+  test("Try with reads in Portuguese", async () => {
+    const { store, fake } = await make(
+      {
+        run: () => {
+          throw { reason: "assistant_credits" };
+        },
+      },
+      { language: "pt-BR" },
+    );
+    await fake.assistant.setKey("openrouter", "sk-or-ccccdddd");
+    await store.assistant.refreshKeys();
+    type("corrige o totl");
+    await click("Melhorar com IA");
+    const alert = await screen.findByRole("alert");
+    expect(
+      within(alert).queryByRole("button", { name: "Tentar com OpenRouter (chave de API)" }),
+    ).not.toBeNull();
+  });
+
   test("Esc in the box cancels a run, closes a preview and dismisses a failure", async () => {
     let answer: (text: string) => void = () => {};
     let fail = false;
