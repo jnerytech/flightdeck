@@ -1,3 +1,11 @@
+/** The file a relative or `@/` specifier points to (relative to `srcRoot`), or null when it is missing. */
+function localFile(specifier: string, from: string, srcRoot: string): string | null {
+  const target = specifier.startsWith("@/")
+    ? specifier.slice(2)
+    : slashed(relative(srcRoot, resolve(srcRoot, dirname(from), specifier)), sep);
+  return existsSync(join(srcRoot, target)) ? target : null;
+}
+
 /**
  * Which packages the app's entry point loads at start-up: the static imports reachable from it.
  * A package behind `import()` is not in the entry chunk, so a heavy one that shows up here is a
@@ -7,7 +15,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 
 const IMPORT =
-  /^[ \t]*(import|export)\s+(type\s+)?(?:([\w*{}\s,$]+?)\s+from\s+)?["']([^"']+)["']/gm;
+  /^[ \t]*(import|export)\s+(type\s+)?(?:([\w*{}$,]+(?:\s+[\w*{}$,]+)*?)\s+from\s+)?["']([^"']+)["']/gm;
 const ONLY_TYPES = /^\{\s*(?:type\s+[\w$]+(?:\s+as\s+[\w$]+)?\s*,?\s*)+\}$/;
 
 /** The module specifiers a source file imports at load time (type-only imports do not load). */
@@ -56,10 +64,7 @@ export function reachedPackages(entries: string[], srcRoot: string, watched: str
         if (watches(watched, name) && !found.has(name)) found.set(name, chain);
         continue;
       }
-      const target = specifier.startsWith("@/")
-        ? specifier.slice(2)
-        : slashed(relative(srcRoot, resolve(srcRoot, dirname(file), specifier)), sep);
-      const real = existsSync(join(srcRoot, target)) ? target : null;
+      const real = localFile(specifier, file, srcRoot);
       if (real && !seen.has(real)) {
         seen.add(real);
         queue.push([...chain, real]);

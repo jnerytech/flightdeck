@@ -1,17 +1,20 @@
 name: CI
 
 on:
-  # Every pushed branch runs the whole CI (#216): the full suite on both systems, the prints, e2e
-  # and SonarCloud leave the machine's single test slot, and a session hands off on a green run
-  # (scripts/ci-branch.sh reads it). A new push cancels the branch's previous run (concurrency).
-  # A push that only changes files no test reads starts no run; ci-branches.test.ts keeps that
-  # list honest. Pull requests are never filtered, so their required checks always report.
+  # GitHub Flow (#260): one trigger per kind of branch, so no commit runs twice. A branch with an
+  # open PR runs on `pull_request` (never filtered, so its required checks always report); main
+  # runs on `push`, which is what a release tags; a branch with no PR yet runs by hand
+  # (`workflow_dispatch`, sent by bun run ci:branch). A new push cancels the previous run
+  # (concurrency). A push to main that only changes images starts no run; ci-branches.test.ts keeps
+  # that list honest.
   push:
-    branches: ["**"]
-    paths-ignore: ["docs/manual/**", "docs/images/**"]
+    branches: [main]
+    paths-ignore: ["docs/images/**"]
   pull_request:
-  # Any pushed branch can run the whole CI by hand (scripts/ci-branch.sh): the prints, e2e and the
-  # Windows suite then leave the machine's single test slot.
+  # The whole suite every 3 hours on main (#309, #444): a PR and a push to main run the cheap base
+  # of the test pyramid plus the related tests, so a red only the full suite sees shows within 3 h.
+  schedule:
+    - cron: "17 */3 * * *"
   workflow_dispatch:
     inputs:
       only:
@@ -24,21 +27,383 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: true
+  # The job choice is in the key: a screenshots-only dispatch must not cancel a full one.
+  group: ci-${{ github.ref }}-${{ github.event_name }}-${{ inputs.only }}
+  # A run on main always finishes (#326): a merge cancelling main's run in progress left 14 main runs
+  # cancelled in a row and no main result to release from. GitHub then keeps the run in progress and
+  # only the newest pending one. Branch and PR runs still cancel their previous push.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  test:
-    name: test (${{ matrix.os }})
+  # Which job groups this run needs (#264): on a pull request, from the paths it changes
+  # (scripts/lib/ci-paths.ts); a push to main and a run by hand need everything. A job skipped by
+  # path still reports under the ruleset's name through its aggregate.
+  # The checks that take minutes, first (#272): typecheck, Biome, the TDD order and every ratchet
+  # test. Sonar is SonarCloud's own check on the PR only (#283). The heavy jobs need it, so a count that went up fails the run
+  # in minutes instead of after the 20-minute suites.
+  # It also computes the path plan first (#264), the jobs this run needs: one job less than a
+  # plan job of its own (#444), and the heavy jobs wait for this one anyway.
+  quick:
+    name: quick checks
+    runs-on: ubuntu-latest
+    # Reading the issues of the unstable skips (#494) needs issues: read, in this job only.
+    permissions:
+      contents: read
+      issues: read
+    timeout-minutes: 10
+    outputs:
+      windows: ${{ steps.plan.outputs.windows }}
+      smokes: ${{ steps.plan.outputs.smokes }}
+      screenshots: ${{ steps.plan.outputs.screenshots }}
+      cargo: ${{ steps.plan.outputs.cargo }}
+      e2e: ${{ steps.plan.outputs.e2e }}
+      windows_shards: ${{ steps.plan.outputs.windows_shards }}
+      base: ${{ steps.plan.outputs.base }}
+    steps:
+      # Full history: the changed paths are taken against the merge-base with the target branch,
+      # and the TDD audit counts from the merge-base with main or from the last tag.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      # A push to main plans against the commit it came after (#444), like a PR against its target.
+      - name: The jobs this run needs
+        id: plan
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: bun run scripts/ci-paths.ts
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      - name: Identidade do git
+        run: |
+          git config --global user.name "flightdeck-ci"
+          git config --global user.email "ci@flightdeck.invalid"
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Lint
+        run: bun run lint
+
+      # The TDD order (docs/TDD.md): every feat/fix has an earlier test commit with the same scope,
+      # counted from the merge-base with main (a pull request) or from the last tag (a push to
+      # main).
+      - name: TDD audit
+        run: bun run tdd:audit -- --since auto
+
+      # Every *-ratchet.test.ts and the protocol surface (scripts/lib/ci-quick.ts), in seconds.
+      - name: Ratchets
+        run: bun run scripts/ci-quick.ts
+
+      # A flaky test may be skipped under its open issue (#494); a closed issue fails the run, so
+      # the skip comes out with the fix.
+      - name: Unstable skips name open issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bun run scripts/unstable-issues.ts
+
+  # Linux (#293): the suite, SonarCloud, and the smokes and cargo run as jobs of their own, the
+  # suite and the checks in parallel. The suite stays whole: bun's lcov counts functions per file
+  # but does not name them, so shards could not merge the exact 100% function gate. The required
+  # check `test (ubuntu-latest)` is the aggregate below.
+  test-suite:
+    name: test suite (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    needs: [quick]
     if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # bash everywhere: stops at the first failing command of a step.
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      # Tests create repositories and commit in them.
+      - name: Identidade do git
+        run: |
+          git config --global user.name "flightdeck-ci"
+          git config --global user.email "ci@flightdeck.invalid"
+
+      # Typecheck, lint and the TDD audit ran in the quick job (#272).
+      # The test pyramid (#309): a PR runs every unit and component test plus the tests of the other
+      # tiers that reach a changed file, and every changed source file must be at 100% lines and
+      # functions from them. The coverage report stays in coverage/ for SonarCloud.
+      # A push to main does the same from the commit it came after (#444).
+      - name: Testes da seleção (pirâmide)
+        if: needs.quick.outputs.base != ''
+        env:
+          BASE: ${{ needs.quick.outputs.base }}
+        run: bun run test:related -- --pr --base "$BASE" --keep-coverage coverage
+
+      # The schedule (every 3 hours) and a dispatch: the whole suite and the whole-repo 100% gate.
+      - name: Testes (cobertura 100%)
+        if: needs.quick.outputs.base == ''
+        run: bun run test
+
+      # SonarCloud reads it in its own job.
+      - name: Relatório lcov para o SonarCloud
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          retention-days: 1
+
+  # SonarCloud, with the lcov report of the suite. The product version marks the new-code period
+  # ("previous version"). Skipped on a dispatch, and where the secret is not available (pull requests
+  # from forks).
+  sonar:
+    name: sonarcloud
+    needs: [test-suite]
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Full history: SonarCloud uses the blame to tell new code from old.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Relatório lcov do suite
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: coverage-lcov
+          path: coverage
+
+      - name: Versão para o SonarCloud
+        id: sonar
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        shell: bash
+        run: |
+          version="$(bun -e 'console.log(require("./apps/daemon/package.json").version)')"
+          # The branch controls the file: only a plain version reaches $GITHUB_ENV and the scan's args.
+          [[ "$version" =~ ^[0-9A-Za-z.+-]+$ ]] || { echo "not a plain version: $version"; exit 1; }
+          echo "FD_VERSION=$version" >> "$GITHUB_ENV"
+          if [ -n "$SONAR_TOKEN" ]; then echo "enabled=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: SonarCloud
+        if: steps.sonar.outputs.enabled == 'true'
+        uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: -Dsonar.projectVersion=${{ env.FD_VERSION }}
+
+  # The rest of the Linux leg, in parallel with the suite: the smokes and the Rust shell, each only
+  # when the path plan asks for it (#264).
+  checks-linux:
+    name: checks (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    needs: [quick]
+    if: (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots') && (needs.quick.outputs.smokes == 'true' || needs.quick.outputs.cargo == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      # Tests create repositories and commit in them.
+      - name: Identidade do git
+        run: |
+          git config --global user.name "flightdeck-ci"
+          git config --global user.email "ci@flightdeck.invalid"
+
+      # Only when the daemon, a smoke or what everything reads changed (#264).
+      - name: Smokes
+        if: needs.quick.outputs.smokes == 'true'
+        run: |
+          bun run smoke
+          bun run smoke:multi
+          bun run smoke:history
+          bun run smoke:board
+          bun run smoke:deps
+          bun run smoke:central
+          bun run smoke:workflow
+          bun run smoke:ops
+          bun run smoke:limits
+          bun run smoke:update
+          bun run smoke:costs
+          bun run smoke:review
+          bun run smoke:checkpoints
+          bun run smoke:automation
+          bun run smoke:terminal
+          bun run smoke:run
+          bun run smoke:ssh
+          bun run smoke:vault
+          bun run smoke:actions
+          bun run smoke:snippets
+          bun run smoke:rules-vault
+          bun run smoke:personas
+          bun run smoke:watch
+          bun run smoke:teams
+          bun run smoke:perf
+          bun run smoke:otel
+          bun run smoke:webhook
+          bun run smoke:conta
+          bun run smoke:simple
+          bun run smoke:github
+          bun run smoke:boardsync
+          bun run smoke:roi
+
+      # The Tauri shell only when it changed, or on main (#264).
+      # The .deb files are cached between runs, keyed on the package list (#405): a slow mirror hit
+      # this step three times in two days (exit 124).
+      # The runner image is part of the key: a cache from an older image would install older
+      # packages over the newer ones the image ships.
+      - name: Runner image of the Tauri package cache
+        id: tauri-image
+        if: needs.quick.outputs.cargo == 'true'
+        run: echo "version=$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
+
+      - name: Cache of the Tauri system packages
+        if: needs.quick.outputs.cargo == 'true'
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/tauri-debs
+          key: tauri-debs-${{ runner.os }}-${{ runner.arch }}-${{ steps.tauri-image.outputs.version }}-${{ hashFiles('.github/tauri-apt-packages.txt') }}
+
+      # A cache hit installs the saved packages with no mirror. A miss, or a dpkg that fails (a new
+      # runner image), falls back to apt: each attempt has 4.5 minutes, and a failed or hung one is
+      # retried once with a fresh apt-get update, inside the step's 10. apt downloads into the
+      # cached folder, so the next run hits.
+      - name: System libraries of the Tauri shell (Linux)
+        if: needs.quick.outputs.cargo == 'true'
+        timeout-minutes: 10
+        run: |
+          debs="$HOME/.cache/tauri-debs"
+          mkdir -p "$debs/partial"
+          if ls "$debs"/*.deb >/dev/null 2>&1 && sudo dpkg -i "$debs"/*.deb; then
+            echo "Tauri system packages installed from the cache"
+            exit 0
+          fi
+          packages=$(cat .github/tauri-apt-packages.txt)
+          install_libs() {
+            # Finishes what a killed attempt left half-configured (instant when nothing is).
+            sudo dpkg --configure -a || true
+            # shellcheck disable=SC2086 # one word per package
+            timeout 120 sudo apt-get update &&
+              timeout 150 sudo apt-get install -y -o Dir::Cache::archives="$debs" $packages
+          }
+          install_libs || install_libs
+          # apt wrote the files as root; the cache saves them as the runner user after the job.
+          sudo chown -R "$(id -u):$(id -g)" "$debs"
+
+      - name: Rust cache
+        if: needs.quick.outputs.cargo == 'true'
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      # The Tauri context needs the built frontend (frontendDist) to exist.
+      - name: cargo check do app
+        if: needs.quick.outputs.cargo == 'true'
+        run: |
+          bun run build:desktop
+          cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
+          # The unit tests of the shell (phase 33: the checks of `open_result`), on both systems:
+          # the disk checks differ (links on Linux, 8.3 names and junctions on Windows).
+          cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
+
+  # The check the main ruleset requires: it passes only when the plan, the quick job, the suite,
+  # SonarCloud, the fast-coverage ratchet and the checks passed. It runs even when one failed (not on a cancel), and fails at
+  # once: GitHub counts a skipped required check as passed (#272). A dispatched run's jobs have names
+  # of their own, so a skipped copy never stands in for the real check.
+  test:
+    name: test (ubuntu-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    needs: [quick, test-suite, sonar, fast-coverage, checks-linux]
+    if: "!cancelled() && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: The suite, SonarCloud, the fast-coverage ratchet and the checks passed
+        run: |
+          test "${{ needs.quick.result }}" = success
+          echo "suite: ${{ needs.test-suite.result }}, sonar: ${{ needs.sonar.result }}, fast coverage: ${{ needs.fast-coverage.result }}, checks: ${{ needs.checks-linux.result }}"
+          test "${{ needs.test-suite.result }}" = success
+          test "${{ needs.fast-coverage.result }}" = success
+          # SonarCloud skips on a dispatch.
+          case "${{ needs.sonar.result }}" in success|skipped) ;; *) exit 1 ;; esac
+          # The checks skip when the plan asks for no smoke and no cargo.
+          if [ "${{ needs.quick.outputs.smokes }}" = true ] || [ "${{ needs.quick.outputs.cargo }}" = true ]; then
+            test "${{ needs.checks-linux.result }}" = success
+          fi
+
+  # The base of the test pyramid holds (#309): every source fast-coverage-baseline.json lists stays
+  # at 100% from the unit and component tiers alone. On PRs too (#358): a drop fails the PR through
+  # the required test (ubuntu-latest) check, instead of turning main red after the merge.
+  fast-coverage:
+    name: fast coverage (ubuntu-latest)
+    needs: [quick]
+    if: github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      # Tests create repositories and commit in them.
+      - name: Identidade do git
+        run: |
+          git config --global user.name "flightdeck-ci"
+          git config --global user.email "ci@flightdeck.invalid"
+
+      - name: Cobertura das camadas rápidas
+        run: bun run fast-coverage
+
+  # Windows, the slowest leg (#220: 33 minutes, 25 of them tests), runs the suite in three shards
+  # with no coverage: the 100% gate is Linux's. Since #534 it runs only in the schedule's and a
+  # run by hand's full runs, as a signal: a PR and a push to main plan no Windows, and a red
+  # Windows job (continue-on-error) leaves the run green, so nothing that gates waits for it.
+  test-windows-shard:
+    name: test shard ${{ matrix.shard }}/${{ strategy.job-total }} (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    continue-on-error: true
+    needs: [quick]
+    if: (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots') && needs.quick.outputs.windows == 'true'
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
-    # bash everywhere (Git Bash on Windows): stops at the first failing command of a step, which
-    # pwsh does not do for native programs.
+        # One shard on a PR, three when the whole suite runs (#444): the plan says how many.
+        shard: ${{ fromJSON(needs.quick.outputs.windows_shards) }}
+    runs-on: windows-latest
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
@@ -64,7 +429,6 @@ jobs:
       # Claude Code runs command hooks through Git Bash on Windows; `bash` on PATH may be the WSL
       # launcher in System32, so the hook tests get Git Bash explicitly, as Claude Code does.
       - name: Git Bash para os hooks
-        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $bash = "C:\Program Files\Git\bin\bash.exe"
@@ -72,34 +436,72 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit 1 }
           "CLAUDE_CODE_GIT_BASH_PATH=$bash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Typecheck
-        run: bun run typecheck
-
-      - name: Lint
-        run: bun run lint
-
-      - name: Testes (cobertura 100%)
-        run: bun run test
-
-      # SonarCloud, on the Linux leg only, with the lcov report the tests just wrote. The product
-      # version marks the new-code period ("previous version"). Skipped where the secret is not
-      # available (pull requests from forks).
-      - name: Versão para o SonarCloud
-        id: sonar
-        if: runner.os == 'Linux' && github.event_name != 'workflow_dispatch'
+      # The shards are split by the seconds each test file took (scripts/test-timings.json, #292),
+      # not by file count. The JUnit report keeps this run's times: `bun run test:shards -- record`
+      # refreshes the timing file from the reports of the three shards.
+      # On a PR, the selection the Linux suite runs (#309, #399): every unit and component test plus
+      # the integration and e2e tests related to the changed files, or the whole suite when a file
+      # every test reads changed. No coverage gate on Windows: Linux holds the 100% gate.
+      - name: Testes da seleção (shard ${{ matrix.shard }}/${{ strategy.job-total }}, test:related)
+        if: needs.quick.outputs.base != ''
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          BASE: ${{ needs.quick.outputs.base }}
         run: |
-          echo "FD_VERSION=$(bun -e 'console.log(require("./apps/daemon/package.json").version)')" >> "$GITHUB_ENV"
-          if [ -n "$SONAR_TOKEN" ]; then echo "enabled=true" >> "$GITHUB_OUTPUT"; fi
+          bun run test:related -- --pr --base "$BASE" --list selection.txt
+          bun run test:shards -- run ${{ matrix.shard }}/${{ strategy.job-total }} --files selection.txt --junit junit-${{ matrix.shard }}.xml
 
-      - name: SonarCloud
-        if: steps.sonar.outputs.enabled == 'true'
-        uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Testes (shard ${{ matrix.shard }}/${{ strategy.job-total }})
+        if: needs.quick.outputs.base == ''
+        run: bun run test:shards -- run ${{ matrix.shard }}/${{ strategy.job-total }} --junit junit-${{ matrix.shard }}.xml
+
+      - name: Publicar os tempos dos testes
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          args: -Dsonar.projectVersion=${{ env.FD_VERSION }}
+          name: test-timings-windows-${{ matrix.shard }}
+          path: junit-${{ matrix.shard }}*.xml
+          if-no-files-found: ignore
+
+  # The rest of the Windows leg: the smokes, the Rust shell, the bundle budget and the
+  # performance baseline.
+  checks-windows:
+    name: checks (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    continue-on-error: true
+    needs: [quick]
+    if: (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots') && needs.quick.outputs.windows == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # Full history: SonarCloud uses the blame to tell new code from old.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      # Tests create repositories and commit in them.
+      - name: Identidade do git
+        run: |
+          git config --global user.name "flightdeck-ci"
+          git config --global user.email "ci@flightdeck.invalid"
+
+      # Claude Code runs command hooks through Git Bash on Windows; `bash` on PATH may be the WSL
+      # launcher in System32, so the hook tests get Git Bash explicitly, as Claude Code does.
+      - name: Git Bash para os hooks
+        shell: pwsh
+        run: |
+          $bash = "C:\Program Files\Git\bin\bash.exe"
+          & $bash -c 'echo "git bash: $BASH_VERSION"'
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          "CLAUDE_CODE_GIT_BASH_PATH=$bash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Smokes
         run: |
@@ -135,37 +537,39 @@ jobs:
           bun run smoke:github
           bun run smoke:boardsync
           bun run smoke:roi
+          bun run smoke:opencode
 
-      - name: System libraries of the Tauri shell (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y pkg-config libwebkit2gtk-4.1-dev libgtk-3-dev \
-            libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev
+      # The built frontend: the bundle budget reads it, and the Tauri context needs it (frontendDist).
+      # Only when the app or the shell changed, or on main (#264).
+      - name: Build do app
+        if: needs.quick.outputs.screenshots == 'true' || needs.quick.outputs.cargo == 'true'
+        run: bun run build:desktop
 
-      # The Tauri context needs the built frontend (frontendDist) to exist.
+      - name: Rust cache
+        if: needs.quick.outputs.cargo == 'true'
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: apps/desktop/src-tauri
+
       - name: cargo check do app
+        if: needs.quick.outputs.cargo == 'true'
         run: |
-          bun run build:desktop
           cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
-          # The unit tests of the shell (phase 33: the checks of `open_result`), on both systems:
-          # the disk checks differ (links on Linux, 8.3 names and junctions on Windows).
           cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 
       # Phase 28: the entry chunk of the build above stays under its gzip budget (bundle-lazy).
       - name: Bundle budget
-        if: runner.os == 'Windows'
+        if: needs.quick.outputs.screenshots == 'true' || needs.quick.outputs.cargo == 'true'
         run: bun run bundle:budget
 
       # Phase 28: the numbers of the performance baseline on this runner, kept as an artifact. It
       # is not a gate: a measure that cannot run says why in its row, and the step never fails the job.
       - name: Performance baseline
-        if: runner.os == 'Windows'
         continue-on-error: true
         run: bun run perf:baseline --out perf-baseline
 
       - name: Performance baseline (artifact)
-        if: runner.os == 'Windows' && always()
+        if: always()
         continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -173,10 +577,41 @@ jobs:
           path: perf-baseline
           if-no-files-found: ignore
 
-  # The prints of every screen in both themes and languages, the axe check on them and the five
-  # end-to-end journeys, all against the seeded demo (fake runtime: no real Claude, no network).
-  screenshots:
-    name: screenshots (prints, axe e e2e)
+  # The Windows verdict in one job: it is red unless every shard and the checks passed. Since #534
+  # the main ruleset no longer requires it and continue-on-error keeps it from failing the run;
+  # on a PR, where no Windows job runs, it passes at once so the name still reports.
+  # always(), so a failed or cancelled shard makes it fail rather than skip.
+  test-windows:
+    name: test (windows-latest)${{ github.event_name == 'workflow_dispatch' && ' (dispatch)' || '' }}
+    continue-on-error: true
+    needs: [quick, test-windows-shard, checks-windows]
+    if: always() && (github.event_name != 'workflow_dispatch' || inputs.only != 'screenshots')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # A pull request whose paths need no Windows run passes here, so the check still reports.
+      - name: Every Windows shard and check passed
+        run: |
+          test "${{ needs.quick.result }}" = success
+          if [ "${{ needs.quick.outputs.windows }}" != true ]; then
+            echo "Windows skipped by path (scripts/lib/ci-paths.ts)"; exit 0
+          fi
+          echo "shards: ${{ needs.test-windows-shard.result }}, checks: ${{ needs.checks-windows.result }}"
+          test "${{ needs.test-windows-shard.result }}" = success
+          test "${{ needs.checks-windows.result }}" = success
+
+  # The prints of every screen and the axe check on them, against the seeded demo (fake runtime: no
+  # real Claude, no network). #220 runs them apart from e2e; #291 runs each theme and language pair
+  # in a job of its own (the one job took 13-15 minutes).
+  screenshots-prints:
+    name: prints and axe ${{ matrix.theme }} ${{ matrix.lang }}
+    needs: [quick]
+    if: needs.quick.outputs.screenshots == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        theme: [light, dark]
+        lang: [pt-BR, en]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -203,33 +638,111 @@ jobs:
       - name: Chrome do runner
         run: google-chrome --version
 
-      - name: Prints (2 temas, 2 idiomas) e axe
+      - name: Prints (${{ matrix.theme }}, ${{ matrix.lang }}) e axe
         # record: the prints are the candidates for apps/desktop/visual-baseline. Once the
         # baselines are committed this becomes compare (docs/DECISIONS.md, "Visual baselines").
         env:
           VISUAL: record
+          SHOTS_THEME: ${{ matrix.theme }}
+          SHOTS_LANG: ${{ matrix.lang }}
         run: bun run demo:shots
 
+      - name: Publicar os prints
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: prints-${{ matrix.theme }}-${{ matrix.lang }}
+          path: apps/desktop/screenshots
+          if-no-files-found: ignore
+
+  # The end-to-end journeys, in both languages, against the same seeded demo.
+  # In three Playwright shards (#264). Playwright keeps a file's tests together on a shard, so each
+  # language's journeys are a file of their own (#292): shard 1 gets one language, shard 2 the other
+  # and shard 3 the BDD scenarios, instead of every journey on shard 1.
+  screenshots-e2e:
+    name: e2e journeys ${{ matrix.shard }}/3
+    needs: [quick]
+    # On main, nightly and by hand always; on a PR when it changes what the journeys read (#399:
+    # the screens, the journeys, their config, the demo). A failing journey gets Playwright's one
+    # CI retry (scripts/lib/e2e-config.ts) and nothing more.
+    if: needs.quick.outputs.e2e == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      # The demo seeds repositories and commits in them.
+      - name: Identidade do git
+        run: |
+          git config --global user.name "flightdeck-ci"
+          git config --global user.email "ci@flightdeck.invalid"
+
+      # The runner already has Chrome; the prints drive it through playwright-core and the e2e
+      # journeys through @playwright/test (no browser is downloaded).
+      - name: Chrome do runner
+        run: google-chrome --version
+
       - name: Jornadas e2e (2 idiomas)
-        # A failed journey leaves its trace, print and the text of the terminal in the prints
+        # A failed journey leaves its trace, print and the text of the terminal in the e2e-failures
         # artifact (E2E_FAILURES); the HTML report is its own artifact. CI retries a failure once.
         env:
           E2E_FAILURES: apps/desktop/screenshots/e2e-failures
-        run: bun run e2e
+        run: bun run e2e -- --shard=${{ matrix.shard }}/3
 
       # A journey that failed and passed on its retry shows as flaky in the report, never hidden.
       - name: Publicar o relatório e2e
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: relatorio-e2e
+          name: relatorio-e2e-${{ matrix.shard }}
           path: playwright-report
           if-no-files-found: ignore
 
-      - name: Publicar os prints
+      - name: Publicar as falhas e2e
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: prints
-          path: apps/desktop/screenshots
+          name: e2e-failures-${{ matrix.shard }}
+          path: apps/desktop/screenshots/e2e-failures
           if-no-files-found: ignore
+
+  # The check the main ruleset requires: it passes only when the prints and the journeys passed.
+  screenshots:
+    name: screenshots (prints, axe e e2e)
+    needs: [quick, screenshots-prints, screenshots-e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # A pull request whose paths need no screen run passes here, so the check still reports. The
+      # e2e result is every shard's: one failed shard fails it.
+      - name: The prints and the e2e journeys passed
+        run: |
+          test "${{ needs.quick.result }}" = success
+          echo "prints: ${{ needs.screenshots-prints.result }}, e2e: ${{ needs.screenshots-e2e.result }}"
+          if [ "${{ needs.quick.outputs.screenshots }}" != true ]; then
+            echo "Prints skipped by path (scripts/lib/ci-paths.ts)"
+          else
+            test "${{ needs.screenshots-prints.result }}" = success
+          fi
+          # The journeys run when the plan asks for them (#399), and then they must pass.
+          if [ "${{ needs.quick.outputs.e2e }}" = true ]; then
+            test "${{ needs.screenshots-e2e.result }}" = success
+          else
+            echo "Journeys skipped by path (scripts/lib/ci-paths.ts)"
+            test "${{ needs.screenshots-e2e.result }}" = skipped
+          fi

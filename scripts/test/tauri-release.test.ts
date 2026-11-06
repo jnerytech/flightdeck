@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = join(import.meta.dir, "..", "..");
@@ -23,7 +23,15 @@ describe("tauri-release: the release build of the app is made for size and speed
   });
 
   test("the only panic recovery is tokio's JoinError on the blocking pool, and the code on it cannot panic", () => {
-    const source = readFileSync(join(ROOT, "apps/desktop/src-tauri/src/lib.rs"), "utf8");
+    // Every Rust file of the app and of the assistant's crate (phase 40), not only lib.rs.
+    const rust = ["apps/desktop/src-tauri/src", "apps/desktop/src-tauri/assistant/src"].flatMap(
+      (dir) =>
+        readdirSync(join(ROOT, dir))
+          .filter((f) => f.endsWith(".rs"))
+          .map((f) => join(ROOT, dir, f)),
+    );
+    const source = rust.map((f) => readFileSync(f, "utf8")).join("\n");
+    expect(rust.length).toBeGreaterThan(5);
     expect(source).not.toContain("catch_unwind");
     // `spawn_blocking` turns a panic into an error string for the UI; `abort` would end the app
     // instead. Blocking work goes through `spawn_blocking_result`, which maps the JoinError to an

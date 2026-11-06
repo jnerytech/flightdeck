@@ -35,6 +35,12 @@ const inPalette = (role: "listbox" | "option") => {
   return palette ? within(palette).queryAllByRole(role) : [];
 };
 const sections = () => inPalette("listbox").map((list) => list.getAttribute("aria-label") ?? "");
+/**
+ * Every section of the default list is there. The palette fills in as the host's data arrives
+ * (sessions and hosts, then projects, then cards), so a count short of this one is a state it
+ * passes through: a wait for it can be missed by a poll when the machine is busy (issue #492).
+ */
+const listed = () => sections().length === 6;
 const options = () => inPalette("option").map((option) => option.getAttribute("aria-label") ?? "");
 const selected = () =>
   inPalette("option")
@@ -136,8 +142,15 @@ describe("paleta", () => {
   test("seções na ordem; os locais aparecem e filtram na hora, sem consultar o histórico", async () => {
     const { store } = await setup();
     await openPalette();
-    await settle(() => sections().length === 5);
-    expect(sections()).toEqual(["Sessões ao vivo", "Cards", "Projetos", "Hosts", "Ações"]);
+    await settle(listed);
+    expect(sections()).toEqual([
+      "Sessões ao vivo",
+      "Cards",
+      "Projetos",
+      "Hosts",
+      "Ações",
+      "Clientes",
+    ]);
     expect(options()).toEqual([
       "Gerenciada",
       "app-a",
@@ -149,11 +162,14 @@ describe("paleta", () => {
       "Ir para Precisa de você",
       "Ir para Projetos",
       "Alternar tema",
+      "Mudar para o modo simples",
       "Trocar idioma",
       "Ir para Configurações",
-      "Mostrar os atalhos de teclado",
       "Gerenciar clientes",
     ]);
+    // A section shows eight rows (issue #147): Adicionar um host and the shortcuts are behind
+    // "mais 2"; the clients have a section of their own, shown whole.
+    expect(screen.queryByRole("button", { name: "mais 2" })).not.toBeNull();
     // No screen for it on this host: no "Ir para Custos".
     expect(options()).not.toContain("Ir para Custos");
 
@@ -163,10 +179,25 @@ describe("paleta", () => {
     expect(store.getState().search).toBeNull();
   });
 
+  test("numa linha, o título ocupa a largura e o caminho encolhe primeiro (nunca o título quebra)", async () => {
+    await setup();
+    await openPalette();
+    await settle(listed);
+    const row = inPalette("option")[0] as HTMLElement;
+    // The row's state glyph (issue #147) comes first; the title and the path are its text.
+    const [title, detail] = [...row.querySelectorAll("span")].filter(
+      (span) => span.closest("[role='img']") === null,
+    ) as HTMLElement[];
+    expect(title?.className).toContain("shrink-0");
+    expect(title?.className).toContain("whitespace-nowrap");
+    expect(detail?.className).toContain("min-w-0");
+    expect(detail?.className).toContain("truncate");
+  });
+
   test("setas escolhem, Enter abre; Enter sem escolha busca no histórico, que chega depois sem apagar os locais", async () => {
     const { store } = await setup();
     await openPalette();
-    await settle(() => sections().length === 5);
+    await settle(listed);
     expect(selected()).toBeNull();
     await press("ArrowDown");
     expect(selected()).toBe("Gerenciada");
@@ -180,13 +211,46 @@ describe("paleta", () => {
 
     await openPalette();
     await type("flamingo");
-    expect(options()).toEqual(["flamingo"]);
+    // Text that matches no card offers one, last (issue #147).
+    expect(options()).toEqual(["flamingo", "Criar card “flamingo” em flamingo"]);
     await press("Enter");
     await settle(() => resultTexts().length === 1);
     expect(store.getState().search?.query).toBe("flamingo");
     expect(resultTexts()[0]).toContain("o flamingo de setembro");
-    expect(sections()).toEqual(["Projetos"]);
-    expect(options()).toEqual(["flamingo"]);
+    expect(sections()).toEqual(["Projetos", "Criar"]);
+    expect(options()).toEqual(["flamingo", "Criar card “flamingo” em flamingo"]);
+  });
+
+  test("a lista que muda sob o cursor não troca o item escolhido", async () => {
+    const { store } = await setup();
+    await openPalette();
+    await settle(listed);
+    await press("ArrowDown");
+    expect(selected()).toBe("Gerenciada");
+    // A session that sorts before the chosen one arrives (the list updates under the cursor).
+    const [host] = store.getState().hosts;
+    const first = host?.sessions[0];
+    expect(first).toBeDefined();
+    await act(async () => {
+      (store as unknown as { update(patch: object): void }).update({
+        hosts: [
+          {
+            ...host,
+            sessions: [
+              {
+                ...first,
+                id: "chegou-depois",
+                name: "Chegou depois",
+                updatedAt: "2099-01-01T00:00:00.000Z",
+              },
+              ...(host?.sessions ?? []),
+            ],
+          },
+        ],
+      });
+    });
+    await settle(() => options().includes("Chegou depois"));
+    expect(selected()).toBe("Gerenciada");
   });
 
   test("Tab abre as ações do item; cada ação leva à tela certa", async () => {
@@ -195,6 +259,8 @@ describe("paleta", () => {
       await openPalette();
       await settle(() => sections().includes("Ações"));
       await type(query);
+      // The entry is on screen before the keys move to it (a list that fills late moves the cursor).
+      await settle(() => options().some((option) => option.includes(query)));
       await press("ArrowDown");
       for (const key of keys) await press(key);
     };
@@ -259,6 +325,7 @@ describe("paleta", () => {
 
     await choose("app-a", "Enter");
     // The project's group heading in the list and the session's own, on the right.
+    await settle(() => screen.queryAllByRole("heading", { name: "app-a" }).length === 2);
     expect(screen.queryAllByRole("heading", { name: "app-a" })).toHaveLength(2);
 
     // Tab again (or Esc) leaves the actions for the list.
@@ -266,7 +333,7 @@ describe("paleta", () => {
     expect(options()).toEqual(["Abrir", "Abrir no terminal"]);
     await press("Escape");
     expect(dialog()).not.toBeNull();
-    expect(options()).toEqual(["Gerenciada"]);
+    expect(options()).toEqual(["Gerenciada", "Criar card “Gerenciada” em flamingo"]);
   });
 
   test("Ir para Custos só com a tela de Custos e um host que anuncia costs", async () => {
@@ -299,5 +366,68 @@ describe("paleta", () => {
     await press("ArrowDown");
     await press("Enter");
     expect(went).toEqual([{ kind: "costs" }]);
+  });
+});
+
+describe("paleta: criar card a partir do texto (issue #147)", () => {
+  /** Opens the palette on the board's project, types `text` and takes the create row. */
+  async function create(text: string) {
+    await openPalette();
+    await settle(() => sections().includes("Ações"));
+    await type(text);
+    await settle(() => sections().includes("Criar"));
+    await press("ArrowDown");
+    await press("Enter");
+  }
+
+  test("o texto sem card vira um card do projeto, e o board abre com ele", async () => {
+    await setup();
+    await create("tarefa nova do palette");
+    await settle(() => screen.queryByRole("heading", { name: "Board de flamingo" }) !== null);
+    await settle(() => screen.queryByText("tarefa nova do palette") !== null);
+    expect(dialog()).toBeNull();
+  });
+
+  test("#7 busca a issue pelo número e cria o card dela; o link usa a referência inteira", async () => {
+    const { store } = await setup();
+    const calls: Array<[string, unknown]> = [];
+    const real = store.hostCommand.bind(store);
+    store.hostCommand = (async (hostId: string, type: string, payload: unknown) => {
+      if (type === "issues.get") {
+        calls.push([type, payload]);
+        return { ref: "github:o/r#7" };
+      }
+      if (type === "issues.createCard") {
+        calls.push([type, payload]);
+        return { id: "novo" };
+      }
+      return real(hostId, type as never, payload as never);
+    }) as never;
+    await act(async () => {
+      await store.loadPalette();
+    });
+    const [host] = store.getState().hosts;
+    const [project] = store.getState().projects[host?.id ?? ""] ?? [];
+    await act(async () => {
+      (store as unknown as { update(patch: object): void }).update({
+        projects: { [host?.id ?? ""]: [{ ...project, issues: { provider: "github" } }] },
+        // The test daemon has no issue provider: the host says it has one.
+        hosts: store.getState().hosts.map((h) => ({
+          ...h,
+          hostInfo: h.hostInfo && {
+            ...h.hostInfo,
+            features: [...(h.hostInfo.features ?? []), "issues"],
+          },
+        })),
+      });
+    });
+    // The palette reloads the projects when it opens: keep the ones that have Issues connected.
+    store.loadPalette = (async () => {}) as never;
+    await create("#7");
+    await settle(() => calls.length === 2);
+    expect(calls.map(([type]) => type)).toEqual(["issues.get", "issues.createCard"]);
+    expect(calls[1]?.[1]).toMatchObject({ issueRef: "github:o/r#7" });
+    cleanup();
+    calls.length = 0;
   });
 });

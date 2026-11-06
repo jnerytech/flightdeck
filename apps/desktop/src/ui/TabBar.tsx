@@ -4,9 +4,11 @@ import {
   ArrowRight,
   BookOpen,
   Bot,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Circle,
+  CircleAlert,
+  LoaderCircle,
   type LucideIcon,
   MessageSquare,
   MoreHorizontal,
@@ -25,7 +27,10 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { IconTip } from "@/components/feedback/icon-tip";
+import { CacheTimer } from "@/components/hub/cache-timer";
 import { NAV_ICONS } from "@/components/nav-icons";
+import { TabOverflow } from "@/components/tabs/tab-overflow";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -36,9 +41,15 @@ import {
 import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import { breadcrumb } from "../lib/breadcrumb.ts";
-import type { Route } from "../lib/router.ts";
 import { isProd } from "../lib/ssh.ts";
-import { badgePulses, type TabKind, tabBadge, tabKind } from "../lib/tab-badge.ts";
+import {
+  badgePulses,
+  type TabBadge,
+  type TabKind,
+  tabBadge,
+  tabIdleSince,
+  tabKind,
+} from "../lib/tab-badge.ts";
 import type { Tab, Tabs } from "../lib/tabs.ts";
 
 const ICONS: Record<TabKind, LucideIcon> = {
@@ -73,14 +84,19 @@ const title = (tab: Tab, state: AppState, store: AppStore) => {
   return breadcrumb(tab.router.current, state, store.i18n.t).at(-1)?.label ?? "";
 };
 
+// The Ctrl+Tab switcher draws the same icon and title as the strip.
+export { ICONS as TAB_ICONS, title as tabTitle };
+
 /** The tabs of the window: icon and title, pin and close. The shortcuts live in `App`. */
-export function TabBar(props: {
-  store: AppStore;
-  state: AppState;
-  tabs: Tabs;
-  /** The split's own buttons, at the end of the bar of the first area. */
-  children?: ReactNode;
-}) {
+export function TabBar(
+  props: Readonly<{
+    store: AppStore;
+    state: AppState;
+    tabs: Tabs;
+    /** The split's own buttons, at the end of the bar of the first area. */
+    children?: ReactNode;
+  }>,
+) {
   const { store, state, tabs } = props;
   const { t } = store.i18n;
   useSyncExternalStore(tabs.subscribe, () => tabs.version);
@@ -179,6 +195,9 @@ export function TabBar(props: {
             const Icon = ICONS[kind];
             const selected = tab.id === tabs.activeId;
             const badge = tabBadge(tab.router.current, state);
+            const cacheSince = tabIdleSince(tab.router.current, state);
+            const badgeWords = badge ? t(`tabs.badge.${badge}`) : "";
+            const pinnedLabel = badge ? `${label}, ${badgeWords}` : label;
             const ssh = sshOf(tab, store);
             // A production server is easy to mistake for another: its tab gets a red border.
             const prod = ssh ? isProd(ssh.tags) : undefined;
@@ -188,10 +207,10 @@ export function TabBar(props: {
                 key={tab.id}
                 role="presentation"
                 {...(prod === undefined ? {} : { "data-prod": String(prod) })}
+                {...(tab.pinned ? { "data-pinned": "true" } : {})}
                 {...(dropOn?.id === tab.id ? { "data-drop": dropOn.side } : {})}
                 className={cn(
-                  "tab-item group flex items-center rounded-t-md border border-b-0 text-sm has-[[role=tab]:focus-visible]:ring-2 has-[[role=tab]:focus-visible]:ring-ring",
-                  selected ? "bg-background" : "bg-muted/40 text-muted-foreground",
+                  "tab-item group relative text-sm has-[[role=tab]:focus-visible]:ring-2 has-[[role=tab]:focus-visible]:ring-ring",
                   prod && "border-2 border-destructive",
                   dropOn?.id === tab.id &&
                     (dropOn.side === "before"
@@ -199,86 +218,80 @@ export function TabBar(props: {
                       : "border-r-2 border-r-primary"),
                 )}
               >
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={selected}
-                  data-preview={tab.preview}
-                  {...(tab.preview ? { "aria-description": t("tabs.preview") } : {})}
-                  data-tab-id={tab.id}
-                  title={label}
-                  aria-keyshortcuts={`${tab.pinned ? "" : "Delete "}${MOVE_KEYS}`}
-                  {...(tab.pinned ? { "aria-label": label } : {})}
-                  className="flex min-w-0 flex-1 items-center gap-1.5 rounded-t-md px-2 py-1.5 outline-none hover:bg-accent/60"
-                  onClick={() => tabs.activate(tab.id)}
-                  onDoubleClick={() => tabs.commit(tab.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Delete") store.closeTab(tabs, tab.id);
-                    else if (
-                      e.ctrlKey &&
-                      e.shiftKey &&
-                      (e.key === "ArrowLeft" || e.key === "ArrowRight")
-                    ) {
-                      e.preventDefault();
+                <IconTip label={label}>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    data-preview={tab.preview}
+                    {...(tab.preview ? { "aria-description": t("tabs.preview") } : {})}
+                    data-tab-id={tab.id}
+                    aria-keyshortcuts={`${tab.pinned ? "" : "Delete "}${MOVE_KEYS}`}
+                    // A pinned tab shows no title, so its name is set here, with the badge's words.
+                    {...(tab.pinned ? { "aria-label": pinnedLabel } : {})}
+                    className="tab-button"
+                    onClick={() => tabs.activate(tab.id)}
+                    onDoubleClick={() => tabs.commit(tab.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Delete") store.closeTab(tabs, tab.id);
+                      else if (
+                        e.ctrlKey &&
+                        e.shiftKey &&
+                        (e.key === "ArrowLeft" || e.key === "ArrowRight")
+                      ) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        moveByKey(tab, e.key === "ArrowLeft" ? -1 : 1);
+                      }
+                    }}
+                    onAuxClick={(e) => {
+                      // The middle button closes a tab (App opens items in a new tab with it).
+                      if (e.button !== 1) return;
                       e.stopPropagation();
-                      moveByKey(tab, e.key === "ArrowLeft" ? -1 : 1);
-                    }
-                  }}
-                  onAuxClick={(e) => {
-                    // The middle button closes a tab (App opens items in a new tab with it).
-                    if (e.button !== 1) return;
-                    e.stopPropagation();
-                    store.closeTab(tabs, tab.id);
-                  }}
-                  draggable
-                  onDragStart={() => {
-                    dragged.current = tab.id;
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    const from = tabs.tabs.findIndex((other) => other.id === dragged.current);
-                    if (from < 0 || tabs.tabs[from]?.id === tab.id) return setDropOn(null);
-                    setDropOn({
-                      id: tab.id,
-                      side: from < tabs.tabs.indexOf(tab) ? "after" : "before",
-                    });
-                  }}
-                  onDragEnd={() => {
-                    dragged.current = null;
-                    setDropOn(null);
-                  }}
-                  onDrop={() => {
-                    const id = dragged.current;
-                    dragged.current = null;
-                    setDropOn(null);
-                    if (id) tabs.move(id, tabs.tabs.indexOf(tab));
-                  }}
-                >
-                  <Icon data-icon={kind} className="size-4 shrink-0" aria-hidden />
-                  {!tab.pinned && (
-                    <span className={cn("truncate", tab.preview && "italic")}>{label}</span>
-                  )}
-                  {!tab.pinned &&
-                    ssh?.tags.map((tag) => (
-                      <span key={tag} className="shrink-0 rounded bg-muted px-1 text-xs">
-                        {tag}
-                      </span>
-                    ))}
-                  {badge && (
-                    <span
-                      role="img"
-                      data-badge={badge}
-                      data-compact="true"
-                      aria-label={t(`tabs.badge.${badge}`)}
-                      title={t(`tabs.badge.${badge}`)}
-                      className={cn(
-                        "size-2 shrink-0 rounded-full",
-                        badge === "needs-you" ? "bg-status-needs-you" : "bg-muted-foreground",
-                        badgePulses(badge) && "motion-safe:animate-pulse",
-                      )}
-                    />
-                  )}
-                </button>
+                      store.closeTab(tabs, tab.id);
+                    }}
+                    draggable
+                    onDragStart={() => {
+                      dragged.current = tab.id;
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      const from = tabs.tabs.findIndex((other) => other.id === dragged.current);
+                      if (from < 0 || tabs.tabs[from]?.id === tab.id) return setDropOn(null);
+                      setDropOn({
+                        id: tab.id,
+                        side: from < tabs.tabs.indexOf(tab) ? "after" : "before",
+                      });
+                    }}
+                    onDragEnd={() => {
+                      dragged.current = null;
+                      setDropOn(null);
+                    }}
+                    onDrop={() => {
+                      const id = dragged.current;
+                      dragged.current = null;
+                      setDropOn(null);
+                      if (id) tabs.move(id, tabs.tabs.indexOf(tab));
+                    }}
+                  >
+                    <Icon data-icon={kind} className="size-3.5 shrink-0" aria-hidden />
+                    {!tab.pinned && (
+                      <span className={cn("truncate", tab.preview && "italic")}>{label}</span>
+                    )}
+                    {!tab.pinned &&
+                      ssh?.tags.map((tag) => (
+                        <span key={tag} className="shrink-0 rounded bg-muted px-1 text-xs">
+                          {tag}
+                        </span>
+                      ))}
+                    {badge && <TabBadgeGlyph badge={badge} label={t(`tabs.badge.${badge}`)} />}
+                  </button>
+                </IconTip>
+                {cacheSince && (
+                  <span className="absolute top-0.5 left-0.5">
+                    <CacheTimer store={store} since={cacheSince} compact />
+                  </span>
+                )}
                 {!tab.pinned && (
                   <button
                     type="button"
@@ -312,20 +325,25 @@ export function TabBar(props: {
         </Button>
       )}
       {compact && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="tab-tool" aria-label={t("tabs.all")}>
-              <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="max-h-96 overflow-y-auto">
-            {tabs.tabs.map((tab) => (
-              <DropdownMenuItem key={tab.id} onSelect={() => tabs.activate(tab.id)}>
-                {title(tab, state, store)}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <TabOverflow
+          t={t}
+          rows={tabs.tabs.map((tab) => {
+            const route = tab.router.current;
+            const kind = tabKind(route);
+            const host = "host" in route ? route.host : undefined;
+            return {
+              id: tab.id,
+              title: title(tab, state, store),
+              host: state.hosts.find((h) => h.id === host)?.name ?? "",
+              icon: ICONS[kind],
+              kind,
+              current: tab.id === tabs.activeId,
+              pinned: tab.pinned,
+            };
+          })}
+          onPick={(id) => tabs.activate(id)}
+          onClose={(id) => store.closeTab(tabs, id)}
+        />
       )}
       {active && (
         <DropdownMenu>
@@ -382,5 +400,36 @@ export function TabBar(props: {
         {announcement}
       </div>
     </div>
+  );
+}
+
+/** Each badge's shape: a sign besides its color (issue #172, WCAG 1.4.1). */
+const BADGE_GLYPHS: Record<NonNullable<TabBadge>, { icon: LucideIcon; className: string }> = {
+  "needs-you": { icon: CircleAlert, className: "text-status-needs-you" },
+  running: { icon: LoaderCircle, className: "text-muted-foreground" },
+  unread: { icon: Circle, className: "text-primary [&_svg]:fill-current" },
+};
+
+/**
+ * A tab's badge: a glyph named in words (for screen readers and in its tooltip), never a text
+ * pill, so the tab's title keeps the width.
+ */
+export function TabBadgeGlyph(props: Readonly<{ badge: NonNullable<TabBadge>; label: string }>) {
+  const glyph = BADGE_GLYPHS[props.badge];
+  const Glyph = glyph.icon;
+  return (
+    <span
+      role="img"
+      data-badge={props.badge}
+      aria-label={props.label}
+      title={props.label}
+      className={cn(
+        "tab-badge",
+        glyph.className,
+        badgePulses(props.badge) && "motion-safe:animate-spin",
+      )}
+    >
+      <Glyph aria-hidden="true" className={props.badge === "unread" ? "size-2.5" : "size-3.5"} />
+    </span>
   );
 }

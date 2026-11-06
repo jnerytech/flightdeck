@@ -1,28 +1,35 @@
+import { MissingToolsCards } from "@/components/hosts/missing-tools-cards";
 import { Page, Section } from "@/components/layout/page";
 import { Inline, Stack } from "@/components/layout/stack";
+import { ShortcutKeys } from "@/components/shortcuts/keycap";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n/context";
 import type { AppState, AppStore } from "../lib/app-store.ts";
+import { newSessionHost } from "../lib/new-session-host.ts";
 import { basename } from "../lib/paths.ts";
 import type { Route } from "../lib/router.ts";
+import { useStoreSlice } from "../lib/use-store.ts";
 
 const RECENT = 5;
 const SHORTCUTS = [
-  ["Ctrl+K", "start.shortcut.search"],
-  ["Ctrl+T", "start.shortcut.newTab"],
-  ["Ctrl+Shift+T", "start.shortcut.reopen"],
-  ["Ctrl+\\", "start.shortcut.split"],
+  [["Mod", "K"], "start.shortcut.search"],
+  [["Mod", "T"], "start.shortcut.newTab"],
+  [["Mod", "Shift", "T"], "start.shortcut.reopen"],
+  [["Mod", "\\"], "start.shortcut.split"],
 ] as const;
 
 /** What an area with no tab shows: where to begin, the latest sessions and the main shortcuts. */
-export function StartScreen(props: {
-  store: AppStore;
-  hosts: AppState["hosts"];
-  go: (route: Route) => void;
-}) {
+export function StartScreen(
+  props: Readonly<{
+    store: AppStore;
+    hosts: AppState["hosts"];
+    go: (route: Route) => void;
+  }>,
+) {
   const t = useT();
   const { hosts, go } = props;
-  const firstHost = hosts.find((host) => host.status === "online");
+  const { deps } = useStoreSlice(props.store, ["deps"]);
+  const firstHost = newSessionHost(hosts, props.store.getState().selected);
   const recent = hosts
     .flatMap((host) => host.sessions.map((session) => ({ host: host.id, session })))
     .sort((a, b) => b.session.updatedAt.localeCompare(a.session.updatedAt))
@@ -30,6 +37,7 @@ export function StartScreen(props: {
   return (
     <Page title={t("start.title")} subtitle={t("start.subtitle")}>
       <Stack gap={6}>
+        <MissingToolsCards store={props.store} hosts={hosts} deps={deps} />
         <Inline gap={2}>
           {firstHost && (
             <Button
@@ -40,6 +48,9 @@ export function StartScreen(props: {
             >
               {t("sidebar.newSession")}
             </Button>
+          )}
+          {hosts.length === 0 && (
+            <Button onClick={() => go({ name: "add-host" })}>{t("start.addHost")}</Button>
           )}
           <Button variant="outline" onClick={() => go({ name: "hub" })}>
             {t("sidebar.sessions")}
@@ -68,8 +79,8 @@ export function StartScreen(props: {
         <Section title={t("start.shortcuts")}>
           <Stack gap={1} as="ul" label={t("start.shortcuts")}>
             {SHORTCUTS.map(([keys, label]) => (
-              <li key={keys}>
-                <kbd className="keycap">{keys}</kbd> {t(label)}
+              <li key={label}>
+                <ShortcutKeys keys={keys} /> {t(label)}
               </li>
             ))}
           </Stack>

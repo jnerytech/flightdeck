@@ -11,8 +11,12 @@ const { Settings } = await import("../src/ui/Settings.tsx");
 setDefaultTimeout(30_000);
 afterEach(cleanup);
 
-function setup(updater = true) {
-  const store = new AppStore(memoryPlatform(false, "pt-BR").platform, { baseDelayMs: 600_000 });
+function setup(updater = true, logs = false) {
+  const mem = memoryPlatform(false, "pt-BR");
+  if (logs) {
+    mem.platform.logs = { write: async () => {}, tail: async () => [], openFolder: async () => {} };
+  }
+  const store = new AppStore(mem.platform, { baseDelayMs: 600_000 });
   store.i18n.start();
   const settings = { ...store.getState().settings, updaterSupported: updater };
   render(
@@ -25,6 +29,7 @@ function setup(updater = true) {
       appUpdate={{ upToDate: false } as never}
       onCheckUpdate={() => {}}
       onNotifyUpdates={() => {}}
+      onAutoUpdate={() => {}}
       theme="system"
       onTheme={() => {}}
       density="comfortable"
@@ -51,8 +56,17 @@ describe("configuracoes-trilho: the rail and the search", () => {
       "Janela",
       "Atualizações",
       "Atalho global",
+      "Assistente de IA",
       "Webhooks",
     ]);
+  });
+
+  test("the diagnostics section is on the rail only where the app has a log file", () => {
+    setup(true, true);
+    expect(items()).toContain("Diagnóstico");
+    cleanup();
+    setup();
+    expect(items()).not.toContain("Diagnóstico");
   });
 
   test("a section the app cannot offer is not on the rail", () => {
@@ -106,6 +120,6 @@ describe("configuracoes-trilho: the rail and the search", () => {
     await act(async () => {
       fireEvent.change(search, { target: { value: "" } });
     });
-    expect(items()).toHaveLength(6);
+    expect(items()).toHaveLength(7);
   });
 });

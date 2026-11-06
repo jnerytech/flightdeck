@@ -1,0 +1,219 @@
+/** Which projects may bring their own hooks, MCP servers and settings into a managed session (issue #196). */
+import type { Database } from "bun:sqlite";
+import { readFile, stat } from "node:fs/promises";
+import { dirname, join, resolve, sep } from "node:path";
+import { isInside, rootNames, samePath } from "../paths.ts";
+
+export type TrustSource = "person" | "migration";
+
+export interface TrustRecord {
+  path: string;
+  trustedAt: string;
+  source: TrustSource;
+}
+
+/** What a session is told about its folder: whether the repo's own configuration may load. */
+export interface SessionTrust {
+  trusted: boolean;
+  /** The trusted main checkout of a worktree: its configuration is read from there, never from the branch. */
+  configRoot?: string;
+}
+
+export interface ProjectTrustOptions {
+  /** The main checkout a worktree belongs to, or null when `cwd` is not a worktree. */
+  configRootOf?: (cwd: string) => string | null;
+  /** The roots the host allows: a trust record on a root, or above one, grants nothing by prefix. */
+  roots?: () => readonly string[];
+  now?: () => Date;
+  log?: (line: string) => void;
+  /** Reads a `.git` file (a test seam: a file that cannot be read is a boundary, not a crash). */
+  readText?: (path: string) => Promise<string>;
+  /** Whether two folders are the same one (case blind where the file system is): a test seam, `samePath` by default. */
+  sameFolder?: (a: string, b: string) => boolean;
+}
+
+interface Row {
+  path: string;
+  trusted_at: string;
+  source: TrustSource;
+  scope: "tree" | "exact";
+}
+
+/** Where a card's worktree is made: inside the repo, in a folder this name gives away. */
+const WORKTREE_AREAS = [
+  `${sep}.flightdeck${sep}worktrees${sep}`,
+  `${sep}.claude${sep}worktrees${sep}`,
+];
+
+/** The repo a path of a worktree area belongs to (what comes before the area), or null. */
+function repoOfWorktreeArea(path: string): string | null {
+  const here = `${resolve(path)}${sep}`;
+  const found = WORKTREE_AREAS.map((area) => here.indexOf(area)).filter((at) => at >= 0);
+  return found.length > 0 ? here.slice(0, Math.min(...found)) || sep : null;
+}
+
+/** What a folder's git boundary says: the main checkout of a worktree, or none for a nested clone. */
+interface Boundary {
+  main: string | null;
+}
+
+/** The person's decision, per folder, kept by the daemon: off until they say so. */
+export class ProjectTrust {
+  private readonly boundaries = new Map<string, Boundary>();
+  /** The ticket of the look whose answer each folder holds: an older one that finishes later stores nothing. */
+  private readonly stored = new Map<string, number>();
+  private scans = 0;
+  /** The real paths of the roots (a root named by a symlink is one place under two names), read by `refreshRoots`. */
+  private realRoots: string[] = [];
+
+  constructor(
+    private readonly db: Database,
+    private readonly opts: ProjectTrustOptions = {},
+  ) {}
+
+  /** Whether `cwd` is a trusted folder or lies inside one. */
+  isTrusted(cwd: string): boolean {
+    return this.via(cwd) !== null;
+  }
+
+  /** The record that makes `cwd` trusted (its own folder or the nearest one above), or null. */
+  via(cwd: string): string | null {
+    const here = resolve(cwd);
+    const roots = [...(this.opts.roots?.() ?? []).map((root) => resolve(root)), ...this.realRoots];
+    const granting = this.rows()
+      .filter((row) => {
+        if (row.scope === "exact") return (this.opts.sameFolder ?? samePath)(row.path, here);
+        // A root, or a folder that holds one, would trust every clone made inside it.
+        if (roots.some((root) => isInside(row.path, root))) return false;
+        return isInside(row.path, here);
+      })
+      .sort((a, b) => b.path.length - a.path.length);
+    return granting[0]?.path ?? null;
+  }
+
+  /** Trusts a folder and everything inside it; a repeat changes nothing. */
+  trust(path: string, source: TrustSource = "person", scope: "tree" | "exact" = "tree"): void {
+    const at = resolve(path);
+    const done = this.db
+      .query(
+        "INSERT OR IGNORE INTO project_trust (path, trusted_at, source, scope) VALUES (?, ?, ?, ?)",
+      )
+      .run(at, (this.opts.now?.() ?? new Date()).toISOString(), source, scope);
+    if (done.changes > 0) this.opts.log?.(`project trust: trusted ${at} (${source})`);
+  }
+
+  revoke(path: string): void {
+    const at = resolve(path);
+    const done = this.db.query("DELETE FROM project_trust WHERE path = ?").run(at);
+    if (done.changes > 0) this.opts.log?.(`project trust: revoked ${at}`);
+  }
+
+  list(): TrustRecord[] {
+    return this.rows().map((row) => ({
+      path: row.path,
+      trustedAt: row.trusted_at,
+      source: row.source,
+    }));
+  }
+
+  /**
+   * What a session in `cwd` may load. A worktree is read from its main checkout and is trusted only
+   * if that is: a branch, trusted or not, never brings its own hooks.
+   */
+  /**
+   * Looks at the git boundaries between `cwd` and the record that covers it, once, so `sessionTrust`
+   * stays synchronous. A `.git` directory below the record is a nested clone (not covered); a `.git`
+   * file is a worktree or a submodule, and a worktree is read from its main checkout.
+   */
+  async prepare(cwd: string): Promise<void> {
+    await this.refreshRoots();
+    const here = resolve(cwd);
+    await this.scan(here);
+    // The main checkout a worktree area is read from has boundaries of its own: a clone nested in
+    // a trusted project is not covered by it, and neither are the areas inside that clone.
+    const main = this.opts.configRootOf?.(here) ?? repoOfWorktreeArea(here);
+    if (main && resolve(main) !== here) await this.scan(resolve(main));
+  }
+
+  /** Looks at the folders of the sessions that exist (once each), as the daemon boots. */
+  async prepareSessions(sessions: ReadonlyArray<{ cwd: string }>): Promise<void> {
+    const folders = new Set(sessions.map((session) => session.cwd));
+    await Promise.all([...folders].map((cwd) => this.prepare(cwd)));
+  }
+
+  /** Reads the real paths of the roots, so `via` (synchronous) knows them. */
+  async refreshRoots(): Promise<void> {
+    this.realRoots = await rootNames(this.opts.roots?.() ?? []);
+  }
+
+  private async scan(here: string): Promise<void> {
+    // Judged first, stored after: the answer a session was given stays until the new one replaces it.
+    // Two looks at one folder can overlap: the one that started last has read the later state, so it
+    // is the one that is kept, whichever finishes last (issue #415). One that finishes first still
+    // stores, so its caller never goes on with nothing stored; a newer one replaces it.
+    const ticket = ++this.scans;
+    const found = await this.boundaryOf(here);
+    if ((this.stored.get(here) ?? 0) > ticket) return;
+    this.stored.set(here, ticket);
+    if (found) this.boundaries.set(here, found);
+    else this.boundaries.delete(here);
+  }
+
+  private async boundaryOf(here: string): Promise<{ main: string | null } | null> {
+    const via = this.via(here);
+    if (via === null) return null;
+    const top = resolve(via);
+    for (let dir = here; dir !== top && isInside(top, dir); dir = dirname(dir)) {
+      const git = join(dir, ".git");
+      const info = await stat(git).catch(() => null);
+      if (!info) continue;
+      if (info.isDirectory()) return { main: null };
+      const text = await (this.opts.readText ?? ((path) => readFile(path, "utf8")))(git).catch(
+        () => "",
+      );
+      // Read by lines, not by a pattern: `\s*(.+)` backtracks on a long run of spaces.
+      const line = text.split(/\r?\n/).find((entry) => entry.startsWith("gitdir:"));
+      const gitdir = line?.slice("gitdir:".length).trim();
+      return { main: gitdir ? this.mainOfGitdir(gitdir, dir) : null };
+    }
+    return null;
+  }
+
+  /** `<main>/.git/worktrees/<name>` names its main checkout; a submodule's gitdir does not. */
+  private mainOfGitdir(gitdir: string, from: string): string | null {
+    const dir = resolve(from, gitdir);
+    const marker = `${sep}.git${sep}worktrees${sep}`;
+    const at = `${dir}${sep}`.indexOf(marker);
+    return at > 0 ? dir.slice(0, at) : null;
+  }
+
+  sessionTrust(cwd: string): SessionTrust {
+    const main = this.opts.configRootOf?.(cwd) ?? repoOfWorktreeArea(cwd);
+    if (main) {
+      const judged = this.judge(main);
+      return { trusted: judged.trusted, configRoot: judged.root };
+    }
+    const boundary = this.boundaries.get(resolve(cwd));
+    if (boundary?.main)
+      return { trusted: this.isTrusted(boundary.main), configRoot: boundary.main };
+    if (boundary) return { trusted: false };
+    return { trusted: this.isTrusted(cwd) };
+  }
+
+  /**
+   * Whether a folder is trusted once its own git boundary is counted (a nested clone is not covered)
+   * and the checkout its configuration is read from: a worktree is read from its main checkout.
+   */
+  private judge(folder: string): { trusted: boolean; root: string } {
+    const boundary = this.boundaries.get(resolve(folder));
+    if (boundary?.main) return { trusted: this.isTrusted(boundary.main), root: boundary.main };
+    if (boundary) return { trusted: false, root: folder };
+    return { trusted: this.isTrusted(folder), root: folder };
+  }
+
+  private rows(): Row[] {
+    return this.db
+      .query<Row, []>("SELECT path, trusted_at, source, scope FROM project_trust ORDER BY path")
+      .all();
+  }
+}

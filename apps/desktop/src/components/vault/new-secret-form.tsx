@@ -18,12 +18,14 @@ const splitTags = (text: string): string[] =>
     .filter(Boolean);
 
 /** Creates a secret by hand, generates an SSH key, or imports a key file. */
-export function NewSecretForm(props: {
-  store: AppStore;
-  onClose(): void;
-  /** The tags a new secret starts with: the selected client's vault tag (phase 29). */
-  defaultTags?: string;
-}) {
+export function NewSecretForm(
+  props: Readonly<{
+    store: AppStore;
+    onClose(): void;
+    /** The tags a new secret starts with: the selected client's vault tag (phase 29). */
+    defaultTags?: string;
+  }>,
+) {
   const t = useT();
   const { store } = props;
   const id = useId();
@@ -77,7 +79,7 @@ export function NewSecretForm(props: {
       <label className="flex flex-col gap-1 text-sm">
         {t("vault.typeLabel")}
         <select
-          className="h-9 rounded-md border bg-transparent px-2"
+          className="h-9 rounded-md border border-input bg-transparent px-2"
           value={type}
           onChange={(event) => setType(event.target.value as SecretType)}
         >

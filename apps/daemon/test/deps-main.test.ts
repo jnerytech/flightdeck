@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as protocol from "@flightdeck/protocol";
 import { installFakeCli } from "../../../scripts/test/fake-cli.ts";
@@ -21,6 +21,19 @@ describe("deps-main: the running daemon looks for the programs on its own PATH",
     }
     const dir = tempDir("fd-deps-main-");
     const file = join(dir, "config.json");
+    // Its own home, for the daemon that reads the hooks from `~/.claude/settings.json`: the shared test
+    // home holds whatever an earlier test installed there.
+    const home = join(dir, "home");
+    mkdirSync(home);
+    const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+    process.env.HOME = home;
+    process.env.USERPROFILE = home;
+    cleanups.push(() => {
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    });
     writeFileSync(
       file,
       JSON.stringify({
@@ -58,11 +71,18 @@ describe("deps-main: the running daemon looks for the programs on its own PATH",
     expect(by("gh")).toMatchObject({ state: "ok" });
     // The folder of this test is allowed, and no unit or hook exists in the temporary home.
     expect(by("folders")).toMatchObject({ state: "ok" });
-    expect(by("hooks")?.state).not.toBe("ok");
+    expect(by("hooks")?.state).toBe("missing");
   });
 
   /** Starts a daemon with this config extra, asks deps.check and returns the answer's rows. */
-  async function checkWith(extra: Record<string, unknown>, tag: string) {
+  async function checkWith(
+    extra: Record<string, unknown>,
+    tag: string,
+    options: Record<string, unknown> = {
+      serviceInstalled: async () => true,
+      linger: async () => "on",
+    },
+  ) {
     const dir = tempDir(`fd-deps-main-${tag}-`);
     const file = join(dir, "config.json");
     writeFileSync(
@@ -80,7 +100,7 @@ describe("deps-main: the running daemon looks for the programs on its own PATH",
       { command: "start", config: file, runtime: "fake" },
       {},
       { log: () => {}, error: () => {} },
-      { serviceInstalled: async () => true, linger: async () => "on" },
+      options,
     );
     cleanups.push(() => daemon.stop());
     const ws = new WebSocket(daemon.url);
@@ -124,5 +144,32 @@ describe("deps-main: the running daemon looks for the programs on its own PATH",
     const by = await checkWith({ claude: { executablePath: gone } }, "gone");
     expect(by("claude")).toMatchObject({ state: "missing" });
     expect(by("claudeAuth")).toMatchObject({ state: "na" });
+  });
+
+  test("deps.check asks the service manager it was given, not the real one (HD-M5)", async () => {
+    const calls: string[][] = [];
+    const by = await checkWith({}, "ctx", {
+      serviceContext: (dryRun: boolean) => ({
+        platform: "linux",
+        home: "/h",
+        user: "u",
+        command: ["/h/flightdeckd"],
+        systemRoot: "",
+        tempDir: "/tmp",
+        dryRun,
+        exec: async (cmd: string[]) => {
+          calls.push(cmd);
+          return {
+            code: 0,
+            stdout: cmd.includes("loginctl") ? "Linger=no\n" : "ExecStart=/h/flightdeckd\n",
+          };
+        },
+        writeFile: () => {},
+        removeFile: () => {},
+        which: () => null,
+      }),
+    });
+    expect(calls.length).toBeGreaterThan(0);
+    expect(by("service")).toBeDefined();
   });
 });

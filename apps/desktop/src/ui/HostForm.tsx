@@ -5,6 +5,7 @@ import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Field, Form, FormActions } from "@/components/layout/form";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/context";
+import { pairingErrorText } from "../lib/pairing-text.ts";
 
 export interface HostDraft {
   name: string;
@@ -31,13 +32,15 @@ export function draftFromLink(url: string, name: string, token: string): HostDra
  * Adds a host from a pasted `flightdeck://` link or from address, port and token. Saving goes
  * through `onSubmit`, which tests the connection first.
  */
-export function HostForm(props: {
-  initial?: HostDraft;
-  notice?: string;
-  error?: string | null;
-  /** May return a promise: the form is busy until it settles (the connection is tested). */
-  onSubmit(draft: HostDraft): unknown;
-}) {
+export function HostForm(
+  props: Readonly<{
+    initial?: HostDraft;
+    notice?: string;
+    error?: string | null;
+    /** May return a promise: the form is busy until it settles (the connection is tested). */
+    onSubmit(draft: HostDraft): unknown;
+  }>,
+) {
   const t = useT();
   const [busy, run] = useBusy();
   const [draft, setDraft] = useState<HostDraft>(props.initial ?? emptyDraft());
@@ -77,7 +80,7 @@ export function HostForm(props: {
             onChange={(e) => {
               setLink(e.target.value);
               const parsed = parsePairingLink(e.target.value);
-              setLinkError(parsed.ok || !e.target.value ? null : parsed.error);
+              setLinkError(parsed.ok || !e.target.value ? null : pairingErrorText(t, parsed.error));
               if (parsed.ok) {
                 setDraft(draftFromLink(parsed.value.url, parsed.value.name, parsed.value.token));
               }
@@ -101,7 +104,7 @@ export function HostForm(props: {
             {...control}
             value={draft.address}
             onChange={set("address")}
-            placeholder="100.64.0.1"
+            placeholder="100.64.0.1" // NOSONAR: an example address in a placeholder
           />
         )}
       </Field>

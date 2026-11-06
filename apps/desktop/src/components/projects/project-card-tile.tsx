@@ -3,7 +3,9 @@ import { usd } from "../../lib/costs.ts";
 import type { ProjectCard } from "../../lib/project-cards.ts";
 
 /** One project as a card: its name, host, branch, live sessions, last activity and the week's cost. */
-export function ProjectCardTile(props: { store: AppStore; card: ProjectCard; onOpen(): void }) {
+export function ProjectCardTile(
+  props: Readonly<{ store: AppStore; card: ProjectCard; onOpen(): void }>,
+) {
   const { store, card } = props;
   const { t } = store.i18n;
   return (

@@ -11,6 +11,22 @@ const enT = translator("en");
 const ptT = translator("pt-BR");
 
 const REASONS = [
+  "runtime_unavailable",
+  "runtime_unsupported",
+  "opencode_unsafe_global",
+  "opencode_config_outranks",
+  "opencode_saved_rules",
+  "opencode_preflight_failed",
+  "opencode_changed",
+  "opencode_permissions_overridden",
+  "opencode_auth_required",
+  "opencode_disabled",
+  "opencode_missing",
+  "opencode_version_failed",
+  "opencode_v1",
+  "opencode_project_config_not_disabled",
+  "opencode_canary_failed",
+  "opencode_scope_mismatch",
   "bypass_not_allowed",
   "bypass_confirm",
   "card_scope_unknown",
@@ -136,6 +152,7 @@ const REASONS = [
   "bg_not_found",
   "bg_no_message_path",
   "transport_refused",
+  "trust_root_refused",
   "secret_expired",
   "vault_full",
   "vault_action_unknown",
@@ -249,6 +266,7 @@ const REASONS = [
   "action_ssh_env_value",
   "review_path_outside",
   "review_target_invalid",
+  "branch_invalid",
   "review_file_missing",
   "review_file_big",
   "review_file_binary",
@@ -258,6 +276,7 @@ const REASONS = [
   "review_undo_confirm",
   "review_undo_nothing",
   "review_path_link",
+  "review_file_secret",
   "review_comment_empty",
   "review_side_missing",
   "review_lines_outside",
@@ -318,6 +337,7 @@ const REASONS = [
   "update_manifest_unchecked",
   "update_manifest_no_binary",
   "perm_rule_other_tool",
+  "perm_rule_too_broad",
   "perm_rule_content_invalid",
   "perm_destination_denied",
   "perm_mode_denied",
@@ -374,6 +394,8 @@ const REASONS = [
   "terminal_enable_confirm",
   "central_confirm",
   "permission_request_closed",
+  "hold_required",
+  "input_changed",
   "update_needs_service",
   "update_signature_failed",
 ];
@@ -390,6 +412,22 @@ describe("recusas-daemon: the daemon's refusals about folders and sessions", () 
       expect(typeof (en.daemonRefusal as Record<string, string>)[reason]).toBe("string");
       expect(typeof (ptBR.daemonRefusal as Record<string, string>)[reason]).toBe("string");
     }
+  });
+
+  test("trusting a project says why it was refused and what to do, never the generic text (#592)", () => {
+    const root = { reason: "trust_root_refused" };
+    const near = { reason: "transport_refused" };
+    expect([
+      refusalText("invalid_state", "raw", enT, root),
+      refusalText("invalid_state", "raw", ptT, root),
+      refusalText("forbidden", "raw", enT, near),
+      refusalText("forbidden", "raw", ptT, near),
+    ]).toEqual([
+      "This folder is an allowed folder that holds several projects, or a folder above one: trust the project's own folder instead.",
+      "Esta pasta é uma pasta permitida com vários projetos, ou fica acima de uma: confie na pasta do próprio projeto.",
+      "This only works over a near connection: this computer (loopback) or Tailscale, which WireGuard encrypts. For a WSL host, add it as ws://localhost:<port> (WSL forwards the port) or by its Tailscale address.",
+      "Isto só funciona por uma conexão próxima: este computador (loopback) ou a Tailscale, que o WireGuard cifra. Para um host WSL, adicione-o como ws://localhost:<porta> (o WSL repassa a porta) ou pelo endereço da Tailscale.",
+    ]);
   });
 
   test("a reason becomes the whole sentence, with its params, in the app's language", () => {

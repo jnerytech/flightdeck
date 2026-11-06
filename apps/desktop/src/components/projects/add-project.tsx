@@ -23,12 +23,14 @@ import { FolderPicker } from "@/ui/FolderPicker";
  * Projects screen): the button, then a dialog with the folders of the host's recent sessions, a
  * typed or browsed folder, and Add.
  */
-export function AddProject(props: {
-  store: AppStore;
-  hostId: string;
-  onAdded(project: Project): void;
-  variant?: "default" | "outline";
-}) {
+export function AddProject(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    onAdded(project: Project): void;
+    variant?: "default" | "outline";
+  }>,
+) {
   const { store, hostId } = props;
   const t = useT();
   const [open, setOpen] = useState(false);

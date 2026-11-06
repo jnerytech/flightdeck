@@ -58,7 +58,8 @@ export function formatReport(
       const lines = source.split("\n");
       const shown = missed.map(({ line, name }) => {
         const text = name.startsWith("(anonymous_") ? (lines[line - 1] ?? "").trim() : name;
-        return `  ${file}:${line}  ${text.length > LINE_MAX ? `${text.slice(0, LINE_MAX - 1)}…` : text}`;
+        const cut = text.length > LINE_MAX ? text.slice(0, LINE_MAX - 1) + "…" : text;
+        return `  ${file}:${line}  ${cut}`;
       });
       return [`${file}: ${missed.length} of ${functions(total)} never called`, ...shown].join("\n");
     })
@@ -68,11 +69,13 @@ export function formatReport(
 const slashes = (path: string) => path.replaceAll("\\", "/");
 
 const escaped = (path: string) =>
-  path.replace(/[.*+?^${}()|[\]\\/]/g, (c) => (c === "/" ? "[\\\\/]" : `\\${c}`));
+  path.replace(/[.*+?^${}()|[\]\\/]/g, (c) => (c === "/" ? String.raw`[\\/]` : `\\${c}`));
 
 /**
  * What the preload registers with `Bun.plugin`: a filter for the listed files (any root, either
  * separator) and a loader that hands Bun the instrumented text. The sources on disk stay as they are.
+ * The counters live in `counters`, which the loader puts back as the global before each file runs:
+ * a test that deletes the global cannot take the files loaded before it out of the report.
  */
 export function onLoadFor(
   files: string[],
@@ -81,14 +84,18 @@ export function onLoadFor(
 ): {
   filter: RegExp;
   load: (path: string) => { contents: string; loader: "ts" | "tsx" } | undefined;
+  counters: Record<string, FunctionCoverage>;
 } {
-  const filter = new RegExp(`(?:^|[\\\\/])(?:${files.map(escaped).join("|")})$`);
+  const filter = new RegExp(String.raw`(?:^|[\\/])(?:${files.map(escaped).join("|")})$`);
+  const counters: Record<string, FunctionCoverage> = {};
   return {
     filter,
+    counters,
     load(path) {
       const unix = slashes(path);
       const file = files.find((f) => unix === f || unix.endsWith(`/${f}`));
       if (!file) return undefined;
+      (globalThis as Record<string, unknown>)[COVERAGE_VAR] = counters;
       return { contents: instrument(read(path), file), loader: file.endsWith("x") ? "tsx" : "ts" };
     },
   };

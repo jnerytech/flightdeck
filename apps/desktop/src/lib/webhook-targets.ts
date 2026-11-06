@@ -3,7 +3,7 @@
  * and the generic target's signing secret are vault values, kept by reference.
  */
 import type { Platform } from "../platform/types.ts";
-import type { WebhookKind, WebhookType } from "./webhook-format.ts";
+import { ntfyTopic, type WebhookKind, type WebhookType } from "./webhook-format.ts";
 
 export type TargetStatus = "new" | "ok" | "failing";
 
@@ -34,7 +34,14 @@ export interface TargetInput {
   clientId: string | null;
 }
 
-export type TargetErrorCode = "invalid_url" | "not_https" | "no_kinds" | "no_name" | "not_found";
+export type TargetErrorCode =
+  | "invalid_url"
+  | "not_https"
+  | "no_kinds"
+  | "no_name"
+  | "not_found"
+  | "invalid_topic"
+  | "invalid_token";
 
 export class WebhookTargetError extends Error {
   constructor(readonly code: TargetErrorCode) {
@@ -65,6 +72,16 @@ function checkUrl(raw: string): string {
     );
   }
   return url.hostname.replace(/^\[|\]$/g, "");
+}
+
+/** An ntfy access token as ntfy issues it (`tk_…`), and as the daemon lets it through (#263). */
+const NTFY_TOKEN = /^[A-Za-z0-9_-]{1,200}$/;
+
+/** An ntfy target's URL is one topic on a server, and its token has ntfy's shape. */
+function checkNtfy(type: WebhookType, url: string | null, token: string | undefined): void {
+  if (type !== "ntfy") return;
+  if (url !== null && !ntfyTopic(url)) throw new WebhookTargetError("invalid_topic");
+  if (token && !NTFY_TOKEN.test(token)) throw new WebhookTargetError("invalid_token");
 }
 
 const isTarget = (value: unknown): value is WebhookTarget =>
@@ -105,15 +122,14 @@ export class WebhookTargets {
   }
 
   private check(input: { name?: string; kinds?: WebhookKind[] }): void {
-    if (input.name !== undefined && input.name.trim() === "")
-      throw new WebhookTargetError("no_name");
-    if (input.kinds !== undefined && input.kinds.length === 0)
-      throw new WebhookTargetError("no_kinds");
+    if (input.name?.trim() === "") throw new WebhookTargetError("no_name");
+    if (input.kinds?.length === 0) throw new WebhookTargetError("no_kinds");
   }
 
   async add(input: TargetInput): Promise<WebhookTarget> {
     this.check(input);
     const urlHost = checkUrl(input.url);
+    checkNtfy(input.type, input.url, input.signingSecret);
     const id = this.newId();
     await this.platform.vault.set(urlId(id), input.url);
     if (input.signingSecret) await this.platform.vault.set(signId(id), input.signingSecret);
@@ -143,8 +159,18 @@ export class WebhookTargets {
     if (!current) throw new WebhookTargetError("not_found");
     this.check(patch);
     const urlHost = patch.url !== undefined ? checkUrl(patch.url) : current.urlHost;
+    const type = patch.type ?? current.type;
+    // A target made ntfy keeps its URL: that one must be a topic too.
+    const becomesNtfy = type === "ntfy" && current.type !== "ntfy";
+    const url =
+      becomesNtfy && patch.url === undefined
+        ? await this.platform.vault.get(urlId(id))
+        : (patch.url ?? null);
+    checkNtfy(type, url, patch.signingSecret);
     if (patch.url !== undefined) await this.platform.vault.set(urlId(id), patch.url);
     if (patch.signingSecret) await this.platform.vault.set(signId(id), patch.signingSecret);
+    // Another type's secret is not an ntfy token: it would go out as a Bearer that fails forever.
+    else if (becomesNtfy) await this.platform.vault.delete(signId(id));
     const next: WebhookTarget = {
       ...current,
       ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),

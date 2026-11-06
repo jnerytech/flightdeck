@@ -8,6 +8,7 @@ import { poll } from "../../daemon/test/helpers.ts";
 import { userLine, writeTranscript } from "../../daemon/test/history-helpers.ts";
 import { seedDemoHosts } from "../src/demo/boot.ts";
 import { Router } from "../src/lib/router.ts";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
@@ -138,12 +139,12 @@ describe("navegacao", () => {
 
   test("abrir um pedido fecha Configurações (sem beco sem saída); Alt+←, Alt+→, botões do mouse e Voltar", async () => {
     await setup();
-    await click("Configurações");
+    await chooseFromAccountMenu("Configurações");
     // Settings is a lazy screen: its chunk may still be loading when the click returns.
     await settle(() => heading("Configurações"));
     expect(heading("Configurações")).toBe(true);
     // The queue shows the request; "Abrir sessão" opens it (and leaves Settings).
-    await sidebar.queueItem("alfa · Pedinte: Bash");
+    await sidebar.queueItem(/^alfa · Pedinte: Bash/);
     await click("Abrir sessão");
     expect(heading("Configurações")).toBe(false);
     expect(heading("Pedinte")).toBe(true);
@@ -225,6 +226,15 @@ describe("navegacao", () => {
     expect(start).not.toBeNull();
     await act(async () => {
       fireEvent.click(start as HTMLElement);
+    });
+    // The menu's Start asks for the workflow and persona first (issue #188).
+    await settle(() => screen.queryByRole("dialog", { name: "Iniciar card" }) !== null);
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("dialog", { name: "Iniciar card" })).getByRole("button", {
+          name: "Iniciar",
+        }),
+      );
     });
     await poll(() => d.board.getCard(card.id).runs.length > 0, 8000);
     expect(d.board.getCard(card.id).runs).toHaveLength(1);

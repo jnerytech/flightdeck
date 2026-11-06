@@ -17,6 +17,19 @@ export function noticeAction(notice: Notice): NoticeAction | null {
 
 /** Milliseconds until a toast closes itself; `Infinity` for one that waits to be acted on. */
 export function noticeLifetime(notice: Notice): number {
-  if (notice.kind === "success") return SUCCESS_TOAST_MS;
+  // A button needs time to be reached (keyboard, screen reader): as long as an error toast.
+  if (notice.kind === "success") return notice.link ? ERROR_TOAST_MS : SUCCESS_TOAST_MS;
   return noticeAction(notice) ? Number.POSITIVE_INFINITY : ERROR_TOAST_MS;
+}
+
+/**
+ * Issue #581: whether two error notices say the same thing, so the second replaces the first on
+ * screen instead of stacking on it: the same code from the same host, with the same words, reason
+ * and params. One code covers several errors (not_found: a card, a session), so the code alone is
+ * not enough.
+ */
+export function sameNotice(a: Notice, b: Notice): boolean {
+  if (a.kind !== "error" || b.kind !== "error") return false;
+  if (a.code !== b.code || a.hostId !== b.hostId || a.text !== b.text) return false;
+  return a.reason === b.reason && JSON.stringify(a.params) === JSON.stringify(b.params);
 }

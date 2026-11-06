@@ -1,7 +1,12 @@
 import type { Database } from "bun:sqlite";
 import { stat } from "node:fs/promises";
 
-import { type ExternalSession, type ExternalStatus, SessionPersona } from "@flightdeck/protocol";
+import {
+  type ExternalSession,
+  type ExternalStatus,
+  inSequence,
+  SessionPersona,
+} from "@flightdeck/protocol";
 
 // What the daemon keeps is what goes on the wire.
 export type { ExternalSession, ExternalStatus };
@@ -113,6 +118,8 @@ export class ExternalSessions {
     if (!id) return null;
     const at = new Date(this.now()).toISOString();
     const next = nextStatus(event, payload);
+    // The hook's cwd is the session's current folder, which moves with it; the project is the
+    // launch folder's, the one its transcript is filed under, so it is set once (#583).
     const cwd = text(payload.cwd);
     if (!this.get(id)) {
       this.db
@@ -125,7 +132,7 @@ export class ExternalSessions {
     this.db
       .query(
         `UPDATE external_sessions SET cwd = COALESCE(?, cwd), transcript_path = COALESCE(?, transcript_path),
-           project_key = COALESCE(?, project_key), status = COALESCE(?, status), status_reason = ?,
+           project_key = COALESCE(project_key, ?), status = COALESCE(?, status), status_reason = ?,
            last_event_at = ?, ended_at = CASE WHEN ? = 'ended' THEN ? ELSE ended_at END
          WHERE claude_session_id = ?`,
       )
@@ -232,8 +239,8 @@ export class ExternalSessions {
         "SELECT * FROM external_sessions WHERE status <> 'ended' AND last_event_at < ?",
       )
       .all(new Date(limit).toISOString());
-    for (const row of quiet) {
-      if ((await mtimeOf(row.transcript_path)) >= limit) continue;
+    await inSequence(quiet, async (row) => {
+      if ((await mtimeOf(row.transcript_path)) >= limit) return;
       this.db
         .query(
           `UPDATE external_sessions SET status = 'ended', status_reason = 'stale', ended_at = ?
@@ -241,7 +248,7 @@ export class ExternalSessions {
         )
         .run(new Date(now).toISOString(), row.claude_session_id);
       this.emit(row.claude_session_id);
-    }
+    });
   }
 
   start(intervalMs: number, timers: Timers = globalThis): void {

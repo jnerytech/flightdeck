@@ -4,10 +4,11 @@
  * one (see guard-path.ts), so any code path that falls back to "claude on PATH" is caught
  * instead of executed.
  */
-import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { guardPath } from "./guard-path.ts";
+import { logLines } from "./log-lines.ts";
+import { realTempDir } from "./temp-dir.ts";
 
 const CLAUDE_NAMES = ["claude", "claude.exe", "claude.cmd", "claude.bat", "claude.ps1"];
 
@@ -21,19 +22,21 @@ export interface ClaudeGuard {
 export function installClaudeGuard(
   env: Record<string, string | undefined> = process.env,
 ): ClaudeGuard {
-  const dir = mkdtempSync(join(tmpdir(), "fd-claude-guard-"));
+  const dir = realTempDir("fd-claude-guard-");
   const log = join(dir, "calls.log");
+  const versions = join(dir, "versions.log");
   // `--version` is what the host's dependency probe asks of every program: the sentinel answers it
-  // without a record, so a daemon started by a test can look at its dependencies safely. Anything
-  // else is a real use of the program and is recorded.
+  // and keeps it in versions.log, apart from calls.log, so a daemon started by a test can look at its
+  // dependencies safely and a test can still assert on the probes. Anything else is a real use of
+  // the program and is recorded in calls.log.
   writeFileSync(
     join(dir, "claude"),
-    `#!/bin/sh\n[ "$1" = "--version" ] && { echo "0.0.0 (Claude Code sentinel)"; exit 0; }\necho "claude $*" >> "${log}"\nexit 99\n`,
+    `#!/bin/sh\n[ "$1" = "--version" ] && { echo "claude --version" >> "${versions}"; echo "0.0.0 (Claude Code sentinel)"; exit 0; }\necho "claude $*" >> "${log}"\nexit 99\n`,
   );
   chmodSync(join(dir, "claude"), 0o755);
   writeFileSync(
     join(dir, "claude.cmd"),
-    `@echo off\r\nif "%1"=="--version" (echo 0.0.0 ^(Claude Code sentinel^) & exit /b 0)\r\necho claude %* >> "${log}"\r\nexit /b 99\r\n`,
+    `@echo off\r\nif "%1"=="--version" (echo claude --version>> "${versions}" & echo 0.0.0 ^(Claude Code sentinel^) & exit /b 0)\r\necho claude %* >> "${log}"\r\nexit /b 99\r\n`,
   );
 
   // Windows spells it "Path"; rewrite every casing so children inherit the guarded value.
@@ -46,7 +49,7 @@ export function installClaudeGuard(
 
 /** Lines recorded by the sentinel; empty when `claude` was never executed. */
 export function claudeCalls(guard: ClaudeGuard): string[] {
-  return existsSync(guard.log) ? readFileSync(guard.log, "utf8").trim().split(/\r?\n/) : [];
+  return existsSync(guard.log) ? logLines(readFileSync(guard.log, "utf8")) : [];
 }
 
 export function assertNoClaudeCalls(guard: ClaudeGuard): void {

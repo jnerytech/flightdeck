@@ -6,6 +6,7 @@ import { poll } from "../../daemon/test/helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { sidebarNav } from "./sidebar.ts";
+import { unfoldAll } from "./unfold.ts";
 import { waiter } from "./wait.ts";
 
 registerDom();
@@ -62,6 +63,7 @@ async function setup(
   });
   await settle(() => store.getState().hosts[0]?.sessions.length === 1);
   await sidebar.openHub();
+  await unfoldAll(act);
   await settle(() => screen.queryByRole("listitem", { name: "Alpha" }) !== null);
   return { d, store, mem };
 }
@@ -289,7 +291,8 @@ describe("direcao-visual: ajustes finos", () => {
     const hostId = store.getState().hosts[0]?.id ?? "";
     const project = (await store.hostCommand(hostId, "project.list", {}))?.projects[0];
     expect(project?.name).toBe("repo0");
-    // A fresh state: the projects list was never opened.
+    // A fresh state: the projects list was never opened (the Setup checklist read it at connect).
+    (store as unknown as { update(patch: object): void }).update({ projects: {} });
     expect(store.getState().projects[hostId]).toBeUndefined();
     await act(async () => {
       store.router.push({ name: "board", host: hostId, projectId: project?.id ?? "" });

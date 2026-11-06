@@ -5,7 +5,7 @@
 import { afterAll } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { plugin } from "bun";
-import { COVERAGE_VAR, createInstrumenter, onLoadFor } from "../lib/coverage-funcs.ts";
+import { createInstrumenter, onLoadFor } from "../lib/coverage-funcs.ts";
 
 const files: string[] = JSON.parse(process.env.COVERAGE_FUNCS_FILES ?? "[]");
 const out = process.env.COVERAGE_FUNCS_OUT ?? "";
@@ -18,5 +18,5 @@ plugin({
 });
 // Bun runs every file of a run in one process, so each write holds all the counters so far.
 afterAll(() => {
-  writeFileSync(out, JSON.stringify((globalThis as Record<string, unknown>)[COVERAGE_VAR] ?? {}));
+  writeFileSync(out, JSON.stringify(hooks.counters));
 });

@@ -13,7 +13,7 @@ type Purpose = (typeof PURPOSES)[number];
 type Requester = (typeof REQUESTERS)[number];
 
 /** Phase 19: "what happens if…": the verdict of the saved rules for a use, from a host. */
-export function RulesPreview(props: { store: AppStore; secretId: string }) {
+export function RulesPreview(props: Readonly<{ store: AppStore; secretId: string }>) {
   const t = useT();
   const id = useId();
   const [requester, setRequester] = useState<Requester>("claude");

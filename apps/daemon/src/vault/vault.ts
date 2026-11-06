@@ -9,7 +9,7 @@ import { FlightdeckError } from "../errors.ts";
 import { ipInNetworks } from "../networks.ts";
 
 /** Loopback, and the ranges Tailscale uses (WireGuard encrypts them). */
-export const VAULT_NETWORKS = ["127.0.0.0/8", "::1/128", "100.64.0.0/10", "fd7a:115c:a1e0::/48"];
+export const VAULT_NETWORKS = ["127.0.0.0/8", "::1/128", "100.64.0.0/10", "fd7a:115c:a1e0::/48"]; // NOSONAR: loopback and Tailscale's documented ranges
 
 /** Whether a connection from `address` may deliver a secret. */
 export function isVaultTransport(address: string): boolean {
@@ -82,6 +82,11 @@ export class Vault {
   private readonly waiters = new Set<Waiter>();
 
   constructor(private readonly opts: VaultOptions = {}) {}
+
+  /** Every value held right now: what a log scanner must never let through. */
+  heldValues(): string[] {
+    return [...this.values.values()].map((held) => held.value);
+  }
 
   /** Keeps the value in memory until it is used or its deadline; answers the effective deadline. */
   deliver(input: VaultDelivery, origin: string): { expiresAt: number } {

@@ -17,6 +17,7 @@ export interface AuthStatus {
 export interface AccountInfoReading {
   email: string | null;
   organization: string | null;
+  /** The plan's display name from the server ("Claude Ultra"), normalized: `ultra`. */
   plan: string | null;
   tokenSource: string | null;
   apiKeySource: string | null;
@@ -185,6 +186,8 @@ export async function withIdleQuery<T>(
     prompt: idle,
     options: {
       settingSources: [],
+      // settingSources does not cover .mcp.json, and this runs in the folder it was started in.
+      strictMcpConfig: true,
       persistSession: false,
       ...(deps.claudePath ? { pathToClaudeCodeExecutable: deps.claudePath } : {}),
     },

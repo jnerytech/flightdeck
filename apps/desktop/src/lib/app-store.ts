@@ -13,6 +13,7 @@ import type {
   CommandType,
   DepsResult,
   DoctorResult,
+  EffortLevel,
   EventEnvelope,
   ExternalPermissionFrame,
   ExternalSession,
@@ -24,6 +25,7 @@ import type {
   HistorySearchHit,
   HistorySessionSummary,
   HostInfoResult,
+  InterruptedSession,
   MessageInfo,
   MessagingAlertFrame,
   PendingPermission,
@@ -41,6 +43,7 @@ import type {
   SessionMeta,
   SessionNameInfo,
   SessionRecap,
+  SessionRuntime,
   SessionStatus,
   SessionSubscribeResult,
   SessionSummary,
@@ -55,7 +58,13 @@ import type {
   WatchSettings,
   WorkflowRun,
 } from "@flightdeck/protocol";
-import { EPHEMERAL_EVENTS } from "@flightdeck/protocol";
+import {
+  byCodeUnit,
+  EPHEMERAL_EVENTS,
+  FEATURE_RESUME_OFFER,
+  inSequence,
+  parsePairingLink,
+} from "@flightdeck/protocol";
 import { formatDateTime, formatTime, formatWhen } from "../i18n/format.ts";
 import { I18n, type Key } from "../i18n/index.ts";
 import type {
@@ -67,8 +76,11 @@ import type {
   WebhookRequest,
   WebhookResponse,
 } from "../platform/types.ts";
+import { AppLog } from "./app-log.ts";
+import { AssistantController, type HostAnswer } from "./assistant.ts";
 import { BackupError, type BackupErrorCode } from "./backup-error.ts";
 import { budgetLabel } from "./budgets.ts";
+import { browserClockDeps, CacheTimerSettings, SharedClock } from "./cache-timer.ts";
 import {
   CLIENT_BUDGET_ALERTS_KEY,
   type ClientBudgetState,
@@ -89,6 +101,8 @@ import { localDay, usd } from "./costs.ts";
 import { DensityController } from "./density.ts";
 import { type AppPersona, GlobalPersonas } from "./global-personas.ts";
 import { type AppSnippet, GlobalSnippets } from "./global-snippets.ts";
+import { HIGH_RISK_HOLD_MS } from "./hold.ts";
+import { HomeCache } from "./home-cache.ts";
 import { type ConnectionStatus, HostConnection, RequestError } from "./host-connection.ts";
 import { type HostNameError, hostNameError } from "./host-name.ts";
 import type { RetryState } from "./host-offline.ts";
@@ -98,20 +112,42 @@ import {
   type HubView,
   hubRows,
   loadHubFilter,
+  loadHubOpen,
   loadHubView,
   saveHubFilter,
+  saveHubOpen,
   saveHubView,
 } from "./hub.ts";
-import { addEntry, type InboxEntry, loadInbox, markAllRead, markRead, saveInbox } from "./inbox.ts";
+import {
+  addEntry,
+  type InboxAbout,
+  type InboxEntry,
+  loadInbox,
+  markAllRead,
+  markRead,
+  saveInbox,
+  unreadRows,
+} from "./inbox.ts";
 import { LIST_WIDTH_KEY, loadListWidth } from "./list-width.ts";
 import { endMeasure, startMeasure } from "./measures.ts";
-import { summaryNotifications } from "./notify.ts";
+import { sameNotice } from "./notice-lifetime.ts";
+import { externalRequestNotification, summaryNotifications } from "./notify.ts";
+import { pairingErrorText } from "./pairing-text.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
 import type { WorktreeFilter } from "./project-tree.ts";
 import { isHot } from "./quota.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
+import {
+  CONTINUATION,
+  loadAutoResume,
+  loadHandled,
+  markHandled,
+  offerKey,
+  saveAutoResume,
+  unanswered,
+} from "./resume-offer.ts";
 import type { RoiMoney } from "./roi.ts";
 import { RoiSettings } from "./roi-settings.ts";
 import type { Route } from "./router.ts";
@@ -122,6 +158,7 @@ import {
   markGap,
   type SessionState,
 } from "./session-state.ts";
+import { type SetupProbe, SetupSettings } from "./setup-steps.ts";
 import { DEFAULT_SHORTCUT, SHORTCUT_KEY, validateShortcut } from "./shortcut.ts";
 import { loadFolded, type SidebarGroup, saveFolded } from "./sidebar-groups.ts";
 import {
@@ -132,6 +169,7 @@ import {
   type UiMode,
 } from "./simple-mode.ts";
 import { savePayload } from "./ssh.ts";
+import { TabOrderController } from "./tab-switcher.ts";
 import type { Navigation, Tabs } from "./tabs.ts";
 import {
   isLocalUrl,
@@ -141,7 +179,7 @@ import {
   terminalLaunch,
 } from "./terminal.ts";
 import type { TerminalHost } from "./terminal-session.ts";
-import { TerminalFontController } from "./terminal-view.ts";
+import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.ts";
 import { ThemeController } from "./theme.ts";
 import { loadTileLayout, saveTileLayout, type TileLayout } from "./tiles.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
@@ -164,9 +202,6 @@ import { WebhookFeed } from "./webhook-feed.ts";
 import { Webhooks } from "./webhooks.ts";
 import { WORKSPACE_KEY, Workspace } from "./workspace.ts";
 
-/** How long a prod or high-risk approval is held, as the approval card measures it. */
-const HOLD_MS = 2000;
-
 /** What the sidebar knows about a session, straight from `session.summary`. */
 export interface SidebarSession {
   id: string;
@@ -175,6 +210,10 @@ export interface SidebarSession {
   status: SessionStatus;
   pendingPermissions: PendingPermission[];
   updatedAt: string;
+  /** Phase 39: set for an OpenCode session only. */
+  runtime?: SessionRuntime;
+  /** Issue #463: its folder's trust was revoked after the run loaded the project's setup. */
+  trustStale?: boolean;
 }
 
 export interface HostView extends HostConfig {
@@ -228,18 +267,24 @@ export interface AppState {
   meta: Record<string, SessionMeta>;
   /** Phase 33: the mode the person chose for each host (a host without one follows its default). */
   uiChoices: Record<string, UiMode>;
+  /** The sessions a daemon restart interrupted on each host, offered for resume (issue #150). */
+  resumeOffers: Record<string, ResumeOffer>;
   /** Plan quota of each host, by host id; kept by `quota.updated`. */
   quota: Record<string, QuotaState>;
   /** The Claude account each host is signed in to, by host id (phase 34); only hosts being looked at. */
   account: Record<string, AccountState>;
   /** Budgets of each host, by host id; kept by `budget.updated` (phase 8). */
   budgets: Record<string, Budget[]>;
+  /** What hosts answered for the setup checklist (hooks, GitHub), by host id (issue #164). */
+  setupProbes: Record<string, SetupProbe>;
   /** What `deps.check` found on each host, by host id (hosts that announce `deps`). */
   deps: Record<string, DepsResult>;
   /** What `doctor.run` found on each host, by host id. */
   doctor: Record<string, DoctorResult>;
   /** When each host's health (dependencies and doctor) was last read, in epoch milliseconds. */
   healthAt: Record<string, number>;
+  /** Why the last health read of a host failed (the screen says it; no banner). Absent when it went well. */
+  healthError: Record<string, string>;
   /** The ssh password or passphrase prompts waiting for an answer, oldest first (phase 15). */
   askpass: Array<{ hostId: string; request: AskpassRequest }>;
   /** The ssh destinos of each host that keeps them, by host id; read when the palette opens (phase 15). */
@@ -299,6 +344,8 @@ export interface AppUpdateState {
   upToDate: boolean;
   /** Why the last check or install failed. */
   error: string | null;
+  /** Issue #280: the version downloaded in the background, ready to install on a restart. */
+  ready: string | null;
 }
 
 /** How often the app looks for its own update while open. */
@@ -325,6 +372,14 @@ export interface TerminalCommands extends TerminalHost {
   list(): Promise<TerminalInfo[]>;
 }
 
+/** The offer to resume a host's interrupted sessions: shown (open) or put off for the host page. */
+export interface ResumeOffer {
+  sessions: InterruptedSession[];
+  open: boolean;
+  /** The ones already resumed from this offer: they stay listed, as "Resumed", while it is open. */
+  resumed: string[];
+}
+
 export type HostCommandType = Extract<
   CommandType,
   | `terminal.${string}`
@@ -332,6 +387,12 @@ export type HostCommandType = Extract<
   | "roots.add"
   | "history.get"
   | "host.bypass"
+  | "logs.tail"
+  | "host.sleep"
+  | "session.sleep"
+  | "host.keepAwake"
+  | `project.trust.${string}`
+  | "host.updates.set"
   | `ssh.${string}`
   | `snippets.${string}`
   | `personas.${string}`
@@ -350,6 +411,8 @@ export type HostCommandType = Extract<
   | `run.${string}`
   | `gate.${string}`
   | `maintenance.${string}`
+  | `resources.${string}`
+  | `worktree.${string}`
   | `quota.${string}`
   | `account.${string}`
   | `usage.${string}`
@@ -388,6 +451,7 @@ export type HostCommandType = Extract<
   | `pr.${string}`
   | "files.sessions"
   | "fs.dirs"
+  | "runtime.models"
   | "fs.files"
   | "doctor.run"
   | "projects.scan"
@@ -405,6 +469,7 @@ export type HostCommandType = Extract<
   | "task.results"
   | "task.preview"
   | "session.close"
+  | "session.resume"
   | `mcp.${string}`
   | `agentcfg.${string}`
   | `issues.${string}`
@@ -466,16 +531,22 @@ export interface Settings {
   shortcutError: string | null;
   /** Phase 9: look for app updates at startup and every 6 h. */
   notifyUpdates: boolean;
+  /** Issue #280: a newer version downloads by itself, to install on a restart (on by default). */
+  autoUpdate: boolean;
   updaterSupported: boolean;
 }
 
 export interface AppStoreOptions {
+  /** The screen of a fresh window; a window saved before keeps its tabs. Sessions when absent. */
+  startRoute?: Route;
   baseDelayMs?: number;
   maxDelayMs?: number;
   /** Least time between two wake-ups (focus, network back) that retry the offline hosts. */
   wakeDebounceMs?: number;
   /** How long the global search waits for each host. */
   searchTimeoutMs?: number;
+  /** Starts the poll of the GitHub sign-in (calls `tick` now and then, returns its stop); tests drive it by hand. */
+  githubTicker?: (tick: () => void) => () => void;
   /** Milliseconds now: the age of quota readings. */
   now?: () => number;
   /** HH:MM of an instant (quota resets); the host machine's time zone when absent. */
@@ -517,6 +588,8 @@ export interface Notice {
   hostId?: string;
   /** Runs the refused action again (after the person fixed what it needed). */
   retry?: () => void;
+  /** A success toast's button: where the news leads (Open the card). */
+  link?: { label: string; run: () => void };
 }
 
 /** Phase 21: a pair of sessions a host paused because they kept answering each other. */
@@ -530,7 +603,7 @@ export interface LoopAlert {
 
 /** The daemon's key for a pair of sessions, the same in both directions. */
 export const loopPairKey = (alert: Pick<LoopAlert, "from" | "to">): string =>
-  [alert.from, alert.to].sort().join("|");
+  [alert.from, alert.to].sort(byCodeUnit).join("|");
 
 export interface PendingItem {
   hostId: string;
@@ -548,6 +621,8 @@ export interface PendingItem {
   cwd?: string | null;
   /** An open gate of a workflow run (`sessionId` is the card), answered with `gate.respond`. */
   gate?: GateRef;
+  /** What the gate asks and shows, so it is approved in sight of it (issue #245). */
+  gateText?: { message: string; output?: string };
   /** Phase 13: the risk the daemon judged for the request; an older daemon sends none. */
   risk?: RiskLevel;
   riskReason?: string;
@@ -635,6 +710,10 @@ export function needsYou(state: AppState): PendingItem[] {
               attempt: step.attempt,
               cardId: run.cardId,
             },
+            gateText: {
+              message: step.message ?? "",
+              ...(step.output ? { output: step.output } : {}),
+            },
           })),
       ),
   ]);
@@ -642,6 +721,21 @@ export function needsYou(state: AppState): PendingItem[] {
     state.hosts.some((h) => h.id === item.hostId),
   );
   return [...requests, ...known].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+/** What goes with an answer to a request, besides allow or deny. */
+export interface Answer {
+  /** "Allow in this session" and "always in this project" (phase 7). */
+  updatedPermissions?: PermissionUpdate[];
+  /** Why it was denied (phase 10: the card's reason). */
+  message?: string;
+  /** The tool's input as the person changed it (the answers of AskUserQuestion). */
+  updatedInput?: Record<string, unknown>;
+  /**
+   * The Approve was held its full time (#245): a high-risk request is approved only with it, so a
+   * screen that forgets the risk cannot approve one with a click.
+   */
+  held?: boolean;
 }
 
 /** Filters of the per-host history list. */
@@ -655,10 +749,14 @@ export const HISTORY_PAGE = 50;
 
 /** Preference stored in plain settings; anything but "false" means on. */
 export const CLOSE_TO_TRAY_KEY = "flightdeck.closeToTray";
+/** Where the return on cost card's open or folded state is kept. */
+const ROI_OPEN_KEY = "flightdeck.roiOpen";
 export const PALETTE_RECENTS_KEY = "flightdeck.paletteRecents";
 /** How many used palette entries are kept (the palette shows five). */
 const PALETTE_RECENTS_KEPT = 12;
 export const NOTIFY_UPDATES_KEY = "flightdeck.notifyUpdates";
+/** Issue #280: the app downloads a newer version by itself; "false" turns it off. */
+export const AUTO_UPDATE_KEY = "flightdeck.autoUpdate";
 
 export const sessionKey = (hostId: string, sessionId: string) => `${hostId}/${sessionId}`;
 
@@ -739,6 +837,8 @@ export class AppStore {
   private trayMenuSent = JSON.stringify(trayMenu([]));
   private trayMenuTimer: unknown = null;
   private offTrayAction: (() => void) | null = null;
+  private offQuit: (() => void) | null = null;
+  private quitting = false;
   private readonly openRequestListeners = new Set<(item: PendingItem) => void>();
 
   private stopWake: (() => void) | null = null;
@@ -747,7 +847,11 @@ export class AppStore {
     private readonly platform: Platform,
     private readonly options: AppStoreOptions = {},
   ) {
-    this.workspace = Workspace.restore(storedWorkspace(platform.storage));
+    this.workspace = Workspace.restore(
+      storedWorkspace(platform.storage),
+      undefined,
+      options.startRoute,
+    );
     this.router = this.workspace.router;
     this.workspace.subscribe(() => {
       platform.storage.setItem(WORKSPACE_KEY, JSON.stringify(this.workspace.snapshot()));
@@ -758,6 +862,7 @@ export class AppStore {
     );
     this.vault = new Vault(platform);
     this.rules = new VaultRules(platform.storage);
+    this.homeCache = new HomeCache(platform.storage);
     this.globalSnippets = new GlobalSnippets(platform);
     this.globalPersonas = new GlobalPersonas(platform);
     this.clients = new Clients(platform, { onChange: () => this.syncClients() });
@@ -777,9 +882,32 @@ export class AppStore {
     });
     this.usage = new VaultUsageLog(platform);
     this.theme = new ThemeController(platform);
+    this.assistant = new AssistantController({
+      storage: platform.storage,
+      api: platform.assistant,
+      hosts: () =>
+        this.state.hosts.map((host) => ({
+          id: host.id,
+          name: host.name,
+          online: host.status === "online",
+          assistant: hasFeature(host.hostInfo?.features, "assistant", false),
+        })),
+      secrets: () => this.state.secrets.map((secret) => ({ id: secret.id, name: secret.name })),
+      language: () => this.i18n.lang,
+      request: (hostId, type, payload) =>
+        this.hostRequest(hostId, type as HostCommandType, payload as never) as Promise<HostAnswer>,
+    });
     this.density = new DensityController(platform.storage);
     this.terminalFont = new TerminalFontController(platform.storage);
+    this.terminalReader = new TerminalReaderSetting(platform.storage);
+    this.setup = new SetupSettings(platform.storage);
+    this.cacheTimer = new CacheTimerSettings(platform.storage);
+    this.clock = new SharedClock(
+      browserClockDeps(() => this.now(), typeof document === "undefined" ? undefined : document),
+    );
+    this.tabOrder = new TabOrderController(platform.storage);
     this.i18n = new I18n(platform);
+    this.appLog = new AppLog({ sink: platform.logs, values: () => this.scanValues() });
     this.i18n.subscribe(() => this.onLanguage());
     this.state = {
       hosts: [],
@@ -798,7 +926,9 @@ export class AppStore {
       deps: {},
       doctor: {},
       healthAt: {},
+      healthError: {},
       budgets: {},
+      setupProbes: {},
       ssh: {},
       snippets: {},
       snippetChoice: null,
@@ -815,6 +945,7 @@ export class AppStore {
       externalRequests: {},
       meta: {},
       uiChoices: loadChoices(platform.storage),
+      resumeOffers: {},
       hub: {},
       terminalEnv: null,
       projects: {},
@@ -827,7 +958,7 @@ export class AppStore {
       notices: [],
       inbox: [],
       hostsLoaded: false,
-      appUpdate: { offer: null, upToDate: false, error: null },
+      appUpdate: { offer: null, upToDate: false, error: null, ready: null },
       // Defaults: close to tray on, start with Windows off.
       settings: {
         closeToTray: true,
@@ -838,6 +969,7 @@ export class AppStore {
         shortcutProblem: null,
         shortcutError: null,
         notifyUpdates: true,
+        autoUpdate: true,
         updaterSupported: platform.updater.supported,
       },
     };
@@ -845,10 +977,23 @@ export class AppStore {
 
   /** Light, dark or the system's (phase 10). */
   readonly theme: ThemeController;
+  /** Phase 40: the AI assistant's preferences, keys state and the wand's requests. */
+  readonly assistant: AssistantController;
   readonly density: DensityController;
   readonly terminalFont: TerminalFontController;
+  readonly terminalReader: TerminalReaderSetting;
+  /** The setup checklist: hidden or not, and whether a test notification ever showed. */
+  readonly setup: SetupSettings;
+  /** The prompt cache countdown on idle sessions: off by default (issue #159). */
+  readonly cacheTimer: CacheTimerSettings;
+  /** One 1-second clock for every countdown on screen. */
+  readonly clock: SharedClock;
+  /** How Ctrl+Tab orders the tabs (issue #148). */
+  readonly tabOrder: TabOrderController;
   /** pt-BR or English, and the translator (phase 10). */
   readonly i18n: I18n;
+  /** The app's log: what happens to hosts, refusals and updates goes through it (issue #255). */
+  readonly appLog: AppLog;
   /** The screen in use and its history (phase 10). */
   readonly workspace: Workspace;
   readonly router: Navigation;
@@ -939,12 +1084,29 @@ export class AppStore {
   }
 
   /** How the hub draws its sessions: lines or cards. */
+  hubOpen(): Record<string, boolean> {
+    return loadHubOpen(this.platform.storage);
+  }
+
+  saveHubOpen(open: Record<string, boolean | undefined>): void {
+    saveHubOpen(this.platform.storage, open);
+  }
+
   hubView(): HubView {
     return loadHubView(this.platform.storage);
   }
 
   saveHubView(view: HubView): void {
     saveHubView(this.platform.storage, view);
+  }
+
+  /** Whether the return on cost card opens unfolded (issue #178): folded unless the person opened it. */
+  roiOpen(): boolean {
+    return this.platform.storage.getItem(ROI_OPEN_KEY) === "true";
+  }
+
+  saveRoiOpen(open: boolean): void {
+    this.platform.storage.setItem(ROI_OPEN_KEY, String(open));
   }
 
   subscribe = (listener: () => void): (() => void) => {
@@ -954,10 +1116,12 @@ export class AppStore {
 
   async init(): Promise<void> {
     this.update({ inbox: loadInbox(this.platform.storage) });
+    this.syncBadge();
     // Reset synchronously first: nothing from a previous init may stay visible while awaiting.
     this.dispose();
     this.listenForWake();
     this.theme.start();
+    void this.assistant.refreshKeys();
     this.i18n.start();
     this.update({
       hosts: [],
@@ -971,6 +1135,7 @@ export class AppStore {
       deps: {},
       doctor: {},
       healthAt: {},
+      healthError: {},
     });
     const closeToTray = this.platform.storage.getItem(CLOSE_TO_TRAY_KEY) !== "false";
     await this.platform.setCloseToTray(closeToTray);
@@ -978,30 +1143,41 @@ export class AppStore {
       this.platform.autostart.supported && (await this.platform.autostart.isEnabled());
     const globalShortcut = this.platform.storage.getItem(SHORTCUT_KEY) ?? DEFAULT_SHORTCUT;
     const notifyUpdates = this.platform.storage.getItem(NOTIFY_UPDATES_KEY) !== "false";
+    const autoUpdate = this.platform.storage.getItem(AUTO_UPDATE_KEY) !== "false";
     this.update({
-      settings: { ...this.state.settings, closeToTray, autostart, globalShortcut, notifyUpdates },
+      settings: {
+        ...this.state.settings,
+        closeToTray,
+        autostart,
+        globalShortcut,
+        notifyUpdates,
+        autoUpdate,
+      },
     });
     // Client budgets are looked at every few minutes, and when a host with costs comes online.
     this.clientBudgetTimer = setInterval(
       () => void this.checkClientBudgets(),
       this.options.clientBudgetIntervalMs ?? CLIENT_BUDGET_INTERVAL_MS,
     );
-    if (this.platform.updater.supported && notifyUpdates) {
+    if (this.platform.updater.supported && (notifyUpdates || autoUpdate)) {
       void this.checkAppUpdate();
       this.updateTimer = setInterval(() => {
-        if (this.state.settings.notifyUpdates) void this.checkAppUpdate();
+        const { notifyUpdates, autoUpdate } = this.state.settings;
+        if (notifyUpdates || autoUpdate) void this.checkAppUpdate();
       }, this.options.appUpdateIntervalMs ?? APP_UPDATE_INTERVAL_MS);
     }
     if (this.platform.globalShortcut.supported) await this.registerShortcut(globalShortcut);
     this.offTrayAction?.();
     this.offTrayAction = this.platform.onTrayAction((action) => this.onTrayAction(action));
-    for (const config of loadHosts(this.platform.storage)) {
+    this.offQuit?.();
+    this.offQuit = this.platform.onQuitRequested(() => void this.quitWithUpdate());
+    await inSequence(loadHosts(this.platform.storage), async (config) => {
       this.update({
         hosts: [...this.state.hosts, newHostView(config)],
       });
       const token = await this.platform.secrets.get(config.id);
       if (token) this.connect(config, token);
-    }
+    });
     this.update({ hostsLoaded: true });
     // Last: the saved hosts must not wait for it.
     if (this.platform.terminal.supported) {
@@ -1026,6 +1202,7 @@ export class AppStore {
     url: string;
     token: string;
   }): Promise<{ ok: true; hostId: string } | { ok: false; error: string }> {
+    this.hostTokens.add(input.token);
     const probe = await probeHost(input.url, input.token, this.i18n.t);
     if (!probe.ok) return probe;
     return { ok: true, hostId: await this.addHost(input) };
@@ -1046,6 +1223,9 @@ export class AppStore {
       sessions,
       cards,
       selected: this.state.selected?.hostId === hostId ? null : this.state.selected,
+      setupProbes: Object.fromEntries(
+        Object.entries(this.state.setupProbes).filter(([id]) => id !== hostId),
+      ),
     });
     this.persistHosts();
   }
@@ -1059,23 +1239,42 @@ export class AppStore {
     return null;
   }
 
-  /** Reads a host's whole health now: its dependencies and its doctor; the sidebar and the host page read it. */
-  async checkHealth(hostId: string): Promise<void> {
+  private readonly healthReads = new Map<string, Promise<void>>();
+
+  /**
+   * Reads a host's whole health now: its dependencies and its doctor; the sidebar and the host page
+   * read it. Silent (a failure goes to `healthError`, not to a banner), each half on its own, and a
+   * read already on its way is the answer to a second ask.
+   */
+  checkHealth(hostId: string): Promise<void> {
+    const running = this.healthReads.get(hostId);
+    if (running) return running;
+    const read = this.readHealth(hostId).finally(() => this.healthReads.delete(hostId));
+    this.healthReads.set(hostId, read);
+    return read;
+  }
+
+  private async readHealth(hostId: string): Promise<void> {
     const host = this.state.hosts.find((h) => h.id === hostId);
     const features = host?.hostInfo?.features;
     const [deps, doctor] = await Promise.all([
       hasFeature(features, "depsCheck", false)
-        ? this.hostCommand(hostId, "deps.check", {})
+        ? this.hostRequest(hostId, "deps.check", {})
         : Promise.resolve(null),
       hasFeature(features, "doctor.run", false)
-        ? this.hostCommand(hostId, "doctor.run", { appVersion: APP_VERSION })
+        ? this.hostRequest(hostId, "doctor.run", { appVersion: APP_VERSION })
         : Promise.resolve(null),
     ]);
-    if (!deps && !doctor) return;
+    const failed = [deps, doctor].find((half) => half !== null && !half.ok);
+    const error = this.state.healthError;
+    const { [hostId]: _gone, ...rest } = error;
+    const got = deps?.ok ? deps.data : null;
+    const heard = doctor?.ok ? doctor.data : null;
     this.update({
-      ...(deps ? { deps: { ...this.state.deps, [hostId]: deps } } : {}),
-      ...(doctor ? { doctor: { ...this.state.doctor, [hostId]: doctor } } : {}),
-      healthAt: { ...this.state.healthAt, [hostId]: this.now() },
+      ...(got ? { deps: { ...this.state.deps, [hostId]: got } } : {}),
+      ...(heard ? { doctor: { ...this.state.doctor, [hostId]: heard } } : {}),
+      ...(got || heard ? { healthAt: { ...this.state.healthAt, [hostId]: this.now() } } : {}),
+      healthError: failed && !failed.ok ? { ...rest, [hostId]: failed.message } : rest,
     });
   }
 
@@ -1084,6 +1283,34 @@ export class AppStore {
     const at = this.state.healthAt[hostId];
     if (at !== undefined && this.now() - at < maxAgeMs) return;
     await this.checkHealth(hostId);
+  }
+
+  /** A new token or pairing link for a host that refused the old one; the error text, or null. */
+  async pairAgain(hostId: string, input: string): Promise<string | null> {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    if (!host) return this.i18n.t("hostOffline.pairGone");
+    const text = input.trim();
+    let token = text;
+    if (text.toLowerCase().startsWith("flightdeck://")) {
+      const parsed = parsePairingLink(text);
+      if (!parsed.ok) return pairingErrorText(this.i18n.t, parsed.error);
+      token = parsed.value.token;
+    }
+    if (!token) return this.i18n.t("hostForm.pairToken");
+    const probe = await probeHost(host.url, token, this.i18n.t);
+    if (!probe.ok) return probe.error;
+    // The host may have been removed while it was tested: keep no secret for it.
+    if (!this.state.hosts.some((h) => h.id === hostId)) return this.i18n.t("hostOffline.pairGone");
+    await this.platform.secrets.set(hostId, token);
+    await this.reconnectHost(hostId);
+    return null;
+  }
+
+  /** Starts the poll the GitHub panel runs while a sign-in waits; the returned function stops it. */
+  githubTicker(tick: () => void): () => void {
+    if (this.options.githubTicker) return this.options.githubTicker(tick);
+    const timer = setInterval(tick, 1500);
+    return () => clearInterval(timer);
   }
 
   /** Drops the connection and opens a new one right away. */
@@ -1116,10 +1343,22 @@ export class AppStore {
     return true;
   }
 
-  /** Approves or denies the oldest waiting request; a high-risk one is opened, as in the tray. */
-  decideOldest(decision: "approve" | "deny"): void {
+  /**
+   * Approves or denies the oldest waiting request; a high-risk one is opened, as in the tray.
+   * `shown` is the `host/request` the command named: when that one has gone in between, the one
+   * now oldest is opened to be seen, never answered unseen (#245).
+   */
+  decideOldest(decision: "approve" | "deny", shown: string): void {
     const item = needsYou(this.state)[0];
-    if (item) this.onTrayAction({ key: `${item.hostId}/${item.requestId}`, action: decision });
+    if (!item) return;
+    if (`${item.hostId}/${item.requestId}` !== shown) {
+      this.openRequest(item);
+      return;
+    }
+    // A gate or a vault request is opened to be seen, never answered blind (issue #187); the
+    // palette is not the tray, so a vault grant is never logged as the tray's.
+    if (item.gate || item.vault) this.openRequest(item);
+    else this.onTrayAction({ key: `${item.hostId}/${item.requestId}`, action: decision });
   }
 
   /** What the palette was used for lately, most recent first. */
@@ -1156,17 +1395,25 @@ export class AppStore {
     }
     const item = needsYou(this.state).find((i) => `${i.hostId}/${i.requestId}` === key);
     if (!item) return;
-    // The tray never approves a high-risk request: that takes holding the button in the app.
-    if (action === "open" || (action === "approve" && item.risk === "high")) this.openRequest(item);
-    else if (item.vault && action === "approve") {
-      // The daemon records that it was the tray that approved it.
-      this.vaultQuestions.get(item.requestId)?.({ scope: "once", via: "tray" });
-    } else
-      void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
+    // The tray never approves a high-risk request: that takes holding the button in the app. A
+    // workflow gate is answered on its card, never as a permission (the host refuses its id).
+    // A vault grant is opened too (#244): the tray's line cannot show the secret and parameters.
+    if (
+      action === "open" ||
+      item.gate ||
+      (action === "approve" && (item.risk === "high" || item.vault))
+    )
+      this.openRequest(item);
+    else void this.respondTo(item.hostId, item.requestId, action === "approve" ? "allow" : "deny");
   }
 
   /** Sends an OS notification and keeps it in the notification center. */
-  private notifyUser(n: Notification, route?: Route, fallbackUrl?: string | null): void {
+  private notifyUser(
+    notification: Notification & { about?: InboxAbout },
+    route?: Route,
+    fallbackUrl?: string | null,
+  ): void {
+    const { about, ...n } = notification;
     const entry: InboxEntry = {
       id: crypto.randomUUID(),
       at: new Date().toISOString(),
@@ -1175,19 +1422,48 @@ export class AppStore {
       ...(n.link ? { link: n.link } : {}),
       ...(route ? { route } : {}),
       ...(fallbackUrl ? { fallbackUrl } : {}),
+      ...(about ? { subject: about.subject, host: about.host } : {}),
+      ...(about?.ask ? { ask: about.ask } : {}),
+      ...(about?.group ? { group: about.group } : {}),
       read: false,
     };
     this.setInbox(addEntry(this.state.inbox, entry));
     void this.platform.notify(n);
   }
 
+  /** The bell's unread count as a taskbar badge, told only when it changes. */
+  private syncBadge(): void {
+    const count = unreadRows(this.state.inbox, new Date(this.now()));
+    if (count === this.badgeShown) return;
+    this.badgeShown = count;
+    // A taskbar that cannot show it is not worth a toast: the bell has the same count.
+    void Promise.resolve(this.platform.setBadge?.(count)).catch(() => {});
+  }
+
+  private resendBadge(): void {
+    if (this.badgeShown > 0)
+      void Promise.resolve(this.platform.setBadge?.(this.badgeShown)).catch(() => {});
+  }
+
+  /** What the taskbar badge shows now, so it is only told when the count changes. */
+  private badgeShown = 0;
+
   private setInbox(inbox: InboxEntry[]): void {
     this.update({ inbox });
+    this.syncBadge();
     saveInbox(this.platform.storage, inbox);
   }
 
-  inboxMarkRead(id: string): void {
-    this.setInbox(markRead(this.state.inbox, id));
+  /** Marks entries read: the one of a click, or every entry a collapsed row stands for. */
+  inboxMarkRead(ids: string | string[]): void {
+    const wanted = new Set(typeof ids === "string" ? [ids] : ids);
+    this.setInbox([...wanted].reduce((list, id) => markRead(list, id), this.state.inbox));
+  }
+
+  /** Drops entries: a notification about something that is gone. */
+  inboxDismiss(ids: string[]): void {
+    const gone = new Set(ids);
+    this.setInbox(this.state.inbox.filter((e) => !gone.has(e.id)));
   }
 
   inboxMarkAllRead(): void {
@@ -1244,6 +1520,12 @@ export class AppStore {
       if (open?.hostId === hostId && open.sessionId === sessionId) return;
       this.connections.get(hostId)?.unsubscribe(sessionId);
     };
+  }
+
+  /** Puts an idle session to sleep now and says, in a toast, what came of it. */
+  async sleepSession(hostId: string, sessionId: string): Promise<void> {
+    const answer = await this.hostCommand(hostId, "session.sleep", { sessionId });
+    if (answer) this.success(this.i18n.t(`sleep.result.${answer.result}` as Key));
   }
 
   /** The sidebar groups the user folded; kept across starts. */
@@ -1308,6 +1590,26 @@ export class AppStore {
     return effectiveMode(this.state.uiChoices[hostId], host?.hostInfo?.ui);
   }
 
+  /** The host whose mode the window shows: the selected one, else the first that is online. */
+  uiHostId(): string | null {
+    const { hosts, selected } = this.state;
+    return (
+      hosts.find((h) => h.id === selected?.hostId)?.id ??
+      hosts.find((h) => h.status === "online")?.id ??
+      null
+    );
+  }
+
+  /** Switches the window between simple and full mode; false when the host is locked or none shows. */
+  toggleUiMode(): boolean {
+    const hostId = this.uiHostId();
+    if (!hostId) return false;
+    const now = this.uiMode(hostId);
+    if (!now.canSwitch) return false;
+    this.setUiChoice(hostId, now.mode === "simple" ? "full" : "simple");
+    return true;
+  }
+
   /** The person's choice for a host; `null` forgets it, so the host's default speaks again. */
   setUiChoice(hostId: string, mode: UiMode | null): void {
     saveChoice(this.platform.storage, hostId, mode);
@@ -1320,6 +1622,119 @@ export class AppStore {
     if (!ui) return false;
     this.updateHost(hostId, (h) => (h.hostInfo ? { ...h, hostInfo: { ...h.hostInfo, ui } } : h));
     return true;
+  }
+
+  /** Whether this app resumes the sessions a restart interrupted on this host by itself (issue #150). */
+  autoResume(hostId: string): boolean {
+    return loadAutoResume(this.platform.storage, hostId);
+  }
+
+  setAutoResume(hostId: string, on: boolean): void {
+    saveAutoResume(this.platform.storage, hostId, on);
+    this.update({});
+  }
+
+  /** Looks for the sessions a restart interrupted: the dialog, or (auto) the resume itself. */
+  private async offerResume(hostId: string, conn: HostConnection): Promise<void> {
+    const found = await conn.request("session.interrupted", {}).catch(() => null);
+    const pending = unanswered(found?.sessions ?? [], loadHandled(this.platform.storage)[hostId]);
+    if (pending.length === 0) {
+      // Everything is answered: a put-off offer stays reachable, until the daemon has nothing to offer.
+      if ((found?.sessions ?? []).length === 0) this.dropOffer(hostId);
+      return;
+    }
+    if (this.autoResume(hostId)) {
+      const done = await this.resumeInterrupted(hostId, pending);
+      const names = pending
+        .filter((s) => done[s.sessionId]?.ok)
+        .map((s) => s.name ?? basename(s.cwd));
+      if (names.length > 0) {
+        const t = this.i18n.t;
+        this.success(
+          t(names.length === 1 ? "resumeOffer.autoOne" : "resumeOffer.autoMany", {
+            n: names.length,
+            names: names.join(", "),
+          }),
+        );
+      }
+      return;
+    }
+    this.update({
+      resumeOffers: {
+        ...this.state.resumeOffers,
+        [hostId]: { sessions: pending, open: true, resumed: [] },
+      },
+    });
+  }
+
+  private dropOffer(hostId: string): void {
+    if (!(hostId in this.state.resumeOffers)) return;
+    const { [hostId]: _gone, ...rest } = this.state.resumeOffers;
+    this.update({ resumeOffers: rest });
+  }
+
+  /**
+   * Resumes these sessions one by one (each goes through the normal resume, so the daemon's own
+   * rules apply) and tells each one to continue; never the original request again.
+   */
+  async resumeInterrupted(
+    hostId: string,
+    sessions: InterruptedSession[],
+  ): Promise<Record<string, { ok: true } | { ok: false; reason: string }>> {
+    const conn = this.connections.get(hostId);
+    const result: Record<string, { ok: true } | { ok: false; reason: string }> = {};
+    for (const session of sessions) {
+      try {
+        if (!conn) throw new Error("offline");
+        await conn.request("session.resume", { sessionId: session.sessionId });
+        await conn.request("session.send", { sessionId: session.sessionId, text: CONTINUATION });
+        result[session.sessionId] = { ok: true };
+        markHandled(this.platform.storage, hostId, [offerKey(session)]);
+      } catch (error) {
+        result[session.sessionId] = {
+          ok: false,
+          reason: error instanceof Error ? error.message : String(error),
+        };
+      }
+    }
+    const offer = this.state.resumeOffers[hostId];
+    if (offer) {
+      const resumed = [
+        ...new Set([
+          ...offer.resumed,
+          ...sessions.filter((s) => result[s.sessionId]?.ok).map((s) => s.sessionId),
+        ]),
+      ];
+      this.update({
+        resumeOffers: { ...this.state.resumeOffers, [hostId]: { ...offer, resumed } },
+      });
+    }
+    return result;
+  }
+
+  /** "Not now": the dialog goes, the offer stays reachable from the host page, and it does not come back by itself. */
+  snoozeResumeOffer(hostId: string): void {
+    const offer = this.state.resumeOffers[hostId];
+    if (!offer) return;
+    markHandled(this.platform.storage, hostId, offer.sessions.map(offerKey));
+    this.update({
+      resumeOffers: { ...this.state.resumeOffers, [hostId]: { ...offer, open: false } },
+    });
+  }
+
+  openResumeOffer(hostId: string): void {
+    const offer = this.state.resumeOffers[hostId];
+    if (offer)
+      this.update({
+        resumeOffers: { ...this.state.resumeOffers, [hostId]: { ...offer, open: true } },
+      });
+  }
+
+  /** "Dismiss all": the offer is gone for good. */
+  dismissResumeOffer(hostId: string): void {
+    const offer = this.state.resumeOffers[hostId];
+    if (offer) markHandled(this.platform.storage, hostId, offer.sessions.map(offerKey));
+    this.dropOffer(hostId);
   }
 
   /** The layout of the tiles on the project page; kept across starts (issue #94). */
@@ -1437,10 +1852,10 @@ export class AppStore {
       .map(async (host) => {
         const conn = this.connections.get(host.id) as HostConnection;
         const projects = await this.loadProjects(host.id);
-        for (const project of projects ?? []) {
+        await inSequence(projects ?? [], async (project) => {
           const board = await quiet(conn.request("board.get", { projectId: project.id }));
           for (const card of cardsIn(board)) this.onCard(host.id, card);
-        }
+        });
       });
     const targets = this.state.hosts
       .filter(
@@ -1576,6 +1991,8 @@ export class AppStore {
     claudeSessionId: string,
     cursor?: string,
     tail = false,
+    /** Told why a read was refused (issue #227): the reader tells "not found" from a failure. */
+    refused?: (reason: string | undefined) => void,
   ): Promise<HistoryGetResult | null> {
     try {
       const conn = this.connections.get(hostId);
@@ -1587,6 +2004,7 @@ export class AppStore {
         ...(tail && !cursor ? { tail: true } : {}),
       });
     } catch (error) {
+      refused?.(error instanceof RequestError ? error.reason : undefined);
       // Not indexed yet is a normal state (the indexer catches up), not something to tell the person.
       if (!(error instanceof RequestError && error.reason === "transcript_not_indexed")) {
         this.fail(error);
@@ -1681,68 +2099,82 @@ export class AppStore {
     await Promise.all(
       this.state.hosts
         .filter((host) => host.status === "online")
-        .map(async (host) => {
-          const conn = this.connections.get(host.id) as HostConnection;
-          const named = hasFeature(host.hostInfo?.features, "names", false);
-          const withBackground = hasFeature(host.hostInfo?.features, "bg", false);
-          const [managed, history, external, standard, background] = await Promise.all([
-            quiet(conn.request("session.list", {})),
-            quiet(conn.request("history.list", { limit: HISTORY_LIST_LIMIT })),
-            quiet(conn.request("external.list", {})),
-            named ? quiet(conn.request("names.list", {})) : null,
-            withBackground ? quiet(conn.request("bg.list", {})) : null,
-          ]);
-          // Only what differs from what the state holds is replaced, so a refresh that finds the
-          // same lists tells nobody (the screens compare by reference).
-          const meta = { ...this.state.meta };
-          const externals = { ...this.state.externals };
-          let metaChanged = false;
-          let externalsChanged = false;
-          const putMeta = (key: string, value: SessionMeta) => {
-            if (sameJson(meta[key], value)) return;
-            meta[key] = value;
-            metaChanged = true;
-          };
-          for (const s of [...(managed?.sessions ?? []), ...(history?.sessions ?? [])]) {
-            if (s.claudeSessionId && s.meta)
-              putMeta(sessionKey(host.id, s.claudeSessionId), s.meta);
-          }
-          for (const s of external?.sessions ?? []) {
-            const key = sessionKey(host.id, s.claudeSessionId);
-            // A list read before a hook but answered after its frame is older than what the
-            // frame put in the state: it must not undo it.
-            const held = externals[key];
-            const older =
-              held !== undefined && Date.parse(s.lastEventAt) < Date.parse(held.lastEventAt);
-            if (!older && !sameJson(held, s)) {
-              externals[key] = s;
-              externalsChanged = true;
-            }
-            if (s.meta) putMeta(key, s.meta);
-          }
-          // A request that failed (`null`: a busy host, a timeout) says nothing about the list, so
-          // the one the state holds stays; an empty answer is the only way a list empties.
-          const before = this.state.hub[host.id];
-          const lists = {
-            managed: managed ? managed.sessions : (before?.managed ?? []),
-            history: history ? history.sessions : (before?.history ?? []),
-          };
-          const standardNames = standard ? standard.names : (this.state.names[host.id] ?? []);
-          const patch: Partial<AppState> = {};
-          if (!sameJson(this.state.hub[host.id], lists)) {
-            patch.hub = { ...this.state.hub, [host.id]: lists };
-          }
-          if (!sameJson(this.state.names[host.id], standardNames)) {
-            patch.names = { ...this.state.names, [host.id]: standardNames };
-          }
-          if (background && !sameJson(this.state.background[host.id], background)) {
-            patch.background = { ...this.state.background, [host.id]: background };
-          }
-          if (metaChanged) patch.meta = meta;
-          if (externalsChanged) patch.externals = externals;
-          if (Object.keys(patch).length > 0) this.update(patch);
-        }),
+        .map((host) => this.refreshHost(host)),
     );
+  }
+
+  /** The session lists of one online host, read and folded into the state when they changed. */
+  private async refreshHost(host: HostView): Promise<void> {
+    const conn = this.connections.get(host.id) as HostConnection;
+    const named = hasFeature(host.hostInfo?.features, "names", false);
+    const withBackground = hasFeature(host.hostInfo?.features, "bg", false);
+    const [managed, history, external, standard, background] = await Promise.all([
+      quiet(conn.request("session.list", {})),
+      quiet(conn.request("history.list", { limit: HISTORY_LIST_LIMIT })),
+      quiet(conn.request("external.list", {})),
+      named ? quiet(conn.request("names.list", {})) : null,
+      withBackground ? quiet(conn.request("bg.list", {})) : null,
+    ]);
+    const patch: Partial<AppState> = this.changedMeta(host.id, managed, history, external);
+    // A request that failed (`null`: a busy host, a timeout) says nothing about the list, so
+    // the one the state holds stays; an empty answer is the only way a list empties.
+    const before = this.state.hub[host.id];
+    const lists = {
+      managed: managed ? managed.sessions : (before?.managed ?? []),
+      history: history ? history.sessions : (before?.history ?? []),
+    };
+    const standardNames = standard ? standard.names : (this.state.names[host.id] ?? []);
+    if (!sameJson(this.state.hub[host.id], lists)) {
+      patch.hub = { ...this.state.hub, [host.id]: lists };
+    }
+    if (!sameJson(this.state.names[host.id], standardNames)) {
+      patch.names = { ...this.state.names, [host.id]: standardNames };
+    }
+    if (background && !sameJson(this.state.background[host.id], background)) {
+      patch.background = { ...this.state.background, [host.id]: background };
+    }
+    if (Object.keys(patch).length > 0) this.update(patch);
+  }
+
+  /**
+   * The `meta` and `externals` of the state with what the lists say, each only when it differs from
+   * what the state holds, so a refresh that finds the same lists tells nobody (the screens compare
+   * by reference).
+   */
+  private changedMeta(
+    hostId: string,
+    managed: { sessions: Array<{ claudeSessionId: string | null; meta?: SessionMeta }> } | null,
+    history: { sessions: Array<{ claudeSessionId: string | null; meta?: SessionMeta }> } | null,
+    external: { sessions: ExternalSession[] } | null,
+  ): Partial<AppState> {
+    const meta = { ...this.state.meta };
+    const externals = { ...this.state.externals };
+    let metaChanged = false;
+    let externalsChanged = false;
+    const putMeta = (key: string, value: SessionMeta) => {
+      if (sameJson(meta[key], value)) return;
+      meta[key] = value;
+      metaChanged = true;
+    };
+    for (const s of [...(managed?.sessions ?? []), ...(history?.sessions ?? [])]) {
+      if (s.claudeSessionId && s.meta) putMeta(sessionKey(hostId, s.claudeSessionId), s.meta);
+    }
+    for (const s of external?.sessions ?? []) {
+      const key = sessionKey(hostId, s.claudeSessionId);
+      // A list read before a hook but answered after its frame is older than what the
+      // frame put in the state: it must not undo it.
+      const held = externals[key];
+      const older = held !== undefined && Date.parse(s.lastEventAt) < Date.parse(held.lastEventAt);
+      if (!older && !sameJson(held, s)) {
+        externals[key] = s;
+        externalsChanged = true;
+      }
+      if (s.meta) putMeta(key, s.meta);
+    }
+    return {
+      ...(metaChanged ? { meta } : {}),
+      ...(externalsChanged ? { externals } : {}),
+    };
   }
 
   /** Renames, pins or archives a session (managed or external) of a host. */
@@ -1839,6 +2271,43 @@ export class AppStore {
     return host?.status === "online" && hasFeature(host.hostInfo?.features, "terminal", false);
   }
 
+  /** Asks a host what the setup checklist needs from it: its hooks, GitHub, projects. */
+  /**
+   * Asks a host what the setup checklist reads: its hooks and its projects, at connect. GitHub runs
+   * `gh auth status` on the host, so it is asked only with `github` (the Setup screen, the GitHub
+   * panel); what it said last stays until then.
+   */
+  async refreshSetup(hostId: string, options: { github?: boolean } = {}): Promise<void> {
+    const host = this.state.hosts.find((h) => h.id === hostId);
+    if (host?.status !== "online") return;
+    const features = host.hostInfo?.features;
+    const wantsHooks = hasFeature(features, "central", false);
+    const wantsGithub = options.github === true && hasFeature(features, "github", false);
+    // The projects are read for the checklist only: the list the screens use stays unopened, so a
+    // screen that reads a project's trust or branch does not change because Setup looked.
+    const wantsProjects =
+      hasFeature(features, "workflows", false) && this.state.projects[hostId] === undefined;
+    if (!wantsHooks && !wantsGithub && !wantsProjects) return;
+    const [hooks, github, projects] = await Promise.all([
+      wantsHooks ? this.hostRequest(hostId, "hooks.status", {}) : null,
+      wantsGithub ? this.hostRequest(hostId, "github.status", {}) : null,
+      wantsProjects ? this.hostRequest(hostId, "project.list", {}) : null,
+    ]);
+    // The host may have gone while it was asked.
+    if (!this.state.hosts.some((h) => h.id === hostId)) return;
+    const before = this.state.setupProbes[hostId];
+    let githubKnown = before?.github ?? null;
+    if (wantsGithub)
+      githubKnown = github?.ok ? github.data.installed && github.data.loggedIn : null;
+    const projectList = wantsProjects && projects?.ok ? projects.data.projects : before?.projects;
+    const probe: SetupProbe = {
+      hooks: hooks?.ok ? hooks.data.status : null,
+      github: githubKnown,
+      ...(projectList ? { projects: projectList } : {}),
+    };
+    this.update({ setupProbes: { ...this.state.setupProbes, [hostId]: probe } });
+  }
+
   /** Asks the host for its `host.info` again (after a change of its settings). */
   async reloadHostInfo(hostId: string): Promise<void> {
     const conn = this.connections.get(hostId);
@@ -1921,6 +2390,11 @@ export class AppStore {
     }
   }
 
+  /** The shell's log file, when the app has one (not in a browser). */
+  platformLogs(): Platform["logs"] {
+    return this.platform.logs;
+  }
+
   async copyText(text: string): Promise<boolean> {
     try {
       await this.platform.copyText(text);
@@ -1941,9 +2415,12 @@ export class AppStore {
   }
 
   /** A short success toast (copied, saved, started…), already translated. */
-  success(text: string): void {
+  success(text: string, link?: { label: string; run: () => void }): void {
     this.update({
-      notices: [...this.state.notices, { id: ++this.noticeSeq, kind: "success", code: "", text }],
+      notices: [
+        ...this.state.notices,
+        { id: ++this.noticeSeq, kind: "success", code: "", text, ...(link ? { link } : {}) },
+      ],
     });
   }
 
@@ -1974,6 +2451,7 @@ export class AppStore {
   private fail(error: unknown, text?: string, retry?: () => void): void {
     const code = error instanceof RequestError ? error.code : "";
     const message = error instanceof Error ? error.message : String(error);
+    this.appLog.log("error", "refusal", `${code ? `${code}: ` : ""}${text ?? message}`);
     const notice: Notice = { id: ++this.noticeSeq, kind: "error", code, text: text ?? message };
     if (error instanceof RequestError && error.reason) {
       notice.reason = error.reason;
@@ -1981,9 +2459,10 @@ export class AppStore {
     }
     if (error instanceof RequestError && error.hostId) notice.hostId = error.hostId;
     if (retry) notice.retry = retry;
+    // The same error again takes the old one's place (#581): one toast, the newest, with a fresh timer.
     this.update({
       error: text ?? describeError(error),
-      notices: [...this.state.notices, notice],
+      notices: [...this.state.notices.filter((n) => !sameNotice(n, notice)), notice],
     });
   }
 
@@ -2033,6 +2512,12 @@ export class AppStore {
     );
   }
 
+  setEffort(effort: EffortLevel | null): Promise<void> {
+    return this.onSelected((conn, sessionId) =>
+      conn.request("session.setEffort", { sessionId, effort }),
+    );
+  }
+
   close(): Promise<void> {
     return this.onSelected((conn, sessionId) => conn.request("session.close", { sessionId }));
   }
@@ -2041,16 +2526,42 @@ export class AppStore {
     return this.onSelected((conn, sessionId) => conn.request("session.resume", { sessionId }));
   }
 
+  /** The daemon's risk of a waiting request: its queue entry, else the session item it is. */
+  private riskOf(hostId: string, requestId: string): RiskLevel | undefined {
+    const queued = needsYou(this.state).find(
+      (item) => item.hostId === hostId && item.requestId === requestId,
+    );
+    if (queued?.risk) return queued.risk;
+    for (const [key, session] of Object.entries(this.state.sessions)) {
+      if (!key.startsWith(`${hostId}/`)) continue;
+      const item = session.items.find((i) => i.kind === "permission" && i.requestId === requestId);
+      if (item?.kind === "permission" && item.risk) return item.risk;
+    }
+    return undefined;
+  }
+
+  /**
+   * An allow of a high-risk request that was not held is refused here, below every screen, and
+   * the person is told why (#245). Deny never needs a hold.
+   */
+  private unheld(hostId: string, requestId: string, decision: "allow" | "deny", answer: Answer) {
+    if (decision !== "allow" || answer.held || this.riskOf(hostId, requestId) !== "high") {
+      return false;
+    }
+    const text = this.i18n.t("approval.holdRequired");
+    this.fail(new Error(text), text);
+    return true;
+  }
+
   /** Answers a request from the "Precisa de você" queue, on whichever host it lives. */
   async respondTo(
     hostId: string,
     requestId: string,
     decision: "allow" | "deny",
-    updatedPermissions?: PermissionUpdate[],
-    /** Why it was denied (phase 10: the card's reason). */
-    message?: string,
-    updatedInput?: Record<string, unknown>,
+    answer: Answer = {},
   ): Promise<void> {
+    const { updatedPermissions, message, updatedInput, held } = answer;
+    if (this.unheld(hostId, requestId, decision, answer)) return;
     if (decision === "allow") startMeasure("approve");
     const question = this.vaultQuestions.get(requestId);
     if (question) {
@@ -2063,6 +2574,7 @@ export class AppStore {
           ...(updatedPermissions ? { updatedPermissions } : {}),
           ...(message ? { message } : {}),
           ...(updatedInput ? { updatedInput } : {}),
+          ...(decision === "allow" && held ? { held: true } : {}),
         });
       } catch (error) {
         this.fail(error);
@@ -2088,13 +2600,10 @@ export class AppStore {
     });
   }
 
-  respond(
-    requestId: string,
-    decision: "allow" | "deny",
-    message?: string,
-    updatedPermissions?: PermissionUpdate[],
-    updatedInput?: Record<string, unknown>,
-  ): Promise<void> {
+  respond(requestId: string, decision: "allow" | "deny", answer: Answer = {}): Promise<void> {
+    const { updatedPermissions, message, updatedInput, held } = answer;
+    const hostId = this.state.selected?.hostId;
+    if (hostId && this.unheld(hostId, requestId, decision, answer)) return Promise.resolve();
     return this.onSelected((conn) =>
       conn.request("permission.respond", {
         requestId,
@@ -2102,6 +2611,7 @@ export class AppStore {
         ...(message ? { message } : {}),
         ...(updatedPermissions ? { updatedPermissions } : {}),
         ...(updatedInput ? { updatedInput } : {}),
+        ...(decision === "allow" && held ? { held: true } : {}),
       }),
     );
   }
@@ -2112,6 +2622,8 @@ export class AppStore {
     if (typeof target.addEventListener !== "function") return;
     const wake = () => {
       for (const conn of this.connections.values()) conn.wake();
+      // Hiding the window to the tray can drop its taskbar badge: say it again.
+      this.resendBadge();
     };
     const visible = () => {
       if (typeof document === "undefined" || document.visibilityState !== "hidden") wake();
@@ -2135,6 +2647,8 @@ export class AppStore {
     for (const conn of this.connections.values()) conn.dispose();
     this.connections.clear();
     this.offTrayAction?.();
+    this.offQuit?.();
+    this.offQuit = null;
     this.offTrayAction = null;
     if (this.updateTimer) clearInterval(this.updateTimer);
     this.updateTimer = null;
@@ -2149,10 +2663,39 @@ export class AppStore {
   async checkAppUpdate(): Promise<void> {
     try {
       const offer = await this.platform.updater.check();
-      this.update({ appUpdate: { offer, upToDate: offer === null, error: null } });
+      this.appLog.log(
+        "info",
+        "update",
+        offer === null ? "up to date" : `version ${offer.version} is available`,
+      );
+      this.setAppUpdate({ offer, upToDate: offer === null, error: null });
+      if (offer && this.state.settings.autoUpdate) await this.downloadAppUpdate(offer.version);
     } catch (error) {
+      this.appLog.log(
+        "error",
+        "update",
+        `the check failed: ${(error as Error).message ?? String(error)}`,
+      );
       this.setAppUpdate({
         error: this.i18n.t("messages.updateCheckFailed", {
+          error: (error as Error).message ?? String(error),
+        }),
+      });
+    }
+  }
+
+  /**
+   * Issue #280: downloads the version on offer in the background, once; the banner then offers to
+   * restart into it. A failure says why and is tried again at the next check.
+   */
+  private async downloadAppUpdate(version: string): Promise<void> {
+    if (this.state.appUpdate.ready === version) return;
+    try {
+      await this.platform.updater.download();
+      this.setAppUpdate({ ready: version });
+    } catch (error) {
+      this.setAppUpdate({
+        error: this.i18n.t("messages.updateDownloadFailed", {
           error: (error as Error).message ?? String(error),
         }),
       });
@@ -2172,9 +2715,32 @@ export class AppStore {
     }
   }
 
+  /**
+   * Issue #402: the tray's Quit. A version downloaded in the background installs on the way out
+   * (no restart), so the next start is on it; then the app asks the shell to exit, also when the
+   * install failed.
+   */
+  private async quitWithUpdate(): Promise<void> {
+    // A second Quit while the first installs waits for it: the same bytes are never installed twice.
+    if (this.quitting) return;
+    this.quitting = true;
+    try {
+      if (this.state.appUpdate.ready) await this.platform.updater.installDownloaded();
+    } catch {
+      // Quitting wins: the update is offered again at the next start.
+    } finally {
+      await this.platform.quitNow();
+    }
+  }
+
   /** "Depois": the banner goes until the next check. */
   dismissAppUpdate(): void {
     this.setAppUpdate({ offer: null });
+  }
+
+  setAutoUpdate(enabled: boolean): void {
+    this.platform.storage.setItem(AUTO_UPDATE_KEY, String(enabled));
+    this.update({ settings: { ...this.state.settings, autoUpdate: enabled } });
   }
 
   setNotifyUpdates(enabled: boolean): void {
@@ -2200,6 +2766,7 @@ export class AppStore {
   }
 
   private connect(config: HostConfig, token: string): void {
+    this.hostTokens.add(token);
     const conn = new HostConnection({
       url: config.url,
       token,
@@ -2303,6 +2870,8 @@ export class AppStore {
   }
 
   private onStatus(hostId: string, conn: HostConnection, status: ConnectionStatus): void {
+    const name = this.state.hosts.find((h) => h.id === hostId)?.name ?? hostId;
+    this.appLog.log(status === "online" ? "info" : "warn", "host", `${name}: ${status}`);
     this.updateHost(hostId, (h) => ({
       ...h,
       status,
@@ -2318,20 +2887,24 @@ export class AppStore {
         () => {},
       );
     }
-    if (status !== "online") {
-      for (const [key, listeners] of this.terminalListeners) {
-        if (key.startsWith(`${hostId}|`)) for (const listener of listeners) listener.offline();
-      }
+    if (status !== "online") this.tellTerminalsOffline(hostId);
+    if (status === "connecting") this.dropPartialText(hostId);
+  }
+
+  /** The terminals of the host are told it is gone. */
+  private tellTerminalsOffline(hostId: string): void {
+    for (const [key, listeners] of this.terminalListeners) {
+      if (key.startsWith(`${hostId}|`)) for (const listener of listeners) listener.offline();
     }
-    if (status === "connecting") {
-      // Partial text from before the drop will never be completed by a delta; drop it.
-      const sessions = { ...this.state.sessions };
-      for (const key of Object.keys(sessions)) {
-        if (key.startsWith(`${hostId}/`))
-          sessions[key] = endStreaming(sessions[key] as SessionState);
-      }
-      this.update({ sessions });
+  }
+
+  /** Partial text from before the drop will never be completed by a delta; drop it. */
+  private dropPartialText(hostId: string): void {
+    const sessions = { ...this.state.sessions };
+    for (const key of Object.keys(sessions)) {
+      if (key.startsWith(`${hostId}/`)) sessions[key] = endStreaming(sessions[key] as SessionState);
     }
+    this.update({ sessions });
   }
 
   /**
@@ -2362,6 +2935,8 @@ export class AppStore {
       const done = h.daemonUpdate && hostInfo?.daemonVersion === h.daemonUpdate.target;
       return { ...h, hostInfo, infoAt: Date.now(), ...(done ? { daemonUpdate: null } : {}) };
     });
+    // The setup checklist reads what this host has: its hooks, GitHub, projects.
+    void this.refreshSetup(hostId);
     // ssh asks for passwords through the daemon: this app is who answers.
     if (hasFeature(hostInfo?.features, "ssh", false)) {
       void conn.request("askpass.watch", {}).catch(() => null);
@@ -2380,6 +2955,9 @@ export class AppStore {
     // Phase 19: the daemon decides a request with the rules the app hands it.
     if (hasFeature(hostInfo?.features, "actions", false)) this.sendVaultRules(hostId, conn);
     void this.checkHealth(hostId);
+    // Not awaited, as the health check: a reload of the host's info never waits on the offer.
+    if (hasFeature(hostInfo?.features, FEATURE_RESUME_OFFER, false))
+      void this.offerResume(hostId, conn);
     if (hasFeature(hostInfo?.features, "costs", false)) {
       const list = await conn.request("budget.list", {}).catch(() => null);
       if (list) this.update({ budgets: { ...this.state.budgets, [hostId]: list.budgets } });
@@ -2484,6 +3062,8 @@ export class AppStore {
       status: summary.status,
       pendingPermissions: summary.pendingPermissions,
       updatedAt: summary.updatedAt,
+      ...(summary.runtime ? { runtime: summary.runtime } : {}),
+      ...(summary.trustStale ? { trustStale: true } : {}),
     };
     const prev = host.sessions.find((s) => s.id === next.id);
     this.updateHost(hostId, (h) => ({
@@ -2501,8 +3081,14 @@ export class AppStore {
     const linkFor = (requestId: string) => requestLink(hostId, requestId);
     const focused = this.platform.isFocused();
     const t = this.i18n.t;
-    for (const n of summaryNotifications(prev, next, label, focused, linkFor, t)) {
-      this.notifyUser(n);
+    const names = { subject: next.name ?? basename(next.cwd), host: host.name, group: key };
+    for (const n of summaryNotifications(prev, next, label, focused, linkFor, t, names)) {
+      // A request's entry keeps its session too: once answered, the bell opens it at that request.
+      const requestId = n.link ? parseRequestLink(n.link)?.requestId : undefined;
+      this.notifyUser(
+        n,
+        requestId ? { name: "session", host: hostId, id: next.id, focus: requestId } : undefined,
+      );
     }
   }
 
@@ -2558,12 +3144,47 @@ export class AppStore {
       this.state.externals[sessionKey(hostId, frame.claudeSessionId)]?.cwd ?? null,
     );
     if (!this.platform.isFocused()) {
-      this.notifyUser({
-        title: this.i18n.t("notify.externalTitle"),
-        body: `${host?.name ?? hostId} · ${frame.toolName}`,
-        link: requestLink(hostId, frame.requestId),
-      });
+      this.notifyUser(
+        externalRequestNotification(
+          {
+            hostId,
+            hostName: host?.name ?? hostId,
+            subject: this.externalTitle(hostId, frame.claudeSessionId),
+            claudeSessionId: frame.claudeSessionId,
+            toolName: frame.toolName,
+            input: frame.input,
+            link: requestLink(hostId, frame.requestId),
+          },
+          this.i18n.t,
+        ),
+      );
     }
+  }
+
+  /** A terminal session's name for a notification: the one given to it, else its folder or its id. */
+  private externalTitle(hostId: string, claudeSessionId: string): string {
+    const key = sessionKey(hostId, claudeSessionId);
+    const cwd = this.state.externals[key]?.cwd;
+    return (
+      this.state.meta[key]?.name ??
+      this.state.hub[hostId]?.history.find((h) => h.claudeSessionId === claudeSessionId)?.title ??
+      (cwd ? basename(cwd) : claudeSessionId.slice(0, 8))
+    );
+  }
+
+  /** Asks every online host for its plan quota again (the status bar's refresh); a host that does not answer keeps what it had. */
+  async refreshQuota(): Promise<void> {
+    const online = this.state.hosts.filter((h) => h.status === "online");
+    await Promise.all(
+      online.map((h) =>
+        this.hostCommand(h.id, "quota.get", {}).then(
+          (state) => {
+            if (state) this.onQuota(h.id, state);
+          },
+          () => {},
+        ),
+      ),
+    );
   }
 
   /** A discarded card leaves; any other replaces what the app had. */
@@ -2839,6 +3460,8 @@ export class AppStore {
 
   /** Phase 19: each secret's usage rules, kept with the vault. */
   private readonly rules: VaultRules;
+  /** Home's last numbers per host set and period (issue #607). */
+  readonly homeCache: HomeCache;
   /** Phase 18: the global snippets, kept by the app. */
   readonly globalSnippets: GlobalSnippets;
   /** Phase 20: the global personas, kept by the app. */
@@ -2950,7 +3573,7 @@ export class AppStore {
     const run = async () => {
       do {
         this.clientBudgetAgain = false;
-        await this.lookAtClientBudgets();
+        await this.lookAtClientBudgets(); // NOSONAR: sequential by design: each pass needs the answer of the one before
       } while (this.clientBudgetAgain);
     };
     this.clientBudgetCheck = run().finally(() => {
@@ -3020,7 +3643,7 @@ export class AppStore {
     const online = this.state.hosts
       .filter((h) => h.status === "online" && hasFeature(h.hostInfo?.features, "costs", false))
       .map((h) => h.id)
-      .sort()
+      .sort(byCodeUnit)
       .join("|");
     if (online === this.clientBudgetHosts) return;
     this.clientBudgetHosts = online;
@@ -3151,22 +3774,40 @@ export class AppStore {
    * apart from ordinary text (6+ characters), for a scan that runs in the app: they are compared
    * by the caller, never sent and never kept here (phase 18's history import).
    */
+  /**
+   * What the app's log must never write, read at each line: every host's token and the vault's
+   * values (a copy kept in memory only, refreshed when the vault changes, never saved or sent).
+   */
+  scanValues(): string[] {
+    return [...this.hostTokens, ...this.vaultPieces];
+  }
+
+  private readonly hostTokens = new Set<string>();
+  private vaultPieces: string[] = [];
+
+  private async rememberVaultValues(): Promise<void> {
+    try {
+      this.vaultPieces = await this.vaultValuesForScan();
+    } catch {
+      // The log's cache is a convenience: a vault that cannot be read leaves the last one.
+    }
+  }
+
   async vaultValuesForScan(): Promise<string[]> {
     const pieces: string[] = [];
-    for (const secret of this.vault.list()) {
+    await inSequence(this.vault.list(), async (secret) => {
       const value = await this.vault.value(secret.id);
-      if (value === null) continue;
+      if (value === null) return;
       // A whole value can be long and many-lined: what a history line would carry is one line,
       // and of an env set, one variable's value.
       for (const line of value.split(/\r?\n/)) {
-        const assigned =
-          secret.type === "env" ? line.match(/^\s*[A-Za-z_][A-Za-z0-9_]*\s*=(.*)$/) : null;
+        const assigned = secret.type === "env" ? /^\s*[A-Za-z_]\w*\s*=(.*)$/.exec(line) : null;
         const piece = (assigned ? (assigned[1] as string) : line)
           .trim()
           .replace(/^(["'])(.*)\1$/, "$2");
         if (piece.length >= 6) pieces.push(piece);
       }
-    }
+    });
     return pieces;
   }
 
@@ -3282,9 +3923,9 @@ export class AppStore {
     for (const host of this.state.hosts) {
       if (host.status !== "online" || !hasFeature(host.hostInfo?.features, "watch", false))
         continue;
-      const found = await this.hostCommand(host.id, "watch.byUrl", { url });
+      const found = await this.hostCommand(host.id, "watch.byUrl", { url }); // NOSONAR: hosts are asked in order and the first that knows the address wins
       if (found?.via === "card" && found.trace) {
-        const card = await this.hostCommand(host.id, "card.get", { cardId: found.trace.cardId });
+        const card = await this.hostCommand(host.id, "card.get", { cardId: found.trace.cardId }); // NOSONAR: hosts are asked in order and the first that knows the address wins
         if (card) {
           return { name: "card", host: host.id, projectId: card.projectId, cardId: card.id };
         }
@@ -3405,27 +4046,37 @@ export class AppStore {
   ): Promise<{ ok: true } | Extract<HostResult<never>, { ok: false }>> {
     const secret = this.vault.list().find((s) => s.id === secretId);
     const accepted: string[] = [];
+    let refusal: Extract<HostResult<never>, { ok: false }> | null = null;
     for (const host of this.state.hosts) {
       if (host.status !== "online" || !secret?.allowedHosts.includes(host.id)) continue;
-      const result = await this.hostRequest(host.id, "vault.rules.set", {
-        secretId,
-        tags: secret.tags,
-        rules: this.effectiveVaultRules(secret, rules),
-      });
-      if (!result.ok) {
-        // The hosts that took the refused set go back to the saved one: none keeps rules the
-        // app did not save (they could be looser).
-        const saved = this.rules.get(secretId);
-        for (const hostId of accepted) {
-          await this.hostRequest(hostId, "vault.rules.set", {
+      const result =
+        await /* NOSONAR: stops at the first host that refuses, to put back the ones that accepted */ this.hostRequest(
+          host.id,
+          "vault.rules.set",
+          {
             secretId,
             tags: secret.tags,
-            rules: this.effectiveVaultRules(secret, saved),
-          });
-        }
-        return result;
+            rules: this.effectiveVaultRules(secret, rules),
+          },
+        );
+      if (!result.ok) {
+        refusal = result;
+        break;
       }
       accepted.push(host.id);
+    }
+    if (refusal && secret) {
+      // The hosts that took the refused set go back to the saved one: none keeps rules the
+      // app did not save (they could be looser).
+      const saved = this.rules.get(secretId);
+      await inSequence(accepted, async (hostId) => {
+        await this.hostRequest(hostId, "vault.rules.set", {
+          secretId,
+          tags: secret.tags,
+          rules: this.effectiveVaultRules(secret, saved),
+        });
+      });
+      return refusal;
     }
     this.rules.set(secretId, rules);
     for (const hostId of accepted) {
@@ -3478,51 +4129,62 @@ export class AppStore {
   }
 
   /**
+   * Sends one host the rules of one secret when the scope changed what it holds. Returns the name of
+   * the client whose projects changed while it stays scoped (so a widening is said), else null.
+   */
+  private async pushScopeTo(
+    host: HostView,
+    secret: SecretMeta,
+    rules: unknown[],
+    text: string,
+  ): Promise<string | null> {
+    const key = `${host.id}/${secret.id}`;
+    const before = this.vaultScopeSent.get(key);
+    const scoped = text.includes(SCOPE_RULE_PREFIX);
+    // Nothing of this secret was sent by the scope, and none is now: leave it alone.
+    if (before === undefined ? !scoped : before === text) return null;
+    const result = await this.hostRequest(host.id, "vault.rules.set", {
+      secretId: secret.id,
+      tags: secret.tags,
+      rules,
+    });
+    if (!result.ok) {
+      // Not held in its client on that host: said, not left to be found out.
+      const client = scopingClient(secret, this.state.clientList);
+      this.fail(
+        new Error(result.code),
+        this.i18n.t("clients.scopeRefused", {
+          host: host.name,
+          name: client?.name ?? "",
+          secret: secret.name,
+          message: result.message,
+        }),
+      );
+      return null;
+    }
+    this.vaultScopeSent.set(key, text);
+    if (!scoped || !before?.includes(SCOPE_RULE_PREFIX)) return null;
+    const client = this.state.clientList.find((c) => text.includes(`${SCOPE_RULE_PREFIX}${c.id}:`));
+    return client?.name ?? null;
+  }
+
+  /**
    * Sends the hosts what changed in the rules of scoped secrets: a client's projects came or went,
    * or scope was turned on or off (the own rules go back). A change in the projects of a client
    * that stays scoped says so, so a widening is never silent.
    */
   private async pushVaultScopes(): Promise<void> {
     const changed = new Set<string>();
-    for (const secret of this.vault.list()) {
+    await inSequence(this.vault.list(), async (secret) => {
       const own = this.rules.get(secret.id);
       const rules = this.effectiveVaultRules(secret, own);
       const text = JSON.stringify(rules);
-      for (const host of this.state.hosts) {
-        if (host.status !== "online" || !secret.allowedHosts.includes(host.id)) continue;
-        const key = `${host.id}/${secret.id}`;
-        const before = this.vaultScopeSent.get(key);
-        const scoped = text.includes(SCOPE_RULE_PREFIX);
-        // Nothing of this secret was sent by the scope, and none is now: leave it alone.
-        if (before === undefined ? !scoped : before === text) continue;
-        const result = await this.hostRequest(host.id, "vault.rules.set", {
-          secretId: secret.id,
-          tags: secret.tags,
-          rules,
-        });
-        if (!result.ok) {
-          // Not held in its client on that host: said, not left to be found out.
-          const client = scopingClient(secret, this.state.clientList);
-          this.fail(
-            new Error(result.code),
-            this.i18n.t("clients.scopeRefused", {
-              host: host.name,
-              name: client?.name ?? "",
-              secret: secret.name,
-              message: result.message,
-            }),
-          );
-          continue;
-        }
-        this.vaultScopeSent.set(key, text);
-        if (scoped && before?.includes(SCOPE_RULE_PREFIX)) {
-          const client = this.state.clientList.find((c) =>
-            text.includes(`${SCOPE_RULE_PREFIX}${c.id}:`),
-          );
-          if (client) changed.add(client.name);
-        }
-      }
-    }
+      await inSequence(this.state.hosts, async (host) => {
+        if (host.status !== "online" || !secret.allowedHosts.includes(host.id)) return;
+        const widened = await this.pushScopeTo(host, secret, rules, text);
+        if (widened) changed.add(widened);
+      });
+    });
     for (const name of changed) this.success(this.i18n.t("clients.scopeChanged", { name }));
   }
 
@@ -3594,14 +4256,16 @@ export class AppStore {
   }
 
   /** Approves a request for a secret for the rest of the requester's session (phase 19). */
-  async approveVaultForSession(hostId: string, requestId: string): Promise<void> {
+  approveVaultForSession(hostId: string, requestId: string): Promise<void> {
     // Only where the rule allows it and no hold is needed: the session approval has no button to
     // hold, so it can never stand in for one.
     const item = this.state.vaultApprovals.find(
       (i) => i.hostId === hostId && i.requestId === requestId,
     );
-    if (!item?.vaultOnce) return;
+    // A high-risk request (a free command, a rule that needs the hold) never gets it (#244).
+    if (!item?.vaultOnce || item.risk === "high") return Promise.resolve();
     this.vaultQuestions.get(requestId)?.({ scope: "session", via: "app" });
+    return Promise.resolve();
   }
 
   /** The policy of the options, or the one that puts action requests to the user. */
@@ -3615,7 +4279,7 @@ export class AppStore {
           requestId: request.requestId,
           via: answer.via,
           scope: answer.scope,
-          ...(request.needsHold ? { heldMs: HOLD_MS } : {}),
+          ...(request.needsHold ? { heldMs: HIGH_RISK_HOLD_MS } : {}),
         });
       },
     });
@@ -3669,7 +4333,8 @@ export class AppStore {
         : {}),
       vault: true,
       // A request that needs holding is approved only by the held button, one use at a time.
-      ...(request.once && !request.needsHold ? { vaultOnce: true as const } : {}),
+      // Not a free command either: it is high risk, and a session approval has no hold (#244).
+      ...(request.once && !request.needsHold && !free ? { vaultOnce: true as const } : {}),
       vaultRule: {
         secretId: request.secretId,
         match: {
@@ -3807,6 +4472,7 @@ export class AppStore {
 
   private update(patch: Partial<AppState>): void {
     this.state = { ...this.state, ...patch };
+    if (patch.secrets) void this.rememberVaultValues();
     if (patch.hosts) this.syncTray();
     if (patch.hosts) this.watchClientBudgetHosts();
     if (patch.hub || patch.projects) this.scheduleVaultScope();

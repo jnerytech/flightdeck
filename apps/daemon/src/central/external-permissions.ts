@@ -1,8 +1,11 @@
 import type { AutoApproval, ExternalPermissionFrame, PermissionUpdate } from "@flightdeck/protocol";
 import { userHome } from "../config.ts";
 import type { AutoApprover } from "../permissions/auto-approve.ts";
+import { bindInput } from "../permissions/bind-input.ts";
+import { requireHold } from "../permissions/hold.ts";
 import { checkUpdates, parseSuggestions } from "../permissions/permission-updates.ts";
 import { RiskClassifier } from "../permissions/risk.ts";
+import { type DiskView, writeTarget } from "../permissions/rule-risk.ts";
 import { ulid } from "../ulid.ts";
 import type { HookPayload } from "./external.ts";
 
@@ -29,6 +32,9 @@ export function summarizeInput(input: unknown): Record<string, unknown> {
 
 interface Held {
   frame: ExternalPermissionFrame;
+  /** The whole input that was asked (the frame's is cut for the queue) and where: an answer cannot change it. */
+  input: Record<string, unknown>;
+  cwd: string;
   resolve(body: string): void;
 }
 
@@ -84,7 +90,7 @@ export class ExternalPermissions {
       createdAt: new Date().toISOString(),
     };
     return new Promise((resolve) => {
-      this.held.set(frame.requestId, { frame, resolve });
+      this.held.set(frame.requestId, { frame, input, cwd, resolve });
       // Timeout of the hook or Claude gone: the connection drops.
       signal.addEventListener("abort", () => this.close(frame.requestId, "dropped", ""), {
         once: true,
@@ -102,19 +108,38 @@ export class ExternalPermissions {
    * Answers an external request; false when `requestId` is not one (a managed session's). Allowed
    * with `updatedPermissions`, the hook's decision carries them (Claude Code applies them).
    */
+  /** The folder a held request ran in and the file it writes; undefined when it is not one of these. */
+  placeOf(requestId: string): { cwd: string; target?: string } | undefined {
+    const held = this.held.get(requestId);
+    if (!held) return undefined;
+    const target = writeTarget(held.frame.toolName, held.input);
+    return target === undefined ? { cwd: held.cwd } : { cwd: held.cwd, target };
+  }
+
   respond(
     requestId: string,
     decision: "allow" | "deny",
     message?: string,
     updatedPermissions: PermissionUpdate[] = [],
     updatedInput?: Record<string, unknown>,
+    holdProof?: boolean,
+    disk: DiskView = {},
   ): boolean {
     const held = this.held.get(requestId);
     if (!held) return false;
     if (decision === "allow") {
+      // The frame carries the risk the daemon judged: a high one needs the hold, and stays held.
+      requireHold(held.frame.risk ?? "low", holdProof);
       // Refused updates leave the hook held, before anything is answered.
       const { toolName, suggestions = [] } = held.frame;
-      checkUpdates(updatedPermissions, { toolName, suggestions });
+      bindInput(toolName, held.input, updatedInput);
+      checkUpdates(updatedPermissions, {
+        toolName,
+        suggestions,
+        risk: held.frame.risk ?? "low",
+        classify: (tool, input) => this.risk.classify(tool, input, held.cwd).level,
+        ...disk,
+      });
     }
     const updates = updatedPermissions.length > 0 ? { updatedPermissions } : {};
     const input = updatedInput ? { updatedInput } : {};

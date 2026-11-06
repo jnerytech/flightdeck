@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 
@@ -16,9 +17,12 @@ function setup(
   features: string[] = ALL,
   platform = memoryPlatform(false, "en").platform,
   route?: import("../src/lib/router.ts").Route,
+  appVersion?: string,
 ) {
   const store = new AppStore(platform, { baseDelayMs: 600_000 });
   store.i18n.start();
+  // The Setup row has its own tests (issue #164); here the groups are the subject.
+  store.setup.setHidden(true);
   const state = {
     ...store.getState(),
     hosts: [
@@ -31,14 +35,15 @@ function setup(
       },
     ],
   } as never as ReturnType<typeof store.getState>;
-  const view = (collapsed = false) => (
+  const view = (collapsed = false, go: (route: unknown) => void = () => {}) => (
     <Sidebar
       store={store}
       state={state}
       collapsed={collapsed}
       t={store.i18n.t}
-      go={() => {}}
+      go={go}
       {...(route ? { route } : {})}
+      {...(appVersion ? { appVersion } : {})}
       onOpenProjectScreen={() => {}}
       onNewSession={() => {}}
       onRemoveHost={() => {}}
@@ -74,7 +79,7 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
       ).toBeTruthy();
     }
     expect(groups.slice(0, 4).map((g) => names(g).slice(1))).toEqual([
-      ["Open Sessions", "Needs you", "Projects", "Board"],
+      ["Home", "Open Sessions", "Needs you", "Projects", "Board"],
       ["Workflows", "Teams", "Conversations"],
       ["Costs", "History"],
       ["Personas", "Snippets", "Plugins", "Vault"],
@@ -100,11 +105,34 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
     expect(within(machines).getByLabelText("alfa: online")).toBeTruthy();
   });
 
+  test("Home is the first item of Work: it opens Home and is marked while Home is open", () => {
+    const routes: unknown[] = [];
+    const { view } = setup(ALL, undefined, { name: "overview" });
+    const { unmount } = render(view(false, (route) => void routes.push(route)));
+    const home = screen.getByRole("button", { name: "Home" });
+    expect(home.getAttribute("aria-current")).toBe("page");
+    expect(
+      screen.getByRole("button", { name: "Open Sessions" }).getAttribute("aria-current"),
+    ).toBeNull();
+    fireEvent.click(home);
+    expect(routes).toEqual([{ name: "overview" }]);
+    unmount();
+    const other = setup(ALL, undefined, { name: "hub" });
+    render(other.view());
+    expect(screen.getByRole("button", { name: "Home" }).getAttribute("aria-current")).toBeNull();
+  });
+
   test("an item the host cannot offer is not listed", () => {
     const { view } = setup([]);
     render(view());
     const work = screen.getByRole("group", { name: "Work" }) as HTMLElement;
-    expect(names(work).slice(1)).toEqual(["Open Sessions", "Needs you", "Projects", "Board"]);
+    expect(names(work).slice(1)).toEqual([
+      "Home",
+      "Open Sessions",
+      "Needs you",
+      "Projects",
+      "Board",
+    ]);
     const automation = screen.getByRole("group", { name: "Automation" }) as HTMLElement;
     expect(names(automation).slice(1)).toEqual(["Workflows"]);
     expect(screen.queryByRole("button", { name: "Teams" })).toBeNull();
@@ -134,11 +162,13 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
     expect(screen.getByRole("button", { name: "Vault" })).toBeTruthy();
   });
 
-  test("folding Observability and Machines hides their items and leaves the other groups alone", async () => {
+  test("folding Work, Automation, Observability and Machines hides their items and leaves the other groups alone", async () => {
     const { view } = setup();
     render(view());
     const heading = (name: string) => screen.getByRole("button", { name });
     for (const [name, item] of [
+      ["Work", "Board"],
+      ["Automation", "Workflows"],
       ["Observability", "Costs"],
       ["Machines", "SSH"],
     ] as const) {
@@ -150,6 +180,14 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
     }
     expect(heading("Library").getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByRole("button", { name: "Vault" })).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(heading("Work"));
+    });
+    await act(async () => {
+      fireEvent.click(heading("Automation"));
+    });
+    expect(screen.getByRole("button", { name: "Board" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Workflows" })).toBeTruthy();
     await act(async () => {
       fireEvent.click(heading("Observability"));
     });
@@ -213,14 +251,23 @@ describe("sidebar-grupos: the bar in groups by purpose", () => {
     expect(slot("Board", "nav-badge")).toBeNull();
   });
 
-  test("the manual is an external link, with its icon, and it opens the manual of the app's language", async () => {
+  test("the badges expire with the version: Beta and New are gone once the app reaches their version", () => {
+    const slot = (name: string) =>
+      screen.getByRole("button", { name }).querySelector("[data-slot='nav-badge']");
+    // Past New's version, still before Beta's.
+    render(setup(ALL, undefined, undefined, "0.38.2").view());
+    expect(slot("Conversations")).toBeNull();
+    expect(slot("Teams")?.textContent).toBe("Beta");
+    cleanup();
+    render(setup(ALL, undefined, undefined, "0.40.0").view());
+    expect(slot("Teams")).toBeNull();
+  });
+
+  test("the manual is in the account menu, and it opens the manual of the app's language", async () => {
     const { view, opened } = setup();
     render(view());
-    const manual = screen.getByRole("button", { name: "Manual" });
-    expect(manual.querySelector("[data-slot='nav-external']")).not.toBeNull();
-    await act(async () => {
-      fireEvent.click(manual);
-    });
+    expect(screen.queryByRole("button", { name: "Manual" })).toBeNull();
+    await chooseFromAccountMenu("Manual");
     expect(opened).toHaveLength(1);
     expect(opened[0]).toMatch(/docs\/manual\/en\.md$/);
   });

@@ -9,6 +9,7 @@ import type { RuntimeEvent } from "../src/runtime/types.ts";
 import { osServiceContext, processPath } from "../src/service-os.ts";
 import { stopServiceDaemon } from "../src/update.ts";
 import { shortPath } from "./short-path.ts";
+import { volumeHas83Names } from "./short-path-probe.ts";
 
 describe("plataforma", () => {
   test("o home vem do ambiente na hora da chamada: HOME, ou USERPROFILE no Windows", () => {
@@ -18,6 +19,10 @@ describe("plataforma", () => {
     expect(userHome({ HOME: "/c/x", USERPROFILE: "C:\\Users\\y" }, "win32")).toBe("C:\\Users\\y");
     expect(userHome({}, "linux")).toBe(homedir());
     expect(userHome({ HOME: "" }, "linux")).toBe(homedir());
+    // A relative HOME would put ~/.ssh/config and the history under the current folder (#258).
+    expect(userHome({ HOME: "." }, "linux")).toBe(homedir());
+    expect(userHome({ HOME: "foo/bar" }, "linux")).toBe(homedir());
+    expect(userHome({ USERPROFILE: "Users\\y" }, "win32")).toBe(homedir());
   });
 
   test("expandHome, a config padrão e o contexto do serviço usam o home do ambiente", () => {
@@ -58,7 +63,7 @@ describe("plataforma", () => {
     }
   });
 
-  test.skipIf(process.platform !== "win32")(
+  test.skipIf(!volumeHas83Names())(
     "parar o daemon: o caminho 8.3 do serviço e o longo do processo são o mesmo executável",
     async () => {
       const dir = join(realTempDir("fd-plataforma-"), "executavel-com-nome-bem-longo");

@@ -9,6 +9,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type Ack, parseServerMessage, type ServerMessage } from "@flightdeck/protocol";
+import { awaitListenUrl } from "./lib/smoke-daemon.ts";
 import { assertNoClaudeCalls, installClaudeGuard } from "./test/claude-guard.ts";
 import { assertCliGuardActive, assertNoCliCalls, installCliGuard } from "./test/cli-guard.ts";
 import { assertHomeGuard, installHomeGuard } from "./test/home-guard.ts";
@@ -111,10 +112,6 @@ async function drain(stream: ReadableStream<Uint8Array>, into: string[]): Promis
   for await (const chunk of stream) into.push(decoder.decode(chunk, { stream: true }));
 }
 
-function listenUrl(output: string[]): string | null {
-  return output.join("").match(/listening on (ws:\/\/\S+)/)?.[1] ?? null;
-}
-
 function filesOf(folder: string): Buffer[] {
   const found: Buffer[] = [];
   for (const entry of readdirSync(folder, { withFileTypes: true })) {
@@ -158,16 +155,7 @@ async function run(work: string): Promise<void> {
   void drain(daemon.stdout, out);
   void drain(daemon.stderr, err);
   try {
-    const url = await withTimeout(
-      (async () => {
-        for (;;) {
-          const found = listenUrl(out);
-          if (found) return found;
-          await Bun.sleep(20);
-        }
-      })(),
-      "daemon anunciar a porta",
-    );
+    const url = await awaitListenUrl(() => out.join(""));
     log(`daemon em ${url}`);
     const client = new Client(url);
     await client.open(token);

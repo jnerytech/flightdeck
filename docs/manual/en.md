@@ -4,7 +4,7 @@ English | [Português (Brasil)](pt-BR.md) · [Back to the README](../../README.m
 
 Complete Flightdeck reference, organized by topic. It applies to version 0.19.0. The roadmap is
 in [`docs/SPEC.md`](../SPEC.md), the deviations from the specs in
-[`docs/DECISIONS.md`](../DECISIONS.md) and the interface vocabulary in
+[`docs/decisions/`](../decisions/) (the older ones in [`docs/DECISIONS.md`](../DECISIONS.md)) and the interface vocabulary in
 [`docs/GLOSSARY.md`](../GLOSSARY.md). Those three documents, `docs/TDD.md` and the phase specs
 are written in Portuguese.
 
@@ -32,6 +32,14 @@ are written in Portuguese.
   - [How it works](#how-it-works)
   - [Why the VS Code extension is left out](#why-the-vs-code-extension-is-left-out)
 - [Approvals and always allow](#approvals-and-always-allow)
+- [OpenCode sessions](#opencode-sessions)
+  - [Turning it on](#turning-it-on)
+  - [Starting one](#starting-one)
+  - [What an OpenCode session asks](#what-an-opencode-session-asks)
+  - [What an OpenCode session does not have yet](#what-an-opencode-session-does-not-have-yet)
+  - [Why the project's own opencode.json is ignored](#why-the-projects-own-opencodejson-is-ignored)
+  - [Removing saved rules](#removing-saved-rules)
+  - [Checking a new OpenCode version](#checking-a-new-opencode-version)
 - [Projects](#projects)
 - [Board](#board)
   - [Registering a project](#registering-a-project)
@@ -299,10 +307,67 @@ sign-in, git, the service that starts the daemon at boot, an allowed folder) and
 **Checks**. Every row has an icon and a word (OK, warning, failed, outdated, missing, not
 applicable), what stops working without it and a plain step to fix it. Where the app already has the
 action, the row has a button: **Install hooks** (it asks first), **Update daemon to X** (it asks
-first) and **Add folder**. What needs `sudo` or an installer is only shown to copy: the app never
+first) and **Add folder** (it opens Settings with the folder box focused and in view; **Install
+hooks** also refreshes the hooks status shown in Settings). What needs `sudo` or an installer is only shown to copy: the app never
 runs it. A missing program shows the package-manager line where one exists (apt, brew, winget) and
 an **Install page** button that opens the official page; Flightdeck never offers a download piped
-into a shell. The same checks run in a terminal with `flightdeckd doctor`.
+into a shell. The advice is true for the system it is shown for: **GitHub** counts as outdated below
+gh 2.31 (the first with `gh project`, which board sync needs), and on Linux it points to the install
+page because the apt package of an LTS can be older than that; **OpenSSH** on Windows says to run its
+`Add-WindowsCapability` line in an elevated PowerShell (Run as administrator); on a Linux without
+systemd the **service** row says there is no service to install here and to start `flightdeckd` at
+login with the system's own tools, instead of offering a command that fails. The same checks run in
+a terminal with `flightdeckd doctor`.
+
+### Trusting a project
+
+A project (a repository) can carry its own configuration: hooks that run commands by themselves,
+MCP servers that start programs, settings with allowed tools, a `CLAUDE.md`, agents, skills and
+commands. In a session Flightdeck starts, that configuration loads **only in a folder you trusted**.
+Folders you were already working in when this arrived (your board projects and the folders of your
+earlier sessions) are trusted; a repository you clone later, or a folder you add, starts untrusted.
+
+- In an untrusted folder the session loads your own settings, not the project's, and **neither your
+  own MCP servers nor your plugins** (Claude Code is told to use only the MCP server Flightdeck
+  gives it). The project's `CLAUDE.md`, agents and skills do not load either. A notice at the top
+  of the session says so, with **Review and trust**.
+- The project page has **Project configuration**: what the project would load, read without
+  running anything (hooks by event and MCP servers with their whole command, in a scrollable block
+  with a warning when a command is long or has several lines; programs the settings run, such as
+  `apiKeyHelper` and `statusLine`; environment variables that redirect traffic or code, with their
+  value, and the names of the others, never their values; plugins; every other settings key
+  present; allowed tools; agents, skills and commands, and the ones whose header carries hooks,
+  servers or tool grants; `CLAUDE.md`; and files that could not be read), the cost of not
+  trusting, and **Trust this project**. It asks first, naming the project and the host, because
+  trusted hooks and MCP servers run commands on that computer without asking you. **Revoke trust**
+  asks nothing. Trusting covers the folders inside the project, not the ones around it.
+- Trusting a folder does not trust a parent: a clone inside it that has its own `.git` is its own
+  project, and a folder that holds your allowed roots cannot be trusted at all. Background
+  sessions follow the same rule as the sessions in the app.
+- A card's worktree always reads its project configuration from the project's main folder, so a
+  branch never brings hooks of its own, trusted or not.
+- Trusting works only from the host's own computer or over Tailscale (like allowing a folder or sessions without prompts); revoking works from anywhere.
+- The decision lives on the host (`project_trust` in its database), per host, and is logged. A
+  host that does not announce `projectTrust` loads everything, as before.
+
+### Keeping the computer awake
+
+While a session of a host runs, or waits for your answer, the host asks its computer not to go to
+sleep, so approvals and notifications keep arriving and a long run is not paused by a nap. The
+host's **Settings** tab has **Keep this computer awake** to turn it off or on again; the choice is saved in the
+host's config (`keepAwake`, on by default) and applies at once. The host releases the computer when
+the last session stops and when the daemon exits.
+
+- It stops the computer from sleeping when idle; the screen may still turn off, and closing the lid
+  follows the system's power settings.
+- On Linux it uses `systemd-inhibit`, on macOS `caffeinate` and on Windows PowerShell
+  (`SetThreadExecutionState`). When none of them is there, or it cannot start, the page says why and
+  the computer sleeps as usual.
+- It works for the host's own computer: a host on another machine keeps that machine awake, not
+  yours.
+- Inside WSL it holds nothing: a lock taken there does not keep Windows awake, so the page says so
+  and the switch is for the Windows host.
+
 ### Sessions without permission prompts
 
 By default no session of a host can run in **Bypass permissions** (every tool runs without asking).
@@ -474,6 +539,26 @@ saves after you confirm.
 The **Sessions** screen is the app's main one: every Claude Code session of the online hosts in
 one place, grouped by project and ordered by last activity.
 
+- **Project first.** Each project is a group with a bold heading (a folder, its name, a **live/total**
+  chip and one chip per host, which opens that host's page). **Every project starts folded**, showing
+  only its header and the sessions that need you; open one with its arrow, and the choice is
+  remembered per project. **Expand all** and **Collapse all** at the top do it for every project.
+  Opened, a project shows its live sessions first (the ones that need you on top). The
+  ended and history sessions sit behind **N earlier sessions**, newest first. Typing in the filter
+  also matches project names, and any filter (text, origin, state, persona, pinned) opens
+  everything it keeps. A **Hosts** chip only narrows the list to that host: the projects stay as
+  folded or open as you left them. The fold of a project is remembered under a key that does not
+  change when a host goes offline or folders merge. A pinned session always stays with the live ones. **The same project on two
+  hosts is one group** with both host chips, and each row keeps its own host chip. A project
+  without a git remote is matched by its folder name across hosts, but never when one host has two
+  folders with that name: those stay separate groups everywhere. Groups that share a name show a
+  short **path hint** (the folder above the project, for example `work`) beside the heading and in
+  its name for screen readers. A row of **Hosts** chips under
+  the hosts banner shows one host's sessions only (press it again to clear).
+- **Titles.** A session is called by its name, else the title its host gives it (the summary Claude
+  Code wrote, or its first prompt), else the persona with the task, else its folder. System wrappers (`<task-notification>`,
+  "Another Claude session sent a message:", local-command output) never appear in a title.
+
 ### What the list shows
 
 | Origin | Where it comes from |
@@ -487,8 +572,9 @@ A session appears only once. The order of preference is managed, then terminal, 
 - **Group:** the project. What counts is the `remote.origin.url` of the repository of the
   session's folder, normalized, so SSH and HTTPS of the same repository land together. Worktrees
   count as the main repository. Without a remote, the repository root counts; without a
-  repository, the folder.
-- **Row:** shows host, origin, state (running, needs you, idle, ended), the "controllable" badge
+  repository, the folder. The folder is the one the session started in, where its transcript is
+  filed: a terminal session that later works in another folder stays in its own project.
+- **Row:** shows host, origin (a terminal session has a "terminal" chip), state (running, needs you, idle, ended), the "controllable" badge
   and the time.
 - **Summary:** below, a line taken from the transcript, with no AI: "Request: <first line of the
   last prompt, up to 80 characters>" and what the session is doing now ("running Bash", "waiting
@@ -524,10 +610,25 @@ A session appears only once. The order of preference is managed, then terminal, 
   here** (on the latest message: it carries the whole conversation so far), **Pin session** and how
   long ago the message was written.
 - The box floats at the bottom as a rounded card. **+** attaches images (when the host supports it).
-  Under the card a status line shows the model and the permission mode, each a picker when the
-  session lets you change it, and a spinner while a turn runs. While a turn runs a line above the
-  box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
+  Under the card a status line shows the model and the permission mode, and a spinner while a turn
+  runs. When the session lets you change them, the mode is a **chip** (for example "Default"):
+  click it, or focus it and press Enter, to open the **Mode** menu with every mode, what it does
+  and its number (press 1 to 4 to pick one). **Shift+Tab** in the box cycles Default, Accept edits
+  and Plan. **Bypass permissions** is in the menu too, but the chip never lands on it by cycling:
+  it asks first, naming the host and the session, and the chip turns red while it is on. On a
+  host where the switch is off (or for a mode looser than the one the session started with) the
+  row is greyed out, says why, and links to the host's settings. The model is a chip too ("Opus
+  5.5 · Medium"): its **Model** menu lists Default, Opus, Sonnet and Haiku with what each is for
+  and its number (press 1 to 4), **More models** has the specific versions, and **Effort** (on a
+  host that supports it) sets Low, Medium, High, Extra high or Max for the next turns, or back to
+  the model's own level. An OpenCode session keeps a plain list of its own models. While a turn
+  runs a line above the box says what is happening ("Running a command", "Editing files", "Waiting for you") and for how
   long; the spinner stops moving if your system asks for reduced motion.
+- **Waiting on a button:** a button whose command is running ignores a second click at once. Under a
+  tenth of a second nothing changes on screen; up to one second it only looks busy; from one second
+  it shows a spinner; after three seconds it also says **Still working…** (or the stage, when the
+  command reports one). A list or panel that is loading draws its placeholders only if the wait
+  passes two tenths of a second, so a quick load shows no flicker.
 
 ### Claude Code hooks
 
@@ -632,6 +733,9 @@ Besides Approve and Deny, an approval, whether from a managed or a terminal sess
   - For Bash, the default is the exact command, which you can replace with a prefix such as
     `npm test:*`.
   - For other tools, the default is the tool name.
+  - A rule that names a folder, or a path that is not there yet, is refused: it would cover
+    everything below it. A search over a folder (Grep, Glob) does not offer this button; the message
+    says to name one file.
   - The rule goes to `<project>/.claude/settings.local.json`, Claude Code's local, unversioned
     file.
 
@@ -654,6 +758,97 @@ Cards run in worktrees, and each worktree has its own `.claude`:
 On the Projects screen, **Edit** shows the project's **Rules** section, with a remove button that
 asks for confirmation and preserves the rest of the file.
 
+## OpenCode sessions
+
+A host can also run [OpenCode](https://opencode.ai/v2/docs/) sessions, started from the app, next to
+Claude Code's. Flightdeck talks to OpenCode over the Agent Client Protocol (`opencode acp`), one
+process per live session. It needs OpenCode 2 and was verified with 2.2.5; a newer version runs but
+is shown as not verified. OpenCode is off on every host until you turn it on.
+
+### Turning it on
+
+1. Install OpenCode on the host (its install script puts it in `~/.opencode/bin`) and sign in to a
+   provider with OpenCode's own `opencode auth login`. Flightdeck never reads OpenCode's credentials.
+2. In the host's config, add `"opencode": { "enabled": true }`. If `opencode` is not on the daemon's
+   PATH or in `~/.opencode/bin`, add its path: `"opencode": { "enabled": true, "executablePath": "/path/to/opencode" }`.
+3. Restart the daemon.
+
+At start the daemon runs `opencode --version` and a canary: a harmless `opencode.json` in a folder of
+Flightdeck's own must not be read, which proves the project config is off on that version. If
+something fails, the host lists OpenCode as unavailable with the reason, and `flightdeckd doctor`
+shows it on its OpenCode row. That row never fails the doctor. On Windows and macOS it adds
+"unverified on this OS": the global config paths there were not checked on a real machine yet.
+
+### Starting one
+
+**New session** shows **Agent** only on a host that has OpenCode on. Choose **OpenCode**: the model
+list comes from the host (`opencode models`), **Effort** picks how hard the model works, and the
+permission modes are **Default** and **Plan** (and **Bypass permissions** when the host allows it).
+There is no persona. The models are grouped by provider. The session's page and its row in the
+session list show an **OpenCode** badge. The timeline says when the project's `AGENTS.md` went with
+the first message, or why it did not.
+
+### What an OpenCode session asks
+
+- Every tool call asks you first, as a Claude Code session in Default mode does. Reading, listing
+  and searching files inside the session's folder is allowed without asking, except credential
+  files; a path that leads out of the folder (a link included) asks.
+- Nothing is approved automatically, and the app never answers OpenCode with "always": each answer
+  covers one request.
+- OpenCode's question tool and its subagents are off.
+- A message that starts with `/` is sent as plain text, so OpenCode's commands (its own and a
+  project's) do not run.
+- If something outside Flightdeck changes OpenCode's rules or mode while a session runs (OpenCode's
+  own TUI, a config file edited meanwhile), the session stops with a message saying what changed.
+
+### What an OpenCode session does not have yet
+
+These stay with Claude Code sessions for now: personas, teams and messages between sessions,
+board cards and arena variants, starting in the background, fork, "Open in terminal", the session
+summary, the Changes, Time and Trace tabs (they read Claude Code's transcript), the Accept edits and
+Automatic modes, automatic approval, the Costs page with its budgets and quota, importing
+OpenCode's past sessions into History, and the MCP screen. The timeline stays: its git snapshots
+are taken on every turn, so rewinding files works, and the model can be switched while the session
+runs, from OpenCode's list. Each turn's result line still
+shows the session's cost so far, as OpenCode reports it.
+
+### Why the project's own opencode.json is ignored
+
+A project's `opencode.json` and `.opencode/` folder can allow every tool, load plugins (code that
+runs when OpenCode starts), start MCP servers and define commands, so Flightdeck starts OpenCode with
+the project config off and its own two agents (`flightdeck` and `flightdeck-plan`), with OpenCode's
+built-in agents disabled. The project's `AGENTS.md` is still used: Flightdeck reads it and sends it at
+the start of a new session, labeled "project instructions (AGENTS.md)", up to 64 KB, without following
+its `@` imports.
+
+Your global OpenCode config (`~/.config/opencode`, or `$XDG_CONFIG_HOME/opencode`) is kept, so your
+providers and default model still apply, but the daemon scans it before running OpenCode: a plugin
+(in `plugins` or in the `plugins/`, `plugin/`, `tool/` or `tools/` folders), an enabled MCP server,
+or any system or managed config makes OpenCode unavailable on that host, with the finding named.
+Before each start and resume, a preflight asks OpenCode how it resolved the config for that folder,
+and refuses the session if anything would outrank Flightdeck's questions.
+
+### Removing saved rules
+
+Answering "Always allow" in OpenCode's own TUI saves a rule for that folder's project, and a saved
+rule skips the question. Flightdeck then refuses to start an OpenCode session there, and the
+message lists the rules and the commands that remove them. Flightdeck never removes them itself. In
+that folder, on the host:
+
+```sh
+opencode api GET /api/permission/saved --standalone              # lists the saved rules
+opencode api DELETE /api/permission/saved/<id> --standalone      # removes one by its id
+```
+
+### Checking a new OpenCode version
+
+`bun run smoke:opencode-real [--model <id>]` (from a source checkout on a host with OpenCode signed
+in) runs the real OpenCode against a hostile scratch project: no plugin, MCP server or `/` command
+of the project runs, the first shell command asks, and a saved rule makes the preflight refuse until
+it is removed. It deletes the OpenCode sessions and saved rules it made. Run it after each OpenCode
+upgrade; it is never part of the tests or CI. `bun run smoke:opencode` checks the same path with a
+fake OpenCode.
+
 ## Projects
 
 The **Projects** item of the sidebar (between Needs you and Board) lists every project of every
@@ -666,6 +861,19 @@ needs attention first.
 Click a card to open the project's page. It links the project's **Board**, **Sessions**,
 **Workflows**, **Costs** (when the host reports costs) and **Settings** (the host's project
 settings, where the folder, base branch, setup and personas are edited).
+
+### Sleeping idle sessions
+
+An idle session keeps its Claude Code process, and its memory, until it ends. On the host page,
+**Sleep idle sessions after** (Off, 15 minutes, 30 minutes, 1 hour or 4 hours; off by default, and
+`sessions.sleepAfterMinutes` in the daemon config) lets the host end the process of a session that
+has been idle that long. The session stays in every list as **Asleep** (a moon) and keeps its
+transcript, name and place; the next message starts it again from where it was, with no visible
+loss. Only a session with nothing going on sleeps: not one that is working or waiting for you, not
+one with a queued message, not one open in a tab or watched by the app, not a pinned one and not a
+card's. **Sleep now** in a session's menu does it at once for an idle session (it still refuses a
+pinned or card session). Every sleep is logged in the session's events. While the setting is off the
+daemon runs no timer for it, and a daemon restart leaves idle sessions asleep in the same way.
 
 ### Sessions side by side
 
@@ -683,14 +891,15 @@ live; the list is the project's, so a session of another project never shows her
 
 ### The sidebar, the tab strip and Settings
 
-- The sidebar groups its items by purpose, in five folding groups: **Work** (Sessions, Needs you,
+- The sidebar groups its items by purpose, in five folding groups: **Work** (Home, Sessions, Needs you,
   Projects, Board), **Automation** (Workflows, Teams, Conversations), **Observability** (Costs,
   History), **Library** (Personas, Snippets, Plugins, Vault) and **Machines** (the hosts, each with
   its state dot, health mark and menu, a **+** to add one, then **SSH**, the saved SSH destinations).
   The open page has a filled row and a bar at its left edge, items with sub-pages end in a chevron,
-  recent features carry a **Beta** or **New** badge, and **Manual** at the foot opens this manual in
-  the browser (its icon says it leaves the app). A group with nothing to offer is not drawn, the
-  folded groups are remembered, and the narrow icon rail has no headings.
+  recent features carry a **Beta** or **New** badge that goes away by itself from the version the
+  badge was set to end at (Teams' Beta ends at 0.39, Conversations' New at 0.38). A group with nothing to offer is not drawn, the
+  folded groups are remembered (a folded **Machines** shows a warning mark on its title while a machine
+  is offline, misses a required dependency or forwards its API key), and the narrow icon rail has no headings.
 - Under **Projects**, each project of an online host lists its **branches**: the main checkout
   (badge **primary**, the base branch) and one line per card that has a worktree, each with a state
   dot, the branch and the base below it. Picking one narrows the board and the Sessions list to
@@ -700,9 +909,45 @@ live; the list is the project's, so a session of another project never shows her
   The project's name folds its branches (the arrow keys left and right fold and unfold it); the fold
   is remembered on this computer, and a folded project that holds the picked branch shows a check
   on its name.
-- With one area, the tab strip sits in the top bar on the breadcrumb's row; with a split, each
-  area has its own strip. The strip keeps three tools: the active tab's **Actions** menu (move left
-  or right, move to the other area, pin), **New tab** and **Split**.
+- At the foot of the bar, **Settings** is a visible item (marked while Settings is open), and the Claude
+  account (its email and plan, read from the host's account card; the rail shows only its initial)
+  opens a menu. Its header names the app and its version. Then come the plan, the account and the id
+  of the host whose account it is, each copied when chosen; **Compact rows**, a switch kept on this
+  computer (the same density as in Settings); **Settings**; **Check for updates** (it opens Settings,
+  where the answer shows); **Keyboard shortcuts**; **Toggle theme**; **Manual**; and, for each host
+  whose `gh` is signed in to GitHub with a login the app can remove, **Sign out of GitHub** (after a
+  confirmation; a login that comes from the daemon's environment is removed there). With several hosts the account of the
+  open host is shown, and how many accounts there are when they differ; an offline host shows none.
+- **Home** (first in Work) is a strip of four cards over the last seven days of every online host,
+  each with a sparkline: **Spend** (with the month's host budgets, when set), **Turns** (ok and
+  failed), **Tokens** (with what came from the cache) and the **average turn** (cost, time and
+  success rate). Spend, Tokens and the average open Costs on the same seven days (across all hosts when
+  several have costs); Turns opens the History of the host, on the same days, when there is one
+  online host, and Costs across all of them when there are several (History is one host's). A host
+  that does not have costs shows "—" for Spend and Tokens, not $0, and the card names it; the
+  average cost counts managed sessions only, unlike Spend, which reads every transcript, and its
+  card says so. While the hosts are still connecting at start, Home says "Connecting to your
+  hosts…" in a live region, and "Home is ready." is announced when the numbers arrive. The failed turns and the turn time are counted by the daemon from this version on: a
+  host on an older daemon shows "—" instead of a made-up zero, and days before the update are
+  unknown (the average time and the success rate use only the turns that were counted). Home reads
+  again every minute and when the window gets focus; a host that does not answer is named under
+  the title and the others still count. Home keeps the last numbers of each set of hosts, in memory
+  and in the app's local storage (only numbers and the time they were read, no project or title),
+  and shows them at once with an "Updated … ago" line while it reads again in the background; a
+  host that does not answer keeps its last numbers, and the page says so. The desktop app opens on Home when the window is new; a
+  window you already used comes back with its tabs. The account at the foot of the bar is the one
+  of the host you are on; with no host open it is the shared account of the online hosts, or "N
+  accounts" when they differ.
+- The tabs have a row of their own under the top bar, over each area (with a split, each area has
+  its own). They are flat, as in VS Code: thin lines part them, each is as wide as its title (then
+  the title is cut and its tooltip has it whole), the inactive ones are dimmer, and the active one
+  has the screen's background with an accent line on top. In a window under 600 px tall the one
+  area's tabs share the top bar's row instead, so a small window keeps room for the conversation.
+  The strip keeps three tools: the active tab's **Actions** menu (move left or right, move to the
+  other area, pin), **New tab** and **Split**.
+- While a request waits for you in a session, the session's header, the not-trusted notice and the
+  summary each take one line, so the request is whole on screen; **More actions** and the summary's
+  own button open the rest.
 - **Settings** has a rail of its sections (it takes you to a section and puts the focus there) and
   a search box: typing keeps the sections whose name or settings match.
 - **Costs** shows four tiles above the charts: the estimated cost, the tokens, the cache savings and
@@ -713,6 +958,10 @@ live; the list is the project's, so a session of another project never shows her
 Each project (a git repository on the host) has a board with five columns: Backlog, In progress,
 Needs you, In review and Done. A card becomes a branch `fd/<slug>`, a worktree and a session; the
 card moves by itself according to the session and the PR, and it can also be dragged by hand.
+Each column has its own tint and a thin line on top (Backlog neutral, In progress amber, Needs you
+orange, In review green, Done muted), its status icon, the number of cards as a pill and a **+**
+that adds a card straight into that column. An empty column shows a quiet dashed box that says
+"Empty" and also adds a card when pressed.
 
 ### Choosing a folder
 
@@ -914,8 +1163,33 @@ conversation. It is where you check what the agent did and send it back what to 
   - for a card, the diff against its base, with how many commits it is ahead of and behind it;
   - the files with their status and counts, and the diff unified or side by side, with numbered
     lines. A binary file is listed without a diff;
+  - a file that is too large (a diff or a new file over 512 KB) is listed with the **Too large**
+    mark and its size, without content, so the panel does not freeze. The same goes for what
+    passes 4 MB of diff in total: the files after that are only listed. On a host of this machine,
+    **Show in folder** opens the file manager on the file (the editor stays beside it, and refuses
+    what is over 1 MB);
+  - a file that may hold a credential (`.env*`, `id_*`, `*.pem`, `*.key`, `.npmrc`, what is in
+    `.ssh` or `.aws`, and the rest of the list the permission rules use) is listed with the
+    **Hidden** mark and no content or counts. The host never reads a new one, and the editor
+    refuses to open or save it, even through a link with another name. A link that leads out of
+    the repository is refused too;
   - it follows the disk live (the host watches the folder, with a 500 ms debounce), and
     **Refresh** reads it again.
+- **Files tab** (when the host lists files): the session's repository as a tree. Folders come
+  first, then files, in natural order (`file2` before `file10`); a folder opens on click and is
+  read once. A changed file carries its status (new, modified, deleted, renamed) from the same diff
+  as the Changes tab, live, and every folder above it says **has changes**. A file that may hold a
+  credential shows as **Hidden**. `.git` and links that lead out of the repository never show.
+  **Filter by name** keeps the names that match among the folders already open, with the folders
+  on their way. A folder with more than 500 entries shows the first ones and says so. A session
+  outside git has no tree: the tab says so. A click on a file opens it below the tree, read only,
+  with numbered lines, and colored by token for common languages (TypeScript, JavaScript, JSON,
+  Python, Rust, shell, TOML, YAML, CSS, Go, HTML, XML, diffs, Dockerfiles); a file over 1 MB, one
+  that is not text, or a credential says so instead. A
+  changed file has **Show changes**: its diff against HEAD, live. While you are at the bottom, the
+  newest change scrolls into view as the session edits; scroll up and it stops, and **Jump to
+  latest** (with how many changes came) or a scroll back to the bottom brings it back. On a host of
+  this computer the viewer also has **Open in its app** and **Show in folder**.
 - **Inline comments:**
   - click a line number to comment on it, and shift+click another to extend the range. A removed
     line is commented on its old side;
@@ -1430,8 +1704,11 @@ paths). You can add patterns in the host configuration (`risk.extraHigh`); the b
 be lowered.
 
 - A **High risk** request is red and **Approve** becomes **Hold to approve**: hold the button for 2
-  seconds. The A key does not approve it; N still denies.
-- The tray never approves a high-risk request: it only offers **Open**.
+  seconds. The reason is written under the button (not only in a tooltip). The A key does not
+  approve it; N still denies. The host checks the hold too: it refuses
+  an approval of a high-risk request that does not carry it ("A high-risk request is approved only
+  by holding the button."), so no other client can skip it either.
+- The tray never approves a high-risk request: it offers **Deny** and **Open**.
 - With automatic approval on, an approval that nobody gave by hand shows in the session's
   timeline as "Approved automatically", with who decided and why. A high-risk request or one that
   reaches the network always comes to you.
@@ -1684,7 +1961,7 @@ When Claude, an automation or a workflow runs an action that needs a secret, the
 secrets and the host). **Approve** delivers the secret for that run only; **Deny** fails the run
 at once. An action with `approval: never` runs without a question, `first-per-session` asks once
 and is then remembered until the app restarts, and `always` asks every time. A `run_with_secret`
-is high risk: hold the button for 2 seconds to approve it, and the tray only opens it.
+is high risk: hold the button for 2 seconds to approve it; the tray offers only Deny and Open.
 
 ### Usage rules per secret
 
@@ -1743,15 +2020,48 @@ The bell at the right of the top bar keeps every notification the app sends: a r
 needs you, a session that ended, a budget or quota alert, a PR watch result, a card that was
 unblocked. A badge on the bell counts the unread ones.
 
-- Click the bell to open the panel: newest first, grouped by day (Today, Yesterday, then the date).
-- Click an entry to mark it read and open its screen (a request opens on its card; a quota alert
+- Click the bell to open the panel: unread first, then newest first, in two groups (Today and
+  Earlier). Opening the panel marks nothing as read.
+- An unread row has a dot, a bold title and the word "unread" for a screen reader; a read row has
+  none of them. The badge counts the dots. Each row names the session, card or team and the host,
+  and says what it asks in words ("Asks: which DB to use?"), not the tool's name. A session's
+  repeated requests become one row with a count ("3 times"). A row whose card or request is gone
+  says so and has **Dismiss**.
+- Hover a row (or focus it) for a small **Mark as read** control: it marks that row and opens
+  nothing.
+- Click an entry to mark just it read and open its screen (a request opens on its card; a quota alert
   opens the host). A budget alert opens Costs already filtered by its host and project, or by
   its client; a team alert opens Teams with that team first and marked. A card's entry (a PR watch
   result, an unblocked card) opens the PR in your browser when the card is gone.
+- On Windows the unread count also shows on the app's taskbar button, as a red badge with the number
+  (`9+` past nine). It is the bell's count, row for row, so it falls as you read and goes when the
+  list is clear; a source you muted sends no entry and so adds nothing. It comes back with the
+  count the next time the app starts.
 - **Mark all as read** keeps the list; **Clear** empties it. The list is kept on this computer
   (the newest 500) and survives a restart. Esc closes the panel.
 - The OS notifications are unchanged. The center only keeps a copy, so one that is never sent
   (the window had focus) is not in it either.
+
+## Setup checklist
+
+A **Setup** row at the top of the sidebar's Work group shows a ring and a count (for example
+`1/4`) while the steps to get going are not all done. It opens the **Setup** screen: a list of
+steps, each with one sentence and one button that opens the screen where it is fixed. A step is
+done when the app can see that it is: it is read from your hosts and the app, never ticked by hand,
+so connecting a host moves the ring at once and removing it moves it back.
+
+- **To get going:** connect a host (one online); install the Claude Code hooks on it (the host page
+  says installed); add a project with a base branch; start a first session or card. The step the
+  screen marks as current (the first one not done) has the filled button.
+- **Worth doing:** sign in to GitHub on the host, check that notifications work (a test
+  notification reached the system once), set a budget, and add a `.worktreeinclude` to a project.
+  The row does not wait for these.
+- A step the host cannot do (it does not announce the feature) is left out, not left undone.
+- The row leaves by itself once the four steps to get going are done. **Hide** (the eye button that
+  shows beside the row, or on the Setup screen) removes it for good; Settings, Window, **Show the
+  setup checklist** brings it back. Simple mode shows none of this.
+- A tool a host lacks (the GitHub CLI, `claude`) gets a quiet card on the Start screen, not a red
+  banner, with a link to how to install it and **Dismiss**.
 
 ## Snippets
 
@@ -1804,8 +2114,11 @@ suggested model, effort, tools and permission mode, and the instructions of the 
   keeps your version on the host (**Pack, edited**); **Restore original** brings the pack's back.
 - **Host**, **Project** (choose one: its own and the versioned `.flightdeck/personas/*.md`, which
   you **Trust** first) and **Global (this app)**, kept in the app.
-- **New persona** and **Edit** open the editor with a **Preview** of what the session gets. A
-  persona never holds a secret: one is refused with the reason.
+- **New persona** and **Edit** open the editor with a **Preview** of what the session gets. **Edit**
+  opens the form inside the persona's own card, with the first field focused and the card scrolled
+  into view; **New persona** opens it at the top. **Cancel** and **Save** put the scroll back and
+  the focus on the Edit button. **Model** is a choice (**Other…** for free text) and **Tools** a
+  multi-select. A persona never holds a secret: one is refused with the reason.
 - **Publish as agent** writes the persona to `.claude/agents/persona-<id>.md` through the
   agent editor, with confirmation, so it also works for plain `claude`.
 
@@ -2022,9 +2335,12 @@ reports of the Agent SDK), and Anthropic's terms keep a login out of third-party
 
 #### Which account is this host using?
 
-- The card shows the account's email, the organization, the plan (Pro, Max, Team, Enterprise) and
+- The card shows the account's email, the organization, the plan (Pro, Max, Ultra, Team, Enterprise) and
   two bars, **5 hours** and **7 days**, with the percentage used and when each resets (hover for
   the exact time). The 7-day Opus and Sonnet bars show only when the host reports them.
+- The plan comes from the sign-in of `claude` on the host, which keeps it from when you signed in:
+  after a change of plan, sign out and in again there, then press **Refresh**. The bars are read
+  live and are always current.
 - It is read when you open the page and again every 5 minutes while the page stays open, and at
   once when a managed session ends a turn. "Last read 2 min ago" tells how fresh it is. **Refresh**
   reads now; it waits 30 seconds between reads.
@@ -2052,13 +2368,39 @@ same login, so the quota belongs to the host. The daemon keeps the last reading 
 (5 hours, 7 days and any others that come along), and a reading stops being valid when its
 window resets.
 
-- **In the app:** the top of the Sessions screen shows, for each online host, the 5-hour and
-  7-day bars, with the percentage, the reset time and the age of the reading ("read 12 min
+- **In the app:** the top of the Sessions screen shows, for each Claude account, the 5-hour and
+  7-day bars (hosts signed in to the same account share one card, named after all of them), with the percentage, the reset time and the age of the reading ("read 12 min
   ago").
   - The bar turns red from `quota.pauseAt`.
   - Crossing `pauseAt` raises a notification, once per window.
+- **In the status bar** (the slim line at the bottom of the window, below): a small meter shows the
+  window under most pressure across the online hosts, with its percentage and the time left until it
+  resets (the window's name shows from 960 px wide), and a **Refresh the plan usage** button that
+  asks the hosts again. From 80% it carries a warning mark in the needs-you colour, and at 100% (or
+  from `pauseAt`, as the account card) the bar turns red; its name and tooltip say the level, the
+  host and the time left. Clicking it opens that host's page. With no reading, neither the meter
+  nor the refresh shows.
 - **Terminal only:** the hooks do not carry the quota. Anyone who only uses terminal sessions
   sees empty or stale bars until a card or a managed session runs on the host.
+
+### The status bar
+
+A slim bar (24 px) runs along the bottom of the window. On the left, the plan quota (above) with its
+reset time and a refresh. On the right, each item opens its page:
+
+- **Update:** only when there is one to say: an app update on offer, one downloaded that needs a
+  restart, or a failed check. It opens Settings.
+- **Keep awake:** what the hosts that offer it say together: **Awake** (holding the computer awake
+  now), **Keep awake** (on, holding only while sessions run) or **Sleep ok** (off). It opens that
+  host's page, where the switch is. A host that does not offer it is not counted.
+- **Terminals:** how many terminal tabs are open, in both areas. It brings the first one forward; with
+  none open, it opens the host where one can be opened.
+- **Hosts:** how many are online of all ("2/3"). It opens the first host that is not online, so a
+  problem is one click away; with every host online, the host in view.
+
+Every item is a button with its words as the name and a tooltip, never colour alone, and the two
+counts are live regions, so a screen reader hears them change.
+In a window under 600 px tall the bar is hidden, to leave the height to the conversation.
 
 ### Quota queue
 
@@ -2113,7 +2455,9 @@ app, cards and workflows, subagents included.
 - **What it shows:**
   - the estimated cost, the tokens and the cache savings (how much less the cache read cost than
     the same volume as normal input);
-  - a per-day chart stacked by project, and the breakdowns by project, model and origin;
+  - a per-day chart stacked by project (Tab reaches the chart, the arrow keys walk the days, and a
+    day says its total in a tooltip on hover or focus), and the breakdowns by project, model and
+    origin;
   - the most expensive sessions, and clicking one opens it;
   - the estimated cost also shows in the session list, the open session, the card and the
     workflow run.
@@ -2347,6 +2691,13 @@ Open **Settings → Webhooks**.
   - **Discord:** a channel webhook (`https://discord.com/api/webhooks/...`). Nobody is pinged by a
     session title.
   - **Generic JSON:** your own endpoint, with a **signing secret**.
+  - **ntfy (phone notices):** the address of one topic (`https://ntfy.sh/your-topic`, or your own
+    server's) and, for a protected topic, an **access token** (`tk_...`), kept in the vault. Install
+    the ntfy app on the phone and subscribe to the same topic. *Needs you* arrives with high
+    priority, everything else with the default one. The notices go one way: a tap opens nothing in
+    Flightdeck. The server must be reachable from the internet; one only on your home network is
+    refused, as for every webhook. Pick a topic name nobody would guess, or protect it with a token:
+    anyone who knows a public topic can read it.
 - **Events:** *needs you* (a permission or a question), *session ended*, *session failed*, *budget
   alert* and *PR watch* (a watched PR needs you). Each webhook picks the ones it wants.
 - **Hosts:** *all hosts*, or one. An event from a host goes to the webhooks of all hosts and to that
@@ -2397,7 +2748,14 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
 
 - **Opening:** a normal click changes the current tab. `Ctrl+click`, the middle mouse button or
   **Open in new tab** (in the host's menu and in a session row's menu) opens a new one. The **+**
-  button at the end of the bar opens a new tab on the `Ctrl+K` palette.
+  button at the end of the bar opens a new tab on the `Ctrl+K` palette. A screen has one tab: a
+  link to a screen another tab already shows (a breadcrumb, a page link, reopening a running
+  terminal) goes to that tab instead of opening a second one.
+- **All tabs:** past eight tabs, the chevron at the end of the bar opens a list of all of them:
+  each row has the tab's icon, its title on one line (the whole title in its tooltip), its host,
+  and a close button on hover. The tab on screen has a bar at its left. Type to filter; the arrows,
+  `Home` and `End` move the highlight, `Enter` goes to the tab and `Delete` closes it. `Esc` or a
+  click outside closes the list.
 - **The bar:** each tab shows its type's icon and title, and a badge when a session in it needs
   you, is running, or answered while no tab showed it (**Unread**). **Pin** keeps the tab at the
   left with its icon only. The pin, move and close buttons after the tabs act on the active one;
@@ -2409,14 +2767,19 @@ Every screen opens in a tab, as in a browser. Each tab keeps its own back and fo
   | `Ctrl+T` | new tab, on the palette |
   | `Ctrl+W` | close the tab |
   | `Ctrl+Shift+T` | reopen the last closed tab (the last 20 are kept) |
-  | `Ctrl+Tab` / `Ctrl+Shift+Tab` | next and previous tab |
+  | `Ctrl+Tab` (hold `Ctrl`, press `Tab` again to go down) / `Ctrl+Shift+Tab` (up) | opens the switcher on the most recently used tabs of the focused area, on the previous one; release `Ctrl` to go to the one selected, `Esc` or leaving the window to cancel. A quick tap goes to the previous tab, and another tap comes back |
   | `Ctrl+1`…`Ctrl+9` | go to that tab (`Ctrl+9` is the last one) |
   | `Ctrl+Shift+PageUp` / `PageDown` | move the active tab left or right |
   | `Ctrl+Shift+←` / `→` (on a focused tab) | move that tab left or right; a screen reader is told its new place |
   | `Ctrl+\` | split the window or join the areas |
 
-  In the demo's web entry, Chromium keeps `Ctrl+T`, `Ctrl+W` and `Ctrl+Shift+T` for itself: use
-  the buttons there.
+  Settings, Appearance, **Ctrl+Tab order** chooses **Most recently used** (the default) or
+  **Tab order**, where `Ctrl+Tab` and `Ctrl+Shift+Tab` step to the next and previous tab as before.
+  The switcher is a list for screen readers (the selected tab is announced); the list is not kept
+  between starts.
+
+  In the demo's web entry, Chromium keeps `Ctrl+T`, `Ctrl+W`, `Ctrl+Shift+T` and `Ctrl+Tab` for
+  itself: use the buttons there.
 - **Kept between starts:** the tabs, which ones are pinned, the active tab, the split and the
   divider come back when the app opens again. Each tab comes back on its screen, without its
   history. The host form is never kept, since it can hold a token. A tab of a host that is not
@@ -2449,12 +2812,36 @@ tab, with no SSH.
   Linux) in its first allowed folder. The panel also lists the live terminals, each with
   **Open**.
 - **In the tab:** copy and paste with `Ctrl+Shift+C` / `Ctrl+Shift+V` or the right button's
-  menu (**Copy**, which needs a selection, **Paste** and **Select all**; `Ctrl+C` goes to the
-  process). Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
+  menu (**Copy**, which needs a selection, **Paste** and **Select all**). On Windows `Ctrl+C`
+  also copies while something is selected, and goes to the process (the interrupt) when nothing is;
+  elsewhere `Ctrl+C` always goes to the process. A program that redraws its screen (Claude Code)
+  can drop a selection before you reach **Copy**: the last selection stays copyable until you
+  type. When the program takes the mouse for itself, hold `Shift` while you drag to select.
+  `Shift+Enter` adds a new line in a Claude Code prompt instead of sending it (the same as
+  `Alt+Enter`). If grey blocks of an old screen stay behind in Claude Code's side panel, that is
+  Claude Code leaving cells uncleared (the same happens in other terminals): `Ctrl+L` or resizing
+  the pane makes it repaint. Pasting several lines into a program that has not asked for pasted
+  text to be marked (bracketed paste; a plain shell prompt, for example) asks first, since each line
+  could run as a command as it lands; Cancel has the focus. Claude Code asks for the marking, so a
+  paste into it goes straight in. Search with `Ctrl+Shift+F`: matches are highlighted as you type, with the current one
   in another color and its position ("2 of 5") beside the box; Enter or **Next match** goes to
   the next one, Shift+Enter or **Previous match** to the previous, Esc or **Close search**
-  closes. Links in the output open in the browser (`http` and `https` only). The font is the
-  system monospace; its size is in Settings (**Terminal font size**, 10 to 24).
+  closes. Beside the box, **Match case** (`Alt+C`), **Match whole word** (`Alt+W`) and **Use
+  regular expression** (`Alt+R`) narrow the search; an expression that does not read, or one that
+  matches empty text, says so instead of searching. Links in the output open in the browser (`http`
+  and `https` only). File paths in the output are links too: absolute ones (`C:\repo\a.md`,
+  `/home/ana/x.log`) and relative ones with a folder and an extension (`src/app.ts:12`), taken from
+  the terminal's folder. A file inside the terminal's folder opens under the terminal in the Files
+  viewer, read-only, at the line the path names (`src/app.ts:12` opens at line 12); **Close** puts
+  it away. A path outside that folder, or on a host whose daemon is too old to read it, is shown in its folder on a
+  host of this computer (never opened or run) and copied on another host. The font is the
+  system monospace; its size is in Settings (**Terminal font size**, 10 to 24). In the tab,
+  `Ctrl+=` (or `Ctrl++`) and `Ctrl+-`, or `Ctrl` with the mouse wheel, make it one point bigger or
+  smaller, and `Ctrl+0` brings back 13; the size is the same setting and is kept. For a screen
+  reader (NVDA, Narrator), turn on **Screen reader support in the terminal** in Settings: the
+  terminal then keeps a copy of its output the reader can follow (long output draws more slowly, so
+  it starts off). The tab keeps
+  the last 10,000 lines to scroll back to and to search.
 - **Detach and reopen:** a terminal survives the app: it keeps the last 2 MB of output, and
   attaching again shows them. Closing a terminal tab asks: **Detach** (the default; the process
   keeps running on the host) or **End process**. A terminal shown as detached or ended has
@@ -2462,6 +2849,10 @@ tab, with no SSH.
 - **Limits:** 10 live terminals per host (`terminal.max`), and a terminal nobody is attached to is
   ended after 120 minutes (`terminal.idleMinutes`). Terminals do not survive a restart or an
   update of the daemon. Their content never goes to the log or to the database.
+- **Scrolling Claude Code:** in Claude Code's fullscreen mode the wheel goes to Claude Code, which
+  moves by its own `CLAUDE_CODE_SCROLL_SPEED`. Terminals opened by the app set it to 3 lines a
+  notch, as Windows Terminal and VS Code feel, unless the host's environment or Claude Code's
+  settings (where `/scroll-speed` keeps it) already set a speed: then that one is used.
 
 ### Claude here
 
@@ -2478,6 +2869,12 @@ checkpoint) gets a companion:
 
 The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
 
+When the session is already live in another terminal (VS Code's, say), **Continue in the terminal**
+and the outside terminal ask first: a second `claude` on the same session would not be seen by the
+first one. Each shows only its own turns, and both write to the same history. **View it live here**
+(the default) opens the session's live view, which follows that terminal's transcript; **Open a
+second copy anyway** opens it here all the same.
+
 ## Daily use
 
 ### Needs you, host page and notifications
@@ -2485,7 +2882,12 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
 - **Needs you:** in the sidebar, with the count of open requests across all hosts. The screen
   lists the requests, oldest to newest, and the selected request's card sits next to it: **A**
   approves, **N** denies and **Esc** closes the detail. **Open session** takes you to the
-  conversation.
+  conversation. The card takes the focus, so A and N work with no click first, and once a
+  request is answered the next one is chosen, with how many are left. A high-risk request is
+  still approved only by holding the button.
+- **From a notification:** clicking it opens the session with the request's card focused: one
+  key answers it. In the bell, an entry of a request already answered opens its session at that
+  request.
 - **Dependencies:** the host page's Overview tab has a **Health & dependencies** section (below) that groups what
   the host needs into **Required** (Claude Code, git with worktrees, the service that starts the
   daemon at boot, at least one allowed folder) and **Optional** (the GitHub, Azure, SSH and
@@ -2498,16 +2900,54 @@ The outside terminal ([Open in terminal](#open-in-terminal)) stays next to them.
   sidebar. `flightdeckd doctor` prints the same grouping in the terminal after its own checks, with the
   fix for the host's system under each one that is missing or outdated.
 - **Host page layout:** the page opens on that host's **Sessions** (the ones that need you
-  first, then the latest; **See all sessions** opens the Sessions list already filtered by the host)
+  first, then the latest; **See all sessions** opens the Sessions list already filtered by the host, for that visit only: the filter you saved for the next time is not changed)
   and its **Projects** (the same cards as the Projects list; **See all projects** opens that list
   filtered by the host, with a chip that clears the filter). A host with none says so and offers
   **New session**. The rest is on three tabs: **Overview** (sessions, projects, the Claude account
   and the host information), **Usage** (quota and the usage table) and **Settings** (allowed
-  folders, hooks, telemetry, terminal, maintenance, reconnect and remove). The tabs answer to the
+  folders, hooks, worktrees clean-up, telemetry, terminal, maintenance, reconnect and remove). The tabs answer to the
   arrow keys.
 - **Host page:** click the host name to see system, versions, active sessions, heartbeat
   latency, rename, reconnect and remove. A host that passes the API key on to Claude gets a ⚠
   badge. The uptime keeps counting while the page is open.
+- **Resources:** a host page panel (hosts that announce `resources`) shows the host's memory and
+  disk as bars, its load, and a table of its sessions and terminals with the biggest memory first:
+  project, memory, CPU and the programs running (names only; never a command line or an
+  environment). Memory or disk at 80% reads **High** and at 90% **Critical**, in words as well as
+  colour. **Leftover processes** lists a `claude` that the host's daemon started for a session that is
+  over (older than a minute, in that session's folder, started while that session lived), with its
+  pid, age and memory; a `claude` the daemon starts for something else (a plugin install, the account
+  query, an action) or a live session's process whose folder was moved is never listed; **End** asks first and ends only that
+  process (the daemon checks again, right before the signal, that it is the same process, by pid and
+  start time, still its own child and still without an owner). A `claude` whose folder cannot be read,
+  or that runs in a folder where a live session is, is never listed: which one is whose cannot be told.
+  A daemon running as pid 1 (a container) lists none. Ending needs a connection from loopback or
+  Tailscale, like the other commands that change the host, and sends SIGTERM to that process only. The
+  panel reads every 5 s while the page is open and the host is online, and the daemon keeps no
+  timer for it. Per-process numbers come from `/proc`, so only Linux hosts have them; macOS and
+  Windows hosts show the memory and disk (and the load, on macOS) and say the processes are not
+  measured. A session is matched to its `claude` by folder and start order, so two sessions in one
+  folder can swap numbers.
+- **Worktrees:** a host page panel (hosts that announce `worktrees`) lists the cards' worktrees
+  under `.flightdeck/worktrees` with their size on disk (**unknown** when measuring ran out of
+  time, never 0), how long they have been idle, and their card. **Suggested** marks a clean worktree
+  with no unpushed commits and no live session, idle for over 7 days, whose card is Done or whose
+  PR merged, or that has no card. A worktree with uncommitted changes, commits that exist nowhere
+  else, a running session, terminal or run, an unknown base branch (it must be a real branch, not
+  a tag or `HEAD`), a branch that is not one of Flightdeck's `fd/…`, ignored files a build does not
+  recreate (only `node_modules`, `dist`, `build`, `target`, `coverage`, `.cache`, `.next` and `out`
+  as a folder at the root of the worktree do not count, and an ignored credential file such as `.env`
+  or `*.pem` always does), edits that git hides from `git status` (`assume-unchanged` or
+  `skip-worktree`), or anything git could not answer about is **kept**: the row says why and cannot
+  be ticked. The confirmation says the rebuildable folders go with the worktree. Filter by Suggested, Protected or No card, sort by age or size, **Select
+  suggested** or **Select all that can go**, then **Remove**: the confirmation names every branch
+  with its card and column, and the space it frees. Only the rows on screen can be ticked or
+  removed. The host holds each folder (nothing can start in it) and checks it again before removing
+  it (without force), so one that changed meanwhile is kept; the branch is deleted only if it is
+  still at the commit that was checked, otherwise the folder goes and the branch stays, and the
+  result says so. The card, if any, stays on the board without its
+  worktree. A disk under 10% free is warned about. Deleting something that is kept still goes through
+  the card's **Discard**.
 - **A host that is offline** shows a banner at the top of its page: the state, what failed in plain
   words (nothing answered, no answer in time, the link dropped, the token refused), the time of the
   last try, a countdown to the next automatic try and **Reconnect now**, which shows its progress
@@ -2537,7 +2977,8 @@ summary` (for example `pc · api · Bash: npm test`).
   on the request's host, without opening the window; Open brings the app to the session, with
   the approval card.
 - Workflow gates appear only with **Open**: they need reading, and the answer is given on the
-  card.
+  card. A high-risk request and a secret request have **Deny** and **Open**: approving them
+  takes the window.
 - Above 10, the last row is **and N more…**, which opens the app.
 - The submenu is rebuilt half a second after the list stops changing.
 - **Request notification:** carries the link `flightdeck://request?host=…&request=…`, which opens
@@ -2578,8 +3019,21 @@ their English equivalents.
   project: Open board, Workflows, Open in terminal). Esc goes back from the actions to the list
   and, from there, closes.
 - **Go to Costs** appears when the app has the Costs screen and some host announces `costs`.
-- With nothing typed, a **Recent** section comes first with the last five entries you opened
-  (kept between runs). **Actions** also has **Go to Sessions / Needs you / Projects**, **Show the
+- The row the keyboard is on is a surface with a ring around it, in both themes. A session's row
+  shows its state glyph (running, needs you, idle) and follows it as it changes; a card's row
+  has the card icon.
+- With nothing typed, a **Recent** section comes first with up to six of the entries you opened
+  (kept between runs): what waits for you first, then what runs, then the rest. Each shows
+  **Alt+1** to **Alt+6**, which open it while the palette is open (they do nothing outside it).
+  The order is fixed when the palette opens, so rows do not move under the cursor.
+- The palette opens **narrowed to where you are**: on a board or a card, to its host and project;
+  on a session or a host page, to the host. The filters show as chips under the field; click one to
+  remove it, or **Clear all filters**. The change lasts only until the palette closes.
+- Text that matches no card ends the list with **Create card “text” in project** (the scope's
+  project, or the only project there is). Pasting a GitHub issue link or typing `#123` in a
+  project with an issue provider offers **Create card from issue** instead, which links the issue.
+- Each section shows eight rows, then a button such as **22 more**; each press shows twenty more.
+- **Actions** also has **Go to Sessions / Needs you / Projects**, **Show the
   keyboard shortcuts** and, while a request waits for you, **Approve the oldest request** and
   **Deny the oldest request** (a high-risk request is opened to be held, as in the tray). Each
   command shows its keys at the right.
@@ -2610,8 +3064,11 @@ combination and click **Save shortcut**.
 ### Design and navigation
 
 The app follows a single design, in the style of Linear: bundled Inter (no network), a 13 px
-base, layered surfaces, a single accent token and the session state as an 8 px dot (running in
-blue, needs you in amber, idle in gray, ended faded, error in red).
+base, layered surfaces, a single accent token and the session state as a glyph in a 12 px slot,
+a shape as well as a colour: running is a blue ring that turns (still, with its top open, when
+the system asks for reduced motion, and stopped while it is off screen), needs you an amber
+question mark in a bubble, error a red alert circle, idle a small gray dot and ended a faded ring.
+Hover one for its name.
 
 - **Sidebar:** logo, navigation (Sessions, Needs you with its counter, Board, Workflows, Costs,
   History), the hosts, the pinned sessions and, at the bottom, search (`Ctrl K`), Settings and
@@ -2623,6 +3080,15 @@ blue, needs you in amber, idle in gray, ended faded, error in red).
 - **Keyboard:** `J` and `K` move through the list, `Enter` opens, `Esc` closes the detail, `A`
   and `N` approve and deny, `Ctrl K` opens the palette, `Alt+←` and `Alt+→` go back and forward.
 - **Density:** compact rows (32 px, the default) or comfortable (40 px), in Settings.
+- **Prompt cache timer** (Settings, off by default): Claude Code keeps the start of a conversation
+  cached for 5 minutes (1 hour with extended caching, **Cache lifetime** in Settings), and replying
+  inside that window is cheaper. With the timer on, an idle session on the Sessions list (row and
+  card) and in its status line under the message box shows a small clock with the time left as
+  `m:ss`, in the warning colour for its last minute and as a clock alone once the cache is cold (the next message re-sends the whole context as
+  uncached tokens). Screen readers hear "Prompt cache expires in 2 minutes 10 seconds". The session's tab carries the
+  clock icon alone in its corner (the time is in its tooltip), so the tab gets no wider. The
+  countdown does not run for sessions that are running or ended, one 1-second clock serves them
+  all, and it stops while the window is hidden.
 - **Theme:** Light, Dark and System (the default), in Settings, in the sidebar and in the
   palette. The choice is remembered.
 - **Language:** the system's (`pt-BR` for any `pt-*`, `en` for the rest), switched in Settings or
@@ -2646,6 +3112,35 @@ bun run e2e          # the five journeys in a real browser, in 2 languages, and 
 Nothing leaves the machine and no real data is used. The scripts use the installed Chrome (or
 Edge) through `playwright-core`; in CI, the `screenshots` job runs all three and publishes the
 screenshots.
+
+### Logs and diagnostics
+
+If something breaks, send the log. The desktop app keeps its own log file in the system's app log
+folder (on Windows `%LOCALAPPDATA%\dev.flightdeck.app\logs`, on Linux
+`~/.local/share/dev.flightdeck.app/logs`, on macOS `~/Library/Logs/dev.flightdeck.app`), rotated at
+5 MB across 5 files. It records what happens to hosts (connected, offline), what a host refused, the
+result of update checks, and the webview's own errors and console warnings. **Settings >
+Diagnostics** has **Open logs folder** and **Copy diagnostics**: the second copies the app's version
+and system, each host's name, state, version and features (never an address or a token), and the
+last 50 log lines, to paste in a message. Neither button exists in a browser.
+
+The daemon keeps its own log file too, `flightdeckd.log` in `~/.flightdeck/logs` (also rotated), and
+`host.info` says where. On a host page, **Copy the host's last log lines** copies up to 100 of them.
+
+Every line is redacted before it is written, by the same scanner that guards snippets and personas:
+a token (GitHub, Slack, AWS, `sk-`, npm, GitLab, Stripe and Google keys, JWTs), an `Authorization`
+or `Cookie` header, a name containing password, secret, token or key followed by `=` or `:` (also
+inside JSON, as in `{"apiKey":"…"}` or `DB_PASSWORD=…`), `--password`/`--token` options, `curl -u`,
+a whole private key block, a password or a token in a URL, a webhook URL, a signed link and a
+pairing link's token become `[redacted]`. Besides the patterns, the host never writes its own
+tokens (the protocol's, even after a rotation, and the hooks') or any value the vault holds at
+that moment, and the app never writes a host's token or a vault value of 6 characters or more.
+It is a pattern list, not a guarantee: a secret wrapped in base64, split over two log lines, or a
+short vault value (under 6 characters) is not caught. Your home folder (`/home/<name>`,
+`/Users/<name>`, `C:\Users\<name>`) is written as `~`. The log folder is private to you (0700, files
+0600) and a link planted in it is never followed. A host gives its log (`logs.tail`) and its path only
+to connections from loopback or Tailscale, like the vault, and never more than the last 256 KiB of
+each file. Read the lines before you post them in public.
 
 ### Performance
 
@@ -2681,7 +3176,9 @@ What keeps the app and the daemon light, and the numbers you can read yourself.
   this documentation). `flightdeckd --version` prints `flightdeckd <version> (protocolo 1)`.
 - **In the app:** the host page shows the daemon version, the app version and the `claude`
   version. A daemon of a different version gets the **≠** badge ("different version from the
-  app's") in the sidebar: it works, but update when you can.
+  app's") in the sidebar: it works, but update when you can. Hovering a host in the sidebar, or
+  moving the keyboard focus to it, shows its daemon's version in a tooltip (in the narrow rail,
+  after its name).
 - **Protocol:** the app sends its protocol version in `hello`. If the daemon does not accept it,
   the host becomes **incompatible: update the daemon**, with the command on the host page. It
   does not try to reconnect and drops out of the lists (sessions, search) until it is updated and
@@ -2731,6 +3228,22 @@ the new binary itself.
 - **Remote Linux (VPS, Orange Pi):** `scp dist/flightdeckd-linux-arm64 <host>:~/` and, on the
   host, `~/.flightdeck/bin/flightdeckd update --from ~/flightdeckd-linux-arm64`.
 
+### Sessions a restart interrupted
+
+When a host's daemon restarts (an update, a reboot, a service restart), the sessions that were
+running are left in `error` with the reason *the daemon restarted*. When the app reconnects to a
+daemon that offers it, one dialog, **Resume interrupted sessions**, lists the ones from the last 24
+hours, grouped by project folder, each with its persona, how long it ran and its last request. All are
+ticked. The dialog says what resume does: it reattaches each session and sends *Continue where you
+left off.*; the original request is never sent again. **Resume selected** resumes the ticked ones
+(each row ends as *Resumed*, or as *Could not resume: <reason>* with a **Retry** button, and the
+others are not affected); **Not now** closes the dialog and does not bring it back until another
+restart (the host's page keeps a *Resume interrupted sessions (N)* button to reopen it); **Dismiss
+all** drops the offer for good. The host's page also has a switch, **Resume automatically after a
+restart**, off by default: with it on no dialog appears, the sessions are resumed at once and a
+notice lists them. Not yet: a *queued* state when the parallel limit is reached, a team's coordinator
+resumed before its workers, and a status-bar entry to reopen the offer.
+
 ### Signed automatic update
 
 Each release ships the installers and the daemons signed with the project's key (minisign,
@@ -2741,10 +3254,20 @@ signature (see [Installation](#from-the-release-binaries)).
 
 - **The app:**
   - looks for a new version on open and every 6 h, in the latest release's `latest.json`;
-  - with a new version, shows the banner "Flightdeck X available", with the notes, **Install and
-    restart** and **Later**;
-  - an invalid signature or a broken download shows up in the banner, and nothing is installed;
-  - in **Settings**: **Check for updates now** and **Notify about updates** (on by default).
+  - with **Update automatically** on (the default), it downloads the new version in the
+    background, checks its signature, and then shows a card in the bottom-right corner:
+    **Update available**, "Flightdeck vX is ready.", "Your sessions will not be interrupted." (they
+    run in the hosts' daemons), **Release notes** (the version's page on GitHub), one **Update**
+    button and a close button (×) that puts it away until the next check (#490). Nothing restarts
+    by itself (#280). Quitting
+    from the tray with a version downloaded installs it on the way out, without starting the app
+    again (#402);
+  - with it off, the banner says "Flightdeck X available", with the notes, **Install and
+    restart** and **Later**, as before;
+  - an invalid signature or a broken download shows up in the banner, and nothing is installed; a
+    failed download is tried again at the next check;
+  - in **Settings**: **Check for updates now**, **Notify about updates** and **Update
+    automatically** (both on by default).
 - **The daemon:**
   - checks `daemon-latest.json` on start, when asked, and every `updates.checkIntervalH` (6 h by
     default);
@@ -2759,13 +3282,19 @@ signature (see [Installation](#from-the-release-binaries)).
     sha256 and the signature, and runs `flightdeckd update --from` outside the service, to
     survive its own stop: a one-off `Flightdeck\update` task on Windows and `systemd-run --user`
     on Linux;
-  - the host shows "updating…" until it reconnects on the new version.
+  - the host shows "updating…" until it reconnects on the new version;
+  - **by itself** (`updates.auto`, on by default; #280): when a check finds a newer version, the
+    daemon applies it only while the host is idle, with no session or run going on, and otherwise
+    waits. It never applies an older version. A failed apply keeps the old binary and is tried
+    again at the next check. The host page has **Update this host automatically** (the same
+    setting, kept by the daemon) and says whether the update is off, current, waiting, started or
+    failed, and why.
 - **Order:** with the app and the daemons both out of date, the banner suggests updating the app
   first.
 
 ```json
 { "updates": { "manifestUrl": "https://github.com/jnerytech/flightdeck/releases/latest/download/daemon-latest.json",
-               "checkIntervalH": 6 } }
+               "checkIntervalH": 6, "auto": true } }
 ```
 
 Only the compiled `flightdeckd` checks GitHub by default. When running from source there is no
@@ -2928,10 +3457,17 @@ how a host looks, not what it can do: the sessions, the permissions and the file
 the chosen folder. Results go to a *Flightdeck results* folder next to your files. Simple mode hides
 things, it does not protect them: a person in full mode can do everything the host allows.
 
-**Switching.** In full mode, open a host's page and use the *Simple mode* panel: *Use simple mode on
-this host* is your own choice, kept in this app. *Make simple mode the default for this host* sets
-what the next person sees. *Lock this host to its mode* removes the switch for everyone: a locked
-host stays in its mode and *Show everything* is not offered. Unlock it from the same panel.
+**Switching.** In full mode, open a host's page and use the *Simple mode* panel. Its first lines say
+which mode the host opens in and whether it is locked. *Default mode* (*Full app* or *Simple mode*)
+sets what the next person sees; *Use simple mode on this host* is your own choice, kept in this app.
+The *Lock this host to its mode* switch removes the choice for everyone (it asks first); a locked
+host stays in its mode. Each change shows a message, and the host's row in the sidebar carries a
+*Simple* badge when it opens in simple mode and a lock when it is locked.
+
+**Getting out of simple mode.** Every simple screen ends its menu with *Full app* (it asks once).
+On a locked host the menu says to ask its admin to unlock it instead. **Ctrl+Shift+M**, the palette
+(*Switch to the full app*) and, in the full app, *Simple mode* in the sidebar's footer switch the
+mode too, keeping your tabs.
 
 **Your own templates.** A host can add tasks as Markdown files in `templates/` inside the daemon's
 data folder: a header with the title, icon, fields, preset and whether to plan first, then one

@@ -25,8 +25,8 @@ export interface SnippetContext {
 }
 
 const NAME = /^[\p{L}\p{N}][\p{L}\p{N} ._-]{0,63}$/u;
-const VAR_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
-const PLACEHOLDER = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g;
+const VAR_NAME = /^[A-Za-z_]\w*$/;
+const PLACEHOLDER = /\{\{\s*([A-Za-z_]\w*)\s*\}\}/g;
 const MAX_COMMAND = 4000;
 const MAX_PROMPT = 20_000;
 const MAX_TAGS = 10;
@@ -93,18 +93,65 @@ export function hasControl(text: string, allow: string): boolean {
 
 // -- secrets ---------------------------------------------------------------------------------
 
+/** A keyword matched in either case, without a flag: the key's own case tells where a word ends (`clientSecret`). */
+const anyCase = (pattern: string): string => {
+  let out = "";
+  let inClass = false;
+  for (const ch of pattern) {
+    if (ch === "[") inClass = true;
+    if (ch === "]") inClass = false;
+    out += !inClass && /[a-z]/i.test(ch) ? `[${ch.toLowerCase()}${ch.toUpperCase()}]` : ch;
+  }
+  return out;
+};
+
+/** The words that make a name a secret's: found in it (`DB_PASSWORD`, `clientSecret`, `authToken`), never as part of a plain word (`secrets`, `tokenizer`). */
+const SECRET_WORDS =
+  "password|passwd|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|private[_-]?key|credential";
+const SECRET_WORD = anyCase(`(?:${SECRET_WORDS})`);
+/** What may follow the word in a name: `_KEY`, `.value`, `2`, or a capitalised word (`Hash`). */
+const NAME_TAIL = "(?:[A-Z][A-Za-z0-9]*|[_.-][A-Za-z0-9_.-]*|[0-9]+)?";
+
 const SECRET_PATTERNS: Array<[string, RegExp]> = [
-  ["token do GitHub", /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/g],
+  ["token do GitHub", /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_\w{20,})/g],
   ["chave sk-", /\bsk-[A-Za-z0-9_-]{16,}/g],
   ["chave da AWS", /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g],
-  ["chave privada", /-----BEGIN [A-Z ]*PRIVATE KEY-----/g],
+  // The whole block, body and END line; a block cut short (a capped message) goes to the end.
+  [
+    "chave privada",
+    /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g,
+  ],
   ["token Bearer", /\bBearer\s+[A-Za-z0-9._~+/=-]{16,}/gi],
   ["token do Slack", /\bxox[abprs]-[A-Za-z0-9-]{10,}/g],
+  // A name with the word anywhere in it, quoted or not (JSON, escaped JSON), then `=` or `:` and the value.
   [
     "senha na linha",
-    /\b(?:password|passwd|pwd|pass|secret|token|api[_-]?key|apikey|access[_-]?key)\s*[=:]\s*['"]?[^\s'"&;]{3,}/gi,
+    new RegExp(
+      String.raw`(?:\b${anyCase("pass")}|(?<![A-Za-z0-9])[A-Za-z0-9_.-]*?${SECRET_WORD}${NAME_TAIL})\\?["']?\s*[=:]\s*\\?["']?[^\s"'\\&;,}]{3,}`,
+      "g",
+    ),
   ],
   ["credencial em URL", /:\/\/[^\s/:@]+:[^\s/@]+@/g],
+  ["senha em opção", new RegExp(String.raw`--(?:${SECRET_WORDS})(?:=|\s+)[^\s]+`, "gi")],
+  ["senha do curl", /(?<=\bcurl\b[^\n|;&]*\s(?:-u|--user)\s+)[^\s:]+:\S+/g],
+  [
+    "cabeçalho de autorização",
+    // A scheme and its credential, or one long unbroken value: not the word in a sentence.
+    /\b(?:Proxy-)?Authorization\\?["']?\s*[:=]\s*\\?["']?(?:(?:Bearer|Basic|Token|Digest|Negotiate|NTLM|Bot)\s+[^\r\n"'\\]+|[^\s"'\\]{20,})/gi,
+  ],
+  ["cookie", /\b(?:Set-)?Cookie\s*:\s*[^\r\n]+/gi],
+  ["credencial Basic", /\bBasic\s+[A-Za-z0-9+/=]{8,}/g],
+  ["JWT", /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*/g],
+  [
+    "chave de serviço",
+    /\b(?:AIza[0-9A-Za-z_-]{30,}|[sr]k_(?:live|test)_[0-9A-Za-z]{16,}|npm_[A-Za-z0-9]{30,}|glpat-[A-Za-z0-9_-]{16,})/g,
+  ],
+  [
+    "webhook",
+    /\b(?:hooks\.slack\.com\/services\/[A-Za-z0-9/]+|discord(?:app)?\.com\/api\/webhooks\/\d+\/[A-Za-z0-9_-]+)/g,
+  ],
+  ["URL assinada", /[?&](?:sig|signature|x-amz-signature|x-goog-signature)=[^\s&]+/gi],
+  ["token em URL", /:\/\/[A-Za-z0-9_-]{20,}@/g],
 ];
 
 /** Vault values shorter than this are not told apart from ordinary text. */
@@ -131,6 +178,44 @@ export class SecretScanner {
     }
     return found;
   }
+
+  /**
+   * The text with every secret it holds replaced by `[redacted]`: what a log line goes through so
+   * that no token, key, link or vault value is ever written. A `{{variable}}` stays (it is a place
+   * for a value, not a value), unless `keepPlaceholders` is false: a log has no such places.
+   */
+  redact(text: string, keepPlaceholders = true): string {
+    let clean = text;
+    for (const [, pattern] of SECRET_PATTERNS) {
+      clean = clean.replace(pattern, (hit) =>
+        keepPlaceholders && hit.includes("{{") ? hit : "[redacted]",
+      );
+    }
+    for (const value of this.vaultValues()) {
+      if (value.length >= MIN_VAULT_VALUE) clean = clean.split(value).join("[redacted]");
+    }
+    return clean;
+  }
+}
+
+/** `/home/<name>`, `/Users/<name>` and `C:\\Users\\<name>` (also with the backslashes doubled, as in JSON). */
+const HOME_FOLDER = /(?:\/(?:home|Users)\/|[A-Za-z]:\\{1,2}Users\\{1,2})[^/\\\s"']+/gi;
+
+/**
+ * The text with the user's home folder as `~`: a log is pasted in public issues, and the user's
+ * name is in every path under it. `home`, when known, is replaced whatever it looks like (a name
+ * with spaces, a folder that is not under /home); the usual folders of Linux, macOS and Windows
+ * are replaced either way.
+ */
+export function scrubHome(text: string, home?: string): string {
+  let clean = text;
+  const known = home?.replace(/[/\\]+$/, "") ?? "";
+  if (known.length >= 3) {
+    for (const spelling of new Set([known, known.replaceAll("\\", "\\\\")])) {
+      clean = clean.split(spelling).join("~");
+    }
+  }
+  return clean.replace(HOME_FOLDER, "~");
 }
 
 // -- the model -------------------------------------------------------------------------------
@@ -144,21 +229,8 @@ function template(def: SnippetDef): string {
   return (def.type === "command" ? def.run : def.text) as string;
 }
 
-/**
- * Checks a snippet and returns it in its normal form. A command is one line without control
- * characters, so pasting it cannot run what the person did not see. A snippet with a secret is
- * refused with `snippet_secret`: the app then offers to turn it into an action (phase 17).
- */
-export function normalizeSnippet(input: SnippetInput, scanner: SecretScanner): SnippetDef {
-  const name = input.name.trim();
-  refuseSecrets(scanner, [name, ...(input.tags ?? [])], "the name or the tags have a secret");
-  if (!NAME.test(name)) {
-    throw badRequest(
-      "name_invalid",
-      "name must be 1 to 64 characters: letters, numbers, space, . _ -",
-    );
-  }
-  const isCommand = input.type === "command";
+/** The command or the text of a snippet, once it is the right one, short enough and clean. */
+function checkedBody(input: SnippetInput, isCommand: boolean): string {
   const body = isCommand ? input.run : input.text;
   if (body === undefined || body === "") {
     throw isCommand
@@ -178,8 +250,11 @@ export function normalizeSnippet(input: SnippetInput, scanner: SecretScanner): S
       ? badRequest("control_command", "a command is one line, without control characters")
       : badRequest("control_prompt", "control characters in the text");
   }
-  const vars = input.vars ?? {};
-  const used = placeholders(body);
+  return body;
+}
+
+/** Every variable has a valid name, is not a special one, is used in the body and has a valid spec. */
+function checkVars(vars: NonNullable<SnippetInput["vars"]>, used: string[]): void {
   for (const [key, spec] of Object.entries(vars)) {
     if (!VAR_NAME.test(key)) {
       throw badRequest("var_name", `invalid variable name: ${key}`, { name: key });
@@ -194,9 +269,11 @@ export function normalizeSnippet(input: SnippetInput, scanner: SecretScanner): S
     }
     checkVar(key, spec);
   }
-  const tags = [
-    ...new Set((input.tags ?? []).map((tag) => tag.trim()).filter((tag) => tag !== "")),
-  ];
+}
+
+/** The tags trimmed and without repeats, refused when there are too many or one is not valid. */
+function checkedTags(raw: string[]): string[] {
+  const tags = [...new Set(raw.map((tag) => tag.trim()).filter((tag) => tag !== ""))];
   if (tags.length > MAX_TAGS) {
     throw badRequest("too_many_tags", `at most ${MAX_TAGS} tags`, { max: MAX_TAGS });
   }
@@ -205,6 +282,28 @@ export function normalizeSnippet(input: SnippetInput, scanner: SecretScanner): S
       throw badRequest("tag_invalid", "invalid tag");
     }
   }
+  return tags;
+}
+
+/**
+ * Checks a snippet and returns it in its normal form. A command is one line without control
+ * characters, so pasting it cannot run what the person did not see. A snippet with a secret is
+ * refused with `snippet_secret`: the app then offers to turn it into an action (phase 17).
+ */
+export function normalizeSnippet(input: SnippetInput, scanner: SecretScanner): SnippetDef {
+  const name = input.name.trim();
+  refuseSecrets(scanner, [name, ...(input.tags ?? [])], "the name or the tags have a secret");
+  if (!NAME.test(name)) {
+    throw badRequest(
+      "name_invalid",
+      "name must be 1 to 64 characters: letters, numbers, space, . _ -",
+    );
+  }
+  const isCommand = input.type === "command";
+  const body = checkedBody(input, isCommand);
+  const vars = input.vars ?? {};
+  checkVars(vars, placeholders(body));
+  const tags = checkedTags(input.tags ?? []);
   const def: SnippetDef = {
     name,
     type: input.type,

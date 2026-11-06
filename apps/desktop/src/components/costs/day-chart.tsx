@@ -1,30 +1,44 @@
+import { type KeyboardEvent, useState } from "react";
+import { IconTip } from "@/components/feedback/icon-tip";
 import { Inline } from "@/components/layout/stack";
 import { useT } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { formatDay } from "../../i18n/format.ts";
 import { usd } from "../../lib/costs.ts";
 
-/** A tint of the accent per project in a day's bar, so the stack reads. */
-const SEGMENTS = ["bg-brand", "bg-brand/70", "bg-brand/50", "bg-brand/35"];
+/**
+ * A series style per project in a day's bar (issue #179): its own hue and, from the second on, a
+ * pattern, so the stack reads without colour. The last one is "other projects".
+ */
+const SEGMENTS = [
+  "chart-series-1",
+  "chart-series-2",
+  "chart-series-3",
+  "chart-series-4",
+  "chart-series-5",
+];
 
 /** Days that fit a label each; over it only every few-th day gets one. */
 const LABELLED = 7;
 
 /**
  * The cost per day as bars stacked by project: the day under each bar, the total of a day as
- * the bar's text, the highest day and a legend of the projects. A project keeps its tint on
- * every day and in the legend; with more projects than tints the biggest spenders get one each
- * and the rest share the last, which the legend calls "other projects".
+ * the bar's text, the highest day and a legend of the projects. A project keeps its series style
+ * on every day and in the legend; with more projects than styles the biggest spenders get one
+ * each and the rest share the last, which the legend calls "other projects".
  */
-export function DayChart(props: {
-  days: string[];
-  byDay: Array<{ day: string; projectKey: string; costUsd: number }>;
-  /** The projects of the period, the biggest spender first. */
-  projects: string[];
-  /** How a project is named on screen. */
-  label: (projectKey: string) => string;
-}) {
+export function DayChart(
+  props: Readonly<{
+    days: string[];
+    byDay: Array<{ day: string; projectKey: string; costUsd: number }>;
+    /** The projects of the period, the biggest spender first. */
+    projects: string[];
+    /** How a project is named on screen. */
+    label: (projectKey: string) => string;
+  }>,
+) {
   const t = useT();
+  const [at, setAt] = useState(0);
   const { days, byDay, projects, label: projectLabel } = props;
   const totals = new Map<string, number>();
   for (const row of byDay) totals.set(row.day, (totals.get(row.day) ?? 0) + row.costUsd);
@@ -35,35 +49,54 @@ export function DayChart(props: {
   const legend = projects.length > tinted ? [...projects.slice(0, tinted), null] : projects;
   const labelEvery = Math.ceil(days.length / LABELLED);
   const dayText = (day: string) => `${day}: ${usd(totals.get(day) ?? 0)}`;
+  // One tab stop for the whole chart: the arrows walk the days, and the day in focus says its total.
+  const current = Math.min(at, Math.max(days.length - 1, 0));
+  const walk = (e: KeyboardEvent<HTMLElement>) => {
+    const last = days.length - 1;
+    const targets: Record<string, number> = {
+      ArrowRight: Math.min(current + 1, last),
+      ArrowLeft: Math.max(current - 1, 0),
+      Home: 0,
+      End: last,
+    };
+    const to = targets[e.key];
+    if (to === undefined) return;
+    e.preventDefault();
+    setAt(to);
+    (e.currentTarget.parentElement?.children[to] as HTMLElement | undefined)?.focus();
+  };
   return (
     <>
       <div className="flex h-40 items-end gap-1">
-        {days.map((day) => (
-          // biome-ignore lint/a11y/useSemanticElements: a column of the chart, not a form group
-          <div
-            key={day}
-            data-day={day}
-            role="group"
-            aria-label={dayText(day)}
-            title={dayText(day)}
-            className="flex h-full min-w-2 flex-1 flex-col justify-end"
-          >
-            {byDay
-              .filter((row) => row.day === day)
-              .map((row) => (
-                <div
-                  key={row.projectKey}
-                  data-project={row.projectKey}
-                  role="img"
-                  aria-label={`${day} · ${projectLabel(row.projectKey)}: ${usd(row.costUsd)}`}
-                  className={cn(
-                    "border-card border-t first:rounded-t-sm",
-                    SEGMENTS[tintOf(row.projectKey)],
-                  )}
-                  style={{ height: `${highest > 0 ? (row.costUsd / highest) * 100 : 0}%` }}
-                />
-              ))}
-          </div>
+        {days.map((day, index) => (
+          <IconTip key={day} label={dayText(day)}>
+            {/* biome-ignore lint/a11y/useSemanticElements: a column of the chart, not a form group */}
+            <div
+              data-day={day}
+              role="group"
+              aria-label={dayText(day)}
+              tabIndex={index === current ? 0 : -1}
+              onKeyDown={walk}
+              onFocus={() => setAt(index)}
+              className="flex h-full min-w-2 flex-1 flex-col justify-end rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {byDay
+                .filter((row) => row.day === day)
+                .map((row) => (
+                  <div
+                    key={row.projectKey}
+                    data-project={row.projectKey}
+                    role="img"
+                    aria-label={`${day} · ${projectLabel(row.projectKey)}: ${usd(row.costUsd)}`}
+                    className={cn(
+                      "border-card border-t first:rounded-t-sm",
+                      SEGMENTS[tintOf(row.projectKey)],
+                    )}
+                    style={{ height: `${highest > 0 ? (row.costUsd / highest) * 100 : 0}%` }}
+                  />
+                ))}
+            </div>
+          </IconTip>
         ))}
       </div>
       <div className="mt-1 flex gap-1 text-muted-foreground text-xs tabular-nums" aria-hidden>

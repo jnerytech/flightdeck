@@ -3,14 +3,23 @@ import { registerDom } from "./dom.ts";
 
 registerDom();
 const { act, cleanup, fireEvent, render, screen } = await import("@testing-library/react");
+
+/** The person scrolls: the wheel, then the scroll event the browser sends for it. */
+const personScrolls = (el: Element) => {
+  fireEvent.wheel(el, { deltaY: -120 });
+  fireEvent.scroll(el);
+};
 const { SessionView } = await import("../src/ui/SessionView.tsx");
 const { emptySession } = await import("../src/lib/session-state.ts");
 
 /** A ResizeObserver the test drives: `grow()` is a layout change (an image, a code block, a panel). */
 const observers: Array<() => void> = [];
 class FakeResizeObserver {
-  constructor(private readonly callback: () => void) {
-    observers.push(() => this.callback());
+  constructor(private readonly callback: (entries: unknown[]) => void) {
+    // The app's other observers (the width of a region) read the entry's size: give them one.
+    observers.push(() =>
+      this.callback([{ contentRect: { width: 1000, height: 800 }, target: document.body }]),
+    );
   }
   observe() {}
   unobserve() {}
@@ -93,16 +102,69 @@ describe("sessao-rolagem-fim: opening lands on the latest message", () => {
     expect(s.size.top).toBe(1000);
     // The browser delivers that scroll event a frame later, when a panel has already grown the content.
     s.size.scroll = 1800;
-    await act(async () => void fireEvent.scroll(s.el));
+    await act(async () => void personScrolls(s.el));
     expect(screen.queryByRole("button", { name: /Jump to latest|Ir para a última/ })).toBeNull();
     await grow();
     expect(s.size.top).toBe(1800);
   });
 
+  test("a scroll event the browser sends for its own clamp, delivered after a panel took room, is not the person leaving", async () => {
+    render(view(items(20)));
+    const s = scroller({ scroll: 1000, client: 400, top: 0 });
+    await grow();
+    expect(s.size.top).toBe(1000);
+    // The last turn ends: the "working" rows go, the content shrinks and the browser pulls the
+    // position back (no event yet). The summary card then takes room above the conversation.
+    s.size.scroll = 940;
+    s.size.top = 540;
+    s.size.client = 250;
+    // The event for that clamp reaches the handler only now: 150 px from the end, no one touched anything.
+    await act(async () => void fireEvent.scroll(s.el));
+    expect(screen.queryByRole("button", { name: /Jump to latest|Ir para a última/ })).toBeNull();
+    // The view still follows the end, so the next layout change pins it again.
+    await grow();
+    expect(s.size.top).toBe(940);
+  });
+
+  test("the person's own scroll away from the end is still the person leaving: the wheel says so", async () => {
+    render(view(items(20)));
+    const s = scroller({ scroll: 1000, client: 400, top: 0 });
+    await grow();
+    s.size.top = 300;
+    await act(async () => void personScrolls(s.el));
+    expect(
+      screen.queryByRole("button", { name: /Jump to latest|Ir para a última/ }),
+    ).not.toBeNull();
+    s.size.scroll = 1400;
+    await grow();
+    expect(s.size.top).toBe(300);
+  });
+
+  test("the keyboard and a touch drag leave the end too, and a click on the scrollbar", async () => {
+    for (const intent of [
+      (el: Element) => fireEvent.keyDown(el, { key: "PageUp" }),
+      (el: Element) => fireEvent.touchMove(el),
+      (el: Element) => fireEvent.pointerDown(el),
+    ]) {
+      const { unmount } = render(view(items(20)));
+      const s = scroller({ scroll: 1000, client: 400, top: 0 });
+      await grow();
+      s.size.top = 200;
+      await act(async () => {
+        intent(s.el);
+        fireEvent.scroll(s.el);
+      });
+      expect(
+        screen.queryByRole("button", { name: /Jump to latest|Ir para a última/ }),
+      ).not.toBeNull();
+      unmount();
+    }
+  });
+
   test("once the person scrolled up, growth leaves the view where it is", async () => {
     render(view(items(20)));
     const s = scroller({ scroll: 1000, client: 400, top: 100 });
-    await act(async () => void fireEvent.scroll(s.el));
+    await act(async () => void personScrolls(s.el));
     s.size.scroll = 1800;
     await grow();
     expect(s.size.top).toBe(100);
@@ -111,7 +173,7 @@ describe("sessao-rolagem-fim: opening lands on the latest message", () => {
   test("new messages while scrolled up are counted on the button, which goes to the end and resets", async () => {
     const { rerender } = render(view(items(20)));
     const s = scroller({ scroll: 1000, client: 400, top: 100 });
-    await act(async () => void fireEvent.scroll(s.el));
+    await act(async () => void personScrolls(s.el));
     s.size.scroll = 1100;
     rerender(view(items(21)));
     await act(async () => {});
@@ -131,7 +193,7 @@ describe("sessao-rolagem-fim: coming back to a tab", () => {
   test("a reader who had scrolled up gets their own position back, with the jump button", async () => {
     const first = render(view(items(20), "h/s1"));
     const s = scroller({ scroll: 2000, client: 400, top: 300 });
-    await act(async () => void fireEvent.scroll(s.el));
+    await act(async () => void personScrolls(s.el));
     first.unmount();
     render(view(items(20), "h/s1"));
     const back = document.querySelector<HTMLElement>(
@@ -141,10 +203,109 @@ describe("sessao-rolagem-fim: coming back to a tab", () => {
     expect(screen.queryByRole("button", { name: "Ir para a última" })).not.toBeNull();
   });
 
+  /**
+   * Runs `body` with the scroller's layout in place before the view mounts, as the browser has it:
+   * the box clamps `scrollTop` to what the content allows.
+   */
+  async function withClampingLayout(
+    layout: { scroll: number; client: number; top: number },
+    body: (box: () => HTMLElement) => Promise<void>,
+  ) {
+    const proto = HTMLElement.prototype;
+    const saved = ["scrollHeight", "clientHeight", "scrollTop"].map(
+      (name) => [name, Object.getOwnPropertyDescriptor(proto, name)] as const,
+    );
+    const mine = (el: unknown) =>
+      (el as HTMLElement).matches?.("[tabindex='0'].overflow-y-auto") === true;
+    Object.defineProperty(proto, "scrollHeight", {
+      get() {
+        return mine(this) ? layout.scroll : 0;
+      },
+      configurable: true,
+    });
+    Object.defineProperty(proto, "clientHeight", {
+      get() {
+        return mine(this) ? layout.client : 0;
+      },
+      configurable: true,
+    });
+    Object.defineProperty(proto, "scrollTop", {
+      get() {
+        return mine(this) ? layout.top : 0;
+      },
+      set(value: number) {
+        if (mine(this)) layout.top = Math.max(0, Math.min(value, layout.scroll - layout.client));
+      },
+      configurable: true,
+    });
+    try {
+      await body(
+        () => document.querySelector<HTMLElement>("[tabindex='0'].overflow-y-auto") as HTMLElement,
+      );
+    } finally {
+      for (const [name, descriptor] of saved) {
+        if (descriptor) Object.defineProperty(proto, name, descriptor);
+        else delete (proto as unknown as Record<string, unknown>)[name];
+      }
+    }
+  }
+
+  test("a place restored while the content is still short survives: the browser's clamp is not the reader going to the end (#515)", async () => {
+    const first = render(view(items(20), "h/s515"));
+    const s = scroller({ scroll: 2000, client: 400, top: 300 });
+    await act(async () => void personScrolls(s.el));
+    first.unmount();
+    // At mount the content is only 500 px tall (the images and code blocks have not laid out), so
+    // the browser clamps the restored 300 to 100.
+    const layout = { scroll: 500, client: 400, top: 0 };
+    await withClampingLayout(layout, async (box) => {
+      render(view(items(20), "h/s515"));
+      // The restore asked for 300 and the clamp gave 100; the browser tells the view so.
+      await act(async () => void fireEvent.scroll(box()));
+      // The code blocks lay out: the content is tall now.
+      layout.scroll = 2000;
+      await grow();
+      expect(layout.top).toBe(300);
+      expect(screen.queryByRole("button", { name: "Ir para a última" })).not.toBeNull();
+    });
+  });
+
+  test("a reader who scrolls before the restore found its height keeps their own place (#515)", async () => {
+    const first = render(view(items(20), "h/s515b"));
+    const s = scroller({ scroll: 2000, client: 400, top: 300 });
+    await act(async () => void personScrolls(s.el));
+    first.unmount();
+    const layout = { scroll: 800, client: 400, top: 0 };
+    await withClampingLayout(layout, async (box) => {
+      render(view(items(20), "h/s515b"));
+      // The reader moves up to 50 by hand, before the content grows.
+      layout.top = 50;
+      await act(async () => void personScrolls(box()));
+      layout.scroll = 2000;
+      await grow();
+      expect(layout.top).toBe(50);
+    });
+  });
+
+  test("a place that fits at the first scroll event is kept as it is (#515)", async () => {
+    const first = render(view(items(20), "h/s515c"));
+    const s = scroller({ scroll: 2000, client: 400, top: 300 });
+    await act(async () => void personScrolls(s.el));
+    first.unmount();
+    const layout = { scroll: 2000, client: 400, top: 0 };
+    await withClampingLayout(layout, async (box) => {
+      render(view(items(20), "h/s515c"));
+      await act(async () => void fireEvent.scroll(box()));
+      layout.scroll = 2600;
+      await grow();
+      expect(layout.top).toBe(300);
+    });
+  });
+
   test("a reader who was at the end comes back to the end, even if the content grew meanwhile", async () => {
     const first = render(view(items(20), "h/s2"));
     const s = scroller({ scroll: 1000, client: 400, top: 600 });
-    await act(async () => void fireEvent.scroll(s.el));
+    await act(async () => void personScrolls(s.el));
     first.unmount();
     render(view(items(22), "h/s2"));
     const back = scroller({ scroll: 1200, client: 400, top: 0 });
@@ -156,7 +317,7 @@ describe("sessao-rolagem-fim: coming back to a tab", () => {
   test("another conversation does not inherit the position", async () => {
     const first = render(view(items(20), "h/s3"));
     const s = scroller({ scroll: 2000, client: 400, top: 300 });
-    await act(async () => void fireEvent.scroll(s.el));
+    await act(async () => void personScrolls(s.el));
     first.unmount();
     render(view(items(20), "h/other"));
     const back = scroller({ scroll: 1500, client: 400, top: 0 });
@@ -170,7 +331,7 @@ describe("sessao-rolagem-fim: the places kept are bounded", () => {
     for (let i = 0; i <= 200; i++) {
       const first = render(view(items(3), `cap/${i}`));
       const s = scroller({ scroll: 2000, client: 400, top: 300 });
-      await act(async () => void fireEvent.scroll(s.el));
+      await act(async () => void personScrolls(s.el));
       first.unmount();
     }
     // The first one was pushed out: it opens at the end, as a conversation seen for the first time.
@@ -190,7 +351,7 @@ describe("sessao-rolagem-fim: older messages loaded above", () => {
   test("prepending history keeps what the reader was looking at", async () => {
     const { rerender } = render(view(items(10, 11)));
     const s = scroller({ scroll: 1000, client: 400, top: 500 });
-    await act(async () => void fireEvent.scroll(s.el));
+    await act(async () => void personScrolls(s.el));
     s.size.scroll = 1400;
     rerender(view(items(20, 1)));
     await act(async () => {});

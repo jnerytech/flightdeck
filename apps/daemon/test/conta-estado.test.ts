@@ -64,6 +64,24 @@ function setup(readers: Partial<AccountReaders>) {
 }
 
 describe("conta-estado: status for each fixture", () => {
+  // Issue #582: the SDK's account info carries the server's display name; claude's sign-in and the
+  // usage report keep the plan stored at sign-in, so a plan changed since (Max to Ultra) shows at once.
+  test("the plan comes from the SDK's account info first, over the usage report and the sign-in", async () => {
+    const { account } = setup({
+      status: async () => auth({ plan: "max" }),
+      sdk: async () => ({ info: info({ plan: "ultra" }), usage: { ...usage, plan: "max" } }),
+    });
+    expect((await account.readNow()).plan).toBe("ultra");
+  });
+
+  test("without a plan from the SDK or the usage report the plan is the sign-in's", async () => {
+    const { account } = setup({
+      status: async () => auth({ plan: "max" }),
+      sdk: async () => ({ info: info({ plan: null }), usage: noUsage }),
+    });
+    expect((await account.readNow()).plan).toBe("max");
+  });
+
   test("claude.ai sign-in is signed_in with name, organization, plan and provider", async () => {
     const { account } = setup({});
     const state = await account.readNow();
@@ -175,6 +193,7 @@ describe("conta-estado: status for each fixture", () => {
     const state = await account.readNow();
     expect(state.name).toBe("status@example.com");
     expect(state.organization).toBe("From SDK");
+    // The plan is the exception: the SDK's account info wins over the usage report (issue #582).
     expect(state.plan).toBe("pro");
   });
 
@@ -243,7 +262,7 @@ describe("conta-estado: the windows go through the quota", () => {
     const state = await account.readNow();
     expect(state.status).toBe("signed_in");
     expect(state.name).toBe("demo@example.com");
-    expect(state.windows.length).toBe(2);
+    expect(state.windows).toHaveLength(2);
     expect(state.source).toBe("status");
     expect(state.stale).toBe(false);
     expect(state.error).toBeNull();

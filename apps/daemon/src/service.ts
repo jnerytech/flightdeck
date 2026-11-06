@@ -1,4 +1,5 @@
 import { posix, win32 } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 
 /** Unit file location, relative to the user's home. */
 export const SYSTEMD_UNIT_PATH = ".config/systemd/user/flightdeckd.service";
@@ -21,8 +22,11 @@ function requireAbsolute(command: string[]): void {
 }
 
 /** systemd quoting: arguments with spaces or quotes go inside double quotes. */
-const systemdQuote = (arg: string) =>
-  /[\s"\\]/.test(arg) ? `"${arg.replace(/(["\\])/g, "\\$1")}"` : arg;
+const systemdQuote = (arg: string) => {
+  if (!/[\s"\\]/.test(arg)) return arg;
+  const escaped = arg.replace(/(["\\])/g, String.raw`\$1`);
+  return `"${escaped}"`;
+};
 
 /** What the service passes after the daemon command: `start`, plus `--config` when given. */
 const startArgs = (config?: string | null) => ["start", ...(config ? ["--config", config] : [])];
@@ -52,7 +56,7 @@ export function systemdUnit(command: string[], config?: string | null): string {
 }
 
 /** Scheduled task path, inside its own `Flightdeck` folder. */
-export const TASK_NAME = "Flightdeck\\flightdeckd";
+export const TASK_NAME = String.raw`Flightdeck\flightdeckd`;
 
 const xmlEscape = (text: string) =>
   text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
@@ -71,7 +75,7 @@ export function windowsTaskXml(
 ): string {
   requireAbsolute(command);
   const user = xmlEscape(options.user);
-  const conhost = xmlEscape(`${options.systemRoot}\\System32\\conhost.exe`);
+  const conhost = xmlEscape(String.raw`${options.systemRoot}\System32\conhost.exe`);
   const line = windowsCommandLine([...command, ...startArgs(options.config)]);
   const args = xmlEscape(`--headless ${line}`);
   return `<?xml version="1.0" encoding="UTF-16"?>
@@ -187,7 +191,7 @@ async function installSystemd(ctx: ServiceContext, config?: string | null): Prom
     };
   }
   await ctx.writeFile(path, unit);
-  for (const cmd of SYSTEMD_INSTALL) await runChecked(ctx, cmd);
+  await inSequence(SYSTEMD_INSTALL, (cmd) => runChecked(ctx, cmd));
   const linger = await ctx.exec(["loginctl", "show-user", ctx.user, "-p", "Linger"]);
   const instructions =
     linger.code === 0 && linger.stdout.trim() === "Linger=yes"

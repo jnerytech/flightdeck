@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { waiter } from "./wait.ts";
@@ -29,9 +30,7 @@ async function openSettings(supported = true) {
   const store = new AppStore(mem.platform);
   render(<App store={store} />);
   await settle(() => !supported || registered.length > 0);
-  await act(async () => {
-    fireEvent.click(screen.getByRole("button", { name: "Configurações" }));
-  });
+  await chooseFromAccountMenu("Configurações");
   // Settings is a lazy screen: its chunk may still be loading when the click returns.
   await settle(() => screen.queryByRole("textbox", { name: "Atalho global" }) !== null);
   return { ...mem, registered };

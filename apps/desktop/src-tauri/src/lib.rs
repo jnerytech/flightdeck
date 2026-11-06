@@ -3,6 +3,8 @@
 //! forwarding, the terminal of "Abrir no terminal", and the official plugins (notifications,
 //! deep links, opener).
 
+mod assistant;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::menu::{Menu, MenuItem, Submenu};
@@ -13,7 +15,7 @@ const KEYRING_SERVICE: &str = "dev.flightdeck.app";
 
 /// Runs blocking work (the credential store, a PATH walk, a process spawn) on the blocking pool:
 /// a plain `async fn` still holds one of the runtime's few workers while it waits.
-async fn spawn_blocking_result<T: Send + 'static>(
+pub(crate) async fn spawn_blocking_result<T: Send + 'static>(
     work: impl FnOnce() -> Result<T, String> + Send + 'static,
 ) -> Result<T, String> {
     tauri::async_runtime::spawn_blocking(work)
@@ -61,7 +63,7 @@ const VAULT_SERVICE: &str = "flightdeck-vault";
 /// The Windows credential store keeps at most 2560 bytes per entry, and `keyring` writes UTF-16.
 const WINDOWS_CREDENTIAL_MAX_BYTES: usize = 2560;
 
-fn vault_entry(id: &str) -> Result<keyring::Entry, String> {
+pub(crate) fn vault_entry(id: &str) -> Result<keyring::Entry, String> {
     keyring::Entry::new(VAULT_SERVICE, id).map_err(|e| e.to_string())
 }
 
@@ -206,7 +208,7 @@ async fn vault_pick_file(
         let path = picked.into_path().map_err(|e| e.to_string())?;
         // Bounded while reading, so a file that grows (or a device) cannot get past the cap.
         let mut text = String::new();
-        std::fs::File::open(&path)
+        std::fs::File::open(&path) // NOSONAR: runs inside spawn_blocking_result, on the blocking pool
             .map_err(|e| e.to_string())?
             .take(PICKED_FILE_MAX_BYTES + 1)
             .read_to_string(&mut text)
@@ -341,6 +343,367 @@ async fn open_result(app: tauri::AppHandle, path: String, reveal: bool) -> Resul
         }
     })
     .await
+}
+
+// -- the app's own log file (issue #255) -------------------------------------------------------
+
+/// A log file rotates past this size.
+const LOG_MAX_BYTES: u64 = 5 * 1024 * 1024;
+/// How many files the log keeps, the live one included.
+const LOG_FILES: usize = 5;
+/// A line is cut here, in bytes of text. The webview has already cut it and removed its secrets.
+const LOG_MAX_LINE: usize = 4000;
+/// The most lines `read_log_tail` hands back.
+const LOG_MAX_TAIL: usize = 500;
+/// `read_log_tail` reads this much of the end of each file at most.
+const LOG_TAIL_BYTES: u64 = 256 * 1024;
+const LOG_NAME: &str = "flightdeck.log";
+/// If a rotation keeps failing (a viewer holds the file open on Windows), the live file may grow to
+/// this much before a line is refused: logging is not lost at the first hiccup, and stays bounded.
+const LOG_HARD_LIMIT: u64 = 2 * LOG_MAX_BYTES;
+/// One writer at a time: `append_log` runs on the blocking pool, and two appends at the rotation
+/// boundary would each rotate and push history out.
+static LOG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// File `n` of the log: 0 is the live one, 1 the one before it, and so on.
+fn log_path(dir: &std::path::Path, n: usize) -> std::path::PathBuf {
+    if n == 0 {
+        dir.join(LOG_NAME)
+    } else {
+        dir.join(format!("{LOG_NAME}.{n}"))
+    }
+}
+
+/// Shifts the files one place up: the live one becomes `.1`, the oldest is dropped.
+fn rotate_logs(dir: &std::path::Path, files: usize) -> std::io::Result<()> {
+    let files = files.max(1);
+    let oldest = log_path(dir, files - 1);
+    if oldest.exists() {
+        std::fs::remove_file(&oldest)?;
+    }
+    for n in (0..files - 1).rev() {
+        let from = log_path(dir, n);
+        if from.exists() {
+            std::fs::rename(&from, log_path(dir, n + 1))?;
+        }
+    }
+    Ok(())
+}
+
+/// Makes the log folder, private to the user where the system has such a thing.
+fn make_log_dir(dir: &std::path::Path) -> std::io::Result<()> {
+    let mut builder = std::fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    builder.create(dir)
+}
+
+/// Whether `path` is a regular file, not a link and not a pipe or a device (the link itself is
+/// looked at, never what it points to). A missing path is not one.
+fn is_regular_file(path: &std::path::Path) -> bool {
+    std::fs::symlink_metadata(path)
+        .map(|m| m.file_type().is_file())
+        .unwrap_or(false)
+}
+
+/// Opens the live file for appending, owner-only on creation, and never through a link: a link
+/// planted where the log goes would make the log write somewhere else. Something that is there
+/// and is not a regular file (a link, a pipe that would block the open) is refused.
+fn open_live_log(path: &std::path::Path) -> std::io::Result<std::fs::File> {
+    let exists_but_not_regular = std::fs::symlink_metadata(path).is_ok() && !is_regular_file(path);
+    if exists_but_not_regular {
+        return Err(std::io::Error::other("the log file is not a regular file"));
+    }
+    let mut options = std::fs::OpenOptions::new();
+    options.create(true).append(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    options.open(path)
+}
+
+/// Appends one line, flattened and cut, rotating first when the live file would pass the limit.
+fn append_line(
+    dir: &std::path::Path,
+    line: &str,
+    max_bytes: u64,
+    files: usize,
+) -> std::io::Result<()> {
+    use std::io::Write;
+    let _one_writer = LOG_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    make_log_dir(dir)?;
+    // Cut first, on a character boundary, so a flood is never copied whole.
+    let mut cut = line;
+    if cut.len() > LOG_MAX_LINE {
+        let mut end = LOG_MAX_LINE;
+        while !cut.is_char_boundary(end) {
+            end -= 1;
+        }
+        cut = &cut[..end];
+    }
+    let mut text = cut.replace(['\r', '\n'], " ");
+    text.push('\n');
+    let live = log_path(dir, 0);
+    let size = std::fs::metadata(&live).map(|m| m.len()).unwrap_or(0);
+    if size > 0 && size + text.len() as u64 > max_bytes {
+        // A failed rotation still lets the line in, until the hard limit.
+        if rotate_logs(dir, files).is_err() && size + text.len() as u64 > LOG_HARD_LIMIT.max(max_bytes) {
+            return Err(std::io::Error::other("the log is full and cannot rotate"));
+        }
+    }
+    let mut file = open_live_log(&live)?;
+    file.write_all(text.as_bytes())
+}
+
+/// The end of a regular file (at most `LOG_TAIL_BYTES`), from the start of a whole line. A file
+/// that is missing, a link or not a regular file reads as nothing.
+fn read_log_end(path: &std::path::Path) -> Option<String> {
+    use std::io::{Read, Seek, SeekFrom};
+    if !is_regular_file(path) {
+        return None;
+    }
+    let mut file = std::fs::File::open(path).ok()?;
+    let meta = file.metadata().ok()?;
+    if !meta.is_file() {
+        return None;
+    }
+    let start = meta.len().saturating_sub(LOG_TAIL_BYTES);
+    file.seek(SeekFrom::Start(start)).ok()?;
+    let mut bytes = Vec::new();
+    file.take(LOG_TAIL_BYTES).read_to_end(&mut bytes).ok()?;
+    // Lossy: a file with a broken character (a crash mid-write) is still read.
+    let text = String::from_utf8_lossy(&bytes).into_owned();
+    if start == 0 {
+        return Some(text);
+    }
+    // The window starts in the middle of a line: the piece is not handed out.
+    Some(match text.find('\n') {
+        Some(at) => text[at + 1..].to_string(),
+        None => String::new(),
+    })
+}
+
+/// The last `wanted` lines (at most `LOG_MAX_TAIL`) across the files, oldest first.
+fn tail_lines(dir: &std::path::Path, wanted: usize, files: usize) -> Vec<String> {
+    let wanted = wanted.min(LOG_MAX_TAIL);
+    let mut out: Vec<String> = Vec::new();
+    for n in 0..files {
+        if out.len() >= wanted {
+            break;
+        }
+        let Some(text) = read_log_end(&log_path(dir, n)) else {
+            continue;
+        };
+        let lines: Vec<&str> = text.lines().filter(|l| !l.is_empty()).collect();
+        let take = (wanted - out.len()).min(lines.len());
+        let mut chunk: Vec<String> = lines[lines.len() - take..]
+            .iter()
+            .map(|l| l.to_string())
+            .collect();
+        chunk.append(&mut out);
+        out = chunk;
+    }
+    out
+}
+
+/// The folder of the app's logs, the OS's own for this app (no path comes from the webview).
+fn app_logs(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    app.path().app_log_dir().map_err(|e| e.to_string())
+}
+
+/// Appends a line of the app's log. The webview redacts it with the protocol's scanner first.
+#[tauri::command]
+async fn append_log(app: tauri::AppHandle, line: String) -> Result<(), String> {
+    let dir = app_logs(&app)?;
+    spawn_blocking_result(move || {
+        append_line(&dir, &line, LOG_MAX_BYTES, LOG_FILES).map_err(|e| e.to_string())
+    })
+    .await
+}
+
+/// The last lines of the app's log, for "Copy diagnostics".
+#[tauri::command]
+async fn read_log_tail(app: tauri::AppHandle, lines: usize) -> Result<Vec<String>, String> {
+    let dir = app_logs(&app)?;
+    spawn_blocking_result(move || Ok(tail_lines(&dir, lines, LOG_FILES))).await
+}
+
+/// Opens the app's log folder in the system's file manager.
+#[tauri::command]
+async fn open_logs_dir(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    let dir = app_logs(&app)?;
+    spawn_blocking_result(move || {
+        make_log_dir(&dir).map_err(|e| e.to_string())?;
+        let plain = dunce::simplified(&dir);
+        app.opener()
+            .open_path(plain.to_string_lossy().to_string(), None::<String>)
+            .map_err(|e| e.to_string())
+    })
+    .await
+}
+
+#[cfg(test)]
+mod log_tests {
+    use super::*;
+
+    fn scratch(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("fd-log-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        dir
+    }
+
+    #[test]
+    fn a_line_is_appended_as_one_line() {
+        let dir = scratch("one");
+        append_line(&dir, "first\nsecond\r\nthird", 1024, 3).unwrap();
+        append_line(&dir, "next", 1024, 3).unwrap();
+        let text = std::fs::read_to_string(log_path(&dir, 0)).unwrap();
+        assert_eq!(text, "first second  third\nnext\n");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_long_line_is_cut_on_a_character_boundary() {
+        let dir = scratch("long");
+        // Three bytes each, and 4000 is not a multiple of 3: the cut has to step back.
+        let line = "€".repeat(LOG_MAX_LINE);
+        append_line(&dir, &line, 1 << 20, 3).unwrap();
+        let text = std::fs::read_to_string(log_path(&dir, 0)).unwrap();
+        assert!(text.trim_end().len() <= LOG_MAX_LINE);
+        assert!(text.ends_with('\n'));
+        assert!(text.trim_end().chars().all(|c| c == '€'));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_files_rotate_and_the_oldest_is_dropped() {
+        let dir = scratch("rotate");
+        for i in 0..40 {
+            append_line(&dir, &format!("message number {i} with some padding"), 200, 3).unwrap();
+        }
+        assert!(log_path(&dir, 0).exists());
+        assert!(log_path(&dir, 1).exists());
+        assert!(log_path(&dir, 2).exists());
+        assert!(!log_path(&dir, 3).exists());
+        let live = std::fs::read_to_string(log_path(&dir, 0)).unwrap();
+        assert!(live.contains("message number 39"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn one_file_just_starts_over() {
+        let dir = scratch("single");
+        for _ in 0..10 {
+            append_line(&dir, "only", 10, 1).unwrap();
+        }
+        assert!(log_path(&dir, 0).exists());
+        assert!(!log_path(&dir, 1).exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_tail_crosses_the_files_in_order() {
+        let dir = scratch("tail");
+        for i in 0..30 {
+            append_line(&dir, &format!("n{i}"), 40, 4).unwrap();
+        }
+        // The live file holds fewer than 14 lines, so the answer comes from older files too.
+        let last = tail_lines(&dir, 14, 4);
+        assert_eq!(last.len(), 14);
+        assert_eq!(last.first().map(String::as_str), Some("n16"));
+        assert_eq!(last.last().map(String::as_str), Some("n29"));
+        assert_eq!(tail_lines(&dir, 0, 4).len(), 0);
+        assert!(tail_lines(&scratch("missing"), 5, 4).is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_tail_is_capped() {
+        let dir = scratch("cap");
+        for i in 0..(LOG_MAX_TAIL + 100) {
+            append_line(&dir, &format!("n{i}"), 1 << 20, 2).unwrap();
+        }
+        assert_eq!(tail_lines(&dir, 100_000, 2).len(), LOG_MAX_TAIL);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_folder_is_private_and_the_files_are_owner_only() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = scratch("modes").join("logs");
+        for i in 0..8 {
+            append_line(&dir, &format!("message number {i} with some padding"), 100, 3).unwrap();
+        }
+        let mode = |p: &std::path::Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(&dir), 0o700);
+        assert_eq!(mode(&log_path(&dir, 0)), 0o600);
+        assert_eq!(mode(&log_path(&dir, 1)), 0o600);
+        let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlink_where_the_log_is_never_written_through_or_read() {
+        let dir = scratch("link");
+        std::fs::create_dir_all(&dir).unwrap();
+        let victim = dir.join("victim.txt");
+        std::fs::write(&victim, "do not touch\n").unwrap();
+        std::os::unix::fs::symlink(&victim, log_path(&dir, 0)).unwrap();
+        assert!(append_line(&dir, "must not land in the victim", 1024, 3).is_err());
+        assert_eq!(std::fs::read_to_string(&victim).unwrap(), "do not touch\n");
+        assert!(tail_lines(&dir, 5, 3).is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_tail_reads_only_the_last_window_of_a_file() {
+        let dir = scratch("window");
+        std::fs::create_dir_all(&dir).unwrap();
+        let filler = "x".repeat(1000);
+        let body: String = (0..2000).map(|i| format!("{i:06} {filler}\n")).collect();
+        std::fs::write(log_path(&dir, 0), body).unwrap();
+        let lines = tail_lines(&dir, LOG_MAX_TAIL, 1);
+        // 256 KiB of 1 KB lines is about 256 lines, not the 500 asked for, and none is cut.
+        assert!(lines.len() > 200 && lines.len() < 300);
+        assert!(lines.last().unwrap().starts_with("001999"));
+        assert!(lines.iter().all(|l| l.len() == 1007));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_file_with_a_broken_character_is_still_read() {
+        let dir = scratch("lossy");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(log_path(&dir, 0), b"good line\nbroken \xff here\n").unwrap();
+        let lines = tail_lines(&dir, 5, 2);
+        assert_eq!(lines.len(), 2);
+        assert!(lines[1].contains("broken"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[cfg(test)]
+mod badge_tests {
+    use super::*;
+
+    #[test]
+    fn the_badge_is_nothing_or_exactly_32_by_32_rgba() {
+        assert!(badge_image_ok(0));
+        assert!(badge_image_ok(32 * 32 * 4));
+        assert!(!badge_image_ok(1));
+        assert!(!badge_image_ok(32 * 32 * 3));
+        assert!(!badge_image_ok(32 * 32 * 4 + 1));
+    }
 }
 
 #[cfg(test)]
@@ -506,8 +869,11 @@ async fn vault_remove_file(path: String, state: State<'_, PickedFile>) -> Result
         picked.take()
     };
     if let Some(stored) = stored {
-        spawn_blocking_result(move || std::fs::remove_file(&stored).map_err(|e| e.to_string()))
-            .await?;
+        spawn_blocking_result(move || {
+            std::fs::remove_file(&stored) // NOSONAR: inside spawn_blocking_result, on the blocking pool
+                .map_err(|e| e.to_string())
+        })
+        .await?;
     }
     Ok(())
 }
@@ -609,6 +975,31 @@ fn tray_set_menu(
     Ok(())
 }
 
+/// Issue #402: how long Quit waits for the app (it may be installing a downloaded update) before
+/// the shell exits anyway. An emit succeeds even with no page listening (before the app has started,
+/// or after it crashed), so this wait is also what such a Quit costs: kept short.
+const QUIT_GRACE: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// The tray's Quit: the app is asked first and calls `quit_now` when it is done; if the event cannot
+/// be sent at all the shell exits at once, and otherwise after `QUIT_GRACE` at the latest.
+fn request_quit(app: &tauri::AppHandle) {
+    if app.emit("quit-requested", ()).is_err() {
+        app.exit(0);
+        return;
+    }
+    let handle = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(QUIT_GRACE);
+        handle.exit(0);
+    });
+}
+
+/// Issue #402: the app finished what Quit asked of it (an update installed, or nothing to do).
+#[tauri::command]
+fn quit_now(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
 /// Approve and deny go to the frontend, which answers without showing the window; open shows it.
 fn on_tray_action(app: &tauri::AppHandle, id: &str) {
     let Some((action, key)) = id
@@ -641,6 +1032,41 @@ fn tray_set_status(
         .map_err(|e| e.to_string())?;
     if let Some(tray) = app.tray_by_id("main") {
         tray.set_tooltip(Some(tooltip)).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// The overlay the app draws on its taskbar button: 32 x 32 pixels of RGBA.
+const BADGE_BYTES: usize = 32 * 32 * 4;
+
+/// Whether `len` bytes are a picture the overlay can show: none (clear it) or exactly 32 x 32 RGBA.
+fn badge_image_ok(len: usize) -> bool {
+    len == 0 || len == BADGE_BYTES
+}
+
+/// Shows the unread count on the taskbar button of the main window (Windows). The webview draws the
+/// picture; this only checks its size and hands it over, so the webview has no window permission of
+/// its own for the overlay. An empty picture clears the badge. Other systems have no such badge.
+#[tauri::command]
+fn set_unread_badge(app: tauri::AppHandle, rgba: Vec<u8>) -> Result<(), String> {
+    if !badge_image_ok(rgba.len()) {
+        return Err("the badge must be 32 x 32 RGBA".into());
+    }
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "no main window".to_string())?;
+    #[cfg(windows)]
+    {
+        let icon = if rgba.is_empty() {
+            None
+        } else {
+            Some(tauri::image::Image::new_owned(rgba, 32, 32))
+        };
+        window.set_overlay_icon(icon).map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (window, rgba);
     }
     Ok(())
 }
@@ -732,7 +1158,7 @@ fn build_tray(app: &tauri::App) -> tauri::Result<TrayState> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "open" => bring_to_front(app),
-            "quit" => app.exit(0),
+            "quit" => request_quit(app),
             id => on_tray_action(app, id),
         })
         .on_tray_icon_event(|tray, event| {
@@ -798,6 +1224,7 @@ pub fn run() {
         // webview has no `dialog:*` permission.
         .plugin(tauri_plugin_dialog::init())
         .manage(PickedFile::default())
+        .manage(assistant::Assistant::default())
         .setup(|app| {
             // Registers the scheme at runtime too, so dev builds work without an installer.
             #[cfg(any(windows, target_os = "linux"))]
@@ -830,13 +1257,26 @@ pub fn run() {
             vault_pick_file,
             pick_folder,
             open_result,
+            append_log,
+            read_log_tail,
+            open_logs_dir,
             vault_remove_file,
             tray_set_status,
             tray_set_menu,
+            set_unread_badge,
             set_close_to_tray,
             focus_main,
             terminal_probe,
-            terminal_open
+            terminal_open,
+            quit_now,
+            assistant::assistant_key_set,
+            assistant::assistant_key_status,
+            assistant::assistant_key_delete,
+            assistant::assistant_test,
+            assistant::assistant_models,
+            assistant::assistant_run,
+            assistant::assistant_cancel,
+            assistant::vault_hits
         ])
         .run(tauri::generate_context!())
         .expect("error while running Flightdeck");

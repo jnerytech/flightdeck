@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { chooseFromAccountMenu } from "./account-menu.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 import { settle } from "./wait.ts";
@@ -50,9 +51,7 @@ describe("terminal-ui: the route and the settings", () => {
   test("Configurações has the terminal's font size, kept in the store", async () => {
     const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
     render(<App store={store} />);
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Configurações" }));
-    });
+    await chooseFromAccountMenu("Configurações");
     // Settings is a lazy screen: its chunk may still be loading when the click returns.
     await settle(() => screen.queryByLabelText("Tamanho da fonte do terminal") !== null);
     const field = screen.queryByLabelText(
@@ -64,6 +63,21 @@ describe("terminal-ui: the route and the settings", () => {
       if (field) fireEvent.change(field, { target: { value: "17" } });
     });
     expect(store.terminalFont.value).toBe(17);
+  });
+
+  test("Configurações has screen reader support for the terminal, off at first and kept in the store (issue #476)", async () => {
+    const store = new AppStore(memoryPlatform(false, "pt-BR").platform);
+    render(<App store={store} />);
+    await chooseFromAccountMenu("Configurações");
+    await settle(() => screen.queryByLabelText("Tamanho da fonte do terminal") !== null);
+    const box = screen.queryByLabelText(
+      "Suporte a leitor de tela no terminal",
+    ) as HTMLInputElement | null;
+    expect(box?.checked).toBe(false);
+    await act(async () => {
+      if (box) fireEvent.click(box);
+    });
+    expect(store.terminalReader.value).toBe(true);
   });
 
   test("the real xterm deps build a terminal with its addons", () => {

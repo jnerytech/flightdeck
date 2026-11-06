@@ -22,12 +22,18 @@ export interface AppShellLabels {
  * sidebar collapses to a 56 px rail of icons (it is given `collapsed` to draw itself); it does so
  * by itself in narrow windows, and the button overrides that until the window crosses 960 px again.
  */
-export function AppShell(props: {
-  header: ReactNode;
-  sidebar: (collapsed: boolean) => ReactNode;
-  labels: AppShellLabels;
-  children: ReactNode;
-}) {
+export function AppShell(
+  props: Readonly<{
+    header: ReactNode;
+    /** The top bar's right side, after the tab strip (issue #282). */
+    actions?: ReactNode;
+    /** The slim bar under both columns (issue #491). */
+    status?: ReactNode;
+    sidebar: (collapsed: boolean) => ReactNode;
+    labels: AppShellLabels;
+    children: ReactNode;
+  }>,
+) {
   const narrow = useMediaQuery(NARROW_QUERY);
   /** The button's choice, valid while the window stays on the side of 960 px it was made on. */
   const [manual, setManual] = useState<{ open: boolean; narrow: boolean } | null>(null);
@@ -35,7 +41,7 @@ export function AppShell(props: {
   const { labels } = props;
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   return (
-    <div className="grid h-screen grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] bg-background text-foreground">
+    <div className="grid h-screen grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] bg-background text-foreground">
       <header className="flex h-12 min-w-0 items-center gap-2 border-b px-3">
         <Button
           variant="ghost"
@@ -48,6 +54,7 @@ export function AppShell(props: {
         </Button>
         <div className="header-crumbs">{props.header}</div>
         <div ref={setSlot} className="header-tabs" />
+        {props.actions}
       </header>
       <div
         className={cn(
@@ -55,10 +62,12 @@ export function AppShell(props: {
           open ? "grid-cols-[240px_minmax(0,1fr)]" : "grid-cols-[56px_minmax(0,1fr)]",
         )}
       >
+        {/* The sidebar clips: its own body is the one area that scrolls (#567). */}
         <aside
           aria-label={labels.sidebar}
+          data-slot="sidebar"
           data-collapsed={!open}
-          className="min-h-0 overflow-y-auto overflow-x-hidden border-r bg-sidebar text-sidebar-foreground"
+          className="min-h-0 overflow-hidden border-r bg-sidebar text-sidebar-foreground"
         >
           {props.sidebar(!open)}
         </aside>
@@ -66,6 +75,11 @@ export function AppShell(props: {
           <HeaderSlot.Provider value={slot}>{props.children}</HeaderSlot.Provider>
         </main>
       </div>
+      {props.status && (
+        <div data-slot="shell-status" className="shell-status">
+          {props.status}
+        </div>
+      )}
     </div>
   );
 }

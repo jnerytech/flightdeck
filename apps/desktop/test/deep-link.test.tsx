@@ -44,29 +44,29 @@ describe("deep-link", () => {
   test("esquema errado, token ausente, porta inválida e endereço vazio são recusados", () => {
     expect(parsePairingLink("http://pc:7420?token=a")).toEqual({
       ok: false,
-      error: "esquema inválido",
+      error: "scheme",
     });
     expect(parsePairingLink("flightdeck://pc:7420?name=x")).toEqual({
       ok: false,
-      error: "token ausente",
+      error: "token",
     });
     expect(parsePairingLink("flightdeck://pc:7420?token=")).toEqual({
       ok: false,
-      error: "token ausente",
+      error: "token",
     });
     for (const port of ["0", "70000", "abc", ""]) {
       expect(parsePairingLink(`flightdeck://pc:${port}?token=a`)).toEqual({
         ok: false,
-        error: "porta inválida",
+        error: "port",
       });
     }
     expect(parsePairingLink("flightdeck://pc?token=a")).toEqual({
       ok: false,
-      error: "porta inválida",
+      error: "port",
     });
     expect(parsePairingLink("flightdeck://:7420?token=a")).toEqual({
       ok: false,
-      error: "endereço inválido",
+      error: "address",
     });
     expect(parsePairingLink("FLIGHTDECK://pc:7420?token=a")).toMatchObject({ ok: true });
   });
@@ -97,7 +97,7 @@ describe("deep-link", () => {
     });
     await waitFor(() =>
       expect(screen.queryByRole("alert")?.textContent ?? "").toContain(
-        "Link de pareamento recusado: porta inválida",
+        "Link de pareamento recusado. A porta do link não é válida.",
       ),
     );
     expect(value("Nome")).toBe("");
@@ -109,6 +109,6 @@ describe("deep-link", () => {
     const link = screen.getByLabelText("Link de pareamento");
     fireEvent.change(link, { target: { value: "flightdeck://pc:1" } });
     expect(value("Endereço")).toBe("");
-    expect(screen.queryByText("token ausente")).not.toBeNull();
+    expect(screen.queryByText("O link não traz o token.")).not.toBeNull();
   });
 });

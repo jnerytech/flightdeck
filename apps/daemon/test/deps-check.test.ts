@@ -260,11 +260,44 @@ describe("deps-check: over the protocol", () => {
       version: async (path) => {
         running++;
         most = Math.max(most, running);
+        // timing: a slow answer on purpose, so that two calls overlap
         await new Promise((r) => setTimeout(r, 20));
         running--;
         return base.version(path);
       },
     });
     expect(most).toBeGreaterThanOrEqual(5);
+  });
+
+  test("on a platform without a service manager the service row is not applicable and the manager is never asked (HD-M5)", async () => {
+    let asked = 0;
+    const { items } = await checkDeps(
+      machine({
+        platform: "darwin",
+        serviceInstalled: async () => {
+          asked++;
+          throw new Error("instalação como serviço não suportado em darwin");
+        },
+      }),
+    );
+    expect(find(items, "service")).toMatchObject({ state: "na" });
+    expect(asked).toBe(0);
+    expect(items).toHaveLength(11);
+  });
+});
+
+describe("deps-check: a probe that cannot run", () => {
+  test("a PowerShell whose version cannot be read is still found, without a version", async () => {
+    const base = machine({ platform: "win32" });
+    const { items } = await checkDeps({
+      ...base,
+      version: async (path) => {
+        if (path.includes("pwsh")) throw new Error("spawn failed");
+        return base.version(path);
+      },
+    });
+    const pwsh = find(items, "pwsh");
+    expect(pwsh.state).toBe("ok");
+    expect(pwsh.version).toBeUndefined();
   });
 });

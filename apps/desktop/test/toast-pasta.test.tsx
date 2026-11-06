@@ -83,6 +83,11 @@ describe("toast-pasta: a folder outside the allowed ones can be allowed from its
         .queryAllByRole("alert")
         .some((a) => (a.textContent ?? "").includes("is not a git repository")),
     );
+    expect(
+      screen
+        .queryAllByRole("alert")
+        .some((a) => (a.textContent ?? "").includes("is not a git repository")),
+    ).toBe(true);
   });
 
   test("cancelling the confirmation changes nothing; in Portuguese the button is translated", async () => {

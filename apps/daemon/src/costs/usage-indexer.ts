@@ -1,12 +1,20 @@
 import type { Database } from "bun:sqlite";
 import { open, readdir, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { normalizeCwd } from "../history/indexer.ts";
 import { localDay } from "../quota/usage.ts";
 import { ulid } from "../ulid.ts";
 
 /** Where the usage of a message came from. */
-export type UsageOrigin = "terminal" | "app" | "card" | "workflow" | "subagent" | "auto-approve";
+export type UsageOrigin =
+  | "terminal"
+  | "app"
+  | "card"
+  | "workflow"
+  | "subagent"
+  | "auto-approve"
+  | "assistant";
 
 /** What a message used, as the price table reads it. */
 export interface UsageTokens {
@@ -186,6 +194,24 @@ const OWNER = `SELECT
      WHERE s.claude_session_id = $id LIMIT 1) AS card,
   EXISTS (SELECT 1 FROM sessions WHERE claude_session_id = $id) AS app`;
 
+/** The transcripts of one project folder: its sessions' files and their subagents' files. */
+async function projectFiles(project: string): Promise<TranscriptFile[]> {
+  const files: TranscriptFile[] = [];
+  await inSequence(await entries(project), async (item) => {
+    if (item.isFile() && item.name.endsWith(".jsonl")) {
+      const path = join(project, item.name);
+      files.push({ path, claudeSessionId: basename(item.name, ".jsonl"), subagent: false });
+    } else if (item.isDirectory()) {
+      const subagents = join(project, item.name, "subagents");
+      for (const sub of await entries(subagents)) {
+        if (!sub.isFile() || !sub.name.endsWith(".jsonl")) continue;
+        files.push({ path: join(subagents, sub.name), claudeSessionId: item.name, subagent: true });
+      }
+    }
+  });
+  return files;
+}
+
 /**
  * The usage of every assistant message of the transcripts, read incrementally with offsets of
  * its own (`usage_files`). Claude Code writes one line per content block, each with the same
@@ -210,27 +236,42 @@ export class UsageIndexer {
    * Phase 13: usage the daemon spends itself, with no transcript (the automatic approval's
    * queries run with persistSession false): origin `auto-approve`.
    */
-  record(entry: { at: string; model: string; tokens: UsageTokens; projectPath: string }): void {
+  record(entry: {
+    at: string;
+    model: string;
+    tokens: UsageTokens;
+    projectPath: string;
+    messageId?: string;
+    origin?: UsageOrigin;
+    provider?: string;
+    costUsd?: number;
+  }): void {
     const { tokens } = entry;
+    const origin = entry.origin ?? "auto-approve";
+    // The id is the table's key: a record sent twice (the app's pending queue) is one row.
     this.db
       .query(
-        `INSERT INTO usage_entries (message_id, claude_session_id, at, day, project_key, model,
-           origin, speed, input, output, cache_read, cache_write_5m, cache_write_1h, cost_usd)
-         VALUES (?, NULL, ?, ?, ?, ?, 'auto-approve', ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR IGNORE INTO usage_entries (message_id, claude_session_id, at, day, project_key,
+           model, origin, speed, input, output, cache_read, cache_write_5m, cache_write_1h,
+           cost_usd, provider)
+         VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
-        `auto-approve-${ulid()}`,
+        entry.messageId ?? `${origin}-${ulid()}`,
         entry.at,
         this.day(Date.parse(entry.at)),
         this.opts.projectKey(entry.projectPath),
         entry.model,
+        origin,
         tokens.speed,
         tokens.input,
         tokens.output,
         tokens.cacheRead,
         tokens.cacheWrite5m,
         tokens.cacheWrite1h,
-        this.opts.cost?.(tokens) ?? null,
+        // What the provider billed wins over the table; a model with neither stays unpriced.
+        entry.costUsd ?? this.opts.cost?.(tokens) ?? null,
+        entry.provider ?? null,
       );
   }
 
@@ -253,8 +294,9 @@ export class UsageIndexer {
     this.running = (async () => {
       do {
         this.again = false;
-        await this.pass().catch((error: unknown) =>
-          this.opts.log?.(`custos: falha na leitura de uso (${describe(error)})`),
+        await /* NOSONAR: sequential by design: each pass needs the answer of the one before */ this.pass().catch(
+          (error: unknown) =>
+            this.opts.log?.(`custos: falha na leitura de uso (${describe(error)})`),
         );
       } while (this.again && !this.stopped);
       this.running = null;
@@ -287,15 +329,7 @@ export class UsageIndexer {
         owner = this.owner(file.claudeSessionId);
         owners.set(file.claudeSessionId, owner);
       }
-      for (;;) {
-        if (this.opts.warmKeys) await this.warm(file, owner);
-        const slice = await this.indexFile(file, owner, this.opts.sliceBytes ?? SLICE_BYTES);
-        added += slice.added;
-        // The file counts as done when its last slice is in, before the pause that follows it.
-        if (first && !slice.more) this.load.filesDone++;
-        await (this.opts.pause ?? zeroTimer)();
-        if (!slice.more || this.stopped) break;
-      }
+      added += await this.indexSlices(file, owner, first); // NOSONAR: files are indexed one at a time: each updates the shared load counter and the database
     }
     if (first) {
       this.load.state = "done";
@@ -305,6 +339,20 @@ export class UsageIndexer {
     }
     this.opts.onPass?.(added);
     return added;
+  }
+
+  /** Reads a file slice by slice until it is all in; returns the entries added. */
+  private async indexSlices(file: TranscriptFile, owner: Owner, first: boolean): Promise<number> {
+    let added = 0;
+    for (;;) {
+      if (this.opts.warmKeys) await this.warm(file, owner); // NOSONAR: sequential by design: each pass needs the answer of the one before
+      const slice = await this.indexFile(file, owner, this.opts.sliceBytes ?? SLICE_BYTES); // NOSONAR: sequential by design: each pass needs the answer of the one before
+      added += slice.added;
+      // The file counts as done when its last slice is in, before the pause that follows it.
+      if (first && !slice.more) this.load.filesDone++;
+      await (this.opts.pause ?? zeroTimer)(); // NOSONAR: poll interval: the wait between looks is the point of this loop
+      if (!slice.more || this.stopped) return added;
+    }
   }
 
   /** Sessions read as the terminal's that a managed session claimed since (its id came later). */
@@ -345,25 +393,11 @@ export class UsageIndexer {
 
   private async files(): Promise<TranscriptFile[]> {
     const files: TranscriptFile[] = [];
-    for (const root of this.opts.roots) {
-      for (const dir of await entries(root)) {
-        if (!dir.isDirectory()) continue;
-        const project = join(root, dir.name);
-        for (const item of await entries(project)) {
-          if (item.isFile() && item.name.endsWith(".jsonl")) {
-            const path = join(project, item.name);
-            files.push({ path, claudeSessionId: basename(item.name, ".jsonl"), subagent: false });
-          } else if (item.isDirectory()) {
-            const subagents = join(project, item.name, "subagents");
-            for (const sub of await entries(subagents)) {
-              if (!sub.isFile() || !sub.name.endsWith(".jsonl")) continue;
-              const path = join(subagents, sub.name);
-              files.push({ path, claudeSessionId: item.name, subagent: true });
-            }
-          }
-        }
-      }
-    }
+    await inSequence(this.opts.roots, async (root) => {
+      await inSequence(await entries(root), async (dir) => {
+        if (dir.isDirectory()) files.push(...(await projectFiles(join(root, dir.name))));
+      });
+    });
     return files;
   }
 
@@ -445,7 +479,7 @@ export class UsageIndexer {
     let chunk: Buffer = Buffer.alloc(Math.min(size - offset, maxBytes));
     let end = 0;
     for (;;) {
-      chunk = await readSlice(file.path, offset, chunk.length);
+      chunk = await readSlice(file.path, offset, chunk.length); // NOSONAR: sequential by design: each pass needs the answer of the one before
       // Only complete lines: a last line without its newline is left for the next pass.
       end = chunk.lastIndexOf(0x0a) + 1;
       if (end > 0 || chunk.length >= size - offset) break;

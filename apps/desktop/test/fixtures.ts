@@ -1,6 +1,12 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { DepsResult } from "@flightdeck/protocol";
+import type {
+  AssistantRequest,
+  AssistantResult,
+  DepsResult,
+  KeepAwakeStatus,
+  ModelOption,
+} from "@flightdeck/protocol";
 import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import type { Account } from "../../daemon/src/account/account.ts";
 import { Actions } from "../../daemon/src/actions/actions.ts";
@@ -61,12 +67,15 @@ import { TelemetryStore } from "../../daemon/src/telemetry/store.ts";
 import { BUILTIN_TEMPLATES } from "../../daemon/src/templates/builtin.ts";
 import { TaskTracker } from "../../daemon/src/templates/tasks.ts";
 import { TerminalManager } from "../../daemon/src/terminal/terminal-manager.ts";
+import { inspectProject } from "../../daemon/src/trust/inspect.ts";
+import { ProjectTrust } from "../../daemon/src/trust/project-trust.ts";
 import { Vault } from "../../daemon/src/vault/vault.ts";
 import type { WebhookSender } from "../../daemon/src/webhook/sender.ts";
 import { FakeProvider } from "../../daemon/test/boardsync-fake.ts";
 import { testRootsPlatform } from "../../daemon/test/helpers.ts";
 import { fakePtys } from "../../daemon/test/pty-helpers.ts";
 import { fakeRunHost } from "../../daemon/test/run-helpers.ts";
+import type { AssistantPlatform, AssistantRunOptions } from "../src/platform/types.ts";
 import { createWebPlatform, type WebWindow } from "../src/platform/web/index.ts";
 
 export const TOKEN = "desktop-test-token-0123456789";
@@ -110,6 +119,8 @@ export function daemon(
     telemetry?: boolean;
     /** Claude Code's background sessions (phase 27): a service for the host to announce and call. */
     bg?: BgService;
+    /** Project trust (#196): the host announces it, over this daemon's database, with nothing trusted yet. */
+    trust?: boolean;
     /** Budgets (phase 8), built over this daemon's database. */
     budgets?: (db: EventStore["db"]) => Budgets;
     /** The quota's samples (phase 8), built over this daemon's database. */
@@ -124,6 +135,8 @@ export function daemon(
     changesWatch?: WatchFn;
     /** Git snapshots per turn, rewind and fork (phase 12), over this daemon's database. */
     checkpoints?: boolean;
+    /** Phase 39: the host offers OpenCode (a fake runtime and two models). */
+    opencode?: boolean;
     /** The project's MCP servers, CLAUDE.md, agents and skills (phase 12), in this daemon's root. */
     agentcfg?: boolean;
     /** The MCP servers a live session of the fake runtime reports (phase 12). */
@@ -166,6 +179,8 @@ export function daemon(
     roi?: boolean | { signals: ConstructorParameters<typeof RoiSummarizer>[0]["signals"] };
     /** The host's switch for sessions without permission prompts (bypass-ui): on from the start. */
     bypass?: boolean;
+    /** The host's keep-awake status (issue #163): announced with `host.info`, switched by `host.keepAwake`. */
+    keepAwake?: { held?: boolean; reason?: KeepAwakeStatus["reason"] };
   } = {},
 ) {
   const root = realTempDir("fd-desk-");
@@ -189,6 +204,8 @@ export function daemon(
   const historyRoot = join(root, "claude-projects");
   mkdirSync(historyRoot);
   const history = new HistoryIndexer({ db: store.db, roots: [historyRoot] });
+  /** Phase 39: the fake OpenCode runtime, on a host that has it. */
+  const opencodeRuntime = options.opencode ? new FakeRuntime({ delayMs: 1 }) : undefined;
   const runtime = new FakeRuntime({
     delayMs: 1,
     ...(options.mcpServers ? { mcpServers: options.mcpServers } : {}),
@@ -210,8 +227,24 @@ export function daemon(
       })
     : undefined;
   let bypass = options.bypass === true;
+  let awake: KeepAwakeStatus | null = options.keepAwake
+    ? {
+        enabled: true,
+        held: options.keepAwake.held === true,
+        method: options.keepAwake.held === true ? "systemd-inhibit" : null,
+        reason: options.keepAwake.reason ?? null,
+      }
+    : null;
+  // The trust the host announces, shared by the sessions and by the commands, as the daemon wires it.
+  const projectTrust = options.trust ? new ProjectTrust(store.db) : undefined;
   const manager = new SessionManager({
     allowBypass: () => bypass,
+    ...(projectTrust
+      ? {
+          trust: (cwd: string) => projectTrust.sessionTrust(cwd),
+          prepareTrust: (cwd: string) => projectTrust.prepare(cwd),
+        }
+      : {}),
     ...(personaStore ? { personas: personaStore } : {}),
     ...(snapshots
       ? {
@@ -226,6 +259,7 @@ export function daemon(
         }
       : {}),
     onQuota: (readings) => quota.record(readings),
+    ...(opencodeRuntime ? { opencode: opencodeRuntime } : {}),
     onTurn: (sessionId, cwd, turn) => usage.record(sessionId, cwd, turn),
     store,
     runtime,
@@ -359,6 +393,7 @@ export function daemon(
           db: store.db,
           board,
           ...(options.changesWatch ? { watch: options.changesWatch } : {}),
+          ...(terminals ? { terminals } : {}),
         })
       : undefined;
   const review = changes
@@ -488,12 +523,39 @@ export function daemon(
       ...(roiSummarizer ? { roi: roiSummarizer } : {}),
       rootsPlatform: testRootsPlatform(),
       sessionSettings: true,
+      ...(options.opencode
+        ? {
+            opencode: {
+              info: () => ({ available: true, path: "fake", version: "2.2.5", verified: true }),
+              models: async () => [
+                { id: "anthropic/claude-sonnet-5-5", name: "anthropic/claude-sonnet-5-5" },
+                { id: "opencode/crouton-alpha-free", name: "opencode/crouton-alpha-free" },
+              ],
+            },
+          }
+        : {}),
       bypass: {
         allowed: () => bypass,
         set: (allow) => {
           bypass = allow;
         },
       },
+      ...(awake
+        ? {
+            keepAwake: {
+              status: () => awake as KeepAwakeStatus,
+              set: (enabled: boolean) => {
+                const was = awake as KeepAwakeStatus;
+                awake = {
+                  ...was,
+                  enabled,
+                  held: enabled && was.held,
+                  method: enabled ? was.method : null,
+                };
+              },
+            },
+          }
+        : {}),
       manager,
       history,
       board,
@@ -507,6 +569,7 @@ export function daemon(
       ...(costs ? { costs } : {}),
       ...(telemetry ? { telemetry, telemetryOptIn } : {}),
       ...(options.bg ? { bg: options.bg } : {}),
+      ...(projectTrust ? { projectTrust: projectTrustOver(projectTrust, manager) } : {}),
       ...(budgets ? { budgets } : {}),
       ...(quotaHistory ? { quotaHistory } : {}),
       ...(review ?? {}),
@@ -567,6 +630,7 @@ export function daemon(
     history,
     historyRoot,
     runtime,
+    opencodeRuntime,
     board,
     snapshots,
     mcp,
@@ -592,6 +656,10 @@ export function daemon(
     boardSyncStore,
     keys,
     doctorAsked,
+    /** Changes what the host says about keep-awake from now on (the page must read it again). */
+    setKeepAwake: (change: Partial<KeepAwakeStatus>) => {
+      if (awake) awake = { ...awake, ...change };
+    },
   };
 }
 
@@ -666,3 +734,111 @@ export function memoryPlatform(focused = false, language = "pt-BR") {
 
 /** A folder every host refuses to allow, on whatever platform the tests run. */
 export const SYSTEM_FOLDER = process.platform === "win32" ? "C:\\Windows" : "/etc";
+
+type AssistantCall = [string, ...unknown[]];
+
+/**
+ * A fake `Platform.assistant`: it logs every call, keeps only the last four characters of a key and
+ * answers what the test scripts. Install it with `platform.assistant = fake.assistant`.
+ */
+export function fakeAssistant(
+  script: {
+    supported?: boolean;
+    run?: (
+      request: AssistantRequest,
+      vaultIds: string[],
+      options: AssistantRunOptions,
+    ) => AssistantResult | Promise<AssistantResult>;
+    test?: (provider: "anthropic" | "openrouter") => ReturnType<AssistantPlatform["test"]>;
+    models?: (provider: "anthropic" | "openrouter") => ModelOption[];
+    vaultHits?: (text: string, ids: string[]) => string[];
+    setKey?: (provider: "anthropic" | "openrouter") => void;
+  } = {},
+) {
+  const calls: AssistantCall[] = [];
+  const keys = new Map<string, string>();
+  const refuse = (reason: string) => Promise.reject({ reason });
+  const assistant: AssistantPlatform = {
+    supported: script.supported ?? true,
+    keyStatus: async (provider) => {
+      calls.push(["keyStatus", provider]);
+      const last4 = keys.get(provider);
+      return last4 ? { saved: true, last4 } : { saved: false };
+    },
+    setKey: async (provider, key) => {
+      // The key itself is not logged: a test that prints the calls never prints it.
+      calls.push(["setKey", provider]);
+      script.setKey?.(provider);
+      keys.set(provider, key.slice(-4));
+      return { last4: key.slice(-4) };
+    },
+    deleteKey: async (provider) => {
+      calls.push(["deleteKey", provider]);
+      keys.delete(provider);
+    },
+    test: async (provider) => {
+      calls.push(["test", provider]);
+      return script.test ? script.test(provider) : { ok: true };
+    },
+    models: async (provider) => {
+      calls.push(["models", provider]);
+      return script.models ? script.models(provider) : [];
+    },
+    run: async (request, vaultIds, options) => {
+      calls.push(["run", request, vaultIds, options]);
+      return script.run
+        ? script.run(request, vaultIds, options)
+        : refuse("assistant_not_configured");
+    },
+    cancel: async (requestId) => {
+      calls.push(["cancel", requestId]);
+    },
+    vaultHits: async (text, ids) => {
+      calls.push(["vaultHits", ids]);
+      return script.vaultHits ? script.vaultHits(text, ids) : [];
+    },
+  };
+  return { assistant, calls };
+}
+
+/**
+ * Hosts in the store's state, as a connected app would hold them: online (or not) and announcing
+ * the given features. The state is private to the store; a test that needs hosts it did not
+ * connect puts them there.
+ */
+export function seedHosts(
+  store: object,
+  hosts: Array<{ id: string; name: string; online?: boolean; features?: string[] }>,
+): void {
+  const hidden = store as { state: Record<string, unknown>; getState(): Record<string, unknown> };
+  hidden.state = {
+    ...hidden.getState(),
+    hosts: hosts.map((host) => ({
+      id: host.id,
+      name: host.name,
+      status: host.online === false ? "offline" : "online",
+      hostInfo: { daemonVersion: "x", features: host.features ?? [] },
+      sessions: [],
+    })),
+  };
+}
+
+/** The host's project trust over a database, as the daemon wires it (nothing trusted until the person says so). */
+function projectTrustOver(trust: ProjectTrust, manager: SessionManager) {
+  const stateOf = (path: string) => {
+    const via = trust.via(path);
+    const stale = manager.staleSessions(path);
+    return { path, trusted: via !== null, via, ...(stale > 0 ? { staleSessions: stale } : {}) };
+  };
+  return {
+    refresh: () => trust.refreshRoots(),
+    state: (paths: string[]) => paths.map(stateOf),
+    inspect: (path: string) => inspectProject(path),
+    set: (path: string, trusted: boolean) => {
+      if (trusted) trust.trust(path);
+      else trust.revoke(path);
+      manager.trustChanged();
+      return stateOf(path);
+    },
+  };
+}

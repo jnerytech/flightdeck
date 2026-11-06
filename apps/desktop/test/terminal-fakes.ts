@@ -1,4 +1,9 @@
-import type { XtermDeps, XtermTerminal } from "../src/lib/xterm-screen.ts";
+import type {
+  XtermDeps,
+  XtermLink,
+  XtermLinkProvider,
+  XtermTerminal,
+} from "../src/lib/xterm-screen.ts";
 
 /** An xterm the tests drive: what it was given to draw, and the hands to type and press keys. */
 export function fakeXterm() {
@@ -10,6 +15,9 @@ export function fakeXterm() {
   let onData: (data: string) => void = () => {};
   let onResize: (size: { cols: number; rows: number }) => void = () => {};
   let keyHandler: (event: KeyboardEvent) => boolean = () => true;
+  let linkProvider: XtermLinkProvider | null = null;
+  const lines: string[] = [];
+  let wheelHandler: (event: WheelEvent) => boolean = () => true;
   let disposed = false;
   let openLink: (uri: string) => void = () => {};
   let selection = "";
@@ -21,6 +29,7 @@ export function fakeXterm() {
     rows: 24,
     options: {},
     unicode: { activeVersion: "6" },
+    modes: { bracketedPasteMode: false },
     loadAddon: () => {},
     open: () => {},
     write: (bytes) => void drawn.push(Buffer.from(bytes).toString()),
@@ -32,6 +41,7 @@ export function fakeXterm() {
     },
     hasSelection: () => selection !== "",
     getSelection: () => selection,
+    onSelectionChange: () => ({ dispose: () => {} }),
     onData: (listener) => {
       onData = listener;
       return { dispose: () => {} };
@@ -42,6 +52,30 @@ export function fakeXterm() {
     },
     attachCustomKeyEventHandler: (handler) => {
       keyHandler = handler;
+    },
+    attachCustomWheelEventHandler: (handler) => {
+      wheelHandler = handler;
+    },
+    registerLinkProvider: (provider) => {
+      linkProvider = provider;
+      return { dispose: () => {} };
+    },
+    buffer: {
+      active: {
+        getLine: (y) => {
+          const text = lines[y];
+          if (text === undefined) return undefined;
+          const chars = [...text];
+          return {
+            length: chars.length,
+            getCell: (x: number) => {
+              const char = chars[x];
+              return char === undefined ? undefined : { getChars: () => char, getWidth: () => 1 };
+            },
+            translateToString: () => text,
+          };
+        },
+      },
     },
     dispose: () => {
       disposed = true;
@@ -99,6 +133,18 @@ export function fakeXterm() {
     },
     type: (data: string) => onData(data),
     resize: (cols: number, rows: number) => onResize({ cols, rows }),
+    /** The output's rows, from the top of the buffer. */
+    showLines: (...rows: string[]) => void lines.splice(0, lines.length, ...rows),
+    /** Clicks the first path link xterm finds on a row (1-based); false when there is none. */
+    clickPath: (y: number) =>
+      new Promise<boolean>((resolve) => {
+        if (!linkProvider) return resolve(false);
+        linkProvider.provideLinks(y, (links?: XtermLink[]) => {
+          const link = links?.[0];
+          link?.activate({} as MouseEvent, link.text);
+          resolve(link !== undefined);
+        });
+      }),
     chord: (key: string) =>
       keyHandler({
         key,
@@ -107,5 +153,19 @@ export function fakeXterm() {
         altKey: false,
         metaKey: false,
       } as KeyboardEvent),
+    /** Ctrl and a key, without Shift, as the zoom keys are pressed. */
+    ctrlKey: (key: string) =>
+      keyHandler({
+        key,
+        type: "keydown",
+        ctrlKey: true,
+        shiftKey: false,
+        altKey: false,
+        metaKey: false,
+        preventDefault: () => {},
+      } as unknown as KeyboardEvent),
+    /** The wheel turned with Ctrl held: negative is up. */
+    ctrlWheel: (deltaY: number) =>
+      wheelHandler({ ctrlKey: true, deltaY, preventDefault: () => {} } as unknown as WheelEvent),
   };
 }

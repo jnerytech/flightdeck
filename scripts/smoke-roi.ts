@@ -7,7 +7,13 @@
  */
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { type Ack, parseServerMessage, type RoiSummaryResult } from "@flightdeck/protocol";
+import {
+  type Ack,
+  inSequence,
+  parseServerMessage,
+  type RoiSummaryResult,
+} from "@flightdeck/protocol";
+import { readListenUrl } from "./lib/smoke-daemon.ts";
 import {
   assertCheckGuardActive,
   assertNoRefusedChecks,
@@ -101,17 +107,6 @@ class Client {
   }
 }
 
-async function readListenUrl(stream: ReadableStream<Uint8Array>): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for await (const chunk of stream) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const match = buffer.match(/listening on (ws:\/\/\S+)/);
-    if (match?.[1]) return match[1];
-  }
-  throw new Error(`daemon saiu sem anunciar a porta: ${buffer}`);
-}
-
 function git(cwd: string, ...args: string[]): string {
   const proc = Bun.spawnSync(["git", "-c", "core.autocrlf=false", ...args], {
     cwd,
@@ -178,7 +173,7 @@ async function run(work: string): Promise<void> {
     });
     await client.call("project.update", { projectId: project.id, defaultHours: 2 });
     const made: string[] = [];
-    for (const title of ["um", "dois"]) {
+    await inSequence(["um", "dois"], async (title) => {
       const card = await client.call<{ id: string }>("card.create", {
         projectId: project.id,
         title,
@@ -186,7 +181,7 @@ async function run(work: string): Promise<void> {
       });
       await client.call("card.move", { cardId: card.id, column: "done" });
       made.push(card.id);
-    }
+    });
     log("dois cards terminados");
 
     step = "resumo com o padrão do projeto";

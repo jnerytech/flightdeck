@@ -7,12 +7,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 
 /** The review's comments: drafts to edit or remove, then the ones already sent as history. */
-export function ReviewList(props: {
-  comments: ReviewComment[];
-  onUpdate(id: string, body: string): void;
-  onRemove(id: string): void;
-  onSend(): void;
-}) {
+export function ReviewList(
+  props: Readonly<{
+    comments: ReviewComment[];
+    onUpdate(id: string, body: string): void;
+    onRemove(id: string): void;
+    onSend(): void;
+  }>,
+) {
   const t = useT();
   const [editing, setEditing] = useState<{ id: string; body: string } | null>(null);
   const drafts = props.comments.filter((c) => c.state === "draft").length;

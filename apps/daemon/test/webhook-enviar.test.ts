@@ -53,11 +53,12 @@ describe("webhook-enviar", () => {
     const outcome = await sender.send(request(), "127.0.0.1");
     expect(outcome).toEqual({ status: 204, retryAfterMs: null, refused: null });
     expect(calls).toHaveLength(1);
-    expect(calls[0]?.url).toBe(SECRET_URL);
+    // The address the check approved, not the name: no second lookup can move it (#465).
+    expect(calls[0]?.url).toBe("https://93.184.216.34/services/T000/B000/XXXXSECRETXXXX");
     expect(calls[0]?.init.method).toBe("POST");
     expect(calls[0]?.init.redirect).toBe("manual");
     expect(calls[0]?.init.body).toBe('{"text":"hi"}');
-    expect(calls[0]?.init.headers).toEqual(request().headers);
+    expect(calls[0]?.init.headers).toEqual({ ...request().headers, Host: "hooks.slack.com" });
   });
 
   test("a redirect answer is returned as it is, not followed", async () => {
@@ -176,6 +177,94 @@ describe("webhook-enviar", () => {
       "body_too_large",
     );
     expect(calls).toHaveLength(0);
+  });
+
+  test("the address the check approved is the one connected to: one lookup, the URL pinned to it, Host and the TLS name kept (DNS rebinding, #465)", async () => {
+    let lookups = 0;
+    const calls: Call[] = [];
+    const sender = new WebhookSender({
+      // A rebinding name: public to the first question, private to any after it.
+      resolve: async () => (++lookups === 1 ? ["93.184.216.34"] : ["10.0.0.5"]),
+      fetch: (async (url: string, init: RequestInit) => {
+        calls.push({ url, init });
+        return new Response("", { status: 200 });
+      }) as never,
+    });
+    const url = "https://hooks.example.com:8443/services/T/B/SECRET?x=1";
+    expect((await sender.send(request({ url }), "127.0.0.1")).status).toBe(200);
+    expect(lookups).toBe(1);
+    expect(calls[0]?.url).toBe("https://93.184.216.34:8443/services/T/B/SECRET?x=1");
+    const init = (i: number) =>
+      calls[i]?.init as { headers?: Record<string, string>; tls?: unknown } | undefined;
+    expect(init(0)?.headers?.Host).toBe("hooks.example.com:8443");
+    expect(init(0)?.tls).toEqual({ serverName: "hooks.example.com" });
+
+    const v6 = new WebhookSender({
+      resolve: async () => ["2606:2800:220:1:248:1893:25c8:1946"],
+      fetch: (async (target: string, init: RequestInit) => {
+        calls.push({ url: target, init });
+        return new Response("", { status: 200 });
+      }) as never,
+    });
+    await v6.send(request({ url: "https://ntfy.example.com/" }), "127.0.0.1");
+    expect(calls[1]?.url).toBe("https://[2606:2800:220:1:248:1893:25c8:1946]/");
+    expect(init(1)?.headers?.Host).toBe("ntfy.example.com");
+  });
+
+  test("an IPv4 address is preferred to pin, and an address written in the URL gets no TLS server name (#465)", async () => {
+    const calls: Call[] = [];
+    const sender = (addresses: string[]) =>
+      new WebhookSender({
+        resolve: async () => addresses,
+        fetch: (async (url: string, init: RequestInit) => {
+          calls.push({ url, init });
+          return new Response("", { status: 200 });
+        }) as never,
+      });
+    await sender(["2606:2800:220:1:248:1893:25c8:1946", "93.184.216.34"]).send(
+      request({ url: "https://hooks.example.com/x" }),
+      "127.0.0.1",
+    );
+    await sender(["::1", "127.0.0.1"]).send(
+      request({ url: "http://localhost:8080/x" }),
+      "127.0.0.1",
+    );
+    await sender([]).send(request({ url: "https://93.184.216.34/x" }), "127.0.0.1");
+    expect(calls.map((c) => c.url)).toEqual([
+      "https://93.184.216.34/x",
+      "http://127.0.0.1:8080/x",
+      "https://93.184.216.34/x",
+    ]);
+    expect(calls.map((c) => (c.init as { tls?: unknown } | undefined)?.tls)).toEqual([
+      { serverName: "hooks.example.com" },
+      undefined,
+      undefined,
+    ]);
+  });
+
+  test("an ntfy access token goes as Authorization: Bearer, in that shape only, and in no log line (#263)", async () => {
+    const { sender, calls, logs } = setup({ answer: new Response("", { status: 500 }) });
+    const token = "tk_AbC123-xyz_SECRETTOKEN";
+    const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+    expect((await sender.send(request({ headers }), "127.0.0.1")).refused).toBeNull();
+    expect(calls[0]?.init.headers).toEqual({ ...headers, Host: "hooks.slack.com" });
+    const bad = [
+      "Basic dXNlcjpwYXNz",
+      "Bearer ",
+      "Bearer a b",
+      `Bearer ${"t".repeat(201)}`,
+      "Bearer tk\u0007",
+      "bearer tk_x",
+      `Bearer ${token}, Basic x`,
+    ];
+    for (const value of bad) {
+      const refused = (
+        await sender.send(request({ headers: { Authorization: value } }), "127.0.0.1")
+      ).refused;
+      expect(refused, value).toBe("bad_header");
+    }
+    expect(calls).toHaveLength(1);
+    for (const line of logs) expect(line).not.toContain("SECRETTOKEN");
   });
 
   test("from outside loopback and Tailscale it is refused before anything else, and the URL is in no log line", async () => {

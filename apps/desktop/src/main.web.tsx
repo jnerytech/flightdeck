@@ -3,7 +3,9 @@
 import { createRoot } from "react-dom/client";
 import {
   applyDemoPrefs,
+  demoPlatform,
   demoStoreOptions,
+  demoToast,
   initialRoute,
   parseDemoHosts,
   seedDemoHosts,
@@ -18,10 +20,11 @@ const demoHosts = parseDemoHosts(import.meta.env.VITE_DEMO_HOSTS);
 seedDemoHosts(window.localStorage, secrets, demoHosts);
 applyDemoPrefs(window.localStorage, window.location.search);
 const store = new AppStore(
-  createWebPlatform(undefined, secrets),
+  demoPlatform(createWebPlatform(undefined, secrets), window.location.search),
   demoStoreOptions(demoHosts, window.location.search),
 );
 const route = initialRoute(window.location.search);
 if (route) store.router.push(route);
+demoToast(store, window);
 
 createRoot(document.getElementById("root") as HTMLElement).render(<App store={store} />);

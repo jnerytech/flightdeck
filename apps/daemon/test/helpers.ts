@@ -118,3 +118,10 @@ export const testRootsPlatform = () => ({
   env: {},
   home: process.platform === "win32" ? "Z:\\no-home" : "/no-home",
 });
+
+/** What every daemon announces in `host.info` whatever it was started with: tests look at what comes on top. */
+export const BASELINE_FEATURES: readonly string[] = [
+  "hold-proof",
+  "resume-offer",
+  "session.images",
+];

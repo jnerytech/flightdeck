@@ -39,7 +39,7 @@ describe("atalhos-registro: the registry", () => {
     const ids = SHORTCUTS.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const action of ACTIONS) {
-      expect(SHORTCUTS.filter((s) => s.action === action).length).toBe(1);
+      expect(SHORTCUTS.filter((s) => s.action === action)).toHaveLength(1);
     }
     expect(SHORTCUTS.every((s) => s.keys.length > 0)).toBe(true);
   });
@@ -71,6 +71,16 @@ describe("atalhos-registro: the registry", () => {
   test("the shortcuts the screens handle themselves are listed too, without an action", () => {
     const own = SHORTCUTS.filter((s) => s.action === undefined).map((s) => s.id);
     expect(own).toEqual(expect.arrayContaining(["list-next", "list-previous", "approve", "deny"]));
+  });
+
+  test("the wand's Ctrl or ⌘+I is on the sheet, handled by the field and not by an action", () => {
+    const wand = SHORTCUTS.find((s) => s.id === "assist-field");
+    expect(wand?.keys).toEqual(["Mod", "I"]);
+    expect(wand?.group).toBe("general");
+    expect(wand?.action).toBeUndefined();
+    expect(wand?.label).toBe("shortcuts.assistField");
+    expect(wand && keysLabel(wand, false)).toBe("Ctrl+I");
+    expect(wand && keysLabel(wand, true)).toBe("⌘I");
   });
 });
 

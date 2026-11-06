@@ -47,6 +47,62 @@ describe("abas-unica: a screen has one tab", () => {
     expect(routes()).toEqual(["home", "hub", "hub"]);
   });
 
+  test("a link inside a tab to a screen another tab shows focuses that tab (#576)", () => {
+    const { tabs, routes } = setup();
+    tabs.open(hub);
+    tabs.open(costs);
+    const from = tabs.active;
+    tabs.router.push({ name: "hub" });
+    expect(routes()).toEqual(["home", "hub", "costs"]);
+    expect(tabs.active.router.current).toEqual(hub);
+    expect(from.router.current).toEqual(costs);
+  });
+
+  test("a link to a screen no other tab shows still navigates in place (#576)", () => {
+    const { tabs, routes } = setup();
+    tabs.open(hub);
+    tabs.router.push(session("s1"));
+    expect(routes()).toEqual(["home", "session"]);
+  });
+
+  test("routes that differ only inside a nested field are different screens (#576)", () => {
+    const { tabs, routes } = setup();
+    const reader = (claudeSessionId: string): Route => ({
+      name: "reader",
+      target: { hostId: "h", claudeSessionId },
+    });
+    tabs.open(reader("a"));
+    tabs.router.push(reader("b"));
+    expect(tabs.active.router.current).toEqual(reader("b"));
+    tabs.show(reader("a"));
+    expect(routes()).toEqual(["home", "reader", "reader"]);
+  });
+
+  test("a ctrl or middle click on a link still opens a new tab (#576)", () => {
+    const { tabs, routes } = setup();
+    tabs.open(hub);
+    tabs.open(costs);
+    tabs.openNextInNewTab();
+    tabs.router.push(hub);
+    expect(routes()).toEqual(["home", "hub", "costs", "hub"]);
+  });
+
+  test("showing a screen focuses its tab, or opens one when none shows it (#576)", () => {
+    const { tabs, routes } = setup();
+    const terminal: Route = { name: "terminal", host: "h", terminalId: "t" };
+    tabs.show(terminal);
+    tabs.open(costs);
+    tabs.show({ terminalId: "t", host: "h", name: "terminal" });
+    expect(routes()).toEqual(["home", "terminal", "costs"]);
+    expect(tabs.active.router.current).toEqual(terminal);
+  });
+
+  test("the new-tab button still adds a Home tab beside one that exists (#576)", () => {
+    const { tabs, routes } = setup();
+    tabs.open({ name: "home" });
+    expect(routes()).toEqual(["home", "home"]);
+  });
+
   test("tabs restored from an older snapshot lose their duplicates, keeping pins and the active one", () => {
     const tabs = Tabs.restore(
       [

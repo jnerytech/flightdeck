@@ -3,9 +3,12 @@ import { FIND_DECORATIONS } from "../src/lib/terminal-view.ts";
 import {
   createXtermScreen,
   type XtermDeps,
+  type XtermLink,
+  type XtermLinkProvider,
   type XtermSearch,
   type XtermTerminal,
 } from "../src/lib/xterm-screen.ts";
+import { settleMaybe } from "./wait.ts";
 
 const THEME = {
   background: "#000000",
@@ -14,7 +17,31 @@ const THEME = {
   selectionBackground: "#333333",
 };
 
-function setup(selection = "", clipboardFails = false) {
+/** Characters a terminal draws two cells wide, as xterm does: the second cell is empty, width 0. */
+const WIDE = new Set(["⏺", "界"]);
+
+/** A row as xterm keeps it: one cell per narrow character, two for a wide one. */
+function cellsOf(text: string) {
+  const cells: Array<{ getChars(): string; getWidth(): number }> = [];
+  for (const char of text) {
+    cells.push({ getChars: () => char, getWidth: () => (WIDE.has(char) ? 2 : 1) });
+    if (WIDE.has(char)) cells.push({ getChars: () => "", getWidth: () => 0 });
+  }
+  return {
+    length: cells.length,
+    getCell: (x: number) => cells[x],
+    translateToString: () => text,
+  };
+}
+
+function setup(
+  initial = "",
+  clipboardFails = false,
+  windows = false,
+  more: { clip?: string; bracketed?: boolean; confirm?: (text: string) => Promise<boolean> } = {},
+) {
+  let selection = initial;
+  let onSelection: () => void = () => {};
   const log: string[] = [];
   const clip: string[] = [];
   const inputs: string[] = [];
@@ -23,6 +50,11 @@ function setup(selection = "", clipboardFails = false) {
   let onData: (data: string) => void = () => {};
   let onResize: (size: { cols: number; rows: number }) => void = () => {};
   let keyHandler: (event: KeyboardEvent) => boolean = () => true;
+  let linkProvider: XtermLinkProvider | null = null;
+  const lines: string[] = [];
+  const paths: Array<[string, unknown]> = [];
+  let wheelHandler: (event: WheelEvent) => boolean = () => true;
+  const zooms: string[] = [];
   const addons: unknown[] = [];
   const callbacks: Array<() => void> = [];
   const links: Array<(uri: string) => void> = [];
@@ -33,6 +65,7 @@ function setup(selection = "", clipboardFails = false) {
     rows: 24,
     options: {},
     unicode: { activeVersion: "6" },
+    modes: { bracketedPasteMode: more.bracketed ?? false },
     loadAddon: (addon) => void addons.push(addon),
     open: () => void log.push("open"),
     write: (bytes, callback) => {
@@ -45,6 +78,10 @@ function setup(selection = "", clipboardFails = false) {
     paste: (text) => void log.push(`paste:${text}`),
     hasSelection: () => selection !== "",
     getSelection: () => selection,
+    onSelectionChange: (listener) => {
+      onSelection = listener;
+      return { dispose: () => void log.push("off-selection") };
+    },
     onData: (listener) => {
       onData = listener;
       return { dispose: () => void log.push("off-data") };
@@ -55,6 +92,21 @@ function setup(selection = "", clipboardFails = false) {
     },
     attachCustomKeyEventHandler: (handler) => {
       keyHandler = handler;
+    },
+    attachCustomWheelEventHandler: (handler) => {
+      wheelHandler = handler;
+    },
+    registerLinkProvider: (provider) => {
+      linkProvider = provider;
+      return { dispose: () => void log.push("off-paths") };
+    },
+    buffer: {
+      active: {
+        getLine: (y) => {
+          const text = lines[y];
+          return text === undefined ? undefined : cellsOf(text);
+        },
+      },
     },
     dispose: () => void log.push("dispose"),
   };
@@ -104,14 +156,18 @@ function setup(selection = "", clipboardFails = false) {
       },
       read: async () => {
         if (clipboardFails) throw new Error("denied");
-        return "pasted";
+        return more.clip ?? "pasted";
       },
     },
+    ...(more.confirm ? { confirmPaste: more.confirm } : {}),
+    windows,
     onInput: (data) => void inputs.push(data),
     onResize: (cols, rows) => void resizes.push([cols, rows]),
     onSearch: () => void searches++,
     onFindResults: (results) => void found.push(results),
     onLink: (uri) => void linked.push(uri),
+    onPath: (path, at) => void paths.push([path, at]),
+    onZoom: (step) => void zooms.push(step),
   });
   const press = (key: string, ctrl = true, shift = true) =>
     keyHandler({
@@ -135,6 +191,18 @@ function setup(selection = "", clipboardFails = false) {
       for (const callback of callbacks.splice(0)) callback();
     },
     press,
+    keys: (event: KeyboardEvent) => keyHandler(event),
+    paths,
+    /** The output's rows, from the top of the buffer. */
+    showLines: (...rows: string[]) => void lines.splice(0, lines.length, ...rows),
+    /** The links xterm would ask for on a row (1-based, as xterm counts). */
+    linksOn: (y: number) =>
+      new Promise<XtermLink[] | undefined>((resolve) => {
+        if (!linkProvider) resolve(undefined);
+        else linkProvider.provideLinks(y, resolve);
+      }),
+    wheel: (event: WheelEvent) => wheelHandler(event),
+    zooms,
     constructed: () => constructed,
     searches: () => searches,
     findOptions,
@@ -142,6 +210,16 @@ function setup(selection = "", clipboardFails = false) {
     announce: (resultIndex: number, resultCount: number) => announce({ resultIndex, resultCount }),
     searchOff,
     typed: (data: string) => onData(data),
+    /** The person selects: xterm has the text and says it changed. */
+    select: (text: string) => {
+      selection = text;
+      onSelection();
+    },
+    /** The program redraws the selected rows: xterm drops the selection and says it changed. */
+    lose: () => {
+      selection = "";
+      onSelection();
+    },
     resized: (cols: number, rows: number) => onResize({ cols, rows }),
   };
 }
@@ -158,6 +236,12 @@ describe("terminal-ui: the xterm screen", () => {
     });
     expect(s.addons).toHaveLength(4);
     expect(s.terminal.unicode.activeVersion).toBe("11");
+  });
+
+  // Issue #476: xterm's default of 1,000 lines lost the start of a long Claude turn from the view
+  // and from find, though the daemon still had it. Windows Terminal keeps 9,001.
+  test("the view keeps 10,000 lines of scrollback", () => {
+    expect(setup().constructed().scrollback).toBe(10_000);
   });
 
   test("output and resets go to xterm; opening fits it and gives it the focus", () => {
@@ -197,6 +281,113 @@ describe("terminal-ui: the xterm screen", () => {
     expect(without.clip).toEqual([]);
   });
 
+  test("a selection the program's redraw took away can still be copied: the last one is kept until the person types", async () => {
+    const s = setup();
+    s.select("abc");
+    s.lose();
+    expect(s.screen.hasSelection()).toBe(true);
+    s.screen.copy();
+    await Promise.resolve();
+    expect(s.clip).toEqual(["copy:abc"]);
+    expect(s.press("C")).toBe(false);
+    await Promise.resolve();
+    expect(s.clip).toEqual(["copy:abc", "copy:abc"]);
+    s.typed("l");
+    expect(s.screen.hasSelection()).toBe(false);
+    s.screen.copy();
+    await Promise.resolve();
+    expect(s.clip).toHaveLength(2);
+    expect(s.inputs).toEqual(["l"]);
+  });
+
+  test("a new selection replaces the kept one, and the live one wins over it", async () => {
+    const s = setup();
+    s.select("old");
+    s.select("new");
+    s.lose();
+    s.screen.copy();
+    await Promise.resolve();
+    expect(s.clip).toEqual(["copy:new"]);
+    s.select("live");
+    s.screen.copy();
+    await Promise.resolve();
+    expect(s.clip).toEqual(["copy:new", "copy:live"]);
+  });
+
+  test("on Windows Ctrl+C copies when there is a selection and goes to the process (SIGINT) when there is none", async () => {
+    const withSelection = setup("abc", false, true);
+    expect(withSelection.press("c", true, false)).toBe(false);
+    await Promise.resolve();
+    expect(withSelection.clip).toEqual(["copy:abc"]);
+    const without = setup("", false, true);
+    expect(without.press("c", true, false)).toBe(true);
+    await Promise.resolve();
+    expect(without.clip).toEqual([]);
+  });
+
+  test("off Windows Ctrl+C always goes to the process, even over a selection", async () => {
+    const s = setup("abc", false, false);
+    expect(s.press("c", true, false)).toBe(true);
+    await Promise.resolve();
+    expect(s.clip).toEqual([]);
+  });
+
+  test("Shift+Enter alone sends the newline Claude Code reads (ESC then CR) once, and plain Enter is left to xterm", () => {
+    const s = setup();
+    const key = (type: string, over: Partial<KeyboardEvent> = {}) =>
+      ({
+        key: "Enter",
+        type,
+        ctrlKey: false,
+        shiftKey: true,
+        altKey: false,
+        metaKey: false,
+        ...over,
+      }) as KeyboardEvent;
+    // xterm asks about keydown, keypress and keyup: only the keydown sends, and none of them reaches xterm's own CR.
+    expect(s.keys(key("keydown"))).toBe(false);
+    expect(s.keys(key("keypress"))).toBe(false);
+    expect(s.keys(key("keyup"))).toBe(false);
+    expect(s.inputs).toEqual(["\u001b\r"]);
+    // Enter alone, and Shift+Enter with another modifier, are not this.
+    expect(s.keys(key("keydown", { shiftKey: false }))).toBe(true);
+    expect(s.keys(key("keydown", { ctrlKey: true }))).toBe(true);
+    expect(s.keys(key("keydown", { altKey: true }))).toBe(true);
+    expect(s.keys(key("keydown", { metaKey: true }))).toBe(true);
+    expect(s.inputs).toEqual(["\u001b\r"]);
+  });
+
+  test("Ctrl+=, Ctrl+- and Ctrl+0 zoom once per press, kept from the process and from the page's own zoom (issue #476)", () => {
+    const s = setup();
+    let prevented = 0;
+    const key = (k: string, type = "keydown") =>
+      ({
+        key: k,
+        type,
+        ctrlKey: true,
+        shiftKey: false,
+        altKey: false,
+        metaKey: false,
+        preventDefault: () => void prevented++,
+      }) as unknown as KeyboardEvent;
+    expect(s.keys(key("="))).toBe(false);
+    expect(s.keys(key("=", "keyup"))).toBe(false);
+    expect(s.keys(key("-"))).toBe(false);
+    expect(s.keys(key("0"))).toBe(false);
+    expect([s.zooms, prevented, s.inputs]).toEqual([["zoomIn", "zoomOut", "zoomReset"], 4, []]);
+  });
+
+  test("Ctrl+wheel zooms and keeps the page from zooming; the wheel alone stays xterm's scroll (issue #476)", () => {
+    const s = setup();
+    let prevented = 0;
+    const wheel = (ctrlKey: boolean, deltaY: number) =>
+      ({ ctrlKey, deltaY, preventDefault: () => void prevented++ }) as unknown as WheelEvent;
+    expect(s.wheel(wheel(true, -100))).toBe(false);
+    expect(s.wheel(wheel(true, 100))).toBe(false);
+    expect(s.wheel(wheel(false, 100))).toBe(true);
+    expect([s.zooms, prevented]).toEqual([["zoomIn", "zoomOut"], 2]);
+  });
+
   test("Ctrl+Shift+V pastes the clipboard through xterm; Ctrl+Shift+F asks for the search; the rest passes", async () => {
     const s = setup();
     expect(s.press("V")).toBe(false);
@@ -223,10 +414,72 @@ describe("terminal-ui: the xterm screen", () => {
     expect(s.log.slice(-4)).toEqual(["next:hit", "next:miss", "prev:x", "clear"]);
   });
 
+  test("a file path in the output is a link over its own cells; clicking it hands the path on (issue #476)", async () => {
+    const s = setup();
+    s.showLines("nothing here", "see src/a.ts:3 now");
+    expect(await s.linksOn(1)).toBeUndefined();
+    const links = await s.linksOn(2);
+    expect(links?.map((link) => [link.text, link.range])).toEqual([
+      ["src/a.ts:3", { start: { x: 5, y: 2 }, end: { x: 14, y: 2 } }],
+    ]);
+    links?.[0]?.activate({} as MouseEvent, "src/a.ts:3");
+    expect(s.paths).toEqual([["src/a.ts", { line: 3 }]]);
+  });
+
+  test("a path printed without a line hands on no position (#506)", async () => {
+    const s = setup();
+    s.showLines("wrote ./notes/b.md:4:2 and /x/y.md");
+    for (const link of (await s.linksOn(1)) ?? []) link.activate({} as MouseEvent, link.text);
+    expect(s.paths).toEqual([
+      ["./notes/b.md", { line: 4, col: 2 }],
+      ["/x/y.md", undefined],
+    ]);
+  });
+
+  test("on a row with wide characters the link still sits over the path's own cells (issue #476)", async () => {
+    const s = setup();
+    s.showLines("⏺ src/a.ts");
+    const links = await s.linksOn(1);
+    expect(links?.map((link) => link.range)).toEqual([
+      { start: { x: 4, y: 1 }, end: { x: 11, y: 1 } },
+    ]);
+  });
+
+  test("a paste of several lines waits for the OK unless the program turned on bracketed paste (issue #476)", async () => {
+    const asked: string[] = [];
+    const answers = [false, true];
+    const confirm = async (text: string) => {
+      asked.push(text);
+      return answers.shift() ?? false;
+    };
+    const s = setup("", false, false, { clip: "a\nb", confirm });
+    s.screen.paste();
+    await settleMaybe(() => asked.length === 1);
+    s.screen.paste();
+    await settleMaybe(() => s.log.includes("paste:a\nb"));
+    expect([asked, s.log.filter((line) => line.startsWith("paste:"))]).toEqual([
+      ["a\nb", "a\nb"],
+      ["paste:a\nb"],
+    ]);
+    const marked = setup("", false, false, { clip: "a\nb", bracketed: true, confirm });
+    marked.screen.paste();
+    await settleMaybe(() => marked.log.includes("paste:a\nb"));
+    expect([asked.length, marked.log.includes("paste:a\nb")]).toEqual([2, true]);
+  });
+
+  test("screen reader mode is given to xterm at the start and follows the setting (issue #476)", () => {
+    const s = setup();
+    expect(s.constructed().screenReaderMode).toBe(false);
+    s.screen.setScreenReader(true);
+    expect(s.terminal.options.screenReaderMode).toBe(true);
+    s.screen.setScreenReader(false);
+    expect(s.terminal.options.screenReaderMode).toBe(false);
+  });
+
   test("dispose releases the listeners and xterm", () => {
     const s = setup();
     s.screen.dispose();
-    expect(s.log).toEqual(["off-data", "off-resize", "dispose"]);
+    expect(s.log).toEqual(["off-selection", "off-data", "off-resize", "off-paths", "dispose"]);
   });
 
   test("a clipboard that refuses to copy or to be read leaves the terminal as it was", async () => {
@@ -247,6 +500,19 @@ describe("terminal-ui: the xterm screen", () => {
     expect(s.log).toContain("paste:pasted");
     s.links[0]?.("https://example.com");
     expect(s.linked).toEqual(["https://example.com"]);
+  });
+
+  test("find passes match case, whole word and regex on; a pattern it cannot search clears instead (issue #476)", () => {
+    const s = setup();
+    s.screen.find("Hit", "next", false, { caseSensitive: true, wholeWord: true });
+    expect(s.findOptions.at(-1)).toMatchObject({ caseSensitive: true, wholeWord: true });
+    expect(s.screen.find("a(", "next", true, { regex: true })).toBe(false);
+    expect(s.screen.find("a*", "previous", false, { regex: true })).toBe(false);
+    expect(s.log.filter((line) => /^(next|prev|clear)/.test(line))).toEqual([
+      "next:Hit",
+      "clear",
+      "clear",
+    ]);
   });
 
   test("find highlights every match and marks the current one; typing keeps the match", () => {

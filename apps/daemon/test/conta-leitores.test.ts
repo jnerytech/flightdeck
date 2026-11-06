@@ -332,6 +332,8 @@ describe("conta-leitores: withIdleQuery", () => {
     expect(closed).toBe(1);
     expect(calls[0]).toMatchObject({
       settingSources: [],
+      // settingSources does not cover .mcp.json, and this runs in the folder it was started in (#415).
+      strictMcpConfig: true,
       persistSession: false,
       pathToClaudeCodeExecutable: "/bin/claude",
     });

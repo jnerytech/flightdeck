@@ -63,10 +63,7 @@ export function applyDemoPrefs(storage: Platform["storage"], search: string): vo
   if (lang && LANGS.includes(lang)) storage.setItem(LANG_KEY, lang);
 }
 
-/** index.html with the web entry when `FLIGHTDECK_ENTRY=web` (the demo and the prints). */
-export function entryHtml(html: string, entry: string | undefined): string {
-  return entry === "web" ? html.replace("/src/main.tsx", "/src/main.web.tsx") : html;
-}
+export { entryHtml } from "./entry-html.ts";
 
 /**
  * What the store gets in the demo: with seeded hosts, a long wait between attempts, so a host that
@@ -83,4 +80,44 @@ export function demoStoreOptions(
     return { baseDelayMs: 1000, maxDelayMs: 4000 };
   }
   return { baseDelayMs: 60_000 };
+}
+
+/**
+ * The e2e asks for `?update=<version>`: the demo's updater then offers that version and "downloads"
+ * it, so the update card (#490) can be driven in a page, which has no Tauri updater. Without it, or
+ * with something that is not a version, the platform is the browser's as it is.
+ */
+export function demoPlatform(platform: Platform, search = ""): Platform {
+  const version = new URLSearchParams(search).get("update");
+  if (!version || !/^\d+\.\d+\.\d+$/.test(version)) return platform;
+  const nothing = () => Promise.resolve();
+  return {
+    ...platform,
+    updater: {
+      supported: true,
+      check: () => Promise.resolve({ version, notes: "" }),
+      download: nothing,
+      installDownloaded: nothing,
+      install: nothing,
+    },
+  };
+}
+
+/** What `demoToast` needs of the store. */
+export interface ToastTarget {
+  success(text: string): void;
+  i18n: { t: (key: "toast.rootAdded", params: Record<string, string>) => string };
+}
+
+/**
+ * The prints send `flightdeck:demo-toast` to the page (#581) right before a shot: each one shows a
+ * success toast in the page's language, so a print shows where the toasts sit (over the status bar,
+ * and over the update card with `update=`). A toast at boot would be gone by the shot. Returns the
+ * way to stop listening.
+ */
+export function demoToast(store: ToastTarget, page: EventTarget): () => void {
+  const show = () =>
+    store.success(store.i18n.t("toast.rootAdded", { folder: "~/projetos/loja", host: "alfa" }));
+  page.addEventListener("flightdeck:demo-toast", show);
+  return () => page.removeEventListener("flightdeck:demo-toast", show);
 }

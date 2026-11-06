@@ -3,12 +3,16 @@ import { type KeyboardEvent, useEffect, useRef, useSyncExternalStore } from "rea
 import { createPortal } from "react-dom";
 import { useHeaderSlot } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import type { AppState, AppStore } from "../lib/app-store.ts";
 import type { Route } from "../lib/router.ts";
 import type { Orientation } from "../lib/workspace.ts";
 import { Screen } from "./Screens.tsx";
 import { TabBar } from "./TabBar.tsx";
+
+/** Below this height the one area's tabs share the top bar's row (issue #488). */
+export const SHORT_WINDOW = "(max-height: 599px)";
 
 const STEP = 0.05;
 
@@ -21,20 +25,25 @@ function gridStyle(split: Orientation | null, template: string) {
 }
 
 /** The window's one or two areas, each with its tab bar and screen, and the divider between them. */
-export function Areas(props: {
-  store: AppStore;
-  state: AppState;
-  screen: Omit<ScreenProps, "route">;
-}) {
+export function Areas(
+  props: Readonly<{
+    store: AppStore;
+    state: AppState;
+    screen: Omit<ScreenProps, "route">;
+  }>,
+) {
   const { store, state } = props;
   const { workspace } = store;
   const { t } = store.i18n;
   useSyncExternalStore(workspace.subscribe, () => workspace.version);
   const { split, fraction } = workspace;
   const box = useRef<HTMLDivElement>(null);
+  // Issue #488: each area's tabs have a row of their own, as in VS Code and Orca. In a window under
+  // 600 px tall the one area's strip goes back to the top bar's row: a 720x480 window keeps its
+  // conversation at least 150 px tall.
   const slot = useHeaderSlot();
-  /** With one area its strip sits in the top bar, on the row of the breadcrumb. */
-  const inHeader = !split && workspace.areas.length === 1 ? slot : null;
+  const short = useMediaQuery(SHORT_WINDOW);
+  const inHeader = short && !split && workspace.areas.length === 1 ? slot : null;
   const dragging = useRef(false);
 
   useEffect(() => {

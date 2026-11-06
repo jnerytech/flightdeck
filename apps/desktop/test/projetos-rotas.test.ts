@@ -22,6 +22,7 @@ describe("projetos-rotas: the Projects screens are routes", () => {
   });
 
   test("the header names them in both languages: Projects, then the project", () => {
+    expect(breadcrumb({ name: "setup" }, state, en)).toEqual([{ label: "Setup" }]);
     expect(breadcrumb({ name: "all-projects" }, state, en)).toEqual([{ label: "Projects" }]);
     expect(breadcrumb({ name: "all-projects" }, state, pt)).toEqual([{ label: "Projetos" }]);
     expect(breadcrumb({ name: "project", host: "h1", projectId: "p1" }, state, en)).toEqual([

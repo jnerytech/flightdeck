@@ -6,6 +6,7 @@
  */
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { inSequence } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
 import type { RewindFilesResult } from "../runtime/types.ts";
 import { whichOnPath } from "../which.ts";
@@ -32,6 +33,7 @@ export interface RewindPreview {
 const CHANGES: Record<string, string> = { M: "modified", A: "created", D: "deleted" };
 
 async function git(cwd: string, args: string[]): Promise<{ code: number; stdout: Buffer }> {
+  // git-arg: the rewind's own git: the trees and refs in its arguments were made by the checkpoints
   const proc = Bun.spawn([whichOnPath("git") ?? "git", ...args], {
     cwd,
     env: process.env,
@@ -166,16 +168,16 @@ export class Rewinder {
 
   private async restore(target: SnapshotRow): Promise<RewindPreview> {
     const { preview } = await this.snapshotDiff(target);
-    for (const file of preview.files) {
+    await inSequence(preview.files, async (file) => {
       const path = join(target.repo, file.path);
       if (file.change === "created") {
         await rm(path, { force: true });
-        continue;
+        return;
       }
       const blob = await git(target.repo, ["cat-file", "blob", `${target.tree}:${file.path}`]);
       await mkdir(dirname(path), { recursive: true });
       await writeFile(path, blob.stdout);
-    }
+    });
     return preview;
   }
 }

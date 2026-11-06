@@ -88,6 +88,17 @@ describe("tdd-audit", () => {
     ]);
   });
 
+  test("a .skip with `// unstable: #N <reason>` on its line or the line above is allowed; a bare one is not (#494)", () => {
+    const files = [
+      { path: "a.test.ts", content: `// unstable: #484 a late status\ntest${SKIP}"x", () => {});` },
+      { path: "b.test.ts", content: `test${SKIP}"y", () => {}); // unstable: #492 races` },
+      { path: "c.test.ts", content: `test${SKIP}"z", () => {});` },
+    ];
+    expect(findForbiddenMarkers(files)).toEqual([
+      { commit: "c.test.ts:1", scope: "-", reason: `uso proibido de ${SKIP}` },
+    ]);
+  });
+
   test("runAudit imprime TDD AUDIT OK sem violações e lista as violações com código 1", () => {
     const git = (subjects: string[]) => (args: string[]) => {
       if (args[0] === "rev-parse") return args[2] === "fase-1^{commit}" ? "abc" : null;

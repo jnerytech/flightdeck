@@ -6,6 +6,7 @@ import type { Board } from "../board/board.ts";
 import { git } from "../board/command.ts";
 import { cardDiff, workingDiff } from "../board/diff.ts";
 import { aheadBehind } from "../board/merge.ts";
+import { HEAD, type Rev, refArg } from "../board/ref-arg.ts";
 import type { DiffFile } from "../board/types.ts";
 import { FlightdeckError } from "../errors.ts";
 import type { Timers } from "../quota/quota.ts";
@@ -26,6 +27,8 @@ export interface ChangesOptions {
   /** Wait after a change on disk before the diff is computed again; 500 ms when absent. */
   debounceMs?: number;
   log?: (message: string) => void;
+  /** The folders terminals were opened in (`terminal:<id>` targets, #506). */
+  terminals?: { cwdOf(terminalId: string): string | null };
 }
 
 /** What a target (`session:<claudeSessionId>` or `card:<id>`) points at. */
@@ -34,7 +37,7 @@ export interface ResolvedTarget {
   /** The repository's top level (the worktree, for a card). */
   root: string;
   /** The card's base branch; `null` for a session, whose diff is against `HEAD`. */
-  base: string | null;
+  base: Rev | null;
   cardId: string | null;
   claudeSessionId: string | null;
   /** The card's branch: its position is read from it, never from a `HEAD` that a rebase detaches. */
@@ -85,8 +88,9 @@ export class Changes {
     this.timers = opts.timers ?? realTimers;
   }
 
-  async resolve(target: string): Promise<ResolvedTarget> {
-    const match = /^(session|card):(.+)$/.exec(target);
+  /** `terminal`: the caller only reads files (`file.read`, `file.list`), the one use of a terminal's folder (#506). */
+  async resolve(target: string, opts: { terminal?: boolean } = {}): Promise<ResolvedTarget> {
+    const match = /^(session|card|terminal):(.+)$/.exec(target);
     if (!match)
       throw new FlightdeckError(
         "bad_request",
@@ -94,7 +98,30 @@ export class Changes {
         "review_target_invalid",
         { target },
       );
-    const [, kind, id] = match as unknown as [string, "session" | "card", string];
+    const [, kind, id] = match as unknown as [string, "session" | "card" | "terminal", string];
+    // A terminal's folder, as the daemon opened it: never a folder the client names (#506).
+    if (kind === "terminal") {
+      if (!opts.terminal) {
+        throw new FlightdeckError(
+          "bad_request",
+          `a terminal target only reads files: ${target}`,
+          "review_target_invalid",
+          { target },
+        );
+      }
+      const cwd = this.opts.terminals?.cwdOf(id) ?? null;
+      if (cwd === null) {
+        throw new FlightdeckError(
+          "not_found",
+          `terminal ${id} does not exist`,
+          "terminal_missing",
+          {
+            id,
+          },
+        );
+      }
+      return { target, root: resolve(cwd), base: null, cardId: null, claudeSessionId: null };
+    }
     if (kind === "card") {
       if (!this.opts.board) {
         throw new FlightdeckError("not_found", `card ${id} does not exist`, "card_not_found", {
@@ -109,7 +136,7 @@ export class Changes {
           "card_no_worktree",
         );
       }
-      const base = this.opts.board.getProject(card.projectId).baseBranch;
+      const base = refArg(this.opts.board.getProject(card.projectId).baseBranch);
       return {
         target,
         root: card.worktreePath,
@@ -154,7 +181,13 @@ export class Changes {
     if (base === null)
       return { target, root, base, files: await workingDiff(root), position: null };
     const { files } = await cardDiff(root, base);
-    return { target, root, base, files, position: await aheadBehind(root, base, branch) };
+    return {
+      target,
+      root,
+      base,
+      files,
+      position: await aheadBehind(root, base, branch ? refArg(branch) : HEAD),
+    };
   }
 
   /**

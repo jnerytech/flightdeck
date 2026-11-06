@@ -53,7 +53,9 @@ describe("paleta", () => {
       "Trocar idioma | ação",
       "Ir para Custos | ação",
       "Ir para Configurações | ação",
+      "Adicionar um host | ação",
       "Mostrar os atalhos de teclado | ação",
+      "# Clientes",
       "Gerenciar clientes | ação",
     ]);
   });
@@ -78,7 +80,9 @@ describe("paleta", () => {
       "Switch language | action",
       "Go to Costs | action",
       "Go to Settings | action",
+      "Add a host | action",
       "Show the keyboard shortcuts | action",
+      "# Clients",
       "Manage clients | action",
     ]);
   });

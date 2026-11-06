@@ -1,4 +1,13 @@
 import { z } from "zod";
+import {
+  AssistantCancelPayload,
+  type AssistantContextBundle,
+  AssistantContextPayload,
+  AssistantRecordPayload,
+  type AssistantResult,
+  AssistantRunPayload,
+} from "./assistant.ts";
+import { isBranchName } from "./git-ref.ts";
 import { type RunConfigInfo, RunState } from "./run.ts";
 
 export const PROTOCOL_VERSION = 1;
@@ -145,7 +154,13 @@ const ListExtras = {
   projectKey: z.string().nullable().optional(),
   meta: SessionMeta.optional(),
   summary: SessionLine.optional(),
+  /** Issue #157: idle with no process: the daemon put it to sleep (or restarted); a message wakes it. */
+  asleep: z.boolean().optional(),
 };
+
+/** Phase 39: the agent a session runs on. */
+export const SessionRuntime = z.enum(["claude", "opencode"]);
+export type SessionRuntime = z.infer<typeof SessionRuntime>;
 
 export const SessionSummary = z.object({
   id: z.string(),
@@ -160,6 +175,8 @@ export const SessionSummary = z.object({
   updatedAt: z.string(),
   /** The persona the session was opened with (phase 20). */
   persona: SessionPersona.nullable().optional(),
+  /** Phase 39: `claude` when absent. */
+  runtime: SessionRuntime.optional(),
   ...ListExtras,
 });
 export type SessionSummary = z.infer<typeof SessionSummary>;
@@ -311,6 +328,18 @@ export const PermissionUpdate = z.discriminatedUnion("type", [
 ]);
 export type PermissionUpdate = z.infer<typeof PermissionUpdate>;
 
+/** A slash command of a session, as the app lists it after `/`. */
+export const SlashCommandInfo = z.object({
+  /** Without the slash. */
+  name: z.string(),
+  description: z.string(),
+  /** What to type after the name (`<file>`), when the command takes an argument. */
+  argumentHint: z.string().optional(),
+  /** Claude Code's own command, an MCP server's prompt, or a skill (a user, project or plugin one). */
+  kind: z.enum(["builtin", "skill", "mcp"]),
+});
+export type SlashCommandInfo = z.infer<typeof SlashCommandInfo>;
+
 export const SessionEvent = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("session.created"),
@@ -333,6 +362,12 @@ export const SessionEvent = z.discriminatedUnion("type", [
     tools: z.array(z.string()),
     /** The slash commands the session has (`/compact`, a skill, ...), without the slash. */
     slashCommands: z.array(z.string()).optional(),
+    /** Phase 39: project files sent with the first prompt as context (`AGENTS.md`), by name. */
+    contextFiles: z.array(z.string()).optional(),
+    /** Phase 39: project files left out (too large), by name. */
+    contextSkipped: z.array(z.string()).optional(),
+    /** The same commands with a description and a kind; an older daemon sends the names only. */
+    commands: z.array(SlashCommandInfo).optional(),
   }),
   /** `images`: how many came with the message (the bytes stay out of the log). */
   z.object({
@@ -383,7 +418,14 @@ export const SessionEvent = z.discriminatedUnion("type", [
     costUsd: z.number().nonnegative().optional(),
     usage: Usage.optional(),
   }),
-  z.object({ type: z.literal("session.error"), code: z.string(), message: z.string() }),
+  /** `reason` and `params` (phase 39): a typed refusal the app translates, like a command's. */
+  z.object({
+    type: z.literal("session.error"),
+    code: z.string(),
+    message: z.string(),
+    reason: z.string().optional(),
+    params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  }),
   z.object({
     type: z.literal("session.summary"),
     sessionId: z.string(),
@@ -393,6 +435,10 @@ export const SessionEvent = z.discriminatedUnion("type", [
     /** Open requests, oldest first; the count is its length. */
     pendingPermissions: z.array(PendingPermission),
     updatedAt: z.string(),
+    /** Phase 39: set for an OpenCode session only. */
+    runtime: SessionRuntime.optional(),
+    /** Issue #463: its folder's trust was revoked after the run loaded the project's setup; set when true only. */
+    trustStale: z.boolean().optional(),
   }),
 ]);
 export type SessionEvent = z.infer<typeof SessionEvent>;
@@ -433,6 +479,8 @@ export const SessionCreatePayload = z.object({
   effort: EffortLevel.optional(),
   /** Opens the session in a persona's role (phase 20). */
   persona: PersonaRef.optional(),
+  /** Phase 39: the agent to run; `claude` when absent. */
+  runtime: SessionRuntime.optional(),
 });
 
 /** What a message may carry as images: the types the API reads, five of them, 5 MB each. */
@@ -473,7 +521,15 @@ export const PermissionRespondPayload = z.object({
   updatedInput: ToolInput.optional(),
   /** Only the request's own suggestions or a project rule; anything else is refused. */
   updatedPermissions: z.array(PermissionUpdate).optional(),
+  /**
+   * The Approve was held its full time (#245, #251): a high-risk request is allowed only with it.
+   * Absent from an older app, which a newer host refuses only for a high-risk allow.
+   */
+  held: z.boolean().optional(),
 });
+
+/** The host refuses a high-risk `permission.respond` allow that does not carry `held: true`. */
+export const FEATURE_HOLD_PROOF = "hold-proof";
 
 // Phase 3: transcripts indexed from ~/.claude/projects (read only).
 export const HistoryOrigin = z.enum(["flightdeck", "external"]);
@@ -624,6 +680,12 @@ export const Project = z.object({
   path: z.string(),
   name: z.string(),
   baseBranch: z.string(),
+  /**
+   * The base branch is not a branch name (an older daemon stored it without checking): opening a PR
+   * and updating from the remote refuse it, and every git step refuses an option, until the person
+   * sets a real one (issue #369).
+   */
+  baseBranchInvalid: z.boolean().optional(),
   prProvider: PrProviderKind,
   /** The only shell command Flightdeck runs on its own, and only when registered. */
   setupScript: z.string().nullable(),
@@ -810,18 +872,48 @@ export const DiffFile = z.object({
   /** Not committed yet (tracked change or new file). */
   uncommitted: z.boolean(),
   binary: z.boolean(),
+  /**
+   * The file is listed without content because it is over the daemon's cap (issue #329): a new file
+   * over it, or a diff over it. Absent from a daemon that does not know the marker.
+   */
+  tooLarge: z.boolean().optional(),
+  /** With `tooLarge`: the size of the file (a new one) or of its diff text, in bytes. */
+  bytes: z.number().int().nonnegative().optional(),
+  /**
+   * The file may hold a credential (the daemon's list, issue #449): it is listed with no lines and
+   * no counts, and the daemon never reads a new one (issue #509). Absent from an older daemon.
+   */
+  secret: z.boolean().optional(),
   hunks: z.array(DiffHunk),
 });
 export type DiffFile = z.infer<typeof DiffFile>;
+
+/** One entry of a folder in the file explorer (issue #506). */
+export interface FileEntry {
+  name: string;
+  /** What it is, links followed: a link is listed only when it stays in the repository. */
+  kind: "dir" | "file";
+  /** It may hold a credential (issue #449): shown as hidden, never opened (issue #509). */
+  secret?: boolean;
+}
+
+/** A folder of the repository, folders first, then files, in natural order. */
+export interface FileListing {
+  /** The folder, relative to the repository's root ("" for the root). */
+  dir: string;
+  entries: FileEntry[];
+  /** More entries than the host sends at once. */
+  truncated: boolean;
+}
 
 export const CardDiff = z.object({ base: z.string(), files: z.array(DiffFile) });
 export type CardDiff = z.infer<typeof CardDiff>;
 
 // Phase 11: review of the changes of any session or card.
-/** `session:<claudeSessionId>` or `card:<id>`. */
+/** `session:<claudeSessionId>`, `card:<id>` or `terminal:<terminalId>` (its folder, #506). */
 export const ReviewTarget = z
   .string()
-  .regex(/^(session|card):.+$/, "alvo session:<id> ou card:<id>");
+  .regex(/^(session|card|terminal):.+$/, "alvo session:<id>, card:<id> ou terminal:<id>");
 
 export const ChangesResult = z.object({
   target: z.string(),
@@ -1452,6 +1544,8 @@ export const DOCTOR_CHECK_IDS = [
   "templates",
   "mcp",
   "linger",
+  /** Phase 39. */
+  "opencode",
 ] as const;
 
 /** One thing `doctor.run` checked; `fix` is what to run, absent when the check passed. */
@@ -1519,7 +1613,13 @@ export interface DepResult {
    * How to install or upgrade it, per operating system: a package-manager command where one exists,
    * and the official install page. Never a download piped into a shell.
    */
-  fix: Array<{ os: "linux" | "darwin" | "win32"; command?: string; url?: string }>;
+  fix: Array<{
+    os: "linux" | "darwin" | "win32";
+    command?: string;
+    url?: string;
+    /** What to know before running it: the app words each code in both languages. */
+    note?: "elevated" | "noSystemd";
+  }>;
 }
 
 /** What `deps.check` answers. */
@@ -1782,6 +1882,10 @@ export const UsageRow = z.object({
   inputTokens: z.number().int(),
   outputTokens: z.number().int(),
   turns: z.number().int(),
+  /** How many of the turns ended in an error; absent from a daemon that does not count them. */
+  failedTurns: z.number().int().optional(),
+  /** The time the turns took, in milliseconds; absent from a daemon that does not add it up. */
+  durationMs: z.number().optional(),
 });
 export type UsageRow = z.infer<typeof UsageRow>;
 
@@ -2018,6 +2122,8 @@ export const UsageOrigin = z.enum([
   "workflow",
   "subagent",
   "auto-approve",
+  /** Phase 40: a call of the AI assistant. */
+  "assistant",
 ]);
 export type UsageOrigin = z.infer<typeof UsageOrigin>;
 
@@ -2180,7 +2286,8 @@ export type CostsStatus = z.infer<typeof CostsStatus>;
 
 const ProjectFields = {
   name: z.string().min(1).optional(),
-  baseBranch: z.string().min(1).optional(),
+  /** A branch name git accepts, and never one that starts with `-` (issue #345). */
+  baseBranch: z.string().refine(isBranchName, "not a valid branch name").optional(),
   prProvider: PrProviderKind.optional(),
   /** `null` or blank removes the script. */
   setupScript: z.string().nullable().optional(),
@@ -2846,8 +2953,19 @@ export const Command = z.discriminatedUnion("type", [
     "session.setModel",
     z.object({ sessionId: z.string(), model: z.string().nullable() }).strict(),
   ),
+  /** Changes the effort of a live managed session for its next turn; null is the model's default. */
+  cmd(
+    "session.setEffort",
+    z.object({ sessionId: z.string(), effort: EffortLevel.nullable() }).strict(),
+  ),
   cmd("session.close", SessionIdPayload),
+  /** Issue #157: ends the process of an idle session now; the next message wakes it. */
+  cmd("session.sleep", SessionIdPayload),
+  /** Issue #157: how many minutes idle before a session sleeps; 0 is off. */
+  cmd("host.sleep", z.object({ minutes: z.number().int().min(0).max(1440) })),
   cmd("session.resume", SessionIdPayload),
+  /** The sessions a daemon restart interrupted in the last 24 hours, for the resume offer (issue #150). */
+  cmd("session.interrupted", z.object({}).strict()),
   cmd("session.subscribe", SessionSubscribePayload),
   cmd("session.unsubscribe", SessionIdPayload),
   cmd("permission.respond", PermissionRespondPayload),
@@ -2869,6 +2987,18 @@ export const Command = z.discriminatedUnion("type", [
   cmd("roots.add", z.object({ path: z.string().min(1), confirm: z.boolean().optional() })),
   /** Lets a session of this host start with every permission check off; turning it on asks for `confirm`. */
   cmd("host.bypass", z.object({ allow: z.boolean(), confirm: z.boolean().optional() })),
+  /** Keep this computer awake while sessions run: the host's switch (issue #163). */
+  cmd("host.keepAwake", z.object({ enabled: z.boolean() }).strict()),
+  /** Issue #196: which folders may bring their own hooks, MCP servers and settings into a managed session. */
+  cmd(
+    "project.trust.state",
+    z.object({ paths: z.array(z.string().min(1).max(4096)).min(1).max(200) }).strict(),
+  ),
+  cmd("project.trust.inspect", z.object({ path: z.string().min(1).max(4096) }).strict()),
+  cmd(
+    "project.trust.set",
+    z.object({ path: z.string().min(1).max(4096), trusted: z.boolean() }).strict(),
+  ),
   cmd("board.get", z.object({ projectId: z.string() })),
   /** Host-wide board settings; without fields it only reads them. */
   cmd("board.settings", z.object({ maxParallelRuns: z.number().int().min(1).optional() })),
@@ -2879,6 +3009,8 @@ export const Command = z.discriminatedUnion("type", [
       projectId: z.string(),
       title: z.string().min(1),
       description: z.string(),
+      /** The column the card is born in; the Backlog when absent (an older daemon ignores it). */
+      column: BoardColumn.optional(),
       ...CardDeps,
     }),
   ),
@@ -2901,11 +3033,26 @@ export const Command = z.discriminatedUnion("type", [
   cmd("card.get", CardIdPayload),
   cmd("card.stop", CardIdPayload),
   cmd("card.diff", CardIdPayload),
+  /** Phase 40: the AI assistant (feature `assistant`). */
+  cmd("assistant.run", AssistantRunPayload),
+  cmd("assistant.cancel", AssistantCancelPayload),
+  cmd("assistant.context", AssistantContextPayload),
+  cmd("assistant.record", AssistantRecordPayload),
   cmd("card.message", z.object({ cardId: z.string(), text: z.string().min(1) })),
   /** With `description`: the text the person confirmed for the PR, instead of the card's own. */
   cmd(
     "card.pr.create",
-    z.object({ cardId: z.string(), description: z.string().max(8000).optional() }),
+    z.object({
+      cardId: z.string(),
+      description: z.string().max(8000).optional(),
+      /** Phase 40: the title the person confirmed, instead of the card's own. */
+      title: z
+        .string()
+        .min(1)
+        .max(256)
+        .regex(/^[^\r\n]*$/)
+        .optional(),
+    }),
   ),
   /**
    * A session managing the cards of its own project through the flightdeck MCP server. The daemon
@@ -2943,6 +3090,28 @@ export const Command = z.discriminatedUnion("type", [
       archived: z.boolean().optional(),
     }),
   ),
+  /** Issue #255: the last lines of the daemon's own log file, redacted and bounded. */
+  cmd("logs.tail", z.object({ lines: z.number().int().min(1).max(500).optional() }).strict()),
+  /** Issue #154: one snapshot of the host's memory, disk and what each session and terminal costs. */
+  cmd("resources.get", z.object({}).strict()),
+  /** Ends a process the snapshot lists as an orphan; the daemon checks again that it is one. */
+  cmd(
+    "resources.endOrphan",
+    z
+      .object({ pid: z.number().int().positive(), startTicks: z.number().int().nonnegative() })
+      .strict(),
+  ),
+  /** Issue #152: the worktrees of the cards, with their size, state and why one is kept. */
+  cmd("worktree.list", z.object({ projectId: z.string().optional() }).strict()),
+  /** Removes the listed worktrees that are safe to remove; the daemon checks each one again. */
+  cmd(
+    "worktree.remove",
+    z.object({
+      items: z.array(z.object({ projectId: z.string(), path: z.string() }).strict()).min(1),
+      /** Like Discard and Delete: the host asks for the person's yes in the request itself. */
+      confirm: z.literal(true),
+    }),
+  ),
   cmd("maintenance.status", z.object({}).strict()),
   cmd("maintenance.backup", z.object({}).strict()),
   /** Applies the retention policy now; `dryRun` only counts. */
@@ -2952,6 +3121,7 @@ export const Command = z.discriminatedUnion("type", [
   /** Phase 9: downloads, verifies and applies the checked update; only with `confirm: true`. */
   cmd("daemon.update.apply", z.object({ confirm: z.boolean().optional() })),
   cmd("daemon.update.check", z.object({}).strict()),
+  cmd("host.updates.set", z.object({ auto: z.boolean() })),
   /** Phase 12: the git snapshots of a Claude session, oldest first. */
   cmd("snapshots.list", z.object({ claudeSessionId: z.string().min(1) })),
   /** Phase 12: the files turn `n` (a `before` snapshot's n) changed, between its trees. */
@@ -3970,6 +4140,8 @@ export const Command = z.discriminatedUnion("type", [
   cmd("boardsync.status", z.object({ projectId: z.string().min(1) }).strict()),
   cmd("boardsync.syncNow", z.object({ projectId: z.string().min(1) }).strict()),
   cmd("boardsync.log", z.object({ cardId: z.string().min(1) }).strict()),
+  /** Phase 39: the models a runtime offers (OpenCode's `models`); refused when it is not there. */
+  cmd("runtime.models", z.object({ runtime: z.literal("opencode") }).strict()),
   /** Clones a repository into a folder inside the allowed roots; a refusal carries its reason. */
   cmd(
     "projects.clone",
@@ -3995,6 +4167,13 @@ export const Command = z.discriminatedUnion("type", [
       cardId: z.string(),
       mode: z.enum(["merge", "squash"]).default("merge"),
       confirm: z.boolean().optional(),
+      /** Phase 40: the message the person confirmed, instead of the default one. */
+      message: z
+        .string()
+        .min(1)
+        .max(5000)
+        .regex(/^[^\0]*$/)
+        .optional(),
     }),
   ),
   /** `changes.updated` after each change on disk (500 ms debounce), until `changes.unwatch`. */
@@ -4024,6 +4203,8 @@ export const Command = z.discriminatedUnion("type", [
     z.object({ target: ReviewTarget, path: z.string().min(1), confirm: z.boolean().optional() }),
   ),
   cmd("file.read", z.object({ target: ReviewTarget, path: z.string().min(1) })),
+  /** Issue #506: one folder of the target's repository for the file explorer; `dir` is "" for its root. */
+  cmd("file.list", z.object({ target: ReviewTarget, dir: z.string() })),
   /** Written only if the file still has `expectedHash`; otherwise `file_conflict`. */
   cmd(
     "file.write",
@@ -4110,6 +4291,40 @@ export const UpdateStatus = z.object({
 });
 export type UpdateStatus = z.infer<typeof UpdateStatus>;
 
+/** Keep-awake (issue #163): the switch, whether the computer is held awake now, how, and why not. */
+export const KeepAwakeStatus = z.object({
+  enabled: z.boolean(),
+  held: z.boolean(),
+  method: z.enum(["powershell", "systemd-inhibit", "caffeinate"]).nullable(),
+  reason: z
+    .enum(["no-inhibitor", "unsupported-platform", "wsl", "start-failed", "ended"])
+    .nullable(),
+});
+export type KeepAwakeStatus = z.infer<typeof KeepAwakeStatus>;
+/** Issue #280: where the daemon's automatic update stands, for the host page. */
+export const AutoUpdateStatus = z.object({
+  enabled: z.boolean(),
+  /** `off`, `current` (nothing newer), `waiting` (the host is busy), `started` or `failed`. */
+  state: z.enum(["off", "current", "waiting", "started", "failed"]),
+  version: z.string().optional(),
+  reason: z.string().optional(),
+  at: z.string().optional(),
+});
+export type AutoUpdateStatus = z.infer<typeof AutoUpdateStatus>;
+
+/** Phase 39: a runtime the host offers besides Claude Code, as discovery found it. */
+export const HostRuntime = z.object({
+  kind: SessionRuntime,
+  available: z.boolean(),
+  path: z.string().optional(),
+  version: z.string().optional(),
+  /** False when the version is not the one Flightdeck verified. */
+  verified: z.boolean().optional(),
+  /** Why it is not available (a reason the app translates). */
+  reason: z.string().optional(),
+});
+export type HostRuntime = z.infer<typeof HostRuntime>;
+
 export const HostInfoResult = z.object({
   hostName: z.string(),
   os: z.string(),
@@ -4124,6 +4339,8 @@ export const HostInfoResult = z.object({
   features: z.array(z.string()).optional(),
   /** Phase 9: the last check of the daemon's release manifest; absent when it does not check. */
   update: UpdateStatus.optional(),
+  /** Issue #280: the automatic update; absent on a host that does not offer it (the `autoUpdate` feature). */
+  autoUpdate: AutoUpdateStatus.optional(),
   /** Phase 8: the stable `flightdeckd` (phase 7) when installed; "Abrir no terminal" runs it. */
   flightdeckdPath: z.string().nullable().optional(),
   /** Phase 8: the WSL distro this daemon runs in, `null` outside WSL. */
@@ -4134,8 +4351,36 @@ export const HostInfoResult = z.object({
   ui: UiSettings.optional(),
   /** Whether a session may start in `bypassPermissions`; absent on a daemon that predates the switch. */
   allowBypassPermissions: z.boolean().optional(),
+  /** Issue #255: where the daemon writes its log; absent when it keeps none. */
+  logPath: z.string().optional(),
+  /** Issue #157: minutes idle before a session sleeps; 0 is off; absent on a daemon without it. */
+  sleepAfterMinutes: z.number().int().nonnegative().optional(),
+  /** The host's keep-awake switch and whether it is holding the computer now; absent before issue #163. */
+  keepAwake: KeepAwakeStatus.optional(),
+  /** Phase 39: the host's other runtimes (OpenCode), each available or not with the reason. */
+  runtimes: z.array(HostRuntime).optional(),
 });
 export type HostInfoResult = z.infer<typeof HostInfoResult>;
+
+/** The host lists the sessions a restart interrupted (`session.interrupted`); the app gates on it. */
+export const FEATURE_RESUME_OFFER = "resume-offer";
+
+/** A session a daemon restart interrupted (issue #150): what the resume offer lists. */
+export const InterruptedSession = z.object({
+  sessionId: z.string(),
+  name: z.string().nullable(),
+  cwd: z.string(),
+  /** The persona it was opened with, by name. */
+  persona: z.string().nullable(),
+  /** When the restart marked it, and how long it had run before. */
+  interruptedAt: z.string(),
+  ranMs: z.number().int().nonnegative(),
+  /** The last thing the person asked it, cut short; null when it was never asked. */
+  lastRequest: z.string().nullable(),
+});
+export type InterruptedSession = z.infer<typeof InterruptedSession>;
+export const SessionInterruptedResult = z.object({ sessions: z.array(InterruptedSession) });
+export type SessionInterruptedResult = z.infer<typeof SessionInterruptedResult>;
 
 export const SessionListResult = z.object({ sessions: z.array(SessionSummary) });
 export type SessionListResult = z.infer<typeof SessionListResult>;
@@ -4217,7 +4462,58 @@ export type HistorySearchResult = z.infer<typeof HistorySearchResult>;
 /** The host's allowed folders after `roots.add`. */
 export const RootsResult = z.object({ allowedRoots: z.array(z.string()) });
 
+/** Issue #196: whether a folder is trusted, and through which record (a parent folder may be the one). */
+export const ProjectTrustState = z.object({
+  path: z.string(),
+  trusted: z.boolean(),
+  via: z.string().nullable(),
+  /** Issue #463: live sessions in the folder that still run with the setup they loaded before the trust was revoked; absent when none. */
+  staleSessions: z.number().int().positive().optional(),
+});
+export type ProjectTrustState = z.infer<typeof ProjectTrustState>;
+export const ProjectTrustStates = z.object({ items: z.array(ProjectTrustState) });
+export type ProjectTrustStates = z.infer<typeof ProjectTrustStates>;
+
+/** What a project's own files would load into a session, read without running anything. */
+export const ProjectLoad = z.object({
+  path: z.string(),
+  hooks: z.array(z.object({ event: z.string(), file: z.string(), commands: z.array(z.string()) })),
+  mcpServers: z.array(z.object({ name: z.string(), file: z.string(), command: z.string() })),
+  envKeys: z.array(z.string()),
+  allowRules: z.array(z.string()),
+  defaultMode: z.string().nullable(),
+  agents: z.array(z.string()),
+  skills: z.array(z.string()),
+  commands: z.array(z.string()),
+  claudeMd: z.boolean(),
+  /** Settings that name a program to run (apiKeyHelper, statusLine, ...): the whole command. */
+  executables: z.array(z.object({ key: z.string(), file: z.string(), command: z.string() })),
+  /** Environment variables that send traffic or code elsewhere (a base URL, a proxy, NODE_OPTIONS): the value too. */
+  redirects: z.array(z.object({ key: z.string(), file: z.string(), value: z.string() })),
+  /** Plugins and marketplaces the settings turn on or add. */
+  plugins: z.array(z.string()),
+  /** Settings keys present that this listing does not explain, so a key it does not know is still named. */
+  otherKeys: z.array(z.string()),
+  /** Agent, skill and command files whose header carries hooks, servers or tool grants. */
+  extras: z.array(z.object({ file: z.string(), keys: z.array(z.string()) })),
+  unreadable: z.array(z.string()),
+  /** How many entries of each list were left out because the list is capped: the screen must say so. */
+  omitted: z.object({
+    hooks: z.number().int().min(0),
+    mcpServers: z.number().int().min(0),
+    allowRules: z.number().int().min(0),
+    envKeys: z.number().int().min(0),
+  }),
+});
+export type ProjectLoad = z.infer<typeof ProjectLoad>;
+
 /** Whether this host lets a session start in `bypassPermissions` (off until a person turns it on). */
+export const SleepResult = z.object({
+  /** What came of it: `slept`, `already` (nothing was alive), or why it was not allowed. */
+  result: z.enum(["slept", "already", "not_idle", "queued", "subscribed", "kept_awake"]),
+});
+export type SleepResult = z.infer<typeof SleepResult>;
+
 export const BypassResult = z.object({ allowBypassPermissions: z.boolean() });
 export type BypassResult = z.infer<typeof BypassResult>;
 export type RootsResult = z.infer<typeof RootsResult>;
@@ -4254,6 +4550,122 @@ export type BackupInfo = z.infer<typeof BackupInfo>;
 
 /** Rows removed (or that would be, with `dryRun`) per table. */
 export const PruneCounts = z.record(z.string(), z.number());
+
+export const LogTail = z.object({ lines: z.array(z.string()), path: z.string() });
+export type LogTail = z.infer<typeof LogTail>;
+/**
+ * Issue #154: what the host's work costs it. Executable names only: never a command line or an
+ * environment, which can hold secrets.
+ */
+export const ResourceBytes = z.object({
+  totalBytes: z.number().nonnegative(),
+  freeBytes: z.number().nonnegative(),
+});
+export const ResourceRow = z.object({
+  kind: z.enum(["session", "terminal"]),
+  /** The session's or the terminal's id. */
+  id: z.string(),
+  name: z.string().nullable(),
+  cwd: z.string().nullable(),
+  /** Resident memory of the process tree, in bytes. */
+  rssBytes: z.number().nonnegative(),
+  /** CPU of the tree since the last snapshot, in % of one core; null on the first reading. */
+  cpuPercent: z.number().nonnegative().nullable(),
+  processes: z.number().int().nonnegative(),
+  /** Executable names, once each. */
+  names: z.array(z.string()),
+});
+export const ResourceOrphan = z.object({
+  pid: z.number().int().positive(),
+  name: z.string(),
+  rssBytes: z.number().nonnegative(),
+  ageSec: z.number().nonnegative(),
+  /** When it started, in clock ticks after the boot: with the pid it names this very process. */
+  startTicks: z.number().int().nonnegative(),
+});
+export const ResourcesSnapshot = z.object({
+  at: z.string(),
+  memory: ResourceBytes,
+  disk: ResourceBytes.nullable(),
+  /** One-minute load average divided by the number of cores, in %; null where there is none. */
+  loadPercent: z.number().nonnegative().nullable(),
+  /** Whether the processes were measured; false says why in `reason`. */
+  measured: z.boolean(),
+  reason: z.enum(["platform"]).nullable(),
+  rows: z.array(ResourceRow),
+  orphans: z.array(ResourceOrphan),
+});
+export type ResourcesSnapshot = z.infer<typeof ResourcesSnapshot>;
+export type ResourceRow = z.infer<typeof ResourceRow>;
+export type ResourceOrphan = z.infer<typeof ResourceOrphan>;
+/** Issue #152: why a worktree is kept and not offered for removal. */
+export const WorktreeBlocker = z.enum([
+  "live_session",
+  "running",
+  "dirty",
+  "unpushed",
+  "unknown_base",
+  /** git could not say (a command failed or answered nonsense): nothing is removed. */
+  "unknown_state",
+  /** The worktree is on a branch that is not one of Flightdeck's `fd/*`. */
+  "other_branch",
+  /** It holds files git ignores that are not rebuildable (not `node_modules`, build output…). */
+  "ignored_files",
+  /** A tracked file is hidden from `git status` (`assume-unchanged`, `skip-worktree`): its edits would go. */
+  "hidden_changes",
+]);
+export type WorktreeBlocker = z.infer<typeof WorktreeBlocker>;
+export const WorktreeItem = z.object({
+  projectId: z.string(),
+  projectName: z.string(),
+  path: z.string(),
+  branch: z.string().nullable(),
+  cardId: z.string().nullable(),
+  cardTitle: z.string().nullable(),
+  column: BoardColumn.nullable(),
+  prState: PrState.nullable(),
+  dirty: z.boolean(),
+  /** Commits that exist nowhere else: not on a remote and not on the base branch. */
+  unpushed: z.number().int().nonnegative(),
+  /** Bytes on disk; null when the scan was not finished in time (never shown as 0). */
+  sizeBytes: z.number().nonnegative().nullable(),
+  /** The newest of the last commit, the card's last change and the folder's. */
+  lastActivity: z.string(),
+  idleDays: z.number().nonnegative(),
+  blockers: z.array(WorktreeBlocker),
+  /** Safe to remove and worth it: no blocker, finished or without a card, idle over 7 days. */
+  suggested: z.boolean(),
+});
+export type WorktreeItem = z.infer<typeof WorktreeItem>;
+export const WorktreesResult = z.object({
+  worktrees: z.array(WorktreeItem),
+  disks: z.array(
+    z.object({
+      projectId: z.string(),
+      totalBytes: z.number().nonnegative(),
+      freeBytes: z.number().nonnegative(),
+    }),
+  ),
+});
+export type WorktreesResult = z.infer<typeof WorktreesResult>;
+export const WorktreeRemoveResult = z.object({
+  removed: z.array(
+    z.object({
+      path: z.string(),
+      freedBytes: z.number().nonnegative().nullable(),
+      /** The folder went but its branch was kept: it had moved, or git refused to delete it. */
+      branchKept: z.boolean().optional(),
+    }),
+  ),
+  kept: z.array(
+    z.object({
+      path: z.string(),
+      reason: z.union([WorktreeBlocker, z.enum(["not_listed", "failed"])]),
+      detail: z.string().optional(),
+    }),
+  ),
+});
+export type WorktreeRemoveResult = z.infer<typeof WorktreeRemoveResult>;
 export type PruneCounts = z.infer<typeof PruneCounts>;
 
 export const MaintenanceStatus = z.object({
@@ -4275,8 +4687,12 @@ export interface CommandResults {
   "session.interrupt": undefined;
   "session.setMode": undefined;
   "session.setModel": undefined;
+  "session.setEffort": undefined;
   "session.close": undefined;
+  "session.sleep": SleepResult;
+  "host.sleep": { sleepAfterMinutes: number };
   "session.resume": undefined;
+  "session.interrupted": SessionInterruptedResult;
   "session.subscribe": SessionSubscribeResult;
   "session.unsubscribe": undefined;
   "permission.respond": undefined;
@@ -4294,6 +4710,10 @@ export interface CommandResults {
   "board.settings": BoardSettings;
   "roots.add": RootsResult;
   "host.bypass": BypassResult;
+  "host.keepAwake": KeepAwakeStatus;
+  "project.trust.state": ProjectTrustStates;
+  "project.trust.inspect": ProjectLoad;
+  "project.trust.set": ProjectTrustState;
   "board.watch": undefined;
   "card.create": Card;
   "card.update": Card;
@@ -4301,6 +4721,10 @@ export interface CommandResults {
   "card.start": Card;
   "card.stop": Card;
   "card.diff": CardDiff;
+  "assistant.run": AssistantResult;
+  "assistant.cancel": undefined;
+  "assistant.context": AssistantContextBundle;
+  "assistant.record": undefined;
   "card.message": SessionSendResult;
   "card.pr.create": Card;
   "card.manage": Card;
@@ -4312,12 +4736,18 @@ export interface CommandResults {
   "external.watch": undefined;
   "external.message": undefined;
   "session.meta.set": SessionMeta & { claudeSessionId: string };
+  "logs.tail": LogTail;
+  "resources.get": ResourcesSnapshot;
+  "resources.endOrphan": { ended: true };
+  "worktree.list": WorktreesResult;
+  "worktree.remove": WorktreeRemoveResult;
   "maintenance.status": MaintenanceStatus;
   "maintenance.backup": BackupInfo;
   "maintenance.prune": PruneCounts;
   "daemon.shutdown": undefined;
   "daemon.update.apply": { started: true };
   "daemon.update.check": UpdateStatus;
+  "host.updates.set": AutoUpdateStatus;
   "snapshots.list": { snapshots: SnapshotInfo[] };
   "snapshots.files": SnapshotFiles;
   "rewind.preview": RewindPreview;
@@ -4533,6 +4963,7 @@ export interface CommandResults {
   "boardsync.status": BoardSyncStatus;
   "boardsync.syncNow": { status: BoardSyncStatus; report: BoardSyncReport };
   "boardsync.log": { entries: BoardSyncLogEntry[] };
+  "runtime.models": { models: Array<{ id: string; name: string }> };
   "github.status": GithubStatusResult;
   "github.login.start": GithubLoginResult;
   "github.login.cancel": undefined;
@@ -4557,6 +4988,7 @@ export interface CommandResults {
   "changes.undoRevert": { path: string };
   /** `hash`: sha256 of the bytes, hex, for `file.write`. */
   "file.read": { path: string; text: string; hash: string; size: number };
+  "file.list": FileListing;
   "file.write": { path: string; hash: string; size: number };
 }
 
@@ -4927,11 +5359,17 @@ export function parseServerMessage(raw: string): ServerMessage {
 }
 
 export * from "./activity.ts";
+export * from "./assistant.ts";
+export * from "./assistant-prompts.ts";
+export * from "./compare.ts";
+export * from "./fix-safe.ts";
+export * from "./git-ref.ts";
 export * from "./pairing.ts";
 export * from "./personas.ts";
 export * from "./question.ts";
 export * from "./refusals.ts";
 export * from "./run.ts";
+export * from "./sequence.ts";
 export * from "./snippets.ts";
 
 /**

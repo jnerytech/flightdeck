@@ -1,4 +1,5 @@
 import type { TeamInfo, TeamMember, TeamStatus } from "@flightdeck/protocol";
+import { inSequence } from "@flightdeck/protocol";
 import { UsersRound } from "lucide-react";
 import { memo, useCallback, useEffect, useState } from "react";
 import { ActionButton } from "@/components/feedback/action-button";
@@ -14,11 +15,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useStoreSlice, useStoreState } from "@/lib/use-store";
 import type { AppStore } from "../lib/app-store.ts";
+import { useDraft } from "../lib/use-draft.ts";
 import { hasFeature } from "../lib/version.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 
 /** The form of a new team: the goal, the project, the workers and the coordinator's persona. */
-function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; onCancel(): void }) {
+function NewTeam(
+  props: Readonly<{ store: AppStore; hostId: string; onCreated(): void; onCancel(): void }>,
+) {
   const { store, hostId } = props;
   const { t } = store.i18n;
   const state = useStoreState(store);
@@ -73,12 +77,13 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
       <Field label={t("teamsUi.name")}>
         {(control) => <Input {...control} value={name} onChange={(e) => setName(e.target.value)} />}
       </Field>
-      {projects.length === 0 && !asked ? null : projects.length === 0 ? (
+      {projects.length === 0 && asked && (
         <div className="flex flex-col items-start gap-2">
           <p className="text-muted-foreground">{t("teamsUi.noProjects")}</p>
           <AddProject store={store} hostId={hostId} onAdded={(added) => setProjectId(added.id)} />
         </div>
-      ) : (
+      )}
+      {projects.length > 0 && (
         <Field label={t("teamsUi.project")}>
           {(control) => (
             <NativeSelect
@@ -167,33 +172,73 @@ function NewTeam(props: { store: AppStore; hostId: string; onCreated(): void; on
 }
 
 /** One member: its role, persona, state, card and last report, and the persona to switch to. */
-function Member(props: {
-  store: AppStore;
-  hostId: string;
-  member: TeamMember;
-  report: { text: string; at: string } | null;
-  open: boolean;
-  onPersona(persona: string): void;
-  onRemove(): void;
-}) {
+function Member(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    projectId: string;
+    member: TeamMember;
+    report: { text: string; at: string } | null;
+    open: boolean;
+    /** True once the host took it. */
+    onPersona(persona: string): Promise<boolean>;
+    onRemove(): void;
+  }>,
+) {
   const { store, member } = props;
   const { t } = store.i18n;
-  const [persona, setPersona] = useState(member.persona ?? "");
+  const [persona, setPersona, savedPersona] = useDraft(member.persona ?? "");
   return (
-    <li className="flex flex-col gap-1 rounded-md border p-2 text-xs">
-      <div className="flex flex-wrap items-center gap-2">
-        <strong>{member.name}</strong>
-        <Badge variant="outline">
-          {t(member.role === "coordinator" ? "teamsUi.coordinator" : "teamsUi.worker")}
-        </Badge>
-        {member.persona && <Badge variant="outline">{member.persona}</Badge>}
-        {member.model && <Badge variant="outline">{member.model}</Badge>}
-        {member.sessionState && (
-          <span className="text-muted-foreground">
-            {t(`teamsUi.sessionStates.${member.sessionState}`)}
-          </span>
-        )}
-        {member.cardId && <span className="font-mono text-muted-foreground">{member.cardId}</span>}
+    <li data-slot="team-member" className="stack-tight rounded-md border p-2 text-xs">
+      <div data-slot="member-head" className="member-head">
+        <div className="member-id">
+          <strong>{member.name}</strong>
+          <Badge variant="outline">
+            {t(member.role === "coordinator" ? "teamsUi.coordinator" : "teamsUi.worker")}
+          </Badge>
+          {member.persona && <Badge variant="outline">{member.persona}</Badge>}
+          {member.model && <Badge variant="outline">{member.model}</Badge>}
+        </div>
+        <div data-slot="member-end" className="member-end">
+          {member.sessionState && (
+            <span className="text-muted-foreground">
+              {t(`teamsUi.sessionStates.${member.sessionState}`)}
+            </span>
+          )}
+          {member.sessionId && (
+            <Button
+              variant="link"
+              size="sm"
+              aria-label={t("teamsUi.openSessionOf", { name: member.name })}
+              onClick={() =>
+                store.router.push({
+                  name: "session",
+                  host: props.hostId,
+                  id: member.sessionId ?? "",
+                })
+              }
+            >
+              {t("teamsUi.openSession")}
+            </Button>
+          )}
+          {member.cardId && (
+            <Button
+              variant="link"
+              size="sm"
+              aria-label={t("teamsUi.openCardOf", { name: member.name })}
+              onClick={() =>
+                store.router.push({
+                  name: "card",
+                  host: props.hostId,
+                  projectId: props.projectId,
+                  cardId: member.cardId ?? "",
+                })
+              }
+            >
+              {t("teamsUi.openCard")}
+            </Button>
+          )}
+        </div>
       </div>
       {props.report && (
         <p className="text-muted-foreground">
@@ -201,27 +246,30 @@ function Member(props: {
         </p>
       )}
       {props.open && (
-        <div className="flex flex-wrap items-center gap-1">
-          <PersonaPicker
-            store={store}
-            hostId={props.hostId}
-            label={t("teamsUi.persona", { name: member.name })}
-            value={persona}
-            onChange={setPersona}
-            idsOnly
-          />
+        <div data-slot="member-persona" className="member-persona">
+          <div data-slot="persona-field" className="persona-field">
+            <PersonaPicker
+              store={store}
+              hostId={props.hostId}
+              label={t("teamsUi.persona", { name: member.name })}
+              value={persona}
+              onChange={setPersona}
+              idsOnly
+            />
+          </div>
           <Button
-            variant="ghost"
-            size="sm"
+            variant="outline"
             aria-label={t("teamsUi.setPersona", { name: member.name })}
-            onClick={() => props.onPersona(persona)}
+            onClick={async () => {
+              const sent = persona;
+              if (await props.onPersona(sent)) savedPersona(sent);
+            }}
           >
             {t("teamsUi.setPersonaButton")}
           </Button>
           {member.role === "worker" && (
             <Button
-              variant="ghost"
-              size="sm"
+              variant="outline"
               aria-label={t("teamsUi.remove", { name: member.name })}
               onClick={props.onRemove}
             >
@@ -235,13 +283,15 @@ function Member(props: {
 }
 
 /** The persona and model of a worker about to join a running team. */
-function NewMember(props: {
-  store: AppStore;
-  hostId: string;
-  team: TeamInfo;
-  onAdd(member: { persona: string; model: string }): void;
-  onCancel(): void;
-}) {
+function NewMember(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    team: TeamInfo;
+    onAdd(member: { persona: string; model: string }): void;
+    onCancel(): void;
+  }>,
+) {
   const { store, team } = props;
   const { t } = store.i18n;
   const [persona, setPersona] = useState("");
@@ -277,15 +327,17 @@ function NewMember(props: {
 }
 
 /** One team with its members and its controls. */
-function Team(props: {
-  store: AppStore;
-  hostId: string;
-  team: TeamInfo;
-  status: TeamStatus | null;
-  /** The team an alert opened. */
-  focused: boolean;
-  onChanged(team: TeamInfo): void;
-}) {
+function Team(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    team: TeamInfo;
+    status: TeamStatus | null;
+    /** The team an alert opened. */
+    focused: boolean;
+    onChanged(team: TeamInfo): void;
+  }>,
+) {
   const { store, hostId, team } = props;
   const { t } = store.i18n;
   const [text, setText] = useState("");
@@ -298,6 +350,7 @@ function Team(props: {
   const act = async (command: Promise<TeamInfo | null>) => {
     const updated = await command;
     if (updated) props.onChanged(updated);
+    return updated !== null;
   };
   const reportOf = (name: string) =>
     props.status?.members.find((m) => m.name === name)?.lastReport ?? null;
@@ -322,11 +375,12 @@ function Team(props: {
             key={member.name}
             store={store}
             hostId={hostId}
+            projectId={team.projectId}
             member={member}
             report={reportOf(member.name)}
             open={open}
             onPersona={(persona) =>
-              void act(
+              act(
                 store.hostCommand(hostId, "teams.update", {
                   team: team.id,
                   persona: { member: member.name, persona: persona.trim() || null },
@@ -338,8 +392,8 @@ function Team(props: {
         ))}
       </ul>
       {open && (
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap gap-1">
+        <div data-slot="team-footer" className="team-footer">
+          <div className="team-row">
             {team.state === "active" ? (
               <Button
                 variant="outline"
@@ -400,7 +454,7 @@ function Team(props: {
               }}
             />
           )}
-          <div className="flex flex-wrap items-center gap-1">
+          <div className="team-row">
             <Input
               aria-label={t("teamsUi.messageAll")}
               value={text}
@@ -486,10 +540,10 @@ export const TeamsPage = memo(function TeamsPage(props: {
     if (!list) return;
     setTeams(list.teams);
     const next: Record<string, TeamStatus> = {};
-    for (const team of list.teams) {
+    await inSequence(list.teams, async (team) => {
       const status = await store.hostCommand(current, "teams.status", { team: team.id });
       if (status) next[team.id] = status;
-    }
+    });
     setStatuses(next);
   }, [store, current]);
   useEffect(() => {
@@ -501,7 +555,15 @@ export const TeamsPage = memo(function TeamsPage(props: {
   if (!host) {
     return (
       <Page title={t("teamsUi.title")}>
-        <EmptyState icon={UsersRound} title={t("teamsUi.noHost")} />
+        <EmptyState
+          icon={UsersRound}
+          title={t("teamsUi.noHost")}
+          action={
+            <Button variant="link" onClick={() => store.router.push({ name: "add-host" })}>
+              {t("teamsUi.noHostLink")}
+            </Button>
+          }
+        />
       </Page>
     );
   }

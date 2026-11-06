@@ -1,5 +1,13 @@
 import { PermissionUpdate } from "@flightdeck/protocol";
 import { FlightdeckError } from "../errors.ts";
+import { RANK, type RiskLevel } from "./risk.ts";
+import {
+  type ClassifyCall,
+  type DiskView,
+  exactPaths,
+  pathReadings,
+  ruleLevel,
+} from "./rule-risk.ts";
 
 /** Destinations an answer may write to: the session, or the project's settings.local.json. */
 const DESTINATIONS: ReadonlySet<string> = new Set(["session", "localSettings"]);
@@ -17,7 +25,7 @@ export function parseSuggestions(raw: unknown): PermissionUpdate[] {
 }
 
 /** The same JSON with object keys sorted: equality field by field, whatever the key order. */
-const canonical = (value: unknown) =>
+export const canonical = (value: unknown) =>
   JSON.stringify(value, (_key, v: unknown) =>
     v && typeof v === "object" && !Array.isArray(v)
       ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b)))
@@ -64,6 +72,42 @@ function checkRule(rule: AddRules["rules"][number], toolName: string): void {
   }
 }
 
+/**
+ * A saved rule covers every call it matches, not only the one it came from: it must not cover a
+ * higher risk than the request did (issue #384). A rule for `Bash` alone, or `git:*`, covers
+ * `rm -rf` and `git push --force`; a rule for `Write` alone covers a credential file.
+ */
+function checkRisk(
+  rule: AddRules["rules"][number],
+  request: { risk: RiskLevel; classify: ClassifyCall } & DiskView,
+): void {
+  const level = ruleLevel(
+    rule.toolName,
+    rule.ruleContent,
+    request.classify,
+    request.kind ?? (() => "dir"),
+    request.real,
+  );
+  // `any`: not shown to be narrow, so no request, held or not, may save it.
+  if (level === "any" || RANK[level] > RANK[request.risk]) {
+    // With every path read as a file the rule would have been saved: the folder it names (or a path
+    // not there yet, which can become one) is the reason, and the app says so (#524).
+    const asFile = ruleLevel(
+      rule.toolName,
+      rule.ruleContent,
+      request.classify,
+      () => "file",
+      request.real,
+    );
+    const folder = asFile !== "any" && RANK[asFile] <= RANK[request.risk];
+    refuse("a regra permitiria mais risco do que este pedido", "perm_rule_too_broad", {
+      tool: rule.toolName,
+      level: level === "any" ? "high" : level,
+      ...(folder ? { names: "folder" } : {}),
+    });
+  }
+}
+
 /** The destination and the mode of an update must be ones an answer may use. */
 function checkDestinationAndMode(update: PermissionUpdate): void {
   if (!DESTINATIONS.has(update.destination))
@@ -82,7 +126,13 @@ function checkDestinationAndMode(update: PermissionUpdate): void {
  */
 export function checkUpdates(
   updates: PermissionUpdate[],
-  request: { toolName: string; suggestions: PermissionUpdate[] },
+  request: {
+    toolName: string;
+    suggestions: PermissionUpdate[];
+    /** The risk judged when it was asked, and the daemon's classifier for what a rule would cover. */
+    risk: RiskLevel;
+    classify: ClassifyCall;
+  } & DiskView,
 ): void {
   const suggested = new Set(request.suggestions.map(canonical));
   for (const update of updates) {
@@ -93,6 +143,30 @@ export function checkUpdates(
     if (suggested.has(canonical(update))) continue;
     if (!isProjectRule(update))
       refuse("não é uma das sugestões do pedido nem uma regra do projeto", "perm_not_suggested");
-    for (const rule of (update as AddRules).rules) checkRule(rule, request.toolName);
+    for (const rule of (update as AddRules).rules) {
+      checkRule(rule, request.toolName);
+      checkRisk(rule, request);
+    }
   }
+}
+
+/** What `of` gives for each rule `updates` would add. */
+const eachRule = (
+  updates: PermissionUpdate[],
+  of: (toolName: string, content: string | undefined) => string[],
+) =>
+  updates.flatMap((update) =>
+    update.type === "addRules"
+      ? update.rules.flatMap((rule) => of(rule.toolName, rule.ruleContent))
+      : [],
+  );
+
+/** The exact paths the rules of `updates` name, for the server to look up before the check. */
+export function rulePaths(updates: PermissionUpdate[]): string[] {
+  return eachRule(updates, exactPaths);
+}
+
+/** Every reading of the path rules of `updates`, for the server to resolve before the check (#528). */
+export function ruleReadings(updates: PermissionUpdate[]): string[] {
+  return eachRule(updates, pathReadings);
 }
