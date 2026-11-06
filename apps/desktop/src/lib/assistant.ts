@@ -1,5 +1,6 @@
 import {
   ASSISTANT_MAX_INPUT,
+  type AssistantContextBundle,
   type AssistantKind,
   type AssistantProvider,
   AssistantRefusal,
@@ -8,6 +9,7 @@ import {
   buildRequest,
   checkOutput,
   KIND_SPECS,
+  type CommitSource,
   type ModelOption,
   SecretScanner,
 } from "@flightdeck/protocol";
@@ -62,6 +64,8 @@ export interface AssistantRunInput {
   cwd?: string;
   /** Use this provider for this one call, whatever the preference says (the person clicked "Try with …"). */
   provider?: ResolvedProvider;
+  /** The repo a commit or PR message is written from (issue #162), on the field's host. */
+  source?: CommitSource;
 }
 
 const KEY_PROVIDERS = ["anthropic", "openrouter"] as const;
@@ -91,6 +95,15 @@ function failureOf(error: unknown): AssistantFailure {
 const sent = (input: AssistantRunInput): string[] => [
   input.text,
   ...Object.entries(input.context ?? {}).flat(),
+];
+
+/** Every text of a repo bundle that would leave the app. */
+const repoTexts = (repo: AssistantContextBundle): string[] => [
+  repo.stat,
+  repo.diff,
+  repo.rules,
+  ...repo.notShown,
+  ...repo.recent,
 ];
 
 export class AssistantController {
@@ -162,6 +175,10 @@ export class AssistantController {
     // A host the person never agreed to is asked in Settings, once: until then no text goes there,
     // whoever calls (the wand checks too, to open Settings).
     if (!provider || this.needsHostConfirm(provider)) throw fail("assistant_not_configured");
+    // A repo is read on the field's host: another host has no such card or folder.
+    if (input.source && provider.provider === "host" && provider.hostId !== input.fieldHostId) {
+      throw fail("assistant_repo_other_host");
+    }
     // What a field is written from goes out with its text, so it is checked the same way.
     const found = [...new Set(sent(input).flatMap((text) => this.scanner.scan(text)))];
     if (found.length > 0) throw fail("assistant_secret_found", { labels: found.join(", ") });
@@ -264,6 +281,7 @@ export class AssistantController {
       profile,
       model: modelFor(this.current, "host", profile),
       ...(input.cwd ? { cwd: input.cwd } : {}),
+      ...(input.source ? { source: input.source } : {}),
     };
     const answer = await this.deps.request(hostId, "assistant.run", payload);
     if (!answer.ok) {
@@ -280,6 +298,7 @@ export class AssistantController {
     input: AssistantRunInput,
   ): Promise<AssistantResult> {
     const profile = profileFor(this.current, input.kind);
+    const repo = input.source ? await this.repoBundle(input, input.source) : undefined;
     const request = buildRequest({
       requestId: input.requestId,
       kind: input.kind,
@@ -287,10 +306,12 @@ export class AssistantController {
       ...(input.context ? { context: input.context } : {}),
       language: this.deps.language(),
       model: modelFor(this.current, provider, profile),
+      ...(repo ? { repo } : {}),
     });
     const secrets = this.deps.secrets();
     const ids = secrets.map((secret) => secret.id);
-    const hits = await this.deps.api.vaultHits(sent(input).join("\n"), ids);
+    const texts = [...sent(input), ...(repo ? repoTexts(repo) : [])];
+    const hits = await this.deps.api.vaultHits(texts.join("\n"), ids);
     if (hits.length > 0) {
       const names = secrets.filter((secret) => hits.includes(secret.id)).map((s) => s.name);
       throw fail("assistant_vault_value", { names: names.join(", ") });
@@ -299,6 +320,28 @@ export class AssistantController {
       provider,
       denyDataCollection: this.current.openrouterPrivate,
     });
+  }
+
+  /**
+   * The repo of a commit or PR message, from the field's host: the daemon leaves out what must
+   * not leave and refuses a bundle with a secret in it (#646), so the app never reads the repo.
+   */
+  private async repoBundle(
+    input: AssistantRunInput,
+    source: CommitSource,
+  ): Promise<AssistantContextBundle> {
+    const kind = input.kind.startsWith("pr.") ? "pr" : "commit";
+    const answer = await this.deps.request(input.fieldHostId ?? "", "assistant.context", {
+      kind,
+      source,
+    });
+    if (!answer.ok) {
+      throw fail(
+        answer.reason ?? "assistant_host_unavailable",
+        answer.reason ? answer.params : { detail: answer.message },
+      );
+    }
+    return answer.data as AssistantContextBundle;
   }
 
   private emit(): void {

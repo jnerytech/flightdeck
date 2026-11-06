@@ -1982,6 +1982,8 @@ export const ptBR = {
     assistant_auth: "O provedor recusou a chave. Confira em Configurações, Assistente.",
     assistant_credits: "O provedor diz que não há mais crédito nesta chave.",
     assistant_rate_limited: "Pedidos demais agora. Espere um pouco e tente de novo.",
+    assistant_repo_other_host:
+      "O host do assistente não é o host deste cartão e não lê o repositório dele. Escolha o host do cartão ou uma chave de API.",
     assistant_overloaded: "O provedor está sobrecarregado. Tente de novo em instantes.",
     assistant_routing_unavailable:
       "Nenhum provedor deste modelo no OpenRouter aceita o pedido sem coletar dados. Desligue a opção de dados em Configurações, ou escolha outro modelo.",
