@@ -23,7 +23,10 @@ const settle = waiter(10_000);
 
 async function costsPage(lang: "en" | "pt-BR", options: Parameters<typeof makeDaemon>[1] = {}) {
   const d = makeDaemon(cleanups, { roi: true, costs: true, ...options });
-  const store = new AppStore(memoryPlatform(false, lang).platform, { baseDelayMs: 60_000 });
+  const mem = memoryPlatform(false, lang);
+  // The card opens folded (issue #178); these tests read its details, so it starts open.
+  mem.win.localStorage.setItem("flightdeck.roiOpen", "true");
+  const store = new AppStore(mem.platform, { baseDelayMs: 60_000 });
   cleanups.push(() => store.dispose());
   render(<App store={store} />);
   await act(async () => {

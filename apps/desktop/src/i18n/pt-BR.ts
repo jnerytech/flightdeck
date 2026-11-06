@@ -259,6 +259,7 @@ export const ptBR = {
       derivation: "Como foi calculado",
     },
     title: "Retorno sobre o custo",
+    details: "Detalhes",
     period: "Período",
     period7: "7 dias",
     period30: "30 dias",
@@ -335,6 +336,7 @@ export const ptBR = {
       "Papéis de engenharia que o Claude assume numa sessão, do host {host}, dos projetos e do app.",
     apply: {
       trigger: "Persona",
+      none: "Nenhuma",
       active: "Persona ativa",
       label: "Aplicar nesta sessão (como instrução)",
       apply: "Aplicar",

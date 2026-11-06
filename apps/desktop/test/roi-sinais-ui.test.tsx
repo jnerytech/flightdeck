@@ -35,7 +35,10 @@ async function boardPage(
   const repo = join(d.root, "shop");
   mkdirSync(repo, { recursive: true });
   await Bun.spawn(["git", "init", "-q", repo]).exited;
-  const store = new AppStore(memoryPlatform(false, lang).platform, {
+  const mem = memoryPlatform(false, lang);
+  // The card opens folded (issue #178); these tests read its details, so it starts open.
+  mem.win.localStorage.setItem("flightdeck.roiOpen", "true");
+  const store = new AppStore(mem.platform, {
     baseDelayMs: 60_000,
     now: () => Date.parse("2026-10-14T12:00:00Z"),
     day: (ms) => new Date(ms).toISOString().slice(0, 10),
