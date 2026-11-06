@@ -125,6 +125,25 @@ describe("terminal-daemon", () => {
     expect(asked.ptys.spawned[0]?.env.TERM).toBe("screen");
   });
 
+  // Issue #486: in Claude Code's fullscreen mode each wheel notch reaches it as one report, and it
+  // moves by its own CLAUDE_CODE_SCROLL_SPEED; 3 matches what Windows Terminal and VS Code feel like.
+  test("Claude Code scrolls 3 lines a wheel notch unless the host or the client sets its speed", async () => {
+    const plain = setup();
+    await plain.open();
+    const host = setup({ env: () => ({ SHELL: "/bin/zsh", CLAUDE_CODE_SCROLL_SPEED: "7" }) });
+    await host.open();
+    const asked = setup();
+    await asked.manager.open({
+      cwd: asked.project,
+      cols: 80,
+      rows: 24,
+      env: { CLAUDE_CODE_SCROLL_SPEED: "1" },
+    });
+    expect(
+      [plain, host, asked].map((s) => s.ptys.spawned[0]?.env.CLAUDE_CODE_SCROLL_SPEED),
+    ).toEqual(["3", "7", "1"]);
+  });
+
   test("open com command abre esse argv, sem shell; cwd fora de allowedRoots e spawn que falha são recusados", async () => {
     const { manager, ptys, project, root } = setup();
     const info = await manager.open({
