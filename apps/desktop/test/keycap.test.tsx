@@ -75,11 +75,12 @@ describe("keycap: the one component that prints a key (issue #165)", () => {
 });
 
 describe("keycap: no screen draws its own (issue #165)", () => {
-  const root = join(import.meta.dir, "../src");
+  const root = join(import.meta.dir, "../src").replaceAll("\\", "/");
   const files = (dir: string): string[] =>
     readdirSync(join(root, dir), { withFileTypes: true, recursive: true })
       .filter((e) => e.isFile() && e.name.endsWith(".tsx"))
-      .map((e) => join(e.parentPath, e.name));
+      // One spelling of the separator, so the filters below read the same on Windows.
+      .map((e) => join(e.parentPath, e.name).replaceAll("\\", "/"));
 
   test("a kbd appears only in the keycap component (the vendored ui folder aside)", () => {
     const found = ["ui", "components"]
