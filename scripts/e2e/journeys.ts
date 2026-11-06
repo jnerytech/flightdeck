@@ -759,6 +759,64 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
       .click();
     await notice.waitFor({ state: "detached", timeout: SESSION_WAIT });
   },
+
+  // 24. In the host terminal: a selection can be copied from the menu (#475), and Shift+Enter alone
+  // sends ESC then CR, the new line Claude Code reads, while a plain Enter does not (#485).
+  "terminal-copy": async (c) => {
+    const marker = `fd-${c.lang}-${Date.now()}`;
+    const rows = c.page.locator(".xterm-rows");
+    const screen = async () => (await rows.first().textContent()) ?? "";
+    await c.page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await open(c, { name: "host", host: ALFA });
+    await c.page
+      .getByRole("tab", { name: c.t("hostHome.settings"), exact: true })
+      .first()
+      .click();
+    await c.page.getByRole("button", { name: c.t("hostTerminal.open"), exact: true }).click();
+    await c.page
+      .getByText(c.t("terminalUi.state.live"), { exact: true })
+      .waitFor({ timeout: WAIT });
+    // The shell draws its prompt before it reads: type only after something is on the screen.
+    await waitFor(async () => (await screen()).trim() !== "", "o prompt do shell");
+    await c.page.locator(".xterm").first().click();
+    await c.page.keyboard.type("PS1='$ '\n");
+    await c.page.keyboard.type(`echo ${marker}\n`);
+    await waitFor(
+      async () => (await screen()).split(marker).length - 1 >= 2,
+      "o eco do terminal",
+      WAIT * 2,
+    );
+
+    // Copy is off with nothing selected, and on after Select all: what the clipboard gets is the screen.
+    const area = c.page.locator("[data-terminal-area]");
+    const menu = c.page.getByRole("menu", { name: c.t("terminalUi.title"), exact: true });
+    const copy = menu.getByRole("button", { name: c.t("terminalUi.copy"), exact: true });
+    await area.click({ button: "right" });
+    await copy.waitFor({ timeout: WAIT });
+    if (await copy.isEnabled()) throw new Error("Copy deveria estar desligado sem seleção");
+    await menu.getByRole("button", { name: c.t("terminalUi.selectAll"), exact: true }).click();
+    await area.click({ button: "right" });
+    await waitFor(async () => copy.isEnabled(), "o Copiar ligado depois de selecionar");
+    await copy.click();
+    await waitFor(
+      async () => (await c.page.evaluate(() => navigator.clipboard.readText())).includes(marker),
+      "o texto selecionado na área de transferência",
+    );
+
+    // An ESC shows as "^[" twice: the terminal's echo of the key, then cat -v printing the byte it read.
+    await c.page.locator(".xterm").first().click();
+    await c.page.keyboard.type("cat -v\n");
+    await c.page.keyboard.press("Enter");
+    const echoed = async () => (await screen()).split("^[").length - 1;
+    if ((await echoed()) !== 0) throw new Error("o Enter simples não manda ESC");
+    await c.page.keyboard.press("Shift+Enter");
+    await waitFor(async () => (await echoed()) === 2, "o ESC do Shift+Enter");
+
+    // Ends it: the demo keeps its state, and the other language's run lists only its own.
+    await c.page.keyboard.press("Control+C");
+    await c.page.getByRole("button", { name: c.t("terminalUi.close"), exact: true }).click();
+    await c.page.getByRole("button", { name: c.t("terminalUi.end"), exact: true }).click();
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */

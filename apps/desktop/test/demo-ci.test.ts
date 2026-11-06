@@ -144,6 +144,7 @@ describe("demo-prints: axe e CI", () => {
       "update-card",
       "status-bar",
       "trust-revoke",
+      "terminal-copy",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([
