@@ -1082,10 +1082,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "flightdeck-assistant"
+version = "0.1.0"
+dependencies = [
+ "keyring",
+ "reqwest",
+ "rustls",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "flightdeck-desktop"
 version = "0.1.0"
 dependencies = [
  "dunce",
+ "flightdeck-assistant",
  "keyring",
  "serde",
  "serde_json",

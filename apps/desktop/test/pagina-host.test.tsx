@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { DAEMON_VERSION } from "../../daemon/src/server.ts";
+import { git } from "../../daemon/test/board-helpers.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { daemon as makeDaemon, memoryPlatform, TOKEN } from "./fixtures.ts";
 
@@ -58,6 +61,91 @@ async function setup(options: Parameters<typeof makeDaemon>[1] = {}) {
 }
 
 describe("pagina-host", () => {
+  test("a página abre nas sessões e projetos do host, e o resto fica em Visão geral, Consumo e Configurações", async () => {
+    const { project, manager, store } = await setup();
+    manager.create({ cwd: project, prompt: "primeira" });
+    await waitFor(() =>
+      expect(screen.queryByRole("region", { name: "Sessões de pc" })).not.toBeNull(),
+    );
+    const tabs = screen.getByRole("tablist", { name: "Seções do host" });
+    expect(
+      within(tabs)
+        .getAllByRole("tab")
+        .map((tab) => tab.textContent),
+    ).toEqual(["Visão geral", "Consumo", "Configurações"]);
+    expect(
+      within(tabs).getByRole("tab", { name: "Visão geral" }).getAttribute("aria-selected"),
+    ).toBe("true");
+    // Sessions, then projects, then the information; the settings are on their own tab.
+    const order = screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"));
+    expect(order.indexOf("Sessões de pc")).toBeLessThan(order.indexOf("Projetos de pc"));
+    expect(order.indexOf("Projetos de pc")).toBeLessThan(order.indexOf("Informações"));
+    // The settings are on a tab of their own: closed, its panel is hidden.
+    const settings = [...document.querySelectorAll("[role='tabpanel']")].find((panel) =>
+      panel.textContent?.includes("Reconectar"),
+    );
+    expect(settings?.getAttribute("data-state")).toBe("inactive");
+    expect(document.querySelectorAll("[role='tabpanel'][data-state='active']")).toHaveLength(1);
+    expect(store.getState().hosts).toHaveLength(1);
+  });
+
+  test("as abas respondem ao teclado, e Configurações traz hooks e as ações do host", async () => {
+    await setup();
+    const overview = screen.getByRole("tab", { name: "Visão geral" });
+    overview.focus();
+    await act(async () => {
+      fireEvent.keyDown(overview, { key: "ArrowRight" });
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "Consumo" }).getAttribute("aria-selected")).toBe(
+        "true",
+      ),
+    );
+    const settings = screen.getByRole("tab", { name: "Configurações" });
+    await act(async () => {
+      fireEvent.mouseDown(settings);
+      fireEvent.click(settings);
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Reconectar" })).not.toBeNull(),
+    );
+    expect(screen.queryByRole("region", { name: "Hooks do Claude Code" })).not.toBeNull();
+  });
+
+  test("Ver todas as sessões e Ver todos os projetos levam à lista com o filtro do host", async () => {
+    const { store, hostId, project, manager, root } = await setup();
+    manager.create({ cwd: project, prompt: "uma" });
+    const repo = join(root, "repo");
+    mkdirSync(repo);
+    git(repo, "init", "-q", "-b", "main");
+    git(repo, "config", "commit.gpgsign", "false");
+    writeFileSync(join(repo, "README.md"), "# repo\n");
+    git(repo, "add", ".");
+    git(repo, "commit", "-q", "-m", "inicial");
+    await act(async () => {
+      await store.hostCommand(hostId, "project.add", { path: repo });
+      await store.loadPalette();
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Ver todas as sessões" })).not.toBeNull(),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Ver todas as sessões" }));
+    });
+    expect(store.hubFilter().host).toBe("pc");
+    expect(store.router.current.name).toBe("hub");
+    await act(async () => {
+      store.router.push({ name: "host", host: hostId });
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Ver todos os projetos" })).not.toBeNull(),
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Ver todos os projetos" }));
+    });
+    expect(store.router.current).toEqual({ name: "all-projects", host: hostId });
+  });
+
   test("mostra os dados do host.info e a latência do último ping", async () => {
     await setup();
     expect(screen.queryByRole("heading", { name: "pc" })).not.toBeNull();
@@ -96,6 +184,10 @@ describe("pagina-host", () => {
     const { store } = await setup();
     const statuses: string[] = [];
     store.subscribe(() => statuses.push(store.getState().hosts[0]?.status ?? "-"));
+    await act(async () => {
+      fireEvent.mouseDown(screen.getByRole("tab", { name: "Configurações" }));
+      fireEvent.click(screen.getByRole("tab", { name: "Configurações" }));
+    });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Reconectar" }));
     });

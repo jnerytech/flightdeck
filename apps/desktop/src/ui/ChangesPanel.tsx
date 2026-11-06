@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/i18n/context";
 import { refusalText } from "@/i18n/errors";
 import type { AppStore } from "../lib/app-store.ts";
+import { formatBytes } from "../lib/format-bytes.ts";
 import { type Selection, select } from "../lib/review.ts";
 import { ConfirmDialog } from "./ConfirmDialog.tsx";
 import { DiffView } from "./DiffView.tsx";
@@ -29,14 +30,16 @@ interface Undo {
  * plain editor and the sessions that wrote each file. It follows the disk through the host's
  * watcher.
  */
-export function ChangesPanel(props: {
-  store: AppStore;
-  hostId: string;
-  /** The review target: "session:" plus the Claude Code id, or "card:" plus the card id. */
-  target: string;
-  /** Something above the files (a card's position against its base, its PR); gets the answer. */
-  extra?: (changes: ChangesResult, refresh: () => Promise<void>) => ReactNode;
-}) {
+export function ChangesPanel(
+  props: Readonly<{
+    store: AppStore;
+    hostId: string;
+    /** The review target: "session:" plus the Claude Code id, or "card:" plus the card id. */
+    target: string;
+    /** Something above the files (a card's position against its base, its PR); gets the answer. */
+    extra?: (changes: ChangesResult, refresh: () => Promise<void>) => ReactNode;
+  }>,
+) {
   const t = useT();
   const { store, hostId, target } = props;
   const [changes, setChanges] = useState<ChangesResult | null>(null);
@@ -168,9 +171,14 @@ export function ChangesPanel(props: {
   const fileRow = (file: DiffFile, root: string) => (
     <li key={`${file.path}:${file.uncommitted}`} className="flex items-center gap-2">
       <span className="font-mono text-xs">{file.path}</span>
-      <span className="text-muted-foreground text-xs tabular-nums">{`+${file.additions} −${file.deletions}`}</span>
+      <span className="text-muted-foreground text-xs tabular-nums">
+        {file.tooLarge && file.additions + file.deletions === 0 && file.bytes !== undefined
+          ? formatBytes(file.bytes)
+          : `+${file.additions} −${file.deletions}`}
+      </span>
       <Badge variant="outline">{t(`changes.status.${file.status}`)}</Badge>
       {file.binary && <Badge variant="outline">{t("changes.binary")}</Badge>}
+      {file.tooLarge && <Badge variant="outline">{t("changes.tooLarge")}</Badge>}
       {file.uncommitted && (
         <Badge variant="outline" className="text-status-needs-you">
           {t("diff.uncommitted")}
@@ -210,6 +218,13 @@ export function ChangesPanel(props: {
   if (changes === null) {
     return <p className="text-muted-foreground text-sm">{t("changes.loading")}</p>;
   }
+  // A file can be shown in the folder only where the host's paths are the machine's own.
+  const folder = store.canOpenPaths(hostId)
+    ? {
+        onShowInFolder: (file: DiffFile) =>
+          void store.revealPath(hostId, `${changes.root}/${file.path}`),
+      }
+    : {};
   return (
     <section aria-label={t("changes.region")} className="flex flex-col gap-4">
       {props.extra?.(changes, refresh)}
@@ -257,6 +272,7 @@ export function ChangesPanel(props: {
             selection={selection}
             onPick={onPick}
             composer={composer}
+            {...folder}
           />
         </>
       )}

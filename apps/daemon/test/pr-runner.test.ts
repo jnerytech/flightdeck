@@ -55,7 +55,7 @@ describe("pr-runner: a provider given a command runner starts no process", () =>
     expect(url).toBe(`${AZ_WEB}/pullrequest/12`);
     expect(await provider.status({ cwd, url })).toEqual({ state: "open", checks: "passing" });
     expect(started.count()).toBe(0);
-    expect(ran.length).toBe(4);
+    expect(ran).toHaveLength(4);
     expect(ran.every((bin) => bin.startsWith(az.dir))).toBe(true);
     // The description reaches az as its .cmd would get it: one line, no %.
     const create = az.calls()[1] ?? [];
@@ -95,6 +95,6 @@ describe("pr-runner: a provider given a command runner starts no process", () =>
     });
     expect(status).toEqual({ state: "merged", checks: null });
     expect(started.count()).toBe(2);
-    expect(az.calls().length).toBe(2);
+    expect(az.calls()).toHaveLength(2);
   });
 });

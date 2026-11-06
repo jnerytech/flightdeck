@@ -270,7 +270,7 @@ describe("cobertura-0330: project finder, ssh agent", () => {
     const ops = processOps(undefined, undefined, async (ms) => void slept.push(ms));
     expect(await ops.waitForSocket(sock)).toBe(true);
     expect(await ops.waitForSocket(join(dir, "never.sock"))).toBe(false);
-    expect(slept.length).toBe(40);
+    expect(slept).toHaveLength(40);
     symlinkSync(sock, join(dir, "link"));
   });
 });

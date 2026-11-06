@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { realTempDir } from "../../../scripts/test/temp-dir.ts";
 import { liveScreen, registerDom } from "./dom.ts";
 import { memoryPlatform } from "./fixtures.ts";
 import { snippetsHost } from "./snippets-ui-setup.ts";
@@ -29,7 +29,7 @@ const ENV_LINE = `release --auth "${ENV_VALUE}"`;
 
 /** A fixture bash history (never the real one) and a vault holding one value that appears in it. */
 async function open() {
-  const dir = mkdtempSync(join(tmpdir(), "fd-hist-"));
+  const dir = realTempDir("fd-hist-");
   const bash = join(dir, "bash_history");
   writeFileSync(
     bash,
@@ -86,7 +86,7 @@ describe("snippets-ui: import from the shell history", () => {
     expect(texts[0]).toContain("3×");
     expect(texts[1]).toContain("bun test");
     expect(screen.queryByLabelText("git status")).not.toBeNull();
-    expect(screen.queryByText("Linha oculta: token do GitHub")).not.toBeNull();
+    expect(screen.queryByText("Linha oculta: token do GitHub, senha na linha")).not.toBeNull();
     expect(screen.queryAllByText("Linha oculta: valor do cofre").length).toBeGreaterThan(0);
     expect(lines().filter((li) => li.querySelector("input[type=checkbox]") === null)).toHaveLength(
       3,

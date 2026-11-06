@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { startServer } from "../src/server.ts";
 import { newBoard } from "./board-helpers.ts";
+import { BASELINE_FEATURES } from "./helpers.ts";
 import { FrameClient } from "./history-helpers.ts";
 
 setDefaultTimeout(20_000);
@@ -47,13 +48,13 @@ describe("deps-protocol: over the wire", () => {
     const on = await serve();
     expect(
       (await on.client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).toContain("deps");
     const off = await serve(false);
     expect(
       (await off.client.data<{ features: string[] }>("host.info", {}))?.features.filter(
-        (name) => name !== "session.images",
+        (name) => !BASELINE_FEATURES.includes(name),
       ),
     ).not.toContain("deps");
   });

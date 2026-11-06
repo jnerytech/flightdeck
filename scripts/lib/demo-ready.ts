@@ -18,9 +18,9 @@ export async function waitUsageLoaded(
   const deadline = Date.now() + timeoutMs;
   let last: UsageLoad | null = null;
   while (Date.now() < deadline) {
-    last = await status();
+    last = await status(); // NOSONAR: sequential by design: each pass needs the answer of the one before
     if (last?.state === "done") return;
-    await Bun.sleep(pollMs);
+    await Bun.sleep(pollMs); // NOSONAR: poll interval: the wait between looks is the point of this loop
   }
   throw new Error(
     `the usage's first pass did not end in ${timeoutMs} ms (${JSON.stringify(last)})`,

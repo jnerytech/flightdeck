@@ -3,6 +3,8 @@
 //! forwarding, the terminal of "Abrir no terminal", and the official plugins (notifications,
 //! deep links, opener).
 
+mod assistant;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::menu::{Menu, MenuItem, Submenu};
@@ -13,7 +15,7 @@ const KEYRING_SERVICE: &str = "dev.flightdeck.app";
 
 /// Runs blocking work (the credential store, a PATH walk, a process spawn) on the blocking pool:
 /// a plain `async fn` still holds one of the runtime's few workers while it waits.
-async fn spawn_blocking_result<T: Send + 'static>(
+pub(crate) async fn spawn_blocking_result<T: Send + 'static>(
     work: impl FnOnce() -> Result<T, String> + Send + 'static,
 ) -> Result<T, String> {
     tauri::async_runtime::spawn_blocking(work)
@@ -61,7 +63,7 @@ const VAULT_SERVICE: &str = "flightdeck-vault";
 /// The Windows credential store keeps at most 2560 bytes per entry, and `keyring` writes UTF-16.
 const WINDOWS_CREDENTIAL_MAX_BYTES: usize = 2560;
 
-fn vault_entry(id: &str) -> Result<keyring::Entry, String> {
+pub(crate) fn vault_entry(id: &str) -> Result<keyring::Entry, String> {
     keyring::Entry::new(VAULT_SERVICE, id).map_err(|e| e.to_string())
 }
 
@@ -206,7 +208,7 @@ async fn vault_pick_file(
         let path = picked.into_path().map_err(|e| e.to_string())?;
         // Bounded while reading, so a file that grows (or a device) cannot get past the cap.
         let mut text = String::new();
-        std::fs::File::open(&path)
+        std::fs::File::open(&path) // NOSONAR: runs inside spawn_blocking_result, on the blocking pool
             .map_err(|e| e.to_string())?
             .take(PICKED_FILE_MAX_BYTES + 1)
             .read_to_string(&mut text)
@@ -341,6 +343,20 @@ async fn open_result(app: tauri::AppHandle, path: String, reveal: bool) -> Resul
         }
     })
     .await
+}
+
+#[cfg(test)]
+mod badge_tests {
+    use super::*;
+
+    #[test]
+    fn the_badge_is_nothing_or_exactly_32_by_32_rgba() {
+        assert!(badge_image_ok(0));
+        assert!(badge_image_ok(32 * 32 * 4));
+        assert!(!badge_image_ok(1));
+        assert!(!badge_image_ok(32 * 32 * 3));
+        assert!(!badge_image_ok(32 * 32 * 4 + 1));
+    }
 }
 
 #[cfg(test)]
@@ -506,8 +522,11 @@ async fn vault_remove_file(path: String, state: State<'_, PickedFile>) -> Result
         picked.take()
     };
     if let Some(stored) = stored {
-        spawn_blocking_result(move || std::fs::remove_file(&stored).map_err(|e| e.to_string()))
-            .await?;
+        spawn_blocking_result(move || {
+            std::fs::remove_file(&stored) // NOSONAR: inside spawn_blocking_result, on the blocking pool
+                .map_err(|e| e.to_string())
+        })
+        .await?;
     }
     Ok(())
 }
@@ -609,6 +628,31 @@ fn tray_set_menu(
     Ok(())
 }
 
+/// Issue #402: how long Quit waits for the app (it may be installing a downloaded update) before
+/// the shell exits anyway. An emit succeeds even with no page listening (before the app has started,
+/// or after it crashed), so this wait is also what such a Quit costs: kept short.
+const QUIT_GRACE: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// The tray's Quit: the app is asked first and calls `quit_now` when it is done; if the event cannot
+/// be sent at all the shell exits at once, and otherwise after `QUIT_GRACE` at the latest.
+fn request_quit(app: &tauri::AppHandle) {
+    if app.emit("quit-requested", ()).is_err() {
+        app.exit(0);
+        return;
+    }
+    let handle = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(QUIT_GRACE);
+        handle.exit(0);
+    });
+}
+
+/// Issue #402: the app finished what Quit asked of it (an update installed, or nothing to do).
+#[tauri::command]
+fn quit_now(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
 /// Approve and deny go to the frontend, which answers without showing the window; open shows it.
 fn on_tray_action(app: &tauri::AppHandle, id: &str) {
     let Some((action, key)) = id
@@ -641,6 +685,41 @@ fn tray_set_status(
         .map_err(|e| e.to_string())?;
     if let Some(tray) = app.tray_by_id("main") {
         tray.set_tooltip(Some(tooltip)).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// The overlay the app draws on its taskbar button: 32 x 32 pixels of RGBA.
+const BADGE_BYTES: usize = 32 * 32 * 4;
+
+/// Whether `len` bytes are a picture the overlay can show: none (clear it) or exactly 32 x 32 RGBA.
+fn badge_image_ok(len: usize) -> bool {
+    len == 0 || len == BADGE_BYTES
+}
+
+/// Shows the unread count on the taskbar button of the main window (Windows). The webview draws the
+/// picture; this only checks its size and hands it over, so the webview has no window permission of
+/// its own for the overlay. An empty picture clears the badge. Other systems have no such badge.
+#[tauri::command]
+fn set_unread_badge(app: tauri::AppHandle, rgba: Vec<u8>) -> Result<(), String> {
+    if !badge_image_ok(rgba.len()) {
+        return Err("the badge must be 32 x 32 RGBA".into());
+    }
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "no main window".to_string())?;
+    #[cfg(windows)]
+    {
+        let icon = if rgba.is_empty() {
+            None
+        } else {
+            Some(tauri::image::Image::new_owned(rgba, 32, 32))
+        };
+        window.set_overlay_icon(icon).map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (window, rgba);
     }
     Ok(())
 }
@@ -732,7 +811,7 @@ fn build_tray(app: &tauri::App) -> tauri::Result<TrayState> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "open" => bring_to_front(app),
-            "quit" => app.exit(0),
+            "quit" => request_quit(app),
             id => on_tray_action(app, id),
         })
         .on_tray_icon_event(|tray, event| {
@@ -798,6 +877,7 @@ pub fn run() {
         // webview has no `dialog:*` permission.
         .plugin(tauri_plugin_dialog::init())
         .manage(PickedFile::default())
+        .manage(assistant::Assistant::default())
         .setup(|app| {
             // Registers the scheme at runtime too, so dev builds work without an installer.
             #[cfg(any(windows, target_os = "linux"))]
@@ -833,10 +913,20 @@ pub fn run() {
             vault_remove_file,
             tray_set_status,
             tray_set_menu,
+            set_unread_badge,
             set_close_to_tray,
             focus_main,
             terminal_probe,
-            terminal_open
+            terminal_open,
+            quit_now,
+            assistant::assistant_key_set,
+            assistant::assistant_key_status,
+            assistant::assistant_key_delete,
+            assistant::assistant_test,
+            assistant::assistant_models,
+            assistant::assistant_run,
+            assistant::assistant_cancel,
+            assistant::vault_hits
         ])
         .run(tauri::generate_context!())
         .expect("error while running Flightdeck");
