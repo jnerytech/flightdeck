@@ -1,15 +1,16 @@
 import type { Database } from "bun:sqlite";
-import { readFile } from "node:fs/promises";
+import { readFile, realpath } from "node:fs/promises";
 import { inSequence } from "@flightdeck/protocol";
 import type { Board } from "../board/board.ts";
 import { git } from "../board/command.ts";
 import { refArg } from "../board/ref-arg.ts";
 import { type Central, messageExternal } from "../central/central.ts";
 import { FlightdeckError } from "../errors.ts";
+import { credential } from "../permissions/sensitive-paths.ts";
 import type { SessionManager } from "../sessions/session-manager.ts";
 import { ulid } from "../ulid.ts";
 import type { Changes, ResolvedTarget } from "./changes.ts";
-import { fileInRoot, linesOf } from "./paths.ts";
+import { linesOf, located, refuseCredential } from "./paths.ts";
 
 export interface ReviewCommentsOptions {
   db: Database;
@@ -136,10 +137,16 @@ export class ReviewComments {
     this.now = opts.now ?? Date.now;
   }
 
-  /** The file's lines on one side of the diff; `null` when it is not there. */
+  /**
+   * The file's lines on one side of the diff; `null` when it is not there. A credential file and a
+   * link out of the repository are refused, as `file.read` refuses them (issue #509).
+   */
   private async content(resolved: ResolvedTarget, path: string, side: "new" | "old") {
-    const full = fileInRoot(resolved.root, path);
-    if (side === "new") return readFile(full, "utf8").then(linesOf, () => null);
+    const where = await located(resolved.root, await realpath(resolved.root), path);
+    refuseCredential(where, path);
+    if (side === "new") {
+      return where.real ? readFile(where.real, "utf8").then(linesOf, () => null) : null;
+    }
     const object = `${refArg(resolved.base ?? "HEAD")}:${path.replaceAll("\\", "/")}`;
     const shown = await git(resolved.root, "show", "--end-of-options", object);
     return shown.code === 0 ? linesOf(shown.stdout) : null;
@@ -156,7 +163,12 @@ export class ReviewComments {
     const resolved = await this.opts.changes.resolve(target).catch(() => null);
     const comments: ReviewComment[] = [];
     await inSequence(rows, async (row) => {
-      const lines = resolved ? await this.content(resolved, row.path, row.side) : null;
+      // One saved on a credential file before issue #509 lists without its quote, as outdated.
+      const secret = credential(row.path);
+      const lines =
+        resolved && !secret
+          ? await this.content(resolved, row.path, row.side).catch(() => null)
+          : null;
       const quote = linesOf(row.quote);
       const start = lines ? anchor(lines, quote, row.line_start) : null;
       if (start !== null && start !== row.line_start) {
@@ -166,7 +178,7 @@ export class ReviewComments {
           .query("UPDATE review_comments SET line_start = ?, line_end = ? WHERE id = ?")
           .run(row.line_start, row.line_end, row.id);
       }
-      comments.push(toComment(row, start === null));
+      comments.push(toComment(secret ? { ...row, quote: "" } : row, start === null));
     });
     return comments;
   }

@@ -9,17 +9,17 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises";
-import { dirname, join, relative } from "node:path";
+import { dirname, join } from "node:path";
 import { inSequence } from "@flightdeck/protocol";
 import { git } from "../board/command.ts";
 import { refArg } from "../board/ref-arg.ts";
 import { must } from "../board/worktree.ts";
 import { FlightdeckError } from "../errors.ts";
-import { isInside, resolveAllowedCwd } from "../paths.ts";
-import { credential } from "../permissions/sensitive-paths.ts";
+import { resolveAllowedCwd } from "../paths.ts";
+import { readRegularSized } from "../read-regular.ts";
 import { ulid } from "../ulid.ts";
 import type { Changes } from "./changes.ts";
-import { fileInRoot } from "./paths.ts";
+import { type Located, located, refuseCredential } from "./paths.ts";
 
 export interface ReviewFilesOptions {
   changes: Changes;
@@ -76,13 +76,15 @@ export class ReviewFiles {
     // Any target can be read, inside allowedRoots or not, but only inside its own repository.
     const where = await located(root, await realpath(root), path);
     refuseCredential(where, path);
-    const bytes = await bytesOrNull(where.full);
-    if (!bytes) {
+    // The resolved path, opened without following a link: one swapped in after the check is refused.
+    const read = where.real ? await readRegularSized(where.real, MAX_BYTES + 1) : null;
+    if (!read) {
       throw new FlightdeckError("not_found", `${path} does not exist`, "review_file_missing", {
         path,
       });
     }
-    if (bytes.length > MAX_BYTES) {
+    const bytes = read.data;
+    if (read.size > MAX_BYTES) {
       throw new FlightdeckError(
         "bad_request",
         `${path} is over 1 MB: edit it outside Flightdeck`,
@@ -230,42 +232,5 @@ export class ReviewFiles {
   private async writable(target: string, path: string): Promise<Located> {
     const { root } = await this.opts.changes.resolve(target);
     return located(root, await resolveAllowedCwd(root, this.opts.allowedRoots), path);
-  }
-}
-
-interface Located {
-  full: string;
-  /** Where its links lead; `null` when the file is not there. */
-  real: string | null;
-  realRoot: string;
-}
-
-/** A file of the repository and where it really is: refused when a link takes it out of the repository. */
-async function located(root: string, realRoot: string, path: string): Promise<Located> {
-  const full = fileInRoot(root, path);
-  const real = await realpath(full).catch(() => null);
-  if (real && !isInside(realRoot, real)) {
-    throw new FlightdeckError(
-      "forbidden_cwd",
-      `${path} points outside the repository`,
-      "review_path_link",
-      { path },
-    );
-  }
-  return { full, real, realRoot };
-}
-
-/**
- * Refuses a file that may hold a credential (the list of issue #449), named by the path asked for
- * or by where its links lead (issue #509): Flightdeck neither shows nor changes it.
- */
-function refuseCredential({ real, realRoot }: Located, path: string): void {
-  if (credential(path) || (real !== null && credential(relative(realRoot, real)))) {
-    throw new FlightdeckError(
-      "bad_request",
-      `${path} may hold a credential`,
-      "review_file_secret",
-      { path },
-    );
   }
 }
