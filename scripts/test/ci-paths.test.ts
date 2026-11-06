@@ -88,16 +88,17 @@ describe("ci-paths: the rules", () => {
   });
 
   test("the app, the protocol, the dependencies or the workflow run everything but cargo", () => {
-    const all = { ...FULL, cargo: false };
-    for (const path of [
-      "apps/desktop/src/ui/App.tsx",
-      "packages/protocol/src/index.ts",
-      "package.json",
-      "bun.lock",
-      "bunfig.toml",
-      "tsconfig.base.json",
-      ".github/workflows/ci.yml",
-    ]) {
+    // A file every test reads also runs the whole suite on Windows, in three shards (#444).
+    for (const [path, windowsShards] of [
+      ["apps/desktop/src/ui/App.tsx", 1],
+      ["packages/protocol/src/index.ts", 1],
+      ["package.json", 3],
+      ["bun.lock", 3],
+      ["bunfig.toml", 3],
+      ["tsconfig.base.json", 3],
+      [".github/workflows/ci.yml", 1],
+    ] as const) {
+      const all = { ...FULL, cargo: false, windowsShards };
       expect(`${path}: ${JSON.stringify(ciPlan(PR, [path]))}`).toBe(
         `${path}: ${JSON.stringify(all)}`,
       );
@@ -105,7 +106,10 @@ describe("ci-paths: the rules", () => {
   });
 
   test("the Tauri shell runs everything and cargo", () => {
-    expect(ciPlan(PR, ["apps/desktop/src-tauri/src/lib.rs"])).toEqual(FULL);
+    expect(ciPlan(PR, ["apps/desktop/src-tauri/src/lib.rs"])).toEqual({
+      ...FULL,
+      windowsShards: 1,
+    });
   });
 
   test("a push to main, a run by hand or a diff that cannot be read runs everything", () => {
@@ -203,9 +207,7 @@ describe("ci-paths: the workflow", () => {
 
   test("the e2e journeys run in three Playwright shards, each with its own artifacts", () => {
     expect(job("screenshots-e2e").strategy?.matrix?.shard).toEqual([1, 2, 3]);
-    expect(runs("screenshots-e2e")).toContain(
-      "bun run e2e -- --shard=${{ matrix.shard }}/3",
-    );
+    expect(runs("screenshots-e2e")).toContain("bun run e2e -- --shard=${{ matrix.shard }}/3");
     const names = job("screenshots-e2e")
       .steps.map((s) => s.with?.name ?? "")
       .filter(Boolean);
