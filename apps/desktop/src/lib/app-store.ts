@@ -135,6 +135,7 @@ import { externalRequestNotification, summaryNotifications } from "./notify.ts";
 import { pairingErrorText } from "./pairing-text.ts";
 import { basename } from "./paths.ts";
 import { probeHost } from "./probe-host.ts";
+import type { WorktreeFilter } from "./project-tree.ts";
 import { isHot } from "./quota.ts";
 import { type RelayDeps, relayMessage, relayUpdate, syncPeers } from "./relay.ts";
 import { parseRequestLink, requestLink } from "./request-link.ts";
@@ -182,6 +183,7 @@ import { TerminalFontController, TerminalReaderSetting } from "./terminal-view.t
 import { ThemeController } from "./theme.ts";
 import { loadTileLayout, saveTileLayout, type TileLayout } from "./tiles.ts";
 import { TRAY_MENU_DELAY_MS, trayMenu, trayStatus } from "./tray.ts";
+import { loadTreeFolded, saveTreeFolded } from "./tree-fold.ts";
 import { type NewKey, type NewSecret, type SecretMeta, type SecretPatch, Vault } from "./vault.ts";
 import { actionPolicy, type VaultAnswer } from "./vault-approval.ts";
 import type { ConflictChoice, ImportPreview, ImportResult } from "./vault-backup.ts";
@@ -321,6 +323,8 @@ export interface AppState {
   clientList: Client[];
   /** Phase 36: counts the saves of `store.roi`, so the screens that read its settings render again. */
   roiRevision: number;
+  /** The checkout picked in the sidebar tree: it narrows the board and the Sessions list (issue #116). */
+  worktreeFilter: WorktreeFilter | null;
   /** Phase 29: projects pinned to a client by hand (null: pinned to Unassigned). */
   clientOverrides: Record<string, string | null>;
   /** Phase 29: "all", "unassigned" or a client id; what the work screens show. */
@@ -979,6 +983,7 @@ export class AppStore {
       projects: {},
       clientList: this.clients.list(),
       roiRevision: 0,
+      worktreeFilter: null,
       clientOverrides: this.clients.overrides(),
       clientSelection: loadSelection(platform.storage, this.clients.list()),
       clientBudgets: [],
@@ -1564,6 +1569,15 @@ export class AppStore {
     saveFolded(this.platform.storage, folded);
   }
 
+  /** The projects folded in the sidebar's tree (`hostId/projectId`); kept across starts. */
+  treeFolded(): string[] {
+    return loadTreeFolded(this.platform.storage);
+  }
+
+  setTreeFolded(folded: readonly string[]): void {
+    saveTreeFolded(this.platform.storage, folded);
+  }
+
   /** Whether a file of the host can be opened here: the app can, and the host runs on this machine. */
   canOpenPaths(hostId: string): boolean {
     const host = this.state.hosts.find((h) => h.id === hostId);
@@ -1704,8 +1718,8 @@ export class AppStore {
     for (const session of sessions) {
       try {
         if (!conn) throw new Error("offline");
-        await conn.request("session.resume", { sessionId: session.sessionId });
-        await conn.request("session.send", { sessionId: session.sessionId, text: CONTINUATION });
+        await conn.request("session.resume", { sessionId: session.sessionId }); // NOSONAR: sequential by design: a session is resumed before it is sent to, one session at a time
+        await conn.request("session.send", { sessionId: session.sessionId, text: CONTINUATION }); // NOSONAR: sequential by design: the continuation goes only after the resume answered
         result[session.sessionId] = { ok: true };
         markHandled(this.platform.storage, hostId, [offerKey(session)]);
       } catch (error) {
@@ -1847,6 +1861,11 @@ export class AppStore {
   /** Keeps a host's projects in the state: the palette lists them, and clients place them. */
   rememberProjects(hostId: string, projects: Project[]): void {
     this.update({ projects: { ...this.state.projects, [hostId]: projects } });
+  }
+
+  /** Picks the checkout the board and the Sessions list narrow to, or clears it. */
+  setWorktreeFilter(filter: WorktreeFilter | null): void {
+    this.update({ worktreeFilter: filter });
   }
 
   /** The key of a project of a host: the daemon's, else the one its folder would have. */

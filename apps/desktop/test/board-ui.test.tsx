@@ -393,6 +393,33 @@ describe("board-ui", () => {
     expect(column("Backlog")).toHaveLength(3);
   });
 
+  test("um branch escolhido na árvore da barra lateral reduz o board aos seus cards, com um chip que limpa (issue #116)", async () => {
+    const { repo, store } = await setup();
+    await openBoard(repo);
+    await createCard("Sem worktree");
+    const hostId = store.getState().hosts[0]?.id as string;
+    const project = store.getState().projects[hostId]?.[0] as { id: string; path: string };
+    const pick = (kind: "primary" | "worktree", path: string, branch: string) =>
+      act(async () => {
+        store.setWorktreeFilter({ hostId, projectId: project.id, kind, path, branch });
+      });
+    // The main checkout keeps the cards that have no worktree.
+    await pick("primary", project.path, "main");
+    await settle(() => screen.queryByText("Branch: main") !== null);
+    expect(column("Backlog")).toEqual(["Sem worktree"]);
+    // A worktree no card has is not there: the filter is inert, no chip and every card shows.
+    await pick("worktree", "/wt/outro", "fd/outro");
+    await settle(() => screen.queryByText("Branch: main") === null);
+    expect(screen.queryByText("Branch: fd/outro")).toBeNull();
+    expect(column("Backlog")).toEqual(["Sem worktree"]);
+    await pick("primary", project.path, "main");
+    await settle(() => screen.queryByText("Branch: main") !== null);
+    await click("Limpar o filtro de branch");
+    expect(store.getState().worktreeFilter).toBeNull();
+    expect(screen.queryByText("Branch: main")).toBeNull();
+    expect(column("Backlog")).toEqual(["Sem worktree"]);
+  });
+
   test("Concluir e Descartar pedem confirmação; Descartar avisa das alterações não enviadas", async () => {
     const { repo, board } = await setup();
     await openBoard(repo);

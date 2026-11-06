@@ -896,6 +896,14 @@ sessões ao vivo; a lista é a do projeto, então uma sessão de outro projeto n
   Equipes acaba na 0.39, o Novo de Conversas na 0.38). Um grupo sem nada a oferecer não aparece, os grupos dobrados são lembrados (um grupo **Máquinas** dobrado mostra
   uma marca de aviso no título enquanto uma máquina está offline, sem uma dependência obrigatória ou
   repassando a chave de API), e o trilho estreito de ícones não tem títulos.
+- Em **Projetos**, cada projeto de um host online lista seus **branches**: o checkout principal
+  (selo **principal**, o branch base) e uma linha por card que tem worktree, cada uma com o pontinho
+  de estado, o branch e a base logo abaixo. Escolher um reduz o board e a lista de Sessões àquele
+  checkout (um chip com o branch limpa); escolher de novo também limpa. Escolhido na lista de Sessões, ele reduz a lista ali mesmo, sem abrir o board; de outro lugar, abre o board do projeto. Uma escolha cujo branch, projeto ou host sumiu não faz nada e não mostra chip. A árvore vem do que o app já
+  tem, sem mudar o host. Um projeto com muitas worktrees lista as 8 primeiras e um botão **mais N**
+  (e **Mostrar menos**) para o resto; o branch escolhido sempre aparece. O nome do projeto dobra
+  seus branches (as setas esquerda e direita dobram e desdobram); a dobra é lembrada neste
+  computador, e um projeto dobrado que guarda o branch escolhido mostra uma marca no nome.
 - No pé da barra, **Configurações** é um item visível (marcado enquanto as Configurações estão
   abertas), e a conta do Claude (e-mail e plano, lidos do cartão da conta do host; o trilho mostra só
   a inicial) abre um menu. O cabeçalho dele diz o nome do app e a versão. Depois vêm o plano, a conta
