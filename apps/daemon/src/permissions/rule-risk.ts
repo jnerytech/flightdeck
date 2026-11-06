@@ -268,7 +268,9 @@ export async function pathKinds(
     normalize(
       path.startsWith("~/") ? join(home, path.slice(2)) : isAbsolute(path) ? path : join(cwd, path),
     );
-  const created = target === undefined ? undefined : at(target);
+  // A tool writes a relative path under its folder: the target never gets the `~/` reading.
+  const created =
+    target === undefined ? undefined : normalize(isAbsolute(target) ? target : join(cwd, target));
   const network = (path: string) => /^(?:\/\/|\\\\)/.test(path);
   const timed = (where: string) =>
     new Promise<"dir" | "file" | "missing">((resolve) => {
