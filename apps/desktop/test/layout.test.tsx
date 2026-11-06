@@ -260,6 +260,13 @@ describe("layout", () => {
     );
   });
 
+  test("Page: the header and the title are named page-header and page-title, for the narrow-window guard (#641)", () => {
+    render(<Page title="Projeto">body</Page>);
+    const title = screen.getByRole("heading", { name: "Projeto" });
+    expect(title.getAttribute("data-slot")).toBe("page-title");
+    expect(title.closest("[data-slot='page-header']") !== null).toBe(true);
+  });
+
   test("Page: the body positions what it holds, so an sr-only caption scrolls inside it and cannot stretch the screen (#640)", () => {
     render(
       <Page title="Host">

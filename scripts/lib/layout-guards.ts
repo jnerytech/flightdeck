@@ -19,12 +19,17 @@ export type Rule =
   | "card-gap"
   | "card-padding"
   | "text-spill"
-  | "chip-gap";
+  | "chip-gap"
+  | "overflow-x"
+  | "nested-scroll"
+  | "header-clipped";
 
 export interface Finding {
   rule: Rule;
   /** The culprit's nearest `data-slot` names, then its tag and class when it has none. */
   path: string;
+  /** The path with no numbers, for the spacing and narrow rules (#641): their baseline counts by it. */
+  group?: string;
   detail: string;
 }
 
@@ -64,6 +69,7 @@ export interface GuardOptions {
   bars?: Array<{ selector: string; maxHeight: number }>;
   gaps?: GapRule[];
   spacing?: SpacingRules;
+  responsive?: ResponsiveRules;
   /** Regions (by `data-slot`) that scroll as one area: at most one element in each may scroll vertically. */
   single?: string[];
 }
@@ -78,11 +84,14 @@ export interface GuardOptions {
 export function layoutFindings(options: GuardOptions = {}): Finding[] {
   const found: Finding[] = [];
   const seen = new Set<string>();
+  /** A numbered path and the same path with no numbers, which the count baselines key by (#641). */
+  const groups = new Map<string, string>();
   const add = (rule: Rule, path: string, detail: string) => {
     const key = `${rule}|${path}`;
     if (seen.has(key)) return;
     seen.add(key);
-    found.push({ rule, path, detail });
+    const group = groups.get(path);
+    found.push(group === undefined ? { rule, path, detail } : { rule, path, group, detail });
   };
   const slotOf = (el: Element) => el.getAttribute("data-slot");
   /** An element with no data-slot: its tag and first class. */
@@ -119,7 +128,9 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
         names.unshift(numbered(name, at, peers));
       }
     }
-    return names.slice(-4).join(" > ") || el.tagName.toLowerCase();
+    const path = names.slice(-4).join(" > ") || el.tagName.toLowerCase();
+    if (withNumbers) groups.set(path, pathOf(el));
+    return path;
   };
   const shown = (el: Element) => {
     const style = getComputedStyle(el);
@@ -302,6 +313,22 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   // room in its card and inside its own box. A finding names the element and the px it has.
   const spacing = options.spacing;
   const nameOf = (el: Element) => pathOf(el, true).split(" > ").pop() ?? "";
+  /** Hidden for screen readers only (#641): it, or a box around it, is clipped away on purpose. */
+  const srOnly = (el: Element) => {
+    for (let at: Element | null = el; at && at !== document.body; at = at.parentElement) {
+      const style = getComputedStyle(at);
+      const clip = style.getPropertyValue("clip").replace(/px/g, "");
+      if (
+        style.getPropertyValue("clip-path") === "inset(50%)" ||
+        /^rect\(0[ ,]+0[ ,]+0[ ,]+0\)$/.test(clip)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+  /** On screen for a person: not hidden, and not hidden for screen readers only. */
+  const seenBy = (el: Element) => !hidden(el) && !srOnly(el);
   const ownText = (el: Element) =>
     [...el.childNodes].some((n) => n.nodeType === 3 && (n.textContent ?? "").trim() !== "");
   /** The room between two boxes that share columns (stacked) or rows (side by side), or how far they overlap. */
@@ -321,7 +348,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   };
   const checkPairs = (els: Element[], min: number, rule: Rule) => {
     const boxes = els
-      .filter((el) => !hidden(el))
+      .filter(seenBy)
       .map((el) => [el, rectOf(el)] as const)
       .filter(([, box]) => box.width > 0 && box.height > 0);
     boxes.forEach(([b, rb], j) => {
@@ -350,7 +377,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     if (hidden(card)) return;
     const edge = rectOf(card);
     for (const el of card.querySelectorAll("*")) {
-      if (hidden(el) || !ownText(el)) continue;
+      if (!seenBy(el) || !ownText(el)) continue;
       const box = rectOf(el);
       if (box.width <= 0 || box.height <= 0) continue;
       // The text starts inside the element's own border and padding: a padded header flush with the card is fine.
@@ -376,7 +403,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   };
   const checkSpill = (el: Element, style: CSSStyleDeclaration) => {
     // Only text left to spill: a box that clips (an ellipsis) or scrolls is the other rules' business.
-    if ((style.overflowX || "visible") !== "visible" || !ownText(el)) return;
+    if ((style.overflowX || "visible") !== "visible" || !ownText(el) || srOnly(el)) return;
     const past = el.scrollWidth - el.clientWidth;
     if (past > 1) add("text-spill", pathOf(el, true), `${past} px past its box`);
   };
@@ -389,6 +416,130 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
     for (const card of document.querySelectorAll(spacing.card))
       checkCardPadding(card, spacing.padMin);
     for (const chips of siblingGroups(spacing.chip)) checkPairs(chips, spacing.chipMin, "chip-gap");
+  };
+
+  // 11. Narrow windows (#641), heuristic: nothing runs past the right edge, one scrollbar at a
+  // time, and the page header clear of the tab row. A finding names the element and the px.
+  const narrow = options.responsive;
+  const root = document.documentElement;
+  /** The nearest ancestor with a box of its own: a `display: contents` wrapper has none. */
+  const boxParent = (el: Element) => {
+    let up = el.parentElement;
+    while (up && getComputedStyle(up).display === "contents") up = up.parentElement;
+    return up;
+  };
+  /** How many px a box hides vertically, when it scrolls; 0 when it shows all it holds. */
+  const hides = (el: Element) => {
+    const extra = el.scrollHeight - el.clientHeight;
+    return extra > 1 && scrolls(getComputedStyle(el).overflowY) ? extra : 0;
+  };
+  /** A box that can push the page sideways: not fixed, and no ancestor clips or scrolls it on x. */
+  const canWiden = (el: Element) => {
+    if (getComputedStyle(el).position === "fixed") return false;
+    for (let up = el.parentElement; up && up !== document.body; up = up.parentElement) {
+      if ((getComputedStyle(up).overflowX || "visible") !== "visible") return false;
+    }
+    return true;
+  };
+  const checkOverflowX = (shown: Element[]) => {
+    const extra = root.scrollWidth - root.clientWidth;
+    if (extra > 1) {
+      let widest: Element | null = null;
+      let right = 0;
+      for (const el of shown.filter(canWiden)) {
+        const box = rectOf(el);
+        if (box.width > 0 && box.right > right) {
+          widest = el;
+          right = box.right;
+        }
+      }
+      add(
+        "overflow-x",
+        widest ? pathOf(widest, true) : "page",
+        `the page scrolls ${extra} px sideways; this ends at ${Math.round(right)}`,
+      );
+    }
+    // The outermost box past the right of a parent that neither clips nor scrolls (a table past its card).
+    const past: Element[] = [];
+    for (const el of shown) {
+      if (past.some((outer) => outer.contains(el))) continue;
+      const position = getComputedStyle(el).position;
+      const parent = boxParent(el);
+      if (position === "fixed" || position === "absolute" || !parent || parent === document.body) {
+        continue;
+      }
+      if ((getComputedStyle(parent).overflowX || "visible") !== "visible") continue;
+      const box = rectOf(el);
+      const room = rectOf(parent);
+      if (box.width > 0 && room.width > 0 && box.right - room.right > 1) {
+        past.push(el);
+        add(
+          "overflow-x",
+          pathOf(el, true),
+          `${Math.round(box.right - room.right)} px past the right of ${nameOf(parent)}`,
+        );
+      }
+    }
+  };
+  const checkNestedScroll = (shown: Element[]) => {
+    for (const el of shown) {
+      const inner = hides(el);
+      if (!inner) continue;
+      let outer = el.parentElement;
+      while (outer && outer !== document.body && !hides(outer)) outer = outer.parentElement;
+      const page = root.scrollHeight - root.clientHeight;
+      if (outer && outer !== document.body) {
+        add(
+          "nested-scroll",
+          pathOf(el, true),
+          `hides ${inner} px, inside ${nameOf(outer)}, which hides ${hides(outer)}`,
+        );
+      } else if (page > 1) {
+        add(
+          "nested-scroll",
+          pathOf(el, true),
+          `hides ${inner} px, inside the page, which hides ${page}`,
+        );
+      }
+    }
+  };
+  const checkHeader = (rules: ResponsiveRules) => {
+    const tabs = [...document.querySelectorAll(rules.tabs)].find((el) => !hidden(el));
+    for (const header of document.querySelectorAll(rules.header)) {
+      if (hidden(header)) continue;
+      const box = rectOf(header);
+      const row = tabs ? rectOf(tabs) : null;
+      const under = row ? row.bottom - box.top : 0;
+      if (
+        row &&
+        under > 0.5 &&
+        box.top >= row.top &&
+        box.left < row.right &&
+        row.left < box.right
+      ) {
+        add(
+          "header-clipped",
+          pathOf(header, true),
+          `starts ${Math.round(under)} px under the tab row`,
+        );
+      }
+      for (const title of header.querySelectorAll(rules.title)) {
+        if (!hidden(title) && title.scrollWidth - title.clientWidth > 1) {
+          add(
+            "header-clipped",
+            pathOf(title, true),
+            `cut: ${title.clientWidth} px of ${title.scrollWidth}`,
+          );
+        }
+      }
+    }
+  };
+  const checkNarrow = () => {
+    if (!narrow) return;
+    const shown = [...document.querySelectorAll("body *")].filter(seenBy);
+    checkOverflowX(shown);
+    checkNestedScroll(shown);
+    checkHeader(narrow);
   };
 
   checkSideways();
@@ -408,6 +559,7 @@ export function layoutFindings(options: GuardOptions = {}): Finding[] {
   checkGaps();
   checkSingleScroll();
   checkSpacing();
+  checkNarrow();
   return found;
 }
 
@@ -469,6 +621,22 @@ export const SCROLL_SIZES: ReadonlyArray<{ width: number; height: number }> = [
 ];
 
 /** The spacing guard's rules (#588): heuristic, judged against a baseline that only goes down. */
+/** The narrow-window rules (#641): a page header, its title and the tab row, by selector. */
+export interface ResponsiveRules {
+  header: string;
+  title: string;
+  tabs: string;
+}
+
+/** The narrow-window rules: heuristic, judged against apps/desktop/responsive-baseline.json. */
+export const RESPONSIVE_RULES: Rule[] = ["overflow-x", "nested-scroll", "header-clipped"];
+
+export const RESPONSIVE: ResponsiveRules = {
+  header: '[data-slot="page-header"]',
+  title: '[data-slot="page-title"]',
+  tabs: '[role="tablist"]',
+};
+
 export const SPACING_RULES: readonly Rule[] = [
   "block-gap",
   "card-gap",
@@ -518,6 +686,63 @@ export function judge(
     baseline,
   );
   return { failures: [...contract, ...fresh.map(say)], fixed };
+}
+
+/** A baseline of counts and what one run did with it (#641). */
+export interface Ratchet {
+  baseline: Record<string, number> | null;
+  /** Findings per key (rule, screen, path with no numbers): the baseline's format. */
+  seen: Record<string, number>;
+  /** Each finding by its numbered path, with its detail, for a person. */
+  occurrences: Record<string, string>;
+  /** Baseline keys this run saw fewer of, with what to do. */
+  gone: string[];
+}
+
+/** A baseline of counts, or `null` when there is none yet; an entry that is not a number counts as one. */
+export function loadCounts(read: () => string | null): Record<string, number> | null {
+  const text = read();
+  if (text === null) return null;
+  const parsed = JSON.parse(text) as Record<string, unknown>;
+  return Object.fromEntries(
+    Object.entries(parsed).map(([key, value]) => [key, typeof value === "number" ? value : 1]),
+  );
+}
+
+/** Judges one screen against a ratchet: records what it saw and what is gone; returns the failures. */
+export function ratchetScreen(screen: string, findings: Finding[], ratchet: Ratchet): string[] {
+  const failures = findings
+    .filter((finding) => CONTRACT.has(finding.rule))
+    .map((finding) => `${screen}: ${finding.rule} ${finding.path} (${finding.detail})`);
+  const counted = new Map<string, Finding[]>();
+  for (const finding of findings.filter((f) => !CONTRACT.has(f.rule))) {
+    const key = `${finding.rule}|${screen}|${finding.group ?? finding.path}`;
+    counted.set(key, [...(counted.get(key) ?? []), finding]);
+    ratchet.occurrences[findingKey(screen, finding)] = finding.detail;
+  }
+  for (const [key, list] of counted) ratchet.seen[key] = list.length;
+  const baseline = ratchet.baseline;
+  if (!baseline) return failures;
+  for (const [key, list] of counted) {
+    const allowed = baseline[key] ?? 0;
+    if (list.length > allowed) {
+      const [rule, , group] = key.split("|");
+      const each = list.map((finding) => `${finding.path} (${finding.detail})`).join("; ");
+      failures.push(
+        `${screen}: ${rule} ${group}, ${list.length} where the baseline has ${allowed}: ${each}`,
+      );
+    }
+  }
+  const here = `|${screen}|`;
+  for (const [key, allowed] of Object.entries(baseline)) {
+    const now = counted.get(key)?.length ?? 0;
+    if (key.includes(here) && now < allowed) {
+      ratchet.gone.push(
+        `${key}: ${now} where the baseline has ${allowed}: ${now === 0 ? "remove it" : "lower it"}`,
+      );
+    }
+  }
+  return failures;
 }
 
 /** The baseline file, or `null` when there is none yet. */
