@@ -89,6 +89,13 @@ export interface PlanDeps {
   tiers?: string[];
   /** A test file's tier (lib/test-tiers.ts); undefined for a file it does not classify. */
   tierOf?: (path: string) => string | undefined;
+  /**
+   * `--pr` (#309): every unit and component test, plus the related tests of the other tiers, with
+   * the per-changed-file 100% gate. The full suite runs on main and nightly.
+   */
+  pyramid?: boolean;
+  /** False keeps a big run out of the machine-wide slot (CI has the machine to itself). */
+  slot?: boolean;
 }
 
 export interface Plan {

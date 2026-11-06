@@ -228,6 +228,67 @@ describe("planRelated", () => {
     expect(plan.command?.some((arg) => arg.startsWith("--coverage-dir"))).toBe(false);
   });
 
+  test("--pr runs every unit and component test plus the related tests of the other tiers, with the changed-file gate (#309)", () => {
+    const repo: Record<string, string> = {
+      "apps/daemon/src/a.ts": "export const a = 1;",
+      "apps/daemon/src/b.ts": "export const b = 1;",
+      "apps/daemon/test/unit-a.test.ts": `import "../src/a.ts";`,
+      "apps/daemon/test/unit-b.test.ts": `import "../src/b.ts";`,
+      "apps/desktop/test/screen.test.tsx": `import "../../daemon/src/b.ts";`,
+      "apps/daemon/test/int-a.test.ts": `import "../src/a.ts";`,
+      "apps/daemon/test/int-b.test.ts": `import "../src/b.ts";`,
+      "apps/daemon/test/new-a.test.ts": `import "../src/a.ts";`,
+    };
+    const tiers: Record<string, string> = {
+      "apps/daemon/test/unit-a.test.ts": "unit",
+      "apps/daemon/test/unit-b.test.ts": "unit",
+      "apps/desktop/test/screen.test.tsx": "component",
+      "apps/daemon/test/int-a.test.ts": "integration",
+      "apps/daemon/test/int-b.test.ts": "integration",
+    };
+    const plan = planRelated({
+      platform: "linux",
+      git: fakeGit(["apps/daemon/src/a.ts"], Object.keys(repo)),
+      readFile: (path) => repo[path] ?? "",
+      coverageDir: "/tmp/cov",
+      pyramid: true,
+      tierOf: (path) => tiers[path],
+    });
+    expect(plan.command?.filter((arg) => /\.test\.tsx?$/.test(arg))).toEqual([
+      "./apps/daemon/test/int-a.test.ts",
+      "./apps/daemon/test/new-a.test.ts",
+      "./apps/daemon/test/unit-a.test.ts",
+      "./apps/daemon/test/unit-b.test.ts",
+      "./apps/desktop/test/screen.test.tsx",
+    ]);
+    expect(plan.targets).toEqual(["apps/daemon/src/a.ts"]);
+    expect(plan.command).toContain("--coverage-dir=/tmp/cov");
+    expect(plan.output).toContain(
+      "test:related --pr: 3 fast-tier test file(s) + 2 related test file(s) of the other tiers for 1 changed file(s)",
+    );
+  });
+
+  test("--pr with no changed source still runs the fast tiers, and slot: false never wraps a big run (#309)", () => {
+    const repo: Record<string, string> = { "docs/x.md": "x" };
+    const tiers: Record<string, string> = {};
+    for (let i = 0; i < 61; i++) {
+      repo[`apps/daemon/test/u${i}.test.ts`] = "export {};";
+      tiers[`apps/daemon/test/u${i}.test.ts`] = "unit";
+    }
+    const plan = planRelated({
+      platform: "linux",
+      git: fakeGit(["docs/x.md"], Object.keys(repo)),
+      readFile: (path) => repo[path] ?? "",
+      coverageDir: "/tmp/cov",
+      pyramid: true,
+      slot: false,
+      tierOf: (path) => tiers[path],
+    });
+    expect(plan.code).toBe(0);
+    expect(plan.command?.[0]).toBe("bun");
+    expect(plan.command?.filter((arg) => arg.endsWith(".test.ts"))).toHaveLength(61);
+  });
+
   test("a change that reaches every test is flagged", () => {
     const plan = planRelated({
       platform: "linux",
