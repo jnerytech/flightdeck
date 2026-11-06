@@ -201,7 +201,8 @@ export function commitViolation(command: string, cwd: string, deps: CommitGateDe
     return `${type} needs a scope: ${type}(<area>): text, the same scope as its earlier test(<area>) commit (docs/TDD.md).`;
   }
   const lines = [commit.message, ...commit.trailers].join("\n");
-  if (!ISSUE_IN_SUBJECT.test(subject) && !ISSUE_LINE.test(lines)) {
+  const text = subject.slice(match[0].length - 1);
+  if (!ISSUE_IN_SUBJECT.test(text) && !ISSUE_LINE.test(lines)) {
     return `${type}(${scope}) needs an issue: end the subject with (#N), or add a line "Refs: #N" (or "Closes #N") to the message, so release:close can close it (docs/TDD.md).`;
   }
   if (commit.waived || commit.dir === null) return null;
@@ -236,8 +237,11 @@ const COMMIT_TYPES = [
 const SUBJECT = new RegExp(String.raw`^(${COMMIT_TYPES.join("|")})(?:\(([^)]+)\))?!?: \S`);
 const HEREDOC = /<<-?\s*(['"]?)(\w+)\1[^\n]*\n([\s\S]*?)\n\s*\2[ \t]*(?=\n|\)|$)/g;
 const WAIVER = /^TDD-Waiver:[ \t]*\S/m;
-/** An issue in the subject's parentheses: `(#12)`, `(#12, #13)`, `(review of rc/0364, #237)`. */
-const ISSUE_IN_SUBJECT = /\([^()]*#\d+[^()]*\)/;
+/**
+ * An issue in parentheses in the subject's text (after `type(scope): `): `(#12)`, `(#12, #13)`,
+ * `(review of rc/0364, #237)`. One digit is enough for a presence test and keeps it linear.
+ */
+const ISSUE_IN_SUBJECT = /\([^()]*#\d[^()]*\)/;
 /** A message line that names an issue: `Refs: #12`, `Closes #12`, `Fixes #12`, `Resolves #12`. */
 const ISSUE_LINE = /^[ \t]*(?:refs|closes|fixes|resolves):?[ \t]+#\d+/im;
 
