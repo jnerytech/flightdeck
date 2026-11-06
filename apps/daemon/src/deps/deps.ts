@@ -185,6 +185,12 @@ async function signedIn(env: DepsEnv, noClaude: boolean): Promise<DepResult> {
   };
 }
 
+/** The hooks as a dependency: installed is ok, an old one is outdated, anything else is missing. */
+function hooksDepState(hooks: string): DepResult["state"] {
+  if (hooks === "installed") return "ok";
+  return hooks === "outdated" ? "outdated" : "missing";
+}
+
 async function powershell(env: DepsEnv): Promise<DepResult> {
   const base = {
     id: "pwsh" as const,
@@ -214,7 +220,7 @@ export async function checkDeps(env: DepsEnv): Promise<DepsResult> {
   const hooks: DepResult = {
     id: "hooks",
     group: "optional",
-    state: hooksState === "installed" ? "ok" : hooksState === "outdated" ? "outdated" : "missing",
+    state: hooksDepState(hooksState),
     breaks: ["liveStatus"],
     fix: (["linux", "darwin", "win32"] as Os[]).map((os) => ({
       os,
