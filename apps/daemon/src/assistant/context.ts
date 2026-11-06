@@ -211,7 +211,7 @@ export async function repoContext(
   return {
     stat: stat(files),
     diff: shown.join("\n"),
-    notShown: notShown.sort(),
+    notShown: notShown.sort((a, b) => (a < b ? -1 : Number(a > b))),
     redactedLines: rendered.reduce((sum, f) => sum + f.redacted, 0),
     truncated,
     rules: await extractRules(root),
