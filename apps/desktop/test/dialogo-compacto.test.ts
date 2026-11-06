@@ -52,11 +52,7 @@ describe("dialogo-compacto: below 640 px a dialog is a full-screen sheet", () =>
   test("the footer stays at the bottom of the sheet, its buttons stacked with the primary last", () => {
     // A descendant, not a child: the New card dialog's footer is inside its form.
     const footer = compactRule('[data-slot="dialog-content"] [data-slot="dialog-footer"]');
-    for (const declaration of [
-      "position: sticky",
-      "margin-top: auto",
-      "flex-direction: column",
-    ]) {
+    for (const declaration of ["position: sticky", "margin-top: auto", "flex-direction: column"]) {
       expect(`${declaration}: ${footer.includes(declaration)}`).toBe(`${declaration}: true`);
     }
   });
