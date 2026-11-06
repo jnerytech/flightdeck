@@ -1010,6 +1010,45 @@ export const journeys: Record<string, (c: Context) => Promise<void>> = {
     await c.page.getByRole("button", { name: c.t("assistantWand.undo"), exact: true }).click();
     await waitFor(async () => (await box.inputValue()) === typed, "o texto de volta");
   },
+
+  // 28. Notification preferences (#149): Settings switches an event off and mutes a host, both
+  // survive a reload (they live in the app's own storage), the switches come back on, and the test
+  // notification says whether the system showed it (a headless browser may refuse, so either
+  // answer is right; what matters is that it answers).
+  "notify-prefs": async (c) => {
+    await open(c, { name: "settings" });
+    const box = (name: string) => c.page.getByRole("checkbox", { name, exact: true });
+    const finished = box(c.t("notifyPrefs.event.turn-finished"));
+    const muteAlfa = box(c.t("notifyPrefs.muteHost", { name: "alfa" }));
+    await finished.scrollIntoViewIfNeeded({ timeout: WAIT });
+    if (!(await finished.isChecked())) throw new Error("Turn finished começa ligado");
+    if (await muteAlfa.isChecked()) throw new Error("alfa começa sem silêncio");
+    await finished.uncheck();
+    await muteAlfa.check();
+    // The page is read again from the start: only what was stored can still be set.
+    await open(c, { name: "settings" });
+    await finished.scrollIntoViewIfNeeded({ timeout: WAIT });
+    await waitFor(
+      async () => !(await finished.isChecked()),
+      "Turn finished desligado após recarregar",
+    );
+    await waitFor(async () => await muteAlfa.isChecked(), "alfa silenciado após recarregar");
+    // The other switches were not touched.
+    if (!(await box(c.t("notifyPrefs.event.needs-you")).isChecked())) {
+      throw new Error("Needs you mudou sem ninguém pedir");
+    }
+    await finished.check();
+    await muteAlfa.uncheck();
+    await waitFor(
+      async () => (await finished.isChecked()) && !(await muteAlfa.isChecked()),
+      "as chaves de volta",
+    );
+    await c.page.getByRole("button", { name: c.t("notifyPrefs.test"), exact: true }).click();
+    await c.page
+      .getByText(new RegExp(`^(${c.t("notifyPrefs.delivered")}|${c.t("notifyPrefs.notShown")})`))
+      .first()
+      .waitFor({ timeout: WAIT });
+  },
 };
 
 /** The page never scrolls sideways: when it does, the guards name the widest element. */

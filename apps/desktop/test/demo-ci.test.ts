@@ -149,6 +149,8 @@ describe("demo-prints: axe e CI", () => {
       "sleep-wake",
       "tab-row",
       "wand-composer",
+      // Issue #149: an event switched off and a host muted in Settings survive a reload.
+      "notify-prefs",
     ]);
     expect(LANGUAGES).toEqual(["pt-BR", "en"]);
     expect(VIEWPORTS).toEqual([
