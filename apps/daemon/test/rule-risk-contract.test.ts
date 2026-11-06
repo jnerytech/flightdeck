@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { join } from "node:path";
 import type { PermissionUpdate } from "@flightdeck/protocol";
 import ignore from "ignore";
 import { checkUpdates, rulePaths } from "../src/permissions/permission-updates.ts";
@@ -158,7 +159,7 @@ describe("rule-risk: a rule that names a folder covers what is inside it (issue 
     const asked: string[] = [];
     const stat = async (path: string) => {
       asked.push(path);
-      return path === "/proj/src"
+      return path === join("/proj", "src")
         ? ("dir" as const)
         : path === "/etc/hosts"
           ? ("file" as const)
@@ -170,7 +171,10 @@ describe("rule-risk: a rule that names a folder covers what is inside it (issue 
       "/home/me",
       stat,
     );
-    expect([...asked].sort()).toEqual(["/etc/hosts", "/home/me/notes", "/proj/src"]);
+    // The paths are joined the platform's way: backslashes on Windows.
+    expect([...asked].sort()).toEqual(
+      ["/etc/hosts", join("/home/me", "notes"), join("/proj", "src")].sort(),
+    );
     expect([kind("src"), kind("/etc/hosts"), kind("~/notes"), kind("never-asked")]).toEqual([
       "dir",
       "file",
