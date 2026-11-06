@@ -65,6 +65,9 @@ export async function toolDetail(
 ): Promise<ToolDetail | null> {
   let found: { id: unknown; name: string; input: unknown; truncated: boolean } | null = null;
   for await (const line of lines) {
+    // A line that cannot name the message or the call is not parsed at all: most of a long
+    // transcript is skipped with a substring check.
+    if (!line.includes(found ? String(found.id) : uuid)) continue;
     const { uuid: own, content } = blocks(line);
     if (!found) {
       if (own !== uuid) continue;
