@@ -1,8 +1,8 @@
 import { describe, expect, setDefaultTimeout, test } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { appendFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { DIFF_FILE_MAX, workingDiff } from "../src/board/diff.ts";
-import { gitRepo } from "./board-helpers.ts";
+import { cardDiff, DIFF_FILE_MAX, workingDiff } from "../src/board/diff.ts";
+import { git, gitRepo } from "./board-helpers.ts";
 
 // Real git in temp repositories.
 setDefaultTimeout(30_000);
@@ -70,5 +70,73 @@ describe("changes-cap: a new file over the cap is listed with its size and no co
     const file = await only(repo, "img.bin");
     expect(file?.binary).toBe(true);
     expect(file?.tooLarge).toBeUndefined();
+  });
+});
+
+/** Lines of 99 characters and a newline: `n` of them, the size of the diff that adds them. */
+const lines = (n: number, tag = "x") => `${`${tag.repeat(99)}\n`.repeat(n)}`;
+const commit = (repo: string, message: string) => {
+  git(repo, "add", ".");
+  git(repo, "commit", "-q", "-m", message);
+};
+
+describe("changes-cap: a tracked change whose diff is over the cap is listed with its size and no content", () => {
+  test("a tracked file with 600 KB of new lines keeps its counts and loses its hunks", async () => {
+    const { repo } = gitRepo();
+    writeFileSync(join(repo, "big.txt"), lines(10));
+    commit(repo, "big");
+    appendFileSync(join(repo, "big.txt"), lines(6000, "y"));
+    const file = await only(repo, "big.txt");
+    expect(file).toMatchObject({
+      status: "modified",
+      uncommitted: true,
+      binary: false,
+      additions: 6000,
+      deletions: 0,
+      tooLarge: true,
+      hunks: [],
+    });
+    expect(file?.bytes).toBeGreaterThan(DIFF_FILE_MAX);
+  });
+
+  test("a change of 100 lines is shown whole beside it", async () => {
+    const { repo } = gitRepo();
+    writeFileSync(join(repo, "big.txt"), lines(10));
+    writeFileSync(join(repo, "small.txt"), lines(10));
+    commit(repo, "two");
+    appendFileSync(join(repo, "big.txt"), lines(6000, "y"));
+    appendFileSync(join(repo, "small.txt"), lines(100, "z"));
+    const small = await only(repo, "small.txt");
+    expect(small?.tooLarge).toBeUndefined();
+    expect(small).toMatchObject({ additions: 100, hunks: [expect.anything()] });
+  });
+
+  test("the caller can cap tracked diffs lower than the default", async () => {
+    const { repo } = gitRepo();
+    writeFileSync(join(repo, "mid.txt"), lines(10));
+    commit(repo, "mid");
+    appendFileSync(join(repo, "mid.txt"), lines(100, "y"));
+    expect(
+      (await workingDiff(repo, DIFF_FILE_MAX, 5000)).find((f) => f.path === "mid.txt"),
+    ).toMatchObject({
+      tooLarge: true,
+      hunks: [],
+    });
+    expect((await only(repo, "mid.txt"))?.tooLarge).toBeUndefined();
+  });
+
+  test("commits since the base are capped the same way as what is not committed yet", async () => {
+    const { repo } = gitRepo();
+    git(repo, "checkout", "-q", "-b", "work");
+    writeFileSync(join(repo, "gen.txt"), lines(6000));
+    commit(repo, "generated");
+    const { files } = await cardDiff(repo, "main");
+    expect(files.find((f) => f.path === "gen.txt")).toMatchObject({
+      status: "added",
+      uncommitted: false,
+      additions: 6000,
+      tooLarge: true,
+      hunks: [],
+    });
   });
 });
