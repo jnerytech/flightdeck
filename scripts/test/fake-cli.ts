@@ -100,6 +100,20 @@ export function answerFake(
  * hit. Linux only (it reads /proc); elsewhere the fakes' own parent watch and deadline end them.
  * Returns the pids it killed.
  */
+/**
+ * The process a fake watches (#254): the caller the shell shim handed over, else its parent. On
+ * Windows the shim runs under Git Bash, whose $PPID is an MSYS pid and names no Windows process
+ * (#392), so the fake watches its parent there.
+ */
+export function fakeCaller(
+  env: Record<string, string | undefined>,
+  platform: string,
+  ppid: number,
+): number {
+  const handed = platform === "win32" ? 0 : Number(env.FLIGHTDECK_FAKE_CALLER);
+  return handed || ppid;
+}
+
 export function reapFakes(runDir: string): number[] {
   if (process.platform !== "linux") return [];
   const killed: number[] = [];

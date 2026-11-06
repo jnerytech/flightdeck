@@ -6,7 +6,7 @@
 // process that started it is gone, and never lives past FAKE_MAX_MS.
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { answerFake } from "./fake-cli.ts";
+import { answerFake, fakeCaller } from "./fake-cli.ts";
 import { pidAlive } from "./temp-run.ts";
 
 /** The longest a fake lives, its holds included (FLIGHTDECK_FAKE_MAX_MS overrides it). */
@@ -16,9 +16,10 @@ const WATCH_MS = 100;
 
 const [stateDir = "", ...args] = process.argv.slice(2);
 // The shell shim passes its own parent (exec keeps the shim's pid, so ours is that parent too);
-// started some other way, the caller is our parent as we found it.
+// started some other way, or on Windows (an MSYS $PPID is no Windows pid, #392), the caller is our
+// parent as we found it.
 const startPpid = process.ppid;
-const caller = Number(process.env.FLIGHTDECK_FAKE_CALLER) || startPpid;
+const caller = fakeCaller(process.env, process.platform, startPpid);
 const pids = join(stateDir, "pids");
 
 const record = (pid: number) => {
