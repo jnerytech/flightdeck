@@ -4,7 +4,7 @@
 
 Referência completa do Flightdeck, organizada por assunto. Vale para a versão 0.19.0. O roadmap
 está em [`docs/SPEC.md`](../SPEC.md), as divergências em relação às specs em
-[`docs/DECISIONS.md`](../DECISIONS.md) e o vocabulário da interface em
+[`docs/decisions/`](../decisions/) (as mais antigas em [`docs/DECISIONS.md`](../DECISIONS.md)) e o vocabulário da interface em
 [`docs/GLOSSARY.md`](../GLOSSARY.md). O manual supõe `flightdeckd` no `PATH`; o binário instalado
 fica em `~/.flightdeck/bin`, que o `update` não acrescenta ao `PATH`.
 
